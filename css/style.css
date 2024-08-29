@@ -1,0 +1,48 @@
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap');
+
+
+* {
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+    font-family: "Open Sans", sans-serif;
+}
+
+header {
+    display: flex;
+    justify-content: center;
+    padding: 1rem;
+}
+
+header img {
+    width: 100px;
+}
+
+.filtro {
+    margin-left: 100px;
+}
+
+.filtro p {
+    font-size: 24px;
+    padding-bottom: 10px;
+    text-decoration: underline;
+}
+
+.filtro select,
+.filtro input {
+    width: 300px;
+    font-size: 16px;
+    padding: 5px;
+}
+
+table {
+    border-collapse: collapse;
+    margin: 15px 100px;
+}
+
+td,
+tr,
+th {
+    border: 1px solid black;
+    padding: 4px;
+}

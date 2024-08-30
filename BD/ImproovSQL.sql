@@ -114,17 +114,6 @@ VALUES (1, 3, 3);  -- Finalizador para Imagem 1
 INSERT INTO funcao_imagem (imagem_id, colaborador_id, funcao_id)
 VALUES (2, 2, 1);  -- Modelador para Imagem 2
 
-SELECT i.idimagens_cliente_obra, c.nome_cliente, o.nome_obra, i.imagem_nome, i.status, i.prazo
-FROM imagens_cliente_obra i
-JOIN cliente c ON i.cliente_id = c.idcliente
-JOIN obra o ON i.obra_id = o.idobra;
-
-
-
-
-
-
-
 
 
 SET SQL_MODE=@OLD_SQL_MODE;

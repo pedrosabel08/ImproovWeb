@@ -1,0 +1,59 @@
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap');
+
+
+* {
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+    font-family: "Open Sans", sans-serif;
+}
+
+button {
+    all: unset; /* Remove todos os estilos de todos os elementos */
+    display: inline-block; /* Mantém o botão como um elemento inline-block */
+    box-sizing: border-box; /* Garante que o padding e border sejam incluídos no tamanho total */
+    cursor: pointer; /* Mantém o cursor de ponteiro */
+}
+
+main {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    grid-template-rows: 100vh;
+}
+
+main .buttons {
+    border-right: 1px solid black;
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    justify-content: center;
+    gap: 30px;
+}
+
+main .buttons button {
+    width: 400px;
+    height: 50px;
+    border: 2px solid black;
+    border-radius: 20px;
+    text-align: center;
+    transition: 0.3s all ease;
+    text-transform: uppercase;
+}
+
+.buttons button:hover {
+    background-color: red;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.logo img{
+    transition: 0.3s all ease;
+}
+
+.logo img:hover {
+    scale: 1.2;
+}

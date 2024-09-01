@@ -13,7 +13,7 @@
 
     <header>
         <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s" alt="Improov">
-        <button onclick="window.location.href='index.php'">Voltar</button>
+        <button onclick="window.location.href='index.html'">Voltar</button>
     </header>
 
     <div class="filtro">
@@ -261,7 +261,7 @@
         </select>
     </div>
 
-    <script src="script.js"></script>
+    <script src="./script/script.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
 </body>

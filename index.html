@@ -11,11 +11,15 @@
 
 <body>
 
+    <label class="switch">
+        <input type="checkbox" id="theme-toggle">
+        <span class="slider round"></span>
+    </label>
     <main>
         <div class="buttons">
-            <button>Adicionar Cliente ou Obra</button>
-            <button>Adicionar imagem referente a obra</button>
-            <button onclick="window.location.href='main.php'">Visualizar tabela com imagens</button>
+            <button onclick="adicionarCliente()">Adicionar Cliente ou Obra</button>
+            <button onclick="adicionarImagem()">Adicionar imagem referente a obra</button>
+            <button onclick="visualizarTabela()">Visualizar tabela com imagens</button>
         </div>
         <div class="logo">
             <button onclick="instagramImproov()">
@@ -27,7 +31,7 @@
         </div>
     </main>
 
-    <script src="scriptIndex.js"></script>
+    <script src="./script/scriptIndex.js"></script>
 </body>
 
 </html>

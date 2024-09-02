@@ -8,20 +8,22 @@
     font-family: "Open Sans", sans-serif;
 }
 
-button {
+button,
+a {
     all: unset;
     display: inline-block;
     box-sizing: border-box;
-    cursor: pointer; 
+    cursor: pointer;
 }
+
 
 header {
     display: flex;
-    justify-content: center;
+    flex-direction: column;
     padding: 1rem;
 }
 
-header button{
+button#voltar {
     position: absolute;
     left: 1rem;
     top: 1rem;
@@ -32,29 +34,67 @@ header button{
     transition: 0.3s all ease;
 }
 
-header button:hover {
+button#voltar:hover {
     background-color: #ff0000;
+    font-weight: bold;
 }
 
 header img {
     width: 100px;
+    margin: 0 auto;
 }
 
-.filtro {
+nav {
+    display: flex;
+    justify-content: center;
+    border: 1px solid black;
+    background-color: #8d8d8d;
+}
+
+nav a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 300px;
+    height: 50px;
+    border-right: 1px solid black;
+    transition: .3s;
+}
+
+nav a:first-child {
+    border-left: 1px solid black;
+}
+
+nav a:hover {
+    color: #ffffff;
+    font-weight: 600;
+}
+
+nav a.active {
+    color: #ffffff;
+    font-weight: 600;
+}
+
+#filtro {
     margin-left: 100px;
 }
 
-.filtro p {
+#filtro p {
     font-size: 24px;
     padding-bottom: 10px;
     text-decoration: underline;
 }
 
-.filtro select,
-.filtro input {
+#filtro select,
+#filtro input {
     width: 300px;
     font-size: 16px;
     padding: 5px;
+}
+
+
+.filtro-tabela {
+    margin-top: 50px;
 }
 
 table {
@@ -76,4 +116,75 @@ th {
     display: flex;
     flex-direction: column;
     gap: 10px;
+}
+
+
+/* Estilo geral para as divs de modal */
+#add-cliente,
+#add-imagem {
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+    padding: 100px;
+    border-bottom: 1px solid black;
+}
+
+/* Estilo para os botões dentro dos modais */
+#add-cliente button#fechar,
+#add-imagem button#fechar {
+    border: 1px solid black;
+    background-color: #ff4141;
+    text-align: center;
+    width: 100px;
+    color: #ffffff;
+    padding: 2px;
+    border-radius: 20px;
+    transition: .3s;
+}
+
+#add-cliente button#salvar,
+#add-imagem button#salvar {
+    border: 1px solid black;
+    background-color: #119111;
+    text-align: center;
+    width: 100px;
+    color: #ffffff;
+    padding: 2px;
+    border-radius: 20px;
+    transition: .3s;
+}
+
+#add-cliente button:hover,
+#add-imagem button:hover {
+    font-weight: bold;
+}
+
+/* Estilo para os labels de título dentro dos modais */
+#add-cliente label.add,
+#add-imagem label.add {
+    font-size: 20px;
+}
+
+/* Estilo para labels, inputs e selects dentro dos modais */
+#add-cliente label,
+#add-cliente input,
+#add-cliente select,
+#add-imagem label,
+#add-imagem input,
+#add-imagem select {
+    width: 300px;
+}
+
+/* Estilo para formulários dentro dos modais */
+#add-cliente form,
+#add-imagem form {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+    width: 100%;
+    /* Para garantir que o formulário ocupe a largura total */
 }

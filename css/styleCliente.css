@@ -7,3 +7,18 @@
     box-sizing: border-box;
     font-family: "Open Sans", sans-serif;
 }
+
+.form-add {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    width: 500px;
+    margin: 0 auto;
+    border: 1px solid black;
+    padding: 5px;
+    gap: 15px;
+}
+
+.form-add select {
+    width: 100px;
+}

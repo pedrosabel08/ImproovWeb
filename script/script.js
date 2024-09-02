@@ -105,3 +105,173 @@ document.getElementById("pesquisa").addEventListener("keyup", function (event) {
     }
 });
 
+function openModal(modalId, element) {
+    // Fecha qualquer modal que esteja aberto
+    closeModal('add-cliente');
+    closeModal('add-imagem');
+
+    // Mostra o modal correspondente, se houver
+    if (modalId) {
+        document.getElementById(modalId).style.display = 'flex';
+    }
+
+    // Remove a classe 'active' de todos os links de navegação
+    var navLinks = document.querySelectorAll('nav a');
+    navLinks.forEach(function (link) {
+        link.classList.remove('active');
+    });
+
+    // Adiciona a classe 'active' ao link clicado
+    if (element) {
+        element.classList.add('active');
+    }
+}
+
+function closeModal(modalId) {
+    if (modalId) {
+        // Esconde o modal correspondente
+        document.getElementById(modalId).style.display = 'none';
+    }
+
+    // Remove a classe 'active' de todos os links de navegação
+    var navLinks = document.querySelectorAll('nav a');
+    navLinks.forEach(function (link) {
+        link.classList.remove('active');
+    });
+
+    // Configura 'Ver imagens' como o link ativo
+    var verImagensLink = document.querySelector('nav a[href="#filtro"]');
+    verImagensLink.classList.add('active');
+}
+
+
+function submitForm(event) {
+    event.preventDefault(); // Evita o envio tradicional do formulário
+
+    const opcao = document.getElementById('opcao-cliente').value;
+    const nome = document.getElementById('nome').value;
+
+    const data = {
+        opcao: opcao,
+        nome: nome
+    };
+
+    fetch('inserircliente_obra.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+    })
+        .then(response => response.json())
+        .then(result => {
+            if (result.status === 'success') {
+                Toastify({
+                    text: result.message,
+                    duration: 3000, // 3 segundos
+                    close: true,
+                    gravity: "top", // Toast aparecerá na parte superior
+                    position: "right", // Toast será posicionado à direita
+                    backgroundColor: "green",
+                    stopOnFocus: true, // Parar se o usuário passar o mouse por cima
+                }).showToast();
+            } else {
+                Toastify({
+                    text: result.message,
+                    duration: 3000,
+                    close: true,
+                    gravity: "top",
+                    position: "right",
+                    backgroundColor: "red",
+                    stopOnFocus: true,
+                }).showToast();
+            }
+
+            closeModal('add-cliente'); // Fecha o modal após a inserção
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            Toastify({
+                text: "Erro ao tentar salvar. Tente novamente.",
+                duration: 3000,
+                close: true,
+                gravity: "top",
+                position: "right",
+                backgroundColor: "red",
+                stopOnFocus: true,
+            }).showToast();
+        });
+}
+
+function submitFormImagem(event) {
+    event.preventDefault();
+
+    const opcaoCliente = document.getElementById('opcao_cliente').value;
+    const opcaoObra = document.getElementById('opcao_obra').value;
+    const arquivo = document.getElementById('arquivos').value;
+    const data_inicio = document.getElementById('data_inicio').value;
+    const prazo = document.getElementById('prazo').value;
+    const imagem = document.getElementById('nome-imagem').value;
+
+    console.log(arquivo, data_inicio, prazo)
+
+    const data = {
+        opcaoCliente: opcaoCliente,
+        opcaoObra: opcaoObra,
+        arquivo: arquivo,
+        data_inicio: data_inicio,
+        prazo: prazo,
+        imagem: imagem
+    };
+
+    fetch('inserir_imagem.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+    })
+        .then(response => response.json())
+        .then(result => {
+            if (result.status === 'success') {
+                Toastify({
+                    text: result.message,
+                    duration: 3000, // 3 segundos
+                    close: true,
+                    gravity: "top", // Toast aparecerá na parte superior
+                    position: "right", // Toast será posicionado à direita
+                    backgroundColor: "green",
+                    stopOnFocus: true, // Parar se o usuário passar o mouse por cima
+                }).showToast();
+
+                // Recarregar a página após 3 segundos (tempo para a Toastify desaparecer)
+                setTimeout(() => {
+                    window.location.reload();
+                }, 500);
+            } else {
+                Toastify({
+                    text: result.message,
+                    duration: 3000,
+                    close: true,
+                    gravity: "top",
+                    position: "right",
+                    backgroundColor: "red",
+                    stopOnFocus: true,
+                }).showToast();
+            }
+
+            closeModal('add-cliente'); // Fecha o modal após a inserção
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            Toastify({
+                text: "Erro ao tentar salvar. Tente novamente.",
+                duration: 3000,
+                close: true,
+                gravity: "top",
+                position: "right",
+                backgroundColor: "red",
+                stopOnFocus: true,
+            }).showToast();
+        });
+}

@@ -244,91 +244,94 @@ $conn->close();
                 </div>
             </div>
             <div class="form-edicao">
-                <h1>Funções</h1>
-                <label id="imagem"></label>
-                <div class="funcao">
-                    <p id="caderno">Caderno</p>
-                    <select name="caderno_id" id="opcao_caderno">
-                        <?php foreach ($colaboradores as $colab): ?>
-                            <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                                <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                    <input type="text" name="status_caderno" id="status_caderno" placeholder="Status">
-                    <input type="date" name="prazo_caderno" id="prazo_caderno">
-                    <input type="text" name="obs_caderno" id="obs_caderno" placeholder="Observação">
+                <form id="form-add" method="post" action="insereFuncao.php">
+                    <h1>Funções</h1>
+                    <input type="hidden" id="imagem_id" name="imagem_id">
+                    <div class="funcao">
+                        <p id="caderno">Caderno</p>
+                        <select name="caderno_id" id="opcao_caderno">
+                            <?php foreach ($colaboradores as $colab): ?>
+                                <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                    <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <input type="text" name="status_caderno" id="status_caderno" placeholder="Status">
+                        <input type="date" name="prazo_caderno" id="prazo_caderno">
+                        <input type="text" name="obs_caderno" id="obs_caderno" placeholder="Observação">
+                    </div>
+                    <div class="funcao">
+                        <p id="comp">Composição</p>
+                        <select name="comp_id" id="opcao_comp">
+                            <?php foreach ($colaboradores as $colab): ?>
+                                <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                    <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <input type="text" name="status_comp" id="status_comp" placeholder="Status">
+                        <input type="date" name="prazo_comp" id="prazo_comp">
+                        <input type="text" name="obs_comp" id="obs_comp" placeholder="Observação">
 
-                </div>
-                <div class="funcao">
-                    <p id="comp">Composição</p>
-                    <select name="comp_id" id="opcao_comp">
-                        <?php foreach ($colaboradores as $colab): ?>
-                            <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                                <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                    <input type="text" name="status_comp" id="status_comp" placeholder="Status">
-                    <input type="date" name="prazo_comp" id="prazo_comp">
-                    <input type="text" name="obs_comp" id="obs_comp" placeholder="Observação">
+                    </div>
+                    <div class="funcao">
+                        <p id="modelagem">Modelagem</p>
+                        <select name="model_id" id="opcao_model">
+                            <?php foreach ($colaboradores as $colab): ?>
+                                <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                    <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <input type="text" name="status_modelagem" id="status_modelagem" placeholder="Status">
+                        <input type="date" name="prazo_modelagem" id="prazo_modelagem">
+                        <input type="text" name="obs_modelagem" id="obs_modelagem" placeholder="Observação">
 
-                </div>
-                <div class="funcao">
-                    <p id="modelagem">Modelagem</p>
-                    <select name="model_id" id="opcao_model">
-                        <?php foreach ($colaboradores as $colab): ?>
-                            <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                                <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                    <input type="text" name="status_modelagem" id="status_modelagem" placeholder="Status">
-                    <input type="date" name="prazo_modelagem" id="prazo_modelagem">
-                    <input type="text" name="obs_modelagem" id="obs_modelagem" placeholder="Observação">
+                    </div>
+                    <div class="funcao">
+                        <p id="finalizacao">Finalização</p>
+                        <select name="final_id" id="opcao_final">
+                            <?php foreach ($colaboradores as $colab): ?>
+                                <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                    <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <input type="text" name="status_finalizacao" id="status_finalizacao" placeholder="Status">
+                        <input type="date" name="prazo_finalizacao" id="prazo_finalizacao">
+                        <input type="text" name="obs_finalizacao" id="obs_finalizacao" placeholder="Observação">
 
-                </div>
-                <div class="funcao">
-                    <p id="finalizacao">Finalização</p>
-                    <select name="final_id" id="opcao_final">
-                        <?php foreach ($colaboradores as $colab): ?>
-                            <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                                <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                    <input type="text" name="status_finalizacao" id="status_finalizacao" placeholder="Status">
-                    <input type="date" name="prazo_finalizacao" id="prazo_finalizacao">
-                    <input type="text" name="obs_finalizacao" id="obs_finalizacao" placeholder="Observação">
-
-                </div>
-                <div class="funcao">
-                    <p id="pos">Pós-Produção</p>
-                    <select name="pos_id" id="opcao_pos">
-                        <?php foreach ($colaboradores as $colab): ?>
-                            <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                                <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                    <input type="text" name="status_pos" id="status_pos" placeholder="Status">
-                    <input type="date" name="prazo_pos" id="prazo_pos">
-                    <input type="text" name="obs_pos" id="obs_pos" placeholder="Observação">
-                </div>
-                <div class="funcao">
-                    <p id="planta_humanizada">Planta Humanizada</p>
-                    <select name="planta_id" id="opcao_planta">
-                        <?php foreach ($colaboradores as $colab): ?>
-                            <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                                <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                    <input type="text" name="status_planta_humanizada" id="status_planta_humanizada" placeholder="Status">
-                    <input type="date" name="prazo_planta_humanizada" id="prazo_planta_humanizada">
-                    <input type="text" name="obs_planta_humanizada" id="obs_planta_humanizada" placeholder="Observação">
-
-                </div>
+                    </div>
+                    <div class="funcao">
+                        <p id="pos">Pós-Produção</p>
+                        <select name="pos_id" id="opcao_pos">
+                            <?php foreach ($colaboradores as $colab): ?>
+                                <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                    <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <input type="text" name="status_pos" id="status_pos" placeholder="Status">
+                        <input type="date" name="prazo_pos" id="prazo_pos">
+                        <input type="text" name="obs_pos" id="obs_pos" placeholder="Observação">
+                    </div>
+                    <div class="funcao">
+                        <p id="planta_humanizada">Planta Humanizada</p>
+                        <select name="planta_id" id="opcao_planta">
+                            <?php foreach ($colaboradores as $colab): ?>
+                                <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                    <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <input type="text" name="status_planta_humanizada" id="status_planta_humanizada" placeholder="Status">
+                        <input type="date" name="prazo_planta_humanizada" id="prazo_planta_humanizada">
+                        <input type="text" name="obs_planta_humanizada" id="obs_planta_humanizada" placeholder="Observação">
+                    </div>
+                    <div class="buttons">
+                        <button type="submit" id="salvar_funcoes">Salvar</button>
+                    </div>
+                </form>
             </div>
         </section>
 

@@ -59,12 +59,13 @@ ENGINE = InnoDB;
 -- -----------------------------------------------------
 -- Table `improov`.`imagens_cliente_obra`
 -- -----------------------------------------------------
-CREATE TABLE imagens_cliente_obra (
+CREATE TABLE IF NOT EXISTS imagens_cliente_obra (
     idimagens_cliente_obra INT AUTO_INCREMENT PRIMARY KEY,
     cliente_id INT NOT NULL,
     obra_id INT NOT NULL,
     imagem_nome VARCHAR(255) NOT NULL,
-    status VARCHAR(50),
+    recebimento_arquivos DATE,
+    data_inicio DATE,
     prazo DATE,
     FOREIGN KEY (cliente_id) REFERENCES cliente(idcliente),
     FOREIGN KEY (obra_id) REFERENCES obra(idobra)
@@ -73,14 +74,18 @@ CREATE TABLE imagens_cliente_obra (
 -- -----------------------------------------------------
 -- Table `improov`.`funcao_imagem`
 -- -----------------------------------------------------
-CREATE TABLE funcao_imagem (
+CREATE TABLE IF NOT EXISTS funcao_imagem (
     idfuncao_imagem INT AUTO_INCREMENT PRIMARY KEY,
     imagem_id INT NOT NULL,
     colaborador_id INT NOT NULL,
     funcao_id INT NOT NULL,
+    prazo DATE, 
+    status VARCHAR(50),
+    observacao VARCHAR(255),
     FOREIGN KEY (imagem_id) REFERENCES imagens_cliente_obra(idimagens_cliente_obra),
     FOREIGN KEY (colaborador_id) REFERENCES colaborador(idcolaborador),
-    FOREIGN KEY (funcao_id) REFERENCES funcao(idfuncao)
+    FOREIGN KEY (funcao_id) REFERENCES funcao(idfuncao),
+    UNIQUE KEY unique_funcao_imagem (imagem_id, funcao_id)
 );
 
 INSERT INTO funcao (nome_funcao) VALUES ('Caderno');
@@ -90,31 +95,17 @@ INSERT INTO funcao (nome_funcao) VALUES ('Finalização');
 INSERT INTO funcao (nome_funcao) VALUES ('Pós-produção');
 INSERT INTO funcao (nome_funcao) VALUES ('Planta Humanizada');
 
-INSERT INTO colaborador (nome_colaborador) VALUES ('João Silva');
-INSERT INTO colaborador (nome_colaborador) VALUES ('Maria Oliveira');
-INSERT INTO colaborador (nome_colaborador) VALUES ('Pedro Santos');
-INSERT INTO cliente (nome_cliente) VALUES ('Cliente A');
-INSERT INTO cliente (nome_cliente) VALUES ('Cliente B');
-INSERT INTO obra (nome_obra) VALUES ('Obra 1');
-INSERT INTO obra (nome_obra) VALUES ('Obra 2');
-INSERT INTO imagens_cliente_obra (cliente_id, obra_id, imagem_nome, status, prazo)
-VALUES (1, 1, 'imagem1.jpg', 'Em andamento', '2024-09-15');
+INSERT INTO colaborador(nome_colaborador) VALUES ('Pedro');
+INSERT INTO colaborador(nome_colaborador) VALUES ('Bruna');
+INSERT INTO colaborador(nome_colaborador) VALUES ('André');
+INSERT INTO colaborador(nome_colaborador) VALUES ('Anderson');
 
-INSERT INTO imagens_cliente_obra (cliente_id, obra_id, imagem_nome, status, prazo)
-VALUES (2, 2, 'imagem2.jpg', 'Finalizado', '2024-08-30');
-INSERT INTO funcao_imagem (imagem_id, colaborador_id, funcao_id)
-VALUES (1, 1, 1);  -- Modelador para Imagem 1
-
-INSERT INTO funcao_imagem (imagem_id, colaborador_id, funcao_id)
-VALUES (1, 2, 2);  -- Compositor para Imagem 1
-
-INSERT INTO funcao_imagem (imagem_id, colaborador_id, funcao_id)
-VALUES (1, 3, 3);  -- Finalizador para Imagem 1
-
-INSERT INTO funcao_imagem (imagem_id, colaborador_id, funcao_id)
-VALUES (2, 2, 1);  -- Modelador para Imagem 2
-
-
+INSERT INTO funcao_imagem (imagem_id, colaborador_id, funcao_id, prazo, status) values (1, 1, 1, '2024-03-09', 'Finalizado');
+INSERT INTO funcao_imagem (imagem_id, colaborador_id, funcao_id, prazo, status) values (1, 2, 2, '2024-03-09', 'Finalizado');
+INSERT INTO funcao_imagem (imagem_id, colaborador_id, funcao_id, prazo, status) values (1, 3, 3, '2024-03-09', 'Finalizado');
+INSERT INTO funcao_imagem (imagem_id, colaborador_id, funcao_id, prazo, status) values (1, 4, 4, '2024-03-09', 'Finalizado');
+INSERT INTO funcao_imagem (imagem_id, colaborador_id, funcao_id, prazo, status) values (1, 1, 5, '2024-03-09', 'Finalizado');
+INSERT INTO funcao_imagem (imagem_id, colaborador_id, funcao_id, prazo, status) values (1, 2, 6, '2024-03-09', 'Finalizado');
 
 SET SQL_MODE=@OLD_SQL_MODE;
 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;

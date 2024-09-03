@@ -28,7 +28,7 @@
 <?php
 // Obter a lista de clientes
 // Conectar ao banco de dados
-$conn = new mysqli('localhost', 'root', '', 'improov');
+$conn = new mysqli('localhost', 'root', 'improov', 'improov');
 
 // Verificar a conexão
 if ($conn->connect_error) {
@@ -127,55 +127,58 @@ $conn->close();
             </form>
         </div>
 
-        <!-- Tabela com filtros -->
-        <div class="filtro-tabela">
 
-            <div id="filtro">
-                <p>Filtro</p>
-                <select id="colunaFiltro">
-                    <option value="0">Nome Cliente</option>
-                    <option value="1">Nome Obra</option>
-                    <option value="2">Nome Imagem</option>
-                    <option value="3">Status</option>
-                    <option value="6">Prazo Estimado</option>
-                    <option value="7">Caderno</option>
-                    <option value="8">Modelagem</option>
-                    <option value="9">Composição</option>
-                    <option value="10">Finalização</option>
-                    <option value="11">Pós-produção</option>
-                    <option value="12">Planta Humanizada</option>
-                </select>
-                <input type="text" id="pesquisa" onkeyup="filtrarTabela()" placeholder="Buscar...">
-            </div>
+        <section class="tabela-form">
 
-            <div class="tabelaClientes">
-                <table id="tabelaClientes">
-                    <thead>
-                        <tr>
-                            <th>Nome Cliente</th>
-                            <th>Nome Obra</th>
-                            <th>Nome Imagem</th>
-                            <th>Recebimento de arquivos</th>
-                            <th>Data Inicio</th>
-                            <th>Prazo Estimado</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php
-                        // Conectar ao banco de dados
-                        $conn = new mysqli('localhost', 'root', '', 'improov');
+            <!-- Tabela com filtros -->
+            <div class="filtro-tabela">
 
-                        // Verificar a conexão
-                        if ($conn->connect_error) {
-                            die("Falha na conexão: " . $conn->connect_error);
-                        }
+                <div id="filtro">
+                    <h1>Filtro</h1>
+                    <select id="colunaFiltro">
+                        <option value="0">Nome Cliente</option>
+                        <option value="1">Nome Obra</option>
+                        <option value="2">Nome Imagem</option>
+                        <option value="3">Status</option>
+                        <option value="6">Prazo Estimado</option>
+                        <option value="7">Caderno</option>
+                        <option value="8">Modelagem</option>
+                        <option value="9">Composição</option>
+                        <option value="10">Finalização</option>
+                        <option value="11">Pós-produção</option>
+                        <option value="12">Planta Humanizada</option>
+                    </select>
+                    <input type="text" id="pesquisa" onkeyup="filtrarTabela()" placeholder="Buscar...">
+                </div>
 
-                        // Obter o valor do filtro de pesquisa
-                        $filtro = isset($_GET['filtro']) ? $conn->real_escape_string($_GET['filtro']) : '';
-                        $colunaFiltro = isset($_GET['colunaFiltro']) ? intval($_GET['colunaFiltro']) : 0;
+                <div class="tabelaClientes">
+                    <table id="tabelaClientes">
+                        <thead>
+                            <tr>
+                                <th>Nome Cliente</th>
+                                <th>Nome Obra</th>
+                                <th>Nome Imagem</th>
+                                <th>Recebimento de arquivos</th>
+                                <th>Data Inicio</th>
+                                <th>Prazo Estimado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php
+                            // Conectar ao banco de dados
+                            $conn = new mysqli('localhost', 'root', 'improov', 'improov');
 
-                        // Consulta para buscar os dados com filtro
-                        $sql = "SELECT 
+                            // Verificar a conexão
+                            if ($conn->connect_error) {
+                                die("Falha na conexão: " . $conn->connect_error);
+                            }
+
+                            // Obter o valor do filtro de pesquisa
+                            $filtro = isset($_GET['filtro']) ? $conn->real_escape_string($_GET['filtro']) : '';
+                            $colunaFiltro = isset($_GET['colunaFiltro']) ? intval($_GET['colunaFiltro']) : 0;
+
+                            // Consulta para buscar os dados com filtro
+                            $sql = "SELECT 
                                 i.idimagens_cliente_obra,
                                 c.nome_cliente, 
                                 o.nome_obra, 
@@ -194,71 +197,140 @@ $conn->close();
                                 LEFT JOIN colaborador co ON fi.colaborador_id = co.idcolaborador
                                 GROUP BY i.idimagens_cliente_obra";
 
-                        // Aplicar filtro se necessário
-                        if ($filtro) {
-                            $colunas = [
-                                'nome_cliente',
-                                'nome_obra',
-                                'imagem_nome',
-                                'status',
-                                'prazo_estimado',
-                                'caderno',
-                                'modelagem',
-                                'composicao',
-                                'finalizacao',
-                                'pos_producao',
-                                'planta_humanizada'
-                            ];
-                            $coluna = $colunas[$colunaFiltro];
-                            $sql .= " HAVING LOWER($coluna) LIKE LOWER('%$filtro%')";
-                        }
-
-                        $result = $conn->query($sql);
-
-                        // Verificar se houve erro na execução da consulta
-                        if (!$result) {
-                            die("Erro na consulta SQL: " . $conn->error);
-                        }
-
-                        if ($result->num_rows > 0) {
-                            // Exibir os dados em linhas na tabela
-                            while ($row = $result->fetch_assoc()) {
-                                echo "<tr class='linha-tabela' data-id='" . htmlspecialchars($row["idimagens_cliente_obra"]) . "'>";
-                                echo "<td>" . htmlspecialchars($row["nome_cliente"]) . "</td>";
-                                echo "<td>" . htmlspecialchars($row["nome_obra"]) . "</td>";
-                                echo "<td>" . htmlspecialchars($row["imagem_nome"]) . "</td>";
-                                echo "<td>" . htmlspecialchars($row["recebimento_arquivos"]) . "</td>";
-                                echo "<td>" . htmlspecialchars($row["data_inicio"]) . "</td>";
-                                echo "<td>" . htmlspecialchars($row["prazo_estimado"]) . "</td>";
-
-                                // Separar as funções e colaboradores correspondentes
-                                $funcoes = explode(', ', $row["funcoes"]);
-                                $colaboradores = explode(', ', $row["colaboradores"]);
-                                $funcoes_colaboradores = array_combine($funcoes, $colaboradores);
-
+                            // Aplicar filtro se necessário
+                            if ($filtro) {
                                 $colunas = [
-                                    'Caderno',
-                                    'Modelagem',
-                                    'Composição',
-                                    'Finalização',
-                                    'Pós-produção',
-                                    'Planta Humanizada'
+                                    'nome_cliente',
+                                    'nome_obra',
+                                    'imagem_nome',
+                                    'status',
+                                    'prazo_estimado',
+                                    'caderno',
+                                    'modelagem',
+                                    'composicao',
+                                    'finalizacao',
+                                    'pos_producao',
+                                    'planta_humanizada'
                                 ];
-
-                                foreach ($colunas as $coluna) {
-                                    echo "<td>" . (array_key_exists($coluna, $funcoes_colaboradores) ? $funcoes_colaboradores[$coluna] : 'Não atribuído') . "</td>";
-                                }
-
-                                echo "</tr>";
+                                $coluna = $colunas[$colunaFiltro];
+                                $sql .= " HAVING LOWER($coluna) LIKE LOWER('%$filtro%')";
                             }
-                        } else {
-                            echo "<tr><td colspan='13'>Nenhum dado encontrado</td></tr>";
-                        }
-                        ?>
-                    </tbody>
-                </table>
+
+                            $result = $conn->query($sql);
+
+                            // Verificar se houve erro na execução da consulta
+                            if (!$result) {
+                                die("Erro na consulta SQL: " . $conn->error);
+                            }
+
+                            if ($result->num_rows > 0) {
+                                // Exibir os dados em linhas na tabela
+                                while ($row = $result->fetch_assoc()) {
+                                    echo "<tr class='linha-tabela' data-id='" . htmlspecialchars($row["idimagens_cliente_obra"]) . "'>";
+                                    echo "<td>" . htmlspecialchars($row["nome_cliente"]) . "</td>";
+                                    echo "<td>" . htmlspecialchars($row["nome_obra"]) . "</td>";
+                                    echo "<td>" . htmlspecialchars($row["imagem_nome"]) . "</td>";
+                                    echo "<td>" . htmlspecialchars($row["recebimento_arquivos"]) . "</td>";
+                                    echo "<td>" . htmlspecialchars($row["data_inicio"]) . "</td>";
+                                    echo "<td>" . htmlspecialchars($row["prazo_estimado"]) . "</td>";
+                                    echo "</tr>";
+                                }
+                            } else {
+                                echo "<tr><td colspan='13'>Nenhum dado encontrado</td></tr>";
+                            }
+                            ?>
+                        </tbody>
+                    </table>
+                </div>
             </div>
-        </div>
+            <div class="form-edicao">
+                <h1>Funções</h1>
+                <label id="imagem"></label>
+                <div class="funcao">
+                    <p id="caderno">Caderno</p>
+                    <select name="caderno_id" id="opcao_caderno">
+                        <?php foreach ($colaboradores as $colab): ?>
+                            <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <input type="text" name="status_caderno" id="status_caderno" placeholder="Status">
+                    <input type="date" name="prazo_caderno" id="prazo_caderno">
+                    <input type="text" name="obs_caderno" id="obs_caderno" placeholder="Observação">
+
+                </div>
+                <div class="funcao">
+                    <p id="comp">Composição</p>
+                    <select name="comp_id" id="opcao_comp">
+                        <?php foreach ($colaboradores as $colab): ?>
+                            <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <input type="text" name="status_comp" id="status_comp" placeholder="Status">
+                    <input type="date" name="prazo_comp" id="prazo_comp">
+                    <input type="text" name="obs_comp" id="obs_comp" placeholder="Observação">
+
+                </div>
+                <div class="funcao">
+                    <p id="modelagem">Modelagem</p>
+                    <select name="model_id" id="opcao_model">
+                        <?php foreach ($colaboradores as $colab): ?>
+                            <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <input type="text" name="status_modelagem" id="status_modelagem" placeholder="Status">
+                    <input type="date" name="prazo_modelagem" id="prazo_modelagem">
+                    <input type="text" name="obs_modelagem" id="obs_modelagem" placeholder="Observação">
+
+                </div>
+                <div class="funcao">
+                    <p id="finalizacao">Finalização</p>
+                    <select name="final_id" id="opcao_final">
+                        <?php foreach ($colaboradores as $colab): ?>
+                            <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <input type="text" name="status_finalizacao" id="status_finalizacao" placeholder="Status">
+                    <input type="date" name="prazo_finalizacao" id="prazo_finalizacao">
+                    <input type="text" name="obs_finalizacao" id="obs_finalizacao" placeholder="Observação">
+
+                </div>
+                <div class="funcao">
+                    <p id="pos">Pós-Produção</p>
+                    <select name="pos_id" id="opcao_pos">
+                        <?php foreach ($colaboradores as $colab): ?>
+                            <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <input type="text" name="status_pos" id="status_pos" placeholder="Status">
+                    <input type="date" name="prazo_pos" id="prazo_pos">
+                    <input type="text" name="obs_pos" id="obs_pos" placeholder="Observação">
+                </div>
+                <div class="funcao">
+                    <p id="planta_humanizada">Planta Humanizada</p>
+                    <select name="planta_id" id="opcao_planta">
+                        <?php foreach ($colaboradores as $colab): ?>
+                            <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <input type="text" name="status_planta_humanizada" id="status_planta_humanizada" placeholder="Status">
+                    <input type="date" name="prazo_planta_humanizada" id="prazo_planta_humanizada">
+                    <input type="text" name="obs_planta_humanizada" id="obs_planta_humanizada" placeholder="Observação">
+
+                </div>
+            </div>
+        </section>
 
     </main>
 

@@ -75,11 +75,17 @@ nav a.active {
     font-weight: 600;
 }
 
+section.tabela-form {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    margin-top: 50px;
+}
+
 #filtro {
     margin-left: 100px;
 }
 
-#filtro p {
+#filtro h1, .form-edicao h1 {
     font-size: 24px;
     padding-bottom: 10px;
     text-decoration: underline;
@@ -92,10 +98,6 @@ nav a.active {
     padding: 5px;
 }
 
-
-.filtro-tabela {
-    margin-top: 50px;
-}
 
 table {
     border-collapse: collapse;
@@ -186,5 +188,25 @@ th {
     align-items: center;
     gap: 15px;
     width: 100%;
-    /* Para garantir que o formulário ocupe a largura total */
+}
+
+.form-edicao {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 15px;
+    margin: 0 auto;
+}
+
+.form-edicao p {
+    margin-bottom: 10px;
+    font-weight: 600;
+}
+
+.form-edicao h1 {
+    text-align: center;
+}
+
+.form-edicao .funcao input, .funcao select {
+    padding: 5px;
 }

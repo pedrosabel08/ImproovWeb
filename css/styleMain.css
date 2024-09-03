@@ -101,8 +101,8 @@ section.tabela-form {
 
 table {
     border-collapse: collapse;
-    margin: 15px auto;
-    width: 90%;
+    margin: 15px 0;
+    margin-left: 100px;
 }
 
 td,
@@ -110,6 +110,7 @@ tr,
 th {
     border: 1px solid black;
     padding: 2px;
+    text-align: center;
 }
 
 .form {
@@ -194,7 +195,7 @@ th {
 .form-edicao {
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: flex-start;
     gap: 15px;
     margin: 0 auto;
 }
@@ -214,4 +215,10 @@ th {
 
 .form-edicao label#imagem_id {
     display: none;
+}
+
+.form-edicao .buttons{
+    padding: 1rem 0;
+    display: flex;
+    justify-content: center;
 }

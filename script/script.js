@@ -13,10 +13,10 @@ document.addEventListener("DOMContentLoaded", function () {
             // Adiciona a classe 'selecionada' à linha clicada
             linha.classList.add("selecionada");
 
-            // Obtém o ID do produto da linha selecionada
+            // Obtém o ID da imagem da linha selecionada
             var idImagemSelecionada = linha.getAttribute("data-id");
 
-            // Faz a requisição AJAX para buscar detalhes do produto
+            // Faz a requisição AJAX para buscar detalhes das funções
             $.ajax({
                 type: "GET",
                 dataType: "json",
@@ -24,14 +24,48 @@ document.addEventListener("DOMContentLoaded", function () {
                 data: { ajid: idImagemSelecionada },
                 success: function (response) {
                     if (response.length > 0) {
-                        // Preenche o formulário com os dados recebidos
-                        document.getElementById('nome_cliente').value = response[0].nome_cliente;
-                        document.getElementById('nome_obra').value = response[0].nome_obra;
-                        document.getElementById('nome_imagem').value = response[0].imagem_nome;
-                        // document.getElementById('prazo_estimado').value = response[0].prazo;
-                        // document.getElementById('caderno').value = response[0].validade;
+
+                        
+                        // Loop through the response and populate the form fields
+                        response.forEach(function (funcao) {
+                            // Check which function is being processed and update the respective fields
+                            switch (funcao.nome_funcao) {
+                                case "Caderno":
+                                    document.getElementById("status_caderno").value = funcao.status;
+                                    document.getElementById("prazo_caderno").value = funcao.prazo;
+                                    break;
+                                case "Composição":
+                                    document.getElementById("status_comp").value = funcao.status;
+                                    document.getElementById("prazo_comp").value = funcao.prazo;
+                                    break;
+                                case "Modelagem":
+                                    document.getElementById("status_modelagem").value = funcao.status;
+                                    document.getElementById("prazo_modelagem").value = funcao.prazo;
+                                    break;
+                                case "Finalização":
+                                    document.getElementById("status_finalizacao").value = funcao.status;
+                                    document.getElementById("prazo_finalizacao").value = funcao.prazo;
+                                    break;
+                                case "Pós-Produção":
+                                    document.getElementById("status_pos").value = funcao.status;
+                                    document.getElementById("prazo_pos").value = funcao.prazo;
+                                    break;
+                                case "Planta Humanizada":
+                                    document.getElementById("status_planta_humanizada").value = funcao.status;
+                                    document.getElementById("prazo_planta_humanizada").value = funcao.prazo;
+                                    break;
+                            }
+                        });
                     } else {
-                        console.log("Nenhum produto encontrado.");
+                        Toastify({
+                            text: "Nenhuma função encontrada para essa imagem",
+                            duration: 3000,
+                            close: true,
+                            gravity: "top",
+                            position: "left",
+                            backgroundColor: "red",
+                            stopOnFocus: true,
+                        }).showToast();
                     }
                 },
                 error: function (jqXHR, textStatus, errorThrown) {
@@ -39,39 +73,10 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
             });
 
-            console.log("Linha selecionada: ID do produto = " + idImagemSelecionada);
+            console.log("Linha selecionada: ID da imagem = " + idImagemSelecionada);
         });
     });
 
-    // // Evento para o botão de excluir
-    // document.getElementById("botaoExcluir").addEventListener("click", function () {
-    //     var linhaSelecionada = document.querySelector("#tabelaClientes tbody tr.selecionada");
-
-    //     if (linhaSelecionada) {
-    //         var idProdutoSelecionado = linhaSelecionada.getAttribute("data-id");
-    //         document.getElementById("idProdutoExcluir").value = idProdutoSelecionado;
-    //         document.getElementById("formExcluirProduto").submit();
-    //     } else {
-    //         console.log("Nenhuma linha selecionada para exclusão.");
-    //     }
-    // });
-
-    // Evento para o botão de alterar
-    // document.getElementById("botaoAlterar").addEventListener("click", function () {
-    //     var linhaSelecionada = document.querySelector("#tabelaClientes tbody tr.selecionada");
-
-    //     if (linhaSelecionada) {
-    //         var idProdutoSelecionado = linhaSelecionada.getAttribute("data-id");
-    //         document.getElementById("idProdutoAlterar").value = idProdutoSelecionado;
-    //         document.getElementById('nomeProdutoAlterar').value = document.getElementById('nomeProduto').value;
-    //         document.getElementById('qtdeProdutoAlterar').value = document.getElementById('quantidade').value;
-    //         document.getElementById('umProdutoAlterar').value = document.getElementById('unidadeMedida').value;
-    //         document.getElementById('validadeProdutoAlterar').value = document.getElementById('validade').value;
-    //         document.getElementById("formAlterarProduto").submit();
-    //     } else {
-    //         console.log("Nenhuma linha selecionada para alterar.");
-    //     }
-    // });
 });
 
 function filtrarTabela() {
@@ -175,6 +180,9 @@ function submitForm(event) {
                     backgroundColor: "green",
                     stopOnFocus: true, // Parar se o usuário passar o mouse por cima
                 }).showToast();
+                setTimeout(() => {
+                    window.location.reload();
+                }, 500);
             } else {
                 Toastify({
                     text: result.message,

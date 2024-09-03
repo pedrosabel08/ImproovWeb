@@ -101,16 +101,16 @@ section.tabela-form {
 
 table {
     border-collapse: collapse;
-    margin: 15px 100px;
+    margin: 15px auto;
+    width: 90%;
 }
 
 td,
 tr,
 th {
     border: 1px solid black;
-    padding: 4px;
+    padding: 2px;
 }
-
 
 .form {
     padding: 100px;
@@ -147,7 +147,8 @@ th {
 }
 
 #add-cliente button#salvar,
-#add-imagem button#salvar {
+#add-imagem button#salvar,
+.form-edicao button#salvar_funcoes {
     border: 1px solid black;
     background-color: #119111;
     text-align: center;
@@ -209,4 +210,8 @@ th {
 
 .form-edicao .funcao input, .funcao select {
     padding: 5px;
+}
+
+.form-edicao label#imagem_id {
+    display: none;
 }

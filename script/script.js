@@ -16,6 +16,9 @@ document.addEventListener("DOMContentLoaded", function () {
             // Obtém o ID da imagem da linha selecionada
             var idImagemSelecionada = linha.getAttribute("data-id");
 
+            // Atualiza o campo de ID da imagem no formulário
+            document.getElementById("imagem_id").value = idImagemSelecionada;
+
             // Faz a requisição AJAX para buscar detalhes das funções
             $.ajax({
                 type: "GET",
@@ -24,8 +27,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 data: { ajid: idImagemSelecionada },
                 success: function (response) {
                     if (response.length > 0) {
-
-                        
                         // Loop through the response and populate the form fields
                         response.forEach(function (funcao) {
                             // Check which function is being processed and update the respective fields
@@ -33,26 +34,32 @@ document.addEventListener("DOMContentLoaded", function () {
                                 case "Caderno":
                                     document.getElementById("status_caderno").value = funcao.status;
                                     document.getElementById("prazo_caderno").value = funcao.prazo;
+                                    document.getElementById("obs_caderno").value = funcao.observacao;
                                     break;
                                 case "Composição":
                                     document.getElementById("status_comp").value = funcao.status;
                                     document.getElementById("prazo_comp").value = funcao.prazo;
+                                    document.getElementById("obs_comp").value = funcao.observacao;
                                     break;
                                 case "Modelagem":
                                     document.getElementById("status_modelagem").value = funcao.status;
                                     document.getElementById("prazo_modelagem").value = funcao.prazo;
+                                    document.getElementById("obs_modelagem").value = funcao.observacao;
                                     break;
                                 case "Finalização":
                                     document.getElementById("status_finalizacao").value = funcao.status;
                                     document.getElementById("prazo_finalizacao").value = funcao.prazo;
+                                    document.getElementById("obs_finalizacao").value = funcao.observacao;
                                     break;
-                                case "Pós-Produção":
+                                case "Pós-produção":
                                     document.getElementById("status_pos").value = funcao.status;
                                     document.getElementById("prazo_pos").value = funcao.prazo;
+                                    document.getElementById("obs_pos").value = funcao.observacao;
                                     break;
                                 case "Planta Humanizada":
                                     document.getElementById("status_planta_humanizada").value = funcao.status;
                                     document.getElementById("prazo_planta_humanizada").value = funcao.prazo;
+                                    document.getElementById("obs_planta_humanizada").value = funcao.observacao;
                                     break;
                             }
                         });
@@ -77,6 +84,93 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
+    document.getElementById("salvar_funcoes").addEventListener("click", function (event) {
+        event.preventDefault(); // Impede o envio padrão do formulário
+
+        // Obtém o ID da imagem selecionada
+        var linhaSelecionada = document.querySelector(".linha-tabela.selecionada");
+        if (!linhaSelecionada) {
+            Toastify({
+                text: "Nenhuma imagem selecionada",
+                duration: 3000,
+                close: true,
+                gravity: "top",
+                position: "left",
+                backgroundColor: "red",
+                stopOnFocus: true,
+            }).showToast();
+            return;
+        }
+
+        var idImagemSelecionada = linhaSelecionada.getAttribute("data-id");
+
+        // Obtém os textos das tags <p>
+        var textos = {};
+        var pElements = document.querySelectorAll(".form-edicao p");
+        pElements.forEach(function (p) {
+            textos[p.id] = p.textContent.trim();
+        });
+
+        // Coleta os dados do formulário
+        var dados = {
+            imagem_id: document.getElementById("imagem_id").value,
+            caderno_id: document.getElementById("opcao_caderno").value,
+            status_caderno: document.getElementById("status_caderno").value,
+            prazo_caderno: document.getElementById("prazo_caderno").value,
+            obs_caderno: document.getElementById("obs_caderno").value,
+            comp_id: document.getElementById("opcao_comp").value,
+            status_comp: document.getElementById("status_comp").value,
+            prazo_comp: document.getElementById("prazo_comp").value,
+            obs_comp: document.getElementById("obs_comp").value,
+            model_id: document.getElementById("opcao_model").value,
+            status_modelagem: document.getElementById("status_modelagem").value,
+            prazo_modelagem: document.getElementById("prazo_modelagem").value,
+            obs_modelagem: document.getElementById("obs_modelagem").value,
+            final_id: document.getElementById("opcao_final").value,
+            status_finalizacao: document.getElementById("status_finalizacao").value,
+            prazo_finalizacao: document.getElementById("prazo_finalizacao").value,
+            obs_finalizacao: document.getElementById("obs_finalizacao").value,
+            pos_id: document.getElementById("opcao_pos").value,
+            status_pos: document.getElementById("status_pos").value,
+            prazo_pos: document.getElementById("prazo_pos").value,
+            obs_pos: document.getElementById("obs_pos").value,
+            planta_id: document.getElementById("opcao_planta").value,
+            status_planta_humanizada: document.getElementById("status_planta_humanizada").value,
+            prazo_planta_humanizada: document.getElementById("prazo_planta_humanizada").value,
+            obs_planta_humanizada: document.getElementById("obs_planta_humanizada").value,
+            textos: textos // Inclui os textos das tags <p>
+        };
+
+        // Envia os dados para o servidor via AJAX
+        $.ajax({
+            type: "POST",
+            url: "http://localhost:8066/ImproovWeb/insereFuncao.php",
+            data: dados,
+            success: function (response) {
+                Toastify({
+                    text: "Dados salvos com sucesso!",
+                    duration: 3000,
+                    close: true,
+                    gravity: "top",
+                    position: "left",
+                    backgroundColor: "green",
+                    stopOnFocus: true,
+                }).showToast();
+            },
+            error: function (jqXHR, textStatus, errorThrown) {
+                console.error("Erro ao salvar dados: " + textStatus, errorThrown);
+                Toastify({
+                    text: "Erro ao salvar dados.",
+                    duration: 3000,
+                    close: true,
+                    gravity: "top",
+                    position: "left",
+                    backgroundColor: "red",
+                    stopOnFocus: true,
+                }).showToast();
+            }
+        });
+    });
 });
 
 function filtrarTabela() {

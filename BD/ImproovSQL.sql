@@ -93,13 +93,22 @@ INSERT INTO funcao (nome_funcao) VALUES ('Modelagem');
 INSERT INTO funcao (nome_funcao) VALUES ('Composição');
 INSERT INTO funcao (nome_funcao) VALUES ('Finalização');
 INSERT INTO funcao (nome_funcao) VALUES ('Pós-produção');
-INSERT INTO funcao (nome_funcao) VALUES ('Planta Humanizada');
+INSERT INTO funcao (nome_funcao) VALUES ('Planta Humaniza');
 
-INSERT INTO colaborador(nome_colaborador) VALUES ('Pedro');
-INSERT INTO colaborador(nome_colaborador) VALUES ('Bruna');
-INSERT INTO colaborador(nome_colaborador) VALUES ('André');
-INSERT INTO colaborador(nome_colaborador) VALUES ('Anderson');
 
+
+DELIMITER //
+
+CREATE FUNCTION inserir_colaborador() RETURNS INT
+DETERMINISTIC
+BEGIN
+
+	INSERT INTO colaborador (nome_colaborador) values ('Nicolle'), ('Caio'), ('Luiz'), ('Mariana'), ('Marcelo'), ('Bruna'), ('Anderson'), ('Marcio'), ('André'), ('Stefhanie'), ('Sérgio'), ('Andressa'), ('André Tavares'), ('Adriana');
+
+	RETURN 1;
+    END //
+    
+    
 DELIMITER //
 
 CREATE FUNCTION inserir_clientes() RETURNS INT
@@ -155,65 +164,103 @@ DETERMINISTIC
 BEGIN
 
 INSERT INTO imagens_cliente_obra (cliente_id, obra_id, imagem_nome, recebimento_arquivos, data_inicio, prazo) values
-	(2, 2, '1. AYA_CAS Portaria', '2024-08-21', '2024-08-21', '2024-09-27'),
-	(2, 2, '2. AYA_CAS Boulevard entre casas', '2024-08-21', '2024-08-21', '2024-09-27'),
-	(2, 2, '3. AYA_CAS Fotomontagem aérea', '2024-08-21', '2024-08-21', '2024-09-27'),
-	(2, 2, '4. AYA_CAS Implantação', '2024-08-21', '2024-08-21', '2024-09-27'),
-	(2, 2, '5. AYA_CAS Casa fundos', '2024-08-21', '2024-08-21', '2024-09-27'),
-	(2, 2, '6. AYA_CAS Living olhando para fora ângulo 1', '2024-08-21', '2024-08-21', '2024-09-27'),
-	(2, 2, '7. AYA_CAS Living olhando para fora ângulo 2', '2024-08-21', '2024-08-21', '2024-09-27'),
-	(2, 2, '8. AYA_CAS Fachada aérea', '2024-08-21', '2024-08-21', '2024-09-27'),
-	(2, 2, '9. AYA_CAS Suíte casa nova olhando para copa das árvores', '2024-08-21', '2024-08-21', '2024-09-27'),
-	(3, 3, '1. MSA_SQU Fotomontagem aérea com inserção do empreendimento em terreno real ângulo 1', '2024-09-07', '2024-09-07', '2024-09-02'),
-	(3, 3, '2. MSA_SQU Fotomontagem aérea com inserção do empreendimento em terreno real ângulo 2', '2024-09-07', '2024-09-07', '2024-09-02'),
-	(3, 3, '3. MSA_SQU Fachada no ângulo do observador', '2024-09-07', '2024-09-07', '2024-09-02'),
-	(3, 3, '4. MSA_SQU Embasamento mostrando área comercial', '2024-09-07', '2024-09-07', '2024-09-02'),
-	(3, 3, '5. MSA_SQU Hall de entrada', '2024-09-07', '2024-09-07', '2024-09-02'),
-	(3, 3, '6. MSA_SQU Salão de festas a definir (1 ou 2) Qual ficar maior e melhor', '2024-09-07', '2024-09-07', '2024-09-02'),
-	(3, 3, '7. MSA_SQU Sala de jogos / PUB', '2024-09-07', '2024-09-07', '2024-09-02'),
-	(3, 3, '8. MSA_SQU Academia', '2024-09-07', '2024-09-07', '2024-09-02'),
-	(3, 3, '9. MSA_SQU Quiosque Piscina', '2024-09-07', '2024-09-07', '2024-09-02'),
+
+	(1, 1, '1. MSA_SQU Fotomontagem aérea com inserção do empreendimento em terreno real ângulo 1', '2024-09-07', '2024-09-07', '2024-09-02'),
+	(1, 1, '2. MSA_SQU Fotomontagem aérea com inserção do empreendimento em terreno real ângulo 2', '2024-09-07', '2024-09-07', '2024-09-02'),
+	(1, 1, '3. MSA_SQU Fachada no ângulo do observador', '2024-09-07', '2024-09-07', '2024-09-02'),
+	(1, 1, '4. MSA_SQU Embasamento mostrando área comercial', '2024-09-07', '2024-09-07', '2024-09-02'),
+	(1, 1, '5. MSA_SQU Hall de entrada', '2024-09-07', '2024-09-07', '2024-09-02'),
+	(1, 1, '6. MSA_SQU Salão de festas a definir (1 ou 2) Qual ficar maior e melhor', '2024-09-07', '2024-09-07', '2024-09-02'),
+	(1, 1, '7. MSA_SQU Sala de jogos / PUB', '2024-09-07', '2024-09-07', '2024-09-02'),
+	(1, 1, '8. MSA_SQU Academia', '2024-09-07', '2024-09-07', '2024-09-02'),
+	(1, 1, '9. MSA_SQU Quiosque Piscina', '2024-09-07', '2024-09-07', '2024-09-02'),
 	(1, 1, '10. MSA_SQU Brinquedoteca', '2024-09-07', '2024-09-07', '2024-09-02'),
-	(3, 3, '11. MSA_SQU Piscina', '2024-09-07', '2024-09-07', '2024-09-02'),
-	(3, 3, '12. MSA_SQU Lounge Ofurô', '2024-09-07', '2024-09-07', '2024-09-02'),
-	(3, 3, '13. MSA_SQU Living do apartamento tipo (unidade à definir)', '2024-09-07', '2024-09-07', '2024-09-02'),
-	(3, 3, '14. MSA_SQU Suíte do apartamento tipo (unidade à definir)', '2024-09-07', '2024-09-07', '2024-09-02'),
-	(3, 3, '15. MSA_SQU Sacada com vista real do apartamento face rua Dorvalino', '2024-09-07', '2024-09-07', '2024-09-02'),
-	(3, 3, '16. MSA_SQU Sacada com vista real do apartamento face rua Dorvalino', '2024-09-07', '2024-09-07', '2024-09-02'),
-	(3, 3, '17. MSA_SQU Sacada com vista real do apartamento face rua Dorvalino', '2024-09-07', '2024-09-07', '2024-09-02'),
-	(3, 3, '18. MSA_SQU Planta humanizada implantação geral mostrando o pavimento térreo', '2024-09-07', '2024-09-07', '2024-09-02'),
-	(3, 3, '19. MSA_SQU Planta humanizada do pavimento lazer', '2024-09-07', '2024-09-07', '2024-09-02'),
-	(3, 3, '20. MSA_SQU Planta humanizada do pavimento tipo', '2024-09-07', '2024-09-07', '2024-09-02'),
-	(4, 4, '1. RDO_VIL Fachada diurna', '2024-07-12', '2024-07-12', '2024-08-28'),
-	(4, 4, '2. RDO_VIL Fachada noturna', '2024-07-12', '2024-07-12', '2024-08-28'),
-	(4, 4, '3. RDO_VIL Fachada com aproximação do pórtico', '2024-07-12', '2024-07-12', '2024-08-28'),
-	(4, 4, '4. RDO_VIL Imagem de drone com a fachada aplicada (temos essa imagem).', '2024-07-12', '2024-07-12', '2024-08-28'),
-	(4, 4, '5. RDO_VIL Hall de entrada', '2024-07-12', '2024-07-12', '2024-08-28'),
-	(4, 4, '6. RDO_VIL Business', '2024-07-12', '2024-07-12', '2024-08-28'),
-	(4, 4, '7. RDO_VIL Salão de festas', '2024-07-12', '2024-07-12', '2024-08-28'),
-	(4, 4, '8. RDO_VIL Gourmet', '2024-07-12', '2024-07-12', '2024-08-28'),
-	(4, 4, '9. RDO_VIL Varanda', '2024-07-12', '2024-07-12', '2024-08-28'),
-	(4, 4, '10. RDO_VIL Pub', '2024-07-12', '2024-07-12', '2024-08-28'),
-	(4, 4, '11. RDO_VIL Sala de jogos', '2024-07-12', '2024-07-12', '2024-08-28'),
-	(4, 4, '12. RDO_VIL Teens', '2024-07-12', '2024-07-12', '2024-08-28'),
-	(4, 4, '13. RDO_VIL Kids', '2024-07-12', '2024-07-12', '2024-08-28'),
-	(4, 4, '14. RDO_VIL Play+Petplace (externo)', '2024-07-12', '2024-07-12', '2024-08-28'),
-	(4, 4, '15. RDO_VIL Piscina aquecida', '2024-07-12', '2024-07-12', '2024-08-28'),
-	(4, 4, '16. RDO_VIL Spa', '2024-07-12', '2024-07-12', '2024-08-28'),
-	(4, 4, '17. RDO_VIL Academia', '2024-07-12', '2024-07-12', '2024-08-28'),
-	(4, 4, '18. RDO_VIL Market', '2024-07-12', '2024-07-12', '2024-08-28'),
-	(4, 4, '19. RDO_VIL Quiosque+quadra', '2024-07-12', '2024-07-12', '2024-08-28'),
-	(4, 4, '20. RDO_VIL Fireplace + horta', '2024-07-12', '2024-07-12', '2024-08-28'),
-	(4, 4, '21. RDO_VIL Car Care/Vagas verdes', '2024-07-12', '2024-07-12', '2024-08-28'),
-	(4, 4, '22. RDO_VIL Bicicletário', '2024-07-12', '2024-07-12', '2024-08-28'),
-	(4, 4, '23. RDO_VIL Living de um apartamento', '2024-07-12', '2024-07-12', '2024-08-28'),
-	(4, 4, '24. RDO_VIL Planta humanizada do pavimento lazer', '2024-07-12', '2024-07-12', '2024-08-28');
-    
-	
-    
+	(1, 1, '11. MSA_SQU Piscina', '2024-09-07', '2024-09-07', '2024-09-02'),
+	(1, 1, '12. MSA_SQU Lounge Ofurô', '2024-09-07', '2024-09-07', '2024-09-02'),
+	(1, 1, '13. MSA_SQU Living do apartamento tipo (unidade à definir)', '2024-09-07', '2024-09-07', '2024-09-02'),
+	(1, 1, '14. MSA_SQU Suíte do apartamento tipo (unidade à definir)', '2024-09-07', '2024-09-07', '2024-09-02'),
+	(1, 1, '15. MSA_SQU Sacada com vista real do apartamento face rua Dorvalino', '2024-09-07', '2024-09-07', '2024-09-02'),
+	(1, 1, '16. MSA_SQU Sacada com vista real do apartamento face rua Dorvalino', '2024-09-07', '2024-09-07', '2024-09-02'),
+	(1, 1, '17. MSA_SQU Sacada com vista real do apartamento face rua Dorvalino', '2024-09-07', '2024-09-07', '2024-09-02'),
+	(1, 1, '18. MSA_SQU Planta humanizada implantação geral mostrando o pavimento térreo', '2024-09-07', '2024-09-07', '2024-09-02'),
+	(1, 1, '19. MSA_SQU Planta humanizada do pavimento lazer', '2024-09-07', '2024-09-07', '2024-09-02'),
+	(4, 4, '20. MSA_SQU Planta humanizada do pavimento tipo', '2024-09-07', '2024-09-07', '2024-09-02'),
+	(4, 4, '1. AYA_CAS Portaria', '2024-08-21', '2024-08-21', '2024-09-27'),
+	(4, 4, '2. AYA_CAS Boulevard entre casas', '2024-08-21', '2024-08-21', '2024-09-27'),
+	(4, 4, '3. AYA_CAS Fotomontagem aérea', '2024-08-21', '2024-08-21', '2024-09-27'),
+	(4, 4, '4. AYA_CAS Implantação', '2024-08-21', '2024-08-21', '2024-09-27'),
+	(4, 4, '5. AYA_CAS Casa fundos', '2024-08-21', '2024-08-21', '2024-09-27'),
+	(4, 4, '6. AYA_CAS Living olhando para fora ângulo 1', '2024-08-21', '2024-08-21', '2024-09-27'),
+	(4, 4, '7. AYA_CAS Living olhando para fora ângulo 2', '2024-08-21', '2024-08-21', '2024-09-27'),
+	(4, 4, '8. AYA_CAS Fachada aérea', '2024-08-21', '2024-08-21', '2024-09-27'),
+	(4, 4, '9. AYA_CAS Suíte casa nova olhando para copa das árvores', '2024-08-21', '2024-08-21', '2024-09-27'),
+	(2, 2, '1. RDO_VIL Fachada diurna', '2024-07-12', '2024-07-12', '2024-08-28'),
+	(2, 2, '2. RDO_VIL Fachada noturna', '2024-07-12', '2024-07-12', '2024-08-28'),
+	(2, 2, '3. RDO_VIL Fachada com aproximação do pórtico', '2024-07-12', '2024-07-12', '2024-08-28'),
+	(2, 2, '4. RDO_VIL Imagem de drone com a fachada aplicada (temos essa imagem).', '2024-07-12', '2024-07-12', '2024-08-28'),
+	(2, 2, '5. RDO_VIL Hall de entrada', '2024-07-12', '2024-07-12', '2024-08-28'),
+	(2, 2, '6. RDO_VIL Business', '2024-07-12', '2024-07-12', '2024-08-28'),
+	(2, 2, '7. RDO_VIL Salão de festas', '2024-07-12', '2024-07-12', '2024-08-28'),
+	(2, 2, '8. RDO_VIL Gourmet', '2024-07-12', '2024-07-12', '2024-08-28'),
+	(2, 2, '9. RDO_VIL Varanda', '2024-07-12', '2024-07-12', '2024-08-28'),
+	(2, 2, '10. RDO_VIL Pub', '2024-07-12', '2024-07-12', '2024-08-28'),
+	(2, 2, '11. RDO_VIL Sala de jogos', '2024-07-12', '2024-07-12', '2024-08-28'),
+	(2, 2, '12. RDO_VIL Teens', '2024-07-12', '2024-07-12', '2024-08-28'),
+	(2, 2, '13. RDO_VIL Kids', '2024-07-12', '2024-07-12', '2024-08-28'),
+	(2, 2, '14. RDO_VIL Play+Petplace (externo)', '2024-07-12', '2024-07-12', '2024-08-28'),
+	(2, 2, '15. RDO_VIL Piscina aquecida', '2024-07-12', '2024-07-12', '2024-08-28'),
+	(2, 2, '16. RDO_VIL Spa', '2024-07-12', '2024-07-12', '2024-08-28'),
+	(2, 2, '17. RDO_VIL Academia', '2024-07-12', '2024-07-12', '2024-08-28'),
+	(2, 2, '18. RDO_VIL Market', '2024-07-12', '2024-07-12', '2024-08-28'),
+	(2, 2, '19. RDO_VIL Quiosque+quadra', '2024-07-12', '2024-07-12', '2024-08-28'),
+	(2, 2, '20. RDO_VIL Fireplace + horta', '2024-07-12', '2024-07-12', '2024-08-28'),
+	(2, 2, '21. RDO_VIL Car Care/Vagas verdes', '2024-07-12', '2024-07-12', '2024-08-28'),
+	(2, 2, '22. RDO_VIL Bicicletário', '2024-07-12', '2024-07-12', '2024-08-28'),
+	(2, 2, '23. RDO_VIL Living de um apartamento', '2024-07-12', '2024-07-12', '2024-08-28'),
+	(2, 2, '24. RDO_VIL Planta humanizada do pavimento lazer', '2024-07-12', '2024-07-12', '2024-08-28'),
+    (3, 3, '1. PHA_NET Fotomontagem 1', '2024-06-07', '2024-06-07', '2024-08-01'),
+	(3, 3, '2. PHA_NET Fotomontagem 2', '2024-06-07', '2024-06-07', '2024-08-01'),
+	(3, 3, '3. PHA_NET Fotomontagem foco 20', '2024-06-07', '2024-06-07', '2024-08-01'),
+	(3, 3, '4. PHA_NET Fachada observador', '2024-06-07', '2024-06-07', '2024-08-01'),
+	(3, 3, '5. PHA_NET Embasamento frontal', '2024-06-07', '2024-06-07', '2024-08-01'),
+	(3, 3, '6. PHA_NET Fachada diurna', '2024-06-07', '2024-06-07', '2024-08-01'),
+	(3, 3, '7. PHA_NET Fachada angular noturna', '2024-06-07', '2024-06-07', '2024-08-01'),
+	(3, 3, '9. PHA_NET Boulevard 2', '2024-06-07', '2024-06-07', '2024-08-01'),
+	(3, 3, '10. PHA_NET Boulevard Noturno', '2024-06-07', '2024-06-07', '2024-08-01'),
+	(3, 3, '12. PHA_NET Piscina adulto', '2024-06-07', '2024-06-07', '2024-08-01'),
+	(3, 3, '13. PHA_NET Área deck', '2024-06-07', '2024-06-07', '2024-08-01'),
+	(3, 3, '14. PHA_NET Piscina infantil', '2024-06-07', '2024-06-07', '2024-08-01'),
+	(3, 3, '15. PHA_NET SPA/Sauna', '2024-06-07', '2024-06-07', '2024-08-01'),
+	(3, 3, '16. PHA_NET Academia', '2024-06-07', '2024-06-07', '2024-08-01'),
+	(3, 3, '17. PHA_NET Brinquedoteca', '2024-06-07', '2024-06-07', '2024-08-01'),
+	(3, 3, '18. PHA_NET Salão festas', '2024-06-07', '2024-06-07', '2024-08-01'),
+	(3, 3, '19. PHA_NET Gourmet', '2024-06-07', '2024-06-07', '2024-08-01'),
+	(3, 3, '20. PHA_NET Lounge gourmet', '2024-06-07', '2024-06-07', '2024-08-01'),
+	(3, 3, '21. PHA_NET Lâmina água', '2024-06-07', '2024-06-07', '2024-08-01'),
+	(3, 3, '22. PHA_NET Area fogo', '2024-06-07', '2024-06-07', '2024-08-01'),
+	(3, 3, '23. PHA_NET Playground', '2024-06-07', '2024-06-07', '2024-08-01'),
+	(3, 3, '24. PHA_NET Lounge externo', '2024-06-07', '2024-06-07', '2024-08-01'),
+	(3, 3, '25. PHA_NET Coworking', '2024-06-07', '2024-06-07', '2024-08-01'),
+	(3, 3, '26. PHA_NET Wine bar', '2024-06-07', '2024-06-07', '2024-08-01'),
+	(3, 3, '27. PHA_NET Sala de jogos', '2024-06-07', '2024-06-07', '2024-08-01'),
+	(3, 3, '28. PHA_NET Planta baixa lazer', '2024-06-07', '2024-06-07', '2024-08-01'),
+	(3, 3, '29. PHA_NET Planta baixa mezanino', '2024-06-07', '2024-06-07', '2024-08-01'),
+	(3, 3, '30. PHA_NET Planta baixa 8-19 (Referente ao pavimento 11/12)', '2024-06-07', '2024-06-07', '2024-08-01'),
+	(3, 3, '31. PHA_NET Living apto K fechada', '2024-06-07', '2024-06-07', '2024-08-01'),
+	(3, 3, '32. PHA_NET Living apto F aberta', '2024-06-07', '2024-06-07', '2024-08-01'),
+	(3, 3, '33. PHA_NET Planta baixa 20', '2024-06-07', '2024-06-07', '2024-08-01'),
+	(3, 3, '34. PHA_NET Jardim apto J', '2024-06-07', '2024-06-07', '2024-08-01'),
+	(3, 3, '35. PHA_NET Planta baixa 21-29 (Referente ao pavimento 26/27)', '2024-06-07', '2024-06-07', '2024-08-01'),
+	(3, 3, '36. PHA_NET Living apto G', '2024-06-07', '2024-06-07', '2024-08-01'),
+	(3, 3, '37. PHA_NET Planta baixa 30', '2024-06-07', '2024-06-07', '2024-08-01'),
+	(3, 3, '38. PHA_NET Planta baixa 31', '2024-06-07', '2024-06-07', '2024-08-01'),
+	(3, 3, '39. PHA_NET Living apto Q', '2024-06-07', '2024-06-07', '2024-08-01');
+
 	    RETURN 1;
     END//
     
+
+select improov.inserir_colaborador();
 select improov.inserir_clientes();
 select improov.inserir_obras();
 select improov.inserir_imagens();

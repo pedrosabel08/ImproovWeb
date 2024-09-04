@@ -1,25 +1,24 @@
 document.addEventListener("DOMContentLoaded", function () {
-    // Seleciona todas as linhas da tabela
     var linhasTabela = document.querySelectorAll(".linha-tabela");
 
-    // Adiciona um evento de clique em cada linha da tabela
     linhasTabela.forEach(function (linha) {
         linha.addEventListener("click", function () {
-            // Remove a classe 'selecionada' de todas as linhas
+            // Remover a classe 'selecionada' de todas as linhas
             linhasTabela.forEach(function (outraLinha) {
                 outraLinha.classList.remove("selecionada");
             });
 
-            // Adiciona a classe 'selecionada' à linha clicada
+            // Adicionar a classe 'selecionada' à linha clicada
             linha.classList.add("selecionada");
 
-            // Obtém o ID da imagem da linha selecionada
+            // Obter o ID da imagem selecionada
             var idImagemSelecionada = linha.getAttribute("data-id");
-
-            // Atualiza o campo de ID da imagem no formulário
             document.getElementById("imagem_id").value = idImagemSelecionada;
 
-            // Faz a requisição AJAX para buscar detalhes das funções
+            // Limpar os campos antes de atualizar
+            limparCampos();
+
+            // Primeira requisição AJAX para buscar detalhes das funções
             $.ajax({
                 type: "GET",
                 dataType: "json",
@@ -27,52 +26,51 @@ document.addEventListener("DOMContentLoaded", function () {
                 data: { ajid: idImagemSelecionada },
                 success: function (response) {
                     if (response.length > 0) {
-                        // Loop through the response and populate the form fields
+                        console.log(response);
+                        var nomeImagem = response[0].imagem_nome;
+                        document.getElementById("campoNomeImagem").textContent = nomeImagem;
+
                         response.forEach(function (funcao) {
-                            // Check which function is being processed and update the respective fields
+                            let selectElement;
                             switch (funcao.nome_funcao) {
                                 case "Caderno":
+                                    selectElement = document.getElementById("opcao_caderno");
                                     document.getElementById("status_caderno").value = funcao.status;
                                     document.getElementById("prazo_caderno").value = funcao.prazo;
-                                    document.getElementById("obs_caderno").value = funcao.observacao;
-                                    break;
-                                case "Composição":
-                                    document.getElementById("status_comp").value = funcao.status;
-                                    document.getElementById("prazo_comp").value = funcao.prazo;
-                                    document.getElementById("obs_comp").value = funcao.observacao;
                                     break;
                                 case "Modelagem":
+                                    selectElement = document.getElementById("opcao_model");
                                     document.getElementById("status_modelagem").value = funcao.status;
                                     document.getElementById("prazo_modelagem").value = funcao.prazo;
-                                    document.getElementById("obs_modelagem").value = funcao.observacao;
+                                    break;
+                                case "Composição":
+                                    selectElement = document.getElementById("opcao_comp");
+                                    document.getElementById("status_comp").value = funcao.status;
+                                    document.getElementById("prazo_comp").value = funcao.prazo;
                                     break;
                                 case "Finalização":
+                                    selectElement = document.getElementById("opcao_final");
                                     document.getElementById("status_finalizacao").value = funcao.status;
                                     document.getElementById("prazo_finalizacao").value = funcao.prazo;
-                                    document.getElementById("obs_finalizacao").value = funcao.observacao;
                                     break;
                                 case "Pós-produção":
+                                    selectElement = document.getElementById("opcao_pos");
                                     document.getElementById("status_pos").value = funcao.status;
                                     document.getElementById("prazo_pos").value = funcao.prazo;
-                                    document.getElementById("obs_pos").value = funcao.observacao;
                                     break;
                                 case "Planta Humanizada":
+                                    selectElement = document.getElementById("opcao_planta");
                                     document.getElementById("status_planta_humanizada").value = funcao.status;
                                     document.getElementById("prazo_planta_humanizada").value = funcao.prazo;
-                                    document.getElementById("obs_planta_humanizada").value = funcao.observacao;
                                     break;
+                            }
+                            if (selectElement) {
+                                selectElement.value = funcao.colaborador_id;
                             }
                         });
                     } else {
-                        Toastify({
-                            text: "Nenhuma função encontrada para essa imagem",
-                            duration: 3000,
-                            close: true,
-                            gravity: "top",
-                            position: "left",
-                            backgroundColor: "red",
-                            stopOnFocus: true,
-                        }).showToast();
+                        // Se não houver funções associadas, busca apenas o nome da imagem
+                        buscarNomeImagem(idImagemSelecionada);
                     }
                 },
                 error: function (jqXHR, textStatus, errorThrown) {
@@ -83,6 +81,62 @@ document.addEventListener("DOMContentLoaded", function () {
             console.log("Linha selecionada: ID da imagem = " + idImagemSelecionada);
         });
     });
+
+    // Função para limpar os campos antes de atualizar
+    function limparCampos() {
+        document.getElementById("campoNomeImagem").textContent = "";
+
+        // Limpar os campos de status e prazo
+        document.getElementById("status_caderno").value = "";
+        document.getElementById("prazo_caderno").value = "";
+        document.getElementById("status_modelagem").value = "";
+        document.getElementById("prazo_modelagem").value = "";
+        document.getElementById("status_comp").value = "";
+        document.getElementById("prazo_comp").value = "";
+        document.getElementById("status_finalizacao").value = "";
+        document.getElementById("prazo_finalizacao").value = "";
+        document.getElementById("status_pos").value = "";
+        document.getElementById("prazo_pos").value = "";
+        document.getElementById("status_planta_humanizada").value = "";
+        document.getElementById("prazo_planta_humanizada").value = "";
+
+        // Limpar os selects de colaboradores
+        document.getElementById("opcao_caderno").value = "";
+        document.getElementById("opcao_model").value = "";
+        document.getElementById("opcao_comp").value = "";
+        document.getElementById("opcao_final").value = "";
+        document.getElementById("opcao_pos").value = "";
+        document.getElementById("opcao_planta").value = "";
+    }
+
+    // Função para buscar apenas o nome da imagem se não houver funções associadas
+    function buscarNomeImagem(idImagem) {
+        $.ajax({
+            type: "GET",
+            dataType: "json",
+            url: "http://localhost:8066/ImproovWeb/buscaNomeImagem.php",
+            data: { ajid: idImagem },
+            success: function (response) {
+                console.log(response);
+                if (response.imagem_nome) {
+                    document.getElementById("campoNomeImagem").textContent = response.imagem_nome;
+                } else {
+                    Toastify({
+                        text: "Nome da imagem não encontrado.",
+                        duration: 3000,
+                        close: true,
+                        gravity: "top",
+                        position: "left",
+                        backgroundColor: "red",
+                        stopOnFocus: true,
+                    }).showToast();
+                }
+            },
+            error: function (jqXHR, textStatus, errorThrown) {
+                console.error("Erro na requisição AJAX para o nome da imagem: " + textStatus, errorThrown);
+            }
+        });
+    }
 
     document.getElementById("salvar_funcoes").addEventListener("click", function (event) {
         event.preventDefault(); // Impede o envio padrão do formulário

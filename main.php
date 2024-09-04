@@ -58,7 +58,7 @@ if ($result_obra->num_rows > 0) {
 }
 
 
-$sql_colaboradores = "SELECT idcolaborador, nome_colaborador FROM colaborador";
+$sql_colaboradores = "SELECT idcolaborador, nome_colaborador FROM colaborador order by nome_colaborador";
 $result_colaboradores = $conn->query($sql_colaboradores);
 
 $colaboradores = array();
@@ -247,6 +247,7 @@ $conn->close();
                 <form id="form-add" method="post" action="insereFuncao.php">
                     <h1>Funções</h1>
                     <input type="hidden" id="imagem_id" name="imagem_id">
+                    <label id="campoNomeImagem" name="nomeImagem" readonly></label>
                     <div class="funcao">
                         <p id="caderno">Caderno</p>
                         <select name="caderno_id" id="opcao_caderno">
@@ -261,20 +262,6 @@ $conn->close();
                         <input type="text" name="obs_caderno" id="obs_caderno" placeholder="Observação">
                     </div>
                     <div class="funcao">
-                        <p id="comp">Composição</p>
-                        <select name="comp_id" id="opcao_comp">
-                            <?php foreach ($colaboradores as $colab): ?>
-                                <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                                    <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                        <input type="text" name="status_comp" id="status_comp" placeholder="Status">
-                        <input type="date" name="prazo_comp" id="prazo_comp">
-                        <input type="text" name="obs_comp" id="obs_comp" placeholder="Observação">
-
-                    </div>
-                    <div class="funcao">
                         <p id="modelagem">Modelagem</p>
                         <select name="model_id" id="opcao_model">
                             <?php foreach ($colaboradores as $colab): ?>
@@ -287,6 +274,19 @@ $conn->close();
                         <input type="date" name="prazo_modelagem" id="prazo_modelagem">
                         <input type="text" name="obs_modelagem" id="obs_modelagem" placeholder="Observação">
 
+                    </div>
+                    <div class="funcao">
+                        <p id="comp">Composição</p>
+                        <select name="comp_id" id="opcao_comp">
+                            <?php foreach ($colaboradores as $colab): ?>
+                                <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                    <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <input type="text" name="status_comp" id="status_comp" placeholder="Status">
+                        <input type="date" name="prazo_comp" id="prazo_comp">
+                        <input type="text" name="obs_comp" id="obs_comp" placeholder="Observação">
                     </div>
                     <div class="funcao">
                         <p id="finalizacao">Finalização</p>
@@ -334,7 +334,6 @@ $conn->close();
                 </form>
             </div>
         </section>
-
     </main>
 
     <script src="./script/script.js"></script>

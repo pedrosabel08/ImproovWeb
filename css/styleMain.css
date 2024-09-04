@@ -109,8 +109,14 @@ td,
 tr,
 th {
     border: 1px solid black;
-    padding: 2px;
+    padding: 1px;
     text-align: center;
+    font-size: 14px;
+}
+
+tr:hover {
+    background-color: rgb(186, 236, 236);
+    cursor: pointer;
 }
 
 .form {
@@ -205,8 +211,13 @@ th {
     font-weight: 600;
 }
 
+.form-edicao p#caderno {
+    margin-top: 10px;
+}
+
 .form-edicao h1 {
     text-align: center;
+    margin-bottom: 50px;
 }
 
 .form-edicao .funcao input, .funcao select {
@@ -215,6 +226,10 @@ th {
 
 .form-edicao label#imagem_id {
     display: none;
+}
+
+.form-edicao label#campoNomeImagem {
+    font-size: 14px;
 }
 
 .form-edicao .buttons{

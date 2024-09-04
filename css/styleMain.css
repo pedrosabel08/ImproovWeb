@@ -85,7 +85,8 @@ section.tabela-form {
     margin-left: 100px;
 }
 
-#filtro h1, .form-edicao h1 {
+#filtro h1,
+.form-edicao h1 {
     font-size: 24px;
     padding-bottom: 10px;
     text-decoration: underline;
@@ -98,6 +99,10 @@ section.tabela-form {
     padding: 5px;
 }
 
+.tabelaClientes {
+    height: 50vh;
+    overflow-y: auto;
+}
 
 table {
     border-collapse: collapse;
@@ -220,7 +225,8 @@ tr:hover {
     margin-bottom: 50px;
 }
 
-.form-edicao .funcao input, .funcao select {
+.form-edicao .funcao input,
+.funcao select {
     padding: 5px;
 }
 
@@ -232,7 +238,7 @@ tr:hover {
     font-size: 14px;
 }
 
-.form-edicao .buttons{
+.form-edicao .buttons {
     padding: 1rem 0;
     display: flex;
     justify-content: center;

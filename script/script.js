@@ -167,32 +167,32 @@ document.addEventListener("DOMContentLoaded", function () {
 
         // Coleta os dados do formulário
         var dados = {
-            imagem_id: document.getElementById("imagem_id").value,
-            caderno_id: document.getElementById("opcao_caderno").value,
-            status_caderno: document.getElementById("status_caderno").value,
-            prazo_caderno: document.getElementById("prazo_caderno").value,
-            obs_caderno: document.getElementById("obs_caderno").value,
-            comp_id: document.getElementById("opcao_comp").value,
-            status_comp: document.getElementById("status_comp").value,
-            prazo_comp: document.getElementById("prazo_comp").value,
-            obs_comp: document.getElementById("obs_comp").value,
-            model_id: document.getElementById("opcao_model").value,
-            status_modelagem: document.getElementById("status_modelagem").value,
-            prazo_modelagem: document.getElementById("prazo_modelagem").value,
-            obs_modelagem: document.getElementById("obs_modelagem").value,
-            final_id: document.getElementById("opcao_final").value,
-            status_finalizacao: document.getElementById("status_finalizacao").value,
-            prazo_finalizacao: document.getElementById("prazo_finalizacao").value,
-            obs_finalizacao: document.getElementById("obs_finalizacao").value,
-            pos_id: document.getElementById("opcao_pos").value,
-            status_pos: document.getElementById("status_pos").value,
-            prazo_pos: document.getElementById("prazo_pos").value,
-            obs_pos: document.getElementById("obs_pos").value,
-            planta_id: document.getElementById("opcao_planta").value,
-            status_planta_humanizada: document.getElementById("status_planta_humanizada").value,
-            prazo_planta_humanizada: document.getElementById("prazo_planta_humanizada").value,
-            obs_planta_humanizada: document.getElementById("obs_planta_humanizada").value,
-            textos: textos // Inclui os textos das tags <p>
+            imagem_id: idImagemSelecionada,  // Utilize o ID da imagem selecionada
+            caderno_id: document.getElementById("opcao_caderno").value || "",
+            status_caderno: document.getElementById("status_caderno").value || "",
+            prazo_caderno: document.getElementById("prazo_caderno").value || "",
+            obs_caderno: document.getElementById("obs_caderno").value || "",
+            comp_id: document.getElementById("opcao_comp").value || "",
+            status_comp: document.getElementById("status_comp").value || "",
+            prazo_comp: document.getElementById("prazo_comp").value || "",
+            obs_comp: document.getElementById("obs_comp").value || "",
+            model_id: document.getElementById("opcao_model").value || "",
+            status_modelagem: document.getElementById("status_modelagem").value || "",
+            prazo_modelagem: document.getElementById("prazo_modelagem").value || "",
+            obs_modelagem: document.getElementById("obs_modelagem").value || "",
+            final_id: document.getElementById("opcao_final").value || "",
+            status_finalizacao: document.getElementById("status_finalizacao").value || "",
+            prazo_finalizacao: document.getElementById("prazo_finalizacao").value || "",
+            obs_finalizacao: document.getElementById("obs_finalizacao").value || "",
+            pos_id: document.getElementById("opcao_pos").value || "",
+            status_pos: document.getElementById("status_pos").value || "",
+            prazo_pos: document.getElementById("prazo_pos").value || "",
+            obs_pos: document.getElementById("obs_pos").value || "",
+            planta_id: document.getElementById("opcao_planta").value || "",
+            status_planta_humanizada: document.getElementById("status_planta_humanizada").value || "",
+            prazo_planta_humanizada: document.getElementById("prazo_planta_humanizada").value || "",
+            obs_planta_humanizada: document.getElementById("obs_planta_humanizada").value || "",
+            textos: textos  // Inclui os textos das tags <p>
         };
 
         // Envia os dados para o servidor via AJAX
@@ -201,6 +201,7 @@ document.addEventListener("DOMContentLoaded", function () {
             url: "http://localhost:8066/ImproovWeb/insereFuncao.php",
             data: dados,
             success: function (response) {
+                console.log(response);  // Verifica o retorno do servidor
                 Toastify({
                     text: "Dados salvos com sucesso!",
                     duration: 3000,

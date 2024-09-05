@@ -2,7 +2,7 @@
 header('Content-Type: application/json');
 
 // Conectar ao banco de dados
-$conn = new mysqli('localhost', 'root', 'improov', 'improov');
+$conn = new mysqli('192.168.0.202', 'admin', 'admin', 'improov');
 
 // Verificar a conexão
 if ($conn->connect_error) {

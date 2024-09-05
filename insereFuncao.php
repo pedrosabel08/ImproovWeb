@@ -1,12 +1,7 @@
 <?php
-// Conexão com o banco de dados
-$servername = "localhost";
-$username = "root";
-$password = "improov";
-$dbname = "improov";
 
 // Cria a conexão
-$conn = new mysqli($servername, $username, $password, $dbname);
+$conn = new mysqli('192.168.0.202', 'admin', 'admin', 'improov');
 
 // Verifica a conexão
 if ($conn->connect_error) {

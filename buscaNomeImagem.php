@@ -1,7 +1,7 @@
 <?php
 header('Content-Type: application/json');
 
-$conn = new mysqli('localhost', 'root', 'improov', 'improov');
+$conn = new mysqli('192.168.0.202', 'admin', 'admin', 'improov');
 
 if ($conn->connect_error) {
     die(json_encode(["error" => "Falha na conexão: " . $conn->connect_error]));

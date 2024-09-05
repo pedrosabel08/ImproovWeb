@@ -184,7 +184,7 @@ INSERT INTO imagens_cliente_obra (cliente_id, obra_id, imagem_nome, recebimento_
 	(1, 1, '17. MSA_SQU Sacada com vista real do apartamento face rua Dorvalino', '2024-09-07', '2024-09-07', '2024-09-02'),
 	(1, 1, '18. MSA_SQU Planta humanizada implantação geral mostrando o pavimento térreo', '2024-09-07', '2024-09-07', '2024-09-02'),
 	(1, 1, '19. MSA_SQU Planta humanizada do pavimento lazer', '2024-09-07', '2024-09-07', '2024-09-02'),
-	(4, 4, '20. MSA_SQU Planta humanizada do pavimento tipo', '2024-09-07', '2024-09-07', '2024-09-02'),
+	(1, 1, '20. MSA_SQU Planta humanizada do pavimento tipo', '2024-09-07', '2024-09-07', '2024-09-02'),
 	(4, 4, '1. AYA_CAS Portaria', '2024-08-21', '2024-08-21', '2024-09-27'),
 	(4, 4, '2. AYA_CAS Boulevard entre casas', '2024-08-21', '2024-08-21', '2024-09-27'),
 	(4, 4, '3. AYA_CAS Fotomontagem aérea', '2024-08-21', '2024-08-21', '2024-09-27'),

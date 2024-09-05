@@ -43,8 +43,8 @@ $obs_planta_humanizada = $_POST['obs_planta_humanizada'];
 // Mapeamento dos textos para IDs das funções
 $funcao_ids = [
     'Caderno' => 1,
-    'Composição' => 3,
     'Modelagem' => 2,
+    'Composição' => 3,
     'Finalização' => 4,
     'Pós-Produção' => 5,
     'Planta Humanizada' => 6

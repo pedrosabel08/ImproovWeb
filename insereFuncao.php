@@ -68,8 +68,19 @@ if ($caderno_funcao_id === null || $comp_funcao_id === null || $modelagem_funcao
 }
 
 // Preparar a chamada do stored procedure
-$sql = "CALL AtualizarOuInserirFuncaoImagem(?, ?, ?, ?, ?, ?, ?)";
-$stmt = $conn->prepare($sql);
+$sqlFuncao = "SELECT 
+                i.imagem_nome,
+                f.nome_funcao, 
+                col.nome_colaborador, 
+                fi.prazo, 
+                fi.status
+             FROM imagens_cliente_obra i
+             LEFT JOIN funcao_imagem fi ON i.idimagens_cliente_obra = fi.imagem_id
+             LEFT JOIN colaborador col ON fi.colaborador_id = col.idcolaborador
+             LEFT JOIN funcao f ON fi.funcao_id = f.idfuncao
+             WHERE i.idimagens_cliente_obra = $idImagemSelecionada";
+
+$stmt = $conn->prepare($sqlFuncao);
 if ($stmt === false) {
     die("Erro ao preparar a declaração: " . $conn->error);
 }

@@ -254,7 +254,28 @@ INSERT INTO imagens_cliente_obra (cliente_id, obra_id, imagem_nome, recebimento_
 	(3, 3, '36. PHA_NET Living apto G', '2024-06-07', '2024-06-07', '2024-08-01'),
 	(3, 3, '37. PHA_NET Planta baixa 30', '2024-06-07', '2024-06-07', '2024-08-01'),
 	(3, 3, '38. PHA_NET Planta baixa 31', '2024-06-07', '2024-06-07', '2024-08-01'),
-	(3, 3, '39. PHA_NET Living apto Q', '2024-06-07', '2024-06-07', '2024-08-01');
+	(3, 3, '39. PHA_NET Living apto Q', '2024-06-07', '2024-06-07', '2024-08-01'),
+    (5, 5, '1. HSA_WIN Fotomontagem aérea com inserção da torre em terreno real', '2024-09-05', '2024-09-05', '2024-09-05'),
+	(5, 5, '2. HSA_WIN Fachada diurna no angulo do observador (portfólio)', '2024-09-05', '2024-09-05', '2024-09-05'),
+    (5, 5, '3. HSA_WIN Fachada noturna', '2024-09-05', '2024-09-05', '2024-09-05'),
+    (5, 5, '4. HSA_WIN Playground mostrando Mini Quadra', '2024-09-05', '2024-09-05', '2024-09-05'),
+    (5, 5, '5. HSA_WIN Espaço fogo', '2024-09-05', '2024-09-05', '2024-09-05'),
+    (5, 5, '6. HSA_WIN Academia', '2024-09-05', '2024-09-05', '2024-09-05'),
+    (5, 5, '7. HSA_WIN Gourmet da piscina', '2024-09-05', '2024-09-05', '2024-09-05'),
+    (5, 5, '8. HSA_WIN SPA', '2024-09-05', '2024-09-05', '2024-09-05'),
+    (5, 5, '9. HSA_WIN Salão de festas', '2024-09-05', '2024-09-05', '2024-09-05'),
+    (5, 5, '10. HSA_WIN Sala de jogos', '2024-09-05', '2024-09-05', '2024-09-05'),
+    (5, 5, '11. HSA_WIN  Espaço poker', '2024-09-05', '2024-09-05', '2024-09-05'),
+    (5, 5, '12. HSA_WIN Espaço kids', '2024-09-05', '2024-09-05', '2024-09-05'),
+    (5, 5, '13. HSA_WIN Sauna', '2024-09-05', '2024-09-05', '2024-09-05'),
+    (5, 5, '14. HSA_WIN Piscinas - Foco na piscina infantil', '2024-09-05', '2024-09-05', '2024-09-05'),
+    (5, 5, '15. HSA_WIN Piscinas - Foco na piscina adulto', '2024-09-05', '2024-09-05', '2024-09-05'),
+    (5, 5, '16. HSA_WIN Piscinas - Foco nos ambientes de estar', '2024-09-05', '2024-09-05', '2024-09-05'),
+    (5, 5, '17. HSA_WIN Living do apartamento tipo 1 - Geral', '2024-09-05', '2024-09-05', '2024-09-05'),
+    (5, 5, '18. HSA_WIN Living do apartamento tipo 1 - Ângulo 2', '2024-09-05', '2024-09-05', '2024-09-05'),
+    (5, 5, '19. HSA_WIN Suíte do apartamento tipo 1', '2024-09-05', '2024-09-05', '2024-09-05'),
+    (5, 5, '20. HSA_WIN Planta do pavimento lazer', '2024-09-05', '2024-09-05', '2024-09-05'),
+    (5, 5, '21. HSA_WIN Planta humanizada do apartamento tipo', '2024-09-05', '2024-09-05', '2024-09-05');
 
 	    RETURN 1;
     END//

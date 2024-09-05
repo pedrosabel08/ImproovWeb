@@ -28,7 +28,7 @@
 <?php
 // Obter a lista de clientes
 // Conectar ao banco de dados
-$conn = new mysqli('localhost', 'root', 'improov', 'improov');
+$conn = new mysqli('192.168.0.202', 'admin', 'admin', 'improov');
 
 // Verificar a conexão
 if ($conn->connect_error) {
@@ -166,7 +166,7 @@ $conn->close();
                         <tbody>
                             <?php
                             // Conectar ao banco de dados
-                            $conn = new mysqli('localhost', 'root', 'improov', 'improov');
+                            $conn = new mysqli('192.168.0.202', 'admin', 'admin', 'improov');
 
                             // Verificar a conexão
                             if ($conn->connect_error) {

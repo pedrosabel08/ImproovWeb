@@ -1,7 +1,12 @@
 <?php
+// Conexão com o banco de dados
+$servername = "localhost";
+$username = "root";
+$password = "improov";
+$dbname = "improov";
 
 // Cria a conexão
-$conn = new mysqli('192.168.0.202', 'admin', 'admin', 'improov');
+$conn = new mysqli($servername, $username, $password, $dbname);
 
 // Verifica a conexão
 if ($conn->connect_error) {
@@ -38,8 +43,8 @@ $obs_planta_humanizada = $_POST['obs_planta_humanizada'];
 // Mapeamento dos textos para IDs das funções
 $funcao_ids = [
     'Caderno' => 1,
-    'Modelagem' => 2,
     'Composição' => 3,
+    'Modelagem' => 2,
     'Finalização' => 4,
     'Pós-Produção' => 5,
     'Planta Humanizada' => 6
@@ -67,20 +72,14 @@ if ($caderno_funcao_id === null || $comp_funcao_id === null || $modelagem_funcao
     die("Erro: Função não encontrada.");
 }
 
-// Preparar a chamada do stored procedure
-$sqlFuncao = "SELECT 
-                i.imagem_nome,
-                f.nome_funcao, 
-                col.nome_colaborador, 
-                fi.prazo, 
-                fi.status
-             FROM imagens_cliente_obra i
-             LEFT JOIN funcao_imagem fi ON i.idimagens_cliente_obra = fi.imagem_id
-             LEFT JOIN colaborador col ON fi.colaborador_id = col.idcolaborador
-             LEFT JOIN funcao f ON fi.funcao_id = f.idfuncao
-             WHERE i.idimagens_cliente_obra = $idImagemSelecionada";
-
-$stmt = $conn->prepare($sqlFuncao);
+$sql = "INSERT INTO funcao_imagem (imagem_id, colaborador_id, funcao_id, prazo, status, observacao) 
+        VALUES (?, ?, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE
+        colaborador_id = VALUES(colaborador_id),
+        prazo = VALUES(prazo),
+        status = VALUES(status),
+        observacao = VALUES(observacao)";
+$stmt = $conn->prepare($sql);
 if ($stmt === false) {
     die("Erro ao preparar a declaração: " . $conn->error);
 }
@@ -90,22 +89,22 @@ $conn->begin_transaction();
 
 try {
     // Executa a declaração para cada função
-    $stmt->bind_param("iiissss", $imagem_id, $caderno_id, $caderno_funcao_id, $prazo_caderno, $status_caderno, $obs_caderno);
+    $stmt->bind_param("iiisss", $imagem_id, $caderno_id, $caderno_funcao_id, $prazo_caderno, $status_caderno, $obs_caderno);
     $stmt->execute();
 
-    $stmt->bind_param("iiissss", $imagem_id, $comp_id, $comp_funcao_id, $prazo_comp, $status_comp, $obs_comp);
+    $stmt->bind_param("iiisss", $imagem_id, $comp_id, $comp_funcao_id, $prazo_comp, $status_comp, $obs_comp);
     $stmt->execute();
 
-    $stmt->bind_param("iiissss", $imagem_id, $model_id, $modelagem_funcao_id, $prazo_modelagem, $status_modelagem, $obs_modelagem);
+    $stmt->bind_param("iiisss", $imagem_id, $model_id, $modelagem_funcao_id, $prazo_modelagem, $status_modelagem, $obs_modelagem);
     $stmt->execute();
 
-    $stmt->bind_param("iiissss", $imagem_id, $final_id, $finalizacao_funcao_id, $prazo_finalizacao, $status_finalizacao, $obs_finalizacao);
+    $stmt->bind_param("iiisss", $imagem_id, $final_id, $finalizacao_funcao_id, $prazo_finalizacao, $status_finalizacao, $obs_finalizacao);
     $stmt->execute();
 
-    $stmt->bind_param("iiissss", $imagem_id, $pos_id, $pos_funcao_id, $prazo_pos, $status_pos, $obs_pos);
+    $stmt->bind_param("iiisss", $imagem_id, $pos_id, $pos_funcao_id, $prazo_pos, $status_pos, $obs_pos);
     $stmt->execute();
 
-    $stmt->bind_param("iiissss", $imagem_id, $planta_id, $planta_funcao_id, $prazo_planta_humanizada, $status_planta_humanizada, $obs_planta_humanizada);
+    $stmt->bind_param("iiisss", $imagem_id, $planta_id, $planta_funcao_id, $prazo_planta_humanizada, $status_planta_humanizada, $obs_planta_humanizada);
     $stmt->execute();
 
     // Confirma a transação

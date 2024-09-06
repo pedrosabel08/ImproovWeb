@@ -18,19 +18,21 @@ document.addEventListener("DOMContentLoaded", function () {
             // Limpar os campos antes de atualizar
             limparCampos();
 
-            // Primeira requisição AJAX para buscar detalhes das funções
+            // Requisição AJAX para buscar detalhes das funções e status
             $.ajax({
                 type: "GET",
                 dataType: "json",
                 url: "http://localhost:8066/ImproovWeb/buscaLinhaAJAX.php",
                 data: { ajid: idImagemSelecionada },
                 success: function (response) {
-                    if (response.length > 0) {
-                        console.log(response);
-                        var nomeImagem = response[0].imagem_nome;
-                        document.getElementById("campoNomeImagem").textContent = nomeImagem;
+                    // Atualiza o nome da imagem
+                    if (response.nome_imagem) {
+                        document.getElementById("campoNomeImagem").textContent = response.nome_imagem;
+                    }
 
-                        response.forEach(function (funcao) {
+                    // Atualiza os detalhes das funções
+                    if (response.funcoes && response.funcoes.length > 0) {
+                        response.funcoes.forEach(function (funcao) {
                             let selectElement;
                             switch (funcao.nome_funcao) {
                                 case "Caderno":
@@ -58,19 +60,22 @@ document.addEventListener("DOMContentLoaded", function () {
                                     document.getElementById("status_pos").value = funcao.status;
                                     document.getElementById("prazo_pos").value = funcao.prazo;
                                     break;
-                                case "Planta Humanizada":
-                                    selectElement = document.getElementById("opcao_planta");
-                                    document.getElementById("status_planta_humanizada").value = funcao.status;
-                                    document.getElementById("prazo_planta_humanizada").value = funcao.prazo;
+                                case "Alteração":
+                                    selectElement = document.getElementById("opcao_alteracao");
+                                    document.getElementById("status_alteracao").value = funcao.status;
+                                    document.getElementById("prazo_alteracao").value = funcao.prazo;
                                     break;
                             }
                             if (selectElement) {
                                 selectElement.value = funcao.colaborador_id;
                             }
                         });
-                    } else {
-                        // Se não houver funções associadas, busca apenas o nome da imagem
-                        buscarNomeImagem(idImagemSelecionada);
+                    }
+
+                    // Atualiza o status da imagem
+                    var statusSelect = document.getElementById("opcao_status");
+                    if (response.status_id !== null) {
+                        statusSelect.value = response.status_id;
                     }
                 },
                 error: function (jqXHR, textStatus, errorThrown) {
@@ -97,8 +102,8 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById("prazo_finalizacao").value = "";
         document.getElementById("status_pos").value = "";
         document.getElementById("prazo_pos").value = "";
-        document.getElementById("status_planta_humanizada").value = "";
-        document.getElementById("prazo_planta_humanizada").value = "";
+        document.getElementById("status_alteracao").value = "";
+        document.getElementById("prazo_alteracao").value = "";
 
         // Limpar os selects de colaboradores
         document.getElementById("opcao_caderno").value = "";
@@ -106,7 +111,8 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById("opcao_comp").value = "";
         document.getElementById("opcao_final").value = "";
         document.getElementById("opcao_pos").value = "";
-        document.getElementById("opcao_planta").value = "";
+        document.getElementById("opcao_alteracao").value = "";
+        document.getElementById("opcao_status").value = "";
     }
 
     // Função para buscar apenas o nome da imagem se não houver funções associadas
@@ -117,12 +123,43 @@ document.addEventListener("DOMContentLoaded", function () {
             url: "http://localhost:8066/ImproovWeb/buscaNomeImagem.php",
             data: { ajid: idImagem },
             success: function (response) {
-                console.log(response);
-                if (response.imagem_nome) {
-                    document.getElementById("campoNomeImagem").textContent = response.imagem_nome;
+                // Verificar se a resposta contém os campos esperados
+                if (response.imagem_nome !== undefined && response.status_id !== undefined) {
+                    if (response.imagem_nome && response.status_id) {
+                        // Atualiza o nome da imagem
+                        document.getElementById("campoNomeImagem").textContent = response.imagem_nome;
+
+                        // Atualiza o valor do select com o id do status recebido
+                        var opcaoStatus = document.getElementById("opcao_status");
+                        if (opcaoStatus) {
+                            // Converte o status_id para string, se necessário
+                            var statusId = response.status_id.toString();
+
+                            // Define o valor do select
+                            opcaoStatus.value = statusId;
+
+                            // Opcional: Adicione uma verificação para confirmar se o valor foi encontrado
+                            var found = Array.from(opcaoStatus.options).some(option => option.value === statusId);
+                            if (!found) {
+                                console.warn("Status ID não encontrado nas opções do select:", statusId);
+                            }
+                        } else {
+                            console.warn("Elemento do select não encontrado.");
+                        }
+                    } else {
+                        Toastify({
+                            text: "Nome da imagem ou status não encontrado.",
+                            duration: 3000,
+                            close: true,
+                            gravity: "top",
+                            position: "left",
+                            backgroundColor: "red",
+                            stopOnFocus: true,
+                        }).showToast();
+                    }
                 } else {
                     Toastify({
-                        text: "Nome da imagem não encontrado.",
+                        text: "Resposta incompleta do servidor.",
                         duration: 3000,
                         close: true,
                         gravity: "top",
@@ -188,11 +225,12 @@ document.addEventListener("DOMContentLoaded", function () {
             status_pos: document.getElementById("status_pos").value || "",
             prazo_pos: document.getElementById("prazo_pos").value || "",
             obs_pos: document.getElementById("obs_pos").value || "",
-            planta_id: document.getElementById("opcao_planta").value || "",
-            status_planta_humanizada: document.getElementById("status_planta_humanizada").value || "",
-            prazo_planta_humanizada: document.getElementById("prazo_planta_humanizada").value || "",
-            obs_planta_humanizada: document.getElementById("obs_planta_humanizada").value || "",
-            textos: textos  // Inclui os textos das tags <p>
+            alteracao_id: document.getElementById("opcao_alteracao").value || "",
+            status_alteracao: document.getElementById("status_alteracao").value || "",
+            prazo_alteracao: document.getElementById("prazo_alteracao").value || "",
+            obs_alteracao: document.getElementById("obs_alteracao").value || "",
+            textos: textos,
+            status_id: document.getElementById("opcao_status").value || ""
         };
 
         // Envia os dados para o servidor via AJAX
@@ -263,10 +301,39 @@ function openModal(modalId, element) {
     // Fecha qualquer modal que esteja aberto
     closeModal('add-cliente');
     closeModal('add-imagem');
+    closeModal('tabela-form');
+    closeModal('filtro-colab')
 
     // Mostra o modal correspondente, se houver
     if (modalId) {
         document.getElementById(modalId).style.display = 'flex';
+    }
+
+    // Remove a classe 'active' de todos os links de navegação
+    var navLinks = document.querySelectorAll('nav a');
+    navLinks.forEach(function (link) {
+        link.classList.remove('active');
+    });
+
+    // Adiciona a classe 'active' ao link clicado
+    if (element) {
+        element.classList.add('active');
+    }
+}
+
+function openModalClass(modalClass, element) {
+    // Fecha qualquer modal que esteja aberto
+    closeModal('add-cliente');
+    closeModal('add-imagem');
+    closeModal('tabela-form');
+    closeModal('filtro-colab');
+
+    // Mostra o modal correspondente pela classe, se houver
+    if (modalClass) {
+        var modal = document.querySelector('.' + modalClass);
+        if (modal) {
+            modal.style.display = 'grid';
+        }
     }
 
     // Remove a classe 'active' de todos os links de navegação
@@ -432,3 +499,38 @@ function submitFormImagem(event) {
             }).showToast();
         });
 }
+
+
+document.addEventListener('DOMContentLoaded', function () {
+    document.getElementById('colaboradorSelect').addEventListener('change', function () {
+        var colaboradorId = this.value;
+
+        if (colaboradorId) {
+            fetch('getFuncoesPorColaborador.php?colaborador_id=' + colaboradorId)
+                .then(response => response.json())
+                .then(data => {
+                    var tabela = document.querySelector('#tabela-colab tbody');
+                    tabela.innerHTML = ''; // Limpar tabela antes de adicionar novos dados
+
+                    data.forEach(function (item) {
+                        var row = document.createElement('tr');
+                        var cellNomeImagem = document.createElement('td');
+                        cellNomeImagem.textContent = item.imagem_nome;
+                        var cellStatus = document.createElement('td');
+                        cellStatus.textContent = item.status;
+
+                        row.appendChild(cellNomeImagem);
+                        row.appendChild(cellStatus);
+                        tabela.appendChild(row);
+                    });
+
+                    // Atualiza o total de imagens
+                    document.getElementById('totalImagens').textContent = data.length;
+                })
+                .catch(error => console.error('Erro ao carregar funções:', error));
+        } else {
+            document.querySelector('#tabela-colab tbody').innerHTML = ''; // Limpar tabela se nenhum colaborador for selecionado
+            document.getElementById('totalImagens').textContent = '0'; // Atualizar o total de imagens
+        }
+    });
+});

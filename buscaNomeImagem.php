@@ -10,7 +10,11 @@ if ($conn->connect_error) {
 if ($_SERVER["REQUEST_METHOD"] == "GET") {
     $idImagemSelecionada = $_GET['ajid'];
 
-    $sqlNomeImagem = "SELECT imagem_nome FROM imagens_cliente_obra WHERE idimagens_cliente_obra = $idImagemSelecionada";
+    $sqlNomeImagem = "SELECT 
+                        imagem_nome, 
+                        ico.status_id AS status_id 
+                      FROM imagens_cliente_obra ico 
+                      WHERE ico.idimagens_cliente_obra = $idImagemSelecionada";
 
     $resultNomeImagem = $conn->query($sqlNomeImagem);
 
@@ -18,11 +22,10 @@ if ($_SERVER["REQUEST_METHOD"] == "GET") {
         $nomeImagem = $resultNomeImagem->fetch_assoc();
         echo json_encode($nomeImagem);
     } else {
-        echo json_encode(["nome_imagem" => null]);
+        echo json_encode(["nome_imagem" => null, "status_id" => null]);
     }
 } else {
     echo json_encode(["error" => "Método de requisição inválido."]);
 }
 
 $conn->close();
-?>

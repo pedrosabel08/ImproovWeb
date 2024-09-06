@@ -12,7 +12,7 @@ if ($conn->connect_error) {
 if ($_SERVER["REQUEST_METHOD"] == "GET") {
     $idImagemSelecionada = $_GET['ajid'];
 
-    // Consulta para buscar funções, colaboradores, prazos e status
+    // Consulta para buscar funções, colaboradores, prazos e nome do status
     $sqlFuncao = "SELECT 
                     img.imagem_nome,
                     f.nome_funcao, 
@@ -35,7 +35,26 @@ if ($_SERVER["REQUEST_METHOD"] == "GET") {
         }
     }
 
-    echo json_encode($funcoes);
+    // Consulta para buscar o status_id da imagem
+    $sqlStatusImagem = "SELECT ico.status_id AS status_id
+                        FROM imagens_cliente_obra ico
+                        WHERE ico.idimagens_cliente_obra = $idImagemSelecionada";
+
+    $resultStatusImagem = $conn->query($sqlStatusImagem);
+
+    $statusImagem = null;
+    if ($resultStatusImagem->num_rows > 0) {
+        $rowStatusImagem = $resultStatusImagem->fetch_assoc();
+        $statusImagem = $rowStatusImagem['status_id'];
+    }
+
+    // Adicionar o status_id da imagem ao array de funções
+    $response = array(
+        'funcoes' => $funcoes,
+        'status_id' => $statusImagem
+    );
+
+    echo json_encode($response);
 } else {
     echo json_encode(["error" => "Método de requisição inválido."]);
 }

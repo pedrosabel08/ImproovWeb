@@ -22,12 +22,11 @@
 <nav>
     <a href="#add-cliente" onclick="openModal('add-cliente', this)">Adicionar Cliente ou Obra</a>
     <a href="#add-imagem" onclick="openModal('add-imagem', this)">Adicionar imagem</a>
-    <a href="#filtro" onclick="openModal(null, this)" class="active">Ver imagens</a>
+    <a href="#filtro" onclick="openModalClass('tabela-form', this)" class="active">Ver imagens</a>
+    <a href="#filtro-colab" onclick="openModal('filtro-colab', this)">Filtro colaboradores</a>
 </nav>
-<!-- Adicionar cliente ou obra -->
+
 <?php
-// Obter a lista de clientes
-// Conectar ao banco de dados
 $conn = new mysqli('192.168.0.202', 'admin', 'admin', 'improov');
 
 // Verificar a conexão
@@ -46,7 +45,6 @@ if ($result_cliente->num_rows > 0) {
     }
 }
 
-// Obter a lista de obras
 $sql_obras = "SELECT idobra, nome_obra FROM obra";
 $result_obra = $conn->query($sql_obras);
 
@@ -68,7 +66,16 @@ if ($result_colaboradores->num_rows > 0) {
     }
 }
 
-// Fechar a conexão
+$sql_status = "SELECT idstatus, nome_status FROM status_imagem order by idstatus";
+$result_status = $conn->query($sql_status);
+
+$status_imagens = array();
+if ($result_status->num_rows > 0) {
+    while ($row = $result_status->fetch_assoc()) {
+        $status_imagens[] = $row;
+    }
+}
+
 $conn->close();
 ?>
 
@@ -128,7 +135,7 @@ $conn->close();
         </div>
 
 
-        <section class="tabela-form">
+        <section class="tabela-form" id="tabela-form">
 
             <!-- Tabela com filtros -->
             <div class="filtro-tabela">
@@ -139,14 +146,8 @@ $conn->close();
                         <option value="0">Nome Cliente</option>
                         <option value="1">Nome Obra</option>
                         <option value="2">Nome Imagem</option>
-                        <option value="3">Status</option>
-                        <option value="6">Prazo Estimado</option>
-                        <option value="7">Caderno</option>
-                        <option value="8">Modelagem</option>
-                        <option value="9">Composição</option>
-                        <option value="10">Finalização</option>
-                        <option value="11">Pós-produção</option>
-                        <option value="12">Planta Humanizada</option>
+                        <option value="3">Prazo Estimado</option>
+                        <option value="4">Status</option>
                     </select>
                     <input type="text" id="pesquisa" onkeyup="filtrarTabela()" placeholder="Buscar...">
                 </div>
@@ -161,6 +162,7 @@ $conn->close();
                                 <th>Recebimento de arquivos</th>
                                 <th>Data Inicio</th>
                                 <th>Prazo Estimado</th>
+                                <th>Status</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -187,14 +189,14 @@ $conn->close();
                                 i.prazo,
                                 i.imagem_nome, 
                                 i.prazo AS prazo_estimado,
-                                GROUP_CONCAT(f.nome_funcao ORDER BY f.nome_funcao SEPARATOR ', ') AS funcoes,
-                                GROUP_CONCAT(co.nome_colaborador ORDER BY f.nome_funcao SEPARATOR ', ') AS colaboradores
+                                s.nome_status
                                 FROM imagens_cliente_obra i
                                 JOIN cliente c ON i.cliente_id = c.idcliente
                                 JOIN obra o ON i.obra_id = o.idobra
                                 LEFT JOIN funcao_imagem fi ON i.idimagens_cliente_obra = fi.imagem_id
                                 LEFT JOIN funcao f ON fi.funcao_id = f.idfuncao
                                 LEFT JOIN colaborador co ON fi.colaborador_id = co.idcolaborador
+                                LEFT JOIN status_imagem s ON i.status_id = s.idstatus
                                 GROUP BY i.idimagens_cliente_obra";
 
                             // Aplicar filtro se necessário
@@ -203,14 +205,8 @@ $conn->close();
                                     'nome_cliente',
                                     'nome_obra',
                                     'imagem_nome',
-                                    'status',
                                     'prazo_estimado',
-                                    'caderno',
-                                    'modelagem',
-                                    'composicao',
-                                    'finalizacao',
-                                    'pos_producao',
-                                    'planta_humanizada'
+                                    'nome_status'
                                 ];
                                 $coluna = $colunas[$colunaFiltro];
                                 $sql .= " HAVING LOWER($coluna) LIKE LOWER('%$filtro%')";
@@ -233,6 +229,7 @@ $conn->close();
                                     echo "<td>" . htmlspecialchars($row["recebimento_arquivos"]) . "</td>";
                                     echo "<td>" . htmlspecialchars($row["data_inicio"]) . "</td>";
                                     echo "<td>" . htmlspecialchars($row["prazo_estimado"]) . "</td>";
+                                    echo "<td>" . htmlspecialchars($row["nome_status"]) . "</td>";
                                     echo "</tr>";
                                 }
                             } else {
@@ -316,17 +313,27 @@ $conn->close();
                         <input type="text" name="obs_pos" id="obs_pos" placeholder="Observação">
                     </div>
                     <div class="funcao">
-                        <p id="planta_humanizada">Planta Humanizada</p>
-                        <select name="planta_id" id="opcao_planta">
+                        <p id="alteracao">Alteração</p>
+                        <select name="alteracao_id" id="opcao_alteracao">
                             <?php foreach ($colaboradores as $colab): ?>
                                 <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
                                     <?= htmlspecialchars($colab['nome_colaborador']); ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
-                        <input type="text" name="status_planta_humanizada" id="status_planta_humanizada" placeholder="Status">
-                        <input type="date" name="prazo_planta_humanizada" id="prazo_planta_humanizada">
-                        <input type="text" name="obs_planta_humanizada" id="obs_planta_humanizada" placeholder="Observação">
+                        <input type="text" name="status_alteracao" id="status_alteracao" placeholder="Status">
+                        <input type="date" name="prazo_alterao" id="prazo_alteracao">
+                        <input type="text" name="obs_alteracao" id="obs_alteracao" placeholder="Observação">
+                    </div>
+                    <div class="funcao">
+                        <p id="status">Status</p>
+                        <select name="status_id" id="opcao_status">
+                            <?php foreach ($status_imagens as $status): ?>
+                                <option value="<?= htmlspecialchars($status['idstatus']); ?>">
+                                    <?= htmlspecialchars($status['nome_status']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
                     <div class="buttons">
                         <button type="submit" id="salvar_funcoes">Salvar</button>
@@ -334,6 +341,37 @@ $conn->close();
                 </form>
             </div>
         </section>
+
+        <div id="filtro-colab" class="modal">
+            <h1>Filtro colaboradores</h1>
+
+            <label for="colaboradorSelect">Selecionar Colaborador:</label>
+            <select id="colaboradorSelect">
+                <option value="1">Selecione:</option>
+                <?php foreach ($colaboradores as $colab): ?>
+                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+
+            <div class="image-count">
+                <strong>Total de Imagens:</strong> <span id="totalImagens">0</span>
+            </div>
+
+            <table id="tabela-colab">
+                <thead>
+                    <tr>
+                        <th>Nome da Imagem</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- O corpo da tabela será preenchido pelo PHP -->
+                </tbody>
+            </table>
+
+        </div>
     </main>
 
     <script src="./script/script.js"></script>

@@ -67,9 +67,20 @@ CREATE TABLE IF NOT EXISTS imagens_cliente_obra (
     recebimento_arquivos DATE,
     data_inicio DATE,
     prazo DATE,
+    tipo_imagem VARCHAR(55),
+	status_id INT,
     FOREIGN KEY (cliente_id) REFERENCES cliente(idcliente),
     FOREIGN KEY (obra_id) REFERENCES obra(idobra)
 );
+
+-- -----------------------------------------------------
+-- Table `improov`.`status_imagem`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS status_imagem (
+	idstatus INT AUTO_INCREMENT PRIMARY KEY,
+	nome_status VARCHAR(50))
+ENGINE = InnoDB;
+
 
 -- -----------------------------------------------------
 -- Table `improov`.`funcao_imagem`
@@ -156,6 +167,24 @@ BEGIN
     RETURN 1;
     END//
     
+    DELIMITER //
+
+    CREATE FUNCTION inserir_status() RETURNS INT
+DETERMINISTIC
+BEGIN 
+	
+    INSERT INTO status_imagem (nome_status) values 
+    ('P00'),
+    ('R00'),
+    ('R01'),
+    ('R02'),
+    ('R03'),
+    ('EF');
+    
+    RETURN 1;
+    END//
+    
+    
     
     DELIMITER //
 
@@ -225,8 +254,10 @@ INSERT INTO imagens_cliente_obra (cliente_id, obra_id, imagem_nome, recebimento_
 	(3, 3, '5. PHA_NET Embasamento frontal', '2024-06-07', '2024-06-07', '2024-08-01'),
 	(3, 3, '6. PHA_NET Fachada diurna', '2024-06-07', '2024-06-07', '2024-08-01'),
 	(3, 3, '7. PHA_NET Fachada angular noturna', '2024-06-07', '2024-06-07', '2024-08-01'),
+	(3, 3, '8. PHA_NET Boulevard 1', '2024-06-07', '2024-06-07', '2024-08-01'),
 	(3, 3, '9. PHA_NET Boulevard 2', '2024-06-07', '2024-06-07', '2024-08-01'),
 	(3, 3, '10. PHA_NET Boulevard Noturno', '2024-06-07', '2024-06-07', '2024-08-01'),
+	(3, 3, '11. PHA_NET Hall entrada + mini market', '2024-06-07', '2024-06-07', '2024-08-01'),
 	(3, 3, '12. PHA_NET Piscina adulto', '2024-06-07', '2024-06-07', '2024-08-01'),
 	(3, 3, '13. PHA_NET Área deck', '2024-06-07', '2024-06-07', '2024-08-01'),
 	(3, 3, '14. PHA_NET Piscina infantil', '2024-06-07', '2024-06-07', '2024-08-01'),
@@ -275,16 +306,123 @@ INSERT INTO imagens_cliente_obra (cliente_id, obra_id, imagem_nome, recebimento_
     (5, 5, '18. HSA_WIN Living do apartamento tipo 1 - Ângulo 2', '2024-09-05', '2024-09-05', '2024-09-05'),
     (5, 5, '19. HSA_WIN Suíte do apartamento tipo 1', '2024-09-05', '2024-09-05', '2024-09-05'),
     (5, 5, '20. HSA_WIN Planta do pavimento lazer', '2024-09-05', '2024-09-05', '2024-09-05'),
-    (5, 5, '21. HSA_WIN Planta humanizada do apartamento tipo', '2024-09-05', '2024-09-05', '2024-09-05');
+    (5, 5, '21. HSA_WIN Planta humanizada do apartamento tipo', '2024-09-05', '2024-09-05', '2024-09-05'),
+	(5, 15, '1.HSA_MON Fotomontagem aérea com inserção do empreendimento em terreno real ângulo 1', '2024-09-06', '2024-09-06', '2024-09-06', 'Fachada'),
+	(5, 15, '2.HSA_MON Fotomontagem aérea com foco no Lazer do 21° Pavimento', '2024-09-06', '2024-09-06', '2024-09-06', 'Fachada'),
+	(5, 15, '3.HSA_MON Fotomontagem aérea com foco no topo da torre e horizonte', '2024-09-06', '2024-09-06', '2024-09-06', 'Fachada'),
+	(5, 15, '4.HSA_MON Fachada no ângulo do observador Diurna', '2024-09-06', '2024-09-06', '2024-09-06', 'Fachada'),
+	(5, 15, '5.HSA_MON Fachada no ângulo do observador Noturna', '2024-09-06', '2024-09-06', '2024-09-06', 'Fachada'),
+	(5, 15, '6.HSA_MON Fachada no ângulo de portfólio', '2024-09-06', '2024-09-06', '2024-09-06', 'Fachada'),
+	(5, 15, '7.HSA_MON Hall de entrada', '2024-09-06', '2024-09-06', '2024-09-06', 'Imagem Interna'),
+	(5, 15, '8.HSA_MON Bar molhado', '2024-09-06', '2024-09-06', '2024-09-06', 'Fachada'),
+	(5, 15, '9.HSA_MON Piscinas ângulo 1', '2024-09-06', '2024-09-06', '2024-09-06', 'Imagem Externa'),
+	(5, 15, '10.HSA_MON Piscinas ângulo 2', '2024-09-06', '2024-09-06', '2024-09-06', 'Imagem Externa'),
+	(5, 15, '11.HSA_MON Quiosque da piscina', '2024-09-06', '2024-09-06', '2024-09-06', 'Imagem Interna'),
+	(5, 15, '12.HSA_MON Fire place', '2024-09-06', '2024-09-06', '2024-09-06', 'Imagem Externa'),
+	(5, 15, '13.HSA_MON Playground', '2024-09-06', '2024-09-06', '2024-09-06', 'Imagem Externa'),
+	(5, 15, '14.HSA_MON Salão de festas', '2024-09-06', '2024-09-06', '2024-09-06', 'Imagem Interna'),
+	(5, 15, '15.HSA_MON Terraço do Salão de festas', '2024-09-06', '2024-09-06', '2024-09-06', 'Imagem Externa'),
+	(5, 15, '16.HSA_MON Espaço kids', '2024-09-06', '2024-09-06', '2024-09-06', 'Imagem Externa'),
+	(5, 15, '17.HSA_MON Pet Care olhando para espaço Pet', '2024-09-06', '2024-09-06', '2024-09-06', 'Imagem Externa'),
+	(5, 15, '18.HSA_MON Academia', '2024-09-06', '2024-09-06', '2024-09-06', 'Imagem Interna'),
+	(5, 15, '19.HSA_MON Piscina aquecida', '2024-09-06', '2024-09-06', '2024-09-06', 'Imagem Interna'),
+	(5, 15, '20.HSA_MON Sala de jogos', '2024-09-06', '2024-09-06', '2024-09-06', 'Imagem Interna'),
+	(5, 15, '21.HSA_MON Ambiente da área de lazer a definir', '2024-09-06', '2024-09-06', '2024-09-06', 'Imagem Interna'),
+	(5, 15, '22.HSA_MON Sky Pub', '2024-09-06', '2024-09-06', '2024-09-06', 'Imagem Interna'),
+	(5, 15, '23.HSA_MON Espaço kids', '2024-09-06', '2024-09-06', '2024-09-06', 'Imagem Interna'),
+	(5, 15, '24.HSA_MON Terraço', '2024-09-06', '2024-09-06', '2024-09-06', 'Imagem Interna'),
+	(5, 15, '25.HSA_MON Wine lounge', '2024-09-06', '2024-09-06', '2024-09-06', 'Imagem Interna'),
+	(5, 15, '26.HSA_MON Living do apartamento tipo 1 + Sacada', '2024-09-06', '2024-09-06', '2024-09-06', 'Imagem Interna'),
+	(5, 15, '27.HSA_MON Vista real do living do apartamento tipo 1', '2024-09-06', '2024-09-06', '2024-09-06', 'Imagem Interna'),
+	(5, 15, '28.HSA_MON Sacada gourmet sensação da vista do apartamento tipo 1', '2024-09-06', '2024-09-06', '2024-09-06', 'Imagem Interna'),
+	(5, 15, '29.HSA_MON Suíte do apartamento tipo 1', '2024-09-06', '2024-09-06', '2024-09-06', 'Imagem Interna'),
+	(5, 15, '30.HSA_MON Living do apartamento Penthouse ângulo 1', '2024-09-06', '2024-09-06', '2024-09-06', 'Imagem Interna'),
+	(5, 15, '31.HSA_MON Living do apartamento Penthouse ângulo 2', '2024-09-06', '2024-09-06', '2024-09-06', 'Imagem Interna'),
+	(5, 15, '32.HSA_MON Living do apartamento Penthouse foco na vista', '2024-09-06', '2024-09-06', '2024-09-06', 'Imagem Interna'),
+	(5, 15, '33.HSA_MON Suíte do apartamento Penthouse', '2024-09-06', '2024-09-06', '2024-09-06', 'Imagem Interna'),
+	(5, 15, '34.HSA_MON Suíte do apartamento Penthouse com foco no closet', '2024-09-06', '2024-09-06', '2024-09-06', 'Imagem Interna'),
+	(5, 15, '35.HSA_MON Vista da banheira da suíte do apartamento Penthouse', '2024-09-06', '2024-09-06', '2024-09-06', 'Imagem Interna'),
+	(5, 15, '36.HSA_MON Planta humanizada implantação geral mostrando o pavimento térreo', '2024-09-06', '2024-09-06', '2024-09-06', 'Planta Humanizada'),
+	(5, 15, '37.HSA_MON Planta humanizada do pavimento lazer - 4° Pavimento', '2024-09-06', '2024-09-06', '2024-09-06', 'Planta Humanizada'),
+	(5, 15, '38.HSA_MON Planta humanizada do pavimento lazer - 21° Pavimento', '2024-09-06', '2024-09-06', '2024-09-06', 'Planta Humanizada'),
+	(5, 15, '39.HSA_MON Planta humanizada do pavimento Tipo', '2024-09-06', '2024-09-06', '2024-09-06', 'Planta Humanizada'),
+	(5, 15, '40.HSA_MON Planta humanizada do pavimento Penthouse', '2024-09-06', '2024-09-06', '2024-09-06', 'Planta Humanizada'),
+    (12, 16, '1. OTT_EKO Fotomontagem aérea - Inserção do empreendimento em terreno real visto do mar ângulo 1', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(12, 16, '2. OTT_EKO Fotomontagem aérea - Inserção do empreendimento em terreno real visto do mar ângulo 2', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(12, 16, '3. OTT_EKO Fachada diurna no angulo do observador', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(12, 16, '4. OTT_EKO Embasamento com foco no acesso', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(12, 16, '5. OTT_EKO Hall de entrada', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(12, 16, '6. OTT_EKO Piscina 1 com vista fotográfica real', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(12, 16, '7. OTT_EKO Piscina 2 com vista fotográfica real', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(12, 16, '8. OTT_EKO Bar da piscina 1', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(12, 16, '9. OTT_EKO Academia com sacada com vista para o mar', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(12, 16, '10. OTT_EKO Gamming room', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(12, 16, '11. OTT_EKO Salão de festas mostrando terraço com vista fotográfica real', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(12, 16, '12. OTT_EKO Sacada do Salão de festas com vista fotográfica real', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(12, 16, '13. OTT_EKO Living do apartamento tipo final 1 com vista fotográfica real para o mar', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(12, 16, '14. OTT_EKO Living do apartamento tipo final 2 ou 3 com vista fotográfica real para o mar', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(12, 16, '16. OTT_EKO Living do apartamento cobertura final 1 com vista fotográfica real para o mar', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(12, 16, '17. OTT_EKO Área de festas do apartamento cobertura final 1 com vista fotográfica real', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(12, 16, '18. OTT_EKO Planta humanizada do pavimento lazer', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(12, 16, '19. OTT_EKO Planta humanizada do apartamento tipo 1', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(12, 16, '20. OTT_EKO Planta humanizada do apartamento tipo 2', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(12, 16, '21. OTT_EKO Planta humanizada do apartamento tipo 3', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(12, 16, '22. OTT_EKO Planta humanizada do apartamento cobertura inferior 1', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(12, 16, '23. OTT_EKO Planta humanizada do apartamento cobertura superior 1', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(12, 16, '24. OTT_EKO Planta humanizada do apartamento cobertura inferior 2', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(12, 16, '25. OTT_EKO Planta humanizada do apartamento cobertura superior 2', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(12, 16, '26. OTT_EKO Planta humanizada do apartamento cobertura inferior 3', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(12, 16, '27. OTT_EKO Planta humanizada do apartamento cobertura superior 3', '2024-09-06', '2024-09-06', '2024-09-06'),
+    (7, 7, '1. DOM_MOR Externa aérea / frontal com mar', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(7, 7, '2. DOM_MOR Externa Lateral com piscina', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(7, 7, '3. DOM_MOR Externa Fundos com acesso rua', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(7, 7, '4. DOM_MOR Externa Paisagismo circulações ACESSO', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(7, 7, '5. DOM_MOR Externa Paisagismo circulações ao mar', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(7, 7, '6. DOM_MOR Externa pet place + ACADEMIA EXTERNA', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(7, 7, '7. DOM_MOR Externa piscina + Espaço FOGO', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(7, 7, '8. DOM_MOR Externa ESPAÇO BALANÇOS', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(7, 7, '9. DOM_MOR Externa da praia olhando para prédio', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(7, 7, '10. DOM_MOR Interno Gourmet Mezanino - integrados', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(7, 7, '11. DOM_MOR Interno Gourmet Terreo', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(7, 7, '12. DOM_MOR Interno Piscina aquecida', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(7, 7, '13. DOM_MOR Interno Sauna', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(7, 7, '14. DOM_MOR Interno Wine Bar', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(7, 7, '15. DOM_MOR Interno Espaço Office', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(7, 7, '16. DOM_MOR Interno Academia', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(7, 7, '17. DOM_MOR Interno Brinquedoteca', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(7, 7, '18. DOM_MOR Apto varanda vista mar - T05 TORRE A', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(7, 7, '19. DOM_MOR Apto vista suite - L03 - TORRE B', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(7, 7, '20. DOM_MOR Apto sala e varanda vista mar - C05 TORRE B', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(7, 7, '21. DOM_MOR Fotomontagem', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(7, 7, '22. DOM_MOR Detalhe/conceito espreguiçadeira + piscina', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(7, 7, '23. DOM_MOR Detalhe/conceito vista mar da suíte / cortina', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(7, 7, '24. DOM_MOR Detalhe/conceito piscina aquecida', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(7, 7, '25. DOM_MOR Detalhe/conceito hall entrada', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(7, 7, '26. DOM_MOR PLANTA HUMANIZADA DO PAVIMENTO SUBSOLO', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(7, 7, '27. DOM_MOR PLANTA HUMANIZADA IMPLANTAÇÃO MOSTRANDO PAVIMENTO DE LAZER', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(7, 7, '28. DOM_MOR PLANTA HUMANIZADA DO PAVIMENTO MEZANINO TORRE A JUNTAMENTE COM O 1º PAVIMENTO TORRE B', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(7, 7, '29. DOM_MOR PLANTA HUMANIZADA DO 1º PAVIMENTO TORRE A JUNTAMENTE COM O 2º PAVIMENTO TORRE B', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(7, 7, '30. DOM_MOR PLANTA HUMANIZADA DO 2º PAVIMENTO TORRE A JUNTAMENTE COM O 3º PAVIMENTO TORRE B', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(7, 7, '31. DOM_MOR PLANTA HUMANIZADA DO 3º PAVIMENTO TORRE A JUNTAMENTE COM O MEZANINO TORRE B', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(7, 7, '32. DOM_MOR PLANTA HUMANIZADA DO PAVIMENTO DAS COBERTURAS DAS TORRES A E B', '2024-09-06', '2024-09-06', '2024-09-06');
+
+
 
 	    RETURN 1;
     END//
     
-
+    alter table imagens_cliente_obra add column tipo_imagem VARCHAR(50);
+    alter table imagens_cliente_obra add column status_id INT;
+    ALTER TABLE imagens_cliente_obra
+ADD CONSTRAINT status_imagem
+FOREIGN KEY (status_id)
+REFERENCES status_imagem (idstatus);
+    
 select improov.inserir_colaborador();
 select improov.inserir_clientes();
 select improov.inserir_obras();
 select improov.inserir_imagens();
+select improov.inserir_status();
 
 SET SQL_MODE=@OLD_SQL_MODE;
 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;

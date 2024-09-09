@@ -24,6 +24,7 @@
     <a href="#add-imagem" onclick="openModal('add-imagem', this)">Adicionar imagem</a>
     <a href="#filtro" onclick="openModalClass('tabela-form', this)" class="active">Ver imagens</a>
     <a href="#filtro-colab" onclick="openModal('filtro-colab', this)">Filtro colaboradores</a>
+    <a href="#filtro-obra" onclick="openModal('filtro-obra', this)">Filtro por obra</a>
 </nav>
 
 <?php
@@ -377,7 +378,42 @@ $conn->close();
                     <!-- O corpo da tabela será preenchido pelo PHP -->
                 </tbody>
             </table>
+        </div>
 
+        <div id="filtro-obra">
+            <h1>Filtro por obra:</h1>
+
+            <label for="obra">Obra:</label>
+            <select name="obra" id="obra">
+            <option value="1">Selecione:</option>
+                <?php foreach ($obras as $obra): ?>
+                    <option value="<?= htmlspecialchars($obra['idobra']); ?>">
+                        <?= htmlspecialchars($obra['nome_obra']); ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+
+            <table id="tabela-obra">
+                <thead>
+                    <th>Nome da Imagem</th>
+                    <th>Caderno</th>
+                    <th>Status</th>
+                    <th>Modelagem</th>
+                    <th>Status</th>
+                    <th>Composição</th>
+                    <th>Status</th>
+                    <th>Finalização</th>
+                    <th>Status</th>
+                    <th>Pós-produção</th>
+                    <th>Status</th>
+                    <th>Alteração</th>
+                    <th>Status</th>
+                </thead>
+
+                <tbody>
+
+                </tbody>
+            </table>
         </div>
     </main>
 

@@ -138,8 +138,7 @@ table#tabelaClientes tr:hover {
 
 /* Estilo geral para as divs de modal */
 #add-cliente,
-#add-imagem,
-#filtro-colab {
+#add-imagem {
     display: none;
     flex-direction: column;
     justify-content: center;
@@ -247,4 +246,19 @@ table#tabelaClientes tr:hover {
 table#tabela-colab {
     border-collapse: collapse;
     width: 80%;
+}
+
+table#tabela-obra {
+    border-collapse: collapse;
+    width: 90%;
+}
+
+#filtro-obra,
+#filtro-colab {
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+    padding: 50px;
 }

@@ -502,11 +502,26 @@ function submitFormImagem(event) {
 
 
 document.addEventListener('DOMContentLoaded', function () {
-    document.getElementById('colaboradorSelect').addEventListener('change', function () {
-        var colaboradorId = this.value;
+    document.getElementById('colaboradorSelect').addEventListener('change', carregarDados);
+    document.getElementById('dataInicio').addEventListener('change', carregarDados);
+    document.getElementById('dataFim').addEventListener('change', carregarDados);
+
+    function carregarDados() {
+        var colaboradorId = document.getElementById('colaboradorSelect').value;
+        var dataInicio = document.getElementById('dataInicio').value;
+        var dataFim = document.getElementById('dataFim').value;
 
         if (colaboradorId) {
-            fetch('getFuncoesPorColaborador.php?colaborador_id=' + colaboradorId)
+            var url = 'getFuncoesPorColaborador.php?colaborador_id=' + colaboradorId;
+
+            if (dataInicio) {
+                url += '&data_inicio=' + encodeURIComponent(dataInicio);
+            }
+            if (dataFim) {
+                url += '&data_fim=' + encodeURIComponent(dataFim);
+            }
+
+            fetch(url)
                 .then(response => response.json())
                 .then(data => {
                     var tabela = document.querySelector('#tabela-colab tbody');
@@ -518,9 +533,12 @@ document.addEventListener('DOMContentLoaded', function () {
                         cellNomeImagem.textContent = item.imagem_nome;
                         var cellStatus = document.createElement('td');
                         cellStatus.textContent = item.status;
+                        var cellPrazoImagem = document.createElement('td');
+                        cellPrazoImagem.textContent = item.prazo;
 
                         row.appendChild(cellNomeImagem);
                         row.appendChild(cellStatus);
+                        row.appendChild(cellPrazoImagem);
                         tabela.appendChild(row);
                     });
 
@@ -532,5 +550,5 @@ document.addEventListener('DOMContentLoaded', function () {
             document.querySelector('#tabela-colab tbody').innerHTML = ''; // Limpar tabela se nenhum colaborador for selecionado
             document.getElementById('totalImagens').textContent = '0'; // Atualizar o total de imagens
         }
-    });
+    }
 });

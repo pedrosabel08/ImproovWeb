@@ -10,17 +10,36 @@ if ($conn->connect_error) {
 }
 
 $colaboradorId = intval($_GET['colaborador_id']);
+$dataInicio = isset($_GET['data_inicio']) ? $_GET['data_inicio'] : '';
+$dataFim = isset($_GET['data_fim']) ? $_GET['data_fim'] : '';
 
 // Consulta para obter funções e status da imagem para o colaborador selecionado
 $sql = "SELECT
             ico.imagem_nome,
-            fi.status
+            fi.status,
+            fi.prazo
         FROM funcao_imagem fi
         JOIN imagens_cliente_obra ico ON fi.imagem_id = ico.idimagens_cliente_obra
         WHERE fi.colaborador_id = ?";
 
+if ($dataInicio) {
+    $sql .= " AND fi.prazo >= ?";
+}
+if ($dataFim) {
+    $sql .= " AND fi.prazo <= ?";
+}
+
 $stmt = $conn->prepare($sql);
-$stmt->bind_param('i', $colaboradorId);
+if ($dataInicio && $dataFim) {
+    $stmt->bind_param('iss', $colaboradorId, $dataInicio, $dataFim);
+} elseif ($dataInicio) {
+    $stmt->bind_param('is', $colaboradorId, $dataInicio);
+} elseif ($dataFim) {
+    $stmt->bind_param('is', $colaboradorId, $dataFim);
+} else {
+    $stmt->bind_param('i', $colaboradorId);
+}
+
 $stmt->execute();
 $result = $stmt->get_result();
 

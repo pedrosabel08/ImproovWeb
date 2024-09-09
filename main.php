@@ -355,6 +355,12 @@ $conn->close();
                 <?php endforeach; ?>
             </select>
 
+            <label for="dataInicio">Data Início:</label>
+            <input type="date" id="dataInicio">
+
+            <label for="dataFim">Data Fim:</label>
+            <input type="date" id="dataFim">
+
             <div class="image-count">
                 <strong>Total de Imagens:</strong> <span id="totalImagens">0</span>
             </div>
@@ -362,8 +368,9 @@ $conn->close();
             <table id="tabela-colab">
                 <thead>
                     <tr>
-                        <th>Nome da Imagem</th>
+                        <th id="nome">Nome da Imagem</th>
                         <th>Status</th>
+                        <th>Prazo</th>
                     </tr>
                 </thead>
                 <tbody>

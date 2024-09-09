@@ -327,6 +327,7 @@ function openModalClass(modalClass, element) {
     closeModal('add-imagem');
     closeModal('tabela-form');
     closeModal('filtro-colab');
+    closeModal('filtro-obra');
 
     // Mostra o modal correspondente pela classe, se houver
     if (modalClass) {
@@ -551,4 +552,78 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('totalImagens').textContent = '0'; // Atualizar o total de imagens
         }
     }
+
+    document.getElementById('obra').addEventListener('change', carregarDadosObra);
+
+});
+
+document.addEventListener('DOMContentLoaded', function () {
+    document.getElementById('obra').addEventListener('change', function () {
+        var obraId = this.value;
+
+        if (obraId) {
+            fetch('getFuncoesPorObra.php?obra_id=' + obraId)
+                .then(response => response.json())
+                .then(data => {
+                    var tabela = document.querySelector('#tabela-obra tbody');
+                    tabela.innerHTML = ''; // Limpar tabela antes de adicionar novos dados
+
+                    data.forEach(function (item) {
+                        var row = document.createElement('tr');
+
+                        var cellNomeImagem = document.createElement('td');
+                        cellNomeImagem.textContent = item.imagem_nome;
+
+                        var cellCadernoColaborador = document.createElement('td');
+                        cellCadernoColaborador.textContent = item.caderno_colaborador || '-';
+                        var cellCadernoStatus = document.createElement('td');
+                        cellCadernoStatus.textContent = item.caderno_status || '-';
+
+                        var cellModelagemColaborador = document.createElement('td');
+                        cellModelagemColaborador.textContent = item.modelagem_colaborador || '-';
+                        var cellModelagemStatus = document.createElement('td');
+                        cellModelagemStatus.textContent = item.modelagem_status || '-';
+
+                        var cellComposicaoColaborador = document.createElement('td');
+                        cellComposicaoColaborador.textContent = item.composicao_colaborador || '-';
+                        var cellComposicaoStatus = document.createElement('td');
+                        cellComposicaoStatus.textContent = item.composicao_status || '-';
+
+                        var cellFinalizacaoColaborador = document.createElement('td');
+                        cellFinalizacaoColaborador.textContent = item.finalizacao_colaborador || '-';
+                        var cellFinalizacaoStatus = document.createElement('td');
+                        cellFinalizacaoStatus.textContent = item.finalizacao_status || '-';
+
+                        var cellPosProducaoColaborador = document.createElement('td');
+                        cellPosProducaoColaborador.textContent = item.pos_producao_colaborador || '-';
+                        var cellPosProducaoStatus = document.createElement('td');
+                        cellPosProducaoStatus.textContent = item.pos_producao_status || '-';
+
+                        var cellAlteracaoColaborador = document.createElement('td');
+                        cellAlteracaoColaborador.textContent = item.alteracao_colaborador || '-';
+                        var cellAlteracaoStatus = document.createElement('td');
+                        cellAlteracaoStatus.textContent = item.alteracao_status || '-';
+
+                        row.appendChild(cellNomeImagem);
+                        row.appendChild(cellCadernoColaborador);
+                        row.appendChild(cellCadernoStatus);
+                        row.appendChild(cellModelagemColaborador);
+                        row.appendChild(cellModelagemStatus);
+                        row.appendChild(cellComposicaoColaborador);
+                        row.appendChild(cellComposicaoStatus);
+                        row.appendChild(cellFinalizacaoColaborador);
+                        row.appendChild(cellFinalizacaoStatus);
+                        row.appendChild(cellPosProducaoColaborador);
+                        row.appendChild(cellPosProducaoStatus);
+                        row.appendChild(cellAlteracaoColaborador);
+                        row.appendChild(cellAlteracaoStatus);
+
+                        tabela.appendChild(row);
+                    });
+                })
+                .catch(error => console.error('Erro ao carregar funções:', error));
+        } else {
+            document.querySelector('#tabela-obra tbody').innerHTML = ''; // Limpar tabela se nenhuma obra for selecionada
+        }
+    });
 });

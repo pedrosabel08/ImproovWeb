@@ -119,8 +119,11 @@ th {
     font-size: 14px;
 }
 
+.selecionada {
+    background-color: #e2ba09;
+}
+
 table#tabelaClientes tr:hover {
-    background-color: rgb(186, 236, 236);
     cursor: pointer;
 }
 

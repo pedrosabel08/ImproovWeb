@@ -3,34 +3,27 @@ document.addEventListener("DOMContentLoaded", function () {
 
     linhasTabela.forEach(function (linha) {
         linha.addEventListener("click", function () {
-            // Remover a classe 'selecionada' de todas as linhas
             linhasTabela.forEach(function (outraLinha) {
                 outraLinha.classList.remove("selecionada");
             });
 
-            // Adicionar a classe 'selecionada' à linha clicada
             linha.classList.add("selecionada");
 
-            // Obter o ID da imagem selecionada
             var idImagemSelecionada = linha.getAttribute("data-id");
             document.getElementById("imagem_id").value = idImagemSelecionada;
 
-            // Limpar os campos antes de atualizar
             limparCampos();
 
-            // Requisição AJAX para buscar detalhes das funções e status
             $.ajax({
                 type: "GET",
                 dataType: "json",
                 url: "http://localhost:8066/ImproovWeb/buscaLinhaAJAX.php",
                 data: { ajid: idImagemSelecionada },
                 success: function (response) {
-                    // Atualiza o nome da imagem
                     if (response.nome_imagem) {
                         document.getElementById("campoNomeImagem").textContent = response.nome_imagem;
                     }
 
-                    // Atualiza os detalhes das funções
                     if (response.funcoes && response.funcoes.length > 0) {
                         response.funcoes.forEach(function (funcao) {
                             let selectElement;
@@ -72,7 +65,6 @@ document.addEventListener("DOMContentLoaded", function () {
                         });
                     }
 
-                    // Atualiza o status da imagem
                     var statusSelect = document.getElementById("opcao_status");
                     if (response.status_id !== null) {
                         statusSelect.value = response.status_id;
@@ -87,11 +79,9 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
-    // Função para limpar os campos antes de atualizar
     function limparCampos() {
         document.getElementById("campoNomeImagem").textContent = "";
 
-        // Limpar os campos de status e prazo
         document.getElementById("status_caderno").value = "";
         document.getElementById("prazo_caderno").value = "";
         document.getElementById("status_modelagem").value = "";
@@ -105,7 +95,6 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById("status_alteracao").value = "";
         document.getElementById("prazo_alteracao").value = "";
 
-        // Limpar os selects de colaboradores
         document.getElementById("opcao_caderno").value = "";
         document.getElementById("opcao_model").value = "";
         document.getElementById("opcao_comp").value = "";
@@ -115,7 +104,6 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById("opcao_status").value = "";
     }
 
-    // Função para buscar apenas o nome da imagem se não houver funções associadas
     function buscarNomeImagem(idImagem) {
         $.ajax({
             type: "GET",
@@ -123,22 +111,16 @@ document.addEventListener("DOMContentLoaded", function () {
             url: "http://localhost:8066/ImproovWeb/buscaNomeImagem.php",
             data: { ajid: idImagem },
             success: function (response) {
-                // Verificar se a resposta contém os campos esperados
                 if (response.imagem_nome !== undefined && response.status_id !== undefined) {
                     if (response.imagem_nome && response.status_id) {
-                        // Atualiza o nome da imagem
                         document.getElementById("campoNomeImagem").textContent = response.imagem_nome;
 
-                        // Atualiza o valor do select com o id do status recebido
                         var opcaoStatus = document.getElementById("opcao_status");
                         if (opcaoStatus) {
-                            // Converte o status_id para string, se necessário
                             var statusId = response.status_id.toString();
 
-                            // Define o valor do select
                             opcaoStatus.value = statusId;
 
-                            // Opcional: Adicione uma verificação para confirmar se o valor foi encontrado
                             var found = Array.from(opcaoStatus.options).some(option => option.value === statusId);
                             if (!found) {
                                 console.warn("Status ID não encontrado nas opções do select:", statusId);
@@ -176,9 +158,8 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     document.getElementById("salvar_funcoes").addEventListener("click", function (event) {
-        event.preventDefault(); // Impede o envio padrão do formulário
+        event.preventDefault();
 
-        // Obtém o ID da imagem selecionada
         var linhaSelecionada = document.querySelector(".linha-tabela.selecionada");
         if (!linhaSelecionada) {
             Toastify({
@@ -195,16 +176,14 @@ document.addEventListener("DOMContentLoaded", function () {
 
         var idImagemSelecionada = linhaSelecionada.getAttribute("data-id");
 
-        // Obtém os textos das tags <p>
         var textos = {};
         var pElements = document.querySelectorAll(".form-edicao p");
         pElements.forEach(function (p) {
             textos[p.id] = p.textContent.trim();
         });
 
-        // Coleta os dados do formulário
         var dados = {
-            imagem_id: idImagemSelecionada,  // Utilize o ID da imagem selecionada
+            imagem_id: idImagemSelecionada,
             caderno_id: document.getElementById("opcao_caderno").value || "",
             status_caderno: document.getElementById("status_caderno").value || "",
             prazo_caderno: document.getElementById("prazo_caderno").value || "",
@@ -233,13 +212,12 @@ document.addEventListener("DOMContentLoaded", function () {
             status_id: document.getElementById("opcao_status").value || ""
         };
 
-        // Envia os dados para o servidor via AJAX
         $.ajax({
             type: "POST",
             url: "http://localhost:8066/ImproovWeb/insereFuncao.php",
             data: dados,
             success: function (response) {
-                console.log(response);  // Verifica o retorno do servidor
+                console.log(response);
                 Toastify({
                     text: "Dados salvos com sucesso!",
                     duration: 3000,
@@ -267,16 +245,12 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 function filtrarTabela() {
-    // Pega os valores do select e do input de pesquisa
     var indiceColuna = document.getElementById("colunaFiltro").value;
     var filtro = document.getElementById("pesquisa").value.toLowerCase();
-
-    // Pega a referência da tabela e do tbody
     var tabela = document.getElementById("tabelaClientes");
     var tbody = tabela.getElementsByTagName("tbody")[0];
     var linhas = tbody.getElementsByTagName("tr");
 
-    // Loop através de todas as linhas da tabela e oculta aquelas que não correspondem ao filtro
     for (var i = 0; i < linhas.length; i++) {
         var coluna = linhas[i].getElementsByTagName("td")[indiceColuna];
         if (coluna) {
@@ -290,7 +264,6 @@ function filtrarTabela() {
     }
 }
 
-// Adiciona um event listener para o campo de pesquisa para filtrar ao pressionar Enter
 document.getElementById("pesquisa").addEventListener("keyup", function (event) {
     if (event.key === "Enter") {
         filtrarTabela();
@@ -298,38 +271,35 @@ document.getElementById("pesquisa").addEventListener("keyup", function (event) {
 });
 
 function openModal(modalId, element) {
-    // Fecha qualquer modal que esteja aberto
-    closeModal('add-cliente');
-    closeModal('add-imagem');
-    closeModal('tabela-form');
-    closeModal('filtro-colab')
 
-    // Mostra o modal correspondente, se houver
-    if (modalId) {
-        document.getElementById(modalId).style.display = 'flex';
-    }
-
-    // Remove a classe 'active' de todos os links de navegação
-    var navLinks = document.querySelectorAll('nav a');
-    navLinks.forEach(function (link) {
-        link.classList.remove('active');
-    });
-
-    // Adiciona a classe 'active' ao link clicado
-    if (element) {
-        element.classList.add('active');
-    }
-}
-
-function openModalClass(modalClass, element) {
-    // Fecha qualquer modal que esteja aberto
     closeModal('add-cliente');
     closeModal('add-imagem');
     closeModal('tabela-form');
     closeModal('filtro-colab');
     closeModal('filtro-obra');
 
-    // Mostra o modal correspondente pela classe, se houver
+    if (modalId) {
+        document.getElementById(modalId).style.display = 'flex';
+    }
+
+    var navLinks = document.querySelectorAll('nav a');
+    navLinks.forEach(function (link) {
+        link.classList.remove('active');
+    });
+
+    if (element) {
+        element.classList.add('active');
+    }
+}
+
+function openModalClass(modalClass, element) {
+
+    closeModal('add-cliente');
+    closeModal('add-imagem');
+    closeModal('tabela-form');
+    closeModal('filtro-colab');
+    closeModal('filtro-obra');
+
     if (modalClass) {
         var modal = document.querySelector('.' + modalClass);
         if (modal) {
@@ -337,13 +307,11 @@ function openModalClass(modalClass, element) {
         }
     }
 
-    // Remove a classe 'active' de todos os links de navegação
     var navLinks = document.querySelectorAll('nav a');
     navLinks.forEach(function (link) {
         link.classList.remove('active');
     });
 
-    // Adiciona a classe 'active' ao link clicado
     if (element) {
         element.classList.add('active');
     }
@@ -351,24 +319,21 @@ function openModalClass(modalClass, element) {
 
 function closeModal(modalId) {
     if (modalId) {
-        // Esconde o modal correspondente
         document.getElementById(modalId).style.display = 'none';
     }
 
-    // Remove a classe 'active' de todos os links de navegação
     var navLinks = document.querySelectorAll('nav a');
     navLinks.forEach(function (link) {
         link.classList.remove('active');
     });
 
-    // Configura 'Ver imagens' como o link ativo
     var verImagensLink = document.querySelector('nav a[href="#filtro"]');
     verImagensLink.classList.add('active');
 }
 
 
 function submitForm(event) {
-    event.preventDefault(); // Evita o envio tradicional do formulário
+    event.preventDefault();
 
     const opcao = document.getElementById('opcao-cliente').value;
     const nome = document.getElementById('nome').value;
@@ -390,12 +355,12 @@ function submitForm(event) {
             if (result.status === 'success') {
                 Toastify({
                     text: result.message,
-                    duration: 3000, // 3 segundos
+                    duration: 3000,
                     close: true,
-                    gravity: "top", // Toast aparecerá na parte superior
-                    position: "right", // Toast será posicionado à direita
+                    gravity: "top",
+                    position: "right",
                     backgroundColor: "green",
-                    stopOnFocus: true, // Parar se o usuário passar o mouse por cima
+                    stopOnFocus: true,
                 }).showToast();
                 setTimeout(() => {
                     window.location.reload();
@@ -412,7 +377,7 @@ function submitForm(event) {
                 }).showToast();
             }
 
-            closeModal('add-cliente'); // Fecha o modal após a inserção
+            closeModal('add-cliente');
         })
         .catch(error => {
             console.error('Erro:', error);
@@ -461,15 +426,14 @@ function submitFormImagem(event) {
             if (result.status === 'success') {
                 Toastify({
                     text: result.message,
-                    duration: 3000, // 3 segundos
+                    duration: 3000,
                     close: true,
-                    gravity: "top", // Toast aparecerá na parte superior
-                    position: "right", // Toast será posicionado à direita
+                    gravity: "top",
+                    position: "right",
                     backgroundColor: "green",
-                    stopOnFocus: true, // Parar se o usuário passar o mouse por cima
+                    stopOnFocus: true,
                 }).showToast();
 
-                // Recarregar a página após 3 segundos (tempo para a Toastify desaparecer)
                 setTimeout(() => {
                     window.location.reload();
                 }, 500);
@@ -485,7 +449,7 @@ function submitFormImagem(event) {
                 }).showToast();
             }
 
-            closeModal('add-cliente'); // Fecha o modal após a inserção
+            closeModal('add-cliente');
         })
         .catch(error => {
             console.error('Erro:', error);
@@ -526,7 +490,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 .then(response => response.json())
                 .then(data => {
                     var tabela = document.querySelector('#tabela-colab tbody');
-                    tabela.innerHTML = ''; // Limpar tabela antes de adicionar novos dados
+                    tabela.innerHTML = '';
 
                     data.forEach(function (item) {
                         var row = document.createElement('tr');
@@ -543,17 +507,14 @@ document.addEventListener('DOMContentLoaded', function () {
                         tabela.appendChild(row);
                     });
 
-                    // Atualiza o total de imagens
                     document.getElementById('totalImagens').textContent = data.length;
                 })
                 .catch(error => console.error('Erro ao carregar funções:', error));
         } else {
-            document.querySelector('#tabela-colab tbody').innerHTML = ''; // Limpar tabela se nenhum colaborador for selecionado
-            document.getElementById('totalImagens').textContent = '0'; // Atualizar o total de imagens
+            document.querySelector('#tabela-colab tbody').innerHTML = '';
+            document.getElementById('totalImagens').textContent = '0';
         }
     }
-
-    document.getElementById('obra').addEventListener('change', carregarDadosObra);
 
 });
 
@@ -566,64 +527,131 @@ document.addEventListener('DOMContentLoaded', function () {
                 .then(response => response.json())
                 .then(data => {
                     var tabela = document.querySelector('#tabela-obra tbody');
-                    tabela.innerHTML = ''; // Limpar tabela antes de adicionar novos dados
+                    tabela.innerHTML = '';
 
                     data.forEach(function (item) {
                         var row = document.createElement('tr');
 
                         var cellNomeImagem = document.createElement('td');
                         cellNomeImagem.textContent = item.imagem_nome;
+                        row.appendChild(cellNomeImagem);
 
                         var cellCadernoColaborador = document.createElement('td');
                         cellCadernoColaborador.textContent = item.caderno_colaborador || '-';
                         var cellCadernoStatus = document.createElement('td');
                         cellCadernoStatus.textContent = item.caderno_status || '-';
+                        row.appendChild(cellCadernoColaborador);
+                        row.appendChild(cellCadernoStatus);
+                        applyStatusStyle(cellCadernoStatus, item.caderno_status);
 
                         var cellModelagemColaborador = document.createElement('td');
                         cellModelagemColaborador.textContent = item.modelagem_colaborador || '-';
                         var cellModelagemStatus = document.createElement('td');
                         cellModelagemStatus.textContent = item.modelagem_status || '-';
+                        row.appendChild(cellModelagemColaborador);
+                        row.appendChild(cellModelagemStatus);
+                        applyStatusStyle(cellModelagemStatus, item.modelagem_status);
 
                         var cellComposicaoColaborador = document.createElement('td');
                         cellComposicaoColaborador.textContent = item.composicao_colaborador || '-';
                         var cellComposicaoStatus = document.createElement('td');
                         cellComposicaoStatus.textContent = item.composicao_status || '-';
+                        row.appendChild(cellComposicaoColaborador);
+                        row.appendChild(cellComposicaoStatus);
+                        applyStatusStyle(cellComposicaoStatus, item.composicao_status);
 
                         var cellFinalizacaoColaborador = document.createElement('td');
                         cellFinalizacaoColaborador.textContent = item.finalizacao_colaborador || '-';
                         var cellFinalizacaoStatus = document.createElement('td');
                         cellFinalizacaoStatus.textContent = item.finalizacao_status || '-';
+                        row.appendChild(cellFinalizacaoColaborador);
+                        row.appendChild(cellFinalizacaoStatus);
+                        applyStatusStyle(cellFinalizacaoStatus, item.finalizacao_status);
 
                         var cellPosProducaoColaborador = document.createElement('td');
                         cellPosProducaoColaborador.textContent = item.pos_producao_colaborador || '-';
                         var cellPosProducaoStatus = document.createElement('td');
                         cellPosProducaoStatus.textContent = item.pos_producao_status || '-';
+                        row.appendChild(cellPosProducaoColaborador);
+                        row.appendChild(cellPosProducaoStatus);
+                        applyStatusStyle(cellPosProducaoStatus, item.pos_producao_status);
 
                         var cellAlteracaoColaborador = document.createElement('td');
                         cellAlteracaoColaborador.textContent = item.alteracao_colaborador || '-';
                         var cellAlteracaoStatus = document.createElement('td');
                         cellAlteracaoStatus.textContent = item.alteracao_status || '-';
-
-                        row.appendChild(cellNomeImagem);
-                        row.appendChild(cellCadernoColaborador);
-                        row.appendChild(cellCadernoStatus);
-                        row.appendChild(cellModelagemColaborador);
-                        row.appendChild(cellModelagemStatus);
-                        row.appendChild(cellComposicaoColaborador);
-                        row.appendChild(cellComposicaoStatus);
-                        row.appendChild(cellFinalizacaoColaborador);
-                        row.appendChild(cellFinalizacaoStatus);
-                        row.appendChild(cellPosProducaoColaborador);
-                        row.appendChild(cellPosProducaoStatus);
                         row.appendChild(cellAlteracaoColaborador);
                         row.appendChild(cellAlteracaoStatus);
+                        applyStatusStyle(cellAlteracaoStatus, item.alteracao_status);
 
                         tabela.appendChild(row);
                     });
                 })
                 .catch(error => console.error('Erro ao carregar funções:', error));
         } else {
-            document.querySelector('#tabela-obra tbody').innerHTML = ''; // Limpar tabela se nenhuma obra for selecionada
+            document.querySelector('#tabela-obra tbody').innerHTML = '';
+        }
+    });
+});
+
+function applyStatusStyle(cell, status) {
+    switch (status) {
+        case 'Finalizado':
+            cell.style.backgroundColor = 'green';
+            cell.style.color = 'white';
+            break;
+        case 'Em andamento':
+            cell.style.backgroundColor = 'orange';
+            cell.style.color = 'black';
+            break;
+        default:
+            cell.style.backgroundColor = '';
+            cell.style.color = '';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    // Função para calcular a diferença em dias entre duas datas
+    function daysBetween(date1, date2) {
+        const oneDay = 24 * 60 * 60 * 1000; // Número de milissegundos em um dia
+        return Math.round((date2 - date1) / oneDay);
+    }
+
+    // Seleciona todas as linhas da tabela
+    const rows = document.querySelectorAll('#tabelaClientes tbody tr');
+
+    rows.forEach(row => {
+        // Obtém a célula que contém a data do prazo estimado
+        const prazoCell = row.cells[5]; // A célula do prazo estimado está na 6ª coluna (índice 5)
+        const prazoEstimado = prazoCell.textContent;
+
+        if (prazoEstimado) {
+            // Converte o valor da célula para uma data
+            const prazoDate = new Date(prazoEstimado);
+            const currentDate = new Date();
+
+            // Calcula a diferença em dias
+            const daysRemaining = daysBetween(currentDate, prazoDate);
+
+            // Aplica o estilo com base na diferença de dias
+            if (daysRemaining <= 5) {
+                row.style.backgroundColor = 'red'; // Muda a cor do fundo para vermelho
+                row.style.color = 'white'; // Muda a cor do texto para branco
+                row.style.fontWeight = 'bold'; // Muda o peso da fonte para negrito
+            } else if (daysRemaining <= 10) {
+                row.style.backgroundColor = 'orange'; // Muda a cor do fundo para laranja
+                row.style.color = 'black'; // Muda a cor do texto para preto
+                row.style.fontWeight = 'bold'; // Muda o peso da fonte para negrito
+            } else if (daysRemaining <= 30) {
+                row.style.backgroundColor = 'yellow'; // Muda a cor do fundo para amarelo
+                row.style.color = 'black'; // Muda a cor do texto para preto
+                row.style.fontWeight = 'normal'; // Peso da fonte normal
+            } else {
+                // Se não se encaixa em nenhum dos critérios acima, usa o estilo padrão
+                row.style.backgroundColor = ''; // Cor padrão do fundo
+                row.style.color = ''; // Cor padrão do texto
+                row.style.fontWeight = ''; // Peso da fonte padrão
+            }
         }
     });
 });

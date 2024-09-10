@@ -32,31 +32,41 @@ document.addEventListener("DOMContentLoaded", function () {
                                     selectElement = document.getElementById("opcao_caderno");
                                     document.getElementById("status_caderno").value = funcao.status;
                                     document.getElementById("prazo_caderno").value = funcao.prazo;
+                                    document.getElementById("obs_caderno").value = funcao.observacao;
                                     break;
                                 case "Modelagem":
                                     selectElement = document.getElementById("opcao_model");
                                     document.getElementById("status_modelagem").value = funcao.status;
                                     document.getElementById("prazo_modelagem").value = funcao.prazo;
+                                    document.getElementById("obs_modelagem").value = funcao.observacao;
                                     break;
                                 case "Composição":
                                     selectElement = document.getElementById("opcao_comp");
                                     document.getElementById("status_comp").value = funcao.status;
                                     document.getElementById("prazo_comp").value = funcao.prazo;
+                                    document.getElementById("obs_comp").value = funcao.observacao;
+
                                     break;
                                 case "Finalização":
                                     selectElement = document.getElementById("opcao_final");
                                     document.getElementById("status_finalizacao").value = funcao.status;
                                     document.getElementById("prazo_finalizacao").value = funcao.prazo;
+                                    document.getElementById("obs_finalizacao").value = funcao.observacao;
+
                                     break;
                                 case "Pós-produção":
                                     selectElement = document.getElementById("opcao_pos");
                                     document.getElementById("status_pos").value = funcao.status;
                                     document.getElementById("prazo_pos").value = funcao.prazo;
+                                    document.getElementById("obs_pos").value = funcao.observacao;
+
                                     break;
                                 case "Alteração":
                                     selectElement = document.getElementById("opcao_alteracao");
                                     document.getElementById("status_alteracao").value = funcao.status;
                                     document.getElementById("prazo_alteracao").value = funcao.prazo;
+                                    document.getElementById("obs_alteracao").value = funcao.observacao;
+
                                     break;
                             }
                             if (selectElement) {
@@ -84,16 +94,22 @@ document.addEventListener("DOMContentLoaded", function () {
 
         document.getElementById("status_caderno").value = "";
         document.getElementById("prazo_caderno").value = "";
+        document.getElementById("obs_caderno").value = "";
         document.getElementById("status_modelagem").value = "";
         document.getElementById("prazo_modelagem").value = "";
+        document.getElementById("obs_modelagem").value = "";
         document.getElementById("status_comp").value = "";
         document.getElementById("prazo_comp").value = "";
+        document.getElementById("obs_comp").value = "";
         document.getElementById("status_finalizacao").value = "";
         document.getElementById("prazo_finalizacao").value = "";
+        document.getElementById("obs_finalizacao").value = "";
         document.getElementById("status_pos").value = "";
         document.getElementById("prazo_pos").value = "";
+        document.getElementById("obs_pos").value = "";
         document.getElementById("status_alteracao").value = "";
         document.getElementById("prazo_alteracao").value = "";
+        document.getElementById("obs_alteracao").value = "";
 
         document.getElementById("opcao_caderno").value = "";
         document.getElementById("opcao_model").value = "";
@@ -610,48 +626,48 @@ function applyStatusStyle(cell, status) {
     }
 }
 
-document.addEventListener('DOMContentLoaded', function () {
-    // Função para calcular a diferença em dias entre duas datas
-    function daysBetween(date1, date2) {
-        const oneDay = 24 * 60 * 60 * 1000; // Número de milissegundos em um dia
-        return Math.round((date2 - date1) / oneDay);
-    }
+// document.addEventListener('DOMContentLoaded', function () {
+//     // Função para calcular a diferença em dias entre duas datas
+//     function daysBetween(date1, date2) {
+//         const oneDay = 24 * 60 * 60 * 1000; // Número de milissegundos em um dia
+//         return Math.round((date2 - date1) / oneDay);
+//     }
 
-    // Seleciona todas as linhas da tabela
-    const rows = document.querySelectorAll('#tabelaClientes tbody tr');
+//     // Seleciona todas as linhas da tabela
+//     const rows = document.querySelectorAll('#tabelaClientes tbody tr');
 
-    rows.forEach(row => {
-        // Obtém a célula que contém a data do prazo estimado
-        const prazoCell = row.cells[5]; // A célula do prazo estimado está na 6ª coluna (índice 5)
-        const prazoEstimado = prazoCell.textContent;
+//     rows.forEach(row => {
+//         // Obtém a célula que contém a data do prazo estimado
+//         const prazoCell = row.cells[5]; // A célula do prazo estimado está na 6ª coluna (índice 5)
+//         const prazoEstimado = prazoCell.textContent;
 
-        if (prazoEstimado) {
-            // Converte o valor da célula para uma data
-            const prazoDate = new Date(prazoEstimado);
-            const currentDate = new Date();
+//         if (prazoEstimado) {
+//             // Converte o valor da célula para uma data
+//             const prazoDate = new Date(prazoEstimado);
+//             const currentDate = new Date();
 
-            // Calcula a diferença em dias
-            const daysRemaining = daysBetween(currentDate, prazoDate);
+//             // Calcula a diferença em dias
+//             const daysRemaining = daysBetween(currentDate, prazoDate);
 
-            // Aplica o estilo com base na diferença de dias
-            if (daysRemaining <= 5) {
-                row.style.backgroundColor = 'red'; // Muda a cor do fundo para vermelho
-                row.style.color = 'white'; // Muda a cor do texto para branco
-                row.style.fontWeight = 'bold'; // Muda o peso da fonte para negrito
-            } else if (daysRemaining <= 10) {
-                row.style.backgroundColor = 'orange'; // Muda a cor do fundo para laranja
-                row.style.color = 'black'; // Muda a cor do texto para preto
-                row.style.fontWeight = 'bold'; // Muda o peso da fonte para negrito
-            } else if (daysRemaining <= 30) {
-                row.style.backgroundColor = 'yellow'; // Muda a cor do fundo para amarelo
-                row.style.color = 'black'; // Muda a cor do texto para preto
-                row.style.fontWeight = 'normal'; // Peso da fonte normal
-            } else {
-                // Se não se encaixa em nenhum dos critérios acima, usa o estilo padrão
-                row.style.backgroundColor = ''; // Cor padrão do fundo
-                row.style.color = ''; // Cor padrão do texto
-                row.style.fontWeight = ''; // Peso da fonte padrão
-            }
-        }
-    });
-});
+//             // Aplica o estilo com base na diferença de dias
+//             if (daysRemaining <= 5) {
+//                 row.style.backgroundColor = 'red'; // Muda a cor do fundo para vermelho
+//                 row.style.color = 'white'; // Muda a cor do texto para branco
+//                 row.style.fontWeight = 'bold'; // Muda o peso da fonte para negrito
+//             } else if (daysRemaining <= 10) {
+//                 row.style.backgroundColor = 'orange'; // Muda a cor do fundo para laranja
+//                 row.style.color = 'black'; // Muda a cor do texto para preto
+//                 row.style.fontWeight = 'bold'; // Muda o peso da fonte para negrito
+//             } else if (daysRemaining <= 30) {
+//                 row.style.backgroundColor = 'yellow'; // Muda a cor do fundo para amarelo
+//                 row.style.color = 'black'; // Muda a cor do texto para preto
+//                 row.style.fontWeight = 'normal'; // Peso da fonte normal
+//             } else {
+//                 // Se não se encaixa em nenhum dos critérios acima, usa o estilo padrão
+//                 row.style.backgroundColor = ''; // Cor padrão do fundo
+//                 row.style.color = ''; // Cor padrão do texto
+//                 row.style.fontWeight = ''; // Peso da fonte padrão
+//             }
+//         }
+//     });
+// });

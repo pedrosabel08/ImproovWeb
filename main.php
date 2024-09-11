@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="./css/styleMain.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s" type="image/x-icon">
 
     <title>Tabela com imagens</title>
 </head>
@@ -327,6 +328,19 @@ $conn->close();
                         <input type="text" name="obs_alteracao" id="obs_alteracao" placeholder="Observação">
                     </div>
                     <div class="funcao">
+                        <p id="planta">Planta Humanizada</p>
+                        <select name="planta_id" id="opcao_planta">
+                            <?php foreach ($colaboradores as $colab): ?>
+                                <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                    <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <input type="text" name="status_planta" id="status_planta" placeholder="Status">
+                        <input type="date" name="prazo_planta" id="prazo_planta">
+                        <input type="text" name="obs_planta" id="obs_planta" placeholder="Observação">
+                    </div>
+                    <div class="funcao">
                         <p id="status">Status</p>
                         <select name="status_id" id="opcao_status">
                             <?php foreach ($status_imagens as $status): ?>
@@ -370,6 +384,7 @@ $conn->close();
                 <thead>
                     <tr>
                         <th id="nome">Nome da Imagem</th>
+                        <th>Função</th>
                         <th>Status</th>
                         <th>Prazo</th>
                     </tr>

@@ -6,12 +6,8 @@ function visualizarTabela() {
     window.location.href = 'main.php'
 }
 
-function adicionarCliente() {
-    window.location.href = 'addcliente.php'
-}
-
-function adicionarImagem() {
-    window.location.href = 'addimagem.php'
+function listaPos() {
+    window.location.href = 'listaPosProducao.php'
 }
 
 document.addEventListener('DOMContentLoaded', () => {

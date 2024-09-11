@@ -99,6 +99,29 @@ CREATE TABLE IF NOT EXISTS funcao_imagem (
     UNIQUE KEY unique_funcao_imagem (imagem_id, funcao_id)
 );
 
+-- -----------------------------------------------------
+-- Table `improov`.`pos_producao`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS pos_producao (
+	idpos_producao INT AUTO_INCREMENT PRIMARY KEY,
+    colaborador_id INT NOT NULL,
+    cliente_id INT NOT NULL,
+    obra_id INT NOT NULL,
+    data_pos DATE,
+    imagem_id INT NOT NULL, 
+    caminho_pasta VARCHAR(250),
+    numero_bg VARCHAR(50),
+    refs VARCHAR(100),
+    obs VARCHAR(100),
+    status_pos BOOLEAN,
+    status_id INT,
+	FOREIGN KEY (imagem_id) REFERENCES imagens_cliente_obra(idimagens_cliente_obra),
+    FOREIGN KEY (colaborador_id) REFERENCES colaborador(idcolaborador),
+    FOREIGN KEY (cliente_id) REFERENCES cliente (idcliente),
+    FOREIGN KEY (obra_id) REFERENCES obra (idobra),
+    FOREIGN KEY (status_id) REFERENCES status_imagem (idstatus)
+);
+
 INSERT INTO funcao (nome_funcao) VALUES ('Caderno');
 INSERT INTO funcao (nome_funcao) VALUES ('Modelagem');
 INSERT INTO funcao (nome_funcao) VALUES ('Composição');

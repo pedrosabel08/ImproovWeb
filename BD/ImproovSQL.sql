@@ -404,9 +404,34 @@ INSERT INTO imagens_cliente_obra (cliente_id, obra_id, imagem_nome, recebimento_
 	(7, 7, '29. DOM_MOR PLANTA HUMANIZADA DO 1º PAVIMENTO TORRE A JUNTAMENTE COM O 2º PAVIMENTO TORRE B', '2024-09-06', '2024-09-06', '2024-09-06'),
 	(7, 7, '30. DOM_MOR PLANTA HUMANIZADA DO 2º PAVIMENTO TORRE A JUNTAMENTE COM O 3º PAVIMENTO TORRE B', '2024-09-06', '2024-09-06', '2024-09-06'),
 	(7, 7, '31. DOM_MOR PLANTA HUMANIZADA DO 3º PAVIMENTO TORRE A JUNTAMENTE COM O MEZANINO TORRE B', '2024-09-06', '2024-09-06', '2024-09-06'),
-	(7, 7, '32. DOM_MOR PLANTA HUMANIZADA DO PAVIMENTO DAS COBERTURAS DAS TORRES A E B', '2024-09-06', '2024-09-06', '2024-09-06');
-
-
+	(7, 7, '32. DOM_MOR PLANTA HUMANIZADA DO PAVIMENTO DAS COBERTURAS DAS TORRES A E B', '2024-09-06', '2024-09-06', '2024-09-06'),
+	(13, 17, '1. FG_TRI Fachada no angulo do observador de baixo - Diurna', '2024-09-11', '2024-09-11', '2024-10-23', 'Fachada'),
+	(13, 17, '2. FG_TRI Fotomontagem aérea com fachada vista da BR 101', '2024-09-11', '2024-09-11', '2024-10-23', 'Fachada'),
+	(13, 17, '3. FG_TRI Fotomontagem aérea de topo noturna', '2024-09-11', '2024-09-11', '2024-10-23', 'Fachada'),
+	(13, 17, '4. FG_TRI Fotomontagem aérea de topo diurna', '2024-09-11', '2024-09-11', '2024-10-23', 'Fachada'),
+	(13, 17, '5. FG_TRI Fotomontagem aérea com fachada vista da praia sentido norte - Sunset', '2024-09-11', '2024-09-11', '2024-10-23', 'Fachada'),
+	(13, 17, '6. FG_TRI Fachada no angulo do observador de baixo - Sunset', '2024-09-11', '2024-09-11', '2024-10-23', 'Fachada'),
+	(13, 17, '7. FG_TRI Fotomontagem aérea com fachada vista da praia sentido norte - Diurna', '2024-09-11', '2024-09-11', '2024-10-23', 'Fachada'),
+	(13, 17, '8. FG_TRI Aérea do lazer de topo - Lazer 1 posterior', '2024-09-11', '2024-09-11', '2024-10-23', 'Imagem externa'),
+	(13, 17, '9. FG_TRI Quadra', '2024-09-11', '2024-09-11', '2024-10-23', 'Imagem externa'),
+	(13, 17, '10. FG_TRI Pet place', '2024-09-11', '2024-09-11', '2024-10-23', 'Imagem externa'),
+	(13, 17, '11. FG_TRI Fire place', '2024-09-11', '2024-09-11', '2024-10-23', 'Imagem externa'),
+	(13, 17, '12. FG_TRI Caminhos angulo 1', '2024-09-11', '2024-09-11', '2024-10-23', 'Imagem externa'),
+	(13, 17, '13. FG_TRI Caminhos angulo 2', '2024-09-11', '2024-09-11', '2024-10-23', 'Imagem externa'),
+	(13, 17, '14. FG_TRI Caminhos angulo 3', '2024-09-11', '2024-09-11', '2024-10-23', 'Imagem externa'),
+	(13, 17, '15. FG_TRI Bar - Lazer 1 posterior', '2024-09-11', '2024-09-11', '2024-10-23', 'Imagem externa'),
+	(13, 17, '16. FG_TRI Piscina ângulo 1 - Lazer 1 frente mar', '2024-09-11', '2024-09-11', '2024-10-23', 'Imagem externa'),
+	(13, 17, '17. FG_TRI Piscina ângulo 2 - Lazer 1 frente mar', '2024-09-11', '2024-09-11', '2024-10-23', 'Imagem externa'),
+	(13, 17, '18. FG_TRI Piscina ângulo 3 - Lazer 1 frente mar', '2024-09-11', '2024-09-11', '2024-10-23', 'Imagem externa'),
+	(13, 17, '19. FG_TRI Estar da piscina - Lazer 1 frente mar', '2024-09-11', '2024-09-11', '2024-10-23', 'Imagem externa'),
+	(13, 17, '20. FG_TRI Estar da piscina - Lazer 1 frente mar', '2024-09-11', '2024-09-11', '2024-10-23', 'Imagem externa'),
+	(13, 17, '21. FG_TRI Bar da piscina - Lazer 1 frente mar', '2024-09-11', '2024-09-11', '2024-10-23', 'Imagem externa'),
+	(13, 17, '22. FG_TRI Piscina ângulo 1 - Lazer 2', '2024-09-11', '2024-09-11', '2024-10-23', 'Imagem externa'),
+	(13, 17, '23. FG_TRI Piscina ângulo 2 - Lazer 2', '2024-09-11', '2024-09-11', '2024-10-23', 'Imagem externa'),
+	(13, 17, '24. FG_TRI Estar da piscina ângulo 1 - Lazer 2', '2024-09-11', '2024-09-11', '2024-10-23', 'Imagem externa'),
+	(13, 17, '25. FG_TRI Estar da piscina ângulo 2 - Lazer 2', '2024-09-11', '2024-09-11', '2024-10-23', 'Imagem externa'),
+	(13, 17, '26. FG_TRI Estar da piscina ângulo 3 - Lazer 2', '2024-09-11', '2024-09-11', '2024-10-23', 'Imagem externa'),
+	(13, 17, '27. FG_TRI Estar da piscina ângulo 4 - Lazer 2', '2024-09-11', '2024-09-11', '2024-10-23', 'Imagem externa');
 
 	    RETURN 1;
     END//
@@ -417,6 +442,10 @@ INSERT INTO imagens_cliente_obra (cliente_id, obra_id, imagem_nome, recebimento_
 ADD CONSTRAINT status_imagem
 FOREIGN KEY (status_id)
 REFERENCES status_imagem (idstatus);
+    
+    
+    
+    
     
 select improov.inserir_colaborador();
 select improov.inserir_clientes();

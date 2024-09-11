@@ -17,7 +17,7 @@ document.addEventListener("DOMContentLoaded", function () {
             $.ajax({
                 type: "GET",
                 dataType: "json",
-                url: "http://localhost:8066/ImproovWeb/buscaLinhaAJAX.php",
+                url: "http://192.168.0.202:8066/ImproovWeb/buscaLinhaAJAX.php",
                 data: { ajid: idImagemSelecionada },
                 success: function (response) {
                     if (response.nome_imagem) {
@@ -68,6 +68,14 @@ document.addEventListener("DOMContentLoaded", function () {
                                     document.getElementById("obs_alteracao").value = funcao.observacao;
 
                                     break;
+
+                                case "Planta Humanizada":
+                                    selectElement = document.getElementById("opcao_planta");
+                                    document.getElementById("status_planta").value = funcao.status;
+                                    document.getElementById("prazo_planta").value = funcao.prazo;
+                                    document.getElementById("obs_planta").value = funcao.observacao;
+
+                                    break;
                             }
                             if (selectElement) {
                                 selectElement.value = funcao.colaborador_id;
@@ -110,6 +118,9 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById("status_alteracao").value = "";
         document.getElementById("prazo_alteracao").value = "";
         document.getElementById("obs_alteracao").value = "";
+        document.getElementById("status_planta").value = "";
+        document.getElementById("prazo_planta").value = "";
+        document.getElementById("obs_planta").value = "";
 
         document.getElementById("opcao_caderno").value = "";
         document.getElementById("opcao_model").value = "";
@@ -117,6 +128,7 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById("opcao_final").value = "";
         document.getElementById("opcao_pos").value = "";
         document.getElementById("opcao_alteracao").value = "";
+        document.getElementById("opcao_planta").value = "";
         document.getElementById("opcao_status").value = "";
     }
 
@@ -124,7 +136,7 @@ document.addEventListener("DOMContentLoaded", function () {
         $.ajax({
             type: "GET",
             dataType: "json",
-            url: "http://localhost:8066/ImproovWeb/buscaNomeImagem.php",
+            url: "http://192.168.0.202:8066/ImproovWeb/buscaNomeImagem.php",
             data: { ajid: idImagem },
             success: function (response) {
                 if (response.imagem_nome !== undefined && response.status_id !== undefined) {
@@ -224,13 +236,17 @@ document.addEventListener("DOMContentLoaded", function () {
             status_alteracao: document.getElementById("status_alteracao").value || "",
             prazo_alteracao: document.getElementById("prazo_alteracao").value || "",
             obs_alteracao: document.getElementById("obs_alteracao").value || "",
+            planta_id: document.getElementById("opcao_planta").value || "",
+            status_planta: document.getElementById("status_planta").value || "",
+            prazo_planta: document.getElementById("prazo_planta").value || "",
+            obs_planta: document.getElementById("obs_planta").value || "",
             textos: textos,
             status_id: document.getElementById("opcao_status").value || ""
         };
 
         $.ajax({
             type: "POST",
-            url: "http://localhost:8066/ImproovWeb/insereFuncao.php",
+            url: "http://192.168.0.202:8066/ImproovWeb/insereFuncao.php",
             data: dados,
             success: function (response) {
                 console.log(response);
@@ -512,10 +528,13 @@ document.addEventListener('DOMContentLoaded', function () {
                         var row = document.createElement('tr');
                         var cellNomeImagem = document.createElement('td');
                         cellNomeImagem.textContent = item.imagem_nome;
+                        var cellFuncao = document.createElement('td');
+                        cellFuncao.textContent = item.funcao;
                         var cellStatus = document.createElement('td');
                         cellStatus.textContent = item.status;
                         var cellPrazoImagem = document.createElement('td');
                         cellPrazoImagem.textContent = item.prazo;
+
 
                         row.appendChild(cellNomeImagem);
                         row.appendChild(cellStatus);

@@ -17,19 +17,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $numero_bg = $_POST['numero_bg'];
     $refs = $_POST['refs'];
     $obs = $_POST['obs'];
-    $status_pos = 1; // Aqui você pode definir o status como '1' ou deixar que o usuário escolha
+    $status_pos = isset($_POST['status_pos']) ? 0 : 1; // Define status_pos com base no checkbox
     $status_id = $_POST['status_id'];
 
-    // Inserir os dados na tabela
-    $stmt = $conn->prepare("INSERT INTO pos_producao (colaborador_id, cliente_id, obra_id, data_pos, imagem_id, caminho_pasta, numero_bg, refs, obs, status_pos, status_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    $stmt->bind_param("iiisissssii", $colaborador_id, $cliente_id, $obra_id, $data_pos, $imagem_id, $caminho_pasta, $numero_bg, $refs, $obs, $status_pos, $status_id);
+    // Inserir ou atualizar dados
+    $sql = "INSERT INTO pos_producao (colaborador_id, cliente_id, obra_id, data_pos, imagem_id, caminho_pasta, numero_bg, refs, obs, status_pos, status_id) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE
+                colaborador_id = VALUES(colaborador_id),
+                cliente_id = VALUES(cliente_id),
+                obra_id = VALUES(obra_id),
+                data_pos = VALUES(data_pos),
+                caminho_pasta = VALUES(caminho_pasta),
+                numero_bg = VALUES(numero_bg),
+                refs = VALUES(refs),
+                obs = VALUES(obs),
+                status_pos = VALUES(status_pos),
+                status_id = VALUES(status_id)";
+
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("iiissssssii", $colaborador_id, $cliente_id, $obra_id, $data_pos, $imagem_id, $caminho_pasta, $numero_bg, $refs, $obs, $status_pos, $status_id);
 
     if ($stmt->execute()) {
-        echo "Dados inseridos com sucesso!";
+        echo "Dados inseridos ou atualizados com sucesso!";
     } else {
-        echo "Erro ao inserir dados: " . $conn->error;
+        echo "Erro ao inserir ou atualizar dados: " . $conn->error;
     }
 
     $stmt->close();
     $conn->close();
 }
+?>

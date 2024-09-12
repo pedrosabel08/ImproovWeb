@@ -79,7 +79,6 @@ if ($result_status->num_rows > 0) {
                 </tr>
             </thead>
             <tbody id="lista-imagens">
-   
             </tbody>
         </table>
     </div>
@@ -152,7 +151,7 @@ if ($result_status->num_rows > 0) {
                     </div>
 
                     <div>
-                        <label for="status">Status</label>
+                        <label for="status">Revisão</label>
                         <select name="status_id" id="opcao_status">
                             <?php foreach ($status_imagens as $status): ?>
                                 <option value="<?= htmlspecialchars($status['idstatus']); ?>">
@@ -163,13 +162,21 @@ if ($result_status->num_rows > 0) {
                     </div>
 
                     <div>
+                        <label for="status_pos">Status</label>
+                        <input type="checkbox" name="status_pos" id="status_pos" disabled>
+                    </div>
+
+                    <div>
                         <button type="submit">Enviar</button>
                     </div>
                 </form>
             </div>
 
+
+
             <script src="../script/scriptPos.js"></script>
             <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+            <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
 </body>
 

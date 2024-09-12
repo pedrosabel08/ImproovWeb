@@ -21,8 +21,8 @@ window.onclick = function (event) {
     }
 }
 
-function buscarImagens() {
-    var obraId = document.getElementById('opcao_obra').value;
+function buscarImagens(obraId = null, imagemSelecionada = null) {
+    obraId = obraId || document.getElementById('opcao_obra').value;
 
     if (obraId) {
         // Faz uma requisição AJAX para buscar as imagens da obra selecionada
@@ -31,6 +31,17 @@ function buscarImagens() {
         xhr.onreadystatechange = function () {
             if (xhr.readyState == 4 && xhr.status == 200) {
                 document.getElementById('nomeImagem').innerHTML = xhr.responseText;
+
+                // Se uma imagem já estiver selecionada, marcá-la como escolhida
+                if (imagemSelecionada) {
+                    var options = document.getElementById('nomeImagem').options;
+                    for (var i = 0; i < options.length; i++) {
+                        if (options[i].text === imagemSelecionada) {
+                            options[i].selected = true;
+                            break;
+                        }
+                    }
+                }
             }
         };
         xhr.send();
@@ -83,6 +94,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     const tr = document.createElement('tr');
                     tr.classList.add('linha-tabela');
                     tr.setAttribute('data-id', imagem.idpos_producao);
+                    tr.setAttribute('data-obra-id', imagem.idobra); // Adiciona o data-obra-id para uso posterior
 
                     // Verifica o status_pos e define o texto e a cor de fundo apropriada
                     let statusTexto = imagem.status_pos == 1 ? 'Não começou' : 'Finalizado';
@@ -106,10 +118,86 @@ document.addEventListener("DOMContentLoaded", function () {
                     // Adiciona a linha à tabela
                     tabela.appendChild(tr);
                 });
+
+                // Adiciona o evento de clique às linhas
+                const linhasTabela = document.querySelectorAll('.linha-tabela');
+                linhasTabela.forEach(linha => {
+                    linha.addEventListener('click', function () {
+                        modal.style.display = "flex";
+                        linhasTabela.forEach(outro => {
+                            outro.classList.remove('selecionada');
+                        });
+
+                        this.classList.add('selecionada');
+
+                        var idImagemSelecionada = this.getAttribute('data-id');
+
+                        $.ajax({
+                            type: "GET",
+                            dataType: "json",
+                            url: "http://localhost:8066/ImproovWeb/Pos-Producao/buscaAJAX.php",
+                            data: { ajid: idImagemSelecionada },
+                            success: function (response) {
+                                if (response.length > 0) {
+                                    setSelectValue('opcao_finalizador', response[0].nome_colaborador);
+                                    setSelectValue('opcao_cliente', response[0].nome_cliente);
+                                    setSelectValue('opcao_obra', response[0].nome_obra);
+
+                                    carregarImagem(response[0].idobra, response[0].imagem_nome);
+
+                                    document.getElementById('caminhoPasta').value = response[0].caminho_pasta;
+                                    document.getElementById('numeroBG').value = response[0].numero_bg;
+                                    document.getElementById('referenciasCaminho').value = response[0].refs;
+                                    document.getElementById('observacao').value = response[0].obs;
+                                    setSelectValue('opcao_status', response[0].status_pos);
+
+                                    // Atualiza o checkbox com base no status_pos
+                                    const checkboxStatusPos = document.getElementById('status_pos');
+                                    checkboxStatusPos.checked = response[0].status_pos == 0; // Marcar o checkbox se status_pos for 0
+                                    checkboxStatusPos.disabled = false; // Habilita o checkbox
+                                } else {
+                                    console.log("Nenhum produto encontrado.");
+                                }
+                            },
+                            error: function (jqXHR, textStatus, errorThrown) {
+                                console.error("Erro na requisição AJAX: " + textStatus, errorThrown);
+                            }
+                        });
+                    });
+                });
             })
             .catch(error => console.error('Erro ao atualizar a tabela:', error));
     }
 
-    // Atualiza a tabela a cada 1000 ms (1 segundo)
+    // Chama a função para atualizar a tabela quando a página carrega
+    atualizarTabela();
+
+    // Desabilita o checkbox quando o formulário é enviado
+    document.getElementById('formPosProducao').addEventListener('submit', function () {
+        document.getElementById('status_pos').disabled = true;
+    });
+    function carregarImagem(obraId, nomeImagem) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', 'buscar_imagens.php?obra_id=' + obraId + '&nome_imagem=' + nomeImagem, true);
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState == 4 && xhr.status == 200) {
+                document.getElementById('nomeImagem').innerHTML = xhr.responseText;
+            }
+        };
+        xhr.send();
+    }
+
+    function setSelectValue(selectId, valueToSelect) {
+        var selectElement = document.getElementById(selectId);
+        var options = selectElement.options;
+
+        for (var i = 0; i < options.length; i++) {
+            if (options[i].text === valueToSelect) {
+                selectElement.selectedIndex = i;
+                break;
+            }
+        }
+    }
+
     setInterval(atualizarTabela, 1000);
 });

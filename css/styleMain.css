@@ -253,8 +253,14 @@ table#tabela-obra {
     width: 90%;
 }
 
+table#tabela-follow {
+    border-collapse: collapse;
+    width: 90%;
+}
+
 #filtro-obra,
-#filtro-colab {
+#filtro-colab,
+#follow-up {
     display: none;
     flex-direction: column;
     justify-content: center;

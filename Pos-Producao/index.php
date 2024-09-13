@@ -40,9 +40,6 @@ if ($result_status->num_rows > 0) {
         $status_imagens[] = $row;
     }
 }
-<<<<<<< HEAD
-<<<<<<< Updated upstream
-=======
 
 $sql_imagens = "SELECT idimagens_cliente_obra, imagem_nome FROM imagens_cliente_obra";
 $result_imagens = $conn->query($sql_imagens);
@@ -52,9 +49,6 @@ if ($result_imagens->num_rows > 0) {
         $imagens[] = $row;
     }
 }
->>>>>>> Stashed changes
-=======
->>>>>>> 5dde4bcad78bce744049ee670db560869e425496
 ?>
 
 <!DOCTYPE html>
@@ -71,23 +65,12 @@ if ($result_imagens->num_rows > 0) {
 
 <body>
     <header>
-<<<<<<< HEAD
-<<<<<<< Updated upstream
-        <button id="voltar" onclick="window.location.href='index.html'">Voltar</button>
-=======
         <button id="voltar" onclick="window.location.href='../index.html'">Voltar</button>
->>>>>>> Stashed changes
-=======
-        <button id="voltar" onclick="window.location.href='index.html'">Voltar</button>
->>>>>>> 5dde4bcad78bce744049ee670db560869e425496
         <h1>Lista Pós-Produção</h1>
         <button id="openModalBtn">Inserir render</button>
     </header>
 
     <div>
-<<<<<<< HEAD
-<<<<<<< Updated upstream
-=======
         <p>Filtro de tabela</p>
         <label for="colunaFiltro">Filtrar por:</label>
         <select id="colunaFiltro">
@@ -106,9 +89,6 @@ if ($result_imagens->num_rows > 0) {
 
         <input type="text" id="filtro" placeholder="Digite para filtrar" onkeyup="filtrarTabela()">
 
->>>>>>> Stashed changes
-=======
->>>>>>> 5dde4bcad78bce744049ee670db560869e425496
         <table>
             <thead>
                 <tr>
@@ -171,12 +151,6 @@ if ($result_imagens->num_rows > 0) {
                     </div>
 
                     <div>
-<<<<<<< HEAD
-<<<<<<< Updated upstream
-                        <label for="nomeImagem">Nome Imagem</label>
-                        <select id="nomeImagem" name="imagem_id" required>
-                            <option value="">Selecione uma obra primeiro</option>
-=======
                         <label for="imagem_id">Nome Imagem</label>
                         <select id="imagem_id" name="imagem_id" required>
                             <option value="">Selecione uma obra primeiro</option>
@@ -185,13 +159,6 @@ if ($result_imagens->num_rows > 0) {
                                     <?= htmlspecialchars($imagem['imagem_nome']); ?>
                                 </option>
                             <?php endforeach; ?>
->>>>>>> Stashed changes
-=======
-                        <label for="nomeImagem">Nome Imagem</label>
-                        <select id="nomeImagem" name="imagem_id" required>
-                            <option value="">Selecione uma obra primeiro</option>
->>>>>>> 5dde4bcad78bce744049ee670db560869e425496
-                        </select>
                     </div>
 
                     <div>

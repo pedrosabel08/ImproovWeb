@@ -309,6 +309,7 @@ function openModal(modalId, element) {
     closeModal('tabela-form');
     closeModal('filtro-colab');
     closeModal('filtro-obra');
+    closeModal('follow-up');
 
     if (modalId) {
         document.getElementById(modalId).style.display = 'flex';
@@ -331,6 +332,7 @@ function openModalClass(modalClass, element) {
     closeModal('tabela-form');
     closeModal('filtro-colab');
     closeModal('filtro-obra');
+    closeModal('follow-up');
 
     if (modalClass) {
         var modal = document.querySelector('.' + modalClass);
@@ -627,6 +629,64 @@ document.addEventListener('DOMContentLoaded', function () {
             document.querySelector('#tabela-obra tbody').innerHTML = '';
         }
     });
+
+
+    document.getElementById('obra-follow').addEventListener('change', function () {
+        var obraId = this.value;
+
+        if (obraId) {
+            fetch('followup.php?obra_id=' + obraId)
+                .then(response => response.json())
+                .then(data => {
+                    var tabela = document.querySelector('#tabela-follow tbody');
+                    tabela.innerHTML = '';
+
+                    data.forEach(function (item) {
+                        var row = document.createElement('tr');
+
+                        var cellNomeImagem = document.createElement('td');
+                        cellNomeImagem.textContent = item.imagem_nome;
+                        row.appendChild(cellNomeImagem);
+
+                        var cellStatusImagem = document.createElement('td');
+                        cellStatusImagem.textContent = item.imagem_status;
+                        row.appendChild(cellStatusImagem)
+                        applyStatusImagem(cellStatusImagem, item.imagem_status)
+
+                        var cellCadernoStatus = document.createElement('td');
+                        cellCadernoStatus.textContent = item.caderno_status || '-';
+                        row.appendChild(cellCadernoStatus);
+
+                        var cellModelagemStatus = document.createElement('td');
+                        cellModelagemStatus.textContent = item.modelagem_status || '-';
+                        row.appendChild(cellModelagemStatus);
+
+                        var cellComposicaoStatus = document.createElement('td');
+                        cellComposicaoStatus.textContent = item.composicao_status || '-';
+                        row.appendChild(cellComposicaoStatus);
+
+                        var cellFinalizacaoStatus = document.createElement('td');
+                        cellFinalizacaoStatus.textContent = item.finalizacao_status || '-';
+                        row.appendChild(cellFinalizacaoStatus);
+
+                        var cellPosProducaoStatus = document.createElement('td');
+                        cellPosProducaoStatus.textContent = item.pos_producao_status || '-';
+                        row.appendChild(cellPosProducaoStatus);
+
+                        var cellAlteracaoStatus = document.createElement('td');
+                        cellAlteracaoStatus.textContent = item.alteracao_status || '-';
+                        row.appendChild(cellAlteracaoStatus);
+
+                        tabela.appendChild(row);
+                    });
+                })
+                .catch(error => console.error('Erro ao carregar funções:', error));
+        } else {
+            document.querySelector('#tabela-obra tbody').innerHTML = '';
+        }
+    });
+
+
 });
 
 function applyStatusStyle(cell, status) {
@@ -642,6 +702,29 @@ function applyStatusStyle(cell, status) {
         default:
             cell.style.backgroundColor = '';
             cell.style.color = '';
+    }
+}
+
+function applyStatusImagem(cell, status) {
+    switch (status) {
+        case 'P00':
+            cell.style.backgroundColor = '#ffc21c'
+            break;
+        case 'R00':
+            cell.style.backgroundColor = '#1cf4ff'
+            break;
+        case 'R01':
+            cell.style.backgroundColor = '#ff6200'
+            break;
+        case 'R02':
+            cell.style.backgroundColor = '#ff3c00'
+            break;
+        case 'R03':
+            cell.style.backgroundColor = '#ff0000'
+            break;
+        case 'EF':
+            cell.style.backgroundColor = '#0dff00'
+            break;
     }
 }
 

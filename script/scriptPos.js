@@ -191,7 +191,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
 function filtrarTabela() {
     var indiceColuna = document.getElementById("colunaFiltro").value;
-    var filtro = document.getElementById("filtro").value.toLowerCase();
+    var filtro = document.getElementById("filtro-input").value.toLowerCase();
     var tabela = document.querySelector('#lista-imagens');
     var linhas = tabela.getElementsByTagName('tr');
 

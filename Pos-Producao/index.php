@@ -70,8 +70,7 @@ if ($result_imagens->num_rows > 0) {
         <button id="openModalBtn">Inserir render</button>
     </header>
 
-    <div>
-        <p>Filtro de tabela</p>
+    <div id="filtro">
         <label for="colunaFiltro">Filtrar por:</label>
         <select id="colunaFiltro">
             <option value="0">Nome Finalizador</option>
@@ -87,7 +86,7 @@ if ($result_imagens->num_rows > 0) {
             <option value="10">Revisão</option>
         </select>
 
-        <input type="text" id="filtro" placeholder="Digite para filtrar" onkeyup="filtrarTabela()">
+        <input type="text" id="filtro-input" placeholder="Digite para filtrar" onkeyup="filtrarTabela()">
 
         <table>
             <thead>

@@ -16,11 +16,16 @@ a {
     cursor: pointer;
 }
 
+<<<<<<< HEAD
 <<<<<<< Updated upstream
 
 
 =======
 >>>>>>> Stashed changes
+=======
+
+
+>>>>>>> 5dde4bcad78bce744049ee670db560869e425496
 header {
     display: flex;
     justify-content: space-around;

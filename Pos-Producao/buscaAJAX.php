@@ -1,10 +1,13 @@
 <?php
+<<<<<<< HEAD
 <<<<<<< Updated upstream
 =======
 header("Access-Control-Allow-Origin: *"); // Allows all domains
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS"); // Allow specific methods
 header("Access-Control-Allow-Headers: Content-Type");
 >>>>>>> Stashed changes
+=======
+>>>>>>> 5dde4bcad78bce744049ee670db560869e425496
 $conn = new mysqli('192.168.0.202', 'admin', 'admin', 'improov');
 
 // Verificar a conexão

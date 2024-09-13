@@ -6,11 +6,15 @@ if ($conn->connect_error) {
     die("Falha na conexão: " . $conn->connect_error);
 }
 
+<<<<<<< HEAD
 <<<<<<< Updated upstream
+=======
+>>>>>>> 5dde4bcad78bce744049ee670db560869e425496
 if (isset($_GET['obra_id'])) {
     $obra_id = intval($_GET['obra_id']);
 
     // Consulta para buscar as imagens associadas à obra
+<<<<<<< HEAD
 =======
 // Verifica se o ID da obra e o ID da imagem foram passados
 $obra_id = isset($_GET['obra_id']) ? intval($_GET['obra_id']) : null;
@@ -31,13 +35,18 @@ if ($id_imagem) {
     // Se apenas o obra_id foi fornecido, busca todas as imagens da obra
     echo "Buscando imagens da obra com obra_id: " . $obra_id . "<br>";
 >>>>>>> Stashed changes
+=======
+>>>>>>> 5dde4bcad78bce744049ee670db560869e425496
     $sql = "SELECT idimagens_cliente_obra, imagem_nome 
             FROM imagens_cliente_obra 
             WHERE obra_id = ?";
 
     $stmt = $conn->prepare($sql);
     $stmt->bind_param('i', $obra_id);
+<<<<<<< HEAD
 <<<<<<< Updated upstream
+=======
+>>>>>>> 5dde4bcad78bce744049ee670db560869e425496
     $stmt->execute();
     $result = $stmt->get_result();
 
@@ -53,6 +62,7 @@ if ($id_imagem) {
     $stmt->close();
 }
 
+<<<<<<< HEAD
 =======
 } else {
     echo '<option value="">Nenhum parâmetro fornecido</option>';
@@ -73,4 +83,6 @@ if ($result->num_rows > 0) {
 
 $stmt->close();
 >>>>>>> Stashed changes
+=======
+>>>>>>> 5dde4bcad78bce744049ee670db560869e425496
 $conn->close();

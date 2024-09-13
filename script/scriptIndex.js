@@ -7,7 +7,7 @@ function visualizarTabela() {
 }
 
 function listaPos() {
-    window.location.href = 'listaPosProducao.php'
+    window.location.href = 'Pos-Producao/index.php'
 }
 
 document.addEventListener('DOMContentLoaded', () => {

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 <<<<<<< Updated upstream
 =======
 <<<<<<< Updated upstream
@@ -5,6 +6,8 @@
 <<<<<<< Updated upstream
 =======
 >>>>>>> Stashed changes
+=======
+>>>>>>> 5dde4bcad78bce744049ee670db560869e425496
 // Seleciona o modal, botão e o botão de fechar
 var modal = document.getElementById("modal");
 var openModalBtn = document.getElementById("openModalBtn");
@@ -59,7 +62,10 @@ function buscarImagens(obraId = null, imagemSelecionada = null) {
 
 document.getElementById('opcao_obra').addEventListener('change', buscarImagens);
 
+<<<<<<< HEAD
 <<<<<<< Updated upstream
+=======
+>>>>>>> 5dde4bcad78bce744049ee670db560869e425496
 formPosProducao.addEventListener('submit', function (e) {
     e.preventDefault();
 
@@ -90,6 +96,7 @@ formPosProducao.addEventListener('submit', function (e) {
 });
 
 document.addEventListener("DOMContentLoaded", function () {
+<<<<<<< HEAD
 =======
 
 document.addEventListener("DOMContentLoaded", function () {
@@ -124,6 +131,8 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
 >>>>>>> Stashed changes
+=======
+>>>>>>> 5dde4bcad78bce744049ee670db560869e425496
     function atualizarTabela() {
         fetch('atualizar_tabela.php') // Caminho para o seu script PHP
             .then(response => response.json())
@@ -184,6 +193,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                     setSelectValue('opcao_finalizador', response[0].nome_colaborador);
                                     setSelectValue('opcao_cliente', response[0].nome_cliente);
                                     setSelectValue('opcao_obra', response[0].nome_obra);
+<<<<<<< HEAD
 <<<<<<< Updated upstream
 
                                     carregarImagem(response[0].idobra, response[0].imagem_nome);
@@ -191,22 +201,33 @@ document.addEventListener("DOMContentLoaded", function () {
 =======
                                     setSelectValue('imagem_id', response[0].imagem_nome);
 >>>>>>> Stashed changes
+=======
+
+                                    carregarImagem(response[0].idobra, response[0].imagem_nome);
+
+>>>>>>> 5dde4bcad78bce744049ee670db560869e425496
                                     document.getElementById('caminhoPasta').value = response[0].caminho_pasta;
                                     document.getElementById('numeroBG').value = response[0].numero_bg;
                                     document.getElementById('referenciasCaminho').value = response[0].refs;
                                     document.getElementById('observacao').value = response[0].obs;
                                     setSelectValue('opcao_status', response[0].status_pos);
 
+<<<<<<< HEAD
 <<<<<<< Updated upstream
+=======
+>>>>>>> 5dde4bcad78bce744049ee670db560869e425496
                                     // Atualiza o checkbox com base no status_pos
                                     const checkboxStatusPos = document.getElementById('status_pos');
                                     checkboxStatusPos.checked = response[0].status_pos == 0; // Marcar o checkbox se status_pos for 0
                                     checkboxStatusPos.disabled = false; // Habilita o checkbox
+<<<<<<< HEAD
 =======
                                     const checkboxStatusPos = document.getElementById('status_pos');
                                     checkboxStatusPos.checked = response[0].status_pos == 0;
                                     checkboxStatusPos.disabled = false;
 >>>>>>> Stashed changes
+=======
+>>>>>>> 5dde4bcad78bce744049ee670db560869e425496
                                 } else {
                                     console.log("Nenhum produto encontrado.");
                                 }
@@ -221,7 +242,10 @@ document.addEventListener("DOMContentLoaded", function () {
             .catch(error => console.error('Erro ao atualizar a tabela:', error));
     }
 
+<<<<<<< HEAD
 <<<<<<< Updated upstream
+=======
+>>>>>>> 5dde4bcad78bce744049ee670db560869e425496
     // Chama a função para atualizar a tabela quando a página carrega
     atualizarTabela();
 
@@ -239,6 +263,7 @@ document.addEventListener("DOMContentLoaded", function () {
         };
         xhr.send();
     }
+<<<<<<< HEAD
 =======
     atualizarTabela();
 
@@ -247,6 +272,8 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
 >>>>>>> Stashed changes
+=======
+>>>>>>> 5dde4bcad78bce744049ee670db560869e425496
 
     function setSelectValue(selectId, valueToSelect) {
         var selectElement = document.getElementById(selectId);
@@ -260,6 +287,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
+<<<<<<< HEAD
 <<<<<<< Updated upstream
     setInterval(atualizarTabela, 1000);
 });
@@ -293,3 +321,7 @@ function filtrarTabela() {
 >>>>>>> Stashed changes
 >>>>>>> Stashed changes
 >>>>>>> Stashed changes
+=======
+    setInterval(atualizarTabela, 1000);
+});
+>>>>>>> 5dde4bcad78bce744049ee670db560869e425496

@@ -41,10 +41,22 @@ header button#openModalBtn {
     font-weight: bold;
 }
 
+#filtro {
+    padding: 50px;
+}
+
+#filtro select,
+#filtro input {
+    width: 300px;
+    font-size: 16px;
+    padding: 5px;
+}
+
+
 table {
     border-collapse: collapse;
-    width: 90%;
-    margin: 0 auto;
+    width: 100%;
+    margin: 20px auto;
 }
 
 td,

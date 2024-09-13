@@ -100,13 +100,14 @@ section.tabela-form {
 }
 
 .tabelaClientes {
+    margin-top: 15px;
     height: 50vh;
     overflow-y: auto;
+
 }
 
 table#tabelaClientes {
     border-collapse: collapse;
-    margin: 15px 0;
     margin-left: 100px;
 }
 

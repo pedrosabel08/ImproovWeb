@@ -16,16 +16,6 @@ a {
     cursor: pointer;
 }
 
-<<<<<<< HEAD
-<<<<<<< Updated upstream
-
-
-=======
->>>>>>> Stashed changes
-=======
-
-
->>>>>>> 5dde4bcad78bce744049ee670db560869e425496
 header {
     display: flex;
     justify-content: space-around;
@@ -51,10 +41,22 @@ header button#openModalBtn {
     font-weight: bold;
 }
 
+#filtro {
+    padding: 50px;
+}
+
+#filtro select,
+#filtro input {
+    width: 300px;
+    font-size: 16px;
+    padding: 5px;
+}
+
 table {
     border-collapse: collapse;
-    width: 90%;
+    width: 100%;
     margin: 0 auto;
+    margin-top: 20px;
 }
 
 td,

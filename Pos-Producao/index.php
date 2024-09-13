@@ -158,6 +158,7 @@ if ($result_imagens->num_rows > 0) {
                                     <?= htmlspecialchars($imagem['imagem_nome']); ?>
                                 </option>
                             <?php endforeach; ?>
+                        </select>
                     </div>
 
                     <div>

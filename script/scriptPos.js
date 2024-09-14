@@ -137,7 +137,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         $.ajax({
                             type: "GET",
                             dataType: "json",
-                            url: "http://localhost:8066/ImproovWeb/Pos-Producao/buscaAJAX.php",
+                            url: "www.improov.com.br/sistema/Pos-Producao/buscaAJAX.php",
                             data: { ajid: idImagemSelecionada },
                             success: function (response) {
                                 if (response.length > 0) {

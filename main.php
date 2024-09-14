@@ -30,7 +30,7 @@
 </nav>
 
 <?php
-$conn = new mysqli('192.168.0.202', 'admin', 'admin', 'improov');
+$conn = new mysqli('mysql.improov.com.br', 'improov', 'Impr00v', 'improov');
 
 // Verificar a conexão
 if ($conn->connect_error) {
@@ -171,7 +171,7 @@ $conn->close();
                         <tbody>
                             <?php
                             // Conectar ao banco de dados
-                            $conn = new mysqli('192.168.0.202', 'admin', 'admin', 'improov');
+                            $conn = new mysqli('mysql.improov.com.br', 'improov', 'Impr00v', 'improov');
 
                             // Verificar a conexão
                             if ($conn->connect_error) {

@@ -4,7 +4,7 @@ header("Access-Control-Allow-Origin: *"); // Allows all domains
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS"); // Allow specific methods
 header("Access-Control-Allow-Headers: Content-Type");
 
-$conn = new mysqli('192.168.0.202', 'admin', 'admin', 'improov');
+$conn = new mysqli('mysql.improov.com.br', 'improov', 'Impr00v', 'improov');
 
 // Verificar a conexão
 if ($conn->connect_error) {

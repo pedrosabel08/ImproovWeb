@@ -1,6 +1,6 @@
 <?php
 // Conectar ao banco de dados
-$conn = new mysqli('192.168.0.202', 'admin', 'admin', 'improov');
+$conn = new mysqli('mysql.improov.com.br', 'improov', 'Impr00v', 'improov');
 
 if ($conn->connect_error) {
     die("Falha na conexão: " . $conn->connect_error);

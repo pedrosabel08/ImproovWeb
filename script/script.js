@@ -17,7 +17,7 @@ document.addEventListener("DOMContentLoaded", function () {
             $.ajax({
                 type: "GET",
                 dataType: "json",
-                url: "http://192.168.0.202:8066/ImproovWeb/buscaLinhaAJAX.php",
+                url: "http://www.improov.com.br/sistema/buscaLinhaAJAX.php",
                 data: { ajid: idImagemSelecionada },
                 success: function (response) {
                     if (response.nome_imagem) {
@@ -136,7 +136,7 @@ document.addEventListener("DOMContentLoaded", function () {
         $.ajax({
             type: "GET",
             dataType: "json",
-            url: "http://192.168.0.202:8066/ImproovWeb/buscaNomeImagem.php",
+            url: "http://www.improov.com.br/sistema/buscaNomeImagem.php",
             data: { ajid: idImagem },
             success: function (response) {
                 if (response.imagem_nome !== undefined && response.status_id !== undefined) {
@@ -246,7 +246,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         $.ajax({
             type: "POST",
-            url: "http://192.168.0.202:8066/ImproovWeb/insereFuncao.php",
+            url: "http://www.improov.com.br/sistema/insereFuncao.php",
             data: dados,
             success: function (response) {
                 console.log(response);

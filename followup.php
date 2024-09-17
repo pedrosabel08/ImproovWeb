@@ -9,6 +9,8 @@ if ($conn->connect_error) {
     die(json_encode(["error" => "Falha na conexão: " . $conn->connect_error]));
 }
 
+$conn->set_charset('utf8mb4');
+
 $obraId = intval($_GET['obra_id']);
 
 // Consulta SQL atualizada

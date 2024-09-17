@@ -6,6 +6,8 @@ header("Access-Control-Allow-Headers: Content-Type");
 
 $conn = new mysqli('mysql.improov.com.br', 'improov', 'Impr00v', 'improov');
 
+$conn->set_charset('utf8mb4');
+
 // Verificar a conexão
 if ($conn->connect_error) {
     die("Falha na conexão: " . $conn->connect_error);

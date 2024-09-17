@@ -15,7 +15,7 @@ header('Content-Type: text/html; charset=utf-8');
     <title>Tabela com imagens</title>
 </head>
 
-<button id="voltar" onclick="window.location.href='index.html'">Voltar</button>
+<button id="voltar" onclick="window.location.href='main.html'">Voltar</button>
 
 <header>
 

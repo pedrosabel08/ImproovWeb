@@ -22,6 +22,9 @@ if ($id_imagem) {
             WHERE idimagens_cliente_obra = ?";
 
     $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        die("Erro na preparação da consulta: " . $conn->error);
+    }
     $stmt->bind_param('i', $id_imagem);
 } elseif ($obra_id) {
     // Se apenas o obra_id foi fornecido, busca todas as imagens da obra
@@ -32,26 +35,16 @@ if ($id_imagem) {
             WHERE obra_id = ?";
 
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param('i', $obra_id);
-
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    if ($result->num_rows > 0) {
-        while ($row = $result->fetch_assoc()) {
-            echo '<option value="' . htmlspecialchars($row['idimagens_cliente_obra']) . '">'
-                . htmlspecialchars($row['imagem_nome']) . '</option>';
-        }
-    } else {
-        echo '<option value="">Nenhuma imagem encontrada</option>';
+    if (!$stmt) {
+        die("Erro na preparação da consulta: " . $conn->error);
     }
-
-    $stmt->close();
+    $stmt->bind_param('i', $obra_id);
 } else {
     echo '<option value="">Nenhum parâmetro fornecido</option>';
     exit;
 }
 
+// Execute a consulta
 $stmt->execute();
 $result = $stmt->get_result();
 
@@ -64,5 +57,6 @@ if ($result->num_rows > 0) {
     echo '<option value="">Nenhuma imagem encontrada</option>';
 }
 
+// Feche o statement e a conexão
 $stmt->close();
 $conn->close();

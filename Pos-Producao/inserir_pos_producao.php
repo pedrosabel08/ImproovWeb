@@ -1,4 +1,8 @@
 <?php
+
+header("Access-Control-Allow-Origin: *"); // Allows all domains
+header("Access-Control-Allow-Methods: GET, POST, OPTIONS"); // Allow specific methods
+header("Access-Control-Allow-Headers: Content-Type");
 // Conectar ao banco de dados
 $conn = new mysqli('mysql.improov.com.br', 'improov', 'Impr00v', 'improov');
 
@@ -49,4 +53,3 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt->close();
     $conn->close();
 }
-?>

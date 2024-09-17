@@ -30,28 +30,37 @@ function buscarImagens(obraId = null, imagemSelecionada = null) {
         xhr.open('GET', 'buscar_imagens.php?obra_id=' + obraId, true);
         xhr.onreadystatechange = function () {
             if (xhr.readyState == 4 && xhr.status == 200) {
-                document.getElementById('nomeImagem').innerHTML = xhr.responseText;
+                var nomeImagemElement = document.getElementById('nomeImagem');
 
-                // Se uma imagem já estiver selecionada, marcá-la como escolhida
-                if (imagemSelecionada) {
-                    var options = document.getElementById('nomeImagem').options;
-                    for (var i = 0; i < options.length; i++) {
-                        if (options[i].text === imagemSelecionada) {
-                            options[i].selected = true;
-                            break;
+                if (nomeImagemElement) {
+                    // Atualiza o conteúdo do elemento com as opções recebidas
+                    nomeImagemElement.innerHTML = xhr.responseText;
+
+                    // Se uma imagem já estiver selecionada, marcá-la como escolhida
+                    if (imagemSelecionada) {
+                        var options = nomeImagemElement.options;
+                        for (var i = 0; i < options.length; i++) {
+                            if (options[i].text === imagemSelecionada) {
+                                options[i].selected = true;
+                                break;
+                            }
                         }
                     }
+                } else {
+                    console.error("Elemento 'nomeImagem' não encontrado.");
                 }
             }
         };
         xhr.send();
     } else {
-        document.getElementById('nomeImagem').innerHTML = '<option value="">Selecione uma obra primeiro</option>';
+        var nomeImagemElement = document.getElementById('nomeImagem');
+        if (nomeImagemElement) {
+            nomeImagemElement.innerHTML = '<option value="">Selecione uma obra primeiro</option>';
+        } else {
+            console.error("Elemento 'nomeImagem' não encontrado.");
+        }
     }
 }
-
-document.getElementById('opcao_obra').addEventListener('change', buscarImagens);
-
 
 document.addEventListener("DOMContentLoaded", function () {
     formPosProducao.addEventListener('submit', function (e) {

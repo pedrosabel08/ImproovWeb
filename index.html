@@ -1,36 +1,55 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-br">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="css/styleIndex.css">
+    <title>Login</title>
 
-    <title>Inicio</title>
+    <!-- CDN do Toastify CSS -->
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+
+    <!-- CDN do Tailwind CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+
+    <style>
+        .container {
+            max-width: 400px;
+            margin: auto;
+        }
+    </style>
 </head>
 
-<body>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
 
-    <label class="switch">
-        <input type="checkbox" id="theme-toggle">
-        <span class="slider round"></span>
-    </label>
-    <main>
-        <div class="buttons">
-            <button onclick="visualizarTabela()">Visualizar tabela com imagens</button>
-            <button onclick="listaPos()">Lista Pós-Produção</button>
-        </div>
-        <div class="logo">
-            <button onclick="instagramImproov()">
-                <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
-                    alt="Improov">
-            </button>
+    <div class="container bg-white p-8 rounded-lg shadow-lg">
+        <h2 class="text-2xl font-bold mb-6 text-center">Login</h2>
 
+        <form action="login.php" method="post" class="space-y-4">
+            <div>
+                <label for="login" class="block text-sm font-medium text-gray-700">Login:</label>
+                <input type="text" id="login" name="login" required
+                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+            </div>
 
-        </div>
-    </main>
+            <div>
+                <label for="senha" class="block text-sm font-medium text-gray-700">Senha:</label>
+                <input type="password" id="senha" name="senha" required
+                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+            </div>
 
-    <script src="./script/scriptIndex.js"></script>
+            <div>
+                <button type="submit"
+                    class="w-full px-4 py-2 bg-blue-600 text-white font-semibold rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                    Entrar
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- CDN do Toastify JS -->
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script src="./script/scriptLogin.js"></script>
 </body>
 
 </html>

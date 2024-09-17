@@ -9,6 +9,7 @@ if ($conn->connect_error) {
     echo json_encode(['status' => 'error', 'message' => 'Falha na conexão com o banco de dados']);
     exit();
 }
+$conn->set_charset('utf8mb4');
 
 // Decodificar os dados JSON recebidos
 $data = json_decode(file_get_contents('php://input'), true);

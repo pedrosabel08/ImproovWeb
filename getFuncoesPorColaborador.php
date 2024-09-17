@@ -9,6 +9,8 @@ if ($conn->connect_error) {
     die(json_encode(["error" => "Falha na conexão: " . $conn->connect_error]));
 }
 
+$conn->set_charset('utf8mb4');
+
 $colaboradorId = intval($_GET['colaborador_id']);
 $dataInicio = isset($_GET['data_inicio']) ? $_GET['data_inicio'] : '';
 $dataFim = isset($_GET['data_fim']) ? $_GET['data_fim'] : '';

@@ -6,6 +6,8 @@ if ($conn->connect_error) {
     die("Falha na conexão: " . $conn->connect_error);
 }
 
+$conn->set_charset('utf8mb4');
+
 // Verifica se o ID da obra e o ID da imagem foram passados
 $obra_id = isset($_GET['obra_id']) ? intval($_GET['obra_id']) : null;
 $id_imagem = isset($_GET['idimagem']) && $_GET['idimagem'] !== '' ? intval($_GET['idimagem']) : null;

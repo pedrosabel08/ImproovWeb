@@ -5,6 +5,8 @@ if ($conn->connect_error) {
     die("Falha na conexão: " . $conn->connect_error);
 }
 
+$conn->set_charset('utf8mb4');
+
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $idImagem = intval($_POST['idimagens_cliente_obra']);
     $nomeImagem = $_POST['imagem_nome'];

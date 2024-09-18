@@ -1,4 +1,13 @@
 <?php
+
+session_start();
+
+// Verificar se o usuário está logado
+if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
+    // Se não estiver logado, redirecionar para a página de login
+    header("Location: ../index.html");
+    exit();
+}
 $conn = new mysqli('mysql.improov.com.br', 'improov', 'Impr00v', 'improov');
 
 if ($conn->connect_error) {

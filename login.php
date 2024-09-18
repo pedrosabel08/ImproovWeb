@@ -4,6 +4,8 @@ header("Access-Control-Allow-Origin: *"); // Allows all domains
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS"); // Allow specific methods
 header("Access-Control-Allow-Headers: Content-Type");
 
+session_start();
+
 // Conectar ao banco de dados
 $conn = new mysqli('mysql.improov.com.br', 'improov', 'Impr00v', 'improov');
 
@@ -21,7 +23,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $senha = htmlspecialchars(trim($_POST['senha']));
 
     // Preparar a consulta SQL
-    $sql = "SELECT idusuario, nome_usuario FROM usuario WHERE login = ? AND senha = ?";
+    $sql = "SELECT idusuario, nome_usuario, nivel_acesso FROM usuario WHERE login = ? AND senha = ?";
     $stmt = $conn->prepare($sql);
     $stmt->bind_param("ss", $login, $senha);
     $stmt->execute();
@@ -30,6 +32,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     // Verificar se a consulta encontrou algum usuário
     if ($result->num_rows > 0) {
         $row = $result->fetch_assoc();
+
+        $_SESSION['usuario_id'] = $row['idusuario'];
+        $_SESSION['nome_usuario'] = $row['nome_usuario'];
+        $_SESSION['nivel_acesso'] = $row['nivel_acesso'];
+        $_SESSION['logado'] = true;
 
         // Resposta JSON de sucesso
         echo json_encode([

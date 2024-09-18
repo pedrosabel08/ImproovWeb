@@ -25,6 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $obs = $_POST['obs'];
     $status_pos = isset($_POST['status_pos']) ? 0 : 1; // Define status_pos com base no checkbox
     $status_id = $_POST['status_id'];
+    $id_posproducao = $_POST['id-pos'];
 
     // Inserir ou atualizar dados
     $sql = "INSERT INTO pos_producao (colaborador_id, cliente_id, obra_id, data_pos, imagem_id, caminho_pasta, numero_bg, refs, obs, status_pos, status_id) 

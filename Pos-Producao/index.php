@@ -132,6 +132,7 @@ if ($result_imagens->num_rows > 0) {
     <div id="modal" class="modal">
         <div class="modal-content">
             <span class="close">&times;</span>
+            <button type="button" id="deleteButton">Deletar</button>
             <div id="form-inserir">
                 <h2>Formulário de Dados</h2>
                 <form id="formPosProducao">
@@ -172,14 +173,7 @@ if ($result_imagens->num_rows > 0) {
                     <div>
                         <label for="imagem_id">Nome Imagem</label>
                         <select id="imagem_id" name="imagem_id" required>
-                        <label for="imagem_id">Nome Imagem</label>
-                        <select id="imagem_id" name="imagem_id" required>
                             <option value="">Selecione uma obra primeiro</option>
-                            <?php foreach ($imagens as $imagem): ?>
-                                <option value="<?= htmlspecialchars($imagem['idimagens_cliente_obra']); ?>">
-                                    <?= htmlspecialchars($imagem['imagem_nome']); ?>
-                                </option>
-                            <?php endforeach; ?>
                             <?php foreach ($imagens as $imagem): ?>
                                 <option value="<?= htmlspecialchars($imagem['idimagens_cliente_obra']); ?>">
                                     <?= htmlspecialchars($imagem['imagem_nome']); ?>
@@ -223,6 +217,8 @@ if ($result_imagens->num_rows > 0) {
                         <label for="status_pos">Status</label>
                         <input type="checkbox" name="status_pos" id="status_pos" disabled>
                     </div>
+
+                    <input type="hidden" name="id-pos" id="id-pos">
 
                     <div>
                         <button type="submit">Enviar</button>

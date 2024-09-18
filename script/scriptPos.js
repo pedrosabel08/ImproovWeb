@@ -61,8 +61,43 @@ function buscarImagens(obraId = null, imagemSelecionada = null) {
         }
     }
 }
+document.getElementById('deleteButton').addEventListener('click', function () {
+    // Pega o valor do ID do item selecionado (imagem) que você deseja excluir
+    const idPos = document.getElementById('id-pos').value;
 
+    if (!idPos) {
+        alert('Nenhum item selecionado para deletar.');
+        return;
+    }
+
+    // Confirmação antes de deletar
+    if (confirm('Tem certeza que deseja deletar este item?')) {
+        fetch('delete.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ id_pos: idPos }) // Envia o ID do item para o PHP
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Item deletado com sucesso.');
+                    // Fechar o modal e recarregar a tabela ou página
+                    modal.style.display = "none";
+                    location.reload();
+                } else {
+                    alert('Erro ao deletar item: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Erro ao deletar:', error);
+                alert('Ocorreu um erro ao tentar deletar o item.');
+            });
+    }
+});
 document.addEventListener("DOMContentLoaded", function () {
+
     formPosProducao.addEventListener('submit', function (e) {
         e.preventDefault();
 
@@ -174,6 +209,7 @@ function atualizarTabela() {
                         data: { ajid: idImagemSelecionada },
                         success: function (response) {
                             if (response.length > 0) {
+                                document.getElementById('id-pos').value = response[0].idpos_producao;
                                 setSelectValue('opcao_finalizador', response[0].nome_colaborador);
                                 setSelectValue('opcao_cliente', response[0].nome_cliente);
                                 setSelectValue('opcao_obra', response[0].nome_obra);

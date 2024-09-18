@@ -67,6 +67,7 @@ document.addEventListener("DOMContentLoaded", function () {
         e.preventDefault();
 
         var formData = new FormData(this);
+        var formData = new FormData(this);
 
         fetch('inserir_pos_producao.php', {
             method: 'POST',
@@ -79,40 +80,63 @@ document.addEventListener("DOMContentLoaded", function () {
                 atualizarTabela();
                 formPosProducao.reset();
                 buscarImagens();
+                fetch('inserir_pos_producao.php', {
+                    method: 'POST',
+                    body: formData
+                })
+                    .then(response => response.text())
+                    .then(data => {
 
-                Toastify({
-                    text: "Dados inseridos com sucesso!",
-                    duration: 3000,
-                    close: true,
-                    gravity: "top",
-                    position: "left",
-                    backgroundColor: "green",
-                    stopOnFocus: true,
-                }).showToast();
-            })
-            .catch(error => console.error('Erro:', error));
-    });
+                        document.getElementById('modal').style.display = 'none';
+                        atualizarTabela();
+                        formPosProducao.reset();
+                        buscarImagens();
 
-    function atualizarTabela() {
-        fetch('atualizar_tabela.php') // Caminho para o seu script PHP
-            .then(response => response.json())
-            .then(data => {
-                const tabela = document.getElementById('lista-imagens');
-                tabela.innerHTML = ''; // Limpa a tabela atual
+                        Toastify({
+                            text: "Dados inseridos com sucesso!",
+                            duration: 3000,
+                            close: true,
+                            gravity: "top",
+                            position: "left",
+                            backgroundColor: "green",
+                            stopOnFocus: true,
+                        }).showToast();
+                    })
+                    .catch(error => console.error('Erro:', error));
+            });
+        Toastify({
+            text: "Dados inseridos com sucesso!",
+            duration: 3000,
+            close: true,
+            gravity: "top",
+            position: "left",
+            backgroundColor: "green",
+            stopOnFocus: true,
+        }).showToast();
+    })
+        .catch(error => console.error('Erro:', error));
+});
 
-                data.forEach(imagem => {
-                    // Cria uma nova linha
-                    const tr = document.createElement('tr');
-                    tr.classList.add('linha-tabela');
-                    tr.setAttribute('data-id', imagem.idpos_producao);
-                    tr.setAttribute('data-obra-id', imagem.idobra); // Adiciona o data-obra-id para uso posterior
+function atualizarTabela() {
+    fetch('atualizar_tabela.php') // Caminho para o seu script PHP
+        .then(response => response.json())
+        .then(data => {
+            const tabela = document.getElementById('lista-imagens');
+            tabela.innerHTML = ''; // Limpa a tabela atual
 
-                    // Verifica o status_pos e define o texto e a cor de fundo apropriada
-                    let statusTexto = imagem.status_pos == 1 ? 'Não começou' : 'Finalizado';
-                    let statusCor = imagem.status_pos == 1 ? 'red' : 'green';
+            data.forEach(imagem => {
+                // Cria uma nova linha
+                const tr = document.createElement('tr');
+                tr.classList.add('linha-tabela');
+                tr.setAttribute('data-id', imagem.idpos_producao);
+                tr.setAttribute('data-obra-id', imagem.idobra); // Adiciona o data-obra-id para uso posterior
 
-                    // Adiciona as células à linha
-                    tr.innerHTML = `
+                // Verifica o status_pos e define o texto e a cor de fundo apropriada
+                let statusTexto = imagem.status_pos == 1 ? 'Não começou' : 'Finalizado';
+                let statusCor = imagem.status_pos == 1 ? 'red' : 'green';
+
+                // Adiciona as células à linha
+                tr.innerHTML = `
                         <td>${imagem.nome_colaborador}</td>
                         <td>${imagem.nome_cliente}</td>
                         <td>${imagem.nome_obra}</td>
@@ -126,77 +150,80 @@ document.addEventListener("DOMContentLoaded", function () {
                         <td>${imagem.nome_status}</td>
                     `;
 
-                    // Adiciona a linha à tabela
-                    tabela.appendChild(tr);
-                });
+                // Adiciona a linha à tabela
+                tabela.appendChild(tr);
+            });
 
-                // Adiciona o evento de clique às linhas
-                const linhasTabela = document.querySelectorAll('.linha-tabela');
-                linhasTabela.forEach(linha => {
-                    linha.addEventListener('click', function () {
-                        modal.style.display = "flex";
-                        linhasTabela.forEach(outro => {
-                            outro.classList.remove('selecionada');
-                        });
+            // Adiciona o evento de clique às linhas
+            const linhasTabela = document.querySelectorAll('.linha-tabela');
+            linhasTabela.forEach(linha => {
+                linha.addEventListener('click', function () {
+                    modal.style.display = "flex";
+                    linhasTabela.forEach(outro => {
+                        outro.classList.remove('selecionada');
+                    });
 
-                        this.classList.add('selecionada');
+                    this.classList.add('selecionada');
 
-                        var idImagemSelecionada = this.getAttribute('data-id');
+                    var idImagemSelecionada = this.getAttribute('data-id');
 
-                        $.ajax({
-                            type: "GET",
-                            dataType: "json",
-                            url: "http://www.improov.com.br/sistema/Pos-Producao/buscaAJAX.php",
-                            data: { ajid: idImagemSelecionada },
-                            success: function (response) {
-                                if (response.length > 0) {
-                                    setSelectValue('opcao_finalizador', response[0].nome_colaborador);
-                                    setSelectValue('opcao_cliente', response[0].nome_cliente);
-                                    setSelectValue('opcao_obra', response[0].nome_obra);
-                                    setSelectValue('imagem_id', response[0].imagem_nome);
-                                    document.getElementById('caminhoPasta').value = response[0].caminho_pasta;
-                                    document.getElementById('numeroBG').value = response[0].numero_bg;
-                                    document.getElementById('referenciasCaminho').value = response[0].refs;
-                                    document.getElementById('observacao').value = response[0].obs;
-                                    setSelectValue('opcao_status', response[0].status_pos);
+                    $.ajax({
+                        type: "GET",
+                        dataType: "json",
+                        url: "http://www.improov.com.br/sistema/Pos-Producao/buscaAJAX.php",
+                        data: { ajid: idImagemSelecionada },
+                        success: function (response) {
+                            if (response.length > 0) {
+                                setSelectValue('opcao_finalizador', response[0].nome_colaborador);
+                                setSelectValue('opcao_cliente', response[0].nome_cliente);
+                                setSelectValue('opcao_obra', response[0].nome_obra);
+                                setSelectValue('imagem_id', response[0].imagem_nome);
+                                setSelectValue('imagem_id', response[0].imagem_nome);
+                                document.getElementById('caminhoPasta').value = response[0].caminho_pasta;
+                                document.getElementById('numeroBG').value = response[0].numero_bg;
+                                document.getElementById('referenciasCaminho').value = response[0].refs;
+                                document.getElementById('observacao').value = response[0].obs;
+                                setSelectValue('opcao_status', response[0].status_pos);
 
-                                    const checkboxStatusPos = document.getElementById('status_pos');
-                                    checkboxStatusPos.checked = response[0].status_pos == 0;
-                                    checkboxStatusPos.disabled = false;
-                                } else {
-                                    console.log("Nenhum produto encontrado.");
-                                }
-                            },
-                            error: function (jqXHR, textStatus, errorThrown) {
-                                console.error("Erro na requisição AJAX: " + textStatus, errorThrown);
+                                const checkboxStatusPos = document.getElementById('status_pos');
+                                checkboxStatusPos.checked = response[0].status_pos == 0;
+                                checkboxStatusPos.disabled = false;
+                                checkboxStatusPos.checked = response[0].status_pos == 0;
+                                checkboxStatusPos.disabled = false;
+                            } else {
+                                console.log("Nenhum produto encontrado.");
                             }
-                        });
+                        },
+                        error: function (jqXHR, textStatus, errorThrown) {
+                            console.error("Erro na requisição AJAX: " + textStatus, errorThrown);
+                        }
                     });
                 });
-            })
-            .catch(error => console.error('Erro ao atualizar a tabela:', error));
-    }
+            });
+        })
+        .catch(error => console.error('Erro ao atualizar a tabela:', error));
+}
 
-    atualizarTabela();
+atualizarTabela();
 
-    document.getElementById('formPosProducao').addEventListener('submit', function () {
-        document.getElementById('status_pos').disabled = true;
-    });
+document.getElementById('formPosProducao').addEventListener('submit', function () {
+    document.getElementById('status_pos').disabled = true;
+});
 
 
-    function setSelectValue(selectId, valueToSelect) {
-        var selectElement = document.getElementById(selectId);
-        var options = selectElement.options;
 
-        for (var i = 0; i < options.length; i++) {
-            if (options[i].text === valueToSelect) {
-                selectElement.selectedIndex = i;
-                break;
-            }
+function setSelectValue(selectId, valueToSelect) {
+    var selectElement = document.getElementById(selectId);
+    var options = selectElement.options;
+
+    for (var i = 0; i < options.length; i++) {
+        if (options[i].text === valueToSelect) {
+            selectElement.selectedIndex = i;
+            break;
         }
     }
+}
 
-});
 
 function filtrarTabela() {
     var indiceColuna = document.getElementById("colunaFiltro").value;

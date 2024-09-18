@@ -56,6 +56,14 @@ if ($result->num_rows > 0) {
 } else {
     echo '<option value="">Nenhuma imagem encontrada</option>';
 }
+if ($result->num_rows > 0) {
+    while ($row = $result->fetch_assoc()) {
+        echo '<option value="' . htmlspecialchars($row['idimagens_cliente_obra']) . '">'
+            . htmlspecialchars($row['imagem_nome']) . '</option>';
+    }
+} else {
+    echo '<option value="">Nenhuma imagem encontrada</option>';
+}
 
 // Feche o statement e a conexão
 $stmt->close();

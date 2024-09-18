@@ -60,6 +60,15 @@ if ($result_imagens->num_rows > 0) {
         $imagens[] = $row;
     }
 }
+
+$sql_imagens = "SELECT idimagens_cliente_obra, imagem_nome FROM imagens_cliente_obra";
+$result_imagens = $conn->query($sql_imagens);
+$imagens = array();
+if ($result_imagens->num_rows > 0) {
+    while ($row = $result_imagens->fetch_assoc()) {
+        $imagens[] = $row;
+    }
+}
 ?>
 
 <!DOCTYPE html>
@@ -163,7 +172,14 @@ if ($result_imagens->num_rows > 0) {
                     <div>
                         <label for="imagem_id">Nome Imagem</label>
                         <select id="imagem_id" name="imagem_id" required>
+                        <label for="imagem_id">Nome Imagem</label>
+                        <select id="imagem_id" name="imagem_id" required>
                             <option value="">Selecione uma obra primeiro</option>
+                            <?php foreach ($imagens as $imagem): ?>
+                                <option value="<?= htmlspecialchars($imagem['idimagens_cliente_obra']); ?>">
+                                    <?= htmlspecialchars($imagem['imagem_nome']); ?>
+                                </option>
+                            <?php endforeach; ?>
                             <?php foreach ($imagens as $imagem): ?>
                                 <option value="<?= htmlspecialchars($imagem['idimagens_cliente_obra']); ?>">
                                     <?= htmlspecialchars($imagem['imagem_nome']); ?>

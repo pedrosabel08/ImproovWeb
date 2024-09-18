@@ -492,6 +492,7 @@ $conn->close();
             <label for="obra">Obra:</label>
             <select name="obra" id="obra">
                 <option value="1">Selecione:</option>
+                <option value="1">Selecione:</option>
                 <?php foreach ($obras as $obra): ?>
                     <option value="<?= htmlspecialchars($obra['idobra']); ?>">
                         <?= htmlspecialchars($obra['nome_obra']); ?>
@@ -516,6 +517,35 @@ $conn->close();
                     <th>Status</th>
                 </thead>
 
+                <tbody>
+
+                </tbody>
+            </table>
+        </div>
+
+        <div id="follow-up">
+            <h1>Follow up</h1>
+            <label for="obra">Obra:</label>
+            <select name="obra-follow" id="obra-follow">
+                <option value="1">Selecione:</option>
+                <?php foreach ($obras as $obra): ?>
+                    <option value="<?= htmlspecialchars($obra['idobra']); ?>">
+                        <?= htmlspecialchars($obra['nome_obra']); ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+
+            <table id="tabela-follow">
+                <thead>
+                    <th>Nome da Imagem</th>
+                    <th>Status Imagem</th>
+                    <th>Caderno</th>
+                    <th>Modelagem</th>
+                    <th>Composição</th>
+                    <th>Finalização</th>
+                    <th>Pós-produção</th>
+                    <th>Alteração</th>
+                </thead>
                 <tbody>
 
                 </tbody>

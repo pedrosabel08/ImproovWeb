@@ -1,6 +1,13 @@
 <?php
 header('Content-Type: text/html; charset=utf-8');
+session_start();
 
+// Verificar se o usuário está logado
+if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
+    // Se não estiver logado, redirecionar para a página de login
+    header("Location: index.html");
+    exit();
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -25,11 +32,14 @@ header('Content-Type: text/html; charset=utf-8');
 </header>
 
 <nav>
-    <a href="#add-cliente" onclick="openModal('add-cliente', this)">Adicionar Cliente ou Obra</a>
-    <a href="#add-imagem" onclick="openModal('add-imagem', this)">Adicionar imagem</a>
-    <a href="#filtro" onclick="openModalClass('tabela-form', this)" class="active">Ver imagens</a>
-    <a href="#filtro-colab" onclick="openModal('filtro-colab', this)">Filtro colaboradores</a>
-    <a href="#filtro-obra" onclick="openModal('filtro-obra', this)">Filtro por obra</a>
+    <?php if ($_SESSION['nivel_acesso'] == 1): ?>
+        <a href="#add-cliente" onclick="openModal('add-cliente', this)">Adicionar Cliente ou Obra</a>
+        <a href="#add-imagem" onclick="openModal('add-imagem', this)">Adicionar Imagem</a>
+    <?php endif; ?>
+
+    <a href="#filtro" onclick="openModalClass('tabela-form', this)" class="active">Ver Imagens</a>
+    <a href="#filtro-colab" onclick="openModal('filtro-colab', this)">Filtro Colaboradores</a>
+    <a href="#filtro-obra" onclick="openModal('filtro-obra', this)">Filtro por Obra</a>
     <a href="#follow-up" onclick="openModal('follow-up', this)">Follow Up</a>
 </nav>
 
@@ -239,26 +249,47 @@ $conn->close();
                     <label id="campoNomeImagem" name="nomeImagem" readonly></label>
                     <div class="funcao">
                         <p id="caderno">Caderno</p>
-                        <select name="caderno_id" id="opcao_caderno">
-                            <?php foreach ($colaboradores as $colab): ?>
-                                <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                                    <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
+                        <?php if ($_SESSION['nivel_acesso'] == 1): ?>
+                            <select name="caderno_id" id="opcao_caderno">
+                                <?php foreach ($colaboradores as $colab): ?>
+                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        <?php else: ?>
+                            <select name="caderno_id" id="opcao_caderno" disabled>
+                                <?php foreach ($colaboradores as $colab): ?>
+                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        <?php endif; ?>
                         <input type="text" name="status_caderno" id="status_caderno" placeholder="Status">
                         <input type="date" name="prazo_caderno" id="prazo_caderno">
                         <input type="text" name="obs_caderno" id="obs_caderno" placeholder="Observação">
                     </div>
                     <div class="funcao">
                         <p id="modelagem">Modelagem</p>
-                        <select name="model_id" id="opcao_model">
-                            <?php foreach ($colaboradores as $colab): ?>
-                                <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                                    <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
+                        <?php if ($_SESSION['nivel_acesso'] == 1): ?>
+                            <select name="model_id" id="opcao_model">
+                                <?php foreach ($colaboradores as $colab): ?>
+                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        <?php else: ?>
+                            <select name="model_id" id="opcao_model" disabled>
+                                <?php foreach ($colaboradores as $colab): ?>
+                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        <?php endif; ?>
+
                         <input type="text" name="status_modelagem" id="status_modelagem" placeholder="Status">
                         <input type="date" name="prazo_modelagem" id="prazo_modelagem">
                         <input type="text" name="obs_modelagem" id="obs_modelagem" placeholder="Observação">
@@ -266,26 +297,49 @@ $conn->close();
                     </div>
                     <div class="funcao">
                         <p id="comp">Composição</p>
-                        <select name="comp_id" id="opcao_comp">
-                            <?php foreach ($colaboradores as $colab): ?>
-                                <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                                    <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
+                        <?php if ($_SESSION['nivel_acesso'] == 1): ?>
+                            <select name="comp_id" id="opcao_comp">
+                                <?php foreach ($colaboradores as $colab): ?>
+                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        <?php else: ?>
+                            <select name="comp_id" id="opcao_comp" disabled>
+                                <?php foreach ($colaboradores as $colab): ?>
+                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        <?php endif; ?>
+
                         <input type="text" name="status_comp" id="status_comp" placeholder="Status">
                         <input type="date" name="prazo_comp" id="prazo_comp">
                         <input type="text" name="obs_comp" id="obs_comp" placeholder="Observação">
                     </div>
                     <div class="funcao">
                         <p id="finalizacao">Finalização</p>
-                        <select name="final_id" id="opcao_final">
-                            <?php foreach ($colaboradores as $colab): ?>
-                                <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                                    <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
+                        <?php if ($_SESSION['nivel_acesso'] == 1): ?>
+
+                            <select name="final_id" id="opcao_final">
+                                <?php foreach ($colaboradores as $colab): ?>
+                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        <?php else: ?>
+                            <select name="final_id" id="opcao_final" disabled>
+                                <?php foreach ($colaboradores as $colab): ?>
+                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        <?php endif; ?>
+
                         <input type="text" name="status_finalizacao" id="status_finalizacao" placeholder="Status">
                         <input type="date" name="prazo_finalizacao" id="prazo_finalizacao">
                         <input type="text" name="obs_finalizacao" id="obs_finalizacao" placeholder="Observação">
@@ -293,52 +347,99 @@ $conn->close();
                     </div>
                     <div class="funcao">
                         <p id="pos">Pós-Produção</p>
-                        <select name="pos_id" id="opcao_pos">
-                            <?php foreach ($colaboradores as $colab): ?>
-                                <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                                    <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
+                        <?php if ($_SESSION['nivel_acesso'] == 1): ?>
+
+                            <select name="pos_id" id="opcao_pos">
+                                <?php foreach ($colaboradores as $colab): ?>
+                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        <?php else: ?>
+                            <select name="pos_id" id="opcao_pos" disabled>
+                                <?php foreach ($colaboradores as $colab): ?>
+                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        <?php endif; ?>
+
                         <input type="text" name="status_pos" id="status_pos" placeholder="Status">
                         <input type="date" name="prazo_pos" id="prazo_pos">
                         <input type="text" name="obs_pos" id="obs_pos" placeholder="Observação">
                     </div>
                     <div class="funcao">
                         <p id="alteracao">Alteração</p>
-                        <select name="alteracao_id" id="opcao_alteracao">
-                            <?php foreach ($colaboradores as $colab): ?>
-                                <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                                    <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
+                        <?php if ($_SESSION['nivel_acesso'] == 1): ?>
+
+                            <select name="alteracao_id" id="opcao_alteracao">
+                                <?php foreach ($colaboradores as $colab): ?>
+                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        <?php else: ?>
+                            <select name="alteracao_id" id="opcao_alteracao" disabled>
+                                <?php foreach ($colaboradores as $colab): ?>
+                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        <?php endif; ?>
+
                         <input type="text" name="status_alteracao" id="status_alteracao" placeholder="Status">
                         <input type="date" name="prazo_alterao" id="prazo_alteracao">
                         <input type="text" name="obs_alteracao" id="obs_alteracao" placeholder="Observação">
                     </div>
                     <div class="funcao">
                         <p id="planta">Planta Humanizada</p>
-                        <select name="planta_id" id="opcao_planta">
-                            <?php foreach ($colaboradores as $colab): ?>
-                                <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                                    <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
+                        <?php if ($_SESSION['nivel_acesso'] == 1): ?>
+
+                            <select name="planta_id" id="opcao_planta">
+                                <?php foreach ($colaboradores as $colab): ?>
+                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        <?php else: ?>
+                            <select name="planta_id" id="opcao_planta" disabled>
+                                <?php foreach ($colaboradores as $colab): ?>
+                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        <?php endif; ?>
+
                         <input type="text" name="status_planta" id="status_planta" placeholder="Status">
                         <input type="date" name="prazo_planta" id="prazo_planta">
                         <input type="text" name="obs_planta" id="obs_planta" placeholder="Observação">
                     </div>
                     <div class="funcao">
                         <p id="status">Status</p>
-                        <select name="status_id" id="opcao_status">
-                            <?php foreach ($status_imagens as $status): ?>
-                                <option value="<?= htmlspecialchars($status['idstatus']); ?>">
-                                    <?= htmlspecialchars($status['nome_status']); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
+                        <?php if ($_SESSION['nivel_acesso'] == 1): ?>
+                            <select name="status_id" id="opcao_status">
+                                <?php foreach ($status_imagens as $status): ?>
+                                    <option value="<?= htmlspecialchars($status['idstatus']); ?>">
+                                        <?= htmlspecialchars($status['nome_status']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        <?php else: ?>
+                            <select name="status_id" id="opcao_status" disabled>
+                                <?php foreach ($status_imagens as $status): ?>
+                                    <option value="<?= htmlspecialchars($status['idstatus']); ?>">
+                                        <?= htmlspecialchars($status['nome_status']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        <?php endif; ?>
+
                     </div>
                     <div class="buttons">
                         <button type="submit" id="salvar_funcoes">Salvar</button>

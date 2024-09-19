@@ -31,7 +31,12 @@ if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
 
 </header>
 
-<nav>
+
+<button class="nav-toggle" aria-label="Toggle navigation" onclick="toggleNav()">
+    &#9776;
+</button>
+
+<nav class="nav-menu">
     <?php if ($_SESSION['nivel_acesso'] == 1): ?>
         <a href="#add-cliente" onclick="openModal('add-cliente', this)">Adicionar Cliente ou Obra</a>
         <a href="#add-imagem" onclick="openModal('add-imagem', this)">Adicionar Imagem</a>
@@ -225,13 +230,13 @@ $conn->close();
                                 // Exibir os dados em linhas na tabela
                                 while ($row = $result->fetch_assoc()) {
                                     echo "<tr class='linha-tabela' data-id='" . htmlspecialchars($row["idimagens_cliente_obra"]) . "'>";
-                                    echo "<td>" . htmlspecialchars($row["nome_cliente"]) . "</td>";
-                                    echo "<td>" . htmlspecialchars($row["nome_obra"]) . "</td>";
-                                    echo "<td>" . htmlspecialchars($row["imagem_nome"]) . "</td>";
-                                    echo "<td>" . htmlspecialchars($row["recebimento_arquivos"]) . "</td>";
-                                    echo "<td>" . htmlspecialchars($row["data_inicio"]) . "</td>";
-                                    echo "<td>" . htmlspecialchars($row["prazo_estimado"]) . "</td>";
-                                    echo "<td>" . htmlspecialchars($row["nome_status"]) . "</td>";
+                                    echo "<td title='" . htmlspecialchars($row["nome_cliente"]) . "'>" . htmlspecialchars($row["nome_cliente"]) . "</td>";
+                                    echo "<td title='" . htmlspecialchars($row["nome_obra"]) . "'>" . htmlspecialchars($row["nome_obra"]) . "</td>";
+                                    echo "<td title='" . htmlspecialchars($row["imagem_nome"]) . "'>" . htmlspecialchars($row["imagem_nome"]) . "</td>";
+                                    echo "<td title='" . htmlspecialchars($row["recebimento_arquivos"]) . "'>" . htmlspecialchars($row["recebimento_arquivos"]) . "</td>";
+                                    echo "<td title='" . htmlspecialchars($row["data_inicio"]) . "'>" . htmlspecialchars($row["data_inicio"]) . "</td>";
+                                    echo "<td title='" . htmlspecialchars($row["prazo_estimado"]) . "'>" . htmlspecialchars($row["prazo_estimado"]) . "</td>";
+                                    echo "<td title='" . htmlspecialchars($row["nome_status"]) . "'>" . htmlspecialchars($row["nome_status"]) . "</td>";
                                     echo "</tr>";
                                 }
                             } else {

@@ -8,7 +8,6 @@
     font-family: "Open Sans", sans-serif;
 }
 
-/* Estilos para o tema claro */
 body.light-mode {
     background-color: #f0f0f0;
     color: #333;
@@ -16,13 +15,9 @@ body.light-mode {
 
 button {
     all: unset;
-    /* Remove todos os estilos de todos os elementos */
     display: inline-block;
-    /* Mantém o botão como um elemento inline-block */
     box-sizing: border-box;
-    /* Garante que o padding e border sejam incluídos no tamanho total */
     cursor: pointer;
-    /* Mantém o cursor de ponteiro */
 }
 
 main {
@@ -69,7 +64,6 @@ main .buttons button {
 }
 
 
-/* Estilos para o switch */
 .switch {
     position: relative;
     display: inline-block;

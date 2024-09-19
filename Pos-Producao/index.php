@@ -60,15 +60,6 @@ if ($result_imagens->num_rows > 0) {
         $imagens[] = $row;
     }
 }
-
-$sql_imagens = "SELECT idimagens_cliente_obra, imagem_nome FROM imagens_cliente_obra";
-$result_imagens = $conn->query($sql_imagens);
-$imagens = array();
-if ($result_imagens->num_rows > 0) {
-    while ($row = $result_imagens->fetch_assoc()) {
-        $imagens[] = $row;
-    }
-}
 ?>
 
 <!DOCTYPE html>
@@ -132,7 +123,7 @@ if ($result_imagens->num_rows > 0) {
     <div id="modal" class="modal">
         <div class="modal-content">
             <span class="close">&times;</span>
-            <button type="button" id="deleteButton">Deletar</button>
+            <button id="deleteButton">Excluir</button>
             <div id="form-inserir">
                 <h2>Formulário de Dados</h2>
                 <form id="formPosProducao">
@@ -151,6 +142,7 @@ if ($result_imagens->num_rows > 0) {
                     <div>
                         <label for="nomeCliente">Nome Cliente</label>
                         <select name="cliente_id" id="opcao_cliente">
+                            <option value=""></option>
                             <?php foreach ($clientes as $cliente): ?>
                                 <option value="<?= htmlspecialchars($cliente['idcliente']); ?>">
                                     <?= htmlspecialchars($cliente['nome_cliente']); ?>
@@ -162,10 +154,9 @@ if ($result_imagens->num_rows > 0) {
                     <div>
                         <label for="nomeObra">Nome Obra</label>
                         <select name="obra_id" id="opcao_obra" onchange="buscarImagens()">
-                            <option value="">Selecione uma obra primeiro:</option>
+                            <option value=""></option>
                             <?php foreach ($obras as $obra): ?>
-                                <option value="<?= $obra['idobra']; ?>"><?= htmlspecialchars($obra['nome_obra']); ?>
-                                </option>
+                                <option value="<?= $obra['idobra']; ?>"><?= htmlspecialchars($obra['nome_obra']); ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -173,11 +164,9 @@ if ($result_imagens->num_rows > 0) {
                     <div>
                         <label for="imagem_id">Nome Imagem</label>
                         <select id="imagem_id" name="imagem_id" required>
-                            <option value="">Selecione uma obra primeiro</option>
+                            <option value=""></option>
                             <?php foreach ($imagens as $imagem): ?>
-                                <option value="<?= htmlspecialchars($imagem['idimagens_cliente_obra']); ?>">
-                                    <?= htmlspecialchars($imagem['imagem_nome']); ?>
-                                </option>
+                                <option value="<?= $imagem['idimagens_cliente_obra']; ?>"><?= htmlspecialchars($imagem['imagem_nome']); ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -212,25 +201,26 @@ if ($result_imagens->num_rows > 0) {
                             <?php endforeach; ?>
                         </select>
                     </div>
+                    <input type="text" name="id-pos" id="id-pos" hidden>
+                    <input type="hidden" id="alterar_imagem" name="alterar_imagem" value="false">
 
                     <div>
                         <label for="status_pos">Status</label>
                         <input type="checkbox" name="status_pos" id="status_pos" disabled>
                     </div>
 
-                    <input type="hidden" name="id-pos" id="id-pos">
-
                     <div>
                         <button type="submit">Enviar</button>
                     </div>
                 </form>
             </div>
+        </div>
+    </div>
 
 
-
-            <script src="../script/scriptPos.js"></script>
-            <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
-            <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="../script/scriptPos.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
 </body>
 

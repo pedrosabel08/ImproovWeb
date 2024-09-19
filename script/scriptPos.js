@@ -1,107 +1,58 @@
-// Seleciona o modal, botão e o botão de fechar
 var modal = document.getElementById("modal");
 var openModalBtn = document.getElementById("openModalBtn");
 var closeModal = document.getElementsByClassName("close")[0];
 const formPosProducao = document.getElementById('formPosProducao');
 
-// Abre o modal ao clicar no botão
 openModalBtn.onclick = function () {
     modal.style.display = "flex";
-}
+};
 
-// Fecha o modal ao clicar no "X"
 closeModal.onclick = function () {
     modal.style.display = "none";
 }
 
-// Fecha o modal ao clicar fora da área de conteúdo
 window.onclick = function (event) {
     if (event.target == modal) {
         modal.style.display = "none";
     }
 }
+document.addEventListener("DOMContentLoaded", function () {
 
-function buscarImagens(obraId = null, imagemSelecionada = null) {
-    obraId = obraId || document.getElementById('opcao_obra').value;
+    function buscarImagens() {
+        var obraId = document.getElementById('opcao_obra').value;
+        var imagemSelect = document.getElementById('imagem_id');
 
-    if (obraId) {
-        // Faz uma requisição AJAX para buscar as imagens da obra selecionada
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', 'buscar_imagens.php?obra_id=' + obraId, true);
-        xhr.onreadystatechange = function () {
-            if (xhr.readyState == 4 && xhr.status == 200) {
-                var nomeImagemElement = document.getElementById('nomeImagem');
+        if (obraId) {
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', 'buscar_imagens.php?obra_id=' + obraId, true);
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    var response = JSON.parse(xhr.responseText);
 
-                if (nomeImagemElement) {
-                    // Atualiza o conteúdo do elemento com as opções recebidas
-                    nomeImagemElement.innerHTML = xhr.responseText;
+                    imagemSelect.innerHTML = '';
 
-                    // Se uma imagem já estiver selecionada, marcá-la como escolhida
-                    if (imagemSelecionada) {
-                        var options = nomeImagemElement.options;
-                        for (var i = 0; i < options.length; i++) {
-                            if (options[i].text === imagemSelecionada) {
-                                options[i].selected = true;
-                                break;
-                            }
-                        }
-                    }
-                } else {
-                    console.error("Elemento 'nomeImagem' não encontrado.");
+                    var option = document.createElement('option');
+                    option.value = '';
+                    option.text = 'Selecione uma imagem';
+                    imagemSelect.add(option);
+
+                    response.forEach(function (imagem) {
+                        var option = document.createElement('option');
+                        option.value = imagem.idimagens_cliente_obra;
+                        option.text = imagem.imagem_nome;
+                        imagemSelect.add(option);
+                    });
                 }
-            }
-        };
-        xhr.send();
-    } else {
-        var nomeImagemElement = document.getElementById('nomeImagem');
-        if (nomeImagemElement) {
-            nomeImagemElement.innerHTML = '<option value="">Selecione uma obra primeiro</option>';
+            };
+            xhr.send();
         } else {
-            console.error("Elemento 'nomeImagem' não encontrado.");
         }
     }
-}
-document.getElementById('deleteButton').addEventListener('click', function () {
-    // Pega o valor do ID do item selecionado (imagem) que você deseja excluir
-    const idPos = document.getElementById('id-pos').value;
 
-    if (!idPos) {
-        alert('Nenhum item selecionado para deletar.');
-        return;
-    }
-
-    // Confirmação antes de deletar
-    if (confirm('Tem certeza que deseja deletar este item?')) {
-        fetch('delete.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ id_pos: idPos }) // Envia o ID do item para o PHP
-        })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert('Item deletado com sucesso.');
-                    // Fechar o modal e recarregar a tabela ou página
-                    modal.style.display = "none";
-                    location.reload();
-                } else {
-                    alert('Erro ao deletar item: ' + data.message);
-                }
-            })
-            .catch(error => {
-                console.error('Erro ao deletar:', error);
-                alert('Ocorreu um erro ao tentar deletar o item.');
-            });
-    }
-});
-document.addEventListener("DOMContentLoaded", function () {
 
     formPosProducao.addEventListener('submit', function (e) {
         e.preventDefault();
 
-        var formData = new FormData(this);
         var formData = new FormData(this);
 
         fetch('inserir_pos_producao.php', {
@@ -115,63 +66,98 @@ document.addEventListener("DOMContentLoaded", function () {
                 atualizarTabela();
                 formPosProducao.reset();
                 buscarImagens();
-                fetch('inserir_pos_producao.php', {
-                    method: 'POST',
-                    body: formData
-                })
-                    .then(response => response.text())
-                    .then(data => {
 
-                        document.getElementById('modal').style.display = 'none';
-                        atualizarTabela();
-                        formPosProducao.reset();
-                        buscarImagens();
+                Toastify({
+                    text: "Dados inseridos com sucesso!",
+                    duration: 3000,
+                    close: true,
+                    gravity: "top",
+                    position: "left",
+                    backgroundColor: "green",
+                    stopOnFocus: true,
+                }).showToast();
+            })
+            .catch(error => console.error('Erro:', error));
+    });
 
+    document.getElementById('deleteButton').addEventListener('click', function () {
+        const idPos = document.getElementById('id-pos').value;
+
+        if (!idPos) {
+            Toastify({
+                text: "Nenhum item selecionado para deletar.",
+                duration: 3000,
+                gravity: "top",
+                position: "left",
+                backgroundColor: "#ff5f6d",
+                close: true
+            }).showToast();
+            return;
+        }
+
+        if (confirm('Tem certeza que deseja deletar este item?')) {
+            fetch('delete.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ id_pos: idPos })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
                         Toastify({
-                            text: "Dados inseridos com sucesso!",
+                            text: "Item deletado com sucesso.",
                             duration: 3000,
-                            close: true,
                             gravity: "top",
                             position: "left",
-                            backgroundColor: "green",
-                            stopOnFocus: true,
+                            backgroundColor: "#ffa200",
+                            close: true
                         }).showToast();
-                    })
-                    .catch(error => console.error('Erro:', error));
-            });
-        Toastify({
-            text: "Dados inseridos com sucesso!",
-            duration: 3000,
-            close: true,
-            gravity: "top",
-            position: "left",
-            backgroundColor: "green",
-            stopOnFocus: true,
-        }).showToast();
-    })
-        .catch(error => console.error('Erro:', error));
-});
+                        modal.style.display = "none";
+                        atualizarTabela();
+                    } else {
+                        Toastify({
+                            text: "Erro ao deletar item: " + data.message,
+                            duration: 3000,
+                            gravity: "top",
+                            position: "left",
+                            backgroundColor: "red",
+                            close: true
+                        }).showToast();
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro ao deletar:', error);
+                    Toastify({
+                        text: "Ocorreu um erro ao tentar deletar o item.",
+                        duration: 3000,
+                        gravity: "top",
+                        position: "left",
+                        backgroundColor: "red",
+                        close: true
+                    }).showToast();
+                });
+        }
+    });
 
-function atualizarTabela() {
-    fetch('atualizar_tabela.php') // Caminho para o seu script PHP
-        .then(response => response.json())
-        .then(data => {
-            const tabela = document.getElementById('lista-imagens');
-            tabela.innerHTML = ''; // Limpa a tabela atual
+    function atualizarTabela() {
+        fetch('atualizar_tabela.php')
+            .then(response => response.json())
+            .then(data => {
+                const tabela = document.getElementById('lista-imagens');
+                tabela.innerHTML = '';
 
-            data.forEach(imagem => {
-                // Cria uma nova linha
-                const tr = document.createElement('tr');
-                tr.classList.add('linha-tabela');
-                tr.setAttribute('data-id', imagem.idpos_producao);
-                tr.setAttribute('data-obra-id', imagem.idobra); // Adiciona o data-obra-id para uso posterior
+                data.forEach(imagem => {
+                    const tr = document.createElement('tr');
+                    tr.classList.add('linha-tabela');
+                    tr.setAttribute('data-id', imagem.idpos_producao);
+                    tr.setAttribute('data-obra-id', imagem.idobra);
 
-                // Verifica o status_pos e define o texto e a cor de fundo apropriada
-                let statusTexto = imagem.status_pos == 1 ? 'Não começou' : 'Finalizado';
-                let statusCor = imagem.status_pos == 1 ? 'red' : 'green';
+                    let statusTexto = imagem.status_pos == 1 ? 'Não começou' : 'Finalizado';
+                    let statusCor = imagem.status_pos == 1 ? 'red' : 'green';
 
-                // Adiciona as células à linha
-                tr.innerHTML = `
+                    tr.innerHTML = `
                         <td>${imagem.nome_colaborador}</td>
                         <td>${imagem.nome_cliente}</td>
                         <td>${imagem.nome_obra}</td>
@@ -185,81 +171,79 @@ function atualizarTabela() {
                         <td>${imagem.nome_status}</td>
                     `;
 
-                // Adiciona a linha à tabela
-                tabela.appendChild(tr);
-            });
+                    tabela.appendChild(tr);
+                });
 
-            // Adiciona o evento de clique às linhas
-            const linhasTabela = document.querySelectorAll('.linha-tabela');
-            linhasTabela.forEach(linha => {
-                linha.addEventListener('click', function () {
-                    modal.style.display = "flex";
-                    linhasTabela.forEach(outro => {
-                        outro.classList.remove('selecionada');
-                    });
+                const linhasTabela = document.querySelectorAll('.linha-tabela');
+                linhasTabela.forEach(linha => {
+                    linha.addEventListener('click', function () {
+                        modal.style.display = "flex";
+                        linhasTabela.forEach(outro => {
+                            outro.classList.remove('selecionada');
+                        });
 
-                    this.classList.add('selecionada');
+                        this.classList.add('selecionada');
 
-                    var idImagemSelecionada = this.getAttribute('data-id');
+                        var idImagemSelecionada = this.getAttribute('data-id');
 
-                    $.ajax({
-                        type: "GET",
-                        dataType: "json",
-                        url: "http://www.improov.com.br/sistema/Pos-Producao/buscaAJAX.php",
-                        data: { ajid: idImagemSelecionada },
-                        success: function (response) {
-                            if (response.length > 0) {
-                                document.getElementById('id-pos').value = response[0].idpos_producao;
-                                setSelectValue('opcao_finalizador', response[0].nome_colaborador);
-                                setSelectValue('opcao_cliente', response[0].nome_cliente);
-                                setSelectValue('opcao_obra', response[0].nome_obra);
-                                setSelectValue('imagem_id', response[0].imagem_nome);
-                                setSelectValue('imagem_id', response[0].imagem_nome);
-                                document.getElementById('caminhoPasta').value = response[0].caminho_pasta;
-                                document.getElementById('numeroBG').value = response[0].numero_bg;
-                                document.getElementById('referenciasCaminho').value = response[0].refs;
-                                document.getElementById('observacao').value = response[0].obs;
-                                setSelectValue('opcao_status', response[0].status_pos);
+                        $.ajax({
+                            type: "GET",
+                            dataType: "json",
+                            url: "http://www.improov.com.br/sistema/Pos-Producao/buscaAJAX.php",
+                            data: { ajid: idImagemSelecionada },
+                            success: function (response) {
+                                if (response.length > 0) {
+                                    setSelectValue('opcao_finalizador', response[0].nome_colaborador);
+                                    setSelectValue('opcao_cliente', response[0].nome_cliente);
+                                    setSelectValue('opcao_obra', response[0].nome_obra);
+                                    setSelectValue('imagem_id', response[0].imagem_nome);
+                                    document.getElementById('id-pos').value = response[0].idpos_producao;
+                                    document.getElementById('caminhoPasta').value = response[0].caminho_pasta;
+                                    document.getElementById('numeroBG').value = response[0].numero_bg;
+                                    document.getElementById('referenciasCaminho').value = response[0].refs;
+                                    document.getElementById('observacao').value = response[0].obs;
+                                    setSelectValue('opcao_status', response[0].nome_status);
 
-                                const checkboxStatusPos = document.getElementById('status_pos');
-                                checkboxStatusPos.checked = response[0].status_pos == 0;
-                                checkboxStatusPos.disabled = false;
-                                checkboxStatusPos.checked = response[0].status_pos == 0;
-                                checkboxStatusPos.disabled = false;
-                            } else {
-                                console.log("Nenhum produto encontrado.");
+                                    const checkboxStatusPos = document.getElementById('status_pos');
+                                    checkboxStatusPos.checked = response[0].status_pos == 0;
+                                    checkboxStatusPos.disabled = false;
+
+                                    document.getElementById('alterar_imagem').value = 'true';
+
+                                } else {
+                                    console.log("Nenhum produto encontrado.");
+                                }
+                            },
+                            error: function (jqXHR, textStatus, errorThrown) {
+                                console.error("Erro na requisição AJAX: " + textStatus, errorThrown);
                             }
-                        },
-                        error: function (jqXHR, textStatus, errorThrown) {
-                            console.error("Erro na requisição AJAX: " + textStatus, errorThrown);
-                        }
+                        });
                     });
                 });
-            });
-        })
-        .catch(error => console.error('Erro ao atualizar a tabela:', error));
-}
+            })
+            .catch(error => console.error('Erro ao atualizar a tabela:', error));
+    }
 
-atualizarTabela();
+    atualizarTabela();
 
-document.getElementById('formPosProducao').addEventListener('submit', function () {
-    document.getElementById('status_pos').disabled = true;
-});
-
+    document.getElementById('formPosProducao').addEventListener('submit', function () {
+        document.getElementById('status_pos').disabled = true;
+    });
 
 
-function setSelectValue(selectId, valueToSelect) {
-    var selectElement = document.getElementById(selectId);
-    var options = selectElement.options;
+    function setSelectValue(selectId, valueToSelect) {
+        var selectElement = document.getElementById(selectId);
+        var options = selectElement.options;
 
-    for (var i = 0; i < options.length; i++) {
-        if (options[i].text === valueToSelect) {
-            selectElement.selectedIndex = i;
-            break;
+        for (var i = 0; i < options.length; i++) {
+            if (options[i].text === valueToSelect) {
+                selectElement.selectedIndex = i;
+                break;
+            }
         }
     }
-}
 
+});
 
 function filtrarTabela() {
     var indiceColuna = document.getElementById("colunaFiltro").value;

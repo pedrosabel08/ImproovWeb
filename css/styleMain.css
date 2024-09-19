@@ -154,7 +154,7 @@ table#tabela-obra th:first-child {
 }
 
 
-@media (max-width: 2560px) {
+@media (max-width: 3440px) {
     section.tabela-form {
         grid-template-columns: 2fr 1fr;
         margin-top: 50px;

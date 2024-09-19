@@ -274,7 +274,13 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
     });
+
 });
+
+function toggleNav() {
+    const navMenu = document.querySelector('.nav-menu');
+    navMenu.classList.toggle('active');
+}
 
 function filtrarTabela() {
     var indiceColuna = document.getElementById("colunaFiltro").value;

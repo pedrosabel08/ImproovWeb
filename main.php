@@ -458,7 +458,7 @@ $conn->close();
 
             <label for="colaboradorSelect">Selecionar Colaborador:</label>
             <select id="colaboradorSelect">
-                <option value="1">Selecione:</option>
+                <option value="0">Selecione:</option>
                 <?php foreach ($colaboradores as $colab): ?>
                     <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
                         <?= htmlspecialchars($colab['nome_colaborador']); ?>
@@ -471,6 +471,15 @@ $conn->close();
 
             <label for="dataFim">Data Fim:</label>
             <input type="date" id="dataFim">
+
+            <label for="obra">Obra:</label>
+            <select name="obraSelect" id="obraSelect">
+                <option value="">Selecione:</option>
+                <?php foreach ($obras as $obra): ?>
+                    <option value="<?= $obra['idobra']; ?>"><?= htmlspecialchars($obra['nome_obra']); ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
 
             <div class="image-count">
                 <strong>Total de Imagens:</strong> <span id="totalImagens">0</span>
@@ -486,7 +495,6 @@ $conn->close();
                     </tr>
                 </thead>
                 <tbody>
-                    <!-- O corpo da tabela será preenchido pelo PHP -->
                 </tbody>
             </table>
         </div>
@@ -496,8 +504,7 @@ $conn->close();
 
             <label for="obra">Obra:</label>
             <select name="obra" id="obra">
-                <option value="1">Selecione:</option>
-                <option value="1">Selecione:</option>
+                <option value="0">Selecione:</option>
                 <?php foreach ($obras as $obra): ?>
                     <option value="<?= htmlspecialchars($obra['idobra']); ?>">
                         <?= htmlspecialchars($obra['nome_obra']); ?>

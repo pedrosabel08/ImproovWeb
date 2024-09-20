@@ -510,11 +510,13 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('colaboradorSelect').addEventListener('change', carregarDados);
     document.getElementById('dataInicio').addEventListener('change', carregarDados);
     document.getElementById('dataFim').addEventListener('change', carregarDados);
+    document.getElementById('obraSelect').addEventListener('change', carregarDados);
 
     function carregarDados() {
         var colaboradorId = document.getElementById('colaboradorSelect').value;
         var dataInicio = document.getElementById('dataInicio').value;
         var dataFim = document.getElementById('dataFim').value;
+        var obraId = document.getElementById('obraSelect').value;
 
         if (colaboradorId) {
             var url = 'getFuncoesPorColaborador.php?colaborador_id=' + colaboradorId;
@@ -525,6 +527,11 @@ document.addEventListener('DOMContentLoaded', function () {
             if (dataFim) {
                 url += '&data_fim=' + encodeURIComponent(dataFim);
             }
+            if (obraId) {
+                url += '&obra_id=' + encodeURIComponent(obraId);
+            }
+
+            console.log(obraId);
 
             fetch(url)
                 .then(response => response.json())
@@ -533,18 +540,20 @@ document.addEventListener('DOMContentLoaded', function () {
                     tabela.innerHTML = '';
 
                     data.forEach(function (item) {
+                        console.log(item.nome_funcao);
+
                         var row = document.createElement('tr');
                         var cellNomeImagem = document.createElement('td');
                         cellNomeImagem.textContent = item.imagem_nome;
                         var cellFuncao = document.createElement('td');
-                        cellFuncao.textContent = item.funcao;
+                        cellFuncao.textContent = item.nome_funcao;
                         var cellStatus = document.createElement('td');
                         cellStatus.textContent = item.status;
                         var cellPrazoImagem = document.createElement('td');
                         cellPrazoImagem.textContent = item.prazo;
 
-
                         row.appendChild(cellNomeImagem);
+                        row.appendChild(cellFuncao);
                         row.appendChild(cellStatus);
                         row.appendChild(cellPrazoImagem);
                         tabela.appendChild(row);

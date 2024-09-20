@@ -1,0 +1,74 @@
+@import url('https://fonts.googleapis.com/css2?family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&family=Work+Sans:ital,wght@0,100..900;1,100..900&display=swap');
+
+
+* {
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+    font-family: "Work Sans", sans-serif;
+}
+
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    grid-template-rows: auto;
+}
+
+.sidebar {
+    background-color: #333;
+    color: white;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+.sidebar label,
+.sidebar select {
+    margin-bottom: 15px;
+    display: block;
+    width: 100%;
+    padding: 4px;
+}
+
+.sidebar img {
+    width: 100%;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+main {
+    background-color: #f4f4f4;
+    display: flex;
+    flex-direction: column;
+}
+
+.header {
+    background-color: #4CAF50;
+    color: white;
+    padding: 10px;
+    text-align: center;
+}
+
+.container {
+    display: flex;
+    justify-content: center;
+}
+
+#tabela-faturamento {
+    margin-top: 50px;
+    width: 90%;
+    border-collapse: collapse;
+}
+
+td, th {
+    border: 2px solid black;
+    padding: 5px;
+}
+
+td:nth-child(2),
+td:nth-child(3){
+    text-align: center;
+}

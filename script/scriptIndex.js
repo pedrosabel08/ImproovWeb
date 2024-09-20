@@ -10,6 +10,10 @@ function listaPos() {
     window.location.href = 'Pos-Producao/index.php'
 }
 
+function dashboard() {
+    window.location.href = 'Dashboard/index.php'
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     const themeToggle = document.getElementById('theme-toggle');
     const currentTheme = localStorage.getItem('theme');

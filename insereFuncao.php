@@ -1,57 +1,55 @@
 <?php
 header('Content-Type: application/json');
 header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
+header("Access-Control-Allow-Methods: POST");
 header("Access-Control-Allow-Headers: Content-Type");
 
-// Conexão com o banco de dados
 $conn = new mysqli('mysql.improov.com.br', 'improov', 'Impr00v', 'improov');
 
-// Verifica a conexão
 if ($conn->connect_error) {
-    echo json_encode(["status" => "erro", "mensagem" => "Conexão falhou: " . $conn->connect_error]);
-    exit;
+    die(json_encode(["status" => "erro", "mensagem" => "Conexão falhou: " . $conn->connect_error]));
 }
 
-// Função para verificar valores vazios e definir como NULL
 function emptyToNull($value)
 {
-    return empty($value) ? null : $value;
+    return $value === '' ? null : $value;
 }
 
-// Obtém os dados do POST
-$imagem_id = (int)$_POST['imagem_id'];
-$caderno_id = (int)$_POST['caderno_id'];
+$data = $_POST;
+
+$imagem_id = isset($data['imagem_id']) ? (int)$data['imagem_id'] : null;
+$caderno_id = (int)emptyToNull($_POST['caderno_id']);
 $status_caderno = emptyToNull($_POST['status_caderno']);
 $prazo_caderno = emptyToNull($_POST['prazo_caderno']);
-$obs_caderno = $_POST['obs_caderno'];
-$comp_id = (int)$_POST['comp_id'];
+$obs_caderno = emptyToNull($_POST['obs_caderno']);
+$comp_id = (int)emptyToNull($_POST['comp_id']);
 $status_comp = emptyToNull($_POST['status_comp']);
 $prazo_comp = emptyToNull($_POST['prazo_comp']);
-$obs_comp = $_POST['obs_comp'];
-$model_id = (int)$_POST['model_id'];
+$obs_comp = emptyToNull($_POST['obs_comp']);
+$model_id = (int)emptyToNull($_POST['model_id']);
 $status_modelagem = emptyToNull($_POST['status_modelagem']);
 $prazo_modelagem = emptyToNull($_POST['prazo_modelagem']);
-$obs_modelagem = $_POST['obs_modelagem'];
-$final_id = (int)$_POST['final_id'];
+$obs_modelagem = emptyToNull($_POST['obs_modelagem']);
+$final_id = (int)emptyToNull($_POST['final_id']);
 $status_finalizacao = emptyToNull($_POST['status_finalizacao']);
 $prazo_finalizacao = emptyToNull($_POST['prazo_finalizacao']);
-$obs_finalizacao = $_POST['obs_finalizacao'];
-$pos_id = (int)$_POST['pos_id'];
+$obs_finalizacao = emptyToNull($_POST['obs_finalizacao']);
+$pos_id = (int)emptyToNull($_POST['pos_id']);
 $status_pos = emptyToNull($_POST['status_pos']);
 $prazo_pos = emptyToNull($_POST['prazo_pos']);
-$obs_pos = $_POST['obs_pos'];
-$alteracao_id = (int)$_POST['alteracao_id'];
+$obs_pos = emptyToNull($_POST['obs_pos']);
+$alteracao_id = (int)emptyToNull($_POST['alteracao_id']);
 $status_alteracao = emptyToNull($_POST['status_alteracao']);
 $prazo_alteracao = emptyToNull($_POST['prazo_alteracao']);
-$obs_alteracao = $_POST['obs_alteracao'];
-$planta_id = (int)$_POST['planta_id'];
+$obs_alteracao = emptyToNull($_POST['obs_alteracao']);
+$planta_id = (int)emptyToNull($_POST['planta_id']);
 $status_planta = emptyToNull($_POST['status_planta']);
 $prazo_planta = emptyToNull($_POST['prazo_planta']);
-$obs_planta = $_POST['obs_planta'];
-$status_id = (int)$_POST['status_id'];  // Novo campo para o status da imagem
+$obs_planta = emptyToNull($_POST['obs_planta']);
+$status_id = (int)emptyToNull($_POST['status_id']);
 
-// Mapeamento dos textos para IDs das funções
+
+// Verificação de função e mapeamento
 $funcao_ids = [
     'Caderno' => 1,
     'Modelagem' => 2,
@@ -62,7 +60,6 @@ $funcao_ids = [
     'Planta Humanizada' => 7
 ];
 
-// Obtém os textos das tags <p> do POST
 $textos = $_POST['textos'];
 $caderno_texto = $textos['caderno'] ?? '';
 $comp_texto = $textos['comp'] ?? '';
@@ -81,27 +78,21 @@ $pos_funcao_id = $funcao_ids[$pos_texto] ?? null;
 $alteracao_funcao_id = $funcao_ids[$alteracao_texto] ?? null;
 $planta_funcao_id = $funcao_ids[$planta_texto] ?? null;
 
-// Verifica se todas as funções foram mapeadas corretamente
 if ($caderno_funcao_id === null || $comp_funcao_id === null || $modelagem_funcao_id === null || $finalizacao_funcao_id === null || $pos_funcao_id === null || $alteracao_funcao_id === null || $planta_funcao_id === null) {
     echo json_encode(["status" => "erro", "mensagem" => "Erro: Função não encontrada."]);
     exit;
 }
-
-// Inicia uma transação
 $conn->begin_transaction();
 
 try {
-    // Atualiza o status da imagem
+    // Atualize o status da imagem
     $status_sql = "UPDATE imagens_cliente_obra SET status_id = ? WHERE idimagens_cliente_obra = ?";
     $status_stmt = $conn->prepare($status_sql);
-    if ($status_stmt === false) {
-        throw new Exception("Erro ao preparar a declaração de status: " . $conn->error);
-    }
     $status_stmt->bind_param("ii", $status_id, $imagem_id);
     $status_stmt->execute();
     $status_stmt->close();
 
-    // Insere ou atualiza dados nas funções
+    // Insira ou atualize dados nas funções
     $sql = "INSERT INTO funcao_imagem (imagem_id, colaborador_id, funcao_id, prazo, status, observacao) 
             VALUES (?, ?, ?, ?, ?, ?)
             ON DUPLICATE KEY UPDATE
@@ -109,12 +100,13 @@ try {
             prazo = VALUES(prazo),
             status = VALUES(status),
             observacao = VALUES(observacao)";
+
     $stmt = $conn->prepare($sql);
     if ($stmt === false) {
         throw new Exception("Erro ao preparar a declaração: " . $conn->error);
     }
 
-    // Executa a declaração para cada função
+    // Execute para cada função (caderno, composição, etc.)
     $stmt->bind_param("iiisss", $imagem_id, $caderno_id, $caderno_funcao_id, $prazo_caderno, $status_caderno, $obs_caderno);
     $stmt->execute();
 
@@ -136,15 +128,17 @@ try {
     $stmt->bind_param("iiisss", $imagem_id, $planta_id, $planta_funcao_id, $prazo_planta, $status_planta, $obs_planta);
     $stmt->execute();
 
-    // Confirma a transação
+
     $conn->commit();
-    echo json_encode(["status" => "sucesso", "mensagem" => "Dados inseridos/atualizados com sucesso!"]);
+
+    $response['success'] = "Dados inseridos/atualizados com sucesso!";
+    echo json_encode($response);
 } catch (Exception $e) {
-    // Em caso de erro, desfaz a transação
     $conn->rollback();
-    echo json_encode(["status" => "erro", "mensagem" => "Erro ao executar a declaração: " . $e->getMessage()]);
+    $response['error'] = "Erro ao executar a declaração: " . $e->getMessage();
+    echo json_encode($response);
+    exit();
 }
 
-// Fecha a declaração e a conexão
 $stmt->close();
 $conn->close();

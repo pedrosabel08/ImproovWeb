@@ -127,10 +127,15 @@ th {
 
 table#tabelaClientes td,
 table#tabelaClientes th {
-    max-width: 80px;
+    max-width: 60px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+table#tabelaClientes th.nome-imagem,
+table#tabelaClientes td.nome-imagem {
+    max-width: 150px;
 }
 
 table#tabela-obra td:first-child,

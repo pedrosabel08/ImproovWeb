@@ -181,7 +181,7 @@ $conn->close();
                             <tr>
                                 <th>Nome Cliente</th>
                                 <th>Nome Obra</th>
-                                <th>Nome Imagem</th>
+                                <th class="nome-imagem">Nome Imagem</th>
                                 <th>Recebimento de arquivos</th>
                                 <th>Data Inicio</th>
                                 <th>Prazo Estimado</th>

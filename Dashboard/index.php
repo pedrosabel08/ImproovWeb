@@ -105,14 +105,29 @@ $conn->close();
                 </option>
             <?php endforeach; ?>
         </select>
+
+        <label for="colaborador">Colaborador:</label>
+        <select name="colaborador" id="colaborador">
+            <option value="0">Selecione:</option>
+            <?php foreach ($colaboradores as $colab): ?>
+                <option value="<?= $colab['idcolaborador']; ?>"><?= htmlspecialchars($colab['nome_colaborador']); ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
     </div>
     <main>
         <div class="header">
+            <button class="nav-toggle" aria-label="Toggle navigation" onclick="toggleNav()">
+                &#9776;
+            </button>
+            <nav class="nav-menu">
+                <button onclick="openModal('tabela-colab', this)">Colaboradores</button>
+            </nav>
             <h1>Dashboard</h1>
         </div>
+        <button id="atualizar-pagamento">Atualizar Pagamento</button>
 
         <div class="container">
-
             <table id="tabela-faturamento">
                 <thead>
                     <tr>
@@ -127,7 +142,7 @@ $conn->close();
         </div>
     </main>
 
-                <script src="../script/scriptDashboard.js"></script>
+    <script src="../script/scriptDashboard.js"></script>
 
 </body>
 

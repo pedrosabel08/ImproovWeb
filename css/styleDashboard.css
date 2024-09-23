@@ -16,6 +16,10 @@ body {
     grid-template-rows: auto;
 }
 
+button {
+    all: unset;
+}
+
 .sidebar {
     background-color: #333;
     color: white;
@@ -50,6 +54,7 @@ main {
     color: white;
     padding: 10px;
     text-align: center;
+    position: relative;
 }
 
 .container {
@@ -63,12 +68,77 @@ main {
     border-collapse: collapse;
 }
 
-td, th {
+td,
+th {
     border: 2px solid black;
     padding: 5px;
 }
 
 td:nth-child(2),
-td:nth-child(3){
+td:nth-child(3) {
     text-align: center;
+}
+
+.nav-toggle {
+    display: none;
+    font-size: 30px;
+    cursor: pointer;
+    background: none;
+    border: none;
+    color: black;
+}
+
+.nav-toggle {
+    position: absolute;
+    left: 10px;
+    top: 10px;
+    background: none;
+    border: none;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+    z-index: 1001;
+}
+
+nav {
+    justify-content: space-between;
+}
+
+nav button {
+    text-align: center;
+}
+
+.nav-menu {
+    display: none;
+    flex-direction: column;
+    background-color: #333;
+    width: 300px;
+    position: absolute;
+    top: 50px;
+    left: 10px;
+    z-index: 1000;
+}
+
+.nav-menu.active {
+    display: flex;
+}
+
+.nav-toggle {
+    display: block;
+}
+
+.nav-menu.active {
+    display: flex;
+}
+
+.nav-menu button {
+    cursor: pointer;
+    padding: 8px;
+    color: white;
+    text-decoration: none;
+    border-bottom: 1px solid #444;
+}
+
+.nav-menu button:hover {
+    background-color: #555;
 }

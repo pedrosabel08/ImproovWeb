@@ -1,7 +1,7 @@
 <?php
 header('Content-Type: application/json');
 header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Methods: GET, POST, OPTIONS"); 
+header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type");
 
 // Conexão com o banco de dados
@@ -9,7 +9,8 @@ $conn = new mysqli('mysql.improov.com.br', 'improov', 'Impr00v', 'improov');
 
 // Verifica a conexão
 if ($conn->connect_error) {
-    die("Conexão falhou: " . $conn->connect_error);
+    echo json_encode(["status" => "erro", "mensagem" => "Conexão falhou: " . $conn->connect_error]);
+    exit;
 }
 
 // Função para verificar valores vazios e definir como NULL
@@ -82,7 +83,8 @@ $planta_funcao_id = $funcao_ids[$planta_texto] ?? null;
 
 // Verifica se todas as funções foram mapeadas corretamente
 if ($caderno_funcao_id === null || $comp_funcao_id === null || $modelagem_funcao_id === null || $finalizacao_funcao_id === null || $pos_funcao_id === null || $alteracao_funcao_id === null || $planta_funcao_id === null) {
-    die("Erro: Função não encontrada.");
+    echo json_encode(["status" => "erro", "mensagem" => "Erro: Função não encontrada."]);
+    exit;
 }
 
 // Inicia uma transação
@@ -136,11 +138,11 @@ try {
 
     // Confirma a transação
     $conn->commit();
-    echo "Dados inseridos/atualizados com sucesso!";
+    echo json_encode(["status" => "sucesso", "mensagem" => "Dados inseridos/atualizados com sucesso!"]);
 } catch (Exception $e) {
     // Em caso de erro, desfaz a transação
     $conn->rollback();
-    die("Erro ao executar a declaração: " . $e->getMessage());
+    echo json_encode(["status" => "erro", "mensagem" => "Erro ao executar a declaração: " . $e->getMessage()]);
 }
 
 // Fecha a declaração e a conexão

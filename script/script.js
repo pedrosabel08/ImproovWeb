@@ -246,7 +246,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         $.ajax({
             type: "POST",
-            url: "http://www.improov.com.br/sistema/insereFuncao.php",
+            url: "http://improov.com.br/sistema/insereFuncao.php",
             data: dados,
             success: function (response) {
                 console.log(response);

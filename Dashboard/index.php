@@ -121,11 +121,21 @@ $conn->close();
                 &#9776;
             </button>
             <nav class="nav-menu">
-                <button onclick="openModal('tabela-colab', this)">Colaboradores</button>
+                <button onclick="openModal('tabela-faturamento', this)">Geral</button>
+                <button onclick="openModal('tabela-faturamento-colab', this)">Colaboradores</button>
             </nav>
             <h1>Dashboard</h1>
         </div>
-        <button id="atualizar-pagamento">Atualizar Pagamento</button>
+        <div id="buttons">
+            <button id="marcar-todos">Marcar/Desmarcar Todos</button>
+            <button id="confirmar-pagamento">Confirmar Pagamento</button>
+            <button id="adicionar-valor">Adicionar valor</button>
+            <input type="text" id="valor" placeholder="R$ 0,00">
+
+            <label id="totalValor">Total: R$ 0,00</label>
+            <label id="contagemLinhasLabel">Total de imagens: 0</label>
+
+        </div>
 
         <div class="container">
             <table id="tabela-faturamento">
@@ -139,10 +149,23 @@ $conn->close();
                 <tbody>
                 </tbody>
             </table>
+            <table id="tabela-faturamento-colab">
+                <thead>
+                    <tr>
+                        <th>Nome imagem</th>
+                        <th>Status pagamento</th>
+                        <th>Valor</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
         </div>
     </main>
 
     <script src="../script/scriptDashboard.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
 
 </body>
 

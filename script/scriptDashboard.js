@@ -48,6 +48,10 @@ document.addEventListener('DOMContentLoaded', function () {
             document.querySelector('#tabela-faturamento tbody').innerHTML = '';
         }
     }
+
+    document.getElementById('tabela-faturamento-colab').style.display = 'none';
+    document.getElementById('buttons').style.display = 'none';
+
 });
 
 function toggleNav() {
@@ -55,42 +59,28 @@ function toggleNav() {
     menu.classList.toggle('active');
 }
 
-function openModal(modalId, button) {
-    if (modalId === 'tabela-colab') {
-        alterarTabelaParaColaboradores();
+function openModal(modalId) {
+    if (modalId === 'tabela-faturamento-colab') {
+        alterarTabela('tabela-faturamento-colab', 'tabela-faturamento', true);
+    } else if (modalId === 'tabela-faturamento') {
+        alterarTabela('tabela-faturamento', 'tabela-faturamento-colab', false);
     }
-    // Outras funções podem ser adicionadas para abrir modais
 }
 
-function alterarTabelaParaColaboradores() {
-    const tabela = document.getElementById('tabela-faturamento');
-    const thead = tabela.querySelector('thead');
-    const tbody = tabela.querySelector('tbody');
+function alterarTabela(tabelaAtivaId, tabelaInativaId, mostrarBotoes) {
+    toggleNav();
 
-    thead.innerHTML = `
-        <tr>
-            <th><input type="checkbox" id="select-all-checkbox"></th>
-            <th>Nome imagem</th>
-            <th>Status Pagamento</th>
-            <th>Valor Imagem</th>
-        </tr>
-    `;
+    const tabelaAtiva = document.getElementById(tabelaAtivaId);
+    const tabelaInativa = document.getElementById(tabelaInativaId);
 
-    tbody.innerHTML = ''; // Limpar a tabela antes de adicionar novos dados
+    tabelaAtiva.style.display = '';
+    tabelaInativa.style.display = 'none';
 
-    // Adicionar evento para o checkbox "Selecionar Todos"
-    document.getElementById('select-all-checkbox').addEventListener('change', function () {
-        const checkboxes = tbody.querySelectorAll('input[type="checkbox"]');
-        checkboxes.forEach(checkbox => {
-            checkbox.checked = this.checked; // Marcar ou desmarcar todos os checkboxes
-        });
-    });
+    document.getElementById('buttons').style.display = mostrarBotoes ? 'grid' : 'none';
 
-    // Adicionar botão para confirmar atualização de pagamento
-    const confirmButton = document.createElement('button');
-    confirmButton.textContent = 'Confirmar Pagamentos';
-    confirmButton.addEventListener('click', updateAllPagamentos);
-    tabela.parentElement.insertBefore(confirmButton, tabela); // Adiciona o botão acima da tabela
+    const tbodyAtiva = tabelaAtiva.querySelector('tbody');
+    tbodyAtiva.innerHTML = '';
+
 }
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -116,21 +106,14 @@ document.addEventListener('DOMContentLoaded', function () {
             fetch(url)
                 .then(response => response.json())
                 .then(data => {
-                    console.log(data); // Verifique a saída no console
-                    var tabela = document.querySelector('#tabela-faturamento tbody');
-                    tabela.innerHTML = ''; // Limpar a tabela antes de adicionar novos dados
+                    var tabela = document.querySelector('#tabela-faturamento-colab tbody');
+                    tabela.innerHTML = '';
+                    let totalValor = 0;
+
 
                     data.forEach(function (item) {
                         var row = document.createElement('tr');
-                        row.setAttribute('data-id', item.idfuncao_imagem); // Adicione esta linha
-
-                        // Criar checkbox para cada linha
-                        var cellSelect = document.createElement('td');
-                        var checkbox = document.createElement('input');
-                        checkbox.type = 'checkbox';
-                        checkbox.checked = item.pagamento === 1; // Marcar se o pagamento está pago
-                        cellSelect.appendChild(checkbox);
-                        row.appendChild(cellSelect);
+                        row.setAttribute('data-id', item.idfuncao_imagem);
 
                         var cellNomeImagem = document.createElement('td');
                         cellNomeImagem.textContent = item.imagem_nome;
@@ -142,54 +125,107 @@ document.addEventListener('DOMContentLoaded', function () {
                         var cellValor = document.createElement('td');
                         cellValor.textContent = item.valor;
 
+                        totalValor += parseFloat(item.valor) || 0;
+
+                        var cellCheckbox = document.createElement('td');
+                        var checkbox = document.createElement('input');
+                        checkbox.type = 'checkbox';
+                        checkbox.classList.add('pagamento-checkbox');
+                        checkbox.checked = item.pagamento === 1;
+                        checkbox.setAttribute('data-id', item.idfuncao_imagem);
+                        cellCheckbox.appendChild(checkbox);
+
                         row.appendChild(cellNomeImagem);
                         row.appendChild(cellStatusPagamento);
                         row.appendChild(cellValor);
+                        row.appendChild(cellCheckbox);
+
 
                         tabela.appendChild(row);
                     });
+
+                    var totalValorLabel = document.getElementById('totalValor');
+                    totalValorLabel.textContent = 'Total: R$ ' + totalValor.toFixed(2).replace('.', ',');
+
+                    var contagemLinhasLabel = document.getElementById('contagemLinhasLabel');
+                    contagemLinhasLabel.textContent = 'Total de Linhas: ' + data.length;
                 })
                 .catch(error => {
                     console.error('Erro ao carregar dados do colaborador:', error);
                 });
         } else {
-            document.querySelector('#tabela-faturamento tbody').innerHTML = ''; // Limpar a tabela caso não haja colaborador selecionado
+            document.querySelector('#tabela-faturamento tbody').innerHTML = '';
+            var totalValorLabel = document.getElementById('totalValor');
+            totalValorLabel.textContent = 'Total: R$ 0,00';
         }
     }
-});
 
-function updateAllPagamentos() {
-    const checkboxes = document.querySelectorAll('#tabela-faturamento tbody input[type="checkbox"]');
-    const updates = [];
-
-    checkboxes.forEach((checkbox, index) => {
-        const row = checkbox.closest('tr');
-        const pagamento = checkbox.checked ? 1 : 0; // 1 para pago, 0 para não pago
-
-        // Obter o ID da linha correspondente (supondo que você tenha um atributo data-id ou similar)
-        const id = row.getAttribute('data-id'); // Certifique-se de que as linhas têm esse atributo
-
-        updates.push({ idfuncao_imagem: id, pagamento: pagamento });
+    document.getElementById('marcar-todos').addEventListener('click', function () {
+        var checkboxes = document.querySelectorAll('.pagamento-checkbox');
+        checkboxes.forEach(function (checkbox) {
+            checkbox.checked = !checkbox.checked;
+        });
     });
 
-    // Enviar as atualizações em lote
-    fetch('updatePagamento.php', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updates)
-    })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Erro ao atualizar pagamentos');
-            }
-            return response.json();
-        })
-        .then(data => {
-            console.log('Pagamentos atualizados:', data);
-        })
-        .catch(error => {
-            console.error('Erro ao atualizar pagamentos:', error);
-        });
-}
+    document.getElementById('confirmar-pagamento').addEventListener('click', function () {
+        var checkboxes = document.querySelectorAll('.pagamento-checkbox:checked');
+        var ids = Array.from(checkboxes).map(cb => cb.getAttribute('data-id'));
+
+        if (ids.length > 0) {
+            fetch('updatePagamento.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ ids: ids })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Pagamentos atualizados com sucesso!');
+                        carregarDadosColab(); // Recarrega a tabela
+                    } else {
+                        alert('Erro ao atualizar pagamentos.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro ao confirmar pagamentos:', error);
+                });
+        } else {
+            alert('Selecione pelo menos uma imagem para confirmar o pagamento.');
+        }
+    });
+
+    document.getElementById('adicionar-valor').addEventListener('click', function () {
+        var checkboxes = document.querySelectorAll('.pagamento-checkbox:checked');
+        var ids = Array.from(checkboxes).map(cb => cb.getAttribute('data-id'));
+
+        var valor = document.getElementById('valor').value;
+
+        if (ids.length > 0 && valor) {
+            fetch('updateValor.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ ids: ids, valor: valor })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Valores atualizados com sucesso!');
+                        carregarDadosColab();
+                    } else {
+                        alert('Erro ao atualizar valores: ' + (data.error || 'Erro desconhecido.'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro ao adicionar valores:', error);
+                });
+        } else {
+            alert('Selecione pelo menos uma imagem e insira um valor.');
+        }
+    });
+});
+
+

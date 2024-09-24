@@ -62,7 +62,7 @@ main {
     justify-content: center;
 }
 
-#tabela-faturamento {
+table#tabela-faturamento, table#tabela-faturamento-colab {
     margin-top: 50px;
     width: 90%;
     border-collapse: collapse;
@@ -75,7 +75,8 @@ th {
 }
 
 td:nth-child(2),
-td:nth-child(3) {
+td:nth-child(3),
+td:nth-child(4) {
     text-align: center;
 }
 
@@ -141,4 +142,48 @@ nav button {
 
 .nav-menu button:hover {
     background-color: #555;
+}
+
+#buttons {
+    display: grid;
+    grid-template-columns: 250px 250px;
+    grid-row: auto auto;
+    gap: 15px;
+    padding: 15px;
+}
+
+#buttons button {
+    padding: 5px;
+    border-radius: 10px;
+    width: 220px;
+    text-align: center;
+    font-weight: 500;
+    cursor: pointer;
+    transition: .3s all ease;
+    opacity: 0.5;
+}
+button#marcar-todos{
+    background-color: #ffa621;
+    grid-column: 1;
+}
+
+button#confirmar-pagamento {
+    background-color: #21ff29;
+    grid-column: 1;
+}
+
+button#adicionar-valor {
+    background-color: #fbff21;
+    grid-column: 2;
+    grid-row: 1;
+}
+
+#buttons input {
+    width: 180px;
+    font-size: 16px;
+    margin: 0 auto;
+}
+
+#buttons button:hover {
+    opacity: 1;
 }

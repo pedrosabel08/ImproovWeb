@@ -115,6 +115,26 @@ $conn->close();
             <?php endforeach; ?>
         </select>
     </div>
+
+    <section>
+        <div class="header">
+            <button class="nav-toggle" aria-label="Toggle navigation" onclick="toggleNav()">
+                &#9776;
+            </button>
+            <nav class="nav-menu">
+                <button onclick="openModal('tabela-faturamento', this)">Geral</button>
+                <button onclick="openModal('tabela-faturamento-colab', this)">Colaboradores</button>
+            </nav>
+            <h1>Dashboard</h1>
+        </div>
+        <div class="container-boxes">
+            <canvas id="meuGrafico" width="400" height="200"></canvas>
+            <div class="box2"></div>
+            <div class="box3"></div>
+        </div>
+
+    </section>
+
     <main>
         <div class="header">
             <button class="nav-toggle" aria-label="Toggle navigation" onclick="toggleNav()">

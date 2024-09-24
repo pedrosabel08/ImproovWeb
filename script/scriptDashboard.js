@@ -228,4 +228,72 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 
+document.addEventListener('DOMContentLoaded', function () {
+    document.getElementById('obra').addEventListener('change', carregarGrafico);
 
+    function carregarGrafico() {
+        var obraId = document.getElementById('obra').value;
+
+        if (obraId) {
+            var url = 'getGraficoStatus.php?obra_id=' + encodeURIComponent(obraId);
+
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    var labels = [];
+                    var cadernoCount = [];
+                    var modelagemCount = [];
+                    var composicaoCount = [];
+                    var finalizacaoCount = [];
+                    var posProducaoCount = [];
+                    var alteracaoCount = [];
+
+                    data.forEach(function (item) {
+                        labels.push(item.imagem_status);
+                        cadernoCount.push(item.caderno_count);
+                        modelagemCount.push(item.modelagem_count);
+                        composicaoCount.push(item.composicao_count);
+                        finalizacaoCount.push(item.finalizacao_count);
+                        posProducaoCount.push(item.pos_producao_count);
+                        alteracaoCount.push(item.alteracao_count);
+                    });
+
+                    atualizarGrafico(labels, cadernoCount, modelagemCount, composicaoCount, finalizacaoCount, posProducaoCount, alteracaoCount);
+                })
+                .catch(error => {
+                    console.error('Erro ao carregar dados do gráfico:', error);
+                });
+        }
+    }
+
+    function atualizarGrafico(labels, caderno, modelagem, composicao, finalizacao, posProducao, alteracao) {
+        var ctx = document.getElementById('meuGrafico').getContext('2d');
+
+        // Destruir o gráfico anterior, se existir
+        if (window.meuGrafico && typeof window.meuGrafico.destroy === 'function') {
+            window.meuGrafico.destroy();
+        }
+
+        window.meuGrafico = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    { label: 'Caderno', data: caderno, backgroundColor: 'rgba(255, 99, 132, 0.2)', borderColor: 'rgba(255, 99, 132, 1)', borderWidth: 1 },
+                    { label: 'Modelagem', data: modelagem, backgroundColor: 'rgba(54, 162, 235, 0.2)', borderColor: 'rgba(54, 162, 235, 1)', borderWidth: 1 },
+                    { label: 'Composição', data: composicao, backgroundColor: 'rgba(75, 192, 192, 0.2)', borderColor: 'rgba(75, 192, 192, 1)', borderWidth: 1 },
+                    { label: 'Finalização', data: finalizacao, backgroundColor: 'rgba(153, 102, 255, 0.2)', borderColor: 'rgba(153, 102, 255, 1)', borderWidth: 1 },
+                    { label: 'Pós Produção', data: posProducao, backgroundColor: 'rgba(255, 159, 64, 0.2)', borderColor: 'rgba(255, 159, 64, 1)', borderWidth: 1 },
+                    { label: 'Alteração', data: alteracao, backgroundColor: 'rgba(255, 206, 86, 0.2)', borderColor: 'rgba(255, 206, 86, 1)', borderWidth: 1 }
+                ]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    }
+});

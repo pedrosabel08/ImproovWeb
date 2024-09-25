@@ -33,6 +33,7 @@ $sql = "SELECT
     JOIN colaborador c ON fi.colaborador_id = c.idcolaborador
     WHERE ico.obra_id = ?
     GROUP BY ico.imagem_nome
+    ORDER BY ico.idimagens_cliente_obra
 ";
 
 $stmt = $conn->prepare($sql);

@@ -93,12 +93,12 @@ try {
     $status_stmt->close();
 
     // Insira ou atualize dados nas funções
-    $sql = "INSERT INTO funcao_imagem (imagem_id, colaborador_id, funcao_id, prazo, status, observacao) 
+    $sql = "INSERT INTO funcao_imagem (imagem_id, colaborador_id, funcao_id, prazo, status_id, observacao) 
             VALUES (?, ?, ?, ?, ?, ?)
             ON DUPLICATE KEY UPDATE
             colaborador_id = VALUES(colaborador_id),
             prazo = VALUES(prazo),
-            status = VALUES(status),
+            status_id = VALUES(status_id),
             observacao = VALUES(observacao)";
 
     $stmt = $conn->prepare($sql);
@@ -107,25 +107,25 @@ try {
     }
 
     // Execute para cada função (caderno, composição, etc.)
-    $stmt->bind_param("iiisss", $imagem_id, $caderno_id, $caderno_funcao_id, $prazo_caderno, $status_caderno, $obs_caderno);
+    $stmt->bind_param("iiisis", $imagem_id, $caderno_id, $caderno_funcao_id, $prazo_caderno, $status_caderno, $obs_caderno);
     $stmt->execute();
 
-    $stmt->bind_param("iiisss", $imagem_id, $comp_id, $comp_funcao_id, $prazo_comp, $status_comp, $obs_comp);
+    $stmt->bind_param("iiisis", $imagem_id, $comp_id, $comp_funcao_id, $prazo_comp, $status_comp, $obs_comp);
     $stmt->execute();
 
-    $stmt->bind_param("iiisss", $imagem_id, $model_id, $modelagem_funcao_id, $prazo_modelagem, $status_modelagem, $obs_modelagem);
+    $stmt->bind_param("iiisis", $imagem_id, $model_id, $modelagem_funcao_id, $prazo_modelagem, $status_modelagem, $obs_modelagem);
     $stmt->execute();
 
-    $stmt->bind_param("iiisss", $imagem_id, $final_id, $finalizacao_funcao_id, $prazo_finalizacao, $status_finalizacao, $obs_finalizacao);
+    $stmt->bind_param("iiisis", $imagem_id, $final_id, $finalizacao_funcao_id, $prazo_finalizacao, $status_finalizacao, $obs_finalizacao);
     $stmt->execute();
 
-    $stmt->bind_param("iiisss", $imagem_id, $pos_id, $pos_funcao_id, $prazo_pos, $status_pos, $obs_pos);
+    $stmt->bind_param("iiisis", $imagem_id, $pos_id, $pos_funcao_id, $prazo_pos, $status_pos, $obs_pos);
     $stmt->execute();
 
-    $stmt->bind_param("iiisss", $imagem_id, $alteracao_id, $alteracao_funcao_id, $prazo_alteracao, $status_alteracao, $obs_alteracao);
+    $stmt->bind_param("iiisis", $imagem_id, $alteracao_id, $alteracao_funcao_id, $prazo_alteracao, $status_alteracao, $obs_alteracao);
     $stmt->execute();
 
-    $stmt->bind_param("iiisss", $imagem_id, $planta_id, $planta_funcao_id, $prazo_planta, $status_planta, $obs_planta);
+    $stmt->bind_param("iiisis", $imagem_id, $planta_id, $planta_funcao_id, $prazo_planta, $status_planta, $obs_planta);
     $stmt->execute();
 
 

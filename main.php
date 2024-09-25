@@ -281,7 +281,7 @@ $conn->close();
                                 <?php endforeach; ?>
                             </select>
                         <?php endif; ?>
-                        <select name="caderno_status_id" id="opcao_status_caderno">
+                        <select name="opcao_status_caderno" id="opcao_status_caderno">
                             <?php foreach ($status_funcoes as $status_funcao): ?>
                                 <option value="<?= htmlspecialchars($status_funcao['idstatus_funcao']); ?>">
                                     <?= htmlspecialchars($status_funcao['status']); ?>
@@ -311,7 +311,7 @@ $conn->close();
                             </select>
                         <?php endif; ?>
 
-                        <select name="model_status_id" id="opcao_status_model">
+                        <select name="opcao_status_model" id="opcao_status_model">
                             <?php foreach ($status_funcoes as $status_funcao): ?>
                                 <option value="<?= htmlspecialchars($status_funcao['idstatus_funcao']); ?>">
                                     <?= htmlspecialchars($status_funcao['status']); ?>
@@ -342,7 +342,7 @@ $conn->close();
                             </select>
                         <?php endif; ?>
 
-                        <select name="comp_status_id" id="opcao_status_comp">
+                        <select name="opcao_status_comp" id="opcao_status_comp">
                             <?php foreach ($status_funcoes as $status_funcao): ?>
                                 <option value="<?= htmlspecialchars($status_funcao['idstatus_funcao']); ?>">
                                     <?= htmlspecialchars($status_funcao['status']); ?>
@@ -372,7 +372,7 @@ $conn->close();
                             </select>
                         <?php endif; ?>
 
-                        <select name="final_status_id" id="opcao_status_final">
+                        <select name="opcao_status_final" id="opcao_status_final">
                             <?php foreach ($status_funcoes as $status_funcao): ?>
                                 <option value="<?= htmlspecialchars($status_funcao['idstatus_funcao']); ?>">
                                     <?= htmlspecialchars($status_funcao['status']); ?>
@@ -404,7 +404,7 @@ $conn->close();
                             </select>
                         <?php endif; ?>
 
-                        <select name="pos_status_id" id="opcao_status_pos">
+                        <select name="opcao_status_pos" id="opcao_status_pos">
                             <?php foreach ($status_funcoes as $status_funcao): ?>
                                 <option value="<?= htmlspecialchars($status_funcao['idstatus_funcao']); ?>">
                                     <?= htmlspecialchars($status_funcao['status']); ?>
@@ -436,7 +436,7 @@ $conn->close();
                             </select>
                         <?php endif; ?>
 
-                        <select name="alt_status_id" id="opcao_status_alt">
+                        <select name="opcao_status_alt" id="opcao_status_alt">
                             <option value="0"></option>
                             <?php foreach ($status_funcoes as $status_funcao): ?>
                                 <option value="<?= htmlspecialchars($status_funcao['idstatus_funcao']); ?>">
@@ -469,7 +469,7 @@ $conn->close();
                             </select>
                         <?php endif; ?>
 
-                        <select name="planta_status_id" id="opcao_status_planta">
+                        <select name="opcao_status_planta" id="opcao_status_planta">
                             <option value="0"></option>
                             <?php foreach ($status_funcoes as $status_funcao): ?>
                                 <option value="<?= htmlspecialchars($status_funcao['idstatus_funcao']); ?>">

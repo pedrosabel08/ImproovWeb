@@ -27,45 +27,43 @@ document.addEventListener("DOMContentLoaded", function () {
                     if (response.funcoes && response.funcoes.length > 0) {
                         response.funcoes.forEach(function (funcao) {
                             let selectElement;
-                            let selectStatus;
-                            console.log(funcao);
                             switch (funcao.nome_funcao) {
                                 case "Caderno":
                                     selectElement = document.getElementById("opcao_caderno");
-                                    selectStatus = document.getElementById("opcao_status_caderno");
+                                    document.getElementById("status_caderno").value = funcao.status;
                                     document.getElementById("prazo_caderno").value = funcao.prazo;
                                     document.getElementById("obs_caderno").value = funcao.observacao;
                                     break;
                                 case "Modelagem":
                                     selectElement = document.getElementById("opcao_model");
-                                    selectStatus = document.getElementById("opcao_status_model");
+                                    document.getElementById("status_modelagem").value = funcao.status;
                                     document.getElementById("prazo_modelagem").value = funcao.prazo;
                                     document.getElementById("obs_modelagem").value = funcao.observacao;
                                     break;
                                 case "Composição":
                                     selectElement = document.getElementById("opcao_comp");
-                                    selectStatus = document.getElementById("opcao_status_comp");
+                                    document.getElementById("status_comp").value = funcao.status;
                                     document.getElementById("prazo_comp").value = funcao.prazo;
                                     document.getElementById("obs_comp").value = funcao.observacao;
 
                                     break;
                                 case "Finalização":
                                     selectElement = document.getElementById("opcao_final");
-                                    selectStatus = document.getElementById("opcao_status_final");
+                                    document.getElementById("status_finalizacao").value = funcao.status;
                                     document.getElementById("prazo_finalizacao").value = funcao.prazo;
                                     document.getElementById("obs_finalizacao").value = funcao.observacao;
 
                                     break;
                                 case "Pós-produção":
                                     selectElement = document.getElementById("opcao_pos");
-                                    selectStatus = document.getElementById("opcao_status_pos");
+                                    document.getElementById("status_pos").value = funcao.status;
                                     document.getElementById("prazo_pos").value = funcao.prazo;
                                     document.getElementById("obs_pos").value = funcao.observacao;
 
                                     break;
                                 case "Alteração":
                                     selectElement = document.getElementById("opcao_alteracao");
-                                    selectStatus = document.getElementById("opcao_status_alt");
+                                    document.getElementById("status_alteracao").value = funcao.status;
                                     document.getElementById("prazo_alteracao").value = funcao.prazo;
                                     document.getElementById("obs_alteracao").value = funcao.observacao;
 
@@ -73,7 +71,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
                                 case "Planta Humanizada":
                                     selectElement = document.getElementById("opcao_planta");
-                                    selectStatus = document.getElementById("opcao_status_planta");
+                                    document.getElementById("status_planta").value = funcao.status;
                                     document.getElementById("prazo_planta").value = funcao.prazo;
                                     document.getElementById("obs_planta").value = funcao.observacao;
 
@@ -81,9 +79,6 @@ document.addEventListener("DOMContentLoaded", function () {
                             }
                             if (selectElement) {
                                 selectElement.value = funcao.colaborador_id;
-                            }
-                            if (selectStatus) {
-                                selectStatus.value = funcao.status_funcao;
                             }
                         });
                     }
@@ -104,25 +99,26 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function limparCampos() {
         document.getElementById("campoNomeImagem").textContent = "";
-        document.getElementById("opcao_status_caderno").value = "";
+
+        document.getElementById("status_caderno").value = "";
         document.getElementById("prazo_caderno").value = "";
         document.getElementById("obs_caderno").value = "";
-        document.getElementById("opcao_status_model").value = "";
+        document.getElementById("status_modelagem").value = "";
         document.getElementById("prazo_modelagem").value = "";
         document.getElementById("obs_modelagem").value = "";
-        document.getElementById("opcao_status_comp").value = "";
+        document.getElementById("status_comp").value = "";
         document.getElementById("prazo_comp").value = "";
         document.getElementById("obs_comp").value = "";
-        document.getElementById("opcao_status_final").value = "";
+        document.getElementById("status_finalizacao").value = "";
         document.getElementById("prazo_finalizacao").value = "";
         document.getElementById("obs_finalizacao").value = "";
-        document.getElementById("opcao_status_pos").value = "";
+        document.getElementById("status_pos").value = "";
         document.getElementById("prazo_pos").value = "";
         document.getElementById("obs_pos").value = "";
-        document.getElementById("opcao_status_alt").value = "";
+        document.getElementById("status_alteracao").value = "";
         document.getElementById("prazo_alteracao").value = "";
         document.getElementById("obs_alteracao").value = "";
-        document.getElementById("opcao_status_planta").value = "";
+        document.getElementById("status_planta").value = "";
         document.getElementById("prazo_planta").value = "";
         document.getElementById("obs_planta").value = "";
 
@@ -217,37 +213,36 @@ document.addEventListener("DOMContentLoaded", function () {
         var dados = {
             imagem_id: idImagemSelecionada,
             caderno_id: document.getElementById("opcao_caderno").value || "",
-            status_caderno: document.getElementById("opcao_status_caderno").value || "",
+            status_caderno: document.getElementById("status_caderno").value || "",
             prazo_caderno: document.getElementById("prazo_caderno").value || "",
             obs_caderno: document.getElementById("obs_caderno").value || "",
             comp_id: document.getElementById("opcao_comp").value || "",
-            status_comp: document.getElementById("opcao_status_comp").value || "",
+            status_comp: document.getElementById("status_comp").value || "",
             prazo_comp: document.getElementById("prazo_comp").value || "",
             obs_comp: document.getElementById("obs_comp").value || "",
             model_id: document.getElementById("opcao_model").value || "",
-            status_modelagem: document.getElementById("opcao_status_model").value || "",
+            status_modelagem: document.getElementById("status_modelagem").value || "",
             prazo_modelagem: document.getElementById("prazo_modelagem").value || "",
             obs_modelagem: document.getElementById("obs_modelagem").value || "",
             final_id: document.getElementById("opcao_final").value || "",
-            status_finalizacao: document.getElementById("opcao_status_final").value || "",
+            status_finalizacao: document.getElementById("status_finalizacao").value || "",
             prazo_finalizacao: document.getElementById("prazo_finalizacao").value || "",
             obs_finalizacao: document.getElementById("obs_finalizacao").value || "",
             pos_id: document.getElementById("opcao_pos").value || "",
-            status_pos: document.getElementById("opcao_status_pos").value || "",
+            status_pos: document.getElementById("status_pos").value || "",
             prazo_pos: document.getElementById("prazo_pos").value || "",
             obs_pos: document.getElementById("obs_pos").value || "",
             alteracao_id: document.getElementById("opcao_alteracao").value || "",
-            status_alteracao: document.getElementById("opcao_status_alt").value || "",
+            status_alteracao: document.getElementById("status_alteracao").value || "",
             prazo_alteracao: document.getElementById("prazo_alteracao").value || "",
             obs_alteracao: document.getElementById("obs_alteracao").value || "",
             planta_id: document.getElementById("opcao_planta").value || "",
-            status_planta: document.getElementById("opcao_status_planta").value || "",
+            status_planta: document.getElementById("status_planta").value || "",
             prazo_planta: document.getElementById("prazo_planta").value || "",
             obs_planta: document.getElementById("obs_planta").value || "",
             textos: textos,
             status_id: document.getElementById("opcao_status").value || ""
         };
-        console.log(dados);
 
         $.ajax({
             type: "POST",

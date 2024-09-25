@@ -19,31 +19,31 @@ $data = $_POST;
 
 $imagem_id = isset($data['imagem_id']) ? (int)$data['imagem_id'] : null;
 $caderno_id = (int)emptyToNull($_POST['caderno_id']);
-$status_caderno = (int)emptyToNull($_POST['opcao_status_caderno']);
+$status_caderno = emptyToNull($_POST['opcao_status_caderno']);
 $prazo_caderno = emptyToNull($_POST['prazo_caderno']);
 $obs_caderno = emptyToNull($_POST['obs_caderno']);
 $comp_id = (int)emptyToNull($_POST['comp_id']);
-$status_comp = (int)emptyToNull($_POST['opcao_status_comp']);
+$status_comp = emptyToNull($_POST['opcao_status_comp']);
 $prazo_comp = emptyToNull($_POST['prazo_comp']);
 $obs_comp = emptyToNull($_POST['obs_comp']);
 $model_id = (int)emptyToNull($_POST['model_id']);
-$status_modelagem = (int)emptyToNull($_POST['opcao_status_model']);
+$status_modelagem = emptyToNull($_POST['opcao_status_model']);
 $prazo_modelagem = emptyToNull($_POST['prazo_modelagem']);
 $obs_modelagem = emptyToNull($_POST['obs_modelagem']);
 $final_id = (int)emptyToNull($_POST['final_id']);
-$status_finalizacao = (int)emptyToNull($_POST['opcao_status_final']);
+$status_finalizacao = emptyToNull($_POST['opcao_status_final']);
 $prazo_finalizacao = emptyToNull($_POST['prazo_finalizacao']);
 $obs_finalizacao = emptyToNull($_POST['obs_finalizacao']);
 $pos_id = (int)emptyToNull($_POST['pos_id']);
-$status_pos = (int)emptyToNull($_POST['opcao_status_pos']);
+$status_pos = emptyToNull($_POST['opcao_status_pos']);
 $prazo_pos = emptyToNull($_POST['prazo_pos']);
 $obs_pos = emptyToNull($_POST['obs_pos']);
 $alteracao_id = (int)emptyToNull($_POST['alteracao_id']);
-$status_alteracao = (int)emptyToNull($_POST['opcao_status_alt']);
+$status_alteracao = emptyToNull($_POST['opcao_status_alt']);
 $prazo_alteracao = emptyToNull($_POST['prazo_alteracao']);
 $obs_alteracao = emptyToNull($_POST['obs_alteracao']);
 $planta_id = (int)emptyToNull($_POST['planta_id']);
-$status_planta = (int)emptyToNull($_POST['opcao_status_planta']);
+$status_planta = emptyToNull($_POST['opcao_status_planta']);
 $prazo_planta = emptyToNull($_POST['prazo_planta']);
 $obs_planta = emptyToNull($_POST['obs_planta']);
 $status_id = (int)emptyToNull($_POST['status_id']);
@@ -106,7 +106,6 @@ try {
         throw new Exception("Erro ao preparar a declaração: " . $conn->error);
     }
 
-    // Execute para cada função (caderno, composição, etc.)
     $stmt->bind_param("iiisis", $imagem_id, $caderno_id, $caderno_funcao_id, $prazo_caderno, $status_caderno, $obs_caderno);
     $stmt->execute();
 

@@ -99,6 +99,16 @@ if ($result_status->num_rows > 0) {
     }
 }
 
+$sql_status_funcao = "SELECT idstatus_funcao, status FROM status_funcao order by idstatus_funcao";
+$result_status_funcao = $conn->query($sql_status_funcao);
+
+$status_funcoes = array();
+if ($result_status_funcao->num_rows > 0) {
+    while ($row = $result_status_funcao->fetch_assoc()) {
+        $status_funcoes[] = $row;
+    }
+}
+
 $conn->close();
 ?>
 
@@ -271,7 +281,13 @@ $conn->close();
                                 <?php endforeach; ?>
                             </select>
                         <?php endif; ?>
-                        <input type="text" name="status_caderno" id="status_caderno" placeholder="Status">
+                        <select name="caderno_status_id" id="opcao_status_caderno">
+                            <?php foreach ($status_funcoes as $status_funcao): ?>
+                                <option value="<?= htmlspecialchars($status_funcao['idstatus_funcao']); ?>">
+                                    <?= htmlspecialchars($status_funcao['status']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
                         <input type="date" name="prazo_caderno" id="prazo_caderno">
                         <input type="text" name="obs_caderno" id="obs_caderno" placeholder="Observação">
                     </div>
@@ -295,7 +311,13 @@ $conn->close();
                             </select>
                         <?php endif; ?>
 
-                        <input type="text" name="status_modelagem" id="status_modelagem" placeholder="Status">
+                        <select name="model_status_id" id="opcao_status_model">
+                            <?php foreach ($status_funcoes as $status_funcao): ?>
+                                <option value="<?= htmlspecialchars($status_funcao['idstatus_funcao']); ?>">
+                                    <?= htmlspecialchars($status_funcao['status']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
                         <input type="date" name="prazo_modelagem" id="prazo_modelagem">
                         <input type="text" name="obs_modelagem" id="obs_modelagem" placeholder="Observação">
 
@@ -320,14 +342,19 @@ $conn->close();
                             </select>
                         <?php endif; ?>
 
-                        <input type="text" name="status_comp" id="status_comp" placeholder="Status">
+                        <select name="comp_status_id" id="opcao_status_comp">
+                            <?php foreach ($status_funcoes as $status_funcao): ?>
+                                <option value="<?= htmlspecialchars($status_funcao['idstatus_funcao']); ?>">
+                                    <?= htmlspecialchars($status_funcao['status']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
                         <input type="date" name="prazo_comp" id="prazo_comp">
                         <input type="text" name="obs_comp" id="obs_comp" placeholder="Observação">
                     </div>
                     <div class="funcao">
                         <p id="finalizacao">Finalização</p>
                         <?php if ($_SESSION['nivel_acesso'] == 1): ?>
-
                             <select name="final_id" id="opcao_final">
                                 <?php foreach ($colaboradores as $colab): ?>
                                     <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
@@ -345,7 +372,14 @@ $conn->close();
                             </select>
                         <?php endif; ?>
 
-                        <input type="text" name="status_finalizacao" id="status_finalizacao" placeholder="Status">
+                        <select name="final_status_id" id="opcao_status_final">
+                            <?php foreach ($status_funcoes as $status_funcao): ?>
+                                <option value="<?= htmlspecialchars($status_funcao['idstatus_funcao']); ?>">
+                                    <?= htmlspecialchars($status_funcao['status']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+
                         <input type="date" name="prazo_finalizacao" id="prazo_finalizacao">
                         <input type="text" name="obs_finalizacao" id="obs_finalizacao" placeholder="Observação">
 
@@ -353,7 +387,6 @@ $conn->close();
                     <div class="funcao">
                         <p id="pos">Pós-Produção</p>
                         <?php if ($_SESSION['nivel_acesso'] == 1): ?>
-
                             <select name="pos_id" id="opcao_pos">
                                 <?php foreach ($colaboradores as $colab): ?>
                                     <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
@@ -371,15 +404,21 @@ $conn->close();
                             </select>
                         <?php endif; ?>
 
-                        <input type="text" name="status_pos" id="status_pos" placeholder="Status">
+                        <select name="pos_status_id" id="opcao_status_pos">
+                            <?php foreach ($status_funcoes as $status_funcao): ?>
+                                <option value="<?= htmlspecialchars($status_funcao['idstatus_funcao']); ?>">
+                                    <?= htmlspecialchars($status_funcao['status']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
                         <input type="date" name="prazo_pos" id="prazo_pos">
                         <input type="text" name="obs_pos" id="obs_pos" placeholder="Observação">
                     </div>
                     <div class="funcao">
                         <p id="alteracao">Alteração</p>
                         <?php if ($_SESSION['nivel_acesso'] == 1): ?>
-
                             <select name="alteracao_id" id="opcao_alteracao">
+                                <option value="0"></option>
                                 <?php foreach ($colaboradores as $colab): ?>
                                     <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
                                         <?= htmlspecialchars($colab['nome_colaborador']); ?>
@@ -388,6 +427,7 @@ $conn->close();
                             </select>
                         <?php else: ?>
                             <select name="alteracao_id" id="opcao_alteracao" disabled>
+                                <option value="0"></option>
                                 <?php foreach ($colaboradores as $colab): ?>
                                     <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
                                         <?= htmlspecialchars($colab['nome_colaborador']); ?>
@@ -396,15 +436,22 @@ $conn->close();
                             </select>
                         <?php endif; ?>
 
-                        <input type="text" name="status_alteracao" id="status_alteracao" placeholder="Status">
+                        <select name="alt_status_id" id="opcao_status_alt">
+                            <option value="0"></option>
+                            <?php foreach ($status_funcoes as $status_funcao): ?>
+                                <option value="<?= htmlspecialchars($status_funcao['idstatus_funcao']); ?>">
+                                    <?= htmlspecialchars($status_funcao['status']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
                         <input type="date" name="prazo_alterao" id="prazo_alteracao">
                         <input type="text" name="obs_alteracao" id="obs_alteracao" placeholder="Observação">
                     </div>
                     <div class="funcao">
                         <p id="planta">Planta Humanizada</p>
                         <?php if ($_SESSION['nivel_acesso'] == 1): ?>
-
                             <select name="planta_id" id="opcao_planta">
+                                <option value="0"></option>
                                 <?php foreach ($colaboradores as $colab): ?>
                                     <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
                                         <?= htmlspecialchars($colab['nome_colaborador']); ?>
@@ -413,6 +460,7 @@ $conn->close();
                             </select>
                         <?php else: ?>
                             <select name="planta_id" id="opcao_planta" disabled>
+                                <option value="0"></option>
                                 <?php foreach ($colaboradores as $colab): ?>
                                     <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
                                         <?= htmlspecialchars($colab['nome_colaborador']); ?>
@@ -421,7 +469,14 @@ $conn->close();
                             </select>
                         <?php endif; ?>
 
-                        <input type="text" name="status_planta" id="status_planta" placeholder="Status">
+                        <select name="planta_status_id" id="opcao_status_planta">
+                            <option value="0"></option>
+                            <?php foreach ($status_funcoes as $status_funcao): ?>
+                                <option value="<?= htmlspecialchars($status_funcao['idstatus_funcao']); ?>">
+                                    <?= htmlspecialchars($status_funcao['status']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
                         <input type="date" name="prazo_planta" id="prazo_planta">
                         <input type="text" name="obs_planta" id="obs_planta" placeholder="Observação">
                     </div>
@@ -565,7 +620,7 @@ $conn->close();
                     <th>Prazo</th>
                     <th>Planta</th>
                     <th>Prazo</th>
-                    
+
                 </thead>
                 <tbody>
 

@@ -148,8 +148,11 @@ $conn->close();
                 <label for="prazo">Prazo: </label>
                 <input type="date" name="prazo" id="prazo">
 
-                <label for="nome-imagem">Digite o nome da imagem:</label>
+                <label for="nome-imagem">Nome da imagem:</label>
                 <input type="text" name="nome" id="nome-imagem">
+
+                <label for="tipo-imagem">Tipo da imagem:</label>
+                <input type="text" name="tipo" id="tipo-imagem">
                 <div class="buttons">
                     <button type="submit" id="salvar">Salvar</button>
                     <button type="button" onclick="closeModal('add-cliente', this)" id="fechar">Fechar</button>
@@ -565,7 +568,7 @@ $conn->close();
                     <th>Prazo</th>
                     <th>Planta</th>
                     <th>Prazo</th>
-                    
+
                 </thead>
                 <tbody>
 

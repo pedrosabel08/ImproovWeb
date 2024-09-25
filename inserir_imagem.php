@@ -21,11 +21,12 @@ $arquivo = $data['arquivo'];
 $data_inicio = $data['data_inicio'];
 $prazo = $data['prazo'];
 $imagem = $data['imagem'];
+$tipo_imagem = $data['tipo'];
 
 // Verificar se ambos cliente e obra foram fornecidos
 if ($opcaoCliente && $opcaoObra) {
-    $sql = "INSERT INTO imagens_cliente_obra (cliente_id, obra_id, imagem_nome, recebimento_arquivos, data_inicio, prazo) 
-            VALUES ('$opcaoCliente', '$opcaoObra', '$imagem', '$arquivo', '$data_inicio', '$prazo')";
+    $sql = "INSERT INTO imagens_cliente_obra (cliente_id, obra_id, imagem_nome, recebimento_arquivos, data_inicio, prazo, tipo_imagem) 
+            VALUES ('$opcaoCliente', '$opcaoObra', '$imagem', '$arquivo', '$data_inicio', '$prazo', '$tipo_imagem')";
 } else {
     echo json_encode(['status' => 'error', 'message' => 'Cliente e obra são necessários']);
     exit();

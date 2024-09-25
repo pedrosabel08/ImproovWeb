@@ -247,6 +247,13 @@ document.addEventListener("DOMContentLoaded", function () {
             textos: textos,
             status_id: document.getElementById("opcao_status").value || ""
         };
+        console.log(document.getElementById("opcao_status_caderno").value);
+        console.log(document.getElementById("opcao_status_comp").value);
+        console.log(document.getElementById("opcao_status_model").value);
+        console.log(document.getElementById("opcao_status_final").value);
+        console.log(document.getElementById("opcao_status_alt").value);
+        console.log(document.getElementById("opcao_status_pos").value);
+        console.log(document.getElementById("opcao_status_planta").value);
 
         $.ajax({
             type: "POST",

@@ -104,7 +104,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function limparCampos() {
         document.getElementById("campoNomeImagem").textContent = "";
-
         document.getElementById("opcao_status_caderno").value = "";
         document.getElementById("prazo_caderno").value = "";
         document.getElementById("obs_caderno").value = "";
@@ -218,31 +217,31 @@ document.addEventListener("DOMContentLoaded", function () {
         var dados = {
             imagem_id: idImagemSelecionada,
             caderno_id: document.getElementById("opcao_caderno").value || "",
-            status_caderno: document.getElementById("status_caderno").value || "",
+            status_caderno: document.getElementById("opcao_status_caderno").value || "",
             prazo_caderno: document.getElementById("prazo_caderno").value || "",
             obs_caderno: document.getElementById("obs_caderno").value || "",
             comp_id: document.getElementById("opcao_comp").value || "",
-            status_comp: document.getElementById("status_comp").value || "",
+            status_comp: document.getElementById("opcao_status_comp").value || "",
             prazo_comp: document.getElementById("prazo_comp").value || "",
             obs_comp: document.getElementById("obs_comp").value || "",
             model_id: document.getElementById("opcao_model").value || "",
-            status_modelagem: document.getElementById("status_modelagem").value || "",
+            status_modelagem: document.getElementById("opcao_status_model").value || "",
             prazo_modelagem: document.getElementById("prazo_modelagem").value || "",
             obs_modelagem: document.getElementById("obs_modelagem").value || "",
             final_id: document.getElementById("opcao_final").value || "",
-            status_finalizacao: document.getElementById("status_finalizacao").value || "",
+            status_finalizacao: document.getElementById("opcao_status_final").value || "",
             prazo_finalizacao: document.getElementById("prazo_finalizacao").value || "",
             obs_finalizacao: document.getElementById("obs_finalizacao").value || "",
             pos_id: document.getElementById("opcao_pos").value || "",
-            status_pos: document.getElementById("status_pos").value || "",
+            status_pos: document.getElementById("opcao_status_pos").value || "",
             prazo_pos: document.getElementById("prazo_pos").value || "",
             obs_pos: document.getElementById("obs_pos").value || "",
             alteracao_id: document.getElementById("opcao_alteracao").value || "",
-            status_alteracao: document.getElementById("status_alteracao").value || "",
+            status_alteracao: document.getElementById("opcao_status_alt").value || "",
             prazo_alteracao: document.getElementById("prazo_alteracao").value || "",
             obs_alteracao: document.getElementById("obs_alteracao").value || "",
             planta_id: document.getElementById("opcao_planta").value || "",
-            status_planta: document.getElementById("status_planta").value || "",
+            status_planta: document.getElementById("opcao_status_planta").value || "",
             prazo_planta: document.getElementById("prazo_planta").value || "",
             obs_planta: document.getElementById("obs_planta").value || "",
             textos: textos,

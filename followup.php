@@ -36,7 +36,8 @@ FROM funcao_imagem fi
 JOIN imagens_cliente_obra ico ON fi.imagem_id = ico.idimagens_cliente_obra
 JOIN status_imagem s ON ico.status_id = s.idstatus
 WHERE ico.obra_id = ?
-GROUP BY ico.imagem_nome, ico.status_id, s.nome_status";
+GROUP BY ico.imagem_nome, ico.status_id, s.nome_status
+ORDER BY ico.idimagens_cliente_obra";
 
 $stmt = $conn->prepare($sql);
 $stmt->bind_param('i', $obraId);

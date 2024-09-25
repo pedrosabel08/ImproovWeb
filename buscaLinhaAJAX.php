@@ -23,7 +23,7 @@ if ($_SERVER["REQUEST_METHOD"] == "GET") {
                     col.idcolaborador AS colaborador_id, 
                     col.nome_colaborador, 
                     fi.prazo, 
-                    s.status AS status_funcao,
+                    s.idstatus_funcao AS status_funcao,
                     fi.observacao
                  FROM funcao_imagem fi
                  JOIN colaborador col ON fi.colaborador_id = col.idcolaborador

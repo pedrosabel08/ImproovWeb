@@ -539,7 +539,7 @@ $conn->close();
             <h1>Follow up</h1>
             <label for="obra">Obra:</label>
             <select name="obra-follow" id="obra-follow">
-                <option value="1">Selecione:</option>
+                <option value="0">Selecione:</option>
                 <?php foreach ($obras as $obra): ?>
                     <option value="<?= htmlspecialchars($obra['idobra']); ?>">
                         <?= htmlspecialchars($obra['nome_obra']); ?>
@@ -550,13 +550,22 @@ $conn->close();
             <table id="tabela-follow">
                 <thead>
                     <th>Nome da Imagem</th>
-                    <th>Status Imagem</th>
+                    <th>Status</th>
                     <th>Caderno</th>
-                    <th>Modelagem</th>
-                    <th>Composição</th>
-                    <th>Finalização</th>
-                    <th>Pós-produção</th>
+                    <th>Prazo</th>
+                    <th>Model</th>
+                    <th>Prazo</th>
+                    <th>Comp</th>
+                    <th>Prazo</th>
+                    <th>Final</th>
+                    <th>Prazo</th>
+                    <th>Pós</th>
+                    <th>Prazo</th>
                     <th>Alteração</th>
+                    <th>Prazo</th>
+                    <th>Planta</th>
+                    <th>Prazo</th>
+                    
                 </thead>
                 <tbody>
 

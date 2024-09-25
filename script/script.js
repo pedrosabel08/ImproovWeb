@@ -670,27 +670,54 @@ document.addEventListener('DOMContentLoaded', function () {
 
                         var cellCadernoStatus = document.createElement('td');
                         cellCadernoStatus.textContent = item.caderno_status || '-';
+                        var cellCadernoPrazo = document.createElement('td');
+                        cellCadernoPrazo.textContent = item.caderno_prazo || '-';
                         row.appendChild(cellCadernoStatus);
+                        row.appendChild(cellCadernoPrazo);
+
 
                         var cellModelagemStatus = document.createElement('td');
                         cellModelagemStatus.textContent = item.modelagem_status || '-';
+                        var cellModelagemPrazo = document.createElement('td');
+                        cellModelagemPrazo.textContent = item.modelagem_prazo || '-';
                         row.appendChild(cellModelagemStatus);
+                        row.appendChild(cellModelagemPrazo);
 
                         var cellComposicaoStatus = document.createElement('td');
                         cellComposicaoStatus.textContent = item.composicao_status || '-';
+                        var cellComposicaoPrazo = document.createElement('td');
+                        cellComposicaoPrazo.textContent = item.composicao_prazo || '-';
                         row.appendChild(cellComposicaoStatus);
+                        row.appendChild(cellComposicaoPrazo);
 
                         var cellFinalizacaoStatus = document.createElement('td');
                         cellFinalizacaoStatus.textContent = item.finalizacao_status || '-';
+                        var cellFinalizacaoPrazo = document.createElement('td');
+                        cellFinalizacaoPrazo.textContent = item.finalizacao_prazo || '-';
                         row.appendChild(cellFinalizacaoStatus);
+                        row.appendChild(cellFinalizacaoPrazo);
 
                         var cellPosProducaoStatus = document.createElement('td');
                         cellPosProducaoStatus.textContent = item.pos_producao_status || '-';
+                        var cellPosProducaoPrazo = document.createElement('td');
+                        cellPosProducaoPrazo.textContent = item.pos_producao_prazo || '-';
                         row.appendChild(cellPosProducaoStatus);
+                        row.appendChild(cellPosProducaoPrazo);
 
                         var cellAlteracaoStatus = document.createElement('td');
                         cellAlteracaoStatus.textContent = item.alteracao_status || '-';
+                        var cellAlteracaoPrazo = document.createElement('td');
+                        cellAlteracaoPrazo.textContent = item.alteracao_prazo || '-';
                         row.appendChild(cellAlteracaoStatus);
+                        row.appendChild(cellAlteracaoPrazo);
+
+                        var cellPlantaStatus = document.createElement('td');
+                        cellPlantaStatus.textContent = item.planta_status || '-';
+                        var cellPlantaPrazo = document.createElement('td');
+                        cellPlantaPrazo.textContent = item.planta_prazo || '-';
+                        row.appendChild(cellPlantaStatus);
+                        row.appendChild(cellPlantaPrazo);
+
 
                         tabela.appendChild(row);
                     });

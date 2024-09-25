@@ -23,12 +23,13 @@ if ($_SERVER["REQUEST_METHOD"] == "GET") {
                     col.idcolaborador AS colaborador_id, 
                     col.nome_colaborador, 
                     fi.prazo, 
-                    fi.status,
+                    s.status AS status_funcao,
                     fi.observacao
                  FROM funcao_imagem fi
                  JOIN colaborador col ON fi.colaborador_id = col.idcolaborador
                  JOIN funcao f ON fi.funcao_id = f.idfuncao
                  JOIN imagens_cliente_obra img ON fi.imagem_id = img.idimagens_cliente_obra
+			     JOIN status_funcao s ON fi.status_id = s.idstatus_funcao
                  WHERE fi.imagem_id = $idImagemSelecionada";
 
     $resultFuncao = $conn->query($sqlFuncao);

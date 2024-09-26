@@ -594,8 +594,8 @@ document.addEventListener('DOMContentLoaded', function () {
                         cellCadernoStatus.textContent = item.caderno_status || '-';
                         row.appendChild(cellCadernoColaborador);
                         row.appendChild(cellCadernoStatus);
-                        applyStatusStyle(cellCadernoStatus, item.caderno_status);
                         applyStyleNone(cellCadernoColaborador, cellCadernoStatus, item.caderno_colaborador);
+                        applyStatusStyle(cellCadernoStatus, item.caderno_status, item.caderno_colaborador);
 
 
                         var cellModelagemColaborador = document.createElement('td');
@@ -604,8 +604,8 @@ document.addEventListener('DOMContentLoaded', function () {
                         cellModelagemStatus.textContent = item.modelagem_status || '-';
                         row.appendChild(cellModelagemColaborador);
                         row.appendChild(cellModelagemStatus);
-                        applyStatusStyle(cellModelagemStatus, item.modelagem_status);
                         applyStyleNone(cellModelagemColaborador, cellModelagemStatus, item.modelagem_colaborador);
+                        applyStatusStyle(cellModelagemStatus, item.modelagem_status, item.modelagem_colaborador);
 
 
                         var cellComposicaoColaborador = document.createElement('td');
@@ -614,18 +614,18 @@ document.addEventListener('DOMContentLoaded', function () {
                         cellComposicaoStatus.textContent = item.composicao_status || '-';
                         row.appendChild(cellComposicaoColaborador);
                         row.appendChild(cellComposicaoStatus);
-                        applyStatusStyle(cellComposicaoStatus, item.composicao_status);
                         applyStyleNone(cellComposicaoColaborador, cellComposicaoStatus, item.composicao_colaborador);
+                        applyStatusStyle(cellComposicaoStatus, item.composicao_status, item.composicao_colaborador);
 
-                        
+
                         var cellFinalizacaoColaborador = document.createElement('td');
                         cellFinalizacaoColaborador.textContent = item.finalizacao_colaborador || '-';
                         var cellFinalizacaoStatus = document.createElement('td');
                         cellFinalizacaoStatus.textContent = item.finalizacao_status || '-';
                         row.appendChild(cellFinalizacaoColaborador);
                         row.appendChild(cellFinalizacaoStatus);
-                        applyStatusStyle(cellFinalizacaoStatus, item.finalizacao_status);
                         applyStyleNone(cellFinalizacaoColaborador, cellFinalizacaoStatus, item.finalizacao_colaborador);
+                        applyStatusStyle(cellFinalizacaoStatus, item.finalizacao_status, item.finalizacao_colaborador);
 
 
                         var cellPosProducaoColaborador = document.createElement('td');
@@ -634,8 +634,8 @@ document.addEventListener('DOMContentLoaded', function () {
                         cellPosProducaoStatus.textContent = item.pos_producao_status || '-';
                         row.appendChild(cellPosProducaoColaborador);
                         row.appendChild(cellPosProducaoStatus);
-                        applyStatusStyle(cellPosProducaoStatus, item.pos_producao_status);
                         applyStyleNone(cellPosProducaoColaborador, cellPosProducaoStatus, item.pos_producao_colaborador);
+                        applyStatusStyle(cellPosProducaoStatus, item.pos_producao_status, item.pos_producao_colaborador);
 
 
                         var cellAlteracaoColaborador = document.createElement('td');
@@ -644,8 +644,8 @@ document.addEventListener('DOMContentLoaded', function () {
                         cellAlteracaoStatus.textContent = item.alteracao_status || '-';
                         row.appendChild(cellAlteracaoColaborador);
                         row.appendChild(cellAlteracaoStatus);
-                        applyStatusStyle(cellAlteracaoStatus, item.alteracao_status);
                         applyStyleNone(cellAlteracaoColaborador, cellAlteracaoStatus, item.alteracao_colaborador);
+                        applyStatusStyle(cellAlteracaoStatus, item.alteracao_status, item.alteracao_colaborador);
 
 
                         var cellPlantaColaborador = document.createElement('td');
@@ -654,8 +654,8 @@ document.addEventListener('DOMContentLoaded', function () {
                         cellPlantaStatus.textContent = item.planta_status || '-';
                         row.appendChild(cellPlantaColaborador);
                         row.appendChild(cellPlantaStatus);
-                        applyStatusStyle(cellPlantaStatus, item.planta_status);
                         applyStyleNone(cellPlantaColaborador, cellPlantaStatus, item.planta_colaborador);
+                        applyStatusStyle(cellPlantaStatus, item.planta_status, item.planta_colaborador);
 
                         tabela.appendChild(row);
                     });
@@ -752,7 +752,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
 });
 
-function applyStatusStyle(cell, status) {
+function applyStatusStyle(cell, status, colaborador) {
+    if (colaborador === 'Não se aplica') {
+        return;
+    }
+
     switch (status) {
         case 'Finalizado':
             cell.style.backgroundColor = 'green';
@@ -768,20 +772,17 @@ function applyStatusStyle(cell, status) {
     }
 }
 
-
 function applyStyleNone(cell, cell2, nome) {
-    switch (nome) {
-        case 'Não se aplica':
-            cell.style.backgroundColor = '#fff8ab';
-            cell.style.color = 'black';
-            cell2.style.backgroundColor = '#fff8ab';
-            cell2.style.color = 'black';
-            break;
-        default:
-            cell.style.backgroundColor = '';
-            cell.style.color = '';
-            cell2.style.backgroundColor = '';
-            cell2.style.color = '';
+    if (nome === 'Não se aplica') {
+        cell.style.backgroundColor = '#fff8ab';
+        cell.style.color = 'black';
+        cell2.style.backgroundColor = '#fff8ab';
+        cell2.style.color = 'black';
+    } else {
+        cell.style.backgroundColor = '';
+        cell.style.color = '';
+        cell2.style.backgroundColor = '';
+        cell2.style.color = '';
     }
 }
 

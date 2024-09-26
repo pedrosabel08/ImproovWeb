@@ -164,9 +164,10 @@ if ($result_imagens->num_rows > 0) {
                     <div>
                         <label for="imagem_id">Nome Imagem</label>
                         <select id="imagem_id" name="imagem_id" required>
-                            <option value=""></option>
+                            <option value="">Selecione uma imagem:</option>
                             <?php foreach ($imagens as $imagem): ?>
-                                <option value="<?= $imagem['idimagens_cliente_obra']; ?>"><?= htmlspecialchars($imagem['imagem_nome']); ?></option>
+                                <option value="<?= $imagem['idimagens_cliente_obra']; ?>">
+                                    <?= htmlspecialchars($imagem['imagem_nome']); ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>

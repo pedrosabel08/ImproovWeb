@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../css/styleDashboard2.css">
+
+    <title>Dashboard</title>
+</head>
+
+<body>
+
+    <main>
+        <div class="header">
+            <h2>Dashboard</h2>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                <div class="card" id="anual">
+                    <h3>Anual</h3>
+                    <p id="earnings-anual">$1.415.090,00</p>
+                </div>
+                <div class="card" id="meta">
+                    <h3>Meta</h3>
+                    <p id="earnings-meta">$1.850.000,00</p>
+
+                </div>
+                <div class="card" id="imagens">
+                    <h3>Imagens</h3>
+                    <p id="imagens-count">267</p>
+
+                </div>
+                <div class="card" id="obras">
+                    <h3>Obras</h3>
+                    <p id="obras-count">18</p>
+
+                </div>
+            </div>
+
+            <div class="graphics">
+                <div class="grafico-ganhos">
+                    <div class="titulo-grafico">
+                        <p>Ganhos</p>
+                    </div>
+                    <canvas id="earnings-canvas" width="1100px" height="400px"></canvas>
+                </div>
+                <div class="grafico-obras">
+                    <div class="titulo-grafico">
+                        <p>Obras</p>
+                    </div>
+                    <canvas id="obras-canvas" width="500px" height="300px"></canvas>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        const ctxEarnings = document.getElementById('earnings-canvas').getContext('2d');
+        const earningsChart = new Chart(ctxEarnings, {
+            type: 'line', // Tipo de gráfico (linha)
+            data: {
+                labels: ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'], // Rótulos do eixo X
+                datasets: [{
+                    label: 'Ganhos', // Nome da linha
+                    data: [100000, 195200, 1350, 154250, 384300, 50000, 183400, 153560, 193030, 0, 0, 0], // Dados do gráfico
+                    borderColor: '#42f595',
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    borderWidth: 2,
+                    fill: true, 
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+
+        // Dados para o gráfico de Obras
+        var ctx = document.getElementById('obras-canvas').getContext('2d');
+        var obraTotal = 100000; // Exemplo de valor total da obra
+        var funcoes = {
+            "Caderno": 15000,
+            "Modelagem": 20000,
+            "Composição": 25000,
+            "Finalização": 30000,
+            "Pós-Produção": 10000
+        };
+
+        var funcoesLabels = Object.keys(funcoes);
+        var funcoesValores = Object.values(funcoes);
+
+        // Adiciona o valor total da obra na frente das funções
+        funcoesLabels.unshift('Valor Total');
+        funcoesValores.unshift(obraTotal);
+
+        var graficoObras = new Chart(ctx, {
+            type: 'pie', // Pode mudar para 'pie' para gráfico de pizza
+            data: {
+                labels: funcoesLabels,
+                datasets: [{
+                    label: 'Valores por Função',
+                    data: funcoesValores,
+                    backgroundColor: [
+                        'rgba(75, 192, 192, 0.2)',
+                        'rgba(255, 99, 132, 0.2)',
+                        'rgba(54, 162, 235, 0.2)',
+                        'rgba(255, 206, 86, 0.2)',
+                        'rgba(75, 192, 192, 0.2)',
+                        'rgba(153, 102, 255, 0.2)',
+                        'rgba(255, 159, 64, 0.2)'
+                    ],
+                    borderColor: [
+                        'rgba(75, 192, 192, 1)',
+                        'rgba(255, 99, 132, 1)',
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(255, 206, 86, 1)',
+                        'rgba(75, 192, 192, 1)',
+                        'rgba(153, 102, 255, 1)',
+                        'rgba(255, 159, 64, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+
+</html>

@@ -43,7 +43,15 @@ if ($result_colaboradores->num_rows > 0) {
     }
 }
 
-$sql_status = "SELECT idstatus, nome_status FROM status_imagem order by idstatus";
+$sql_status = "SELECT idstatus, nome_status 
+               FROM status_imagem 
+               ORDER BY 
+                   CASE 
+                       WHEN nome_status = 'Sem status' THEN 0 
+                       ELSE 1 
+                   END, 
+                   idstatus"; // Adiciona a ordem por idstatus após "Sem status"
+
 $result_status = $conn->query($sql_status);
 $status_imagens = array();
 if ($result_status->num_rows > 0) {
@@ -51,7 +59,6 @@ if ($result_status->num_rows > 0) {
         $status_imagens[] = $row;
     }
 }
-
 $sql_imagens = "SELECT idimagens_cliente_obra, imagem_nome FROM imagens_cliente_obra";
 $result_imagens = $conn->query($sql_imagens);
 $imagens = array();
@@ -129,8 +136,8 @@ if ($result_imagens->num_rows > 0) {
                 <form id="formPosProducao">
                     <div>
                         <label for="nomeFinalizador">Nome Finalizador</label>
-                        <select name="final_id" id="opcao_finalizador">
-                            <option value="">Selecione um colaborador:</option>
+                        <select name="final_id" id="opcao_finalizador" required>
+                            <option value="0">Selecione um colaborador:</option>
                             <?php foreach ($colaboradores as $colab): ?>
                                 <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
                                     <?= htmlspecialchars($colab['nome_colaborador']); ?>
@@ -141,8 +148,8 @@ if ($result_imagens->num_rows > 0) {
 
                     <div>
                         <label for="nomeCliente">Nome Cliente</label>
-                        <select name="cliente_id" id="opcao_cliente">
-                            <option value=""></option>
+                        <select name="cliente_id" id="opcao_cliente" required>
+                            <option value="0">Selecione um cliente:</option>
                             <?php foreach ($clientes as $cliente): ?>
                                 <option value="<?= htmlspecialchars($cliente['idcliente']); ?>">
                                     <?= htmlspecialchars($cliente['nome_cliente']); ?>
@@ -153,8 +160,8 @@ if ($result_imagens->num_rows > 0) {
 
                     <div>
                         <label for="nomeObra">Nome Obra</label>
-                        <select name="obra_id" id="opcao_obra" onchange="buscarImagens()">
-                            <option value=""></option>
+                        <select name="obra_id" id="opcao_obra" onchange="buscarImagens()" required>
+                            <option value="0">Selecione uma obra:</option>
                             <?php foreach ($obras as $obra): ?>
                                 <option value="<?= $obra['idobra']; ?>"><?= htmlspecialchars($obra['nome_obra']); ?></option>
                             <?php endforeach; ?>
@@ -164,7 +171,7 @@ if ($result_imagens->num_rows > 0) {
                     <div>
                         <label for="imagem_id">Nome Imagem</label>
                         <select id="imagem_id" name="imagem_id" required>
-                            <option value=""></option>
+                            <option value="0">Selecione uma imagem:</option>
                             <?php foreach ($imagens as $imagem): ?>
                                 <option value="<?= $imagem['idimagens_cliente_obra']; ?>"><?= htmlspecialchars($imagem['imagem_nome']); ?></option>
                             <?php endforeach; ?>

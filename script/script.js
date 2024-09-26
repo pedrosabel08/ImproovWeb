@@ -595,6 +595,8 @@ document.addEventListener('DOMContentLoaded', function () {
                         row.appendChild(cellCadernoColaborador);
                         row.appendChild(cellCadernoStatus);
                         applyStatusStyle(cellCadernoStatus, item.caderno_status);
+                        applyStyleNone(cellCadernoColaborador, cellCadernoStatus, item.caderno_colaborador);
+
 
                         var cellModelagemColaborador = document.createElement('td');
                         cellModelagemColaborador.textContent = item.modelagem_colaborador || '-';
@@ -603,6 +605,8 @@ document.addEventListener('DOMContentLoaded', function () {
                         row.appendChild(cellModelagemColaborador);
                         row.appendChild(cellModelagemStatus);
                         applyStatusStyle(cellModelagemStatus, item.modelagem_status);
+                        applyStyleNone(cellModelagemColaborador, cellModelagemStatus, item.modelagem_colaborador);
+
 
                         var cellComposicaoColaborador = document.createElement('td');
                         cellComposicaoColaborador.textContent = item.composicao_colaborador || '-';
@@ -611,7 +615,9 @@ document.addEventListener('DOMContentLoaded', function () {
                         row.appendChild(cellComposicaoColaborador);
                         row.appendChild(cellComposicaoStatus);
                         applyStatusStyle(cellComposicaoStatus, item.composicao_status);
+                        applyStyleNone(cellComposicaoColaborador, cellComposicaoStatus, item.composicao_colaborador);
 
+                        
                         var cellFinalizacaoColaborador = document.createElement('td');
                         cellFinalizacaoColaborador.textContent = item.finalizacao_colaborador || '-';
                         var cellFinalizacaoStatus = document.createElement('td');
@@ -619,6 +625,8 @@ document.addEventListener('DOMContentLoaded', function () {
                         row.appendChild(cellFinalizacaoColaborador);
                         row.appendChild(cellFinalizacaoStatus);
                         applyStatusStyle(cellFinalizacaoStatus, item.finalizacao_status);
+                        applyStyleNone(cellFinalizacaoColaborador, cellFinalizacaoStatus, item.finalizacao_colaborador);
+
 
                         var cellPosProducaoColaborador = document.createElement('td');
                         cellPosProducaoColaborador.textContent = item.pos_producao_colaborador || '-';
@@ -627,6 +635,8 @@ document.addEventListener('DOMContentLoaded', function () {
                         row.appendChild(cellPosProducaoColaborador);
                         row.appendChild(cellPosProducaoStatus);
                         applyStatusStyle(cellPosProducaoStatus, item.pos_producao_status);
+                        applyStyleNone(cellPosProducaoColaborador, cellPosProducaoStatus, item.pos_producao_colaborador);
+
 
                         var cellAlteracaoColaborador = document.createElement('td');
                         cellAlteracaoColaborador.textContent = item.alteracao_colaborador || '-';
@@ -635,8 +645,18 @@ document.addEventListener('DOMContentLoaded', function () {
                         row.appendChild(cellAlteracaoColaborador);
                         row.appendChild(cellAlteracaoStatus);
                         applyStatusStyle(cellAlteracaoStatus, item.alteracao_status);
+                        applyStyleNone(cellAlteracaoColaborador, cellAlteracaoStatus, item.alteracao_colaborador);
 
-                        
+
+                        var cellPlantaColaborador = document.createElement('td');
+                        cellPlantaColaborador.textContent = item.planta_colaborador || '-';
+                        var cellPlantaStatus = document.createElement('td');
+                        cellPlantaStatus.textContent = item.planta_status || '-';
+                        row.appendChild(cellPlantaColaborador);
+                        row.appendChild(cellPlantaStatus);
+                        applyStatusStyle(cellPlantaStatus, item.planta_status);
+                        applyStyleNone(cellPlantaColaborador, cellPlantaStatus, item.planta_colaborador);
+
                         tabela.appendChild(row);
                     });
                 })
@@ -747,6 +767,24 @@ function applyStatusStyle(cell, status) {
             cell.style.color = '';
     }
 }
+
+
+function applyStyleNone(cell, cell2, nome) {
+    switch (nome) {
+        case 'Não se aplica':
+            cell.style.backgroundColor = '#fff8ab';
+            cell.style.color = 'black';
+            cell2.style.backgroundColor = '#fff8ab';
+            cell2.style.color = 'black';
+            break;
+        default:
+            cell.style.backgroundColor = '';
+            cell.style.color = '';
+            cell2.style.backgroundColor = '';
+            cell2.style.color = '';
+    }
+}
+
 
 function applyStatusImagem(cell, status) {
     switch (status) {

@@ -636,6 +636,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         row.appendChild(cellAlteracaoStatus);
                         applyStatusStyle(cellAlteracaoStatus, item.alteracao_status);
 
+                        
                         tabela.appendChild(row);
                     });
                 })

@@ -3,8 +3,7 @@ var openModalBtn = document.getElementById("openModalBtn");
 var closeModal = document.getElementsByClassName("close")[0];
 const formPosProducao = document.getElementById('formPosProducao');
 
-openModalBtn.onclick = function () {
-    modal.style.display = "flex";
+function limparCampos() {
     document.getElementById('opcao_finalizador').selectedIndex = 0; // Resetar select
     document.getElementById('opcao_cliente').selectedIndex = 0; // Resetar select
     document.getElementById('opcao_obra').selectedIndex = 0; // Resetar select
@@ -14,11 +13,17 @@ openModalBtn.onclick = function () {
     document.getElementById('numeroBG').value = ''; // Limpar campo de texto
     document.getElementById('referenciasCaminho').value = ''; // Limpar campo de texto
     document.getElementById('observacao').value = ''; // Limpar campo de texto
+}
+
+openModalBtn.onclick = function () {
+    modal.style.display = "flex";
+    limparCampos();
 };
 
 closeModal.onclick = function () {
     modal.style.display = "none";
-}
+    limparCampos();
+};
 
 window.onclick = function (event) {
     if (event.target == modal) {
@@ -80,8 +85,8 @@ document.addEventListener("DOMContentLoaded", function () {
             .then(data => {
 
                 document.getElementById('modal').style.display = 'none';
+                limparCampos();
                 atualizarTabela();
-                formPosProducao.reset();
 
                 Toastify({
                     text: "Dados inseridos com sucesso!",
@@ -194,6 +199,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 linhasTabela.forEach(linha => {
                     linha.addEventListener('click', function () {
                         modal.style.display = "flex";
+                        limparCampos();
                         linhasTabela.forEach(outro => {
                             outro.classList.remove('selecionada');
                         });
@@ -212,7 +218,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                     setSelectValue('opcao_finalizador', response[0].nome_colaborador);
                                     setSelectValue('opcao_cliente', response[0].nome_cliente);
                                     setSelectValue('opcao_obra', response[0].nome_obra);
-                                    setSelectValueByValue('imagem_id', response[0].id_imagem);
+                                    setSelectValue('imagem_id', response[0].imagem_nome);
                                     document.getElementById('id-pos').value = response[0].idpos_producao;
                                     document.getElementById('caminhoPasta').value = response[0].caminho_pasta;
                                     document.getElementById('numeroBG').value = response[0].numero_bg;
@@ -241,11 +247,6 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     atualizarTabela();
-
-    document.getElementById('formPosProducao').addEventListener('submit', function () {
-        document.getElementById('status_pos').disabled = true;
-    });
-
 
     function setSelectValue(selectId, valueToSelect) {
         var selectElement = document.getElementById(selectId);

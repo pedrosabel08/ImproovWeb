@@ -5,6 +5,15 @@ const formPosProducao = document.getElementById('formPosProducao');
 
 openModalBtn.onclick = function () {
     modal.style.display = "flex";
+    document.getElementById('opcao_finalizador').selectedIndex = 0; // Resetar select
+    document.getElementById('opcao_cliente').selectedIndex = 0; // Resetar select
+    document.getElementById('opcao_obra').selectedIndex = 0; // Resetar select
+    document.getElementById('imagem_id').value = ''; // Limpar campo de texto
+    document.getElementById('id-pos').value = ''; // Limpar campo de texto
+    document.getElementById('caminhoPasta').value = ''; // Limpar campo de texto
+    document.getElementById('numeroBG').value = ''; // Limpar campo de texto
+    document.getElementById('referenciasCaminho').value = ''; // Limpar campo de texto
+    document.getElementById('observacao').value = ''; // Limpar campo de texto
 };
 
 closeModal.onclick = function () {
@@ -73,7 +82,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 document.getElementById('modal').style.display = 'none';
                 atualizarTabela();
                 formPosProducao.reset();
-                buscarImagens();
 
                 Toastify({
                     text: "Dados inseridos com sucesso!",
@@ -204,7 +212,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                     setSelectValue('opcao_finalizador', response[0].nome_colaborador);
                                     setSelectValue('opcao_cliente', response[0].nome_cliente);
                                     setSelectValue('opcao_obra', response[0].nome_obra);
-                                    setSelectValue('imagem_id', response[0].imagem_nome);
+                                    setSelectValueByValue('imagem_id', response[0].id_imagem);
                                     document.getElementById('id-pos').value = response[0].idpos_producao;
                                     document.getElementById('caminhoPasta').value = response[0].caminho_pasta;
                                     document.getElementById('numeroBG').value = response[0].numero_bg;
@@ -251,6 +259,17 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
+    function setSelectValueByValue(selectId, valueToSelect) {
+        var selectElement = document.getElementById(selectId);
+        var options = selectElement.options;
+
+        for (var i = 0; i < options.length; i++) {
+            if (options[i].value == valueToSelect) {
+                selectElement.selectedIndex = i;
+                break;
+            }
+        }
+    }
 });
 
 function filtrarTabela() {

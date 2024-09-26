@@ -20,7 +20,7 @@ if ($_SERVER["REQUEST_METHOD"] == "GET") {
     $idImagemSelecionada = $conn->real_escape_string($idImagemSelecionada);
 
     $sql = "SELECT p.idpos_producao, col.nome_colaborador, cli.nome_cliente, o.idobra, o.nome_obra, 
-                    p.data_pos, i.imagem_nome, p.caminho_pasta, p.numero_bg, p.refs, p.obs, p.status_pos, s.nome_status 
+                    p.data_pos, i.imagem_nome, i.idimagens_cliente_obra as id_imagem, p.caminho_pasta, p.numero_bg, p.refs, p.obs, p.status_pos, s.nome_status 
             FROM pos_producao p
             INNER JOIN colaborador col ON p.colaborador_id = col.idcolaborador
             INNER JOIN cliente cli ON p.cliente_id = cli.idcliente

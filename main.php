@@ -274,7 +274,13 @@ $conn->close();
                                 <?php endforeach; ?>
                             </select>
                         <?php endif; ?>
-                        <input type="text" name="status_caderno" id="status_caderno" placeholder="Status">
+                        <select name="status_caderno" id="status_caderno">
+                            <option value="Finalizado">Finalizado</option>
+                            <option value="Em andamento">Em andamento</option>
+                            <option value="Não iniciado">Não iniciado</option>
+                            <option value="HOLD">HOLD</option>
+                            <option value="Não se aplica">Não se aplica</option>
+                        </select>
                         <input type="date" name="prazo_caderno" id="prazo_caderno">
                         <input type="text" name="obs_caderno" id="obs_caderno" placeholder="Observação">
                     </div>
@@ -298,7 +304,13 @@ $conn->close();
                             </select>
                         <?php endif; ?>
 
-                        <input type="text" name="status_modelagem" id="status_modelagem" placeholder="Status">
+                        <select name="status_modelagem" id="status_modelagem">
+                            <option value="Finalizado">Finalizado</option>
+                            <option value="Em andamento">Em andamento</option>
+                            <option value="Não iniciado">Não iniciado</option>
+                            <option value="HOLD">HOLD</option>
+                            <option value="Não se aplica">Não se aplica</option>
+                        </select>
                         <input type="date" name="prazo_modelagem" id="prazo_modelagem">
                         <input type="text" name="obs_modelagem" id="obs_modelagem" placeholder="Observação">
 
@@ -323,7 +335,13 @@ $conn->close();
                             </select>
                         <?php endif; ?>
 
-                        <input type="text" name="status_comp" id="status_comp" placeholder="Status">
+                        <select name="status_comp" id="status_comp">
+                            <option value="Finalizado">Finalizado</option>
+                            <option value="Em andamento">Em andamento</option>
+                            <option value="Não iniciado">Não iniciado</option>
+                            <option value="HOLD">HOLD</option>
+                            <option value="Não se aplica">Não se aplica</option>
+                        </select>
                         <input type="date" name="prazo_comp" id="prazo_comp">
                         <input type="text" name="obs_comp" id="obs_comp" placeholder="Observação">
                     </div>
@@ -348,7 +366,13 @@ $conn->close();
                             </select>
                         <?php endif; ?>
 
-                        <input type="text" name="status_finalizacao" id="status_finalizacao" placeholder="Status">
+                        <select name="status_finalizacao" id="status_finalizacao">
+                            <option value="Finalizado">Finalizado</option>
+                            <option value="Em andamento">Em andamento</option>
+                            <option value="Não iniciado">Não iniciado</option>
+                            <option value="HOLD">HOLD</option>
+                            <option value="Não se aplica">Não se aplica</option>
+                        </select>
                         <input type="date" name="prazo_finalizacao" id="prazo_finalizacao">
                         <input type="text" name="obs_finalizacao" id="obs_finalizacao" placeholder="Observação">
 
@@ -374,7 +398,13 @@ $conn->close();
                             </select>
                         <?php endif; ?>
 
-                        <input type="text" name="status_pos" id="status_pos" placeholder="Status">
+                        <select name="status_pos" id="status_pos">
+                            <option value="Finalizado">Finalizado</option>
+                            <option value="Em andamento">Em andamento</option>
+                            <option value="Não iniciado">Não iniciado</option>
+                            <option value="HOLD">HOLD</option>
+                            <option value="Não se aplica">Não se aplica</option>
+                        </select>
                         <input type="date" name="prazo_pos" id="prazo_pos">
                         <input type="text" name="obs_pos" id="obs_pos" placeholder="Observação">
                     </div>
@@ -399,8 +429,14 @@ $conn->close();
                             </select>
                         <?php endif; ?>
 
-                        <input type="text" name="status_alteracao" id="status_alteracao" placeholder="Status">
-                        <input type="date" name="prazo_alterao" id="prazo_alteracao">
+                        <select name="status_alteracao" id="status_alteracao">
+                            <option value="Finalizado">Finalizado</option>
+                            <option value="Em andamento">Em andamento</option>
+                            <option value="Não iniciado">Não iniciado</option>
+                            <option value="HOLD">HOLD</option>
+                            <option value="Não se aplica">Não se aplica</option>
+                        </select>
+                        <input type="date" name="prazo_alteracao" id="prazo_alteracao">
                         <input type="text" name="obs_alteracao" id="obs_alteracao" placeholder="Observação">
                     </div>
                     <div class="funcao">
@@ -424,7 +460,13 @@ $conn->close();
                             </select>
                         <?php endif; ?>
 
-                        <input type="text" name="status_planta" id="status_planta" placeholder="Status">
+                        <select name="status_planta" id="status_planta">
+                            <option value="Finalizado">Finalizado</option>
+                            <option value="Em andamento">Em andamento</option>
+                            <option value="Não iniciado">Não iniciado</option>
+                            <option value="HOLD">HOLD</option>
+                            <option value="Não se aplica">Não se aplica</option>
+                        </select>
                         <input type="date" name="prazo_planta" id="prazo_planta">
                         <input type="text" name="obs_planta" id="obs_planta" placeholder="Observação">
                     </div>

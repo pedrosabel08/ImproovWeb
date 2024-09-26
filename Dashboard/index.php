@@ -129,8 +129,6 @@ $conn->close();
         </div>
         <div class="container-boxes">
             <canvas id="meuGrafico" width="400" height="200"></canvas>
-            <div class="box2"></div>
-            <div class="box3"></div>
         </div>
 
     </section>

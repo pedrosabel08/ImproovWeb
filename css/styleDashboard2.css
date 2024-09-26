@@ -1,0 +1,112 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,200..1000;1,200..1000&display=swap');
+
+
+
+* {
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+    font-family: "Nunito", sans-serif;
+}
+
+body {
+    background-color: #f1f1f1;
+}
+
+.header {
+    padding: 1rem;
+    background-color: #ffffff;
+}
+
+.header h2 {
+    font-weight: 300;
+}
+
+.container {
+    padding-top: 2rem;
+    height: 100vh;
+}
+
+.container .row {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+}
+
+.card {
+    background-color: #ffffff;
+    width: 200px;
+    padding: 10px;
+    border-radius: 15px;
+}
+
+.card p {
+    text-transform: uppercase;
+    font-size: 16px;
+}
+
+.card#anual {
+    border-left: 5px solid #0026ff;
+}
+
+.card#meta {
+    border-left: 5px solid #2bff00;
+}
+
+.card#imagens {
+    border-left: 5px solid #ffa600;
+}
+
+.card#obras {
+    border-left: 5px solid #fc2c2c;
+}
+
+.graphics {
+    padding: 4rem;
+    display: grid;
+    grid-template-columns: 1100px 1fr;
+    gap: 60px;
+}
+
+.graphics .grafico-ganhos p {
+    color: #1100ff;
+    font-weight: bold;
+    padding-left: 30px;
+}
+
+.graphics .grafico-ganhos .titulo-grafico {
+    border-bottom: 1px solid gray;
+    background-color: #cfd6f8;
+    padding: 6px;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+}
+
+.graphics .grafico-ganhos canvas#earnings-canvas {
+    background-color: #ffffff;
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+}
+
+.graphics .grafico-obras p{
+    color: #fc2c2c;
+    font-weight: bold;
+    padding-left: 30px;
+
+}
+
+.graphics .grafico-obras .titulo-grafico {
+    border-bottom: 1px solid gray;
+    background-color: #f8cfcf;
+    padding: 6px;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    display: flex;
+    flex-direction: column;
+}
+
+.graphics .grafico-obras canvas#obras-canvas {
+    background-color: #ffffff;
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+}

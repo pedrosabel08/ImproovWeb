@@ -520,15 +520,17 @@ $conn->close();
                     <th>Nome da Imagem</th>
                     <th>Caderno</th>
                     <th>Status</th>
-                    <th>Modelagem</th>
+                    <th>Model</th>
                     <th>Status</th>
-                    <th>Composição</th>
+                    <th>Comp</th>
                     <th>Status</th>
-                    <th>Finalização</th>
+                    <th>Final</th>
                     <th>Status</th>
-                    <th>Pós-produção</th>
+                    <th>Pós</th>
                     <th>Status</th>
                     <th>Alteração</th>
+                    <th>Status</th>
+                    <th>Planta</th>
                     <th>Status</th>
                 </thead>
 

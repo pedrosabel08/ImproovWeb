@@ -18,35 +18,43 @@ window.onclick = function (event) {
 }
 document.addEventListener("DOMContentLoaded", function () {
 
+    document.getElementById('opcao_obra').addEventListener('change', buscarImagens);
+
     function buscarImagens() {
         var obraId = document.getElementById('opcao_obra').value;
         var imagemSelect = document.getElementById('imagem_id');
 
-        if (obraId) {
-            var xhr = new XMLHttpRequest();
-            xhr.open('GET', 'buscar_imagens.php?obra_id=' + obraId, true);
-            xhr.onreadystatechange = function () {
-                if (xhr.readyState === 4 && xhr.status === 200) {
-                    var response = JSON.parse(xhr.responseText);
-
-                    imagemSelect.innerHTML = '';
-
-                    var option = document.createElement('option');
-                    option.value = '';
-                    option.text = 'Selecione uma imagem';
-                    imagemSelect.add(option);
-
-                    response.forEach(function (imagem) {
-                        var option = document.createElement('option');
-                        option.value = imagem.idimagens_cliente_obra;
-                        option.text = imagem.imagem_nome;
-                        imagemSelect.add(option);
-                    });
-                }
-            };
-            xhr.send();
-        } else {
+        // Verifica se o valor selecionado é 0, então busca todas as imagens
+        var url = 'buscar_imagens.php';
+        if (obraId != "0") {
+            url += '?obra_id=' + obraId;
         }
+
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', url, true);
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState === 4 && xhr.status === 200) {
+                var response = JSON.parse(xhr.responseText);
+
+                // Limpa as opções atuais
+                imagemSelect.innerHTML = '';
+
+                // Adiciona a opção padrão
+                var option = document.createElement('option');
+                option.value = '';
+                option.text = 'Selecione uma imagem';
+                imagemSelect.add(option);
+
+                // Adiciona as novas opções com base na resposta
+                response.forEach(function (imagem) {
+                    var option = document.createElement('option');
+                    option.value = imagem.idimagens_cliente_obra;
+                    option.text = imagem.imagem_nome;
+                    imagemSelect.add(option);
+                });
+            }
+        };
+        xhr.send();
     }
 
 

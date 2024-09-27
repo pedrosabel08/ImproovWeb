@@ -14,6 +14,10 @@ function dashboard() {
     window.location.href = 'Dashboard/index.php'
 }
 
+function clientes() {
+    window.location.href = 'infoCliente/index.php'
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     const themeToggle = document.getElementById('theme-toggle');
     const currentTheme = localStorage.getItem('theme');

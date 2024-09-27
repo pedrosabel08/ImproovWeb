@@ -809,36 +809,3 @@ function applyStatusImagem(cell, status) {
             break;
     }
 };
-
-const modal = document.getElementById('clienteModal');
-const openModalBtn = document.getElementById('openModal');
-const closeModalBtn = document.getElementById('closeModal');
-const closeFooterBtn = document.getElementById('closeFooterModal');
-
-// Abrir o modal ao clicar no botão
-openModalBtn.addEventListener('click', () => {
-    modal.style.display = 'flex';
-    setTimeout(() => {
-        modal.classList.add('show');
-    }, 10); // Adiciona uma pequena espera para permitir a transição
-});
-
-// Fechar o modal ao clicar no botão de fechar ou no rodapé
-closeModalBtn.addEventListener('click', closeModal);
-closeFooterBtn.addEventListener('click', closeModal);
-
-// Função para fechar o modal
-function closeModal() {
-    modal.classList.remove('show');
-    // Espera a transição terminar antes de definir display: none
-    setTimeout(() => {
-        modal.style.display = 'none';
-    }, 300); // O tempo deve ser igual ao tempo da transição definida no CSS
-}
-
-// Fechar o modal ao clicar fora dele
-window.addEventListener('click', (e) => {
-    if (e.target === modal) {
-        closeModal();
-    }
-});

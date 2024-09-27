@@ -1,0 +1,57 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,200..1000;1,200..1000&display=swap');
+
+
+* {
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+    font-family: "Nunito", sans-serif;
+}
+
+body {
+    background-color: #f3f3f3;
+}
+
+header {
+    padding: 2rem;
+    background-color: #fff;
+    border-bottom: 1px solid gray;
+}
+
+.form {
+    padding: 3rem;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+    gap: 30px;
+}
+
+.form select {
+    font-size: 20px;
+    padding: 4px;
+}
+
+.form .select {
+    grid-column: 2;
+    margin: 0 auto;
+}
+
+.contato {
+    grid-column: 1;
+    margin: 0 auto;
+}
+
+.email {
+    grid-column: 2;
+    margin: 0 auto;
+}
+
+.responsavel {
+    margin: 0 auto;
+}
+
+#info {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+}

@@ -808,50 +808,37 @@ function applyStatusImagem(cell, status) {
             cell.style.backgroundColor = '#0dff00'
             break;
     }
+};
+
+const modal = document.getElementById('clienteModal');
+const openModalBtn = document.getElementById('openModal');
+const closeModalBtn = document.getElementById('closeModal');
+const closeFooterBtn = document.getElementById('closeFooterModal');
+
+// Abrir o modal ao clicar no botão
+openModalBtn.addEventListener('click', () => {
+    modal.style.display = 'flex';
+    setTimeout(() => {
+        modal.classList.add('show');
+    }, 10); // Adiciona uma pequena espera para permitir a transição
+});
+
+// Fechar o modal ao clicar no botão de fechar ou no rodapé
+closeModalBtn.addEventListener('click', closeModal);
+closeFooterBtn.addEventListener('click', closeModal);
+
+// Função para fechar o modal
+function closeModal() {
+    modal.classList.remove('show');
+    // Espera a transição terminar antes de definir display: none
+    setTimeout(() => {
+        modal.style.display = 'none';
+    }, 300); // O tempo deve ser igual ao tempo da transição definida no CSS
 }
 
-// document.addEventListener('DOMContentLoaded', function () {
-//     // Função para calcular a diferença em dias entre duas datas
-//     function daysBetween(date1, date2) {
-//         const oneDay = 24 * 60 * 60 * 1000; // Número de milissegundos em um dia
-//         return Math.round((date2 - date1) / oneDay);
-//     }
-
-//     // Seleciona todas as linhas da tabela
-//     const rows = document.querySelectorAll('#tabelaClientes tbody tr');
-
-//     rows.forEach(row => {
-//         // Obtém a célula que contém a data do prazo estimado
-//         const prazoCell = row.cells[5]; // A célula do prazo estimado está na 6ª coluna (índice 5)
-//         const prazoEstimado = prazoCell.textContent;
-
-//         if (prazoEstimado) {
-//             // Converte o valor da célula para uma data
-//             const prazoDate = new Date(prazoEstimado);
-//             const currentDate = new Date();
-
-//             // Calcula a diferença em dias
-//             const daysRemaining = daysBetween(currentDate, prazoDate);
-
-//             // Aplica o estilo com base na diferença de dias
-//             if (daysRemaining <= 5) {
-//                 row.style.backgroundColor = 'red'; // Muda a cor do fundo para vermelho
-//                 row.style.color = 'white'; // Muda a cor do texto para branco
-//                 row.style.fontWeight = 'bold'; // Muda o peso da fonte para negrito
-//             } else if (daysRemaining <= 10) {
-//                 row.style.backgroundColor = 'orange'; // Muda a cor do fundo para laranja
-//                 row.style.color = 'black'; // Muda a cor do texto para preto
-//                 row.style.fontWeight = 'bold'; // Muda o peso da fonte para negrito
-//             } else if (daysRemaining <= 30) {
-//                 row.style.backgroundColor = 'yellow'; // Muda a cor do fundo para amarelo
-//                 row.style.color = 'black'; // Muda a cor do texto para preto
-//                 row.style.fontWeight = 'normal'; // Peso da fonte normal
-//             } else {
-//                 // Se não se encaixa em nenhum dos critérios acima, usa o estilo padrão
-//                 row.style.backgroundColor = ''; // Cor padrão do fundo
-//                 row.style.color = ''; // Cor padrão do texto
-//                 row.style.fontWeight = ''; // Peso da fonte padrão
-//             }
-//         }
-//     });
-// });
+// Fechar o modal ao clicar fora dele
+window.addEventListener('click', (e) => {
+    if (e.target === modal) {
+        closeModal();
+    }
+});

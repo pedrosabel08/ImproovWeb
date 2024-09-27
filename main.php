@@ -27,8 +27,6 @@ if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
 <header>
     <div class="buttons">
         <button id="voltar" onclick="window.location.href='main.html'">Voltar</button>
-        <button class="open-modal-btn" id="openModal"><i class="fa-solid fa-user"></i></button>
-
     </div>
     <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
         alt="Improov">
@@ -653,39 +651,11 @@ $conn->close();
             </table>
         </div>
 
-        <div class="modal-edit" id="clienteModal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5>Informações do Cliente</h5>
-                    <button class="close-btn" id="closeModal">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <form id="clienteForm">
-                        <label for="nomeCliente">Nome do Cliente</label>
-                        <input type="text" id="nomeCliente" placeholder="Nome completo">
-
-                        <label for="emailCliente">Email</label>
-                        <input type="email" id="emailCliente" placeholder="exemplo@email.com">
-
-                        <label for="telefoneCliente">Telefone</label>
-                        <input type="tel" id="telefoneCliente" placeholder="(xx) xxxxx-xxxx">
-
-                        <label for="enderecoCliente">Endereço</label>
-                        <input type="text" id="enderecoCliente" placeholder="Rua, número, cidade">
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn-secondary" id="closeFooterModal">Fechar</button>
-                    <button type="button" class="btn-primary">Salvar</button>
-                </div>
-            </div>
-        </div>
     </main>
 
     <script src="./script/script.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 
     </body>

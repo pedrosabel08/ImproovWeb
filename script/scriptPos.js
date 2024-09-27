@@ -32,10 +32,12 @@ window.onclick = function (event) {
 }
 document.addEventListener("DOMContentLoaded", function () {
 
-    document.getElementById('opcao_obra').addEventListener('change', buscarImagens);
+    document.getElementById('opcao_obra').addEventListener('change', function(){
+        var obraId = this.value; 
+        buscarImagens(obraId); 
+    });
 
-    function buscarImagens() {
-        var obraId = document.getElementById('opcao_obra').value;
+    function buscarImagens(obraId) {
         var imagemSelect = document.getElementById('imagem_id');
 
         // Verifica se o valor selecionado é 0, então busca todas as imagens
@@ -52,12 +54,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 // Limpa as opções atuais
                 imagemSelect.innerHTML = '';
-
-                // Adiciona a opção padrão
-                var option = document.createElement('option');
-                option.value = '';
-                option.text = 'Selecione uma imagem';
-                imagemSelect.add(option);
 
                 // Adiciona as novas opções com base na resposta
                 response.forEach(function (imagem) {
@@ -87,7 +83,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 document.getElementById('modal').style.display = 'none';
                 limparCampos();
                 atualizarTabela();
-
+                buscarImagens();
                 Toastify({
                     text: "Dados inseridos com sucesso!",
                     duration: 3000,

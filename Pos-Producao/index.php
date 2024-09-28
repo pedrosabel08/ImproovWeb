@@ -50,7 +50,7 @@ $sql_status = "SELECT idstatus, nome_status
                        WHEN nome_status = 'Sem status' THEN 0 
                        ELSE 1 
                    END, 
-                   idstatus"; // Adiciona a ordem por idstatus após "Sem status"
+                   idstatus";
 
 $result_status = $conn->query($sql_status);
 $status_imagens = array();

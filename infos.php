@@ -26,9 +26,9 @@ $query = "
         e.cep
     FROM 
         usuario u
-    JOIN 
+    LEFT JOIN 
         informacoes_usuario iu ON u.idusuario = iu.usuario_id
-    JOIN 
+    LEFT JOIN 
         endereco e ON u.idusuario = e.usuario_id
     WHERE 
         u.idusuario = ?
@@ -96,7 +96,8 @@ $conn->close();
                 <legend class="text-2xl font-bold mb-4">Endereço</legend>
                 <div class="mb-4">
                     <h3 class="text-lg mb-2">CEP:</h3>
-                    <input class="border border-black w-full p-2 rounded" type="number" id="cep" name="cep"
+                    <input class="border border-black w-full p-2 rounded" onkeyup="buscaEndereco(this.value);"
+                        type="number" id="cep" name="cep"
                         value="<?php echo htmlspecialchars($userData['cep']); ?>" required>
                 </div>
                 <div class="mb-4">
@@ -153,6 +154,8 @@ $conn->close();
         </form>
     </div>
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
     <script src="./script/scriptUsuario.js"></script>
 </body>
 

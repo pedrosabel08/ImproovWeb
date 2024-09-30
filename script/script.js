@@ -819,11 +819,16 @@ document.addEventListener("DOMContentLoaded", function () {
 
     window.addEventListener('click', function (event) {
         const menu = document.getElementById('menu');
-        const button = document.getElementById('menuButton'); 
+        const button = document.getElementById('menuButton');
 
         if (!button.contains(event.target) && !menu.contains(event.target)) {
             menu.classList.add('hidden');
         }
     });
 
+});
+
+document.getElementById('editProfile').addEventListener('click', function () {
+    // Redireciona para a página de informações
+    window.location.href = 'infos.html';
 });

@@ -33,7 +33,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if ($result->num_rows > 0) {
         $row = $result->fetch_assoc();
 
-        $_SESSION['usuario_id'] = $row['idusuario'];
+        $_SESSION['idusuario'] = $row['idusuario'];
         $_SESSION['nome_usuario'] = $row['nome_usuario'];
         $_SESSION['nivel_acesso'] = $row['nivel_acesso'];
         $_SESSION['logado'] = true;

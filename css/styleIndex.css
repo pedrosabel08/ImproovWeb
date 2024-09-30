@@ -1,6 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,200..1000;1,200..1000&display=swap');
 
-
 * {
     padding: 0;
     margin: 0;
@@ -8,67 +7,26 @@
     font-family: "Nunito", sans-serif;
 }
 
+body {
+    height: 100vh;
+}
+
 body.light-mode {
     background-color: #f0f0f0;
     color: #333;
 }
 
-button {
-    all: unset;
-    display: inline-block;
-    box-sizing: border-box;
-    cursor: pointer;
+body.dark-mode {
+    background-color: #333333;
+    color: #ffffff;
 }
-
-main {
-    display: grid;
-    grid-template-columns: 2fr 1fr;
-    grid-template-rows: 100vh;
-}
-
-main .buttons {
-    border-right: 1px solid black;
-    display: flex;
-    align-items: center;
-    flex-direction: column;
-    justify-content: center;
-    gap: 30px;
-}
-
-main .buttons button {
-    width: 400px;
-    height: 50px;
-    border: 2px solid black;
-    border-radius: 20px;
-    text-align: center;
-    transition: 0.3s all ease;
-    text-transform: uppercase;
-}
-
-.buttons button:hover {
-    background-color: red;
-}
-
-.logo {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.logo img {
-    transition: 0.3s all ease;
-}
-
-.logo img:hover {
-    scale: 1.2;
-}
-
 
 .switch {
     position: relative;
     display: inline-block;
     width: 60px;
     height: 34px;
+    margin: 20px;
 }
 
 .switch input {
@@ -114,8 +72,86 @@ input:checked+.slider:before {
     background-color: #000000;
 }
 
-/* Estilos para o tema escuro */
-body.dark-mode {
-    background-color: #333333;
-    color: #ffffff;
+button {
+    all: unset;
+    display: inline-block;
+    box-sizing: border-box;
+    cursor: pointer;
+}
+
+main {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+    height: calc(100vh - 74px);
+    opacity: 0;
+    animation: fadeIn 1s ease-in-out forwards;
+}
+
+main h1 {
+    display: flex;
+    margin: 0 auto;
+    align-items: center;
+    justify-content: center;
+    font-size: 48px;
+    animation-delay: 0.5s;
+}
+
+main .buttons {
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    justify-content: center;
+    gap: 30px;
+    grid-column: 2;
+}
+
+main h1,
+main .buttons {
+    opacity: 0;
+    animation: fadeIn .8s ease-in-out forwards;
+}
+
+main .buttons button {
+    width: 400px;
+    height: 50px;
+    border: 2px solid black;
+    border-radius: 20px;
+    text-align: center;
+    transition: 0.3s all ease;
+    text-transform: uppercase;
+    opacity: 0;
+    animation: fadeIn 1s ease-in-out forwards;
+    animation-delay: 0.5s;
+}
+
+.buttons button:hover {
+    background-color: #00eeff73;
+    font-weight: 600;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.logo img {
+    transition: 0.3s all ease;
+}
+
+.logo img:hover {
+    scale: 1.2;
+}
+
+@keyframes fadeIn {
+    0% {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }

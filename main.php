@@ -23,11 +23,14 @@ if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
         integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
 
-    <title>Tabela com imagens</title>
+    <title>Improov+Flow</title>
 </head>
 
 
 <header>
+    <a href="https://www.instagram.com/seuInstagram/" target="_blank">
+        <img src="./assets/ImproovFlow - logo.png" alt="Improov" class="logo">
+    </a>
     <div class="buttons">
         <button id="voltar" onclick="window.location.href='main.html'">Voltar</button>
         <button id="menuButton"><i class="fa-solid fa-user"></i></button>
@@ -37,9 +40,6 @@ if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
             <a href="#" id="logout"><i class="fa-solid fa-right-from-bracket"></i>Sair</a>
         </div>
     </div>
-    <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
-        alt="Improov">
-
 </header>
 
 

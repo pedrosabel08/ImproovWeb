@@ -19,13 +19,16 @@ a {
 
 header {
     display: flex;
-    flex-direction: column;
-    padding: 1rem;
+    justify-content: space-between;
+    padding: 10px 10px 0 10px;
+    height: 150px;
 }
 
 .buttons {
     display: flex;
-    justify-content: space-between;
+    align-items: flex-start;
+    gap: 30px;
+    padding: 20px;
 }
 
 .hidden {
@@ -76,9 +79,11 @@ button#voltar:hover {
     font-weight: bold;
 }
 
+
 header img {
-    width: 100px;
+    width: 250px;
     margin: 0 auto;
+    cursor: pointer;
 }
 
 nav {
@@ -362,13 +367,13 @@ table#tabela-obra th:first-child {
 }
 
 
-
 .selecionada {
-    background-color: #e2ba09;
+    background-color: #00eeff73;
 }
 
 table#tabelaClientes tr:hover {
     cursor: pointer;
+    background-color: #00eeff73;
 }
 
 .form {
@@ -527,13 +532,11 @@ table#tabela-follow {
     transition: opacity 0.3s ease, visibility 0.3s ease;
 }
 
-/* Quando o modal for exibido */
 .modal-edit.show {
     opacity: 1;
     visibility: visible;
 }
 
-/* Conteúdo do modal */
 .modal-content {
     background-color: white;
     padding: 20px;
@@ -544,12 +547,10 @@ table#tabela-follow {
     transition: transform 0.3s ease;
 }
 
-/* Animação para o modal quando ele for exibido */
 .modal-edit.show .modal-content {
     transform: translateY(0);
 }
 
-/* Estilos para o cabeçalho e o botão de fechar */
 .modal-header {
     display: flex;
     justify-content: space-between;

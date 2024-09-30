@@ -8,6 +8,9 @@ if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
     header("Location: index.html");
     exit();
 }
+
+$idusuario = $_SESSION['idusuario'];
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -35,7 +38,7 @@ if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
         <button id="voltar" onclick="window.location.href='main.html'">Voltar</button>
         <button id="menuButton"><i class="fa-solid fa-user"></i></button>
         <div id="menu" class="hidden">
-            <a href="#" id="editProfile"><i class="fa-regular fa-user"></i>Editar Informações</a>
+            <a href="infos.php" id="editProfile"><i class="fa-regular fa-user"></i>Editar Informações</a>
             <hr>
             <a href="#" id="logout"><i class="fa-solid fa-right-from-bracket"></i>Sair</a>
         </div>

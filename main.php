@@ -113,6 +113,16 @@ if ($result_status->num_rows > 0) {
     }
 }
 
+$sql_funcoes = "SELECT idfuncao, nome_funcao FROM funcao order by idfuncao";
+$result_funcoes = $conn->query($sql_funcoes);
+
+$funcoes = array();
+if ($result_funcoes->num_rows > 0) {
+    while ($row = $result_funcoes->fetch_assoc()) {
+        $funcoes[] = $row;
+    }
+}
+
 $conn->close();
 ?>
 
@@ -538,6 +548,25 @@ $conn->close();
                     <option value="<?= $obra['idobra']; ?>"><?= htmlspecialchars($obra['nome_obra']); ?>
                     </option>
                 <?php endforeach; ?>
+            </select>
+            <label for="funcaoSelect">Função:</label>
+            <select id="funcaoSelect">
+                <option value="0">Selecione a Função:</option>
+                <?php foreach ($funcoes as $funcao): ?>
+                    <option value="<?= htmlspecialchars($funcao['idfuncao']); ?>">
+                        <?= htmlspecialchars($funcao['nome_funcao']); ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+
+            <label for="statusSelect">Status:</label>
+            <select id="statusSelect">
+                <option value="0">Selecione um status:</option>
+                <option value="Finalizado">Finalizado</option>
+                <option value="Em andamento">Em andamento</option>
+                <option value="Não iniciado">Não iniciado</option>
+                <option value="HOLD">HOLD</option>
+                <option value="Não se aplica">Não se aplica</option>
             </select>
 
             <div class="image-count">

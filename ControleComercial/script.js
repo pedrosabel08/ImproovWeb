@@ -70,7 +70,59 @@ function atualizarTabela() {
                 tabela.appendChild(tr);
             });
 
+            // Adiciona eventos de clique nas linhas da tabela após a atualização
+            const linhasTabela = document.querySelectorAll('.linha-tabela');
+            linhasTabela.forEach(linha => {
+                linha.addEventListener('click', function () {
+                    modal.style.display = "flex";
+                    linhasTabela.forEach(outro => {
+                        outro.classList.remove('selecionada');
+                    });
+
+                    this.classList.add('selecionada');
+
+                    var idSelecionado = this.getAttribute('data-id');
+
+                    $.ajax({
+                        type: "GET",
+                        dataType: "json",
+                        url: "http://192.168.0.202:8066/ImproovWeb/ControleComercial/buscaAJAX.php",
+                        data: { ajid: idSelecionado },
+                        success: function (response) {
+                            if (response.length > 0) {
+                                document.getElementById('idcontrole').value = response[0].idcontrole;
+                                setSelectValue('resp', response[0].resp);
+                                document.getElementById('contato').value = response[0].contato;
+                                document.getElementById('construtora').value = response[0].construtora;
+                                document.getElementById('obra').value = response[0].obra;
+                                document.getElementById('valor').value = response[0].valor;
+                                setSelectValue('status', response[0].status);
+                                setSelectValue('mes', response[0].mes);
+
+                            } else {
+                                console.log("Nenhum produto encontrado.");
+                            }
+                        },
+                        error: function (jqXHR, textStatus, errorThrown) {
+                            console.error("Erro na requisição AJAX: " + textStatus, errorThrown);
+                        }
+                    });
+                });
+            });
         });
 }
 
 atualizarTabela();
+
+
+function setSelectValue(selectId, valueToSelect) {
+    var selectElement = document.getElementById(selectId);
+    var options = selectElement.options;
+
+    for (var i = 0; i < options.length; i++) {
+        if (options[i].text === valueToSelect) {
+            selectElement.selectedIndex = i;
+            break;
+        }
+    }
+}

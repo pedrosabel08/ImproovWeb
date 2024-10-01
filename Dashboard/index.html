@@ -4,59 +4,88 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="../css/styleDashboard2.css">
-
+    <script src="https://cdn.tailwindcss.com"></script>
     <title>Dashboard</title>
 </head>
 
-<body>
+<body class="bg-gray-100">
 
-    <main>
-        <div class="header">
-            <h2>Dashboard</h2>
+    <main class="min-h-screen">
+        <div class="bg-white p-4">
+            <img class="w-[250px]" src="../assets/ImproovFlow - logo.png" alt="">
         </div>
 
-        <div class="container">
-            <div class="row">
-                <div class="card" id="anual">
-                    <h3>Anual</h3>
-                    <p id="earnings-anual">$1.415.090,00</p>
+        <!-- Main content -->
+        <div class="md:col-span-4 p-4">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-blue-500">
+                    <h3 class="font-semibold mb-2">Anual</h3>
+                    <p class="uppercase text-lg font-bold" id="earnings-anual">$1.415.090,00</p>
                 </div>
-                <div class="card" id="meta">
-                    <h3>Meta</h3>
-                    <p id="earnings-meta">$1.850.000,00</p>
-
+                <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-green-500">
+                    <h3 class="font-semibold mb-2">Meta</h3>
+                    <p class="uppercase text-lg font-bold" id="earnings-meta">$1.850.000,00</p>
                 </div>
-                <div class="card" id="imagens">
-                    <h3>Imagens</h3>
-                    <p id="imagens-count">267</p>
-
+                <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-yellow-500">
+                    <h3 class="font-semibold mb-2">Imagens</h3>
+                    <p class="uppercase text-lg font-bold" id="imagens-count">267</p>
                 </div>
-                <div class="card" id="obras">
-                    <h3>Obras</h3>
-                    <p id="obras-count">18</p>
-
+                <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-red-500">
+                    <h3 class="font-semibold mb-2">Obras</h3>
+                    <p class="uppercase text-lg font-bold" id="obras-count">18</p>
                 </div>
             </div>
 
-            <div class="graphics">
-                <div class="grafico-ganhos">
-                    <div class="titulo-grafico">
-                        <p>Ganhos</p>
+            <!-- Gráficos -->
+            <div class="mt-8 grid grid-cols-3 md:grid-cols-3 gap-8">
+                <div class="col-span-2 bg-gray-200 p-4 rounded-lg mb-8">
+                    <div class="bg-blue-200 rounded-t-lg p-4 flex justify-between">
+                        <p class="text-blue-700 font-bold">Ganhos</p>
+                        <div class="filtros">
+                            <select name="filtro-grafico" id="filtro-grafico" class="text-sm p-1 rounded-xl">
+                                <option value="ano">Ano</option>
+                                <option value="mes">Mês</option>
+                            </select>
+
+                            <select name="ano" id="ano" class="text-sm p-1 rounded-xl hidden">
+                                <option value="2024">2024</option>
+                                <option value="2023">2023</option>
+                                <option value="2022">2022</option>
+                            </select>
+
+                            <select name="mes" id="mes" class="text-sm p-1 rounded-xl hidden">
+                                <option value="janeiro">Janeiro</option>
+                                <option value="fevereiro">Fevereiro</option>
+                                <option value="marco">Março</option>
+                                <option value="abril">Abril</option>
+                                <option value="maio">Maio</option>
+                                <option value="junho">Junho</option>
+                                <option value="julho">Julho</option>
+                                <option value="agosto">Agosto</option>
+                                <option value="setembro">Setembro</option>
+                                <option value="outubro">Outubro</option>
+                                <option value="novembro">Novembro</option>
+                                <option value="dezembro">Dezembro</option>
+                            </select>
+                        </div>
+
                     </div>
-                    <canvas id="earnings-canvas" width="1100px" height="400px"></canvas>
+                    <canvas id="earnings-canvas" class="bg-white rounded-b-lg"></canvas>
                 </div>
-                <div class="grafico-obras">
-                    <div class="titulo-grafico">
-                        <p>Obras</p>
+
+                <div class="bg-gray-200 p-4 rounded-lg">
+                    <div class="bg-red-200 rounded-t-lg p-4">
+                        <p class="text-red-700 font-bold">Obras</p>
                     </div>
-                    <canvas id="obras-canvas" width="500px" height="300px"></canvas>
+                    <canvas id="obras-canvas" class="bg-white rounded-b-lg"></canvas>
                 </div>
             </div>
+        </div>
         </div>
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="../script/scriptDashboard.js"></script>
 
     <script>
         const ctxEarnings = document.getElementById('earnings-canvas').getContext('2d');
@@ -70,7 +99,7 @@
                     borderColor: '#42f595',
                     backgroundColor: 'rgba(75, 192, 192, 0.2)',
                     borderWidth: 2,
-                    fill: true, 
+                    fill: true,
                 }]
             },
             options: {

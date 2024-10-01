@@ -511,12 +511,16 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('dataInicio').addEventListener('change', carregarDados);
     document.getElementById('dataFim').addEventListener('change', carregarDados);
     document.getElementById('obraSelect').addEventListener('change', carregarDados);
+    document.getElementById('funcaoSelect').addEventListener('change', carregarDados);
+    document.getElementById('statusSelect').addEventListener('change', carregarDados);
 
     function carregarDados() {
         var colaboradorId = document.getElementById('colaboradorSelect').value;
         var dataInicio = document.getElementById('dataInicio').value;
         var dataFim = document.getElementById('dataFim').value;
         var obraId = document.getElementById('obraSelect').value;
+        var funcaoId = document.getElementById('funcaoSelect').value;
+        var status = document.getElementById('statusSelect').value;
 
         if (colaboradorId) {
             var url = 'getFuncoesPorColaborador.php?colaborador_id=' + colaboradorId;
@@ -530,8 +534,12 @@ document.addEventListener('DOMContentLoaded', function () {
             if (obraId) {
                 url += '&obra_id=' + encodeURIComponent(obraId);
             }
-
-            console.log(obraId);
+            if (funcaoId) {
+                url += '&funcao_id=' + encodeURIComponent(funcaoId);
+            }
+            if (status) {
+                url += '&status=' + encodeURIComponent(status);
+            }
 
             fetch(url)
                 .then(response => response.json())
@@ -540,8 +548,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     tabela.innerHTML = '';
 
                     data.forEach(function (item) {
-                        console.log(item.nome_funcao);
-
                         var row = document.createElement('tr');
                         var cellNomeImagem = document.createElement('td');
                         cellNomeImagem.textContent = item.imagem_nome;
@@ -567,7 +573,6 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('totalImagens').textContent = '0';
         }
     }
-
 });
 
 document.addEventListener('DOMContentLoaded', function () {

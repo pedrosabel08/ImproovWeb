@@ -63,65 +63,15 @@ $idusuario = $_SESSION['idusuario'];
 </nav>
 
 <?php
-$conn = new mysqli('mysql.improov.com.br', 'improov', 'Impr00v', 'improov');
+include 'conexaoMain.php';
 
-// Verificar a conexão
-if ($conn->connect_error) {
-    die("Falha na conexão: " . $conn->connect_error);
-}
+$conn = conectarBanco();
 
-$conn->set_charset('utf8mb4');
-
-$sql_clientes = "SELECT idcliente, nome_cliente FROM cliente";
-$result_cliente = $conn->query($sql_clientes);
-
-$clientes = array();
-if ($result_cliente->num_rows > 0) {
-    while ($row = $result_cliente->fetch_assoc()) {
-        $clientes[] = $row;
-    }
-}
-
-$sql_obras = "SELECT idobra, nome_obra FROM obra";
-$result_obra = $conn->query($sql_obras);
-
-$obras = array();
-if ($result_obra->num_rows > 0) {
-    while ($row = $result_obra->fetch_assoc()) {
-        $obras[] = $row;
-    }
-}
-
-
-$sql_colaboradores = "SELECT idcolaborador, nome_colaborador FROM colaborador order by nome_colaborador";
-$result_colaboradores = $conn->query($sql_colaboradores);
-
-$colaboradores = array();
-if ($result_colaboradores->num_rows > 0) {
-    while ($row = $result_colaboradores->fetch_assoc()) {
-        $colaboradores[] = $row;
-    }
-}
-
-$sql_status = "SELECT idstatus, nome_status FROM status_imagem order by idstatus";
-$result_status = $conn->query($sql_status);
-
-$status_imagens = array();
-if ($result_status->num_rows > 0) {
-    while ($row = $result_status->fetch_assoc()) {
-        $status_imagens[] = $row;
-    }
-}
-
-$sql_funcoes = "SELECT idfuncao, nome_funcao FROM funcao order by idfuncao";
-$result_funcoes = $conn->query($sql_funcoes);
-
-$funcoes = array();
-if ($result_funcoes->num_rows > 0) {
-    while ($row = $result_funcoes->fetch_assoc()) {
-        $funcoes[] = $row;
-    }
-}
+$clientes = obterClientes($conn);
+$obras = obterObras($conn);
+$colaboradores = obterColaboradores($conn);
+$status_imagens = obterStatusImagens($conn);
+$funcoes = obterFuncoes($conn);
 
 $conn->close();
 ?>

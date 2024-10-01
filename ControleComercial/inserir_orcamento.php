@@ -15,6 +15,8 @@ $conn->set_charset('utf8mb4');
 
 // Verificar se os dados foram enviados via POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Verificar se o idcontrole foi enviado
+    $idcontrole = isset($_POST['idcontrole']) ? $_POST['idcontrole'] : null;
     $resp = $_POST['resp'];
     $contato = $_POST['contato'];
     $construtora = $_POST['construtora'];
@@ -24,30 +26,59 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $mes = $_POST['mes'];
     $year = date("Y");
 
-    $sql = "INSERT INTO controle_comercial (resp, contato, construtora, obra, valor, status, mes, ano) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+    // Se o idcontrole for enviado, faz o UPDATE
+    if ($idcontrole) {
+        $sql = "UPDATE controle_comercial 
+                SET resp = ?, contato = ?, construtora = ?, obra = ?, valor = ?, status = ?, mes = ?, ano = ? 
+                WHERE idcontrole = ?";
 
-    // Preparar a consulta
-    $stmt = $conn->prepare($sql);
+        // Preparar a consulta
+        $stmt = $conn->prepare($sql);
 
-    // Verificar se a preparação falhou
-    if (!$stmt) {
-        die("Erro na preparação da consulta: " . $conn->error);
-    }
+        // Verificar se a preparação falhou
+        if (!$stmt) {
+            die("Erro na preparação da consulta: " . $conn->error);
+        }
 
-    // Bind dos parâmetros
-    $stmt->bind_param("ssssdsss", $resp, $contato, $construtora, $obra, $valor, $status, $mes, $year);
+        // Bind dos parâmetros (adicionando o idcontrole no final)
+        $stmt->bind_param("ssssdsssi", $resp, $contato, $construtora, $obra, $valor, $status, $mes, $year, $idcontrole);
 
-    // Tentar executar a declaração
-    if ($stmt->execute()) {
-        // Verificar se a inserção foi bem-sucedida
-        if ($stmt->affected_rows > 0) {
-            echo "Dados inseridos com sucesso!";
+        // Executar o UPDATE
+        if ($stmt->execute()) {
+            if ($stmt->affected_rows > 0) {
+                echo "Dados atualizados com sucesso!";
+            } else {
+                echo "Nenhum dado foi atualizado.";
+            }
         } else {
-            echo "Nenhum dado foi inserido.";
+            echo "Erro ao atualizar dados: " . $stmt->error;
         }
     } else {
-        echo "Erro ao inserir ou atualizar dados: " . $stmt->error; // Usar o erro do stmt
+        // Se não houver idcontrole, faz o INSERT
+        $sql = "INSERT INTO controle_comercial (resp, contato, construtora, obra, valor, status, mes, ano) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+
+        // Preparar a consulta
+        $stmt = $conn->prepare($sql);
+
+        // Verificar se a preparação falhou
+        if (!$stmt) {
+            die("Erro na preparação da consulta: " . $conn->error);
+        }
+
+        // Bind dos parâmetros
+        $stmt->bind_param("ssssdsss", $resp, $contato, $construtora, $obra, $valor, $status, $mes, $year);
+
+        // Executar o INSERT
+        if ($stmt->execute()) {
+            if ($stmt->affected_rows > 0) {
+                echo "Dados inseridos com sucesso!";
+            } else {
+                echo "Nenhum dado foi inserido.";
+            }
+        } else {
+            echo "Erro ao inserir dados: " . $stmt->error;
+        }
     }
 
     $stmt->close();

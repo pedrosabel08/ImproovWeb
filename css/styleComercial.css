@@ -1,0 +1,146 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,200..1000;1,200..1000&display=swap');
+
+
+* {
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+    font-family: "Nunito", sans-serif;
+}
+
+body {
+    background-color: #e2e2e2;
+
+}
+
+button {
+    all: unset;
+    cursor: pointer;
+}
+
+.header {
+    background-color: white;
+    border-bottom: 1px solid gray;
+    margin-bottom: 2rem;
+    padding: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.header button {
+    width: 200px;
+    padding: 3px;
+    background-color: #a6ff00;
+    text-align: center;
+    color: black;
+    border-radius: 10px;
+    transition: .2s all ease;
+}
+
+.header button:hover {
+    font-weight: bold;
+}
+
+table {
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    border-collapse: collapse;
+    margin: 0 auto;
+    width: 90%;
+    background-color: white;
+}
+
+th,
+td {
+    border: 1px solid black;
+    padding: 5px;
+    width: 100px;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-content {
+    background-color: white;
+    padding: 20px;
+    border-radius: 10px;
+    width: 40%;
+    max-height: 70%;
+    overflow-y: auto;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    animation: showModal 0.3s ease;
+}
+
+@keyframes showModal {
+    from {
+        transform: scale(0.8);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.close:hover {
+    color: black;
+}
+
+
+label {
+    display: block;
+    margin: 10px 0 5px;
+    font-weight: bold;
+}
+
+input[type="text"],
+select {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 15px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-sizing: border-box;
+    transition: 0.3s all ease;
+}
+
+input[type="text"]:focus,
+select:focus {
+    border-color: #007BFF;
+    outline: none;
+    box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+}
+
+#button {
+    display: flex;
+    justify-content: center;
+}
+
+button#enviar {
+    width: 350px;
+    padding: 5px;
+    background-color: #a6ff00;
+    text-align: center;
+    color: black;
+    border-radius: 10px;
+    transition: .2s all ease;
+}

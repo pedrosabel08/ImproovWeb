@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../css/styleComercial.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastify-js/1.12.0/toastify.min.css">
+
+
+    <title>Document</title>
+</head>
+
+<body>
+    <div class="header">
+        <h1>Controle comercial</h1>
+        <button id="openModalBtn">Adicionar orçamento</button>
+    </div>
+
+    <main>
+        <table>
+            <thead>
+                <tr>
+                    <th>Responsável</th>
+                    <th>Contato</th>
+                    <th>Construtora</th>
+                    <th>Obra</th>
+                    <th>R$</th>
+                    <th>Status</th>
+                    <th>Mês fechamento</th>
+                </tr>
+            </thead>
+            <tr>
+                <tbody id="lista-orcamentos"></tbody>
+            </tr>
+        </table>
+    </main>
+
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div id="form-inserir">
+
+                <form id="form_comercial">
+
+                    <div>
+                        <label for="">Responsável:</label>
+                        <select name="resp" id="resp">
+                            <option value="Diogo">Diogo</option>
+                            <option value="Carol">Carol</option>
+                        </select>
+
+                        <label for="">Contato:</label>
+                        <input type="text" name="contato" id="contato">
+
+                        <label for="">Construtora:</label>
+                        <input type="text" name="construtora" id="construtora">
+
+                        <label for="">Obra:</label>
+                        <input type="text" name="obra" id="obra">
+
+                        <label for="">R$:</label>
+                        <input type="text" name="valor" id="valor">
+
+                        <label for="">Status:</label>
+                        <select name="status" id="status">
+                            <option value="Fechado">Fechado</option>
+                            <option value="Aberto">Aberto</option>
+                            <option value="Perdido">Perdido</option>
+                        </select>
+
+                        <label for="">Mês:</label>
+                        <select id="mes" name="mes">
+                            <option value="Janeiro">Janeiro</option>
+                            <option value="Fevereiro">Fevereiro</option>
+                            <option value="Março">Março</option>
+                            <option value="Abril">Abril</option>
+                            <option value="Maio">Maio</option>
+                            <option value="Junho">Junho</option>
+                            <option value="Julho">Julho</option>
+                            <option value="Agosto">Agosto</option>
+                            <option value="Setembro">Setembro</option>
+                            <option value="Outubro">Outubro</option>
+                            <option value="Novembro">Novembro</option>
+                            <option value="Dezembro">Dezembro</option>
+                        </select>
+                    </div>
+                    <div id="button">
+                        <button type="submit" id="enviar">Adicionar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>

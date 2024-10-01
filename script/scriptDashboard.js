@@ -297,3 +297,24 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 });
+
+
+const filtroGrafico = document.getElementById('filtro-grafico');
+const selectAno = document.getElementById('ano');
+const selectMes = document.getElementById('mes');
+
+// Adiciona o evento de mudança (change) no select filtro-grafico
+filtroGrafico.addEventListener('change', function () {
+    const selectedValue = this.value;
+
+    // Oculta os selects "ano" e "mes" por padrão
+    selectAno.classList.add('hidden');
+    selectMes.classList.add('hidden');
+
+    // Verifica o valor selecionado e exibe o select correspondente
+    if (selectedValue === 'ano') {
+        selectAno.classList.remove('hidden');
+    } else if (selectedValue === 'mes') {
+        selectMes.classList.remove('hidden');
+    }
+});

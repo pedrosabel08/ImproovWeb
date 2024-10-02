@@ -9,8 +9,12 @@
 }
 
 body {
-    background-color: #e2e2e2;
+    background-color: whitesmoke;
 
+}
+
+form#process_csv {
+    padding: 10px;
 }
 
 button {
@@ -21,7 +25,6 @@ button {
 .header {
     background-color: white;
     border-bottom: 1px solid gray;
-    margin-bottom: 2rem;
     padding: 5px;
     display: flex;
     align-items: center;
@@ -41,6 +44,24 @@ button {
 .header button:hover {
     font-weight: bold;
 }
+
+
+.tabela-orcamentos {
+    overflow-y: auto;
+    height: 70vh;
+}
+
+#filtro {
+    margin-left: 100px;
+}
+
+#filtro select,
+#filtro input {
+    width: 300px;
+    font-size: 16px;
+    padding: 5px;
+}
+
 
 table {
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);

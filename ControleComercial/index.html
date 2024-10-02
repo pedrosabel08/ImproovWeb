@@ -17,23 +17,45 @@
         <button id="openModalBtn">Adicionar orçamento</button>
     </div>
 
+    <form id="process_csv" action="process_csv.php" method="POST" enctype="multipart/form-data">
+        <label for="csvFile">Selecione o arquivo CSV com as imagens:</label>
+        <input type="file" name="csvFile" accept=".csv">
+        <button type="submit">Upload CSV</button>
+    </form>
+
     <main>
-        <table>
-            <thead>
+        <div id="filtro">
+            <label for="colunaFiltro">Filtrar por:</label>
+            <select id="colunaFiltro">
+                <option value="0">Responsável</option>
+            </select>
+
+            <select id="filtro-select" onchange="filtrarTabela()">
+                <option value="">Todos</option>
+                <option value="diogo">Diogo</option>
+                <option value="carol">Carol</option>
+            </select>
+        </div>
+        <div class="tabela-orcamentos">
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Responsável</th>
+                        <th>Contato</th>
+                        <th>Construtora</th>
+                        <th>Obra</th>
+                        <th>R$</th>
+                        <th>Status</th>
+                        <th>Mês fechamento</th>
+                    </tr>
+                </thead>
                 <tr>
-                    <th>Responsável</th>
-                    <th>Contato</th>
-                    <th>Construtora</th>
-                    <th>Obra</th>
-                    <th>R$</th>
-                    <th>Status</th>
-                    <th>Mês fechamento</th>
+                    <tbody id="lista-orcamentos"></tbody>
                 </tr>
-            </thead>
-            <tr>
-                <tbody id="lista-orcamentos"></tbody>
-            </tr>
-        </table>
+            </table>
+        </div>
+
     </main>
 
     <div class="modal" id="modal">

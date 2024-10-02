@@ -86,7 +86,7 @@ function atualizarTabela() {
                     $.ajax({
                         type: "GET",
                         dataType: "json",
-                        url: "http://192.168.0.202:8066/ImproovWeb/ControleComercial/buscaAJAX.php",
+                        url: "http://www.improov.com.br/sistema/ControleComercial/buscaAJAX.php",
                         data: { ajid: idSelecionado },
                         success: function (response) {
                             if (response.length > 0) {
@@ -123,6 +123,35 @@ function setSelectValue(selectId, valueToSelect) {
         if (options[i].text === valueToSelect) {
             selectElement.selectedIndex = i;
             break;
+        }
+    }
+}
+
+
+function filtrarTabela() {
+    var indiceColuna = document.getElementById("colunaFiltro").value;
+    var filtro = document.getElementById("filtro-select").value.toLowerCase();
+    var tabela = document.querySelector('#lista-orcamentos');
+    var linhas = tabela.getElementsByTagName('tr');
+
+    for (var i = 0; i < linhas.length; i++) {
+        var cols = linhas[i].getElementsByTagName('td');
+        var mostraLinha = false;
+
+        // Se a coluna existir, aplique o filtro
+        if (cols[indiceColuna]) {
+            var valorColuna = cols[indiceColuna].textContent || cols[indiceColuna].innerText;
+            // Checa se o valor na coluna corresponde ao filtro selecionado
+            if (valorColuna.toLowerCase() === filtro || filtro === "") {
+                mostraLinha = true;
+            }
+        }
+
+        // Mostrar ou esconder a linha
+        if (mostraLinha) {
+            linhas[i].style.display = '';
+        } else {
+            linhas[i].style.display = 'none';
         }
     }
 }

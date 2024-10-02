@@ -12,10 +12,34 @@ body {
     background-color: #f3f3f3;
 }
 
-header {
-    padding: 2rem;
+button {
+    all: unset;
+    cursor: pointer;
+}
+.header {
     background-color: #fff;
     border-bottom: 1px solid gray;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 20px;
+}
+
+.header img {
+    width: 200px;
+}
+
+button#voltar {
+    width: 100px;
+    border: 2px solid black;
+    border-radius: 20px;
+    text-align: center;
+    transition: 0.3s all ease;
+}
+
+button#voltar:hover {
+    background-color: #ff0000;
+    font-weight: bold;
 }
 
 .form {
@@ -54,4 +78,8 @@ header {
     display: flex;
     flex-direction: column;
     text-align: left;
+}
+
+.hidden {
+    display: none;
 }

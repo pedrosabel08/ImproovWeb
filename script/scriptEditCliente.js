@@ -1,81 +1,141 @@
-$(document).ready(function () {
-    $('#cliente').change(function () {
-        const clienteId = $(this).val();
+function buscarCliente() {
+    var select = document.getElementById("cliente");
+    var clienteId = select.value;
 
-        if (clienteId) {
-            $.ajax({
-                type: 'POST',
-                url: 'buscar_cliente.php',
-                data: { id: clienteId },
-                success: function (response) {
-                    $('#modalBody').html(response);
-                    $('#infoClienteModal').modal('show');
-                },
-                error: function () {
-                    alert('Erro ao buscar informações do cliente.');
+    if (clienteId === "") {
+        document.getElementById('modalBody').innerHTML = "<p>Por favor, selecione um cliente.</p>";
+        return;
+    }
+
+    fetch('buscar_cliente.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: 'id=' + clienteId
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                document.getElementById('modalBody').innerHTML = "<p>" + data.error + "</p>";
+            } else {
+
+                const form = document.getElementById('formCliente');
+                form.reset();
+                limparCampos();
+                const contatosContainer = document.getElementById('contatosContainer');
+                contatosContainer.classList.add('hidden');
+
+                let nomeClienteInput = document.getElementById('nomeCliente');
+                let idClienteInput = document.getElementById('idcliente');
+
+                if (nomeClienteInput && idClienteInput) {
+                    nomeClienteInput.value = data.nome_cliente || '';
+                    idClienteInput.value = data.idcliente || '';
                 }
-            });
-        }
-    });
 
-    // Adicionar novos campos de email
-    $('#modalBody').on('click', '.btn-add-email', function () {
-        const newEmailInput = "<input type='text' class='form-control' placeholder='Novo email' style='margin-top: 5px;'>";
-        $(this).parent().append(newEmailInput); // Adiciona o novo email abaixo do botão
-    });
+                const contatosContainer2 = document.getElementById('contatosContainer2');
+                contatosContainer2.innerHTML = "";
 
-    // Adicionar novos campos de contato
-    $('#modalBody').on('click', '.btn-add-contato', function () {
-        const newContatoInput = "<div style='margin-top: 5px;'>Telefone: <input type='text' class='form-control' placeholder='Novo telefone'> Endereço: <input type='text' class='form-control' placeholder='Novo endereço'></div>";
-        $(this).parent().append(newContatoInput); // Adiciona o novo contato abaixo do botão
-    });
+                const emails = data.emails ? data.emails.split(';') : [];
+                const nomesContato = data.nomes_contato ? data.nomes_contato.split(';') : [];
+                const cargos = data.cargos ? data.cargos.split(';') : [];
 
-    // Adicionar novos responsáveis
-    $('#modalBody').on('click', '.btn-add-responsavel', function () {
-        const newResponsavelInput = "<div style='margin-top: 5px;'>Nome: <input type='text' class='form-control' placeholder='Nome do responsável'> - Cargo: <input type='text' class='form-control' placeholder='Cargo'></div>";
-        $(this).parent().append(newResponsavelInput); // Adiciona o novo responsável abaixo do botão
-    });
+                const maxContatos = Math.max(emails.length, nomesContato.length, cargos.length);
+                for (let i = 0; i < maxContatos; i++) {
 
-    $('#modalBody').on('click', '#saveChanges', function () {
-        const clienteData = {
-            nome: $('#modalBody input[type="text"]').eq(0).val(), // Nome do cliente
-            emails: [],
-            contatos: [],
-            responsaveis: []
-        };
+                    let contatoDiv = document.createElement('div');
+                    contatoDiv.className = 'form-group contato-group';
+                    contatoDiv.style.marginBottom = '15px';
 
-        // Coleta os emails
-        $('#modalBody input[type="text"][placeholder="Novo email"]').each(function () {
-            const email = $(this).val();
-            if (email) clienteData.emails.push(email); // Adiciona apenas se não estiver vazio
-        });
+                    let labelEmail = document.createElement('label');
+                    labelEmail.innerText = "Email " + (i + 1);
+                    contatoDiv.appendChild(labelEmail);
 
-        // Coleta os contatos
-        $('#modalBody div:has(input[placeholder="Novo telefone"])').each(function () {
-            const telefone = $(this).find('input[placeholder="Novo telefone"]').val();
-            const endereco = $(this).find('input[placeholder="Novo endereço"]').val();
-            if (telefone || endereco) { // Adiciona apenas se pelo menos um campo estiver preenchido
-                clienteData.contatos.push({
-                    telefone: telefone,
-                    endereco: endereco
-                });
+                    let inputEmail = document.createElement('input');
+                    inputEmail.type = "text";
+                    inputEmail.value = emails[i] || '';
+                    inputEmail.name = "email_" + i;
+                    inputEmail.className = 'form-control';
+                    contatoDiv.appendChild(inputEmail);
+
+                    let labelContato = document.createElement('label');
+                    labelContato.innerText = "Contato " + (i + 1);
+                    contatoDiv.appendChild(labelContato);
+
+                    let inputContato = document.createElement('input');
+                    inputContato.type = "text";
+                    inputContato.value = nomesContato[i] || '';
+                    inputContato.name = "contato_" + i;
+                    inputContato.className = 'form-control';
+                    contatoDiv.appendChild(inputContato);
+
+                    let labelCargo = document.createElement('label');
+                    labelCargo.innerText = "Cargo " + (i + 1);
+                    contatoDiv.appendChild(labelCargo);
+
+                    let inputCargo = document.createElement('input');
+                    inputCargo.type = "text";
+                    inputCargo.value = cargos[i] || '';
+                    inputCargo.name = "cargo_" + i;
+                    inputCargo.className = 'form-control';
+                    contatoDiv.appendChild(inputCargo);
+
+                    contatosContainer2.appendChild(contatoDiv);
+
+
+                }
+
+                $('#infoClienteModal').modal('show');
             }
-        });
+        })
+        .catch(error => console.error('Erro:', error));
+}
 
-        // Coleta os responsáveis
-        $('#modalBody div:has(input[placeholder="Nome do responsável"])').each(function () {
-            const nome = $(this).find('input[placeholder="Nome do responsável"]').val();
-            const cargo = $(this).find('input[placeholder="Cargo"]').val();
-            if (nome || cargo) { // Adiciona apenas se pelo menos um campo estiver preenchido
-                clienteData.responsaveis.push({
-                    nome: nome,
-                    cargo: cargo
-                });
-            }
-        });
 
-        // Aqui você pode adicionar a lógica para salvar as alterações
-        console.log(clienteData); // Para verificar os dados no console
-        alert('Salvar mudanças (ainda não implementado).');
-    });
+const formCliente = document.getElementById('formCliente');
+formCliente.addEventListener('submit', function (e) {
+    e.preventDefault();
+
+    var formData = new FormData(this);
+
+    fetch('insert_contato.php', {
+        method: 'POST',
+        body: formData
+    })
+        .then(response => response.text())
+        .then(data => {
+            Toastify({
+                text: data,
+                duration: 3000,
+                close: true,
+                gravity: "top",
+                position: "left",
+                backgroundColor: "green",
+                stopOnFocus: true,
+            }).showToast();
+
+            limparCampos();
+            document.getElementById('cliente').value = '0';
+
+            $('#infoClienteModal').modal('hide');
+        })
+        .catch(error => console.error('Erro:', error));
 });
+
+document.getElementById('addContatoButton').addEventListener('click', function () {
+
+    limparCampos();
+    const contatosContainer = document.getElementById('contatosContainer');
+    contatosContainer.classList.remove('hidden');
+
+    const contatosContainer2 = document.getElementById('contatosContainer2');
+    contatosContainer2.innerHTML = "";
+});
+
+function limparCampos() {
+    document.getElementById('email').value = '';
+    document.getElementById('nome_contato').value = '';
+    document.getElementById('cargo').value = '';
+    document.getElementById('idcontato').value = '';
+}

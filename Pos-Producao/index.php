@@ -83,7 +83,7 @@ if ($result_imagens->num_rows > 0) {
 
 <body>
     <header>
-        <button id="voltar" onclick="window.location.href='../main.html'">Voltar</button>
+        <button id="voltar" onclick="window.location.href='../inicio.php'">Voltar</button>
         <h1>Lista Pós-Produção</h1>
         <button id="openModalBtn">Inserir render</button>
     </header>

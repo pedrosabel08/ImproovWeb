@@ -35,7 +35,7 @@ $conn->close();
     <div class="header">
 
         <div>
-            <button id="voltar" onclick="window.location.href='../main.html'">Voltar</button>
+            <button id="voltar" onclick="window.location.href='../inicio.php'">Voltar</button>
         </div>
         <div>
             <img src="../assets/ImproovFlow - logo.png" alt="Improov" class="logo">

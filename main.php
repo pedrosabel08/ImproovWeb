@@ -35,7 +35,7 @@ $idusuario = $_SESSION['idusuario'];
         <img src="./assets/ImproovFlow - logo.png" alt="Improov" class="logo">
     </a>
     <div class="buttons">
-        <button id="voltar" onclick="window.location.href='main.html'">Voltar</button>
+        <button id="voltar" onclick="window.location.href='inicio.php'">Voltar</button>
         <button id="menuButton"><i class="fa-solid fa-user"></i></button>
         <div id="menu" class="hidden">
             <a href="infos.php" id="editProfile"><i class="fa-regular fa-user"></i>Editar Informações</a>

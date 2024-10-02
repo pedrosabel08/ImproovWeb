@@ -1,3 +1,8 @@
+<?php
+session_start();
+
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -7,7 +12,7 @@
     <link rel="stylesheet" href="css/styleIndex.css">
     <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
         type="image/x-icon">
-        
+
     <title>Improov+Flow</title>
 </head>
 
@@ -23,7 +28,9 @@
             <button onclick="visualizarTabela()">Visualizar tabela com imagens</button>
             <button onclick="listaPos()">Lista Pós-Produção</button>
             <!-- <button onclick="dashboard()">Dashboard</button> -->
-            <button onclick="clientes()">Informações clientes</button>
+            <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 3)): ?>
+                <button onclick="clientes()">Informações clientes</button>
+            <?php endif; ?>
         </div>
     </main>
 

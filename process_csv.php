@@ -30,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['csvFile'])) {
             $sql = $conn->prepare("INSERT INTO imagens_cliente_obra (cliente_id, obra_id, imagem_nome, recebimento_arquivos, data_inicio, prazo, tipo_imagem) VALUES (?, ?, ?, ?, ?, ?, ?)");
 
             // "iis" - os dois primeiros são inteiros, o terceiro a sétimo são strings
-            $sql->bind_param("iisssssi", $cliente_id, $obra_id, $imagem_nome, $recebimento_arquivos, $data_inicio, $prazo, $tipo_imagem);
+            $sql->bind_param("iisssss", $cliente_id, $obra_id, $imagem_nome, $recebimento_arquivos, $data_inicio, $prazo, $tipo_imagem);
 
             // Executar a query
             if ($sql->execute()) {

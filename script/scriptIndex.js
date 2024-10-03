@@ -17,6 +17,9 @@ function dashboard() {
 function clientes() {
     window.location.href = 'infoCliente/index.php'
 }
+function animacao() {
+    window.location.href = 'Animacao/index.php'
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     const themeToggle = document.getElementById('theme-toggle');

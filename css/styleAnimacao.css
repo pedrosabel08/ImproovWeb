@@ -71,6 +71,11 @@ table {
     margin: 20px auto;
 }
 
+tr:hover {
+    cursor: pointer;
+}
+
+
 td,
 th {
     width: 100px;
@@ -229,4 +234,20 @@ button#deleteButton {
     border-radius: 5px;
     cursor: pointer;
     transition: background-color 0.3s;
+}
+
+
+.status-finalizado {
+    background-color: #048f07;
+    color: white;
+}
+
+.status-em-andamento {
+    background-color: #fff700;
+    color: black;
+}
+
+.status-nao-iniciado {
+    background-color: #fc0303;
+    color: white;
 }

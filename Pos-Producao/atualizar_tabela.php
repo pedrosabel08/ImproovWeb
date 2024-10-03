@@ -14,7 +14,8 @@ $sql = "SELECT p.idpos_producao, col.nome_colaborador, cli.nome_cliente, o.nome_
                         INNER JOIN cliente cli ON p.cliente_id = cli.idcliente
                         INNER JOIN obra o ON p.obra_id = o.idobra
                         INNER JOIN imagens_cliente_obra i ON p.imagem_id = i.idimagens_cliente_obra
-                        INNER JOIN status_imagem s ON p.status_id = s.idstatus";
+                        INNER JOIN status_imagem s ON p.status_id = s.idstatus
+                        ORDER BY data_pos desc";
 
 $result = $conn->query($sql);
 

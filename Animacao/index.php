@@ -105,14 +105,17 @@ if ($result_imagens->num_rows > 0) {
     <table>
         <thead>
             <tr>
+                <th>Nome cliente</th>
+                <th>Nome obra</th>
                 <th>Nome imagem</th>
+                <th>Status Animação</th>
                 <th>Cena</th>
-                <th>Status</th>
+                <th>Prazo</th>
                 <th>Render</th>
-                <th>Status</th>
+                <th>Prazo</th>
                 <th>Pós</th>
-                <th>Status</th>
-                <th>Duração</th>
+                <th>Prazo</th>
+                <th>Duração (em segundos)</th>
             </tr>
         </thead>
         <tbody id="lista-imagens">
@@ -162,7 +165,8 @@ if ($result_imagens->num_rows > 0) {
                         <option value="">Selecione uma imagem:</option>
                         <?php foreach ($imagens as $imagem): ?>
                             <option value="<?= $imagem['idimagem_animacao']; ?>">
-                                <?= htmlspecialchars($imagem['imagem_nome']); ?></option>
+                                <?= htmlspecialchars($imagem['imagem_nome']); ?>
+                            </option>
                         <?php endforeach; ?>
                     </select>
                 </div>
@@ -170,11 +174,10 @@ if ($result_imagens->num_rows > 0) {
                 <div>
                     <h3 for="">Cena</h3>
                     <select name="status_cena" id="status_cena">
-                        <option value="Finalizado">Finalizado</option>
-                        <option value="Em andamento">Em andamento</option>
                         <option value="Não iniciado">Não iniciado</option>
+                        <option value="Em andamento">Em andamento</option>
                         <option value="HOLD">HOLD</option>
-                        <option value="Não se aplica">Não se aplica</option>
+                        <option value="Finalizado">Finalizado</option>
                     </select>
                     <input type="date" name="prazo_cena" id="prazo_cena">
                 </div>
@@ -182,29 +185,27 @@ if ($result_imagens->num_rows > 0) {
                 <div>
                     <h3 for="">Render</h3>
                     <select name="status_render" id="status_render">
-                        <option value="Finalizado">Finalizado</option>
-                        <option value="Em andamento">Em andamento</option>
                         <option value="Não iniciado">Não iniciado</option>
+                        <option value="Em andamento">Em andamento</option>
                         <option value="HOLD">HOLD</option>
-                        <option value="Não se aplica">Não se aplica</option>
+                        <option value="Finalizado">Finalizado</option>
                     </select>
                     <input type="date" name="prazo_render" id="prazo_render">
                 </div>
                 <div>
                     <h3 for="">Pós</h3>
                     <select name="status_pos" id="status_pos">
-                        <option value="Finalizado">Finalizado</option>
-                        <option value="Em andamento">Em andamento</option>
                         <option value="Não iniciado">Não iniciado</option>
+                        <option value="Em andamento">Em andamento</option>
                         <option value="HOLD">HOLD</option>
-                        <option value="Não se aplica">Não se aplica</option>
+                        <option value="Finalizado">Finalizado</option>
                     </select>
                     <input type="date" name="prazo_pos" id="prazo_pos">
                 </div>
 
                 <div>
-                    <label for="duracao">Duração</label>
-                    <input type="text" id="duracao" name="duracao">
+                    <label for="duracao">Duração (em segundos)</label>
+                    <input type="text" id="duracao" name="duracao" step="1">
                 </div>
 
                 <input type="text" name="idanimacao" id="idanimacao" hidden>
@@ -212,7 +213,11 @@ if ($result_imagens->num_rows > 0) {
 
                 <div>
                     <label for="status_anima">Status</label>
-                    <input type="checkbox" name="status_anima" id="status_anima" disabled>
+                    <select name="status_anima" id="status_anima">
+                        <option value="Não iniciado">Não iniciado</option>
+                        <option value="Em andamento">Em andamento</option>
+                        <option value="Finalizado">Finalizado</option>
+                    </select>
                 </div>
 
                 <div>
@@ -256,9 +261,9 @@ if ($result_imagens->num_rows > 0) {
 
 </div>
 
-<script src="script.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="script.js"></script>
 
 </body>
 

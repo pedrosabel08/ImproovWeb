@@ -23,7 +23,7 @@ function limparCampos() {
     document.getElementById('status_anima').value = ''; // Limpar campo de texto
 }
 
-function limparCamposImagem(){
+function limparCamposImagem() {
     document.getElementById('opcao_obra2').selectedIndex = 0; // Resetar select
     document.getElementById('imagem_nome').value = '';
 }
@@ -86,7 +86,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 // Adiciona as novas opções com base na resposta
                 response.forEach(function (imagem) {
                     var option = document.createElement('option');
-                    option.value = imagem.idimagens_cliente_obra;
+                    option.value = imagem.idimagem_animacao;
                     option.text = imagem.imagem_nome;
                     imagemSelect.add(option);
                 });
@@ -199,20 +199,26 @@ document.addEventListener("DOMContentLoaded", function () {
                     tr.setAttribute('data-id', imagem.idanimacao);
                     tr.setAttribute('data-obra-id', imagem.idobra);
 
-                    let statusTexto = imagem.status_anima == 1 ? 'Não começou' : 'Finalizado';
-                    let statusCor = imagem.status_anima == 1 ? 'red' : 'green';
+                    // Verifica os status e define as cores
+                    const statusCenaClass = getStatusClass(imagem.status_cena);
+                    const statusRenderClass = getStatusClass(imagem.status_render);
+                    const statusPosClass = getStatusClass(imagem.status_pos);
+
+                    // Define o status animação baseado nos outros status
+                    const statusAnima = calcularStatusAnima(imagem.status_cena, imagem.status_render, imagem.status_pos);
 
                     tr.innerHTML = `
-                        <td>${imagem.nome_colaborador}</td>
                         <td>${imagem.nome_cliente}</td>
                         <td>${imagem.nome_obra}</td>
                         <td>${imagem.imagem_nome}</td>
-                        <td>${imagem.status_cena}</td>
-                        <td>${imagem.status_render}</td>
-                        <td>${imagem.status_pos}</td>
+                        <td class="${getStatusClass(statusAnima)}">${statusAnima}</td>
+                        <td class="${statusCenaClass}">${imagem.status_cena}</td>
+                        <td>${imagem.prazo_cena}</td>
+                        <td class="${statusRenderClass}">${imagem.status_render}</td>
+                        <td>${imagem.prazo_render}</td>
+                        <td class="${statusPosClass}">${imagem.status_pos}</td>
+                        <td>${imagem.prazo_pos}</td>
                         <td>${imagem.duracao}</td>
-                        <td>${imagem.status_anima}</td>
-                        <td style="background-color: ${statusCor}; color: white;">${statusTexto}</td>
                     `;
 
                     tabela.appendChild(tr);
@@ -234,7 +240,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         $.ajax({
                             type: "GET",
                             dataType: "json",
-                            url: "http://192.168.0.202:8066/Animacao/buscaAJAX.php",
+                            url: "http://192.168.0.202:8066/ImproovWeb/Animacao/buscaAJAX.php",
                             data: { ajid: idAnimaSelecionada },
                             success: function (response) {
                                 if (response.length > 0) {
@@ -251,12 +257,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                     document.getElementById('duracao').value = response[0].numero_bg;
                                     document.getElementById('idanimacao').value = response[0].idanimacao;
                                     document.getElementById('duracao').value = response[0].duracao;
-
-                                    const checkboxStatusPos = document.getElementById('status_anima');
-                                    checkboxStatusPos.checked = response[0].status_anima == 0;
-                                    checkboxStatusPos.disabled = false;
-
-                                    document.getElementById('alterar_imagem').value = 'true';
+                                    setSelectValue('status_anima', response[0].status_anima);
 
                                 } else {
                                     console.log("Nenhum produto encontrado.");
@@ -318,12 +319,9 @@ document.getElementById('formImagemAnimacao').addEventListener('submit', functio
     event.preventDefault(); // Impedir o envio padrão do formulário
 
     const obraId = document.getElementById('opcao_obra2').value;
-    const imagemNome = document.getElementById('imagem_nome').value.trim(); // Usar trim() para remover espaços em branco
+    const imagemNome = document.getElementById('imagem_nome').value.trim();
 
-    console.log('Obra ID:', obraId); // Debug: mostrar ID da obra
-    console.log('Nome da Imagem:', imagemNome); // Debug: mostrar nome da imagem
 
-    // Verifica se o ID da obra é válido ou o nome da imagem não é vazio
     if (obraId === "0" || imagemNome === "") {
         alert("Selecione uma obra e insira um nome de imagem válido!");
         return;
@@ -337,10 +335,54 @@ document.getElementById('formImagemAnimacao').addEventListener('submit', functio
     })
         .then(response => response.text())
         .then(result => {
-            // Aqui você pode tratar a resposta do PHP, como exibir um alerta
-            console.log(result); // Ver resposta do PHP
+            modal_imagem.style.display = "none";
+            limparCampos();
+            Toastify({
+                text: "Imagem inserida com sucesso.",
+                duration: 3000,
+                gravity: "top",
+                position: "left",
+                backgroundColor: "#ffa200",
+                close: true
+            }).showToast();
+
+
         })
         .catch(error => {
-            console.error('Erro:', error);
+            Toastify({
+                text: "Erro ao inserir imagem: " + error,
+                duration: 3000,
+                gravity: "top",
+                position: "left",
+                backgroundColor: "red",
+                close: true
+            }).showToast();
         });
 });
+
+
+function getStatusClass(status) {
+    switch (status) {
+        case 'Finalizado':
+            return 'status-finalizado';
+        case 'Em andamento':
+            return 'status-em-andamento';
+        case 'Não iniciado':
+            return 'status-nao-iniciado';
+        default:
+            return '';
+    }
+}
+
+function calcularStatusAnima(statusCena, statusRender, statusPos) {
+    if (statusCena === 'Finalizado' && statusRender === 'Finalizado' && statusPos === 'Finalizado') {
+        return 'Finalizado';
+    }
+    if (statusCena === 'Em andamento' || statusRender === 'Em andamento' || statusPos === 'Em andamento') {
+        return 'Em andamento';
+    }
+    if (statusCena === 'Não iniciado' && statusRender === 'Não iniciado' && statusPos === 'Não iniciado') {
+        return 'Não iniciado';
+    }
+    return 'Em andamento';
+}

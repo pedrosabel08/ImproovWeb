@@ -8,15 +8,17 @@ if ($conn->connect_error) {
 $conn->set_charset('utf8mb4');
 
 $sql = "SELECT a.idanimacao, col.nome_colaborador, cli.nome_cliente, o.nome_obra, a.duracao, 
-		i.imagem_nome, a.status_anima, c.status as status_cena, c.prazo as prazo_cena, r.status as status_render, r.prazo as prazo_render,
-		p.status as status_pos, p.prazo as prazo_pos from animacao a
-        INNER JOIN colaborador col ON a.colaborador_id = col.idcolaborador
-		INNER JOIN cliente cli ON a.cliente_id = cli.idcliente
-        INNER JOIN obra o ON a.obra_id = o.idobra
-        INNER JOIN imagem_animcao i ON a.imagem_id = i.idimagem_animacao
-		INNER JOIN cena c on a.idanimacao = c.animacao_id
-		INNER JOIN render r on a.idanimacao = c.animacao_id
-		INNER JOIN pos p on a.idanimacao = c.animacao_id";
+        i.imagem_nome, a.status_anima, c.status as status_cena, c.prazo as prazo_cena, r.status as status_render, r.prazo as prazo_render,
+        p.status as status_pos, p.prazo as prazo_pos 
+        FROM animacao a
+        LEFT JOIN colaborador col ON a.colaborador_id = col.idcolaborador
+        LEFT JOIN cliente cli ON a.cliente_id = cli.idcliente
+        LEFT JOIN obra o ON a.obra_id = o.idobra
+        LEFT JOIN imagem_animacao i ON a.imagem_id = i.idimagem_animacao
+        LEFT JOIN cena c ON a.idanimacao = c.animacao_id
+        LEFT JOIN render r ON a.idanimacao = c.animacao_id
+        LEFT JOIN pos p ON a.idanimacao = c.animacao_id
+        GROUP BY a.idanimacao";
 
 $result = $conn->query($sql);
 

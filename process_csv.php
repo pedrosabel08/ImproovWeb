@@ -25,13 +25,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['csvFile'])) {
             $data_inicio = $data[4];     // Data de início (deve ser string no formato 'YYYY-MM-DD')
             $prazo = $data[5];           // Data de prazo (também string no formato 'YYYY-MM-DD')
             $tipo_imagem = $data[6];     // Tipo de imagem ou outra informação
-            $status_id = $data [7];
 
             // Preparar a query de inserção
-            $sql = $conn->prepare("INSERT INTO imagens_cliente_obra (cliente_id, obra_id, imagem_nome, recebimento_arquivos, data_inicio, prazo, tipo_imagem, status_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+            $sql = $conn->prepare("INSERT INTO imagens_cliente_obra (cliente_id, obra_id, imagem_nome, recebimento_arquivos, data_inicio, prazo, tipo_imagem) VALUES (?, ?, ?, ?, ?, ?, ?)");
 
             // "iis" - os dois primeiros são inteiros, o terceiro a sétimo são strings
-            $sql->bind_param("iisssssi", $cliente_id, $obra_id, $imagem_nome, $recebimento_arquivos, $data_inicio, $prazo, $tipo_imagem, $status_id);
+            $sql->bind_param("iisssssi", $cliente_id, $obra_id, $imagem_nome, $recebimento_arquivos, $data_inicio, $prazo, $tipo_imagem);
 
             // Executar a query
             if ($sql->execute()) {

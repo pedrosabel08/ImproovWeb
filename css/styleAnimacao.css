@@ -45,7 +45,7 @@ header button#openModalBtn {
     font-weight: bold;
 }
 
-header button#add-imagem {
+header button#add_imagem {
     padding: 8px;
     background-color: #ffd900;
     border: 1px solid black;
@@ -89,7 +89,8 @@ th {
 }
 
 
-.modal {
+.modal,
+.modal_imagem {
     display: none;
     position: fixed;
     z-index: 1000;
@@ -125,7 +126,8 @@ th {
     }
 }
 
-.close {
+.close,
+.close_imagem {
     color: #aaa;
     float: right;
     font-size: 28px;
@@ -133,33 +135,39 @@ th {
     cursor: pointer;
 }
 
-.close:hover {
+.close:hover,
+.close_imagem {
     color: black;
 }
 
-#form-inserir {
+#form-inserir,
+#form-inserir-imagem {
     padding: 10px;
-    font-family: 'Arial', sans-serif;
+    font-family: 'Nunito', sans-serif;
 }
 
-#form-inserir h2 {
+#form-inserir h2,
+#form-inserir-imagem h2 {
     text-align: center;
-    font-family: 'Arial', sans-serif;
+    font-family: 'Nunito', sans-serif;
     color: #333;
     margin-bottom: 40px;
 }
 
-#form-inserir form {
+#form-inserir form,
+#form-inserir-imagem form {
     display: flex;
     flex-direction: column;
 }
 
-#form-inserir div {
+#form-inserir div,
+#form-inserir-imagem div {
     margin-bottom: 15px;
 }
 
-#form-inserir label {
-    font-family: 'Arial', sans-serif;
+#form-inserir label,
+#form-inserir-imagem label {
+    font-family: 'Nunito', sans-serif;
     font-size: 14px;
     color: #333;
     margin-bottom: 5px;
@@ -167,6 +175,7 @@ th {
 }
 
 #form-inserir input[type="text"],
+#form-inserir-imagem input[type="text"],
 #form-inserir input[type="date"],
 #form-inserir textarea,
 #form-inserir select {
@@ -180,6 +189,7 @@ th {
 }
 
 #form-inserir input[type="text"]:focus,
+#form-inserir-imagem input[type="text"]:focus,
 #form-inserir input[type="date"]:focus,
 #form-inserir textarea:focus,
 #form-inserir select:focus {
@@ -191,7 +201,8 @@ th {
     resize: vertical;
 }
 
-#form-inserir button {
+#form-inserir button,
+#form-inserir-imagem button {
     background-color: #00ff37;
     color: black;
     padding: 8px;
@@ -203,7 +214,8 @@ th {
     transition: background-color 0.3s;
 }
 
-#form-inserir button:hover {
+#form-inserir button:hover,
+#form-inserir-imagem button:hover {
     background-color: #0056b3;
 }
 

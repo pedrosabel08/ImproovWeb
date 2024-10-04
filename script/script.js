@@ -76,6 +76,14 @@ document.addEventListener("DOMContentLoaded", function () {
                                     document.getElementById("obs_planta").value = funcao.observacao;
 
                                     break;
+
+                                case "Filtro de assets":
+                                    selectElement = document.getElementById("opcao_filtro");
+                                    document.getElementById("status_filtro").value = funcao.status;
+                                    document.getElementById("prazo_filtro").value = funcao.prazo;
+                                    document.getElementById("obs_filtro").value = funcao.observacao;
+
+                                    break;
                             }
                             if (selectElement) {
                                 selectElement.value = funcao.colaborador_id;
@@ -121,6 +129,9 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById("status_planta").value = "";
         document.getElementById("prazo_planta").value = "";
         document.getElementById("obs_planta").value = "";
+        document.getElementById("status_filtro").value = "";
+        document.getElementById("prazo_filtro").value = "";
+        document.getElementById("obs_filtro").value = "";
 
         document.getElementById("opcao_caderno").value = "";
         document.getElementById("opcao_model").value = "";
@@ -129,60 +140,8 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById("opcao_pos").value = "";
         document.getElementById("opcao_alteracao").value = "";
         document.getElementById("opcao_planta").value = "";
+        document.getElementById("opcao_filtro").value = "";
         document.getElementById("opcao_status").value = "";
-    }
-
-    function buscarNomeImagem(idImagem) {
-        $.ajax({
-            type: "GET",
-            dataType: "json",
-            url: "http://www.improov.com.br/sistema/buscaNomeImagem.php",
-            data: { ajid: idImagem },
-            success: function (response) {
-                if (response.imagem_nome !== undefined && response.status_id !== undefined) {
-                    if (response.imagem_nome && response.status_id) {
-                        document.getElementById("campoNomeImagem").textContent = response.imagem_nome;
-
-                        var opcaoStatus = document.getElementById("opcao_status");
-                        if (opcaoStatus) {
-                            var statusId = response.status_id.toString();
-
-                            opcaoStatus.value = statusId;
-
-                            var found = Array.from(opcaoStatus.options).some(option => option.value === statusId);
-                            if (!found) {
-                                console.warn("Status ID não encontrado nas opções do select:", statusId);
-                            }
-                        } else {
-                            console.warn("Elemento do select não encontrado.");
-                        }
-                    } else {
-                        Toastify({
-                            text: "Nome da imagem ou status não encontrado.",
-                            duration: 3000,
-                            close: true,
-                            gravity: "top",
-                            position: "left",
-                            backgroundColor: "red",
-                            stopOnFocus: true,
-                        }).showToast();
-                    }
-                } else {
-                    Toastify({
-                        text: "Resposta incompleta do servidor.",
-                        duration: 3000,
-                        close: true,
-                        gravity: "top",
-                        position: "left",
-                        backgroundColor: "red",
-                        stopOnFocus: true,
-                    }).showToast();
-                }
-            },
-            error: function (jqXHR, textStatus, errorThrown) {
-                console.error("Erro na requisição AJAX para o nome da imagem: " + textStatus, errorThrown);
-            }
-        });
     }
 
     document.getElementById("salvar_funcoes").addEventListener("click", function (event) {
@@ -240,6 +199,10 @@ document.addEventListener("DOMContentLoaded", function () {
             status_planta: document.getElementById("status_planta").value || "",
             prazo_planta: document.getElementById("prazo_planta").value || "",
             obs_planta: document.getElementById("obs_planta").value || "",
+            filtro_id: document.getElementById("opcao_filtro").value || "",
+            status_filtro: document.getElementById("status_filtro").value || "",
+            prazo_filtro: document.getElementById("prazo_filtro").value || "",
+            obs_filtro: document.getElementById("obs_filtro").value || "",
             textos: textos,
             status_id: document.getElementById("opcao_status").value || ""
         };

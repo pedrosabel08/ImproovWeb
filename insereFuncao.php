@@ -49,6 +49,10 @@ $planta_id = (int)emptyToNull($_POST['planta_id']);
 $status_planta = emptyToNull($_POST['status_planta']);
 $prazo_planta = emptyToNull($_POST['prazo_planta']);
 $obs_planta = emptyToNull($_POST['obs_planta']);
+$filtro_id = (int)emptyToNull($_POST['filtro_id']);
+$status_filtro = emptyToNull($_POST['status_filtro']);
+$prazo_filtro = emptyToNull($_POST['prazo_filtro']);
+$obs_filtro = emptyToNull($_POST['obs_filtro']);
 $status_id = (int)emptyToNull($_POST['status_id']);
 
 
@@ -60,7 +64,8 @@ $funcao_ids = [
     'Finalização' => 4,
     'Pós-Produção' => 5,
     'Alteração' => 6,
-    'Planta Humanizada' => 7
+    'Planta Humanizada' => 7,
+    'Filtro de assets' => 8
 ];
 
 $textos = $_POST['textos'];
@@ -71,6 +76,7 @@ $finalizacao_texto = $textos['finalizacao'] ?? '';
 $pos_texto = $textos['pos'] ?? '';
 $alteracao_texto = $textos['alteracao'] ?? '';
 $planta_texto = $textos['planta'] ?? '';
+$filtro_texto = $textos['filtro'] ?? '';
 
 // Obtém os IDs das funções correspondentes
 $caderno_funcao_id = $funcao_ids[$caderno_texto] ?? null;
@@ -80,8 +86,9 @@ $finalizacao_funcao_id = $funcao_ids[$finalizacao_texto] ?? null;
 $pos_funcao_id = $funcao_ids[$pos_texto] ?? null;
 $alteracao_funcao_id = $funcao_ids[$alteracao_texto] ?? null;
 $planta_funcao_id = $funcao_ids[$planta_texto] ?? null;
+$filtro_funcao_id = $funcao_ids[$filtro_texto] ?? null;
 
-if ($caderno_funcao_id === null || $comp_funcao_id === null || $modelagem_funcao_id === null || $finalizacao_funcao_id === null || $pos_funcao_id === null || $alteracao_funcao_id === null || $planta_funcao_id === null) {
+if ($caderno_funcao_id === null || $comp_funcao_id === null || $modelagem_funcao_id === null || $finalizacao_funcao_id === null || $pos_funcao_id === null || $alteracao_funcao_id === null || $planta_funcao_id === null || $filtro_funcao_id === null) {
     echo json_encode(["status" => "erro", "mensagem" => "Erro: Função não encontrada."]);
     exit;
 }
@@ -129,6 +136,9 @@ try {
     $stmt->execute();
 
     $stmt->bind_param("iiisss", $imagem_id, $planta_id, $planta_funcao_id, $prazo_planta, $status_planta, $obs_planta);
+    $stmt->execute();
+
+    $stmt->bind_param("iiisss", $imagem_id, $filtro_id, $filtro_funcao_id, $prazo_filtro, $status_filtro, $obs_filtro);
     $stmt->execute();
 
 

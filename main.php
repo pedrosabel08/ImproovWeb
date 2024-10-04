@@ -55,7 +55,9 @@ $idusuario = $_SESSION['idusuario'];
         <a href="#add-cliente" onclick="openModal('add-cliente', this)">Adicionar Cliente ou Obra</a>
         <a href="#add-imagem" onclick="openModal('add-imagem', this)">Adicionar Imagem</a>
     <?php endif; ?>
-
+    <?php if ($_SESSION['nivel_acesso'] == 1 and $_SESSION['nivel_acesso'] == 3): ?>
+        <a href="#add-acomp" onclick="openModal('add-acomp', this)">Adicionar Acompanhamento</a>
+    <?php endif; ?>
     <a href="#filtro" onclick="openModalClass('tabela-form', this)" class="active">Ver Imagens</a>
     <a href="#filtro-colab" onclick="openModal('filtro-colab', this)">Filtro Colaboradores</a>
     <a href="#filtro-obra" onclick="openModal('filtro-obra', this)">Filtro por Obra</a>
@@ -443,6 +445,38 @@ $conn->close();
                         </select>
                         <input type="date" name="prazo_planta" id="prazo_planta">
                         <input type="text" name="obs_planta" id="obs_planta" placeholder="Observação">
+                    </div>
+
+                    <div class="funcao">
+                        <p id="filtro">Filtro de assets</p>
+                        <?php if ($_SESSION['nivel_acesso'] == 1): ?>
+
+                            <select name="filtro_id" id="opcao_filtro">
+                                <?php foreach ($colaboradores as $colab): ?>
+                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        <?php else: ?>
+                            <select name="filtro_id" id="opcao_filtro" disabled>
+                                <?php foreach ($colaboradores as $colab): ?>
+                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        <?php endif; ?>
+
+                        <select name="status_filtro" id="status_filtro">
+                            <option value="Finalizado">Finalizado</option>
+                            <option value="Em andamento">Em andamento</option>
+                            <option value="Não iniciado">Não iniciado</option>
+                            <option value="HOLD">HOLD</option>
+                            <option value="Não se aplica">Não se aplica</option>
+                        </select>
+                        <input type="date" name="prazo_filtro" id="prazo_filtro">
+                        <input type="text" name="obs_filtro" id="obs_filtro" placeholder="Observação">
                     </div>
                     <div class="funcao">
                         <p id="status">Status</p>

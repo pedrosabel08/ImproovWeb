@@ -218,3 +218,72 @@ button#deleteButton {
     cursor: pointer;
     transition: background-color 0.3s;
 }
+
+button#openNotify {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+}
+
+.notification-menu {
+    position: relative;
+    display: inline-block;
+}
+
+.notificacoes {
+    background-color: #fff;
+    border: 1px solid #ddd;
+    position: absolute;
+    top: 50px;
+    right: 18px;
+    z-index: 1000;
+    width: 500px;
+    border-radius: 10px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.notificacao-count {
+    background-color: red;
+    color: white;
+    border-radius: 50%;
+    padding: 2px 6px;
+    font-size: 12px;
+    position: absolute;
+    top: 5px;
+    right: 15px;
+}
+
+#icon-bell {
+    scale: 1.4;
+}
+
+.hidden {
+    display: none;
+}
+
+.notificacoes h3 {
+    margin-left: 10px;
+}
+
+.notificacoes ul {
+    list-style-type: none;
+    padding: 0;
+}
+
+.notificacoes li {
+    padding: 5px;
+    cursor: pointer;
+}
+
+.notificacoes li:hover {
+    background-color: #e7e7e7;
+}
+
+.notificacoes li.lida {
+    color: gray;
+}
+
+.notificacoes li.nao-lida {
+    font-weight: bold;
+}

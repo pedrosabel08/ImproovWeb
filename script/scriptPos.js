@@ -32,9 +32,9 @@ window.onclick = function (event) {
 }
 document.addEventListener("DOMContentLoaded", function () {
 
-    document.getElementById('opcao_obra').addEventListener('change', function(){
-        var obraId = this.value; 
-        buscarImagens(obraId); 
+    document.getElementById('opcao_obra').addEventListener('change', function () {
+        var obraId = this.value;
+        buscarImagens(obraId);
     });
 
     function buscarImagens(obraId) {
@@ -255,18 +255,6 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         }
     }
-
-    function setSelectValueByValue(selectId, valueToSelect) {
-        var selectElement = document.getElementById(selectId);
-        var options = selectElement.options;
-
-        for (var i = 0; i < options.length; i++) {
-            if (options[i].value == valueToSelect) {
-                selectElement.selectedIndex = i;
-                break;
-            }
-        }
-    }
 });
 
 function filtrarTabela() {
@@ -293,3 +281,86 @@ function filtrarTabela() {
         }
     }
 }
+
+const openNotify = document.getElementById('openNotify');
+const notificacoes = document.getElementById('notificacoes');
+const notificacaoCount = document.getElementById('notificacaoCount');
+
+notificacoes.classList.add('hidden');
+
+// Função para obter notificações do servidor
+function obterNotificacoes() {
+    fetch('obter_notificacoes.php')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Limpar as notificações existentes
+                const ul = notificacoes.querySelector('ul');
+                ul.innerHTML = '';
+
+                // Contar notificações não lidas
+                let count = 0;
+
+                data.notificacoes.forEach(notificacao => {
+                    const li = document.createElement('li');
+                    li.className = notificacao.lida ? 'lida' : 'nao-lida';
+                    li.setAttribute('data-id', notificacao.notificacao_id);
+                    li.textContent = notificacao.mensagem;
+
+                    // Se a notificação não estiver lida, incrementar o contador
+                    if (!notificacao.lida) {
+                        count++;
+                    }
+
+                    // Adicionar evento de clique
+                    li.addEventListener('click', function () {
+                        marcarComoLida(notificacao.notificacao_id);
+                    });
+
+                    ul.appendChild(li);
+                });
+
+                // Atualizar contador
+                notificacaoCount.textContent = count;
+            }
+        })
+        .catch(error => {
+            console.error('Erro ao obter notificações:', error);
+        });
+}
+
+// Função para marcar a notificação como lida
+function marcarComoLida(notificacaoId) {
+    fetch('marcar_lida.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id: notificacaoId }),
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Atualizar a interface para marcar a notificação como lida
+                const li = notificacoes.querySelector(`li[data-id='${notificacaoId}']`);
+                if (li) {
+                    li.classList.remove('nao-lida');
+                    li.classList.add('lida');
+
+                    // Atualizar o contador
+                    const currentCount = parseInt(notificacaoCount.textContent);
+                    notificacaoCount.textContent = currentCount - 1;
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Erro ao marcar como lida:', error);
+        });
+}
+
+// Chama a função para obter notificações ao carregar a página
+obterNotificacoes();
+
+openNotify.addEventListener('click', function () {
+    notificacoes.classList.toggle('hidden');
+});

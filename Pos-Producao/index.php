@@ -8,6 +8,7 @@ if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
     header("Location: ../index.html");
     exit();
 }
+
 $conn = new mysqli('mysql.improov.com.br', 'improov', 'Impr00v', 'improov');
 
 if ($conn->connect_error) {
@@ -15,6 +16,20 @@ if ($conn->connect_error) {
 }
 
 $conn->set_charset('utf8mb4');
+
+$usuario_id = $_SESSION['idusuario']; // ID do usuário logado
+
+// Recuperar notificações não lidas
+$sql = "SELECT n.id AS notificacao_id, n.mensagem, nu.lida 
+        FROM notificacoes n 
+        JOIN notificacoes_usuarios nu ON n.id = nu.notificacao_id 
+        WHERE nu.usuario_id = ? AND nu.lida = 0";
+
+$stmt = $conn->prepare($sql);
+$stmt->bind_param("i", $usuario_id);
+$stmt->execute();
+$result = $stmt->get_result();
+$notificacoes = $result->fetch_all(MYSQLI_ASSOC);
 
 $sql_clientes = "SELECT idcliente, nome_cliente FROM cliente";
 $result_cliente = $conn->query($sql_clientes);
@@ -77,7 +92,9 @@ if ($result_imagens->num_rows > 0) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="../css/stylePos.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastify-js/1.12.0/toastify.min.css">
-
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
+    type="image/x-icon">
     <title>Lista Pós-Produção</title>
 </head>
 
@@ -86,7 +103,24 @@ if ($result_imagens->num_rows > 0) {
         <button id="voltar" onclick="window.location.href='../inicio.php'">Voltar</button>
         <h1>Lista Pós-Produção</h1>
         <button id="openModalBtn">Inserir render</button>
+        <?php if ($_SESSION['nivel_acesso'] == 1): ?>
+            <button id="openNotify">
+                <i class="fa-solid fa-bell" id="icon-bell"></i>
+                <span id="notificacaoCount" class="notificacao-count">0</span>
+            </button>
+            <div class="notificacoes" id="notificacoes">
+                <h3>Notificações</h3>
+                <ul>
+                    <?php foreach ($notificacoes as $notificacao): ?>
+                        <li class="<?= $notificacao['lida'] ? 'lida' : 'nao-lida'; ?>" data-id="<?= $notificacao['notificacao_id']; ?>">
+                            <?= $notificacao['mensagem']; ?>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+            </div>
+        <?php endif; ?>
     </header>
+
 
     <div id="filtro">
         <label for="colunaFiltro">Filtrar por:</label>

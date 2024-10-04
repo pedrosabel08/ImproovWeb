@@ -361,6 +361,8 @@ function marcarComoLida(notificacaoId) {
 // Chama a função para obter notificações ao carregar a página
 obterNotificacoes();
 
+setInterval(obterNotificacoes, 3000);
+
 openNotify.addEventListener('click', function () {
     notificacoes.classList.toggle('hidden');
 });

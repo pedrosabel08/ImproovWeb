@@ -9,33 +9,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $prazo = $_POST['prazo'];
     $idfuncao_imagem = $_POST['idfuncao_imagem'];
 
-    // Validação básica (pode adicionar mais conforme necessário)
-    if ($cliente_id != 0 && $obra_id != 0 && $imagem_id != "") {
+    // Consulta de atualização (UPDATE)
+    $sql = "UPDATE funcao_imagem 
+            SET status = ?, prazo = ?
+            WHERE idfuncao_imagem = ?";
 
-        // Consulta de atualização (UPDATE)
-        $sql = "UPDATE funcao_imagem 
-                status = ?, prazo = ?
-                WHERE idfuncao_imagem = ?";
+    // Preparando a consulta para evitar SQL Injection
+    if ($stmt = $conn->prepare($sql)) {
+        // Vinculando os parâmetros
+        $stmt->bind_param("ssi", $status, $prazo, $idfuncao_imagem);
 
-        // Preparando a consulta para evitar SQL Injection
-        if ($stmt = $conn->prepare($sql)) {
-            // Vinculando os parâmetros
-            $stmt->bind_param("ssi", $status, $prazo, $idfuncao_imagem);
-
-            // Executa a consulta
-            if ($stmt->execute()) {
-                echo "Atualização feita com sucesso!";
-            } else {
-                echo "Erro ao atualizar: " . $stmt->error;
-            }
-
-            // Fecha a declaração
-            $stmt->close();
+        // Executa a consulta
+        if ($stmt->execute()) {
+            echo "Atualização feita com sucesso!";
         } else {
-            echo "Erro de preparação da consulta: " . $conn->error;
+            echo "Erro ao atualizar: " . $stmt->error;
         }
+
+        // Fecha a declaração
+        $stmt->close();
     } else {
-        echo "Por favor, preencha todos os campos obrigatórios.";
+        echo "Erro de preparação da consulta: " . $conn->error;
     }
 }
 

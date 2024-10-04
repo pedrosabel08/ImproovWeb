@@ -1,11 +1,6 @@
 <?php
-$conn = new mysqli('mysql.improov.com.br', 'improov', 'Impr00v', 'improov');
 
-if ($conn->connect_error) {
-    die("Falha na conexão: " . $conn->connect_error);
-}
-
-$conn->set_charset('utf8mb4');
+include 'conexao.php';
 
 $sql = "SELECT f.idfuncao_imagem, col.nome_colaborador, cli.nome_cliente, o.nome_obra, o.idobra,
         i.imagem_nome, f.status, f.prazo

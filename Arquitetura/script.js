@@ -1,9 +1,10 @@
 var modalFiltro = document.getElementById("modalFiltro");
-var modal_imagem = document.getElementById("modal_imagem");
+var modalCaderno = document.getElementById("modalCaderno");
 var openFiltro = document.getElementById("openFiltro");
 var closeModal = document.getElementsByClassName("close")[0];
-var closeModalImagem = document.getElementsByClassName("close_imagem")[0];
-const formArquitetura = document.getElementById('formArquitetura');
+var closeFiltro = document.getElementsByClassName("close-filtro")[0];
+const formCaderno = document.getElementById('formCaderno');
+const formFiltro = document.getElementById('formFiltro');
 
 function limparCampos() {
     document.getElementById('opcao_finalizador').selectedIndex = 0; // Resetar select
@@ -20,9 +21,13 @@ openFiltro.onclick = function () {
     limparCampos();
 };
 
+closeFiltro.onclick = function () {
+    modalFiltro.style.display = "none";
+    limparCampos();
+};
 
 closeModal.onclick = function () {
-    modalFiltro.style.display = "none";
+    modalCaderno.style.display = "none";
     limparCampos();
 };
 
@@ -30,6 +35,9 @@ window.onclick = function (event) {
     // Verificar se o clique foi fora do modal principal
     if (event.target == modalFiltro) {
         modalFiltro.style.display = "none";
+    }
+    if (event.target == modalCaderno) {
+        modalCaderno.style.display = "none";
     }
 };
 
@@ -71,7 +79,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
 
-    formArquitetura.addEventListener('submit', function (e) {
+    formCaderno.addEventListener('submit', function (e) {
         e.preventDefault();
 
         var formData = new FormData(this);
@@ -100,65 +108,33 @@ document.addEventListener("DOMContentLoaded", function () {
             .catch(error => console.error('Erro:', error));
     });
 
-    document.getElementById('deleteButton').addEventListener('click', function () {
-        const idPos = document.getElementById('id-pos').value;
+    formFiltro.addEventListener('submit', function (e) {
+        e.preventDefault();
 
-        if (!idPos) {
-            Toastify({
-                text: "Nenhum item selecionado para deletar.",
-                duration: 3000,
-                gravity: "top",
-                position: "left",
-                backgroundColor: "#ff5f6d",
-                close: true
-            }).showToast();
-            return;
-        }
+        var formData = new FormData(this);
 
-        if (confirm('Tem certeza que deseja deletar este item?')) {
-            fetch('delete.php', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ id_pos: idPos })
+        fetch('update_funcao_caderno.php', {
+            method: 'POST',
+            body: formData
+        })
+            .then(response => response.text())
+            .then(data => {
+
+                document.getElementById('modalFiltro').style.display = 'none';
+                limparCampos();
+                atualizarTabela();
+                buscarImagens();
+                Toastify({
+                    text: "Dados inseridos com sucesso!",
+                    duration: 3000,
+                    close: true,
+                    gravity: "top",
+                    position: "left",
+                    backgroundColor: "green",
+                    stopOnFocus: true,
+                }).showToast();
             })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        Toastify({
-                            text: "Item deletado com sucesso.",
-                            duration: 3000,
-                            gravity: "top",
-                            position: "left",
-                            backgroundColor: "#ffa200",
-                            close: true
-                        }).showToast();
-                        modal.style.display = "none";
-                        atualizarTabela();
-                    } else {
-                        Toastify({
-                            text: "Erro ao deletar item: " + data.message,
-                            duration: 3000,
-                            gravity: "top",
-                            position: "left",
-                            backgroundColor: "red",
-                            close: true
-                        }).showToast();
-                    }
-                })
-                .catch(error => {
-                    console.error('Erro ao deletar:', error);
-                    Toastify({
-                        text: "Ocorreu um erro ao tentar deletar o item.",
-                        duration: 3000,
-                        gravity: "top",
-                        position: "left",
-                        backgroundColor: "red",
-                        close: true
-                    }).showToast();
-                });
-        }
+            .catch(error => console.error('Erro:', error));
     });
 
     function atualizarTabela() {
@@ -191,7 +167,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 const linhasTabela = document.querySelectorAll('.linha-tabela');
                 linhasTabela.forEach(linha => {
                     linha.addEventListener('click', function () {
-                        modalFiltro.style.display = "flex";
+                        modalCaderno.style.display = "flex";
                         limparCampos();
                         linhasTabela.forEach(outro => {
                             outro.classList.remove('selecionada');
@@ -215,7 +191,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                     setSelectValue('status', response[0].status);
                                     document.getElementById('prazo').value = response[0].prazo;
                                     document.getElementById('idfuncao_imagem').value = response[0].idfuncao_imagem;
-                                    
+
 
                                 } else {
                                     console.log("Nenhum produto encontrado.");

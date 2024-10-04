@@ -119,13 +119,12 @@ if ($result_imagens->num_rows > 0) {
     </table>
 </div>
 
-<div id="modalFiltro" class="modalFiltro">
+<div id="modalCaderno" class="modalCaderno">
     <div class="modal-content">
         <span class="close">&times;</span>
-        <button id="deleteButton">Excluir</button>
-        <div id="form-inserir-filtro">
-            <h2>Formulário de Filtro</h2>
-            <form id="formArquitetura">
+        <div id="form-inserir">
+            <h2>Formulário de Caderno</h2>
+            <form id="formCaderno">
                 <div>
                     <label for="nomeFinalizador">Nome Finalizador</label>
                     <select name="final_id" id="opcao_finalizador" required>
@@ -184,6 +183,76 @@ if ($result_imagens->num_rows > 0) {
 
                 <input type="text" name="idfuncao_imagem" id="idfuncao_imagem" hidden>
                 <input type="hidden" id="alterar_imagem" name="alterar_imagem" value="false">
+
+                <div>
+                    <button type="submit">Enviar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div id="modalFiltro" class="modalFiltro">
+    <div class="modal-content">
+        <span class="close-filtro">&times;</span>
+        <div id="form-inserir">
+            <h2>Formulário de Filtro</h2>
+            <form id="formFiltro">
+                <div>
+                    <label for="nomeFinalizador">Nome Finalizador</label>
+                    <select name="final_id" id="opcao_finalizador" required>
+                        <option value="1">Nicolle</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="nomeCliente">Nome Cliente</label>
+                    <select name="cliente_id" id="opcao_cliente" required>
+                        <option value="0">Selecione um cliente:</option>
+                        <?php foreach ($clientes as $cliente): ?>
+                            <option value="<?= htmlspecialchars($cliente['idcliente']); ?>">
+                                <?= htmlspecialchars($cliente['nome_cliente']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="nomeObra">Nome Obra</label>
+                    <select name="obra_id" id="opcao_obra" onchange="buscarImagens()" required>
+                        <option value="0">Selecione uma obra:</option>
+                        <?php foreach ($obras as $obra): ?>
+                            <option value="<?= $obra['idobra']; ?>"><?= htmlspecialchars($obra['nome_obra']); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="imagem_id">Nome Imagem</label>
+                    <select id="imagem_id" name="imagem_id" required>
+                        <option value="">Selecione uma imagem:</option>
+                        <?php foreach ($imagens as $imagem): ?>
+                            <option value="<?= $imagem['idimagens_cliente_obra']; ?>">
+                                <?= htmlspecialchars($imagem['imagem_nome']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="status">Status</label>
+                    <select name="status" id="status">
+                        <option value="Não iniciado">Não iniciado</option>
+                        <option value="Em andamento">Em andamento</option>
+                        <option value="HOLD">HOLD</option>
+                        <option value="Finalizado">Finalizado</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="prazo">Prazo</label>
+                    <input type="date" name="prazo" id="prazo">
+                </div>
 
                 <div>
                     <button type="submit">Enviar</button>

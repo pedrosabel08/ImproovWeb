@@ -48,10 +48,14 @@ document.addEventListener("DOMContentLoaded", function () {
         buscarImagens(obraId);
     });
 
-    function buscarImagens(obraId) {
-        var imagemSelect = document.getElementById('imagem_id');
+    document.getElementById('opcao_obra2').addEventListener('change', function () {
+        var obraId = this.value;
+        buscarImagens(obraId);
+    });
 
-        // Verifica se o valor selecionado é 0, então busca todas as imagens
+    function buscarImagens(obraId) {
+
+        var imagemSelect = document.getElementById('imagem_id');
         var url = 'buscar_imagens.php';
         if (obraId != "0") {
             url += '?obra_id=' + obraId;
@@ -113,7 +117,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         var formData = new FormData(this);
 
-        fetch('update_funcao_caderno.php', {
+        fetch('inserir_assets.php', {
             method: 'POST',
             body: formData
         })
@@ -149,8 +153,6 @@ document.addEventListener("DOMContentLoaded", function () {
                     tr.classList.add('linha-tabela');
                     tr.setAttribute('data-id', imagem.idfuncao_imagem);
                     tr.setAttribute('data-obra-id', imagem.idobra);
-
-                    // Define o status animação baseado nos outros status
 
                     tr.innerHTML = `
                         <td>${imagem.nome_colaborador}</td>

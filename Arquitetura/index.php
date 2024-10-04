@@ -126,7 +126,7 @@ if ($result_imagens->num_rows > 0) {
             <h2>Formulário de Caderno</h2>
             <form id="formCaderno">
                 <div>
-                    <label for="nomeFinalizador">Nome Finalizador</label>
+                    <label for="nomeFinalizador">Nome Colaborador</label>
                     <select name="final_id" id="opcao_finalizador" required>
                         <option value="1">Nicolle</option>
                     </select>
@@ -199,7 +199,7 @@ if ($result_imagens->num_rows > 0) {
             <h2>Formulário de Filtro</h2>
             <form id="formFiltro">
                 <div>
-                    <label for="nomeFinalizador">Nome Finalizador</label>
+                    <label for="nomeFinalizador">Nome Colaborador</label>
                     <select name="final_id" id="opcao_finalizador" required>
                         <option value="1">Nicolle</option>
                     </select>

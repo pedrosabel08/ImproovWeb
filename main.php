@@ -31,7 +31,7 @@ $idusuario = $_SESSION['idusuario'];
 
 
 <header>
-    <a href="https://www.instagram.com/seuInstagram/" target="_blank">
+    <a href="inicio.php" target="_blank">
         <img src="./assets/ImproovFlow - logo.png" alt="Improov" class="logo">
     </a>
     <div class="buttons">

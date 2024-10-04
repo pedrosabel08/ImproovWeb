@@ -13,12 +13,14 @@ if ($conn->connect_error) {
 
 $conn->set_charset('utf8mb4');
 
+date_default_timezone_set('America/Sao_Paulo');
+
 // Verificar se os dados foram enviados via POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $colaborador_id = $_POST['final_id'];
     $cliente_id = $_POST['cliente_id'];
     $obra_id = $_POST['obra_id'];
-    $data_pos = date('Y-m-d'); // Data atual no formato 'YYYY-MM-DD'
+    $data_pos = date('Y-m-d H:i');
     $imagem_id = $_POST['imagem_id'];
     $caminho_pasta = $_POST['caminho_pasta'];
     $numero_bg = $_POST['numero_bg'];
@@ -26,6 +28,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $obs = $_POST['obs'];
     $status_pos = isset($_POST['status_pos']) ? 0 : 1; // Define status_pos com base no checkbox
     $status_id = $_POST['status_id'];
+
+    // Buscar o nome da imagem
+    $sql_imagem = "SELECT imagem_nome FROM imagens_cliente_obra WHERE idimagens_cliente_obra = ?";
+    $stmt_imagem = $conn->prepare($sql_imagem);
+    $stmt_imagem->bind_param("i", $imagem_id);
+    $stmt_imagem->execute();
+    $resultado_imagem = $stmt_imagem->get_result();
+    $nome_imagem = $resultado_imagem->fetch_assoc()['imagem_nome'] ?? 'Imagem não encontrada';
+
+    // Buscar o nome da obra
+    $sql_obra = "SELECT nome_obra FROM obra WHERE idobra = ?";
+    $stmt_obra = $conn->prepare($sql_obra);
+    $stmt_obra->bind_param("i", $obra_id);
+    $stmt_obra->execute();
+    $resultado_obra = $stmt_obra->get_result();
+    $nome_obra = $resultado_obra->fetch_assoc()['nome_obra'] ?? 'Obra não encontrada';
 
     // Inserir ou atualizar dados
     $sql = "INSERT INTO pos_producao (colaborador_id, cliente_id, obra_id, data_pos, imagem_id, caminho_pasta, numero_bg, refs, obs, status_pos, status_id) 
@@ -49,10 +67,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         echo "Dados inseridos ou atualizados com sucesso!";
 
         // Definir a mensagem com base no status_pos
-        if ($status_pos == 0) {
-            $mensagem = "Status não começou para a imagem " . $imagem_id . " na obra " . $obra_id . " na data " . $data_pos;
+        if ($status_pos == 1) {
+            $mensagem = "Status não começou para a imagem '$nome_imagem' na obra '$nome_obra' na data $data_pos";
         } else {
-            $mensagem = "Status atualizado para a imagem " . $imagem_id . " na obra " . $obra_id . " na data " . $data_pos;
+            $mensagem = "Status atualizado para a imagem '$nome_imagem' na obra '$nome_obra' na data $data_pos";
         }
 
         // Inserir notificação
@@ -77,5 +95,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $stmt->close();
+    $stmt_imagem->close();
+    $stmt_obra->close();
     $conn->close();
 }

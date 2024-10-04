@@ -37,7 +37,7 @@ header button#voltar:hover {
     background-color: #ff0000c0;
 }
 
-header button#openModalBtn {
+header button#openAcomp {
     padding: 8px;
     background-color: #00ff15;
     border: 1px solid black;
@@ -45,7 +45,7 @@ header button#openModalBtn {
     font-weight: bold;
 }
 
-header button#add_imagem {
+header button#openFiltro {
     padding: 8px;
     background-color: #ffd900;
     border: 1px solid black;
@@ -95,7 +95,7 @@ th {
 
 
 .modalFiltro,
-.modal_imagem {
+.modalCaderno {
     display: none;
     position: fixed;
     z-index: 1000;
@@ -132,7 +132,7 @@ th {
 }
 
 .close,
-.close_imagem {
+.close-filtro {
     color: #aaa;
     float: right;
     font-size: 28px;
@@ -141,17 +141,17 @@ th {
 }
 
 .close:hover,
-.close_imagem {
+.close_filtro {
     color: black;
 }
 
-#form-inserir-filtro,
+#form-inserir,
 #form-inserir-imagem {
     padding: 10px;
     font-family: 'Nunito', sans-serif;
 }
 
-#form-inserir-filtro h2,
+#form-inserir h2,
 #form-inserir-imagem h2 {
     text-align: center;
     font-family: 'Nunito', sans-serif;
@@ -159,18 +159,18 @@ th {
     margin-bottom: 40px;
 }
 
-#form-inserir-filtro form,
+#form-inserir form,
 #form-inserir-imagem form {
     display: flex;
     flex-direction: column;
 }
 
-#form-inserir-filtro div,
+#form-inserir div,
 #form-inserir-imagem div {
     margin-bottom: 15px;
 }
 
-#form-inserir-filtro label,
+#form-inserir label,
 #form-inserir-imagem label {
     font-family: 'Nunito', sans-serif;
     font-size: 14px;
@@ -179,11 +179,11 @@ th {
     display: block;
 }
 
-#form-inserir-filtro input[type="text"],
+#form-inserir input[type="text"],
 #form-inserir-imagem input[type="text"],
-#form-inserir-filtro input[type="date"],
-#form-inserir-filtro textarea,
-#form-inserir-filtro select {
+#form-inserir input[type="date"],
+#form-inserir textarea,
+#form-inserir select {
     width: 100%;
     padding: 8px;
     font-size: 14px;
@@ -193,20 +193,20 @@ th {
     transition: border-color 0.3s;
 }
 
-#form-inserir-filtro input[type="text"]:focus,
+#form-inserir input[type="text"]:focus,
 #form-inserir-imagem input[type="text"]:focus,
-#form-inserir-filtro input[type="date"]:focus,
-#form-inserir-filtro textarea:focus,
-#form-inserir-filtro select:focus {
+#form-inserir input[type="date"]:focus,
+#form-inserir textarea:focus,
+#form-inserir select:focus {
     border-color: #007bff;
     outline: none;
 }
 
-#form-inserir-filtro textarea {
+#form-inserir textarea {
     resize: vertical;
 }
 
-#form-inserir-filtro button,
+#form-inserir button,
 #form-inserir-imagem button {
     background-color: #00ff37;
     color: black;
@@ -219,7 +219,7 @@ th {
     transition: background-color 0.3s;
 }
 
-#form-inserir-filtro button:hover,
+#form-inserir button:hover,
 #form-inserir-imagem button:hover {
     background-color: #0056b3;
 }

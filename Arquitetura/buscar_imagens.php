@@ -1,14 +1,7 @@
 <?php
 // Conectar ao banco de dados
-$conn = new mysqli('mysql.improov.com.br', 'improov', 'Impr00v', 'improov');
+include 'conexao.php';
 
-// Verifica a conexão
-if ($conn->connect_error) {
-    die(json_encode(["error" => "Falha na conexão: " . $conn->connect_error]));
-}
-
-// Definir o charset
-$conn->set_charset('utf8mb4');
 
 // Verifica se o ID da obra foi passado
 $obra_id = isset($_GET['obra_id']) ? intval($_GET['obra_id']) : null;

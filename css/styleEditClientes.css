@@ -83,3 +83,8 @@ button#voltar:hover {
 .hidden {
     display: none;
 }
+
+#btnSalvar {
+    background-color: green;
+    color: white;
+}

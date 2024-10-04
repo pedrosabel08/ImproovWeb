@@ -95,7 +95,7 @@ $conn->close();
                         <div class="modal-footer">
                             <button type="button" class="btn btn-primary" id="addContatoButton">Adicionar Contato</button>
                             <button type="button" class="btn btn-secondary" data-dismiss="modal">Fechar</button>
-                            <button type="submit">Salvar mudanças</button>
+                            <button type="submit" class="btn" id="btnSalvar">Salvar mudanças</button>
                         </div>
                     </form>
                 </div>

@@ -17,8 +17,13 @@ function dashboard() {
 function clientes() {
     window.location.href = 'infoCliente/index.php'
 }
+
 function animacao() {
     window.location.href = 'Animacao/index.php'
+}
+
+function arquitetura() {
+    window.location.href = 'Arquitetura/index.php'
 }
 
 document.addEventListener('DOMContentLoaded', () => {

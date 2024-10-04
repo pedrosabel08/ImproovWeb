@@ -31,6 +31,9 @@ session_start();
             <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 3)): ?>
                 <button onclick="clientes()">Informações clientes</button>
             <?php endif; ?>
+            <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 3)): ?>
+                <button onclick="arquitetura()">Tela arquitetura</button>
+            <?php endif; ?>
             <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 4)): ?>
                 <button onclick="animacao()">Lista Animação</button>
             <?php endif; ?>

@@ -43,6 +43,7 @@ $porcentagem = number_format($porcentagem, 2);
 <body>
 
     <header>
+        <button id="voltar" onclick="window.location.href='../inicio.php'">Voltar</button>
         <h2>Metas e progresso</h2>
     </header>
     <nav>

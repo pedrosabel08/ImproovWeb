@@ -24,11 +24,25 @@ body {
 header {
     padding: 10px;
     border-bottom: 1px solid gray;
+    display: flex;
+    justify-content: space-between;
 }
 
 header h2 {
     text-transform: uppercase;
     font-size: 18px;
+}
+
+header button#voltar {
+    width: 100px;
+    border: 2px solid black;
+    border-radius: 15px;
+    text-align: center;
+    transition: 0.3s all ease;
+}
+
+header button#voltar:hover {
+    background-color: #ff0000c0;
 }
 
 nav {
@@ -160,8 +174,6 @@ p {
 #porcentagem-planta {
     color: #555;
 }
-
-
 
 #fullScreenModal {
     display: none;

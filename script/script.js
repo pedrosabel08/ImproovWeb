@@ -279,6 +279,7 @@ function openModal(modalId, element) {
     closeModal('filtro-colab');
     closeModal('filtro-obra');
     closeModal('follow-up');
+    closeModal('add-acomp');
 
     if (modalId) {
         document.getElementById(modalId).style.display = 'flex';
@@ -302,6 +303,8 @@ function openModalClass(modalClass, element) {
     closeModal('filtro-colab');
     closeModal('filtro-obra');
     closeModal('follow-up');
+    closeModal('add-acomp');
+
 
     if (modalClass) {
         var modal = document.querySelector('.' + modalClass);
@@ -381,6 +384,66 @@ function submitForm(event) {
             }
 
             closeModal('add-cliente');
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            Toastify({
+                text: "Erro ao tentar salvar. Tente novamente.",
+                duration: 3000,
+                close: true,
+                gravity: "top",
+                position: "right",
+                backgroundColor: "red",
+                stopOnFocus: true,
+            }).showToast();
+        });
+}
+function submitFormAcomp(event) {
+    event.preventDefault();
+
+    const obraAcomp = document.getElementById('obraAcomp').value;
+    const colab_id = document.getElementById('colab_id').value;
+
+    const data = {
+        obraAcomp: obraAcomp,
+        colab_id: colab_id
+    };
+
+    fetch('inserir_acomp.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+    })
+        .then(response => response.json())
+        .then(result => {
+            if (result.status === 'success') {
+                Toastify({
+                    text: result.message,
+                    duration: 3000,
+                    close: true,
+                    gravity: "top",
+                    position: "right",
+                    backgroundColor: "green",
+                    stopOnFocus: true,
+                }).showToast();
+                setTimeout(() => {
+                    window.location.reload();
+                }, 500);
+            } else {
+                Toastify({
+                    text: result.message,
+                    duration: 3000,
+                    close: true,
+                    gravity: "top",
+                    position: "right",
+                    backgroundColor: "red",
+                    stopOnFocus: true,
+                }).showToast();
+            }
+
+            closeModal('add-acomp');
         })
         .catch(error => {
             console.error('Erro:', error);

@@ -386,7 +386,8 @@ table#tabelaClientes tr:hover {
 
 
 #add-cliente,
-#add-imagem {
+#add-imagem,
+#add-acomp {
     display: none;
     flex-direction: column;
     justify-content: center;
@@ -398,7 +399,8 @@ table#tabelaClientes tr:hover {
 
 /* Estilo para os botões dentro dos modais */
 #add-cliente button#fechar,
-#add-imagem button#fechar {
+#add-imagem button#fechar,
+#add-acomp button#fechar {
     border: 1px solid black;
     background-color: #ff4141;
     text-align: center;
@@ -411,6 +413,7 @@ table#tabelaClientes tr:hover {
 
 #add-cliente button#salvar,
 #add-imagem button#salvar,
+#add-acomp button#salvar,
 .form-edicao button#salvar_funcoes {
     border: 1px solid black;
     background-color: #119111;
@@ -423,28 +426,34 @@ table#tabelaClientes tr:hover {
 }
 
 #add-cliente button:hover,
+#add-acomp button:hover,
 #add-imagem button:hover {
     font-weight: bold;
 }
 
 /* Estilo para os labels de título dentro dos modais */
 #add-cliente label.add,
+#add-acomp label.add,
 #add-imagem label.add {
     font-size: 20px;
 }
 
 /* Estilo para labels, inputs e selects dentro dos modais */
 #add-cliente label,
+#add-acomp label,
 #add-cliente input,
+#add-acomp input,
 #add-cliente select,
 #add-imagem label,
 #add-imagem input,
-#add-imagem select {
+#add-imagem select,
+#add-acomp select {
     width: 300px;
 }
 
 /* Estilo para formulários dentro dos modais */
 #add-cliente form,
+#add-acomp form,
 #add-imagem form {
     display: flex;
     flex-direction: column;

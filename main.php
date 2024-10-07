@@ -55,7 +55,7 @@ $idusuario = $_SESSION['idusuario'];
         <a href="#add-cliente" onclick="openModal('add-cliente', this)">Adicionar Cliente ou Obra</a>
         <a href="#add-imagem" onclick="openModal('add-imagem', this)">Adicionar Imagem</a>
     <?php endif; ?>
-    <?php if ($_SESSION['nivel_acesso'] == 1 and $_SESSION['nivel_acesso'] == 3): ?>
+    <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 3)): ?>
         <a href="#add-acomp" onclick="openModal('add-acomp', this)">Adicionar Acompanhamento</a>
     <?php endif; ?>
     <a href="#filtro" onclick="openModalClass('tabela-form', this)" class="active">Ver Imagens</a>
@@ -675,6 +675,32 @@ $conn->close();
                 </tbody>
             </table>
         </div>
+
+        <div id="add-acomp" class="modal">
+            <h1 class="acompanhamento">Adicionar acompanhamento</h1>
+            <form id="form-add-acomp" onsubmit="submitFormAcomp(event)">
+                <label for="">Obra:</label>
+                <select name="obraAcomp" id="obraAcomp">
+                    <option value="">Selecione:</option>
+                    <?php foreach ($obras as $obra): ?>
+                        <option value="<?= $obra['idobra']; ?>"><?= htmlspecialchars($obra['nome_obra']); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <label for="nome">Colaborador:</label>
+                <select name="colab_id" id="colab_id">
+                    <?php foreach ($colaboradores as $colab): ?>
+                        <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                            <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <div class="buttons">
+                    <button type="submit" id="salvar">Salvar</button>
+                    <button type="button" onclick="closeModal('add-acomp', this)" id="fechar">Fechar</button>
+                </div>
+            </form>
+
 
     </main>
 

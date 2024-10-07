@@ -34,6 +34,8 @@ session_start();
             <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 4)): ?>
                 <button onclick="animacao()">Lista Animação</button>
             <?php endif; ?>
+            <button onclick="metas()">Metas e progresso</button>
+
         </div>
     </main>
 

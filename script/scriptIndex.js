@@ -24,6 +24,10 @@ function animacao() {
 
 function arquitetura() {
     window.location.href = 'Arquitetura/index.php'
+
+}
+function metas() {
+    window.location.href = 'Metas/index.php'
 }
 
 document.addEventListener('DOMContentLoaded', () => {

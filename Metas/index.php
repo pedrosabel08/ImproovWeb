@@ -83,6 +83,10 @@ $porcentagem = number_format($porcentagem, 2);
                     <label for="">Meta de imagens: </label>
                     <p>100</p>
                 </div>
+                <div>
+                    <label>Porcentagem: </label>
+                    <p>50%</p>
+                </div>
             </div>
         </div>
 
@@ -104,44 +108,98 @@ $porcentagem = number_format($porcentagem, 2);
     <div class="container">
         <div class="metas">
             <h3>Caderno:</h3>
-            <p id="caderno" data-value="0">0</p>
-            <p id="meta-caderno" data-value="0">Meta: 0</p>
-            <p id="porcentagem-caderno" data-value="0">Porcentagem: 0%</p>
+            <div>
+                <label for="">Tarefas atuais: </label>
+                <p id="caderno" data-value="0">0</p>
+            </div>
+            <div>
+                <label for="">Meta: </label>
+                <p id="meta-caderno" data-value="0">Meta: 0</p>
+            </div>
+            <div>
+                <label for="">Porcentagem concluída: </label>
+                <p id="porcentagem-caderno" data-value="0">Porcentagem: 0%</p>
+            </div>
         </div>
 
         <div class="metas">
             <h3>Modelagem:</h3>
-            <p id="model" data-value="0">0</p>
-            <p id="meta-model" data-value="0">Meta: 0</p>
-            <p id="porcentagem-model" data-value="0">Porcentagem: 0%</p>
+            <div>
+                <label for="">Tarefas atuais: </label>
+                <p id="model" data-value="0">0</p>
+            </div>
+            <div>
+                <label for="">Meta: </label>
+                <p id="meta-model" data-value="0">Meta: 0</p>
+            </div>
+            <div>
+                <label for="">Porcentagem concluída: </label>
+                <p id="porcentagem-model" data-value="0">Porcentagem: 0%</p>
+            </div>
         </div>
 
         <div class="metas">
             <h3>Composição:</h3>
-            <p id="comp" data-value="0">0</p>
-            <p id="meta-comp" data-value="0">Meta: 0</p>
-            <p id="porcentagem-comp" data-value="0">Porcentagem: 0%</p>
+            <div>
+                <label for="">Tarefas atuais: </label>
+                <p id="comp" data-value="0">0</p>
+            </div>
+            <div>
+                <label for="">Meta: </label>
+                <p id="meta-comp" data-value="0">Meta: 0</p>
+            </div>
+            <div>
+                <label for="">Porcentagem concluída: </label>
+                <p id="porcentagem-comp" data-value="0">Porcentagem: 0%</p>
+            </div>
         </div>
 
         <div class="metas">
             <h3>Finalização:</h3>
-            <p id="final" data-value="0">0</p>
-            <p id="meta-final" data-value="0">Meta: 0</p>
-            <p id="porcentagem-final" data-value="0">Porcentagem: 0%</p>
+            <div>
+                <label for="">Tarefas atuais: </label>
+                <p id="final" data-value="0">0</p>
+            </div>
+            <div>
+                <label for="">Meta: </label>
+                <p id="meta-final" data-value="0">Meta: 0</p>
+            </div>
+            <div>
+                <label for="">Porcentagem concluída: </label>
+                <p id="porcentagem-final" data-value="0">Porcentagem: 0%</p>
+            </div>
         </div>
 
         <div class="metas">
             <h3>Pós-produção:</h3>
-            <p id="pos" data-value="0">0</p>
-            <p id="meta-pos" data-value="0">Meta: 0</p>
-            <p id="porcentagem-pos" data-value="0">Porcentagem: 0%</p>
+            <div>
+                <label for="">Tarefas atuais: </label>
+                <p id="pos" data-value="0">0</p>
+            </div>
+            <div>
+                <label for="">Meta: </label>
+                <p id="meta-pos" data-value="0">Meta: 0</p>
+            </div>
+            <div>
+                <label for="">Porcentagem concluída: </label>
+                <p id="porcentagem-pos" data-value="0">Porcentagem: 0%</p>
+            </div>
         </div>
 
         <div class="metas">
             <h3>Planta Humanizada:</h3>
-            <p id="planta" data-value="0">0</p>
-            <p id="meta-planta" data-value="0">Meta: 0</p>
-            <p id="porcentagem-planta" data-value="0">Porcentagem: 0%</p>
+            <div>
+                <label for="">Tarefas atuais: </label>
+                <p id="planta" data-value="0">0</p>
+            </div>
+            <div>
+                <label for="">Meta: </label>
+                <p id="meta-planta" data-value="0">Meta: 0</p>
+            </div>
+            <div>
+                <label for="">Porcentagem concluída: </label>
+                <p id="porcentagem-planta" data-value="0">Porcentagem: 0%</p>
+            </div>
         </div>
     </div>
 

@@ -5,16 +5,31 @@ include 'conexao.php';
 // Verificar se o ID do colaborador foi passado
 if (isset($_GET['colaboradorId']) && is_numeric($_GET['colaboradorId'])) {
     $colaboradorId = intval($_GET['colaboradorId']);
+    $obraId = isset($_GET['obraId']) && is_numeric($_GET['obraId']) ? intval($_GET['obraId']) : 0;
 
-    // Preparar a consulta com JOIN
-    $sql = "SELECT l.funcao_imagem_id, l.status_anterior, l.status_novo, l.data 
+    // Preparar a consulta com JOIN e filtragem por obra se obraId for diferente de 0
+    $sql = "SELECT l.funcao_imagem_id, l.status_anterior, l.status_novo, l.data, i.imagem_nome, o.nome_obra
             FROM log_alteracoes l
-			WHERE l.colaborador_id = ? 
-            ORDER BY l.data DESC";
+            INNER JOIN funcao_imagem f on f.idfuncao_imagem = l.funcao_imagem_id 
+            INNER JOIN imagens_cliente_obra i on f.imagem_id = i.idimagens_cliente_obra
+            INNER JOIN obra o on i.obra_id = o.idobra
+            WHERE l.colaborador_id = ?";
+
+    // Adicionar filtro de obra se obraId for diferente de 0
+    if ($obraId > 0) {
+        $sql .= " AND i.obra_id = ?";
+    }
+
+    $sql .= " ORDER BY l.data DESC";
 
     // Usar prepared statement
     if ($stmt = $conn->prepare($sql)) {
-        $stmt->bind_param('i', $colaboradorId); // 'i' para inteiro
+        if ($obraId > 0) {
+            $stmt->bind_param('ii', $colaboradorId, $obraId); // 'ii' para dois inteiros
+        } else {
+            $stmt->bind_param('i', $colaboradorId); // 'i' para um inteiro
+        }
+
         $stmt->execute();
         $result = $stmt->get_result();
 

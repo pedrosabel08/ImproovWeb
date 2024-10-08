@@ -126,8 +126,11 @@ section.tabela-form {
     padding: 0 10px;
 }
 
+
 #filtro {
     margin-left: 0;
+    animation: fadeIn 1.3s ease-in-out forwards;
+
 }
 
 #filtro h1,
@@ -156,6 +159,8 @@ table#tabelaClientes {
     border-collapse: collapse;
     width: 100%;
     margin-left: 0;
+    animation: fadeIn 1s ease-in-out forwards;
+
 }
 
 td,
@@ -469,6 +474,8 @@ table#tabelaClientes tr:hover {
     justify-content: flex-start;
     gap: 15px;
     margin: 0 auto;
+    animation: fadeIn 1.3s ease-in-out forwards;
+
 }
 
 .form-edicao p {
@@ -626,27 +633,30 @@ table#tabela-follow {
     background-color: rgba(0, 0, 0, 0.5);
     justify-content: center;
     align-items: center;
+    animation: fadeIn .5s ease-in-out forwards;
 }
 
 
-.modal-content {
+.modal-content-log {
     background-color: white;
     padding: 20px;
     border-radius: 10px;
-    width: 40%;
+    width: 60%;
     max-height: 70%;
     overflow-y: auto;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
     animation: showModal 0.3s ease;
 }
 
-.modal-content h2 {
+.modal-content-log h2 {
     margin-bottom: 15px;
 }
+
 
 table#tabela-logs {
     border-collapse: collapse;
     margin: 0 auto;
+    width: 80%;
 }
 
 .close {
@@ -672,4 +682,17 @@ button#mostrarLogsBtn {
 
 button#mostrarLogsBtn:hover {
     font-weight: bold;
+}
+
+
+@keyframes fadeIn {
+    0% {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }

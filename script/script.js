@@ -875,21 +875,26 @@ colaboradorSelect.addEventListener('change', function () {
     mostrarLogsBtn.disabled = this.value === "0";
 });
 
-// Carregar logs ao clicar no botão
+const obraSelect = document.getElementById('obraSelect');
+
 mostrarLogsBtn.addEventListener('click', function () {
     const colaboradorId = colaboradorSelect.value;
+    const obraId = obraSelect.value;  // Captura o valor da obra selecionada
     modalLogs.style.display = 'flex';
 
-    fetch(`carregar_logs.php?colaboradorId=${colaboradorId}`)
+    // Adicionar o valor da obra à URL de requisição
+    fetch(`carregar_logs.php?colaboradorId=${colaboradorId}&obraId=${obraId}`)
         .then(response => response.json())
         .then(data => {
             const tabelaLogsBody = document.querySelector('#tabela-logs tbody');
-            tabelaLogsBody.innerHTML = ''; 
+            tabelaLogsBody.innerHTML = '';
 
             if (data && data.length > 0) {
                 data.forEach(log => {
                     const row = document.createElement('tr');
                     row.innerHTML = `
+                        <td>${log.imagem_nome}</td>
+                        <td>${log.nome_obra}</td>
                         <td>${log.status_anterior}</td>
                         <td>${log.status_novo}</td>
                         <td>${log.data}</td>
@@ -901,8 +906,6 @@ mostrarLogsBtn.addEventListener('click', function () {
                 row.innerHTML = '<td colspan="4">Nenhum log encontrado.</td>';
                 tabelaLogsBody.appendChild(row);
             }
-
-
         })
         .catch(error => {
             console.error('Erro ao carregar os logs:', error);

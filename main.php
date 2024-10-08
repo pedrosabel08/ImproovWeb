@@ -571,12 +571,14 @@ $conn->close();
             </table>
 
             <div id="modalLogs" class="modal">
-                <div class="modal-content">
+                <div class="modal-content-log">
                     <span class="close">&times;</span>
                     <h2>Logs de Alterações</h2>
                     <table id="tabela-logs">
                         <thead>
                             <tr>
+                                <th>Imagem</th>
+                                <th>Obra</th>
                                 <th>Status Anterior</th>
                                 <th>Status Novo</th>
                                 <th>Data</th>

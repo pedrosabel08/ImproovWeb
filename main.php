@@ -508,7 +508,7 @@ $conn->close();
 
         <div id="filtro-colab" class="modal">
             <h1>Filtro colaboradores</h1>
-
+            <button id="mostrarLogsBtn" disabled>Mostrar Logs</button>
             <label for="colaboradorSelect">Selecionar Colaborador:</label>
             <select id="colaboradorSelect">
                 <option value="0">Selecione:</option>
@@ -569,6 +569,25 @@ $conn->close();
                 <tbody>
                 </tbody>
             </table>
+
+            <div id="modalLogs" class="modal">
+                <div class="modal-content">
+                    <span class="close">&times;</span>
+                    <h2>Logs de Alterações</h2>
+                    <table id="tabela-logs">
+                        <thead>
+                            <tr>
+                                <th>Status Anterior</th>
+                                <th>Status Novo</th>
+                                <th>Data</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
         </div>
 
         <div id="filtro-obra">

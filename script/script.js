@@ -860,6 +860,62 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 document.getElementById('editProfile').addEventListener('click', function () {
-    // Redireciona para a página de informações
     window.location.href = 'infos.html';
 });
+
+var modalLogs = document.getElementById("modalLogs");
+var closeBtn = document.getElementsByClassName("close")[0];
+const formPosProducao = document.getElementById('formPosProducao');
+
+
+const colaboradorSelect = document.getElementById('colaboradorSelect');
+const mostrarLogsBtn = document.getElementById('mostrarLogsBtn');
+
+colaboradorSelect.addEventListener('change', function () {
+    mostrarLogsBtn.disabled = this.value === "0";
+});
+
+// Carregar logs ao clicar no botão
+mostrarLogsBtn.addEventListener('click', function () {
+    const colaboradorId = colaboradorSelect.value;
+    modalLogs.style.display = 'flex';
+
+    fetch(`carregar_logs.php?colaboradorId=${colaboradorId}`)
+        .then(response => response.json())
+        .then(data => {
+            const tabelaLogsBody = document.querySelector('#tabela-logs tbody');
+            tabelaLogsBody.innerHTML = ''; 
+
+            if (data && data.length > 0) {
+                data.forEach(log => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${log.status_anterior}</td>
+                        <td>${log.status_novo}</td>
+                        <td>${log.data}</td>
+                    `;
+                    tabelaLogsBody.appendChild(row);
+                });
+            } else {
+                const row = document.createElement('tr');
+                row.innerHTML = '<td colspan="4">Nenhum log encontrado.</td>';
+                tabelaLogsBody.appendChild(row);
+            }
+
+
+        })
+        .catch(error => {
+            console.error('Erro ao carregar os logs:', error);
+        });
+});
+
+closeBtn.onclick = function () {
+    modalLogs.style.display = "none";
+    limparCampos();
+};
+
+window.onclick = function (event) {
+    if (event.target == modalLogs) {
+        modalLogs.style.display = "none";
+    }
+}

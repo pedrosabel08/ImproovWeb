@@ -838,6 +838,8 @@ function applyStatusImagem(cell, status) {
         case 'EF':
             cell.style.backgroundColor = '#0dff00'
             break;
+        case 'HOLD':
+            cell.style.backgroundColor = '#ff0000';
     }
 };
 
@@ -879,10 +881,9 @@ const obraSelect = document.getElementById('obraSelect');
 
 mostrarLogsBtn.addEventListener('click', function () {
     const colaboradorId = colaboradorSelect.value;
-    const obraId = obraSelect.value;  // Captura o valor da obra selecionada
+    const obraId = obraSelect.value;  
     modalLogs.style.display = 'flex';
 
-    // Adicionar o valor da obra à URL de requisição
     fetch(`carregar_logs.php?colaboradorId=${colaboradorId}&obraId=${obraId}`)
         .then(response => response.json())
         .then(data => {

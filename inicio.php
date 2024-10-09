@@ -30,6 +30,7 @@ session_start();
             <!-- <button onclick="dashboard()">Dashboard</button> -->
             <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 3)): ?>
                 <button onclick="clientes()">Informações clientes</button>
+                <button onclick="acomp()">Acompanhamentos</button>
             <?php endif; ?>
             <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 4)): ?>
                 <button onclick="animacao()">Lista Animação</button>

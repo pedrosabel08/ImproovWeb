@@ -903,7 +903,7 @@ mostrarLogsBtn.addEventListener('click', function () {
                 });
             } else {
                 const row = document.createElement('tr');
-                row.innerHTML = '<td colspan="4">Nenhum log encontrado.</td>';
+                row.innerHTML = '<td colspan="5">Nenhum log encontrado.</td>';
                 tabelaLogsBody.appendChild(row);
             }
         })

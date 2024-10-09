@@ -468,6 +468,11 @@ table#tabelaClientes tr:hover {
     width: 100%;
 }
 
+#add-acomp #assunto-email {
+    flex-direction: column;
+    gap: 15px
+}
+
 .form-edicao {
     display: flex;
     flex-direction: column;

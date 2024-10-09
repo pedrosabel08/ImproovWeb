@@ -709,6 +709,12 @@ $conn->close();
         <div id="add-acomp" class="modal">
             <h1 class="acompanhamento">Adicionar acompanhamento</h1>
             <form id="form-add-acomp" onsubmit="submitFormAcomp(event)">
+
+                <label for="">Tipo de acompanhamento:</label>
+                <select name="tipo" id="tipo">
+                    <option value="1">Obra</option>
+                    <option value="2">Email</option>
+                </select>
                 <label for="">Obra:</label>
                 <select name="obraAcomp" id="obraAcomp">
                     <option value="">Selecione:</option>
@@ -725,12 +731,18 @@ $conn->close();
                         </option>
                     <?php endforeach; ?>
                 </select>
+                <div id="assunto-email" style="display: none">
+                    <label for="">Assunto do email:</label>
+                    
+                    <textarea name="assunto" id="assunto"></textarea>
+                </div>
+
                 <div class="buttons">
                     <button type="submit" id="salvar">Salvar</button>
                     <button type="button" onclick="closeModal('add-acomp', this)" id="fechar">Fechar</button>
                 </div>
             </form>
-
+        </div>
 
     </main>
 

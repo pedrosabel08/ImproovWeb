@@ -398,42 +398,73 @@ function submitForm(event) {
             }).showToast();
         });
 }
+document.getElementById('tipo').addEventListener('change', function () {
+    const tipo = this.value;
+    const assuntoEmailDiv = document.getElementById('assunto-email');
+
+    // Se o tipo for "Email" (2), mostramos o campo de assunto
+    if (tipo === '2') {
+        assuntoEmailDiv.style.display = 'flex';
+    } else {
+        // Caso contrário, ocultamos o campo de assunto
+        assuntoEmailDiv.style.display = 'none';
+    }
+});
+
 function submitFormAcomp(event) {
     event.preventDefault();
 
+    const tipo = document.getElementById('tipo').value;
     const obraAcomp = document.getElementById('obraAcomp').value;
     const colab_id = document.getElementById('colab_id').value;
 
-    const data = {
-        obraAcomp: obraAcomp,
-        colab_id: colab_id
-    };
+    if (tipo === '1') {
+        // Lógica de inserção para tipo "Obra"
+        const data = {
+            obraAcomp: obraAcomp,
+            colab_id: colab_id
+        };
 
-    fetch('inserir_acomp.php', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(data)
-    })
-        .then(response => response.json())
-        .then(result => {
-            if (result.status === 'success') {
+        fetch('inserir_acomp.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        })
+            .then(response => response.json())
+            .then(result => {
+                if (result.status === 'success') {
+                    Toastify({
+                        text: result.message,
+                        duration: 3000,
+                        close: true,
+                        gravity: "top",
+                        position: "right",
+                        backgroundColor: "green",
+                        stopOnFocus: true,
+                    }).showToast();
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 500);
+                } else {
+                    Toastify({
+                        text: result.message,
+                        duration: 3000,
+                        close: true,
+                        gravity: "top",
+                        position: "right",
+                        backgroundColor: "red",
+                        stopOnFocus: true,
+                    }).showToast();
+                }
+
+                closeModal('add-acomp');
+            })
+            .catch(error => {
+                console.error('Erro:', error);
                 Toastify({
-                    text: result.message,
-                    duration: 3000,
-                    close: true,
-                    gravity: "top",
-                    position: "right",
-                    backgroundColor: "green",
-                    stopOnFocus: true,
-                }).showToast();
-                setTimeout(() => {
-                    window.location.reload();
-                }, 500);
-            } else {
-                Toastify({
-                    text: result.message,
+                    text: "Erro ao tentar salvar. Tente novamente.",
                     duration: 3000,
                     close: true,
                     gravity: "top",
@@ -441,22 +472,67 @@ function submitFormAcomp(event) {
                     backgroundColor: "red",
                     stopOnFocus: true,
                 }).showToast();
-            }
+            });
 
-            closeModal('add-acomp');
+    } else if (tipo === '2') {
+        // Lógica de inserção para tipo "Email"
+        const assunto = document.getElementById('assunto').value;
+
+        const data = {
+            obraAcomp: obraAcomp,
+            colab_id: colab_id,
+            assunto: assunto
+        };
+
+        fetch('inserir_acomp_email.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
         })
-        .catch(error => {
-            console.error('Erro:', error);
-            Toastify({
-                text: "Erro ao tentar salvar. Tente novamente.",
-                duration: 3000,
-                close: true,
-                gravity: "top",
-                position: "right",
-                backgroundColor: "red",
-                stopOnFocus: true,
-            }).showToast();
-        });
+            .then(response => response.json())
+            .then(result => {
+                if (result.status === 'success') {
+                    Toastify({
+                        text: result.message,
+                        duration: 3000,
+                        close: true,
+                        gravity: "top",
+                        position: "right",
+                        backgroundColor: "green",
+                        stopOnFocus: true,
+                    }).showToast();
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 500);
+                } else {
+                    Toastify({
+                        text: result.message,
+                        duration: 3000,
+                        close: true,
+                        gravity: "top",
+                        position: "right",
+                        backgroundColor: "red",
+                        stopOnFocus: true,
+                    }).showToast();
+                }
+
+                closeModal('add-acomp');
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                Toastify({
+                    text: "Erro ao tentar salvar. Tente novamente.",
+                    duration: 3000,
+                    close: true,
+                    gravity: "top",
+                    position: "right",
+                    backgroundColor: "red",
+                    stopOnFocus: true,
+                }).showToast();
+            });
+    }
 }
 
 function submitFormImagem(event) {
@@ -881,7 +957,7 @@ const obraSelect = document.getElementById('obraSelect');
 
 mostrarLogsBtn.addEventListener('click', function () {
     const colaboradorId = colaboradorSelect.value;
-    const obraId = obraSelect.value;  
+    const obraId = obraSelect.value;
     modalLogs.style.display = 'flex';
 
     fetch(`carregar_logs.php?colaboradorId=${colaboradorId}&obraId=${obraId}`)

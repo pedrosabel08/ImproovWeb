@@ -1,23 +1,40 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,200..1000;1,200..1000&display=swap');
+
 
 * {
     padding: 0;
     margin: 0;
     box-sizing: border-box;
-    font-family: "Poppins", sans-serif;
+    font-family: "Nunito", sans-serif;
 }
 
 header {
-    background-color: #4CAF50;
+    background-color: #42d5df;
     color: white;
     padding: 15px;
     text-align: center;
 }
 
-h1,
-h2 {
-    margin: 0;
-    padding-bottom: 15px;
+#button-sair {
+    background-color: #0066ff;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s;
+    position: absolute;
+    left: 15px;
+    top: 15px;
+}
+
+#button-sair:hover {
+    background-color: #033797;
 }
 
 main {
@@ -25,14 +42,21 @@ main {
     justify-content: space-around;
     padding: 20px;
     gap: 20px;
+    height: 100vh;
 }
 
 .coluna {
     background-color: white;
     padding: 20px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
     border-radius: 5px;
     width: 45%;
+    max-height: 80%;
+    overflow-y: auto;
+}
+
+.coluna h2 {
+    margin-bottom: 10px;
 }
 
 table {
@@ -44,25 +68,12 @@ table {
 table th,
 table td {
     padding: 12px 15px;
-    border: 1px solid #ddd;
+    border: 1px solid #000000;
     text-align: left;
 }
 
-table thead {
-    background-color: #f2f2f2;
-}
-
-table th {
-    background-color: #4CAF50;
-    color: white;
-}
-
-table tbody tr:nth-child(even) {
-    background-color: #f9f9f9;
-}
-
-table tbody tr:hover {
-    background-color: #f1f1f1;
+th {
+    background-color: #42d9df;
 }
 
 @media (max-width: 768px) {

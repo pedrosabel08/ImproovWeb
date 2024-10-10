@@ -31,7 +31,7 @@ $idusuario = $_SESSION['idusuario'];
 
 
 <header>
-    <a href="inicio.php" target="_blank">
+    <a href="inicio.php">
         <img src="./assets/ImproovFlow - logo.png" alt="Improov" class="logo">
     </a>
     <div class="buttons">
@@ -645,35 +645,6 @@ $conn->close();
 
                 </tbody>
             </table>
-
-            <!-- <div id="modalLogsObra" class="modal">
-                <div class="modal-content-log-obra">
-                    <span class="close">&times;</span>
-                    <h2>Logs de Alterações</h2>
-                    <select name="funcao_log" id="funcao_log">
-                        <option value="1">Caderno</option>
-                        <option value="2">Modelagem</option>
-                        <option value="3">Composição</option>
-                        <option value="4">Finalização</option>
-                        <option value="5">Pós</option>
-                        <option value="6">Alteração</option>
-                        <option value="7">Planta</option>
-                    </select>
-                    <table id="tabela-logs-obra">
-                        <thead>
-                            <tr>
-                                <th>Imagem</th>
-                                <th>Status Anterior</th>
-                                <th>Status Novo</th>
-                                <th>Data</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                        </tbody>
-                    </table>
-                </div>
-            </div> -->
-
         </div>
 
         <div id="follow-up">

@@ -145,9 +145,9 @@ $conn->close();
                 <div id="filtro">
                     <h1>Filtro</h1>
                     <select id="colunaFiltro">
-                        <option value="0">Nome Cliente</option>
-                        <option value="1">Nome Obra</option>
-                        <option value="2">Nome Imagem</option>
+                        <option value="0">Cliente</option>
+                        <option value="1">Obra</option>
+                        <option value="2">Imagem</option>
                         <option value="3">Prazo Estimado</option>
                         <option value="4">Status</option>
                     </select>
@@ -158,12 +158,12 @@ $conn->close();
                     <table id="tabelaClientes">
                         <thead>
                             <tr>
-                                <th>Nome Cliente</th>
-                                <th>Nome Obra</th>
-                                <th class="nome-imagem">Nome Imagem</th>
-                                <th>Recebimento de arquivos</th>
+                                <th>Cliente</th>
+                                <th>Obra</th>
+                                <th class="nome-imagem">Imagem</th>
+                                <th>Receb. arquivos</th>
                                 <th>Data Inicio</th>
-                                <th>Prazo Estimado</th>
+                                <th>Prazo</th>
                                 <th>Status</th>
                             </tr>
                         </thead>

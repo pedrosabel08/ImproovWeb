@@ -12,6 +12,7 @@ if ($conn->connect_error) {
 $conn->set_charset('utf8mb4');
 
 $obraId = intval($_GET['obra_id']);
+$tipoImagem = isset($_GET['tipo_imagem']) && $_GET['tipo_imagem'] !== '0' ? $_GET['tipo_imagem'] : null;
 
 // Consulta SQL atualizada
 $sql = "SELECT
@@ -32,13 +33,23 @@ $sql = "SELECT
     FROM funcao_imagem fi
     JOIN imagens_cliente_obra ico ON fi.imagem_id = ico.idimagens_cliente_obra
     JOIN colaborador c ON fi.colaborador_id = c.idcolaborador
-    WHERE ico.obra_id = ?
-    GROUP BY ico.imagem_nome
-    ORDER BY ico.idimagens_cliente_obra
-";
+    WHERE ico.obra_id = ?";
+
+// Adicionando filtro de tipo de imagem se fornecido
+if ($tipoImagem) {
+    $sql .= " AND ico.tipo_imagem = ?";
+}
+
+$sql .= " GROUP BY ico.imagem_nome
+          ORDER BY ico.idimagens_cliente_obra";
 
 $stmt = $conn->prepare($sql);
-$stmt->bind_param('i', $obraId);
+if ($tipoImagem) {
+    $stmt->bind_param('is', $obraId, $tipoImagem);
+} else {
+    $stmt->bind_param('i', $obraId);
+}
+
 $stmt->execute();
 $result = $stmt->get_result();
 

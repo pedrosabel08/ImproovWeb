@@ -613,6 +613,13 @@ $conn->close();
                     </option>
                 <?php endforeach; ?>
             </select>
+            <select name="tipo_imagem" id="tipo_imagem">
+                <option value="0">Todos</option>
+                <option value="Fachada">Fachada</option>
+                <option value="Imagem Interna">Imagem Interna</option>
+                <option value="Imagem Externa">Imagem Externa</option>
+                <option value="Planta Humanizada">Planta Humanizada</option>
+            </select>
 
             <table id="tabela-obra">
                 <thead>
@@ -638,6 +645,35 @@ $conn->close();
 
                 </tbody>
             </table>
+
+            <!-- <div id="modalLogsObra" class="modal">
+                <div class="modal-content-log-obra">
+                    <span class="close">&times;</span>
+                    <h2>Logs de Alterações</h2>
+                    <select name="funcao_log" id="funcao_log">
+                        <option value="1">Caderno</option>
+                        <option value="2">Modelagem</option>
+                        <option value="3">Composição</option>
+                        <option value="4">Finalização</option>
+                        <option value="5">Pós</option>
+                        <option value="6">Alteração</option>
+                        <option value="7">Planta</option>
+                    </select>
+                    <table id="tabela-logs-obra">
+                        <thead>
+                            <tr>
+                                <th>Imagem</th>
+                                <th>Status Anterior</th>
+                                <th>Status Novo</th>
+                                <th>Data</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                </div>
+            </div> -->
+
         </div>
 
         <div id="follow-up">
@@ -734,7 +770,7 @@ $conn->close();
                 </select>
                 <div id="assunto-email" style="display: none">
                     <label for="">Assunto do email:</label>
-                    
+
                     <textarea name="assunto" id="assunto"></textarea>
                 </div>
 

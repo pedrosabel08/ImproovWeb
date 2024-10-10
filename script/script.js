@@ -679,10 +679,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
 document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('obra').addEventListener('change', function () {
-        var obraId = this.value;
+        atualizarFuncoes();
+    });
+
+    document.getElementById('tipo_imagem').addEventListener('change', function () {
+        atualizarFuncoes();
+    });
+
+    function atualizarFuncoes() {
+        var obraId = document.getElementById('obra').value;
+        var tipoImagem = document.getElementById('tipo_imagem').value;
 
         if (obraId) {
-            fetch('getFuncoesPorObra.php?obra_id=' + obraId)
+            fetch(`getFuncoesPorObra.php?obra_id=${obraId}&tipo_imagem=${tipoImagem}`)
                 .then(response => response.json())
                 .then(data => {
                     var tabela = document.querySelector('#tabela-obra tbody');
@@ -775,8 +784,7 @@ document.addEventListener('DOMContentLoaded', function () {
         } else {
             document.querySelector('#tabela-obra tbody').innerHTML = '';
         }
-    });
-
+    }
 
     document.getElementById('obra-follow').addEventListener('change', function () {
         var obraId = this.value;

@@ -9,6 +9,7 @@
 
 body {
     height: 100vh;
+    background-color: red;
 }
 
 body.light-mode {

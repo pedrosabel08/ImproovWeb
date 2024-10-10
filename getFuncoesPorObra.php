@@ -16,6 +16,7 @@ $obraId = intval($_GET['obra_id']);
 // Consulta SQL atualizada
 $sql = "SELECT
         ico.imagem_nome,
+        ico.tipo_imagem,
         MAX(CASE WHEN fi.funcao_id = 1 THEN c.nome_colaborador END) AS caderno_colaborador,
         MAX(CASE WHEN fi.funcao_id = 1 THEN fi.status END) AS caderno_status,
         MAX(CASE WHEN fi.funcao_id = 2 THEN c.nome_colaborador END) AS modelagem_colaborador,

@@ -706,6 +706,7 @@ $conn->close();
                     <th>Prazo</th>
                     <th>Planta</th>
                     <th>Prazo</th>
+                    <th>Revisões</th>
 
                 </thead>
                 <tbody>

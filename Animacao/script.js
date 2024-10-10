@@ -240,7 +240,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         $.ajax({
                             type: "GET",
                             dataType: "json",
-                            url: "http://192.168.0.202:8066/ImproovWeb/Animacao/buscaAJAX.php",
+                            url: "http://improov.com.br/sistema/Animacao/buscaAJAX.php",
                             data: { ajid: idAnimaSelecionada },
                             success: function (response) {
                                 if (response.length > 0) {

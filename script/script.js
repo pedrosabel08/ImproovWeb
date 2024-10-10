@@ -859,6 +859,11 @@ document.addEventListener('DOMContentLoaded', function () {
                         row.appendChild(cellPlantaPrazo);
 
 
+                        var cellQntRevisoes = document.createElement('td');
+                        cellQntRevisoes.textContent = item.total_revisoes || '-';
+                        row.appendChild(cellQntRevisoes);
+
+
                         tabela.appendChild(row);
                     });
                 })

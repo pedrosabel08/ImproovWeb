@@ -5,13 +5,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Acompanhamento</title>
-    <link rel="stylesheet" href="style.css"> <!-- Inclua o arquivo CSS -->
-    <script src="script.js" defer></script> <!-- Inclua o arquivo JS -->
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="script.js" defer></script>
 </head>
 
 <body>
     <header>
         <h1>Acompanhamento</h1>
+        <button onclick="window.location.href='../inicio.php'" id="button-sair"><i
+                class="fas fa-arrow-left"></i></button>
     </header>
 
     <main>
@@ -20,13 +23,12 @@
             <table id="tabela-acomp">
                 <thead>
                     <tr>
-                        <th>Obra ID</th>
-                        <th>Colaborador ID</th>
+                        <th>Obra</th>
+                        <th>Colaborador</th>
                         <th>Data</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <!-- Os dados serão inseridos aqui pelo script -->
                 </tbody>
             </table>
         </div>
@@ -36,14 +38,13 @@
             <table id="tabela-acomp-email">
                 <thead>
                     <tr>
-                        <th>Obra ID</th>
-                        <th>Colaborador ID</th>
+                        <th>Obra</th>
+                        <th>Colaborador</th>
                         <th>Assunto Email</th>
                         <th>Data</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <!-- Os dados serão inseridos aqui pelo script -->
                 </tbody>
             </table>
         </div>

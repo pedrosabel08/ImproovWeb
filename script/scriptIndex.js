@@ -29,7 +29,7 @@ function metas() {
     window.location.href = 'Metas/index.php'
 }
 function acomp() {
-    window.location.href = 'Acompanhamento/index.php'
+    window.location.href = 'Acompanhamento/index.html'
 }
 
 document.addEventListener('DOMContentLoaded', () => {

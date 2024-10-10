@@ -695,6 +695,10 @@ document.addEventListener('DOMContentLoaded', function () {
                         cellNomeImagem.textContent = item.imagem_nome;
                         row.appendChild(cellNomeImagem);
 
+                        var cellTipoImagem = document.createElement('td');
+                        cellTipoImagem.textContent = item.tipo_imagem;
+                        row.appendChild(cellTipoImagem);
+
                         var cellCadernoColaborador = document.createElement('td');
                         cellCadernoColaborador.textContent = item.caderno_colaborador || '-';
                         var cellCadernoStatus = document.createElement('td');

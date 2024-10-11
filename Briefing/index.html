@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
+        integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <title>Briefing</title>
+</head>
+
+<body>
+    <header>
+        <h2>Briefing</h2>
+    </header>
+
+    <form id="add-briefing">
+        <div id="cliente_obra">
+            <select name="cliente_id" id="cliente_id">
+                <option value="">Cliente</option>
+            </select>
+
+            <select name="obra_id" id="obra_id">
+                <option value="">Obra</option>
+            </select>
+        </div>
+
+        <section id="geral">
+            <h2>Briefing - Geral</h2>
+
+            <div>
+                <h3>Qual o nível de padrão do empreendimento?</h3>
+                <select name="nivel_padrao" id="nivel_padrao" onchange="mostrarOutro(this, 'nivel_padrao_outro')">
+                    <option value="Baixo">Baixo</option>
+                    <option value="Médio">Médio</option>
+                    <option value="Alto">Alto</option>
+                    <option value="Outro">Outro</option>
+                </select>
+                <input type="text" name="nivel_padrao_outro" id="nivel_padrao_outro" placeholder="Digite o padrão"
+                    style="display: none;">
+            </div>
+
+            <div>
+                <h3>Qual o conceito do empreendimento?</h3>
+                <textarea name="conceito" id="conceito"></textarea>
+            </div>
+
+            <div>
+                <h3>Qual a faixa média de valor dos apartamentos?</h3>
+                <input type="text" name="faixa_valor" id="faixa_valor">
+            </div>
+
+            <div>
+                <h3>Já tem algum outro empreendimento no mesmo padrão?</h3>
+                <select name="empreendimento_existente" id="empreendimento_existente">
+                    <option value="Não">Não</option>
+                    <option value="Sim">Sim</option>
+                </select>
+                <input type="text" name="empreendimento" id="empreendimento">
+            </div>
+
+            <div>
+                <h3>Qual a sensação e o clima que se deve passar no empreendimento?</h3>
+                <select name="sensacao_clima" id="sensacao_clima">
+                    <option value="Amanhecer">Amanhecer - até as 9h</option>
+                    <option value="Diurna">Diurna - das 10h às 15h</option>
+                    <option value="Blue Hour">Blue Hour - 17h às 19h</option>
+                    <option value="Noturna">Noturna - depois das 19h</option>
+                    <option value="Overcast">Overcast</option>
+                </select>
+            </div>
+
+            <div>
+                <h3>Receberemos algum tipo de projeto de interiores?</h3>
+                <select name="interiores" id="interiores">
+                    <option value="Não">Não</option>
+                    <option value="Sim">Sim</option>
+                </select>
+
+                <select name="responsavel_interiores" id="responsavel_interiores">
+                    <option value="pré-moodboard">Enviaremos um pré moodboard (podendo adicionar informações)</option>
+                    <option value="referências fotográficas">Receber referências fotográficas formalizadas e com foco.
+                    </option>
+                </select>
+            </div>
+
+            <div>
+                <h3>Receberemos algum tipo de projeto de paisagismo?</h3>
+                <select name="paisagismo" id="paisagismo">
+                    <option value="Não">Não</option>
+                    <option value="Sim">Sim</option>
+                </select>
+
+                <select name="responsavel_paisagismo" id="responsavel_paisagismo">
+                    <option value="pré-moodboard">Enviaremos um pré moodboard (podendo adicionar informações)</option>
+                    <option value="referências fotográficas">Receber referências fotográficas formalizadas e com foco.
+                    </option>
+                </select>
+            </div>
+
+            <div>
+                <h3>Haverá necessidade de escolha de assets (modelos de mobiliário) específico?</h3>
+                <select name="assets" id="assets">
+                    <option value="Não">Não</option>
+                    <option value="Sim">Sim</option>
+                </select>
+            </div>
+
+            <button id="prox">Próximo <i class="fa-solid fa-right-long"></i></button>
+        </section>
+
+        <section id="acabamentos">
+            <h2>Briefing - Acabamentos</h2>
+
+            <div>
+                <h3>Qual o sistema de guarda-corpo das sacadas do empreendimento?</h3>
+                <select name="guarda-corpo" id="guarda-corpo" onchange="mostrarOutro(this, 'outro_guarda_corpo')">
+                    <option value="Alumínio + vidro, com montantes de fixação por trás">Alumínio + vidro, com montantes
+                        de
+                        fixação por trás</option>
+                    <option value="Alumínio + vidro + fechamento com sistema Reiki">Alumínio + vidro + fechamento com
+                        sistema Reiki</option>
+                    <option value="Somente vidro (sem perfil aparente)">Somente vidro (sem perfil aparente)</option>
+                    <option value="Somente alumínio">Somente alumínio</option>
+                    <option value="Outro">Outro</option>
+                </select>
+                <input type="text" name="outro_guarda_corpo" id="outro_guarda_corpo" style="display:none;"
+                    placeholder="Especifique outro tipo de guarda-corpo">
+            </div>
+
+            <div>
+                <h3>Qual padrão das esquadrias do empreendimento? (Enviar foto de referência)</h3>
+                <select name="esquadrias" id="esquadrias" onchange="mostrarOutro(this, 'outro_esquadrias')">
+                    <option value="Alumínio">Alumínio</option>
+                    <option value="PVC">PVC</option>
+                    <option value="Blindex">Blindex</option>
+                    <option value="Outro">Outro</option>
+                </select>
+                <input type="text" name="outro_esquadrias" id="outro_esquadrias" style="display:none;"
+                    placeholder="Especifique outro padrão de esquadrias">
+            </div>
+
+            <div>
+                <h3>Qual a cor das esquadrias do empreendimento?</h3>
+                <select name="cor_esquadrias" id="cor_esquadrias" onchange="mostrarOutro(this, 'outro_cor_esquadrias')">
+                    <option value="Pretas">Pretas</option>
+                    <option value="Brancas">Brancas</option>
+                    <option value="Pratas">Pratas</option>
+                    <option value="Outro">Outro</option>
+                </select>
+                <input type="text" name="outro_cor_esquadrias" id="outro_cor_esquadrias" style="display:none;"
+                    placeholder="Especifique outra cor de esquadrias">
+            </div>
+
+            <div>
+                <h3>Qual o acabamento do vidro das esquadrias do empreendimento?</h3>
+                <select name="acabamento_vidro" id="acabamento_vidro"
+                    onchange="mostrarOutro(this, 'outro_acabamento_vidro')">
+                    <option value="Translúcido">Translúcido</option>
+                    <option value="Espelhado">Espelhado</option>
+                    <option value="Outro">Outro</option>
+                </select>
+                <input type="text" name="outro_acabamento_vidro" id="outro_acabamento_vidro" style="display:none;"
+                    placeholder="Especifique outro acabamento de vidro">
+            </div>
+
+            <div>
+                <h3>Para as áreas comuns do empreendimento (Salão de Festas, Academia, etc) qual revestimento de piso
+                    devemos usar? Indicar cor, tamanho e acabamento.</h3>
+                <select name="revestimento_comum" id="revestimento_comum">
+                    <option value="Improov">Piso especificado pela Improov</option>
+                    <option value="Construtora">Piso especificado pela construtora - Modelo (cor, tamanho e acabamento)
+                    </option>
+                </select>
+            </div>
+
+            <div>
+                <h3>Para os apartamentos, que piso deve ser utilizado?</h3>
+                <select name="piso_apartamentos" id="piso_apartamentos"
+                    onchange="mostrarOutro(this, 'outro_piso_apartamentos')">
+                    <option value="Porcelanato">Porcelanato</option>
+                    <option value="Vinílico">Vinílico</option>
+                    <option value="Porcelanato nas áreas sociais e madeira nas áreas íntimas.">Porcelanato nas áreas
+                        sociais
+                        e madeira nas áreas íntimas.</option>
+                    <option value="Outro">Outro</option>
+                </select>
+                <input type="text" name="outro_piso_apartamentos" id="outro_piso_apartamentos" style="display:none;"
+                    placeholder="Especifique outro tipo de piso">
+            </div>
+
+            <div>
+                <h3>Soleiras devem ser utilizadas?</h3>
+                <select name="soleiras" id="soleiras">
+                    <option value="Não">Não</option>
+                    <option value="Sim, em todas as portas caracterizando a divisão de todos os ambientes">Sim, em todas
+                        as
+                        portas caracterizando a divisão de todos os ambientes</option>
+                    <option value="Sim, mas somente quando houver diferenciação de piso (entre área seca e molhada)">
+                        Sim,
+                        mas somente quando houver diferenciação de piso (entre área seca e molhada)</option>
+                    <option value="Apenas na porta de entrada da unidade">Apenas na porta de entrada da unidade</option>
+                </select>
+            </div>
+
+            <div>
+                <h3>Pingadeira devem ser utilizadas? Indica a cor do granito</h3>
+                <select name="pingadeiras" id="pingadeiras" onchange="mostrarOutro(this, 'outro_pingadeiras')">
+                    <option value="Janela">Janelas</option>
+                    <option value="Muros">Muros</option>
+                    <option value="Platibandas">Platibandas</option>
+                    <option value="Outro">Outro</option>
+                </select>
+                <input type="text" name="outro_pingadeiras" id="outro_pingadeiras" style="display:none;"
+                    placeholder="Especifique onde será utilizada a pingadeira">
+            </div>
+
+            <div>
+                <h3>Qual o tamanho e estilo dos rodapés do empreendimento?</h3>
+
+                <select name="rodape_tipo" id="rodape_tipo">
+                    <option value="Poliestireno">Rodapé em poliestireno</option>
+                    <option value="Cerâmica">Rodapé de cerâmica</option>
+                </select>
+
+                <input type="text" name="rodape_cor" id="rodape_cor">
+                <input type="text" name="rodape_tamanho" id="rodape_tamanho">
+            </div>
+
+            <div>
+                <h3>Existe um padrão para a calçada do empreendimento?</h3>
+                <select name="padrao_calcada" id="padrao_calcada">
+                    <option value="Sim, está detalhada no projeto do cad">Sim, está detalhada no projeto do cad.
+                    </option>
+                    <option value="Sim, seguir o padrão da Prefeitura da Cidade">Sim, seguir o padrão da Prefeitura da
+                        Cidade. (Obs: Caso essa opção seja assinalada, favor enviar o PDF com o padrão a ser seguido).
+                    </option>
+                    <option value="Improov">Não existe um padrão a ser seguido, fica a critério da Improov.</option>
+                </select>
+            </div>
+
+            <button id="prox">Próximo <i class="fa-solid fa-right-long"></i></button>
+        </section>
+
+
+        <section id="planta_humanizada">
+            <h2>Briefing - PLANTAS HUMANIZADAS</h2>
+
+            <div>
+                <h3>Qual cor de parede deve ser utilizada?</h3>
+
+                <select name="cor_parede" id="cor_parede">
+                    <option value="Preta">Preta</option>
+                    <option value="Cinza">Cinza</option>
+                </select>
+            </div>
+
+            <div>
+                <h3>Existe a necessidade das plantas humanizadas estarem compatibilizadas com as imagens finais?</h3>
+
+                <select name="compatibilidade" id="compatibilidade">
+                    <option value="Sim">Sim</option>
+                    <option value="Não">Não</option>
+                </select>
+            </div>
+
+            <div>
+                <h3>Devemos acrescentar nome dos ambientes?</h3>
+
+                <select name="adicionar_nome_ambientes" id="adicionar_nome_ambientes">
+                    <option value="Sim">Sim</option>
+                    <option value="Não">Não</option>
+                </select>
+            </div>
+            <div>
+                <h3>Devemos inserir a logo da construtora no elevador?</h3>
+
+                <select name="logo_construtora" id="logo_construtora">
+                    <option value="Sim">Sim</option>
+                    <option value="Não">Não</option>
+                </select>
+            </div>
+            <div>
+                <h3>Devemos representar a laje técnica e as condensadoras de ar condicionados?</h3>
+
+                <select name="representar_laje" id="representar_laje">
+                    <option value="Sim">Sim</option>
+                    <option value="Não">Não</option>
+                </select>
+            </div>
+            <div>
+                <h3>Devemos representar as plantas separadamente ou com o pavimento completo?</h3>
+
+                <select name="representar_plantas" id="representar_plantas">
+                    <option value="Sim">Sim</option>
+                    <option value="Não">Não</option>
+                    <option value="Os dois">Os dois</option>
+                </select>
+            </div>
+            <div>
+                <h3>Existe alguma referência de planta humanizadas de empreendimentos passados que devemos seguir?</h3>
+
+                <select name="referencia_plantas" id="referencia_plantas">
+                    <option value="Sim">Sim</option>
+                    <option value="Não">Não</option>
+                </select>
+            </div>
+        </section>
+
+        <button type="submit">Inserir breafing<i class="fa-solid fa-paper-plane"></i></button>
+    </form>
+    <script>
+        function mostrarOutro(selectElement, inputId) {
+            var inputField = document.getElementById(inputId);
+            if (selectElement.value === 'Outro') {
+                inputField.style.display = 'block';
+            } else {
+                inputField.style.display = 'none';
+            }
+        }
+
+        document.getElementById('add-breafing').addEventListener('submit', function (event) {
+            event.preventDefault(); // Evita o envio padrão do formulário
+
+            // Cria um objeto FormData a partir do formulário
+            const formData = new FormData(this);
+
+            // Itera sobre os pares chave-valor e exibe no console
+            for (const [key, value] of formData.entries()) {
+                console.log(`${key}: ${value}`);
+            }
+        });
+    </script>
+</body>
+
+</html>

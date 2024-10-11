@@ -50,8 +50,8 @@ file_put_contents('webhook.log', "Conectado ao FTP.\n", FILE_APPEND);
 foreach ($arquivos_para_upload as $arquivo) {
     // Caminho local do arquivo (precisa estar acessível pelo script)
     $local_file = __DIR__ . '/' . $arquivo;
-    // Caminho no servidor FTP
-    $remote_file = '/www/sistema/' . basename($arquivo);
+    // Caminho no servidor FTP mantendo a estrutura de diretórios
+    $remote_file = '/www/sistema/' . $arquivo; // Mantendo a estrutura de diretórios
 
     // Verificar se o arquivo existe no diretório local
     if (file_exists($local_file)) {
@@ -68,8 +68,8 @@ foreach ($arquivos_para_upload as $arquivo) {
 
 // Remover arquivos deletados do FTP
 foreach ($arquivos_para_remover as $arquivo) {
-    // Caminho no servidor FTP
-    $remote_file = '/www/sistema/' . basename($arquivo);
+    // Caminho no servidor FTP mantendo a estrutura de diretórios
+    $remote_file = '/www/sistema/' . $arquivo; // Mantendo a estrutura de diretórios
 
     // Tentar remover o arquivo do servidor FTP
     if (ftp_delete($conn_id, $remote_file)) {

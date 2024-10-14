@@ -17,7 +17,7 @@ document.addEventListener("DOMContentLoaded", function () {
             $.ajax({
                 type: "GET",
                 dataType: "json",
-                url: "http://www.improov.com.br/sistema/buscaLinhaAJAX.php",
+                url: "https://www.improov.com.br/sistema/buscaLinhaAJAX.php",
                 data: { ajid: idImagemSelecionada },
                 success: function (response) {
                     if (response.nome_imagem) {
@@ -209,7 +209,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         $.ajax({
             type: "POST",
-            url: "http://www.improov.com.br/sistema/insereFuncao.php",
+            url: "https://www.improov.com.br/sistema/insereFuncao.php",
             data: dados,
             success: function (response) {
                 console.log(response);

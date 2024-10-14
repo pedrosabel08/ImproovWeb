@@ -86,7 +86,7 @@ function atualizarTabela() {
                     $.ajax({
                         type: "GET",
                         dataType: "json",
-                        url: "http://www.improov.com.br/sistema/ControleComercial/buscaAJAX.php",
+                        url: "https://www.improov.com.br/sistema/ControleComercial/buscaAJAX.php",
                         data: { ajid: idSelecionado },
                         success: function (response) {
                             if (response.length > 0) {

@@ -1,0 +1,156 @@
+@import url("https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,200..1000;1,200..1000&display=swap");
+
+* {
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+  font-family: "Nunito", sans-serif;
+}
+
+body {
+  background-color: #ffffffbd;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+
+}
+
+header .navbar-left {
+  display: flex;
+  align-items: center;
+  gap: 400px;
+}
+
+.hidden {
+  display: none;
+}
+
+#menu {
+  background-color: #f1f1f1;
+  border-radius: 10px;
+  position: absolute;
+  right: 0;
+  z-index: 1;
+  margin-top: 30px;
+  min-width: 10rem;
+  padding: .5rem 0;
+  transition: .3s all ease;
+}
+
+#menu a {
+  display: block;
+  padding: 5px;
+  text-decoration: none;
+  color: black;
+  font-size: 0.85rem;
+  padding: .25rem 1.5rem;
+  border-radius: 2px;
+  transition: .3s all ease;
+}
+
+#menu a i {
+  margin-right: 10px;
+}
+
+#menu a:hover {
+  background-color: #ccc;
+}
+
+a,
+button {
+  all: unset;
+  cursor: pointer;
+}
+
+main {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  height: 90vh;
+  width: 100%;
+
+  margin-top: 2rem;
+  gap: 20px;
+}
+
+.filtros {
+  display: flex;
+  justify-content: center;
+  gap: 40px;
+  padding: 20px;
+}
+
+.filtros>div {
+  display: flex;
+  flex-direction: column;
+}
+
+.filtros label {
+  margin-bottom: 5px;
+  text-align: center;
+}
+
+.filtros select {
+  font-size: 16px;
+}
+
+.tabela {
+  width: 80%;
+  height: 80%;
+  overflow-y: auto;
+  margin: 0 auto;
+}
+
+#tabela-faturamento {
+  width: 100%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  border-collapse: collapse;
+}
+
+#tabela-faturamento td,
+th {
+  border: 1px solid #bbbbbb;
+  text-align: center;
+}
+
+.checked {
+  background-color: green;
+  color: white;
+}
+
+.menu-buttons {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 10px;
+}
+
+.buttons {
+  display: flex;
+  justify-content: flex-start;
+  gap: 20px;
+}
+
+.buttons button {
+  padding: 5px;
+  border-radius: 10px;
+}
+
+button#marcar-todos {
+  background-color: #ffa621;
+  grid-column: 1;
+}
+
+button#confirmar-pagamento {
+  background-color: #21ff29;
+  grid-column: 1;
+}
+
+button#adicionar-valor {
+  background-color: #fbff21;
+  grid-column: 2;
+  grid-row: 1;
+}

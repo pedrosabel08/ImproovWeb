@@ -488,24 +488,13 @@ $conn->close();
                     </div>
                     <div class="funcao">
                         <p id="status">Status</p>
-                        <?php if ($_SESSION['nivel_acesso'] == 1): ?>
-                            <select name="status_id" id="opcao_status">
-                                <?php foreach ($status_imagens as $status): ?>
-                                    <option value="<?= htmlspecialchars($status['idstatus']); ?>">
-                                        <?= htmlspecialchars($status['nome_status']); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        <?php else: ?>
-                            <select name="status_id" id="opcao_status" disabled>
-                                <?php foreach ($status_imagens as $status): ?>
-                                    <option value="<?= htmlspecialchars($status['idstatus']); ?>">
-                                        <?= htmlspecialchars($status['nome_status']); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        <?php endif; ?>
-
+                        <select name="status_id" id="opcao_status">
+                            <?php foreach ($status_imagens as $status): ?>
+                                <option value="<?= htmlspecialchars($status['idstatus']); ?>">
+                                    <?= htmlspecialchars($status['nome_status']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
                     <div class="buttons">
                         <button type="submit" id="salvar_funcoes">Salvar</button>

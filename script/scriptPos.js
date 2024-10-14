@@ -207,7 +207,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         $.ajax({
                             type: "GET",
                             dataType: "json",
-                            url: "http://www.improov.com.br/sistema/Pos-Producao/buscaAJAX.php",
+                            url: "https://www.improov.com.br/sistema/Pos-Producao/buscaAJAX.php",
                             data: { ajid: idImagemSelecionada },
                             success: function (response) {
                                 if (response.length > 0) {

@@ -53,6 +53,48 @@ header button#add_imagem {
     font-weight: bold;
 }
 
+.hidden {
+    display: none;
+}
+
+
+#menu {
+    background-color: #f1f1f1;
+    border-radius: 10px;
+    position: absolute;
+    left: 10px;
+    z-index: 1;
+    margin-top: 30px;
+    min-width: 10rem;
+    padding: .5rem 0;
+    transition: .3s all ease;
+    animation: fadeIn .5s ease-in-out forwards;
+}
+
+#menu a {
+    display: block;
+    padding: 5px;
+    text-decoration: none;
+    color: black;
+    font-size: 1rem;
+    padding: .25rem 1.5rem;
+    border-radius: 2px;
+    transition: .3s all ease;
+    text-align: center;
+}
+
+#menu a#tab-imagens {
+    font-weight: bold;
+}
+
+#menu a i {
+    margin-right: 10px;
+}
+
+#menu a:hover {
+    background-color: #ccc;
+}
+
 #filtro {
     padding: 50px;
 }
@@ -250,4 +292,16 @@ button#deleteButton {
 .status-nao-iniciado {
     background-color: #fc0303;
     color: white;
+}
+
+@keyframes fadeIn {
+    0% {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }

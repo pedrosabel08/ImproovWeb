@@ -78,7 +78,15 @@ $count_pendentes = $row_pendentes['count_pendentes'];
                 <i class="fa-solid fa-calendar-days"></i>
             </a>
         </div>
-        <h1>Página Inicial</h1>
+        <div class="right">
+            <h1>Página Inicial</h1>
+            <button id="showMenu"><i class="fa-solid fa-user"></i></button>
+            <div id="menu2" class="hidden">
+                <a href="infos.php" id="editProfile"><i class="fa-regular fa-user"></i>Editar Informações</a>
+                <hr>
+                <a href="#" id="logout"><i class="fa-solid fa-right-from-bracket"></i>Sair</a>
+            </div>
+        </div>
     </header>
     <main>
         <div class="infos-pessoais">
@@ -90,7 +98,7 @@ $count_pendentes = $row_pendentes['count_pendentes'];
             <div class="tasks">
                 <div class="tasks-check">
                     <p><i class="fa-solid fa-check"></i>&nbsp;&nbsp;Tarefas concluídas</p>
-                    <p id="count-check"><?php echo $count_finalizadas; ?></p> 
+                    <p id="count-check"><?php echo $count_finalizadas; ?></p>
                 </div>
                 <div class="tasks-to-do">
                     <p><i class="fa-solid fa-xmark"></i>&nbsp;&nbsp;Tarefas para fazer</p>

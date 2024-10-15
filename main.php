@@ -31,18 +31,27 @@ $idusuario = $_SESSION['idusuario'];
 
 
 <header>
-    <a href="inicio.php">
-        <img src="./assets/ImproovFlow - logo.png" alt="Improov" class="logo">
-    </a>
-    <div class="buttons">
-        <button id="voltar" onclick="window.location.href='inicio.php'">Voltar</button>
-        <button id="menuButton"><i class="fa-solid fa-user"></i></button>
-        <div id="menu" class="hidden">
-            <a href="infos.php" id="editProfile"><i class="fa-regular fa-user"></i>Editar Informações</a>
-            <hr>
-            <a href="#" id="logout"><i class="fa-solid fa-right-from-bracket"></i>Sair</a>
-        </div>
+    <button id="menuButton">
+        <i class="fa-solid fa-bars"></i>
+    </button>
+
+    <div id="menu" class="hidden">
+        <a href="#" id="tab-imagens" onclick="visualizarTabela()">Visualizar tabela com imagens</a>
+        <a href="#" onclick="listaPos()">Lista Pós-Produção</a>
+        <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 3)): ?>
+            <a href="#" onclick="clientes()">Informações clientes</a>
+            <a href="#" onclick="acomp()">Acompanhamentos</a>
+        <?php endif; ?>
+        <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 4)): ?>
+            <a href="#" onclick="animacao()">Lista Animação</a>
+        <?php endif; ?>
+        <a href="#" onclick="metas()">Metas e progresso</a>
+        <a id="calendar" class="calendar-btn" href="#" onclick="calendar()">
+            <i class="fa-solid fa-calendar-days"></i>
+        </a>
     </div>
+    <button id="voltar" onclick="window.location.href='inicio.php'">Voltar</button>
+
 </header>
 
 

@@ -12,6 +12,7 @@ session_start();
     <link rel="stylesheet" href="css/styleIndex.css">
     <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
         type="image/x-icon">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 
     <title>Improov+Flow</title>
 </head>
@@ -36,7 +37,7 @@ session_start();
                 <button onclick="animacao()">Lista Animação</button>
             <?php endif; ?>
             <button onclick="metas()">Metas e progresso</button>
-
+            <button id="calendar" onclick="calendar()"><i class="fa-solid fa-calendar-days"></i></button>
         </div>
     </main>
 

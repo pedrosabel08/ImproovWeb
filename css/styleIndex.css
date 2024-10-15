@@ -125,6 +125,10 @@ main .buttons button {
     animation-delay: 0.5s;
 }
 
+main .buttons button#calendar {
+    max-width: 100px;
+}
+
 .buttons button:hover {
     background-color: #00eeff73;
     font-weight: 600;

@@ -31,6 +31,9 @@ function metas() {
 function acomp() {
     window.location.href = 'Acompanhamento/index.html'
 }
+function calendar() {
+    window.location.href = 'Calendario/index.php'
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     const themeToggle = document.getElementById('theme-toggle');

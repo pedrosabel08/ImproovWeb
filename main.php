@@ -36,17 +36,21 @@ $idusuario = $_SESSION['idusuario'];
     </button>
 
     <div id="menu" class="hidden">
-        <a href="#" id="tab-imagens" onclick="visualizarTabela()">Visualizar tabela com imagens</a>
-        <a href="#" onclick="listaPos()">Lista Pós-Produção</a>
+        <a href="main.php" id="tab-imagens">Visualizar tabela com imagens</a>
+        <a href="Pos-Producao/index.php">Lista Pós-Produção</a>
+
         <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 3)): ?>
-            <a href="#" onclick="clientes()">Informações clientes</a>
-            <a href="#" onclick="acomp()">Acompanhamentos</a>
+            <a href="infoCliente/index.php">Informações clientes</a>
+            <a href="Acompanhamento/index.html">Acompanhamentos</a>
         <?php endif; ?>
+
         <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 4)): ?>
-            <a href="#" onclick="animacao()">Lista Animação</a>
+            <a href="Animacao/index.php">Lista Animação</a>
         <?php endif; ?>
-        <a href="#" onclick="metas()">Metas e progresso</a>
-        <a id="calendar" class="calendar-btn" href="#" onclick="calendar()">
+
+        <a href="Metas/index.php">Metas e progresso</a>
+
+        <a id="calendar" class="calendar-btn" href="Calendario/index.php">
             <i class="fa-solid fa-calendar-days"></i>
         </a>
     </div>

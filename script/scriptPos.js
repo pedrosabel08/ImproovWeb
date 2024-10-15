@@ -366,3 +366,22 @@ setInterval(obterNotificacoes, 3000);
 openNotify.addEventListener('click', function () {
     notificacoes.classList.toggle('hidden');
 });
+
+
+document.addEventListener("DOMContentLoaded", function () {
+
+    document.getElementById('menuButton').addEventListener('click', function () {
+        const menu = document.getElementById('menu');
+        menu.classList.toggle('hidden');
+    });
+
+    window.addEventListener('click', function (event) {
+        const menu = document.getElementById('menu');
+        const button = document.getElementById('menuButton');
+
+        if (!button.contains(event.target) && !menu.contains(event.target)) {
+            menu.classList.add('hidden');
+        }
+    });
+
+});

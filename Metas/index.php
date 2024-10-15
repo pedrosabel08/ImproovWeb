@@ -37,13 +37,36 @@ $porcentagem = number_format($porcentagem, 2);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="../css/styleMetas.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
     <title>Metas e progresso</title>
 </head>
 
 <body>
 
     <header>
-        <button id="voltar" onclick="window.location.href='../inicio.php'">Voltar</button>
+        <button id="menuButton">
+            <i class="fa-solid fa-bars"></i>
+        </button>
+        <div id="menu" class="hidden">
+            <a href="main.php" id="tab-imagens">Visualizar tabela com imagens</a>
+            <a href="Pos-Producao/index.php">Lista Pós-Produção</a>
+
+            <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 3)): ?>
+                <a href="../infoCliente/index.php">Informações clientes</a>
+                <a href="Acompanhamento/index.html">Acompanhamentos</a>
+            <?php endif; ?>
+
+            <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 4)): ?>
+                <a href="../Animacao/index.php">Lista Animação</a>
+            <?php endif; ?>
+
+            <a href="../Metas/index.php">Metas e progresso</a>
+
+            <a id="calendar" class="calendar-btn" href="../Calendario/index.php">
+                <i class="fa-solid fa-calendar-days"></i>
+            </a>
+        </div>
         <h2>Metas e progresso</h2>
     </header>
     <nav>

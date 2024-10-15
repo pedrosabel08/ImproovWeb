@@ -10,6 +10,7 @@ if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
 
 $idusuario = $_SESSION['idusuario'];
 $nome_usuario = $_SESSION['nome_usuario'];
+$idcolaborador = $_SESSION['idcolaborador'];
 
 $sql = "SELECT l.funcao_imagem_id, l.status_anterior, l.status_novo, l.data, i.imagem_nome, o.nome_obra
         FROM log_alteracoes l
@@ -21,10 +22,27 @@ $sql = "SELECT l.funcao_imagem_id, l.status_anterior, l.status_novo, l.data, i.i
         LIMIT 5";
 
 $stmt = $conn->prepare($sql);
-$stmt->bind_param("i", $idusuario);
+$stmt->bind_param("i", $idcolaborador);
 $stmt->execute();
 $result = $stmt->get_result();
 
+
+$sql_finalizadas = "SELECT COUNT(*) as count_finalizadas FROM funcao_imagem WHERE status = 'Finalizado' AND colaborador_id = ?";
+$stmt_finalizadas = $conn->prepare($sql_finalizadas);
+$stmt_finalizadas->bind_param("i", $idcolaborador);
+$stmt_finalizadas->execute();
+$result_finalizadas = $stmt_finalizadas->get_result();
+$row_finalizadas = $result_finalizadas->fetch_assoc();
+$count_finalizadas = $row_finalizadas['count_finalizadas'];
+
+// Consulta para contar as tarefas pendentes
+$sql_pendentes = "SELECT COUNT(*) as count_pendentes FROM funcao_imagem WHERE status <> 'Finalizado' AND colaborador_id = ?";
+$stmt_pendentes = $conn->prepare($sql_pendentes);
+$stmt_pendentes->bind_param("i", $idcolaborador);
+$stmt_pendentes->execute();
+$result_pendentes = $stmt_pendentes->get_result();
+$row_pendentes = $result_pendentes->fetch_assoc();
+$count_pendentes = $row_pendentes['count_pendentes'];
 ?>
 
 <!DOCTYPE html>
@@ -71,12 +89,12 @@ $result = $stmt->get_result();
             </div>
             <div class="tasks">
                 <div class="tasks-check">
-                    <p><i class="fa-solid fa-check"></i>&nbsp;Tarefas concluídas</p>
-                    <p id="count">0</p>
+                    <p><i class="fa-solid fa-check"></i>&nbsp;&nbsp;Tarefas concluídas</p>
+                    <p id="count-check"><?php echo $count_finalizadas; ?></p> 
                 </div>
                 <div class="tasks-to-do">
-                    <p><i class="fa-solid fa-xmark"></i>&nbsp;Tarefas para fazer</p>
-                    <p id="count">0</p>
+                    <p><i class="fa-solid fa-xmark"></i>&nbsp;&nbsp;Tarefas para fazer</p>
+                    <p id="count-to-do"><?php echo $count_pendentes; ?></p>
                 </div>
             </div>
         </div>

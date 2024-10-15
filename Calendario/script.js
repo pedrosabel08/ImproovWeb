@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', function () {
     $('#addEventForm').on('submit', function (e) {
         e.preventDefault();
 
-        var obraId = $('#obraId').val();
+        var obraId = $('#opcao_obra').val();
         var prazo = $('#prazoDate').val();
         var tipoEntrega = $('#tipoEntrega').val();
 

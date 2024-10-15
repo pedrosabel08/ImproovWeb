@@ -954,10 +954,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
 });
 
-document.getElementById('editProfile').addEventListener('click', function () {
-    window.location.href = 'infos.html';
-});
-
 var modalLogs = document.getElementById("modalLogs");
 var closeBtn = document.getElementsByClassName("close")[0];
 const formPosProducao = document.getElementById('formPosProducao');

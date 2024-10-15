@@ -43,7 +43,7 @@ button {
     background-color: #f1f1f1;
     border-radius: 10px;
     position: absolute;
-    left: 0;
+    left: 10px;
     z-index: 1;
     margin-top: 30px;
     min-width: 10rem;
@@ -57,7 +57,7 @@ button {
     padding: 5px;
     text-decoration: none;
     color: black;
-    font-size: 0.85rem;
+    font-size: 1rem;
     padding: .25rem 1.5rem;
     border-radius: 2px;
     transition: .3s all ease;
@@ -122,27 +122,33 @@ main {
 }
 
 .nav {
-    padding: 5rem;
-    display: grid; /* Muda o display para grid */
-    grid-template-columns: 600px 600px; /* Define duas colunas, uma que ocupa o espaço restante e outra de 300px */
-    gap: 20px; /* Adiciona um espaçamento entre as colunas */
-    align-items: stretch; /* Alinha os itens no início da célula */
+    padding: 1rem;
+    display: grid;
+    grid-template-columns: 600px 600px;
+    gap: 20px;
+    align-items: stretch;
     justify-content: center;
 }
 
 .nav iframe {
-    width: 100%; /* Mantém a largura total do iframe */
-    height: 100%; /* Mantém a altura total do iframe */
-    border: none; /* Remove a borda */
+    width: 100%;
+    height: 100%;
+    border: none;
 }
 
 .last-tasks {
-    background-color: #f0f0f0;
+    background-color: #4e4e4e;
     border-radius: 10px;
     padding: 20px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    height: auto; /* Permite que a altura se ajuste automaticamente ao conteúdo */
+    border: 2px solid #808080;
+    height: auto;
 }
+
+.last-tasks ul {
+    margin-top: 20px;
+    margin-left: 10px;
+}
+
 @keyframes fadeIn {
     0% {
         opacity: 0;

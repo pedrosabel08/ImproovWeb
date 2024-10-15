@@ -33,6 +33,11 @@ button {
     cursor: pointer;
 }
 
+.right {
+    display: flex;
+    justify-content: space-around;
+    width: 200px;
+}
 
 .hidden {
     display: none;
@@ -76,6 +81,38 @@ button {
     background-color: #ccc;
 }
 
+#menu2 {
+    background-color: #f1f1f1;
+    border-radius: 10px;
+    position: absolute;
+    right: 10px;
+    z-index: 1;
+    margin-top: 30px;
+    min-width: 10rem;
+    padding: .5rem 0;
+    transition: .3s all ease;
+    animation: fadeIn2 .5s ease-in-out forwards;
+}
+
+#menu2 a {
+    display: block;
+    padding: 5px;
+    text-decoration: none;
+    color: black;
+    font-size: 0.85rem;
+    padding: .25rem 1.5rem;
+    border-radius: 2px;
+    transition: .3s all ease;
+}
+
+#menu2 a i {
+    margin-right: 10px;
+}
+
+#menu2 a:hover {
+    background-color: #ccc;
+}
+
 main {
     display: grid;
     grid-template-rows: 300px auto;
@@ -97,6 +134,7 @@ main {
     flex-direction: column;
     align-items: center;
     grid-column: 1 / span 2;
+    gap: 20px;
 }
 
 .infos-pessoais p#saudacao {
@@ -153,6 +191,18 @@ main {
     0% {
         opacity: 0;
         transform: translateX(-20px);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeIn2 {
+    0% {
+        opacity: 0;
+        transform: translateX(30px);
     }
 
     100% {

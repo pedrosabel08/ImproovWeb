@@ -20,8 +20,8 @@ a {
 header {
     display: flex;
     justify-content: space-between;
-    padding: 10px 10px 0 10px;
-    height: 150px;
+    align-items: flex-start;
+    padding: 10px;
 }
 
 .buttons {

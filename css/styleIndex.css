@@ -8,7 +8,156 @@
 }
 
 body {
+    background-color: #292929;
+    color: #fff;
+
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    padding: 20px;
+    box-shadow: 0 1px 2px rgba(235, 235, 235, 0.6);
+}
+
+header h1 {
+    font-size: 18px;
+}
+
+button#show-menu {
+    padding: 3px;
+}
+
+button {
+    all: unset;
+    cursor: pointer;
+}
+
+
+.hidden {
+    display: none;
+
+}
+
+#menu {
+    background-color: #f1f1f1;
+    border-radius: 10px;
+    position: absolute;
+    left: 0;
+    z-index: 1;
+    margin-top: 30px;
+    min-width: 10rem;
+    padding: .5rem 0;
+    transition: .3s all ease;
+    animation: fadeIn .5s ease-in-out forwards;
+}
+
+#menu a {
+    display: block;
+    padding: 5px;
+    text-decoration: none;
+    color: black;
+    font-size: 0.85rem;
+    padding: .25rem 1.5rem;
+    border-radius: 2px;
+    transition: .3s all ease;
+    text-align: center;
+}
+
+#menu a#tab-imagens {
+    font-weight: bold;
+}
+
+#menu a i {
+    margin-right: 10px;
+}
+
+#menu a:hover {
+    background-color: #ccc;
+}
+
+main {
+    display: grid;
+    grid-template-rows: 300px auto;
+    grid-template-columns: 1fr;
+    justify-content: center;
+    padding: 20px;
+    gap: 50px;
+    height: 90vh;
+}
+
+#data {
+    text-transform: capitalize;
+}
+
+.infos-pessoais {
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    flex-direction: column;
+    align-items: center;
+    grid-column: 1 / span 2;
+}
+
+.infos-pessoais p#saudacao {
+    font-size: 32px;
+    font-weight: 500;
+}
+
+.tasks {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-around;
+    align-items: center;
+    padding: 5px;
+    background-color: #535353;
+    border-radius: 15px;
+    width: 500px;
+}
+
+.tasks-check,
+.tasks-to-do {
+    display: flex;
+    gap: 20px;
+}
+
+.nav {
+    padding: 5rem;
+    display: grid; /* Muda o display para grid */
+    grid-template-columns: 600px 600px; /* Define duas colunas, uma que ocupa o espaço restante e outra de 300px */
+    gap: 20px; /* Adiciona um espaçamento entre as colunas */
+    align-items: stretch; /* Alinha os itens no início da célula */
+    justify-content: center;
+}
+
+.nav iframe {
+    width: 100%; /* Mantém a largura total do iframe */
+    height: 100%; /* Mantém a altura total do iframe */
+    border: none; /* Remove a borda */
+}
+
+.last-tasks {
+    background-color: #f0f0f0;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    height: auto; /* Permite que a altura se ajuste automaticamente ao conteúdo */
+}
+@keyframes fadeIn {
+    0% {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* body {
     height: 100vh;
+    
 }
 
 body.light-mode {
@@ -72,7 +221,7 @@ input:checked+.slider:before {
     background-color: #000000;
 }
 
-button {
+button, a {
     all: unset;
     display: inline-block;
     box-sizing: border-box;
@@ -97,36 +246,29 @@ main h1 {
     animation-delay: 0.5s;
 }
 
-main .buttons {
+.buttons {
     display: flex;
     align-items: center;
-    flex-direction: column;
+    flex-direction: row;
     justify-content: center;
     gap: 30px;
-    grid-column: 2;
+
 }
 
 main h1,
-main .buttons {
+.buttons {
     opacity: 0;
     animation: fadeIn .8s ease-in-out forwards;
 }
 
-main .buttons button {
-    width: 400px;
-    height: 50px;
-    border: 2px solid black;
-    border-radius: 20px;
-    text-align: center;
+.buttons a {
     transition: 0.3s all ease;
     text-transform: uppercase;
     opacity: 0;
     animation: fadeIn 1s ease-in-out forwards;
     animation-delay: 0.5s;
-}
-
-main .buttons button#calendar {
-    max-width: 100px;
+    font-size: 14px;
+    border-bottom: 1px solid white;
 }
 
 .buttons button:hover {
@@ -158,4 +300,4 @@ main .buttons button#calendar {
         opacity: 1;
         transform: translateY(0);
     }
-}
+} */

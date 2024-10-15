@@ -29,8 +29,8 @@ $conn->close();
 <body>
 
     <button onclick="window.location.href='../inicio.php'" id="button-sair"><i class="fas fa-arrow-left"></i></button>
-    <button id="addEventBtn" class="btn btn-primary mt-3">Adicionar Prazo de Entrega</button>
     <div id="calendar"></div>
+    <button id="addEventBtn" class="btn btn-primary mt-3">Adicionar Prazo de Entrega</button>
 
     <div class="modal fade" id="addEventModal" tabindex="-1" aria-labelledby="addEventModalLabel" aria-hidden="true">
         <div class="modal-dialog">

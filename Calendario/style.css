@@ -32,9 +32,14 @@ body {
     background-color: #033797;
 }
 
+.buttons {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 40px;
+}
+
 #addEventBtn {
-    display: block;
-    margin: 0 auto 20px auto;
     padding: 10px 20px;
     background-color: #007bff;
     border-color: #007bff;
@@ -47,6 +52,21 @@ body {
 #addEventBtn:hover {
     background-color: #0056b3;
     border-color: #004085;
+}
+
+#logObra {
+    padding: 10px 20px;
+    background-color: #218838;
+    border-color: #1b7a30;
+    border-radius: 50px;
+    font-size: 16px;
+    color: #fff;
+    transition: background-color 0.3s ease;
+}
+
+#logObra:hover {
+    background-color: #155a24;
+    border-color: #27a542;
 }
 
 .modal-header {

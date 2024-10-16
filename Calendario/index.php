@@ -32,8 +32,14 @@ $conn->close();
 
     <button onclick="window.location.href='../inicio.php'" id="button-sair"><i class="fas fa-arrow-left"></i></button>
     <div id="calendar"></div>
-    <button id="addEventBtn" class="btn btn-primary mt-3">Adicionar Prazo de Entrega</button>
 
+    <!-- Botões para adicionar prazos e ver log por obra -->
+    <div class="buttons">
+        <button id="addEventBtn" class="btn btn-primary mt-3">Adicionar Prazo de Entrega</button>
+        <button id="logObra" class="btn btn-primary mt-3" data-bs-toggle="modal" data-bs-target="#logObraModal">Ver log por obra</button>
+    </div>
+
+    <!-- Modal para adicionar prazo de entrega -->
     <div class="modal fade" id="addEventModal" tabindex="-1" aria-labelledby="addEventModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -47,8 +53,7 @@ $conn->close();
                             <label for="obraId" class="form-label">ID da Obra</label>
                             <select name="opcao" id="opcao_obra">
                                 <?php foreach ($obras as $obra): ?>
-                                    <option value="<?= $obra['idobra']; ?>"><?= htmlspecialchars($obra['nome_obra']); ?>
-                                    </option>
+                                    <option value="<?= $obra['idobra']; ?>"><?= htmlspecialchars($obra['nome_obra']); ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
@@ -62,6 +67,44 @@ $conn->close();
                         </div>
                         <button type="submit" class="btn btn-success">Salvar</button>
                     </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para ver o log por obra -->
+    <div class="modal fade" id="logObraModal" tabindex="-1" aria-labelledby="logObraModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="logObraModalLabel">Log de Prazos da Obra</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="logObraForm">
+                        <div class="mb-3">
+                            <label for="logObraSelect" class="form-label">Selecione a Obra</label>
+                            <select id="logObraSelect" class="form-select">
+                                <option value="">Selecione uma obra</option>
+                                <?php foreach ($obras as $obra): ?>
+                                    <option value="<?= $obra['idobra']; ?>"><?= htmlspecialchars($obra['nome_obra']); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </form>
+
+                    <!-- Tabela para exibir os prazos da obra selecionada -->
+                    <table id="logObraTable" class="table table-bordered mt-3" style="display: none;">
+                        <thead>
+                            <tr>
+                                <th>Prazo</th>
+                                <th>Tipo da Entrega</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Dados dinâmicos serão inseridos aqui -->
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>

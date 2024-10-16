@@ -54,7 +54,8 @@ $idusuario = $_SESSION['idusuario'];
             <i class="fa-solid fa-calendar-days"></i>
         </a>
     </div>
-    <button id="voltar" onclick="window.location.href='inicio.php'">Voltar</button>
+
+    <img src="assets/ImproovFlow - logo.png" alt="Logo Improov + Flow">
 
 </header>
 

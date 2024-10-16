@@ -38,6 +38,7 @@ $idusuario = $_SESSION['idusuario'];
     </button>
 
     <div id="menu" class="hidden">
+        <a href="inicio.php" id="tab-imagens">Página Principal</a>
         <a href="main.php" id="tab-imagens">Visualizar tabela com imagens</a>
         <a href="Pos-Producao/index.php">Lista Pós-Produção</a>
 

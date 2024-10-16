@@ -52,3 +52,39 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 });
+
+document.getElementById('logObraSelect').addEventListener('change', function () {
+    const obraId = this.value;
+    const logObraTable = document.getElementById('logObraTable');
+    const tableBody = logObraTable.querySelector('tbody');
+
+    if (obraId) {
+        // Limpar tabela antes de inserir novos dados
+        tableBody.innerHTML = '';
+
+        // Requisição AJAX para buscar os prazos da obra selecionada
+        fetch('buscarPrazosObra.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `obraId=${obraId}`,
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.length > 0) {
+                data.forEach(prazo => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `<td>${prazo.prazo}</td><td>${prazo.tipo_entrega}</td>`;
+                    tableBody.appendChild(row);
+                });
+                logObraTable.style.display = 'table';  
+            } else {
+                logObraTable.style.display = 'none';  
+            }
+        })
+        .catch(error => console.error('Erro:', error));
+    } else {
+        logObraTable.style.display = 'none';  
+    }
+});

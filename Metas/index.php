@@ -49,8 +49,9 @@ $porcentagem = number_format($porcentagem, 2);
             <i class="fa-solid fa-bars"></i>
         </button>
         <div id="menu" class="hidden">
-            <a href="main.php" id="tab-imagens">Visualizar tabela com imagens</a>
-            <a href="Pos-Producao/index.php">Lista Pós-Produção</a>
+            <a href="../inicio.php" id="tab-imagens">Página Principal</a>
+            <a href="../main.php" id="tab-imagens">Visualizar tabela com imagens</a>
+            <a href="../Pos-Producao/index.php">Lista Pós-Produção</a>
 
             <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 3)): ?>
                 <a href="../infoCliente/index.php">Informações clientes</a>
@@ -60,8 +61,6 @@ $porcentagem = number_format($porcentagem, 2);
             <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 4)): ?>
                 <a href="../Animacao/index.php">Lista Animação</a>
             <?php endif; ?>
-
-            <a href="../Metas/index.php">Metas e progresso</a>
 
             <a id="calendar" class="calendar-btn" href="../Calendario/index.php">
                 <i class="fa-solid fa-calendar-days"></i>

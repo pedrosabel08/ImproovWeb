@@ -87,8 +87,7 @@ button#voltar:hover {
 
 
 header img {
-    width: 250px;
-    margin: 0 auto;
+    width: 150px;
     cursor: pointer;
 }
 
@@ -157,8 +156,9 @@ section.tabela-form {
 
 .tabelaClientes {
     margin-top: 15px;
-    height: 50vh;
     overflow-y: auto;
+    margin-bottom: 20px;
+    max-height: 60vh;
 }
 
 table#tabelaClientes {

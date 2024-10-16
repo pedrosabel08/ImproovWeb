@@ -808,55 +808,38 @@ document.addEventListener('DOMContentLoaded', function () {
                         row.appendChild(cellStatusImagem)
                         applyStatusImagem(cellStatusImagem, item.imagem_status)
 
+                        var cellPrazoImagem = document.createElement('td');
+                        cellPrazoImagem.textContent = item.prazo;
+                        row.appendChild(cellPrazoImagem)
+
+
                         var cellCadernoStatus = document.createElement('td');
                         cellCadernoStatus.textContent = item.caderno_status || '-';
-                        var cellCadernoPrazo = document.createElement('td');
-                        cellCadernoPrazo.textContent = item.caderno_prazo || '-';
                         row.appendChild(cellCadernoStatus);
-                        row.appendChild(cellCadernoPrazo);
-
 
                         var cellModelagemStatus = document.createElement('td');
                         cellModelagemStatus.textContent = item.modelagem_status || '-';
-                        var cellModelagemPrazo = document.createElement('td');
-                        cellModelagemPrazo.textContent = item.modelagem_prazo || '-';
                         row.appendChild(cellModelagemStatus);
-                        row.appendChild(cellModelagemPrazo);
 
                         var cellComposicaoStatus = document.createElement('td');
                         cellComposicaoStatus.textContent = item.composicao_status || '-';
-                        var cellComposicaoPrazo = document.createElement('td');
-                        cellComposicaoPrazo.textContent = item.composicao_prazo || '-';
                         row.appendChild(cellComposicaoStatus);
-                        row.appendChild(cellComposicaoPrazo);
 
                         var cellFinalizacaoStatus = document.createElement('td');
                         cellFinalizacaoStatus.textContent = item.finalizacao_status || '-';
-                        var cellFinalizacaoPrazo = document.createElement('td');
-                        cellFinalizacaoPrazo.textContent = item.finalizacao_prazo || '-';
                         row.appendChild(cellFinalizacaoStatus);
-                        row.appendChild(cellFinalizacaoPrazo);
 
                         var cellPosProducaoStatus = document.createElement('td');
                         cellPosProducaoStatus.textContent = item.pos_producao_status || '-';
-                        var cellPosProducaoPrazo = document.createElement('td');
-                        cellPosProducaoPrazo.textContent = item.pos_producao_prazo || '-';
                         row.appendChild(cellPosProducaoStatus);
-                        row.appendChild(cellPosProducaoPrazo);
 
                         var cellAlteracaoStatus = document.createElement('td');
                         cellAlteracaoStatus.textContent = item.alteracao_status || '-';
-                        var cellAlteracaoPrazo = document.createElement('td');
-                        cellAlteracaoPrazo.textContent = item.alteracao_prazo || '-';
                         row.appendChild(cellAlteracaoStatus);
-                        row.appendChild(cellAlteracaoPrazo);
 
                         var cellPlantaStatus = document.createElement('td');
                         cellPlantaStatus.textContent = item.planta_status || '-';
-                        var cellPlantaPrazo = document.createElement('td');
-                        cellPlantaPrazo.textContent = item.planta_prazo || '-';
                         row.appendChild(cellPlantaStatus);
-                        row.appendChild(cellPlantaPrazo);
 
 
                         var cellQntRevisoes = document.createElement('td');
@@ -1012,3 +995,49 @@ window.onclick = function (event) {
         modalLogs.style.display = "none";
     }
 }
+
+
+document.getElementById('generate-pdf').addEventListener('click', function () {
+    const { jsPDF } = window.jspdf;
+
+    const doc = new jsPDF({
+        orientation: 'landscape',
+    });
+
+    const now = new Date();
+    const formattedDate = now.toLocaleDateString();
+    const formattedTime = now.toLocaleTimeString();
+
+    const title = 'Teste PDF';
+    const subtitle = `Gerado em: ${formattedDate} às ${formattedTime}`;
+
+
+    doc.setFontSize(14);
+    doc.text(title, 14, 20);
+    doc.setFontSize(12);
+    doc.text(subtitle, 14, 30); 
+
+    const table = document.getElementById('tabela-follow');
+    const rows = [];
+    const headers = [];
+
+    table.querySelectorAll('thead tr th').forEach(header => {
+        headers.push(header.innerText);
+    });
+
+    table.querySelectorAll('tbody tr').forEach(row => {
+        const rowData = [];
+        row.querySelectorAll('td').forEach(cell => {
+            rowData.push(cell.innerText);
+        });
+        rows.push(rowData);
+    });
+
+    doc.autoTable({
+        head: [headers],
+        body: rows,
+        startY: 40     
+    });
+
+    doc.save('follow-up.pdf');
+});

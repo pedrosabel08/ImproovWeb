@@ -25,6 +25,8 @@ $idusuario = $_SESSION['idusuario'];
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
         integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
 
     <title>Improov+Flow</title>
 </head>
@@ -662,24 +664,20 @@ $conn->close();
                 <?php endforeach; ?>
             </select>
 
+            <button id="generate-pdf">Gerar PDF</button>
+
             <table id="tabela-follow">
                 <thead>
                     <th>Nome da Imagem</th>
                     <th>Status</th>
+                    <th>Prazo</th>
                     <th>Caderno</th>
-                    <th>Prazo</th>
                     <th>Model</th>
-                    <th>Prazo</th>
                     <th>Comp</th>
-                    <th>Prazo</th>
                     <th>Final</th>
-                    <th>Prazo</th>
                     <th>Pós</th>
-                    <th>Prazo</th>
                     <th>Alteração</th>
-                    <th>Prazo</th>
                     <th>Planta</th>
-                    <th>Prazo</th>
                     <th>Revisões</th>
 
                 </thead>
@@ -761,6 +759,7 @@ $conn->close();
     <script src="./script/script.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+
 
 
     </body>

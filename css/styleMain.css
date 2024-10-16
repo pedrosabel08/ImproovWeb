@@ -696,6 +696,13 @@ button#mostrarLogsBtn:hover {
     font-weight: bold;
 }
 
+button#generate-pdf {
+    padding: 5px;
+    background-color: #ff0202;
+    border-radius: 15px;
+    font-size: 14px;
+}
+
 
 @keyframes fadeIn {
     0% {

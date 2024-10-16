@@ -17,21 +17,14 @@ $obraId = intval($_GET['obra_id']);
 $sql = "SELECT
     ico.imagem_nome,
     s.nome_status AS imagem_status,
+	ico.prazo,
     MAX(CASE WHEN fi.funcao_id = 1 THEN fi.status END) AS caderno_status,
-    MAX(CASE WHEN fi.funcao_id = 1 THEN fi.prazo END) AS caderno_prazo,
     MAX(CASE WHEN fi.funcao_id = 2 THEN fi.status END) AS modelagem_status,
-    MAX(CASE WHEN fi.funcao_id = 2 THEN fi.prazo END) AS modelagem_prazo,
     MAX(CASE WHEN fi.funcao_id = 3 THEN fi.status END) AS composicao_status,
-    MAX(CASE WHEN fi.funcao_id = 3 THEN fi.prazo END) AS composicao_prazo,
     MAX(CASE WHEN fi.funcao_id = 4 THEN fi.status END) AS finalizacao_status,
-
-    MAX(CASE WHEN fi.funcao_id = 4 THEN fi.prazo END) AS finalizacao_prazo,
     MAX(CASE WHEN fi.funcao_id = 5 THEN fi.status END) AS pos_producao_status,
-    MAX(CASE WHEN fi.funcao_id = 5 THEN fi.prazo END) AS pos_producao_prazo,
     MAX(CASE WHEN fi.funcao_id = 6 THEN fi.status END) AS alteracao_status,
-    MAX(CASE WHEN fi.funcao_id = 6 THEN fi.prazo END) AS alteracao_prazo,
     MAX(CASE WHEN fi.funcao_id = 7 THEN fi.status END) AS planta_status,
-    MAX(CASE WHEN fi.funcao_id = 7 THEN fi.prazo END) AS planta_prazo,
     
     -- Subquery para o total de revisões
     (SELECT SUM(CASE WHEN lf.status_novo IN (2, 3, 4, 5) THEN 1 ELSE 0 END)

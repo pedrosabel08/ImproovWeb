@@ -169,6 +169,8 @@ $conn->close();
                         <option value="4">Status</option>
                     </select>
                     <input type="text" id="pesquisa" onkeyup="filtrarTabela()" placeholder="Buscar...">
+
+                    <input type="text" name="tipo_imagem" id="tipo_imagem" onkeyup="filtrarTipoImagem()" placeholder="Tipo Imagem...">
                 </div>
 
                 <div class="tabelaClientes">
@@ -199,6 +201,10 @@ $conn->close();
                             $filtro = isset($_GET['filtro']) ? $conn->real_escape_string($_GET['filtro']) : '';
                             $colunaFiltro = isset($_GET['colunaFiltro']) ? intval($_GET['colunaFiltro']) : 0;
 
+                            // Obter o valor do filtro de tipo de imagem
+                            $filtroTipoImagem = isset($_GET['filtroTipoImagem']) ? $conn->real_escape_string($_GET['filtroTipoImagem']) : '';
+                            $colunaFiltroImagem = isset($_GET['colunaFiltroImagem']) ? intval($_GET['colunaFiltroImagem']) : 0;
+
                             // Consulta para buscar os dados com filtro
                             $sql = "SELECT i.idimagens_cliente_obra, c.nome_cliente, o.nome_obra, i.recebimento_arquivos, i.data_inicio, i.prazo, MAX(i.imagem_nome) AS imagem_nome, i.prazo AS prazo_estimado, s.nome_status FROM imagens_cliente_obra i JOIN cliente c ON i.cliente_id = c.idcliente JOIN obra o ON i.obra_id = o.idobra LEFT JOIN funcao_imagem fi ON i.idimagens_cliente_obra = fi.imagem_id LEFT JOIN funcao f ON fi.funcao_id = f.idfuncao LEFT JOIN colaborador co ON fi.colaborador_id = co.idcolaborador LEFT JOIN status_imagem s ON i.status_id = s.idstatus GROUP BY i.idimagens_cliente_obra";
 
@@ -213,6 +219,12 @@ $conn->close();
                                 ];
                                 $coluna = $colunas[$colunaFiltro];
                                 $sql .= " HAVING LOWER($coluna) LIKE LOWER('%$filtro%')";
+                            }
+
+                            // Aplicar filtro de tipo de imagem se necessário
+                            if ($filtroTipoImagem) {
+                                // Supondo que a coluna do tipo de imagem na tabela seja 'tipo_imagem'
+                                $sql .= " HAVING LOWER(tipo_imagem) LIKE LOWER('%$filtroTipoImagem%')";
                             }
 
                             $result = $conn->query($sql);

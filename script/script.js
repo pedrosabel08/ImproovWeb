@@ -271,6 +271,27 @@ document.getElementById("pesquisa").addEventListener("keyup", function (event) {
     }
 });
 
+function filtrarTipoImagem() {
+    var input, filter, table, tr, td, i, txtValue;
+    input = document.getElementById("tipo_imagem"); // Campo input para o tipo de imagem
+    filter = input.value.toLowerCase(); // Valor do input, convertido para minúsculas
+    table = document.getElementById("tabelaClientes"); // A tabela a ser filtrada
+    tr = table.getElementsByTagName("tr"); // Todas as linhas da tabela
+
+    // Loop pelas linhas da tabela, exceto pelo cabeçalho
+    for (i = 1; i < tr.length; i++) {
+        td = tr[i].getElementsByTagName("td")[2]; // Considerando que a coluna "Imagem" seja a terceira coluna (índice 2)
+        if (td) {
+            txtValue = td.textContent || td.innerText; // Obtém o texto da célula
+            if (txtValue.toLowerCase().indexOf(filter) > -1) {
+                tr[i].style.display = ""; // Mostra a linha se o texto corresponde ao filtro
+            } else {
+                tr[i].style.display = "none"; // Esconde a linha se o texto não corresponde ao filtro
+            }
+        }
+    }
+}
+
 function openModal(modalId, element) {
 
     closeModal('add-cliente');
@@ -1007,17 +1028,17 @@ document.getElementById('generate-pdf').addEventListener('click', function () {
     const title = `Olá,\nSeguem as informações atualizadas sobre o status do seu projeto. Qualquer dúvida ou necessidade de ajuste, estamos à disposição.\n\nAtenciosamente,\nEquipe IMPROOV`;
     const legenda = `P00 - Envio em Toon: Primeira versão conceitual do projeto, enviada com estilo gráfico simplificado para avaliação inicial.\n\nR00 - Primeiro Envio: Primeira entrega completa, após ajustes da versão inicial.\n\nR01, R02, etc. - Revisão Enviada: Número de revisões enviadas, indicando cada versão revisada do projeto.\n\nEF - Entrega Final: Projeto concluído e aprovado em sua versão final.\n\nHOLD - Falta de Arquivos: O projeto está temporariamente parado devido à ausência de arquivos ou informações necessárias. O prazo de entrega também ficará pausado até o recebimento dos arquivos para darmos continuidade ao trabalho.`;
 
-    let currentY = 20; 
+    let currentY = 20;
 
-    const imgPath = 'assets/logo.jpg'; 
+    const imgPath = 'assets/logo.jpg';
 
     fetch(imgPath)
         .then(response => response.blob())
         .then(blob => {
             const reader = new FileReader();
             reader.onloadend = function () {
-                const imgData = reader.result; 
-                doc.addImage(imgData, 'PNG', 14, currentY, 40, 40); 
+                const imgData = reader.result;
+                doc.addImage(imgData, 'PNG', 14, currentY, 40, 40);
                 currentY += 50;
 
                 doc.setFontSize(14);
@@ -1027,7 +1048,7 @@ document.getElementById('generate-pdf').addEventListener('click', function () {
                 doc.setFontSize(10);
                 const legendaLines = doc.splitTextToSize(legenda, 180);
                 doc.text(legendaLines, 14, currentY);
-                currentY += (legendaLines.length * 10) + 10; 
+                currentY += (legendaLines.length * 10) + 10;
 
                 const table = document.getElementById('tabela-follow');
                 const rows = [];
@@ -1048,7 +1069,7 @@ document.getElementById('generate-pdf').addEventListener('click', function () {
                 doc.autoTable({
                     head: [headers],
                     body: rows,
-                    startY: currentY 
+                    startY: currentY
                 });
 
                 doc.save('follow-up.pdf');

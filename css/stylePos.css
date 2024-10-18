@@ -129,10 +129,16 @@ th {
 }
 
 th {
-    background-color: #f2f2f2;
     font-weight: bold;
 }
 
+tbody tr:nth-child(odd) {
+    background-color: #f2f2f2;
+}
+
+tbody tr:nth-child(even) {
+    background-color: #ffffff;
+}
 
 .modal {
     display: none;

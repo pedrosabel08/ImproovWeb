@@ -76,6 +76,10 @@ $count_pendentes = $row_pendentes['count_pendentes'];
                 <a href="Animacao/index.php">Lista Animação</a>
             <?php endif; ?>
 
+            <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1)): ?>
+                <a href="Imagens/index.php">Lista Imagens</a>
+            <?php endif; ?>
+
             <a href="Metas/index.php">Metas e progresso</a>
 
             <a id="calendar" class="calendar-btn" href="Calendario/index.php">

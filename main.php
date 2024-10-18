@@ -50,6 +50,9 @@ $idusuario = $_SESSION['idusuario'];
         <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 4)): ?>
             <a href="Animacao/index.php">Lista Animação</a>
         <?php endif; ?>
+        <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1)): ?>
+            <a href="Imagens/index.php">Lista Imagens</a>
+        <?php endif; ?>
 
         <a href="Metas/index.php">Metas e progresso</a>
 

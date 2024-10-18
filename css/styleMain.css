@@ -178,6 +178,14 @@ th {
 
 }
 
+.tabelaClientes tbody tr:nth-child(odd) {
+    background-color: #f2f2f2;
+}
+
+.tabelaClientes tbody tr:nth-child(even) {
+    background-color: #ffffff;
+}
+
 table#tabelaClientes td,
 table#tabelaClientes th {
     max-width: 20px;

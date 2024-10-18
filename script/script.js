@@ -258,20 +258,16 @@ function filtrarTabela() {
         var valorColuna = coluna.textContent || coluna.innerText;
         var tipoImagemColuna = linhas[i].getElementsByTagName("td")[7].textContent || linhas[i].getElementsByTagName("td")[7].innerText;
 
-        // Verifica se a linha deve ser exibida
         var mostrarLinha = true;
 
-        // Filtro de pesquisa
         if (filtro && valorColuna.toLowerCase().indexOf(filtro) === -1) {
             mostrarLinha = false;
         }
 
-        // Filtro de tipo de imagem
         if (tipoImagemFiltro && tipoImagemColuna.toLowerCase() !== tipoImagemFiltro.toLowerCase()) {
             mostrarLinha = false;
         }
 
-        // Exibe ou oculta a linha com base nos filtros
         linhas[i].style.display = mostrarLinha ? "" : "none";
     }
 }

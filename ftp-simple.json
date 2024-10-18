@@ -1,0 +1,11 @@
+{
+    "host": "ftp.improov.com.br",
+    "username": "improov",
+    "password": "Impr00v", 
+    "port": 21,
+    "protocol": "ftp", 
+    "remotePath": "/www/sistema",
+    "uploadOnSave": true,
+    "passive": true,
+    "timeout": 3000 
+}

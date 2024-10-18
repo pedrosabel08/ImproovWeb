@@ -108,7 +108,7 @@ if ($result_imagens->num_rows > 0) {
             <a href="../main.php" id="tab-imagens">Visualizar tabela com imagens</a>
 
             <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 3)): ?>
-                <a href="../infoCliente/index.php" >Informações clientes</a>
+                <a href="../infoCliente/index.php">Informações clientes</a>
                 <a href="../Acompanhamento/index.html">Acompanhamentos</a>
             <?php endif; ?>
 
@@ -124,11 +124,13 @@ if ($result_imagens->num_rows > 0) {
         </div>
 
         <h1>Lista Pós-Produção</h1>
+        <img src="../gif/assinatura_preto.gif" alt="" style="width: 200px;">
+
         <button id="openModalBtn">Inserir render</button>
         <?php if ($_SESSION['nivel_acesso'] == 1): ?>
             <button id="openNotify">
-                <i class="fa-solid fa-bell" id="icon-bell"></i>
                 <span id="notificacaoCount" class="notificacao-count">0</span>
+                <i class="fa-solid fa-bell" id="icon-bell"></i>
             </button>
             <div class="notificacoes" id="notificacoes">
                 <h3>Notificações</h3>

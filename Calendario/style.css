@@ -115,3 +115,9 @@ body {
 #addEventForm button:hover {
     background-color: #218838;
 }
+
+@media (max-width: 600px) {
+    #button-sair {
+        display: none;
+    }
+}

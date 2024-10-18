@@ -87,7 +87,7 @@ $count_pendentes = $row_pendentes['count_pendentes'];
             </a>
         </div>
         <div class="right">
-            <h1>Página Inicial</h1>
+            <img src="gif/assinatura_branco.gif" alt="" style="width: 200px;">
             <button id="showMenu"><i class="fa-solid fa-user"></i></button>
             <div id="menu2" class="hidden">
                 <a href="infos.php" id="editProfile"><i class="fa-regular fa-user"></i>Editar Informações</a>

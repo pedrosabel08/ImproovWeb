@@ -186,8 +186,8 @@ table#tabelaClientes th {
     white-space: nowrap;
 }
 
-table#tabelaClientes th.nome-imagem,
-table#tabelaClientes td.nome-imagem {
+table#tabelaClientes th#nome-imagem,
+table#tabelaClientes td#nome-imagem {
     max-width: 200px;
 }
 

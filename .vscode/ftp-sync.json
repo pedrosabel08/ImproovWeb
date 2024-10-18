@@ -14,9 +14,9 @@
     "agent": null,
     "allow": [],
     "ignore": [
-        "**.vscode",
-        "**.git", 
-        "**.DS_Store",
+        "\\.vscode",
+        "\\.git", 
+        "\\.DS_Store",
         "node_modules"
     ],
     "generatedFiles": {

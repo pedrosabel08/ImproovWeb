@@ -1004,40 +1004,56 @@ document.getElementById('generate-pdf').addEventListener('click', function () {
         orientation: 'landscape',
     });
 
-    const now = new Date();
-    const formattedDate = now.toLocaleDateString();
-    const formattedTime = now.toLocaleTimeString();
+    const title = `Olá,\nSeguem as informações atualizadas sobre o status do seu projeto. Qualquer dúvida ou necessidade de ajuste, estamos à disposição.\n\nAtenciosamente,\nEquipe IMPROOV`;
+    const legenda = `P00 - Envio em Toon: Primeira versão conceitual do projeto, enviada com estilo gráfico simplificado para avaliação inicial.\n\nR00 - Primeiro Envio: Primeira entrega completa, após ajustes da versão inicial.\n\nR01, R02, etc. - Revisão Enviada: Número de revisões enviadas, indicando cada versão revisada do projeto.\n\nEF - Entrega Final: Projeto concluído e aprovado em sua versão final.\n\nHOLD - Falta de Arquivos: O projeto está temporariamente parado devido à ausência de arquivos ou informações necessárias. O prazo de entrega também ficará pausado até o recebimento dos arquivos para darmos continuidade ao trabalho.`;
 
-    const title = 'Teste PDF';
-    const subtitle = `Gerado em: ${formattedDate} às ${formattedTime}`;
+    let currentY = 20; 
 
+    const imgPath = 'assets/logo.jpg'; 
 
-    doc.setFontSize(14);
-    doc.text(title, 14, 20);
-    doc.setFontSize(12);
-    doc.text(subtitle, 14, 30); 
+    fetch(imgPath)
+        .then(response => response.blob())
+        .then(blob => {
+            const reader = new FileReader();
+            reader.onloadend = function () {
+                const imgData = reader.result; 
+                doc.addImage(imgData, 'PNG', 14, currentY, 40, 40); 
+                currentY += 50;
 
-    const table = document.getElementById('tabela-follow');
-    const rows = [];
-    const headers = [];
+                doc.setFontSize(14);
+                doc.text(doc.splitTextToSize(title, 180), 14, currentY);
+                currentY += 40;
 
-    table.querySelectorAll('thead tr th').forEach(header => {
-        headers.push(header.innerText);
-    });
+                doc.setFontSize(10);
+                const legendaLines = doc.splitTextToSize(legenda, 180);
+                doc.text(legendaLines, 14, currentY);
+                currentY += (legendaLines.length * 10) + 10; 
 
-    table.querySelectorAll('tbody tr').forEach(row => {
-        const rowData = [];
-        row.querySelectorAll('td').forEach(cell => {
-            rowData.push(cell.innerText);
-        });
-        rows.push(rowData);
-    });
+                const table = document.getElementById('tabela-follow');
+                const rows = [];
+                const headers = [];
 
-    doc.autoTable({
-        head: [headers],
-        body: rows,
-        startY: 40     
-    });
+                table.querySelectorAll('thead tr th').forEach(header => {
+                    headers.push(header.innerText);
+                });
 
-    doc.save('follow-up.pdf');
+                table.querySelectorAll('tbody tr').forEach(row => {
+                    const rowData = [];
+                    row.querySelectorAll('td').forEach(cell => {
+                        rowData.push(cell.innerText);
+                    });
+                    rows.push(rowData);
+                });
+
+                doc.autoTable({
+                    head: [headers],
+                    body: rows,
+                    startY: currentY 
+                });
+
+                doc.save('follow-up.pdf');
+            }
+            reader.readAsDataURL(blob);
+        })
+        .catch(error => console.error('Erro ao carregar a imagem:', error));
 });

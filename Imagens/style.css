@@ -10,32 +10,32 @@
 }
 
 body {
-    background-color: #e9e9e9;
+    background-color: #444444;
 }
 
 button,
 a {
     all: unset;
-    display: inline-block;
-    box-sizing: border-box;
     cursor: pointer;
 }
 
 header {
     padding: 6px;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.548);
+    box-shadow: 0 2px 6px rgba(255, 255, 255, 0.548);
     display: flex;
     align-items: center;
     justify-content: space-between;
+    background-color: #49524b;
+    color: white;
+
+}
+
+header img {
+    width: 300px;
 }
 
 #menuButton {
-    margin-right: auto;
-}
-
-header h1 {
-    flex-grow: 1;
-    text-align: center;
+    margin-bottom: auto;
 }
 
 .hidden {
@@ -79,6 +79,7 @@ header h1 {
     background-color: #ccc;
 }
 
+
 main {
     padding: 2rem 6rem;
 }
@@ -90,6 +91,10 @@ main {
     width: 100%;
 }
 
+#filtro h1 {
+    color: white;
+}
+
 #filtro select,
 #filtro input {
     margin-bottom: 10px;
@@ -97,7 +102,7 @@ main {
     padding: 3px;
     font-size: 16px;
     border: none;
-    box-shadow: 0 0 7px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 2px 6px rgba(255, 255, 255, 0.548);
 }
 
 .tabelaClientes {
@@ -105,7 +110,7 @@ main {
     overflow-y: auto;
     margin-bottom: 20px;
     max-height: 60vh;
-    box-shadow: 0 0 7px rgba(0, 0, 0, 0.6);
+    box-shadow: 0 2px 6px rgba(255, 255, 255, 0.548);
 }
 
 table {
@@ -133,22 +138,14 @@ table th:nth-child(3) {
     max-width: 100px;
 }
 
-.tabelaClientes tbody tr:nth-child(odd) {
-    background-color: #f2f2f2;
-}
-
-.tabelaClientes tbody tr:nth-child(even) {
-    background-color: #ffffff;
-}
-
-tr:hover {
+tbody tr:hover {
     cursor: pointer;
-    background-color: #66afe9;
+    background-color: #1a72124b;
 }
 
 .linha-atualizada {
     background-color: rgba(255, 255, 0, 0.699);
-    transition: background-color 1s ease-in-out;
+    transition: background-color 0.7s ease-in-out;
 }
 
 .modal {

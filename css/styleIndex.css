@@ -36,7 +36,8 @@ button {
 .right {
     display: flex;
     justify-content: space-around;
-    width: 200px;
+    align-items: center;
+    gap: 50px;
 }
 
 .hidden {

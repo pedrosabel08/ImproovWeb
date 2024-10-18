@@ -248,20 +248,31 @@ function toggleNav() {
 function filtrarTabela() {
     var indiceColuna = document.getElementById("colunaFiltro").value;
     var filtro = document.getElementById("pesquisa").value.toLowerCase();
+    var tipoImagemFiltro = document.getElementById("tipoImagemFiltro").value;
     var tabela = document.getElementById("tabelaClientes");
     var tbody = tabela.getElementsByTagName("tbody")[0];
     var linhas = tbody.getElementsByTagName("tr");
 
     for (var i = 0; i < linhas.length; i++) {
         var coluna = linhas[i].getElementsByTagName("td")[indiceColuna];
-        if (coluna) {
-            var valorColuna = coluna.textContent || coluna.innerText;
-            if (valorColuna.toLowerCase().indexOf(filtro) > -1) {
-                linhas[i].style.display = "";
-            } else {
-                linhas[i].style.display = "none";
-            }
+        var valorColuna = coluna.textContent || coluna.innerText;
+        var tipoImagemColuna = linhas[i].getElementsByTagName("td")[7].textContent || linhas[i].getElementsByTagName("td")[7].innerText;
+
+        // Verifica se a linha deve ser exibida
+        var mostrarLinha = true;
+
+        // Filtro de pesquisa
+        if (filtro && valorColuna.toLowerCase().indexOf(filtro) === -1) {
+            mostrarLinha = false;
         }
+
+        // Filtro de tipo de imagem
+        if (tipoImagemFiltro && tipoImagemColuna.toLowerCase() !== tipoImagemFiltro.toLowerCase()) {
+            mostrarLinha = false;
+        }
+
+        // Exibe ou oculta a linha com base nos filtros
+        linhas[i].style.display = mostrarLinha ? "" : "none";
     }
 }
 
@@ -270,27 +281,6 @@ document.getElementById("pesquisa").addEventListener("keyup", function (event) {
         filtrarTabela();
     }
 });
-
-function filtrarTipoImagem() {
-    var input, filter, table, tr, td, i, txtValue;
-    input = document.getElementById("tipo_imagem"); // Campo input para o tipo de imagem
-    filter = input.value.toLowerCase(); // Valor do input, convertido para minúsculas
-    table = document.getElementById("tabelaClientes"); // A tabela a ser filtrada
-    tr = table.getElementsByTagName("tr"); // Todas as linhas da tabela
-
-    // Loop pelas linhas da tabela, exceto pelo cabeçalho
-    for (i = 1; i < tr.length; i++) {
-        td = tr[i].getElementsByTagName("td")[2]; // Considerando que a coluna "Imagem" seja a terceira coluna (índice 2)
-        if (td) {
-            txtValue = td.textContent || td.innerText; // Obtém o texto da célula
-            if (txtValue.toLowerCase().indexOf(filter) > -1) {
-                tr[i].style.display = ""; // Mostra a linha se o texto corresponde ao filtro
-            } else {
-                tr[i].style.display = "none"; // Esconde a linha se o texto não corresponde ao filtro
-            }
-        }
-    }
-}
 
 function openModal(modalId, element) {
 

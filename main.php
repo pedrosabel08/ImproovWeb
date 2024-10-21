@@ -622,7 +622,7 @@ $conn->close();
             <h1>Filtro por obra:</h1>
 
             <label for="obra">Obra:</label>
-            <select name="obra" id="obra">
+            <select name="obraFiltro" id="obraFiltro">
                 <option value="0">Selecione:</option>
                 <?php foreach ($obras as $obra): ?>
                     <option value="<?= htmlspecialchars($obra['idobra']); ?>">

@@ -12,7 +12,7 @@ if ($conn->connect_error) {
 $conn->set_charset('utf8mb4');
 
 $obraId = intval($_GET['obra_id']);
-$tipoImagem = isset($_GET['tipo_imagem']) && $_GET['tipo_imagem'] !== '0' ? $_GET['tipo_imagem'] : null;
+$tipoImagem = $_GET['tipo_imagem'] !== '0' && !empty($_GET['tipo_imagem']) ? $_GET['tipo_imagem'] : null;
 
 // Consulta SQL atualizada
 $sql = "SELECT

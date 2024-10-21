@@ -207,6 +207,12 @@ table#tabela-obra th:first-child {
     white-space: nowrap;
 }
 
+#tabela-obra td {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .nav-toggle {
     display: none;
     font-size: 30px;

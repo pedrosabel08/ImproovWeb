@@ -256,7 +256,7 @@ function filtrarTabela() {
     for (var i = 0; i < linhas.length; i++) {
         var coluna = linhas[i].getElementsByTagName("td")[indiceColuna];
         var valorColuna = coluna.textContent || coluna.innerText;
-        var tipoImagemColuna = linhas[i].getElementsByTagName("td")[7].textContent || linhas[i].getElementsByTagName("td")[7].innerText;
+        var tipoImagemColuna = linhas[i].getElementsByTagName("td")[4].textContent || linhas[i].getElementsByTagName("td")[4].innerText;
 
         var mostrarLinha = true;
 
@@ -685,7 +685,7 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 document.addEventListener('DOMContentLoaded', function () {
-    document.getElementById('obra').addEventListener('change', function () {
+    document.getElementById('obraFiltro').addEventListener('change', function () {
         atualizarFuncoes();
     });
 
@@ -694,13 +694,15 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     function atualizarFuncoes() {
-        var obraId = document.getElementById('obra').value;
+        var obraId = document.getElementById('obraFiltro').value;
         var tipoImagem = document.getElementById('tipo_imagem').value;
+        console.log('Enviando obraId:', obraId, 'tipoImagem:', tipoImagem);
 
         if (obraId) {
             fetch(`getFuncoesPorObra.php?obra_id=${obraId}&tipo_imagem=${tipoImagem}`)
                 .then(response => response.json())
                 .then(data => {
+                    console.log('Dados recebidos:', data);
                     var tabela = document.querySelector('#tabela-obra tbody');
                     tabela.innerHTML = '';
 

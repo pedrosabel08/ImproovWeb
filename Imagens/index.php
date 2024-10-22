@@ -55,7 +55,11 @@ session_start();
                     <option value="0">Cliente</option>
                     <option value="1">Obra</option>
                     <option value="2">Imagem</option>
-                    <option value="4">Status</option>
+                    <option value="3">Recebimento de arquivos</option>
+                    <option value="4">Data Inicio</option>
+                    <option value="5">Prazo</option>
+                    <option value="6">Status</option>
+                    <option value="7">Tipo imagem</option>
                 </select>
                 <input type="text" id="pesquisa" onkeyup="filtrarTabela()" placeholder="Buscar...">
 
@@ -69,11 +73,26 @@ session_start();
             </div>
         </div>
 
+        <div class="atualizarImagens">
+            <select id="colunaFiltro">
+                <option value="0">Cliente</option>
+                <option value="1">Obra</option>
+                <option value="2">Imagem</option>
+                <option value="3">Recebimento de arquivos</option>
+                <option value="4">Data Inicio</option>
+                <option value="5">Prazo</option>
+                <option value="6">Status</option>
+                <option value="7">Tipo imagem</option>
+            </select>
+            <input type="text" name="" id="">
+        </div>
+
         <div class="tabelaClientes">
 
             <table id="tabelaClientes">
                 <thead>
                     <tr>
+                        <th></th>
                         <th>Cliente</th>
                         <th>Obra</th>
                         <th>Imagem</th>

@@ -31,25 +31,47 @@ function metas() {
 function acomp() {
     window.location.href = 'Acompanhamento/index.html'
 }
+function calendar() {
+    window.location.href = 'Calendario/index.php'
+}
 
-document.addEventListener('DOMContentLoaded', () => {
-    const themeToggle = document.getElementById('theme-toggle');
-    const currentTheme = localStorage.getItem('theme');
 
-    if (currentTheme) {
-        document.body.classList.add(currentTheme);
-        themeToggle.checked = currentTheme === 'dark-mode';
-    }
+function formatarDataAtual() {
+    const opcoes = { weekday: 'long', day: 'numeric', month: 'long' };
+    const dataAtual = new Date();
+    return dataAtual.toLocaleDateString('pt-BR', opcoes);
+}
 
-    themeToggle.addEventListener('change', () => {
-        if (themeToggle.checked) {
-            document.body.classList.add('dark-mode');
-            document.body.classList.remove('light-mode');
-            localStorage.setItem('theme', 'dark-mode');
-        } else {
-            document.body.classList.add('light-mode');
-            document.body.classList.remove('dark-mode');
-            localStorage.setItem('theme', 'light-mode');
+document.getElementById('data').textContent = formatarDataAtual();
+
+document.addEventListener("DOMContentLoaded", function () {
+
+    document.getElementById('menuButton').addEventListener('click', function () {
+        const menu = document.getElementById('menu');
+        menu.classList.toggle('hidden');
+    });
+
+    window.addEventListener('click', function (event) {
+        const menu = document.getElementById('menu');
+        const button = document.getElementById('menuButton');
+
+        if (!button.contains(event.target) && !menu.contains(event.target)) {
+            menu.classList.add('hidden');
         }
     });
+
+    document.getElementById('showMenu').addEventListener('click', function () {
+        const menu2 = document.getElementById('menu2');
+        menu2.classList.toggle('hidden');
+    });
+
+    window.addEventListener('click', function (event) {
+        const menu2 = document.getElementById('menu2');
+        const button = document.getElementById('showMenu');
+
+        if (!button.contains(event.target) && !menu2.contains(event.target)) {
+            menu2.classList.add('hidden');
+        }
+    });
+
 });

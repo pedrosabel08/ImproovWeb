@@ -12,7 +12,7 @@ if ($conn->connect_error) {
 $conn->set_charset('utf8mb4');
 
 $obraId = intval($_GET['obra_id']);
-$tipoImagem = isset($_GET['tipo_imagem']) && $_GET['tipo_imagem'] !== '0' ? $_GET['tipo_imagem'] : null;
+$tipoImagem = $_GET['tipo_imagem'] !== '0' && !empty($_GET['tipo_imagem']) ? $_GET['tipo_imagem'] : null;
 
 // Consulta SQL atualizada
 $sql = "SELECT
@@ -29,7 +29,9 @@ $sql = "SELECT
         MAX(CASE WHEN fi.funcao_id = 5 THEN c.nome_colaborador END) AS pos_producao_colaborador,
         MAX(CASE WHEN fi.funcao_id = 5 THEN fi.status END) AS pos_producao_status,
         MAX(CASE WHEN fi.funcao_id = 6 THEN c.nome_colaborador END) AS alteracao_colaborador,
-        MAX(CASE WHEN fi.funcao_id = 6 THEN fi.status END) AS alteracao_status
+        MAX(CASE WHEN fi.funcao_id = 6 THEN fi.status END) AS alteracao_status,
+        MAX(CASE WHEN fi.funcao_id = 7 THEN c.nome_colaborador END) AS planta_colaborador,
+        MAX(CASE WHEN fi.funcao_id = 7 THEN fi.status END) AS planta_status
     FROM funcao_imagem fi
     JOIN imagens_cliente_obra ico ON fi.imagem_id = ico.idimagens_cliente_obra
     JOIN colaborador c ON fi.colaborador_id = c.idcolaborador

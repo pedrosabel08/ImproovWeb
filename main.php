@@ -25,24 +25,44 @@ $idusuario = $_SESSION['idusuario'];
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
         integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
 
     <title>Improov+Flow</title>
 </head>
 
 
 <header>
-    <a href="inicio.php">
-        <img src="./assets/ImproovFlow - logo.png" alt="Improov" class="logo">
-    </a>
-    <div class="buttons">
-        <button id="voltar" onclick="window.location.href='inicio.php'">Voltar</button>
-        <button id="menuButton"><i class="fa-solid fa-user"></i></button>
-        <div id="menu" class="hidden">
-            <a href="infos.php" id="editProfile"><i class="fa-regular fa-user"></i>Editar Informações</a>
-            <hr>
-            <a href="#" id="logout"><i class="fa-solid fa-right-from-bracket"></i>Sair</a>
-        </div>
+    <button id="menuButton">
+        <i class="fa-solid fa-bars"></i>
+    </button>
+
+    <div id="menu" class="hidden">
+        <a href="inicio.php" id="tab-imagens">Página Principal</a>
+        <a href="main.php" id="tab-imagens">Visualizar tabela com imagens</a>
+        <a href="Pos-Producao/index.php">Lista Pós-Produção</a>
+
+        <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 3)): ?>
+            <a href="infoCliente/index.php">Informações clientes</a>
+            <a href="Acompanhamento/index.html">Acompanhamentos</a>
+        <?php endif; ?>
+
+        <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 4)): ?>
+            <a href="Animacao/index.php">Lista Animação</a>
+        <?php endif; ?>
+        <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1)): ?>
+            <a href="Imagens/index.php">Lista Imagens</a>
+        <?php endif; ?>
+
+        <a href="Metas/index.php">Metas e progresso</a>
+
+        <a id="calendar" class="calendar-btn" href="Calendario/index.php">
+            <i class="fa-solid fa-calendar-days"></i>
+        </a>
     </div>
+
+    <img src="assets/ImproovFlow - logo.png" alt="Logo Improov + Flow">
+
 </header>
 
 
@@ -148,74 +168,82 @@ $conn->close();
                         <option value="0">Cliente</option>
                         <option value="1">Obra</option>
                         <option value="2">Imagem</option>
-                        <option value="3">Prazo Estimado</option>
                         <option value="4">Status</option>
                     </select>
                     <input type="text" id="pesquisa" onkeyup="filtrarTabela()" placeholder="Buscar...">
+
+                    <select id="tipoImagemFiltro" onchange="filtrarTabela()">
+                        <option value="">Todos os Tipos de Imagem</option>
+                        <option value="Fachada">Fachada</option>
+                        <option value="Imagem Interna">Imagem Interna</option>
+                        <option value="Imagem Externa">Imagem Externa</option>
+                        <option value="Planta Humanizada">Planta Humanizada</option>
+                    </select>
                 </div>
 
                 <div class="tabelaClientes">
                     <table id="tabelaClientes">
                         <thead>
                             <tr>
-                                <th>Cliente</th>
-                                <th>Obra</th>
-                                <th class="nome-imagem">Imagem</th>
-                                <th>Receb. arquivos</th>
-                                <th>Data Inicio</th>
-                                <th>Prazo</th>
-                                <th>Status</th>
+                                <th id="cliente">Cliente</th>
+                                <th id="obra">Obra</th>
+                                <th id="nome-imagem">Imagem</th>
+                                <th id="status">Status</th>
+                                <th>Tipo Imagem</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php
-                            // Conectar ao banco de dados
                             $conn = new mysqli('mysql.improov.com.br', 'improov', 'Impr00v', 'improov');
 
-                            // Verificar a conexão
                             if ($conn->connect_error) {
                                 die("Falha na conexão: " . $conn->connect_error);
                             }
                             $conn->set_charset('utf8mb4');
 
-                            // Obter o valor do filtro de pesquisa
                             $filtro = isset($_GET['filtro']) ? $conn->real_escape_string($_GET['filtro']) : '';
                             $colunaFiltro = isset($_GET['colunaFiltro']) ? intval($_GET['colunaFiltro']) : 0;
+                            $tipoImagemFiltro = isset($_GET['tipoImagemFiltro']) ? $conn->real_escape_string($_GET['tipoImagemFiltro']) : '';
 
-                            // Consulta para buscar os dados com filtro
-                            $sql = "SELECT i.idimagens_cliente_obra, c.nome_cliente, o.nome_obra, i.recebimento_arquivos, i.data_inicio, i.prazo, MAX(i.imagem_nome) AS imagem_nome, i.prazo AS prazo_estimado, s.nome_status FROM imagens_cliente_obra i JOIN cliente c ON i.cliente_id = c.idcliente JOIN obra o ON i.obra_id = o.idobra LEFT JOIN funcao_imagem fi ON i.idimagens_cliente_obra = fi.imagem_id LEFT JOIN funcao f ON fi.funcao_id = f.idfuncao LEFT JOIN colaborador co ON fi.colaborador_id = co.idcolaborador LEFT JOIN status_imagem s ON i.status_id = s.idstatus GROUP BY i.idimagens_cliente_obra";
+                            $sql = "SELECT i.idimagens_cliente_obra, c.nome_cliente, o.nome_obra, i.recebimento_arquivos, i.data_inicio, i.prazo, MAX(i.imagem_nome) AS imagem_nome, i.prazo AS prazo_estimado, s.nome_status, i.tipo_imagem FROM imagens_cliente_obra i 
+                            JOIN cliente c ON i.cliente_id = c.idcliente 
+                            JOIN obra o ON i.obra_id = o.idobra 
+                            LEFT JOIN funcao_imagem fi ON i.idimagens_cliente_obra = fi.imagem_id 
+                            LEFT JOIN funcao f ON fi.funcao_id = f.idfuncao 
+                            LEFT JOIN colaborador co ON fi.colaborador_id = co.idcolaborador 
+                            LEFT JOIN status_imagem s ON i.status_id = s.idstatus 
+                            GROUP BY i.idimagens_cliente_obra";
 
-                            // Aplicar filtro se necessário
                             if ($filtro) {
                                 $colunas = [
                                     'nome_cliente',
                                     'nome_obra',
                                     'imagem_nome',
-                                    'prazo_estimado',
                                     'nome_status'
                                 ];
                                 $coluna = $colunas[$colunaFiltro];
                                 $sql .= " HAVING LOWER($coluna) LIKE LOWER('%$filtro%')";
                             }
 
+                            if ($tipoImagemFiltro) {
+                                $sql .= " HAVING LOWER(tipo_imagem) = LOWER('$tipoImagemFiltro')";
+                            }
+
                             $result = $conn->query($sql);
 
-                            // Verificar se houve erro na execução da consulta
                             if (!$result) {
                                 die("Erro na consulta SQL: " . $conn->error);
                             }
 
                             if ($result->num_rows > 0) {
-                                // Exibir os dados em linhas na tabela
+
                                 while ($row = $result->fetch_assoc()) {
                                     echo "<tr class='linha-tabela' data-id='" . htmlspecialchars($row["idimagens_cliente_obra"]) . "'>";
                                     echo "<td title='" . htmlspecialchars($row["nome_cliente"]) . "'>" . htmlspecialchars($row["nome_cliente"]) . "</td>";
                                     echo "<td title='" . htmlspecialchars($row["nome_obra"]) . "'>" . htmlspecialchars($row["nome_obra"]) . "</td>";
                                     echo "<td title='" . htmlspecialchars($row["imagem_nome"]) . "'>" . htmlspecialchars($row["imagem_nome"]) . "</td>";
-                                    echo "<td title='" . htmlspecialchars($row["recebimento_arquivos"]) . "'>" . htmlspecialchars($row["recebimento_arquivos"]) . "</td>";
-                                    echo "<td title='" . htmlspecialchars($row["data_inicio"]) . "'>" . htmlspecialchars($row["data_inicio"]) . "</td>";
-                                    echo "<td title='" . htmlspecialchars($row["prazo_estimado"]) . "'>" . htmlspecialchars($row["prazo_estimado"]) . "</td>";
                                     echo "<td title='" . htmlspecialchars($row["nome_status"]) . "'>" . htmlspecialchars($row["nome_status"]) . "</td>";
+                                    echo "<td title='" . htmlspecialchars($row["tipo_imagem"]) . "'>" . htmlspecialchars($row["tipo_imagem"]) . "</td>";
                                     echo "</tr>";
                                 }
                             } else {
@@ -594,7 +622,7 @@ $conn->close();
             <h1>Filtro por obra:</h1>
 
             <label for="obra">Obra:</label>
-            <select name="obra" id="obra">
+            <select name="obraFiltro" id="obraFiltro">
                 <option value="0">Selecione:</option>
                 <?php foreach ($obras as $obra): ?>
                     <option value="<?= htmlspecialchars($obra['idobra']); ?>">
@@ -648,24 +676,20 @@ $conn->close();
                 <?php endforeach; ?>
             </select>
 
+            <button id="generate-pdf">Gerar PDF</button>
+
             <table id="tabela-follow">
                 <thead>
                     <th>Nome da Imagem</th>
                     <th>Status</th>
+                    <th>Prazo</th>
                     <th>Caderno</th>
-                    <th>Prazo</th>
                     <th>Model</th>
-                    <th>Prazo</th>
                     <th>Comp</th>
-                    <th>Prazo</th>
                     <th>Final</th>
-                    <th>Prazo</th>
                     <th>Pós</th>
-                    <th>Prazo</th>
                     <th>Alteração</th>
-                    <th>Prazo</th>
                     <th>Planta</th>
-                    <th>Prazo</th>
                     <th>Revisões</th>
 
                 </thead>
@@ -747,6 +771,7 @@ $conn->close();
     <script src="./script/script.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+
 
 
     </body>

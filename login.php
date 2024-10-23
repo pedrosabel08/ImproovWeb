@@ -23,7 +23,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $senha = htmlspecialchars(trim($_POST['senha']));
 
     // Preparar a consulta SQL
-    $sql = "SELECT idusuario, nome_usuario, nivel_acesso FROM usuario WHERE login = ? AND senha = ?";
+    $sql = "SELECT idusuario, nome_usuario, nivel_acesso, idcolaborador FROM usuario WHERE login = ? AND senha = ?";
     $stmt = $conn->prepare($sql);
     $stmt->bind_param("ss", $login, $senha);
     $stmt->execute();
@@ -36,6 +36,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $_SESSION['idusuario'] = $row['idusuario'];
         $_SESSION['nome_usuario'] = $row['nome_usuario'];
         $_SESSION['nivel_acesso'] = $row['nivel_acesso'];
+        $_SESSION['idcolaborador'] = $row['idcolaborador'];
+
         $_SESSION['logado'] = true;
 
         // Resposta JSON de sucesso

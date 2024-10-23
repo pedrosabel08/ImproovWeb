@@ -17,7 +17,7 @@ document.addEventListener("DOMContentLoaded", function () {
             $.ajax({
                 type: "GET",
                 dataType: "json",
-                url: "http://www.improov.com.br/sistema/buscaLinhaAJAX.php",
+                url: "https://www.improov.com.br/sistema/buscaLinhaAJAX.php",
                 data: { ajid: idImagemSelecionada },
                 success: function (response) {
                     if (response.nome_imagem) {
@@ -209,7 +209,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         $.ajax({
             type: "POST",
-            url: "http://www.improov.com.br/sistema/insereFuncao.php",
+            url: "https://www.improov.com.br/sistema/insereFuncao.php",
             data: dados,
             success: function (response) {
                 console.log(response);
@@ -248,20 +248,27 @@ function toggleNav() {
 function filtrarTabela() {
     var indiceColuna = document.getElementById("colunaFiltro").value;
     var filtro = document.getElementById("pesquisa").value.toLowerCase();
+    var tipoImagemFiltro = document.getElementById("tipoImagemFiltro").value;
     var tabela = document.getElementById("tabelaClientes");
     var tbody = tabela.getElementsByTagName("tbody")[0];
     var linhas = tbody.getElementsByTagName("tr");
 
     for (var i = 0; i < linhas.length; i++) {
         var coluna = linhas[i].getElementsByTagName("td")[indiceColuna];
-        if (coluna) {
-            var valorColuna = coluna.textContent || coluna.innerText;
-            if (valorColuna.toLowerCase().indexOf(filtro) > -1) {
-                linhas[i].style.display = "";
-            } else {
-                linhas[i].style.display = "none";
-            }
+        var valorColuna = coluna.textContent || coluna.innerText;
+        var tipoImagemColuna = linhas[i].getElementsByTagName("td")[4].textContent || linhas[i].getElementsByTagName("td")[4].innerText;
+
+        var mostrarLinha = true;
+
+        if (filtro && valorColuna.toLowerCase().indexOf(filtro) === -1) {
+            mostrarLinha = false;
         }
+
+        if (tipoImagemFiltro && tipoImagemColuna.toLowerCase() !== tipoImagemFiltro.toLowerCase()) {
+            mostrarLinha = false;
+        }
+
+        linhas[i].style.display = mostrarLinha ? "" : "none";
     }
 }
 
@@ -678,7 +685,7 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 document.addEventListener('DOMContentLoaded', function () {
-    document.getElementById('obra').addEventListener('change', function () {
+    document.getElementById('obraFiltro').addEventListener('change', function () {
         atualizarFuncoes();
     });
 
@@ -687,13 +694,15 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     function atualizarFuncoes() {
-        var obraId = document.getElementById('obra').value;
+        var obraId = document.getElementById('obraFiltro').value;
         var tipoImagem = document.getElementById('tipo_imagem').value;
+        console.log('Enviando obraId:', obraId, 'tipoImagem:', tipoImagem);
 
         if (obraId) {
             fetch(`getFuncoesPorObra.php?obra_id=${obraId}&tipo_imagem=${tipoImagem}`)
                 .then(response => response.json())
                 .then(data => {
+                    console.log('Dados recebidos:', data);
                     var tabela = document.querySelector('#tabela-obra tbody');
                     tabela.innerHTML = '';
 
@@ -808,55 +817,38 @@ document.addEventListener('DOMContentLoaded', function () {
                         row.appendChild(cellStatusImagem)
                         applyStatusImagem(cellStatusImagem, item.imagem_status)
 
+                        var cellPrazoImagem = document.createElement('td');
+                        cellPrazoImagem.textContent = item.prazo;
+                        row.appendChild(cellPrazoImagem)
+
+
                         var cellCadernoStatus = document.createElement('td');
                         cellCadernoStatus.textContent = item.caderno_status || '-';
-                        var cellCadernoPrazo = document.createElement('td');
-                        cellCadernoPrazo.textContent = item.caderno_prazo || '-';
                         row.appendChild(cellCadernoStatus);
-                        row.appendChild(cellCadernoPrazo);
-
 
                         var cellModelagemStatus = document.createElement('td');
                         cellModelagemStatus.textContent = item.modelagem_status || '-';
-                        var cellModelagemPrazo = document.createElement('td');
-                        cellModelagemPrazo.textContent = item.modelagem_prazo || '-';
                         row.appendChild(cellModelagemStatus);
-                        row.appendChild(cellModelagemPrazo);
 
                         var cellComposicaoStatus = document.createElement('td');
                         cellComposicaoStatus.textContent = item.composicao_status || '-';
-                        var cellComposicaoPrazo = document.createElement('td');
-                        cellComposicaoPrazo.textContent = item.composicao_prazo || '-';
                         row.appendChild(cellComposicaoStatus);
-                        row.appendChild(cellComposicaoPrazo);
 
                         var cellFinalizacaoStatus = document.createElement('td');
                         cellFinalizacaoStatus.textContent = item.finalizacao_status || '-';
-                        var cellFinalizacaoPrazo = document.createElement('td');
-                        cellFinalizacaoPrazo.textContent = item.finalizacao_prazo || '-';
                         row.appendChild(cellFinalizacaoStatus);
-                        row.appendChild(cellFinalizacaoPrazo);
 
                         var cellPosProducaoStatus = document.createElement('td');
                         cellPosProducaoStatus.textContent = item.pos_producao_status || '-';
-                        var cellPosProducaoPrazo = document.createElement('td');
-                        cellPosProducaoPrazo.textContent = item.pos_producao_prazo || '-';
                         row.appendChild(cellPosProducaoStatus);
-                        row.appendChild(cellPosProducaoPrazo);
 
                         var cellAlteracaoStatus = document.createElement('td');
                         cellAlteracaoStatus.textContent = item.alteracao_status || '-';
-                        var cellAlteracaoPrazo = document.createElement('td');
-                        cellAlteracaoPrazo.textContent = item.alteracao_prazo || '-';
                         row.appendChild(cellAlteracaoStatus);
-                        row.appendChild(cellAlteracaoPrazo);
 
                         var cellPlantaStatus = document.createElement('td');
                         cellPlantaStatus.textContent = item.planta_status || '-';
-                        var cellPlantaPrazo = document.createElement('td');
-                        cellPlantaPrazo.textContent = item.planta_prazo || '-';
                         row.appendChild(cellPlantaStatus);
-                        row.appendChild(cellPlantaPrazo);
 
 
                         var cellQntRevisoes = document.createElement('td');
@@ -954,10 +946,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
 });
 
-document.getElementById('editProfile').addEventListener('click', function () {
-    window.location.href = 'infos.html';
-});
-
 var modalLogs = document.getElementById("modalLogs");
 var closeBtn = document.getElementsByClassName("close")[0];
 const formPosProducao = document.getElementById('formPosProducao');
@@ -1016,3 +1004,65 @@ window.onclick = function (event) {
         modalLogs.style.display = "none";
     }
 }
+
+
+document.getElementById('generate-pdf').addEventListener('click', function () {
+    const { jsPDF } = window.jspdf;
+
+    const doc = new jsPDF({
+        orientation: 'landscape',
+    });
+
+    const title = `Olá,\nSeguem as informações atualizadas sobre o status do seu projeto. Qualquer dúvida ou necessidade de ajuste, estamos à disposição.\n\nAtenciosamente,\nEquipe IMPROOV`;
+    const legenda = `P00 - Envio em Toon: Primeira versão conceitual do projeto, enviada com estilo gráfico simplificado para avaliação inicial.\n\nR00 - Primeiro Envio: Primeira entrega completa, após ajustes da versão inicial.\n\nR01, R02, etc. - Revisão Enviada: Número de revisões enviadas, indicando cada versão revisada do projeto.\n\nEF - Entrega Final: Projeto concluído e aprovado em sua versão final.\n\nHOLD - Falta de Arquivos: O projeto está temporariamente parado devido à ausência de arquivos ou informações necessárias. O prazo de entrega também ficará pausado até o recebimento dos arquivos para darmos continuidade ao trabalho.`;
+
+    let currentY = 20;
+
+    const imgPath = 'assets/logo.jpg';
+
+    fetch(imgPath)
+        .then(response => response.blob())
+        .then(blob => {
+            const reader = new FileReader();
+            reader.onloadend = function () {
+                const imgData = reader.result;
+                doc.addImage(imgData, 'PNG', 14, currentY, 40, 40);
+                currentY += 50;
+
+                doc.setFontSize(14);
+                doc.text(doc.splitTextToSize(title, 180), 14, currentY);
+                currentY += 40;
+
+                doc.setFontSize(10);
+                const legendaLines = doc.splitTextToSize(legenda, 180);
+                doc.text(legendaLines, 14, currentY);
+                currentY += (legendaLines.length * 10) + 10;
+
+                const table = document.getElementById('tabela-follow');
+                const rows = [];
+                const headers = [];
+
+                table.querySelectorAll('thead tr th').forEach(header => {
+                    headers.push(header.innerText);
+                });
+
+                table.querySelectorAll('tbody tr').forEach(row => {
+                    const rowData = [];
+                    row.querySelectorAll('td').forEach(cell => {
+                        rowData.push(cell.innerText);
+                    });
+                    rows.push(rowData);
+                });
+
+                doc.autoTable({
+                    head: [headers],
+                    body: rows,
+                    startY: currentY
+                });
+
+                doc.save('follow-up.pdf');
+            }
+            reader.readAsDataURL(blob);
+        })
+        .catch(error => console.error('Erro ao carregar a imagem:', error));
+});

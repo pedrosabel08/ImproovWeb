@@ -59,6 +59,18 @@ main {
     margin-bottom: 10px;
 }
 
+#filtro h1 {
+    font-size: 24px;
+}
+
+#filtro select, input {
+    font-size: 16px;
+}
+
+#filtro {
+    margin-bottom: 2rem;
+}
+
 table {
     width: 100%;
     border-collapse: collapse;

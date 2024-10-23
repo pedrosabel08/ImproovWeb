@@ -34,6 +34,23 @@
         </div>
 
         <div class="coluna">
+
+            <div id="filtro">
+                <h1>Filtro</h1>
+                <div id="filtros">
+                    <select id="colunaFiltro">
+                        <option value="0">Obra</option>
+                        <option value="1">Colaborador</option>
+                        <option value="2">Assunto</option>
+                        <option value="3">Data</option>
+                        <option value="4">Data Inicio</option>
+                        <option value="5">Prazo</option>
+                        <option value="6">Status</option>
+                        <option value="7">Tipo imagem</option>
+                    </select>
+                    <input type="text" id="pesquisa" onkeyup="filtrarTabela()" placeholder="Buscar...">
+                </div>
+            </div>
             <h2>Tabela de Acompanhamento por Email</h2>
             <table id="tabela-acomp-email">
                 <thead>

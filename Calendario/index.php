@@ -62,8 +62,27 @@ $conn->close();
                             <input type="date" class="form-control" id="prazoDate" required>
                         </div>
                         <div class="mb-3">
+                            <label for="assuntoEntrega" class="form-label">Assunto da Entrega</label>
+                            <input type="text" class="form-control" id="assuntoEntrega" required>
+                        </div>
+                        <div class="mb-3">
                             <label for="tipoEntrega" class="form-label">Tipo da Entrega</label>
-                            <input type="text" class="form-control" id="tipoEntrega" required>
+                            <select name="tipoEntrega" id="tipoEntrega">
+                                <option value="Primeira Entrega">Primeira Entrega</option>
+                                <option value="Entrega Final">Entrega Final</option>
+                                <option value="Alteração">Alteração</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="">Colaboradores:</label>
+                            <select name="colab_id[]" id="colab_id" multiple class="form-control">
+                                <?php foreach ($colaboradores as $colab): ?>
+                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
                         </div>
                         <button type="submit" class="btn btn-success">Salvar</button>
                     </form>

@@ -47,13 +47,14 @@ header button#openModalBtn {
     font-weight: bold;
 }
 
-header button#add-imagem {
+header button#openModalBtnRender {
     padding: 8px;
     background-color: #ffd900;
     border: 1px solid black;
     border-radius: 5px;
     font-weight: bold;
 }
+
 
 .hidden {
     display: none;
@@ -164,6 +165,23 @@ tbody tr:nth-child(even) {
     animation: showModal 0.3s ease;
 }
 
+h2 {
+    margin-top: 0;
+}
+
+ul {
+    padding-left: 20px;
+}
+
+.modal-content p {
+    padding-top: 10px;
+}
+
+.modal-content h3 {
+    font-weight: 400;
+    font-size: 16px;
+}
+
 @keyframes showModal {
     from {
         transform: scale(0.8);
@@ -176,7 +194,8 @@ tbody tr:nth-child(even) {
     }
 }
 
-.close {
+.close,
+.closeModalRender {
     color: #aaa;
     float: right;
     font-size: 28px;
@@ -184,7 +203,8 @@ tbody tr:nth-child(even) {
     cursor: pointer;
 }
 
-.close:hover {
+.close:hover,
+.closeModalRender:hover {
     color: black;
 }
 

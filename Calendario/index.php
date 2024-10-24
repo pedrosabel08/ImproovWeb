@@ -9,6 +9,7 @@ $obras = obterObras($conn);
 $colaboradores = obterColaboradores($conn);
 $status_imagens = obterStatusImagens($conn);
 $funcoes = obterFuncoes($conn);
+$usuarios = oberUsuarios($conn);
 
 $conn->close();
 
@@ -71,15 +72,16 @@ $conn->close();
                                 <option value="Primeira Entrega">Primeira Entrega</option>
                                 <option value="Entrega Final">Entrega Final</option>
                                 <option value="Alteração">Alteração</option>
+                                <option value="Entrega tarefa">Entrega tarefa</option>
                             </select>
                         </div>
 
                         <div class="mb-3">
                             <label for="">Colaboradores:</label>
-                            <select name="colab_id[]" id="colab_id" multiple class="form-control">
-                                <?php foreach ($colaboradores as $colab): ?>
-                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                            <select name="usuario_id[]" id="usuario_id" multiple class="form-control">
+                                <?php foreach ($usuarios as $usuario): ?>
+                                    <option value="<?= htmlspecialchars($usuario['idusuario']); ?>">
+                                        <?= htmlspecialchars($usuario['nome_usuario']); ?>
                                     </option>
                                 <?php endforeach; ?>
                             </select>

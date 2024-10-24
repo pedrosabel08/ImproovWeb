@@ -87,3 +87,19 @@ function obterFuncoes($conn)
 
     return $funcoes;
 }
+
+function oberUsuarios($conn)
+{
+    $sql = "SELECT idusuario, nome_usuario FROM usuario ORDER BY nome_usuario ASC";
+    $result = $conn->query($sql);
+    $usuarios = array();
+
+    if ($result->num_rows > 0) {
+        while ($row = $result->fetch_assoc()) {
+            $usuarios[] = $row;
+        }
+    }
+
+    return $usuarios;
+}
+

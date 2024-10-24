@@ -12,19 +12,20 @@ $idusuario = $_SESSION['idusuario'];
 $nome_usuario = $_SESSION['nome_usuario'];
 $idcolaborador = $_SESSION['idcolaborador'];
 
-$sql = "SELECT l.funcao_imagem_id, l.status_anterior, l.status_novo, l.data, i.imagem_nome, o.nome_obra
-        FROM log_alteracoes l
-        INNER JOIN funcao_imagem f ON f.idfuncao_imagem = l.funcao_imagem_id 
-        INNER JOIN imagens_cliente_obra i ON f.imagem_id = i.idimagens_cliente_obra
-        INNER JOIN obra o ON i.obra_id = o.idobra
-        WHERE l.colaborador_id = ?
-        ORDER BY l.data DESC
-        LIMIT 5";
+$sql = "SELECT n.mensagem, n.data_criacao, nu.lida 
+        FROM notificacoes n 
+        JOIN notificacoes_usuarios nu ON n.id = nu.notificacao_id 
+        WHERE nu.usuario_id = ? 
+		AND n.tipo_notificacao <> 'pos'
+		AND nu.lida = 0
+        AND n.data_criacao >= CURDATE() 
+        AND n.data_criacao < DATE_ADD(CURDATE(), INTERVAL 7 DAY)
+        ORDER BY n.data_criacao DESC";
 
 $stmt = $conn->prepare($sql);
-$stmt->bind_param("i", $idcolaborador);
+$stmt->bind_param("i", $idusuario);
 $stmt->execute();
-$result = $stmt->get_result();
+$resultNotificacoes = $stmt->get_result();
 
 
 $sql_finalizadas = "SELECT COUNT(*) as count_finalizadas FROM funcao_imagem WHERE status = 'Finalizado' AND colaborador_id = ?";
@@ -43,6 +44,9 @@ $stmt_pendentes->execute();
 $result_pendentes = $stmt_pendentes->get_result();
 $row_pendentes = $result_pendentes->fetch_assoc();
 $count_pendentes = $row_pendentes['count_pendentes'];
+
+$stmt->close();
+$conn->close();
 ?>
 
 <!DOCTYPE html>
@@ -119,17 +123,16 @@ $count_pendentes = $row_pendentes['count_pendentes'];
                 <iframe src="https://www.improov.com.br/sistema/Calendario/index.php"></iframe>
             </div>
             <div class="last-tasks">
-                <h2>Últimas Tarefas</h2>
+                <h2>Notificações</h2>
                 <ul>
-                    <?php if ($result->num_rows > 0): ?>
-                        <?php while ($row = $result->fetch_assoc()): ?>
+                    <?php if ($resultNotificacoes->num_rows > 0): ?>
+                        <?php while ($row = $resultNotificacoes->fetch_assoc()): ?>
                             <li>
-                                <span class="task-title"><?php echo "Status: " . $row['status_novo']; ?> - <?php echo "Imagem: " . $row['imagem_nome']; ?> - <?php echo "Obra: " . $row['nome_obra']; ?></span>
-                                <span class="task-date"> - <?php echo date('d/m/Y', strtotime($row['data'])); ?></span>
+                                <span class="notification-message"><?php echo htmlspecialchars($row['mensagem']); ?></span>
                             </li>
                         <?php endwhile; ?>
                     <?php else: ?>
-                        <li>Não há tarefas recentes.</li>
+                        <li>Não há notificações recentes.</li>
                     <?php endif; ?>
                 </ul>
             </div>

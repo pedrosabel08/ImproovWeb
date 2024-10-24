@@ -703,6 +703,30 @@ document.addEventListener('DOMContentLoaded', function () {
                 .then(response => response.json())
                 .then(data => {
                     console.log('Dados recebidos:', data);
+
+                    // Verifica se os dados são válidos e não vazios
+                    if (!Array.isArray(data) || data.length === 0) {
+                        console.warn('Nenhuma função encontrada para esta obra e tipo de imagem.');
+                        data = [{ // Exemplo de dados padrão para evitar que a tabela fique vazia
+                            imagem_nome: 'Sem imagem',
+                            tipo_imagem: 'N/A',
+                            caderno_colaborador: '-',
+                            caderno_status: '-',
+                            modelagem_colaborador: '-',
+                            modelagem_status: '-',
+                            composicao_colaborador: '-',
+                            composicao_status: '-',
+                            finalizacao_colaborador: '-',
+                            finalizacao_status: '-',
+                            pos_producao_colaborador: '-',
+                            pos_producao_status: '-',
+                            alteracao_colaborador: '-',
+                            alteracao_status: '-',
+                            planta_colaborador: '-',
+                            planta_status: '-'
+                        }];
+                    }
+
                     var tabela = document.querySelector('#tabela-obra tbody');
                     tabela.innerHTML = '';
 
@@ -717,6 +741,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         cellTipoImagem.textContent = item.tipo_imagem;
                         row.appendChild(cellTipoImagem);
 
+                        // Colunas para caderno
                         var cellCadernoColaborador = document.createElement('td');
                         cellCadernoColaborador.textContent = item.caderno_colaborador || '-';
                         var cellCadernoStatus = document.createElement('td');
@@ -725,7 +750,6 @@ document.addEventListener('DOMContentLoaded', function () {
                         row.appendChild(cellCadernoStatus);
                         applyStyleNone(cellCadernoColaborador, cellCadernoStatus, item.caderno_colaborador);
                         applyStatusStyle(cellCadernoStatus, item.caderno_status, item.caderno_colaborador);
-
 
                         var cellModelagemColaborador = document.createElement('td');
                         cellModelagemColaborador.textContent = item.modelagem_colaborador || '-';

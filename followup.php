@@ -13,11 +13,11 @@ $conn->set_charset('utf8mb4');
 
 $obraId = intval($_GET['obra_id']);
 
-// Consulta SQL atualizada
+// Consulta SQL atualizada para mostrar todas as imagens, mesmo sem função
 $sql = "SELECT
     ico.imagem_nome,
     s.nome_status AS imagem_status,
-	ico.prazo,
+    ico.prazo,
     MAX(CASE WHEN fi.funcao_id = 1 THEN fi.status END) AS caderno_status,
     MAX(CASE WHEN fi.funcao_id = 2 THEN fi.status END) AS modelagem_status,
     MAX(CASE WHEN fi.funcao_id = 3 THEN fi.status END) AS composicao_status,
@@ -31,11 +31,12 @@ $sql = "SELECT
      FROM log_followup lf
      WHERE lf.imagem_id = ico.idimagens_cliente_obra) AS total_revisoes
 
-FROM funcao_imagem fi
-JOIN imagens_cliente_obra ico ON fi.imagem_id = ico.idimagens_cliente_obra
-JOIN status_imagem s ON ico.status_id = s.idstatus
+FROM imagens_cliente_obra ico
+-- LEFT JOIN garante que imagens sem função ainda sejam retornadas
+LEFT JOIN funcao_imagem fi ON fi.imagem_id = ico.idimagens_cliente_obra
+LEFT JOIN status_imagem s ON ico.status_id = s.idstatus
 WHERE ico.obra_id = ?
-GROUP BY ico.imagem_nome, ico.status_id, s.nome_status
+GROUP BY ico.imagem_nome, ico.status_id, s.nome_status, ico.prazo
 ORDER BY ico.idimagens_cliente_obra";
 
 $stmt = $conn->prepare($sql);

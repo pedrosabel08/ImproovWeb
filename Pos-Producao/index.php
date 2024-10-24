@@ -127,6 +127,7 @@ if ($result_imagens->num_rows > 0) {
         <img src="../gif/assinatura_preto.gif" alt="" style="width: 200px;">
 
         <button id="openModalBtn">Inserir render</button>
+        <button id="openModalBtnRender">Ver Render Elements</button>
         <?php if ($_SESSION['nivel_acesso'] == 1): ?>
             <button id="openNotify">
                 <span id="notificacaoCount" class="notificacao-count">0</span>
@@ -280,6 +281,43 @@ if ($result_imagens->num_rows > 0) {
                     </div>
                 </form>
             </div>
+        </div>
+    </div>
+
+    <div id="renderModal" class="modal">
+        <div class="modal-content">
+            <span class="closeModalRender">&times;</span>
+            <h2>Render Elements</h2>
+            <p>Aqui estão os elementos de render que você deve considerar:</p>
+            <ul>
+                <li>Alpha</li>
+                <li>Máscara RGB para vegetações</li>
+                <li>Máscara RGB para vidros</li>
+                <li>Máscara RGB para paredes das fachadas</li>
+                <li>Máscara RGB para detalhes arquitetônicos</li>
+                <li>(Essas máscaras RGB não precisam ser necessariamente cada uma em um element diferente, apenas cores diferentes)</li>
+                <li>Wire Color</li>
+                <li>Masking ID</li>
+                <li>Direct</li>
+                <li>Indirect</li>
+                <li>Beauty</li>
+                <li>Bloom glare</li>
+                <li>Environment</li>
+                <li>Light Select - Sol ou outras que sejam importantes para a cena</li>
+                <li>(Não precisa separar cada luz da cena em um element diferente)</li>
+                <li>Raw component</li>
+                <li>Component</li>
+                <li>Translucency</li>
+                <li>Reflect</li>
+                <li>Refract</li>
+                <li>Texmap</li>
+                <li>Albedo</li>
+                <li>Zdeph</li>
+            </ul>
+            <p><strong>Observações sobre luzes:</strong></p>
+            <h3>Alguns mandam cada luz da cena num element, como a academia que tinha um element para cada spot, não precisa.</h3>
+            <p><strong>Observações sobre Zdeph:</strong></p>
+            <h3>Sobre o Zdeph, eu não sei como são feitas as configurações, mas alguns vem todo preto e outros já num gradiente, o legal é esse gradiente, que dá pra usar pra colocar um fog e separar os planos da imagem.</h3>
         </div>
     </div>
 

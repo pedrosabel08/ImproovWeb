@@ -1,6 +1,9 @@
 var modal = document.getElementById("modal");
+var modalRender = document.getElementById("renderModal");
 var openModalBtn = document.getElementById("openModalBtn");
+var openModalBtnRender = document.getElementById("openModalBtnRender");
 var closeModal = document.getElementsByClassName("close")[0];
+var closeModalRender = document.getElementsByClassName("closeModalRender")[0];
 const formPosProducao = document.getElementById('formPosProducao');
 
 function limparCampos() {
@@ -19,9 +22,17 @@ openModalBtn.onclick = function () {
     modal.style.display = "flex";
     limparCampos();
 };
+openModalBtnRender.onclick = function () {
+    modalRender.style.display = "flex";
+    limparCampos();
+};
 
 closeModal.onclick = function () {
     modal.style.display = "none";
+    limparCampos();
+};
+closeModalRender.onclick = function () {
+    modalRender.style.display = "none";
     limparCampos();
 };
 
@@ -29,7 +40,11 @@ window.onclick = function (event) {
     if (event.target == modal) {
         modal.style.display = "none";
     }
+    if (event.target == modalRender) {
+        modalRender.style.display = "none";
+    }
 }
+
 document.addEventListener("DOMContentLoaded", function () {
 
     document.getElementById('opcao_obra').addEventListener('change', function () {

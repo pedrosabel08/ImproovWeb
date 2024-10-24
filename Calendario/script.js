@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', function () {
         var prazo = $('#prazoDate').val();
         var tipoEntrega = $('#tipoEntrega').val();
         var assuntoEntrega = $('#assuntoEntrega').val();
-        var colabIds = $('#colab_id').val();
+        var usuariosIds = $('#usuario_id').val();
 
         if (obraId && prazo && tipoEntrega && assuntoEntrega) {
             $.ajax({
@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     prazo: prazo,
                     assuntoEntrega: assuntoEntrega,
                     tipo_entrega: tipoEntrega,
-                    colab_ids: colabIds
+                    usuarios_ids: usuariosIds
                 },
                 success: function (response) {
                     var result = JSON.parse(response);

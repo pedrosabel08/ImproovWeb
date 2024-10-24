@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var calendarEl = document.getElementById('calendar');
     var calendar = new FullCalendar.Calendar(calendarEl, {
         initialView: 'dayGridMonth',
-        events: 'getObraPrazos.php', 
+        events: 'getObraPrazos.php',
         eventClick: function (info) {
             alert('Obra: ' + info.event.title + '\nData: ' + info.event.start.toISOString().slice(0, 10));
         }
@@ -19,23 +19,37 @@ document.addEventListener('DOMContentLoaded', function () {
         var obraId = $('#opcao_obra').val();
         var prazo = $('#prazoDate').val();
         var tipoEntrega = $('#tipoEntrega').val();
+        var assuntoEntrega = $('#assuntoEntrega').val();
+        var colabIds = $('#colab_id').val();
 
-        if (obraId && prazo && tipoEntrega) {
+        if (obraId && prazo && tipoEntrega && assuntoEntrega) {
             $.ajax({
                 url: 'addObraPrazo.php',
                 method: 'POST',
                 data: {
                     obra_id: obraId,
                     prazo: prazo,
-                    tipo_entrega: tipoEntrega
+                    assuntoEntrega: assuntoEntrega,
+                    tipo_entrega: tipoEntrega,
+                    colab_ids: colabIds
                 },
                 success: function (response) {
                     var result = JSON.parse(response);
                     if (result.success) {
 
+                        var eventColor = '';
+                        if (tipoEntrega === 'Primeira Entrega') {
+                            eventColor = '#03b6fc'; 
+                        } else if (tipoEntrega === 'Entrega Final') {
+                            eventColor = '#28a745'; 
+                        } else if (tipoEntrega === 'Alteração') {
+                            eventColor = '#ffc107'; 
+                        }
+
                         calendar.addEvent({
-                            title: tipoEntrega,
+                            title: assuntoEntrega,
                             start: prazo,
+                            color: eventColor,
                             allDay: true
                         });
                         $('#addEventModal').modal('hide');
@@ -59,10 +73,8 @@ document.getElementById('logObraSelect').addEventListener('change', function () 
     const tableBody = logObraTable.querySelector('tbody');
 
     if (obraId) {
-        // Limpar tabela antes de inserir novos dados
         tableBody.innerHTML = '';
 
-        // Requisição AJAX para buscar os prazos da obra selecionada
         fetch('buscarPrazosObra.php', {
             method: 'POST',
             headers: {
@@ -70,21 +82,21 @@ document.getElementById('logObraSelect').addEventListener('change', function () 
             },
             body: `obraId=${obraId}`,
         })
-        .then(response => response.json())
-        .then(data => {
-            if (data.length > 0) {
-                data.forEach(prazo => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `<td>${prazo.prazo}</td><td>${prazo.tipo_entrega}</td>`;
-                    tableBody.appendChild(row);
-                });
-                logObraTable.style.display = 'table';  
-            } else {
-                logObraTable.style.display = 'none';  
-            }
-        })
-        .catch(error => console.error('Erro:', error));
+            .then(response => response.json())
+            .then(data => {
+                if (data.length > 0) {
+                    data.forEach(prazo => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `<td>${prazo.prazo}</td><td>${prazo.assunto_entrega}</td>`;
+                        tableBody.appendChild(row);
+                    });
+                    logObraTable.style.display = 'table';
+                } else {
+                    logObraTable.style.display = 'none';
+                }
+            })
+            .catch(error => console.error('Erro:', error));
     } else {
-        logObraTable.style.display = 'none';  
+        logObraTable.style.display = 'none';
     }
 });

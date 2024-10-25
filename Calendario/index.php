@@ -73,6 +73,8 @@ $conn->close();
                                 <option value="Entrega Final">Entrega Final</option>
                                 <option value="Alteração">Alteração</option>
                                 <option value="Entrega tarefa">Entrega tarefa</option>
+                                <option value="Entrega antecipada">Entrega antecipada</option>
+                                <option value="Entrega parcial">Entrega parcial</option>
                             </select>
                         </div>
 

@@ -14,20 +14,10 @@ $events = [];
 
 if ($result) {
     while ($row = $result->fetch_assoc()) {
-        // Definir cor do evento com base no tipo de entrega
-        $color = '';
-        if ($row['tipo_entrega'] == 'Primeira Entrega') {
-            $color = '#03b6fc'; // Verde para "Primeira Entrega"
-        } elseif ($row['tipo_entrega'] == 'Entrega Final') {
-            $color = '#28a745'; // Vermelho para "Entrega Final"
-        } elseif ($row['tipo_entrega'] == 'Alteração') {
-            $color = '#ffc107'; // Amarelo para "Alteração"
-        }
-
         $events[] = [
             'title' => $row['nome_obra'] . ' - ' . $row['assunto_entrega'],
             'start' => $row['prazo'],
-            'color' => $color,  // Definir cor do evento
+            'tipo_entrega' => $row['tipo_entrega'], 
             'allDay' => true
         ];
     }

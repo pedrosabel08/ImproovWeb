@@ -675,6 +675,17 @@ $conn->close();
                     </option>
                 <?php endforeach; ?>
             </select>
+            <select name="status_imagem" id="status_imagem">
+                <option value="0">Todos</option>
+                <option value="1">P00</option>
+                <option value="2">R00</option>
+                <option value="3">R01</option>
+                <option value="4">R02</option>
+                <option value="5">R03</option>
+                <option value="6">EF</option>
+                <option value="7">Sem status</option>
+                <option value="9">HOLD</option>
+            </select>
 
             <button id="generate-pdf">Gerar PDF</button>
 

@@ -819,11 +819,15 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    document.getElementById('obra-follow').addEventListener('change', function () {
-        var obraId = this.value;
+    document.getElementById('obra-follow').addEventListener('change', fetchFollowUpData);
+    document.getElementById('status_imagem').addEventListener('change', fetchFollowUpData);
+
+    function fetchFollowUpData() {
+        var obraId = document.getElementById('obra-follow').value;
+        var statusImagem = document.getElementById('status_imagem').value;
 
         if (obraId) {
-            fetch('followup.php?obra_id=' + obraId)
+            fetch(`followup.php?obra_id=${obraId}&status_imagem=${statusImagem}`)
                 .then(response => response.json())
                 .then(data => {
                     var tabela = document.querySelector('#tabela-follow tbody');
@@ -838,13 +842,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
                         var cellStatusImagem = document.createElement('td');
                         cellStatusImagem.textContent = item.imagem_status;
-                        row.appendChild(cellStatusImagem)
-                        applyStatusImagem(cellStatusImagem, item.imagem_status)
+                        row.appendChild(cellStatusImagem);
+                        applyStatusImagem(cellStatusImagem, item.imagem_status);
 
                         var cellPrazoImagem = document.createElement('td');
                         cellPrazoImagem.textContent = item.prazo;
-                        row.appendChild(cellPrazoImagem)
-
+                        row.appendChild(cellPrazoImagem);
 
                         var cellCadernoStatus = document.createElement('td');
                         cellCadernoStatus.textContent = item.caderno_status || '-';
@@ -874,20 +877,18 @@ document.addEventListener('DOMContentLoaded', function () {
                         cellPlantaStatus.textContent = item.planta_status || '-';
                         row.appendChild(cellPlantaStatus);
 
-
                         var cellQntRevisoes = document.createElement('td');
                         cellQntRevisoes.textContent = item.total_revisoes || '-';
                         row.appendChild(cellQntRevisoes);
-
 
                         tabela.appendChild(row);
                     });
                 })
                 .catch(error => console.error('Erro ao carregar funções:', error));
         } else {
-            document.querySelector('#tabela-obra tbody').innerHTML = '';
+            document.querySelector('#tabela-follow tbody').innerHTML = '';
         }
-    });
+    }
 
 
 });

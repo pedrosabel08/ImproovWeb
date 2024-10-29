@@ -245,6 +245,24 @@ function toggleNav() {
     navMenu.classList.toggle('active');
 }
 
+function contarLinhasTabela() {
+    const tabela = document.getElementById("tabelaClientes");
+    const tbody = tabela.getElementsByTagName("tbody")[0];
+    const linhas = tbody.getElementsByTagName("tr");
+    let totalImagens = 0;
+
+    for (let i = 0; i < linhas.length; i++) {
+        if (linhas[i].style.display !== "none") {
+            totalImagens++;
+        }
+    }
+
+    document.getElementById("total-imagens").innerText = totalImagens;
+}
+
+window.onload = contarLinhasTabela;
+
+
 function filtrarTabela() {
     var indiceColuna = document.getElementById("colunaFiltro").value;
     var filtro = document.getElementById("pesquisa").value.toLowerCase();
@@ -270,6 +288,9 @@ function filtrarTabela() {
 
         linhas[i].style.display = mostrarLinha ? "" : "none";
     }
+
+    contarLinhasTabela();
+
 }
 
 document.getElementById("pesquisa").addEventListener("keyup", function (event) {

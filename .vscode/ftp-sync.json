@@ -6,7 +6,7 @@
     "port": 21,
     "secure": false,
     "protocol": "ftp",
-    "uploadOnSave": true,
+    "uploadOnSave": false,
     "passive": false,
     "debug": false,
     "privateKeyPath": null,

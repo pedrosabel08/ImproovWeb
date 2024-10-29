@@ -7,32 +7,40 @@ document.addEventListener('DOMContentLoaded', function () {
             alert('Obra: ' + info.event.title + '\nData: ' + info.event.start.toISOString().slice(0, 10) + '\nTipo entrega: ' + info.event.extendedProps.tipo_entrega);
         },
         eventDidMount: function (info) {
+            var tipoEntrega = info.event.extendedProps.tipo_entrega;
+            console.log('Evento:', info.event);
+            console.log('Tipo de entrega:', tipoEntrega);
 
             var eventColor = '';
-            switch (info.event.extendedProps.tipo_entrega.trim()) {
-                case 'Primeira entrega':
-                    eventColor = '#03b6fc';
-                    break;
-                case 'Entrega final':
-                    eventColor = '#28a745';
-                    break;
-                case 'Alteração':
-                    eventColor = '#ff8000';
-                    break;
-                case 'Entrega parcial':
-                    eventColor = '#a442f5';
-                    break;
-                case 'Entrega antecipada':
-                    eventColor = '#a2ff00';
-                    break;
-                case 'Entrega tarefa':
-                    eventColor = '#ff006a';
-                    break;
-                default:
-                    eventColor = '#cccccc'; 
-                    break;
+            if (tipoEntrega) {
+                switch (tipoEntrega.trim().toLowerCase()) {
+                    case 'primeira entrega':
+                        eventColor = '#03b6fc';
+                        break;
+                    case 'entrega final':
+                        eventColor = '#28a745';
+                        break;
+                    case 'alteração':
+                        eventColor = '#ff8000';
+                        break;
+                    case 'entrega parcial':
+                        eventColor = '#a442f5';
+                        break;
+                    case 'entrega antecipada':
+                        eventColor = '#a2ff00';
+                        break;
+                    case 'entrega tarefa':
+                        eventColor = '#ff006a';
+                        break;
+                    default:
+                        eventColor = '#cccccc'; 
+                        break;
+                }
+            } else {
+                eventColor = '#cccccc';
             }
 
+            console.log('Cor do evento:', eventColor);
             info.el.style.backgroundColor = eventColor;
             info.el.style.border = 'none';
         }
@@ -66,28 +74,29 @@ document.addEventListener('DOMContentLoaded', function () {
                 success: function (response) {
                     var result = JSON.parse(response);
                     if (result.success) {
+
                         var eventColor = '';
-                        switch (tipoEntrega.trim()) {
-                            case 'Primeira entrega':
+                        switch (tipoEntrega.trim().toLowerCase()) {  
+                            case 'primeira entrega':
                                 eventColor = '#03b6fc';
                                 break;
-                            case 'Entrega final':
+                            case 'entrega final':
                                 eventColor = '#28a745';
                                 break;
-                            case 'Alteração':
+                            case 'alteração':
                                 eventColor = '#ff8000';
                                 break;
-                            case 'Entrega parcial':
+                            case 'entrega parcial':
                                 eventColor = '#a442f5';
                                 break;
-                            case 'Entrega antecipada':
+                            case 'entrega antecipada':
                                 eventColor = '#a2ff00';
                                 break;
-                            case 'Entrega tarefa':
+                            case 'entrega tarefa':
                                 eventColor = '#ff006a';
                                 break;
                             default:
-                                eventColor = '#cccccc'; // Cor padrão para casos não tratados
+                                eventColor = '#cccccc'; 
                                 break;
                         }
 

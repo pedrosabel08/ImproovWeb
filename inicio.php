@@ -12,15 +12,14 @@ $idusuario = $_SESSION['idusuario'];
 $nome_usuario = $_SESSION['nome_usuario'];
 $idcolaborador = $_SESSION['idcolaborador'];
 
-$sql = "SELECT n.mensagem, n.data_criacao, nu.lida 
-        FROM notificacoes n 
-        JOIN notificacoes_usuarios nu ON n.id = nu.notificacao_id 
-        WHERE nu.usuario_id = ? 
-		AND n.tipo_notificacao <> 'pos'
-		AND nu.lida = 0
-        AND n.data_criacao >= CURDATE() 
-        AND n.data_criacao < DATE_ADD(CURDATE(), INTERVAL 7 DAY)
-        ORDER BY n.data_criacao DESC";
+$sql = "SELECT n.mensagem, op.prazo, nu.lida 
+        FROM notificacoes n
+        JOIN notificacoes_usuarios nu ON n.id = nu.notificacao_id
+        LEFT JOIN obra_prazo op ON n.id = op.notificacoes_id
+        WHERE nu.usuario_id = ?
+        AND n.tipo_notificacao <> 'pos'
+        AND op.prazo >= CURDATE() 
+        ORDER BY op.prazo ASC;";
 
 $stmt = $conn->prepare($sql);
 $stmt->bind_param("i", $idusuario);

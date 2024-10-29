@@ -182,6 +182,9 @@ $conn->close();
                 </div>
 
                 <div class="tabelaClientes">
+                    <div class="image-count">
+                        <strong>Total de Imagens:</strong> <span id="total-imagens">0</span>
+                    </div>
                     <table id="tabelaClientes">
                         <thead>
                             <tr>

@@ -678,6 +678,15 @@ $conn->close();
                     </option>
                 <?php endforeach; ?>
             </select>
+
+            <select name="tipo_imagem_follow" id="tipo_imagem_follow">
+                <option value="0">Todos</option>
+                <option value="Fachada">Fachada</option>
+                <option value="Imagem Interna">Imagem Interna</option>
+                <option value="Imagem Externa">Imagem Externa</option>
+                <option value="Planta Humanizada">Planta Humanizada</option>
+            </select>
+
             <select name="status_imagem" id="status_imagem">
                 <option value="0">Todos</option>
                 <option value="1">P00</option>
@@ -698,6 +707,7 @@ $conn->close();
                     <th>Status</th>
                     <th>Prazo</th>
                     <th>Caderno</th>
+                    <th>Filtro</th>
                     <th>Model</th>
                     <th>Comp</th>
                     <th>Final</th>
@@ -706,35 +716,6 @@ $conn->close();
                     <th>Planta</th>
                     <th>Revisões</th>
 
-                </thead>
-                <tbody>
-
-                </tbody>
-            </table>
-        </div>
-
-        <div id="follow-up">
-            <h1>Follow up</h1>
-            <label for="obra">Obra:</label>
-            <select name="obra-follow" id="obra-follow">
-                <option value="0">Selecione:</option>
-                <?php foreach ($obras as $obra): ?>
-                    <option value="<?= htmlspecialchars($obra['idobra']); ?>">
-                        <?= htmlspecialchars($obra['nome_obra']); ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
-
-            <table id="tabela-follow">
-                <thead>
-                    <th>Nome da Imagem</th>
-                    <th>Status Imagem</th>
-                    <th>Caderno</th>
-                    <th>Modelagem</th>
-                    <th>Composição</th>
-                    <th>Finalização</th>
-                    <th>Pós-produção</th>
-                    <th>Alteração</th>
                 </thead>
                 <tbody>
 

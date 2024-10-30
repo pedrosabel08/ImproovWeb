@@ -842,13 +842,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.getElementById('obra-follow').addEventListener('change', fetchFollowUpData);
     document.getElementById('status_imagem').addEventListener('change', fetchFollowUpData);
+    document.getElementById('tipo_imagem_follow').addEventListener('change', fetchFollowUpData);
 
     function fetchFollowUpData() {
         var obraId = document.getElementById('obra-follow').value;
         var statusImagem = document.getElementById('status_imagem').value;
+        var tipoImagem = document.getElementById('tipo_imagem_follow').value;
 
         if (obraId) {
-            fetch(`followup.php?obra_id=${obraId}&status_imagem=${statusImagem}`)
+            fetch(`followup.php?obra_id=${obraId}&status_imagem=${statusImagem}&tipo_imagem=${tipoImagem}`)
                 .then(response => response.json())
                 .then(data => {
                     var tabela = document.querySelector('#tabela-follow tbody');
@@ -873,6 +875,10 @@ document.addEventListener('DOMContentLoaded', function () {
                         var cellCadernoStatus = document.createElement('td');
                         cellCadernoStatus.textContent = item.caderno_status || '-';
                         row.appendChild(cellCadernoStatus);
+
+                        var cellFiltroStatus = document.createElement('td');
+                        cellFiltroStatus.textContent = item.filtro_status || '-';
+                        row.appendChild(cellFiltroStatus);
 
                         var cellModelagemStatus = document.createElement('td');
                         cellModelagemStatus.textContent = item.modelagem_status || '-';

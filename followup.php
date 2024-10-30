@@ -14,6 +14,7 @@ $conn->set_charset('utf8mb4');
 // Capturar os parâmetros
 $obraId = intval($_GET['obra_id']);
 $statusImagem = intval($_GET['status_imagem']);
+$tipoImagem = $_GET['tipo_imagem'];
 
 // Montar a consulta SQL com o filtro de status, se necessário
 $sql = "SELECT
@@ -27,8 +28,9 @@ $sql = "SELECT
     MAX(CASE WHEN fi.funcao_id = 5 THEN fi.status END) AS pos_producao_status,
     MAX(CASE WHEN fi.funcao_id = 6 THEN fi.status END) AS alteracao_status,
     MAX(CASE WHEN fi.funcao_id = 7 THEN fi.status END) AS planta_status,
-    
-    (SELECT SUM(CASE WHEN lf.status_novo IN (2, 3, 4, 5) THEN 1 ELSE 0 END)
+    MAX(CASE WHEN fi.funcao_id = 8 THEN fi.status END) AS filtro_status,
+    ico.tipo_imagem,
+    (SELECT SUM(CASE WHEN lf.status_novo IN (3, 4, 5) THEN 1 ELSE 0 END)
      FROM log_followup lf
      WHERE lf.imagem_id = ico.idimagens_cliente_obra) AS total_revisoes
 
@@ -42,18 +44,25 @@ if ($statusImagem !== 0) {
     $sql .= " AND ico.status_id = ?";
 }
 
+if ($tipoImagem !== "0") {
+    $sql .= " AND ico.tipo_imagem = ?";
+}
+
 $sql .= " GROUP BY ico.imagem_nome, ico.status_id, s.nome_status, ico.prazo
            ORDER BY ico.idimagens_cliente_obra";
 
 $stmt = $conn->prepare($sql);
 
 // Vincular parâmetros com base na presença do filtro de status
-if ($statusImagem !== 0) {
+if ($statusImagem !== 0 && $tipoImagem !== "0") {
+    $stmt->bind_param('iis', $obraId, $statusImagem, $tipoImagem);
+} elseif ($statusImagem !== 0) {
     $stmt->bind_param('ii', $obraId, $statusImagem);
+} elseif ($tipoImagem !== "0") {
+    $stmt->bind_param('is', $obraId, $tipoImagem);
 } else {
     $stmt->bind_param('i', $obraId);
 }
-
 $stmt->execute();
 $result = $stmt->get_result();
 

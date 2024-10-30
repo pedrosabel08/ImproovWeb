@@ -1,109 +1,129 @@
-document.addEventListener("DOMContentLoaded", function () {
-    var linhasTabela = document.querySelectorAll(".linha-tabela");
-
-    linhasTabela.forEach(function (linha) {
-        linha.addEventListener("click", function () {
-            linhasTabela.forEach(function (outraLinha) {
-                outraLinha.classList.remove("selecionada");
-            });
-
-            linha.classList.add("selecionada");
-
-            var idImagemSelecionada = linha.getAttribute("data-id");
-            document.getElementById("imagem_id").value = idImagemSelecionada;
-
-            limparCampos();
-
-            $.ajax({
-                type: "GET",
-                dataType: "json",
-                url: "https://www.improov.com.br/sistema/buscaLinhaAJAX.php",
-                data: { ajid: idImagemSelecionada },
-                success: function (response) {
-                    if (response.nome_imagem) {
-                        document.getElementById("campoNomeImagem").textContent = response.nome_imagem;
-                    }
-
-                    if (response.funcoes && response.funcoes.length > 0) {
-                        response.funcoes.forEach(function (funcao) {
-                            let selectElement;
-                            switch (funcao.nome_funcao) {
-                                case "Caderno":
-                                    selectElement = document.getElementById("opcao_caderno");
-                                    document.getElementById("status_caderno").value = funcao.status;
-                                    document.getElementById("prazo_caderno").value = funcao.prazo;
-                                    document.getElementById("obs_caderno").value = funcao.observacao;
-                                    break;
-                                case "Modelagem":
-                                    selectElement = document.getElementById("opcao_model");
-                                    document.getElementById("status_modelagem").value = funcao.status;
-                                    document.getElementById("prazo_modelagem").value = funcao.prazo;
-                                    document.getElementById("obs_modelagem").value = funcao.observacao;
-                                    break;
-                                case "Composição":
-                                    selectElement = document.getElementById("opcao_comp");
-                                    document.getElementById("status_comp").value = funcao.status;
-                                    document.getElementById("prazo_comp").value = funcao.prazo;
-                                    document.getElementById("obs_comp").value = funcao.observacao;
-
-                                    break;
-                                case "Finalização":
-                                    selectElement = document.getElementById("opcao_final");
-                                    document.getElementById("status_finalizacao").value = funcao.status;
-                                    document.getElementById("prazo_finalizacao").value = funcao.prazo;
-                                    document.getElementById("obs_finalizacao").value = funcao.observacao;
-
-                                    break;
-                                case "Pós-produção":
-                                    selectElement = document.getElementById("opcao_pos");
-                                    document.getElementById("status_pos").value = funcao.status;
-                                    document.getElementById("prazo_pos").value = funcao.prazo;
-                                    document.getElementById("obs_pos").value = funcao.observacao;
-
-                                    break;
-                                case "Alteração":
-                                    selectElement = document.getElementById("opcao_alteracao");
-                                    document.getElementById("status_alteracao").value = funcao.status;
-                                    document.getElementById("prazo_alteracao").value = funcao.prazo;
-                                    document.getElementById("obs_alteracao").value = funcao.observacao;
-
-                                    break;
-
-                                case "Planta Humanizada":
-                                    selectElement = document.getElementById("opcao_planta");
-                                    document.getElementById("status_planta").value = funcao.status;
-                                    document.getElementById("prazo_planta").value = funcao.prazo;
-                                    document.getElementById("obs_planta").value = funcao.observacao;
-
-                                    break;
-
-                                case "Filtro de assets":
-                                    selectElement = document.getElementById("opcao_filtro");
-                                    document.getElementById("status_filtro").value = funcao.status;
-                                    document.getElementById("prazo_filtro").value = funcao.prazo;
-                                    document.getElementById("obs_filtro").value = funcao.observacao;
-
-                                    break;
-                            }
-                            if (selectElement) {
-                                selectElement.value = funcao.colaborador_id;
-                            }
-                        });
-                    }
-
-                    var statusSelect = document.getElementById("opcao_status");
-                    if (response.status_id !== null) {
-                        statusSelect.value = response.status_id;
-                    }
-                },
-                error: function (jqXHR, textStatus, errorThrown) {
-                    console.error("Erro na requisição AJAX: " + textStatus, errorThrown);
-                }
-            });
-
-            console.log("Linha selecionada: ID da imagem = " + idImagemSelecionada);
-        });
+document.querySelectorAll('.titulo').forEach(titulo => {
+    titulo.addEventListener('click', () => {
+        const opcoes = titulo.nextElementSibling;
+        if (opcoes.style.display === 'none') {
+            opcoes.style.display = 'block';
+            titulo.querySelector('i').classList.remove('fa-chevron-down');
+            titulo.querySelector('i').classList.add('fa-chevron-up');
+            opcoes.classList.add('show-in');
+        } else {
+            opcoes.style.display = 'none';
+            titulo.querySelector('i').classList.remove('fa-chevron-up');
+            titulo.querySelector('i').classList.add('fa-chevron-down');
+        }
     });
+});
+
+document.addEventListener("DOMContentLoaded", function () {
+    function addEventListenersToRows() {
+        var linhasTabela = document.querySelectorAll(".linha-tabela");
+
+        linhasTabela.forEach(function (linha) {
+            linha.addEventListener("click", function () {
+                linhasTabela.forEach(function (outraLinha) {
+                    outraLinha.classList.remove("selecionada");
+                });
+
+                linha.classList.add("selecionada");
+
+                var idImagemSelecionada = linha.getAttribute("data-id");
+                document.getElementById("imagem_id").value = idImagemSelecionada;
+
+                limparCampos();
+
+                $.ajax({
+                    type: "GET",
+                    dataType: "json",
+                    url: "https://www.improov.com.br/sistema/buscaLinhaAJAX.php",
+                    data: { ajid: idImagemSelecionada },
+                    success: function (response) {
+                        document.getElementById('form-edicao').style.display = 'flex';
+
+                        if (response.funcoes && response.funcoes.length > 0) {
+                            document.getElementById("campoNomeImagem").textContent = response.funcoes[0].imagem_nome;
+
+                            response.funcoes.forEach(function (funcao) {
+                                let selectElement;
+                                switch (funcao.nome_funcao) {
+                                    case "Caderno":
+                                        selectElement = document.getElementById("opcao_caderno");
+                                        document.getElementById("status_caderno").value = funcao.status;
+                                        document.getElementById("prazo_caderno").value = funcao.prazo;
+                                        document.getElementById("obs_caderno").value = funcao.observacao;
+                                        break;
+                                    case "Modelagem":
+                                        selectElement = document.getElementById("opcao_model");
+                                        document.getElementById("status_modelagem").value = funcao.status;
+                                        document.getElementById("prazo_modelagem").value = funcao.prazo;
+                                        document.getElementById("obs_modelagem").value = funcao.observacao;
+                                        break;
+                                    case "Composição":
+                                        selectElement = document.getElementById("opcao_comp");
+                                        document.getElementById("status_comp").value = funcao.status;
+                                        document.getElementById("prazo_comp").value = funcao.prazo;
+                                        document.getElementById("obs_comp").value = funcao.observacao;
+
+                                        break;
+                                    case "Finalização":
+                                        selectElement = document.getElementById("opcao_final");
+                                        document.getElementById("status_finalizacao").value = funcao.status;
+                                        document.getElementById("prazo_finalizacao").value = funcao.prazo;
+                                        document.getElementById("obs_finalizacao").value = funcao.observacao;
+
+                                        break;
+                                    case "Pós-produção":
+                                        selectElement = document.getElementById("opcao_pos");
+                                        document.getElementById("status_pos").value = funcao.status;
+                                        document.getElementById("prazo_pos").value = funcao.prazo;
+                                        document.getElementById("obs_pos").value = funcao.observacao;
+
+                                        break;
+                                    case "Alteração":
+                                        selectElement = document.getElementById("opcao_alteracao");
+                                        document.getElementById("status_alteracao").value = funcao.status;
+                                        document.getElementById("prazo_alteracao").value = funcao.prazo;
+                                        document.getElementById("obs_alteracao").value = funcao.observacao;
+
+                                        break;
+
+                                    case "Planta Humanizada":
+                                        selectElement = document.getElementById("opcao_planta");
+                                        document.getElementById("status_planta").value = funcao.status;
+                                        document.getElementById("prazo_planta").value = funcao.prazo;
+                                        document.getElementById("obs_planta").value = funcao.observacao;
+
+                                        break;
+
+                                    case "Filtro de assets":
+                                        selectElement = document.getElementById("opcao_filtro");
+                                        document.getElementById("status_filtro").value = funcao.status;
+                                        document.getElementById("prazo_filtro").value = funcao.prazo;
+                                        document.getElementById("obs_filtro").value = funcao.observacao;
+
+                                        break;
+                                }
+                                if (selectElement) {
+                                    selectElement.value = funcao.colaborador_id;
+                                }
+                            });
+                        }
+
+                        var statusSelect = document.getElementById("opcao_status");
+                        if (response.status_id !== null) {
+                            statusSelect.value = response.status_id;
+                        }
+                    },
+                    error: function (jqXHR, textStatus, errorThrown) {
+                        console.error("Erro na requisição AJAX: " + textStatus, errorThrown);
+                    }
+                });
+
+                console.log("Linha selecionada: ID da imagem = " + idImagemSelecionada);
+            });
+        });
+
+    }
+    addEventListenersToRows();
 
     function limparCampos() {
         document.getElementById("campoNomeImagem").textContent = "";
@@ -222,6 +242,9 @@ document.addEventListener("DOMContentLoaded", function () {
                     backgroundColor: "green",
                     stopOnFocus: true,
                 }).showToast();
+
+
+                form_edicao.style.display = "none"
             },
             error: function (jqXHR, textStatus, errorThrown) {
                 console.error("Erro ao salvar dados: " + textStatus, errorThrown);
@@ -237,6 +260,293 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
     });
+
+    function carregarDados() {
+        var colaboradorId = document.getElementById('colaboradorSelect').value;
+        var dataInicio = document.getElementById('dataInicio').value;
+        var dataFim = document.getElementById('dataFim').value;
+        var obraId = document.getElementById('obraSelect').value;
+        var funcaoId = document.getElementById('funcaoSelect').value;
+        var status = document.getElementById('statusSelect').value;
+
+        if (colaboradorId) {
+            var url = 'getFuncoesPorColaborador.php?colaborador_id=' + colaboradorId;
+
+            if (dataInicio) {
+                url += '&data_inicio=' + encodeURIComponent(dataInicio);
+            }
+            if (dataFim) {
+                url += '&data_fim=' + encodeURIComponent(dataFim);
+            }
+            if (obraId) {
+                url += '&obra_id=' + encodeURIComponent(obraId);
+            }
+            if (funcaoId) {
+                url += '&funcao_id=' + encodeURIComponent(funcaoId);
+            }
+            if (status) {
+                url += '&status=' + encodeURIComponent(status);
+            }
+
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    var tabela = document.querySelector('#tabela-colab tbody');
+                    tabela.innerHTML = '';
+
+                    data.forEach(function (item) {
+                        var row = document.createElement('tr');
+                        row.classList.add('linha-tabela');
+                        row.setAttribute('data-id', item.imagem_id);
+                        var cellNomeImagem = document.createElement('td');
+                        cellNomeImagem.textContent = item.imagem_nome;
+                        var cellFuncao = document.createElement('td');
+                        cellFuncao.textContent = item.nome_funcao;
+                        var cellStatus = document.createElement('td');
+                        cellStatus.textContent = item.status;
+                        var cellPrazoImagem = document.createElement('td');
+                        cellPrazoImagem.textContent = item.prazo;
+
+                        row.appendChild(cellNomeImagem);
+                        row.appendChild(cellFuncao);
+                        row.appendChild(cellStatus);
+                        row.appendChild(cellPrazoImagem);
+                        tabela.appendChild(row);
+                    });
+
+                    document.getElementById('totalImagens').textContent = data.length;
+
+                    addEventListenersToRows();
+                })
+                .catch(error => console.error('Erro ao carregar funções:', error));
+        } else {
+            document.querySelector('#tabela-colab tbody').innerHTML = '';
+            document.getElementById('totalImagens').textContent = '0';
+        }
+    }
+
+
+    document.getElementById('colaboradorSelect').addEventListener('change', carregarDados);
+    document.getElementById('dataInicio').addEventListener('change', carregarDados);
+    document.getElementById('dataFim').addEventListener('change', carregarDados);
+    document.getElementById('obraSelect').addEventListener('change', carregarDados);
+    document.getElementById('funcaoSelect').addEventListener('change', carregarDados);
+    document.getElementById('statusSelect').addEventListener('change', carregarDados);
+
+
+    document.getElementById('obraFiltro').addEventListener('change', function () {
+        atualizarFuncoes();
+    });
+
+    document.getElementById('tipo_imagem').addEventListener('change', function () {
+        atualizarFuncoes();
+    });
+
+    function atualizarFuncoes() {
+        var obraId = document.getElementById('obraFiltro').value;
+        var tipoImagem = document.getElementById('tipo_imagem').value;
+
+        if (obraId) {
+            fetch(`getFuncoesPorObra.php?obra_id=${obraId}&tipo_imagem=${tipoImagem}`)
+                .then(response => response.json())
+                .then(data => {
+                    // Verifica se os dados são válidos e não vazios
+                    if (!Array.isArray(data) || data.length === 0) {
+                        console.warn('Nenhuma função encontrada para esta obra e tipo de imagem.');
+                        data = [{ // Exemplo de dados padrão para evitar que a tabela fique vazia
+                            imagem_nome: 'Sem imagem',
+                            tipo_imagem: 'N/A',
+                            caderno_colaborador: '-',
+                            caderno_status: '-',
+                            modelagem_colaborador: '-',
+                            modelagem_status: '-',
+                            composicao_colaborador: '-',
+                            composicao_status: '-',
+                            finalizacao_colaborador: '-',
+                            finalizacao_status: '-',
+                            pos_producao_colaborador: '-',
+                            pos_producao_status: '-',
+                            alteracao_colaborador: '-',
+                            alteracao_status: '-',
+                            planta_colaborador: '-',
+                            planta_status: '-'
+                        }];
+                    }
+
+                    var tabela = document.querySelector('#tabela-obra tbody');
+                    tabela.innerHTML = '';
+
+                    data.forEach(function (item) {
+                        var row = document.createElement('tr');
+                        row.classList.add('linha-tabela');
+                        row.setAttribute('data-id', item.imagem_id);
+
+                        var cellNomeImagem = document.createElement('td');
+                        cellNomeImagem.textContent = item.imagem_nome;
+                        row.appendChild(cellNomeImagem);
+
+                        var cellTipoImagem = document.createElement('td');
+                        cellTipoImagem.textContent = item.tipo_imagem;
+                        row.appendChild(cellTipoImagem);
+
+                        // Colunas para caderno
+                        var cellCadernoColaborador = document.createElement('td');
+                        cellCadernoColaborador.textContent = item.caderno_colaborador || '-';
+                        var cellCadernoStatus = document.createElement('td');
+                        cellCadernoStatus.textContent = item.caderno_status || '-';
+                        row.appendChild(cellCadernoColaborador);
+                        row.appendChild(cellCadernoStatus);
+                        applyStyleNone(cellCadernoColaborador, cellCadernoStatus, item.caderno_colaborador);
+                        applyStatusStyle(cellCadernoStatus, item.caderno_status, item.caderno_colaborador);
+
+                        var cellModelagemColaborador = document.createElement('td');
+                        cellModelagemColaborador.textContent = item.modelagem_colaborador || '-';
+                        var cellModelagemStatus = document.createElement('td');
+                        cellModelagemStatus.textContent = item.modelagem_status || '-';
+                        row.appendChild(cellModelagemColaborador);
+                        row.appendChild(cellModelagemStatus);
+                        applyStyleNone(cellModelagemColaborador, cellModelagemStatus, item.modelagem_colaborador);
+                        applyStatusStyle(cellModelagemStatus, item.modelagem_status, item.modelagem_colaborador);
+
+
+                        var cellComposicaoColaborador = document.createElement('td');
+                        cellComposicaoColaborador.textContent = item.composicao_colaborador || '-';
+                        var cellComposicaoStatus = document.createElement('td');
+                        cellComposicaoStatus.textContent = item.composicao_status || '-';
+                        row.appendChild(cellComposicaoColaborador);
+                        row.appendChild(cellComposicaoStatus);
+                        applyStyleNone(cellComposicaoColaborador, cellComposicaoStatus, item.composicao_colaborador);
+                        applyStatusStyle(cellComposicaoStatus, item.composicao_status, item.composicao_colaborador);
+
+
+                        var cellFinalizacaoColaborador = document.createElement('td');
+                        cellFinalizacaoColaborador.textContent = item.finalizacao_colaborador || '-';
+                        var cellFinalizacaoStatus = document.createElement('td');
+                        cellFinalizacaoStatus.textContent = item.finalizacao_status || '-';
+                        row.appendChild(cellFinalizacaoColaborador);
+                        row.appendChild(cellFinalizacaoStatus);
+                        applyStyleNone(cellFinalizacaoColaborador, cellFinalizacaoStatus, item.finalizacao_colaborador);
+                        applyStatusStyle(cellFinalizacaoStatus, item.finalizacao_status, item.finalizacao_colaborador);
+
+
+                        var cellPosProducaoColaborador = document.createElement('td');
+                        cellPosProducaoColaborador.textContent = item.pos_producao_colaborador || '-';
+                        var cellPosProducaoStatus = document.createElement('td');
+                        cellPosProducaoStatus.textContent = item.pos_producao_status || '-';
+                        row.appendChild(cellPosProducaoColaborador);
+                        row.appendChild(cellPosProducaoStatus);
+                        applyStyleNone(cellPosProducaoColaborador, cellPosProducaoStatus, item.pos_producao_colaborador);
+                        applyStatusStyle(cellPosProducaoStatus, item.pos_producao_status, item.pos_producao_colaborador);
+
+
+                        var cellAlteracaoColaborador = document.createElement('td');
+                        cellAlteracaoColaborador.textContent = item.alteracao_colaborador || '-';
+                        var cellAlteracaoStatus = document.createElement('td');
+                        cellAlteracaoStatus.textContent = item.alteracao_status || '-';
+                        row.appendChild(cellAlteracaoColaborador);
+                        row.appendChild(cellAlteracaoStatus);
+                        applyStyleNone(cellAlteracaoColaborador, cellAlteracaoStatus, item.alteracao_colaborador);
+                        applyStatusStyle(cellAlteracaoStatus, item.alteracao_status, item.alteracao_colaborador);
+
+
+                        var cellPlantaColaborador = document.createElement('td');
+                        cellPlantaColaborador.textContent = item.planta_colaborador || '-';
+                        var cellPlantaStatus = document.createElement('td');
+                        cellPlantaStatus.textContent = item.planta_status || '-';
+                        row.appendChild(cellPlantaColaborador);
+                        row.appendChild(cellPlantaStatus);
+                        applyStyleNone(cellPlantaColaborador, cellPlantaStatus, item.planta_colaborador);
+                        applyStatusStyle(cellPlantaStatus, item.planta_status, item.planta_colaborador);
+
+                        tabela.appendChild(row);
+                    });
+
+                    addEventListenersToRows();
+
+                })
+                .catch(error => console.error('Erro ao carregar funções:', error));
+        } else {
+            document.querySelector('#tabela-obra tbody').innerHTML = '';
+        }
+    }
+
+    document.getElementById('obra-follow').addEventListener('change', fetchFollowUpData);
+    document.getElementById('status_imagem').addEventListener('change', fetchFollowUpData);
+    document.getElementById('tipo_imagem_follow').addEventListener('change', fetchFollowUpData);
+
+    function fetchFollowUpData() {
+        var obraId = document.getElementById('obra-follow').value;
+        var statusImagem = document.getElementById('status_imagem').value;
+        var tipoImagem = document.getElementById('tipo_imagem_follow').value;
+
+        if (obraId) {
+            fetch(`followup.php?obra_id=${obraId}&status_imagem=${statusImagem}&tipo_imagem=${tipoImagem}`)
+                .then(response => response.json())
+                .then(data => {
+                    var tabela = document.querySelector('#tabela-follow tbody');
+                    tabela.innerHTML = '';
+
+                    data.forEach(function (item) {
+                        var row = document.createElement('tr');
+
+                        var cellNomeImagem = document.createElement('td');
+                        cellNomeImagem.textContent = item.imagem_nome;
+                        row.appendChild(cellNomeImagem);
+
+                        var cellStatusImagem = document.createElement('td');
+                        cellStatusImagem.textContent = item.imagem_status;
+                        row.appendChild(cellStatusImagem);
+                        applyStatusImagem(cellStatusImagem, item.imagem_status);
+
+                        var cellPrazoImagem = document.createElement('td');
+                        cellPrazoImagem.textContent = item.prazo;
+                        row.appendChild(cellPrazoImagem);
+
+                        var cellCadernoStatus = document.createElement('td');
+                        cellCadernoStatus.textContent = item.caderno_status || '-';
+                        row.appendChild(cellCadernoStatus);
+
+                        var cellFiltroStatus = document.createElement('td');
+                        cellFiltroStatus.textContent = item.filtro_status || '-';
+                        row.appendChild(cellFiltroStatus);
+
+                        var cellModelagemStatus = document.createElement('td');
+                        cellModelagemStatus.textContent = item.modelagem_status || '-';
+                        row.appendChild(cellModelagemStatus);
+
+                        var cellComposicaoStatus = document.createElement('td');
+                        cellComposicaoStatus.textContent = item.composicao_status || '-';
+                        row.appendChild(cellComposicaoStatus);
+
+                        var cellFinalizacaoStatus = document.createElement('td');
+                        cellFinalizacaoStatus.textContent = item.finalizacao_status || '-';
+                        row.appendChild(cellFinalizacaoStatus);
+
+                        var cellPosProducaoStatus = document.createElement('td');
+                        cellPosProducaoStatus.textContent = item.pos_producao_status || '-';
+                        row.appendChild(cellPosProducaoStatus);
+
+                        var cellAlteracaoStatus = document.createElement('td');
+                        cellAlteracaoStatus.textContent = item.alteracao_status || '-';
+                        row.appendChild(cellAlteracaoStatus);
+
+                        var cellPlantaStatus = document.createElement('td');
+                        cellPlantaStatus.textContent = item.planta_status || '-';
+                        row.appendChild(cellPlantaStatus);
+
+                        var cellQntRevisoes = document.createElement('td');
+                        cellQntRevisoes.textContent = item.total_revisoes || '-';
+                        row.appendChild(cellQntRevisoes);
+
+                        tabela.appendChild(row);
+                    });
+                })
+                .catch(error => console.error('Erro ao carregar funções:', error));
+        } else {
+            document.querySelector('#tabela-follow tbody').innerHTML = '';
+        }
+    }
+
 
 });
 
@@ -303,7 +613,7 @@ function openModal(modalId, element) {
 
     closeModal('add-cliente');
     closeModal('add-imagem');
-    closeModal('tabela-form');
+    closeModal('filtro-tabela');
     closeModal('filtro-colab');
     closeModal('filtro-obra');
     closeModal('follow-up');
@@ -327,7 +637,7 @@ function openModalClass(modalClass, element) {
 
     closeModal('add-cliente');
     closeModal('add-imagem');
-    closeModal('tabela-form');
+    closeModal('filtro-tabela');
     closeModal('filtro-colab');
     closeModal('filtro-obra');
     closeModal('follow-up');
@@ -635,288 +945,7 @@ function submitFormImagem(event) {
         });
 }
 
-
 document.addEventListener('DOMContentLoaded', function () {
-    document.getElementById('colaboradorSelect').addEventListener('change', carregarDados);
-    document.getElementById('dataInicio').addEventListener('change', carregarDados);
-    document.getElementById('dataFim').addEventListener('change', carregarDados);
-    document.getElementById('obraSelect').addEventListener('change', carregarDados);
-    document.getElementById('funcaoSelect').addEventListener('change', carregarDados);
-    document.getElementById('statusSelect').addEventListener('change', carregarDados);
-
-    function carregarDados() {
-        var colaboradorId = document.getElementById('colaboradorSelect').value;
-        var dataInicio = document.getElementById('dataInicio').value;
-        var dataFim = document.getElementById('dataFim').value;
-        var obraId = document.getElementById('obraSelect').value;
-        var funcaoId = document.getElementById('funcaoSelect').value;
-        var status = document.getElementById('statusSelect').value;
-
-        if (colaboradorId) {
-            var url = 'getFuncoesPorColaborador.php?colaborador_id=' + colaboradorId;
-
-            if (dataInicio) {
-                url += '&data_inicio=' + encodeURIComponent(dataInicio);
-            }
-            if (dataFim) {
-                url += '&data_fim=' + encodeURIComponent(dataFim);
-            }
-            if (obraId) {
-                url += '&obra_id=' + encodeURIComponent(obraId);
-            }
-            if (funcaoId) {
-                url += '&funcao_id=' + encodeURIComponent(funcaoId);
-            }
-            if (status) {
-                url += '&status=' + encodeURIComponent(status);
-            }
-
-            fetch(url)
-                .then(response => response.json())
-                .then(data => {
-                    var tabela = document.querySelector('#tabela-colab tbody');
-                    tabela.innerHTML = '';
-
-                    data.forEach(function (item) {
-                        var row = document.createElement('tr');
-                        var cellNomeImagem = document.createElement('td');
-                        cellNomeImagem.textContent = item.imagem_nome;
-                        var cellFuncao = document.createElement('td');
-                        cellFuncao.textContent = item.nome_funcao;
-                        var cellStatus = document.createElement('td');
-                        cellStatus.textContent = item.status;
-                        var cellPrazoImagem = document.createElement('td');
-                        cellPrazoImagem.textContent = item.prazo;
-
-                        row.appendChild(cellNomeImagem);
-                        row.appendChild(cellFuncao);
-                        row.appendChild(cellStatus);
-                        row.appendChild(cellPrazoImagem);
-                        tabela.appendChild(row);
-                    });
-
-                    document.getElementById('totalImagens').textContent = data.length;
-                })
-                .catch(error => console.error('Erro ao carregar funções:', error));
-        } else {
-            document.querySelector('#tabela-colab tbody').innerHTML = '';
-            document.getElementById('totalImagens').textContent = '0';
-        }
-    }
-});
-
-document.addEventListener('DOMContentLoaded', function () {
-    document.getElementById('obraFiltro').addEventListener('change', function () {
-        atualizarFuncoes();
-    });
-
-    document.getElementById('tipo_imagem').addEventListener('change', function () {
-        atualizarFuncoes();
-    });
-
-    function atualizarFuncoes() {
-        var obraId = document.getElementById('obraFiltro').value;
-        var tipoImagem = document.getElementById('tipo_imagem').value;
-        console.log('Enviando obraId:', obraId, 'tipoImagem:', tipoImagem);
-
-        if (obraId) {
-            fetch(`getFuncoesPorObra.php?obra_id=${obraId}&tipo_imagem=${tipoImagem}`)
-                .then(response => response.json())
-                .then(data => {
-                    console.log('Dados recebidos:', data);
-
-                    // Verifica se os dados são válidos e não vazios
-                    if (!Array.isArray(data) || data.length === 0) {
-                        console.warn('Nenhuma função encontrada para esta obra e tipo de imagem.');
-                        data = [{ // Exemplo de dados padrão para evitar que a tabela fique vazia
-                            imagem_nome: 'Sem imagem',
-                            tipo_imagem: 'N/A',
-                            caderno_colaborador: '-',
-                            caderno_status: '-',
-                            modelagem_colaborador: '-',
-                            modelagem_status: '-',
-                            composicao_colaborador: '-',
-                            composicao_status: '-',
-                            finalizacao_colaborador: '-',
-                            finalizacao_status: '-',
-                            pos_producao_colaborador: '-',
-                            pos_producao_status: '-',
-                            alteracao_colaborador: '-',
-                            alteracao_status: '-',
-                            planta_colaborador: '-',
-                            planta_status: '-'
-                        }];
-                    }
-
-                    var tabela = document.querySelector('#tabela-obra tbody');
-                    tabela.innerHTML = '';
-
-                    data.forEach(function (item) {
-                        var row = document.createElement('tr');
-
-                        var cellNomeImagem = document.createElement('td');
-                        cellNomeImagem.textContent = item.imagem_nome;
-                        row.appendChild(cellNomeImagem);
-
-                        var cellTipoImagem = document.createElement('td');
-                        cellTipoImagem.textContent = item.tipo_imagem;
-                        row.appendChild(cellTipoImagem);
-
-                        // Colunas para caderno
-                        var cellCadernoColaborador = document.createElement('td');
-                        cellCadernoColaborador.textContent = item.caderno_colaborador || '-';
-                        var cellCadernoStatus = document.createElement('td');
-                        cellCadernoStatus.textContent = item.caderno_status || '-';
-                        row.appendChild(cellCadernoColaborador);
-                        row.appendChild(cellCadernoStatus);
-                        applyStyleNone(cellCadernoColaborador, cellCadernoStatus, item.caderno_colaborador);
-                        applyStatusStyle(cellCadernoStatus, item.caderno_status, item.caderno_colaborador);
-
-                        var cellModelagemColaborador = document.createElement('td');
-                        cellModelagemColaborador.textContent = item.modelagem_colaborador || '-';
-                        var cellModelagemStatus = document.createElement('td');
-                        cellModelagemStatus.textContent = item.modelagem_status || '-';
-                        row.appendChild(cellModelagemColaborador);
-                        row.appendChild(cellModelagemStatus);
-                        applyStyleNone(cellModelagemColaborador, cellModelagemStatus, item.modelagem_colaborador);
-                        applyStatusStyle(cellModelagemStatus, item.modelagem_status, item.modelagem_colaborador);
-
-
-                        var cellComposicaoColaborador = document.createElement('td');
-                        cellComposicaoColaborador.textContent = item.composicao_colaborador || '-';
-                        var cellComposicaoStatus = document.createElement('td');
-                        cellComposicaoStatus.textContent = item.composicao_status || '-';
-                        row.appendChild(cellComposicaoColaborador);
-                        row.appendChild(cellComposicaoStatus);
-                        applyStyleNone(cellComposicaoColaborador, cellComposicaoStatus, item.composicao_colaborador);
-                        applyStatusStyle(cellComposicaoStatus, item.composicao_status, item.composicao_colaborador);
-
-
-                        var cellFinalizacaoColaborador = document.createElement('td');
-                        cellFinalizacaoColaborador.textContent = item.finalizacao_colaborador || '-';
-                        var cellFinalizacaoStatus = document.createElement('td');
-                        cellFinalizacaoStatus.textContent = item.finalizacao_status || '-';
-                        row.appendChild(cellFinalizacaoColaborador);
-                        row.appendChild(cellFinalizacaoStatus);
-                        applyStyleNone(cellFinalizacaoColaborador, cellFinalizacaoStatus, item.finalizacao_colaborador);
-                        applyStatusStyle(cellFinalizacaoStatus, item.finalizacao_status, item.finalizacao_colaborador);
-
-
-                        var cellPosProducaoColaborador = document.createElement('td');
-                        cellPosProducaoColaborador.textContent = item.pos_producao_colaborador || '-';
-                        var cellPosProducaoStatus = document.createElement('td');
-                        cellPosProducaoStatus.textContent = item.pos_producao_status || '-';
-                        row.appendChild(cellPosProducaoColaborador);
-                        row.appendChild(cellPosProducaoStatus);
-                        applyStyleNone(cellPosProducaoColaborador, cellPosProducaoStatus, item.pos_producao_colaborador);
-                        applyStatusStyle(cellPosProducaoStatus, item.pos_producao_status, item.pos_producao_colaborador);
-
-
-                        var cellAlteracaoColaborador = document.createElement('td');
-                        cellAlteracaoColaborador.textContent = item.alteracao_colaborador || '-';
-                        var cellAlteracaoStatus = document.createElement('td');
-                        cellAlteracaoStatus.textContent = item.alteracao_status || '-';
-                        row.appendChild(cellAlteracaoColaborador);
-                        row.appendChild(cellAlteracaoStatus);
-                        applyStyleNone(cellAlteracaoColaborador, cellAlteracaoStatus, item.alteracao_colaborador);
-                        applyStatusStyle(cellAlteracaoStatus, item.alteracao_status, item.alteracao_colaborador);
-
-
-                        var cellPlantaColaborador = document.createElement('td');
-                        cellPlantaColaborador.textContent = item.planta_colaborador || '-';
-                        var cellPlantaStatus = document.createElement('td');
-                        cellPlantaStatus.textContent = item.planta_status || '-';
-                        row.appendChild(cellPlantaColaborador);
-                        row.appendChild(cellPlantaStatus);
-                        applyStyleNone(cellPlantaColaborador, cellPlantaStatus, item.planta_colaborador);
-                        applyStatusStyle(cellPlantaStatus, item.planta_status, item.planta_colaborador);
-
-                        tabela.appendChild(row);
-                    });
-                })
-                .catch(error => console.error('Erro ao carregar funções:', error));
-        } else {
-            document.querySelector('#tabela-obra tbody').innerHTML = '';
-        }
-    }
-
-    document.getElementById('obra-follow').addEventListener('change', fetchFollowUpData);
-    document.getElementById('status_imagem').addEventListener('change', fetchFollowUpData);
-    document.getElementById('tipo_imagem_follow').addEventListener('change', fetchFollowUpData);
-
-    function fetchFollowUpData() {
-        var obraId = document.getElementById('obra-follow').value;
-        var statusImagem = document.getElementById('status_imagem').value;
-        var tipoImagem = document.getElementById('tipo_imagem_follow').value;
-
-        if (obraId) {
-            fetch(`followup.php?obra_id=${obraId}&status_imagem=${statusImagem}&tipo_imagem=${tipoImagem}`)
-                .then(response => response.json())
-                .then(data => {
-                    var tabela = document.querySelector('#tabela-follow tbody');
-                    tabela.innerHTML = '';
-
-                    data.forEach(function (item) {
-                        var row = document.createElement('tr');
-
-                        var cellNomeImagem = document.createElement('td');
-                        cellNomeImagem.textContent = item.imagem_nome;
-                        row.appendChild(cellNomeImagem);
-
-                        var cellStatusImagem = document.createElement('td');
-                        cellStatusImagem.textContent = item.imagem_status;
-                        row.appendChild(cellStatusImagem);
-                        applyStatusImagem(cellStatusImagem, item.imagem_status);
-
-                        var cellPrazoImagem = document.createElement('td');
-                        cellPrazoImagem.textContent = item.prazo;
-                        row.appendChild(cellPrazoImagem);
-
-                        var cellCadernoStatus = document.createElement('td');
-                        cellCadernoStatus.textContent = item.caderno_status || '-';
-                        row.appendChild(cellCadernoStatus);
-
-                        var cellFiltroStatus = document.createElement('td');
-                        cellFiltroStatus.textContent = item.filtro_status || '-';
-                        row.appendChild(cellFiltroStatus);
-
-                        var cellModelagemStatus = document.createElement('td');
-                        cellModelagemStatus.textContent = item.modelagem_status || '-';
-                        row.appendChild(cellModelagemStatus);
-
-                        var cellComposicaoStatus = document.createElement('td');
-                        cellComposicaoStatus.textContent = item.composicao_status || '-';
-                        row.appendChild(cellComposicaoStatus);
-
-                        var cellFinalizacaoStatus = document.createElement('td');
-                        cellFinalizacaoStatus.textContent = item.finalizacao_status || '-';
-                        row.appendChild(cellFinalizacaoStatus);
-
-                        var cellPosProducaoStatus = document.createElement('td');
-                        cellPosProducaoStatus.textContent = item.pos_producao_status || '-';
-                        row.appendChild(cellPosProducaoStatus);
-
-                        var cellAlteracaoStatus = document.createElement('td');
-                        cellAlteracaoStatus.textContent = item.alteracao_status || '-';
-                        row.appendChild(cellAlteracaoStatus);
-
-                        var cellPlantaStatus = document.createElement('td');
-                        cellPlantaStatus.textContent = item.planta_status || '-';
-                        row.appendChild(cellPlantaStatus);
-
-                        var cellQntRevisoes = document.createElement('td');
-                        cellQntRevisoes.textContent = item.total_revisoes || '-';
-                        row.appendChild(cellQntRevisoes);
-
-                        tabela.appendChild(row);
-                    });
-                })
-                .catch(error => console.error('Erro ao carregar funções:', error));
-        } else {
-            document.querySelector('#tabela-follow tbody').innerHTML = '';
-        }
-    }
-
 
 });
 
@@ -1051,9 +1080,14 @@ closeBtn.onclick = function () {
     limparCampos();
 };
 
+const form_edicao = document.getElementById('form-edicao');
+
 window.onclick = function (event) {
     if (event.target == modalLogs) {
         modalLogs.style.display = "none";
+    }
+    if (event.target == form_edicao) {
+        form_edicao.style.display = "none"
     }
 }
 

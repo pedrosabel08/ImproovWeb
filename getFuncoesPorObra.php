@@ -16,6 +16,7 @@ $tipoImagem = $_GET['tipo_imagem'] !== '0' && !empty($_GET['tipo_imagem']) ? $_G
 
 // Consulta SQL inicial
 $sql = "SELECT
+    ico.idimagens_cliente_obra AS imagem_id,
     ico.imagem_nome,
     ico.tipo_imagem,
     MAX(CASE WHEN fi.funcao_id = 1 THEN c.nome_colaborador END) AS caderno_colaborador,

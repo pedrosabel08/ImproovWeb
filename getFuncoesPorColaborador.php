@@ -19,6 +19,7 @@ $funcaoId = isset($_GET['funcao_id']) ? intval($_GET['funcao_id']) : '';
 $status = isset($_GET['status']) ? $_GET['status'] : '';
 
 $sql = "SELECT
+            ico.idimagens_cliente_obra AS imagem_id,
             ico.imagem_nome,
             fi.status,
             fi.prazo,

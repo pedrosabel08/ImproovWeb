@@ -43,38 +43,56 @@ $conn->close();
 
 <body>
 	<header>
-		<div class="navbar-left">
-
-			<select name="colaborador" id="colaborador">
-				<?php foreach ($colaboradores as $colab): ?>
-					<option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-						<?= htmlspecialchars($colab['nome_colaborador']); ?>
-					</option>
-				<?php endforeach; ?>
-			</select>
-			<select name="mes" id="mes">
-				<option value="Janeiro">Janeiro</option>
-				<option value="Fevereiro">Fevereiro</option>
-				<option value="Março">Março</option>
-				<option value="Abril">Abril</option>
-				<option value="Maio">Maio</option>
-				<option value="Junho">Junho</option>
-				<option value="Julho">Julho</option>
-				<option value="Agosto">Agosto</option>
-				<option value="Setembro">Setembro</option>
-				<option value="Outubro">Outubro</option>
-				<option value="Novembro">Novembro</option>
-				<option value="Dezembro">Dezembro</option>
-			</select>
-
-		</div>
-
 		<img src="../gif/assinatura_branco.gif" alt="">
 
 		<p id="data"></p>
 	</header>
 
 	<main>
+		<div class="filtro">
+			<div class="colaborador">
+				<h2>Colaborador:</h2>
+				<select name="colaborador" id="colaborador">
+					<?php foreach ($colaboradores as $colab): ?>
+						<option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+							<?= htmlspecialchars($colab['nome_colaborador']); ?>
+						</option>
+					<?php endforeach; ?>
+				</select>
+			</div>
+			<div class="mes">
+				<h2>Mês:</h2>
+				<select name="mes" id="mes">
+					<option value="1">Janeiro</option>
+					<option value="2">Fevereiro</option>
+					<option value="3">Março</option>
+					<option value="4">Abril</option>
+					<option value="5">Maio</option>
+					<option value="6">Junho</option>
+					<option value="7">Julho</option>
+					<option value="8">Agosto</option>
+					<option value="9">Setembro</option>
+					<option value="10">Outubro</option>
+					<option value="11">Novembro</option>
+					<option value="12">Dezembro</option>
+				</select>
+			</div>
+
+			<div class="tipo-imagem">
+				<h2>Função:</h2>
+				<select id="tipoImagemFiltro" onchange="filtrarTabela()">
+					<option value="">Todos as Funções</option>
+					<option value="Caderno">Caderno</option>
+					<option value="Filtro de assets">Filtro de assets</option>
+					<option value="Modelagem">Modelagem</option>
+					<option value="Composição">Composição</option>
+					<option value="Finalização">Finalização</option>
+					<option value="Alteração">Alteração</option>
+					<option value="Pós-Produção">Pós-Produção</option>
+					<option value="Planta Humanizada">Planta Humanizada</option>
+				</select>
+			</div>
+		</div>
 		<section id="table-list">
 			<div class="menu-buttons">
 				<div class="buttons">
@@ -84,9 +102,15 @@ $conn->close();
 					<input type="text" id="valor" placeholder="R$ 0,00">
 				</div>
 
-				<div class="valor">
-					<label id="totalValor">Total: R$ 0,00</label>
-					<label id="contagemLinhasLabel">Total de imagens: 0</label>
+				<div id="valores">
+					<div class="total-valor">
+						<p>Total (R$):</p>
+						<span id="totalValor"></span>
+					</div>
+					<div class="total-tarefas">
+						<p>Total:</p>
+						<span id="total-imagens"></span>
+					</div>
 				</div>
 			</div>
 
@@ -98,7 +122,7 @@ $conn->close();
 							<th>Nome da Imagem</th>
 							<th>Status</th>
 							<th>Função</th>
-							<th>Valor</th>
+							<th>Valor (R$)</th>
 							<th>Status Pgt</th>
 						</tr>
 					</thead>
@@ -109,15 +133,15 @@ $conn->close();
 			</div>
 		</section>
 
-		<section id="graficos-tarefas">
+		<!-- <section id="graficos-tarefas">
 			<div>
 				<canvas id="tarefasPorMes"></canvas>
-				p#
+				
 			</div>
 			<div>
 				<canvas id="statusTarefas"></canvas>
 			</div>
-		</section>
+		</section> -->
 	</main>
 
 	<script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>

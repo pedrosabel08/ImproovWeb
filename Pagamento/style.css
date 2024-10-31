@@ -26,14 +26,6 @@ header {
 	background: linear-gradient(90deg, #1a1a2e 0%, #3e4a70 50%, #2b2b3b 100%);
 }
 
-header select {
-	border: none;
-	padding: 3px 2px;
-	width: 150px;
-	background-color: #fff;
-	color: #000000;
-}
-
 header img {
 	height: 150px;
 }
@@ -45,13 +37,30 @@ header p {
 
 main {
 	display: grid;
-	grid-template-rows: 1fr 1fr;
+	grid-template-rows: auto 1fr;
 	gap: 40px;
 	margin: 40px;
 }
 
+.filtro {
+	display: flex;
+	justify-content: flex-start;
+	flex-direction: column;
+	gap: 20px;
+}
+
+.filtro h2 {
+	font-size: 18px;
+}
+
+.filtro select {
+	padding: 3px 10px;
+	font-size: 14px;
+	border-radius: 20px;
+}
+
 .tabela {
-	max-height: 80vh;
+	max-height: 100vh;
 	overflow-y: auto;
 	width: 80%;
 	margin: auto;
@@ -62,10 +71,11 @@ main {
 }
 
 .buttons button {
-	background-color: #000;
-	color: white;
-	padding: 3px 5px;
+	background-color: #000000;
+	color: rgb(255, 255, 255);
+	padding: 3px 6px;
 	transition: 0.3s all ease;
+	border-radius: 15px;
 }
 
 .buttons input {
@@ -76,6 +86,17 @@ main {
 	background-color: #FF5833;
 	cursor: pointer;
 }
+
+#valores {
+	display: none;
+	flex-direction: column;	
+	padding: 2rem;
+}
+
+#valores span {
+	font-weight: bold;
+}
+
 
 #table-list table {
 	width: 100%;

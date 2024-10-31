@@ -8,14 +8,9 @@ document.getElementById('data').textContent = formatarDataAtual();
 
 document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('colaborador').addEventListener('change', function () {
-        const colaboradorId = this.value;
-        console.log(colaboradorId);
         carregarDadosColab();
-        carregarDadosGrafico(colaboradorId);
     });
     document.getElementById('mes').addEventListener('change', carregarDadosColab);
-
-    var statusTarefasChart;
 
     function carregarDadosColab() {
         var colaboradorId = document.getElementById('colaborador').value;
@@ -83,14 +78,8 @@ document.addEventListener('DOMContentLoaded', function () {
                         }
                     });
 
-                    var totalValorLabel = document.getElementById('totalValor');
-                    totalValorLabel.textContent = 'Total: R$ ' + totalValor.toFixed(2).replace('.', ',');
-
-                    var contagemLinhasLabel = document.getElementById('contagemLinhasLabel');
-                    contagemLinhasLabel.textContent = 'Total de Linhas: ' + data.length;
-
+                    contarLinhasTabela();
                     // Atualiza o gráfico de status de tarefas quando o colaborador é alterado
-                    atualizarGraficoStatusTarefas(data);
 
                 })
                 .catch(error => {
@@ -103,96 +92,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    function carregarDadosGrafico(colaboradorId) {
-        // Crie uma URL que aponte para o seu script PHP que executa a consulta
-        const url = `dados_grafico.php?colaborador_id=${colaboradorId}`;
-
-        // Use Fetch API para obter os dados do servidor
-        fetch(url)
-            .then(response => {
-                // Verifica se a resposta foi bem-sucedida
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                }
-                return response.json();
-            })
-            .then(data => {
-                // Aqui você deve processar os dados retornados e atualizar o gráfico
-                // Exemplo: supondo que você esteja usando Chart.js para o gráfico
-                const meses = data.map(item => item.mes);
-                const totais = data.map(item => item.total_funcoes);
-                const totalValor = data.reduce((acc, item) => acc + parseFloat(item.total_valor), 0); // Calcula o total geral
-
-                // Atualize seu gráfico com os dados recebidos
-                atualizarGrafico(meses, totais);
-                document.getElementById('valorTotal').innerText = `Valor Total: ${totalValor.toFixed(2)}`; // Formata para duas casas decimais
-
-            })
-            .catch(error => {
-                console.error('Houve um problema com a requisição Fetch:', error);
-            });
-    }
-
-    function atualizarGrafico(meses, totais) {
-        const ctx = document.getElementById('tarefasPorMes').getContext('2d');
-        if (window.meuGrafico) {
-            window.meuGrafico.destroy(); // Destrói o gráfico existente antes de criar um novo
-        }
-
-        window.meuGrafico = new Chart(ctx, {
-            type: 'bar', // ou 'line', 'pie', etc.
-            data: {
-                labels: meses,
-                datasets: [{
-                    label: 'Total de Tarefas',
-                    data: totais,
-                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                    borderColor: 'rgba(75, 192, 192, 1)',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                scales: {
-                    y: {
-                        beginAtZero: true
-                    }
-                }
-            }
-        });
-    }
-
-    function atualizarGraficoStatusTarefas(data) {
-        // Se o gráfico já existe, destrua antes de recriar
-        if (statusTarefasChart) {
-            statusTarefasChart.destroy();
-        }
-
-        var ctx2 = document.getElementById('statusTarefas').getContext('2d');
-
-        // Atualiza os dados do status de finalização
-        var finalizadas = data.filter(item => item.status === 'Finalizado').length;
-        var naoFinalizadas = data.length - finalizadas;
-
-        statusTarefasChart = new Chart(ctx2, {
-            type: 'doughnut',
-            data: {
-                labels: ['Finalizadas', 'Não Finalizadas'],
-                datasets: [{
-                    data: [finalizadas, naoFinalizadas],
-                    backgroundColor: ['#00FF66', '#FFC300'],
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    title: {
-                        display: true,
-                        text: 'Status das Tarefas'
-                    }
-                }
-            }
-        });
-    }
 
     document.getElementById('marcar-todos').addEventListener('click', function () {
         var checkboxes = document.querySelectorAll('.pagamento-checkbox');
@@ -262,3 +161,47 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 
+
+function contarLinhasTabela() {
+    const tabela = document.getElementById("tabela-faturamento");
+    const tbody = tabela.getElementsByTagName("tbody")[0];
+    const linhas = tbody.getElementsByTagName("tr");
+    let totalImagens = 0;
+    let totalValor = 0;
+
+    for (let i = 0; i < linhas.length; i++) {
+        if (linhas[i].style.display !== "none") {
+            totalImagens++;
+            const valorCell = linhas[i].getElementsByTagName("td")[3]; // Supondo que o valor está na quarta coluna (índice 3)
+            const valor = parseFloat(valorCell.textContent.replace('R$', '').replace(',', '.').trim());
+            totalValor += !isNaN(valor) ? valor : 0; // Soma o valor se for um número
+        }
+    }
+
+    document.getElementById("total-imagens").innerText = totalImagens;
+    document.getElementById("totalValor").innerText = totalValor.toFixed(2).replace('.', ','); // Atualiza o total
+    document.getElementById('valores').style.display = 'flex';
+}
+
+
+function filtrarTabela() {
+    const tipoImagemFiltro = document.getElementById('tipoImagemFiltro').value;
+    const tabela = document.querySelector('#tabela-faturamento tbody');
+    const linhas = tabela.getElementsByTagName('tr');
+
+    for (let i = 0; i < linhas.length; i++) {
+        const linha = linhas[i];
+        const funcaoCell = linha.cells[2];
+
+        if (funcaoCell) {
+            const funcaoText = funcaoCell.textContent || funcaoCell.innerText;
+            if (tipoImagemFiltro === "" || funcaoText === tipoImagemFiltro) {
+                linha.style.display = "";
+            } else {
+                linha.style.display = "none";
+            }
+        }
+    }
+
+    contarLinhasTabela();
+}

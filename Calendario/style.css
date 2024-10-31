@@ -1,0 +1,123 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,200..1000;1,200..1000&display=swap');
+
+
+* {
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+    font-family: "Nunito", sans-serif;
+}
+
+body {
+    background-color: #f8f9fa;
+    padding: 20px;
+}
+
+#button-sair {
+    background-color: #0066ff;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s;
+}
+
+#button-sair:hover {
+    background-color: #033797;
+}
+
+.buttons {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 40px;
+}
+
+#addEventBtn {
+    padding: 10px 20px;
+    background-color: #007bff;
+    border-color: #007bff;
+    border-radius: 50px;
+    font-size: 16px;
+    color: #fff;
+    transition: background-color 0.3s ease;
+}
+
+#addEventBtn:hover {
+    background-color: #0056b3;
+    border-color: #004085;
+}
+
+#logObra {
+    padding: 10px 20px;
+    background-color: #218838;
+    border-color: #1b7a30;
+    border-radius: 50px;
+    font-size: 16px;
+    color: #fff;
+    transition: background-color 0.3s ease;
+}
+
+#logObra:hover {
+    background-color: #155a24;
+    border-color: #27a542;
+}
+
+.modal-header {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    color: black;
+}
+
+.modal-title {
+    font-weight: bold;
+}
+
+.modal-body {
+    padding: 20px;
+}
+
+.form-label {
+    font-weight: bold;
+}
+
+#opcao_obra {
+    width: 100%;
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid #ced4da;
+    margin-bottom: 15px;
+}
+
+#prazoDate,
+#tipoEntrega {
+    border-radius: 5px;
+    padding: 10px;
+    border: 1px solid #ced4da;
+}
+
+#addEventForm button {
+    width: 100%;
+    padding: 10px;
+    border-radius: 5px;
+    background-color: #28a745;
+    border: none;
+    color: white;
+    font-size: 16px;
+    transition: background-color 0.3s ease;
+}
+
+#addEventForm button:hover {
+    background-color: #218838;
+}
+
+@media (max-width: 600px) {
+    #button-sair {
+        display: none;
+    }
+}

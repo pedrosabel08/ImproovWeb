@@ -20,8 +20,8 @@ a {
 header {
     display: flex;
     justify-content: space-between;
-    padding: 10px 10px 0 10px;
-    height: 150px;
+    align-items: flex-start;
+    padding: 10px;
 }
 
 .buttons {
@@ -39,12 +39,13 @@ header {
     background-color: #f1f1f1;
     border-radius: 10px;
     position: absolute;
-    right: 0;
+    left: 10px;
     z-index: 1;
     margin-top: 30px;
     min-width: 10rem;
     padding: .5rem 0;
     transition: .3s all ease;
+    animation: fadeIn .5s ease-in-out forwards;
 }
 
 #menu a {
@@ -52,10 +53,15 @@ header {
     padding: 5px;
     text-decoration: none;
     color: black;
-    font-size: 0.85rem;
+    font-size: 1rem;
     padding: .25rem 1.5rem;
     border-radius: 2px;
     transition: .3s all ease;
+    text-align: center;
+}
+
+#menu a#tab-imagens {
+    font-weight: bold;
 }
 
 #menu a i {
@@ -81,8 +87,7 @@ button#voltar:hover {
 
 
 header img {
-    width: 250px;
-    margin: 0 auto;
+    width: 150px;
     cursor: pointer;
 }
 
@@ -129,12 +134,9 @@ section.tabela-form {
 
 #filtro {
     margin-left: 0;
-    animation: fadeIn 1.3s ease-in-out forwards;
-
 }
 
-#filtro h1,
-.form-edicao h1 {
+#filtro h1 {
     font-size: 24px;
     padding-bottom: 10px;
     text-decoration: underline;
@@ -149,18 +151,24 @@ section.tabela-form {
     box-sizing: border-box;
 }
 
+.filtro-tabela {
+    animation: fadeIn 1.3s ease-in-out forwards;
+    width: 90%;
+    margin: auto;
+    margin-top: 30px;
+}
+
 .tabelaClientes {
     margin-top: 15px;
-    height: 50vh;
     overflow-y: auto;
+    margin-bottom: 20px;
+    max-height: 60vh;
 }
 
 table#tabelaClientes {
     border-collapse: collapse;
     width: 100%;
     margin-left: 0;
-    animation: fadeIn 1s ease-in-out forwards;
-
 }
 
 td,
@@ -172,6 +180,14 @@ th {
 
 }
 
+/* .tabelaClientes tbody tr:nth-child(odd) {
+    background-color: #f2f2f2;
+}
+
+.tabelaClientes tbody tr:nth-child(even) {
+    background-color: #ffffff;
+} */
+
 table#tabelaClientes td,
 table#tabelaClientes th {
     max-width: 20px;
@@ -180,14 +196,20 @@ table#tabelaClientes th {
     white-space: nowrap;
 }
 
-table#tabelaClientes th.nome-imagem,
-table#tabelaClientes td.nome-imagem {
+table#tabelaClientes th#nome-imagem,
+table#tabelaClientes td#nome-imagem {
     max-width: 200px;
 }
 
 table#tabela-obra td:first-child,
 table#tabela-obra th:first-child {
     max-width: 500px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#tabela-obra td {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -377,7 +399,7 @@ table#tabela-obra th:first-child {
     background-color: #00eeff73;
 }
 
-table#tabelaClientes tr:hover {
+table tr:hover {
     cursor: pointer;
     background-color: #00eeff73;
 }
@@ -419,8 +441,7 @@ table#tabelaClientes tr:hover {
 
 #add-cliente button#salvar,
 #add-imagem button#salvar,
-#add-acomp button#salvar,
-.form-edicao button#salvar_funcoes {
+#add-acomp button#salvar {
     border: 1px solid black;
     background-color: #119111;
     text-align: center;
@@ -475,23 +496,119 @@ table#tabelaClientes tr:hover {
 }
 
 .form-edicao {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    justify-content: center;
+    align-items: center;
+    animation: fadeIn .2s ease-in-out forwards;
+}
+
+form#form-add {
+    background-color: white;
+    padding: 20px;
+    border-radius: 10px;
+    width: 60%;
+    max-height: 70%;
+    overflow-y: auto;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    animation: showModal 0.3s ease;
+}
+
+form#form-add .funcao {
+    background-color: rgb(218, 217, 217);
+    padding: 10px;
+    border-radius: 10px;
+    margin-bottom: 15px;
+}
+
+/* form#form-add h1 {
+    margin-bottom: 3rem;
+} */
+
+form#form-add select,
+form#form-add input {
+    border: none;
+    padding: 5px 10px;
+}
+
+button {
+    all: unset;
+}
+
+form#form-add button {
+    background-color: #119111;
+    text-align: center;
+    color: #ffffff;
+    padding: 0.5rem 2rem;
+    border-radius: 20px;
+    transition: .3s;
+    text-transform: uppercase;
+    font-size: 14px;
+}
+
+form#form-add button:hover {
+    background-color: #0c6b0c;
+    cursor: pointer;
+}
+
+.buttons {
+    display: flex;
+    justify-content: center;
+}
+
+.funcao {
     display: flex;
     flex-direction: column;
-    justify-content: flex-start;
-    gap: 15px;
+    gap: 8px;
+}
+
+.titulo {
+    display: flex;
+    justify-content: space-between;
+}
+
+.opcoes {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-top: 15px;
+}
+
+.show-in {
+    animation: showIn 0.5s forwards;
+}
+
+#status_funcao {
+    width: 150px;
+}
+
+#status_funcao select {
+    width: 80px;
     margin: 0 auto;
-    animation: fadeIn 1.3s ease-in-out forwards;
-
 }
 
-.form-edicao p {
-    margin: 12px 0 5px 0;
-    font-weight: 600;
+@media (max-width: 1050px) {
+    .opcoes {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+    }
 }
 
-.form-edicao h1 {
-    text-align: center;
-    margin-bottom: 50px;
+@keyframes showIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
 }
 
 .form-edicao .funcao input,
@@ -503,8 +620,17 @@ table#tabelaClientes tr:hover {
     display: none;
 }
 
-.form-edicao label#campoNomeImagem {
-    font-size: 14px;
+.titulo-funcoes {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 40px;
+}
+
+#campoNomeImagem {
+    font-size: 1.2em;
+    color: #333;
+    font-weight: bold;
 }
 
 .form-edicao .buttons {
@@ -690,15 +816,20 @@ button#mostrarLogsBtn:hover {
     font-weight: bold;
 }
 
+button#generate-pdf {
+    padding: 5px;
+    background-color: #ff0202;
+    border-radius: 15px;
+    font-size: 14px;
+}
+
 
 @keyframes fadeIn {
     0% {
         opacity: 0;
-        transform: translateY(10px);
     }
 
     100% {
         opacity: 1;
-        transform: translateY(0);
     }
 }

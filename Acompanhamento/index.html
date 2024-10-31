@@ -7,14 +7,18 @@
     <title>Acompanhamento</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
+        type="image/x-icon">
     <script src="script.js" defer></script>
 </head>
 
 <body>
     <header>
-        <h1>Acompanhamento</h1>
         <button onclick="window.location.href='../inicio.php'" id="button-sair"><i
                 class="fas fa-arrow-left"></i></button>
+        <h1>Acompanhamento</h1>
+        <img src="../gif/assinatura_preto.gif" alt="" style="width: 200px;">
+
     </header>
 
     <main>
@@ -34,6 +38,19 @@
         </div>
 
         <div class="coluna">
+
+            <div id="filtro">
+                <h1>Filtro</h1>
+                <div id="filtros">
+                    <select id="colunaFiltro">
+                        <option value="0">Obra</option>
+                        <option value="1">Colaborador</option>
+                        <option value="2">Assunto</option>
+                        <option value="3">Data</option>
+                    </select>
+                    <input type="text" id="pesquisa" onkeyup="filtrarTabela()" placeholder="Buscar...">
+                </div>
+            </div>
             <h2>Tabela de Acompanhamento por Email</h2>
             <table id="tabela-acomp-email">
                 <thead>

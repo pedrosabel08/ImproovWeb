@@ -25,24 +25,44 @@ $idusuario = $_SESSION['idusuario'];
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
         integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
 
     <title>Improov+Flow</title>
 </head>
 
 
 <header>
-    <a href="inicio.php">
-        <img src="./assets/ImproovFlow - logo.png" alt="Improov" class="logo">
-    </a>
-    <div class="buttons">
-        <button id="voltar" onclick="window.location.href='inicio.php'">Voltar</button>
-        <button id="menuButton"><i class="fa-solid fa-user"></i></button>
-        <div id="menu" class="hidden">
-            <a href="infos.php" id="editProfile"><i class="fa-regular fa-user"></i>Editar Informações</a>
-            <hr>
-            <a href="#" id="logout"><i class="fa-solid fa-right-from-bracket"></i>Sair</a>
-        </div>
+    <button id="menuButton">
+        <i class="fa-solid fa-bars"></i>
+    </button>
+
+    <div id="menu" class="hidden">
+        <a href="inicio.php" id="tab-imagens">Página Principal</a>
+        <a href="main.php" id="tab-imagens">Visualizar tabela com imagens</a>
+        <a href="Pos-Producao/index.php">Lista Pós-Produção</a>
+
+        <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 3)): ?>
+            <a href="infoCliente/index.php">Informações clientes</a>
+            <a href="Acompanhamento/index.html">Acompanhamentos</a>
+        <?php endif; ?>
+
+        <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 4)): ?>
+            <a href="Animacao/index.php">Lista Animação</a>
+        <?php endif; ?>
+        <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1)): ?>
+            <a href="Imagens/index.php">Lista Imagens</a>
+        <?php endif; ?>
+
+        <a href="Metas/index.php">Metas e progresso</a>
+
+        <a id="calendar" class="calendar-btn" href="Calendario/index.php">
+            <i class="fa-solid fa-calendar-days"></i>
+        </a>
     </div>
+
+    <img src="assets/ImproovFlow - logo.png" alt="Logo Improov + Flow">
+
 </header>
 
 
@@ -58,7 +78,7 @@ $idusuario = $_SESSION['idusuario'];
     <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 3)): ?>
         <a href="#add-acomp" onclick="openModal('add-acomp', this)">Adicionar Acompanhamento</a>
     <?php endif; ?>
-    <a href="#filtro" onclick="openModalClass('tabela-form', this)" class="active">Ver Imagens</a>
+    <a href="#filtro" onclick="openModalClass('filtro-tabela', this)" class="active">Ver Imagens</a>
     <a href="#filtro-colab" onclick="openModal('filtro-colab', this)">Filtro Colaboradores</a>
     <a href="#filtro-obra" onclick="openModal('filtro-obra', this)">Filtro por Obra</a>
     <a href="#follow-up" onclick="openModal('follow-up', this)">Follow Up</a>
@@ -137,102 +157,115 @@ $conn->close();
         </div>
 
 
-        <section class="tabela-form" id="tabela-form">
+        <!-- Tabela com filtros -->
+        <div class="filtro-tabela" id="filtro-tabela">
 
-            <!-- Tabela com filtros -->
-            <div class="filtro-tabela">
+            <div id="filtro">
+                <h1>Filtro</h1>
+                <select id="colunaFiltro">
+                    <option value="0">Cliente</option>
+                    <option value="1">Obra</option>
+                    <option value="2">Imagem</option>
+                    <option value="4">Status</option>
+                </select>
+                <input type="text" id="pesquisa" onkeyup="filtrarTabela()" placeholder="Buscar...">
 
-                <div id="filtro">
-                    <h1>Filtro</h1>
-                    <select id="colunaFiltro">
-                        <option value="0">Cliente</option>
-                        <option value="1">Obra</option>
-                        <option value="2">Imagem</option>
-                        <option value="3">Prazo Estimado</option>
-                        <option value="4">Status</option>
-                    </select>
-                    <input type="text" id="pesquisa" onkeyup="filtrarTabela()" placeholder="Buscar...">
-                </div>
-
-                <div class="tabelaClientes">
-                    <table id="tabelaClientes">
-                        <thead>
-                            <tr>
-                                <th>Cliente</th>
-                                <th>Obra</th>
-                                <th class="nome-imagem">Imagem</th>
-                                <th>Receb. arquivos</th>
-                                <th>Data Inicio</th>
-                                <th>Prazo</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php
-                            // Conectar ao banco de dados
-                            $conn = new mysqli('mysql.improov.com.br', 'improov', 'Impr00v', 'improov');
-
-                            // Verificar a conexão
-                            if ($conn->connect_error) {
-                                die("Falha na conexão: " . $conn->connect_error);
-                            }
-                            $conn->set_charset('utf8mb4');
-
-                            // Obter o valor do filtro de pesquisa
-                            $filtro = isset($_GET['filtro']) ? $conn->real_escape_string($_GET['filtro']) : '';
-                            $colunaFiltro = isset($_GET['colunaFiltro']) ? intval($_GET['colunaFiltro']) : 0;
-
-                            // Consulta para buscar os dados com filtro
-                            $sql = "SELECT i.idimagens_cliente_obra, c.nome_cliente, o.nome_obra, i.recebimento_arquivos, i.data_inicio, i.prazo, MAX(i.imagem_nome) AS imagem_nome, i.prazo AS prazo_estimado, s.nome_status FROM imagens_cliente_obra i JOIN cliente c ON i.cliente_id = c.idcliente JOIN obra o ON i.obra_id = o.idobra LEFT JOIN funcao_imagem fi ON i.idimagens_cliente_obra = fi.imagem_id LEFT JOIN funcao f ON fi.funcao_id = f.idfuncao LEFT JOIN colaborador co ON fi.colaborador_id = co.idcolaborador LEFT JOIN status_imagem s ON i.status_id = s.idstatus GROUP BY i.idimagens_cliente_obra";
-
-                            // Aplicar filtro se necessário
-                            if ($filtro) {
-                                $colunas = [
-                                    'nome_cliente',
-                                    'nome_obra',
-                                    'imagem_nome',
-                                    'prazo_estimado',
-                                    'nome_status'
-                                ];
-                                $coluna = $colunas[$colunaFiltro];
-                                $sql .= " HAVING LOWER($coluna) LIKE LOWER('%$filtro%')";
-                            }
-
-                            $result = $conn->query($sql);
-
-                            // Verificar se houve erro na execução da consulta
-                            if (!$result) {
-                                die("Erro na consulta SQL: " . $conn->error);
-                            }
-
-                            if ($result->num_rows > 0) {
-                                // Exibir os dados em linhas na tabela
-                                while ($row = $result->fetch_assoc()) {
-                                    echo "<tr class='linha-tabela' data-id='" . htmlspecialchars($row["idimagens_cliente_obra"]) . "'>";
-                                    echo "<td title='" . htmlspecialchars($row["nome_cliente"]) . "'>" . htmlspecialchars($row["nome_cliente"]) . "</td>";
-                                    echo "<td title='" . htmlspecialchars($row["nome_obra"]) . "'>" . htmlspecialchars($row["nome_obra"]) . "</td>";
-                                    echo "<td title='" . htmlspecialchars($row["imagem_nome"]) . "'>" . htmlspecialchars($row["imagem_nome"]) . "</td>";
-                                    echo "<td title='" . htmlspecialchars($row["recebimento_arquivos"]) . "'>" . htmlspecialchars($row["recebimento_arquivos"]) . "</td>";
-                                    echo "<td title='" . htmlspecialchars($row["data_inicio"]) . "'>" . htmlspecialchars($row["data_inicio"]) . "</td>";
-                                    echo "<td title='" . htmlspecialchars($row["prazo_estimado"]) . "'>" . htmlspecialchars($row["prazo_estimado"]) . "</td>";
-                                    echo "<td title='" . htmlspecialchars($row["nome_status"]) . "'>" . htmlspecialchars($row["nome_status"]) . "</td>";
-                                    echo "</tr>";
-                                }
-                            } else {
-                                echo "<tr><td colspan='13'>Nenhum dado encontrado</td></tr>";
-                            }
-                            ?>
-                        </tbody>
-                    </table>
-                </div>
+                <select id="tipoImagemFiltro" onchange="filtrarTabela()">
+                    <option value="">Todos os Tipos de Imagem</option>
+                    <option value="Fachada">Fachada</option>
+                    <option value="Imagem Interna">Imagem Interna</option>
+                    <option value="Imagem Externa">Imagem Externa</option>
+                    <option value="Planta Humanizada">Planta Humanizada</option>
+                </select>
             </div>
-            <div class="form-edicao">
-                <form id="form-add" method="post" action="insereFuncao.php">
-                    <h1>Funções</h1>
-                    <input type="hidden" id="imagem_id" name="imagem_id">
-                    <label id="campoNomeImagem" name="nomeImagem" readonly></label>
-                    <div class="funcao">
+
+            <div class="tabelaClientes">
+                <div class="image-count">
+                    <strong>Total de Imagens:</strong> <span id="total-imagens">0</span>
+                </div>
+                <table id="tabelaClientes">
+                    <thead>
+                        <tr>
+                            <th id="cliente">Cliente</th>
+                            <th id="obra">Obra</th>
+                            <th id="nome-imagem">Imagem</th>
+                            <th id="status">Status</th>
+                            <th>Tipo Imagem</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php
+                        $conn = new mysqli('mysql.improov.com.br', 'improov', 'Impr00v', 'improov');
+
+                        if ($conn->connect_error) {
+                            die("Falha na conexão: " . $conn->connect_error);
+                        }
+                        $conn->set_charset('utf8mb4');
+
+                        $filtro = isset($_GET['filtro']) ? $conn->real_escape_string($_GET['filtro']) : '';
+                        $colunaFiltro = isset($_GET['colunaFiltro']) ? intval($_GET['colunaFiltro']) : 0;
+                        $tipoImagemFiltro = isset($_GET['tipoImagemFiltro']) ? $conn->real_escape_string($_GET['tipoImagemFiltro']) : '';
+
+                        $sql = "SELECT i.idimagens_cliente_obra, c.nome_cliente, o.nome_obra, i.recebimento_arquivos, i.data_inicio, i.prazo, MAX(i.imagem_nome) AS imagem_nome, i.prazo AS prazo_estimado, s.nome_status, i.tipo_imagem FROM imagens_cliente_obra i 
+                            JOIN cliente c ON i.cliente_id = c.idcliente 
+                            JOIN obra o ON i.obra_id = o.idobra 
+                            LEFT JOIN funcao_imagem fi ON i.idimagens_cliente_obra = fi.imagem_id 
+                            LEFT JOIN funcao f ON fi.funcao_id = f.idfuncao 
+                            LEFT JOIN colaborador co ON fi.colaborador_id = co.idcolaborador 
+                            LEFT JOIN status_imagem s ON i.status_id = s.idstatus 
+                            GROUP BY i.idimagens_cliente_obra";
+
+                        if ($filtro) {
+                            $colunas = [
+                                'nome_cliente',
+                                'nome_obra',
+                                'imagem_nome',
+                                'nome_status'
+                            ];
+                            $coluna = $colunas[$colunaFiltro];
+                            $sql .= " HAVING LOWER($coluna) LIKE LOWER('%$filtro%')";
+                        }
+
+                        if ($tipoImagemFiltro) {
+                            $sql .= " HAVING LOWER(tipo_imagem) = LOWER('$tipoImagemFiltro')";
+                        }
+
+                        $result = $conn->query($sql);
+
+                        if (!$result) {
+                            die("Erro na consulta SQL: " . $conn->error);
+                        }
+
+                        if ($result->num_rows > 0) {
+
+                            while ($row = $result->fetch_assoc()) {
+                                echo "<tr class='linha-tabela' data-id='" . htmlspecialchars($row["idimagens_cliente_obra"]) . "'>";
+                                echo "<td title='" . htmlspecialchars($row["nome_cliente"]) . "'>" . htmlspecialchars($row["nome_cliente"]) . "</td>";
+                                echo "<td title='" . htmlspecialchars($row["nome_obra"]) . "'>" . htmlspecialchars($row["nome_obra"]) . "</td>";
+                                echo "<td title='" . htmlspecialchars($row["imagem_nome"]) . "'>" . htmlspecialchars($row["imagem_nome"]) . "</td>";
+                                echo "<td title='" . htmlspecialchars($row["nome_status"]) . "'>" . htmlspecialchars($row["nome_status"]) . "</td>";
+                                echo "<td title='" . htmlspecialchars($row["tipo_imagem"]) . "'>" . htmlspecialchars($row["tipo_imagem"]) . "</td>";
+                                echo "</tr>";
+                            }
+                        } else {
+                            echo "<tr><td colspan='13'>Nenhum dado encontrado</td></tr>";
+                        }
+                        ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="form-edicao" id="form-edicao">
+            <form id="form-add" method="post" action="insereFuncao.php">
+                <div class="titulo-funcoes">
+                    <span id="campoNomeImagem"></span>
+                </div> <input type="hidden" id="imagem_id" name="imagem_id">
+                <div class="funcao">
+                    <div class="titulo">
                         <p id="caderno">Caderno</p>
+                        <i class="fas fa-chevron-down toggle-options"></i>
+                    </div>
+                    <div class="opcoes" style="display: none;">
                         <?php if ($_SESSION['nivel_acesso'] == 1): ?>
                             <select name="caderno_id" id="opcao_caderno">
                                 <?php foreach ($colaboradores as $colab): ?>
@@ -261,8 +294,49 @@ $conn->close();
                         <input type="date" name="prazo_caderno" id="prazo_caderno">
                         <input type="text" name="obs_caderno" id="obs_caderno" placeholder="Observação">
                     </div>
-                    <div class="funcao">
+                </div>
+                <div class="funcao">
+                    <div class="titulo">
+                        <p id="filtro">Filtro de assets</p>
+                        <i class="fas fa-chevron-down" id="toggle-options"></i>
+                    </div>
+                    <div class="opcoes" id="opcoes" style="display: none;">
+                        <?php if ($_SESSION['nivel_acesso'] == 1): ?>
+                            <select name="filtro_id" id="opcao_filtro">
+                                <?php foreach ($colaboradores as $colab): ?>
+                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        <?php else: ?>
+                            <select name="filtro_id" id="opcao_filtro" disabled>
+                                <?php foreach ($colaboradores as $colab): ?>
+                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        <?php endif; ?>
+
+                        <select name="status_filtro" id="status_filtro">
+                            <option value="Não iniciado">Não iniciado</option>
+                            <option value="Em andamento">Em andamento</option>
+                            <option value="Finalizado">Finalizado</option>
+                            <option value="HOLD">HOLD</option>
+                            <option value="Não se aplica">Não se aplica</option>
+                            <option value="Em aprovação">Em aprovação</option>
+                        </select>
+                        <input type="date" name="prazo_filtro" id="prazo_filtro">
+                        <input type="text" name="obs_filtro" id="obs_filtro" placeholder="Observação">
+                    </div>
+                </div>
+                <div class="funcao">
+                    <div class="titulo">
                         <p id="modelagem">Modelagem</p>
+                        <i class="fas fa-chevron-down" id="toggle-options"></i>
+                    </div>
+                    <div class="opcoes" style="display: none;">
                         <?php if ($_SESSION['nivel_acesso'] == 1): ?>
                             <select name="model_id" id="opcao_model">
                                 <?php foreach ($colaboradores as $colab): ?>
@@ -280,7 +354,6 @@ $conn->close();
                                 <?php endforeach; ?>
                             </select>
                         <?php endif; ?>
-
                         <select name="status_modelagem" id="status_modelagem">
                             <option value="Não iniciado">Não iniciado</option>
                             <option value="Em andamento">Em andamento</option>
@@ -291,10 +364,14 @@ $conn->close();
                         </select>
                         <input type="date" name="prazo_modelagem" id="prazo_modelagem">
                         <input type="text" name="obs_modelagem" id="obs_modelagem" placeholder="Observação">
-
                     </div>
-                    <div class="funcao">
+                </div>
+                <div class="funcao">
+                    <div class="titulo">
                         <p id="comp">Composição</p>
+                        <i class="fas fa-chevron-down" id="toggle-options"></i>
+                    </div>
+                    <div class="opcoes" id="opcoes" style="display: none;">
                         <?php if ($_SESSION['nivel_acesso'] == 1): ?>
                             <select name="comp_id" id="opcao_comp">
                                 <?php foreach ($colaboradores as $colab): ?>
@@ -312,7 +389,6 @@ $conn->close();
                                 <?php endforeach; ?>
                             </select>
                         <?php endif; ?>
-
                         <select name="status_comp" id="status_comp">
                             <option value="Não iniciado">Não iniciado</option>
                             <option value="Em andamento">Em andamento</option>
@@ -324,8 +400,13 @@ $conn->close();
                         <input type="date" name="prazo_comp" id="prazo_comp">
                         <input type="text" name="obs_comp" id="obs_comp" placeholder="Observação">
                     </div>
-                    <div class="funcao">
-                        <p id="finalizacao">Finalização</p>
+                </div>
+                <div class="funcao">
+                    <div class="titulo">
+                        <p id="final">Finalização</p>
+                        <i class="fas fa-chevron-down" id="toggle-options"></i>
+                    </div>
+                    <div class="opcoes" id="opcoes" style="display: none;">
                         <?php if ($_SESSION['nivel_acesso'] == 1): ?>
 
                             <select name="final_id" id="opcao_final">
@@ -344,7 +425,6 @@ $conn->close();
                                 <?php endforeach; ?>
                             </select>
                         <?php endif; ?>
-
                         <select name="status_finalizacao" id="status_finalizacao">
                             <option value="Não iniciado">Não iniciado</option>
                             <option value="Em andamento">Em andamento</option>
@@ -355,10 +435,14 @@ $conn->close();
                         </select>
                         <input type="date" name="prazo_finalizacao" id="prazo_finalizacao">
                         <input type="text" name="obs_finalizacao" id="obs_finalizacao" placeholder="Observação">
-
                     </div>
-                    <div class="funcao">
+                </div>
+                <div class="funcao">
+                    <div class="titulo">
                         <p id="pos">Pós-Produção</p>
+                        <i class="fas fa-chevron-down" id="toggle-options"></i>
+                    </div>
+                    <div class="opcoes" id="opcoes" style="display: none;">
                         <?php if ($_SESSION['nivel_acesso'] == 1): ?>
 
                             <select name="pos_id" id="opcao_pos">
@@ -389,8 +473,13 @@ $conn->close();
                         <input type="date" name="prazo_pos" id="prazo_pos">
                         <input type="text" name="obs_pos" id="obs_pos" placeholder="Observação">
                     </div>
-                    <div class="funcao">
+                </div>
+                <div class="funcao">
+                    <div class="titulo">
                         <p id="alteracao">Alteração</p>
+                        <i class="fas fa-chevron-down" id="toggle-options"></i>
+                    </div>
+                    <div class="opcoes" id="opcoes" style="display: none;">
                         <?php if ($_SESSION['nivel_acesso'] == 1): ?>
 
                             <select name="alteracao_id" id="opcao_alteracao">
@@ -421,8 +510,13 @@ $conn->close();
                         <input type="date" name="prazo_alteracao" id="prazo_alteracao">
                         <input type="text" name="obs_alteracao" id="obs_alteracao" placeholder="Observação">
                     </div>
-                    <div class="funcao">
+                </div>
+                <div class="funcao">
+                    <div class="titulo">
                         <p id="planta">Planta Humanizada</p>
+                        <i class="fas fa-chevron-down" id="toggle-options"></i>
+                    </div>
+                    <div class="opcoes" id="opcoes" style="display: none;">
                         <?php if ($_SESSION['nivel_acesso'] == 1): ?>
 
                             <select name="planta_id" id="opcao_planta">
@@ -453,55 +547,22 @@ $conn->close();
                         <input type="date" name="prazo_planta" id="prazo_planta">
                         <input type="text" name="obs_planta" id="obs_planta" placeholder="Observação">
                     </div>
-
-                    <div class="funcao">
-                        <p id="filtro">Filtro de assets</p>
-                        <?php if ($_SESSION['nivel_acesso'] == 1): ?>
-
-                            <select name="filtro_id" id="opcao_filtro">
-                                <?php foreach ($colaboradores as $colab): ?>
-                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        <?php else: ?>
-                            <select name="filtro_id" id="opcao_filtro" disabled>
-                                <?php foreach ($colaboradores as $colab): ?>
-                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        <?php endif; ?>
-
-                        <select name="status_filtro" id="status_filtro">
-                            <option value="Não iniciado">Não iniciado</option>
-                            <option value="Em andamento">Em andamento</option>
-                            <option value="Finalizado">Finalizado</option>
-                            <option value="HOLD">HOLD</option>
-                            <option value="Não se aplica">Não se aplica</option>
-                            <option value="Em aprovação">Em aprovação</option>
-                        </select>
-                        <input type="date" name="prazo_filtro" id="prazo_filtro">
-                        <input type="text" name="obs_filtro" id="obs_filtro" placeholder="Observação">
-                    </div>
-                    <div class="funcao">
-                        <p id="status">Status</p>
-                        <select name="status_id" id="opcao_status">
-                            <?php foreach ($status_imagens as $status): ?>
-                                <option value="<?= htmlspecialchars($status['idstatus']); ?>">
-                                    <?= htmlspecialchars($status['nome_status']); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="buttons">
-                        <button type="submit" id="salvar_funcoes">Salvar</button>
-                    </div>
-                </form>
-            </div>
-        </section>
+                </div>
+                <div class="funcao" id="status_funcao">
+                    <p id="status">Status</p>
+                    <select name="status_id" id="opcao_status">
+                        <?php foreach ($status_imagens as $status): ?>
+                            <option value="<?= htmlspecialchars($status['idstatus']); ?>">
+                                <?= htmlspecialchars($status['nome_status']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="buttons">
+                    <button type="submit" id="salvar_funcoes">Salvar</button>
+                </div>
+            </form>
+        </div>
 
         <div id="filtro-colab" class="modal">
             <h1>Filtro colaboradores</h1>
@@ -594,7 +655,7 @@ $conn->close();
             <h1>Filtro por obra:</h1>
 
             <label for="obra">Obra:</label>
-            <select name="obra" id="obra">
+            <select name="obraFiltro" id="obraFiltro">
                 <option value="0">Selecione:</option>
                 <?php foreach ($obras as $obra): ?>
                     <option value="<?= htmlspecialchars($obra['idobra']); ?>">
@@ -648,55 +709,43 @@ $conn->close();
                 <?php endforeach; ?>
             </select>
 
+            <select name="tipo_imagem_follow" id="tipo_imagem_follow">
+                <option value="0">Todos</option>
+                <option value="Fachada">Fachada</option>
+                <option value="Imagem Interna">Imagem Interna</option>
+                <option value="Imagem Externa">Imagem Externa</option>
+                <option value="Planta Humanizada">Planta Humanizada</option>
+            </select>
+
+            <select name="status_imagem" id="status_imagem">
+                <option value="0">Todos</option>
+                <option value="1">P00</option>
+                <option value="2">R00</option>
+                <option value="3">R01</option>
+                <option value="4">R02</option>
+                <option value="5">R03</option>
+                <option value="6">EF</option>
+                <option value="7">Sem status</option>
+                <option value="9">HOLD</option>
+            </select>
+
+            <button id="generate-pdf">Gerar PDF</button>
+
             <table id="tabela-follow">
                 <thead>
                     <th>Nome da Imagem</th>
                     <th>Status</th>
+                    <th>Prazo</th>
                     <th>Caderno</th>
-                    <th>Prazo</th>
+                    <th>Filtro</th>
                     <th>Model</th>
-                    <th>Prazo</th>
                     <th>Comp</th>
-                    <th>Prazo</th>
                     <th>Final</th>
-                    <th>Prazo</th>
                     <th>Pós</th>
-                    <th>Prazo</th>
                     <th>Alteração</th>
-                    <th>Prazo</th>
                     <th>Planta</th>
-                    <th>Prazo</th>
                     <th>Revisões</th>
 
-                </thead>
-                <tbody>
-
-                </tbody>
-            </table>
-        </div>
-
-        <div id="follow-up">
-            <h1>Follow up</h1>
-            <label for="obra">Obra:</label>
-            <select name="obra-follow" id="obra-follow">
-                <option value="0">Selecione:</option>
-                <?php foreach ($obras as $obra): ?>
-                    <option value="<?= htmlspecialchars($obra['idobra']); ?>">
-                        <?= htmlspecialchars($obra['nome_obra']); ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
-
-            <table id="tabela-follow">
-                <thead>
-                    <th>Nome da Imagem</th>
-                    <th>Status Imagem</th>
-                    <th>Caderno</th>
-                    <th>Modelagem</th>
-                    <th>Composição</th>
-                    <th>Finalização</th>
-                    <th>Pós-produção</th>
-                    <th>Alteração</th>
                 </thead>
                 <tbody>
 
@@ -747,6 +796,7 @@ $conn->close();
     <script src="./script/script.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+
 
 
     </body>

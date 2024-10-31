@@ -74,7 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         // Inserir notificação
-        $sql_notificacao = "INSERT INTO notificacoes (mensagem) VALUES (?)";
+        $sql_notificacao = "INSERT INTO notificacoes (mensagem, tipo_notificacao) VALUES (?, 'pos')";
         $stmt_notificacao = $conn->prepare($sql_notificacao);
         $stmt_notificacao->bind_param("s", $mensagem);
         if ($stmt_notificacao->execute()) {

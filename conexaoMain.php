@@ -15,7 +15,7 @@ function conectarBanco()
 
 function obterClientes($conn)
 {
-    $sql = "SELECT idcliente, nome_cliente FROM cliente";
+    $sql = "SELECT idcliente, nome_cliente FROM cliente ORDER BY nome_cliente ASC";
     $result = $conn->query($sql);
     $clientes = array();
 
@@ -30,7 +30,7 @@ function obterClientes($conn)
 
 function obterObras($conn)
 {
-    $sql = "SELECT idobra, nome_obra FROM obra";
+    $sql = "SELECT idobra, nome_obra FROM obra ORDER BY nome_obra ASC";
     $result = $conn->query($sql);
     $obras = array();
 
@@ -87,3 +87,19 @@ function obterFuncoes($conn)
 
     return $funcoes;
 }
+
+function oberUsuarios($conn)
+{
+    $sql = "SELECT idusuario, nome_usuario FROM usuario ORDER BY nome_usuario ASC";
+    $result = $conn->query($sql);
+    $usuarios = array();
+
+    if ($result->num_rows > 0) {
+        while ($row = $result->fetch_assoc()) {
+            $usuarios[] = $row;
+        }
+    }
+
+    return $usuarios;
+}
+

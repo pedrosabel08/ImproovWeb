@@ -1,0 +1,275 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,200..1000;1,200..1000&display=swap');
+
+
+* {
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+    font-family: "Nunito", sans-serif;
+
+}
+
+body {
+    background-color: #444444;
+}
+
+button,
+a {
+    all: unset;
+    cursor: pointer;
+}
+
+header {
+    padding: 6px;
+    box-shadow: 0 2px 6px rgba(255, 255, 255, 0.548);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background-color: #49524b;
+    color: white;
+
+}
+
+header img {
+    width: 300px;
+}
+
+#menuButton {
+    margin-bottom: auto;
+}
+
+.hidden {
+    display: none;
+}
+
+#menu {
+    background-color: #f1f1f1;
+    border-radius: 10px;
+    position: absolute;
+    left: 10px;
+    z-index: 1;
+    margin-top: 30px;
+    min-width: 10rem;
+    padding: .5rem 0;
+    transition: .3s all ease;
+    animation: fadeIn .5s ease-in-out forwards;
+}
+
+#menu a {
+    display: block;
+    padding: 5px;
+    text-decoration: none;
+    color: black;
+    font-size: 1rem;
+    padding: .25rem 1.5rem;
+    border-radius: 2px;
+    transition: .3s all ease;
+    text-align: center;
+}
+
+#menu a#tab-imagens {
+    font-weight: bold;
+}
+
+#menu a i {
+    margin-right: 10px;
+}
+
+#menu a:hover {
+    background-color: #ccc;
+}
+
+
+main {
+    padding: 2rem 6rem;
+}
+
+#filtro {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 20px;
+    width: 100%;
+}
+
+#filtro h1 {
+    color: white;
+}
+
+#filtro select,
+#filtro input {
+    margin-bottom: 10px;
+    width: 20%;
+    padding: 3px;
+    font-size: 16px;
+    border: none;
+    box-shadow: 0 2px 6px rgba(255, 255, 255, 0.548);
+}
+
+.tabelaClientes {
+    margin-top: 15px;
+    overflow-y: auto;
+    margin-bottom: 20px;
+    max-height: 60vh;
+    box-shadow: 0 2px 6px rgba(255, 255, 255, 0.548);
+}
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin-left: 0;
+    animation: ShowIn 1s ease-in-out forwards;
+    background-color: white;
+}
+
+table td,
+table th {
+    max-width: 20px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    border: 1px solid black;
+    padding: 6px;
+    text-align: center;
+    font-size: 14px;
+}
+
+table td:nth-child(3),
+table th:nth-child(3) {
+    max-width: 100px;
+}
+
+tbody tr:hover {
+    cursor: pointer;
+    background-color: #1a72124b;
+}
+
+.linha-atualizada {
+    background-color: rgba(255, 255, 0, 0.699);
+    transition: background-color 0.7s ease-in-out;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgb(0, 0, 0);
+    background-color: rgba(0, 0, 0, 0.4);
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: 100px auto;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 40%;
+    overflow: auto;
+    animation: ShowIn 0.5s ease-in-out forwards;
+
+}
+
+.modal-content h2 {
+    margin: 15px 0;
+}
+
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+}
+
+.close:hover,
+.close:focus {
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+#formularioModal {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    width: 100%;
+    margin: auto;
+    padding: 20px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+#formularioModal label {
+    font-weight: bold;
+    font-size: 14px;
+    color: #333;
+    margin-bottom: 5px;
+}
+
+#formularioModal input[type="text"] {
+    padding: 10px;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    width: 100%;
+    box-sizing: border-box;
+    transition: border-color 0.3s;
+}
+
+#formularioModal input[type="text"]:focus {
+    border-color: #66afe9;
+    outline: none;
+}
+
+#formularioModal button[type="submit"] {
+    padding: 10px 20px;
+    background-color: #28a745;
+    color: white;
+    font-size: 20px;
+    border: none;
+    border-radius: 5px;
+    width: 200px;
+    margin: auto;
+    cursor: pointer;
+    text-align: center;
+    transition: background-color 0.3s;
+}
+
+#formularioModal button[type="submit"]:hover {
+    background-color: #218838;
+}
+
+/* Responsividade */
+@media (max-width: 500px) {
+    #formularioModal {
+        width: 90%;
+    }
+}
+
+
+@keyframes fadeIn {
+    0% {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+
+@keyframes ShowIn {
+    0% {
+        opacity: 0;
+        transform: translateY(40px);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

@@ -182,7 +182,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         $.ajax({
                             type: "GET",
                             dataType: "json",
-                            url: "http://192.168.0.202:8066/ImproovWeb/Arquitetura/buscaAJAX.php",
+                            url: "https://www.improov.com.br/sistema/Arquitetura/buscaAJAX.php",
                             data: { ajid: idLinhaSelecionada },
                             success: function (response) {
                                 if (response.length > 0) {

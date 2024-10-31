@@ -1,3 +1,25 @@
+function filtrarTabela() {
+    var indiceColuna = document.getElementById("colunaFiltro").value;
+    var filtro = document.getElementById("pesquisa").value.toLowerCase();
+    var tabela = document.getElementById("tabela-acomp-email");
+    var tbody = tabela.getElementsByTagName("tbody")[0];
+    var linhas = tbody.getElementsByTagName("tr");
+
+    for (var i = 0; i < linhas.length; i++) {
+        var coluna = linhas[i].getElementsByTagName("td")[indiceColuna];
+        var valorColuna = coluna.textContent || coluna.innerText;
+
+        var mostrarLinha = true;
+
+        if (filtro && valorColuna.toLowerCase().indexOf(filtro) === -1) {
+            mostrarLinha = false;
+        }
+
+        linhas[i].style.display = mostrarLinha ? "" : "none";
+    }
+}
+
+
 function atualizarTabela() {
     fetch('buscar_acomp.php')
         .then(response => {

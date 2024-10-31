@@ -1099,10 +1099,17 @@ document.getElementById('generate-pdf').addEventListener('click', function () {
         orientation: 'landscape',
     });
 
-    const title = `Olá,\nSeguem as informações atualizadas sobre o status do seu projeto. Qualquer dúvida ou necessidade de ajuste, estamos à disposição.\n\nAtenciosamente,\nEquipe IMPROOV`;
-    const legenda = `P00 - Envio em Toon: Primeira versão conceitual do projeto, enviada com estilo gráfico simplificado para avaliação inicial.\n\nR00 - Primeiro Envio: Primeira entrega completa, após ajustes da versão inicial.\n\nR01, R02, etc. - Revisão Enviada: Número de revisões enviadas, indicando cada versão revisada do projeto.\n\nEF - Entrega Final: Projeto concluído e aprovado em sua versão final.\n\nHOLD - Falta de Arquivos: O projeto está temporariamente parado devido à ausência de arquivos ou informações necessárias. O prazo de entrega também ficará pausado até o recebimento dos arquivos para darmos continuidade ao trabalho.`;
-
     let currentY = 20;
+
+    const title = `Olá,\nSeguem as informações atualizadas sobre o status do seu projeto. Qualquer dúvida ou necessidade de ajuste, estamos à disposição.\n\n`;
+    const importante = `IMPORTANTE: `;
+    const importantMessage = `Todos os prazos serão pausados entre os dias 20/12/2024 a 06/01/2025.`;
+    const assinatura = `\n\nAtenciosamente,\nEquipe IMPROOV`;
+    const legenda = `\n\nP00 - Envio em Toon: Primeira versão conceitual do projeto, enviada com estilo gráfico simplificado para avaliação inicial.
+    \nR00 - Primeiro Envio: Primeira entrega completa, após ajustes da versão inicial.
+    \nR01, R02, etc. - Revisão Enviada: Número de revisões enviadas, indicando cada versão revisada do projeto.
+    \nEF - Entrega Final: Projeto concluído e aprovado em sua versão final.
+    \nHOLD - Falta de Arquivos: O projeto está temporariamente parado devido à ausência de arquivos ou informações necessárias. O prazo de entrega também ficará pausado até o recebimento dos arquivos para darmos continuidade ao trabalho.`;
 
     const imgPath = 'assets/logo.jpg';
 
@@ -1116,8 +1123,21 @@ document.getElementById('generate-pdf').addEventListener('click', function () {
                 currentY += 50;
 
                 doc.setFontSize(14);
+                doc.setTextColor(0, 0, 0);
                 doc.text(doc.splitTextToSize(title, 180), 14, currentY);
-                currentY += 40;
+                currentY += 20;
+
+                doc.setFontSize(14);
+                doc.setTextColor(255, 0, 0);
+                doc.text(importante, 14, currentY);
+
+                doc.setTextColor(0, 0, 0);
+                doc.text(doc.splitTextToSize(importantMessage, 180), 14 + doc.getTextWidth(importante), currentY);
+                currentY += 10;
+
+                doc.setFontSize(12);
+                doc.text(assinatura, 14, currentY);
+                currentY += 20;
 
                 doc.setFontSize(10);
                 const legendaLines = doc.splitTextToSize(legenda, 180);

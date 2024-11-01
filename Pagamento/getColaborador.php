@@ -19,7 +19,9 @@ $sql = "SELECT
         fi.status,
         fi.prazo,
         f.nome_funcao,
-        fi.idfuncao_imagem
+        fi.idfuncao_imagem,
+        fi.pagamento,
+        fi.valor
         FROM funcao_imagem fi
         JOIN imagens_cliente_obra ico ON fi.imagem_id = ico.idimagens_cliente_obra
         JOIN obra o on ico.obra_id = o.idobra

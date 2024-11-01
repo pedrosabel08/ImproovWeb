@@ -37,8 +37,12 @@ $conn->close();
 		crossorigin="anonymous" referrerpolicy="no-referrer" />
 	<link rel="stylesheet" href="style.css" />
 	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastify-js/1.12.0/toastify.min.css">
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+	<link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
+		type="image/x-icon">
 
-	<title>Document</title>
+	<title>Tela de pagamento</title>
 </head>
 
 <body>
@@ -111,11 +115,11 @@ $conn->close();
 						<p>Total:</p>
 						<span id="total-imagens"></span>
 					</div>
+					<button id="generate-pdf">Gerar PDF</button>
 				</div>
 			</div>
 
 			<div class="tabela">
-
 				<table id="tabela-faturamento">
 					<thead>
 						<tr>
@@ -123,7 +127,7 @@ $conn->close();
 							<th>Status</th>
 							<th>Função</th>
 							<th>Valor (R$)</th>
-							<th>Status Pgt</th>
+							<th>Status</th>
 						</tr>
 					</thead>
 					<tbody>

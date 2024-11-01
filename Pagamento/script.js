@@ -205,3 +205,83 @@ function filtrarTabela() {
 
     contarLinhasTabela();
 }
+
+
+document.getElementById('generate-pdf').addEventListener('click', function () {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({
+        orientation: 'landscape',
+    });
+
+    const colaborador = document.getElementById('colaborador').options[document.getElementById('colaborador').selectedIndex].text;
+    const mes = document.getElementById('mes').options[document.getElementById('mes').selectedIndex].text;
+    const ano = new Date().getFullYear();
+    let currentY = 20;
+
+    const title = `Relatório mensal de ${colaborador}, ${mes} de ${ano}`;
+    const valorTotal = "Valor total: ";
+    const quantidadeTarefas = "Quantidade de tarefas: ";
+
+    const totalValorElement = document.getElementById('totalValor');
+    const totalValor = totalValorElement ? totalValorElement.innerText : "N/A";
+    const quantidadeTarefasValue = document.querySelectorAll('#tabela-faturamento tbody tr').length;
+
+    const imgPath = '../assets/logo.jpg';
+
+    fetch(imgPath)
+        .then(response => response.blob())
+        .then(blob => {
+            const reader = new FileReader();
+            reader.onloadend = function () {
+                const imgData = reader.result;
+                doc.addImage(imgData, 'PNG', 14, currentY, 40, 40);
+                currentY += 50;
+
+                doc.setFontSize(16);
+                doc.setTextColor(0, 0, 0);
+                doc.text(title, 14, currentY);
+                currentY += 10;
+
+                doc.setFontSize(12);
+                doc.text(`${valorTotal} ${totalValor}`, 14, currentY);
+                currentY += 10;
+
+                doc.text(`${quantidadeTarefas} ${quantidadeTarefasValue}`, 14, currentY);
+                currentY += 20;
+
+                const table = document.getElementById('tabela-faturamento');
+                const selectedColumnIndexes = [0, 1, 2, 3]; // Colunas específicas que deseja incluir
+                const headers = [];
+                const rows = [];
+
+                // Adiciona apenas os cabeçalhos das colunas selecionadas
+                table.querySelectorAll('thead tr th').forEach((header, index) => {
+                    if (selectedColumnIndexes.includes(index)) {
+                        headers.push(header.innerText);
+                    }
+                });
+
+                // Adiciona apenas os dados das colunas selecionadas
+                table.querySelectorAll('tbody tr').forEach(row => {
+                    const rowData = [];
+                    row.querySelectorAll('td').forEach((cell, index) => {
+                        if (selectedColumnIndexes.includes(index)) {
+                            rowData.push(cell.innerText);
+                        }
+                    });
+                    rows.push(rowData);
+                });
+
+                // Gera a tabela no PDF
+                doc.autoTable({
+                    head: [headers],
+                    body: rows,
+                    startY: currentY
+                });
+
+                doc.save(`Relatório_${colaborador}_${mes}_${ano}.pdf`);
+            };
+            reader.readAsDataURL(blob);
+        })
+        .catch(error => console.error('Erro ao carregar a imagem:', error));
+});

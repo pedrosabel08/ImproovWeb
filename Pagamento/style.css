@@ -88,9 +88,11 @@ main {
 }
 
 #valores {
-	display: none;
-	flex-direction: column;	
-	padding: 2rem;
+    display: none;
+    padding: 2rem;
+    gap: 50px;
+    text-align: center;
+
 }
 
 #valores span {
@@ -133,4 +135,23 @@ main {
 	border-radius: 10px;
 	padding: 20px;
 	box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.checked {
+	background-color: #62e480;
+}
+
+button#generate-pdf {
+	background-color: red;
+	padding: 3px 5px;
+	border: 1px solid black;
+	border-radius: 15px;
+	width: 100px;
+	text-align: center;
+	transition: .2s all ease;
+	cursor: pointer;
+}
+
+button#generate-pdf:hover {
+	font-weight: bold;
 }

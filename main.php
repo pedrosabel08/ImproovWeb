@@ -52,6 +52,8 @@ $idusuario = $_SESSION['idusuario'];
         <?php endif; ?>
         <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1)): ?>
             <a href="Imagens/index.php">Lista Imagens</a>
+            <a href="Pagamento/index.php">Pagamento</a>
+            <a href="Obras/index.php">Obras</a>
         <?php endif; ?>
 
         <a href="Metas/index.php">Metas e progresso</a>

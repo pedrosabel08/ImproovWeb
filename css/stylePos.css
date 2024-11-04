@@ -359,6 +359,11 @@ button#deleteButton {
     font-weight: bold;
 }
 
+span#total-pos {
+    font-weight: bold;
+    font-size: 1.2em;
+}
+
 @keyframes fadeIn {
     0% {
         opacity: 0;

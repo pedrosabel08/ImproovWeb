@@ -206,7 +206,6 @@ function filtrarTabela() {
     contarLinhasTabela();
 }
 
-
 document.getElementById('generate-pdf').addEventListener('click', function () {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({

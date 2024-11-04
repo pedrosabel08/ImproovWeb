@@ -203,6 +203,8 @@ document.addEventListener("DOMContentLoaded", function () {
                     tabela.appendChild(tr);
                 });
 
+                contarLinhasTabela();
+
                 const linhasTabela = document.querySelectorAll('.linha-tabela');
                 linhasTabela.forEach(linha => {
                     linha.addEventListener('click', function () {
@@ -269,6 +271,21 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 });
 
+function contarLinhasTabela() {
+    const tabela = document.getElementById("tabela-imagens");
+    const tbody = tabela.getElementsByTagName("tbody")[0];
+    const linhas = tbody.getElementsByTagName("tr");
+    let totalImagens = 0;
+
+    for (let i = 0; i < linhas.length; i++) {
+        if (linhas[i].style.display !== "none") {
+            totalImagens++;
+        }
+    }
+
+    document.getElementById("total-pos").innerText = totalImagens;
+}
+
 function filtrarTabela() {
     var indiceColuna = document.getElementById("colunaFiltro").value;
     var filtro = document.getElementById("filtro-input").value.toLowerCase();
@@ -292,6 +309,33 @@ function filtrarTabela() {
             linhas[i].style.display = 'none';
         }
     }
+    contarLinhasTabela();
+
+}
+
+function filtrarPorMes() {
+    const filtroMes = document.getElementById('filtro-mes').value;
+    const tabela = document.querySelector('#tabela-imagens tbody');
+    const linhas = tabela.getElementsByTagName('tr');
+
+    for (let i = 0; i < linhas.length; i++) {
+        const linha = linhas[i];
+        const dataCell = linha.cells[3]; 
+
+        if (dataCell) {
+            const dataTexto = dataCell.textContent || dataCell.innerText;
+            const mesData = dataTexto.split("-")[1]; 
+
+            // Exibe ou oculta a linha com base no mês selecionado
+            if (filtroMes === "" || mesData === filtroMes) {
+                linha.style.display = ""; // Mostra a linha
+            } else {
+                linha.style.display = "none"; // Oculta a linha
+            }
+        }
+    }
+
+    contarLinhasTabela(); // Atualiza o contador
 }
 
 const openNotify = document.getElementById('openNotify');

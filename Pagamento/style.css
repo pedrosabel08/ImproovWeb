@@ -88,17 +88,16 @@ main {
 }
 
 #valores {
-    display: none;
-    padding: 2rem;
-    gap: 50px;
-    text-align: center;
-
+	display: flex;
+	padding: 2rem;
+	gap: 50px;
+	text-align: center;
+	align-items: center;
 }
 
 #valores span {
 	font-weight: bold;
 }
-
 
 #table-list table {
 	width: 100%;
@@ -141,14 +140,17 @@ main {
 	background-color: #62e480;
 }
 
-button#generate-pdf {
-	background-color: red;
-	padding: 3px 5px;
-	border: 1px solid black;
+#valores button {
+	background-color: #000000;
+	color: rgb(255, 255, 255);
+	padding: 3px 6px;
+	transition: 0.3s all ease;
 	border-radius: 15px;
-	width: 100px;
-	text-align: center;
-	transition: .2s all ease;
+	height: 25px;
+}
+
+#valores button:hover {
+	background-color: #FF5833;
 	cursor: pointer;
 }
 

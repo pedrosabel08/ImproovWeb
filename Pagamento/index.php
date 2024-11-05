@@ -41,6 +41,7 @@ $conn->close();
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
 	<link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
 		type="image/x-icon">
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 	<title>Tela de pagamento</title>
 </head>
@@ -92,12 +93,12 @@ $conn->close();
 					<option value="Composição">Composição</option>
 					<option value="Finalização">Finalização</option>
 					<option value="Alteração">Alteração</option>
-					<option value="Pós-Produção">Pós-Produção</option>
+					<option value="Pós-Produção">Pós-produção</option>
 					<option value="Planta Humanizada">Planta Humanizada</option>
 					<option value="Acompanhamento">Acompanhamento</option>
 					<option value="Animação">Animação</option>
 
-					
+
 				</select>
 			</div>
 		</div>
@@ -113,13 +114,15 @@ $conn->close();
 				<div id="valores">
 					<div class="total-valor">
 						<p>Total (R$):</p>
-						<span id="totalValor"></span>
+						<span id="totalValor">0,00</span>
 					</div>
 					<div class="total-tarefas">
 						<p>Total:</p>
-						<span id="total-imagens"></span>
+						<span id="total-imagens">0</span>
 					</div>
-					<button id="generate-pdf">Gerar PDF</button>
+					<button id="generate-adendo">Gerar Adendo</button>
+					<button id="generate-lista">Gerar Lista</button>
+					<button id="generate-excel" onclick="exportToExcel()">Exportar para Excel</button>
 				</div>
 			</div>
 
@@ -132,6 +135,7 @@ $conn->close();
 							<th>Função</th>
 							<th>Valor (R$)</th>
 							<th>Status</th>
+							<th>Data Pgt</th>
 						</tr>
 					</thead>
 					<tbody>

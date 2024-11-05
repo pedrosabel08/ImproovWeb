@@ -25,7 +25,9 @@ if ($colaboradorId == 1) {
         fi.status,
         fi.prazo,
         fi.pagamento,
-        fi.valor
+        fi.valor,
+        fi.data_pagamento
+
     FROM 
         funcao_imagem fi
     JOIN 
@@ -54,7 +56,9 @@ if ($colaboradorId == 1) {
         NULL AS status,
         NULL AS prazo,
         ac.pagamento,
-        ac.valor
+        ac.valor,
+        ac.data_pagamento
+
     FROM 
         acompanhamento ac
     JOIN 
@@ -79,7 +83,9 @@ if ($colaboradorId == 1) {
         fi.status,
         fi.prazo,
         fi.pagamento,
-        fi.valor
+        fi.valor,
+        fi.data_pagamento
+
     FROM 
         funcao_imagem fi
     JOIN 
@@ -108,7 +114,8 @@ if ($colaboradorId == 1) {
         an.status_anima as status,
         an.data_anima as prazo,
         an.pagamento,
-        an.valor
+        an.valor,
+        an.data_pagamento
     FROM 
         animacao an
     JOIN 
@@ -132,7 +139,9 @@ if ($colaboradorId == 1) {
         fi.status,
         fi.prazo,
         fi.pagamento,
-        fi.valor
+        fi.valor,
+        fi.data_pagamento
+
     FROM 
         funcao_imagem fi
     JOIN 

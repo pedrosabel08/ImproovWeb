@@ -40,6 +40,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         var cellFuncao = document.createElement('td');
                         var cellValor = document.createElement('td');
                         var cellCheckbox = document.createElement('td');
+                        var cellData = document.createElement('td');
                         var checkbox = document.createElement('input');
 
                         checkbox.type = 'checkbox';
@@ -63,6 +64,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             cellFuncao.textContent = item.nome_funcao;
                             cellStatusFuncao.textContent = item.status;
                             cellValor.textContent = item.valor;
+                            cellData.textContent = item.data_pagamento;
 
                             totalValor += parseFloat(item.valor) || 0;
                         } else if (item.origem === 'acompanhamento') {
@@ -70,6 +72,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             cellFuncao.textContent = 'Acompanhamento';
                             cellStatusFuncao.textContent = 'Finalizado';
                             cellValor.textContent = item.valor;
+                            cellData.textContent = item.data_pagamento;
 
                             totalValor += parseFloat(item.valor) || 0;
                         } else if (item.origem === 'animacao') {
@@ -77,6 +80,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             cellFuncao.textContent = 'Animação';
                             cellStatusFuncao.textContent = item.status;
                             cellValor.textContent = item.valor;
+                            cellData.textContent = item.data_pagamento;
                         }
 
                         row.appendChild(cellNomeImagem);
@@ -84,6 +88,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         row.appendChild(cellFuncao);
                         row.appendChild(cellValor);
                         row.appendChild(cellCheckbox);
+                        row.appendChild(cellData);
 
                         tabela.appendChild(row);
 
@@ -210,7 +215,6 @@ function contarLinhasTabela() {
 
     document.getElementById("total-imagens").innerText = totalImagens;
     document.getElementById("totalValor").innerText = totalValor.toFixed(2).replace('.', ','); // Atualiza o total
-    document.getElementById('valores').style.display = 'flex';
 }
 
 
@@ -236,99 +240,130 @@ function filtrarTabela() {
     contarLinhasTabela();
 }
 
-document.getElementById('generate-pdf').addEventListener('click', function () {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({
-        orientation: 'landscape',
-    });
-
-    const colaborador = document.getElementById('colaborador').options[document.getElementById('colaborador').selectedIndex].text;
-    const mes = document.getElementById('mes').options[document.getElementById('mes').selectedIndex].text;
-    const ano = new Date().getFullYear();
-    let currentY = 20;
-
-    const title = `Relatório mensal de ${colaborador}, ${mes} de ${ano}`;
-    const valorTotal = "Valor total: ";
-    const quantidadeTarefas = "Quantidade de tarefas: ";
-
-    const totalValorElement = document.getElementById('totalValor');
-    const totalValor = totalValorElement ? parseFloat(totalValorElement.innerText.replace('R$ ', '').replace('.', '').replace(',', '.')) : 0; // Converter para float
-    const totalValorExtenso = `${numeroPorExtenso(totalValor)} reais`; // Adiciona "reais" ao final
-    const quantidadeTarefasValue = document.querySelectorAll('#tabela-faturamento tbody tr').length;
-
-    const imgPath = '../assets/logo.jpg';
-
-    fetch(imgPath)
-        .then(response => response.blob())
-        .then(blob => {
-            const reader = new FileReader();
-            reader.onloadend = function () {
-                const imgData = reader.result;
-                doc.addImage(imgData, 'PNG', 14, currentY, 40, 40);
-                currentY += 50;
-
-                doc.setFontSize(16);
-                doc.setTextColor(0, 0, 0);
-                doc.text(title, 14, currentY);
-                currentY += 10;
-
-                doc.setFontSize(12);
-                doc.text(`${valorTotal} R$ ${totalValor.toFixed(2).replace('.', ',')} (${totalValorExtenso})`, 14, currentY);
-                currentY += 10;
-
-                doc.text(`${quantidadeTarefas} ${quantidadeTarefasValue}`, 14, currentY);
-                currentY += 20;
-
-                const table = document.getElementById('tabela-faturamento');
-                const selectedColumnIndexes = [0, 1, 2, 3]; // Colunas específicas que deseja incluir
-                const headers = [];
-                const rows = [];
-
-                // Adiciona apenas os cabeçalhos das colunas selecionadas
-                table.querySelectorAll('thead tr th').forEach((header, index) => {
-                    if (selectedColumnIndexes.includes(index)) {
-                        headers.push(header.innerText);
-                    }
-                });
-
-                // Adiciona apenas os dados das colunas selecionadas
-                table.querySelectorAll('tbody tr').forEach(row => {
-                    const rowData = [];
-                    row.querySelectorAll('td').forEach((cell, index) => {
-                        if (selectedColumnIndexes.includes(index)) {
-                            rowData.push(cell.innerText);
-                        }
-                    });
-                    rows.push(rowData);
-                });
-
-                // Gera a tabela no PDF
-                doc.autoTable({
-                    head: [headers],
-                    body: rows,
-                    startY: currentY
-                });
-
-                doc.save(`Relatório_${colaborador}_${mes}_${ano}.pdf`);
-            };
-            reader.readAsDataURL(blob);
-        })
-        .catch(error => console.error('Erro ao carregar a imagem:', error));
-});
-
 // Função para converter números para texto
-document.getElementById('generate-pdf').addEventListener('click', function () {
+document.getElementById('generate-adendo').addEventListener('click', function () {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({
         orientation: 'landscape',
     });
 
     const colaborador = document.getElementById('colaborador').options[document.getElementById('colaborador').selectedIndex].text;
-    const mes = document.getElementById('mes').options[document.getElementById('mes').selectedIndex].text;
-    const ano = new Date().getFullYear();
+    const mesNome = document.getElementById('mes').options[document.getElementById('mes').selectedIndex].text; // Nome do mês
+    const ano = new Date().getFullYear(); // Ano atual
     let currentY = 20;
 
-    const title = `Relatório mensal de ${colaborador}, ${mes} de ${ano}`;
+    const title = `Relatório mensal de ${colaborador}, ${mesNome} de ${ano}`;
+    const valorTotal = "Valor total: ";
+    const quantidadeTarefas = "Quantidade de tarefas: ";
+
+    const totalValorElement = document.getElementById('totalValor');
+    const totalValor = totalValorElement ? parseFloat(totalValorElement.innerText.replace('R$ ', '').replace('.', '').replace(',', '.')) : 0; // Converter para float
+    const totalValorExtenso = `${numeroPorExtenso(totalValor)} reais`; // Adiciona "reais" ao final
+    const quantidadeTarefasValue = document.querySelectorAll('#tabela-faturamento tbody tr').length;
+
+    const imgPath = '../assets/logo.jpg';
+
+    // Mapeamento dos meses para número (Janeiro = 1, etc.)
+    const mesesMap = {
+        'Janeiro': 1,
+        'Fevereiro': 2,
+        'Março': 3,
+        'Abril': 4,
+        'Maio': 5,
+        'Junho': 6,
+        'Julho': 7,
+        'Agosto': 8,
+        'Setembro': 9,
+        'Outubro': 10,
+        'Novembro': 11,
+        'Dezembro': 12
+    };
+
+    const mes = mesesMap[mesNome]; // Converte o nome do mês para seu número correspondente
+
+    fetch(imgPath)
+        .then(response => response.blob())
+        .then(blob => {
+            const reader = new FileReader();
+            reader.onloadend = function () {
+                const imgData = reader.result;
+                doc.addImage(imgData, 'PNG', 14, currentY, 40, 40);
+                currentY += 50;
+
+                doc.setFontSize(16);
+                doc.setTextColor(0, 0, 0);
+                doc.text(title, 14, currentY);
+                currentY += 10;
+
+                doc.setFontSize(12);
+                doc.text(`${valorTotal} R$ ${totalValor.toFixed(2).replace('.', ',')} (${totalValorExtenso})`, 14, currentY);
+                currentY += 10;
+
+                doc.text(`${quantidadeTarefas} ${quantidadeTarefasValue}`, 14, currentY);
+                currentY += 20;
+
+                const table = document.getElementById('tabela-faturamento');
+                const selectedColumnIndexes = [0, 1, 2, 3]; // Colunas específicas que deseja incluir, inclusive a 5 que é data_pagamento
+                const headers = [];
+                const rows = [];
+
+                // Adiciona apenas os cabeçalhos das colunas selecionadas
+                table.querySelectorAll('thead tr th').forEach((header, index) => {
+                    if (selectedColumnIndexes.includes(index)) {
+                        headers.push(header.innerText);
+                    }
+                });
+
+                // Adiciona apenas os dados das colunas selecionadas, se a data_pagamento (coluna 5) for do mês e ano atuais
+                table.querySelectorAll('tbody tr').forEach(row => {
+                    const rowData = [];
+                    const dataPagamento = row.querySelectorAll('td')[5].innerText;
+
+                    // Converter a data do formato "2024-10-05" para um objeto Date
+                    const [anoPagamento, mesPagamento, diaPagamento] = dataPagamento.split('-');
+                    const dataPagamentoObj = new Date(anoPagamento, mesPagamento - 1, diaPagamento); // Meses no JS são indexados a partir de 0
+
+                    // Verificar se o mês e o ano da data_pagamento correspondem ao mês e ano atuais
+                    if (parseInt(mesPagamento) === mes && parseInt(anoPagamento) === ano) {
+                        row.querySelectorAll('td').forEach((cell, index) => {
+                            if (selectedColumnIndexes.includes(index)) {
+                                rowData.push(cell.innerText);
+                            }
+                        });
+                        rows.push(rowData); // Adiciona apenas linhas que correspondem ao mês e ano
+                    }
+                });
+
+                if (rows.length > 0) {
+                    // Gera a tabela no PDF
+                    doc.autoTable({
+                        head: [headers],
+                        body: rows,
+                        startY: currentY
+                    });
+
+                    doc.save(`Relatório_${colaborador}_${mesNome}_${ano}.pdf`);
+                } else {
+                    alert("Nenhum dado disponível para o mês selecionado.");
+                }
+            };
+            reader.readAsDataURL(blob);
+        })
+        .catch(error => console.error('Erro ao carregar a imagem:', error));
+});
+
+document.getElementById('generate-lista').addEventListener('click', function () {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({
+        orientation: 'landscape',
+    });
+
+    const colaborador = document.getElementById('colaborador').options[document.getElementById('colaborador').selectedIndex].text;
+    const mesNome = document.getElementById('mes').options[document.getElementById('mes').selectedIndex].text; // Nome do mês
+    const ano = new Date().getFullYear(); // Ano atual
+    let currentY = 20;
+
+    const title = `Relatório completo de ${colaborador}, ${mesNome} de ${ano}`;
     const valorTotal = "Valor total: ";
     const quantidadeTarefas = "Quantidade de tarefas: ";
 
@@ -361,7 +396,7 @@ document.getElementById('generate-pdf').addEventListener('click', function () {
                 currentY += 20;
 
                 const table = document.getElementById('tabela-faturamento');
-                const selectedColumnIndexes = [0, 1, 2, 3]; // Colunas específicas que deseja incluir
+                const selectedColumnIndexes = [0, 1, 2, 3]; // Colunas específicas que deseja incluir (incluindo a coluna data_pagamento)
                 const headers = [];
                 const rows = [];
 
@@ -372,7 +407,7 @@ document.getElementById('generate-pdf').addEventListener('click', function () {
                     }
                 });
 
-                // Adiciona apenas os dados das colunas selecionadas
+                // Adiciona todos os dados das colunas selecionadas, sem a verificação de data_pagamento
                 table.querySelectorAll('tbody tr').forEach(row => {
                     const rowData = [];
                     row.querySelectorAll('td').forEach((cell, index) => {
@@ -380,22 +415,27 @@ document.getElementById('generate-pdf').addEventListener('click', function () {
                             rowData.push(cell.innerText);
                         }
                     });
-                    rows.push(rowData);
+                    rows.push(rowData); // Adiciona todos os dados, sem filtro de data_pagamento
                 });
 
-                // Gera a tabela no PDF
-                doc.autoTable({
-                    head: [headers],
-                    body: rows,
-                    startY: currentY
-                });
+                if (rows.length > 0) {
+                    // Gera a tabela no PDF
+                    doc.autoTable({
+                        head: [headers],
+                        body: rows,
+                        startY: currentY
+                    });
 
-                doc.save(`Relatório_${colaborador}_${mes}_${ano}.pdf`);
+                    doc.save(`Relatório_Completo_${colaborador}_${mesNome}_${ano}.pdf`);
+                } else {
+                    alert("Nenhum dado disponível para gerar a lista.");
+                }
             };
             reader.readAsDataURL(blob);
         })
         .catch(error => console.error('Erro ao carregar a imagem:', error));
 });
+
 
 // Função para converter números para texto
 function numeroPorExtenso(num) {
@@ -449,3 +489,26 @@ function numeroPorExtenso(num) {
     return resultado.trim(); // Remove espaços em branco no início e no fim
 }
 
+
+function exportToExcel() {
+    // Seleciona a tabela HTML
+    var tabela = document.getElementById('tabela-faturamento');
+
+    // Converte a tabela para uma planilha usando SheetJS
+    var planilha = XLSX.utils.table_to_sheet(tabela);
+
+    // Cria um novo workbook e adiciona a planilha
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, planilha, "Dados");
+
+    // Pega as informações do colaborador, mês e ano
+    const colaborador = document.getElementById('colaborador').options[document.getElementById('colaborador').selectedIndex].text;
+    const mes = document.getElementById('mes').options[document.getElementById('mes').selectedIndex].text;
+    const ano = new Date().getFullYear();
+
+    // Define o nome do arquivo
+    const nomeArquivo = `Relatório_${colaborador}_${mes}_${ano}.xlsx`;
+
+    // Gera o arquivo Excel e faz o download com o nome personalizado
+    XLSX.writeFile(wb, nomeArquivo);
+}

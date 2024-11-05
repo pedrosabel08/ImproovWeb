@@ -11,11 +11,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             // Escolhe a tabela com base na origem
             if ($origem === 'funcao_imagem') {
-                $sql = "UPDATE funcao_imagem SET pagamento = 1 WHERE idfuncao_imagem = ?";
+                $sql = "UPDATE funcao_imagem SET pagamento = 1, data_pagamento = NOW() WHERE idfuncao_imagem = ?";
             } elseif ($origem === 'acompanhamento') {
-                $sql = "UPDATE acompanhamento SET pagamento = 1 WHERE idacompanhamento = ?";
+                $sql = "UPDATE acompanhamento SET pagamento = 1, data_pagamento = NOW() WHERE idacompanhamento = ?";
             } elseif ($origem === 'animacao') {
-                $sql = "UPDATE animacao SET pagamento = 1 WHERE idanimacao = ?";
+                $sql = "UPDATE animacao SET pagamento = 1, data_pagamento = NOW() WHERE idanimacao = ?";
             } else {
                 continue; // Ignorar caso origem desconhecida
             }

@@ -94,6 +94,10 @@ $conn->close();
 					<option value="Alteração">Alteração</option>
 					<option value="Pós-Produção">Pós-Produção</option>
 					<option value="Planta Humanizada">Planta Humanizada</option>
+					<option value="Acompanhamento">Acompanhamento</option>
+					<option value="Animação">Animação</option>
+
+					
 				</select>
 			</div>
 		</div>

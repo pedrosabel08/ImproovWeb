@@ -5,29 +5,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!empty($data['ids']) && isset($data['valor'])) {
         include '../conexao.php';
 
-        $ids = implode(',', array_map('intval', $data['ids']));
-        $valor = floatval($data['valor']); // Pega o valor diretamente do input
+        $valor = floatval($data['valor']);
 
-        $sql = "UPDATE funcao_imagem SET valor = ? WHERE idfuncao_imagem IN ($ids)";
+        foreach ($data['ids'] as $item) {
+            $id = intval($item['id']);
+            $origem = $item['origem'];
 
-        // Prepare the statement
-        $stmt = $conn->prepare($sql);
+            // Escolhe a tabela com base na origem
+            if ($origem === 'funcao_imagem') {
+                $sql = "UPDATE funcao_imagem SET valor = ? WHERE idfuncao_imagem = ?";
+            } elseif ($origem === 'acompanhamento') {
+                $sql = "UPDATE acompanhamento SET valor = ? WHERE idacompanhamento = ?";
+            } elseif ($origem === 'animacao') {
+                $sql = "UPDATE animacao SET valor = ? WHERE idanimacao = ?";
+            } else {
+                continue; // Ignorar caso origem desconhecida
+            }
 
-        // Check if prepare was successful
-        if ($stmt === false) {
-            die(json_encode(['success' => false, 'error' => 'Prepare failed: ' . $conn->error]));
+            $stmt = $conn->prepare($sql);
+            $stmt->bind_param("di", $valor, $id);
+
+            if (!$stmt->execute()) {
+                echo json_encode(['success' => false, 'error' => $stmt->error]);
+                $stmt->close();
+                exit;
+            }
+
+            $stmt->close();
         }
 
-        // A vinculação do valor
-        $stmt->bind_param("d", $valor);
-
-        if ($stmt->execute()) {
-            echo json_encode(['success' => true]);
-        } else {
-            echo json_encode(['success' => false, 'error' => $stmt->error]);
-        }
-
-        $stmt->close(); // Fecha a declaração
+        echo json_encode(['success' => true]);
     } else {
         echo json_encode(['success' => false, 'error' => 'IDs ou valor inválidos.']);
     }

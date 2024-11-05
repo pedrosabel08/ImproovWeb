@@ -33,28 +33,20 @@ document.addEventListener('DOMContentLoaded', function () {
 
                     data.forEach(function (item) {
                         var row = document.createElement('tr');
-                        row.setAttribute('data-id', item.idfuncao_imagem);
+                        row.setAttribute('data-id', item.identificador);
 
                         var cellNomeImagem = document.createElement('td');
-                        cellNomeImagem.textContent = item.imagem_nome;
-
-                        var cellFuncao = document.createElement('td');
-                        cellFuncao.textContent = item.nome_funcao;
-
                         var cellStatusFuncao = document.createElement('td');
-                        cellStatusFuncao.textContent = item.status;
-
+                        var cellFuncao = document.createElement('td');
                         var cellValor = document.createElement('td');
-                        cellValor.textContent = item.valor;
-
-                        totalValor += parseFloat(item.valor) || 0;
-
                         var cellCheckbox = document.createElement('td');
                         var checkbox = document.createElement('input');
+
                         checkbox.type = 'checkbox';
                         checkbox.classList.add('pagamento-checkbox');
                         checkbox.checked = item.pagamento === 1;
-                        checkbox.setAttribute('data-id', item.idfuncao_imagem);
+                        checkbox.setAttribute('data-id', item.identificador);
+                        checkbox.setAttribute('data-origem', item.origem);
 
                         checkbox.addEventListener('change', function () {
                             if (checkbox.checked) {
@@ -64,6 +56,28 @@ document.addEventListener('DOMContentLoaded', function () {
                             }
                         });
                         cellCheckbox.appendChild(checkbox);
+
+                        // Verificar a origem e preencher os dados de acordo
+                        if (item.origem === 'funcao_imagem') {
+                            cellNomeImagem.textContent = item.imagem_nome;
+                            cellFuncao.textContent = item.nome_funcao;
+                            cellStatusFuncao.textContent = item.status;
+                            cellValor.textContent = item.valor;
+
+                            totalValor += parseFloat(item.valor) || 0;
+                        } else if (item.origem === 'acompanhamento') {
+                            cellNomeImagem.textContent = item.imagem_nome;
+                            cellFuncao.textContent = 'Acompanhamento';
+                            cellStatusFuncao.textContent = 'Finalizado';
+                            cellValor.textContent = item.valor;
+
+                            totalValor += parseFloat(item.valor) || 0;
+                        } else if (item.origem === 'animacao') {
+                            cellNomeImagem.textContent = item.imagem_nome;
+                            cellFuncao.textContent = 'Animação';
+                            cellStatusFuncao.textContent = item.status;
+                            cellValor.textContent = item.valor;
+                        }
 
                         row.appendChild(cellNomeImagem);
                         row.appendChild(cellStatusFuncao);
@@ -80,7 +94,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
                     contarLinhasTabela();
                     // Atualiza o gráfico de status de tarefas quando o colaborador é alterado
-
                 })
                 .catch(error => {
                     console.error('Erro ao carregar dados do colaborador:', error);
@@ -93,16 +106,31 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
 
+
     document.getElementById('marcar-todos').addEventListener('click', function () {
-        var checkboxes = document.querySelectorAll('.pagamento-checkbox');
+        var checkboxes = Array.from(document.querySelectorAll('.pagamento-checkbox')).filter(checkbox => {
+            return checkbox.closest('tr').offsetParent !== null; // Checa se a linha está visível
+        });
+
+        var todosMarcados = checkboxes.every(checkbox => checkbox.checked);
+
         checkboxes.forEach(function (checkbox) {
-            checkbox.checked = !checkbox.checked;
+            checkbox.checked = !todosMarcados; // Marca ou desmarca baseado no estado atual
+            var row = checkbox.closest('tr');
+            if (checkbox.checked) {
+                row.classList.add('checked');
+            } else {
+                row.classList.remove('checked');
+            }
         });
     });
 
     document.getElementById('confirmar-pagamento').addEventListener('click', function () {
         var checkboxes = document.querySelectorAll('.pagamento-checkbox:checked');
-        var ids = Array.from(checkboxes).map(cb => cb.getAttribute('data-id'));
+        var ids = Array.from(checkboxes).map(cb => ({
+            id: cb.getAttribute('data-id'),
+            origem: cb.getAttribute('data-origem') // Coletando o atributo origem
+        }));
 
         if (ids.length > 0) {
             fetch('updatePagamento.php', {
@@ -131,7 +159,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.getElementById('adicionar-valor').addEventListener('click', function () {
         var checkboxes = document.querySelectorAll('.pagamento-checkbox:checked');
-        var ids = Array.from(checkboxes).map(cb => cb.getAttribute('data-id'));
+        var ids = Array.from(checkboxes).map(cb => ({
+            id: cb.getAttribute('data-id'),
+            origem: cb.getAttribute('data-origem') // Coletando o atributo origem
+        }));
 
         var valor = document.getElementById('valor').value;
 
@@ -160,7 +191,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 });
-
 
 function contarLinhasTabela() {
     const tabela = document.getElementById("tabela-faturamento");
@@ -222,7 +252,8 @@ document.getElementById('generate-pdf').addEventListener('click', function () {
     const quantidadeTarefas = "Quantidade de tarefas: ";
 
     const totalValorElement = document.getElementById('totalValor');
-    const totalValor = totalValorElement ? totalValorElement.innerText : "N/A";
+    const totalValor = totalValorElement ? parseFloat(totalValorElement.innerText.replace('R$ ', '').replace('.', '').replace(',', '.')) : 0; // Converter para float
+    const totalValorExtenso = `${numeroPorExtenso(totalValor)} reais`; // Adiciona "reais" ao final
     const quantidadeTarefasValue = document.querySelectorAll('#tabela-faturamento tbody tr').length;
 
     const imgPath = '../assets/logo.jpg';
@@ -242,7 +273,7 @@ document.getElementById('generate-pdf').addEventListener('click', function () {
                 currentY += 10;
 
                 doc.setFontSize(12);
-                doc.text(`${valorTotal} ${totalValor}`, 14, currentY);
+                doc.text(`${valorTotal} R$ ${totalValor.toFixed(2).replace('.', ',')} (${totalValorExtenso})`, 14, currentY);
                 currentY += 10;
 
                 doc.text(`${quantidadeTarefas} ${quantidadeTarefasValue}`, 14, currentY);
@@ -284,3 +315,137 @@ document.getElementById('generate-pdf').addEventListener('click', function () {
         })
         .catch(error => console.error('Erro ao carregar a imagem:', error));
 });
+
+// Função para converter números para texto
+document.getElementById('generate-pdf').addEventListener('click', function () {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({
+        orientation: 'landscape',
+    });
+
+    const colaborador = document.getElementById('colaborador').options[document.getElementById('colaborador').selectedIndex].text;
+    const mes = document.getElementById('mes').options[document.getElementById('mes').selectedIndex].text;
+    const ano = new Date().getFullYear();
+    let currentY = 20;
+
+    const title = `Relatório mensal de ${colaborador}, ${mes} de ${ano}`;
+    const valorTotal = "Valor total: ";
+    const quantidadeTarefas = "Quantidade de tarefas: ";
+
+    const totalValorElement = document.getElementById('totalValor');
+    const totalValor = totalValorElement ? parseFloat(totalValorElement.innerText.replace('R$ ', '').replace('.', '').replace(',', '.')) : 0; // Converter para float
+    const totalValorExtenso = `${numeroPorExtenso(totalValor)} reais`; // Adiciona "reais" ao final
+    const quantidadeTarefasValue = document.querySelectorAll('#tabela-faturamento tbody tr').length;
+
+    const imgPath = '../assets/logo.jpg';
+
+    fetch(imgPath)
+        .then(response => response.blob())
+        .then(blob => {
+            const reader = new FileReader();
+            reader.onloadend = function () {
+                const imgData = reader.result;
+                doc.addImage(imgData, 'PNG', 14, currentY, 40, 40);
+                currentY += 50;
+
+                doc.setFontSize(16);
+                doc.setTextColor(0, 0, 0);
+                doc.text(title, 14, currentY);
+                currentY += 10;
+
+                doc.setFontSize(12);
+                doc.text(`${valorTotal} R$ ${totalValor.toFixed(2).replace('.', ',')} (${totalValorExtenso})`, 14, currentY);
+                currentY += 10;
+
+                doc.text(`${quantidadeTarefas} ${quantidadeTarefasValue}`, 14, currentY);
+                currentY += 20;
+
+                const table = document.getElementById('tabela-faturamento');
+                const selectedColumnIndexes = [0, 1, 2, 3]; // Colunas específicas que deseja incluir
+                const headers = [];
+                const rows = [];
+
+                // Adiciona apenas os cabeçalhos das colunas selecionadas
+                table.querySelectorAll('thead tr th').forEach((header, index) => {
+                    if (selectedColumnIndexes.includes(index)) {
+                        headers.push(header.innerText);
+                    }
+                });
+
+                // Adiciona apenas os dados das colunas selecionadas
+                table.querySelectorAll('tbody tr').forEach(row => {
+                    const rowData = [];
+                    row.querySelectorAll('td').forEach((cell, index) => {
+                        if (selectedColumnIndexes.includes(index)) {
+                            rowData.push(cell.innerText);
+                        }
+                    });
+                    rows.push(rowData);
+                });
+
+                // Gera a tabela no PDF
+                doc.autoTable({
+                    head: [headers],
+                    body: rows,
+                    startY: currentY
+                });
+
+                doc.save(`Relatório_${colaborador}_${mes}_${ano}.pdf`);
+            };
+            reader.readAsDataURL(blob);
+        })
+        .catch(error => console.error('Erro ao carregar a imagem:', error));
+});
+
+// Função para converter números para texto
+function numeroPorExtenso(num) {
+    const unidades = [
+        '', 'um', 'dois', 'três', 'quatro', 'cinco', 'seis', 'sete', 'oito', 'nove',
+        'dez', 'onze', 'doze', 'treze', 'quatorze', 'quinze', 'dezesseis',
+        'dezessete', 'dezoito', 'dezenove'
+    ];
+    const dezenas = [
+        '', '', 'vinte', 'trinta', 'quarenta', 'cinquenta', 'sessenta',
+        'setenta', 'oitenta', 'noventa'
+    ];
+    const centenas = [
+        '', 'cem', 'duzentos', 'trezentos', 'quatrocentos', 'quinhentos',
+        'seiscentos', 'setecentos', 'oitocentos', 'novecentos'
+    ];
+
+    if (num === 0) return 'zero';
+
+    let resultado = '';
+
+    // Tratando milhares
+    if (num >= 1000) {
+        let milhar = Math.floor(num / 1000);
+        resultado += milhar === 1 ? 'mil ' : `${unidades[milhar]} mil `;
+        num %= 1000;
+    }
+
+    // Tratando centenas
+    if (num >= 100) {
+        let centena = Math.floor(num / 100);
+        resultado += `${centenas[centena]} `;
+        num %= 100;
+    }
+
+    // Tratando dezenas
+    if (num >= 20) {
+        let dezena = Math.floor(num / 10);
+        resultado += `${dezenas[dezena]} `;
+        num %= 10;
+    }
+
+    // Tratando unidades
+    if (num > 0) {
+        if (resultado.trim() !== '') {
+            resultado += 'e '; // Adiciona "e" se já houver dezenas ou centenas
+        }
+        resultado += `${unidades[num]} `;
+    }
+
+    return resultado.trim(); // Remove espaços em branco no início e no fim
+}
+

@@ -13,6 +13,21 @@ function buscaEndereco(cep) {
         });
     }
 }
+function buscaEnderecoCNPJ(cep) {
+    if (cep.length == 8) {
+        $.ajax({
+            type: "GET",
+            dataType: "json",
+            url: "https://viacep.com.br/ws/" + cep + "/json/",
+            success: function (data) {
+                if (data.bairro != null) {
+                    document.getElementById('bairro_cnpj').value = data.bairro;
+                    document.getElementById('rua_cnpj').value = data.logradouro;
+                }
+            }
+        });
+    }
+}
 
 const urlParams = new URLSearchParams(window.location.search);
 const status = urlParams.get('status');

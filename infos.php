@@ -19,17 +19,26 @@ $query = "
         iu.data_nascimento,
         iu.estado_civil,
         iu.filhos,
+        iu.cnpj,
         e.rua,
         e.numero,
         e.bairro,
         e.complemento,
-        e.cep
-    FROM 
+        e.cep,
+        ec.rua_cnpj,
+        ec.numero_cnpj,
+        ec.bairro_cnpj,
+        ec.complemento_cnpj,
+        ec.cep_cnpj
+
+        FROM 
         usuario u
     LEFT JOIN 
         informacoes_usuario iu ON u.idusuario = iu.usuario_id
     LEFT JOIN 
         endereco e ON u.idusuario = e.usuario_id
+    LEFT JOIN 
+        endereco_cnpj ec ON u.idusuario = ec.usuario_id
     WHERE 
         u.idusuario = ?
 ";
@@ -119,6 +128,41 @@ $conn->close();
                     <h3 class="text-lg mb-2">Complemento:</h3>
                     <input class="border border-black w-full p-2 rounded" type="text" maxlength="45" id="complemento"
                         name="complemento" value="<?php echo htmlspecialchars($userData['complemento']); ?>">
+                </div>
+            </fieldset>
+
+            <fieldset class="mb-6">
+                <legend class="text-2xl font-bold mb-4">Cadastro CNPJ</legend>
+                <div class="mb-4">
+                    <h3 class="text-lg mb-2">CNPJ:</h3>
+                    <input class="border border-black w-full p-2 rounded" type="text" id="cnpj" name="cnpj"
+                        value="<?php echo htmlspecialchars($userData['cnpj']); ?>" required>
+                </div>
+                <div class="mb-4">
+                    <h3 class="text-lg mb-2">CEP:</h3>
+                    <input class="border border-black w-full p-2 rounded" onkeyup="buscaEnderecoCNPJ(this.value);"
+                        type="number" id="cep_cnpj" name="cep_cnpj"
+                        value="<?php echo htmlspecialchars($userData['cep_cnpj']); ?>" required>
+                </div>
+                <div class="mb-4">
+                    <h3 class="text-lg mb-2">Bairro:</h3>
+                    <input class="border border-black w-full p-2 rounded" type="text" id="bairro_cnpj" name="bairro_cnpj"
+                        value="<?php echo htmlspecialchars($userData['bairro_cnpj']); ?>" required>
+                </div>
+                <div class="mb-4">
+                    <h3 class="text-lg mb-2">Rua:</h3>
+                    <input class="border border-black w-full p-2 rounded" type="text" id="rua_cnpj" name="rua_cnpj"
+                        value="<?php echo htmlspecialchars($userData['rua_cnpj']); ?>" required>
+                </div>
+                <div class="mb-4">
+                    <h3 class="text-lg mb-2">N°:</h3>
+                    <input class="border border-black w-full p-2 rounded" type="number" id="numero_cnpj" name="numero_cnpj"
+                        value="<?php echo htmlspecialchars($userData['numero_cnpj']); ?>" required>
+                </div>
+                <div class="mb-4">
+                    <h3 class="text-lg mb-2">Complemento:</h3>
+                    <input class="border border-black w-full p-2 rounded" type="text" maxlength="45" id="complemento_cnpj"
+                        name="complemento_cnpj" value="<?php echo htmlspecialchars($userData['complemento_cnpj']); ?>">
                 </div>
             </fieldset>
 

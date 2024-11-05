@@ -17,6 +17,7 @@ $mysqli->set_charset("utf8mb4");
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $usuario_id = $_SESSION['idusuario'];
 
+    // Captura e escapamento de dados
     $nome = $mysqli->real_escape_string($_POST['nome']);
     $senha = $mysqli->real_escape_string($_POST['senha']);
     $email = $mysqli->real_escape_string($_POST['email']);
@@ -29,6 +30,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $bairro = $mysqli->real_escape_string($_POST['bairro']);
     $complemento = $mysqli->real_escape_string($_POST['complemento']);
     $cep = $mysqli->real_escape_string($_POST['cep']);
+    $cnpj = $mysqli->real_escape_string($_POST['cnpj']);
+    $rua_cnpj = $mysqli->real_escape_string($_POST['rua_cnpj']);
+    $numero_cnpj = $mysqli->real_escape_string($_POST['numero_cnpj']);
+    $bairro_cnpj = $mysqli->real_escape_string($_POST['bairro_cnpj']);
+    $complemento_cnpj = $mysqli->real_escape_string($_POST['complemento_cnpj']);
+    $cep_cnpj = $mysqli->real_escape_string($_POST['cep_cnpj']);
 
     // Verifica se já existe um registro para o usuário
     $checkQuery = "SELECT COUNT(*) as count FROM informacoes_usuario WHERE usuario_id = ?";
@@ -40,6 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $stmt->execute();
     $result = $stmt->get_result();
     $row = $result->fetch_assoc();
+    $stmt->close();
 
     if ($row['count'] > 0) {
         // UPDATE
@@ -47,29 +55,36 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             UPDATE usuario u
             JOIN informacoes_usuario iu ON u.idusuario = iu.usuario_id
             JOIN endereco e ON u.idusuario = e.usuario_id
+            JOIN endereco_cnpj ec ON u.idusuario = ec.usuario_id
             SET 
                 u.nome_usuario = ?, 
-                u.senha = ?,
+                u.senha = ?, 
                 u.email = ?, 
                 iu.telefone = ?, 
-                iu.data_nascimento = ?,
+                iu.data_nascimento = ?, 
                 iu.estado_civil = ?, 
                 iu.filhos = ?, 
+                iu.cnpj = ?, 
                 e.rua = ?, 
                 e.numero = ?, 
                 e.bairro = ?, 
                 e.complemento = ?, 
-                e.cep = ?
+                e.cep = ?, 
+                ec.rua_cnpj = ?, 
+                ec.numero_cnpj = ?, 
+                ec.bairro_cnpj = ?, 
+                ec.complemento_cnpj = ?, 
+                ec.cep_cnpj = ? 
             WHERE u.idusuario = ?
         ";
 
         $stmt = $mysqli->prepare($updateQuery);
         if ($stmt === false) {
-            die("Erro na preparação da query: " . $mysqli->error);
+            die("Erro na preparação da query de atualização: " . $mysqli->error);
         }
 
         $stmt->bind_param(
-            "ssssssssssssi",
+            "ssssssssssssssssssi",
             $nome,
             $senha,
             $email,
@@ -77,63 +92,73 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $data_nascimento,
             $estado_civil,
             $filhos,
+            $cnpj,
             $rua,
             $numero,
             $bairro,
             $complemento,
             $cep,
+            $rua_cnpj,
+            $numero_cnpj,
+            $bairro_cnpj,
+            $complemento_cnpj,
+            $cep_cnpj,
             $usuario_id
         );
-    } else {
-        // INSERT - Executa as duas queries separadamente
-        $insertQuery1 = "
-            INSERT INTO informacoes_usuario (usuario_id, telefone, data_nascimento, estado_civil, filhos) 
-            VALUES (?, ?, ?, ?, ?)
-        ";
 
+        if ($stmt->execute()) {
+            header("Location: infos.php?status=success&message=Informações atualizadas com sucesso!");
+        } else {
+            die("Erro ao atualizar informações: " . $stmt->error);
+        }
+        $stmt->close();
+    } else {
+        // Inserção de dados para um novo usuário (caso não exista)
+        $insertQuery1 = "
+            INSERT INTO informacoes_usuario (usuario_id, telefone, data_nascimento, estado_civil, filhos, cnpj) 
+            VALUES (?, ?, ?, ?, ?, ?)
+        ";
         $stmt1 = $mysqli->prepare($insertQuery1);
         if ($stmt1 === false) {
-            die("Erro na preparação da query: " . $mysqli->error);
+            die("Erro na preparação da query de inserção: " . $mysqli->error);
         }
         $stmt1->bind_param(
-            "issss",
+            "isssss",
             $usuario_id,
             $telefone,
             $data_nascimento,
             $estado_civil,
-            $filhos
+            $filhos,
+            $cnpj
         );
-        $stmt1->execute();
+        if (!$stmt1->execute()) {
+            die("Erro ao inserir dados na tabela informacoes_usuario: " . $stmt1->error);
+        }
         $stmt1->close();
 
-        $insertQuery2 = "
-            INSERT INTO endereco (usuario_id, rua, numero, bairro, complemento, cep)
+        // Inserção de dados na tabela endereco_cnpj
+        $insertQuery3 = "
+            INSERT INTO endereco_cnpj (usuario_id, rua_cnpj, numero_cnpj, bairro_cnpj, complemento_cnpj, cep_cnpj)
             VALUES (?, ?, ?, ?, ?, ?)
         ";
-
-        $stmt2 = $mysqli->prepare($insertQuery2);
-        if ($stmt2 === false) {
-            die("Erro na preparação da query: " . $mysqli->error);
+        $stmt3 = $mysqli->prepare($insertQuery3);
+        if ($stmt3 === false) {
+            die("Erro na preparação da query de inserção para endereco_cnpj: " . $mysqli->error);
         }
-        $stmt2->bind_param(
+        $stmt3->bind_param(
             "isssss",
             $usuario_id,
-            $rua,
-            $numero,
-            $bairro,
-            $complemento,
-            $cep
+            $rua_cnpj,
+            $numero_cnpj,
+            $bairro_cnpj,
+            $complemento_cnpj,
+            $cep_cnpj
         );
-        $stmt2->execute();
-        $stmt2->close();
+        if (!$stmt3->execute()) {
+            die("Erro ao inserir dados na tabela endereco_cnpj: " . $stmt3->error);
+        }
+        $stmt3->close();
     }
 
-    if ($stmt->execute()) {
-        header("Location: infos.php?status=success&message=Informações atualizadas com sucesso!");
-    } else {
-        header("Location: infos.php?status=error&message=Algo deu errado, tente novamente.");
-    }
-
-    $stmt->close();
     $mysqli->close();
 }

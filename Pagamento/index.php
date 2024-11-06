@@ -85,21 +85,47 @@ $conn->close();
 
 			<div class="tipo-imagem">
 				<h2>Função:</h2>
-				<select id="tipoImagemFiltro" onchange="filtrarTabela()">
-					<option value="">Todos as Funções</option>
-					<option value="Caderno">Caderno</option>
-					<option value="Filtro de assets">Filtro de assets</option>
-					<option value="Modelagem">Modelagem</option>
-					<option value="Composição">Composição</option>
-					<option value="Finalização">Finalização</option>
-					<option value="Alteração">Alteração</option>
-					<option value="Pós-Produção">Pós-produção</option>
-					<option value="Planta Humanizada">Planta Humanizada</option>
-					<option value="Acompanhamento">Acompanhamento</option>
-					<option value="Animação">Animação</option>
 
-
-				</select>
+				<div>
+					<input type="checkbox" name="Caderno" id="Caderno" onclick="filtrarTabela()">
+					<p>Caderno</p>
+				</div>
+				<div>
+					<input type="checkbox" name="Filtro de assets" id="Filtro de assets" onclick="filtrarTabela()">
+					<p>Filtro de assets</p>
+				</div>
+				<div>
+					<input type="checkbox" name="Modelagem" id="Modelagem" onclick="filtrarTabela()">
+					<p>Modelagem</p>
+				</div>
+				<div>
+					<input type="checkbox" name="Composição" id="Composição" onclick="filtrarTabela()">
+					<p>Composição</p>
+				</div>
+				<div>
+					<input type="checkbox" name="Finalização" id="Finalização" onclick="filtrarTabela()">
+					<p>Finalização</p>
+				</div>
+				<div>
+					<input type="checkbox" name="Alteração" id="Alteração" onclick="filtrarTabela()">
+					<p>Alteração</p>
+				</div>
+				<div>
+					<input type="checkbox" name="Pós-produção" id="Pós-produção" onclick="filtrarTabela()">
+					<p>Pós-produção</p>
+				</div>
+				<div>
+					<input type="checkbox" name="Planta Humanizada" id="Planta Humanizada" onclick="filtrarTabela()">
+					<p>Planta Humanizada</p>
+				</div>
+				<div>
+					<input type="checkbox" name="Acompanhamento" id="Acompanhamento" onclick="filtrarTabela()">
+					<p>Acompanhamento</p>
+				</div>
+				<div>
+					<input type="checkbox" name="Animação" id="Animação" onclick="filtrarTabela()">
+					<p>Animação</p>
+				</div>
 			</div>
 		</div>
 		<section id="table-list">

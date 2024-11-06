@@ -31,6 +31,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     tabela.innerHTML = '';
                     let totalValor = 0;
 
+                    document.querySelectorAll('.tipo-imagem input[type="checkbox"]').forEach(checkbox => {
+                        checkbox.checked = false;
+                    });
+
                     data.forEach(function (item) {
                         var row = document.createElement('tr');
                         row.setAttribute('data-id', item.identificador);
@@ -95,6 +99,12 @@ document.addEventListener('DOMContentLoaded', function () {
                         if (checkbox.checked) {
                             row.classList.add('checked');
                         }
+
+                        document.querySelectorAll('.tipo-imagem input[type="checkbox"]').forEach(funcaoCheckbox => {
+                            if (funcaoCheckbox.name === item.nome_funcao) {
+                                funcaoCheckbox.checked = true;
+                            }
+                        });
                     });
 
                     contarLinhasTabela();
@@ -219,9 +229,12 @@ function contarLinhasTabela() {
 
 
 function filtrarTabela() {
-    const tipoImagemFiltro = document.getElementById('tipoImagemFiltro').value;
     const tabela = document.querySelector('#tabela-faturamento tbody');
     const linhas = tabela.getElementsByTagName('tr');
+
+    // Obter todas as checkboxes marcadas
+    const checkboxes = document.querySelectorAll('.tipo-imagem input[type="checkbox"]:checked');
+    const funcoesSelecionadas = Array.from(checkboxes).map(checkbox => checkbox.name);
 
     for (let i = 0; i < linhas.length; i++) {
         const linha = linhas[i];
@@ -229,7 +242,7 @@ function filtrarTabela() {
 
         if (funcaoCell) {
             const funcaoText = funcaoCell.textContent || funcaoCell.innerText;
-            if (tipoImagemFiltro === "" || funcaoText === tipoImagemFiltro) {
+            if (funcoesSelecionadas.length === 0 || funcoesSelecionadas.includes(funcaoText)) {
                 linha.style.display = "";
             } else {
                 linha.style.display = "none";

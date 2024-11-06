@@ -157,3 +157,10 @@ main {
 button#generate-pdf:hover {
 	font-weight: bold;
 }
+
+.tipo-imagem div {
+	display: flex;
+	align-items: center;
+	gap: 5px;
+	margin-top: 10px;
+}

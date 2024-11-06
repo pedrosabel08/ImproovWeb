@@ -268,23 +268,13 @@ $conn->close();
                         <i class="fas fa-chevron-down toggle-options"></i>
                     </div>
                     <div class="opcoes" style="display: none;">
-                        <?php if ($_SESSION['nivel_acesso'] == 1): ?>
-                            <select name="caderno_id" id="opcao_caderno">
-                                <?php foreach ($colaboradores as $colab): ?>
-                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        <?php else: ?>
-                            <select name="caderno_id" id="opcao_caderno" disabled>
-                                <?php foreach ($colaboradores as $colab): ?>
-                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        <?php endif; ?>
+                        <select name="caderno_id" id="opcao_caderno">
+                            <?php foreach ($colaboradores as $colab): ?>
+                                <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                    <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
                         <select name="status_caderno" id="status_caderno">
                             <option value="Não iniciado">Não iniciado</option>
                             <option value="Em andamento">Em andamento</option>
@@ -303,24 +293,13 @@ $conn->close();
                         <i class="fas fa-chevron-down" id="toggle-options"></i>
                     </div>
                     <div class="opcoes" id="opcoes" style="display: none;">
-                        <?php if ($_SESSION['nivel_acesso'] == 1): ?>
-                            <select name="filtro_id" id="opcao_filtro">
-                                <?php foreach ($colaboradores as $colab): ?>
-                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        <?php else: ?>
-                            <select name="filtro_id" id="opcao_filtro" disabled>
-                                <?php foreach ($colaboradores as $colab): ?>
-                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        <?php endif; ?>
-
+                        <select name="filtro_id" id="opcao_filtro">
+                            <?php foreach ($colaboradores as $colab): ?>
+                                <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                    <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
                         <select name="status_filtro" id="status_filtro">
                             <option value="Não iniciado">Não iniciado</option>
                             <option value="Em andamento">Em andamento</option>
@@ -339,23 +318,13 @@ $conn->close();
                         <i class="fas fa-chevron-down" id="toggle-options"></i>
                     </div>
                     <div class="opcoes" style="display: none;">
-                        <?php if ($_SESSION['nivel_acesso'] == 1): ?>
-                            <select name="model_id" id="opcao_model">
-                                <?php foreach ($colaboradores as $colab): ?>
-                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        <?php else: ?>
-                            <select name="model_id" id="opcao_model" disabled>
-                                <?php foreach ($colaboradores as $colab): ?>
-                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        <?php endif; ?>
+                        <select name="model_id" id="opcao_model">
+                            <?php foreach ($colaboradores as $colab): ?>
+                                <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                    <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
                         <select name="status_modelagem" id="status_modelagem">
                             <option value="Não iniciado">Não iniciado</option>
                             <option value="Em andamento">Em andamento</option>
@@ -374,23 +343,13 @@ $conn->close();
                         <i class="fas fa-chevron-down" id="toggle-options"></i>
                     </div>
                     <div class="opcoes" id="opcoes" style="display: none;">
-                        <?php if ($_SESSION['nivel_acesso'] == 1): ?>
-                            <select name="comp_id" id="opcao_comp">
-                                <?php foreach ($colaboradores as $colab): ?>
-                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        <?php else: ?>
-                            <select name="comp_id" id="opcao_comp" disabled>
-                                <?php foreach ($colaboradores as $colab): ?>
-                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        <?php endif; ?>
+                        <select name="comp_id" id="opcao_comp">
+                            <?php foreach ($colaboradores as $colab): ?>
+                                <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                    <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
                         <select name="status_comp" id="status_comp">
                             <option value="Não iniciado">Não iniciado</option>
                             <option value="Em andamento">Em andamento</option>
@@ -409,24 +368,13 @@ $conn->close();
                         <i class="fas fa-chevron-down" id="toggle-options"></i>
                     </div>
                     <div class="opcoes" id="opcoes" style="display: none;">
-                        <?php if ($_SESSION['nivel_acesso'] == 1): ?>
-
-                            <select name="final_id" id="opcao_final">
-                                <?php foreach ($colaboradores as $colab): ?>
-                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        <?php else: ?>
-                            <select name="final_id" id="opcao_final" disabled>
-                                <?php foreach ($colaboradores as $colab): ?>
-                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        <?php endif; ?>
+                        <select name="final_id" id="opcao_final">
+                            <?php foreach ($colaboradores as $colab): ?>
+                                <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                    <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
                         <select name="status_finalizacao" id="status_finalizacao">
                             <option value="Não iniciado">Não iniciado</option>
                             <option value="Em andamento">Em andamento</option>
@@ -445,24 +393,13 @@ $conn->close();
                         <i class="fas fa-chevron-down" id="toggle-options"></i>
                     </div>
                     <div class="opcoes" id="opcoes" style="display: none;">
-                        <?php if ($_SESSION['nivel_acesso'] == 1): ?>
-
-                            <select name="pos_id" id="opcao_pos">
-                                <?php foreach ($colaboradores as $colab): ?>
-                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        <?php else: ?>
-                            <select name="pos_id" id="opcao_pos" disabled>
-                                <?php foreach ($colaboradores as $colab): ?>
-                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        <?php endif; ?>
+                        <select name="pos_id" id="opcao_pos">
+                            <?php foreach ($colaboradores as $colab): ?>
+                                <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                    <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
 
                         <select name="status_pos" id="status_pos">
                             <option value="Não iniciado">Não iniciado</option>

@@ -73,18 +73,10 @@ session_start();
             </div>
         </div>
 
-        <div class="atualizarImagens">
-            <select id="colunaFiltro">
-                <option value="0">Cliente</option>
-                <option value="1">Obra</option>
-                <option value="2">Imagem</option>
-                <option value="3">Recebimento de arquivos</option>
-                <option value="4">Data Inicio</option>
-                <option value="5">Prazo</option>
-                <option value="6">Status</option>
-                <option value="7">Tipo imagem</option>
-            </select>
-            <input type="text" name="" id="">
+        <div class="legenda">
+            <span class="legenda-item">
+                <span class="circulo antecipada"></span> Antecipada
+            </span>
         </div>
 
         <div class="tabelaClientes">
@@ -136,6 +128,9 @@ session_start();
 
                 <label for="tipo_imagem">Tipo Imagem:</label>
                 <input type="text" id="tipo_imagem" name="tipo_imagem" required>
+
+                <label for="antecipada">Antecipada:</label>
+                <input type="checkbox" id="antecipada" name="antecipada" style="width: 20px">
 
                 <input type="text" name="idimagens_cliente_obra" id="idimagens_cliente_obra" hidden>
 

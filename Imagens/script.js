@@ -63,6 +63,11 @@ function atualizarTabela() {
                 const tr = document.createElement('tr');
                 tr.classList.add('linha-tabela');
                 tr.setAttribute('data-id', imagem.idimagens_cliente_obra);
+                tr.setAttribute('antecipada', imagem.antecipada);
+
+                if (imagem.antecipada === '1') {
+                    tr.style.backgroundColor = '#ff9d00'
+                }
 
                 tr.innerHTML = `
                     <td>${imagem.nome_cliente}</td>
@@ -110,6 +115,7 @@ function atualizarTabela() {
                                 document.getElementById('nome_status').value = response[0].nome_status;
                                 document.getElementById('tipo_imagem').value = response[0].tipo_imagem;
                                 document.getElementById('idimagens_cliente_obra').value = response[0].idimagens_cliente_obra;
+                                document.getElementById('antecipada').checked = response[0].antecipada === '1';
                             } else {
                                 console.log("Nenhum produto encontrado.");
                             }
@@ -138,6 +144,8 @@ document.getElementById("formularioModal").addEventListener("submit", function (
     formData.append("prazo", document.getElementById("prazo").value);
     formData.append("tipo_imagem", document.getElementById("tipo_imagem").value);
     formData.append("idimagens_cliente_obra", document.getElementById("idimagens_cliente_obra").value);
+    var antecipadaCheckbox = document.getElementById("antecipada");
+    formData.append("antecipada", antecipadaCheckbox.checked ? 1 : 0);
 
     fetch('atualizar_imagens.php', {
         method: 'POST',

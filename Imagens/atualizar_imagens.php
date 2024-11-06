@@ -10,6 +10,7 @@ $recebimento_arquivos = $_POST['recebimento_arquivos'];
 $data_inicio = $_POST['data_inicio'];
 $prazo = $_POST['prazo'];
 $tipo_imagem = $_POST['tipo_imagem'];
+$antecipada = $_POST['antecipada'];
 
 // Monta a query de update
 $sql = "UPDATE imagens_cliente_obra SET 
@@ -17,11 +18,12 @@ $sql = "UPDATE imagens_cliente_obra SET
             recebimento_arquivos = ?, 
             data_inicio = ?, 
             prazo = ?, 
-            tipo_imagem = ?
+            tipo_imagem = ?,
+            antecipada = ?
         WHERE idimagens_cliente_obra = ?";
 
 $stmt = $conn->prepare($sql);
-$stmt->bind_param('sssssi', $imagem_nome, $recebimento_arquivos, $data_inicio, $prazo, $tipo_imagem, $id);
+$stmt->bind_param('sssssii', $imagem_nome, $recebimento_arquivos, $data_inicio, $prazo, $tipo_imagem, $antecipada, $id);
 
 // Executa o update e verifica o sucesso
 if ($stmt->execute()) {

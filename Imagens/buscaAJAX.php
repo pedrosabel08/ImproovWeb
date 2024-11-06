@@ -19,7 +19,7 @@ if ($_SERVER["REQUEST_METHOD"] == "GET") {
     // Proteção contra SQL Injection
     $idImagemSelecionada = $conn->real_escape_string($idImagemSelecionada);
 
-    $sql = "SELECT i.idimagens_cliente_obra, c.nome_cliente, o.nome_obra, i.recebimento_arquivos, i.data_inicio, i.prazo, MAX(i.imagem_nome) AS imagem_nome, i.prazo AS prazo_estimado, s.nome_status, i.tipo_imagem FROM imagens_cliente_obra i 
+    $sql = "SELECT i.idimagens_cliente_obra, c.nome_cliente, o.nome_obra, i.recebimento_arquivos, i.data_inicio, i.prazo, MAX(i.imagem_nome) AS imagem_nome, i.prazo AS prazo_estimado, s.nome_status, i.tipo_imagem, i.antecipada FROM imagens_cliente_obra i 
             JOIN cliente c ON i.cliente_id = c.idcliente 
             JOIN obra o ON i.obra_id = o.idobra 
             LEFT JOIN funcao_imagem fi ON i.idimagens_cliente_obra = fi.imagem_id 

@@ -13,12 +13,14 @@ $conn->set_charset('utf8mb4');
 
 $obraId = intval($_GET['obra_id']);
 $tipoImagem = $_GET['tipo_imagem'] !== '0' && !empty($_GET['tipo_imagem']) ? $_GET['tipo_imagem'] : null;
+$antecipada = $_GET['antecipada'] === "Antecipada" ? 1 : null;
 
 // Consulta SQL inicial
 $sql = "SELECT
     ico.idimagens_cliente_obra AS imagem_id,
     ico.imagem_nome,
     ico.tipo_imagem,
+    ico.antecipada,
     MAX(CASE WHEN fi.funcao_id = 1 THEN c.nome_colaborador END) AS caderno_colaborador,
     MAX(CASE WHEN fi.funcao_id = 1 THEN fi.status END) AS caderno_status,
     MAX(CASE WHEN fi.funcao_id = 2 THEN c.nome_colaborador END) AS modelagem_colaborador,
@@ -43,6 +45,10 @@ if ($tipoImagem) {
     $sql .= " AND ico.tipo_imagem = ?";
 }
 
+if ($antecipada !== null) {
+    $sql .= " AND ico.antecipada = ?";
+}
+
 $sql .= " GROUP BY ico.imagem_nome
           ORDER BY ico.idimagens_cliente_obra";
 
@@ -55,8 +61,12 @@ if ($stmt === false) {
 }
 
 // Bind dos parâmetros com base na existência do filtro tipoImagem
-if ($tipoImagem) {
+if ($tipoImagem && $antecipada !== null) {
+    $stmt->bind_param('isi', $obraId, $tipoImagem, $antecipada);
+} elseif ($tipoImagem) {
     $stmt->bind_param('is', $obraId, $tipoImagem);
+} elseif ($antecipada !== null) {
+    $stmt->bind_param('ii', $obraId, $antecipada);
 } else {
     $stmt->bind_param('i', $obraId);
 }

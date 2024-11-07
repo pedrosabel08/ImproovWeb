@@ -15,8 +15,60 @@ document.querySelectorAll('.titulo').forEach(titulo => {
 });
 
 document.addEventListener("DOMContentLoaded", function () {
+    // Função para carregar e atualizar a tabela com dados de `atualizarTabela.php`
+    function carregarTabela() {
+        fetch('atualizarTabela.php')
+            .then(response => response.json())
+            .then(data => {
+                const tbody = document.querySelector("#tabelaClientes tbody");
+                tbody.innerHTML = ""; // Limpa o conteúdo atual
+
+                let contadorStatusZero = 0;
+                let contadorAntecipada = 0;
+
+                if (data.length > 0) {
+                    data.forEach(row => {
+                        const tr = document.createElement("tr");
+                        tr.classList.add("linha-tabela");
+                        tr.setAttribute("data-id", row.idimagens_cliente_obra);
+                        tr.setAttribute("antecipada", row.antecipada);
+
+                        if (row.antecipada === '1') {
+                            tr.style.backgroundColor = ('#ff9d00')
+                            contadorAntecipada++;
+                        }
+
+                        if (row.status_obra === '0') {
+                            contadorStatusZero++;
+                        }
+
+                        tr.innerHTML = `
+                            <td title="${row.nome_cliente}">${row.nome_cliente}</td>
+                        <td title="${row.nome_obra} - Status: ${row.status_obra}">${row.nome_obra}</td>
+                            <td title="${row.imagem_nome}">${row.imagem_nome}</td>
+                            <td title="${row.nome_status}">${row.nome_status}</td>
+                            <td title="${row.tipo_imagem}">${row.tipo_imagem}</td>
+                        `;
+
+                        tbody.appendChild(tr);
+                    });
+
+                    // Adicionar ouvintes de eventos para cada linha da tabela
+                    addEventListenersToRows();
+                } else {
+                    tbody.innerHTML = "<tr><td colspan='5'>Nenhum dado encontrado</td></tr>";
+                }
+
+                document.getElementById("total-imagens").textContent = contadorStatusZero;
+                document.getElementById("total-imagens-antecipada").textContent = contadorAntecipada;
+
+            })
+            .catch(error => console.error('Erro ao buscar dados:', error));
+    }
+
+    // Função para adicionar eventos de clique nas linhas da tabela
     function addEventListenersToRows() {
-        var linhasTabela = document.querySelectorAll(".linha-tabela");
+        const linhasTabela = document.querySelectorAll(".linha-tabela");
 
         linhasTabela.forEach(function (linha) {
             linha.addEventListener("click", function () {
@@ -26,17 +78,16 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 linha.classList.add("selecionada");
 
-                var idImagemSelecionada = linha.getAttribute("data-id");
+                const idImagemSelecionada = linha.getAttribute("data-id");
                 document.getElementById("imagem_id").value = idImagemSelecionada;
 
+                // Limpar campos do formulário de edição
                 limparCampos();
 
-                $.ajax({
-                    type: "GET",
-                    dataType: "json",
-                    url: "https://www.improov.com.br/sistema/buscaLinhaAJAX.php",
-                    data: { ajid: idImagemSelecionada },
-                    success: function (response) {
+                // Fazer requisição AJAX para `buscaLinhaAJAX.php` usando Fetch
+                fetch(`buscaLinhaAJAX.php?ajid=${idImagemSelecionada}`)
+                    .then(response => response.json())
+                    .then(response => {
                         document.getElementById('form-edicao').style.display = 'flex';
 
                         if (response.funcoes && response.funcoes.length > 0) {
@@ -62,44 +113,36 @@ document.addEventListener("DOMContentLoaded", function () {
                                         document.getElementById("status_comp").value = funcao.status;
                                         document.getElementById("prazo_comp").value = funcao.prazo;
                                         document.getElementById("obs_comp").value = funcao.observacao;
-
                                         break;
                                     case "Finalização":
                                         selectElement = document.getElementById("opcao_final");
                                         document.getElementById("status_finalizacao").value = funcao.status;
                                         document.getElementById("prazo_finalizacao").value = funcao.prazo;
                                         document.getElementById("obs_finalizacao").value = funcao.observacao;
-
                                         break;
                                     case "Pós-produção":
                                         selectElement = document.getElementById("opcao_pos");
                                         document.getElementById("status_pos").value = funcao.status;
                                         document.getElementById("prazo_pos").value = funcao.prazo;
                                         document.getElementById("obs_pos").value = funcao.observacao;
-
                                         break;
                                     case "Alteração":
                                         selectElement = document.getElementById("opcao_alteracao");
                                         document.getElementById("status_alteracao").value = funcao.status;
                                         document.getElementById("prazo_alteracao").value = funcao.prazo;
                                         document.getElementById("obs_alteracao").value = funcao.observacao;
-
                                         break;
-
                                     case "Planta Humanizada":
                                         selectElement = document.getElementById("opcao_planta");
                                         document.getElementById("status_planta").value = funcao.status;
                                         document.getElementById("prazo_planta").value = funcao.prazo;
                                         document.getElementById("obs_planta").value = funcao.observacao;
-
                                         break;
-
                                     case "Filtro de assets":
                                         selectElement = document.getElementById("opcao_filtro");
                                         document.getElementById("status_filtro").value = funcao.status;
                                         document.getElementById("prazo_filtro").value = funcao.prazo;
                                         document.getElementById("obs_filtro").value = funcao.observacao;
-
                                         break;
                                 }
                                 if (selectElement) {
@@ -108,22 +151,21 @@ document.addEventListener("DOMContentLoaded", function () {
                             });
                         }
 
-                        var statusSelect = document.getElementById("opcao_status");
+                        const statusSelect = document.getElementById("opcao_status");
                         if (response.status_id !== null) {
                             statusSelect.value = response.status_id;
                         }
-                    },
-                    error: function (jqXHR, textStatus, errorThrown) {
-                        console.error("Erro na requisição AJAX: " + textStatus, errorThrown);
-                    }
-                });
+                    })
+                    .catch(error => console.error("Erro ao buscar dados da linha:", error));
 
                 console.log("Linha selecionada: ID da imagem = " + idImagemSelecionada);
             });
         });
-
     }
-    addEventListenersToRows();
+
+    // Carregar a tabela ao carregar a página
+    carregarTabela();
+
 
     function limparCampos() {
         document.getElementById("campoNomeImagem").textContent = "";
@@ -342,12 +384,17 @@ document.addEventListener("DOMContentLoaded", function () {
         atualizarFuncoes();
     });
 
+    document.getElementById('antecipada_obra').addEventListener('change', function () {
+        atualizarFuncoes();
+    });
+
     function atualizarFuncoes() {
         var obraId = document.getElementById('obraFiltro').value;
         var tipoImagem = document.getElementById('tipo_imagem').value;
+        var antecipada_obra = document.getElementById('antecipada_obra').value;
 
         if (obraId) {
-            fetch(`getFuncoesPorObra.php?obra_id=${obraId}&tipo_imagem=${tipoImagem}`)
+            fetch(`getFuncoesPorObra.php?obra_id=${obraId}&tipo_imagem=${tipoImagem}&antecipada=${antecipada_obra}`)
                 .then(response => response.json())
                 .then(data => {
                     // Verifica se os dados são válidos e não vazios
@@ -383,7 +430,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
                         var cellNomeImagem = document.createElement('td');
                         cellNomeImagem.textContent = item.imagem_nome;
+                        cellNomeImagem.setAttribute('antecipada', item.antecipada)
                         row.appendChild(cellNomeImagem);
+
+                        if (Boolean(parseInt(item.antecipada))) {
+                            cellNomeImagem.style.backgroundColor = '#ff9d00';
+                        }
 
                         var cellTipoImagem = document.createElement('td');
                         cellTipoImagem.textContent = item.tipo_imagem;
@@ -473,14 +525,16 @@ document.addEventListener("DOMContentLoaded", function () {
     document.getElementById('obra-follow').addEventListener('change', fetchFollowUpData);
     document.getElementById('status_imagem').addEventListener('change', fetchFollowUpData);
     document.getElementById('tipo_imagem_follow').addEventListener('change', fetchFollowUpData);
+    document.getElementById('antecipada_follow').addEventListener('change', fetchFollowUpData); // Adiciona evento para "Antecipada"
 
     function fetchFollowUpData() {
         var obraId = document.getElementById('obra-follow').value;
         var statusImagem = document.getElementById('status_imagem').value;
         var tipoImagem = document.getElementById('tipo_imagem_follow').value;
+        var antecipada = document.getElementById('antecipada_follow').value;
 
         if (obraId) {
-            fetch(`followup.php?obra_id=${obraId}&status_imagem=${statusImagem}&tipo_imagem=${tipoImagem}`)
+            fetch(`followup.php?obra_id=${obraId}&status_imagem=${statusImagem}&tipo_imagem=${tipoImagem}&antecipada=${antecipada}`)
                 .then(response => response.json())
                 .then(data => {
                     var tabela = document.querySelector('#tabela-follow tbody');
@@ -491,7 +545,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
                         var cellNomeImagem = document.createElement('td');
                         cellNomeImagem.textContent = item.imagem_nome;
+                        cellNomeImagem.setAttribute('antecipada', item.antecipada)
                         row.appendChild(cellNomeImagem);
+
+                        if (Boolean(parseInt(item.antecipada))) {
+                            cellNomeImagem.style.backgroundColor = '#ff9d00';
+                        }
 
                         var cellStatusImagem = document.createElement('td');
                         cellStatusImagem.textContent = item.imagem_status;
@@ -555,28 +614,11 @@ function toggleNav() {
     navMenu.classList.toggle('active');
 }
 
-function contarLinhasTabela() {
-    const tabela = document.getElementById("tabelaClientes");
-    const tbody = tabela.getElementsByTagName("tbody")[0];
-    const linhas = tbody.getElementsByTagName("tr");
-    let totalImagens = 0;
-
-    for (let i = 0; i < linhas.length; i++) {
-        if (linhas[i].style.display !== "none") {
-            totalImagens++;
-        }
-    }
-
-    document.getElementById("total-imagens").innerText = totalImagens;
-}
-
-window.onload = contarLinhasTabela;
-
-
 function filtrarTabela() {
     var indiceColuna = document.getElementById("colunaFiltro").value;
     var filtro = document.getElementById("pesquisa").value.toLowerCase();
     var tipoImagemFiltro = document.getElementById("tipoImagemFiltro").value;
+    var antecipadaFiltro = document.getElementById("imagem").value;
     var tabela = document.getElementById("tabelaClientes");
     var tbody = tabela.getElementsByTagName("tbody")[0];
     var linhas = tbody.getElementsByTagName("tr");
@@ -586,21 +628,27 @@ function filtrarTabela() {
         var valorColuna = coluna.textContent || coluna.innerText;
         var tipoImagemColuna = linhas[i].getElementsByTagName("td")[4].textContent || linhas[i].getElementsByTagName("td")[4].innerText;
 
+        // Verifica o valor do atributo antecipada da linha
+        var isAntecipada = linhas[i].getAttribute("antecipada") === '1';
         var mostrarLinha = true;
 
+        // Filtra por texto digitado
         if (filtro && valorColuna.toLowerCase().indexOf(filtro) === -1) {
             mostrarLinha = false;
         }
 
+        // Filtra pelo tipo de imagem selecionado
         if (tipoImagemFiltro && tipoImagemColuna.toLowerCase() !== tipoImagemFiltro.toLowerCase()) {
+            mostrarLinha = false;
+        }
+
+        // Filtra pela seleção de antecipada
+        if (antecipadaFiltro === "Antecipada" && !isAntecipada) {
             mostrarLinha = false;
         }
 
         linhas[i].style.display = mostrarLinha ? "" : "none";
     }
-
-    contarLinhasTabela();
-
 }
 
 document.getElementById("pesquisa").addEventListener("keyup", function (event) {

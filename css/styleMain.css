@@ -654,6 +654,30 @@ table#tabela-follow {
     width: 90%;
 }
 
+.legenda {
+    display: flex;
+    gap: 10px;
+    margin: 10px 0;
+}
+
+.legenda-item {
+    display: flex;
+    align-items: center;
+    font-size: 14px;
+    color: #000;
+}
+
+.circulo {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 5px;
+}
+
+.antecipada {
+    background-color: #ff9d00;
+}
+
 #filtro-obra,
 #filtro-colab,
 #follow-up {

@@ -49,8 +49,8 @@ if ($colaboradorId == 1) {
         ac.colaborador_id,
         'acompanhamento' AS origem,
         ac.idacompanhamento AS identificador,
-        NULL AS imagem_id,
-        o.nome_obra AS imagem_nome,
+        ico.idimagens_cliente_obra AS imagem_id,
+        ico.imagem_nome AS imagem_nome,
         NULL AS funcao_id,
         'Acompanhamento' AS nome_funcao,
         NULL AS status,
@@ -58,11 +58,12 @@ if ($colaboradorId == 1) {
         ac.pagamento,
         ac.valor,
         ac.data_pagamento
-
     FROM 
         acompanhamento ac
     JOIN 
         obra o ON o.idobra = ac.obra_id
+    JOIN 
+        imagens_cliente_obra ico ON ico.idimagens_cliente_obra = ac.imagem_id
     WHERE 
         ac.colaborador_id = ?";
 

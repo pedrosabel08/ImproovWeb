@@ -20,17 +20,40 @@ if (!isset($data['obraAcomp']) || !isset($data['colab_id'])) {
     exit();
 }
 
-// Preparar o statement SQL para inserir na tabela acompanhamento
-$stmt = $conn->prepare("INSERT INTO acompanhamento (obra_id, colaborador_id) VALUES (?, ?)");
+// Selecionar todas as imagens relacionadas à obra
+$obra_id = $data['obraAcomp'];
+$colab_id = $data['colab_id'];
 
-// Vincular os parâmetros da consulta
-$stmt->bind_param('ii', $data['obraAcomp'], $data['colab_id']);
+$sql_imagens = "SELECT idimagens_cliente_obra FROM imagens_cliente_obra WHERE obra_id = ?";
+$stmt_imagens = $conn->prepare($sql_imagens);
+$stmt_imagens->bind_param('i', $obra_id);
+$stmt_imagens->execute();
+$result_imagens = $stmt_imagens->get_result();
 
-if ($stmt->execute()) {
-    echo json_encode(['status' => 'success', 'message' => 'Acompanhamento inserido com sucesso']);
+if ($result_imagens->num_rows > 0) {
+    // Preparar o statement para inserir cada imagem na tabela acompanhamento
+    $stmt_acomp = $conn->prepare("INSERT INTO acompanhamento (obra_id, colaborador_id, imagem_id) VALUES (?, ?, ?)");
+
+    // Loop para inserir cada imagem encontrada
+    while ($row = $result_imagens->fetch_assoc()) {
+        $imagem_id = $row['idimagens_cliente_obra'];
+
+        // Vincular parâmetros e executar inserção para cada imagem
+        $stmt_acomp->bind_param('iii', $obra_id, $colab_id, $imagem_id);
+
+        if (!$stmt_acomp->execute()) {
+            echo json_encode(['status' => 'error', 'message' => 'Erro ao inserir acompanhamento: ' . $stmt_acomp->error]);
+            $stmt_acomp->close();
+            $conn->close();
+            exit();
+        }
+    }
+
+    $stmt_acomp->close();
+    echo json_encode(['status' => 'success', 'message' => 'Acompanhamento inserido com sucesso para todas as imagens da obra']);
 } else {
-    echo json_encode(['status' => 'error', 'message' => 'Erro ao inserir acompanhamento: ' . $stmt->error]);
+    echo json_encode(['status' => 'error', 'message' => 'Nenhuma imagem encontrada para a obra especificada']);
 }
 
-$stmt->close();
+$stmt_imagens->close();
 $conn->close();

@@ -16,6 +16,9 @@ document.addEventListener('DOMContentLoaded', function () {
         var colaboradorId = document.getElementById('colaborador').value;
         var mesId = document.getElementById('mes').value;
 
+        const confirmarPagamentoButton = document.getElementById('confirmar-pagamento');
+        confirmarPagamentoButton.disabled = true;
+        
         if (colaboradorId) {
             var url = 'getColaborador.php?colaborador_id=' + encodeURIComponent(colaboradorId);
 
@@ -59,6 +62,8 @@ document.addEventListener('DOMContentLoaded', function () {
                             } else {
                                 row.classList.remove('checked');
                             }
+                            verificarValoresMaiorQueZero();
+
                         });
                         cellCheckbox.appendChild(checkbox);
 
@@ -108,7 +113,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     });
 
                     contarLinhasTabela();
-                    // Atualiza o gráfico de status de tarefas quando o colaborador é alterado
+
+                    verificarValoresMaiorQueZero();
+
                 })
                 .catch(error => {
                     console.error('Erro ao carregar dados do colaborador:', error);
@@ -207,6 +214,26 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 
+function verificarValoresMaiorQueZero() {
+    let allGreaterThanZero = true;
+    document.querySelectorAll('#tabela-faturamento tbody tr').forEach(row => {
+        let valorCell = row.querySelector('td:nth-child(4)'); // Assume que o valor está na 4ª coluna
+        let valor = parseFloat(valorCell.textContent.replace('R$', '').replace(',', '.'));
+
+        if (isNaN(valor) || valor <= 0) {
+            allGreaterThanZero = false;
+        }
+    });
+
+    // Habilita ou desabilita o botão "Confirmar Pagamento"
+    const confirmarPagamentoButton = document.getElementById('confirmar-pagamento');
+    if (allGreaterThanZero) {
+        confirmarPagamentoButton.disabled = false;
+    } else {
+        confirmarPagamentoButton.disabled = true;
+    }
+}
+
 function contarLinhasTabela() {
     const tabela = document.getElementById("tabela-faturamento");
     const tbody = tabela.getElementsByTagName("tbody")[0];
@@ -262,10 +289,35 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
 
     const colaborador = document.getElementById('colaborador').options[document.getElementById('colaborador').selectedIndex].text;
     const mesNome = document.getElementById('mes').options[document.getElementById('mes').selectedIndex].text; // Nome do mês
-    const ano = new Date().getFullYear(); // Ano atual
+    const anoAtual = new Date().getFullYear(); // Ano atual
+
+    // Calcula o mês anterior
+    const dataAtual = new Date();
+    dataAtual.setMonth(dataAtual.getMonth() - 1); // Decrementa um mês
+    const mesAnterior = dataAtual.getMonth(); // Mês do pagamento
+    const anoPagamento = dataAtual.getFullYear(); // Ano do pagamento
+
+    // Mapeamento dos meses para número (Janeiro = 1, etc.)
+    const mesesMap = {
+        'Janeiro': 0,
+        'Fevereiro': 1,
+        'Março': 2,
+        'Abril': 3,
+        'Maio': 4,
+        'Junho': 5,
+        'Julho': 6,
+        'Agosto': 7,
+        'Setembro': 8,
+        'Outubro': 9,
+        'Novembro': 10,
+        'Dezembro': 11
+    };
+
+    const mesNomeAnterior = Object.keys(mesesMap)[mesAnterior]; // Nome do mês anterior
+
     let currentY = 20;
 
-    const title = `Relatório mensal de ${colaborador}, ${mesNome} de ${ano}`;
+    const title = `Relatório mensal de ${colaborador}, ${mesNomeAnterior} de ${anoPagamento}`;
     const valorTotal = "Valor total: ";
     const quantidadeTarefas = "Quantidade de tarefas: ";
 
@@ -275,24 +327,6 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
     const quantidadeTarefasValue = document.querySelectorAll('#tabela-faturamento tbody tr').length;
 
     const imgPath = '../assets/logo.jpg';
-
-    // Mapeamento dos meses para número (Janeiro = 1, etc.)
-    const mesesMap = {
-        'Janeiro': 1,
-        'Fevereiro': 2,
-        'Março': 3,
-        'Abril': 4,
-        'Maio': 5,
-        'Junho': 6,
-        'Julho': 7,
-        'Agosto': 8,
-        'Setembro': 9,
-        'Outubro': 10,
-        'Novembro': 11,
-        'Dezembro': 12
-    };
-
-    const mes = mesesMap[mesNome]; // Converte o nome do mês para seu número correspondente
 
     fetch(imgPath)
         .then(response => response.blob())
@@ -327,23 +361,23 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
                     }
                 });
 
-                // Adiciona apenas os dados das colunas selecionadas, se a data_pagamento (coluna 5) for do mês e ano atuais
+                // Adiciona apenas os dados das colunas selecionadas, se a data_pagamento (coluna 5) for do mês e ano do pagamento (mês anterior)
                 table.querySelectorAll('tbody tr').forEach(row => {
                     const rowData = [];
                     const dataPagamento = row.querySelectorAll('td')[5].innerText;
 
                     // Converter a data do formato "2024-10-05" para um objeto Date
-                    const [anoPagamento, mesPagamento, diaPagamento] = dataPagamento.split('-');
-                    const dataPagamentoObj = new Date(anoPagamento, mesPagamento - 1, diaPagamento); // Meses no JS são indexados a partir de 0
+                    const [anoPagamentoData, mesPagamentoData, diaPagamento] = dataPagamento.split('-');
+                    const dataPagamentoObj = new Date(anoPagamentoData, mesPagamentoData - 1, diaPagamento); // Meses no JS são indexados a partir de 0
 
-                    // Verificar se o mês e o ano da data_pagamento correspondem ao mês e ano atuais
-                    if (parseInt(mesPagamento) === mes && parseInt(anoPagamento) === ano) {
+                    // Verificar se o mês e o ano da data_pagamento correspondem ao mês e ano de pagamento (mês anterior)
+                    if (parseInt(mesPagamentoData) === mesAnterior && parseInt(anoPagamentoData) === anoPagamento) {
                         row.querySelectorAll('td').forEach((cell, index) => {
                             if (selectedColumnIndexes.includes(index)) {
                                 rowData.push(cell.innerText);
                             }
                         });
-                        rows.push(rowData); // Adiciona apenas linhas que correspondem ao mês e ano
+                        rows.push(rowData); // Adiciona apenas linhas que correspondem ao mês e ano do pagamento
                     }
                 });
 
@@ -355,7 +389,7 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
                         startY: currentY
                     });
 
-                    doc.save(`Relatório_${colaborador}_${mesNome}_${ano}.pdf`);
+                    doc.save(`Relatório_${colaborador}_${mesNomeAnterior}_${anoPagamento}.pdf`);
                 } else {
                     alert("Nenhum dado disponível para o mês selecionado.");
                 }

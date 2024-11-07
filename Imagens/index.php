@@ -1,6 +1,13 @@
 <?php
+
 session_start();
 
+// Verificar se o usuário está logado
+if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
+    // Se não estiver logado, redirecionar para a página de login
+    header("Location: ../index.html");
+    exit();
+}
 ?>
 
 <!DOCTYPE html>
@@ -27,7 +34,16 @@ session_start();
 
         <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 3)): ?>
             <a href="../infoCliente/index.php">Informações clientes</a>
-            <a href="../Acompanhamento/index.html">Acompanhamentos</a>
+            <a href="../Acompanhamento/index.php">Acompanhamentos</a>
+        <?php endif; ?>
+
+        <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 4)): ?>
+            <a href="../Animacao/index.php">Lista Animação</a>
+        <?php endif; ?>
+        <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1)): ?>
+            <a href="Imagens/index.php">Lista Imagens</a>
+            <a href="../Pagamento/index.php">Pagamento</a>
+            <a href="../Obras/index.php">Obras</a>
         <?php endif; ?>
 
         <a href="../Metas/index.php">Metas e progresso</a>
@@ -43,7 +59,7 @@ session_start();
 
         <h1>Tabela imagens</h1>
 
-        <img src="../gif/assinatura_branco.gif" alt="">
+        <img src="../gif/assinatura_branco.gif" alt="" style="width: 200px">
     </header>
 
     <main>

@@ -32,6 +32,7 @@ $conn->close();
 <body>
 
     <button onclick="window.location.href='../inicio.php'" id="button-sair"><i class="fas fa-arrow-left"></i></button>
+
     <div id="calendar"></div>
 
     <!-- Botões para adicionar prazos e ver log por obra -->

@@ -18,8 +18,12 @@ a {
 
 header {
     display: flex;
-    justify-content: space-around;
+    justify-content: space-between;
+    align-items: flex-start;
     padding: 2rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.623);
+	background: linear-gradient(90deg, #1a1a2e 0%, #3e4a70 50%, #2b2b3b 100%);
+    color: white;
 }
 
 header button#voltar {
@@ -43,6 +47,7 @@ header button#openModalBtn {
     border: 1px solid black;
     border-radius: 5px;
     font-weight: bold;
+    color: #000;
 }
 
 header button#add_imagem {
@@ -51,6 +56,8 @@ header button#add_imagem {
     border: 1px solid black;
     border-radius: 5px;
     font-weight: bold;
+    color: #000;
+
 }
 
 .hidden {

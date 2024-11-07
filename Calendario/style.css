@@ -13,6 +13,18 @@ body {
     padding: 20px;
 }
 
+button, a {
+    all: unset;
+}
+
+header {
+	padding: 1rem;
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+}
+
 #button-sair {
     background-color: #0066ff;
     color: white;

@@ -13,7 +13,8 @@ body {
 	height: 200vh;
 }
 
-button, a {
+button,
+a {
 	all: unset;
 }
 
@@ -82,6 +83,13 @@ main {
 .buttons button:hover {
 	background-color: #FF5833;
 	cursor: pointer;
+}
+
+#confirmar-pagamento:disabled {
+	background-color: #cccccc;
+	color: #666666;
+	cursor: not-allowed;
+	opacity: 0.6;
 }
 
 #valores {
@@ -164,56 +172,56 @@ button#generate-pdf:hover {
 
 
 .hidden {
-    display: none;
+	display: none;
 }
 
 #menu {
-    background-color: #f1f1f1;
-    border-radius: 10px;
-    position: absolute;
-    left: 10px;
-    z-index: 1;
-    margin-top: 30px;
-    min-width: 10rem;
-    padding: .5rem 0;
-    transition: .3s all ease;
-    animation: fadeIn .5s ease-in-out forwards;
+	background-color: #f1f1f1;
+	border-radius: 10px;
+	position: absolute;
+	left: 10px;
+	z-index: 1;
+	margin-top: 30px;
+	min-width: 10rem;
+	padding: .5rem 0;
+	transition: .3s all ease;
+	animation: fadeIn .5s ease-in-out forwards;
 }
 
 #menu a {
-    display: block;
-    padding: 5px;
-    text-decoration: none;
-    color: black;
-    font-size: 1rem;
-    padding: .25rem 1.5rem;
-    border-radius: 2px;
-    transition: .3s all ease;
-    text-align: center;
+	display: block;
+	padding: 5px;
+	text-decoration: none;
+	color: black;
+	font-size: 1rem;
+	padding: .25rem 1.5rem;
+	border-radius: 2px;
+	transition: .3s all ease;
+	text-align: center;
 	cursor: pointer;
 }
 
 #menu a#tab-imagens {
-    font-weight: bold;
+	font-weight: bold;
 }
 
 #menu a i {
-    margin-right: 10px;
+	margin-right: 10px;
 }
 
 #menu a:hover {
-    background-color: #ccc;
+	background-color: #ccc;
 }
 
 
 @keyframes fadeIn {
-    0% {
-        opacity: 0;
-        transform: translateX(-20px);
-    }
+	0% {
+		opacity: 0;
+		transform: translateX(-20px);
+	}
 
-    100% {
-        opacity: 1;
-        transform: translateX(0);
-    }
+	100% {
+		opacity: 1;
+		transform: translateX(0);
+	}
 }

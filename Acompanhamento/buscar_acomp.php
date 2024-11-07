@@ -10,6 +10,7 @@ $conn->set_charset('utf8mb4');
 $sql = "SELECT o.nome_obra, c.nome_colaborador, data FROM acompanhamento a
         INNER JOIN obra o on o.idobra = a.obra_id
         INNER JOIN colaborador c on c.idcolaborador = a.colaborador_id
+        GROUP BY o.idobra
         ORDER BY data desc";
 
 $result = $conn->query($sql);

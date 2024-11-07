@@ -179,11 +179,19 @@ $conn->close();
                     <option value="Imagem Externa">Imagem Externa</option>
                     <option value="Planta Humanizada">Planta Humanizada</option>
                 </select>
+
+                <select id="imagem" onchange="filtrarTabela()">
+                    <option value="">Todos as imagens</option>
+                    <option value="Antecipada">Antecipada</option>
+                </select>
             </div>
 
             <div class="tabelaClientes">
                 <div class="image-count">
                     <strong>Total de Imagens:</strong> <span id="total-imagens">0</span>
+                </div>
+                <div class="image-count">
+                    <strong>Total de Imagens antecipadas:</strong> <span id="total-imagens-antecipada">0</span>
                 </div>
                 <table id="tabelaClientes">
                     <thead>
@@ -196,63 +204,6 @@ $conn->close();
                         </tr>
                     </thead>
                     <tbody>
-                        <?php
-                        $conn = new mysqli('mysql.improov.com.br', 'improov', 'Impr00v', 'improov');
-
-                        if ($conn->connect_error) {
-                            die("Falha na conexão: " . $conn->connect_error);
-                        }
-                        $conn->set_charset('utf8mb4');
-
-                        $filtro = isset($_GET['filtro']) ? $conn->real_escape_string($_GET['filtro']) : '';
-                        $colunaFiltro = isset($_GET['colunaFiltro']) ? intval($_GET['colunaFiltro']) : 0;
-                        $tipoImagemFiltro = isset($_GET['tipoImagemFiltro']) ? $conn->real_escape_string($_GET['tipoImagemFiltro']) : '';
-
-                        $sql = "SELECT i.idimagens_cliente_obra, c.nome_cliente, o.nome_obra, i.recebimento_arquivos, i.data_inicio, i.prazo, MAX(i.imagem_nome) AS imagem_nome, i.prazo AS prazo_estimado, s.nome_status, i.tipo_imagem FROM imagens_cliente_obra i 
-                            JOIN cliente c ON i.cliente_id = c.idcliente 
-                            JOIN obra o ON i.obra_id = o.idobra 
-                            LEFT JOIN funcao_imagem fi ON i.idimagens_cliente_obra = fi.imagem_id 
-                            LEFT JOIN funcao f ON fi.funcao_id = f.idfuncao 
-                            LEFT JOIN colaborador co ON fi.colaborador_id = co.idcolaborador 
-                            LEFT JOIN status_imagem s ON i.status_id = s.idstatus 
-                            GROUP BY i.idimagens_cliente_obra";
-
-                        if ($filtro) {
-                            $colunas = [
-                                'nome_cliente',
-                                'nome_obra',
-                                'imagem_nome',
-                                'nome_status'
-                            ];
-                            $coluna = $colunas[$colunaFiltro];
-                            $sql .= " HAVING LOWER($coluna) LIKE LOWER('%$filtro%')";
-                        }
-
-                        if ($tipoImagemFiltro) {
-                            $sql .= " HAVING LOWER(tipo_imagem) = LOWER('$tipoImagemFiltro')";
-                        }
-
-                        $result = $conn->query($sql);
-
-                        if (!$result) {
-                            die("Erro na consulta SQL: " . $conn->error);
-                        }
-
-                        if ($result->num_rows > 0) {
-
-                            while ($row = $result->fetch_assoc()) {
-                                echo "<tr class='linha-tabela' data-id='" . htmlspecialchars($row["idimagens_cliente_obra"]) . "'>";
-                                echo "<td title='" . htmlspecialchars($row["nome_cliente"]) . "'>" . htmlspecialchars($row["nome_cliente"]) . "</td>";
-                                echo "<td title='" . htmlspecialchars($row["nome_obra"]) . "'>" . htmlspecialchars($row["nome_obra"]) . "</td>";
-                                echo "<td title='" . htmlspecialchars($row["imagem_nome"]) . "'>" . htmlspecialchars($row["imagem_nome"]) . "</td>";
-                                echo "<td title='" . htmlspecialchars($row["nome_status"]) . "'>" . htmlspecialchars($row["nome_status"]) . "</td>";
-                                echo "<td title='" . htmlspecialchars($row["tipo_imagem"]) . "'>" . htmlspecialchars($row["tipo_imagem"]) . "</td>";
-                                echo "</tr>";
-                            }
-                        } else {
-                            echo "<tr><td colspan='13'>Nenhum dado encontrado</td></tr>";
-                        }
-                        ?>
                     </tbody>
                 </table>
             </div>
@@ -610,6 +561,17 @@ $conn->close();
                 <option value="Planta Humanizada">Planta Humanizada</option>
             </select>
 
+            <select id="antecipada_obra">
+                <option value="">Todos as imagens</option>
+                <option value="Antecipada">Antecipada</option>
+            </select>
+
+            <div class="legenda">
+                <span class="legenda-item">
+                    <span class="circulo antecipada"></span> Antecipada
+                </span>
+            </div>
+
             <table id="tabela-obra">
                 <thead>
                     <th>Nome da Imagem</th>
@@ -668,7 +630,18 @@ $conn->close();
                 <option value="9">HOLD</option>
             </select>
 
+            <select id="antecipada_follow">
+                <option value="">Todos as imagens</option>
+                <option value="Antecipada">Antecipada</option>
+            </select>
+
             <button id="generate-pdf">Gerar PDF</button>
+
+            <div class="legenda">
+                <span class="legenda-item">
+                    <span class="circulo antecipada"></span> Antecipada
+                </span>
+            </div>
 
             <table id="tabela-follow">
                 <thead>

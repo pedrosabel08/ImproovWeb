@@ -13,26 +13,23 @@ body {
 	height: 200vh;
 }
 
-button {
+button, a {
 	all: unset;
 }
 
 header {
-	padding: 2rem;
+	padding: 1rem;
 	display: flex;
-	align-items: center;
+	align-items: flex-start;
 	justify-content: space-between;
 	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
 	background: linear-gradient(90deg, #1a1a2e 0%, #3e4a70 50%, #2b2b3b 100%);
+	color: white;
 }
 
-header img {
-	height: 150px;
-}
 
 header p {
 	text-transform: capitalize;
-	color: #F0F0F0;
 }
 
 main {
@@ -163,4 +160,60 @@ button#generate-pdf:hover {
 	align-items: center;
 	gap: 5px;
 	margin-top: 10px;
+}
+
+
+.hidden {
+    display: none;
+}
+
+#menu {
+    background-color: #f1f1f1;
+    border-radius: 10px;
+    position: absolute;
+    left: 10px;
+    z-index: 1;
+    margin-top: 30px;
+    min-width: 10rem;
+    padding: .5rem 0;
+    transition: .3s all ease;
+    animation: fadeIn .5s ease-in-out forwards;
+}
+
+#menu a {
+    display: block;
+    padding: 5px;
+    text-decoration: none;
+    color: black;
+    font-size: 1rem;
+    padding: .25rem 1.5rem;
+    border-radius: 2px;
+    transition: .3s all ease;
+    text-align: center;
+	cursor: pointer;
+}
+
+#menu a#tab-imagens {
+    font-weight: bold;
+}
+
+#menu a i {
+    margin-right: 10px;
+}
+
+#menu a:hover {
+    background-color: #ccc;
+}
+
+
+@keyframes fadeIn {
+    0% {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateX(0);
+    }
 }

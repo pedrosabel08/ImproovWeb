@@ -10,7 +10,7 @@
 }
 
 body {
-    background-color: #444444;
+    background-color: #ffffff;
 }
 
 button,
@@ -20,14 +20,14 @@ a {
 }
 
 header {
-    padding: 6px;
+    padding: 2rem;
     box-shadow: 0 2px 6px rgba(255, 255, 255, 0.548);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background-color: #49524b;
+    background: linear-gradient(90deg, #1a1a2e 0%, #3e4a70 50%, #2b2b3b 100%);
     color: white;
-
+    align-items: flex-start;
 }
 
 header img {
@@ -100,9 +100,10 @@ main {
     margin-bottom: 10px;
     width: 20%;
     padding: 3px;
-    font-size: 16px;
+    height: 30px;
     border: none;
-    box-shadow: 0 2px 6px rgba(255, 255, 255, 0.548);
+    font-size: 16px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.548);
 }
 
 .tabelaClientes {
@@ -110,7 +111,7 @@ main {
     overflow-y: auto;
     margin-bottom: 20px;
     max-height: 60vh;
-    box-shadow: 0 2px 6px rgba(255, 255, 255, 0.548);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.548);
 }
 
 table {
@@ -119,6 +120,7 @@ table {
     margin-left: 0;
     animation: ShowIn 1s ease-in-out forwards;
     background-color: white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
 }
 
 table td,
@@ -140,7 +142,7 @@ table th:nth-child(3) {
 
 tbody tr:hover {
     cursor: pointer;
-    background-color: #1a72124b;
+    background-color: #FF5833;
 }
 
 .linha-atualizada {
@@ -247,7 +249,7 @@ tbody tr:hover {
     display: flex;
     align-items: center;
     font-size: 14px;
-    color: white;
+    color: black;
 }
 
 .circulo {

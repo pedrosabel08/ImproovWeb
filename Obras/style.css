@@ -19,6 +19,8 @@ header {
     align-items: flex-start;
     padding: 1rem;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.623);
+    background: linear-gradient(90deg, #1a1a2e 0%, #3e4a70 100%);
+
 }
 
 main {

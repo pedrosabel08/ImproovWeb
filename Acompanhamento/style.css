@@ -8,33 +8,17 @@
     font-family: "Nunito", sans-serif;
 }
 
+button, a {
+    all: unset;
+}
+
 header {
-    background-color: #42d5df;
+	background: linear-gradient(90deg, #1a1a2e 0%, #3e4a70 50%, #2b2b3b 100%);
     color: white;
     padding: 15px;
-    text-align: center;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
-}
-
-#button-sair {
-    background-color: #0066ff;
-    color: white;
-    border: none;
-    border-radius: 50%;
-    width: 30px;
-    height: 30px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    cursor: pointer;
-    font-size: 16px;
-    transition: background-color 0.3s;
-}
-
-#button-sair:hover {
-    background-color: #033797;
 }
 
 main {
@@ -85,7 +69,7 @@ table td {
 }
 
 th {
-    background-color: #42d9df;
+    background-color: #3E6470;
 }
 
 @media (max-width: 768px) {
@@ -96,5 +80,58 @@ th {
 
     .coluna {
         width: 100%;
+    }
+}
+
+.hidden {
+    display: none;
+}
+
+#menu {
+    background-color: #f1f1f1;
+    border-radius: 10px;
+    position: absolute;
+    left: 10px;
+    z-index: 1;
+    margin-top: 30px;
+    min-width: 10rem;
+    padding: .5rem 0;
+    transition: .3s all ease;
+    animation: fadeIn .5s ease-in-out forwards;
+}
+
+#menu a {
+    display: block;
+    padding: 5px;
+    text-decoration: none;
+    color: black;
+    font-size: 1rem;
+    padding: .25rem 1.5rem;
+    border-radius: 2px;
+    transition: .3s all ease;
+    text-align: center;
+    cursor: pointer;
+}
+
+#menu a#tab-imagens {
+    font-weight: bold;
+}
+
+#menu a i {
+    margin-right: 10px;
+}
+
+#menu a:hover {
+    background-color: #ccc;
+}
+
+
+@keyframes fadeIn {
+    0% {
+        opacity: 0;
+    }
+
+    100% {
+        opacity: 1;
     }
 }

@@ -67,6 +67,7 @@ $conn->close();
         </button>
 
         <div id="menu" class="hidden">
+            <a href="inicio.php" id="tab-imagens">Página Principal</a>
             <a href="main.php" id="tab-imagens">Visualizar tabela com imagens</a>
             <a href="Pos-Producao/index.php">Lista Pós-Produção</a>
 
@@ -78,7 +79,6 @@ $conn->close();
             <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 4)): ?>
                 <a href="Animacao/index.php">Lista Animação</a>
             <?php endif; ?>
-
             <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1)): ?>
                 <a href="Imagens/index.php">Lista Imagens</a>
                 <a href="Pagamento/index.php">Pagamento</a>
@@ -91,6 +91,7 @@ $conn->close();
                 <i class="fa-solid fa-calendar-days"></i>
             </a>
         </div>
+
         <div class="right">
             <img src="gif/assinatura_branco.gif" alt="" style="width: 200px;">
             <button id="showMenu"><i class="fa-solid fa-user"></i></button>

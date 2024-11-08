@@ -12,6 +12,43 @@ $conn->set_charset('utf8mb4');
 $colaboradorId = intval($_GET['colaborador_id']);
 $mesNumero = isset($_GET['mes_id']) ? intval($_GET['mes_id']) : null;
 
+$dadosColaborador = [];
+
+// Primeira consulta: informações básicas do colaborador
+$sqlColaborador = "
+    SELECT 
+        u.nome_usuario, 
+        iu.cnpj, 
+        e.rua, e.bairro, e.numero, e.complemento, e.cep, 
+        iu.nome_empresarial, iu.estado_civil, iu.cpf, 
+        ec.rua_cnpj, ec.numero_cnpj, ec.bairro_cnpj, ec.localidade_cnpj, ec.uf_cnpj, ec.cep_cnpj 
+    FROM 
+        usuario u 
+    LEFT JOIN 
+        informacoes_usuario iu ON iu.usuario_id = u.idusuario 
+    LEFT JOIN 
+        endereco e ON e.usuario_id = u.idusuario 
+    LEFT JOIN 
+        endereco_cnpj ec ON ec.usuario_id = u.idusuario 
+    WHERE 
+        u.idcolaborador = ?";
+
+$stmtColaborador = $conn->prepare($sqlColaborador);
+if (!$stmtColaborador) {
+    die(json_encode(["error" => "Falha ao preparar a consulta de colaborador: " . $conn->error]));
+}
+
+$stmtColaborador->bind_param('i', $colaboradorId);
+$stmtColaborador->execute();
+$resultColaborador = $stmtColaborador->get_result();
+
+if ($resultColaborador->num_rows > 0) {
+    $dadosColaborador = $resultColaborador->fetch_assoc();
+}
+
+$stmtColaborador->close();
+
+// Consultas adicionais de acordo com o colaboradorId
 if ($colaboradorId == 1) {
     // Consulta para colaborador 1 usando funcao_imagem e acompanhamento
     $sql = "SELECT 
@@ -27,7 +64,6 @@ if ($colaboradorId == 1) {
         fi.pagamento,
         fi.valor,
         fi.data_pagamento
-
     FROM 
         funcao_imagem fi
     JOIN 
@@ -72,7 +108,6 @@ if ($colaboradorId == 1) {
     }
 } elseif ($colaboradorId == 13) {
     // Consulta para colaborador 13 usando tabela animacao e acompanhamento
-
     $sql = "SELECT 
         fi.colaborador_id,
         'funcao_imagem' AS origem,
@@ -86,7 +121,6 @@ if ($colaboradorId == 1) {
         fi.pagamento,
         fi.valor,
         fi.data_pagamento
-
     FROM 
         funcao_imagem fi
     JOIN 
@@ -142,7 +176,6 @@ if ($colaboradorId == 1) {
         fi.pagamento,
         fi.valor,
         fi.data_pagamento
-
     FROM 
         funcao_imagem fi
     JOIN 
@@ -160,13 +193,8 @@ if ($colaboradorId == 1) {
     }
 }
 
-// Preparar a consulta
+// Preparar a consulta adicional
 $stmt = $conn->prepare($sql);
-
-// Verificar se a consulta foi preparada corretamente
-if (!$stmt) {
-    die(json_encode(["error" => "Falha ao preparar a consulta: " . $conn->error]));
-}
 
 // Bind de parâmetros conforme necessário
 if ($colaboradorId == 1 || $colaboradorId == 13) {
@@ -193,7 +221,13 @@ if ($result->num_rows > 0) {
     }
 }
 
-echo json_encode($funcoes);
+// Combinar dados do colaborador com as outras funções
+$response = [
+    "dadosColaborador" => $dadosColaborador,
+    "funcoes" => $funcoes
+];
+
+echo json_encode($response);
 
 $stmt->close();
 $conn->close();

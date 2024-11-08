@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const confirmarPagamentoButton = document.getElementById('confirmar-pagamento');
         confirmarPagamentoButton.disabled = true;
-        
+
         if (colaboradorId) {
             var url = 'getColaborador.php?colaborador_id=' + encodeURIComponent(colaboradorId);
 
@@ -285,6 +285,7 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({
         orientation: 'landscape',
+        unit: 'mm',  // Usar milímetros como unidade para facilitar o controle de margens
     });
 
     const colaborador = document.getElementById('colaborador').options[document.getElementById('colaborador').selectedIndex].text;
@@ -316,6 +317,42 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
     const mesNomeAnterior = Object.keys(mesesMap)[mesAnterior]; // Nome do mês anterior
 
     let currentY = 20;
+    const marginLeft = 14;  // Margem esquerda
+    const marginTop = 20;   // Margem superior
+    const marginRight = 14; // Margem direita
+    const marginBottom = 14; // Margem inferior
+
+    // Texto do aditivo contratual
+    const aditivoText = `
+    ADITIVO CONTRATUAL N° X - SETEMBRO 2024
+
+    De um lado IMPROOV LTDA., CNPJ: 37.066.879/0001-84, com endereço/sede na RUA BAHIA, 988, SALA 304, BAIRRO DO SALTO, BLUMENAU, SC, CEP 89.031-001; se seguir denominado simplesmente parte CONTRATANTE, neste ato representado por DIOGO JOSÉ POFFO, nacionalidade: brasileira, estado civil: divorciado, inscrito no CPF sob o nº. 036.698.519-17, residente e domiciliado na Avenida Senador Atílio Fontana, nº 2101 apt. 308 Edifício Caravelas, bairro Balneário Pereque – Porto Belo/SC – CEP 88210-000, doravante denominada parte CONTRATANTE.
+
+    De outro, Adriana Tavares, CNPJ: 55.098.043/0001-43, com endereço/sede na Rua José Stein, 90, apto 605, bairro Itoupavazinha na cidade de Blumenau - SC, CEP 89066-430; se seguir denominado simplesmente parte CONTRATADA; neste ato representado por Adriana Tavares, brasileira, solteira, inscrita no CPF sob o nº. 060.021.119-30, residente e domiciliado na Rua José Stein, 90, apto 605, bairro Itoupavazinha na cidade de Blumenau - SC, CEP 89066-430, doravante denominada parte CONTRATADA.
+
+    Os denominados têm, entre si, justo e acertado, promover o TERMO ADITIVO N°X ao Contrato de Prestação de Serviços assinado em XX de XX de XXXX, nos seguintes termos e condições.
+
+    DO OBJETO
+    Cláusula 1ª - O presente termo aditivo tem por escopo dar quitação aos valores devidos pelo CONTRATANTE ao CONTRATADO pela elaboração e desenvolvimento das seguintes imagens que não eram parte inicial do contrato de prestação de serviços firmado em XX de XX de XX:
+
+    Cláusula 2ª - O CONTRATADO declara que no dia XX de XX de XX, recebeu do CONTRATANTE o valor de R$ XXX (XXXX reais), pela entrega das imagens acima referidas, e dá a mais ampla, geral e irrestrita quitação à dívida, renunciando seu direito de cobrança relativos a tais valores.
+
+    E por estarem justas e perfeitamente acertadas, assinam o presente em 02 (duas) vias de igual teor e forma, vias na presença de 2 (duas) testemunhas.
+
+    Porto Belo/SC, XX de XX de XX.
+
+    ________________________________________
+    IMPROOV LTDA.
+
+    ________________________________________
+    Adriana Tavares
+    `;
+
+    // Adiciona o texto do aditivo contratual no PDF
+    doc.setFontSize(12);
+    doc.setTextColor(0, 0, 0);
+    doc.text(aditivoText, marginLeft, currentY);
+    currentY += 60;
 
     const title = `Relatório mensal de ${colaborador}, ${mesNomeAnterior} de ${anoPagamento}`;
     const valorTotal = "Valor total: ";
@@ -334,19 +371,19 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
             const reader = new FileReader();
             reader.onloadend = function () {
                 const imgData = reader.result;
-                doc.addImage(imgData, 'PNG', 14, currentY, 40, 40);
+                doc.addImage(imgData, 'PNG', marginLeft, currentY, 40, 40);
                 currentY += 50;
 
                 doc.setFontSize(16);
                 doc.setTextColor(0, 0, 0);
-                doc.text(title, 14, currentY);
+                doc.text(title, marginLeft, currentY);
                 currentY += 10;
 
                 doc.setFontSize(12);
-                doc.text(`${valorTotal} R$ ${totalValor.toFixed(2).replace('.', ',')} (${totalValorExtenso})`, 14, currentY);
+                doc.text(`${valorTotal} R$ ${totalValor.toFixed(2).replace('.', ',')} (${totalValorExtenso})`, marginLeft, currentY);
                 currentY += 10;
 
-                doc.text(`${quantidadeTarefas} ${quantidadeTarefasValue}`, 14, currentY);
+                doc.text(`${quantidadeTarefas} ${quantidadeTarefasValue}`, marginLeft, currentY);
                 currentY += 20;
 
                 const table = document.getElementById('tabela-faturamento');
@@ -361,24 +398,16 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
                     }
                 });
 
-                // Adiciona apenas os dados das colunas selecionadas, se a data_pagamento (coluna 5) for do mês e ano do pagamento (mês anterior)
+                // Adiciona apenas os dados das colunas selecionadas
                 table.querySelectorAll('tbody tr').forEach(row => {
                     const rowData = [];
-                    const dataPagamento = row.querySelectorAll('td')[5].innerText;
 
-                    // Converter a data do formato "2024-10-05" para um objeto Date
-                    const [anoPagamentoData, mesPagamentoData, diaPagamento] = dataPagamento.split('-');
-                    const dataPagamentoObj = new Date(anoPagamentoData, mesPagamentoData - 1, diaPagamento); // Meses no JS são indexados a partir de 0
-
-                    // Verificar se o mês e o ano da data_pagamento correspondem ao mês e ano de pagamento (mês anterior)
-                    if (parseInt(mesPagamentoData) === mesAnterior && parseInt(anoPagamentoData) === anoPagamento) {
-                        row.querySelectorAll('td').forEach((cell, index) => {
-                            if (selectedColumnIndexes.includes(index)) {
-                                rowData.push(cell.innerText);
-                            }
-                        });
-                        rows.push(rowData); // Adiciona apenas linhas que correspondem ao mês e ano do pagamento
-                    }
+                    row.querySelectorAll('td').forEach((cell, index) => {
+                        if (selectedColumnIndexes.includes(index)) {
+                            rowData.push(cell.innerText);
+                        }
+                    });
+                    rows.push(rowData); // Adiciona todas as linhas
                 });
 
                 if (rows.length > 0) {
@@ -386,17 +415,19 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
                     doc.autoTable({
                         head: [headers],
                         body: rows,
-                        startY: currentY
+                        startY: currentY,
+                        margin: { top: 20, left: 14, right: 14 },
                     });
 
-                    doc.save(`Relatório_${colaborador}_${mesNomeAnterior}_${anoPagamento}.pdf`);
-                } else {
-                    alert("Nenhum dado disponível para o mês selecionado.");
+                    // Adiciona espaçamento depois da tabela
+                    currentY = doc.lastAutoTable.finalY + 10;
+
+                    // Salva o documento
+                    doc.save('aditivo-contratual.pdf');
                 }
             };
-            reader.readAsDataURL(blob);
-        })
-        .catch(error => console.error('Erro ao carregar a imagem:', error));
+            reader.readAsDataURL(blob); // Converte a imagem para base64
+        });
 });
 
 document.getElementById('generate-lista').addEventListener('click', function () {

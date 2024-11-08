@@ -12,17 +12,22 @@ if (isset($_SESSION['idusuario'])) {
     $senha = $_POST['senha'] ?? null;
     $email = $_POST['email'] ?? null;
     $telefone = $_POST['telefone'] ?? null;
+    $cpf = $_POST['cpf'] ?? null;
     $cep = $_POST['cep'] ?? null;
     $bairro = $_POST['bairro'] ?? null;
     $rua = $_POST['rua'] ?? null;
     $numero = $_POST['numero'] ?? null;
     $complemento = $_POST['complemento'] ?? null;
     $cnpj = $_POST['cnpj'] ?? null;
+    $nome_empresarial = $_POST['nome_empresarial'] ?? null;
+    $nome_fantasia = $_POST['nome_fantasia'] ?? null;
     $cep_cnpj = $_POST['cep_cnpj'] ?? null;
     $bairro_cnpj = $_POST['bairro_cnpj'] ?? null;
     $rua_cnpj = $_POST['rua_cnpj'] ?? null;
     $numero_cnpj = $_POST['numero_cnpj'] ?? null;
     $complemento_cnpj = $_POST['complemento_cnpj'] ?? null;
+    $uf_cnpj = $_POST['uf_cnpj'] ?? null;
+    $localidade_cnpj = $_POST['localidade_cnpj'] ?? null;
     $data_nascimento = $_POST['data'] ?? null;
     $estado_civil = $_POST['estado_civil'] ?? null;
     $filhos = $_POST['filho'] ?? null;
@@ -45,19 +50,22 @@ if (isset($_SESSION['idusuario'])) {
 
     // Atualizando informações do usuário (tabela informacoes_usuario)
     $queryInformacoes = "
-        INSERT INTO informacoes_usuario (usuario_id, telefone, data_nascimento, estado_civil, filhos, cnpj)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO informacoes_usuario (usuario_id, telefone, data_nascimento, estado_civil, filhos, cnpj, nome_empresarial, nome_fantasia, cpf)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE
             telefone = VALUES(telefone),
             data_nascimento = VALUES(data_nascimento),
             estado_civil = VALUES(estado_civil),
             filhos = VALUES(filhos),
-            cnpj = VALUES(cnpj);
+            cnpj = VALUES(cnpj),
+            nome_empresarial = VALUES(nome_empresarial),
+            nome_fantasia = VALUES(nome_fantasia),
+            cpf = VALUES(cpf);
     ";
 
     // Aqui bind_param deve ter 6 elementos: "ssssss" (5 strings e 1 inteiro)
     $stmtInformacoes = $conn->prepare($queryInformacoes);
-    $stmtInformacoes->bind_param("isssss", $usuario_id, $telefone, $data_nascimento, $estado_civil, $filhos, $cnpj);
+    $stmtInformacoes->bind_param("issssssss", $usuario_id, $telefone, $data_nascimento, $estado_civil, $filhos, $cnpj, $nome_empresarial, $nome_fantasia, $cpf);
     $stmtInformacoes->execute();
     $stmtInformacoes->close();
 
@@ -81,19 +89,21 @@ if (isset($_SESSION['idusuario'])) {
 
     // Atualizando o endereço do CNPJ (tabela endereco_cnpj)
     $queryEnderecoCnpj = "
-        INSERT INTO endereco_cnpj (usuario_id, rua_cnpj, numero_cnpj, bairro_cnpj, complemento_cnpj, cep_cnpj)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO endereco_cnpj (usuario_id, rua_cnpj, numero_cnpj, bairro_cnpj, complemento_cnpj, cep_cnpj, uf_cnpj, localidade_cnpj)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE
             rua_cnpj = VALUES(rua_cnpj),
             numero_cnpj = VALUES(numero_cnpj),
             bairro_cnpj = VALUES(bairro_cnpj),
             complemento_cnpj = VALUES(complemento_cnpj),
-            cep_cnpj = VALUES(cep_cnpj);
+            cep_cnpj = VALUES(cep_cnpj),
+            uf_cnpj = VALUES(uf_cnpj),
+            localidade_cnpj = VALUES(localidade_cnpj);
     ";
 
     // Aqui bind_param deve ter 6 elementos: "issssss" (6 strings)
     $stmtEnderecoCnpj = $conn->prepare($queryEnderecoCnpj);
-    $stmtEnderecoCnpj->bind_param("isssss", $usuario_id, $rua_cnpj, $numero_cnpj, $bairro_cnpj, $complemento_cnpj, $cep_cnpj);
+    $stmtEnderecoCnpj->bind_param("isssssss", $usuario_id, $rua_cnpj, $numero_cnpj, $bairro_cnpj, $complemento_cnpj, $cep_cnpj, $uf_cnpj, $localidade_cnpj);
     $stmtEnderecoCnpj->execute();
     $stmtEnderecoCnpj->close();
 

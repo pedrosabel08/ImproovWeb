@@ -44,7 +44,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
                         tr.innerHTML = `
                             <td title="${row.nome_cliente}">${row.nome_cliente}</td>
-                        <td title="${row.nome_obra} - Status: ${row.status_obra}">${row.nome_obra}</td>
+                            <td title="${row.nome_obra} - Status: ${row.status_obra}" data-status-obra="${row.status_obra}">${row.nome_obra}</td>
                             <td title="${row.imagem_nome}">${row.imagem_nome}</td>
                             <td title="${row.nome_status}">${row.nome_status}</td>
                             <td title="${row.tipo_imagem}">${row.tipo_imagem}</td>
@@ -623,13 +623,19 @@ function filtrarTabela() {
     var tbody = tabela.getElementsByTagName("tbody")[0];
     var linhas = tbody.getElementsByTagName("tr");
 
+    // Contadores para os itens filtrados
+    let contadorStatusZero = 0;
+    let contadorAntecipada = 0;
+
     for (var i = 0; i < linhas.length; i++) {
         var coluna = linhas[i].getElementsByTagName("td")[indiceColuna];
         var valorColuna = coluna.textContent || coluna.innerText;
         var tipoImagemColuna = linhas[i].getElementsByTagName("td")[4].textContent || linhas[i].getElementsByTagName("td")[4].innerText;
 
-        // Verifica o valor do atributo antecipada da linha
+        // Verifica se a linha é antecipada e o status_obra
         var isAntecipada = linhas[i].getAttribute("antecipada") === '1';
+        var statusObra = linhas[i].getElementsByTagName("td")[1].getAttribute("data-status-obra") === '0'; // Acesse o status_obra pela célula
+
         var mostrarLinha = true;
 
         // Filtra por texto digitado
@@ -647,9 +653,21 @@ function filtrarTabela() {
             mostrarLinha = false;
         }
 
+        // Mostrar ou ocultar a linha com base nos filtros
         linhas[i].style.display = mostrarLinha ? "" : "none";
+
+        // Atualiza os contadores apenas para as linhas visíveis
+        if (mostrarLinha) {
+            if (isAntecipada) contadorAntecipada++;
+            if (statusObra) contadorStatusZero++;
+        }
     }
+
+    // Atualizar os contadores no HTML
+    document.getElementById("total-imagens").textContent = contadorStatusZero;
+    document.getElementById("total-imagens-antecipada").textContent = contadorAntecipada;
 }
+
 
 document.getElementById("pesquisa").addEventListener("keyup", function (event) {
     if (event.key === "Enter") {

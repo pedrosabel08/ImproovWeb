@@ -10,14 +10,13 @@
 
 
 button#voltar {
-    width: 100px;
-    border: 2px solid black;
-    border-radius: 20px;
+    border-radius: 50%;
     text-align: center;
     transition: 0.3s all ease;
     position: absolute;
     top: 10px;
     left: 10px;
+    padding: 2px 4px;
 }
 
 button#voltar:hover {

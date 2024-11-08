@@ -1,164 +1,110 @@
 <?php
 session_start();
+include 'conexao.php';
 
-if (!isset($_SESSION['idusuario'])) {
-    header("Location: login.php");
-    exit();
-}
+$response = ["success" => false, "message" => "Erro ao atualizar informações."];
 
-$mysqli = new mysqli("mysql.improov.com.br", "improov", "Impr00v", "improov");
-
-if ($mysqli->connect_error) {
-    die("Erro na conexão com o banco de dados: " . $mysqli->connect_error);
-}
-
-$mysqli->set_charset("utf8mb4");
-
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+if (isset($_SESSION['idusuario'])) {
     $usuario_id = $_SESSION['idusuario'];
 
-    // Captura e escapamento de dados
-    $nome = $mysqli->real_escape_string($_POST['nome']);
-    $senha = $mysqli->real_escape_string($_POST['senha']);
-    $email = $mysqli->real_escape_string($_POST['email']);
-    $telefone = $mysqli->real_escape_string($_POST['telefone']);
-    $data_nascimento = $mysqli->real_escape_string($_POST['data']);
-    $estado_civil = $mysqli->real_escape_string($_POST['estado_civil']);
-    $filhos = $mysqli->real_escape_string($_POST['filho']);
-    $rua = $mysqli->real_escape_string($_POST['rua']);
-    $numero = $mysqli->real_escape_string($_POST['numero']);
-    $bairro = $mysqli->real_escape_string($_POST['bairro']);
-    $complemento = $mysqli->real_escape_string($_POST['complemento']);
-    $cep = $mysqli->real_escape_string($_POST['cep']);
-    $cnpj = $mysqli->real_escape_string($_POST['cnpj']);
-    $rua_cnpj = $mysqli->real_escape_string($_POST['rua_cnpj']);
-    $numero_cnpj = $mysqli->real_escape_string($_POST['numero_cnpj']);
-    $bairro_cnpj = $mysqli->real_escape_string($_POST['bairro_cnpj']);
-    $complemento_cnpj = $mysqli->real_escape_string($_POST['complemento_cnpj']);
-    $cep_cnpj = $mysqli->real_escape_string($_POST['cep_cnpj']);
+    // Receber e validar os dados do formulário
+    $nome = $_POST['nome'] ?? null;
+    $senha = $_POST['senha'] ?? null;
+    $email = $_POST['email'] ?? null;
+    $telefone = $_POST['telefone'] ?? null;
+    $cep = $_POST['cep'] ?? null;
+    $bairro = $_POST['bairro'] ?? null;
+    $rua = $_POST['rua'] ?? null;
+    $numero = $_POST['numero'] ?? null;
+    $complemento = $_POST['complemento'] ?? null;
+    $cnpj = $_POST['cnpj'] ?? null;
+    $cep_cnpj = $_POST['cep_cnpj'] ?? null;
+    $bairro_cnpj = $_POST['bairro_cnpj'] ?? null;
+    $rua_cnpj = $_POST['rua_cnpj'] ?? null;
+    $numero_cnpj = $_POST['numero_cnpj'] ?? null;
+    $complemento_cnpj = $_POST['complemento_cnpj'] ?? null;
+    $data_nascimento = $_POST['data'] ?? null;
+    $estado_civil = $_POST['estado_civil'] ?? null;
+    $filhos = $_POST['filho'] ?? null;
 
-    // Verifica se já existe um registro para o usuário
-    $checkQuery = "SELECT COUNT(*) as count FROM informacoes_usuario WHERE usuario_id = ?";
-    $stmt = $mysqli->prepare($checkQuery);
-    if ($stmt === false) {
-        die("Erro na preparação da query: " . $mysqli->error);
-    }
-    $stmt->bind_param("i", $usuario_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $row = $result->fetch_assoc();
-    $stmt->close();
+    // Atualizando o usuário (tabela usuario)
+    $queryUsuario = "
+        INSERT INTO usuario (idusuario, nome_usuario, senha, email)
+        VALUES (?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE
+            nome_usuario = VALUES(nome_usuario),
+            senha = VALUES(senha),
+            email = VALUES(email);
+    ";
 
-    if ($row['count'] > 0) {
-        // UPDATE
-        $updateQuery = "
-            UPDATE usuario u
-            JOIN informacoes_usuario iu ON u.idusuario = iu.usuario_id
-            JOIN endereco e ON u.idusuario = e.usuario_id
-            JOIN endereco_cnpj ec ON u.idusuario = ec.usuario_id
-            SET 
-                u.nome_usuario = ?, 
-                u.senha = ?, 
-                u.email = ?, 
-                iu.telefone = ?, 
-                iu.data_nascimento = ?, 
-                iu.estado_civil = ?, 
-                iu.filhos = ?, 
-                iu.cnpj = ?, 
-                e.rua = ?, 
-                e.numero = ?, 
-                e.bairro = ?, 
-                e.complemento = ?, 
-                e.cep = ?, 
-                ec.rua_cnpj = ?, 
-                ec.numero_cnpj = ?, 
-                ec.bairro_cnpj = ?, 
-                ec.complemento_cnpj = ?, 
-                ec.cep_cnpj = ? 
-            WHERE u.idusuario = ?
-        ";
+    // Aqui bind_param deve ter 4 elementos: "isss" (3 strings e 1 inteiro)
+    $stmtUsuario = $conn->prepare($queryUsuario);
+    $stmtUsuario->bind_param("isss", $usuario_id, $nome, $senha, $email);
+    $stmtUsuario->execute();
+    $stmtUsuario->close();
 
-        $stmt = $mysqli->prepare($updateQuery);
-        if ($stmt === false) {
-            die("Erro na preparação da query de atualização: " . $mysqli->error);
-        }
+    // Atualizando informações do usuário (tabela informacoes_usuario)
+    $queryInformacoes = "
+        INSERT INTO informacoes_usuario (usuario_id, telefone, data_nascimento, estado_civil, filhos, cnpj)
+        VALUES (?, ?, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE
+            telefone = VALUES(telefone),
+            data_nascimento = VALUES(data_nascimento),
+            estado_civil = VALUES(estado_civil),
+            filhos = VALUES(filhos),
+            cnpj = VALUES(cnpj);
+    ";
 
-        $stmt->bind_param(
-            "ssssssssssssssssssi",
-            $nome,
-            $senha,
-            $email,
-            $telefone,
-            $data_nascimento,
-            $estado_civil,
-            $filhos,
-            $cnpj,
-            $rua,
-            $numero,
-            $bairro,
-            $complemento,
-            $cep,
-            $rua_cnpj,
-            $numero_cnpj,
-            $bairro_cnpj,
-            $complemento_cnpj,
-            $cep_cnpj,
-            $usuario_id
-        );
+    // Aqui bind_param deve ter 6 elementos: "ssssss" (5 strings e 1 inteiro)
+    $stmtInformacoes = $conn->prepare($queryInformacoes);
+    $stmtInformacoes->bind_param("isssss", $usuario_id, $telefone, $data_nascimento, $estado_civil, $filhos, $cnpj);
+    $stmtInformacoes->execute();
+    $stmtInformacoes->close();
 
-        if ($stmt->execute()) {
-            header("Location: infos.php?status=success&message=Informações atualizadas com sucesso!");
-        } else {
-            die("Erro ao atualizar informações: " . $stmt->error);
-        }
-        $stmt->close();
-    } else {
-        // Inserção de dados para um novo usuário (caso não exista)
-        $insertQuery1 = "
-            INSERT INTO informacoes_usuario (usuario_id, telefone, data_nascimento, estado_civil, filhos, cnpj) 
-            VALUES (?, ?, ?, ?, ?, ?)
-        ";
-        $stmt1 = $mysqli->prepare($insertQuery1);
-        if ($stmt1 === false) {
-            die("Erro na preparação da query de inserção: " . $mysqli->error);
-        }
-        $stmt1->bind_param(
-            "isssss",
-            $usuario_id,
-            $telefone,
-            $data_nascimento,
-            $estado_civil,
-            $filhos,
-            $cnpj
-        );
-        if (!$stmt1->execute()) {
-            die("Erro ao inserir dados na tabela informacoes_usuario: " . $stmt1->error);
-        }
-        $stmt1->close();
+    // Atualizando o endereço (tabela endereco)
+    $queryEndereco = "
+        INSERT INTO endereco (usuario_id, rua, numero, bairro, complemento, cep)
+        VALUES (?, ?, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE
+            rua = VALUES(rua),
+            numero = VALUES(numero),
+            bairro = VALUES(bairro),
+            complemento = VALUES(complemento),
+            cep = VALUES(cep);
+    ";
 
-        // Inserção de dados na tabela endereco_cnpj
-        $insertQuery3 = "
-            INSERT INTO endereco_cnpj (usuario_id, rua_cnpj, numero_cnpj, bairro_cnpj, complemento_cnpj, cep_cnpj)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ";
-        $stmt3 = $mysqli->prepare($insertQuery3);
-        if ($stmt3 === false) {
-            die("Erro na preparação da query de inserção para endereco_cnpj: " . $mysqli->error);
-        }
-        $stmt3->bind_param(
-            "isssss",
-            $usuario_id,
-            $rua_cnpj,
-            $numero_cnpj,
-            $bairro_cnpj,
-            $complemento_cnpj,
-            $cep_cnpj
-        );
-        if (!$stmt3->execute()) {
-            die("Erro ao inserir dados na tabela endereco_cnpj: " . $stmt3->error);
-        }
-        $stmt3->close();
-    }
+    // Aqui bind_param deve ter 6 elementos: "issssss" (6 strings)
+    $stmtEndereco = $conn->prepare($queryEndereco);
+    $stmtEndereco->bind_param("isssss", $usuario_id, $rua, $numero, $bairro, $complemento, $cep);
+    $stmtEndereco->execute();
+    $stmtEndereco->close();
 
-    $mysqli->close();
+    // Atualizando o endereço do CNPJ (tabela endereco_cnpj)
+    $queryEnderecoCnpj = "
+        INSERT INTO endereco_cnpj (usuario_id, rua_cnpj, numero_cnpj, bairro_cnpj, complemento_cnpj, cep_cnpj)
+        VALUES (?, ?, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE
+            rua_cnpj = VALUES(rua_cnpj),
+            numero_cnpj = VALUES(numero_cnpj),
+            bairro_cnpj = VALUES(bairro_cnpj),
+            complemento_cnpj = VALUES(complemento_cnpj),
+            cep_cnpj = VALUES(cep_cnpj);
+    ";
+
+    // Aqui bind_param deve ter 6 elementos: "issssss" (6 strings)
+    $stmtEnderecoCnpj = $conn->prepare($queryEnderecoCnpj);
+    $stmtEnderecoCnpj->bind_param("isssss", $usuario_id, $rua_cnpj, $numero_cnpj, $bairro_cnpj, $complemento_cnpj, $cep_cnpj);
+    $stmtEnderecoCnpj->execute();
+    $stmtEnderecoCnpj->close();
+
+    $response["success"] = true;
+    $response["message"] = "Informações atualizadas com sucesso!";
+} else {
+    $response["message"] = "Usuário não autenticado.";
 }
+
+$conn->close();
+
+// Retorna a resposta como JSON
+header('Content-Type: application/json');
+echo json_encode($response);

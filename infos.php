@@ -69,12 +69,12 @@ $conn->close();
 </head>
 
 <body class="flex items-center justify-center min-h-screen bg-gray-100">
-    <button id="voltar" onclick="window.location.href='inicio.php'">Voltar</button>
+    <button id="voltar" onclick="window.location.href='inicio.php'"><img src="assets/curva-seta-para-a-esquerda.png" alt=""></button>
 
     <div class="w-full max-w-[1000px] p-6 bg-white rounded-lg shadow-md">
         <h1 class="text-4xl mb-6 text-center">Informações:</h1>
 
-        <form id="userForm" action="updateInfos.php" method="POST">
+        <form id="userForm">
 
             <fieldset class="mb-6">
                 <legend class="text-2xl font-bold mb-4">Informações Básicas</legend>

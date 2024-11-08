@@ -189,7 +189,7 @@ $conn->close();
 					<button id="generate-excel" onclick="exportToExcel()">Exportar para Excel</button>
 				</div>
 			</div>
-
+			<div id="info-colaborador"></div>
 			<div class="tabela">
 				<table id="tabela-faturamento">
 					<thead>

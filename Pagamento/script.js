@@ -29,6 +29,21 @@ document.addEventListener('DOMContentLoaded', function () {
             fetch(url)
                 .then(response => response.json())
                 .then(data => {
+
+                    var infoColaborador = document.getElementById('info-colaborador');
+                    var colaborador = data.dadosColaborador;
+                    if (colaborador) {
+                        infoColaborador.innerHTML = `
+                            <p id='nomeColaborador'>${colaborador.nome_usuario}</p>
+                            <p id='nomeEmpresarial'>${colaborador.nome_empresarial}</p>
+                            <p id='cnpjColaborador'>${colaborador.cnpj}</p>
+                            <p id='enderecoColaborador'>${colaborador.rua}, ${colaborador.numero}, ${colaborador.bairro}, ${colaborador.cep}</p>
+                            <p id='estadoCivil'>${colaborador.estado_civil}</p>
+                            <p id='cpfColaborador'>${colaborador.cpf}</p>
+                            <p id='enderecoCNPJ'>${colaborador.rua_cnpj}, ${colaborador.numero_cnpj}, ${colaborador.bairro_cnpj}, ${colaborador.cep_cnpj}</p>
+                        `;
+                    }
+
                     // Atualiza a tabela
                     var tabela = document.querySelector('#tabela-faturamento tbody');
                     tabela.innerHTML = '';
@@ -38,7 +53,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         checkbox.checked = false;
                     });
 
-                    data.forEach(function (item) {
+                    data.funcoes.forEach(function (item) {
                         var row = document.createElement('tr');
                         row.setAttribute('data-id', item.identificador);
 
@@ -282,153 +297,127 @@ function filtrarTabela() {
 
 // Função para converter números para texto
 document.getElementById('generate-adendo').addEventListener('click', function () {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({
-        orientation: 'landscape',
-        unit: 'mm',  // Usar milímetros como unidade para facilitar o controle de margens
-    });
-
-    const colaborador = document.getElementById('colaborador').options[document.getElementById('colaborador').selectedIndex].text;
-    const mesNome = document.getElementById('mes').options[document.getElementById('mes').selectedIndex].text; // Nome do mês
-    const anoAtual = new Date().getFullYear(); // Ano atual
-
-    // Calcula o mês anterior
-    const dataAtual = new Date();
-    dataAtual.setMonth(dataAtual.getMonth() - 1); // Decrementa um mês
-    const mesAnterior = dataAtual.getMonth(); // Mês do pagamento
-    const anoPagamento = dataAtual.getFullYear(); // Ano do pagamento
-
-    // Mapeamento dos meses para número (Janeiro = 1, etc.)
-    const mesesMap = {
-        'Janeiro': 0,
-        'Fevereiro': 1,
-        'Março': 2,
-        'Abril': 3,
-        'Maio': 4,
-        'Junho': 5,
-        'Julho': 6,
-        'Agosto': 7,
-        'Setembro': 8,
-        'Outubro': 9,
-        'Novembro': 10,
-        'Dezembro': 11
-    };
-
-    const mesNomeAnterior = Object.keys(mesesMap)[mesAnterior]; // Nome do mês anterior
-
-    let currentY = 20;
-    const marginLeft = 14;  // Margem esquerda
-    const marginTop = 20;   // Margem superior
-    const marginRight = 14; // Margem direita
-    const marginBottom = 14; // Margem inferior
-
-    // Texto do aditivo contratual
-    const aditivoText = `
-    ADITIVO CONTRATUAL N° X - SETEMBRO 2024
-
-    De um lado IMPROOV LTDA., CNPJ: 37.066.879/0001-84, com endereço/sede na RUA BAHIA, 988, SALA 304, BAIRRO DO SALTO, BLUMENAU, SC, CEP 89.031-001; se seguir denominado simplesmente parte CONTRATANTE, neste ato representado por DIOGO JOSÉ POFFO, nacionalidade: brasileira, estado civil: divorciado, inscrito no CPF sob o nº. 036.698.519-17, residente e domiciliado na Avenida Senador Atílio Fontana, nº 2101 apt. 308 Edifício Caravelas, bairro Balneário Pereque – Porto Belo/SC – CEP 88210-000, doravante denominada parte CONTRATANTE.
-
-    De outro, Adriana Tavares, CNPJ: 55.098.043/0001-43, com endereço/sede na Rua José Stein, 90, apto 605, bairro Itoupavazinha na cidade de Blumenau - SC, CEP 89066-430; se seguir denominado simplesmente parte CONTRATADA; neste ato representado por Adriana Tavares, brasileira, solteira, inscrita no CPF sob o nº. 060.021.119-30, residente e domiciliado na Rua José Stein, 90, apto 605, bairro Itoupavazinha na cidade de Blumenau - SC, CEP 89066-430, doravante denominada parte CONTRATADA.
-
-    Os denominados têm, entre si, justo e acertado, promover o TERMO ADITIVO N°X ao Contrato de Prestação de Serviços assinado em XX de XX de XXXX, nos seguintes termos e condições.
-
-    DO OBJETO
-    Cláusula 1ª - O presente termo aditivo tem por escopo dar quitação aos valores devidos pelo CONTRATANTE ao CONTRATADO pela elaboração e desenvolvimento das seguintes imagens que não eram parte inicial do contrato de prestação de serviços firmado em XX de XX de XX:
-
-    Cláusula 2ª - O CONTRATADO declara que no dia XX de XX de XX, recebeu do CONTRATANTE o valor de R$ XXX (XXXX reais), pela entrega das imagens acima referidas, e dá a mais ampla, geral e irrestrita quitação à dívida, renunciando seu direito de cobrança relativos a tais valores.
-
-    E por estarem justas e perfeitamente acertadas, assinam o presente em 02 (duas) vias de igual teor e forma, vias na presença de 2 (duas) testemunhas.
-
-    Porto Belo/SC, XX de XX de XX.
-
-    ________________________________________
-    IMPROOV LTDA.
-
-    ________________________________________
-    Adriana Tavares
-    `;
-
-    // Adiciona o texto do aditivo contratual no PDF
-    doc.setFontSize(12);
-    doc.setTextColor(0, 0, 0);
-    doc.text(aditivoText, marginLeft, currentY);
-    currentY += 60;
-
-    const title = `Relatório mensal de ${colaborador}, ${mesNomeAnterior} de ${anoPagamento}`;
-    const valorTotal = "Valor total: ";
-    const quantidadeTarefas = "Quantidade de tarefas: ";
+    const nomeColaborador = document.getElementById("nomeColaborador").textContent.trim();
+    const cnpjColaborador = document.getElementById("cnpjColaborador").textContent.trim();
+    const enderecoColaborador = document.getElementById("enderecoColaborador").textContent.trim();
+    const cpfColaborador = document.getElementById("cpfColaborador").textContent.trim();
+    const estadoCivil = document.getElementById("estadoCivil").textContent.trim();
+    const enderecoCNPJ = document.getElementById("enderecoCNPJ").textContent.trim();
+    const nomeEmpresarial = document.getElementById("nomeEmpresarial").textContent.trim();
 
     const totalValorElement = document.getElementById('totalValor');
-    const totalValor = totalValorElement ? parseFloat(totalValorElement.innerText.replace('R$ ', '').replace('.', '').replace(',', '.')) : 0; // Converter para float
-    const totalValorExtenso = `${numeroPorExtenso(totalValor)} reais`; // Adiciona "reais" ao final
-    const quantidadeTarefasValue = document.querySelectorAll('#tabela-faturamento tbody tr').length;
+    const totalValor = totalValorElement ? parseFloat(totalValorElement.innerText.replace('R$ ', '').replace('.', '').replace(',', '.')) : 0;
+    const totalValorExtenso = `${numeroPorExtenso(totalValor)} reais`;
 
-    const imgPath = '../assets/logo.jpg';
+    const today = new Date();
+    const day = String(today.getDate()).padStart(2, '0');
+    const month = today.toLocaleString('default', { month: 'long' }).toUpperCase();
+    const year = today.getFullYear();
 
-    fetch(imgPath)
-        .then(response => response.blob())
-        .then(blob => {
-            const reader = new FileReader();
-            reader.onloadend = function () {
-                const imgData = reader.result;
-                doc.addImage(imgData, 'PNG', marginLeft, currentY, 40, 40);
-                currentY += 50;
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    doc.setFont("helvetica");
+    doc.setFontSize(12);
 
-                doc.setFontSize(16);
-                doc.setTextColor(0, 0, 0);
-                doc.text(title, marginLeft, currentY);
-                currentY += 10;
+    let y = 30; // Posição inicial
+    const maxHeight = 260; // Limite para a altura
 
-                doc.setFontSize(12);
-                doc.text(`${valorTotal} R$ ${totalValor.toFixed(2).replace('.', ',')} (${totalValorExtenso})`, marginLeft, currentY);
-                currentY += 10;
-
-                doc.text(`${quantidadeTarefas} ${quantidadeTarefasValue}`, marginLeft, currentY);
-                currentY += 20;
-
-                const table = document.getElementById('tabela-faturamento');
-                const selectedColumnIndexes = [0, 1, 2, 3]; // Colunas específicas que deseja incluir, inclusive a 5 que é data_pagamento
-                const headers = [];
-                const rows = [];
-
-                // Adiciona apenas os cabeçalhos das colunas selecionadas
-                table.querySelectorAll('thead tr th').forEach((header, index) => {
-                    if (selectedColumnIndexes.includes(index)) {
-                        headers.push(header.innerText);
-                    }
-                });
-
-                // Adiciona apenas os dados das colunas selecionadas
-                table.querySelectorAll('tbody tr').forEach(row => {
-                    const rowData = [];
-
-                    row.querySelectorAll('td').forEach((cell, index) => {
-                        if (selectedColumnIndexes.includes(index)) {
-                            rowData.push(cell.innerText);
-                        }
-                    });
-                    rows.push(rowData); // Adiciona todas as linhas
-                });
-
-                if (rows.length > 0) {
-                    // Gera a tabela no PDF
-                    doc.autoTable({
-                        head: [headers],
-                        body: rows,
-                        startY: currentY,
-                        margin: { top: 20, left: 14, right: 14 },
-                    });
-
-                    // Adiciona espaçamento depois da tabela
-                    currentY = doc.lastAutoTable.finalY + 10;
-
-                    // Salva o documento
-                    doc.save('aditivo-contratual.pdf');
-                }
-            };
-            reader.readAsDataURL(blob); // Converte a imagem para base64
+    // Função para adicionar texto com verificação de página
+    function addTextWithPageCheck(text) {
+        const lines = doc.splitTextToSize(text, 170);
+        lines.forEach(line => {
+            if (y + 8 > maxHeight) {
+                doc.addPage();
+                y = 20;
+            }
+            doc.text(line, 20, y);
+            y += 8;
         });
+    }
+
+    // Parte 1: Texto do contrato
+    let text = `
+    De um lado IMPROOV LTDA., CNPJ: 37.066.879/0001-84, com endereço/sede na RUA BAHIA, 988, SALA 304, BAIRRO DO SALTO, 
+    BLUMENAU, SC, CEP 89.031-001; se seguir denominado simplesmente parte CONTRATANTE, neste ato representado por 
+    DIOGO JOSÉ POFFO, nacionalidade: brasileira, estado civil: divorciado, inscrito no CPF sob o nº. 036.698.519-17, 
+    residente e domiciliado na Avenida Senador Atílio Fontana, nº 2101 apt. 308 Edifício Caravelas, bairro Balneário 
+    Pereque – Porto Belo/SC – CEP 88210-000, doravante denominada parte CONTRATANTE.
+
+    De outro, ${nomeColaborador}, CNPJ: ${cnpjColaborador}, com endereço/sede na ${enderecoColaborador}; 
+    se seguir denominado simplesmente parte CONTRATADA; neste ato representado por ${nomeEmpresarial}, 
+    brasileiro(a), ${estadoCivil}, inscrito(a) no CPF sob o nº. ${cpfColaborador}, residente e domiciliado na ${enderecoCNPJ} doravante denominada parte CONTRATADA.
+
+    Os denominados têm, entre si, justo e acertado, promover o TERMO ADITIVO N°X ao Contrato de Prestação de Serviços 
+    assinado em ${day} de ${month} de ${year}, nos seguintes termos e condições.
+
+    DO OBJETO
+    Cláusula 1ª - O presente termo aditivo tem por escopo dar quitação aos valores devidos pelo CONTRATANTE ao 
+    CONTRATADO pela elaboração e desenvolvimento das seguintes imagens que não eram parte inicial do contrato de 
+    prestação de serviços firmado em ${day} de ${month} de ${year}:
+    `;
+    addTextWithPageCheck(text); // Adiciona a primeira parte
+
+    // Parte 2: Lista de tarefas/tabela
+    const table = document.getElementById('tabela-faturamento');
+    const selectedColumnIndexes = [0, 2, 3];
+    const headers = [];
+    const rows = [];
+    table.querySelectorAll('thead tr th').forEach((header, index) => {
+        if (selectedColumnIndexes.includes(index)) {
+            headers.push(header.innerText);
+        }
+    });
+
+    table.querySelectorAll('tbody tr').forEach(row => {
+        const rowData = [];
+        row.querySelectorAll('td').forEach((cell, index) => {
+            if (selectedColumnIndexes.includes(index)) {
+                rowData.push(cell.innerText);
+            }
+        });
+        rows.push(rowData);
+    });
+
+    if (rows.length > 0) {
+        doc.autoTable({
+            head: [headers],
+            body: rows,
+            startY: y,
+            theme: 'grid',
+            headStyles: { fillColor: [0, 0, 0], textColor: [255, 255, 255] },
+            bodyStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0] },
+            margin: { top: 10, left: 20, right: 20 },
+            styles: { fontSize: 10, cellPadding: 5 }
+        });
+        y = doc.lastAutoTable.finalY + 10; // Atualiza a posição Y após a tabela
+    }
+
+    // Parte 3: Segunda parte do contrato
+    text = `
+    Cláusula 2ª - O CONTRATADO declara que no dia ${day} de ${month} de ${year}, recebeu do CONTRATANTE o valor de R$ ${totalValor.toFixed(2)} (${totalValorExtenso}), 
+    pela entrega das imagens acima referidas, e dá a mais ampla, geral e irrestrita quitação à dívida, renunciando seu 
+    direito de cobrança relativos a tais valores.
+    
+    E por estarem justas e perfeitamente acertadas, assinam o presente em 02 (duas) vias de igual teor e forma, 
+    vias na presença de 2 (duas) testemunhas.
+    
+    Porto Belo/SC, ${day} de ${month} de ${year}.
+    `;
+    addTextWithPageCheck(text); // Adiciona a segunda parte do contrato
+
+    // Parte 4: Assinaturas
+    y += 20; // Espaço antes das assinaturas
+    doc.text("________________________________________", 20, y);
+    doc.text("IMPROOV LTDA.", 20, y + 8);
+    y += 30;
+    doc.text("________________________________________", 20, y);
+    doc.text(nomeColaborador, 20, y + 8);
+
+    // Gerar o PDF
+    doc.save(`Aditivo_Contratual_${nomeColaborador}_${month}.pdf`);
 });
+
+
 
 document.getElementById('generate-lista').addEventListener('click', function () {
     const { jsPDF } = window.jspdf;

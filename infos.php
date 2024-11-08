@@ -20,6 +20,9 @@ $query = "
         iu.estado_civil,
         iu.filhos,
         iu.cnpj,
+        iu.nome_fantasia,
+        iu.nome_empresarial,
+        iu.cpf,
         e.rua,
         e.numero,
         e.bairro,
@@ -29,8 +32,9 @@ $query = "
         ec.numero_cnpj,
         ec.bairro_cnpj,
         ec.complemento_cnpj,
-        ec.cep_cnpj
-
+        ec.cep_cnpj,
+        ec.uf_cnpj,
+        ec.localidade_cnpj
         FROM 
         usuario u
     LEFT JOIN 
@@ -98,6 +102,11 @@ $conn->close();
                     <input class="border border-black w-full p-2 rounded" type="text" name="telefone" id="telefone"
                         value="<?php echo htmlspecialchars($userData['telefone']); ?>" required>
                 </div>
+                <div class="mb-4">
+                    <h3 class="text-lg mb-2">CPF:</h3>
+                    <input class="border border-black w-full p-2 rounded" type="text" name="cpf" id="cpf"
+                        value="<?php echo htmlspecialchars($userData['cpf']); ?>" required>
+                </div>
             </fieldset>
 
             <!-- Seção: Endereço -->
@@ -139,6 +148,16 @@ $conn->close();
                         value="<?php echo htmlspecialchars($userData['cnpj']); ?>" required>
                 </div>
                 <div class="mb-4">
+                    <h3 class="text-lg mb-2">Nome empresarial:</h3>
+                    <input class="border border-black w-full p-2 rounded" type="text" id="nome_empresarial" name="nome_empresarial"
+                        value="<?php echo htmlspecialchars($userData['nome_empresarial']); ?>" required>
+                </div>
+                <div class="mb-4">
+                    <h3 class="text-lg mb-2">Nome fantasia:</h3>
+                    <input class="border border-black w-full p-2 rounded" type="text" id="nome_fantasia" name="nome_fantasia"
+                        value="<?php echo htmlspecialchars($userData['nome_fantasia']); ?>" required>
+                </div>
+                <div class="mb-4">
                     <h3 class="text-lg mb-2">CEP:</h3>
                     <input class="border border-black w-full p-2 rounded" onkeyup="buscaEnderecoCNPJ(this.value);"
                         type="number" id="cep_cnpj" name="cep_cnpj"
@@ -148,6 +167,16 @@ $conn->close();
                     <h3 class="text-lg mb-2">Bairro:</h3>
                     <input class="border border-black w-full p-2 rounded" type="text" id="bairro_cnpj" name="bairro_cnpj"
                         value="<?php echo htmlspecialchars($userData['bairro_cnpj']); ?>" required>
+                </div>
+                <div class="mb-4">
+                    <h3 class="text-lg mb-2">UF:</h3>
+                    <input class="border border-black w-full p-2 rounded" type="text" id="uf_cnpj" name="uf_cnpj"
+                        value="<?php echo htmlspecialchars($userData['uf_cnpj']); ?>" required>
+                </div>
+                <div class="mb-4">
+                    <h3 class="text-lg mb-2">Localidade:</h3>
+                    <input class="border border-black w-full p-2 rounded" type="text" id="localidade_cnpj" name="localidade_cnpj"
+                        value="<?php echo htmlspecialchars($userData['localidade_cnpj']); ?>" required>
                 </div>
                 <div class="mb-4">
                     <h3 class="text-lg mb-2">Rua:</h3>

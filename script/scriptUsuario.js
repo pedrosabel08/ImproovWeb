@@ -23,6 +23,8 @@ function buscaEnderecoCNPJ(cep) {
                 if (data.bairro != null) {
                     document.getElementById('bairro_cnpj').value = data.bairro;
                     document.getElementById('rua_cnpj').value = data.logradouro;
+                    document.getElementById('uf_cnpj').value = data.uf;
+                    document.getElementById('localidade_cnpj').value = data.localidade;
                 }
             }
         });

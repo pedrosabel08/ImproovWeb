@@ -10,10 +10,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         foreach ($data['ids'] as $item) {
             $id = intval($item['id']);
             $origem = $item['origem'];
+            $funcao_id = intval($item['funcao_id']);
 
             // Escolhe a tabela com base na origem
             if ($origem === 'funcao_imagem') {
-                $sql = "UPDATE funcao_imagem SET valor = ? WHERE idfuncao_imagem = ?";
+                // Se funcao_id for 6, some ao valor atual
+                if ($funcao_id === 6) {
+                    $sql = "UPDATE funcao_imagem SET valor = valor + ? WHERE idfuncao_imagem = ?";
+                } else {
+                    $sql = "UPDATE funcao_imagem SET valor = ? WHERE idfuncao_imagem = ?";
+                }
             } elseif ($origem === 'acompanhamento') {
                 $sql = "UPDATE acompanhamento SET valor = ? WHERE idacompanhamento = ?";
             } elseif ($origem === 'animacao') {

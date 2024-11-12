@@ -75,6 +75,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         checkbox.checked = item.pagamento === 1;
                         checkbox.setAttribute('data-id', item.identificador);
                         checkbox.setAttribute('data-origem', item.origem);
+                        checkbox.setAttribute('funcao', item.funcao_id)
 
                         checkbox.addEventListener('change', function () {
                             if (checkbox.checked) {
@@ -203,7 +204,8 @@ document.addEventListener('DOMContentLoaded', function () {
         var checkboxes = document.querySelectorAll('.pagamento-checkbox:checked');
         var ids = Array.from(checkboxes).map(cb => ({
             id: cb.getAttribute('data-id'),
-            origem: cb.getAttribute('data-origem') // Coletando o atributo origem
+            origem: cb.getAttribute('data-origem'),
+            funcao_id: cb.getAttribute('funcao')
         }));
 
         var valor = document.getElementById('valor').value;

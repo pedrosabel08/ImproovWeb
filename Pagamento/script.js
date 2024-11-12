@@ -11,10 +11,12 @@ document.addEventListener('DOMContentLoaded', function () {
         carregarDadosColab();
     });
     document.getElementById('mes').addEventListener('change', carregarDadosColab);
+    document.getElementById('ano').addEventListener('change', carregarDadosColab);
 
     function carregarDadosColab() {
         var colaboradorId = document.getElementById('colaborador').value;
         var mesId = document.getElementById('mes').value;
+        var anoId = document.getElementById('ano').value;
 
         const confirmarPagamentoButton = document.getElementById('confirmar-pagamento');
         confirmarPagamentoButton.disabled = true;
@@ -24,6 +26,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (mesId) {
                 url += '&mes_id=' + encodeURIComponent(mesId);
+            }
+            if (anoId) {
+                url += '&ano=' + encodeURIComponent(anoId)
             }
 
             fetch(url)

@@ -11,6 +11,7 @@ $conn->set_charset('utf8mb4');
 
 $colaboradorId = intval($_GET['colaborador_id']);
 $mesNumero = isset($_GET['mes_id']) ? intval($_GET['mes_id']) : null;
+$ano = isset($_GET['ano']) ? intval($_GET['ano']) : null;
 
 $dadosColaborador = [];
 
@@ -76,8 +77,8 @@ if ($colaboradorId == 1) {
         fi.colaborador_id = ?
         AND fi.status <> 'Não iniciado'";
 
-    if ($mesNumero) {
-        $sql .= " AND MONTH(fi.prazo) = ?";
+    if ($mesNumero && $ano) {
+        $sql .= "AND YEAR(fi.prazo) = ? AND MONTH(fi.prazo) = ?";
     }
 
     $sql .= " UNION ALL
@@ -103,8 +104,8 @@ if ($colaboradorId == 1) {
     WHERE 
         ac.colaborador_id = ?";
 
-    if ($mesNumero) {
-        $sql .= " AND MONTH(ac.data) = ?";
+    if ($mesNumero && $ano) {
+        $sql .= "AND YEAR(ac.data) = ? AND MONTH(ac.data) = ?";
     }
 } elseif ($colaboradorId == 13) {
     // Consulta para colaborador 13 usando tabela animacao e acompanhamento
@@ -133,8 +134,8 @@ if ($colaboradorId == 1) {
         fi.colaborador_id = ?
         AND fi.status <> 'Não iniciado'";
 
-    if ($mesNumero) {
-        $sql .= " AND MONTH(fi.prazo) = ?";
+    if ($mesNumero && $ano) {
+        $sql .= "AND YEAR(fi.prazo) = ? AND MONTH(fi.prazo) = ?";
     }
 
     $sql .= " UNION ALL
@@ -158,8 +159,8 @@ if ($colaboradorId == 1) {
     WHERE 
         an.colaborador_id = ?";
 
-    if ($mesNumero) {
-        $sql .= " AND MONTH(an.data_anima) = ?";
+    if ($mesNumero && $ano) {
+        $sql .= "AND YEAR(an.data_anima) = ? AND MONTH(an.data_anima) = ?";
     }
 } else {
     // Consulta padrão para outros colaboradores
@@ -188,8 +189,8 @@ if ($colaboradorId == 1) {
         fi.colaborador_id = ?
         AND fi.status <> 'Não iniciado'";
 
-    if ($mesNumero) {
-        $sql .= " AND MONTH(fi.prazo) = ?";
+    if ($mesNumero && $ano) {
+        $sql .= " AND YEAR(fi.prazo) = ? AND MONTH(fi.prazo) = ?";
     }
 }
 
@@ -198,14 +199,14 @@ $stmt = $conn->prepare($sql);
 
 // Bind de parâmetros conforme necessário
 if ($colaboradorId == 1 || $colaboradorId == 13) {
-    if ($mesNumero) {
-        $stmt->bind_param('iiii', $colaboradorId, $mesNumero, $colaboradorId, $mesNumero);
+    if ($mesNumero && $ano) {
+        $stmt->bind_param('iiii', $colaboradorId, $ano, $mesNumero, $colaboradorId);
     } else {
         $stmt->bind_param('ii', $colaboradorId, $colaboradorId);
     }
 } else {
-    if ($mesNumero) {
-        $stmt->bind_param('ii', $colaboradorId, $mesNumero);
+    if ($mesNumero && $ano) {
+        $stmt->bind_param('iii', $colaboradorId, $ano, $mesNumero);
     } else {
         $stmt->bind_param('i', $colaboradorId);
     }

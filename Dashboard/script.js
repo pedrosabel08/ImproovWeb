@@ -1,43 +1,38 @@
-function formatarDataAtual() {
-    const opcoes = { weekday: 'long', day: 'numeric', month: 'long' };
-    const dataAtual = new Date();
-    return dataAtual.toLocaleDateString('pt-BR', opcoes);
-}
+$(document).ready(function () {
+    // AJAX para buscar os dados das obras
+    $.ajax({
+        url: 'dadosTotais.php', // Substitua pelo caminho real do seu arquivo PHP
+        method: 'GET',
+        dataType: 'json',
+        success: function (data) {
+            // Itera sobre os dados para adicionar ao carousel
+            data.forEach(function (item, index) {
+                $('.carousel').append(
+                    `<div class="obra">
+                        <a href="detalhesObra.html?id=${item.idobra}" class="obra-info">
+                        <p>${item.nomenclatura}</p>
+                    </div>`
+                );
+            });
 
-document.getElementById('day').textContent = formatarDataAtual();
+            // Inicializa o Slick Carousel após carregar os dados
+            $('.carousel').slick({
+                infinite: true,
+                slidesToShow: 3,      // Mostra 3 obras por vez
+                slidesToScroll: 1,    // Passa um slide por vez
+                autoplay: true,
+                autoplaySpeed: 5000,
+                dots: true,
+                arrows: true
+            });
 
-const ctx = document.getElementById('graph').getContext('2d');
-
-// Dados do gráfico
-const data = {
-    labels: ['Funções Feitas', 'Funções Não Feitas'],
-    datasets: [{
-        label: 'Quantidade',
-        data: [8, 5], // Exemplo: 8 funções feitas, 5 funções não feitas
-        backgroundColor: [
-            'rgba(75, 192, 192, 0.2)',
-            'rgba(255, 99, 132, 0.2)'
-        ],
-        borderColor: [
-            'rgba(75, 192, 192, 1)',
-            'rgba(255, 99, 132, 1)'
-        ],
-        borderWidth: 1
-    }]
-};
-
-// Configurações do gráfico
-const config = {
-    type: 'bar', // Tipo de gráfico: 'bar' ou 'line'
-    data: data,
-    options: {
-        scales: {
-            y: {
-                beginAtZero: true
-            }
+            // Fecha o modal ao clicar no "X"
+            $('.close').on('click', function () {
+                $('#obraModal').hide();
+            });
+        },
+        error: function (error) {
+            console.error("Erro ao buscar dados: ", error);
         }
-    }
-};
-
-// Renderiza o gráfico
-const myChart = new Chart(ctx, config);
+    });
+});

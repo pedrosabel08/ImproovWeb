@@ -4,208 +4,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestão de Pagamentos</title>
+    <title>Mapa de Obras</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f5f5f5;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-        }
-
-        .container {
-            width: 80%;
-            max-width: 900px;
-            background-color: #fff;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            padding: 20px;
-            border-radius: 8px;
-        }
-
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .header h1 {
-            font-size: 24px;
-            color: #333;
-        }
-
-        .header .date {
-            font-size: 14px;
-            color: #666;
-        }
-
-        .filters {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-
-        .filters select,
-        .filters button {
-            padding: 8px;
-            font-size: 16px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
-
-        .filters button {
-            background-color: #4CAF50;
-            color: #fff;
-            cursor: pointer;
-        }
-
-        .filters button:hover {
-            background-color: #45a049;
-        }
-
-        .table-container {
-            overflow-x: auto;
-        }
-
-        table {
+        #map {
+            height: 500px;
             width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 20px;
-        }
-
-        table,
-        th,
-        td {
-            border: 1px solid #ddd;
-        }
-
-        th,
-        td {
-            padding: 12px;
-            text-align: left;
-        }
-
-        th {
-            background-color: #f2f2f2;
-            font-weight: bold;
-        }
-
-        .summary {
-            display: flex;
-            justify-content: space-between;
-            font-weight: bold;
-            margin-bottom: 20px;
-        }
-
-        .actions {
-            display: flex;
-            justify-content: space-between;
-            gap: 10px;
-        }
-
-        .actions button {
-            padding: 10px 15px;
-            font-size: 16px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-
-        .actions .generate-payment {
-            background-color: #2196F3;
-            color: #fff;
-        }
-
-        .actions .export {
-            background-color: #FF5722;
-            color: #fff;
-        }
-
-        .actions button:hover {
-            opacity: 0.9;
         }
     </style>
 </head>
 
 <body>
 
-    <div class="container">
-        <div class="header">
-            <h1>Gestão de Pagamentos</h1>
-            <p class="date">Data: 31/10/2024</p>
-        </div>
+    <h1>Mapa de Obras</h1>
+    <div id="map"></div>
 
-        <div class="filters">
-            <select id="colaborador" name="colaborador">
-                <option value="">Selecione o Colaborador</option>
-                <option value="1">Colaborador 1</option>
-                <option value="2">Colaborador 2</option>
-                <!-- Adicione mais colaboradores conforme necessário -->
-            </select>
-            <select id="mes" name="mes">
-                <option value="">Selecione o Mês</option>
-                <option value="1">Janeiro</option>
-                <option value="2">Fevereiro</option>
-                <option value="3">Março</option>
-                <!-- Adicione mais meses conforme necessário -->
-            </select>
-            <button onclick="buscar()">Buscar</button>
-        </div>
-
-        <div class="table-container">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Tarefa</th>
-                        <th>Prazo</th>
-                        <th>Status</th>
-                        <th>Valor</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>Edição de Imagem #1</td>
-                        <td>05/10/2024</td>
-                        <td>Concluído</td>
-                        <td>R$ 100,00</td>
-                    </tr>
-                    <tr>
-                        <td>Revisão de Design</td>
-                        <td>10/10/2024</td>
-                        <td>Em Progresso</td>
-                        <td>R$ 80,00</td>
-                    </tr>
-                    <tr>
-                        <td>Criação de Layout</td>
-                        <td>15/10/2024</td>
-                        <td>Concluído</td>
-                        <td>R$ 150,00</td>
-                    </tr>
-                    <!-- Adicione mais tarefas conforme necessário -->
-                </tbody>
-            </table>
-        </div>
-
-        <div class="summary">
-            <span>Total de Tarefas Concluídas: 2</span>
-            <span>Valor Total: R$ 250,00</span>
-        </div>
-
-        <div class="actions">
-            <button class="generate-payment">Gerar Pagamento</button>
-            <button class="export">Exportar para PDF</button>
-        </div>
-    </div>
-
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <script>
-        function buscar() {
-            // Aqui você pode adicionar a lógica para buscar as tarefas conforme os filtros de colaborador e mês
-            alert("Busca realizada!");
-        }
+        // Cria o mapa centralizado em uma localização padrão
+        var map = L.map('map').setView([-15.7801, -47.9292], 4); // Ponto central do Brasil, ajuste conforme necessário
+
+        // Adiciona um tile layer do OpenStreetMap
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // Simulação de dados de obras (substitua com dados reais do banco)
+        var obras = [
+            { nome: "Obra 1", latitude: -23.5505, longitude: -46.6333 },
+            { nome: "Obra 2", latitude: -22.9068, longitude: -43.1729 },
+            { nome: "Obra 3", latitude: -19.9167, longitude: -43.9345 }
+        ];
+
+        // Adiciona marcadores para cada obra
+        obras.forEach(function (obra) {
+            L.marker([obra.latitude, obra.longitude])
+                .addTo(map)
+                .bindPopup(`<b>${obra.nome}</b>`);
+        });
     </script>
 
 </body>

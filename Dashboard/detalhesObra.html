@@ -17,66 +17,61 @@
     <main>
         <section id="detalhes">
             <h2>Detalhes da obra: <span id="nome_obra"></span></h2>
+            <button class="toggle-btn" onclick="toggleVisibility('detalhes-conteudo')">Mostrar Detalhes</button>
 
-            <h3><strong>Cliente:</strong><span id="cliente"></span></h3>
-
-            <h3><strong>Localização:</strong><span id="loc"></span></h3>
-
-            <h3><strong>Status do projeto:</strong><span id="status_total"></span></h3>
+            <div id="detalhes-conteudo">
+                <h3><strong>Cliente:</strong><span id="cliente"></span></h3>
+                <h3><strong>Localização:</strong><span id="loc"></span></h3>
+                <h3><strong>Status do projeto:</strong><span id="status_total"></span></h3>
+            </div>
         </section>
 
         <section id="linha-tempo">
             <h2>Linha do tempo do projeto</h2>
-            <h3><strong>Início do projeto:</strong><span id="data_inicio"></span></h3>
+            <button class="toggle-btn" onclick="toggleVisibility('linha-tempo-conteudo')">Mostrar Linha do
+                Tempo</button>
 
-            <h3><strong>Data prevista para entrega:</strong><span id="prazo"></span></h3>
-
-            <h3><strong>Data de entrega final:</strong><span id="data_final"></span></h3>
+            <div id="linha-tempo-conteudo">
+                <h3><strong>Início do projeto:</strong><span id="data_inicio"></span></h3>
+                <h3><strong>Data prevista para entrega:</strong><span id="prazo"></span></h3>
+                <h3><strong>Data de entrega final:</strong><span id="data_final"></span></h3>
+            </div>
         </section>
 
         <section id="equipe">
             <h2>Equipe Responsável</h2>
-            <h3><strong>Total de colaboradores: </strong><span id="total_colabs"></span></h3>
+            <button class="toggle-btn" onclick="toggleVisibility('equipe-conteudo')">Mostrar Equipe</button>
 
-            <h3><strong>Caderno: </strong><span id="colab_caderno"></span></h3>
-            <h3><strong>Filtro de assets: </strong><span id="colab_filtro"></span></h3>
-            <h3><strong>Modelagem: </strong><span id="colab_model"></span></h3>
-            <h3><strong>Composição: </strong><span id="colab_comp"></span></h3>
-            <h3><strong>Finalização: </strong><span id="colab_final"></span></h3>
-            <h3><strong>Pós-produção: </strong><span id="colab_pos"></span></h3>
-            <h3><strong>Planta Humanizada: </strong><span id="colab_planta"></span></h3>
-            <h3><strong>Alteração: </strong><span id="colab_alt"></span></h3>
+            <div id="equipe-conteudo">
 
+                <h3><strong>Total de colaboradores: </strong><span id="total_colabs"></span></h3>
+
+                <h3><strong>Caderno: </strong><span id="colab_caderno"></span></h3>
+                <h3><strong>Filtro de assets: </strong><span id="colab_filtro"></span></h3>
+                <h3><strong>Modelagem: </strong><span id="colab_model"></span></h3>
+                <h3><strong>Composição: </strong><span id="colab_comp"></span></h3>
+                <h3><strong>Finalização: </strong><span id="colab_final"></span></h3>
+                <h3><strong>Pós-produção: </strong><span id="colab_pos"></span></h3>
+                <h3><strong>Planta Humanizada: </strong><span id="colab_planta"></span></h3>
+                <h3><strong>Alteração: </strong><span id="colab_alt"></span></h3>
+            </div>
         </section>
 
-        <section id="imagens">
+        <section id="grafico">
             <h2>Status das imagens</h2>
-
-            <h3><strong>Imagens em EF (%):</strong><span id="status_ef"></span></h3>
-            <h3><strong>Imagens em P00 (%):</strong><span id="status_P00"></span></h3>
-            <h3><strong>Imagens em R00 (%):</strong><span id="status_R00"></span></h3>
-            <h3><strong>Imagens em Revisão (%):</strong><span id="status_revisao"></span></h3>
-            <h3><strong>Imagens em HOLD (%):</strong><span id="status_hold"></span></h3>
-
-            <h3 id="anima"><strong>Animações?</strong><input type="checkbox" name="animacao" id="animacao"></h3>
-
-            <h3><strong>Contagem de revisões:</strong><span id="total_revisoes"></span></h3>
-
+            <div class="grafico-container">
+                <canvas id="imagemChart"></canvas>
+                <canvas id="custoChart"></canvas>
+            </div>
         </section>
-
-        <section id="custos">
-            <h2>Orçamento e custos</h2>
-
-            <h3><strong>Valor de contrato:</strong><span id="valor_contrato"></span></h3>
-
-            <h3><strong>Custos de produção:</strong><span id="valor_producao"></span></h3>
-        </section>
-
 
     </main>
 
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="scriptDetalhes.js"></script>r
+    <script src="scriptDetalhes.js"></script>
 </body>
 
 </html>

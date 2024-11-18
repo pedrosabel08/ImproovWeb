@@ -398,9 +398,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 .then(response => response.json())
                 .then(data => {
                     // Verifica se os dados são válidos e não vazios
-                    if (!Array.isArray(data) || data.length === 0) {
+                    if (!Array.isArray(data.funcoes) || data.funcoes.length === 0) {
                         console.warn('Nenhuma função encontrada para esta obra e tipo de imagem.');
-                        data = [{ // Exemplo de dados padrão para evitar que a tabela fique vazia
+                        data.funcoes = [{ // Exemplo de dados padrão para evitar que a tabela fique vazia
                             imagem_nome: 'Sem imagem',
                             tipo_imagem: 'N/A',
                             caderno_colaborador: '-',
@@ -423,7 +423,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     var tabela = document.querySelector('#tabela-obra tbody');
                     tabela.innerHTML = '';
 
-                    data.forEach(function (item) {
+                    data.funcoes.forEach(function (item) {
                         var row = document.createElement('tr');
                         row.classList.add('linha-tabela');
                         row.setAttribute('data-id', item.imagem_id);
@@ -441,78 +441,47 @@ document.addEventListener("DOMContentLoaded", function () {
                         cellTipoImagem.textContent = item.tipo_imagem;
                         row.appendChild(cellTipoImagem);
 
-                        // Colunas para caderno
-                        var cellCadernoColaborador = document.createElement('td');
-                        cellCadernoColaborador.textContent = item.caderno_colaborador || '-';
-                        var cellCadernoStatus = document.createElement('td');
-                        cellCadernoStatus.textContent = item.caderno_status || '-';
-                        row.appendChild(cellCadernoColaborador);
-                        row.appendChild(cellCadernoStatus);
-                        applyStyleNone(cellCadernoColaborador, cellCadernoStatus, item.caderno_colaborador);
-                        applyStatusStyle(cellCadernoStatus, item.caderno_status, item.caderno_colaborador);
+                        var colunas = [
+                            { col: 'caderno', label: 'Caderno' },
+                            { col: 'modelagem', label: 'Modelagem' },
+                            { col: 'composicao', label: 'Composição' },
+                            { col: 'finalizacao', label: 'Finalização' },
+                            { col: 'pos_producao', label: 'Pós Produção' },
+                            { col: 'alteracao', label: 'Alteração' },
+                            { col: 'planta', label: 'Planta' }
+                        ];
 
-                        var cellModelagemColaborador = document.createElement('td');
-                        cellModelagemColaborador.textContent = item.modelagem_colaborador || '-';
-                        var cellModelagemStatus = document.createElement('td');
-                        cellModelagemStatus.textContent = item.modelagem_status || '-';
-                        row.appendChild(cellModelagemColaborador);
-                        row.appendChild(cellModelagemStatus);
-                        applyStyleNone(cellModelagemColaborador, cellModelagemStatus, item.modelagem_colaborador);
-                        applyStatusStyle(cellModelagemStatus, item.modelagem_status, item.modelagem_colaborador);
+                        colunas.forEach(function (coluna) {
+                            var cellColaborador = document.createElement('td');
+                            var cellStatus = document.createElement('td');
+                            cellColaborador.textContent = item[`${coluna.col}_colaborador`] || '-';
+                            cellStatus.textContent = item[`${coluna.col}_status`] || '-';
+                            row.appendChild(cellColaborador);
+                            row.appendChild(cellStatus);
 
-
-                        var cellComposicaoColaborador = document.createElement('td');
-                        cellComposicaoColaborador.textContent = item.composicao_colaborador || '-';
-                        var cellComposicaoStatus = document.createElement('td');
-                        cellComposicaoStatus.textContent = item.composicao_status || '-';
-                        row.appendChild(cellComposicaoColaborador);
-                        row.appendChild(cellComposicaoStatus);
-                        applyStyleNone(cellComposicaoColaborador, cellComposicaoStatus, item.composicao_colaborador);
-                        applyStatusStyle(cellComposicaoStatus, item.composicao_status, item.composicao_colaborador);
-
-
-                        var cellFinalizacaoColaborador = document.createElement('td');
-                        cellFinalizacaoColaborador.textContent = item.finalizacao_colaborador || '-';
-                        var cellFinalizacaoStatus = document.createElement('td');
-                        cellFinalizacaoStatus.textContent = item.finalizacao_status || '-';
-                        row.appendChild(cellFinalizacaoColaborador);
-                        row.appendChild(cellFinalizacaoStatus);
-                        applyStyleNone(cellFinalizacaoColaborador, cellFinalizacaoStatus, item.finalizacao_colaborador);
-                        applyStatusStyle(cellFinalizacaoStatus, item.finalizacao_status, item.finalizacao_colaborador);
-
-
-                        var cellPosProducaoColaborador = document.createElement('td');
-                        cellPosProducaoColaborador.textContent = item.pos_producao_colaborador || '-';
-                        var cellPosProducaoStatus = document.createElement('td');
-                        cellPosProducaoStatus.textContent = item.pos_producao_status || '-';
-                        row.appendChild(cellPosProducaoColaborador);
-                        row.appendChild(cellPosProducaoStatus);
-                        applyStyleNone(cellPosProducaoColaborador, cellPosProducaoStatus, item.pos_producao_colaborador);
-                        applyStatusStyle(cellPosProducaoStatus, item.pos_producao_status, item.pos_producao_colaborador);
-
-
-                        var cellAlteracaoColaborador = document.createElement('td');
-                        cellAlteracaoColaborador.textContent = item.alteracao_colaborador || '-';
-                        var cellAlteracaoStatus = document.createElement('td');
-                        cellAlteracaoStatus.textContent = item.alteracao_status || '-';
-                        row.appendChild(cellAlteracaoColaborador);
-                        row.appendChild(cellAlteracaoStatus);
-                        applyStyleNone(cellAlteracaoColaborador, cellAlteracaoStatus, item.alteracao_colaborador);
-                        applyStatusStyle(cellAlteracaoStatus, item.alteracao_status, item.alteracao_colaborador);
-
-
-                        var cellPlantaColaborador = document.createElement('td');
-                        cellPlantaColaborador.textContent = item.planta_colaborador || '-';
-                        var cellPlantaStatus = document.createElement('td');
-                        cellPlantaStatus.textContent = item.planta_status || '-';
-                        row.appendChild(cellPlantaColaborador);
-                        row.appendChild(cellPlantaStatus);
-                        applyStyleNone(cellPlantaColaborador, cellPlantaStatus, item.planta_colaborador);
-                        applyStatusStyle(cellPlantaStatus, item.planta_status, item.planta_colaborador);
-
+                            applyStyleNone(cellColaborador, cellStatus, item[`${coluna.col}_colaborador`]);
+                            applyStatusStyle(cellStatus, item[`${coluna.col}_status`], item[`${coluna.col}_colaborador`]);
+                        });
                         tabela.appendChild(row);
+
                     });
 
+                    data.totais.forEach(function (item) {
+                        // Formata os valores para exibir como porcentagem com 2 casas decimais
+                        document.getElementById('total_caderno').textContent = (item.caderno_porcentagem ? parseFloat(item.caderno_porcentagem).toFixed(2) + "%" : 'Não disponível');
+                        document.getElementById('total_model').textContent = (item.modelagem_porcentagem ? parseFloat(item.modelagem_porcentagem).toFixed(2) + "%" : 'Não disponível');
+                        document.getElementById('total_comp').textContent = (item.composicao_porcentagem ? parseFloat(item.composicao_porcentagem).toFixed(2) + "%" : 'Não disponível');
+                        document.getElementById('total_final').textContent = (item.finalizacao_porcentagem ? parseFloat(item.finalizacao_porcentagem).toFixed(2) + "%" : 'Não disponível');
+                        document.getElementById('total_pos').textContent = (item.pos_producao_porcentagem ? parseFloat(item.pos_producao_porcentagem).toFixed(2) + "%" : 'Não disponível');
+                        document.getElementById('total_alt').textContent = (item.alteracao_porcentagem ? parseFloat(item.alteracao_porcentagem).toFixed(2) + "%" : 'Não disponível');
+                        document.getElementById('total_planta').textContent = (item.planta_porcentagem ? parseFloat(item.planta_porcentagem).toFixed(2) + "%" : 'Não disponível');
+                        document.getElementById('total_filtro').textContent = (item.filtro_porcentagem ? parseFloat(item.filtro_porcentagem).toFixed(2) + "%" : 'Não disponível');
+
+                        // Exibe outros totais
+                        document.getElementById('data-inicio').textContent = item.data_inicio || 'Não disponível';
+                        document.getElementById('receb-arq').textContent = item.recebimento_arquivos || 'Não disponível';
+                        document.getElementById('prazo-previsto').textContent = item.prazo || 'Não disponível';
+                    });
                     addEventListenersToRows();
 
                 })
@@ -1155,8 +1124,24 @@ window.onclick = function (event) {
     if (event.target == form_edicao) {
         form_edicao.style.display = "none"
     }
+    if (event.target == acompanhamento_modal) {
+        desc_modal.style.display = "none"
+    }
 }
 
+
+const mostrarDesc = document.getElementById('mostrar-desc');
+const desc_modal = document.getElementById('desc-modal');
+const closeDesc = document.querySelector('.closeOverview');
+
+
+mostrarDesc.addEventListener('click', function () {
+    desc_modal.style.display = 'flex';
+})
+
+closeDesc.addEventListener('click', function () {
+    desc_modal.style.display = 'none';
+})
 
 document.getElementById('generate-pdf').addEventListener('click', function () {
     const { jsPDF } = window.jspdf;

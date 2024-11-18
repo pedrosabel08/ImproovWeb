@@ -572,6 +572,49 @@ $conn->close();
                 </span>
             </div>
 
+            <button id="mostrar-desc">Descrições</button>
+
+            <div id="desc-modal" class="modal">
+                <div class="modal-content-desc">
+                    <span class="closeDesc">&times;</span>
+                    <h2>Descrições obra</h2>
+
+                    <div class="infos">
+                        <p>Data de início:</p>
+                        <span id="data-inicio"></span>
+                    </div>
+                    <div class="infos">
+                        <p>Último arquivo recebido:</p>
+                        <span id="receb-arq"></span>
+                    </div>
+                    <div class="infos">
+                        <p>Prazo previsto:</p>
+                        <span id="prazo-previsto"></span>
+                    </div>
+                    <div class="infos">
+                        <h2>Etapas</h2>
+                        <p>Caderno:</p>
+                        <span id="total_caderno"></span>
+                        <p>Filtro de assets:</p>
+                        <span id="total_filtro"></span>
+                        <p>Modelagem:</p>
+                        <span id="total_model"></span>
+                        <p>Composição:</p>
+                        <span id="total_comp"></span>
+                        <p>Finalização:</p>
+                        <span id="total_final"></span>
+                        <p>Alteração:</p>
+                        <span id="total_alt"></span>
+                        <p>Pós-Produção:</p>
+                        <span id="total_pos"></span>
+                        <p>Planta Humanizada:</p>
+                        <span id="total_planta"></span>
+                    </div>
+
+                    <button id="ver-acomp-obra">Acompanhamento</button>
+                </div>
+            </div>
+
             <table id="tabela-obra">
                 <thead>
                     <th>Nome da Imagem</th>

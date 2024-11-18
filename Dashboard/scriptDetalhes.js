@@ -1,4 +1,24 @@
+function toggleVisibility(sectionId) {
+    const section = document.getElementById(sectionId);
+    const button = section.previousElementSibling; // Botão associado à seção
+    if (section.style.display === 'none') {
+        section.style.display = 'block';
+        button.textContent = 'Ocultar Detalhes';
+    } else {
+        section.style.display = 'none';
+        button.textContent = 'Mostrar Detalhes';
+    }
+}
+
+
 document.addEventListener('DOMContentLoaded', function () {
+
+    const sections = document.querySelectorAll('.toggle-btn');
+    sections.forEach(section => {
+        const div = section.nextElementSibling;
+        div.style.display = 'none'; // Esconde as seções inicialmente
+    });
+
     // Função para obter o parâmetro 'id' da URL
     function getQueryParameter(name) {
         const urlParams = new URLSearchParams(window.location.search);
@@ -43,22 +63,68 @@ document.addEventListener('DOMContentLoaded', function () {
                         document.getElementById('colab_pos').textContent = (data.colab_pos || 'Não atribuído').replace(/,/g, ', ');
                         document.getElementById('colab_planta').textContent = (data.colab_planta || 'Não atribuído').replace(/,/g, ', ');
                         document.getElementById('colab_alt').textContent = (data.colab_alt || 'Não atribuído').replace(/,/g, ', ');
-                        
+
                         // Exibir os status das imagens
-                        document.getElementById('status_ef').textContent = data.percentual_status_6 + '%';
-                        document.getElementById('status_P00').textContent = data.percentual_status_2 + '%';
-                        document.getElementById('status_R00').textContent = data.percentual_status_1 + '%';
-                        document.getElementById('status_revisao').textContent = data.percentual_status_3_4_5 + '%';
-                        document.getElementById('status_hold').textContent = data.percentual_status_9 + '%';
+                        // document.getElementById('status_ef').textContent = data.percentual_status_6 + '%';
+                        // document.getElementById('status_P00').textContent = data.percentual_status_2 + '%';
+                        // document.getElementById('status_R00').textContent = data.percentual_status_1 + '%';
+                        // document.getElementById('status_revisao').textContent = data.percentual_status_3_4_5 + '%';
+                        // document.getElementById('status_hold').textContent = data.percentual_status_9 + '%';
 
                         // Animação
-                        document.getElementById('animacao').checked = data.animacao === 1;  // Marcar o checkbox se 'animacao' for 1
+                        // document.getElementById('animacao').checked = data.animacao === 1;  // Marcar o checkbox se 'animacao' for 1
 
-                        document.getElementById('total_revisoes').textContent = data.total_revisoes;
+                        // document.getElementById('total_revisoes').textContent = data.total_revisoes;
 
                         // Custos
-                        document.getElementById('valor_contrato').textContent = data.total_contrato || 0;  // Supondo que seja o total de produção
-                        document.getElementById('valor_producao').textContent = data.total_gasto_producao;  // Pode ser outro valor se necessário
+                        // document.getElementById('valor_contrato').textContent = data.total_contrato || 0;  // Supondo que seja o total de produção
+                        // document.getElementById('valor_producao').textContent = data.total_gasto_producao;  // Pode ser outro valor se necessário
+
+                        const ctxImagem = document.getElementById('imagemChart').getContext('2d');
+                        const imagemChart = new Chart(ctxImagem, {
+                            type: 'pie',
+                            data: {
+                                labels: ['EF', 'P00', 'R00', 'Revisão', 'HOLD'],
+                                datasets: [{
+                                    label: 'Status das Imagens (%)',
+                                    data: [data.percentual_status_6, data.percentual_status_2, data.percentual_status_1, data.percentual_status_3_4_5, data.percentual_status_9],
+                                    backgroundColor: ['#FF5733', '#33FF57', '#3357FF', '#FF33A6', '#FF8C33'],
+                                    borderColor: '#000',
+                                    borderWidth: 1
+                                }]
+                            },
+                            options: {
+                                scales: {
+                                    y: {
+                                        beginAtZero: true
+                                    }
+                                }
+                            }
+                        });
+
+                        // Gráfico para Custos
+                        const ctxCusto = document.getElementById('custoChart').getContext('2d');
+                        const custoChart = new Chart(ctxCusto, {
+                            type: 'bar',
+                            data: {
+                                labels: ['Valor de contrato', 'Custos de produção'],
+                                datasets: [{
+                                    label: 'Custos (%)',
+                                    data: [data.total_contrato, data.total_gasto_producao],
+                                    backgroundColor: ['#FFD700', '#4CAF50'],
+                                    borderColor: '#000',
+                                    borderWidth: 1
+                                }]
+                            },
+                            options: {
+                                scales: {
+                                    y: {
+                                        beginAtZero: true
+                                    }
+                                }
+                            }
+                        });
+
 
                     }
                 } catch (e) {
@@ -72,4 +138,6 @@ document.addEventListener('DOMContentLoaded', function () {
     } else {
         console.error('ID da obra não fornecido na URL');
     }
+
 });
+

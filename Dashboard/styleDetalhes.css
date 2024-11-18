@@ -36,7 +36,8 @@ section h3 {
     font-size: 14px;
 }
 
-span, input {
+span,
+input {
     margin-left: 10px;
 }
 
@@ -48,4 +49,25 @@ h3#anima {
 section h2,
 h3 {
     padding: 15px;
+}
+
+#grafico {
+    padding: 1rem;
+    width: 100%;
+    max-width: 100vw; /* Garante que o conteúdo não ultrapasse a largura da viewport */
+}
+
+.grafico-container {
+    display: flex;
+    justify-content: space-between; /* Espaço entre os gráficos */
+    align-items: stretch; /* Faz os gráficos terem a mesma altura */
+    width: 100%;
+    gap: 1rem; /* Espaçamento entre os gráficos */
+}
+
+.grafico-container canvas {
+    flex: 1; /* Faz os gráficos se ajustarem igualmente */
+    height: 300px; /* Ajusta a altura dos gráficos */
+    max-width: 48%; /* Limita a largura de cada gráfico a 48% */
+    margin: 0;
 }

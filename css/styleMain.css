@@ -95,7 +95,7 @@ nav {
     display: flex;
     justify-content: center;
     border: 1px solid black;
-	background: linear-gradient(90deg, #1a1a2e 0%, #3e4a70 50%, #2b2b3b 100%);
+    background: linear-gradient(90deg, #1a1a2e 0%, #3e4a70 50%, #2b2b3b 100%);
 }
 
 nav a {
@@ -397,12 +397,12 @@ table#tabela-obra th:first-child {
 
 
 .selecionada {
-	background-color: #FF5833;
+    background-color: #FF5833;
 }
 
 table tbody tr:hover {
     cursor: pointer;
-	background-color: #FF5833;
+    background-color: #FF5833;
 }
 
 .form {
@@ -901,4 +901,13 @@ button#generate-pdf {
 
 .closeDesc:hover {
     color: black;
+}
+
+#ver-acomp-obra, #mostrar-desc {
+    margin: 20px auto; 
+    padding: 2px 6px;
+    border: 1px solid black;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.423);
+    border-radius: 15px;
+    background-color: #1aeb63;
 }

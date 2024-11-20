@@ -55,21 +55,27 @@
                 </div>
 
             </div>
-
-            <!-- Gráfico (área para inserir gráficos) -->
-            <div class="chart-container">
-                <h2 class="chart-title">Desempenho Financeiro</h2>
-            </div>
-
-            <div class="swiper-container">
-                <div class="swiper-wrapper">
-                    <!-- As slides serão adicionadas dinamicamente aqui -->
+            <div id="legenda" class="legenda">
+                <div class="legenda-item">
+                    <div class="cor" style="background-color: #ff6f61;"></div>
+                    <span>Prazo já passou</span>
                 </div>
-                <!-- Botões de navegação -->
-                <div class="swiper-button-next"></div>
-                <div class="swiper-button-prev"></div>
-                <!-- Paginação -->
-                <div class="swiper-pagination"></div>
+                <div class="legenda-item">
+                    <div class="cor" style="background-color: #f7b731;"></div>
+                    <span>Prazo próximo (3 dias ou menos)</span>
+                </div>
+                <div class="legenda-item">
+                    <div class="cor" style="background-color: #28a745;"></div>
+                    <span>Prazo distante</span>
+                </div>
+            </div>
+            <div id="painel">
+
+            </div>
+            <div class="graficos">
+                <canvas id="graficoProducao"></canvas>
+                <canvas id="graficoOrcamento"></canvas>
+                <canvas id="graficoPercentual"></canvas>
             </div>
         </div>
     </main>

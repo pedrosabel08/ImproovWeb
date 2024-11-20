@@ -175,3 +175,58 @@ a {
     font-weight: bold;
     cursor: pointer;
 }
+
+.legenda {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 30px;
+    margin: 20px 0;
+}
+
+.legenda h3 {
+    font-size: 18px;
+}
+
+.legenda-item {
+    display: flex;
+    align-items: center;
+}
+
+.legenda-item .cor {
+    width: 15px;
+    height: 15px;
+    margin-right: 10px;
+    border-radius: 50%;
+}
+
+.legenda-item span {
+    font-size: 16px;
+}
+
+#painel {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.card {
+    width: 200px;
+    padding: 20px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    background-color: #fff;
+    transition: 0.3s all ease; 
+}
+
+.card h3 {
+    margin: 0;
+    font-size: 1.2em;
+    color: #333;
+}
+
+.card:hover {
+    filter: brightness(0.85);  /* Escurece a cor do card */
+    transform: scale(1.05);  /* Aumenta um pouco o card */
+}

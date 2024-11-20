@@ -82,29 +82,35 @@ if ($result1->num_rows > 0) {
 
 // Consulta SQL para calcular total de imagens e porcentagens de cada função
 $sql2 = "SELECT
-    COUNT(ico.idimagens_cliente_obra) AS total_imagens,
-    (100 * SUM(CASE WHEN fi.funcao_id = 1 AND fi.status = 'Finalizado' THEN 1 ELSE 0 END) 
-        / NULLIF(COUNT(CASE WHEN fi.funcao_id = 1 THEN 1 END), 0)) AS caderno_porcentagem,
-    (100 * SUM(CASE WHEN fi.funcao_id = 2 AND fi.status = 'Finalizado' THEN 1 ELSE 0 END) 
-        / NULLIF(COUNT(CASE WHEN fi.funcao_id = 2 THEN 1 END), 0)) AS modelagem_porcentagem,
-    (100 * SUM(CASE WHEN fi.funcao_id = 3 AND fi.status = 'Finalizado' THEN 1 ELSE 0 END) 
-        / NULLIF(COUNT(CASE WHEN fi.funcao_id = 3 THEN 1 END), 0)) AS composicao_porcentagem,
-    (100 * SUM(CASE WHEN fi.funcao_id = 4 AND fi.status = 'Finalizado' THEN 1 ELSE 0 END) 
-        / NULLIF(COUNT(CASE WHEN fi.funcao_id = 4 THEN 1 END), 0)) AS finalizacao_porcentagem,
-    (100 * SUM(CASE WHEN fi.funcao_id = 5 AND fi.status = 'Finalizado' THEN 1 ELSE 0 END) 
-        / NULLIF(COUNT(CASE WHEN fi.funcao_id = 5 THEN 1 END), 0)) AS pos_producao_porcentagem,
-    (100 * SUM(CASE WHEN fi.funcao_id = 6 AND fi.status = 'Finalizado' THEN 1 ELSE 0 END) 
-        / NULLIF(COUNT(CASE WHEN fi.funcao_id = 6 THEN 1 END), 0)) AS alteracao_porcentagem,
-    (100 * SUM(CASE WHEN fi.funcao_id = 7 AND fi.status = 'Finalizado' THEN 1 ELSE 0 END) 
-        / NULLIF(COUNT(CASE WHEN fi.funcao_id = 7 THEN 1 END), 0)) AS planta_porcentagem,
-    (100 * SUM(CASE WHEN fi.funcao_id = 8 AND fi.status = 'Finalizado' THEN 1 ELSE 0 END) 
-        / NULLIF(COUNT(CASE WHEN fi.funcao_id = 8 THEN 1 END), 0)) AS filtro_porcentagem,
+    COUNT(DISTINCT ico.idimagens_cliente_obra) AS total_imagens,
+
+    -- Contagem de funções com status 'Finalizado' para cada tipo de função
+    SUM(CASE WHEN fi.funcao_id = 1 AND fi.status = 'Finalizado' THEN 1 ELSE 0 END) AS caderno_finalizado,
+    SUM(CASE WHEN fi.funcao_id = 2 AND fi.status = 'Finalizado' THEN 1 ELSE 0 END) AS modelagem_finalizado,
+    SUM(CASE WHEN fi.funcao_id = 3 AND fi.status = 'Finalizado' THEN 1 ELSE 0 END) AS composicao_finalizado,
+    SUM(CASE WHEN fi.funcao_id = 4 AND fi.status = 'Finalizado' THEN 1 ELSE 0 END) AS finalizacao_finalizado,
+    SUM(CASE WHEN fi.funcao_id = 5 AND fi.status = 'Finalizado' THEN 1 ELSE 0 END) AS pos_producao_finalizado,
+    SUM(CASE WHEN fi.funcao_id = 6 AND fi.status = 'Finalizado' THEN 1 ELSE 0 END) AS alteracao_finalizado,
+    SUM(CASE WHEN fi.funcao_id = 7 AND fi.status = 'Finalizado' THEN 1 ELSE 0 END) AS planta_finalizado,
+    SUM(CASE WHEN fi.funcao_id = 8 AND fi.status = 'Finalizado' THEN 1 ELSE 0 END) AS filtro_finalizado,
+
+    -- Quantidade total de funções de imagem para cada funcao_id
+    COUNT(CASE WHEN fi.funcao_id = 1 THEN 1 END) AS total_caderno_funcao,
+    COUNT(CASE WHEN fi.funcao_id = 2 THEN 1 END) AS total_modelagem_funcao,
+    COUNT(CASE WHEN fi.funcao_id = 3 THEN 1 END) AS total_composicao_funcao,
+    COUNT(CASE WHEN fi.funcao_id = 4 THEN 1 END) AS total_finalizacao_funcao,
+    COUNT(CASE WHEN fi.funcao_id = 5 THEN 1 END) AS total_pos_producao_funcao,
+    COUNT(CASE WHEN fi.funcao_id = 6 THEN 1 END) AS total_alteracao_funcao,
+    COUNT(CASE WHEN fi.funcao_id = 7 THEN 1 END) AS total_planta_funcao,
+    COUNT(CASE WHEN fi.funcao_id = 8 THEN 1 END) AS total_filtro_funcao,
+
     ico.data_inicio,
     ico.recebimento_arquivos,
     ico.prazo
     FROM imagens_cliente_obra ico
     LEFT JOIN funcao_imagem fi ON fi.imagem_id = ico.idimagens_cliente_obra
-    WHERE ico.obra_id = ?";
+    WHERE ico.obra_id = ?
+";
 
 // Adicionando filtros para tipoImagem e antecipada se fornecidos
 if ($tipoImagem) {
@@ -141,14 +147,30 @@ if ($result2->num_rows > 0) {
         $totais[] = $row;
     }
 }
+$sql3 = "SELECT assunto, data FROM acompanhamento_email WHERE obra_id = ?";
 
-// Enviando resposta JSON com ambos os resultados
+$stmt3 = $conn->prepare($sql3);
+
+if ($stmt3 === false) {
+    die(json_encode(["error" => "Erro ao preparar a consulta: " . $conn->error]));
+}
+
+$stmt3->bind_param('i', $obraId);
+$stmt3->execute();
+$result3 = $stmt3->get_result();
+
+$acompanhamentoEmails = array();
+if ($result3->num_rows > 0) {
+    while ($row = $result3->fetch_assoc()) {
+        $acompanhamentoEmails[] = $row;
+    }
+}
+
+// Enviando resposta JSON com todos os resultados
 echo json_encode([
     'funcoes' => $funcoes,
-    'totais' => $totais
+    'totais' => $totais,
+    'acompanhamento_emails' => $acompanhamentoEmails
 ]);
 
-$stmt1->close();
-$stmt2->close();
 $conn->close();
-?>

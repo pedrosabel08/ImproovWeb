@@ -467,22 +467,45 @@ document.addEventListener("DOMContentLoaded", function () {
                     });
 
                     data.totais.forEach(function (item) {
-                        // Formata os valores para exibir como porcentagem com 2 casas decimais
-                        document.getElementById('total_caderno').textContent = (item.caderno_porcentagem ? parseFloat(item.caderno_porcentagem).toFixed(2) + "%" : 'Não disponível');
-                        document.getElementById('total_model').textContent = (item.modelagem_porcentagem ? parseFloat(item.modelagem_porcentagem).toFixed(2) + "%" : 'Não disponível');
-                        document.getElementById('total_comp').textContent = (item.composicao_porcentagem ? parseFloat(item.composicao_porcentagem).toFixed(2) + "%" : 'Não disponível');
-                        document.getElementById('total_final').textContent = (item.finalizacao_porcentagem ? parseFloat(item.finalizacao_porcentagem).toFixed(2) + "%" : 'Não disponível');
-                        document.getElementById('total_pos').textContent = (item.pos_producao_porcentagem ? parseFloat(item.pos_producao_porcentagem).toFixed(2) + "%" : 'Não disponível');
-                        document.getElementById('total_alt').textContent = (item.alteracao_porcentagem ? parseFloat(item.alteracao_porcentagem).toFixed(2) + "%" : 'Não disponível');
-                        document.getElementById('total_planta').textContent = (item.planta_porcentagem ? parseFloat(item.planta_porcentagem).toFixed(2) + "%" : 'Não disponível');
-                        document.getElementById('total_filtro').textContent = (item.filtro_porcentagem ? parseFloat(item.filtro_porcentagem).toFixed(2) + "%" : 'Não disponível');
-
                         // Exibe outros totais
                         document.getElementById('data-inicio').textContent = item.data_inicio || 'Não disponível';
                         document.getElementById('receb-arq').textContent = item.recebimento_arquivos || 'Não disponível';
                         document.getElementById('prazo-previsto').textContent = item.prazo || 'Não disponível';
+
+                        var ctx = document.getElementById('graficoTotais').getContext('2d');
+
+                        var graficoTotais = new Chart(ctx, {
+                            type: 'bar', // ou 'pie', 'line', etc. dependendo do seu gráfico
+                            data: {
+                                labels: [
+                                    'Caderno', 'Modelagem', 'Composição', 'Finalização',
+                                    'Pós Produção', 'Alteração', 'Planta'
+                                ],
+                                datasets: [{
+                                    label: 'Porcentagem de Finalizados',
+                                    data: [
+                                        item.caderno_porcentagem,
+                                        item.modelagem_porcentagem,
+                                        item.composicao_porcentagem,
+                                        item.finalizacao_porcentagem,
+                                        item.pos_producao_porcentagem,
+                                        item.alteracao_porcentagem,
+                                        item.planta_porcentagem
+                                    ],
+                                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                                    borderColor: 'rgba(75, 192, 192, 1)',
+                                    borderWidth: 1
+                                }]
+                            },
+                            options: {
+                                scales: {
+                                    y: {
+                                        beginAtZero: true
+                                    }
+                                }
+                            }
+                        });
                     });
-                    addEventListenersToRows();
 
                 })
                 .catch(error => console.error('Erro ao carregar funções:', error));
@@ -491,10 +514,26 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
+
     document.getElementById('obra-follow').addEventListener('change', fetchFollowUpData);
     document.getElementById('status_imagem').addEventListener('change', fetchFollowUpData);
     document.getElementById('tipo_imagem_follow').addEventListener('change', fetchFollowUpData);
     document.getElementById('antecipada_follow').addEventListener('change', fetchFollowUpData); // Adiciona evento para "Antecipada"
+
+    window.addEventListener('load', function () {
+
+        const obraId = localStorage.getItem('obraId');
+
+        if (obraId) {
+            const obraSelect = document.getElementById('obra-follow');
+
+            if (obraSelect) {
+                obraSelect.value = obraId;
+            }
+
+            fetchFollowUpData();
+        }
+    });
 
     function fetchFollowUpData() {
         var obraId = document.getElementById('obra-follow').value;
@@ -573,6 +612,11 @@ document.addEventListener("DOMContentLoaded", function () {
         } else {
             document.querySelector('#tabela-follow tbody').innerHTML = '';
         }
+    }
+
+    if (window.location.hash === '#follow-up') {
+        // Se sim, chama a função para abrir o modal de follow-up
+        openModal('follow-up');
     }
 
 
@@ -1124,7 +1168,7 @@ window.onclick = function (event) {
     if (event.target == form_edicao) {
         form_edicao.style.display = "none"
     }
-    if (event.target == acompanhamento_modal) {
+    if (event.target == desc_modal) {
         desc_modal.style.display = "none"
     }
 }
@@ -1132,7 +1176,7 @@ window.onclick = function (event) {
 
 const mostrarDesc = document.getElementById('mostrar-desc');
 const desc_modal = document.getElementById('desc-modal');
-const closeDesc = document.querySelector('.closeOverview');
+const closeDesc = document.querySelector('.closeDesc');
 
 
 mostrarDesc.addEventListener('click', function () {

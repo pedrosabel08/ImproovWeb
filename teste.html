@@ -22,55 +22,37 @@
 
 <body>
 
-    <section id="grafico">
-        <h2>Status das imagens</h2>
-        <div class="grafico-container">
-            <canvas id="imagemChart" width="1000" height="400"></canvas>
-            <canvas id="custoChart" width="1000" height="400"></canvas>
-        </div>
-    </section>
-
+    <canvas id="myChart" width="400" height="200"></canvas>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
     <script>
-        const ctxImagem = document.getElementById('imagemChart').getContext('2d');
-        const imagemChart = new Chart(ctxImagem, {
-            type: 'bar',
+        var ctx = document.getElementById('myChart').getContext('2d');
+        var myChart = new Chart(ctx, {
+            type: 'bar', // Tipo de gráfico de barras
             data: {
-                labels: ['EF', 'P00', 'R00', 'Revisão', 'HOLD'],
+                labels: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai'], // Rótulos no eixo X
                 datasets: [{
-                    label: 'Status das Imagens (%)',
-                    data: [5, 10, 2, 4, 2],
-                    backgroundColor: ['#FF5733', '#33FF57', '#3357FF', '#FF33A6', '#FF8C33'],
-                    borderColor: '#000',
-                    borderWidth: 1
+                    label: 'Conjunto de Dados 1', // Nome do primeiro conjunto de dados
+                    data: [65, 59, 80, 81, 56], // Dados do primeiro gráfico
+                    backgroundColor: 'rgba(255, 99, 132, 0.8)', // Cor da barra
+                    borderColor: 'rgba(255, 99, 132, 1)', // Cor da borda
+                    borderWidth: 1, // Largura da borda
+                    categoryPercentage: 0.5, // Controla o espaçamento da categoria (coluna)
+                    barPercentage: 0.8, // Controla a largura das barras
+                }, {
+                    label: 'Conjunto de Dados 2', // Nome do segundo conjunto de dados
+                    data: [28, 48, 40, 19, 86], // Dados do segundo gráfico
+                    backgroundColor: 'rgba(54, 162, 235, 0.8)', // Cor da barra
+                    borderColor: 'rgba(54, 162, 235, 1)', // Cor da borda
+                    borderWidth: 1, // Largura da borda
+                    categoryPercentage: 0.5, // Controla o espaçamento da categoria (coluna)
+                    barPercentage: 0.8, // Controla a largura das barras
                 }]
             },
             options: {
                 scales: {
-                    y: {
-                        beginAtZero: true
-                    }
-                }
-            }
-        });
-
-        // Gráfico para Custos
-        const ctxCusto = document.getElementById('custoChart').getContext('2d');
-        const custoChart = new Chart(ctxCusto, {
-            type: 'bar',
-            data: {
-                labels: ['Valor de contrato', 'Custos de produção'],
-                datasets: [{
-                    label: 'Custos (%)',
-                    data: [1, 2],
-                    backgroundColor: ['#FFD700', '#4CAF50'],
-                    borderColor: '#000',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                scales: {
+                    x: {
+                        stacked: true, // Empilhar as barras em cada categoria
+                    },
                     y: {
                         beginAtZero: true
                     }
@@ -78,6 +60,8 @@
             }
         });
     </script>
+
+
 </body>
 
 </html>

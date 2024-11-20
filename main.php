@@ -572,7 +572,7 @@ $conn->close();
                 </span>
             </div>
 
-            <button id="mostrar-desc">Descrições</button>
+            <button id="mostrar-desc" style="background-color: #f7ef05;margin: 0;">Descrições</button>
 
             <div id="desc-modal" class="modal">
                 <div class="modal-content-desc">
@@ -591,27 +591,12 @@ $conn->close();
                         <p>Prazo previsto:</p>
                         <span id="prazo-previsto"></span>
                     </div>
-                    <div class="infos">
-                        <h2>Etapas</h2>
-                        <p>Caderno:</p>
-                        <span id="total_caderno"></span>
-                        <p>Filtro de assets:</p>
-                        <span id="total_filtro"></span>
-                        <p>Modelagem:</p>
-                        <span id="total_model"></span>
-                        <p>Composição:</p>
-                        <span id="total_comp"></span>
-                        <p>Finalização:</p>
-                        <span id="total_final"></span>
-                        <p>Alteração:</p>
-                        <span id="total_alt"></span>
-                        <p>Pós-Produção:</p>
-                        <span id="total_pos"></span>
-                        <p>Planta Humanizada:</p>
-                        <span id="total_planta"></span>
-                    </div>
+                    <h3>Progresso</h3>
+                    <canvas id="graficoTotais" width="400" height="400"></canvas>
 
                     <button id="ver-acomp-obra">Acompanhamento</button>
+                    <div id="acompanhamentoConteudo" class="hidden"></div>
+
                 </div>
             </div>
 
@@ -751,6 +736,7 @@ $conn->close();
     <script src="./script/script.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 
 

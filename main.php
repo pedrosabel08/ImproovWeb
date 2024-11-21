@@ -571,7 +571,7 @@ $conn->close();
                     <span class="circulo antecipada"></span> Antecipada
                 </span>
             </div>
-
+<!-- 
             <button id="mostrar-desc" style="background-color: #f7ef05;margin: 0;">Descrições</button>
 
             <div id="desc-modal" class="modal">
@@ -598,7 +598,7 @@ $conn->close();
                     <div id="acompanhamentoConteudo" class="hidden"></div>
 
                 </div>
-            </div>
+            </div> -->
 
             <table id="tabela-obra">
                 <thead>

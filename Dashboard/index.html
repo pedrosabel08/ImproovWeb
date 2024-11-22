@@ -85,9 +85,26 @@
                     </div>
 
                     <div class="obra-acompanhamento">
-                        <!-- <button id="acompanhamento">Acompanhamento</button> -->
+                        <button id="acompanhamento">Acompanhamento</button>
+                        <button id="orcamento">Orçamento</button>
                     </div>
 
+                    <div class="modalOrcamento" id="modalOrcamento">
+                        <div class="orcamento-form">
+                            <h2>Fazer Orçamento</h2>
+                            <form id="formOrcamento">
+                                <input type="hidden" id="idObraOrcamento">
+                                <label for="tipo">Tipo:</label>
+                                <input type="text" id="tipo" required>
+                                <label for="valor">Valor:</label>
+                                <input type="number" id="valor" required>
+                                <label for="data">Data:</label>
+                                <input type="date" id="data" required>
+                                <button type="submit">Salvar Orçamento</button>
+                                <button type="button" id="fecharOrcamento">Fechar</button>
+                            </form>
+                        </div>
+                    </div>
                     <div class="obra-imagens">
                         <h4 id="total_imagens"></h4>
                         <h4 id="total_imagens_antecipadas"></h4>
@@ -98,12 +115,21 @@
                         </div>
                     </div>
 
-                    <!-- <div class="obra-valores">
-                        <h4 id="valor_orcamento"></h4>
-                        <h4 id="valor_producao"></h4>
-                        <h4 id="valor_fixo"></h4>
-                        <h4 id="lucro"></h4>
-                    </div> -->
+                    <div class="obra-valores">
+                        <div class="valor-item">
+                            <strong>Valor Orçamento:</strong>
+                            <span id="valor_orcamento"></span>
+                        </div>
+                        <div class="valor-item">
+                            <strong>Valor Produção:</strong>
+                            <span id="valor_producao"></span>
+                        </div>
+                        <div class="valor-item">
+                            <strong>Custo Fixo:</strong>
+                            <span id="valor_fixo"></span>
+                        </div>
+                    </div>
+
                 </div>
             </div>
 

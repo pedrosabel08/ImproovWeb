@@ -571,7 +571,7 @@ $conn->close();
                     <span class="circulo antecipada"></span> Antecipada
                 </span>
             </div>
-<!-- 
+            <!-- 
             <button id="mostrar-desc" style="background-color: #f7ef05;margin: 0;">Descrições</button>
 
             <div id="desc-modal" class="modal">
@@ -722,6 +722,11 @@ $conn->close();
                     <label for="">Assunto do email:</label>
 
                     <textarea name="assunto" id="assunto"></textarea>
+                </div>
+                <div id="data-email" style="display: none">
+                    <label for="">Data:</label>
+
+                    <input type="date" name="data" id="data">
                 </div>
 
                 <div class="buttons">

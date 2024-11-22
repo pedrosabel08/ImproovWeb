@@ -159,6 +159,8 @@ fetch('tarefas.php')
     })
     .catch(error => console.error('Erro ao carregar os dados:', error));
 
+let chartInstance = null;
+
 
 fetch('obras.php')
     .then(response => response.json())
@@ -207,22 +209,115 @@ fetch('obras.php')
                 card.style.color = '#fff';
             }
 
+
             card.addEventListener('click', function () {
+                const obraId = item.idobra;
 
-                const confirmRedirect = confirm("Você tem certeza que deseja ir para o Follow Up?");
-            
-                if (confirmRedirect) {
-                    localStorage.setItem('obraId', item.idobra);
-            
-                    window.open('https://improov.com.br/sistema/main.php#follow-up', '_blank');
-                } else {
+                document.getElementById('modalInfos').style.display = 'flex';
 
-                }
+                fetch(`detalhesObra.php?id=${obraId}`)
+                    .then(response => response.json())
+                    .then(detalhes => {
+
+                        const obra = detalhes.obra;
+                        document.getElementById('nomenclatura').textContent = obra.nomenclatura || "Nome não disponível";
+                        document.getElementById('data_inicio').textContent = `Data de Início: ${obra.data_inicio}`;
+                        document.getElementById('prazo').textContent = `Prazo: ${obra.prazo}`;
+                        document.getElementById('total_imagens').textContent = `Total de Imagens: ${obra.total_imagens}`;
+                        document.getElementById('total_imagens_antecipadas').textContent = `Imagens Antecipadas: ${obra.total_imagens_antecipadas}`;
+
+                        const funcoes = detalhes.funcoes;
+                        const nomesFuncoes = funcoes.map(funcao => funcao.nome_funcao);
+                        const porcentagensFinalizadas = funcoes.map(funcao => parseFloat(funcao.porcentagem_finalizada));
+
+                        const funcoesDiv = document.getElementById('funcoes');
+                        funcoesDiv.innerHTML = "";
+                        detalhes.funcoes.forEach(funcao => {
+                            const funcaoDiv = document.createElement('div');
+                            funcaoDiv.classList.add('funcao');
+                            funcaoDiv.innerHTML = `
+                                <strong>${funcao.nome_funcao}</strong><br>
+                                Total de Imagens: ${funcao.total_imagens}<br>
+                                Imagens Finalizadas: ${funcao.funcoes_finalizadas}<br>
+                                Porcentagem Finalizada: ${funcao.porcentagem_finalizada}%<br><br>
+                            `;
+                            funcoesDiv.appendChild(funcaoDiv);
+                        });
+
+
+                        const ctx = document.getElementById('graficoPorcentagem').getContext('2d');
+                        if (chartInstance) {
+                            chartInstance.destroy();
+                        }
+                        chartInstance = new Chart(ctx, {
+                            type: 'bar',
+                            data: {
+                                labels: nomesFuncoes,
+                                datasets: [{
+                                    label: 'Porcentagem de Conclusão (%)',
+                                    data: porcentagensFinalizadas,
+                                    backgroundColor: [
+                                        'rgba(54, 162, 235, 0.2)',  // Cor para a 1ª barra
+                                        'rgba(255, 99, 132, 0.2)',  // Cor para a 2ª barra
+                                        'rgba(255, 159, 64, 0.2)',  // Cor para a 3ª barra
+                                        'rgba(75, 192, 192, 0.2)',  // Cor para a 4ª barra
+                                        'rgba(153, 102, 255, 0.2)', // Cor para a 5ª barra
+                                        'rgba(255, 159, 64, 0.2)'   // Cor para a 6ª barra, e assim por diante
+                                    ],
+                                    borderColor: [
+                                        'rgba(54, 162, 235, 1)',  // Cor para a borda da 1ª barra
+                                        'rgba(255, 99, 132, 1)',  // Cor para a borda da 2ª barra
+                                        'rgba(255, 159, 64, 1)',  // Cor para a borda da 3ª barra
+                                        'rgba(75, 192, 192, 1)',  // Cor para a borda da 4ª barra
+                                        'rgba(153, 102, 255, 1)', // Cor para a borda da 5ª barra
+                                        'rgba(255, 159, 64, 1)'
+                                    ],
+                                    borderWidth: 1
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                scales: {
+                                    y: {
+                                        beginAtZero: true,
+                                        ticks: {
+                                            stepSize: 10
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                    })
+                    .catch(error => console.error('Erro ao carregar os detalhes da obra:', error));
             });
 
             card.appendChild(nomeObra);
             card.appendChild(prazo);
             painel.appendChild(card);
         });
+
     })
     .catch(error => console.error('Erro ao carregar os dados:', error));
+
+
+const toggleButton = document.getElementById('toggleButton');
+const main = document.querySelector('main');
+const sidebar = document.querySelector('.sidebar');
+
+toggleButton.addEventListener('click', () => {
+    sidebar.style.display = 'flex';
+});
+
+window.addEventListener('click', (event) => {
+    // Verifica se o clique foi fora da sidebar e do botão de toggle
+    if (!sidebar.contains(event.target) && event.target !== toggleButton) {
+        sidebar.style.display = 'none'; // Esconde a sidebar
+    }
+});
+
+const modalInfos = document.getElementById('modalInfos')
+window.onclick = function (event) {
+    if (event.target == modalInfos) {
+        modalInfos.style.display = "none";
+    }
+}

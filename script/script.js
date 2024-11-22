@@ -818,13 +818,16 @@ function submitForm(event) {
 document.getElementById('tipo').addEventListener('change', function () {
     const tipo = this.value;
     const assuntoEmailDiv = document.getElementById('assunto-email');
+    const dataEmailDiv = document.getElementById('data-email');
 
     // Se o tipo for "Email" (2), mostramos o campo de assunto
     if (tipo === '2') {
         assuntoEmailDiv.style.display = 'flex';
+        dataEmailDiv.style.display = 'flex';
     } else {
         // Caso contrário, ocultamos o campo de assunto
         assuntoEmailDiv.style.display = 'none';
+        dataEmailDiv.style.display = 'none';
     }
 });
 
@@ -894,11 +897,13 @@ function submitFormAcomp(event) {
     } else if (tipo === '2') {
         // Lógica de inserção para tipo "Email"
         const assunto = document.getElementById('assunto').value;
+        const date = document.getElementById('data').value;
 
         const data = {
             obraAcomp: obraAcomp,
             colab_id: colab_id,
-            assunto: assunto
+            assunto: assunto,
+            date: date
         };
 
         fetch('inserir_acomp_email.php', {

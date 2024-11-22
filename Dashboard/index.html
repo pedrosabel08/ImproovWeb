@@ -33,6 +33,7 @@
         <div class="main-content">
             <!-- Cabeçalho do Dashboard -->
             <div class="dashboard-header">
+                <button id="toggleButton"> <i class="fas fa-bars"></i></button>
                 <h1>Dashboard</h1>
             </div>
 
@@ -72,6 +73,41 @@
             <div id="painel">
 
             </div>
+
+            <div class="modalInfos" id="modalInfos">
+                <div id="infos-obra">
+                    <!-- <button id="follow-up">Follow-up</button> -->
+
+                    <div class="obra-identificacao">
+                        <h3 id="nomenclatura"></h3>
+                        <h4 id="data_inicio"></h4>
+                        <h4 id="prazo"></h4>
+                    </div>
+
+                    <div class="obra-acompanhamento">
+                        <!-- <button id="acompanhamento">Acompanhamento</button> -->
+                    </div>
+
+                    <div class="obra-imagens">
+                        <h4 id="total_imagens"></h4>
+                        <h4 id="total_imagens_antecipadas"></h4>
+                        <!-- <h4 id="classificacao"></h4> -->
+                        <div id="funcoes"></div>
+                        <div id="grafico">
+                            <canvas id="graficoPorcentagem" width="400" height="200"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- <div class="obra-valores">
+                        <h4 id="valor_orcamento"></h4>
+                        <h4 id="valor_producao"></h4>
+                        <h4 id="valor_fixo"></h4>
+                        <h4 id="lucro"></h4>
+                    </div> -->
+                </div>
+            </div>
+
+
             <div class="graficos">
                 <canvas id="graficoProducao"></canvas>
                 <canvas id="graficoOrcamento"></canvas>
@@ -81,9 +117,10 @@
     </main>
 
 
+    <script src="script.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/swiper/swiper-bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="script.js"></script>
 </body>
 
 </html>

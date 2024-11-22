@@ -14,17 +14,34 @@ body {
 
 main {
     display: grid;
-    grid-template-columns: 250px 1fr;
     height: 100vh;
+    transition: grid-template-columns 0.3s ease;
+}
+
+#toggleButton {
+    margin-top: 20px;
+    padding: 10px;
+    cursor: pointer;
+}
+
+main.sidebar-hidden {
+    grid-template-columns: 0 1fr;
 }
 
 .sidebar {
     background-color: #eeeeee;
     padding: 10px;
-    display: flex;
+    display: none;
     flex-direction: column;
     align-items: center;
     gap: 50px;
+    position: fixed;
+    height: 100vh;
+    width: 200px;
+}
+
+button {
+    all: unset;
 }
 
 .top p {
@@ -88,7 +105,7 @@ a {
 
 .dashboard-header {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start;
     align-items: center;
     margin-bottom: 20px;
 }
@@ -217,7 +234,7 @@ a {
     border-radius: 8px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     background-color: #fff;
-    transition: 0.3s all ease; 
+    transition: 0.3s all ease;
 }
 
 .card h3 {
@@ -227,6 +244,74 @@ a {
 }
 
 .card:hover {
-    filter: brightness(0.85);  /* Escurece a cor do card */
-    transform: scale(1.05);  /* Aumenta um pouco o card */
+    filter: brightness(0.85);
+    transform: scale(1.05);
+}
+
+#grafico {
+    width: 700px;
+    height: 500px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 0 auto;
+}
+
+#graficoPorcentagem {
+    width: 100%;
+    height: 100%;
+}
+
+#funcoes {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    margin-top: 30px;
+}
+
+.modalInfos {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    z-index: 9999;
+    justify-content: center;
+    align-items: center;
+}
+
+#infos-obra {
+    background-color: #fff;
+    border-radius: 8px;
+    padding: 20px;
+    width: 80%;
+    height: auto;
+    max-height: 80%;
+    overflow-y: auto;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    animation: slideDown 0.3s ease-out;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+
+#funcoes {
+    margin-top: 10px;
+    font-size: 0.9rem;
+    color: #444;
+}
+
+/* Animação do modal */
+@keyframes slideDown {
+    from {
+        transform: translateY(-30px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
 }

@@ -213,6 +213,7 @@ fetch('obras.php')
             card.addEventListener('click', function () {
                 const obraId = item.idobra;
 
+                document.getElementById('idObraOrcamento').value = obraId;
                 document.getElementById('modalInfos').style.display = 'flex';
 
                 fetch(`detalhesObra.php?id=${obraId}`)
@@ -243,6 +244,11 @@ fetch('obras.php')
                             `;
                             funcoesDiv.appendChild(funcaoDiv);
                         });
+
+                        const valores = detalhes.valores;
+                        document.getElementById('valor_orcamento').textContent = `R$ ${parseFloat(valores.valor_orcamento).toFixed(2)}`;
+                        document.getElementById('valor_producao').textContent = `R$ ${parseFloat(valores.custo_producao).toFixed(2)}`;
+                        document.getElementById('valor_fixo').textContent = `R$ ${parseFloat(valores.custo_fixo).toFixed(2)}`;
 
 
                         const ctx = document.getElementById('graficoPorcentagem').getContext('2d');
@@ -289,6 +295,7 @@ fetch('obras.php')
                         });
                     })
                     .catch(error => console.error('Erro ao carregar os detalhes da obra:', error));
+
             });
 
             card.appendChild(nomeObra);
@@ -299,6 +306,39 @@ fetch('obras.php')
     })
     .catch(error => console.error('Erro ao carregar os dados:', error));
 
+document.getElementById('orcamento').addEventListener('click', function () {
+    document.getElementById('modalOrcamento').style.display = 'flex';
+});
+
+document.getElementById('fecharOrcamento').addEventListener('click', function () {
+    document.getElementById('modalOrcamento').style.display = 'none';
+});
+
+document.getElementById('formOrcamento').addEventListener('submit', function (e) {
+    e.preventDefault();
+
+    const idObra = document.getElementById('idObraOrcamento').value;
+    const tipo = document.getElementById('tipo').value;
+    const valor = document.getElementById('valor').value;
+    const data = document.getElementById('data').value;
+
+    // Enviar os dados para o backend
+    fetch('salvarOrcamento.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ idObra, tipo, valor, data }),
+    })
+        .then(response => response.json())
+        .then(data => {
+            alert('Orçamento salvo com sucesso!');
+            document.getElementById('modalOrcamento').style.display = 'none'; // Fecha o modal
+        })
+        .catch(error => {
+            console.error('Erro ao salvar orçamento:', error);
+        });
+});
 
 const toggleButton = document.getElementById('toggleButton');
 const main = document.querySelector('main');

@@ -57,6 +57,7 @@ $stmtFuncoes->close();
 
 // Segundo SELECT: Detalhes gerais da obra
 $sqlObra = "SELECT
+        o.idobra,
         o.nomenclatura,
         data_inicio, 
         prazo, 
@@ -85,6 +86,47 @@ $obra = $resultObra->fetch_assoc(); // Deve retornar uma única linha
 $response['obra'] = $obra;
 
 $stmtObra->close();
+
+// Segundo SELECT: Detalhes gerais da obra
+$sqlValores = "SELECT 
+    COALESCE(p.valor_producao, 0) AS custo_producao,
+    COALESCE(c.custo_fixo, 0) AS custo_fixo,
+    COALESCE(o.valor_orcamento, 0) AS valor_orcamento
+FROM (
+    SELECT 
+        ROUND(SUM(valor), 2) AS valor_producao 
+    FROM funcao_imagem f
+    JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
+    WHERE i.obra_id = ?
+) p,
+(
+    SELECT 
+        ROUND(SUM(valor), 2) AS valor_orcamento
+    FROM orcamentos_obra
+    WHERE obra_id = ?
+) o,
+(
+    SELECT 
+        custo_fixo
+    FROM custos_fixos_obra
+    WHERE obra_id = ?
+) c
+";
+
+$stmtValores = $conn->prepare($sqlValores);
+if ($stmtValores === false) {
+    die('Erro na preparação da consulta (obra): ' . $conn->error);
+}
+
+$stmtValores->bind_param("iii", $obraId, $obraId, $obraId);
+$stmtValores->execute();
+$resultValores = $stmtValores->get_result();
+
+// Processa os resultados do segundo SELECT
+$valores = $resultValores->fetch_assoc(); // Deve retornar uma única linha
+$response['valores'] = $valores;
+
+$stmtValores->close();
 $conn->close();
 
 // Retorna o resultado como JSON

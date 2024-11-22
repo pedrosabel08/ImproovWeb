@@ -264,11 +264,12 @@ a {
 
 #funcoes {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     margin-top: 30px;
 }
 
-.modalInfos {
+.modalInfos,
+.modalOrcamento {
     display: none;
     position: fixed;
     top: 0;
@@ -276,9 +277,16 @@ a {
     width: 100%;
     height: 100%;
     background-color: rgba(0, 0, 0, 0.7);
-    z-index: 9999;
     justify-content: center;
     align-items: center;
+}
+
+.orcamento-form {
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    width: 300px;
+    text-align: center;
 }
 
 #infos-obra {
@@ -301,6 +309,26 @@ a {
     margin-top: 10px;
     font-size: 0.9rem;
     color: #444;
+}
+
+.obra-valores {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    font-family: Arial, sans-serif;
+}
+
+.valor-item {
+    font-size: 16px;
+}
+
+.valor-item strong {
+    font-weight: bold;
+}
+
+.valor-item span {
+    font-weight: normal;
+    color: #333;
 }
 
 /* Animação do modal */

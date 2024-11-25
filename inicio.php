@@ -73,7 +73,7 @@ $conn->close();
 
             <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 3)): ?>
                 <a href="infoCliente/index.php">Informações clientes</a>
-                <a href="Acompanhamento/index.html">Acompanhamentos</a>
+                <a href="Acompanhamento/index.php">Acompanhamentos</a>
             <?php endif; ?>
 
             <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 4)): ?>

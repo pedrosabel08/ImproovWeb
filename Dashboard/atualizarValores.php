@@ -30,11 +30,11 @@ $data = array();
 // Verificando se há resultados
 if ($result->num_rows > 0) {
     while ($row = $result->fetch_assoc()) {
-        // Formatar os valores em reais
+        // Não formate os valores no PHP
         $data[] = array(
-            'total_producao' => number_format($row['total_producao'], 0, ',', '.'),
+            'total_producao' => (float) $row['total_producao'],  // Convertendo para número
             'obras_ativas' => $row['obras_ativas'],
-            'total_orcamento' => number_format($row['total_orcamento'], 0, ',', '.')
+            'total_orcamento' => (float) $row['total_orcamento'] // Convertendo para número
         );
     }
 } else {
@@ -47,4 +47,3 @@ $conn->close();
 
 // Retornando os dados em formato JSON
 echo json_encode($data);
-?>

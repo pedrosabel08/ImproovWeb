@@ -91,7 +91,8 @@ $stmtObra->close();
 $sqlValores = "SELECT 
     COALESCE(p.valor_producao, 0) AS custo_producao,
     COALESCE(c.custo_fixo, 0) AS custo_fixo,
-    COALESCE(o.valor_orcamento, 0) AS valor_orcamento
+    COALESCE(o.valor_orcamento, 0) AS valor_orcamento,
+    COALESCE(o.valor_orcamento, 0) - (COALESCE(p.valor_producao, 0)) AS lucro
 FROM (
     SELECT 
         ROUND(SUM(valor), 2) AS valor_producao 
@@ -112,6 +113,7 @@ FROM (
     WHERE obra_id = ?
 ) c
 ";
+
 
 $stmtValores = $conn->prepare($sqlValores);
 if ($stmtValores === false) {

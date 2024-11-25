@@ -1,3 +1,13 @@
+<?php
+session_start();
+
+if (!isset($_SESSION['logado']) || !$_SESSION['logado'] || !isset($_SESSION['nivel_acesso']) || $_SESSION['nivel_acesso'] != 1) {
+    header("Location: ../index.html"); // Redireciona para a página de login
+    exit;
+}
+
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 

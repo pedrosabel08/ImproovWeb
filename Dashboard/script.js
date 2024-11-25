@@ -1,27 +1,45 @@
-document.addEventListener("DOMContentLoaded", function () {
-    atualizarValores();
+fetch('atualizarValores.php')
+    .then(response => response.json())
+    .then(data => {
+        if (data && data.length > 0) {  // Verifica se há dados e se não está vazio
+            const valores = data[0];  // Acessa o primeiro elemento do array
 
-});
+            // Converte valores para números (caso não estejam como número)
+            const totalOrcamento = valores.total_orcamento;
+            const totalProducao = valores.total_producao;
+            const obrasAtivas = valores.obras_ativas;
 
-function atualizarValores() {
-    fetch('atualizarValores.php')
-        .then(response => response.json())
-        .then(data => {
-            if (data && data.length > 0) {  // Verifica se há dados e se não está vazio
-                const valores = data[0];  // Acessa o primeiro elemento do array
-
-                // Define os valores nas tags HTML correspondentes
-                document.getElementById('total_orcamentos').textContent = `R$${valores.total_orcamento}`;
-                document.getElementById('total_producao').textContent = `R$${valores.total_producao}`;
-                document.getElementById('obras_ativas').textContent = valores.obras_ativas;
+            // Verifica se os valores são válidos números
+            if (!isNaN(totalOrcamento)) {
+                document.getElementById('total_orcamentos').textContent = `R$${totalOrcamento.toLocaleString('pt-BR')}`;
             } else {
-                console.error("Dados não encontrados");
+                console.error('Valor de total_orcamento inválido');
             }
-        })
-        .catch(error => {
-            console.error("Erro ao buscar dados:", error);
-        });
-}
+
+            if (!isNaN(totalProducao)) {
+                document.getElementById('total_producao').textContent = `R$${totalProducao.toLocaleString('pt-BR')}`;
+            }
+
+            document.getElementById('obras_ativas').textContent = obrasAtivas;
+
+            // Valor do orçamento do ano passado
+            const orcamentoAnoPassado = 925000;
+
+            // Calcula o lucro em porcentagem se o orçamento atual for válido
+            if (!isNaN(totalOrcamento)) {
+                const lucroPercentual = ((totalOrcamento - orcamentoAnoPassado) / orcamentoAnoPassado) * 100;
+                document.getElementById('lucro_percentual').textContent = `${lucroPercentual.toFixed(2)}%`;
+            } else {
+                document.getElementById('lucro_percentual').textContent = 'N/A';
+            }
+        } else {
+            console.error("Dados não encontrados");
+        }
+    })
+    .catch(error => {
+        console.error("Erro ao buscar dados:", error);
+    });
+
 
 fetch('producao_orcamento.php') // Substitua pela URL correta
     .then(response => response.json())
@@ -249,7 +267,7 @@ fetch('obras.php')
                         document.getElementById('valor_orcamento').textContent = `R$ ${parseFloat(valores.valor_orcamento).toFixed(2)}`;
                         document.getElementById('valor_producao').textContent = `R$ ${parseFloat(valores.custo_producao).toFixed(2)}`;
                         document.getElementById('valor_fixo').textContent = `R$ ${parseFloat(valores.custo_fixo).toFixed(2)}`;
-
+                        document.getElementById('lucro').textContent = `R$ ${parseFloat(valores.lucro).toFixed(2)}`;
 
                         const ctx = document.getElementById('graficoPorcentagem').getContext('2d');
                         if (chartInstance) {

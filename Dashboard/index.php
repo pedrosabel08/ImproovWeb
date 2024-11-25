@@ -1,3 +1,12 @@
+<?php
+session_start();
+
+if (!isset($_SESSION['logado']) || !$_SESSION['logado'] || !isset($_SESSION['nivel_acesso']) || $_SESSION['nivel_acesso'] != 1) {
+    header("Location: ../index.html"); // Redireciona para a página de login
+    exit;
+}
+
+?>
 <!DOCTYPE html>
 <html lang="pt-br">
 
@@ -26,6 +35,7 @@
                     <a href="#" id="dashboard"><i class="fa-solid fa-chart-line"></i>Dashboard</a>
                     <a href="projetos.html" id="projects"><i class="fa-solid fa-list-check"></i>Projetos</a>
                     <a href="#" id="colabs"><i class="fa-solid fa-users"></i>Colaboradores</a>
+                    <a href="controle_comercial.html" id="colabs"><i class="fa-solid fa-users"></i>Controle comercial</a>
                 </div>
             </div>
 
@@ -33,7 +43,7 @@
         <div class="main-content">
             <!-- Cabeçalho do Dashboard -->
             <div class="dashboard-header">
-                <button id="toggleButton"> <i class="fas fa-bars"></i></button>
+                <button id="toggleButton"><i class="fas fa-bars"></i></button>
                 <h1>Dashboard</h1>
             </div>
 
@@ -43,6 +53,10 @@
                 <div class="stat-card">
                     <h2>Total da Empresa ($)</h2>
                     <p id="total_orcamentos"></p>
+                    <div class="lucro">
+                        <p>Lucro: </p>
+                        <span id="lucro_percentual"></span>
+                    </div>
                 </div>
                 <div class="stat-card">
                     <h2>Total da Empresa - Produção ($)</h2>
@@ -125,8 +139,12 @@
                             <span id="valor_producao"></span>
                         </div>
                         <div class="valor-item">
-                            <strong>Custo Fixo:</strong>
+                            <strong>Valor projetado:</strong>
                             <span id="valor_fixo"></span>
+                        </div>
+                        <div class="valor-item">
+                            <strong>Lucro estimado (produção):</strong>
+                            <span id="lucro"></span>
                         </div>
                     </div>
 
@@ -134,11 +152,11 @@
             </div>
 
 
-            <div class="graficos">
+            <!-- <div class="graficos">
                 <canvas id="graficoProducao"></canvas>
                 <canvas id="graficoOrcamento"></canvas>
                 <canvas id="graficoPercentual"></canvas>
-            </div>
+            </div> -->
         </div>
     </main>
 

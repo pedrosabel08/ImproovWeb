@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="styleValores.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css" integrity="sha512-5Hs3dF2AEPkpNAR7UiOHba+lRSJNeM2ECkwxUIxC1Q/FLycGTbNapWXB4tP889k5T5Ju8fs4b1P5z/iB4nMfSQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <title>Relatório de Valores por Mês</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+</head>
+
+<body>
+    <header>
+        <a href="index.html" id="voltar"><i class="fa-solid fa-left-long"></i></a>
+        <h1>Relatório de Valores por Mês</h1>
+    </header>
+
+    <!-- Tabela de valores -->
+    <table id="tabela-valores">
+        <thead>
+            <tr>
+                <th>Mês</th>
+                <th>Valor Total</th>
+                <th>Valor (Diogo)</th>
+                <th>Valor (Carol)</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Dados preenchidos via AJAX -->
+        </tbody>
+    </table>
+
+    <!-- Container para o gráfico -->
+    <div id="grafico-container">
+        <canvas id="graficoMeses"></canvas>
+    </div>
+
+    <script>
+        $(document).ready(function () {
+            $.ajax({
+                url: 'dadosMeses.php', // Arquivo PHP
+                method: 'GET',
+                dataType: 'json',
+                success: function (response) {
+                    // Preenche a tabela com a formatação de número
+                    let tabela = '';
+                    let meses = [];
+                    let valoresTotais = [];
+                    let valoresDiogo = [];
+                    let valoresCarol = [];
+    
+                    response.forEach(row => {
+                        // Garantir que os valores sejam números
+                        let valorTotal = Number(row.valor_total);
+                        let valorDiogo = Number(row.valor_diogo);
+                        let valorCarol = Number(row.valor_carol);
+    
+                        tabela += `
+                            <tr>
+                                <td>${row.mes}</td>
+                                <td>R$ ${valorTotal.toLocaleString('pt-BR')}</td> <!-- Formatação de número -->
+                                <td>R$ ${valorDiogo.toLocaleString('pt-BR')}</td> <!-- Formatação de número -->
+                                <td>R$ ${valorCarol.toLocaleString('pt-BR')}</td> <!-- Formatação de número -->
+                            </tr>
+                        `;
+                        meses.push(row.mes);
+                        valoresTotais.push(valorTotal);
+                        valoresDiogo.push(valorDiogo);
+                        valoresCarol.push(valorCarol);
+                    });
+                    $('#tabela-valores tbody').html(tabela);
+    
+                    // Criação do gráfico
+                    var ctx = document.getElementById('graficoMeses').getContext('2d');
+                    var grafico = new Chart(ctx, {
+                        type: 'bar', // Tipo de gráfico (bar para gráfico de barras)
+                        data: {
+                            labels: meses, // Meses
+                            datasets: [
+                                {
+                                    label: 'Valor Total',
+                                    data: valoresTotais, // Dados do valor total
+                                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                                    borderColor: 'rgba(54, 162, 235, 1)',
+                                    borderWidth: 1
+                                },
+                                {
+                                    label: 'Valor (Diogo)',
+                                    data: valoresDiogo, // Dados do valor de Diogo
+                                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                                    borderColor: 'rgba(255, 99, 132, 1)',
+                                    borderWidth: 1
+                                },
+                                {
+                                    label: 'Valor (Carol)',
+                                    data: valoresCarol, // Dados do valor de Carol
+                                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                                    borderColor: 'rgba(75, 192, 192, 1)',
+                                    borderWidth: 1
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: {
+                                        // Formatar os valores do eixo Y com separação de milhar
+                                        callback: function (value) {
+                                            return value.toLocaleString('pt-BR'); // Formatação de número
+                                        }
+                                    }
+                                }
+                            },
+                            plugins: {
+                                tooltip: {
+                                    callbacks: {
+                                        // Formatar o valor no tooltip com separação de milhar
+                                        label: function (tooltipItem) {
+                                            return tooltipItem.raw.toLocaleString('pt-BR'); // Formatação de número
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                },
+                error: function (xhr, status, error) {
+                    console.error('Erro ao buscar dados:', error);
+                }
+            });
+        });
+    </script>
+    
+
+</body>
+
+</html>

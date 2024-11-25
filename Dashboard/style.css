@@ -19,7 +19,6 @@ main {
 }
 
 #toggleButton {
-    margin-top: 20px;
     padding: 10px;
     cursor: pointer;
 }
@@ -38,6 +37,7 @@ main.sidebar-hidden {
     position: fixed;
     height: 100vh;
     width: 200px;
+    animation: slideRight 0.2s ease-out;
 }
 
 button {
@@ -91,7 +91,6 @@ a {
 }
 
 .main-content {
-    border-radius: 20px;
     box-shadow: 0 2px 4px black;
     background-color: white;
 }
@@ -108,6 +107,7 @@ a {
     justify-content: flex-start;
     align-items: center;
     margin-bottom: 20px;
+    gap: 30px;
 }
 
 .dashboard-header h1 {
@@ -125,7 +125,7 @@ a {
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     padding: 20px;
-    width: 100%;
+    width: 95%;
     text-align: center;
 }
 
@@ -139,6 +139,24 @@ a {
     font-size: 24px;
     font-weight: bold;
     color: #333;
+}
+
+.lucro {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.lucro p,
+.lucro span {
+    font-size: 16px;
+    color: black;
+    font-weight: 500;
+}
+
+.lucro span {
+    font-weight: 600;
+    color: green;
 }
 
 .chart-container {
@@ -225,6 +243,7 @@ a {
     display: flex;
     flex-wrap: wrap;
     gap: 20px;
+    justify-content: center;
 }
 
 .card {
@@ -257,10 +276,10 @@ a {
     margin: 0 auto;
 }
 
-#graficoPorcentagem {
+/* #graficoPorcentagem {
     width: 100%;
     height: 100%;
-}
+} */
 
 #funcoes {
     display: grid;
@@ -340,6 +359,18 @@ a {
 
     to {
         transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideRight {
+    from {
+        transform: translateX(-30px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0);
         opacity: 1;
     }
 }

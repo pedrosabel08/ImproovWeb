@@ -93,6 +93,7 @@ if (!isset($_SESSION['logado']) || !$_SESSION['logado'] || !isset($_SESSION['niv
                         <h3 id="nomenclatura"></h3>
                         <h4 id="data_inicio"></h4>
                         <h4 id="prazo"></h4>
+                        <h4 id="dias_trabalhados"></h4>
                     </div>
 
                     <div class="obra-acompanhamento">

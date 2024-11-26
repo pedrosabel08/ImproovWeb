@@ -57,20 +57,20 @@ $stmtFuncoes->close();
 
 // Segundo SELECT: Detalhes gerais da obra
 $sqlObra = "SELECT
-        o.idobra,
-        o.nomenclatura,
-        data_inicio, 
-        prazo, 
-        COUNT(*) AS total_imagens,
-        COUNT(CASE WHEN i.antecipada = 1 THEN 1 ELSE NULL END) AS total_imagens_antecipadas
-    FROM 
-        imagens_cliente_obra i
-    JOIN
-        obra o 
-        ON o.idobra = i.obra_id
-    WHERE 
-        obra_id = ?
-";
+    o.idobra,
+    o.nomenclatura,
+    i.data_inicio,
+	i.prazo,
+    COUNT(*) AS total_imagens,
+    COUNT(CASE WHEN i.antecipada = 1 THEN 1 ELSE NULL END) AS total_imagens_antecipadas,
+    i.dias_trabalhados
+FROM 
+    imagens_cliente_obra i
+JOIN
+    obra o 
+    ON o.idobra = i.obra_id
+WHERE 
+    i.obra_id = ?";
 
 $stmtObra = $conn->prepare($sqlObra);
 if ($stmtObra === false) {

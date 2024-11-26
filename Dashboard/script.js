@@ -41,141 +41,141 @@ fetch('atualizarValores.php')
     });
 
 
-fetch('producao_orcamento.php') // Substitua pela URL correta
-    .then(response => response.json())
-    .then(data => {
-        // Separar dados para os dois gráficos
-        const funcaoImagem = data.funcao_imagem.map(item => ({
-            mes: item.mes,
-            total: item.total_funcao_imagem
-        }));
+// fetch('producao_orcamento.php') // Substitua pela URL correta
+//     .then(response => response.json())
+//     .then(data => {
+//         // Separar dados para os dois gráficos
+//         const funcaoImagem = data.funcao_imagem.map(item => ({
+//             mes: item.mes,
+//             total: item.total_funcao_imagem
+//         }));
 
-        const controleComercial = data.controle_comercial.map(item => ({
-            mes: item.mes,
-            total: item.total_controle_comercial
-        }));
+//         const controleComercial = data.controle_comercial.map(item => ({
+//             mes: item.mes,
+//             total: item.total_controle_comercial
+//         }));
 
-        // Formatar os meses (para ambos os gráficos)
-        const labels = funcaoImagem.map(item => `Mês ${item.mes}`); // Exemplo: Mês 1, Mês 2...
+//         // Formatar os meses (para ambos os gráficos)
+//         const labels = funcaoImagem.map(item => `Mês ${item.mes}`); // Exemplo: Mês 1, Mês 2...
 
-        // Dados para o gráfico de Produção
-        const dadosProducao = funcaoImagem.map(item => item.total);
+//         // Dados para o gráfico de Produção
+//         const dadosProducao = funcaoImagem.map(item => item.total);
 
-        // Dados para o gráfico de Orçamento
-        const dadosOrcamento = controleComercial.map(item => item.total);
+//         // Dados para o gráfico de Orçamento
+//         const dadosOrcamento = controleComercial.map(item => item.total);
 
-        // Criar o gráfico de Produção
-        const ctxProducao = document.getElementById('graficoProducao').getContext('2d');
-        new Chart(ctxProducao, {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Produção',
-                    data: dadosProducao,
-                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                    borderColor: 'rgba(75, 192, 192, 1)',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                scales: {
-                    y: {
-                        beginAtZero: true
-                    }
-                }
-            }
-        });
+//         // Criar o gráfico de Produção
+//         const ctxProducao = document.getElementById('graficoProducao').getContext('2d');
+//         new Chart(ctxProducao, {
+//             type: 'bar',
+//             data: {
+//                 labels: labels,
+//                 datasets: [{
+//                     label: 'Produção',
+//                     data: dadosProducao,
+//                     backgroundColor: 'rgba(75, 192, 192, 0.2)',
+//                     borderColor: 'rgba(75, 192, 192, 1)',
+//                     borderWidth: 1
+//                 }]
+//             },
+//             options: {
+//                 responsive: true,
+//                 scales: {
+//                     y: {
+//                         beginAtZero: true
+//                     }
+//                 }
+//             }
+//         });
 
-        // Criar o gráfico de Orçamento
-        const ctxOrcamento = document.getElementById('graficoOrcamento').getContext('2d');
-        new Chart(ctxOrcamento, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Orçamento',
-                    data: dadosOrcamento,
-                    backgroundColor: 'rgba(255, 159, 64, 0.2)',
-                    borderColor: 'rgba(255, 159, 64, 1)',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                scales: {
-                    y: {
-                        beginAtZero: true
-                    }
-                }
-            }
-        });
-    })
-    .catch(error => console.error('Erro ao carregar os dados:', error));
+//         // Criar o gráfico de Orçamento
+//         const ctxOrcamento = document.getElementById('graficoOrcamento').getContext('2d');
+//         new Chart(ctxOrcamento, {
+//             type: 'line',
+//             data: {
+//                 labels: labels,
+//                 datasets: [{
+//                     label: 'Orçamento',
+//                     data: dadosOrcamento,
+//                     backgroundColor: 'rgba(255, 159, 64, 0.2)',
+//                     borderColor: 'rgba(255, 159, 64, 1)',
+//                     borderWidth: 1
+//                 }]
+//             },
+//             options: {
+//                 responsive: true,
+//                 scales: {
+//                     y: {
+//                         beginAtZero: true
+//                     }
+//                 }
+//             }
+//         });
+//     })
+//     .catch(error => console.error('Erro ao carregar os dados:', error));
 
 
-fetch('tarefas.php')
-    .then(response => response.json())
-    .then(data => {
-        // Preparar os dados para o gráfico
-        const labels = data.map(item => `Função ${item.nome_funcao}`);
-        const percentuais = data.map(item => item.percentual_finalizado);
+// fetch('tarefas.php')
+//     .then(response => response.json())
+//     .then(data => {
+//         // Preparar os dados para o gráfico
+//         const labels = data.map(item => `Função ${item.nome_funcao}`);
+//         const percentuais = data.map(item => item.percentual_finalizado);
 
-        // Criar uma string combinando percentual e total de tarefas
-        const tooltips = data.map(item =>
-            `${item.percentual_finalizado}% - Total: ${item.total_finalizado} Tarefas Finalizadas - Total: ${item.total_tarefas} Tarefas`
-        );
+//         // Criar uma string combinando percentual e total de tarefas
+//         const tooltips = data.map(item =>
+//             `${item.percentual_finalizado}% - Total: ${item.total_finalizado} Tarefas Finalizadas - Total: ${item.total_tarefas} Tarefas`
+//         );
 
-        // Média de tarefas por mês (pode ser um valor estático ou calculado dinamicamente)
-        const medias = [
-            15, 35, 30, 40, 55, 23, 9, 17,  // exemplo de médias para cada mês
-        ];
+//         // Média de tarefas por mês (pode ser um valor estático ou calculado dinamicamente)
+//         const medias = [
+//             15, 35, 30, 40, 55, 23, 9, 17,  // exemplo de médias para cada mês
+//         ];
 
-        // Criar o gráfico de barras
-        const ctx = document.getElementById('graficoPercentual').getContext('2d');
-        new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: '% de Tarefas Finalizadas (Mês Atual)',
-                    data: percentuais,  // Apenas o percentual vai no gráfico
-                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                    borderColor: 'rgba(54, 162, 235, 1)',
-                    borderWidth: 1
-                }, {
-                    label: 'Média de Tarefas por Mês',
-                    data: medias,  // Adicionando a média de tarefas
-                    type: 'line',  // Tipo de gráfico linha para a média
-                    borderColor: 'rgba(255, 99, 132, 1)',  // Cor da linha da média
-                    borderWidth: 2,
-                    fill: false,  // Não preencher a área abaixo da linha
-                    tension: 0.1  // Suavizar a linha da média
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    tooltip: {
-                        callbacks: {
-                            // Customizando o tooltip para mostrar a string formatada
-                            label: function (context) {
-                                const index = context.dataIndex;
-                                return tooltips[index];  // Exibe o tooltip customizado com percentual e total
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true
-                    }
-                }
-            }
-        });
-    })
-    .catch(error => console.error('Erro ao carregar os dados:', error));
+//         // Criar o gráfico de barras
+//         const ctx = document.getElementById('graficoPercentual').getContext('2d');
+//         new Chart(ctx, {
+//             type: 'bar',
+//             data: {
+//                 labels: labels,
+//                 datasets: [{
+//                     label: '% de Tarefas Finalizadas (Mês Atual)',
+//                     data: percentuais,  // Apenas o percentual vai no gráfico
+//                     backgroundColor: 'rgba(54, 162, 235, 0.2)',
+//                     borderColor: 'rgba(54, 162, 235, 1)',
+//                     borderWidth: 1
+//                 }, {
+//                     label: 'Média de Tarefas por Mês',
+//                     data: medias,  // Adicionando a média de tarefas
+//                     type: 'line',  // Tipo de gráfico linha para a média
+//                     borderColor: 'rgba(255, 99, 132, 1)',  // Cor da linha da média
+//                     borderWidth: 2,
+//                     fill: false,  // Não preencher a área abaixo da linha
+//                     tension: 0.1  // Suavizar a linha da média
+//                 }]
+//             },
+//             options: {
+//                 responsive: true,
+//                 plugins: {
+//                     tooltip: {
+//                         callbacks: {
+//                             // Customizando o tooltip para mostrar a string formatada
+//                             label: function (context) {
+//                                 const index = context.dataIndex;
+//                                 return tooltips[index];  // Exibe o tooltip customizado com percentual e total
+//                             }
+//                         }
+//                     }
+//                 },
+//                 scales: {
+//                     y: {
+//                         beginAtZero: true
+//                     }
+//                 }
+//             }
+//         });
+//     })
+//     .catch(error => console.error('Erro ao carregar os dados:', error));
 
 let chartInstance = null;
 
@@ -328,9 +328,6 @@ document.getElementById('orcamento').addEventListener('click', function () {
     document.getElementById('modalOrcamento').style.display = 'flex';
 });
 
-document.getElementById('fecharOrcamento').addEventListener('click', function () {
-    document.getElementById('modalOrcamento').style.display = 'none';
-});
 
 document.getElementById('formOrcamento').addEventListener('submit', function (e) {
     e.preventDefault();
@@ -358,24 +355,37 @@ document.getElementById('formOrcamento').addEventListener('submit', function (e)
         });
 });
 
-const toggleButton = document.getElementById('toggleButton');
-const main = document.querySelector('main');
-const sidebar = document.querySelector('.sidebar');
-
-toggleButton.addEventListener('click', () => {
-    sidebar.style.display = 'flex';
-});
-
-window.addEventListener('click', (event) => {
-    // Verifica se o clique foi fora da sidebar e do botão de toggle
-    if (!sidebar.contains(event.target) && event.target !== toggleButton) {
-        sidebar.style.display = 'none'; // Esconde a sidebar
-    }
-});
-
 const modalInfos = document.getElementById('modalInfos')
+const modalOrcamento = document.getElementById('modalOrcamento')
 window.onclick = function (event) {
     if (event.target == modalInfos) {
         modalInfos.style.display = "none";
     }
+    if (event.target == modalOrcamento) {
+        modalOrcamento.style.display = "none";
+    }
 }
+
+
+document.addEventListener('DOMContentLoaded', function () {
+    const cards = document.querySelectorAll('.stat-card');
+    let currentIndex = 0;
+
+    // Exibe o primeiro card
+    cards[currentIndex].classList.add('active');
+
+    // Função para mostrar o próximo card
+    function nextCard() {
+        // Remove a classe 'active' do card atual
+        cards[currentIndex].classList.remove('active');
+
+        // Avança para o próximo card, ou volta ao primeiro card se chegar no final
+        currentIndex = (currentIndex + 1) % cards.length;
+
+        // Adiciona a classe 'active' ao próximo card
+        cards[currentIndex].classList.add('active');
+    }
+
+    // Altere o card a cada 3 segundos (3000 ms)
+    setInterval(nextCard, 3000); // 3000 ms = 3 segundos
+});

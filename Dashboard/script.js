@@ -366,6 +366,14 @@ window.onclick = function (event) {
     }
 }
 
+window.addEventListener('touchstart', function (event) {
+    if (event.target == modalInfos) {
+        modalInfos.style.display = "none";
+    }
+    if (event.target == modalOrcamento) {
+        modalOrcamento.style.display = "none";
+    }
+});
 
 document.addEventListener('DOMContentLoaded', function () {
     const cards = document.querySelectorAll('.stat-card');

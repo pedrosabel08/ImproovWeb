@@ -14,6 +14,7 @@ body {
 
 main {
     display: grid;
+    grid-template-columns: 50px 1fr;
     height: 100vh;
     transition: grid-template-columns 0.3s ease;
 }
@@ -23,21 +24,53 @@ main {
     cursor: pointer;
 }
 
-main.sidebar-hidden {
-    grid-template-columns: 0 1fr;
-}
 
+/* Estilo para o container da sidebar */
 .sidebar {
     background-color: #eeeeee;
     padding: 10px;
-    display: none;
+    display: flex;
     flex-direction: column;
     align-items: center;
     gap: 50px;
     position: fixed;
-    height: 100vh;
-    width: 200px;
+    height: 100%;
     animation: slideRight 0.2s ease-out;
+    grid-column: 1;
+}
+
+/* Estilo do link com o ícone */
+.nav a {
+    display: block;
+    padding: 10px;
+    color: black;
+    text-decoration: none;
+    font-size: 20px;
+    position: relative;
+}
+
+/* Tooltip - Escondido por padrão */
+.tooltip .tooltiptext {
+    visibility: hidden;
+    background-color: black;
+    color: #fff;
+    text-align: center;
+    border-radius: 5px;
+    padding: 5px;
+    position: absolute;
+    z-index: 1;
+    left: 120%;
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0;
+    transition: opacity 0.3s;
+    white-space: nowrap;
+}
+
+/* Mostrar o tooltip quando passar o mouse */
+.tooltip:hover .tooltiptext {
+    visibility: visible;
+    opacity: 1;
 }
 
 button {
@@ -47,7 +80,7 @@ button {
 .top p {
     text-transform: uppercase;
     font-weight: 500;
-    font-size: 24px;
+    font-size: 32px;
     text-align: center;
 }
 
@@ -78,6 +111,7 @@ a {
 .content .nav {
     display: flex;
     flex-direction: column;
+    align-items: center;
     gap: 10px;
 }
 
@@ -90,29 +124,26 @@ a {
     margin-right: 8px;
 }
 
-.main-content {
-    box-shadow: 0 2px 4px black;
-    background-color: white;
-}
 
 .main-content {
     display: flex;
     flex-direction: column;
     padding: 20px;
     gap: 20px;
+    background-color: white;
+    grid-column: 2;
 }
 
 .dashboard-header {
     display: flex;
-    justify-content: flex-start;
+    justify-content: center;
     align-items: center;
-    margin-bottom: 20px;
+    margin-bottom: 10px;
     gap: 30px;
 }
 
-.dashboard-header h1 {
-    font-size: 24px;
-    color: #333;
+.dashboard-header img {
+    width: 200px;
 }
 
 .stats-container {
@@ -287,6 +318,17 @@ a {
     margin-top: 30px;
 }
 
+#formOrcamento {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+}
+
+.linha {
+    margin-left: 30px;
+}
+
 .modalInfos,
 .modalOrcamento {
     display: none;
@@ -304,8 +346,19 @@ a {
     background-color: white;
     padding: 20px;
     border-radius: 8px;
-    width: 300px;
+    width: 500px;
     text-align: center;
+    animation: slideDown 0.3s ease-out;
+}
+
+.orcamento-form h2 {
+    margin-bottom: 20px;
+}
+
+.buttons {
+    display: flex;
+    justify-content: center;
+    width: 100%;
 }
 
 #infos-obra {
@@ -328,6 +381,21 @@ a {
     margin-top: 10px;
     font-size: 0.9rem;
     color: #444;
+}
+
+#orcamento,
+#salvar_orcamento {
+    padding: 2px 6px;
+    border-radius: 15px;
+    font-size: 14px;
+    background-color: green;
+    color: white;
+    transition: 0.2s all ease;
+}
+
+#orcamento:hover {
+    font-weight: 600;
+    cursor: pointer;
 }
 
 .obra-valores {
@@ -372,5 +440,52 @@ a {
     to {
         transform: translateX(0);
         opacity: 1;
+    }
+}
+
+@media (max-width: 600px) {
+
+    .stats-container {
+        position: relative;
+        width: 100%;
+        overflow: hidden;
+    }
+
+    .stat-card {
+        display: none;
+        border-bottom: 1px solid black;
+        border-radius: 0;
+    }
+
+    .stat-card.active {
+        display: block;
+    }
+
+    #painel {
+        display: grid;
+        grid-template-columns: auto auto;
+    }
+
+    .legenda {
+        display: none;
+    }
+
+    .card {
+        width: 100px;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        background-color: #fff;
+        transition: 0.3s all ease;
+        text-align: center;
+    }
+
+    .card h3 {
+        font-size: 16px;
+    }
+
+    .card h4 {
+        font-size: 10px;
     }
 }

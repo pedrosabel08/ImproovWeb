@@ -26,31 +26,28 @@ if (!isset($_SESSION['logado']) || !$_SESSION['logado'] || !isset($_SESSION['niv
     <main>
         <div class="sidebar">
             <div class="top">
-                <p>Improov</p>
+                <p>+</p>
             </div>
             <div class="content">
-                <input type="text" name="" id="" placeholder="Pesquise...">
-
                 <div class="nav">
-                    <a href="#" id="dashboard"><i class="fa-solid fa-chart-line"></i>Dashboard</a>
-                    <a href="projetos.html" id="projects"><i class="fa-solid fa-list-check"></i>Projetos</a>
-                    <a href="#" id="colabs"><i class="fa-solid fa-users"></i>Colaboradores</a>
-                    <a href="controle_comercial.html" id="colabs"><i class="fa-solid fa-users"></i>Controle comercial</a>
+                    <a href="#" id="dashboard" class="tooltip"><i class="fa-solid fa-chart-line"></i><span class="tooltiptext">Dashboard</span></a>
+                    <a href="#" id="projects" class="tooltip"><i class="fa-solid fa-list-check"></i><span class="tooltiptext">Projetos</span></a>
+                    <a href="#" id="colabs" class="tooltip"><i class="fa-solid fa-users"></i><span class="tooltiptext">Colaboradores</span></a>
+                    <a href="controle_comercial.html" id="controle_comercial" class="tooltip"><i class="fa-solid fa-dollar-sign"></i><span class="tooltiptext">Controle Comercial</span></a>
                 </div>
             </div>
-
         </div>
+
         <div class="main-content">
             <!-- Cabeçalho do Dashboard -->
             <div class="dashboard-header">
-                <button id="toggleButton"><i class="fas fa-bars"></i></button>
-                <h1>Dashboard</h1>
+                <img src="../gif/assinatura_preto.gif" alt="">
             </div>
 
             <!-- Seção de Estatísticas -->
             <div class="stats-container">
                 <!-- Total da Empresa -->
-                <div class="stat-card">
+                <div class="stat-card active">
                     <h2>Total da Empresa ($)</h2>
                     <p id="total_orcamentos"></p>
                     <div class="lucro">
@@ -99,7 +96,7 @@ if (!isset($_SESSION['logado']) || !$_SESSION['logado'] || !isset($_SESSION['niv
                     </div>
 
                     <div class="obra-acompanhamento">
-                        <button id="acompanhamento">Acompanhamento</button>
+                        <!-- <button id="acompanhamento">Acompanhamento</button> -->
                         <button id="orcamento">Orçamento</button>
                     </div>
 
@@ -108,14 +105,21 @@ if (!isset($_SESSION['logado']) || !$_SESSION['logado'] || !isset($_SESSION['niv
                             <h2>Fazer Orçamento</h2>
                             <form id="formOrcamento">
                                 <input type="hidden" id="idObraOrcamento">
-                                <label for="tipo">Tipo:</label>
-                                <input type="text" id="tipo" required>
-                                <label for="valor">Valor:</label>
-                                <input type="number" id="valor" required>
-                                <label for="data">Data:</label>
-                                <input type="date" id="data" required>
-                                <button type="submit">Salvar Orçamento</button>
-                                <button type="button" id="fecharOrcamento">Fechar</button>
+                                <div class="linha">
+                                    <label for="tipo">Tipo:</label>
+                                    <input type="text" id="tipo" required>
+                                </div>
+                                <div class="linha">
+                                    <label for="valor">Valor:</label>
+                                    <input type="number" id="valor" required>
+                                </div>
+                                <div class="linha">
+                                    <label for="data">Data:</label>
+                                    <input type="date" id="data" required>
+                                </div>
+                                <div class="buttons">
+                                    <button type="submit" id="salvar_orcamento">Salvar Orçamento</button>
+                                </div>
                             </form>
                         </div>
                     </div>

@@ -330,39 +330,53 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
     const maxHeight = 260; // Limite para a altura
 
     // Função para adicionar texto com verificação de página
-    function addTextWithPageCheck(text) {
+    function addTextWithPageCheck(text, margin = 0, boldWords = []) {
         const lines = doc.splitTextToSize(text, 170);
         lines.forEach(line => {
             if (y + 8 > maxHeight) {
                 doc.addPage();
                 y = 20;
             }
-            doc.text(line, 20, y);
-            y += 8;
+
+            let x = 20; // Margem inicial
+            const words = line.split(/(\s+)/); // Divide palavras mantendo espaços
+            words.forEach(word => {
+                const cleanWord = word.replace(/[.,]/g, ""); // Remove pontuações para comparação
+
+                if (boldWords.includes(cleanWord)) {
+                    doc.setFont(undefined, "bold"); // Negrito
+                } else {
+                    doc.setFont(undefined, "normal"); // Fonte padrão
+                }
+
+                doc.text(word, x, y); // Adiciona a palavra no PDF
+                x += doc.getTextWidth(word); // Move o cursor para a próxima palavra
+            });
+
+            y += 8; // Move para a próxima linha
         });
+        y += margin;
     }
 
+
     // Parte 1: Texto do contrato
-    let text = `
-    De um lado IMPROOV LTDA., CNPJ: 37.066.879/0001-84, com endereço/sede na RUA BAHIA, 988, SALA 304, BAIRRO DO SALTO, 
-    BLUMENAU, SC, CEP 89.031-001; se seguir denominado simplesmente parte CONTRATANTE, neste ato representado por 
-    DIOGO JOSÉ POFFO, nacionalidade: brasileira, estado civil: divorciado, inscrito no CPF sob o nº. 036.698.519-17, 
-    residente e domiciliado na Avenida Senador Atílio Fontana, nº 2101 apt. 308 Edifício Caravelas, bairro Balneário 
-    Pereque – Porto Belo/SC – CEP 88210-000, doravante denominada parte CONTRATANTE.
+    // Definição das variáveis de texto
+    let text1 = "De um lado IMPROOV LTDA., CNPJ: 37.066.879/0001-84, com endereço/sede na RUA BAHIA, 988, SALA 304, BAIRRO DO SALTO, BLUMENAU, SC, CEP 89.031-001;Se seguir denominado simplesmente parte CONTRATANTE, neste ato representado por DIOGO JOSÉ POFFO, nacionalidade: brasileira, estado civil: divorciado, inscrito no CPF sob o nº. 036.698.519-17, residente e domiciliado na Avenida Senador Atílio Fontana, nº 2101 apt. 308 Edifício Caravelas, bairro Balneário Pereque – Porto Belo/SC – CEP 88210-000, doravante denominada parte CONTRATANTE.";
 
-    De outro, ${nomeColaborador}, CNPJ: ${cnpjColaborador}, com endereço/sede na ${enderecoColaborador}; 
-    se seguir denominado simplesmente parte CONTRATADA; neste ato representado por ${nomeEmpresarial}, 
-    brasileiro(a), ${estadoCivil}, inscrito(a) no CPF sob o nº. ${cpfColaborador}, residente e domiciliado na ${enderecoCNPJ} doravante denominada parte CONTRATADA.
+    let text2 = `De outro, ${nomeColaborador}, CNPJ: ${cnpjColaborador}, com endereço/sede na ${enderecoColaborador};se seguir denominado simplesmente parte CONTRATADA; neste ato representado por ${nomeEmpresarial}, brasileiro(a), ${estadoCivil}, inscrito(a) no CPF sob o nº. ${cpfColaborador}, residente e domiciliado na ${enderecoCNPJ} doravante denominada parte CONTRATADA.`;
 
-    Os denominados têm, entre si, justo e acertado, promover o TERMO ADITIVO N°X ao Contrato de Prestação de Serviços 
-    assinado em ${day} de ${month} de ${year}, nos seguintes termos e condições.
+    let text3 = "Os denominados têm, entre si, justo e acertado, promover o TERMO ADITIVO N°X ao Contrato de Prestação de Serviços assinado em " + `${day} de ${month} de ${year}, nos seguintes termos e condições.`;
 
-    DO OBJETO
-    Cláusula 1ª - O presente termo aditivo tem por escopo dar quitação aos valores devidos pelo CONTRATANTE ao 
-    CONTRATADO pela elaboração e desenvolvimento das seguintes imagens que não eram parte inicial do contrato de 
-    prestação de serviços firmado em ${day} de ${month} de ${year}:
-    `;
-    addTextWithPageCheck(text); // Adiciona a primeira parte
+    let text4 = "DO OBJETO";
+    let text5 = "Cláusula 1ª - O presente termo aditivo tem por escopo dar quitação aos valores devidos pelo CONTRATANTE  ao CONTRATADO  pela elaboração e desenvolvimento das seguintes imagens que não eram parte inicial do contrato de prestação de serviços firmado em " + `${day} de ${month} de ${year}:`;
+
+    // Adicionando os textos ao PDF
+    addTextWithPageCheck(text1, 10, ["IMPROOV", "LTDA", "DIOGO", "JOSÉ", "POFFO", "CONTRATANTE"]);
+    addTextWithPageCheck(text2, 10, ["CONTRATADA", "CONTRATATO", nomeColaborador, cnpjColaborador, enderecoColaborador, nomeEmpresarial, estadoCivil, cpfColaborador, enderecoCNPJ]);
+    addTextWithPageCheck(text3, 10, ["TERMO", "ADITIVO", "ao", "Contrato", "de", "Prestação", "Serviços", "assinado", "em", day.toString(), month, year.toString()]);
+    addTextWithPageCheck(text4, 0, ["DO OBJETO"]);
+    addTextWithPageCheck(text5, 10, ["Cláusula", "1ª", "CONTRATANTE", "CONTRATADO", day.toString(), month, year.toString()]);
+
 
     // Parte 2: Lista de tarefas/tabela
     const table = document.getElementById('tabela-faturamento');
@@ -393,24 +407,22 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
             theme: 'grid',
             headStyles: { fillColor: [0, 0, 0], textColor: [255, 255, 255] },
             bodyStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0] },
-            margin: { top: 10, left: 20, right: 20 },
-            styles: { fontSize: 10, cellPadding: 5 }
+            margin: { top: 10, left: 20, right: 20},
+            styles: { fontSize: 10, cellPadding: 2 }
         });
-        y = doc.lastAutoTable.finalY + 10; // Atualiza a posição Y após a tabela
+        y = doc.lastAutoTable.finalY + 20; // Atualiza a posição Y após a tabela
     }
 
     // Parte 3: Segunda parte do contrato
-    text = `
-    Cláusula 2ª - O CONTRATADO declara que no dia ${day} de ${month} de ${year}, recebeu do CONTRATANTE o valor de R$ ${totalValor.toFixed(2)} (${totalValorExtenso}), 
-    pela entrega das imagens acima referidas, e dá a mais ampla, geral e irrestrita quitação à dívida, renunciando seu 
-    direito de cobrança relativos a tais valores.
-    
-    E por estarem justas e perfeitamente acertadas, assinam o presente em 02 (duas) vias de igual teor e forma, 
-    vias na presença de 2 (duas) testemunhas.
-    
-    Porto Belo/SC, ${day} de ${month} de ${year}.
-    `;
-    addTextWithPageCheck(text); // Adiciona a segunda parte do contrato
+    let text6 = `Cláusula 2ª - O CONTRATADO  declara que no dia ${day} de ${month} de ${year}, recebeu do CONTRATANTE  o valor de R$ ${totalValor.toFixed(2)} (${totalValorExtenso}), pela entrega das imagens acima referidas, e dá a mais ampla, geral e irrestrita quitação à dívida, renunciando seu direito de cobrança relativos a tais valores. `;
+
+    let text7 = `E por estarem justas e perfeitamente acertadas, assinam o presente em 02 (duas) vias de igual teor e forma, vias na presença de 2 (duas) testemunhas.`;
+
+    let text8 = `Porto Belo/SC, ${day} de ${month} de ${year}.`;
+
+    addTextWithPageCheck(text6, 10, ["Cláusula", "2ª", "CONTRATADO", "CONTRATANTE", day.toString(), month, year.toString()], totalValor, totalValorExtenso);
+    addTextWithPageCheck(text7, 10);
+    addTextWithPageCheck(text8, 10, ["Porto", "Belo/SC", , day.toString(), month, year.toString()]);
 
     // Parte 4: Assinaturas
     y += 20; // Espaço antes das assinaturas

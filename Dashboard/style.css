@@ -398,6 +398,10 @@ a {
     cursor: pointer;
 }
 
+#dias_trabalhados {
+    font-weight: 400;
+}
+
 .obra-valores {
     display: flex;
     flex-direction: column;

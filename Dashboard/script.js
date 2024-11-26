@@ -242,6 +242,7 @@ fetch('obras.php')
                         document.getElementById('nomenclatura').textContent = obra.nomenclatura || "Nome não disponível";
                         document.getElementById('data_inicio').textContent = `Data de Início: ${obra.data_inicio}`;
                         document.getElementById('prazo').textContent = `Prazo: ${obra.prazo}`;
+                        document.getElementById('dias_trabalhados').innerHTML = obra.dias_trabalhados ? `<strong>${obra.dias_trabalhados}</strong> dias` : '';
                         document.getElementById('total_imagens').textContent = `Total de Imagens: ${obra.total_imagens}`;
                         document.getElementById('total_imagens_antecipadas').textContent = `Imagens Antecipadas: ${obra.total_imagens_antecipadas}`;
 

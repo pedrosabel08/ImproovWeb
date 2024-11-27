@@ -45,7 +45,7 @@ fetch('obras.php')
                     localStorage.setItem('obraId', item.idobra);
 
                     // Redireciona para obra.html
-                    window.location.href = 'obra.html';
+                    window.location.href = 'obra.php';
                 });
 
 

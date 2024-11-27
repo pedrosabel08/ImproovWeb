@@ -198,7 +198,11 @@ fetch('obras.php')
         }
 
         // Iterar sobre os dados de obras e criar um card para cada obra
-        data.forEach(item => {
+
+        function criarCards (obras, painel){
+
+       
+        obras.forEach(item => {
             const card = document.createElement('div');
             card.classList.add('card'); // Adiciona a classe para estilo do card
             card.setAttribute('idobra', item.idobra);
@@ -321,6 +325,10 @@ fetch('obras.php')
             card.appendChild(prazo);
             painel.appendChild(card);
         });
+
+    }
+
+    criarCards(data.with_filter, painel);
 
     })
     .catch(error => console.error('Erro ao carregar os dados:', error));

@@ -4,27 +4,54 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick.css" />
-    <link rel="stylesheet" type="text/css"
-        href="https://cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick-theme.css" />
+    <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
         integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <!-- Script do Slick -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick.min.js"></script>
-
 
     <title>Projetos</title>
 </head>
 
 <body>
 
-    <div class="carousel">
-    </div>
+    <main>
+        <div class="sidebar">
+            <div class="top">
+                <p>+</p>
+            </div>
+            <div class="content">
+                <div class="nav">
+                    <a href="index.php" id="dashboard" class="tooltip"><i class="fa-solid fa-chart-line"></i><span
+                            class="tooltiptext">Dashboard</span></a>
+                    <a href="projetos.html" id="projects" class="tooltip"><i class="fa-solid fa-list-check"></i><span
+                            class="tooltiptext">Projetos</span></a>
+                    <a href="#" id="colabs" class="tooltip"><i class="fa-solid fa-users"></i><span
+                            class="tooltiptext">Colaboradores</span></a>
+                    <a href="controle_comercial.html" id="controle_comercial" class="tooltip"><i
+                            class="fa-solid fa-dollar-sign"></i><span class="tooltiptext">Controle Comercial</span></a>
+                </div>
+            </div>
+        </div>
 
+        <div class="main-content">
+            <h1>Projetos</h1>
 
-    <script src="script.js"></script>
+            <div id="legenda" class="legenda">
+                <div class="legenda-item">
+                    <h4>Obras ativas:</h4>
+                    <span id="obras_ativas" style="color: green;"></span>
+                </div>
+                <div class="legenda-item">
+                    <h4>Obras finalizadas:</h4>
+                    <span id="obras_finalizadas" style="color: red;"></span>
+                </div>
+            </div>
+            <div id="painel"></div>
+        </div>
+
+    </main>
+
+    <script src="scriptProjetos.js"></script>
 </body>
 
 </html>

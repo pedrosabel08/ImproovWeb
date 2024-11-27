@@ -466,46 +466,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
                     });
 
-                    // data.totais.forEach(function (item) {
-                    //     // Exibe outros totais
-                    //     document.getElementById('data-inicio').textContent = item.data_inicio || 'Não disponível';
-                    //     document.getElementById('receb-arq').textContent = item.recebimento_arquivos || 'Não disponível';
-                    //     document.getElementById('prazo-previsto').textContent = item.prazo || 'Não disponível';
-
-                    //     // var ctx = document.getElementById('graficoTotais').getContext('2d');
-
-                    //     // var graficoTotais = new Chart(ctx, {
-                    //     //     type: 'bar', // ou 'pie', 'line', etc. dependendo do seu gráfico
-                    //     //     data: {
-                    //     //         labels: [
-                    //     //             'Caderno', 'Modelagem', 'Composição', 'Finalização',
-                    //     //             'Pós Produção', 'Alteração', 'Planta'
-                    //     //         ],
-                    //     //         datasets: [{
-                    //     //             label: 'Porcentagem de Finalizados',
-                    //     //             data: [
-                    //     //                 item.caderno_porcentagem,
-                    //     //                 item.modelagem_porcentagem,
-                    //     //                 item.composicao_porcentagem,
-                    //     //                 item.finalizacao_porcentagem,
-                    //     //                 item.pos_producao_porcentagem,
-                    //     //                 item.alteracao_porcentagem,
-                    //     //                 item.planta_porcentagem
-                    //     //             ],
-                    //     //             backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                    //     //             borderColor: 'rgba(75, 192, 192, 1)',
-                    //     //             borderWidth: 1
-                    //     //         }]
-                    //     //     },
-                    //     //     options: {
-                    //     //         scales: {
-                    //     //             y: {
-                    //     //                 beginAtZero: true
-                    //     //             }
-                    //     //         }
-                    //     //     }
-                    //     // });
-                    // });
+                    addEventListenersToRows();
 
                 })
                 .catch(error => console.error('Erro ao carregar funções:', error));

@@ -422,6 +422,7 @@ a {
     color: #333;
 }
 
+
 /* Animação do modal */
 @keyframes slideDown {
     from {
@@ -505,4 +506,84 @@ a {
         width: 300px;
     }
 
+}
+
+
+.filtro-tabela {
+    display: flex;
+    justify-content: center;
+    flex-direction: column;
+    width: 95%;
+    margin: 0 auto;
+    box-shadow: 0 1px 10px rgba(0, 0, 0, 0.7);
+    background-color: #fff;
+    border-radius: 8px;
+    padding: 20px;
+    height: auto;
+    max-height: 80%;
+    overflow-y: auto;
+    animation: slideDown 0.3s ease-out;
+    gap: 15px;
+}
+
+table tbody tr:hover {
+    cursor: pointer;
+    background-color: #FF5833;
+}
+
+
+table#tabela-obra {
+    border-collapse: collapse;
+    width: 90%;
+    background-color: white;
+}
+
+table#tabela-obra td:first-child,
+table#tabela-obra th:first-child {
+    max-width: 500px
+}
+
+#tabela-obra td {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 5px;
+}
+
+#tabela-obra th {
+    background-color: #333;
+    color: white;
+    font-weight: 500;
+    padding: 5px;
+}
+
+#tabela-obra td,
+#tabela-obra th {
+    border: 1px solid black;
+    font-size: 14px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    width: 135px;
+}
+
+header {
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+}
+
+header h1 {
+    border-bottom: 2px solid black;
+}
+
+#toggleSidebar {
+    position: absolute;
+    left: 15px;
+}
+
+span#obras_ativas, span#obras_finalizadas {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-left: 5px;
 }

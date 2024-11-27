@@ -571,34 +571,6 @@ $conn->close();
                     <span class="circulo antecipada"></span> Antecipada
                 </span>
             </div>
-            <!-- 
-            <button id="mostrar-desc" style="background-color: #f7ef05;margin: 0;">Descrições</button>
-
-            <div id="desc-modal" class="modal">
-                <div class="modal-content-desc">
-                    <span class="closeDesc">&times;</span>
-                    <h2>Descrições obra</h2>
-
-                    <div class="infos">
-                        <p>Data de início:</p>
-                        <span id="data-inicio"></span>
-                    </div>
-                    <div class="infos">
-                        <p>Último arquivo recebido:</p>
-                        <span id="receb-arq"></span>
-                    </div>
-                    <div class="infos">
-                        <p>Prazo previsto:</p>
-                        <span id="prazo-previsto"></span>
-                    </div>
-                    <h3>Progresso</h3>
-                    <canvas id="graficoTotais" width="400" height="400"></canvas>
-
-                    <button id="ver-acomp-obra">Acompanhamento</button>
-                    <div id="acompanhamentoConteudo" class="hidden"></div>
-
-                </div>
-            </div> -->
 
             <table id="tabela-obra">
                 <thead>

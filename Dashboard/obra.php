@@ -1,4 +1,5 @@
 <?php
+session_start();
 include '../conexaoMain.php';
 
 $conn = conectarBanco();
@@ -153,25 +154,31 @@ $conn->close();
                 </div>
             </div>
 
-            <div class="obra-valores">
-                <div class="valor-item">
-                    <strong>Valor Orçamento:</strong>
-                    <span id="valor_orcamento"></span>
+            <?php
+            // Exibir somente se o usuário tiver nível de acesso 1
+            if (isset($_SESSION['logado']) && $_SESSION['logado'] === true && $_SESSION['nivel_acesso'] == 1) {
+            ?>
+                <div class="obra-valores">
+                    <div class="valor-item">
+                        <strong>Valor Orçamento:</strong>
+                        <span id="valor_orcamento"></span>
+                    </div>
+                    <div class="valor-item">
+                        <strong>Valor Produção:</strong>
+                        <span id="valor_producao"></span>
+                    </div>
+                    <div class="valor-item">
+                        <strong>Valor projetado:</strong>
+                        <span id="valor_fixo"></span>
+                    </div>
+                    <div class="valor-item">
+                        <strong>Lucro estimado (produção):</strong>
+                        <span id="lucro"></span>
+                    </div>
                 </div>
-                <div class="valor-item">
-                    <strong>Valor Produção:</strong>
-                    <span id="valor_producao"></span>
-                </div>
-                <div class="valor-item">
-                    <strong>Valor projetado:</strong>
-                    <span id="valor_fixo"></span>
-                </div>
-                <div class="valor-item">
-                    <strong>Lucro estimado (produção):</strong>
-                    <span id="lucro"></span>
-                </div>
-            </div>
-
+            <?php
+            }
+            ?>
         </div>
     </div>
     </div>

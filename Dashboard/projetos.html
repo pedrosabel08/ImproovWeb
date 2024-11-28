@@ -34,8 +34,9 @@
         </div>
 
         <div class="main-content">
-            <h1>Projetos</h1>
-
+            <div class="dashboard-header">
+                <img src="../gif/assinatura_preto.gif" alt="">
+            </div>
             <div id="legenda" class="legenda">
                 <div class="legenda-item">
                     <h4>Obras ativas:</h4>
@@ -47,6 +48,14 @@
                 </div>
             </div>
             <div id="painel"></div>
+
+            <!-- Botão para controlar a gaveta -->
+            <button id="toggleGaveta"><i class="fas fa-chevron-down"></i></button>
+
+            <!-- Gaveta para obras inativas -->
+            <div id="gaveta">
+                <div id="obrasInativas"></div>
+            </div>
         </div>
 
     </main>

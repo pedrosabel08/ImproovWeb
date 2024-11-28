@@ -1,3 +1,100 @@
+document.addEventListener('DOMContentLoaded', () => {
+    const navLinks = document.querySelectorAll('.nav a'); // Seleciona todos os links dentro da classe .nav
+    const currentPage = window.location.pathname.split('/').pop(); // Obtém o nome do arquivo atual da URL
+
+    navLinks.forEach(link => {
+        const linkHref = link.getAttribute('href'); // Obtém o valor do href de cada link
+        if (linkHref === currentPage) {
+            link.classList.add('active'); // Adiciona a classe active se o link corresponder à página atual
+        }
+    });
+});
+
+function mostrarImagens() {
+    // Mostra as imagens restantes
+    document.getElementById("imagens-restantes").style.display = "block";
+    // Esconde o botão após clicar
+    document.getElementById("mostrar-mais").style.display = "none";
+}
+
+const modalColab = document.getElementById('filtro-colab');
+
+document.getElementById('ver_todas').addEventListener('click', function () {
+    modalColab.style.display = 'flex';
+})
+
+function carregarDados() {
+    var colaboradorId = localStorage.getItem('idcolaborador');
+
+    var dataInicio = document.getElementById('dataInicio').value;
+    var dataFim = document.getElementById('dataFim').value;
+    var obraId = document.getElementById('obraSelect').value;
+    var funcaoId = document.getElementById('funcaoSelect').value;
+    var status = document.getElementById('statusSelect').value;
+
+    if (colaboradorId) {
+        var url = '../getFuncoesPorColaborador.php?colaborador_id=' + colaboradorId;
+
+        if (dataInicio) {
+            url += '&data_inicio=' + encodeURIComponent(dataInicio);
+        }
+        if (dataFim) {
+            url += '&data_fim=' + encodeURIComponent(dataFim);
+        }
+        if (obraId) {
+            url += '&obra_id=' + encodeURIComponent(obraId);
+        }
+        if (funcaoId) {
+            url += '&funcao_id=' + encodeURIComponent(funcaoId);
+        }
+        if (status) {
+            url += '&status=' + encodeURIComponent(status);
+        }
+
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                var tabela = document.querySelector('#tabela-colab tbody');
+                tabela.innerHTML = '';
+
+                data.forEach(function (item) {
+                    var row = document.createElement('tr');
+                    row.classList.add('linha-tabela');
+                    row.setAttribute('data-id', item.imagem_id);
+                    var cellNomeImagem = document.createElement('td');
+                    cellNomeImagem.textContent = item.imagem_nome;
+                    var cellFuncao = document.createElement('td');
+                    cellFuncao.textContent = item.nome_funcao;
+                    var cellStatus = document.createElement('td');
+                    cellStatus.textContent = item.status;
+                    var cellPrazoImagem = document.createElement('td');
+                    cellPrazoImagem.textContent = item.prazo;
+
+                    row.appendChild(cellNomeImagem);
+                    row.appendChild(cellFuncao);
+                    row.appendChild(cellStatus);
+                    row.appendChild(cellPrazoImagem);
+                    tabela.appendChild(row);
+                });
+
+                document.getElementById('totalImagens').textContent = data.length;
+
+            })
+            .catch(error => console.error('Erro ao carregar funções:', error));
+    } else {
+        document.querySelector('#tabela-colab tbody').innerHTML = '';
+        document.getElementById('totalImagens').textContent = '0';
+    }
+}
+
+
+document.getElementById('dataInicio').addEventListener('change', carregarDados);
+document.getElementById('dataFim').addEventListener('change', carregarDados);
+document.getElementById('obraSelect').addEventListener('change', carregarDados);
+document.getElementById('funcaoSelect').addEventListener('change', carregarDados);
+document.getElementById('statusSelect').addEventListener('change', carregarDados);
+
+
 fetch('atualizarValores.php')
     .then(response => response.json())
     .then(data => {
@@ -41,142 +138,6 @@ fetch('atualizarValores.php')
     });
 
 
-// fetch('producao_orcamento.php') // Substitua pela URL correta
-//     .then(response => response.json())
-//     .then(data => {
-//         // Separar dados para os dois gráficos
-//         const funcaoImagem = data.funcao_imagem.map(item => ({
-//             mes: item.mes,
-//             total: item.total_funcao_imagem
-//         }));
-
-//         const controleComercial = data.controle_comercial.map(item => ({
-//             mes: item.mes,
-//             total: item.total_controle_comercial
-//         }));
-
-//         // Formatar os meses (para ambos os gráficos)
-//         const labels = funcaoImagem.map(item => `Mês ${item.mes}`); // Exemplo: Mês 1, Mês 2...
-
-//         // Dados para o gráfico de Produção
-//         const dadosProducao = funcaoImagem.map(item => item.total);
-
-//         // Dados para o gráfico de Orçamento
-//         const dadosOrcamento = controleComercial.map(item => item.total);
-
-//         // Criar o gráfico de Produção
-//         const ctxProducao = document.getElementById('graficoProducao').getContext('2d');
-//         new Chart(ctxProducao, {
-//             type: 'bar',
-//             data: {
-//                 labels: labels,
-//                 datasets: [{
-//                     label: 'Produção',
-//                     data: dadosProducao,
-//                     backgroundColor: 'rgba(75, 192, 192, 0.2)',
-//                     borderColor: 'rgba(75, 192, 192, 1)',
-//                     borderWidth: 1
-//                 }]
-//             },
-//             options: {
-//                 responsive: true,
-//                 scales: {
-//                     y: {
-//                         beginAtZero: true
-//                     }
-//                 }
-//             }
-//         });
-
-//         // Criar o gráfico de Orçamento
-//         const ctxOrcamento = document.getElementById('graficoOrcamento').getContext('2d');
-//         new Chart(ctxOrcamento, {
-//             type: 'line',
-//             data: {
-//                 labels: labels,
-//                 datasets: [{
-//                     label: 'Orçamento',
-//                     data: dadosOrcamento,
-//                     backgroundColor: 'rgba(255, 159, 64, 0.2)',
-//                     borderColor: 'rgba(255, 159, 64, 1)',
-//                     borderWidth: 1
-//                 }]
-//             },
-//             options: {
-//                 responsive: true,
-//                 scales: {
-//                     y: {
-//                         beginAtZero: true
-//                     }
-//                 }
-//             }
-//         });
-//     })
-//     .catch(error => console.error('Erro ao carregar os dados:', error));
-
-
-// fetch('tarefas.php')
-//     .then(response => response.json())
-//     .then(data => {
-//         // Preparar os dados para o gráfico
-//         const labels = data.map(item => `Função ${item.nome_funcao}`);
-//         const percentuais = data.map(item => item.percentual_finalizado);
-
-//         // Criar uma string combinando percentual e total de tarefas
-//         const tooltips = data.map(item =>
-//             `${item.percentual_finalizado}% - Total: ${item.total_finalizado} Tarefas Finalizadas - Total: ${item.total_tarefas} Tarefas`
-//         );
-
-//         // Média de tarefas por mês (pode ser um valor estático ou calculado dinamicamente)
-//         const medias = [
-//             15, 35, 30, 40, 55, 23, 9, 17,  // exemplo de médias para cada mês
-//         ];
-
-//         // Criar o gráfico de barras
-//         const ctx = document.getElementById('graficoPercentual').getContext('2d');
-//         new Chart(ctx, {
-//             type: 'bar',
-//             data: {
-//                 labels: labels,
-//                 datasets: [{
-//                     label: '% de Tarefas Finalizadas (Mês Atual)',
-//                     data: percentuais,  // Apenas o percentual vai no gráfico
-//                     backgroundColor: 'rgba(54, 162, 235, 0.2)',
-//                     borderColor: 'rgba(54, 162, 235, 1)',
-//                     borderWidth: 1
-//                 }, {
-//                     label: 'Média de Tarefas por Mês',
-//                     data: medias,  // Adicionando a média de tarefas
-//                     type: 'line',  // Tipo de gráfico linha para a média
-//                     borderColor: 'rgba(255, 99, 132, 1)',  // Cor da linha da média
-//                     borderWidth: 2,
-//                     fill: false,  // Não preencher a área abaixo da linha
-//                     tension: 0.1  // Suavizar a linha da média
-//                 }]
-//             },
-//             options: {
-//                 responsive: true,
-//                 plugins: {
-//                     tooltip: {
-//                         callbacks: {
-//                             // Customizando o tooltip para mostrar a string formatada
-//                             label: function (context) {
-//                                 const index = context.dataIndex;
-//                                 return tooltips[index];  // Exibe o tooltip customizado com percentual e total
-//                             }
-//                         }
-//                     }
-//                 },
-//                 scales: {
-//                     y: {
-//                         beginAtZero: true
-//                     }
-//                 }
-//             }
-//         });
-//     })
-//     .catch(error => console.error('Erro ao carregar os dados:', error));
-
 let chartInstance = null;
 
 
@@ -199,136 +160,136 @@ fetch('obras.php')
 
         // Iterar sobre os dados de obras e criar um card para cada obra
 
-        function criarCards (obras, painel){
-
-       
-        obras.forEach(item => {
-            const card = document.createElement('div');
-            card.classList.add('card'); // Adiciona a classe para estilo do card
-            card.setAttribute('idobra', item.idobra);
-
-            const nomeObra = document.createElement('h3');
-            nomeObra.textContent = item.nome_obra;
-
-            const prazo = document.createElement('h4');
-            prazo.textContent = formatarData(item.prazo);
-
-            // Calcular a diferença de dias
-            const diasRestantes = calcularDiferencaDias(item.prazo);
-
-            // Alterar a cor do card com base no prazo
-            if (diasRestantes < 0) {
-                // Prazo já passou
-                card.style.backgroundColor = '#ff6f61'; // Vermelho
-                card.style.color = '#fff';
-            } else if (diasRestantes <= 3) {
-                // Prazo próximo (3 dias ou menos)
-                card.style.backgroundColor = '#f7b731'; // Amarelo
-                card.style.color = '#333';
-            } else {
-                // Prazo distante
-                card.style.backgroundColor = '#28a745'; // Verde
-                card.style.color = '#fff';
-            }
+        function criarCards(obras, painel) {
 
 
-            card.addEventListener('click', function () {
-                const obraId = item.idobra;
+            obras.forEach(item => {
+                const card = document.createElement('div');
+                card.classList.add('card'); // Adiciona a classe para estilo do card
+                card.setAttribute('idobra', item.idobra);
 
-                document.getElementById('idObraOrcamento').value = obraId;
-                document.getElementById('modalInfos').style.display = 'flex';
+                const nomeObra = document.createElement('h3');
+                nomeObra.textContent = item.nome_obra;
 
-                fetch(`detalhesObra.php?id=${obraId}`)
-                    .then(response => response.json())
-                    .then(detalhes => {
+                const prazo = document.createElement('h4');
+                prazo.textContent = formatarData(item.prazo);
 
-                        const obra = detalhes.obra;
-                        document.getElementById('nomenclatura').textContent = obra.nomenclatura || "Nome não disponível";
-                        document.getElementById('data_inicio').textContent = `Data de Início: ${obra.data_inicio}`;
-                        document.getElementById('prazo').textContent = `Prazo: ${obra.prazo}`;
-                        document.getElementById('dias_trabalhados').innerHTML = obra.dias_trabalhados ? `<strong>${obra.dias_trabalhados}</strong> dias` : '';
-                        document.getElementById('total_imagens').textContent = `Total de Imagens: ${obra.total_imagens}`;
-                        document.getElementById('total_imagens_antecipadas').textContent = `Imagens Antecipadas: ${obra.total_imagens_antecipadas}`;
+                // Calcular a diferença de dias
+                const diasRestantes = calcularDiferencaDias(item.prazo);
 
-                        const funcoes = detalhes.funcoes;
-                        const nomesFuncoes = funcoes.map(funcao => funcao.nome_funcao);
-                        const porcentagensFinalizadas = funcoes.map(funcao => parseFloat(funcao.porcentagem_finalizada));
+                // Alterar a cor do card com base no prazo
+                if (diasRestantes < 0) {
+                    // Prazo já passou
+                    card.style.backgroundColor = '#ff6f61'; // Vermelho
+                    card.style.color = '#fff';
+                } else if (diasRestantes <= 3) {
+                    // Prazo próximo (3 dias ou menos)
+                    card.style.backgroundColor = '#f7b731'; // Amarelo
+                    card.style.color = '#333';
+                } else {
+                    // Prazo distante
+                    card.style.backgroundColor = '#28a745'; // Verde
+                    card.style.color = '#fff';
+                }
 
-                        const funcoesDiv = document.getElementById('funcoes');
-                        funcoesDiv.innerHTML = "";
-                        detalhes.funcoes.forEach(funcao => {
-                            const funcaoDiv = document.createElement('div');
-                            funcaoDiv.classList.add('funcao');
-                            funcaoDiv.innerHTML = `
+
+                card.addEventListener('click', function () {
+                    const obraId = item.idobra;
+
+                    document.getElementById('idObraOrcamento').value = obraId;
+                    document.getElementById('modalInfos').style.display = 'flex';
+
+                    fetch(`detalhesObra.php?id=${obraId}`)
+                        .then(response => response.json())
+                        .then(detalhes => {
+
+                            const obra = detalhes.obra;
+                            document.getElementById('nomenclatura').textContent = obra.nomenclatura || "Nome não disponível";
+                            document.getElementById('data_inicio').textContent = `Data de Início: ${obra.data_inicio}`;
+                            document.getElementById('prazo').textContent = `Prazo: ${obra.prazo}`;
+                            document.getElementById('dias_trabalhados').innerHTML = obra.dias_trabalhados ? `<strong>${obra.dias_trabalhados}</strong> dias` : '';
+                            document.getElementById('total_imagens').textContent = `Total de Imagens: ${obra.total_imagens}`;
+                            document.getElementById('total_imagens_antecipadas').textContent = `Imagens Antecipadas: ${obra.total_imagens_antecipadas}`;
+
+                            const funcoes = detalhes.funcoes;
+                            const nomesFuncoes = funcoes.map(funcao => funcao.nome_funcao);
+                            const porcentagensFinalizadas = funcoes.map(funcao => parseFloat(funcao.porcentagem_finalizada));
+
+                            const funcoesDiv = document.getElementById('funcoes');
+                            funcoesDiv.innerHTML = "";
+                            detalhes.funcoes.forEach(funcao => {
+                                const funcaoDiv = document.createElement('div');
+                                funcaoDiv.classList.add('funcao');
+                                funcaoDiv.innerHTML = `
                                 <strong>${funcao.nome_funcao}</strong><br>
                                 Total de Imagens: ${funcao.total_imagens}<br>
                                 Imagens Finalizadas: ${funcao.funcoes_finalizadas}<br>
                                 Porcentagem Finalizada: ${funcao.porcentagem_finalizada}%<br><br>
                             `;
-                            funcoesDiv.appendChild(funcaoDiv);
-                        });
+                                funcoesDiv.appendChild(funcaoDiv);
+                            });
 
-                        const valores = detalhes.valores;
-                        document.getElementById('valor_orcamento').textContent = `R$ ${parseFloat(valores.valor_orcamento).toFixed(2)}`;
-                        document.getElementById('valor_producao').textContent = `R$ ${parseFloat(valores.custo_producao).toFixed(2)}`;
-                        document.getElementById('valor_fixo').textContent = `R$ ${parseFloat(valores.custo_fixo).toFixed(2)}`;
-                        document.getElementById('lucro').textContent = `R$ ${parseFloat(valores.lucro).toFixed(2)}`;
+                            const valores = detalhes.valores;
+                            document.getElementById('valor_orcamento').textContent = `R$ ${parseFloat(valores.valor_orcamento).toFixed(2)}`;
+                            document.getElementById('valor_producao').textContent = `R$ ${parseFloat(valores.custo_producao).toFixed(2)}`;
+                            document.getElementById('valor_fixo').textContent = `R$ ${parseFloat(valores.custo_fixo).toFixed(2)}`;
+                            document.getElementById('lucro').textContent = `R$ ${parseFloat(valores.lucro).toFixed(2)}`;
 
-                        const ctx = document.getElementById('graficoPorcentagem').getContext('2d');
-                        if (chartInstance) {
-                            chartInstance.destroy();
-                        }
-                        chartInstance = new Chart(ctx, {
-                            type: 'bar',
-                            data: {
-                                labels: nomesFuncoes,
-                                datasets: [{
-                                    label: 'Porcentagem de Conclusão (%)',
-                                    data: porcentagensFinalizadas,
-                                    backgroundColor: [
-                                        'rgba(54, 162, 235, 0.2)',  // Cor para a 1ª barra
-                                        'rgba(255, 99, 132, 0.2)',  // Cor para a 2ª barra
-                                        'rgba(255, 159, 64, 0.2)',  // Cor para a 3ª barra
-                                        'rgba(75, 192, 192, 0.2)',  // Cor para a 4ª barra
-                                        'rgba(153, 102, 255, 0.2)', // Cor para a 5ª barra
-                                        'rgba(255, 159, 64, 0.2)'   // Cor para a 6ª barra, e assim por diante
-                                    ],
-                                    borderColor: [
-                                        'rgba(54, 162, 235, 1)',  // Cor para a borda da 1ª barra
-                                        'rgba(255, 99, 132, 1)',  // Cor para a borda da 2ª barra
-                                        'rgba(255, 159, 64, 1)',  // Cor para a borda da 3ª barra
-                                        'rgba(75, 192, 192, 1)',  // Cor para a borda da 4ª barra
-                                        'rgba(153, 102, 255, 1)', // Cor para a borda da 5ª barra
-                                        'rgba(255, 159, 64, 1)'
-                                    ],
-                                    borderWidth: 1
-                                }]
-                            },
-                            options: {
-                                responsive: true,
-                                scales: {
-                                    y: {
-                                        beginAtZero: true,
-                                        ticks: {
-                                            stepSize: 10
+                            const ctx = document.getElementById('graficoPorcentagem').getContext('2d');
+                            if (chartInstance) {
+                                chartInstance.destroy();
+                            }
+                            chartInstance = new Chart(ctx, {
+                                type: 'bar',
+                                data: {
+                                    labels: nomesFuncoes,
+                                    datasets: [{
+                                        label: 'Porcentagem de Conclusão (%)',
+                                        data: porcentagensFinalizadas,
+                                        backgroundColor: [
+                                            'rgba(54, 162, 235, 0.2)',  // Cor para a 1ª barra
+                                            'rgba(255, 99, 132, 0.2)',  // Cor para a 2ª barra
+                                            'rgba(255, 159, 64, 0.2)',  // Cor para a 3ª barra
+                                            'rgba(75, 192, 192, 0.2)',  // Cor para a 4ª barra
+                                            'rgba(153, 102, 255, 0.2)', // Cor para a 5ª barra
+                                            'rgba(255, 159, 64, 0.2)'   // Cor para a 6ª barra, e assim por diante
+                                        ],
+                                        borderColor: [
+                                            'rgba(54, 162, 235, 1)',  // Cor para a borda da 1ª barra
+                                            'rgba(255, 99, 132, 1)',  // Cor para a borda da 2ª barra
+                                            'rgba(255, 159, 64, 1)',  // Cor para a borda da 3ª barra
+                                            'rgba(75, 192, 192, 1)',  // Cor para a borda da 4ª barra
+                                            'rgba(153, 102, 255, 1)', // Cor para a borda da 5ª barra
+                                            'rgba(255, 159, 64, 1)'
+                                        ],
+                                        borderWidth: 1
+                                    }]
+                                },
+                                options: {
+                                    responsive: true,
+                                    scales: {
+                                        y: {
+                                            beginAtZero: true,
+                                            ticks: {
+                                                stepSize: 10
+                                            }
                                         }
                                     }
                                 }
-                            }
-                        });
-                    })
-                    .catch(error => console.error('Erro ao carregar os detalhes da obra:', error));
+                            });
+                        })
+                        .catch(error => console.error('Erro ao carregar os detalhes da obra:', error));
 
+                });
+
+                card.appendChild(nomeObra);
+                card.appendChild(prazo);
+                painel.appendChild(card);
             });
 
-            card.appendChild(nomeObra);
-            card.appendChild(prazo);
-            painel.appendChild(card);
-        });
+        }
 
-    }
-
-    criarCards(data.with_filter, painel);
+        criarCards(data.with_filter, painel);
 
     })
     .catch(error => console.error('Erro ao carregar os dados:', error));
@@ -391,18 +352,13 @@ document.addEventListener('DOMContentLoaded', function () {
     // Exibe o primeiro card
     cards[currentIndex].classList.add('active');
 
-    // Função para mostrar o próximo card
     function nextCard() {
-        // Remove a classe 'active' do card atual
         cards[currentIndex].classList.remove('active');
 
-        // Avança para o próximo card, ou volta ao primeiro card se chegar no final
         currentIndex = (currentIndex + 1) % cards.length;
 
-        // Adiciona a classe 'active' ao próximo card
         cards[currentIndex].classList.add('active');
     }
 
-    // Altere o card a cada 3 segundos (3000 ms)
     setInterval(nextCard, 3000); // 3000 ms = 3 segundos
 });

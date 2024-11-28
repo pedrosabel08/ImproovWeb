@@ -120,8 +120,8 @@ a {
     font-size: 14px;
 }
 
-.nav a i {
-    margin-right: 8px;
+.nav i {
+    padding: 0 4px;
 }
 
 
@@ -170,6 +170,12 @@ a {
     font-size: 24px;
     font-weight: bold;
     color: #333;
+    filter: blur(5px); /* Inclua a unidade px */
+    transition: filter 0.3s ease; /* Adiciona uma transição suave */
+}
+
+.stat-card p:hover {
+    filter: blur(0);
 }
 
 .lucro {
@@ -301,13 +307,14 @@ a {
 }
 
 .card {
-    width: 200px;
+    width: 180px;
     padding: 20px;
     border: 1px solid #ccc;
     border-radius: 8px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     background-color: #fff;
     transition: 0.3s all ease;
+    cursor: pointer;
 }
 
 .card h3 {
@@ -448,6 +455,13 @@ a {
 }
 
 
+.nav a.active {
+    background-color: #007bff; /* Cor de fundo para o link ativo */
+    color: white; /* Cor do texto */
+    border-radius: 5px; /* Borda arredondada, se necessário */
+    font-weight: bold; /* Negrito para destaque */
+}
+
 /* Animação do modal */
 @keyframes slideDown {
     from {
@@ -563,33 +577,33 @@ table tbody tr:hover {
     background-color: #FF5833;
 }
 
-table#tabela-obra {
+table {
     border-collapse: collapse;
     width: 80%;
     background-color: white;
 }
 
-table#tabela-obra td:first-child {
+table td:first-child {
     max-width: 500px;
     text-align: left;
 }
 
-#tabela-obra td {
+td {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
     padding: 5px;
 }
 
-#tabela-obra th {
+th {
     background-color: #333;
     color: white;
     font-weight: 500;
     padding: 5px;
 }
 
-#tabela-obra td,
-#tabela-obra th {
+td,
+th {
     border: 1px solid black;
     font-size: 14px;
     overflow: hidden;
@@ -726,6 +740,75 @@ form#form-add button:hover {
 #status_funcao select {
     width: 80px;
     margin: 0 auto;
+}
+
+#toggleGaveta {
+    margin: 10px 0;
+    padding: 5px;
+    background-color: #000;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#toggleGaveta i {
+    margin-left: 5px;
+    transition: transform 0.3s ease;
+    /* Para uma rotação suave, se necessário */
+}
+
+#toggleGaveta:hover {
+    background-color: #0056b3;
+}
+
+#gaveta.open+#toggleGaveta i {
+    transform: rotate(180deg);
+    /* Roda o ícone para cima */
+}
+
+/* Gaveta com animação */
+#gaveta {
+    max-height: 0;
+    overflow: hidden;
+    padding: 0 10px;
+    margin-top: 10px;
+    border-radius: 5px;
+    transition: max-height 0.5s ease, padding 0.5s ease;
+}
+
+#gaveta.open {
+    max-height: 500px;
+}
+
+#container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    padding: 50px;
+    gap: 100px;
+    height: 50vh;
+}
+
+.img-container, .grafico {
+    border-radius: 15px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.322);
+    padding: 15px 40px;
+}
+
+#imagens p{
+    padding: 8px 0 ;
+}
+
+#ver_todas {
+    background-color: #0056b3;
+    border-radius: 15px;
+    padding: 2px 6px;
+    font-size: 12px;
+    color: white;
 }
 
 @keyframes fadeIn {

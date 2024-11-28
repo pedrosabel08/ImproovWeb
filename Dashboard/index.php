@@ -1,12 +1,58 @@
 <?php
 session_start();
 
-if (!isset($_SESSION['logado']) || !$_SESSION['logado'] || !isset($_SESSION['nivel_acesso']) || $_SESSION['nivel_acesso'] != 1) {
-    header("Location: ../index.html"); // Redireciona para a página de login
-    exit;
-}
+include '../conexao.php';
 
+
+$idusuario = $_SESSION['idusuario'];
+$nome_usuario = $_SESSION['nome_usuario'];
+$idcolaborador = $_SESSION['idcolaborador'];
+$nivel_acesso = $_SESSION['nivel_acesso'];
+
+// Consulta para contar as tarefas pendentes
+$sql_pendentes = "SELECT COUNT(*) as count_pendentes FROM funcao_imagem WHERE status <> 'Finalizado' AND colaborador_id = ?";
+$stmt_pendentes = $conn->prepare($sql_pendentes);
+$stmt_pendentes->bind_param("i", $idcolaborador);
+$stmt_pendentes->execute();
+$result_pendentes = $stmt_pendentes->get_result();
+$row_pendentes = $result_pendentes->fetch_assoc();
+$count_pendentes = $row_pendentes['count_pendentes'];
+
+// Consulta para imagens pendentes
+$sql_imagens = "SELECT 
+        i.imagem_nome, 
+        o.nome_obra ,
+i.prazo
+    FROM 
+        imagens_cliente_obra i 
+    JOIN 
+        funcao_imagem f ON i.idimagens_cliente_obra = f.imagem_id 
+    JOIN 
+        obra o ON o.idobra = i.obra_id  -- Supondo que o nome da tabela da obra seja 'obra'
+    WHERE 
+        f.colaborador_id = ?
+        AND f.status <> 'Finalizado'
+		AND i.prazo IS NOT NULL
+        LIMIT 10";
+$stmt_imagens = $conn->prepare($sql_imagens);
+$stmt_imagens->bind_param("i", $idcolaborador);
+$stmt_imagens->execute();
+$result_imagens = $stmt_imagens->get_result();
+
+// Consulta para o total de produção
+$sql_total = "SELECT ROUND(SUM(fi.valor)) AS total_producao FROM funcao_imagem fi WHERE fi.colaborador_id = ?";
+$stmt_total = $conn->prepare($sql_total);
+$stmt_total->bind_param("i", $idcolaborador);
+$stmt_total->execute();
+$result_total = $stmt_total->get_result();
+$row_total = $result_total->fetch_assoc();
+$count_total = $row_total['total_producao'];
+
+$stmt_pendentes->close();
+$stmt_imagens->close();
+$stmt_total->close();
 ?>
+
 <!DOCTYPE html>
 <html lang="pt-br">
 
@@ -46,44 +92,81 @@ if (!isset($_SESSION['logado']) || !$_SESSION['logado'] || !isset($_SESSION['niv
 
             <!-- Seção de Estatísticas -->
             <div class="stats-container">
-                <!-- Total da Empresa -->
-                <div class="stat-card active">
-                    <h2>Total da Empresa ($)</h2>
-                    <p id="total_orcamentos"></p>
-                    <div class="lucro">
-                        <p>Lucro: </p>
-                        <span id="lucro_percentual"></span>
+                <?php if ($nivel_acesso == 1): ?>
+                    <!-- Visível para nível 1 -->
+                    <div class="stat-card active">
+                        <h2>Total da Empresa ($)</h2>
+                        <p id="total_orcamentos"></p>
+                        <div class="lucro">
+                            <p style="filter: blur(0);">Lucro: </p>
+                            <span id="lucro_percentual"></span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <h2>Total da Empresa - Produção ($)</h2>
+                        <p id="total_producao"></p>
+                    </div>
+
+                    <div class="stat-card">
+                        <h2>Obras Ativas</h2>
+                        <p id="obras_ativas" style="filter: blur(0);"></p>
+                    </div>
+                <?php else: ?>
+                    <!-- Visível para níveis superiores -->
+                    <div class="stat-card">
+                        <h2>Total de Imagens Pendentes</h2>
+                        <p style="filter: blur(0);"><?php echo $count_pendentes; ?> Imagens</p>
+                    </div>
+
+                    <div class="stat-card">
+                        <h2>Total de Produção ($)</h2>
+                        <p><?php echo number_format($count_total, 2); ?></p>
+                    </div>
+                <?php endif; ?>
+            </div>
+
+            <?php if ($nivel_acesso == 1): ?>
+
+                <div id="legenda" class="legenda">
+                    <div class="legenda-item">
+                        <div class="cor" style="background-color: #ff6f61;"></div>
+                        <span>Prazo já passou</span>
+                    </div>
+                    <div class="legenda-item">
+                        <div class="cor" style="background-color: #f7b731;"></div>
+                        <span>Prazo próximo (3 dias ou menos)</span>
+                    </div>
+                    <div class="legenda-item">
+                        <div class="cor" style="background-color: #28a745;"></div>
+                        <span>Prazo distante</span>
                     </div>
                 </div>
-                <div class="stat-card">
-                    <h2>Total da Empresa - Produção ($)</h2>
-                    <p id="total_producao"></p>
-                </div>
 
-                <!-- Obras Ativas -->
-                <div class="stat-card">
-                    <h2>Obras Ativas</h2>
-                    <p id="obras_ativas"></p>
-                </div>
+                <!-- Para nível de acesso 1, exibe a div painel -->
+                <div id="painel"></div>
+            <?php else: ?>
+                <!-- Para níveis superiores a 1, esconde a div painel e mostra outra div com as imagens pendentes -->
+                <div id="painel" style="display: none;"></div>
+                <div id="container">
+                    <div class="grafico"></div>
+                    <div class="img-container">
+                        <h2>Imagens</h2>
+                        <div id="imagens">
+                            <?php
+                            // Gerando as tags <p> com os dados do banco
+                            while ($row_imagens = $result_imagens->fetch_assoc()) {
+                                $imagem_nome = htmlspecialchars($row_imagens['imagem_nome']);
+                                $nome_obra = htmlspecialchars($row_imagens['nome_obra']);
+                                $prazo = htmlspecialchars($row_imagens['prazo']);
 
-            </div>
-            <div id="legenda" class="legenda">
-                <div class="legenda-item">
-                    <div class="cor" style="background-color: #ff6f61;"></div>
-                    <span>Prazo já passou</span>
+                                echo "<p>$imagem_nome - $prazo</p>";
+                            }
+                            $conn->close();
+                            ?></div>
+                        <button id="ver_todas">Ver Todas</button>
+                    </div>
                 </div>
-                <div class="legenda-item">
-                    <div class="cor" style="background-color: #f7b731;"></div>
-                    <span>Prazo próximo (3 dias ou menos)</span>
-                </div>
-                <div class="legenda-item">
-                    <div class="cor" style="background-color: #28a745;"></div>
-                    <span>Prazo distante</span>
-                </div>
-            </div>
-            <div id="painel">
-
-            </div>
+            <?php endif; ?>
 
             <div class="modalInfos" id="modalInfos">
                 <div id="infos-obra">
@@ -134,22 +217,110 @@ if (!isset($_SESSION['logado']) || !$_SESSION['logado'] || !isset($_SESSION['niv
                         </div>
                     </div>
 
-                    <div class="obra-valores">
-                        <div class="valor-item">
-                            <strong>Valor Orçamento:</strong>
-                            <span id="valor_orcamento"></span>
+                    <?php
+                    // Exibir somente se o usuário tiver nível de acesso 1
+                    if (isset($_SESSION['logado']) && $_SESSION['logado'] === true && $_SESSION['nivel_acesso'] == 1) {
+                    ?>
+                        <div class="obra-valores">
+                            <div class="valor-item">
+                                <strong>Valor Orçamento:</strong>
+                                <span id="valor_orcamento"></span>
+                            </div>
+                            <div class="valor-item">
+                                <strong>Valor Produção:</strong>
+                                <span id="valor_producao"></span>
+                            </div>
+                            <div class="valor-item">
+                                <strong>Valor projetado:</strong>
+                                <span id="valor_fixo"></span>
+                            </div>
+                            <div class="valor-item">
+                                <strong>Lucro estimado (produção):</strong>
+                                <span id="lucro"></span>
+                            </div>
                         </div>
-                        <div class="valor-item">
-                            <strong>Valor Produção:</strong>
-                            <span id="valor_producao"></span>
-                        </div>
-                        <div class="valor-item">
-                            <strong>Valor projetado:</strong>
-                            <span id="valor_fixo"></span>
-                        </div>
-                        <div class="valor-item">
-                            <strong>Lucro estimado (produção):</strong>
-                            <span id="lucro"></span>
+                    <?php
+                    }
+                    ?>
+
+                </div>
+            </div>
+
+
+            <div id="filtro-colab" class="modal">
+                <div class="modal-content" style="margin: auto; width: 80%; height: 80%;">
+
+                    <button id="mostrarLogsBtn" disabled>Mostrar Logs</button>
+
+                    <label for="dataInicio">Data Início:</label>
+                    <input type="date" id="dataInicio">
+
+                    <label for="dataFim">Data Fim:</label>
+                    <input type="date" id="dataFim">
+
+                    <label for="obra">Obra:</label>
+                    <select name="obraSelect" id="obraSelect">
+                        <option value="">Selecione:</option>
+                        <?php foreach ($obras as $obra): ?>
+                            <option value="<?= $obra['idobra']; ?>"><?= htmlspecialchars($obra['nome_obra']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <label for="funcaoSelect">Função:</label>
+                    <select id="funcaoSelect">
+                        <option value="0">Selecione a Função:</option>
+                        <?php foreach ($funcoes as $funcao): ?>
+                            <option value="<?= htmlspecialchars($funcao['idfuncao']); ?>">
+                                <?= htmlspecialchars($funcao['nome_funcao']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+
+                    <label for="statusSelect">Status:</label>
+                    <select id="statusSelect">
+                        <option value="0">Selecione um status:</option>
+                        <option value="Não iniciado">Não iniciado</option>
+                        <option value="Em andamento">Em andamento</option>
+                        <option value="Finalizado">Finalizado</option>
+                        <option value="HOLD">HOLD</option>
+                        <option value="Não se aplica">Não se aplica</option>
+                        <option value="Em aprovação">Em aprovação</option>
+                    </select>
+
+                    <div class="image-count">
+                        <strong>Total de Imagens:</strong> <span id="totalImagens">0</span>
+                    </div>
+
+                    <table id="tabela-colab" style="width: 100%;">
+                        <thead>
+                            <tr>
+                                <th id="nome">Nome da Imagem</th>
+                                <th>Função</th>
+                                <th>Status</th>
+                                <th>Prazo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+
+                    <div id="modalLogs" class="modal">
+                        <div class="modal-content-log">
+                            <span class="close">&times;</span>
+                            <h2>Logs de Alterações</h2>
+                            <table id="tabela-logs">
+                                <thead>
+                                    <tr>
+                                        <th>Imagem</th>
+                                        <th>Obra</th>
+                                        <th>Status Anterior</th>
+                                        <th>Status Novo</th>
+                                        <th>Data</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
 
@@ -158,14 +329,17 @@ if (!isset($_SESSION['logado']) || !$_SESSION['logado'] || !isset($_SESSION['niv
 
 
             <!-- <div class="graficos">
-                <canvas id="graficoProducao"></canvas>
-                <canvas id="graficoOrcamento"></canvas>
-                <canvas id="graficoPercentual"></canvas>
-            </div> -->
+                        <canvas id="graficoProducao"></canvas>
+                        <canvas id="graficoOrcamento"></canvas>
+                        <canvas id="graficoPercentual"></canvas>
+                    </div> -->
         </div>
     </main>
 
-
+    <script>
+        const idColaborador = <?php echo json_encode($idcolaborador); ?>;
+        localStorage.setItem('idcolaborador', idColaborador);
+    </script>
     <script src="script.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/swiper/swiper-bundle.min.js"></script>

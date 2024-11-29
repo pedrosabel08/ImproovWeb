@@ -40,7 +40,7 @@ main {
 }
 
 /* Estilo do link com o ícone */
-.nav a {
+.nav a, .bottom a {
     display: block;
     padding: 10px;
     color: black;
@@ -77,18 +77,26 @@ button {
     all: unset;
 }
 
-.top p {
+p.top {
     text-transform: uppercase;
     font-weight: 500;
     font-size: 32px;
     text-align: center;
+    margin-bottom: 50px;
 }
 
-.content {
+.sidebar .content {
     display: flex;
-    align-items: center;
-    gap: 30px;
     flex-direction: column;
+    flex-grow: 1;
+}
+
+.nav {
+    flex-grow: 1;
+}
+
+.bottom {
+    margin: 30px auto;
 }
 
 .content input {
@@ -115,12 +123,12 @@ a {
     gap: 10px;
 }
 
-.nav a {
+.nav a, .bottom a {
     padding: 5px;
     font-size: 14px;
 }
 
-.nav i {
+.nav i, .bottom i {
     padding: 0 4px;
 }
 
@@ -170,8 +178,10 @@ a {
     font-size: 24px;
     font-weight: bold;
     color: #333;
-    filter: blur(5px); /* Inclua a unidade px */
-    transition: filter 0.3s ease; /* Adiciona uma transição suave */
+    filter: blur(5px);
+    /* Inclua a unidade px */
+    transition: filter 0.3s ease;
+    /* Adiciona uma transição suave */
 }
 
 .stat-card p:hover {
@@ -299,7 +309,8 @@ a {
     font-size: 16px;
 }
 
-#painel, #obrasInativas {
+#painel,
+#obrasInativas {
     display: flex;
     flex-wrap: wrap;
     gap: 20px;
@@ -456,10 +467,14 @@ a {
 
 
 .nav a.active {
-    background-color: #007bff; /* Cor de fundo para o link ativo */
-    color: white; /* Cor do texto */
-    border-radius: 5px; /* Borda arredondada, se necessário */
-    font-weight: bold; /* Negrito para destaque */
+    background-color: #007bff;
+    /* Cor de fundo para o link ativo */
+    color: white;
+    /* Cor do texto */
+    border-radius: 5px;
+    /* Borda arredondada, se necessário */
+    font-weight: bold;
+    /* Negrito para destaque */
 }
 
 /* Animação do modal */
@@ -588,6 +603,7 @@ table td:first-child {
     text-align: left;
 }
 
+
 td {
     overflow: hidden;
     text-overflow: ellipsis;
@@ -621,6 +637,28 @@ header {
 
 header h1 {
     border-bottom: 2px solid black;
+}
+
+.labels {
+    display: flex;
+    gap: 15px;
+    margin: 15px 0;
+}
+
+.labels div {
+    width: 100%;
+}
+
+.labels label {
+    font-weight: 600;
+}
+
+button#mostrarLogsBtn {
+    margin: 10px auto;
+    background-color: #007bff;
+    border-radius: 15px;
+    padding: 2px 5px;
+    color: white;
 }
 
 #toggleSidebar {
@@ -793,14 +831,15 @@ form#form-add button:hover {
     height: 50vh;
 }
 
-.img-container, .grafico {
+.img-container,
+.grafico {
     border-radius: 15px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.322);
     padding: 15px 40px;
 }
 
-#imagens p{
-    padding: 8px 0 ;
+#imagens p {
+    padding: 8px 0;
 }
 
 #ver_todas {
@@ -810,6 +849,44 @@ form#form-add button:hover {
     font-size: 12px;
     color: white;
 }
+
+#modalLogs {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    justify-content: center;
+    align-items: center;
+    animation: fadeIn .5s ease-in-out forwards;
+}
+
+
+.modal-content-log {
+    background-color: white;
+    padding: 20px;
+    border-radius: 10px;
+    width: 60%;
+    max-height: 70%;
+    overflow-y: auto;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    animation: showModal 0.3s ease;
+}
+
+.modal-content-log h2 {
+    margin-bottom: 15px;
+}
+
+
+table#tabela-logs {
+    border-collapse: collapse;
+    margin: 0 auto;
+    width: 80%;
+}
+
 
 
 @keyframes fadeIn {

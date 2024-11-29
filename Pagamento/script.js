@@ -450,12 +450,13 @@ document.getElementById('generate-lista').addEventListener('click', function () 
     let currentY = 20;
 
     const title = `Relatório completo de ${colaborador}, ${mesNome} de ${ano}`;
-    const valorTotal = "Valor total: ";
+    // const valorTotal = "Valor total: ";
     const quantidadeTarefas = "Quantidade de tarefas: ";
 
-    const totalValorElement = document.getElementById('totalValor');
-    const totalValor = totalValorElement ? parseFloat(totalValorElement.innerText.replace('R$ ', '').replace('.', '').replace(',', '.')) : 0; // Converter para float
-    const totalValorExtenso = `${numeroPorExtenso(totalValor)} reais`; // Adiciona "reais" ao final
+    // const totalValorElement = document.getElementById('totalValor');
+    // const totalValor = totalValorElement ? parseFloat(totalValorElement.innerText.replace('R$ ', '').replace('.', '').replace(',', '.')) : 0; // Converter para float
+    // const totalValorExtenso = `${numeroPorExtenso(totalValor)} reais`; // Adiciona "reais" ao final
+    
     const quantidadeTarefasValue = document.querySelectorAll('#tabela-faturamento tbody tr').length;
 
     const imgPath = '../assets/logo.jpg';
@@ -474,15 +475,15 @@ document.getElementById('generate-lista').addEventListener('click', function () 
                 doc.text(title, 14, currentY);
                 currentY += 10;
 
-                doc.setFontSize(12);
-                doc.text(`${valorTotal} R$ ${totalValor.toFixed(2).replace('.', ',')} (${totalValorExtenso})`, 14, currentY);
-                currentY += 10;
+                // doc.setFontSize(12);
+                // doc.text(`${valorTotal} R$ ${totalValor.toFixed(2).replace('.', ',')} (${totalValorExtenso})`, 14, currentY);
+                // currentY += 10;
 
                 doc.text(`${quantidadeTarefas} ${quantidadeTarefasValue}`, 14, currentY);
                 currentY += 20;
 
                 const table = document.getElementById('tabela-faturamento');
-                const selectedColumnIndexes = [0, 1, 2, 3]; // Colunas específicas que deseja incluir (incluindo a coluna data_pagamento)
+                const selectedColumnIndexes = [0, 1, 2]; // Colunas específicas que deseja incluir (incluindo a coluna data_pagamento)
                 const headers = [];
                 const rows = [];
 

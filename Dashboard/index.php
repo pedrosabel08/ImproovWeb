@@ -39,6 +39,12 @@ $stmt_imagens->bind_param("i", $idcolaborador);
 $stmt_imagens->execute();
 $result_imagens = $stmt_imagens->get_result();
 
+$sql_grafico = "SELECT COUNT(*) as imagens, SUM(valor) as total, MONTH(prazo) as mes from funcao_imagem WHERE colaborador_id = ? GROUP BY MONTH(prazo)";
+$stmt_grafico = $conn->prepare($sql_grafico);
+$stmt_grafico->bind_param("i", $idcolaborador);
+$stmt_grafico->execute();
+$result_grafico = $stmt_grafico->get_result();
+
 // Consulta para o total de produção
 $sql_total = "SELECT ROUND(SUM(fi.valor)) AS total_producao FROM funcao_imagem fi WHERE fi.colaborador_id = ?";
 $stmt_total = $conn->prepare($sql_total);
@@ -69,18 +75,35 @@ $stmt_total->close();
         type="image/x-icon">
 </head>
 
+
+<?php
+include '../conexaoMain.php';
+
+$conn = conectarBanco();
+
+$clientes = obterClientes($conn);
+$obras = obterObras($conn);
+$colaboradores = obterColaboradores($conn);
+$status_imagens = obterStatusImagens($conn);
+$funcoes = obterFuncoes($conn);
+
+?>
+
 <body>
     <main>
         <div class="sidebar">
-            <div class="top">
-                <p>+</p>
-            </div>
             <div class="content">
                 <div class="nav">
+                    <p class="top">+</p>
                     <a href="index.php" id="dashboard" class="tooltip active"><i class="fa-solid fa-chart-line"></i><span class="tooltiptext">Dashboard</span></a>
                     <a href="projetos.html" id="projects" class="tooltip"><i class="fa-solid fa-list-check"></i><span class="tooltiptext">Projetos</span></a>
-                    <a href="#" id="colabs" class="tooltip"><i class="fa-solid fa-users"></i><span class="tooltiptext">Colaboradores</span></a>
-                    <a href="controle_comercial.html" id="controle_comercial" class="tooltip"><i class="fa-solid fa-dollar-sign"></i><span class="tooltiptext">Controle Comercial</span></a>
+                    <?php if ($nivel_acesso < 1): ?>
+                        <a href="#" id="colabs" class="tooltip"><i class="fa-solid fa-users"></i><span class="tooltiptext">Colaboradores</span></a>
+                        <a href="controle_comercial.html" id="controle_comercial" class="tooltip"><i class="fa-solid fa-dollar-sign"></i><span class="tooltiptext">Controle Comercial</span></a>
+                    <?php endif; ?>
+                </div>
+                <div class="bottom">
+                    <a href="#" id="sair" class="tooltip"><i class="fa fa-arrow-left"></i><span class="tooltiptext">Sair</span></a>
                 </div>
             </div>
         </div>
@@ -151,7 +174,9 @@ $stmt_total->close();
                 <!-- Para níveis superiores a 1, esconde a div painel e mostra outra div com as imagens pendentes -->
                 <div id="painel" style="display: none;"></div>
                 <div id="container">
-                    <div class="grafico"></div>
+                    <div class="grafico">
+                        <canvas id="graficoColab"></canvas>
+                    </div>
                     <div class="img-container">
                         <h2>Imagens</h2>
                         <div id="imagens">
@@ -253,60 +278,74 @@ $stmt_total->close();
             <div id="filtro-colab" class="modal">
                 <div class="modal-content" style="margin: auto; width: 80%; height: 80%;">
 
-                    <button id="mostrarLogsBtn" disabled>Mostrar Logs</button>
+                    <button id="mostrarLogsBtn">Mostrar Logs</button>
 
-                    <label for="dataInicio">Data Início:</label>
-                    <input type="date" id="dataInicio">
+                    <div class="labels">
+                        <div>
+                            <label for="dataInicio">Data Início:</label>
+                            <input type="date" id="dataInicio">
+                        </div>
 
-                    <label for="dataFim">Data Fim:</label>
-                    <input type="date" id="dataFim">
+                        <div>
+                            <label for="dataFim">Data Fim:</label>
+                            <input type="date" id="dataFim">
+                        </div>
 
-                    <label for="obra">Obra:</label>
-                    <select name="obraSelect" id="obraSelect">
-                        <option value="">Selecione:</option>
-                        <?php foreach ($obras as $obra): ?>
-                            <option value="<?= $obra['idobra']; ?>"><?= htmlspecialchars($obra['nome_obra']); ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                    <label for="funcaoSelect">Função:</label>
-                    <select id="funcaoSelect">
-                        <option value="0">Selecione a Função:</option>
-                        <?php foreach ($funcoes as $funcao): ?>
-                            <option value="<?= htmlspecialchars($funcao['idfuncao']); ?>">
-                                <?= htmlspecialchars($funcao['nome_funcao']); ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
+                        <div>
+                            <label for="obra">Obra:</label>
+                            <select name="obraSelect" id="obraSelect">
+                                <option value="">Selecione:</option>
+                                <?php foreach ($obras as $obra): ?>
+                                    <option value="<?= $obra['idobra']; ?>"><?= htmlspecialchars($obra['nome_obra']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
 
-                    <label for="statusSelect">Status:</label>
-                    <select id="statusSelect">
-                        <option value="0">Selecione um status:</option>
-                        <option value="Não iniciado">Não iniciado</option>
-                        <option value="Em andamento">Em andamento</option>
-                        <option value="Finalizado">Finalizado</option>
-                        <option value="HOLD">HOLD</option>
-                        <option value="Não se aplica">Não se aplica</option>
-                        <option value="Em aprovação">Em aprovação</option>
-                    </select>
+                        <div>
+                            <label for="funcaoSelect">Função:</label>
+                            <select id="funcaoSelect">
+                                <option value="0">Selecione a Função:</option>
+                                <?php foreach ($funcoes as $funcao): ?>
+                                    <option value="<?= htmlspecialchars($funcao['idfuncao']); ?>">
+                                        <?= htmlspecialchars($funcao['nome_funcao']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label for="statusSelect">Status:</label>
+                            <select id="statusSelect">
+                                <option value="0">Selecione um status:</option>
+                                <option value="Não iniciado">Não iniciado</option>
+                                <option value="Em andamento">Em andamento</option>
+                                <option value="Finalizado">Finalizado</option>
+                                <option value="HOLD">HOLD</option>
+                                <option value="Não se aplica">Não se aplica</option>
+                                <option value="Em aprovação">Em aprovação</option>
+                            </select>
+                        </div>
+                    </div>
 
                     <div class="image-count">
                         <strong>Total de Imagens:</strong> <span id="totalImagens">0</span>
                     </div>
 
-                    <table id="tabela-colab" style="width: 100%;">
-                        <thead>
-                            <tr>
-                                <th id="nome">Nome da Imagem</th>
-                                <th>Função</th>
-                                <th>Status</th>
-                                <th>Prazo</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                        </tbody>
-                    </table>
-
+                    <div class="table-container" style="max-height: 60vh; overflow-y: auto; margin-top: 30px;">
+                        <table id="tabela-colab" style="width: 100%;">
+                            <thead>
+                                <tr>
+                                    <th id="nome">Nome da Imagem</th>
+                                    <th>Função</th>
+                                    <th>Status</th>
+                                    <th>Prazo</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            </tbody>
+                        </table>
+                    </div>
                     <div id="modalLogs" class="modal">
                         <div class="modal-content-log">
                             <span class="close">&times;</span>

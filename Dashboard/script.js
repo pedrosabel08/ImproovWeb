@@ -21,10 +21,11 @@ const modalColab = document.getElementById('filtro-colab');
 
 document.getElementById('ver_todas').addEventListener('click', function () {
     modalColab.style.display = 'flex';
+    carregarDados();
 })
 
+var colaboradorId = localStorage.getItem('idcolaborador');
 function carregarDados() {
-    var colaboradorId = localStorage.getItem('idcolaborador');
 
     var dataInicio = document.getElementById('dataInicio').value;
     var dataFim = document.getElementById('dataFim').value;
@@ -93,6 +94,44 @@ document.getElementById('dataFim').addEventListener('change', carregarDados);
 document.getElementById('obraSelect').addEventListener('change', carregarDados);
 document.getElementById('funcaoSelect').addEventListener('change', carregarDados);
 document.getElementById('statusSelect').addEventListener('change', carregarDados);
+
+
+const obraSelect = document.getElementById('obraSelect');
+const mostrarLogsBtn = document.getElementById('mostrarLogsBtn');
+const modalLogs = document.getElementById('modalLogs');
+
+mostrarLogsBtn.addEventListener('click', function () {
+    const obraId = obraSelect.value;
+    modalLogs.style.display = 'flex';
+
+    fetch(`../carregar_logs.php?colaboradorId=${colaboradorId}&obraId=${obraId}`)
+        .then(response => response.json())
+        .then(data => {
+            const tabelaLogsBody = document.querySelector('#tabela-logs tbody');
+            tabelaLogsBody.innerHTML = '';
+
+            if (data && data.length > 0) {
+                data.forEach(log => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${log.imagem_nome}</td>
+                        <td>${log.nome_obra}</td>
+                        <td>${log.status_anterior}</td>
+                        <td>${log.status_novo}</td>
+                        <td>${log.data}</td>
+                    `;
+                    tabelaLogsBody.appendChild(row);
+                });
+            } else {
+                const row = document.createElement('tr');
+                row.innerHTML = '<td colspan="5">Nenhum log encontrado.</td>';
+                tabelaLogsBody.appendChild(row);
+            }
+        })
+        .catch(error => {
+            console.error('Erro ao carregar os logs:', error);
+        });
+});
 
 
 fetch('atualizarValores.php')
@@ -294,6 +333,97 @@ fetch('obras.php')
     })
     .catch(error => console.error('Erro ao carregar os dados:', error));
 
+fetch("colabGrafico.php?idcolaborador=" + colaboradorId) // Substitua pelo endpoint correto
+    .then(response => response.json())
+    .then(data => {
+        // Função para converter número do mês para nome completo
+        const mesParaExtenso = (mes) => {
+            const meses = [
+                "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+                "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+            ];
+            return meses[mes - 1]; // Meses começam do índice 0, então subtraímos 1
+        };
+
+        const coresPorMes = [
+            'rgba(255, 99, 132, 0.3)',  // Janeiro
+            'rgba(54, 162, 235, 0.3)',  // Fevereiro
+            'rgba(255, 206, 86, 0.3)',  // Março
+            'rgba(75, 192, 192, 0.3)',  // Abril
+            'rgba(153, 102, 255, 0.3)', // Maio
+            'rgba(255, 159, 64, 0.3)',  // Junho
+            'rgba(255, 99, 132, 0.3)',  // Julho
+            'rgba(54, 162, 235, 0.3)',  // Agosto
+            'rgba(255, 206, 86, 0.3)',  // Setembro
+            'rgba(75, 192, 192, 0.3)',  // Outubro
+            'rgba(153, 102, 255, 0.3)', // Novembro
+            'rgba(255, 159, 64, 0.3)'   // Dezembro
+        ];
+
+        const bordasPorMes = [
+            'rgba(255, 99, 132, 1)',  // Janeiro
+            'rgba(54, 162, 235, 1)',  // Fevereiro
+            'rgba(255, 206, 86, 1)',  // Março
+            'rgba(75, 192, 192, 1)',  // Abril
+            'rgba(153, 102, 255, 1)', // Maio
+            'rgba(255, 159, 64, 1)',  // Junho
+            'rgba(255, 99, 132, 1)',  // Julho
+            'rgba(54, 162, 235, 1)',  // Agosto
+            'rgba(255, 206, 86, 1)',  // Setembro
+            'rgba(75, 192, 192, 1)',  // Outubro
+            'rgba(153, 102, 255, 1)', // Novembro
+            'rgba(255, 159, 64, 1)'   // Dezembro
+        ];
+
+        // Prepara os dados para o gráfico
+        const meses = data.map(item => mesParaExtenso(item.mes)); // Converte mês numérico para nome completo
+        const imagens = data.map(item => item.imagens);
+        const total = data.map(item => item.total);
+
+
+        // Cria o gráfico
+        const ctx = document.getElementById("graficoColab").getContext("2d");
+        new Chart(ctx, {
+            type: "bar", // Tipo de gráfico (barra)
+            data: {
+                labels: meses, // Labels do eixo X com os meses por extenso
+                datasets: [
+                    {
+                        label: "Número de Imagens",
+                        data: imagens,
+                        backgroundColor: meses.map((mes, index) => coresPorMes[index]), // Atribui a cor com base no mês
+                        borderColor: meses.map((mes, index) => bordasPorMes[index]), // Atribui a borda com base no mês
+                        borderWidth: 1,
+                    },
+                ],
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                    },
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            // Modifica o conteúdo do tooltip
+                            label: function (tooltipItem) {
+                                const index = tooltipItem.dataIndex;
+                                const numImagens = imagens[index];
+                                const totalValor = total[index];
+                                return `Imagens: ${numImagens} | Valor Total: R$${totalValor.toFixed(2)}`;
+                            },
+                        },
+                    },
+                },
+            },
+        });
+    })
+    .catch(error => console.error("Erro ao carregar os dados do gráfico:", error));
+
+
+
 document.getElementById('orcamento').addEventListener('click', function () {
     document.getElementById('modalOrcamento').style.display = 'flex';
 });
@@ -334,6 +464,12 @@ window.onclick = function (event) {
     if (event.target == modalOrcamento) {
         modalOrcamento.style.display = "none";
     }
+    if (event.target == modalColab) {
+        modalColab.style.display = "none";
+    }
+    if (event.target == modalLogs) {
+        modalLogs.style.display = "none";
+    }
 }
 
 window.addEventListener('touchstart', function (event) {
@@ -344,6 +480,18 @@ window.addEventListener('touchstart', function (event) {
         modalOrcamento.style.display = "none";
     }
 });
+
+const buttonSair = document.getElementById('sair');
+
+buttonSair.addEventListener('click', function () {
+    let resposta = confirm("Você tem certeza de que deseja sair?");
+
+    if (resposta) {
+        window.location.href = '../index.html';
+    }
+
+});
+
 
 document.addEventListener('DOMContentLoaded', function () {
     const cards = document.querySelectorAll('.stat-card');

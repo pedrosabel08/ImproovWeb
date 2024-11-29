@@ -105,7 +105,7 @@ if ($colaboradorId == 1) {
         ac.colaborador_id = ?";
 
     if ($mesNumero && $ano) {
-        $sql .= "AND YEAR(ac.data) = ? AND MONTH(ac.data) = ?";
+        $sql .= " AND YEAR(ac.data) = ? AND MONTH(ac.data) = ?";
     }
 } elseif ($colaboradorId == 13) {
     // Consulta para colaborador 13 usando tabela animacao e acompanhamento

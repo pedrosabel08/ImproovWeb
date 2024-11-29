@@ -65,7 +65,8 @@ $stmt_total->close();
         crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper/swiper-bundle.min.css" />
-
+    <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
+        type="image/x-icon">
 </head>
 
 <body>
@@ -76,7 +77,7 @@ $stmt_total->close();
             </div>
             <div class="content">
                 <div class="nav">
-                    <a href="index.php" id="dashboard" class="tooltip"><i class="fa-solid fa-chart-line"></i><span class="tooltiptext">Dashboard</span></a>
+                    <a href="index.php" id="dashboard" class="tooltip active"><i class="fa-solid fa-chart-line"></i><span class="tooltiptext">Dashboard</span></a>
                     <a href="projetos.html" id="projects" class="tooltip"><i class="fa-solid fa-list-check"></i><span class="tooltiptext">Projetos</span></a>
                     <a href="#" id="colabs" class="tooltip"><i class="fa-solid fa-users"></i><span class="tooltiptext">Colaboradores</span></a>
                     <a href="controle_comercial.html" id="controle_comercial" class="tooltip"><i class="fa-solid fa-dollar-sign"></i><span class="tooltiptext">Controle Comercial</span></a>
@@ -144,6 +145,8 @@ $stmt_total->close();
 
                 <!-- Para nível de acesso 1, exibe a div painel -->
                 <div id="painel"></div>
+                <button id="ver_todas" style="display: none;">Ver Todas</button>
+
             <?php else: ?>
                 <!-- Para níveis superiores a 1, esconde a div painel e mostra outra div com as imagens pendentes -->
                 <div id="painel" style="display: none;"></div>

@@ -135,7 +135,7 @@ if ($colaboradorId == 1) {
         AND fi.status <> 'Não iniciado'";
 
     if ($mesNumero && $ano) {
-        $sql .= "AND YEAR(fi.prazo) = ? AND MONTH(fi.prazo) = ?";
+        $sql .= " AND YEAR(fi.prazo) = ? AND MONTH(fi.prazo) = ?";
     }
 
     $sql .= " UNION ALL
@@ -160,7 +160,7 @@ if ($colaboradorId == 1) {
         an.colaborador_id = ?";
 
     if ($mesNumero && $ano) {
-        $sql .= "AND YEAR(an.data_anima) = ? AND MONTH(an.data_anima) = ?";
+        $sql .= " AND YEAR(an.data_anima) = ? AND MONTH(an.data_anima) = ?";
     }
 } else {
     // Consulta padrão para outros colaboradores
@@ -197,10 +197,19 @@ if ($colaboradorId == 1) {
 // Preparar a consulta adicional
 $stmt = $conn->prepare($sql);
 
+
+if (!$stmt) {
+    die("Erro ao preparar a consulta: " . $conn->error);
+}
+
+// Log para depuração
+error_log("SQL Gerado: " . $sql);
+error_log("Parâmetros: " . json_encode([$colaboradorId, $ano, $mesNumero]));
+
 // Bind de parâmetros conforme necessário
 if ($colaboradorId == 1 || $colaboradorId == 13) {
     if ($mesNumero && $ano) {
-        $stmt->bind_param('iiii', $colaboradorId, $ano, $mesNumero, $colaboradorId);
+        $stmt->bind_param('iiiiii',   $colaboradorId, $ano, $mesNumero, $colaboradorId, $ano, $mesNumero);
     } else {
         $stmt->bind_param('ii', $colaboradorId, $colaboradorId);
     }
@@ -214,6 +223,10 @@ if ($colaboradorId == 1 || $colaboradorId == 13) {
 
 $stmt->execute();
 $result = $stmt->get_result();
+
+if (!$result) {
+    die("Erro ao executar a consulta: " . $stmt->error);
+}
 
 $funcoes = array();
 if ($result->num_rows > 0) {

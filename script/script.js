@@ -1051,6 +1051,9 @@ function applyStatusImagem(cell, status) {
             break;
         case 'HOLD':
             cell.style.backgroundColor = '#ff0000';
+            break;
+        case 'TEA':
+            cell.style.backgroundColor = '#f7eb07';
     }
 };
 

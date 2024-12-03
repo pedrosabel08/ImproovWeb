@@ -204,17 +204,25 @@ table#tabelaClientes td#nome-imagem {
 
 table#tabela-obra td:first-child,
 table#tabela-obra th:first-child {
-    max-width: 500px;
+    max-width: 150px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    transition: 0.3s all ease;
+    text-align: left;
+}
+
+table#tabela-obra td:first-child:hover {
+    max-width: 300px;
 }
 
 #tabela-obra td {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    max-width: 50px;
 }
+
 
 .nav-toggle {
     display: none;

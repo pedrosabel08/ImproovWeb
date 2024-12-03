@@ -1,67 +1,98 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mapa de Obras</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <title>Tabela Compacta</title>
     <style>
-        .grafico-container {
-            display: grid;
-            grid-template-rows: 1fr 1fr;
-            gap: 2rem;
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&family=Nunito:ital,wght@0,200..1000;1,200..1000&family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap');
+
+
+        * {
+            padding: 0;
+            margin: 0;
+            box-sizing: border-box;
+            font-family: "Montserrat", sans-serif;
         }
 
-        .grafico-container canvas {
-            width: 500px;
-            height: auto;
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            width: 50px;
+            /* Largura inicial pequena */
+            overflow: hidden;
+            white-space: nowrap;
+            /* Impede quebra de linha */
+            text-overflow: ellipsis;
+            /* Mostra "..." para conteúdo maior */
+            transition: width 0.3s ease;
+            /* Animação suave */
+            border: 1px solid #ccc;
+            text-align: center;
+        }
+
+        th:hover,
+        td:hover {
+            width: 200px;
+            /* Largura ao dar hover */
+        }
+
+        tbody tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        tbody tr:nth-child(odd) {
+            background-color: #fff;
         }
     </style>
 </head>
 
 <body>
-
-    <canvas id="myChart" width="400" height="200"></canvas>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script>
-        var ctx = document.getElementById('myChart').getContext('2d');
-        var myChart = new Chart(ctx, {
-            type: 'bar', // Tipo de gráfico de barras
-            data: {
-                labels: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai'], // Rótulos no eixo X
-                datasets: [{
-                    label: 'Conjunto de Dados 1', // Nome do primeiro conjunto de dados
-                    data: [65, 59, 80, 81, 56], // Dados do primeiro gráfico
-                    backgroundColor: 'rgba(255, 99, 132, 0.8)', // Cor da barra
-                    borderColor: 'rgba(255, 99, 132, 1)', // Cor da borda
-                    borderWidth: 1, // Largura da borda
-                    categoryPercentage: 0.5, // Controla o espaçamento da categoria (coluna)
-                    barPercentage: 0.8, // Controla a largura das barras
-                }, {
-                    label: 'Conjunto de Dados 2', // Nome do segundo conjunto de dados
-                    data: [28, 48, 40, 19, 86], // Dados do segundo gráfico
-                    backgroundColor: 'rgba(54, 162, 235, 0.8)', // Cor da barra
-                    borderColor: 'rgba(54, 162, 235, 1)', // Cor da borda
-                    borderWidth: 1, // Largura da borda
-                    categoryPercentage: 0.5, // Controla o espaçamento da categoria (coluna)
-                    barPercentage: 0.8, // Controla a largura das barras
-                }]
-            },
-            options: {
-                scales: {
-                    x: {
-                        stacked: true, // Empilhar as barras em cada categoria
-                    },
-                    y: {
-                        beginAtZero: true
-                    }
-                }
-            }
-        });
-    </script>
-
-
+    <table>
+        <thead>
+            <th>Nome da Imagem</th>
+            <th style="max-width: 150px;">Tipo</th>
+            <th>C.</th>
+            <th>Status</th>
+            <th>M.</th>
+            <th>Status</th>
+            <th>Co.</th>
+            <th>Status</th>
+            <th>F.</th>
+            <th>Status</th>
+            <th>P.</th>
+            <th>Status</th>
+            <th>Alteração</th>
+            <th>Status</th>
+            <th>Planta</th>
+            <th>Status</th>
+        </thead>
+        <tbody>
+            <tr class="linha-tabela" data-id="180">
+                <td antecipada="0">26. DOM_MOR PLANTA HUMANIZADA DO PAVIMENTO SUBSOLO</td>
+                <td>Planta Humanizada</td>
+                <td>Finalizado</td>
+                <td>Finalizado</td>
+                <td>Finalizado</td>
+                <td>Finalizado</td>
+                <td>Finalizado</td>
+                <td>Finalizado</td>
+                <td>Finalizado</td>
+                <td>Finalizado</td>
+                <td>Finalizado</td>
+                <td>Finalizado</td>
+                <td>Andressa</td>
+                <td>Não iniciado</td>
+                <td>Andressa</td>
+                <td>Não iniciado</td>
+            </tr>
+        </tbody>
+    </table>
 </body>
 
 </html>

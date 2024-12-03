@@ -553,7 +553,7 @@ $conn->close();
             <table id="tabela-obra">
                 <thead>
                     <th>Nome da Imagem</th>
-                    <th>Tipo</th>
+                    <th style="width: 150px;">Tipo</th>
                     <th>Caderno</th>
                     <th>Status</th>
                     <th>Model</th>

@@ -15,6 +15,7 @@ $sql = "SELECT i.idimagens_cliente_obra, c.nome_cliente, o.nome_obra, i.imagem_n
         JOIN cliente c ON i.cliente_id = c.idcliente
         JOIN obra o ON i.obra_id = o.idobra
         LEFT JOIN status_imagem s ON i.status_id = s.idstatus
+        WHERE o.status_obra = 0
         GROUP BY i.idimagens_cliente_obra";
 
 if ($filtro) {

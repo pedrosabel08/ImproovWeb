@@ -370,8 +370,6 @@ $conn->close();
                         <i class="fas fa-chevron-down" id="toggle-options"></i>
                     </div>
                     <div class="opcoes" id="opcoes" style="display: none;">
-                        <?php if ($_SESSION['nivel_acesso'] == 1): ?>
-
                             <select name="alteracao_id" id="opcao_alteracao">
                                 <?php foreach ($colaboradores as $colab): ?>
                                     <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
@@ -379,15 +377,6 @@ $conn->close();
                                     </option>
                                 <?php endforeach; ?>
                             </select>
-                        <?php else: ?>
-                            <select name="alteracao_id" id="opcao_alteracao" disabled>
-                                <?php foreach ($colaboradores as $colab): ?>
-                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        <?php endif; ?>
 
                         <select name="status_alteracao" id="status_alteracao">
                             <option value="Não iniciado">Não iniciado</option>
@@ -407,8 +396,6 @@ $conn->close();
                         <i class="fas fa-chevron-down" id="toggle-options"></i>
                     </div>
                     <div class="opcoes" id="opcoes" style="display: none;">
-                        <?php if ($_SESSION['nivel_acesso'] == 1): ?>
-
                             <select name="planta_id" id="opcao_planta">
                                 <?php foreach ($colaboradores as $colab): ?>
                                     <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
@@ -416,15 +403,6 @@ $conn->close();
                                     </option>
                                 <?php endforeach; ?>
                             </select>
-                        <?php else: ?>
-                            <select name="planta_id" id="opcao_planta" disabled>
-                                <?php foreach ($colaboradores as $colab): ?>
-                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        <?php endif; ?>
 
                         <select name="status_planta" id="status_planta">
                             <option value="Não iniciado">Não iniciado</option>

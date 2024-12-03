@@ -381,6 +381,7 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
     // Parte 2: Lista de tarefas/tabela
     const table = document.getElementById('tabela-faturamento');
     const selectedColumnIndexes = [0, 2, 3];
+    const dataPagamentoColumnIndex = 5;
     const headers = [];
     const rows = [];
     table.querySelectorAll('thead tr th').forEach((header, index) => {
@@ -390,13 +391,19 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
     });
 
     table.querySelectorAll('tbody tr').forEach(row => {
-        const rowData = [];
-        row.querySelectorAll('td').forEach((cell, index) => {
-            if (selectedColumnIndexes.includes(index)) {
-                rowData.push(cell.innerText);
+        const cells = row.querySelectorAll('td');
+        const dataPagamento = cells[dataPagamentoColumnIndex]?.innerText.trim(); // Data de pagamento
+        if (dataPagamento === '0000-00-00') { // Apenas se `Data Pgt` for '0000-00-00'
+            const rowData = [];
+            cells.forEach((cell, index) => {
+                if (selectedColumnIndexes.includes(index)) {
+                    rowData.push(cell.innerText.trim());
+                }
+            });
+            if (rowData.length) {
+                rows.push(rowData);
             }
-        });
-        rows.push(rowData);
+        }
     });
 
     if (rows.length > 0) {
@@ -407,7 +414,7 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
             theme: 'grid',
             headStyles: { fillColor: [0, 0, 0], textColor: [255, 255, 255] },
             bodyStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0] },
-            margin: { top: 10, left: 20, right: 20},
+            margin: { top: 10, left: 20, right: 20 },
             styles: { fontSize: 10, cellPadding: 2 }
         });
         y = doc.lastAutoTable.finalY + 20; // Atualiza a posição Y após a tabela
@@ -456,8 +463,9 @@ document.getElementById('generate-lista').addEventListener('click', function () 
     // const totalValorElement = document.getElementById('totalValor');
     // const totalValor = totalValorElement ? parseFloat(totalValorElement.innerText.replace('R$ ', '').replace('.', '').replace(',', '.')) : 0; // Converter para float
     // const totalValorExtenso = `${numeroPorExtenso(totalValor)} reais`; // Adiciona "reais" ao final
-    
-    const quantidadeTarefasValue = document.querySelectorAll('#tabela-faturamento tbody tr').length;
+
+    const quantidadeTarefasValue = Array.from(document.querySelectorAll('#tabela-faturamento tbody tr'))
+        .filter(row => row.style.display !== 'none').length;
 
     const imgPath = '../assets/logo.jpg';
 
@@ -496,13 +504,15 @@ document.getElementById('generate-lista').addEventListener('click', function () 
 
                 // Adiciona todos os dados das colunas selecionadas, sem a verificação de data_pagamento
                 table.querySelectorAll('tbody tr').forEach(row => {
-                    const rowData = [];
-                    row.querySelectorAll('td').forEach((cell, index) => {
-                        if (selectedColumnIndexes.includes(index)) {
-                            rowData.push(cell.innerText);
-                        }
-                    });
-                    rows.push(rowData); // Adiciona todos os dados, sem filtro de data_pagamento
+                    if (row.style.display !== 'none') { // Verifica se a linha está visível
+                        const rowData = [];
+                        row.querySelectorAll('td').forEach((cell, index) => {
+                            if (selectedColumnIndexes.includes(index)) {
+                                rowData.push(cell.innerText);
+                            }
+                        });
+                        rows.push(rowData); // Adiciona apenas as linhas visíveis
+                    }
                 });
 
                 if (rows.length > 0) {

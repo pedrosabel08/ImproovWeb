@@ -64,7 +64,7 @@ $conn->close();
 		<div id="menu" class="hidden">
 			<a href="../inicio.php" id="tab-imagens">Página Principal</a>
 			<a href="../main.php" id="tab-imagens">Visualizar tabela com imagens</a>
-			<a href="Pos-Producao/index.php">Lista Pós-Produção</a>
+			<a href="../Pos-Producao/index.php">Lista Pós-Produção</a>
 
 			<?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 3)): ?>
 				<a href="../infoCliente/index.php">Informações clientes</a>
@@ -197,7 +197,7 @@ $conn->close();
 					<button id="generate-excel" onclick="exportToExcel()">Exportar para Excel</button>
 				</div>
 			</div>
-			<div id="info-colaborador"></div>
+			<div id="info-colaborador" style="display: none;"></div>
 			<div class="tabela">
 				<table id="tabela-faturamento">
 					<thead>

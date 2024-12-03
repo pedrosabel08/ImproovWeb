@@ -42,10 +42,12 @@ document.addEventListener('DOMContentLoaded', function () {
                             <p id='nomeColaborador'>${colaborador.nome_usuario}</p>
                             <p id='nomeEmpresarial'>${colaborador.nome_empresarial}</p>
                             <p id='cnpjColaborador'>${colaborador.cnpj}</p>
-                            <p id='enderecoColaborador'>${colaborador.rua}, ${colaborador.numero}, ${colaborador.bairro}, ${colaborador.cep}</p>
+                            <p id='enderecoColaborador'>${colaborador.rua}, ${colaborador.numero}, ${colaborador.bairro}</p>
                             <p id='estadoCivil'>${colaborador.estado_civil}</p>
                             <p id='cpfColaborador'>${colaborador.cpf}</p>
-                            <p id='enderecoCNPJ'>${colaborador.rua_cnpj}, ${colaborador.numero_cnpj}, ${colaborador.bairro_cnpj}, ${colaborador.cep_cnpj}</p>
+                            <p id='enderecoCNPJ'>${colaborador.rua_cnpj}, ${colaborador.numero_cnpj}, ${colaborador.bairro_cnpj}</p>
+                            <p id='cep'>${colaborador.cep}</p>
+                            <p id='cepCNPJ'>${colaborador.cep_cnpj}</p>
                         `;
                     }
 
@@ -311,6 +313,9 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
     const estadoCivil = document.getElementById("estadoCivil").textContent.trim();
     const enderecoCNPJ = document.getElementById("enderecoCNPJ").textContent.trim();
     const nomeEmpresarial = document.getElementById("nomeEmpresarial").textContent.trim();
+    const cep = document.getElementById("cep").textContent.trim();
+    const cepCNPJ = document.getElementById("cepCNPJ").textContent.trim();
+
 
     const totalValorElement = document.getElementById('totalValor');
     const totalValor = totalValorElement ? parseFloat(totalValorElement.innerText.replace('R$ ', '').replace('.', '').replace(',', '.')) : 0;
@@ -319,6 +324,9 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
     const today = new Date();
     const day = String(today.getDate()).padStart(2, '0');
     const month = today.toLocaleString('default', { month: 'long' }).toUpperCase();
+    const previousMonth = (month === 0) ? 11 : month - 1; // Mês anterior
+    const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+    const previousMonthName = monthNames[previousMonth];
     const year = today.getFullYear();
 
     const { jsPDF } = window.jspdf;
@@ -331,51 +339,60 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
 
     // Função para adicionar texto com verificação de página
     function addTextWithPageCheck(text, margin = 0, boldWords = []) {
-        const lines = doc.splitTextToSize(text, 170);
+        const lines = doc.splitTextToSize(text, 170); // Quebra o texto em várias linhas
         lines.forEach(line => {
             if (y + 8 > maxHeight) {
-                doc.addPage();
+                doc.addPage(); // Adiciona nova página se o texto exceder o limite
                 y = 20;
             }
-
-            let x = 20; // Margem inicial
-            const words = line.split(/(\s+)/); // Divide palavras mantendo espaços
+    
+            let x = 20; // Definindo a margem inicial
+            const words = line.split(/(\s+)/); // Divide as palavras, mantendo os espaços
             words.forEach(word => {
-                const cleanWord = word.replace(/[.,]/g, ""); // Remove pontuações para comparação
-
-                if (boldWords.includes(cleanWord)) {
-                    doc.setFont(undefined, "bold"); // Negrito
+                const cleanWord = word.replace(/[.,]/g, ""); // Remove pontuação para comparação
+    
+                // Verifica se a palavra limpa faz parte do nomeEmpresarial
+                if (boldWords.some(boldWord => cleanWord.includes(boldWord))) {
+                    doc.setFont(undefined, "bold"); // Define a fonte como negrito
                 } else {
-                    doc.setFont(undefined, "normal"); // Fonte padrão
+                    doc.setFont(undefined, "normal"); // Define a fonte como normal
                 }
-
-                doc.text(word, x, y); // Adiciona a palavra no PDF
-                x += doc.getTextWidth(word); // Move o cursor para a próxima palavra
+    
+                doc.text(word, x, y); // Adiciona o texto na posição especificada
+                x += doc.getTextWidth(word); // Atualiza a posição horizontal
             });
-
-            y += 8; // Move para a próxima linha
+    
+            y += 8; // Avança para a próxima linha
         });
-        y += margin;
+        y += margin; // Ajusta o espaço após o texto
     }
-
+    
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(16);
+    doc.text(`ADENDO CONTRATUAL - ${previousMonthName} ${year}`, 20, y);
+    y += 20; // Espaço após o título
 
     // Parte 1: Texto do contrato
     // Definição das variáveis de texto
     let text1 = "De um lado IMPROOV LTDA., CNPJ: 37.066.879/0001-84, com endereço/sede na RUA BAHIA, 988, SALA 304, BAIRRO DO SALTO, BLUMENAU, SC, CEP 89.031-001;Se seguir denominado simplesmente parte CONTRATANTE, neste ato representado por DIOGO JOSÉ POFFO, nacionalidade: brasileira, estado civil: divorciado, inscrito no CPF sob o nº. 036.698.519-17, residente e domiciliado na Avenida Senador Atílio Fontana, nº 2101 apt. 308 Edifício Caravelas, bairro Balneário Pereque – Porto Belo/SC – CEP 88210-000, doravante denominada parte CONTRATANTE.";
 
-    let text2 = `De outro, ${nomeColaborador}, CNPJ: ${cnpjColaborador}, com endereço/sede na ${enderecoColaborador};se seguir denominado simplesmente parte CONTRATADA; neste ato representado por ${nomeEmpresarial}, brasileiro(a), ${estadoCivil}, inscrito(a) no CPF sob o nº. ${cpfColaborador}, residente e domiciliado na ${enderecoCNPJ} doravante denominada parte CONTRATADA.`;
+    let text2 = `De outro, ${nomeEmpresarial}, CNPJ: ${cnpjColaborador}, com endereço/sede na ${enderecoColaborador}, CEP: ${cep}; se seguir denominado simplesmente parte CONTRATADA; neste ato representado por ${nomeEmpresarial}, brasileiro(a), ${estadoCivil}, inscrito(a) no CPF sob o nº. ${cpfColaborador}, residente e domiciliado na ${enderecoCNPJ} e CEP: ${cepCNPJ} doravante denominada parte CONTRATADA.`;
 
-    let text3 = "Os denominados têm, entre si, justo e acertado, promover o TERMO ADITIVO N°X ao Contrato de Prestação de Serviços assinado em " + `${day} de ${month} de ${year}, nos seguintes termos e condições.`;
+    let text3 = "Os denominados têm, entre si, justo e acertado, promover o TERMO ADITIVO, nos seguintes termos e condições.";
 
     let text4 = "DO OBJETO";
     let text5 = "Cláusula 1ª - O presente termo aditivo tem por escopo dar quitação aos valores devidos pelo CONTRATANTE  ao CONTRATADO  pela elaboração e desenvolvimento das seguintes imagens que não eram parte inicial do contrato de prestação de serviços firmado em " + `${day} de ${month} de ${year}:`;
 
+    const nomeEmpresarialWords = nomeEmpresarial.split(" "); 
+    const enderecoColaboradorWords = enderecoColaborador.split(" "); 
+
+
     // Adicionando os textos ao PDF
-    addTextWithPageCheck(text1, 10, ["IMPROOV", "LTDA", "DIOGO", "JOSÉ", "POFFO", "CONTRATANTE"]);
-    addTextWithPageCheck(text2, 10, ["CONTRATADA", "CONTRATATO", nomeColaborador, cnpjColaborador, enderecoColaborador, nomeEmpresarial, estadoCivil, cpfColaborador, enderecoCNPJ]);
-    addTextWithPageCheck(text3, 10, ["TERMO", "ADITIVO", "ao", "Contrato", "de", "Prestação", "Serviços", "assinado", "em", day.toString(), month, year.toString()]);
+    addTextWithPageCheck(text1, 10, ["IMPROOV", "LTDA", "DIOGO", "JOSÉ", "POFFO"]);
+    addTextWithPageCheck(text2, 10, ["CONTRATADA", "CONTRATATO", ...nomeEmpresarialWords, cnpjColaborador, enderecoColaboradorWords, estadoCivil, enderecoCNPJ]);
+    addTextWithPageCheck(text3, 10, ["TERMO", "ADITIVO"]);
     addTextWithPageCheck(text4, 0, ["DO OBJETO"]);
-    addTextWithPageCheck(text5, 10, ["Cláusula", "1ª", "CONTRATANTE", "CONTRATADO", day.toString(), month, year.toString()]);
+    addTextWithPageCheck(text5, 10, ["Cláusula", "1ª", "CONTRATANTE", "CONTRATADO"]);
 
 
     // Parte 2: Lista de tarefas/tabela
@@ -427,20 +444,29 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
 
     let text8 = `Porto Belo/SC, ${day} de ${month} de ${year}.`;
 
-    addTextWithPageCheck(text6, 10, ["Cláusula", "2ª", "CONTRATADO", "CONTRATANTE", day.toString(), month, year.toString()], totalValor, totalValorExtenso);
+    addTextWithPageCheck(text6, 10, ["Cláusula", "2ª", "CONTRATADO", "CONTRATANTE"]);
     addTextWithPageCheck(text7, 10);
-    addTextWithPageCheck(text8, 10, ["Porto", "Belo/SC", , day.toString(), month, year.toString()]);
+    addTextWithPageCheck(text8, 10);
 
     // Parte 4: Assinaturas
     y += 20; // Espaço antes das assinaturas
     doc.text("________________________________________", 20, y);
     doc.text("IMPROOV LTDA.", 20, y + 8);
     y += 30;
+    
     doc.text("________________________________________", 20, y);
-    doc.text(nomeColaborador, 20, y + 8);
+    doc.text("Testemunha 1", 20, y + 8);
+    doc.text("Nome completo:", 20, y + 16);  // Ajuste o valor de y para não sobrepor
+    doc.text("CPF:", 20, y + 24);  // Ajuste o valor de y para não sobrepor
+    y += 50; // Move para a próxima seção
+    
+    doc.text("________________________________________", 20, y);
+    doc.text("Testemunha 2", 20, y + 8);
+    doc.text("Nome completo:", 20, y + 16);  // Ajuste o valor de y para não sobrepor
+    doc.text("CPF:", 20, y + 24);  // Ajuste o valor de y para não sobrepor
 
     // Gerar o PDF
-    doc.save(`Aditivo_Contratual_${nomeColaborador}_${month}.pdf`);
+    doc.save(`ADENDO_CONTRATUAL_${previousMonthName}_${year}.pdf`);
 });
 
 

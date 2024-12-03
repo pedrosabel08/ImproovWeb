@@ -96,8 +96,8 @@ $funcoes = obterFuncoes($conn);
                 <div class="nav">
                     <p class="top">+</p>
                     <a href="index.php" id="dashboard" class="tooltip active"><i class="fa-solid fa-chart-line"></i><span class="tooltiptext">Dashboard</span></a>
-                    <a href="projetos.html" id="projects" class="tooltip"><i class="fa-solid fa-list-check"></i><span class="tooltiptext">Projetos</span></a>
-                    <?php if ($nivel_acesso < 1): ?>
+                    <a href="projetos.php" id="projects" class="tooltip"><i class="fa-solid fa-list-check"></i><span class="tooltiptext">Projetos</span></a>
+                    <?php if ($nivel_acesso === 1): ?>
                         <a href="#" id="colabs" class="tooltip"><i class="fa-solid fa-users"></i><span class="tooltiptext">Colaboradores</span></a>
                         <a href="controle_comercial.html" id="controle_comercial" class="tooltip"><i class="fa-solid fa-dollar-sign"></i><span class="tooltiptext">Controle Comercial</span></a>
                     <?php endif; ?>

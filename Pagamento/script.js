@@ -350,35 +350,44 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
     // Função para adicionar texto com verificação de página
     function addTextWithPageCheck(text, margin = 0, boldWords = []) {
         const lines = doc.splitTextToSize(text, 170); // Quebra o texto em várias linhas
-        lines.forEach(line => {
+        lines.forEach((line, lineIndex) => {
             if (y + 8 > maxHeight) {
                 doc.addPage(); // Adiciona nova página se o texto exceder o limite
                 y = 20;
             }
-    
+
             let x = 20; // Definindo a margem inicial
             const words = line.split(/(\s+)/); // Divide as palavras, mantendo os espaços
-    
-            words.forEach(word => {
+            const lineWidth = doc.getTextWidth(line);
+
+            // Calcula o espaço extra necessário para justificar, excluindo a última linha
+            const justify = lineIndex < lines.length - 1 ? (170 - lineWidth) / (words.length - 1) : 0;
+
+            words.forEach((word, wordIndex) => {
                 const cleanWord = word.replace(/[.,/()-]/g, ""); // Remove pontuação para comparação
-    
+
                 // Verifica se a palavra está exatamente em `boldWords`
-                if (boldWords.some(boldWord => 
-                    boldWord.replace(/[.,/()-]/g, "").toLowerCase() === cleanWord.toLowerCase()
-                )) {
+                if (
+                    boldWords.some(
+                        (boldWord) =>
+                            boldWord.replace(/[.,/()-]/g, "").toLowerCase() === cleanWord.toLowerCase()
+                    )
+                ) {
                     doc.setFont(undefined, "bold"); // Define a fonte como negrito
                 } else {
                     doc.setFont(undefined, "normal"); // Define a fonte como normal
                 }
-    
-                doc.text(word, x, y); // Adiciona o texto na posição especificada
-                x += doc.getTextWidth(word); // Atualiza a posição horizontal
+
+                doc.text(word.trim(), x, y); // Adiciona o texto na posição especificada
+                x += doc.getTextWidth(word) + (wordIndex < words.length - 1 ? justify : 0); // Atualiza a posição horizontal com espaçamento justificado
             });
-    
+
             y += 8; // Avança para a próxima linha
         });
+
         y += margin; // Ajusta o espaço após o texto
     }
+
 
     doc.setFont("helvetica", "bold"); // Define a fonte para negrito
     doc.setFontSize(16); // Aumenta o tamanho da fonte
@@ -404,18 +413,17 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
     let text3 = "Os denominados têm, entre si, justo e acertado, promover o TERMO ADITIVO, nos seguintes termos e condições.";
 
     let text4 = "DO OBJETO";
-    let text5 = "Cláusula 1ª - O presente termo aditivo tem por escopo dar quitação aos valores devidos pelo CONTRATANTE  ao CONTRATADO  pela elaboração e desenvolvimento das seguintes imagens que não eram parte inicial do contrato de prestação de serviços firmado em " + `${day} de ${currentMonthName} de ${year}:`;
+    let text5 = "Cláusula 1ª - O presente termo aditivo tem por escopo dar quitação aos valores devidos pelo CONTRATANTE  ao CONTRATADO  pela elaboração e desenvolvimento dos seguintes serviços que não eram parte inicial do contrato de prestação de serviços firmado em " + `${previousMonthName}:`;
 
     const nomeEmpresarialWords = nomeEmpresarial.split(" ");
-    const enderecoColaboradorWords = enderecoColaborador.split(" ");
 
 
     // Adicionando os textos ao PDF
-    addTextWithPageCheck(text1, 10, ["IMPROOV", "LTDA", "DIOGO", "JOSÉ", "POFFO", "37.066.879/0001-84", "036.698.519-17"]);
-    addTextWithPageCheck(text2, 10, ["CONTRATADA", "CONTRATATO", ...nomeEmpresarialWords, cnpjColaborador, ...enderecoColaboradorWords, cep, cepCNPJ, cpfColaborador, estadoCivil, ...enderecoCNPJ.split(" ")]);
+    addTextWithPageCheck(text1, 10, ["IMPROOV", "LTDA", "DIOGO", "JOSÉ", "POFFO", "37.066.879/0001-84", "036.698.519-17", "CONTRATANTE", "CONTRATADO"]);
+    addTextWithPageCheck(text2, 10, ["CONTRATADA", "CONTRATATO", ...nomeEmpresarialWords, cnpjColaborador, cpfColaborador, estadoCivil]);
     addTextWithPageCheck(text3, 10, ["TERMO", "ADITIVO"]);
     addTextWithPageCheck(text4, 0, ["DO OBJETO"]);
-    addTextWithPageCheck(text5, 10, ["Cláusula", "1ª", "CONTRATANTE", "CONTRATADO"]);
+    addTextWithPageCheck(text5, 10, ["Cláusula", "1ª", "CONTRATANTE", "CONTRATADO", previousMonthName]);
 
 
     // Parte 2: Lista de tarefas/tabela
@@ -436,7 +444,7 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
     table.querySelectorAll('tbody tr').forEach(row => {
         const cells = row.querySelectorAll('td');
         const dataPagamento = cells[dataPagamentoColumnIndex]?.innerText.trim(); // Data de pagamento
-        if (dataPagamento === '0000-00-00') { // Apenas se `Data Pgt` for '0000-00-00'
+        if (dataPagamento === '0000-00-00' && row.style.display !== 'none') {
             const rowData = [];
             cells.forEach((cell, index) => {
                 if (selectedColumnIndexes.includes(index)) {
@@ -470,7 +478,7 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
     }
 
     // Parte 3: Segunda parte do contrato
-    let text6 = `Cláusula 2ª - O CONTRATADO  declara que no dia ${day} de ${currentMonthName} de ${year}, recebeu do CONTRATANTE  o valor de R$ ${totalValor.toFixed(2)} (${totalValorExtenso}), pela entrega das imagens acima referidas, e dá a mais ampla, geral e irrestrita quitação à dívida, renunciando seu direito de cobrança relativos a tais valores. `;
+    let text6 = `Cláusula 2ª - O CONTRATADO  declara que no dia ${day} de ${currentMonthName} de ${year}, recebeu do CONTRATANTE  o valor de R$ ${totalValor.toFixed(2)} (${totalValorExtenso}), pela entrega dos serviços acima referidos, e dá a mais ampla, geral e irrestrita quitação à dívida, renunciando seu direito de cobrança relativos a tais valores. `;
 
     let text7 = `E por estarem justas e perfeitamente acertadas, assinam o presente em 02 (duas) vias de igual teor e forma, vias na presença de 2 (duas) testemunhas.`;
 
@@ -480,21 +488,57 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
     addTextWithPageCheck(text7, 10);
     addTextWithPageCheck(text8, 10);
 
+    function checkAndAddPageIfNeeded(doc, positionY) {
+        if (positionY + 40 > maxHeight) { // Verifica se o espaço restante na página é suficiente
+            doc.addPage(); // Se não for suficiente, adiciona uma nova página
+            positionY = 20; // Reseta a posição Y para o topo da página
+        }
+        return positionY; // Retorna a posição Y ajustada
+    }
+
     // Parte 4: Assinaturas
     y += 20; // Espaço antes das assinaturas
-    doc.text("________________________________________", 20, y);
-    doc.text("IMPROOV LTDA.", 20, y + 8);
-    y += 30;
 
-    addTextWithPageCheck("________________________________________", 10);
-    addTextWithPageCheck("Testemunha 1", 5);
-    addTextWithPageCheck("Nome completo:", 5);
-    addTextWithPageCheck("CPF:", 10);
+    // Assinatura da IMPROOV LTDA.
+    y = checkAndAddPageIfNeeded(doc, y); // Verifica se há espaço para a assinatura
+    const xEmpresa = 20; // Posição inicial para a IMPROOV LTDA.
+    const xNovaColuna = 105; // Posição da nova coluna, à direita da IMPROOV LTDA.
 
-    addTextWithPageCheck("________________________________________", 10);
-    addTextWithPageCheck("Testemunha 2", 5);
-    addTextWithPageCheck("Nome completo:", 5);
-    addTextWithPageCheck("CPF:", 10);
+    // Primeira assinatura: IMPROOV LTDA.
+    doc.text("_________________________", xEmpresa, y);  // Linha para assinatura
+    doc.text("IMPROOV LTDA.", xEmpresa, y + 8); // Nome da empresa
+    doc.text("CNPJ: 37.066.879/0001-84", xEmpresa, y + 18); // CNPJ da empresa
+    doc.text("DIOGO JOSÉ POFFO", xEmpresa, y + 28); // Nome do responsável
+    doc.text("CPF: 036.698.519-17", xEmpresa, y + 38); // CPF do responsável
+
+    // Nova coluna à direita da assinatura IMPROOV LTDA.
+    y = checkAndAddPageIfNeeded(doc, y); // Verifica se há espaço para a assinatura
+    doc.text("_________________________", xNovaColuna, y); // Linha de assinatura na nova coluna
+    doc.text(`${nomeColaborador}`, xNovaColuna, y + 8); // Nome na nova coluna
+    doc.text("CNPJ: " + cnpjColaborador, xNovaColuna, y + 18); // CNPJ do colaborador
+    doc.text(nomeEmpresarial, xNovaColuna, y + 28); // Nome empresarial
+    doc.text("CPF: " + cpfColaborador, xNovaColuna, y + 38); // CPF do colaborador
+
+    y += 40; // Espaço após a assinatura de IMPROOV LTDA.
+
+    y += 40;
+    // Assinaturas das testemunhas (lado a lado)
+    const xTestemunha1 = 20;    // Posição para a primeira testemunha
+    const xTestemunha2 = 105;   // Posição para a segunda testemunha (ajustada para segunda coluna)
+
+    // Testemunha 1
+    y = checkAndAddPageIfNeeded(doc, y); // Verifica se há espaço para a assinatura
+    doc.text("_________________________", xTestemunha1, y); // Linha de assinatura
+    doc.text("Testemunha 1", xTestemunha1, y + 8); // Nome da testemunha 1
+    doc.text("Nome completo:", xTestemunha1, y + 18); // Detalhes de testemunha 1
+    doc.text("CPF:", xTestemunha1, y + 28); // CPF de testemunha 1
+
+    // Testemunha 2 (na posição horizontal diferente, criando a coluna)
+    y = checkAndAddPageIfNeeded(doc, y); // Verifica se há espaço para a assinatura
+    doc.text("_________________________", xTestemunha2, y); // Linha de assinatura
+    doc.text("Testemunha 2", xTestemunha2, y + 8); // Nome da testemunha 2
+    doc.text("Nome completo:", xTestemunha2, y + 18); // Detalhes de testemunha 2
+    doc.text("CPF:", xTestemunha2, y + 28); // CPF de testemunha 2
 
     // Gerar o PDF
     doc.save(`ADENDO_CONTRATUAL_${nomeColaborador}_${previousMonthName}_${year}.pdf`);

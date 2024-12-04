@@ -1156,6 +1156,36 @@ window.onclick = function (event) {
 //     desc_modal.style.display = 'none';
 // })
 
+document.getElementById("addRender").addEventListener("click", function (event) {
+    event.preventDefault();
+
+    // Captura os valores
+    const imagemId = document.getElementById("imagem_id").value;
+
+    // Configuração do AJAX
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", "addRender.php", true);
+    xhr.setRequestHeader("Content-Type", "application/json");
+
+    // Define o que fazer após a resposta
+    xhr.onload = function () {
+        if (xhr.status === 200) {
+            alert("Dados enviados com sucesso: " + xhr.responseText);
+        } else {
+            alert("Erro ao enviar os dados.");
+        }
+    };
+
+    // Dados a serem enviados como JSON
+    const data = {
+        imagem_id: imagemId
+    };
+
+    // Envia os dados como JSON
+    xhr.send(JSON.stringify(data));
+});
+
+
 document.getElementById('generate-pdf').addEventListener('click', function () {
     const { jsPDF } = window.jspdf;
 

@@ -41,6 +41,7 @@ $idusuario = $_SESSION['idusuario'];
         <a href="inicio.php" id="tab-imagens">Página Principal</a>
         <a href="main.php" id="tab-imagens">Visualizar tabela com imagens</a>
         <a href="Pos-Producao/index.php">Lista Pós-Produção</a>
+        <a href="Render/index.php">Lista Render</a>
 
         <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 3)): ?>
             <a href="infoCliente/index.php">Informações clientes</a>
@@ -370,13 +371,13 @@ $conn->close();
                         <i class="fas fa-chevron-down" id="toggle-options"></i>
                     </div>
                     <div class="opcoes" id="opcoes" style="display: none;">
-                            <select name="alteracao_id" id="opcao_alteracao">
-                                <?php foreach ($colaboradores as $colab): ?>
-                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
+                        <select name="alteracao_id" id="opcao_alteracao">
+                            <?php foreach ($colaboradores as $colab): ?>
+                                <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                    <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
 
                         <select name="status_alteracao" id="status_alteracao">
                             <option value="Não iniciado">Não iniciado</option>
@@ -396,13 +397,13 @@ $conn->close();
                         <i class="fas fa-chevron-down" id="toggle-options"></i>
                     </div>
                     <div class="opcoes" id="opcoes" style="display: none;">
-                            <select name="planta_id" id="opcao_planta">
-                                <?php foreach ($colaboradores as $colab): ?>
-                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
+                        <select name="planta_id" id="opcao_planta">
+                            <?php foreach ($colaboradores as $colab): ?>
+                                <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                    <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
 
                         <select name="status_planta" id="status_planta">
                             <option value="Não iniciado">Não iniciado</option>
@@ -426,9 +427,21 @@ $conn->close();
                         <?php endforeach; ?>
                     </select>
                 </div>
+                <div class="funcao" id="status_funcao" style="width: 200px;">
+                    <div class="render">
+                        <p id="render_alta">Render Alta</p>
+                        <!-- <select name="render" id="render" style="width: 120px;">
+                            <option value="Não iniciado">Não iniciado</option>
+                            <option value="Em andamento">Em andamento</option>
+                            <option value="Finalizado">Finalizado</option>
+                        </select> -->
+                        <button id="addRender" style="padding: 3px 10px; font-size: 13px; background-color: steelblue;">Adicionar render</button>
+                    </div>
+                </div>
                 <div class="buttons">
                     <button type="submit" id="salvar_funcoes">Salvar</button>
                 </div>
+
             </form>
         </div>
 
@@ -635,7 +648,6 @@ $conn->close();
                     <th>Alteração</th>
                     <th>Planta</th>
                     <th>Revisões</th>
-
                 </thead>
                 <tbody>
 

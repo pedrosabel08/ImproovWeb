@@ -1,0 +1,243 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&family=Nunito:ital,wght@0,200..1000;1,200..1000&family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap');
+
+
+* {
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+    font-family: "Montserrat", sans-serif;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 10px;
+}
+
+/* Container principal da página */
+.container {
+    width: 90%;
+    background-color: #ffffff;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    border-radius: 8px;
+    margin: auto;
+}
+
+/* Título da página */
+h1 {
+    text-align: center;
+    color: #333;
+    font-size: 2rem;
+    margin-bottom: 20px;
+}
+
+/* Estilos da tabela */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+table,
+th,
+td {
+    border: 1px solid #ddd;
+}
+
+th {
+    background-color: #4CAF50;
+    color: white;
+    padding: 10px;
+    text-align: left;
+}
+
+td {
+    padding: 10px;
+    text-align: left;
+    color: #333;
+}
+
+tr:nth-child(even) {
+    background-color: #f2f2f2;
+}
+
+tr:hover {
+    background-color: #ddd;
+    cursor: pointer;
+}
+
+.buttons button {
+    padding: 8px 12px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    background-color: #4CAF50;
+    color: white;
+    font-size: 1rem;
+    margin-right: 10px;
+    transition: background-color 0.3s ease;
+}
+
+.buttons button:hover {
+    background-color: #45a049;
+}
+
+.buttons button:focus {
+    outline: none;
+}
+
+button,
+a {
+    all: unset;
+    display: inline-block;
+    box-sizing: border-box;
+    cursor: pointer;
+}
+
+
+
+/* Estilos do modal */
+.modal {
+    display: none;
+    /* Torna o .modal um flex container */
+    justify-content: center;
+    /* Centraliza horizontalmente */
+    align-items: center;
+    /* Centraliza verticalmente */
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    animation: fadeIn 0.5s ease-in-out forwards;
+}
+
+.modal-content {
+    background-color: white;
+    padding: 20px;
+    border-radius: 10px;
+    width: 30%;
+    max-height: 70%;
+    overflow-y: auto;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    animation: showModal 0.3s ease;
+}
+
+/* Estilos para o botão de excluir */
+#deleteRender {
+    background-color: #f44336;
+}
+
+#deleteRender:hover {
+    background-color: #e53935;
+}
+
+/* Estilos da tabela de renderizações */
+#renderList {
+    margin-top: 20px;
+    text-align: center;
+}
+
+/* Estilos para o formulário */
+form {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Estilos para as mensagens */
+#message {
+    font-size: 1rem;
+    color: #333;
+    text-align: center;
+    margin-top: 20px;
+}
+
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.close:hover {
+    color: black;
+}
+
+.hidden {
+    display: none;
+}
+
+#menu {
+    background-color: #f1f1f1;
+    border-radius: 10px;
+    position: absolute;
+    left: 10px;
+    z-index: 1;
+    margin-top: 30px;
+    min-width: 10rem;
+    padding: .5rem 0;
+    transition: .3s all ease;
+    animation: fadeIn .5s ease-in-out forwards;
+}
+
+#menu a {
+    display: block;
+    padding: 5px;
+    text-decoration: none;
+    color: black;
+    font-size: 1rem;
+    padding: .25rem 1.5rem;
+    border-radius: 2px;
+    transition: .3s all ease;
+    text-align: center;
+}
+
+#menu a#tab-imagens {
+    font-weight: bold;
+}
+
+#menu a i {
+    margin-right: 10px;
+}
+
+#menu a:hover {
+    background-color: #ccc;
+}
+
+@keyframes fadeIn {
+    0% {
+        opacity: 0;
+    }
+
+    100% {
+        opacity: 1;
+    }
+}
+
+
+/* Responsividade */
+@media screen and (max-width: 768px) {
+    .container {
+        width: 95%;
+    }
+
+    table,
+    th,
+    td {
+        font-size: 0.9rem;
+    }
+
+    .modal-content {
+        width: 90%;
+    }
+
+    button {
+        padding: 6px 10px;
+    }
+}

@@ -107,6 +107,7 @@ if ($result_imagens->num_rows > 0) {
             <a href="../inicio.php" id="tab-imagens">Página Principal</a>
             <a href="../main.php" id="tab-imagens">Visualizar tabela com imagens</a>
             <a href="Pos-Producao/index.php">Lista Pós-Produção</a>
+            <a href="../Render/index.php">Lista Render</a>
 
             <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 3)): ?>
                 <a href="../infoCliente/index.php">Informações clientes</a>

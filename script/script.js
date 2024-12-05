@@ -1170,7 +1170,7 @@ document.getElementById("addRender").addEventListener("click", function (event) 
     // Define o que fazer após a resposta
     xhr.onload = function () {
         if (xhr.status === 200) {
-            alert("Dados enviados com sucesso: " + xhr.responseText);
+            alert("Dados enviados com sucesso!");
         } else {
             alert("Erro ao enviar os dados.");
         }

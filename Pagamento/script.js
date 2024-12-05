@@ -322,6 +322,7 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
     // const totalValorExtenso = `${numeroPorExtenso(totalValor)} reais`;
 
     const today = new Date();
+    today.setDate(today.getDate() + 1); // Adiciona 1 dia
     const day = String(today.getDate()).padStart(2, '0');
 
     // Obtém o número do mês (0 = Janeiro, 11 = Dezembro)
@@ -349,43 +350,46 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
 
     // Função para adicionar texto com verificação de página
     function addTextWithPageCheck(text, margin = 0, boldWords = []) {
-        const lines = doc.splitTextToSize(text, 170); // Quebra o texto em várias linhas
+        const lines = doc.splitTextToSize(text, 170); // Divide o texto em linhas conforme a largura disponível
         lines.forEach((line, lineIndex) => {
             if (y + 8 > maxHeight) {
-                doc.addPage(); // Adiciona nova página se o texto exceder o limite
-                y = 20;
+                doc.addPage(); // Adiciona nova página se necessário
+                y = 20; // Reinicia a posição vertical
             }
 
-            let x = 20; // Definindo a margem inicial
-            const words = line.split(/(\s+)/); // Divide as palavras, mantendo os espaços
+            let x = 20; // Margem inicial
+            const words = line.split(/(\s+)/); // Divide a linha em palavras mantendo os espaços
             const lineWidth = doc.getTextWidth(line);
 
-            // Calcula o espaço extra necessário para justificar, excluindo a última linha
-            const justify = lineIndex < lines.length - 1 ? (170 - lineWidth) / (words.length - 1) : 0;
+            // Verifica se não é a última linha para justificar
+            const justify = lineIndex < lines.length - 1 && words.length > 1
+                ? (170 - lineWidth) / (words.length - 1)
+                : 0;
 
             words.forEach((word, wordIndex) => {
                 const cleanWord = word.replace(/[.,/()-]/g, ""); // Remove pontuação para comparação
 
-                // Verifica se a palavra está exatamente em `boldWords`
+                // Define negrito se a palavra estiver na lista
                 if (
                     boldWords.some(
                         (boldWord) =>
                             boldWord.replace(/[.,/()-]/g, "").toLowerCase() === cleanWord.toLowerCase()
                     )
                 ) {
-                    doc.setFont(undefined, "bold"); // Define a fonte como negrito
+                    doc.setFont(undefined, "bold");
                 } else {
-                    doc.setFont(undefined, "normal"); // Define a fonte como normal
+                    doc.setFont(undefined, "normal");
                 }
 
-                doc.text(word.trim(), x, y); // Adiciona o texto na posição especificada
-                x += doc.getTextWidth(word) + (wordIndex < words.length - 1 ? justify : 0); // Atualiza a posição horizontal com espaçamento justificado
+                // Adiciona a palavra ao PDF
+                doc.text(word.trim(), x, y);
+                x += doc.getTextWidth(word) + (wordIndex < words.length - 1 ? justify : 0); // Adiciona espaço de justificação
             });
 
-            y += 8; // Avança para a próxima linha
+            y += 8; // Move para a próxima linha
         });
 
-        y += margin; // Ajusta o espaço após o texto
+        y += margin; // Adiciona margem após o texto
     }
 
 
@@ -408,7 +412,7 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
     // Definição das variáveis de texto
     let text1 = "De um lado IMPROOV LTDA., CNPJ: 37.066.879/0001-84, com endereço/sede na RUA BAHIA, 988, SALA 304, BAIRRO DO SALTO, BLUMENAU, SC, CEP 89.031-001;Se seguir denominado simplesmente parte CONTRATANTE, neste ato representado por DIOGO JOSÉ POFFO, nacionalidade: brasileira, estado civil: divorciado, inscrito no CPF sob o nº. 036.698.519-17, residente e domiciliado na Avenida Senador Atílio Fontana, nº 2101 apt. 308 Edifício Caravelas, bairro Balneário Pereque – Porto Belo/SC – CEP 88210-000, doravante denominada parte CONTRATANTE.";
 
-    let text2 = `De outro, ${nomeEmpresarial}, CNPJ: ${cnpjColaborador}, com endereço/sede na ${enderecoColaborador} , CEP: ${cep} ; se seguir denominado simplesmente parte CONTRATADA; neste ato representado por ${nomeEmpresarial}, brasileiro(a), ${estadoCivil}, inscrito(a) no CPF sob o nº. ${cpfColaborador} , residente e domiciliado na ${enderecoCNPJ} e CEP: ${cepCNPJ} doravante denominada parte CONTRATADA.`;
+    let text2 = `De outro, ${nomeEmpresarial} ,CNPJ: ${cnpjColaborador}, com endereço/sede na ${enderecoColaborador}, CEP: ${cep} ; se seguir denominado simplesmente parte CONTRATADA; neste ato representado por ${nomeColaborador}, brasileiro(a), ${estadoCivil}, inscrito(a) no CPF sob  o nº. ${cpfColaborador}, residente e domiciliado na ${enderecoCNPJ} e CEP: ${cepCNPJ} doravante denominada parte CONTRATADA.`;
 
     let text3 = "Os denominados têm, entre si, justo e acertado, promover o TERMO ADITIVO, nos seguintes termos e condições.";
 
@@ -416,11 +420,12 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
     let text5 = "Cláusula 1ª - O presente termo aditivo tem por escopo dar quitação aos valores devidos pelo CONTRATANTE  ao CONTRATADO  pela elaboração e desenvolvimento dos seguintes serviços que não eram parte inicial do contrato de prestação de serviços firmado em " + `${previousMonthName}:`;
 
     const nomeEmpresarialWords = nomeEmpresarial.split(" ");
+    const nomeColaboradorWords = nomeColaborador.split(" ");
 
 
     // Adicionando os textos ao PDF
     addTextWithPageCheck(text1, 10, ["IMPROOV", "LTDA", "DIOGO", "JOSÉ", "POFFO", "37.066.879/0001-84", "036.698.519-17", "CONTRATANTE", "CONTRATADO"]);
-    addTextWithPageCheck(text2, 10, ["CONTRATADA", "CONTRATATO", ...nomeEmpresarialWords, cnpjColaborador, cpfColaborador, estadoCivil]);
+    addTextWithPageCheck(text2, 10, ["CONTRATADA", "CONTRATATO", ...nomeEmpresarialWords, cnpjColaborador, ...nomeColaboradorWords, cpfColaborador]);
     addTextWithPageCheck(text3, 10, ["TERMO", "ADITIVO"]);
     addTextWithPageCheck(text4, 0, ["DO OBJETO"]);
     addTextWithPageCheck(text5, 10, ["Cláusula", "1ª", "CONTRATANTE", "CONTRATADO", previousMonthName]);
@@ -434,6 +439,11 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
     const rows = [];
     let totalValor = 0; // Inicializa o total em 0
     let totalValorExtenso = "";
+    let totalLinhas = 0;
+    let rowNumber = 1; // Variável para a numeração das linhas
+
+    // Adiciona a coluna de numeração no cabeçalho
+    headers.unshift('No.'); // Adiciona "No." como o título da nova coluna
 
     table.querySelectorAll('thead tr th').forEach((header, index) => {
         if (selectedColumnIndexes.includes(index)) {
@@ -445,24 +455,35 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
         const cells = row.querySelectorAll('td');
         const dataPagamento = cells[dataPagamentoColumnIndex]?.innerText.trim(); // Data de pagamento
         if (dataPagamento === '0000-00-00' && row.style.display !== 'none') {
+            // if (row.style.display !== 'none') {
+
             const rowData = [];
+
+            // Adiciona a numeração à primeira coluna de cada linha
+            rowData.push(rowNumber);
+
             cells.forEach((cell, index) => {
                 if (selectedColumnIndexes.includes(index)) {
                     rowData.push(cell.innerText.trim());
                 }
             });
+
             const valorColumnIndex = 3; // Substitua pelo índice da coluna com os valores
             const valor = parseFloat(cells[valorColumnIndex]?.innerText.trim().replace('R$ ', '').replace('.', '').replace(',', '.') || 0);
             totalValor += valor; // Soma o valor da linha ao total
+
             if (rowData.length) {
                 rows.push(rowData);
             }
+            rowNumber++; // Incrementa o número da linha
         }
     });
 
     totalValorExtenso = `${numeroPorExtenso(totalValor)} reais`;
+    // totalValorExtenso = `Mil oitocentos e quarenta reais`;
 
 
+    // Adiciona a tabela ao documento PDF
     if (rows.length > 0) {
         doc.autoTable({
             head: [headers],
@@ -475,14 +496,38 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
             styles: { fontSize: 10, cellPadding: 2 }
         });
         y = doc.lastAutoTable.finalY + 20; // Atualiza a posição Y após a tabela
+
     }
 
+    // // Dados da nova tabela
+    // const novaTabelaHeaders = ['Categoria', 'Valor'];
+    // const novaTabelaBody = [
+    //     ['Gasolina', '0'],
+    //     ['Diaria Drone', '0'],
+    //     ['Outros', '428,37']
+    // ];
+
+    // // Adiciona nova tabela ao PDF
+    // doc.autoTable({
+    //     head: [novaTabelaHeaders],
+    //     body: novaTabelaBody,
+    //     startY: y, // Posiciona abaixo da tabela anterior
+    //     theme: 'grid',
+    //     headStyles: { fillColor: [0, 0, 0], textColor: [255, 255, 255] },
+    //     bodyStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0] },
+    //     margin: { top: 10, left: 20, right: 20 },
+    //     styles: { fontSize: 10, cellPadding: 2 }
+    // });
+
+    // Atualiza a posição Y para futuras adições no PDF (caso necessário)
+    y = doc.lastAutoTable.finalY + 20;
+
     // Parte 3: Segunda parte do contrato
-    let text6 = `Cláusula 2ª - O CONTRATADO  declara que no dia ${day} de ${currentMonthName} de ${year}, recebeu do CONTRATANTE  o valor de R$ ${totalValor.toFixed(2)} (${totalValorExtenso}), pela entrega dos serviços acima referidos, e dá a mais ampla, geral e irrestrita quitação à dívida, renunciando seu direito de cobrança relativos a tais valores. `;
+    let text6 = `Cláusula 2ª - O CONTRATADO  declara que no dia ${day} de ${currentMonthName} de ${year}, recebeu do CONTRATANTE  o valor de R$ ${totalValor+0},00 (${totalValorExtenso}), pela entrega dos serviços acima referidos, e dá a mais ampla, geral e irrestrita quitação à dívida, renunciando seu direito de cobrança relativos a tais valores. `;
 
     let text7 = `E por estarem justas e perfeitamente acertadas, assinam o presente em 02 (duas) vias de igual teor e forma, vias na presença de 2 (duas) testemunhas.`;
 
-    let text8 = `Porto Belo/SC, ${day} de ${currentMonthName} de ${year}.`;
+    let text8 = `Blumenau/SC, ${day} de ${currentMonthName} de ${year}.`;
 
     addTextWithPageCheck(text6, 10, ["Cláusula", "2ª", "CONTRATADO", "CONTRATANTE"]);
     addTextWithPageCheck(text7, 10);
@@ -514,9 +559,9 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
     // Nova coluna à direita da assinatura IMPROOV LTDA.
     y = checkAndAddPageIfNeeded(doc, y); // Verifica se há espaço para a assinatura
     doc.text("_________________________", xNovaColuna, y); // Linha de assinatura na nova coluna
-    doc.text(`${nomeColaborador}`, xNovaColuna, y + 8); // Nome na nova coluna
+    doc.text(nomeEmpresarial, xNovaColuna, y + 8); // Nome na nova coluna
     doc.text("CNPJ: " + cnpjColaborador, xNovaColuna, y + 18); // CNPJ do colaborador
-    doc.text(nomeEmpresarial, xNovaColuna, y + 28); // Nome empresarial
+    doc.text(`${nomeColaborador}`, xNovaColuna, y + 28); // Nome empresarial
     doc.text("CPF: " + cpfColaborador, xNovaColuna, y + 38); // CPF do colaborador
 
     y += 40; // Espaço após a assinatura de IMPROOV LTDA.

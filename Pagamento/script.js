@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', function () {
         var anoId = document.getElementById('ano').value;
 
         const confirmarPagamentoButton = document.getElementById('confirmar-pagamento');
-        confirmarPagamentoButton.disabled = true;
+        // confirmarPagamentoButton.disabled = true;
 
         if (colaboradorId) {
             var url = 'getColaborador.php?colaborador_id=' + encodeURIComponent(colaboradorId);
@@ -238,25 +238,25 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 
-function verificarValoresMaiorQueZero() {
-    let allGreaterThanZero = true;
-    document.querySelectorAll('#tabela-faturamento tbody tr').forEach(row => {
-        let valorCell = row.querySelector('td:nth-child(4)'); // Assume que o valor está na 4ª coluna
-        let valor = parseFloat(valorCell.textContent.replace('R$', '').replace(',', '.'));
+// function verificarValoresMaiorQueZero() {
+//     let allGreaterThanZero = true;
+//     document.querySelectorAll('#tabela-faturamento tbody tr').forEach(row => {
+//         let valorCell = row.querySelector('td:nth-child(4)'); // Assume que o valor está na 4ª coluna
+//         let valor = parseFloat(valorCell.textContent.replace('R$', '').replace(',', '.'));
 
-        if (isNaN(valor) || valor <= 0) {
-            allGreaterThanZero = false;
-        }
-    });
+//         if (isNaN(valor) || valor <= 0) {
+//             allGreaterThanZero = false;
+//         }
+//     });
 
-    // Habilita ou desabilita o botão "Confirmar Pagamento"
-    const confirmarPagamentoButton = document.getElementById('confirmar-pagamento');
-    if (allGreaterThanZero) {
-        confirmarPagamentoButton.disabled = false;
-    } else {
-        confirmarPagamentoButton.disabled = true;
-    }
-}
+//     // Habilita ou desabilita o botão "Confirmar Pagamento"
+//     const confirmarPagamentoButton = document.getElementById('confirmar-pagamento');
+//     if (allGreaterThanZero) {
+//         confirmarPagamentoButton.disabled = false;
+//     } else {
+//         confirmarPagamentoButton.disabled = true;
+//     }
+// }
 
 function contarLinhasTabela() {
     const tabela = document.getElementById("tabela-faturamento");

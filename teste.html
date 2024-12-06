@@ -10,53 +10,50 @@
 <body>
     <h1>Teste de Notificações</h1>
     <button id="notificar">Enviar Notificação</button>
-</body>
 
-<script>
-    // Verificar se o navegador suporta notificações
-    if ('Notification' in window) {
-        console.log('Notificações suportadas.');
+    <script>
+        // Verificar se o navegador suporta notificações
+        if ('Notification' in window) {
+            console.log('Notificações suportadas.');
 
-        // Solicitar permissão ao usuário
-        Notification.requestPermission().then(permission => {
-            if (permission === 'granted') {
-                console.log('Permissão concedida para notificações.');
+            // Solicitar permissão ao usuário
+            Notification.requestPermission().then(permission => {
+                if (permission === 'granted') {
+                    console.log('Permissão concedida para notificações.');
 
-                // Função para enviar notificação
-                function enviarNotificacao(titulo, mensagem, icone) {
-                    console.log('Enviando notificação...');
-                    const notificacao = new Notification(titulo, {
-                        body: mensagem,
-                        icon: icone, // Caminho para o ícone (opcional)
+                    // Função para enviar notificação
+                    function enviarNotificacao(titulo, mensagem, icone) {
+                        const notificacao = new Notification(titulo, {
+                            body: mensagem,
+                            icon: icone, // Caminho para o ícone (opcional)
+                        });
+
+                        // Ação ao clicar na notificação (opcional)
+                        notificacao.onclick = () => {
+                            window.focus(); // Focar na janela atual
+                        };
+
+                        // Fechar automaticamente após 5 segundos (opcional)
+                        setTimeout(() => notificacao.close(), 5000);
+                    }
+
+                    // Configurar o botão para enviar uma notificação
+                    const botao = document.getElementById('notificar');
+                    botao.addEventListener('click', () => {
+                        enviarNotificacao(
+                            'Nova função finalizada!',
+                            'Clique aqui para ver os detalhes.',
+                            'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s' // Ícone exemplo
+                        );
                     });
-
-                    // Ação ao clicar na notificação (opcional)
-                    notificacao.onclick = () => {
-                        window.focus(); // Focar na janela atual
-                    };
-
-                    // Fechar automaticamente após 5 segundos (opcional)
-                    setTimeout(() => notificacao.close(), 3000);
+                } else {
+                    console.warn('Permissão negada para notificações.');
                 }
-
-                // Configurar o botão para enviar uma notificação
-                const botao = document.getElementById('notificar');
-                botao.addEventListener('click', () => {
-                    console.log('Botão clicado!');
-                    enviarNotificacao(
-                        'Nova função finalizada!',
-                        'Clique aqui para ver os detalhes.',
-                        'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s' // Ícone exemplo
-                    );
-                });
-            } else {
-                console.warn('Permissão negada para notificações.');
-            }
-        });
-    } else {
-        console.error('Este navegador não suporta notificações.');
-    }
-
-</script>
+            });
+        } else {
+            console.error('Este navegador não suporta notificações.');
+        }
+    </script>
+</body>
 
 </html>

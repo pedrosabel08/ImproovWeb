@@ -4,95 +4,59 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tabela Compacta</title>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&family=Nunito:ital,wght@0,200..1000;1,200..1000&family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap');
-
-
-        * {
-            padding: 0;
-            margin: 0;
-            box-sizing: border-box;
-            font-family: "Montserrat", sans-serif;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        th,
-        td {
-            width: 50px;
-            /* Largura inicial pequena */
-            overflow: hidden;
-            white-space: nowrap;
-            /* Impede quebra de linha */
-            text-overflow: ellipsis;
-            /* Mostra "..." para conteúdo maior */
-            transition: width 0.3s ease;
-            /* Animação suave */
-            border: 1px solid #ccc;
-            text-align: center;
-        }
-
-        th:hover,
-        td:hover {
-            width: 200px;
-            /* Largura ao dar hover */
-        }
-
-        tbody tr:nth-child(even) {
-            background-color: #f9f9f9;
-        }
-
-        tbody tr:nth-child(odd) {
-            background-color: #fff;
-        }
-    </style>
+    <title>Notificações Push</title>
 </head>
 
 <body>
-    <table>
-        <thead>
-            <th>Nome da Imagem</th>
-            <th style="max-width: 150px;">Tipo</th>
-            <th>C.</th>
-            <th>Status</th>
-            <th>M.</th>
-            <th>Status</th>
-            <th>Co.</th>
-            <th>Status</th>
-            <th>F.</th>
-            <th>Status</th>
-            <th>P.</th>
-            <th>Status</th>
-            <th>Alteração</th>
-            <th>Status</th>
-            <th>Planta</th>
-            <th>Status</th>
-        </thead>
-        <tbody>
-            <tr class="linha-tabela" data-id="180">
-                <td antecipada="0">26. DOM_MOR PLANTA HUMANIZADA DO PAVIMENTO SUBSOLO</td>
-                <td>Planta Humanizada</td>
-                <td>Finalizado</td>
-                <td>Finalizado</td>
-                <td>Finalizado</td>
-                <td>Finalizado</td>
-                <td>Finalizado</td>
-                <td>Finalizado</td>
-                <td>Finalizado</td>
-                <td>Finalizado</td>
-                <td>Finalizado</td>
-                <td>Finalizado</td>
-                <td>Andressa</td>
-                <td>Não iniciado</td>
-                <td>Andressa</td>
-                <td>Não iniciado</td>
-            </tr>
-        </tbody>
-    </table>
+    <h1>Teste de Notificações</h1>
+    <button id="notificar">Enviar Notificação</button>
 </body>
+
+<script>
+    // Verificar se o navegador suporta notificações
+    if ('Notification' in window) {
+        console.log('Notificações suportadas.');
+
+        // Solicitar permissão ao usuário
+        Notification.requestPermission().then(permission => {
+            if (permission === 'granted') {
+                console.log('Permissão concedida para notificações.');
+
+                // Função para enviar notificação
+                function enviarNotificacao(titulo, mensagem, icone) {
+                    console.log('Enviando notificação...');
+                    const notificacao = new Notification(titulo, {
+                        body: mensagem,
+                        icon: icone, // Caminho para o ícone (opcional)
+                    });
+
+                    // Ação ao clicar na notificação (opcional)
+                    notificacao.onclick = () => {
+                        window.focus(); // Focar na janela atual
+                    };
+
+                    // Fechar automaticamente após 5 segundos (opcional)
+                    setTimeout(() => notificacao.close(), 3000);
+                }
+
+                // Configurar o botão para enviar uma notificação
+                const botao = document.getElementById('notificar');
+                botao.addEventListener('click', () => {
+                    console.log('Botão clicado!');
+                    enviarNotificacao(
+                        'Nova função finalizada!',
+                        'Clique aqui para ver os detalhes.',
+                        'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s' // Ícone exemplo
+                    );
+                });
+            } else {
+                console.warn('Permissão negada para notificações.');
+            }
+        });
+    } else {
+        console.error('Este navegador não suporta notificações.');
+    }
+
+</script>
 
 </html>

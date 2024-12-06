@@ -179,7 +179,7 @@ $conn->close();
 			<div class="menu-buttons">
 				<div class="buttons">
 					<button id="marcar-todos">Marcar/Desmarcar Todos</button>
-					<button id="confirmar-pagamento" disabled>Confirmar Pagamento</button>
+					<button id="confirmar-pagamento">Confirmar Pagamento</button>
 					<button id="adicionar-valor">Adicionar valor</button>
 					<input type="text" id="valor" placeholder="R$ 0,00">
 				</div>

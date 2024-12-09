@@ -267,6 +267,9 @@ a {
 .modal-content p {
     margin: 20px 0;
 }
+#list_acomp p {
+    margin: 20px 0;
+}
 
 #obras {
     display: flex;
@@ -587,19 +590,27 @@ a {
     margin-right: 15px;
 }
 
+.tabela {
+    display: flex;
+    justify-content: center;
+}
+
+table {
+    width: 95%;
+    border-collapse: collapse;
+}
+
 table tbody tr:hover {
     cursor: pointer;
     background-color: #FF5833;
 }
 
-table {
-    border-collapse: collapse;
-    width: 80%;
-    background-color: white;
-}
-
-table td:first-child {
-    max-width: 500px;
+table th:first-child {
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transition: 0.3s all ease;
     text-align: left;
 }
 
@@ -625,8 +636,8 @@ th {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    width: 135px;
     text-align: center;
+    max-width: 50px;
 }
 
 header {

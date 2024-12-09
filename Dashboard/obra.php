@@ -2,6 +2,12 @@
 session_start();
 include '../conexaoMain.php';
 
+if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
+    // Se não estiver logado, redirecionar para a página de login
+    header("Location: ../index.html");
+    exit();
+}
+
 $conn = conectarBanco();
 
 $clientes = obterClientes($conn);
@@ -24,28 +30,28 @@ $conn->close();
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
         integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+
 </head>
 
 <body>
     <div class="container">
         <div class="sidebar" id="sidebar" style="display: none;">
-            <div class="top">
-                <p>+</p>
-            </div>
             <div class="content">
                 <div class="nav">
-                    <a href="index.php" id="dashboard" class="tooltip"><i class="fa-solid fa-chart-line"></i><span
-                            class="tooltiptext">Dashboard</span></a>
-                    <a href="projetos.html" id="projects" class="tooltip"><i class="fa-solid fa-list-check"></i><span
-                            class="tooltiptext">Projetos</span></a>
-                    <a href="#" id="colabs" class="tooltip"><i class="fa-solid fa-users"></i><span
-                            class="tooltiptext">Colaboradores</span></a>
-                    <a href="controle_comercial.html" id="controle_comercial" class="tooltip"><i
-                            class="fa-solid fa-dollar-sign"></i><span class="tooltiptext">Controle Comercial</span></a>
+                    <p class="top">+</p>
+                    <a href="index.php" id="dashboard" class="tooltip"><i class="fa-solid fa-chart-line"></i><span class="tooltiptext">Dashboard</span></a>
+                    <a href="projetos.php" id="projects" class="tooltip active"><i class="fa-solid fa-list-check"></i><span class="tooltiptext">Projetos</span></a>
+                    <?php if ($nivel_acesso === 1): ?>
+                        <a href="#" id="colabs" class="tooltip"><i class="fa-solid fa-users"></i><span class="tooltiptext">Colaboradores</span></a>
+                        <a href="controle_comercial.html" id="controle_comercial" class="tooltip"><i class="fa-solid fa-dollar-sign"></i><span class="tooltiptext">Controle Comercial</span></a>
+                    <?php endif; ?>
+                </div>
+                <div class="bottom">
+                    <a href="#" id="sair" class="tooltip"><i class="fa fa-arrow-left"></i><span class="tooltiptext">Sair</span></a>
                 </div>
             </div>
         </div>
-
         <header>
             <button id="toggleSidebar"><i class="fa-solid fa-bars"></i></button>
             <h1 id="nomenclatura"></h1>
@@ -106,9 +112,15 @@ $conn->close();
             </div>
 
             <div class="obra-acompanhamento">
-                <!-- <button id="acompanhamento">Acompanhamento</button> -->
-                <button id="orcamento">Orçamento</button>
-                <button id="acomp" style="background-color: steelblue;">Acompanhamento</button>
+
+                <?php
+                // Exibir somente se o usuário tiver nível de acesso 1
+                if (isset($_SESSION['logado']) && $_SESSION['logado'] === true && $_SESSION['nivel_acesso'] == 1) {
+                ?>
+                    <button id="orcamento">Orçamento</button>
+                <?php
+                }
+                ?>
             </div>
 
             <div class="modalOrcamento" id="modalOrcamento">
@@ -140,13 +152,25 @@ $conn->close();
                     <span class="close">&times;</span>
                     <h2>Acompanhamento por Email</h2>
                     <div id="acompanhamentoConteudo">
+                        <form id="adicionar_acomp">
+
+                            <!-- Campo de assunto -->
+                            <label for="assunto">Assunto:</label>
+                            <textarea name="assunto" id="assunto" name="assunto" required></textarea>
+
+                            <!-- Campo de data -->
+                            <label for="data">Data:</label>
+                            <input type="date" name="data_acomp" id="data_acomp" required>
+
+                            <!-- Botão para enviar -->
+                            <button type="submit">Adicionar Acompanhamento</button>
+                        </form>
                     </div>
                 </div>
             </div>
             <div class="obra-imagens">
                 <h4 id="total_imagens"></h4>
                 <h4 id="total_imagens_antecipadas"></h4>
-                <!-- <h4 id="classificacao"></h4> -->
                 <div id="funcoes" style="display: flex;flex-wrap: wrap; gap: 50px; justify-content: space-around;">
                 </div>
                 <div id="grafico">
@@ -181,6 +205,13 @@ $conn->close();
             ?>
         </div>
     </div>
+    </div>
+
+    <div id="infos-obra" style="width: 95%; margin: 30px auto; box-shadow: 0 1px 10px rgba(0, 0, 0, 0.7);">
+        <h1>Acompanhamentos</h1>
+        <button id="acomp" style="background-color: steelblue; width: 140px; text-align: center;">Acompanhamento</button>
+
+        <div id="list_acomp"></div>
     </div>
 
     <div class="form-edicao" id="form-edicao">

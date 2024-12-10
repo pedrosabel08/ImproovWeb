@@ -101,48 +101,56 @@ document.addEventListener("DOMContentLoaded", function () {
                                         document.getElementById("status_caderno").value = funcao.status;
                                         document.getElementById("prazo_caderno").value = funcao.prazo;
                                         document.getElementById("obs_caderno").value = funcao.observacao;
+                                        document.getElementById("check_caderno").checked = funcao.check_funcao === '1';
                                         break;
                                     case "Modelagem":
                                         selectElement = document.getElementById("opcao_model");
                                         document.getElementById("status_modelagem").value = funcao.status;
                                         document.getElementById("prazo_modelagem").value = funcao.prazo;
                                         document.getElementById("obs_modelagem").value = funcao.observacao;
+                                        document.getElementById("check_model").checked = funcao.check_funcao === '1';
                                         break;
                                     case "Composição":
                                         selectElement = document.getElementById("opcao_comp");
                                         document.getElementById("status_comp").value = funcao.status;
                                         document.getElementById("prazo_comp").value = funcao.prazo;
                                         document.getElementById("obs_comp").value = funcao.observacao;
+                                        document.getElementById("check_comp").checked = funcao.check_funcao === '1';
                                         break;
                                     case "Finalização":
                                         selectElement = document.getElementById("opcao_final");
                                         document.getElementById("status_finalizacao").value = funcao.status;
                                         document.getElementById("prazo_finalizacao").value = funcao.prazo;
                                         document.getElementById("obs_finalizacao").value = funcao.observacao;
+                                        document.getElementById("check_final").checked = funcao.check_funcao === '1';
                                         break;
                                     case "Pós-produção":
                                         selectElement = document.getElementById("opcao_pos");
                                         document.getElementById("status_pos").value = funcao.status;
                                         document.getElementById("prazo_pos").value = funcao.prazo;
                                         document.getElementById("obs_pos").value = funcao.observacao;
+                                        document.getElementById("check_pos").checked = funcao.check_funcao === '1';
                                         break;
                                     case "Alteração":
                                         selectElement = document.getElementById("opcao_alteracao");
                                         document.getElementById("status_alteracao").value = funcao.status;
                                         document.getElementById("prazo_alteracao").value = funcao.prazo;
                                         document.getElementById("obs_alteracao").value = funcao.observacao;
+                                        document.getElementById("check_alt").checked = funcao.check_funcao === '1';
                                         break;
                                     case "Planta Humanizada":
                                         selectElement = document.getElementById("opcao_planta");
                                         document.getElementById("status_planta").value = funcao.status;
                                         document.getElementById("prazo_planta").value = funcao.prazo;
                                         document.getElementById("obs_planta").value = funcao.observacao;
+                                        document.getElementById("check_planta").checked = funcao.check_funcao === '1';
                                         break;
                                     case "Filtro de assets":
                                         selectElement = document.getElementById("opcao_filtro");
                                         document.getElementById("status_filtro").value = funcao.status;
                                         document.getElementById("prazo_filtro").value = funcao.prazo;
                                         document.getElementById("obs_filtro").value = funcao.observacao;
+                                        document.getElementById("check_filtro").checked = funcao.check_funcao === '1';
                                         break;
                                 }
                                 if (selectElement) {
@@ -173,27 +181,35 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById("status_caderno").value = "";
         document.getElementById("prazo_caderno").value = "";
         document.getElementById("obs_caderno").value = "";
+        document.getElementById("check_caderno").checked = false;
         document.getElementById("status_modelagem").value = "";
         document.getElementById("prazo_modelagem").value = "";
         document.getElementById("obs_modelagem").value = "";
+        document.getElementById("check_model").checked = false;
         document.getElementById("status_comp").value = "";
         document.getElementById("prazo_comp").value = "";
         document.getElementById("obs_comp").value = "";
+        document.getElementById("check_comp").checked = false;
         document.getElementById("status_finalizacao").value = "";
         document.getElementById("prazo_finalizacao").value = "";
         document.getElementById("obs_finalizacao").value = "";
+        document.getElementById("check_final").value = "";
         document.getElementById("status_pos").value = "";
         document.getElementById("prazo_pos").value = "";
         document.getElementById("obs_pos").value = "";
+        document.getElementById("check_pos").checked = false;
         document.getElementById("status_alteracao").value = "";
         document.getElementById("prazo_alteracao").value = "";
         document.getElementById("obs_alteracao").value = "";
+        document.getElementById("check_alt").checked = false;
         document.getElementById("status_planta").value = "";
         document.getElementById("prazo_planta").value = "";
         document.getElementById("obs_planta").value = "";
+        document.getElementById("check_planta").checked = false;
         document.getElementById("status_filtro").value = "";
         document.getElementById("prazo_filtro").value = "";
         document.getElementById("obs_filtro").value = "";
+        document.getElementById("check_filtro").checked = false;
 
         document.getElementById("opcao_caderno").value = "";
         document.getElementById("opcao_model").value = "";
@@ -265,6 +281,14 @@ document.addEventListener("DOMContentLoaded", function () {
             status_filtro: document.getElementById("status_filtro").value || "",
             prazo_filtro: document.getElementById("prazo_filtro").value || "",
             obs_filtro: document.getElementById("obs_filtro").value || "",
+            check_caderno: document.getElementById("check_caderno").checked ? 1 : 0,
+            check_filtro: document.getElementById("check_filtro").checked ? 1 : 0,
+            check_model: document.getElementById("check_model").checked ? 1 : 0,
+            check_comp: document.getElementById("check_comp").checked ? 1 : 0,
+            check_final: document.getElementById("check_final").checked ? 1 : 0,
+            check_pos: document.getElementById("check_pos").checked ? 1 : 0,
+            check_alt: document.getElementById("check_alt").checked ? 1 : 0,
+            check_planta: document.getElementById("check_planta").checked ? 1 : 0,
             textos: textos,
             status_id: document.getElementById("opcao_status").value || ""
         };
@@ -275,18 +299,34 @@ document.addEventListener("DOMContentLoaded", function () {
             data: dados,
             success: function (response) {
                 console.log(response);
-                Toastify({
-                    text: "Dados salvos com sucesso!",
-                    duration: 3000,
-                    close: true,
-                    gravity: "top",
-                    position: "left",
-                    backgroundColor: "green",
-                    stopOnFocus: true,
-                }).showToast();
 
+                // Verifique se a resposta tem as informações esperadas
+                if (response.success) {
+                    Toastify({
+                        text: "Dados salvos com sucesso!",
+                        duration: 3000,
+                        close: true,
+                        gravity: "top",
+                        position: "left",
+                        backgroundColor: "green",
+                        stopOnFocus: true,
+                    }).showToast();
 
-                form_edicao.style.display = "none"
+                    // Enviar uma notificação com base nas funções e status
+                    if (response.funcao_nome && response.imagem_nome) {
+                        const nomeFuncao = response.funcao_nome;  // Nome da função
+                        const nomeImagem = response.imagem_nome;  // Nome da imagem
+
+                        // Chama a função de notificação com os parâmetros do item
+                        enviarNotificacao(
+                            nomeFuncao + ' Finalizada!',  // Exibe o nome da função
+                            'Nome da imagem: ' + nomeImagem, // Exibe o nome da imagem
+                            'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s' // Ícone exemplo
+                        );
+                    }
+                }
+
+                form_edicao.style.display = "none";
             },
             error: function (jqXHR, textStatus, errorThrown) {
                 console.error("Erro ao salvar dados: " + textStatus, errorThrown);
@@ -302,6 +342,27 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
     });
+
+    // Função para enviar notificações
+    function enviarNotificacao(titulo, mensagem, icone) {
+        if ('Notification' in window) {
+            Notification.requestPermission().then(permission => {
+                if (permission === 'granted') {
+                    const notificacao = new Notification(titulo, {
+                        body: mensagem,
+                        icon: icone,
+                    });
+
+                    notificacao.onclick = () => {
+                        window.focus();
+                    };
+
+                    setTimeout(() => notificacao.close(), 3000);
+                }
+            });
+        }
+    }
+
 
     function carregarDados() {
         var colaboradorId = document.getElementById('colaboradorSelect').value;

@@ -405,6 +405,13 @@ window.onclick = function (event) {
 
     }
 };
+window.ontouchstart = function (event) {
+    if (event.target !== sidebar && event.target !== toggleButton && !toggleButton.contains(event.target)) {
+        sidebar.style.display = "none"; // Fecha a sidebar se clicado fora
+        toggleButton.style.display = "flex";
+
+    }
+};
 
 
 
@@ -516,6 +523,7 @@ document.getElementById('orcamento').addEventListener('click', function () {
 });
 
 document.addEventListener('DOMContentLoaded', function () {
+
     const idObra = localStorage.getItem('obraId'); // Obtém o ID da obra armazenado no localStorage
     const acompanhamentoConteudo = document.getElementById('list_acomp');
 
@@ -557,6 +565,15 @@ document.addEventListener('DOMContentLoaded', function () {
 document.getElementById('acomp').addEventListener('click', function () {
     modal.style.display = 'block';
 
+});
+
+const closeModal = document.querySelector('.close-modal');
+closeModal.addEventListener('click', function () {
+    modal.style.display = 'none';
+});
+
+closeModal.addEventListener('touchstart', function () {
+    modal.style.display = 'none';
 });
 
 document.getElementById("adicionar_acomp").addEventListener("submit", function (e) {
@@ -627,7 +644,6 @@ document.getElementById("adicionar_acomp").addEventListener("submit", function (
         });
 });
 
-const closeModal = document.querySelectorAll('.close');
 
 window.addEventListener('click', function (event) {
     if (event.target == form_edicao) {
@@ -644,9 +660,21 @@ window.addEventListener('click', function (event) {
     }
 });
 
-// closeModal.addEventListener('click', function () {
-//     modal.style.display = 'none';
-// });
+window.addEventListener('touchstart', function (event) {
+    if (event.target == form_edicao) {
+        form_edicao.style.display = "none"
+    }
+    if (event.target == modal) {
+        modal.style.display = "none"
+    }
+    if (event.target == modalInfos) {
+        modalInfos.style.display = "none";
+    }
+    if (event.target == modalOrcamento) {
+        modalOrcamento.style.display = "none";
+    }
+});
+
 
 
 document.getElementById('formOrcamento').addEventListener('submit', function (e) {

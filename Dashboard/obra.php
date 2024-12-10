@@ -31,6 +31,8 @@ $conn->close();
         integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
+    type="image/x-icon">
 
 </head>
 
@@ -148,22 +150,26 @@ $conn->close();
             </div>
 
             <div id="modalAcompanhamento" class="modal">
-                <div class="modal-content">
-                    <span class="close">&times;</span>
-                    <h2>Acompanhamento por Email</h2>
+                <div class="modal-content" style="width: 500px;">
+                    <span class="close-modal">&times;</span>
+                    <h2 style="margin-bottom: 30px;">Acompanhamento por Email</h2>
                     <div id="acompanhamentoConteudo">
-                        <form id="adicionar_acomp">
+                        <form id="adicionar_acomp" style="align-items: center;">
 
                             <!-- Campo de assunto -->
-                            <label for="assunto">Assunto:</label>
-                            <textarea name="assunto" id="assunto" name="assunto" required></textarea>
+                            <div id="campo" style="">
+                                <label for="assunto">Assunto:</label>
+                                <textarea name="assunto" id="assunto" name="assunto" required></textarea>
+                            </div>
 
                             <!-- Campo de data -->
-                            <label for="data">Data:</label>
-                            <input type="date" name="data_acomp" id="data_acomp" required>
+                            <div id="campo">
+                                <label for="data">Data:</label>
+                                <input type="date" name="data_acomp" id="data_acomp" required>
+                            </div>
 
                             <!-- Botão para enviar -->
-                            <button type="submit">Adicionar Acompanhamento</button>
+                            <button type="submit" id="add-acomp">Adicionar Acompanhamento</button>
                         </form>
                     </div>
                 </div>
@@ -185,19 +191,19 @@ $conn->close();
                 <div class="obra-valores">
                     <div class="valor-item">
                         <strong>Valor Orçamento:</strong>
-                        <span id="valor_orcamento"></span>
+                        <span id="valor_orcamento" class="valor"></span>
                     </div>
                     <div class="valor-item">
                         <strong>Valor Produção:</strong>
-                        <span id="valor_producao"></span>
+                        <span id="valor_producao" class="valor"></span>
                     </div>
                     <div class="valor-item">
                         <strong>Valor projetado:</strong>
-                        <span id="valor_fixo"></span>
+                        <span id="valor_fixo" class="valor"></span>
                     </div>
                     <div class="valor-item">
                         <strong>Lucro estimado (produção):</strong>
-                        <span id="lucro"></span>
+                        <span id="lucro" class="valor"></span>
                     </div>
                 </div>
             <?php

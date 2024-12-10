@@ -40,7 +40,8 @@ main {
 }
 
 /* Estilo do link com o ícone */
-.nav a, .bottom a {
+.nav a,
+.bottom a {
     display: block;
     padding: 10px;
     color: black;
@@ -123,12 +124,14 @@ a {
     gap: 10px;
 }
 
-.nav a, .bottom a {
+.nav a,
+.bottom a {
     padding: 5px;
     font-size: 14px;
 }
 
-.nav i, .bottom i {
+.nav i,
+.bottom i {
     padding: 0 4px;
 }
 
@@ -255,7 +258,7 @@ a {
 }
 
 
-.close {
+.close, .close-modal {
     color: #aaa;
     float: right;
     font-size: 28px;
@@ -267,6 +270,7 @@ a {
 .modal-content p {
     margin: 20px 0;
 }
+
 #list_acomp p {
     margin: 20px 0;
 }
@@ -283,6 +287,14 @@ a {
     font-weight: bold;
 }
 
+.valor {
+    filter: blur(5px);
+}
+
+.valor:hover {
+    filter: blur(0);
+
+}
 
 .legenda {
     display: flex;
@@ -362,7 +374,8 @@ a {
     margin-top: 30px;
 }
 
-#formOrcamento {
+#formOrcamento,
+#adicionar_acomp {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
@@ -429,7 +442,8 @@ a {
 
 #orcamento,
 #acomp,
-#salvar_orcamento {
+#salvar_orcamento,
+#add-acomp {
     padding: 2px 6px;
     border-radius: 15px;
     font-size: 14px;
@@ -446,6 +460,12 @@ a {
 
 #dias_trabalhados {
     font-weight: 400;
+}
+
+#campo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
 .obra-valores {

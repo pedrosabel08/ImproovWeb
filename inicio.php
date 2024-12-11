@@ -161,6 +161,54 @@ $conn->close();
 
         const saudacao = document.getElementById('saudacao');
         saudacao.textContent = obterSaudacao() + ", " + nome_user + "!";
+
+        const idUsuario = <?php echo json_encode($idusuario); ?>;
+        localStorage.setItem('idusuario', idUsuario);
+
+        function buscarTarefas() {
+            fetch('buscar_tarefas.php', {
+                    method: 'GET'
+                })
+                .then(response => response.json())
+                .then(tarefas => {
+                    if (tarefas.length > 0) {
+                        // Notificação Web
+                        enviarNotificacao(
+                            'Tarefas Pendentes',
+                            `Você tem ${tarefas.length} tarefas para revisão. Clique para mais detalhes.`
+                        );
+
+                        // Exibir Modal
+                        // document.getElementById('modal').style.display = 'flex';
+                    }
+                })
+                .catch(error => console.error('Erro ao buscar tarefas:', error));
+        }
+
+        // Função para exibir notificações web
+        function enviarNotificacao(titulo, mensagem) {
+            if ('Notification' in window) {
+                Notification.requestPermission().then(permission => {
+                    if (permission === 'granted') {
+                        const notificacao = new Notification(titulo, {
+                            body: mensagem,
+                            icon: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s', // Substitua pelo ícone desejado
+                        });
+
+                        notificacao.onclick = () => {
+                            window.location.href = 'https://improov.com.br/sistema/Revisao'
+
+                        };
+                    }
+                });
+            }
+        }
+
+        // Verificar a cada 15 minutos
+        setInterval(buscarTarefas, 15 * 60 * 1000);
+
+        // Buscar tarefas ao carregar a página
+        document.addEventListener('DOMContentLoaded', buscarTarefas);
     </script>
 
     <script src="./script/scriptIndex.js"></script>

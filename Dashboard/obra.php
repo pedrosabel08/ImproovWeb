@@ -1,5 +1,7 @@
 <?php
 session_start();
+$nome_usuario = $_SESSION['nome_usuario'];
+
 include '../conexaoMain.php';
 
 if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
@@ -157,7 +159,7 @@ $conn->close();
                         <form id="adicionar_acomp" style="align-items: center;">
 
                             <!-- Campo de assunto -->
-                            <div id="campo" style="">
+                            <div id="campo">
                                 <label for="assunto">Assunto:</label>
                                 <textarea name="assunto" id="assunto" name="assunto" required></textarea>
                             </div>

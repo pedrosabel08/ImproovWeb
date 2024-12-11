@@ -742,6 +742,14 @@ $conn->close();
 
     </main>
 
+    <?php if (isset($_SESSION['idusuario']) && $_SESSION['idusuario'] == 1): ?>
+        <div id="notificacao-sino" class="notificacao-sino">
+            <i class="fas fa-bell sino" id="icone-sino"></i>
+            <span id="contador-tarefas" class="contador-tarefas">0</span>
+        </div>
+    <?php endif; ?>
+
+    <script src="script/notificacoes.js"></script>
     <script src="./script/script.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>

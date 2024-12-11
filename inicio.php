@@ -142,9 +142,15 @@ $conn->close();
 
     </main>
 
+    <?php if (isset($_SESSION['idusuario']) && $_SESSION['idusuario'] == 1): ?>
+        <div id="notificacao-sino" class="notificacao-sino">
+            <i class="fas fa-bell sino" id="icone-sino"></i>
+            <span id="contador-tarefas" class="contador-tarefas">0</span>
+        </div>
+    <?php endif; ?>
+
     <script>
         const nome_user = <?php echo json_encode($nome_usuario); ?>;
-        const idusuario = <?php echo json_encode($idusuario); ?>;
 
         function obterSaudacao() {
             const agora = new Date();
@@ -164,53 +170,9 @@ $conn->close();
 
         const idUsuario = <?php echo json_encode($idusuario); ?>;
         localStorage.setItem('idusuario', idUsuario);
-
-        function buscarTarefas() {
-            fetch('buscar_tarefas.php', {
-                    method: 'GET'
-                })
-                .then(response => response.json())
-                .then(tarefas => {
-                    if (tarefas.length > 0) {
-                        // Notificação Web
-                        enviarNotificacao(
-                            'Tarefas Pendentes',
-                            `Você tem ${tarefas.length} tarefas para revisão. Clique para mais detalhes.`
-                        );
-
-                        // Exibir Modal
-                        // document.getElementById('modal').style.display = 'flex';
-                    }
-                })
-                .catch(error => console.error('Erro ao buscar tarefas:', error));
-        }
-
-        // Função para exibir notificações web
-        function enviarNotificacao(titulo, mensagem) {
-            if ('Notification' in window) {
-                Notification.requestPermission().then(permission => {
-                    if (permission === 'granted') {
-                        const notificacao = new Notification(titulo, {
-                            body: mensagem,
-                            icon: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s', // Substitua pelo ícone desejado
-                        });
-
-                        notificacao.onclick = () => {
-                            window.location.href = 'https://improov.com.br/sistema/Revisao'
-
-                        };
-                    }
-                });
-            }
-        }
-
-        // Verificar a cada 15 minutos
-        setInterval(buscarTarefas, 15 * 60 * 1000);
-
-        // Buscar tarefas ao carregar a página
-        document.addEventListener('DOMContentLoaded', buscarTarefas);
     </script>
 
+    <script src="script/notificacoes.js"></script>
     <script src="./script/scriptIndex.js"></script>
 </body>
 

@@ -312,18 +312,18 @@ document.addEventListener("DOMContentLoaded", function () {
                         stopOnFocus: true,
                     }).showToast();
 
-                    // Enviar uma notificação com base nas funções e status
-                    if (response.funcao_nome && response.imagem_nome) {
-                        const nomeFuncao = response.funcao_nome;  // Nome da função
-                        const nomeImagem = response.imagem_nome;  // Nome da imagem
+                    // // Enviar uma notificação com base nas funções e status
+                    // if (response.funcao_nome && response.imagem_nome) {
+                    //     const nomeFuncao = response.funcao_nome;  // Nome da função
+                    //     const nomeImagem = response.imagem_nome;  // Nome da imagem
 
-                        // Chama a função de notificação com os parâmetros do item
-                        enviarNotificacao(
-                            nomeFuncao + ' Finalizada!',  // Exibe o nome da função
-                            'Nome da imagem: ' + nomeImagem, // Exibe o nome da imagem
-                            'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s' // Ícone exemplo
-                        );
-                    }
+                    //     // Chama a função de notificação com os parâmetros do item
+                    //     enviarNotificacao(
+                    //         nomeFuncao + ' Finalizada!',  // Exibe o nome da função
+                    //         'Nome da imagem: ' + nomeImagem, // Exibe o nome da imagem
+                    //         'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s' // Ícone exemplo
+                    //     );
+                    // }
                 }
 
                 form_edicao.style.display = "none";
@@ -344,24 +344,24 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     // Função para enviar notificações
-    function enviarNotificacao(titulo, mensagem, icone) {
-        if ('Notification' in window) {
-            Notification.requestPermission().then(permission => {
-                if (permission === 'granted') {
-                    const notificacao = new Notification(titulo, {
-                        body: mensagem,
-                        icon: icone,
-                    });
+    // function enviarNotificacao(titulo, mensagem, icone) {
+    //     if ('Notification' in window) {
+    //         Notification.requestPermission().then(permission => {
+    //             if (permission === 'granted') {
+    //                 const notificacao = new Notification(titulo, {
+    //                     body: mensagem,
+    //                     icon: icone,
+    //                 });
 
-                    notificacao.onclick = () => {
-                        window.focus();
-                    };
+    //                 notificacao.onclick = () => {
+    //                     window.focus();
+    //                 };
 
-                    setTimeout(() => notificacao.close(), 3000);
-                }
-            });
-        }
-    }
+    //                 setTimeout(() => notificacao.close(), 3000);
+    //             }
+    //         });
+    //     }
+    // }
 
 
     function carregarDados() {

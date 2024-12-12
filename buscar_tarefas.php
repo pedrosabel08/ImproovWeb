@@ -13,11 +13,11 @@ if (!$idusuario) {
 if ($idusuario == 1) {
     $sql = "SELECT funcao_id, status, check_funcao, imagem_id, colaborador_id 
             FROM funcao_imagem 
-            WHERE funcao_id BETWEEN 2 AND 3 AND check_funcao = 0 AND status = 'Finalizado'";
+            WHERE funcao_id BETWEEN 2 AND 3 AND check_funcao = 0 AND status = 'Em aprovação'";
 } elseif ($idusuario == 2) {
     $sql = "SELECT funcao_id, status, check_funcao, imagem_id, colaborador_id 
             FROM funcao_imagem 
-            WHERE funcao_id = 4 AND check_funcao = 0 AND status = 'Finalizado'";
+            WHERE funcao_id = 4 AND check_funcao = 0 AND status = 'Em aprovação'";
 } else {
     echo json_encode([]); // Sem tarefas para outros usuários
     exit;

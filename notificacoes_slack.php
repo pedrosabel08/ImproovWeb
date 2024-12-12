@@ -11,6 +11,8 @@ function enviarMensagemSlack($canal, $mensagem)
         'text' => $mensagem,
     ];
 
+
+
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, SLACK_API_URL);
     curl_setopt($ch, CURLOPT_POST, true);
@@ -72,10 +74,12 @@ try {
 
         if (count($resultados) > 0) {
             foreach ($resultados as $linha) {
+                $link = "https://improov.com.br/Revisao/";  // Substitua pelo seu link real
                 $mensagem = "⚠️ Tarefa pendente encontrada:\n";
                 $mensagem .= "- Função: {$linha['funcao_id']}\n";
                 $mensagem .= "- Status: {$linha['status']}\n";
                 $mensagem .= "- ID da Imagem: {$linha['imagem_id']}\n";
+                $mensagem .= "Clique aqui para mais detalhes: <{$link}|Detalhes>";
 
                 // Envia a mensagem ao canal Slack
                 enviarMensagemSlack($consulta['canal'], $mensagem);

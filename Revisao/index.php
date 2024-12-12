@@ -4,9 +4,9 @@ session_start();
 include '../conexao.php'; // Conexão com o banco de dados
 
 // Verifique se o usuário está autenticado
-if (!isset($_SESSION['idusuario'])) {
-    header("Location: ../index.html"); // Redireciona para a página de login se o usuário não estiver logado
-    exit;
+if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
+    header("Location: ../index.html");
+    exit();
 }
 
 $idusuario = $_SESSION['idusuario'];

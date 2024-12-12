@@ -1,6 +1,6 @@
 const idusuario = localStorage.getItem('idusuario');
 
-if (idusuario === '1') {
+if (idusuario === '1' || idusuario === '2') {
 
     function ativarSino() {
         // Ativar sino com animação
@@ -25,6 +25,8 @@ if (idusuario === '1') {
                     contadorTarefas.textContent = tarefas.length;
                 } else {
                     contadorTarefas.textContent = '';
+                    contadorTarefas.style.display = 'none';
+                    sino.style.display = 'none';
                 }
             })
             .catch(error => console.error('Erro ao buscar tarefas:', error));
@@ -108,5 +110,16 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
         // Mostrar notificações somente após 15 minutos nas outras páginas
         agendarProximaExecucao();
+    }
+});
+
+const sino = document.getElementById('icone-sino');
+
+sino.addEventListener('click', function () {
+
+    const result = confirm("Você quer ir para a página de revisão?");
+
+    if (result) {
+        window.open('https://improov.com.br/sistema/Revisao', '_blank');
     }
 });

@@ -54,15 +54,37 @@ try {
     $consultas = [
         [
             'canal' => '#teste2', // Substitua pelo canal correto no Slack
-            'query' => "SELECT funcao_id, status, check_funcao, imagem_id, colaborador_id 
-                        FROM funcao_imagem 
-                        WHERE funcao_id BETWEEN 2 AND 3 AND check_funcao = 0 AND status = 'Em aprovação'"
+            'query' => "SELECT  f.idfuncao_imagem,
+                            f.funcao_id, 
+                        fun.nome_funcao, 
+                        f.status, 
+                        f.check_funcao, 
+                        f.imagem_id, 
+                        i.imagem_nome, 
+                        f.colaborador_id, 
+                        c.nome_colaborador
+                        FROM funcao_imagem f
+                    LEFT JOIN funcao fun ON fun.idfuncao = f.funcao_id
+                    LEFT JOIN colaborador c ON c.idcolaborador = f.colaborador_id
+                    LEFT JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
+                    WHERE f.funcao_id BETWEEN 2 AND 3 AND f.check_funcao = 0 AND f.status = 'Em aprovação'"
         ],
         [
             'canal' => '#teste2',
-            'query' => "SELECT funcao_id, status, check_funcao, imagem_id, colaborador_id 
-                        FROM funcao_imagem 
-                        WHERE funcao_id = 4 AND check_funcao = 0 AND status = 'Em aprovação'"
+            'query' => "SELECT  f.idfuncao_imagem,
+                            f.funcao_id, 
+                        fun.nome_funcao, 
+                        f.status, 
+                        f.check_funcao, 
+                        f.imagem_id, 
+                        i.imagem_nome, 
+                        f.colaborador_id, 
+                        c.nome_colaborador
+                        FROM funcao_imagem f
+                    LEFT JOIN funcao fun ON fun.idfuncao = f.funcao_id
+                    LEFT JOIN colaborador c ON c.idcolaborador = f.colaborador_id
+                    LEFT JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
+                    WHERE f.funcao_id BETWEEN 4 AND f.check_funcao = 0 AND f.status = 'Em aprovação'"
         ]
         // Adicione mais consultas e canais, se necessário
     ];
@@ -74,11 +96,11 @@ try {
 
         if (count($resultados) > 0) {
             foreach ($resultados as $linha) {
-                $link = "https://improov.com.br/Revisao/";  // Substitua pelo seu link real
+                $link = "https://improov.com.br/sistema/Revisao/";  // Substitua pelo seu link real
                 $mensagem = "⚠️ Tarefa pendente encontrada:\n";
-                $mensagem .= "- Função: {$linha['funcao_id']}\n";
+                $mensagem .= "- Função: {$linha['nome_funcao']}\n";
                 $mensagem .= "- Status: {$linha['status']}\n";
-                $mensagem .= "- ID da Imagem: {$linha['imagem_id']}\n";
+                $mensagem .= "- {$linha['imagem_nome']}\n";
                 $mensagem .= "Clique aqui para mais detalhes: <{$link}|Detalhes>";
 
                 // Envia a mensagem ao canal Slack

@@ -100,7 +100,7 @@ try {
                 $mensagem = "⚠️ Tarefa pendente encontrada:\n";
                 $mensagem .= "- Função: {$linha['nome_funcao']}\n";
                 $mensagem .= "- Status: {$linha['status']}\n";
-                $mensagem .= "- {$linha['imagem_nome']}\n";
+                $mensagem .= "- Imagem:  {$linha['imagem_nome']}\n";
                 $mensagem .= "Clique aqui para mais detalhes: <{$link}|Detalhes>";
 
                 // Envia a mensagem ao canal Slack

@@ -1327,3 +1327,26 @@ document.getElementById('generate-pdf').addEventListener('click', function () {
         })
         .catch(error => console.error('Erro ao carregar a imagem:', error));
 });
+
+
+
+document.getElementById("copyColumn").addEventListener("click", function () {
+    const table = document.getElementById("tabela-obra");
+    const rows = table.querySelectorAll("tbody tr");
+    const columnData = [];
+
+    rows.forEach(row => {
+        columnData.push(row.cells[0].innerText);
+    });
+
+    // Formata como lista
+    const listText = columnData.join("\n");
+
+    navigator.clipboard.writeText(listText)
+        .then(() => {
+            alert("Coluna copiada como lista!");
+        })
+        .catch(err => {
+            console.error("Erro ao copiar a coluna: ", err);
+        });
+});

@@ -605,6 +605,11 @@ $conn->close();
                 </span>
             </div>
 
+            <button id="copyColumn">
+                <i class="fas fa-copy"></i>
+            </button>
+
+
             <table id="tabela-obra">
                 <thead>
                     <th>Nome da Imagem</th>

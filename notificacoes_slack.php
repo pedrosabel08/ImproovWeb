@@ -53,7 +53,9 @@ try {
     // Definição das consultas e canais
     $consultas = [
         [
-            'canal' => '#teste2', // Substitua pelo canal correto no Slack
+
+            // Caderno
+            'canal' => '#teste2', 
             'query' => "SELECT  f.idfuncao_imagem,
                             f.funcao_id, 
                         fun.nome_funcao, 
@@ -70,6 +72,8 @@ try {
                     WHERE f.funcao_id BETWEEN 2 AND 3 AND f.check_funcao = 0 AND f.status = 'Em aprovação'"
         ],
         [
+
+            // Modelagem
             'canal' => '#teste2',
             'query' => "SELECT  f.idfuncao_imagem,
                             f.funcao_id, 

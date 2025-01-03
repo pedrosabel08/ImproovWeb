@@ -239,6 +239,9 @@ if ($result_imagens->num_rows > 0) {
                 </div>
 
                 <input type="text" name="idanimacao" id="idanimacao" hidden>
+                <input type="text" name="idpos" id="idpos" hidden>
+                <input type="text" name="idcena" id="idcena" hidden>
+                <input type="text" name="idrender" id="idrender" hidden>
                 <input type="hidden" id="alterar_imagem" name="alterar_imagem" value="false">
 
                 <div>

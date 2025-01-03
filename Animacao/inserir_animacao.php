@@ -22,6 +22,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $imagem_id = $_POST['imagem_id'];
     $duracao = $_POST['duracao'];
     $status_anima = $_POST['status_anima'];
+    $status_cena = $_POST['status_cena'];
+    $prazo_cena = $_POST['prazo_cena'];
+    $status_render = $_POST['status_render'];
+    $prazo_render = $_POST['prazo_render'];
+    $status_pos = $_POST['status_pos'];
+    $prazo_pos = $_POST['prazo_pos'];
 
     // Verificar se a animação já existe
     $stmt_check = $conn->prepare("SELECT idanimacao FROM animacao WHERE imagem_id = ? AND colaborador_id = ? AND cliente_id = ? AND obra_id = ?");
@@ -40,22 +46,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt_update_animacao->execute();
 
         // Atualizar dados na tabela `cena`
-        $status_cena = $_POST['status_cena'];
-        $prazo_cena = $_POST['prazo_cena'];
+
         $stmt_update_cena = $conn->prepare("UPDATE cena SET status = ?, prazo = ? WHERE animacao_id = ?");
         $stmt_update_cena->bind_param('ssi', $status_cena, $prazo_cena, $animacao_id);
         $stmt_update_cena->execute();
 
         // Atualizar dados na tabela `render`
-        $status_render = $_POST['status_render'];
-        $prazo_render = $_POST['prazo_render'];
+
         $stmt_update_render = $conn->prepare("UPDATE render SET status = ?, prazo = ? WHERE animacao_id = ?");
         $stmt_update_render->bind_param('ssi', $status_render, $prazo_render, $animacao_id);
         $stmt_update_render->execute();
 
         // Atualizar dados na tabela `pos`
-        $status_pos = $_POST['status_pos'];
-        $prazo_pos = $_POST['prazo_pos'];
+
         $stmt_update_pos = $conn->prepare("UPDATE pos SET status = ?, prazo = ? WHERE animacao_id = ?");
         $stmt_update_pos->bind_param('ssi', $status_pos, $prazo_pos, $animacao_id);
         $stmt_update_pos->execute();
@@ -72,22 +75,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $animacao_id = $stmt_insert->insert_id;
 
             // Inserir dados na tabela `cena`
-            $status_cena = $_POST['status_cena'];
-            $prazo_cena = $_POST['prazo_cena'];
             $stmt_cena = $conn->prepare("INSERT INTO cena (animacao_id, status, prazo) VALUES (?, ?, ?)");
             $stmt_cena->bind_param('iss', $animacao_id, $status_cena, $prazo_cena);
             $stmt_cena->execute();
 
             // Inserir dados na tabela `render`
-            $status_render = $_POST['status_render'];
-            $prazo_render = $_POST['prazo_render'];
             $stmt_render = $conn->prepare("INSERT INTO render (animacao_id, status, prazo) VALUES (?, ?, ?)");
             $stmt_render->bind_param('iss', $animacao_id, $status_render, $prazo_render);
             $stmt_render->execute();
 
             // Inserir dados na tabela `pos`
-            $status_pos = $_POST['status_pos'];
-            $prazo_pos = $_POST['prazo_pos'];
             $stmt_pos = $conn->prepare("INSERT INTO pos (animacao_id, status, prazo) VALUES (?, ?, ?)");
             $stmt_pos->bind_param('iss', $animacao_id, $status_pos, $prazo_pos);
             $stmt_pos->execute();

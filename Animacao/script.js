@@ -110,7 +110,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 document.getElementById('modal').style.display = 'none';
                 limparCampos();
-                atualizarTabela();
+                // atualizarTabela();
                 buscarImagens();
                 Toastify({
                     text: "Dados inseridos com sucesso!",
@@ -126,11 +126,11 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     document.getElementById('deleteButton').addEventListener('click', function () {
-        const idPos = document.getElementById('id-pos').value;
+        const idAnima = document.getElementById('idanimacao').value;
 
-        if (!idPos) {
+        if (!idAnima) {
             Toastify({
-                text: "Nenhum item selecionado para deletar.",
+                text: "Um ou mais IDs não foram selecionados.",
                 duration: 3000,
                 gravity: "top",
                 position: "left",
@@ -140,19 +140,21 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
-        if (confirm('Tem certeza que deseja deletar este item?')) {
+        if (confirm('Tem certeza que deseja deletar os itens?')) {
             fetch('delete.php', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ id_pos: idPos })
+                body: JSON.stringify({
+                    id_anima: idAnima
+                })
             })
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
                         Toastify({
-                            text: "Item deletado com sucesso.",
+                            text: "Itens deletados com sucesso.",
                             duration: 3000,
                             gravity: "top",
                             position: "left",
@@ -163,7 +165,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         atualizarTabela();
                     } else {
                         Toastify({
-                            text: "Erro ao deletar item: " + data.message,
+                            text: "Erro ao deletar itens: " + data.message,
                             duration: 3000,
                             gravity: "top",
                             position: "left",
@@ -175,7 +177,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 .catch(error => {
                     console.error('Erro ao deletar:', error);
                     Toastify({
-                        text: "Ocorreu um erro ao tentar deletar o item.",
+                        text: "Ocorreu um erro ao tentar deletar os itens.",
                         duration: 3000,
                         gravity: "top",
                         position: "left",
@@ -256,6 +258,9 @@ document.addEventListener("DOMContentLoaded", function () {
                                     document.getElementById('prazo_pos').value = response[0].prazo_pos;
                                     document.getElementById('duracao').value = response[0].numero_bg;
                                     document.getElementById('idanimacao').value = response[0].idanimacao;
+                                    document.getElementById('idrender').value = response[0].idrender;
+                                    document.getElementById('idcena').value = response[0].idcena;
+                                    document.getElementById('idpos').value = response[0].idpos;
                                     document.getElementById('duracao').value = response[0].duracao;
                                     setSelectValue('status_anima', response[0].status_anima);
 

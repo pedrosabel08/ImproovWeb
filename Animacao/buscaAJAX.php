@@ -19,17 +19,32 @@ if ($_SERVER["REQUEST_METHOD"] == "GET") {
     // Proteção contra SQL Injection
     $idAnimaSelecionada = $conn->real_escape_string($idAnimaSelecionada);
 
-    $sql = "SELECT a.idanimacao, col.nome_colaborador, cli.nome_cliente, o.nome_obra, a.duracao, 
-		i.imagem_nome, a.status_anima, c.status as status_cena, c.prazo as prazo_cena, r.status as status_render, r.prazo as prazo_render,
-		p.status as status_pos, p.prazo as prazo_pos from animacao a
-        INNER JOIN colaborador col ON a.colaborador_id = col.idcolaborador
-		INNER JOIN cliente cli ON a.cliente_id = cli.idcliente
-        INNER JOIN obra o ON a.obra_id = o.idobra
-        INNER JOIN imagem_animacao i ON a.imagem_id = i.idimagem_animacao
-		INNER JOIN cena c on a.idanimacao = c.animacao_id
-		INNER JOIN render r on a.idanimacao = c.animacao_id
-		INNER JOIN pos p on a.idanimacao = c.animacao_id
-        WHERE a.idanimacao = $idAnimaSelecionada";
+    $sql = "SELECT 
+    a.idanimacao,
+    col.nome_colaborador,
+    cli.nome_cliente,
+    o.nome_obra,
+    a.duracao,
+    i.imagem_nome,
+    a.status_anima,
+    c.idcena,
+    c.status AS status_cena,
+    c.prazo AS prazo_cena,
+    r.idrender,
+    r.status AS status_render,
+    r.prazo AS prazo_render,
+    p.idpos,
+    p.status AS status_pos,
+    p.prazo AS prazo_pos
+FROM animacao a
+LEFT JOIN colaborador col ON a.colaborador_id = col.idcolaborador
+LEFT JOIN cliente cli ON a.cliente_id = cli.idcliente
+LEFT JOIN obra o ON a.obra_id = o.idobra
+LEFT JOIN imagem_animacao i ON a.imagem_id = i.idimagem_animacao
+LEFT JOIN cena c ON c.animacao_id = a.idanimacao
+LEFT JOIN render r ON r.animacao_id = a.idanimacao
+LEFT JOIN pos p ON p.animacao_id = a.idanimacao
+WHERE a.idanimacao = $idAnimaSelecionada;";
 
     $result = $conn->query($sql);
 

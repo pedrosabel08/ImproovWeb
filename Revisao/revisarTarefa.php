@@ -25,7 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $data = json_decode(file_get_contents('php://input'), true);
     $idfuncao_imagem = $data['idfuncao_imagem'] ?? null;
     // $nome_colaborador = $data['nome_colaborador'] ?? null;
-    $nome_colaborador = 'Pedro';
+    $nome_colaborador = 'Pedro Sabel';
     $imagem_nome = $data['imagem_nome'] ?? null;
     $nome_funcao = $data['nome_funcao'] ?? null;
 

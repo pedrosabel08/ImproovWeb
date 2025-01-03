@@ -480,7 +480,7 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
     });
 
     totalValorExtenso = `${numeroPorExtenso(totalValor)} reais`;
-    // totalValorExtenso = `Mil oitocentos e quarenta reais`;
+    // totalValorExtenso = `Quatro mil e seiscentos reais`;
 
 
     // Adiciona a tabela ao documento PDF
@@ -499,31 +499,31 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
 
     }
 
-    // // Dados da nova tabela
-    // const novaTabelaHeaders = ['Categoria', 'Valor'];
-    // const novaTabelaBody = [
-    //     ['Gasolina', '0'],
-    //     ['Diaria Drone', '0'],
-    //     ['Outros', '428,37']
-    // ];
+    // Dados da nova tabela
+    const novaTabelaHeaders = ['Categoria', 'Valor'];
+    const novaTabelaBody = [
+        ['Gasolina', '0'],
+        ['Diaria Drone', '0'],
+        ['Outros', '256,00']
+    ];
 
-    // // Adiciona nova tabela ao PDF
-    // doc.autoTable({
-    //     head: [novaTabelaHeaders],
-    //     body: novaTabelaBody,
-    //     startY: y, // Posiciona abaixo da tabela anterior
-    //     theme: 'grid',
-    //     headStyles: { fillColor: [0, 0, 0], textColor: [255, 255, 255] },
-    //     bodyStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0] },
-    //     margin: { top: 10, left: 20, right: 20 },
-    //     styles: { fontSize: 10, cellPadding: 2 }
-    // });
+    // Adiciona nova tabela ao PDF
+    doc.autoTable({
+        head: [novaTabelaHeaders],
+        body: novaTabelaBody,
+        startY: y, // Posiciona abaixo da tabela anterior
+        theme: 'grid',
+        headStyles: { fillColor: [0, 0, 0], textColor: [255, 255, 255] },
+        bodyStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0] },
+        margin: { top: 10, left: 20, right: 20 },
+        styles: { fontSize: 10, cellPadding: 2 }
+    });
 
     // Atualiza a posição Y para futuras adições no PDF (caso necessário)
     y = doc.lastAutoTable.finalY + 20;
 
     // Parte 3: Segunda parte do contrato
-    let text6 = `Cláusula 2ª - O CONTRATADO  declara que no dia ${day} de ${currentMonthName} de ${year}, recebeu do CONTRATANTE  o valor de R$ ${totalValor+0},00 (${totalValorExtenso}), pela entrega dos serviços acima referidos, e dá a mais ampla, geral e irrestrita quitação à dívida, renunciando seu direito de cobrança relativos a tais valores. `;
+    let text6 = `Cláusula 2ª - O CONTRATADO  declara que no dia ${day} de ${currentMonthName} de ${year}, recebeu do CONTRATANTE  o valor de R$ ${totalValor + 256},00 (${totalValorExtenso}), pela entrega dos serviços acima referidos, e dá a mais ampla, geral e irrestrita quitação à dívida, renunciando seu direito de cobrança relativos a tais valores. `;
 
     let text7 = `E por estarem justas e perfeitamente acertadas, assinam o presente em 02 (duas) vias de igual teor e forma, vias na presença de 2 (duas) testemunhas.`;
 
@@ -604,7 +604,7 @@ document.getElementById('generate-lista').addEventListener('click', function () 
 
     const title = `Relatório completo de ${colaborador}, ${mesNome} de ${ano}`;
     // const valorTotal = "Valor total: ";
-    const quantidadeTarefas = "Quantidade de tarefas: ";
+    // const quantidadeTarefas = "Quantidade de tarefas: ";
 
     // const totalValorElement = document.getElementById('totalValor');
     // const totalValor = totalValorElement ? parseFloat(totalValorElement.innerText.replace('R$ ', '').replace('.', '').replace(',', '.')) : 0; // Converter para float
@@ -633,13 +633,14 @@ document.getElementById('generate-lista').addEventListener('click', function () 
                 // doc.text(`${valorTotal} R$ ${totalValor.toFixed(2).replace('.', ',')} (${totalValorExtenso})`, 14, currentY);
                 // currentY += 10;
 
-                doc.text(`${quantidadeTarefas} ${quantidadeTarefasValue}`, 14, currentY);
+                // doc.text(`${quantidadeTarefas} ${quantidadeTarefasValue}`, 14, currentY);
                 currentY += 20;
 
                 const table = document.getElementById('tabela-faturamento');
                 const selectedColumnIndexes = [0, 1, 2]; // Colunas específicas que deseja incluir (incluindo a coluna data_pagamento)
                 const headers = [];
                 const rows = [];
+                const dataPagamentoColumnIndex = 5;
 
                 // Adiciona apenas os cabeçalhos das colunas selecionadas
                 table.querySelectorAll('thead tr th').forEach((header, index) => {
@@ -650,7 +651,9 @@ document.getElementById('generate-lista').addEventListener('click', function () 
 
                 // Adiciona todos os dados das colunas selecionadas, sem a verificação de data_pagamento
                 table.querySelectorAll('tbody tr').forEach(row => {
-                    if (row.style.display !== 'none') { // Verifica se a linha está visível
+                    const cells = row.querySelectorAll('td');
+                    const dataPagamento = cells[dataPagamentoColumnIndex]?.innerText.trim(); // Data de pagamento
+                    if (dataPagamento === '0000-00-00' && row.style.display !== 'none') {
                         const rowData = [];
                         row.querySelectorAll('td').forEach((cell, index) => {
                             if (selectedColumnIndexes.includes(index)) {

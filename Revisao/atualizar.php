@@ -13,28 +13,47 @@ $idusuario = $_SESSION['idusuario'];
 
 // Buscar as tarefas de revisão do banco de dados
 if ($idusuario == 1) {
-    $sql = "SELECT 
-        f.idfuncao_imagem,
-        f.funcao_id, 
-        fun.nome_funcao, 
-        f.status, 
-        f.check_funcao, 
-        f.imagem_id, 
-        i.imagem_nome, 
-        f.colaborador_id, 
-        c.nome_colaborador, 
-        l.data,
-        c.telefone
-    FROM funcao_imagem f
-    LEFT JOIN log_alteracoes l ON f.idfuncao_imagem = l.funcao_imagem_id
-    LEFT JOIN funcao fun ON fun.idfuncao = f.funcao_id
-    LEFT JOIN colaborador c ON c.idcolaborador = f.colaborador_id
-    LEFT JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
-    WHERE f.funcao_id BETWEEN 2 AND 3 
-      AND f.check_funcao = 0 
-      AND l.status_novo = 'Finalizado'
-    ORDER BY l.data DESC";
+    //Pedro
+    $sql = "SELECT  f.idfuncao_imagem,
+            f.funcao_id, 
+            fun.nome_funcao, 
+            f.status, 
+            f.prazo,
+            f.check_funcao, 
+            f.imagem_id, 
+            i.imagem_nome, 
+            f.colaborador_id, 
+            c.nome_colaborador,
+            c.telefone  
+            FROM funcao_imagem f
+            LEFT JOIN funcao fun ON fun.idfuncao = f.funcao_id
+            LEFT JOIN colaborador c ON c.idcolaborador = f.colaborador_id
+            LEFT JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
+            WHERE f.funcao_id IN (1, 2, 3, 4, 5, 6, 7) AND f.check_funcao = 0 AND f.status = 'Em aprovação'";
 } elseif ($idusuario == 2) {
+    //André
+    $sql = "SELECT 
+        f.idfuncao_imagem,
+        f.funcao_id, 
+        fun.nome_funcao, 
+        f.prazo,
+        f.status, 
+        f.check_funcao, 
+        f.imagem_id, 
+        i.imagem_nome, 
+        f.colaborador_id, 
+        c.nome_colaborador, 
+        c.telefone
+    FROM funcao_imagem f
+    LEFT JOIN funcao fun ON fun.idfuncao = f.funcao_id
+    LEFT JOIN colaborador c ON c.idcolaborador = f.colaborador_id
+    LEFT JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
+    WHERE f.funcao_id BETWEEN 4 AND 5 
+      AND f.check_funcao = 0 
+      AND l.status_novo = 'Em aprovação'
+    ORDER BY l.data DESC";
+} elseif ($idusuario == 9) {
+    //Nicolle
     $sql = "SELECT 
         f.idfuncao_imagem,
         f.funcao_id, 
@@ -52,7 +71,7 @@ if ($idusuario == 1) {
     LEFT JOIN funcao fun ON fun.idfuncao = f.funcao_id
     LEFT JOIN colaborador c ON c.idcolaborador = f.colaborador_id
     LEFT JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
-    WHERE f.funcao_id = 4 
+    WHERE f.funcao_id IN (1, 2, 3)
       AND f.check_funcao = 0 
       AND l.status_novo = 'Em aprovação'
     ORDER BY l.data DESC";

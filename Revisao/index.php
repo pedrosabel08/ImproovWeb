@@ -50,8 +50,17 @@
 
     </header>
 
-    <div class="container">
-        <h2>Tarefas de Revisão</h2>
+    <div class="main" style="display: flex; flex-direction: column;">
+        <select name="nome_funcao" id="nome_funcao" style="width: 200px;margin: 0 auto;border: none;border-bottom: 1px solid black;">
+            <option value="Todos">Todos</option>
+            <option value="Caderno">Caderno</option>
+            <option value="Modelagem">Modelagem</option>
+            <option value="Composição">Composição</option>
+            <option value="Finalização">Finalização</option>
+            <option value="Pós-produção">Pós-produção</option>
+            <option value="Planta Humanizada">Planta Humanizada</option>
+        </select>
+        <div class="container"></div>
     </div>
 
     <script src="script.js"></script>

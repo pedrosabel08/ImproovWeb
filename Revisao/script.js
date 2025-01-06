@@ -86,8 +86,17 @@ function toggleTaskDetails(taskElement) {
     taskElement.classList.toggle('open');
 }
 
+function filtrarTarefas() {
+    const select = document.getElementById('nome_funcao');
+    const valorSelecionado = select.value; // Obtém o valor selecionado no select
+
+    // Recarrega as tarefas e exibe apenas as que correspondem ao filtro
+    fetchTarefas(valorSelecionado);
+}
+
+
 // Função para buscar tarefas de revisão
-async function fetchTarefas() {
+async function fetchTarefas(filtro = 'Todos') {
     try {
         const response = await fetch('atualizar.php'); // Altere para o caminho correto do seu script PHP
         if (!response.ok) {
@@ -95,7 +104,11 @@ async function fetchTarefas() {
         }
 
         const data = await response.json();
-        exibirTarefas(data); // Passa os dados para a função que vai exibir as tarefas
+
+        const tarefasFiltradas = data.filter(tarefa => {
+            return filtro === 'Todos' || tarefa.nome_funcao === filtro;
+        });
+        exibirTarefas(tarefasFiltradas); // Passa os dados para a função que vai exibir as tarefas
     } catch (error) {
         console.error("Erro:", error);
         Toastify({
@@ -109,6 +122,11 @@ async function fetchTarefas() {
     }
 }
 
+function formatarData(data) {
+    const [ano, mes, dia] = data.split('-'); // Divide a string no formato 'YYYY-MM-DD'
+    return `${dia}/${mes}/${ano}`; // Retorna o formato 'DD/MM/YYYY'
+}
+
 // Função para exibir as tarefas
 function exibirTarefas(tarefas) {
     const container = document.querySelector('.container');
@@ -119,6 +137,8 @@ function exibirTarefas(tarefas) {
             const taskItem = document.createElement('div');
             taskItem.classList.add('task-item');
             taskItem.setAttribute('onclick', 'toggleTaskDetails(this)');
+
+            const prazoFormatado = formatarData(tarefa.prazo);
 
             taskItem.innerHTML = `
                 <div class="task-info">
@@ -138,7 +158,7 @@ function exibirTarefas(tarefas) {
                 <div class="task-details">
                     <p><strong>Imagem:</strong> ${tarefa.imagem_nome}</p>
                     <p><strong>Colaborador:</strong> ${tarefa.nome_colaborador}</p>
-                    <p><strong>Data de Alteração:</strong> ${tarefa.data}</p>
+                    <p><strong>Data de Alteração:</strong> ${prazoFormatado}</p>
                 </div>
             `;
             container.appendChild(taskItem);
@@ -147,3 +167,5 @@ function exibirTarefas(tarefas) {
         container.innerHTML = '<p style="text-align: center; color: #888;">Não há tarefas de revisão no momento.</p>';
     }
 }
+
+document.getElementById('nome_funcao').addEventListener('change', filtrarTarefas);

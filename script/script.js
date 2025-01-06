@@ -1203,6 +1203,18 @@ window.onclick = function (event) {
     // }
 }
 
+window.ontouchstart = function (event) {
+    if (event.target == modalLogs) {
+        modalLogs.style.display = "none";
+    }
+    if (event.target == form_edicao) {
+        form_edicao.style.display = "none"
+    }
+    // if (event.target == desc_modal) {
+    //     desc_modal.style.display = "none"
+    // }
+}
+
 
 // const mostrarDesc = document.getElementById('mostrar-desc');
 // const desc_modal = document.getElementById('desc-modal');

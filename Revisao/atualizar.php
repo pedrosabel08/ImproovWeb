@@ -60,7 +60,6 @@ if ($idusuario == 1 || $idusuario == 2) {
         i.imagem_nome, 
         f.colaborador_id, 
         c.nome_colaborador, 
-        l.data,
         c.telefone
     FROM funcao_imagem f
     LEFT JOIN log_alteracoes l ON f.idfuncao_imagem = l.funcao_imagem_id
@@ -69,8 +68,7 @@ if ($idusuario == 1 || $idusuario == 2) {
     LEFT JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
     WHERE f.funcao_id IN (1, 2, 3)
       AND f.check_funcao = 0 
-      AND l.status_novo = 'Em aprovação'
-    ORDER BY l.data DESC";
+      AND f.status = 'Em aprovação'";
 }
 
 $result = $conn->query($sql);

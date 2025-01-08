@@ -187,7 +187,7 @@ if ($colaboradorId == 1) {
         funcao f ON fi.funcao_id = f.idfuncao
     WHERE 
         fi.colaborador_id = ?
-        AND fi.status <> 'Não iniciado'";
+        AND fi.status = 'Finalizado'";
 
     if ($mesNumero && $ano) {
         $sql .= " AND YEAR(fi.prazo) = ? AND MONTH(fi.prazo) = ?";

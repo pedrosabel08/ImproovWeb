@@ -338,7 +338,7 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
     const currentMonthName = monthNames[currentMonthIndex].toUpperCase();
     const previousMonthName = monthNames[previousMonthIndex].toUpperCase();
 
-    const year = today.getFullYear();
+    const year = today.getFullYear() - 1;
 
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
@@ -480,7 +480,7 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
     });
 
     totalValorExtenso = `${numeroPorExtenso(totalValor)} reais`;
-    // totalValorExtenso = `Cinco mil oitocentos e cinquenta e seis reais`;
+    // totalValorExtenso = `Seis mil cento e trinta e seis reais`;
 
 
     // Adiciona a tabela ao documento PDF
@@ -523,11 +523,11 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
     y = doc.lastAutoTable.finalY + 20;
 
     // Parte 3: Segunda parte do contrato
-    let text6 = `Cláusula 2ª - O CONTRATADO  declara que no dia ${day} de ${currentMonthName} de ${year}, recebeu do CONTRATANTE  o valor de R$ ${totalValor + 0},00 (${totalValorExtenso}), pela entrega dos serviços acima referidos, e dá a mais ampla, geral e irrestrita quitação à dívida, renunciando seu direito de cobrança relativos a tais valores. `;
+    let text6 = `Cláusula 2ª - O CONTRATADO  declara que no dia ${day} de ${currentMonthName} de 2025, recebeu do CONTRATANTE o valor de R$ ${totalValor + 0},00 (${totalValorExtenso}), pela entrega dos serviços acima referidos, e dá a mais ampla, geral e irrestrita quitação à dívida, renunciando seu direito de cobrança relativos a tais valores. `;
 
     let text7 = `E por estarem justas e perfeitamente acertadas, assinam o presente em 02 (duas) vias de igual teor e forma, vias na presença de 2 (duas) testemunhas.`;
 
-    let text8 = `Blumenau/SC, ${day} de ${currentMonthName} de ${year}.`;
+    let text8 = `Blumenau/SC, ${day} de ${currentMonthName} de 2025.`;
 
     addTextWithPageCheck(text6, 10, ["Cláusula", "2ª", "CONTRATADO", "CONTRATANTE"]);
     addTextWithPageCheck(text7, 10);

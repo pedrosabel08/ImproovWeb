@@ -53,9 +53,8 @@ try {
     // Definição das consultas e canais
     $consultas = [
         [
-
-            // Caderno
-            'canal' => '#teste2', 
+            //Modelagem
+            'canal' => 'C087WRC2ZME', // Substitua pelo canal correto no Slack
             'query' => "SELECT  f.idfuncao_imagem,
                             f.funcao_id, 
                         fun.nome_funcao, 
@@ -69,12 +68,11 @@ try {
                     LEFT JOIN funcao fun ON fun.idfuncao = f.funcao_id
                     LEFT JOIN colaborador c ON c.idcolaborador = f.colaborador_id
                     LEFT JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
-                    WHERE f.funcao_id BETWEEN 2 AND 3 AND f.check_funcao = 0 AND f.status = 'Em aprovação'"
+                    WHERE f.funcao_id = 2 AND f.check_funcao = 0 AND f.status = 'Em aprovação'"
         ],
         [
-
-            // Modelagem
-            'canal' => '#teste2',
+            //Composição
+            'canal' => 'C087LMQJLGH', // Substitua pelo canal correto no Slack
             'query' => "SELECT  f.idfuncao_imagem,
                             f.funcao_id, 
                         fun.nome_funcao, 
@@ -88,27 +86,90 @@ try {
                     LEFT JOIN funcao fun ON fun.idfuncao = f.funcao_id
                     LEFT JOIN colaborador c ON c.idcolaborador = f.colaborador_id
                     LEFT JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
-                    WHERE f.funcao_id BETWEEN 4 AND f.check_funcao = 0 AND f.status = 'Em aprovação'"
+                    WHERE f.funcao_id = 3 AND f.check_funcao = 0 AND f.status = 'Em aprovação'"
+        ],
+        [
+            //Finalização
+            'canal' => 'C086TFA7JJ3',
+            'query' => "SELECT  f.idfuncao_imagem,
+                            f.funcao_id, 
+                        fun.nome_funcao, 
+                        f.status, 
+                        f.check_funcao, 
+                        f.imagem_id, 
+                        i.imagem_nome, 
+                        f.colaborador_id, 
+                        c.nome_colaborador
+                        FROM funcao_imagem f
+                    LEFT JOIN funcao fun ON fun.idfuncao = f.funcao_id
+                    LEFT JOIN colaborador c ON c.idcolaborador = f.colaborador_id
+                    LEFT JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
+                    WHERE f.funcao_id = 4 AND f.check_funcao = 0 AND f.status = 'Em aprovação'"
+        ],
+        [
+            //Pós-produção
+            'canal' => 'C08781CH95G',
+            'query' => "SELECT  f.idfuncao_imagem,
+                            f.funcao_id, 
+                        fun.nome_funcao, 
+                        f.status, 
+                        f.check_funcao, 
+                        f.imagem_id, 
+                        i.imagem_nome, 
+                        f.colaborador_id, 
+                        c.nome_colaborador
+                        FROM funcao_imagem f
+                    LEFT JOIN funcao fun ON fun.idfuncao = f.funcao_id
+                    LEFT JOIN colaborador c ON c.idcolaborador = f.colaborador_id
+                    LEFT JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
+                    WHERE f.funcao_id = 5 AND f.check_funcao = 0 AND f.status = 'Em aprovação'"
+        ],
+        [
+            //Planta Humanizada
+            'canal' => 'C087FR3640J',
+            'query' => "SELECT  f.idfuncao_imagem,
+                            f.funcao_id, 
+                        fun.nome_funcao, 
+                        f.status, 
+                        f.check_funcao, 
+                        f.imagem_id, 
+                        i.imagem_nome, 
+                        f.colaborador_id, 
+                        c.nome_colaborador
+                        FROM funcao_imagem f
+                    LEFT JOIN funcao fun ON fun.idfuncao = f.funcao_id
+                    LEFT JOIN colaborador c ON c.idcolaborador = f.colaborador_id
+                    LEFT JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
+                    WHERE f.funcao_id = 7 AND f.check_funcao = 0 AND f.status = 'Em aprovação'"
         ]
-        // Adicione mais consultas e canais, se necessário
+
     ];
 
     // Executa cada consulta e envia notificações ao Slack
     foreach ($consultas as $consulta) {
         $stmt = $pdo->query($consulta['query']);
         $resultados = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $link = "https://improov.com.br/sistema/Revisao/";  // Substitua pelo seu link real
 
         if (count($resultados) > 0) {
-            foreach ($resultados as $linha) {
-                $link = "https://improov.com.br/sistema/Revisao/";  // Substitua pelo seu link real
-                $mensagem = "⚠️ Tarefa pendente encontrada:\n";
-                $mensagem .= "- Função: {$linha['nome_funcao']}\n";
-                $mensagem .= "- Status: {$linha['status']}\n";
-                $mensagem .= "- Imagem:  {$linha['imagem_nome']}\n";
+            if (count($resultados) > 2) {
+                // Mensagem genérica para mais de 2 tarefas pendentes
+                $mensagem = "⚠️ Existem " . count($resultados) . " imagens pendentes para revisão.\n";
                 $mensagem .= "Clique aqui para mais detalhes: <{$link}|Detalhes>";
 
                 // Envia a mensagem ao canal Slack
                 enviarMensagemSlack($consulta['canal'], $mensagem);
+            } else {
+                // Notificação individual para até 2 tarefas pendentes
+                foreach ($resultados as $linha) {
+                    $mensagem = "⚠️ Tarefa pendente encontrada:\n";
+                    $mensagem .= "- Função: {$linha['nome_funcao']}\n";
+                    $mensagem .= "- Status: {$linha['status']}\n";
+                    $mensagem .= "Clique aqui para mais detalhes: <{$link}|Detalhes>";
+
+                    // Envia a mensagem ao canal Slack
+                    enviarMensagemSlack($consulta['canal'], $mensagem);
+                }
             }
         } else {
             echo "Nenhuma tarefa pendente para o canal {$consulta['canal']}.\n";

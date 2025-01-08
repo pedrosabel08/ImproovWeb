@@ -119,6 +119,23 @@ $conn->close();
                     <p id="count-to-do"><?php echo $count_pendentes; ?></p>
                 </div>
             </div>
+            <div class="button-container">
+                <button class="main-button" id="toggleButton">Ferramentas</button>
+                <div class="icon-container" id="iconContainer">
+                    <div class="icon">
+                        <i class="fas fa-calendar-alt"></i>
+                        <div class="tooltip">Calendário</div>
+                    </div>
+                    <div class="icon">
+                        <i class="fas fa-table"></i>
+                        <div class="tooltip">Tabela</div>
+                    </div>
+                    <div class="icon">
+                        <i class="fas fa-tasks"></i>
+                        <div class="tooltip">Em andamento</div>
+                    </div>
+                </div>
+            </div>
         </div>
         <div class="nav">
             <div>
@@ -170,6 +187,8 @@ $conn->close();
 
         const idUsuario = <?php echo json_encode($idusuario); ?>;
         localStorage.setItem('idusuario', idUsuario);
+
+
     </script>
 
     <script src="script/notificacoes.js"></script>

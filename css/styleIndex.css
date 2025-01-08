@@ -199,6 +199,78 @@ main {
     cursor: pointer;
 }
 
+.button-container {
+    position: relative;
+    display: inline-block;
+}
+
+.main-button {
+    color: white;
+    border: none;
+    border-radius: 50px;
+    padding: 15px 20px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: transform 0.3s ease;
+}
+
+.main-button:hover {
+    transform: scale(1.1);
+}
+
+.icon-container {
+    display: none;
+    position: absolute;
+    top: 70px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: white;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    padding: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    z-index: 10;
+}
+
+.icon-container.active {
+    display: flex;
+}
+
+.icon {
+    position: relative;
+    margin: 0 10px;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.icon:hover {
+    transform: scale(1.2);
+}
+
+.tooltip {
+    display: none;
+    position: absolute;
+    bottom: -30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #333;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.icon:hover .tooltip {
+    display: block;
+}
+
+.icon i {
+    font-size: 24px;
+    color: #000;
+}
+
+
 #icone-sino {
     font-size: 50px;
     color: #f39c12;

@@ -112,6 +112,7 @@ $funcoes = obterFuncoes($conn);
             <!-- Cabeçalho do Dashboard -->
             <div class="dashboard-header">
                 <img src="../gif/assinatura_preto.gif" alt="">
+                <button id="themeToggle"><i id="themeIcon" class="fas fa-sun"></i></button>
             </div>
 
             <!-- Seção de Estatísticas -->

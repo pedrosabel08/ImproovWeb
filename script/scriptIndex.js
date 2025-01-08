@@ -75,3 +75,15 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
 });
+
+
+if (idusuario != 1 && idusuario != 2) {
+    document.querySelector('.button-container').style.display = 'none';
+  }
+
+const toggleButton = document.getElementById('toggleButton');
+const iconContainer = document.getElementById('iconContainer');
+
+toggleButton.addEventListener('click', () => {
+    iconContainer.classList.toggle('active');
+});

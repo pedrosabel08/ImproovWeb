@@ -1,3 +1,17 @@
+<?php
+session_start();
+
+// Verificar se o usuário está logado
+if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
+    // Se não estiver logado, redirecionar para a página de login
+    header("Location: ../index.html");
+    exit();
+}
+
+$idusuario = $_SESSION['idusuario'];
+
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -58,6 +72,7 @@
             <option value="Composição">Composição</option>
             <option value="Finalização">Finalização</option>
             <option value="Pós-produção">Pós-produção</option>
+            <option value="Alteração">Alteração</option>
             <option value="Planta Humanizada">Planta Humanizada</option>
         </select>
         <div class="container"></div>

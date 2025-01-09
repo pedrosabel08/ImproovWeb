@@ -747,7 +747,7 @@ $conn->close();
 
     </main>
 
-    <?php if (isset($_SESSION['idusuario']) && $_SESSION['idusuario'] == 1): ?>
+    <?php if (isset($_SESSION['idusuario']) && ($_SESSION['idusuario'] == 1 || $_SESSION['idusuario'] == 2 || $_SESSION['idusuario'] == 9 )): ?>
         <div id="notificacao-sino" class="notificacao-sino">
             <i class="fas fa-bell sino" id="icone-sino"></i>
             <span id="contador-tarefas" class="contador-tarefas">0</span>

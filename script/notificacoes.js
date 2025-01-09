@@ -1,6 +1,6 @@
 const idusuario = localStorage.getItem('idusuario');
 
-if (idusuario === '1' || idusuario === '2') {
+if (idusuario === '1' || idusuario === '2' || idusuario === '9') {
 
     function ativarSino() {
         // Ativar sino com animação

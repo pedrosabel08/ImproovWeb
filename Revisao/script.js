@@ -138,8 +138,6 @@ function exibirTarefas(tarefas) {
             taskItem.classList.add('task-item');
             taskItem.setAttribute('onclick', 'toggleTaskDetails(this)');
 
-            const prazoFormatado = formatarData(tarefa.prazo);
-
             taskItem.innerHTML = `
                 <div class="task-info">
                     <h3>${tarefa.nome_funcao}</h3><span>${tarefa.nome_colaborador}</span>
@@ -158,7 +156,6 @@ function exibirTarefas(tarefas) {
                 <div class="task-details">
                     <p><strong>Imagem:</strong> ${tarefa.imagem_nome}</p>
                     <p><strong>Colaborador:</strong> ${tarefa.nome_colaborador}</p>
-                    <p><strong>Data de Alteração:</strong> ${prazoFormatado}</p>
                 </div>
             `;
             container.appendChild(taskItem);

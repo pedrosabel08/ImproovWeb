@@ -178,7 +178,7 @@ th {
     padding: 6px;
     text-align: center;
     font-size: 14px;
-
+    white-space: nowrap;
 }
 
 /* .tabelaClientes tbody tr:nth-child(odd) {

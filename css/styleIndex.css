@@ -160,17 +160,28 @@ main {
     gap: 20px;
 }
 
-.nav {
+.container {
+    display: none;
+}
+
+.container.active {
+    display: block;
+    animation: fadeInNav .5s ease-in-out forwards;
+
+}
+
+#container-calendario {
     padding: 1rem;
     display: grid;
     grid-template-columns: 600px 600px;
+    grid-template-rows: 400px;
     gap: 20px;
     align-items: stretch;
     justify-content: center;
-    animation: fadeInNav .5s ease-in-out forwards;
+    /* animation: fadeInNav .5s ease-in-out forwards; */
 }
 
-.nav iframe {
+#container-calendario iframe {
     width: 100%;
     height: 100%;
     border: none;
@@ -261,6 +272,20 @@ main {
     white-space: nowrap;
 }
 
+.tooltip.ferramenta {
+    display: none;
+    position: absolute;
+    bottom: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #fff;
+    color: black;
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
 .icon:hover .tooltip {
     display: block;
 }
@@ -269,6 +294,91 @@ main {
     font-size: 24px;
     color: #000;
 }
+
+#priority-container {
+    background-color: #222;
+    color: white;
+    padding: 20px;
+    border-radius: 10px;
+    margin: 10px;
+}
+
+#priority-list {
+    list-style-type: none;
+    padding: 0;
+    margin: 10px 0;
+}
+
+#priority-list li {
+    background-color: #444;
+    margin: 5px 0;
+    padding: 10px;
+    border-radius: 5px;
+    cursor: grab;
+}
+
+#priority-list li:active {
+    cursor: grabbing;
+}
+
+.linha-imagem {
+    display: flex;
+    margin-bottom: 10px;
+    /* Espaço entre as linhas */
+}
+
+.coluna {
+    flex: 1;
+    /* Cada coluna ocupa o mesmo espaço */
+    padding: 8px;
+    border: 1px solid #ddd;
+    /* Bordas para as colunas */
+    text-align: center;
+}
+
+/* Estilo das áreas de prioridade */
+#priority-zones {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.priority-group {
+    flex: 1;
+    padding: 10px;
+    background-color: #333;
+    border-radius: 5px;
+    color: white;
+    text-align: center;
+}
+
+.drop-zone {
+    margin-top: 10px;
+    min-height: 50px;
+    border: 2px dashed #aaa;
+    padding: 10px;
+    border-radius: 5px;
+    background-color: #444;
+}
+
+.drop-zone.over {
+    border-color: #fff;
+    background-color: #555;
+}
+
+.draggable-item {
+    background-color: #555;
+    color: white;
+    padding: 10px;
+    margin-bottom: 5px;
+    border-radius: 5px;
+    cursor: grab;
+}
+
+.draggable-item:active {
+    cursor: grabbing;
+}
+
 
 
 #icone-sino {

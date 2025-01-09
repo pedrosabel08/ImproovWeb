@@ -44,7 +44,7 @@ if ($idusuario == 1 || $idusuario == 2) {
     LEFT JOIN funcao fun ON fun.idfuncao = f.funcao_id
     LEFT JOIN colaborador c ON c.idcolaborador = f.colaborador_id
     LEFT JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
-    WHERE f.funcao_id IN (1, 2, 3)
+    WHERE f.funcao_id IN (1, 2, 3, 6)
       AND f.check_funcao = 0 
       AND f.status = 'Em aprovação'";
 } else {

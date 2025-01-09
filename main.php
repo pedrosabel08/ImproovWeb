@@ -542,6 +542,7 @@ $conn->close();
             <table id="tabela-colab">
                 <thead>
                     <tr>
+                        <th>Prioridade</th>
                         <th id="nome">Nome da Imagem</th>
                         <th>Função</th>
                         <th>Status</th>

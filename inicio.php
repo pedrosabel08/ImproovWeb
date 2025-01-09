@@ -48,6 +48,22 @@ $stmt->close();
 $conn->close();
 ?>
 
+
+<?php
+include 'conexaoMain.php';
+
+$conn = conectarBanco();
+
+$clientes = obterClientes($conn);
+$obras = obterObras($conn);
+$colaboradores = obterColaboradores($conn);
+$status_imagens = obterStatusImagens($conn);
+$funcoes = obterFuncoes($conn);
+
+$conn->close();
+?>
+
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -120,46 +136,103 @@ $conn->close();
                 </div>
             </div>
             <div class="button-container">
-                <button class="main-button" id="toggleButton">Ferramentas</button>
+                <div class="icon">
+                    <button class="main-button icon" id="toggleButton"><i class="fa-solid fa-screwdriver-wrench" style="color: white"></i></button>
+                    <div class="tooltip ferramenta">Ferramentas</div>
+                </div>
                 <div class="icon-container" id="iconContainer">
                     <div class="icon">
-                        <i class="fas fa-calendar-alt"></i>
+                        <button id="calendario">
+                            <i class="fas fa-calendar-alt"></i>
+                        </button>
                         <div class="tooltip">Calendário</div>
                     </div>
                     <div class="icon">
-                        <i class="fas fa-table"></i>
-                        <div class="tooltip">Tabela</div>
+                        <button id="show-prioridade-btn">
+                            <i class="fas fa-table"></i>
+                        </button>
+                        <div class="tooltip">Prioridades</div>
                     </div>
                     <div class="icon">
-                        <i class="fas fa-tasks"></i>
+                        <button id="show-andamento-btn">
+                            <i class="fas fa-tasks"></i>
+                        </button>
                         <div class="tooltip">Em andamento</div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="nav">
-            <div>
-                <iframe src="https://www.improov.com.br/sistema/Calendario/index.php"></iframe>
+        <div class="main-container">
+            <div id="container-calendario" class="container active">
+                <div>
+                    <iframe src="https://www.improov.com.br/sistema/Calendario/index.php"></iframe>
+                </div>
+                <div class="last-tasks">
+                    <h2>Notificações</h2>
+                    <ul>
+                        <?php if ($resultNotificacoes->num_rows > 0): ?>
+                            <?php while ($row = $resultNotificacoes->fetch_assoc()): ?>
+                                <li>
+                                    <span class="notification-message"><?php echo htmlspecialchars($row['mensagem']); ?></span>
+                                </li>
+                            <?php endwhile; ?>
+                        <?php else: ?>
+                            <li>Não há notificações recentes.</li>
+                        <?php endif; ?>
+                    </ul>
+                </div>
             </div>
-            <div class="last-tasks">
-                <h2>Notificações</h2>
-                <ul>
-                    <?php if ($resultNotificacoes->num_rows > 0): ?>
-                        <?php while ($row = $resultNotificacoes->fetch_assoc()): ?>
-                            <li>
-                                <span class="notification-message"><?php echo htmlspecialchars($row['mensagem']); ?></span>
-                            </li>
-                        <?php endwhile; ?>
-                    <?php else: ?>
-                        <li>Não há notificações recentes.</li>
-                    <?php endif; ?>
-                </ul>
+
+            <div id="container-andamento" class="container">
+                <select id="colaboradorSelectAndamento">
+                    <?php foreach ($colaboradores as $colab): ?>
+                        <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                            <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+
+                <div id="imagensColaboradorAndamento">
+
+                </div>
+            </div>
+
+            <div id="priority-container" class="container">
+                <h2>Gerenciar Prioridades</h2>
+                <select id="colaboradorSelectPrioridade">
+                    <?php foreach ($colaboradores as $colab): ?>
+                        <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                            <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+
+                <!-- Áreas de prioridade -->
+                <div id="priority-zones">
+                    <div class="priority-group" id="alta-prioridade">
+                        <h3>Alta Prioridade</h3>
+                        <div class="drop-zone" data-priority="1"></div>
+                    </div>
+                    <div class="priority-group" id="media-prioridade">
+                        <h3>Média Prioridade</h3>
+                        <div class="drop-zone" data-priority="2"></div>
+                    </div>
+                    <div class="priority-group" id="baixa-prioridade">
+                        <h3>Baixa Prioridade</h3>
+                        <div class="drop-zone" data-priority="3"></div>
+                    </div>
+                </div>
+
+                <div id="priorityDropZones">
+                    <!-- As imagens serão exibidas aqui -->
+                </div>
             </div>
         </div>
 
+
     </main>
 
-    <?php if (isset($_SESSION['idusuario']) && ($_SESSION['idusuario'] == 1 || $_SESSION['idusuario'] == 2 || $_SESSION['idusuario'] == 9 )): ?>
+    <?php if (isset($_SESSION['idusuario']) && ($_SESSION['idusuario'] == 1 || $_SESSION['idusuario'] == 2 || $_SESSION['idusuario'] == 9)): ?>
         <div id="notificacao-sino" class="notificacao-sino">
             <i class="fas fa-bell sino" id="icone-sino"></i>
             <span id="contador-tarefas" class="contador-tarefas">0</span>
@@ -187,8 +260,6 @@ $conn->close();
 
         const idUsuario = <?php echo json_encode($idusuario); ?>;
         localStorage.setItem('idusuario', idUsuario);
-
-
     </script>
 
     <script src="script/notificacoes.js"></script>

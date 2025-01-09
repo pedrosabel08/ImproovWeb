@@ -46,11 +46,6 @@ if (idusuario === '1' || idusuario === '2' || idusuario === '9') {
                     ativarSino();
 
 
-                    enviarNotificacao(
-                        'Tarefas Pendentes',
-                        `Você tem ${tarefas.length} tarefas para revisão. Clique para mais detalhes.`
-                    );
-
                 } else {
 
                     const contadorTarefas = document.getElementById('contador-tarefas');
@@ -58,25 +53,6 @@ if (idusuario === '1' || idusuario === '2' || idusuario === '9') {
                 }
             })
             .catch(error => console.error('Erro ao buscar tarefas:', error));
-    }
-
-    // Função para exibir notificações web
-    function enviarNotificacao(titulo, mensagem) {
-        if ('Notification' in window) {
-            Notification.requestPermission().then(permission => {
-                if (permission === 'granted') {
-                    const notificacao = new Notification(titulo, {
-                        body: mensagem,
-                        icon: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s', // Substitua pelo ícone desejado
-                    });
-
-                    notificacao.onclick = () => {
-                        window.location.href = 'https://improov.com.br/sistema/Revisao'
-
-                    };
-                }
-            });
-        }
     }
 
     function agendarProximaExecucao() {

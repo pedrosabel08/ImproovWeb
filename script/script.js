@@ -401,6 +401,23 @@ document.addEventListener("DOMContentLoaded", function () {
                         var row = document.createElement('tr');
                         row.classList.add('linha-tabela');
                         row.setAttribute('data-id', item.imagem_id);
+
+                        var prioridadeTexto = '';
+                        var prioridadeCor = '';
+                        if (item.prioridade == 3) {
+                            prioridadeTexto = 'Baixa';
+                            prioridadeCor = 'yellow'; // Cor de fundo para prioridade baixa
+                        } else if (item.prioridade == 2) {
+                            prioridadeTexto = 'Média';
+                            prioridadeCor = 'orange'; // Cor de fundo para prioridade média
+                        } else if (item.prioridade == 1) {
+                            prioridadeTexto = 'Alta';
+                            prioridadeCor = 'red'; // Cor de fundo para prioridade alta
+                        }
+
+                        var cellPrioridade = document.createElement('td');
+                        cellPrioridade.textContent = prioridadeTexto;
+                        cellPrioridade.style.backgroundColor = prioridadeCor;
                         var cellNomeImagem = document.createElement('td');
                         cellNomeImagem.textContent = item.imagem_nome;
                         var cellFuncao = document.createElement('td');
@@ -410,6 +427,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         var cellPrazoImagem = document.createElement('td');
                         cellPrazoImagem.textContent = item.prazo;
 
+                        row.appendChild(cellPrioridade);
                         row.appendChild(cellNomeImagem);
                         row.appendChild(cellFuncao);
                         row.appendChild(cellStatus);

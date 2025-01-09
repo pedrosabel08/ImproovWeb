@@ -23,12 +23,14 @@ $sql = "SELECT
             ico.imagem_nome,
             fi.status,
             fi.prazo,
-            f.nome_funcao
+            f.nome_funcao,
+            pc.prioridade
         FROM funcao_imagem fi
         JOIN imagens_cliente_obra ico ON fi.imagem_id = ico.idimagens_cliente_obra
         JOIN obra o on ico.obra_id = o.idobra
         JOIN funcao f on fi.funcao_id = f.idfuncao
-        WHERE fi.colaborador_id = ?";
+        JOIN prioridade_funcao pc ON fi.idfuncao_imagem = pc.funcao_imagem_id
+        WHERE fi.colaborador_id = ? ORDER BY pc.prioridade asc";
 
 if ($dataInicio) {
     $sql .= " AND fi.prazo >= ?";
@@ -45,6 +47,7 @@ if ($funcaoId) {
 if ($status) {
     $sql .= " AND fi.status = ?";
 }
+
 
 $stmt = $conn->prepare($sql);
 

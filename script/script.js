@@ -552,6 +552,9 @@ document.addEventListener("DOMContentLoaded", function () {
         } else {
             document.querySelector('#tabela-obra tbody').innerHTML = '';
         }
+
+
+
     }
 
 
@@ -561,19 +564,36 @@ document.addEventListener("DOMContentLoaded", function () {
     document.getElementById('antecipada_follow').addEventListener('change', fetchFollowUpData); // Adiciona evento para "Antecipada"
 
     window.addEventListener('load', function () {
-
         const obraId = localStorage.getItem('obraId');
-
         if (obraId) {
             const obraSelect = document.getElementById('obra-follow');
+            const obraSelectObra = document.getElementById('obraFiltro');
 
             if (obraSelect) {
                 obraSelect.value = obraId;
+                if (window.location.hash === '#follow-up') {
+                    openModal('follow-up');
+                }
+                fetchFollowUpData();
             }
+            if (obraSelectObra) {
+                obraSelectObra.value = obraId;
+                if (window.location.hash === '#filtro-obra') {
+                    openModal('filtro-obra')
+                }
+                atualizarFuncoes();
+            }
+        }
 
-            fetchFollowUpData();
+        if (window.location.hash === '#add-cliente') {
+            openModal('add-cliente')
+        }
+
+        if (window.location.hash === '#filtro-colab') {
+            openModal('filtro-colab')
         }
     });
+
 
     function fetchFollowUpData() {
         var obraId = document.getElementById('obra-follow').value;
@@ -653,12 +673,6 @@ document.addEventListener("DOMContentLoaded", function () {
             document.querySelector('#tabela-follow tbody').innerHTML = '';
         }
     }
-
-    if (window.location.hash === '#follow-up') {
-        // Se sim, chama a função para abrir o modal de follow-up
-        openModal('follow-up');
-    }
-
 
 });
 

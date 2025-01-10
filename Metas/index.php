@@ -36,15 +36,35 @@ $porcentagem = number_format($porcentagem, 2);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="../css/styleMetas.css">
+    <!-- <link rel="stylesheet" href="../css/styleMetas.css"> -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="../css/styleSidebar.css">
 
     <title>Metas e progresso</title>
 </head>
 
 <body>
 
-    <header>
+    <?php
+    include '../conexaoMain.php';
+
+    $conn = conectarBanco();
+
+    $clientes = obterClientes($conn);
+    $obras = obterObras($conn);
+    $colaboradores = obterColaboradores($conn);
+
+    $conn->close();
+    ?>
+
+    <?php 
+
+include '../sidebar.php';
+
+?>
+
+
+    <!-- <header>
         <button id="menuButton">
             <i class="fa-solid fa-bars"></i>
         </button>
@@ -67,7 +87,7 @@ $porcentagem = number_format($porcentagem, 2);
             </a>
         </div>
         <h2>Metas e progresso</h2>
-    </header>
+    </header> -->
     <nav>
         <div id="nav-left">
             <p id="dataAtual"></p>
@@ -227,6 +247,7 @@ $porcentagem = number_format($porcentagem, 2);
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="script.js"></script>
+    <script src="../script/sidebar.js"></script>
 
 </body>
 

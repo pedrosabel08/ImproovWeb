@@ -1,0 +1,48 @@
+<?php
+require 'Revisao/vendor/autoload.php'; // Instale via composer require omarusman/ics-parser
+
+use ICal\ICal;
+
+// URL do arquivo ICS
+$icsUrl = 'https://calendar.google.com/calendar/ical/trafegoimproov%40gmail.com/private-faa5fcb5e3fde4c0234e8ae543118324/basic.ics';
+
+try {
+    $ical = new ICal($icsUrl);
+    $eventos = $ical->eventsFromRange('now', '+7 days'); // Eventos nos próximos 7 dias
+
+    $notificacaoEventos = '';
+
+    // Acumula os eventos para enviar uma notificação única
+    foreach ($eventos as $evento) {
+        $titulo = $evento->summary; // Nome da obra - Tipo de entrega
+
+        // Ajuste o fuso horário para o horário de Brasília (GMT-3)
+        $data = new DateTime($evento->dtstart);
+        $data->setTimezone(new DateTimeZone('America/Sao_Paulo')); // Definir o fuso horário para Brasília
+        $dataFormatada = $data->format('d/m/Y'); // Data no formato DD/MM/YYYY
+
+        // Acumula o evento na string de notificação
+        $notificacaoEventos .= "🗂 *$titulo*\n📆 *Data:* $dataFormatada\n\n";
+    }
+
+    // Enviar notificação se houver eventos
+    if (!empty($notificacaoEventos)) {
+        enviarNotificacaoSlack($notificacaoEventos);
+    }
+} catch (\Exception $e) {
+    echo 'Erro ao processar o ICS: ' . $e->getMessage();
+}
+
+function enviarNotificacaoSlack($notificacaoEventos)
+{
+    $webhookUrl = 'https://hooks.slack.com/services/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';
+    $mensagem = "📅 *Entrega dos próximos 7 Dias!*\n\n" . $notificacaoEventos;
+
+    $payload = json_encode(['text' => $mensagem]);
+    $ch = curl_init($webhookUrl);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_exec($ch);
+    curl_close($ch);
+}

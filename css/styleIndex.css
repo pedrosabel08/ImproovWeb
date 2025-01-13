@@ -116,11 +116,9 @@ button {
 
 main {
     display: grid;
-    grid-template-rows: 300px auto;
     grid-template-columns: 1fr;
     justify-content: center;
     padding: 20px;
-    gap: 50px;
     height: 90vh;
 }
 
@@ -131,10 +129,8 @@ main {
 .infos-pessoais {
     text-align: center;
     display: flex;
-    justify-content: center;
     flex-direction: column;
     align-items: center;
-    grid-column: 1 / span 2;
     gap: 20px;
 }
 
@@ -170,11 +166,13 @@ main {
 
 }
 
+
+
 #container-calendario {
     padding: 1rem;
     display: grid;
-    grid-template-columns: 600px 600px;
-    grid-template-rows: 400px;
+    grid-template-columns: 1200px;
+    grid-template-rows: 600px;
     gap: 20px;
     align-items: stretch;
     justify-content: center;
@@ -228,6 +226,7 @@ main {
 .main-button:hover {
     transform: scale(1.1);
 }
+
 
 .icon-container {
     display: none;

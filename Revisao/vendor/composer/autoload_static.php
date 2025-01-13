@@ -60,6 +60,16 @@ class ComposerStaticInite875ae8441d070d7dda5f4b47a2117aa
         ),
     );
 
+    public static $prefixesPsr0 = array (
+        'I' => 
+        array (
+            'ICal' => 
+            array (
+                0 => __DIR__ . '/..' . '/u01jmg3/ics-parser/src',
+            ),
+        ),
+    );
+
     public static $classMap = array (
         'Attribute' => __DIR__ . '/..' . '/symfony/polyfill-php80/Resources/stubs/Attribute.php',
         'Composer\\InstalledVersions' => __DIR__ . '/..' . '/composer/InstalledVersions.php',
@@ -74,6 +84,7 @@ class ComposerStaticInite875ae8441d070d7dda5f4b47a2117aa
         return \Closure::bind(function () use ($loader) {
             $loader->prefixLengthsPsr4 = ComposerStaticInite875ae8441d070d7dda5f4b47a2117aa::$prefixLengthsPsr4;
             $loader->prefixDirsPsr4 = ComposerStaticInite875ae8441d070d7dda5f4b47a2117aa::$prefixDirsPsr4;
+            $loader->prefixesPsr0 = ComposerStaticInite875ae8441d070d7dda5f4b47a2117aa::$prefixesPsr0;
             $loader->classMap = ComposerStaticInite875ae8441d070d7dda5f4b47a2117aa::$classMap;
 
         }, null, ClassLoader::class);

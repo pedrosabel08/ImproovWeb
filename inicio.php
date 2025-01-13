@@ -137,7 +137,8 @@ $conn->close();
             </div>
             <div class="button-container">
                 <div class="icon">
-                    <button class="main-button icon" id="toggleButton"><i class="fa-solid fa-screwdriver-wrench" style="color: white"></i></button>
+                    <button class="main-button icon" id="toggleButton"><i class="fa-solid fa-gear" style="color: #f1f1f1"></i>
+                    </button>
                     <div class="tooltip ferramenta">Ferramentas</div>
                 </div>
                 <div class="icon-container" id="iconContainer">
@@ -165,9 +166,9 @@ $conn->close();
         <div class="main-container">
             <div id="container-calendario" class="container active">
                 <div>
-                    <iframe src="https://www.improov.com.br/sistema/Calendario/index.php"></iframe>
+                    <iframe src="https://calendar.google.com/calendar/embed?height=600&wkst=1&ctz=America%2FSao_Paulo&showPrint=0&showTz=0&showTitle=0&showCalendars=0&src=dHJhZmVnb2ltcHJvb3ZAZ21haWwuY29t&src=MjE2NGI4MjJkNzVlZDk2MzA2YzVjOTJhZjEyOWYzNjdlYjE5M2JmZDc4ZDljNDhjNjg4N2QyZmExNTk1M2I1OEBncm91cC5jYWxlbmRhci5nb29nbGUuY29t&color=%23039BE5&color=%23E67C73" style="border:solid 1px #777" width="1200" height="600" frameborder="0" scrolling="no"></iframe>
                 </div>
-                <div class="last-tasks">
+                <!-- <div class="last-tasks">
                     <h2>Notificações</h2>
                     <ul>
                         <?php if ($resultNotificacoes->num_rows > 0): ?>
@@ -180,7 +181,7 @@ $conn->close();
                             <li>Não há notificações recentes.</li>
                         <?php endif; ?>
                     </ul>
-                </div>
+                </div> -->
             </div>
 
             <div id="container-andamento" class="container">

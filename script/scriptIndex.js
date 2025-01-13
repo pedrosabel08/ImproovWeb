@@ -160,25 +160,6 @@ const andamentoContainer = document.getElementById("container-andamento");
 const prioridadeContainer = document.getElementById("priority-container");
 const calendarioContainer = document.getElementById("container-calendario");
 
-andamentoBtn.addEventListener("click", () => {
-    andamentoContainer.classList.add("active");
-    prioridadeContainer.classList.remove("active");
-    calendarioContainer.style.display = 'none';
-});
-
-prioridadeBtn.addEventListener("click", () => {
-    prioridadeContainer.classList.add("active");
-    andamentoContainer.classList.remove("active");
-    calendarioContainer.style.display = 'none';
-});
-
-calendario.addEventListener("click", () => {
-    calendarioContainer.style.display = 'grid';
-    andamentoContainer.classList.remove("active");
-    prioridadeContainer.classList.remove("active");
-})
-
-
 
 const toggleButton = document.getElementById('toggleButton');
 const iconContainer = document.getElementById('iconContainer');
@@ -186,6 +167,30 @@ const iconContainer = document.getElementById('iconContainer');
 toggleButton.addEventListener('click', () => {
     iconContainer.classList.toggle('active');
 });
+
+
+andamentoBtn.addEventListener("click", () => {
+    andamentoContainer.classList.add("active");
+    prioridadeContainer.classList.remove("active");
+    calendarioContainer.style.display = 'none';
+    iconContainer.classList.toggle('active');
+});
+
+prioridadeBtn.addEventListener("click", () => {
+    prioridadeContainer.classList.add("active");
+    andamentoContainer.classList.remove("active");
+    calendarioContainer.style.display = 'none';
+    iconContainer.classList.toggle('active');
+});
+
+calendario.addEventListener("click", () => {
+    calendarioContainer.style.display = 'grid';
+    andamentoContainer.classList.remove("active");
+    prioridadeContainer.classList.remove("active");
+    iconContainer.classList.toggle('active');
+})
+
+
 
 
 function addDragAndDropEvents(item) {

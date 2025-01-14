@@ -1,7 +1,25 @@
 <?php
-require 'Revisao/vendor/autoload.php'; // Instale via composer require omarusman/ics-parser
+require_once __DIR__ . '/Revisao/vendor/autoload.php'; // Instale via composer require omarusman/ics-parser
 
 use ICal\ICal;
+
+use Dotenv\Dotenv;
+
+$envPath = __DIR__ . '/Revisao/.env';
+
+if (!file_exists($envPath)) {
+    die("Arquivo .env não encontrado em: $envPath");
+}
+
+$dotenv = Dotenv::createImmutable(__DIR__ . '/Revisao');
+$dotenv->load();
+
+$webhookUrl = $_ENV['SLACK_WEBHOOK_URL'] ?? null;
+
+if (!$webhookUrl) {
+    die('Erro: Variável SLACK_WEBHOOK_URL não encontrada no .env');
+}
+
 
 // URL do arquivo ICS
 $icsUrl = 'https://calendar.google.com/calendar/ical/trafegoimproov%40gmail.com/private-faa5fcb5e3fde4c0234e8ae543118324/basic.ics';
@@ -27,15 +45,14 @@ try {
 
     // Enviar notificação se houver eventos
     if (!empty($notificacaoEventos)) {
-        enviarNotificacaoSlack($notificacaoEventos);
+        enviarNotificacaoSlack($notificacaoEventos, $webhookUrl);
     }
 } catch (\Exception $e) {
     echo 'Erro ao processar o ICS: ' . $e->getMessage();
 }
 
-function enviarNotificacaoSlack($notificacaoEventos)
+function enviarNotificacaoSlack($notificacaoEventos, $webhookUrl)
 {
-    $webhookUrl = 'https://hooks.slack.com/services/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';
     $mensagem = "📅 *Entrega dos próximos 7 Dias!*\n\n" . $notificacaoEventos;
 
     $payload = json_encode(['text' => $mensagem]);

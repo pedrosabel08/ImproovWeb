@@ -40,15 +40,32 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         $_SESSION['logado'] = true;
 
-        // Resposta JSON de sucesso
-        echo json_encode([
-            "status" => "success",
-            "message" => "Login bem-sucedido!",
-            "user" => [
-                "id" => $row['idusuario'],
-                "name" => $row['nome_usuario']
-            ]
-        ]);
+        // Atualizar o campo ultimo_acesso na tabela usuario
+        $updateSql = "UPDATE usuario SET ultimo_acesso = NOW() WHERE idusuario = ?";
+        $updateStmt = $conn->prepare($updateSql);
+        $updateStmt->bind_param("i", $row['idusuario']);
+        $updateStmt->execute();
+
+        // Verificar se a atualização foi bem-sucedida
+        if ($updateStmt->affected_rows > 0) {
+            // Resposta JSON de sucesso
+            echo json_encode([
+                "status" => "success",
+                "message" => "Login bem-sucedido!",
+                "user" => [
+                    "id" => $row['idusuario'],
+                    "name" => $row['nome_usuario']
+                ]
+            ]);
+        } else {
+            echo json_encode([
+                "status" => "error",
+                "message" => "Erro ao atualizar último acesso."
+            ]);
+        }
+
+        // Fechar a declaração de atualização
+        $updateStmt->close();
     } else {
         // Resposta JSON de falha
         echo json_encode([

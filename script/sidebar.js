@@ -1,5 +1,5 @@
 const sidebar = document.querySelector('.sidebar');
-
+const body = document.querySelector('body');
 sidebar.addEventListener('mouseenter', function () {
 
     if (sidebar) {
@@ -7,6 +7,7 @@ sidebar.addEventListener('mouseenter', function () {
         if (sidebar.classList.contains('mini')) {
             // Remove a classe "mini" e adiciona a classe "complete"
             sidebar.classList.remove('mini');
+
             sidebar.classList.add('complete');
         }
     }

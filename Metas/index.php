@@ -57,11 +57,11 @@ $porcentagem = number_format($porcentagem, 2);
     $conn->close();
     ?>
 
-    <?php 
+    <?php
 
-include '../sidebar.php';
+    include '../sidebar.php';
 
-?>
+    ?>
 
 
     <!-- <header>

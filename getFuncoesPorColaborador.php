@@ -30,7 +30,7 @@ $sql = "SELECT
         JOIN obra o on ico.obra_id = o.idobra
         JOIN funcao f on fi.funcao_id = f.idfuncao
         JOIN prioridade_funcao pc ON fi.idfuncao_imagem = pc.funcao_imagem_id
-        WHERE fi.colaborador_id = ?";
+        WHERE fi.colaborador_id = ? AND o.status_obra = 0";
 
 if ($dataInicio) {
     $sql .= " AND fi.prazo >= ?";
@@ -48,7 +48,7 @@ if ($status) {
     $sql .= " AND fi.status = ?";
 }
 
-$sql .= " ORDER BY pc.prioridade ASC";
+$sql .= " ORDER BY pc.prioridade ASC, imagem_id";
 
 
 $stmt = $conn->prepare($sql);

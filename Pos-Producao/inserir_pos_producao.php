@@ -67,28 +67,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         echo "Dados inseridos ou atualizados com sucesso!";
 
         // Definir a mensagem com base no status_pos
-        if ($status_pos == 1) {
-            $mensagem = "Status não começou para a imagem '$nome_imagem' na obra '$nome_obra' na data $data_pos";
-        } else {
-            $mensagem = "Status atualizado para a imagem '$nome_imagem' na obra '$nome_obra' na data $data_pos";
-        }
+        if ($status_pos == 0) {
+            // Notificar o Slack
+            $slackWebhookUrl = 'https://hooks.slack.com/services/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'; // Substitua pelo seu Webhook do Slack
+            $slackMessage = [
+                'text' => "A imagem $nome_imagem foi feita a pós.",
+            ];
 
-        // Inserir notificação
-        $sql_notificacao = "INSERT INTO notificacoes (mensagem, tipo_notificacao) VALUES (?, 'pos')";
-        $stmt_notificacao = $conn->prepare($sql_notificacao);
-        $stmt_notificacao->bind_param("s", $mensagem);
-        if ($stmt_notificacao->execute()) {
-            $notificacao_id = $stmt_notificacao->insert_id; // Pega o ID da notificação inserida
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $slackWebhookUrl);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($slackMessage));
+            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 
-            // Associar notificação apenas aos usuários com id 1 e 2
-            $usuarios_notificar = [1, 2]; // IDs dos usuários que devem receber a notificação
-
-            foreach ($usuarios_notificar as $usuario_id) {
-                $sql_notificacao_usuario = "INSERT INTO notificacoes_usuarios (notificacao_id, usuario_id) VALUES (?, ?)";
-                $stmt_notificacao_usuario = $conn->prepare($sql_notificacao_usuario);
-                $stmt_notificacao_usuario->bind_param("ii", $notificacao_id, $usuario_id);
-                $stmt_notificacao_usuario->execute();
+            $slackResponse = curl_exec($ch);
+            if (curl_errno($ch)) {
+                error_log('Erro ao enviar mensagem para o Slack: ' . curl_error($ch));
+            } else {
+                echo "Mensagem enviada para o Slack com sucesso!";
             }
+            curl_close($ch);
         }
     } else {
         echo "Erro ao inserir ou atualizar dados: " . $conn->error;

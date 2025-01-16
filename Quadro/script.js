@@ -5,33 +5,42 @@ let scrollLeft;
 
 const container = document.getElementById('quadro-container');
 
-// Evento de início do dragging
-container.addEventListener('mousedown', (e) => {
+// Função para obter a posição X correta (mouse ou toque)
+const getPositionX = (e) => e.touches ? e.touches[0].pageX : e.pageX;
+
+// Evento de início do dragging (mouse ou toque)
+const startDragging = (e) => {
     isDragging = true;
     container.classList.add('dragging');
-    startX = e.pageX - container.offsetLeft;
+    startX = getPositionX(e) - container.offsetLeft;
     scrollLeft = container.scrollLeft;
-});
+};
 
-// Evento de movimento durante o dragging
-container.addEventListener('mousemove', (e) => {
+// Evento de movimento durante o dragging (mouse ou toque)
+const drag = (e) => {
     if (!isDragging) return;
     e.preventDefault();
-    const x = e.pageX - container.offsetLeft;
+    const x = getPositionX(e) - container.offsetLeft;
     const walk = (x - startX) * 1; // Controle da velocidade do dragging
     container.scrollLeft = scrollLeft - walk;
-});
+};
 
-// Evento de término do dragging
-container.addEventListener('mouseup', () => {
+// Evento de término do dragging (mouse ou toque)
+const stopDragging = () => {
     isDragging = false;
     container.classList.remove('dragging');
-});
+};
 
-container.addEventListener('mouseleave', () => {
-    isDragging = false;
-    container.classList.remove('dragging');
-});
+// Adicionando eventos de mouse
+container.addEventListener('mousedown', startDragging);
+container.addEventListener('mousemove', drag);
+container.addEventListener('mouseup', stopDragging);
+container.addEventListener('mouseleave', stopDragging);
+
+// Adicionando eventos de toque
+container.addEventListener('touchstart', startDragging);
+container.addEventListener('touchmove', drag);
+container.addEventListener('touchend', stopDragging);
 
 // Fazer a requisição ao arquivo PHP
 fetch('colaboradores.php')

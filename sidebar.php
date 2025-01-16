@@ -45,6 +45,10 @@
                 <li><a title="Filtro Colaborador" href="https://improov.com.br/sistema/main.php#filtro-colab"><i class="fa-solid fa-user"></i><span>Filtro Colaborador</span></a></li>
                 <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1)): ?>
                     <li><a title="Adicionar cliente ou obra" href="https://improov.com.br/sistema/main.php#add-cliente"><i class="fa-solid fa-person"></i><span>Adicionar cliente ou obra</span></a></li>
+                    <li><a title="Gerenciar prioridades" href="https://improov.com.br/sistema/Prioridade"><i class="fa-solid fa-user-plus"></i><span>Gerenciar prioridades</span></a></li>
+                    <li><a title="Quadro TEA" href="https://improov.com.br/sistema/Quadro"><i class="fa-solid fa-columns"></i><span>Quadro TEA</span></a></li>
+
+
                 <?php endif; ?>
 
             </ul>

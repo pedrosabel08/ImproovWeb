@@ -135,22 +135,6 @@ if ($result_imagens->num_rows > 0) {
 
         <button id="openModalBtn">Inserir render</button>
         <button id="openModalBtnRender">Ver Render Elements</button>
-        <?php if ($_SESSION['nivel_acesso'] == 1): ?>
-            <button id="openNotify">
-                <span id="notificacaoCount" class="notificacao-count">0</span>
-                <i class="fa-solid fa-bell" id="icon-bell"></i>
-            </button>
-            <div class="notificacoes" id="notificacoes">
-                <h3>Notificações</h3>
-                <ul>
-                    <?php foreach ($notificacoes as $notificacao): ?>
-                        <li class="<?= $notificacao['lida'] ? 'lida' : 'nao-lida'; ?>" data-id="<?= $notificacao['notificacao_id']; ?>">
-                            <?= $notificacao['mensagem']; ?>
-                        </li>
-                    <?php endforeach; ?>
-                </ul>
-            </div>
-        <?php endif; ?>
     </header>
 
 

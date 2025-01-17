@@ -15,6 +15,26 @@ $conn->set_charset('utf8mb4');
 
 date_default_timezone_set('America/Sao_Paulo');
 
+require_once __DIR__ . '/../Revisao/vendor/autoload.php';
+
+use Dotenv\Dotenv;
+
+$envPath = __DIR__ . '/../Revisao/.env';
+
+if (!file_exists($envPath)) {
+    die("Arquivo .env não encontrado em: $envPath");
+}
+
+$dotenv = Dotenv::createImmutable(__DIR__ . '/../Revisao');
+$dotenv->load();
+
+$slackWebhookUrl = $_ENV['SLACK_WEBHOOK_POS_URL'] ?? null;
+
+if (!$slackWebhookUrl) {
+    die('Erro: Variável SLACK_WEBHOOK_URL não encontrada no .env');
+}
+
+
 // Verificar se os dados foram enviados via POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $colaborador_id = $_POST['final_id'];
@@ -69,7 +89,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Definir a mensagem com base no status_pos
         if ($status_pos == 0) {
             // Notificar o Slack
-            $slackWebhookUrl = 'https://hooks.slack.com/services/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'; // Substitua pelo seu Webhook do Slack
             $slackMessage = [
                 'text' => "A imagem $nome_imagem foi feita a pós.",
             ];

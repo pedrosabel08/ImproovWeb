@@ -135,33 +135,6 @@ $conn->close();
                     <p id="count-to-do"><?php echo $count_pendentes; ?></p>
                 </div>
             </div>
-            <div class="button-container">
-                <div class="icon">
-                    <button class="main-button icon" id="toggleButton"><i class="fa-solid fa-gear" style="color: #f1f1f1"></i>
-                    </button>
-                    <div class="tooltip ferramenta">Ferramentas</div>
-                </div>
-                <div class="icon-container" id="iconContainer">
-                    <div class="icon">
-                        <button id="calendario">
-                            <i class="fas fa-calendar-alt"></i>
-                        </button>
-                        <div class="tooltip">Calendário</div>
-                    </div>
-                    <div class="icon">
-                        <button id="show-prioridade-btn">
-                            <i class="fas fa-table"></i>
-                        </button>
-                        <div class="tooltip">Prioridades</div>
-                    </div>
-                    <div class="icon">
-                        <button id="show-andamento-btn">
-                            <i class="fas fa-tasks"></i>
-                        </button>
-                        <div class="tooltip">Em andamento</div>
-                    </div>
-                </div>
-            </div>
         </div>
         <div class="main-container">
             <div id="container-calendario" class="container active">

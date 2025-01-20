@@ -35,9 +35,10 @@ try {
         $titulo = $evento->summary; // Nome da obra - Tipo de entrega
 
         // Ajuste o fuso horário para o horário de Brasília (GMT-3)
-        $data = new DateTime($evento->dtstart);
-        $data->setTimezone(new DateTimeZone('America/Sao_Paulo')); // Definir o fuso horário para Brasília
-        $dataFormatada = $data->format('d/m/Y'); // Data no formato DD/MM/YYYY
+        $data = new DateTime($evento->dtstart, new DateTimeZone('UTC'));
+        $data->modify('+1 day'); // Ajustar manualmente se necessário
+        $data->setTimezone(new DateTimeZone('America/Sao_Paulo'));
+        $dataFormatada = $data->format('d/m/Y');
 
         // Acumula o evento na string de notificação
         $notificacaoEventos .= "🗂 *$titulo*\n📆 *Data:* $dataFormatada\n\n";

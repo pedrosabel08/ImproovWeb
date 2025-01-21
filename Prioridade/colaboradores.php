@@ -16,7 +16,7 @@ if ($colaboradorId) {
         JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = fi.imagem_id
         JOIN obra o ON i.obra_id = o.idobra
         JOIN prioridade_funcao pc ON fi.idfuncao_imagem = pc.funcao_imagem_id
-        WHERE fi.colaborador_id = ? AND o.status_obra = 0";
+        WHERE fi.colaborador_id = ? AND o.status_obra = 0 AND fi.status <> 'Finalizado'";
 
     // Se a obraId for fornecida, adicionar o filtro de obra
     if ($obraId) {

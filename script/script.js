@@ -371,6 +371,7 @@ document.addEventListener("DOMContentLoaded", function () {
         var obraId = document.getElementById('obraSelect').value;
         var funcaoId = document.getElementById('funcaoSelect').value;
         var status = document.getElementById('statusSelect').value;
+        var prioridade = document.getElementById('prioridadeSelect').value;
 
         if (colaboradorId) {
             var url = 'getFuncoesPorColaborador.php?colaborador_id=' + colaboradorId;
@@ -389,6 +390,9 @@ document.addEventListener("DOMContentLoaded", function () {
             }
             if (status) {
                 url += '&status=' + encodeURIComponent(status);
+            }
+            if (prioridade) {
+                url += '&prioridade=' + encodeURIComponent(prioridade);
             }
 
             fetch(url)
@@ -453,6 +457,7 @@ document.addEventListener("DOMContentLoaded", function () {
     document.getElementById('obraSelect').addEventListener('change', carregarDados);
     document.getElementById('funcaoSelect').addEventListener('change', carregarDados);
     document.getElementById('statusSelect').addEventListener('change', carregarDados);
+    document.getElementById('prioridadeSelect').addEventListener('change', carregarDados);
 
 
     document.getElementById('obraFiltro').addEventListener('change', function () {
@@ -1385,6 +1390,27 @@ document.getElementById("copyColumn").addEventListener("click", function () {
 
     rows.forEach(row => {
         columnData.push(row.cells[0].innerText);
+    });
+
+    // Formata como lista
+    const listText = columnData.join("\n");
+
+    navigator.clipboard.writeText(listText)
+        .then(() => {
+            alert("Coluna copiada como lista!");
+        })
+        .catch(err => {
+            console.error("Erro ao copiar a coluna: ", err);
+        });
+});
+
+document.getElementById("copyColumnColab").addEventListener("click", function () {
+    const table = document.getElementById("tabela-colab");
+    const rows = table.querySelectorAll("tbody tr");
+    const columnData = [];
+
+    rows.forEach(row => {
+        columnData.push(row.cells[1].innerText);
     });
 
     // Formata como lista

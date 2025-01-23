@@ -58,6 +58,8 @@ function limparCampos() {
     document.getElementById("opcao_status").value = "";
 }
 
+let idsImagensObra = []; // Array para armazenar os IDs das imagens da obra
+let indiceImagemAtual = 0; // Índice da imagem atualmente exibida no modal
 
 function addEventListenersToRows() {
     const linhasTabela = document.querySelectorAll(".linha-tabela");
@@ -73,86 +75,93 @@ function addEventListenersToRows() {
             const idImagemSelecionada = linha.getAttribute("data-id");
             document.getElementById("imagem_id").value = idImagemSelecionada;
 
-            // Limpar campos do formulário de edição
-            limparCampos();
+            // Encontrar o índice da imagem clicada no array de IDs
+            indiceImagemAtual = idsImagensObra.indexOf(parseInt(idImagemSelecionada));
 
-            // Fazer requisição AJAX para `buscaLinhaAJAX.php` usando Fetch
-            fetch(`../buscaLinhaAJAX.php?ajid=${idImagemSelecionada}`)
-                .then(response => response.json())
-                .then(response => {
-                    document.getElementById('form-edicao').style.display = 'flex';
-
-                    if (response.funcoes && response.funcoes.length > 0) {
-                        document.getElementById("campoNomeImagem").textContent = response.funcoes[0].imagem_nome;
-
-                        response.funcoes.forEach(function (funcao) {
-                            let selectElement;
-                            switch (funcao.nome_funcao) {
-                                case "Caderno":
-                                    selectElement = document.getElementById("opcao_caderno");
-                                    document.getElementById("status_caderno").value = funcao.status;
-                                    document.getElementById("prazo_caderno").value = funcao.prazo;
-                                    document.getElementById("obs_caderno").value = funcao.observacao;
-                                    break;
-                                case "Modelagem":
-                                    selectElement = document.getElementById("opcao_model");
-                                    document.getElementById("status_modelagem").value = funcao.status;
-                                    document.getElementById("prazo_modelagem").value = funcao.prazo;
-                                    document.getElementById("obs_modelagem").value = funcao.observacao;
-                                    break;
-                                case "Composição":
-                                    selectElement = document.getElementById("opcao_comp");
-                                    document.getElementById("status_comp").value = funcao.status;
-                                    document.getElementById("prazo_comp").value = funcao.prazo;
-                                    document.getElementById("obs_comp").value = funcao.observacao;
-                                    break;
-                                case "Finalização":
-                                    selectElement = document.getElementById("opcao_final");
-                                    document.getElementById("status_finalizacao").value = funcao.status;
-                                    document.getElementById("prazo_finalizacao").value = funcao.prazo;
-                                    document.getElementById("obs_finalizacao").value = funcao.observacao;
-                                    break;
-                                case "Pós-produção":
-                                    selectElement = document.getElementById("opcao_pos");
-                                    document.getElementById("status_pos").value = funcao.status;
-                                    document.getElementById("prazo_pos").value = funcao.prazo;
-                                    document.getElementById("obs_pos").value = funcao.observacao;
-                                    break;
-                                case "Alteração":
-                                    selectElement = document.getElementById("opcao_alteracao");
-                                    document.getElementById("status_alteracao").value = funcao.status;
-                                    document.getElementById("prazo_alteracao").value = funcao.prazo;
-                                    document.getElementById("obs_alteracao").value = funcao.observacao;
-                                    break;
-                                case "Planta Humanizada":
-                                    selectElement = document.getElementById("opcao_planta");
-                                    document.getElementById("status_planta").value = funcao.status;
-                                    document.getElementById("prazo_planta").value = funcao.prazo;
-                                    document.getElementById("obs_planta").value = funcao.observacao;
-                                    break;
-                                case "Filtro de assets":
-                                    selectElement = document.getElementById("opcao_filtro");
-                                    document.getElementById("status_filtro").value = funcao.status;
-                                    document.getElementById("prazo_filtro").value = funcao.prazo;
-                                    document.getElementById("obs_filtro").value = funcao.observacao;
-                                    break;
-                            }
-                            if (selectElement) {
-                                selectElement.value = funcao.colaborador_id;
-                            }
-                        });
-                    }
-
-                    const statusSelect = document.getElementById("opcao_status");
-                    if (response.status_id !== null) {
-                        statusSelect.value = response.status_id;
-                    }
-                })
-                .catch(error => console.error("Erro ao buscar dados da linha:", error));
-
-            console.log("Linha selecionada: ID da imagem = " + idImagemSelecionada);
+            atualizarModal(idImagemSelecionada);
         });
     });
+}
+function atualizarModal(idImagem) {
+    // Limpar campos do formulário de edição
+    limparCampos();
+
+    // Fazer requisição AJAX para `buscaLinhaAJAX.php` usando Fetch
+    fetch(`../buscaLinhaAJAX.php?ajid=${idImagem}`)
+        .then(response => response.json())
+        .then(response => {
+            document.getElementById('form-edicao').style.display = 'flex';
+
+            if (response.funcoes && response.funcoes.length > 0) {
+                document.getElementById("campoNomeImagem").textContent = response.funcoes[0].imagem_nome;
+
+                response.funcoes.forEach(function (funcao) {
+                    let selectElement;
+                    switch (funcao.nome_funcao) {
+                        case "Caderno":
+                            selectElement = document.getElementById("opcao_caderno");
+                            document.getElementById("status_caderno").value = funcao.status;
+                            document.getElementById("prazo_caderno").value = funcao.prazo;
+                            document.getElementById("obs_caderno").value = funcao.observacao;
+                            break;
+                        case "Modelagem":
+                            selectElement = document.getElementById("opcao_model");
+                            document.getElementById("status_modelagem").value = funcao.status;
+                            document.getElementById("prazo_modelagem").value = funcao.prazo;
+                            document.getElementById("obs_modelagem").value = funcao.observacao;
+                            break;
+                        case "Composição":
+                            selectElement = document.getElementById("opcao_comp");
+                            document.getElementById("status_comp").value = funcao.status;
+                            document.getElementById("prazo_comp").value = funcao.prazo;
+                            document.getElementById("obs_comp").value = funcao.observacao;
+                            break;
+                        case "Finalização":
+                            selectElement = document.getElementById("opcao_final");
+                            document.getElementById("status_finalizacao").value = funcao.status;
+                            document.getElementById("prazo_finalizacao").value = funcao.prazo;
+                            document.getElementById("obs_finalizacao").value = funcao.observacao;
+                            break;
+                        case "Pós-produção":
+                            selectElement = document.getElementById("opcao_pos");
+                            document.getElementById("status_pos").value = funcao.status;
+                            document.getElementById("prazo_pos").value = funcao.prazo;
+                            document.getElementById("obs_pos").value = funcao.observacao;
+                            break;
+                        case "Alteração":
+                            selectElement = document.getElementById("opcao_alteracao");
+                            document.getElementById("status_alteracao").value = funcao.status;
+                            document.getElementById("prazo_alteracao").value = funcao.prazo;
+                            document.getElementById("obs_alteracao").value = funcao.observacao;
+                            break;
+                        case "Planta Humanizada":
+                            selectElement = document.getElementById("opcao_planta");
+                            document.getElementById("status_planta").value = funcao.status;
+                            document.getElementById("prazo_planta").value = funcao.prazo;
+                            document.getElementById("obs_planta").value = funcao.observacao;
+                            break;
+                        case "Filtro de assets":
+                            selectElement = document.getElementById("opcao_filtro");
+                            document.getElementById("status_filtro").value = funcao.status;
+                            document.getElementById("prazo_filtro").value = funcao.prazo;
+                            document.getElementById("obs_filtro").value = funcao.observacao;
+                            break;
+                    }
+                    if (selectElement) {
+                        selectElement.value = funcao.colaborador_id;
+                    }
+                });
+            }
+
+            const statusSelect = document.getElementById("opcao_status");
+            if (response.status_id !== null) {
+                statusSelect.value = response.status_id;
+            }
+        })
+        .catch(error => console.error("Erro ao buscar dados da linha:", error));
+
+    console.log("Linha selecionada: ID da imagem = " + idImagemSelecionada);
+
 }
 
 // Verifica se obraId está presente no localStorage
@@ -187,6 +196,7 @@ if (obraId) {
             tabela.innerHTML = ''; // Limpa a tabela antes de adicionar os novos dados
 
             data.imagens.forEach(function (item) {
+                idsImagensObra.push(parseInt(item.imagem_id));
                 var row = document.createElement('tr');
                 row.classList.add('linha-tabela');
                 row.setAttribute('data-id', item.imagem_id);
@@ -230,6 +240,50 @@ if (obraId) {
             });
             addEventListenersToRows();
 
+            // Adicionar os event listeners aos botões "Anterior" e "Próximo" APÓS carregar os dados
+            const btnAnterior = document.getElementById("btnAnterior");
+            const btnProximo = document.getElementById("btnProximo");
+
+            btnAnterior.addEventListener("click", () => {
+                navegar(-1); // Usando uma função para simplificar a lógica
+            });
+
+            btnProximo.addEventListener("click", () => {
+                navegar(1); // Usando uma função para simplificar a lógica
+            });
+
+            // Adicionando evento para as teclas de seta
+            document.addEventListener("keydown", (event) => {
+                if (event.key === "ArrowLeft") {
+                    navegar(-1); // Seta para a esquerda
+                } else if (event.key === "ArrowRight") {
+                    navegar(1); // Seta para a direita
+                }
+            });
+
+
+            function navegar(direcao) {
+                indiceImagemAtual += direcao;
+
+                if (indiceImagemAtual < 0) {
+                    indiceImagemAtual = idsImagensObra.length - 1;
+                } else if (indiceImagemAtual >= idsImagensObra.length) {
+                    indiceImagemAtual = 0;
+                }
+
+                const idImagem = idsImagensObra[indiceImagemAtual];
+                atualizarModal(idImagem);
+                document.getElementById("imagem_id").value = idImagem;
+
+                linhasTabela.forEach(linha => linha.classList.remove("selecionada"));
+                let linhaSelecionada = document.querySelector(`tr[data-id="${idImagem}"]`);
+
+                if (linhaSelecionada) {
+                    linhaSelecionada.classList.add("selecionada");
+                }
+
+            }
+
 
             const obra = data.obra;
             document.getElementById('nomenclatura').textContent = obra.nomenclatura || "Nome não disponível";
@@ -257,11 +311,11 @@ if (obraId) {
                 funcoesDiv.appendChild(funcaoDiv);
             });
 
-            const valores = data.valores;
-            document.getElementById('valor_orcamento').textContent = `R$ ${parseFloat(valores.valor_orcamento).toFixed(2)}`;
-            document.getElementById('valor_producao').textContent = `R$ ${parseFloat(valores.custo_producao).toFixed(2)}`;
-            document.getElementById('valor_fixo').textContent = `R$ ${parseFloat(valores.custo_fixo).toFixed(2)}`;
-            document.getElementById('lucro').textContent = `R$ ${parseFloat(valores.lucro).toFixed(2)}`;
+            // const valores = data.valores;
+            // document.getElementById('valor_orcamento').textContent = `R$ ${parseFloat(valores.valor_orcamento).toFixed(2)}`;
+            // document.getElementById('valor_producao').textContent = `R$ ${parseFloat(valores.custo_producao).toFixed(2)}`;
+            // document.getElementById('valor_fixo').textContent = `R$ ${parseFloat(valores.custo_fixo).toFixed(2)}`;
+            // document.getElementById('lucro').textContent = `R$ ${parseFloat(valores.lucro).toFixed(2)}`;
 
             const ctx = document.getElementById('graficoPorcentagem').getContext('2d');
             if (chartInstance) {
@@ -379,40 +433,40 @@ function applyStyleNone(cell, cell2, nome) {
     }
 }
 
-var sidebar = document.getElementById("sidebar");
-var toggleButton = document.getElementById("toggleSidebar");
+// var sidebar = document.getElementById("sidebar");
+// var toggleButton = document.getElementById("toggleSidebar");
 
-// Adiciona o evento de clique no botão (que contém o ícone)
-toggleButton.addEventListener("click", function () {
-    // Verifica se a sidebar está oculta (display: none)
-    if (sidebar.style.display === "none" || sidebar.style.display === "") {
-        // Torna a sidebar visível
-        sidebar.style.display = "flex";
-        toggleButton.style.display = "none";
+// // Adiciona o evento de clique no botão (que contém o ícone)
+// toggleButton.addEventListener("click", function () {
+//     // Verifica se a sidebar está oculta (display: none)
+//     if (sidebar.style.display === "none" || sidebar.style.display === "") {
+//         // Torna a sidebar visível
+//         sidebar.style.display = "flex";
+//         toggleButton.style.display = "none";
 
-    } else {
-        // Oculta a sidebar
-        sidebar.style.display = "none";
-        toggleButton.style.display = "flex";
+//     } else {
+//         // Oculta a sidebar
+//         sidebar.style.display = "none";
+//         toggleButton.style.display = "flex";
 
-    }
-});
+//     }
+// });
 
-// Fecha a sidebar se o usuário clicar fora dela
-window.onclick = function (event) {
-    if (event.target !== sidebar && event.target !== toggleButton && !toggleButton.contains(event.target)) {
-        sidebar.style.display = "none"; // Fecha a sidebar se clicado fora
-        toggleButton.style.display = "flex";
+// // Fecha a sidebar se o usuário clicar fora dela
+// window.onclick = function (event) {
+//     if (event.target !== sidebar && event.target !== toggleButton && !toggleButton.contains(event.target)) {
+//         sidebar.style.display = "none"; // Fecha a sidebar se clicado fora
+//         toggleButton.style.display = "flex";
 
-    }
-};
-window.ontouchstart = function (event) {
-    if (event.target !== sidebar && event.target !== toggleButton && !toggleButton.contains(event.target)) {
-        sidebar.style.display = "none"; // Fecha a sidebar se clicado fora
-        toggleButton.style.display = "flex";
+//     }
+// };
+// window.ontouchstart = function (event) {
+//     if (event.target !== sidebar && event.target !== toggleButton && !toggleButton.contains(event.target)) {
+//         sidebar.style.display = "none"; // Fecha a sidebar se clicado fora
+//         toggleButton.style.display = "flex";
 
-    }
-};
+//     }
+// };
 
 
 

@@ -155,7 +155,7 @@ $sqlImagens = "SELECT
     LEFT JOIN colaborador c ON fi.colaborador_id = c.idcolaborador
     WHERE ico.obra_id = ?
     GROUP BY ico.imagem_nome
-    ORDER BY ico.idimagens_cliente_obra
+    ORDER BY FIELD(ico.tipo_imagem, 'Fachada', 'Imagem Interna', 'Imagem Externa', 'Planta Humanizada'), ico.idimagens_cliente_obra;
 ";
 
 $stmtImagens = $conn->prepare($sqlImagens);

@@ -9,6 +9,8 @@
 
 body {
     transition: background-color 0.3s, color 0.3s;
+    display: grid;
+    grid-template-columns: 60px 1fr;
 }
 
 /* Tema Light */
@@ -66,8 +68,11 @@ main {
     cursor: pointer;
 }
 
+.container {
+    grid-column: 2;
+}
 
-/* Estilo para o container da sidebar */
+/* Estilo para o container da sidebar
 .sidebar {
     background-color: #eeeeee;
     padding: 10px;
@@ -79,7 +84,7 @@ main {
     height: 100%;
     animation: slideRight 0.2s ease-out;
     grid-column: 1;
-}
+} */
 
 /* Estilo do link com o ícone */
 .nav a,
@@ -120,61 +125,14 @@ button {
     all: unset;
 }
 
-p.top {
-    text-transform: uppercase;
-    font-weight: 500;
-    font-size: 32px;
-    text-align: center;
-    margin-bottom: 50px;
-}
-
-.sidebar .content {
-    display: flex;
-    flex-direction: column;
-    flex-grow: 1;
-}
-
-.nav {
-    flex-grow: 1;
-}
-
-.bottom {
-    margin: 30px auto;
-}
-
-.content input {
-    padding: 5px 5px;
-    border-radius: 15px;
-    box-shadow: 0 2px 4px black;
-    border: none;
+#menuButton {
+    margin: auto;
+    margin-bottom: 15px;
 }
 
 a {
     all: unset;
     cursor: pointer;
-}
-
-.content a:active {
-    background-color: white;
-    border-radius: 15px;
-}
-
-.content .nav {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
-}
-
-.nav a,
-.bottom a {
-    padding: 5px;
-    font-size: 14px;
-}
-
-.nav i,
-.bottom i {
-    padding: 0 4px;
 }
 
 
@@ -456,12 +414,6 @@ a {
 
 .orcamento-form h2 {
     margin-bottom: 20px;
-}
-
-.buttons {
-    display: flex;
-    justify-content: center;
-    width: 100%;
 }
 
 #infos-obra {
@@ -787,7 +739,7 @@ span#obras_finalizadas {
 .form-edicao .buttons {
     padding: 1rem 0;
     display: flex;
-    justify-content: center;
+    justify-content: space-between;
 }
 
 form#form-add {
@@ -1059,4 +1011,40 @@ table#tabela-logs {
     padding: 5px;
     border-radius: 10px;
     margin-bottom: 20px;
+}
+
+.modal-content-images::-webkit-scrollbar {
+    width: 8px;
+}
+
+.modal-content-images::-webkit-scrollbar-thumb {
+    background-color: #d3d1d1;
+    border-radius: 10px;
+}
+
+.modal-content-images::-webkit-scrollbar-track {
+    background-color: white;
+}
+
+#imageList {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 30px;
+}
+
+#editImagesBtn {
+    background-color: red;
+    width: 120px;
+    text-align: center;
+    padding: 0.2rem 0.2rem;
+    border-radius: 10px;
+    color: white;
+    font-size: 14px;
+    transition: 0.3s all ease;
+    cursor: pointer;
+}
+
+#editImagesBtn:hover {
+    font-weight: 600;
 }

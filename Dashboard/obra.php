@@ -35,12 +35,13 @@ $conn->close();
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
     <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
         type="image/x-icon">
+    <link rel="stylesheet" href="../css/styleSidebar.css">
 
 </head>
 
 <body>
-    <div class="container">
-        <div class="sidebar" id="sidebar" style="display: none;">
+
+    <!-- <div class="sidebar" id="sidebar" style="display: none;">
             <div class="content">
                 <div class="nav">
                     <p class="top">+</p>
@@ -55,9 +56,15 @@ $conn->close();
                     <a href="#" id="sair" class="tooltip"><i class="fa fa-arrow-left"></i><span class="tooltiptext">Sair</span></a>
                 </div>
             </div>
-        </div>
+        </div> -->
+
+    <?php
+
+    include '../sidebar.php';
+
+    ?>
+    <div class="container">
         <header>
-            <button id="toggleSidebar"><i class="fa-solid fa-bars"></i></button>
             <h1 id="nomenclatura"></h1>
         </header>
 
@@ -208,42 +215,16 @@ $conn->close();
                 </div>
             </div>
 
-            <?php
-            // Exibir somente se o usuário tiver nível de acesso 1
-            if (isset($_SESSION['logado']) && $_SESSION['logado'] === true && $_SESSION['nivel_acesso'] == 1) {
-            ?>
-                <div class="obra-valores">
-                    <div class="valor-item">
-                        <strong>Valor Orçamento:</strong>
-                        <span id="valor_orcamento" class="valor"></span>
-                    </div>
-                    <div class="valor-item">
-                        <strong>Valor Produção:</strong>
-                        <span id="valor_producao" class="valor"></span>
-                    </div>
-                    <div class="valor-item">
-                        <strong>Valor projetado:</strong>
-                        <span id="valor_fixo" class="valor"></span>
-                    </div>
-                    <div class="valor-item">
-                        <strong>Lucro estimado (produção):</strong>
-                        <span id="lucro" class="valor"></span>
-                    </div>
-                </div>
-            <?php
-            }
-            ?>
+        </div>
+
+
+        <div id="infos-obra" style="width: 95%; margin: 30px auto; box-shadow: 0 1px 10px rgba(0, 0, 0, 0.7);">
+            <h1>Acompanhamentos</h1>
+            <button id="acomp" style="background-color: steelblue; width: 140px; text-align: center;">Acompanhamento</button>
+
+            <div id="list_acomp"></div>
         </div>
     </div>
-    </div>
-
-    <div id="infos-obra" style="width: 95%; margin: 30px auto; box-shadow: 0 1px 10px rgba(0, 0, 0, 0.7);">
-        <h1>Acompanhamentos</h1>
-        <button id="acomp" style="background-color: steelblue; width: 140px; text-align: center;">Acompanhamento</button>
-
-        <div id="list_acomp"></div>
-    </div>
-
     <div class="form-edicao" id="form-edicao">
         <form id="form-add" method="post" action="insereFuncao.php">
             <div class="titulo-funcoes">
@@ -464,17 +445,18 @@ $conn->close();
                 </select>
             </div>
             <div class="buttons">
+                <button type="button" id="btnAnterior" style="background: white; color: black"><i class="fa-solid fa-angle-left"></i></button>
                 <button type="submit" id="salvar_funcoes">Salvar</button>
-                <button id="prevImage">Anterior</button>
-                <button id="nextImage">Próximo</button>
+                <button type="button" id="btnProximo" style="background: white; color: black"><i class="fa-solid fa-angle-right"></i></button>
             </div>
         </form>
     </div>
 
-    <script src="scriptObra.js"></script> <!-- Link para o seu script JS -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script src="scriptObra.js"></script> <!-- Link para o seu script JS -->
+    <script src="../script/sidebar.js"></script>
 
 
 </body>

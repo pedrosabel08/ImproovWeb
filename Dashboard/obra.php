@@ -34,7 +34,7 @@ $conn->close();
         crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
     <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
-    type="image/x-icon">
+        type="image/x-icon">
 
 </head>
 
@@ -78,6 +78,28 @@ $conn->close();
                     <option value="Antecipada">Antecipada</option>
                 </select>
             </div>
+
+            <button id="editImagesBtn">Editar Imagens</button>
+
+            <div id="editImagesModal" style="display: none;">
+                <div class="modal-content-images" style="overflow-y: auto; max-height: 600px;">
+                    <div id="modalHeader">
+                        <div id="unsavedChanges" style="display: none;">
+                            <p>Você fez alterações. Não esqueça de salvar!</p>
+                            <button id="saveChangesBtn">Salvar Alterações</button>
+                        </div>
+                        <div class="header">
+                            <h2>Editar Imagens</h2>
+                            <span class="close-modal-images">&times;</span>
+                        </div>
+                    </div>
+                    <div id="imageList"></div>
+                    <!-- <div class="buttons">
+                        <button id="saveChangesBtn">Salvar Alterações</button>
+                    </div> -->
+                </div>
+            </div>
+
             <div class="tabela">
                 <table id="tabela-obra">
                     <thead>
@@ -443,6 +465,8 @@ $conn->close();
             </div>
             <div class="buttons">
                 <button type="submit" id="salvar_funcoes">Salvar</button>
+                <button id="prevImage">Anterior</button>
+                <button id="nextImage">Próximo</button>
             </div>
         </form>
     </div>

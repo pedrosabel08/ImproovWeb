@@ -277,7 +277,8 @@ a {
     font-weight: 500;
 }
 
-.modal {
+.modal,
+#editImagesModal {
     display: none;
     position: fixed;
     top: 0;
@@ -289,7 +290,8 @@ a {
     animation: fadeIn 0.3s ease;
 }
 
-.modal-content {
+.modal-content,
+.modal-content-images {
     position: relative;
     margin: 10% auto;
     padding: 20px;
@@ -301,7 +303,8 @@ a {
 
 
 .close,
-.close-modal {
+.close-modal,
+.close-modal-images {
     color: #aaa;
     float: right;
     font-size: 28px;
@@ -805,7 +808,8 @@ form#form-add .funcao {
     margin-bottom: 15px;
 }
 
-form#form-add button {
+form#form-add button,
+#saveChangesBtn {
     background-color: #119111;
     text-align: center;
     color: #ffffff;
@@ -816,7 +820,8 @@ form#form-add button {
     font-size: 14px;
 }
 
-form#form-add button:hover {
+form#form-add button:hover,
+#saveChangesBtn:hover {
     background-color: #0c6b0c;
     cursor: pointer;
 }
@@ -829,7 +834,8 @@ form#form-add button:hover {
     margin-bottom: 40px;
 }
 
-.titulo {
+.titulo,
+.titulo_imagem {
     display: flex;
     justify-content: space-between;
 }
@@ -981,4 +987,76 @@ table#tabela-logs {
     to {
         opacity: 1;
     }
+}
+
+
+.conteudo_imagens {
+    display: none;
+    /* Inicialmente oculto */
+    transition: all 0.3s ease;
+    /* Transição suave para exibição */
+}
+
+.conteudo_imagens.show-in {
+    display: block;
+    /* Exibe o conteúdo com animação */
+}
+
+/* Estilo geral para o conteúdo das imagens */
+.conteudo_imagens {
+    background-color: #f9f9f9;
+    padding: 15px;
+    border-radius: 8px;
+    margin-top: 10px;
+    display: none;
+}
+
+/* Estilo para os labels */
+.conteudo_imagens label {
+    display: block;
+    font-size: 14px;
+    color: #333;
+    margin-bottom: 8px;
+    font-weight: bold;
+}
+
+/* Estilo para os inputs */
+.conteudo_imagens input[type="text"],
+.conteudo_imagens input[type="date"] {
+    width: 100%;
+    padding: 8px;
+    margin-bottom: 15px;
+    border: none;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    font-size: 14px;
+    background-color: #fff;
+    transition: border-color 0.3s ease;
+}
+
+/* Foco nos inputs */
+.conteudo_imagens input[type="text"]:focus,
+.conteudo_imagens input[type="date"]:focus {
+    border-color: #007bff;
+    outline: none;
+}
+
+
+.header {
+    display: flex;
+    justify-content: space-between;
+}
+
+.titulo_imagem h4 {
+    font-weight: 500;
+}
+
+
+#unsavedChanges {
+    align-items: center;
+    justify-content: space-between;
+    background-color: #8ac58a;
+    padding: 5px;
+    border-radius: 10px;
+    margin-bottom: 20px;
 }

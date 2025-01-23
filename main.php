@@ -535,9 +535,21 @@ $conn->close();
                 <option value="Em aprovação">Em aprovação</option>
             </select>
 
+            <label for="prioridadeSelect">Prioridade:</label>
+            <select id="prioridadeSelect">
+                <option value="0">Todas:</option>
+                <option value="1">Alta</option>
+                <option value="2">Média</option>
+                <option value="3">Baixa</option>
+            </select>
+
             <div class="image-count">
                 <strong>Total de Imagens:</strong> <span id="totalImagens">0</span>
             </div>
+
+            <button id="copyColumnColab">
+                <i class="fas fa-copy"></i>
+            </button>
 
             <table id="tabela-colab">
                 <thead>
@@ -748,7 +760,7 @@ $conn->close();
 
     </main>
 
-    <?php if (isset($_SESSION['idusuario']) && ($_SESSION['idusuario'] == 1 || $_SESSION['idusuario'] == 2 || $_SESSION['idusuario'] == 9 )): ?>
+    <?php if (isset($_SESSION['idusuario']) && ($_SESSION['idusuario'] == 1 || $_SESSION['idusuario'] == 2 || $_SESSION['idusuario'] == 9)): ?>
         <div id="notificacao-sino" class="notificacao-sino">
             <i class="fas fa-bell sino" id="icone-sino"></i>
             <span id="contador-tarefas" class="contador-tarefas">0</span>

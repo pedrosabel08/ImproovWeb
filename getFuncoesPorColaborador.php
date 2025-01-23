@@ -17,6 +17,7 @@ $dataFim = isset($_GET['data_fim']) ? $_GET['data_fim'] : '';
 $obraId = isset($_GET['obra_id']) ? intval($_GET['obra_id']) : '';
 $funcaoId = isset($_GET['funcao_id']) ? intval($_GET['funcao_id']) : '';
 $status = isset($_GET['status']) ? $_GET['status'] : '';
+$prioridade = isset($_GET['prioridade']) ? $_GET['prioridade'] : '';
 
 $sql = "SELECT
             ico.idimagens_cliente_obra AS imagem_id,
@@ -47,6 +48,9 @@ if ($funcaoId) {
 if ($status) {
     $sql .= " AND fi.status = ?";
 }
+if ($prioridade) {
+    $sql .= " AND pc.prioridade = ?";
+}
 
 $sql .= " ORDER BY pc.prioridade ASC, imagem_id";
 
@@ -75,6 +79,10 @@ if ($funcaoId) {
 if ($status) {
     $types .= 's';
     $bindParams[] = $status;
+}
+if ($prioridade) {
+    $types .= 's';
+    $bindParams[] = $prioridade;
 }
 
 $stmt->bind_param($types, ...$bindParams);

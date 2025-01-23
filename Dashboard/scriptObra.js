@@ -58,6 +58,7 @@ function limparCampos() {
     document.getElementById("opcao_status").value = "";
 }
 
+
 function addEventListenersToRows() {
     const linhasTabela = document.querySelectorAll(".linha-tabela");
 
@@ -515,6 +516,7 @@ document.getElementById("salvar_funcoes").addEventListener("click", function (ev
 const modalInfos = document.getElementById('modalInfos')
 const modalOrcamento = document.getElementById('modalOrcamento')
 const modal = document.getElementById('modalAcompanhamento');
+const modalImages = document.getElementById('editImagesModal');
 const form_edicao = document.getElementById('form-edicao');
 
 
@@ -574,6 +576,15 @@ closeModal.addEventListener('click', function () {
 
 closeModal.addEventListener('touchstart', function () {
     modal.style.display = 'none';
+});
+
+const closeModalImages = document.querySelector('.close-modal-images');
+closeModalImages.addEventListener('click', function () {
+    editImagesModal.style.display = 'none';
+});
+
+closeModalImages.addEventListener('touchstart', function () {
+    editImagesModal.style.display = 'none';
 });
 
 document.getElementById("adicionar_acomp").addEventListener("submit", function (e) {
@@ -658,6 +669,9 @@ window.addEventListener('click', function (event) {
     if (event.target == modalOrcamento) {
         modalOrcamento.style.display = "none";
     }
+    if (event.target == editImagesModal) {
+        editImagesModal.style.display = "none";
+    }
 });
 
 window.addEventListener('touchstart', function (event) {
@@ -672,6 +686,9 @@ window.addEventListener('touchstart', function (event) {
     }
     if (event.target == modalOrcamento) {
         modalOrcamento.style.display = "none";
+    }
+    if (event.target == editImagesModal) {
+        editImagesModal.style.display = "none";
     }
 });
 
@@ -719,3 +736,144 @@ window.addEventListener('touchstart', function (event) {
         modal.style.display = "none"
     }
 });
+
+document.querySelectorAll('.titulo_imagem').forEach(titulo_imagem => {
+    titulo_imagem.addEventListener('click', () => {
+        const conteudo_imagens = titulo_imagem.nextElementSibling;
+        if (conteudo_imagens.style.display === 'none') {
+            conteudo_imagens.style.display = 'block';
+            titulo_imagem.querySelector('i').classList.remove('fa-chevron-down');
+            titulo_imagem.querySelector('i').classList.add('fa-chevron-up');
+            conteudo_imagens.classList.add('show-in');
+        } else {
+            conteudo_imagens.style.display = 'none';
+            titulo_imagem.querySelector('i').classList.remove('fa-chevron-up');
+            titulo_imagem.querySelector('i').classList.add('fa-chevron-down');
+        }
+    });
+});
+
+
+
+let modifiedImages = new Set(); // Armazena IDs das imagens alteradas
+
+document.getElementById("editImagesBtn").addEventListener("click", () => {
+    // Obtém o 'obraId' do localStorage
+    const obraId = localStorage.getItem("obraId");
+
+    if (!obraId) {
+        alert("ID da obra não encontrado!");
+        return;
+    }
+
+    // Faz a requisição para buscar imagens relacionadas à obra
+    fetch("infosImagens.php", {
+        method: "POST", // Usa POST para enviar dados ao servidor
+        headers: {
+            "Content-Type": "application/json", // Especifica que o corpo da requisição será JSON
+        },
+        body: JSON.stringify({ obraId }), // Envia o 'obraId' como JSON
+    })
+        .then((response) => {
+            if (!response.ok) {
+                throw new Error("Erro ao buscar imagens");
+            }
+            return response.json();
+        })
+        .then((images) => {
+            const imageList = document.getElementById("imageList");
+            imageList.innerHTML = ""; // Limpa o conteúdo existente
+
+            images.forEach((image) => {
+                const imageContainer = document.createElement("div");
+                imageContainer.innerHTML = `
+                    <div class="image-item">
+                        <div class="titulo_imagem">
+                            <h4>${image.imagem_nome}</h4>
+                            <i class="fas fa-chevron-down toggle-options"></i>
+                        </div>
+
+                        <div class="conteudo_imagens" id="conteudo_imagens">
+                            <label>Imagem: <input type="text" data-id="${image.idimagem}" name="imagem_nome" value="${image.imagem_nome}"></label><br>
+                            <label>Recebimento Arquivos: <input type="date" data-id="${image.idimagem}" name="recebimento_arquivos" value="${image.recebimento_arquivos}"></label><br>
+                            <label>Data de Início: <input type="date" data-id="${image.idimagem}" name="data_inicio" value="${image.data_inicio}"></label><br>
+                            <label>Prazo: <input type="date" data-id="${image.idimagem}" name="prazo" value="${image.prazo}"></label><br>
+                            <label>Tipo de Imagem: <input type="text" data-id="${image.idimagem}" name="tipo_imagem" value="${image.tipo_imagem}"></label>
+                        </div>
+                    </div>
+                `;
+                imageList.appendChild(imageContainer);
+
+
+                // Adiciona o evento de clique para mostrar/esconder o conteúdo e trocar o ícone
+                const tituloImagem = imageContainer.querySelector(".titulo_imagem");
+                const conteudoImagens = imageContainer.querySelector(".conteudo_imagens");
+                const toggleIcon = tituloImagem.querySelector(".toggle-options");
+
+                tituloImagem.addEventListener("click", () => {
+                    if (conteudoImagens.style.display === "none") {
+                        conteudoImagens.classList.add('show-in')
+                        conteudoImagens.style.display = "block";
+                        toggleIcon.classList.remove("fa-chevron-down");
+                        toggleIcon.classList.add("fa-chevron-up");
+                    } else {
+                        conteudoImagens.style.display = "none";
+                        toggleIcon.classList.remove("fa-chevron-up");
+                        toggleIcon.classList.add("fa-chevron-down");
+                    }
+                });
+            });
+
+            // Exibe o modal
+            document.getElementById("editImagesModal").style.display = "block";
+        })
+        .catch((error) => {
+            console.error("Erro:", error);
+            alert("Não foi possível carregar as imagens.");
+        });
+});
+
+
+// Detecta alterações nos campos
+document.getElementById("imageList").addEventListener("input", event => {
+    const imageId = event.target.getAttribute("data-id");
+    modifiedImages.add(imageId); // Marca a imagem como alterada
+    document.getElementById("unsavedChanges").style.display = "flex"; // Mostra a mensagem de aviso
+});
+
+// Salva as alterações
+document.getElementById("saveChangesBtn").addEventListener("click", () => {
+    const updates = Array.from(modifiedImages).map(id => {
+        return {
+            idimagem: id,
+            imagem_nome: document.querySelector(`input[name="imagem_nome"][data-id="${id}"]`).value,
+            recebimento_arquivos: document.querySelector(`input[name="recebimento_arquivos"][data-id="${id}"]`).value,
+            data_inicio: document.querySelector(`input[name="data_inicio"][data-id="${id}"]`).value,
+            prazo: document.querySelector(`input[name="prazo"][data-id="${id}"]`).value,
+            tipo_imagem: document.querySelector(`input[name="tipo_imagem"][data-id="${id}"]`).value
+        };
+    });
+
+    fetch("saveImages.php", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(updates)
+    })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                alert("Alterações salvas com sucesso!");
+                modifiedImages.clear();
+                document.getElementById("unsavedChanges").style.display = "none"; // Esconde a mensagem
+            } else {
+                alert("Erro ao salvar alterações.");
+            }
+        })
+        .catch(error => {
+            console.error("Erro ao salvar alterações:", error);
+            alert("Erro ao salvar alterações. Por favor, tente novamente.");
+        });
+});
+

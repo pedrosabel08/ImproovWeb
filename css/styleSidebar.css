@@ -4,7 +4,6 @@
 body {
     margin: 0;
     padding: 0;
-    /* font-family: 'Nunito', sans-serif; */
 }
 
 .sidebar {
@@ -14,7 +13,6 @@ body {
     position: fixed;
     top: 0;
     left: 0;
-    /* padding-top: 20px; */
     display: flex;
     flex-direction: column;
     overflow-y: auto;
@@ -149,4 +147,23 @@ button#menuButton:active {
 
 .sidebar.complete .division span {
     display: inline;
+}
+
+/* Estilos para o modo escuro */
+@media (prefers-color-scheme: dark) {
+    .sidebar {
+        background-color: #333;
+        color: white;
+    }
+
+    ul.division label {
+        background-color: #333;
+    }
+
+    .sidebar ul li a {
+        color: white;
+    }
+    .sidebar.mini ul.division {
+        border-top: 1px solid white;
+    }
 }

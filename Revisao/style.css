@@ -10,8 +10,7 @@
 
 header {
     display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
+    justify-content: flex-end;
     padding: 10px;
 }
 

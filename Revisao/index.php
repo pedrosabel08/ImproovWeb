@@ -23,15 +23,41 @@ $idusuario = $_SESSION['idusuario'];
     <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
         type="image/x-icon">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <link rel="stylesheet" href="../css/styleSidebar.css">
 
     <title>Revisão de Tarefas</title>
 </head>
 
 <body>
+
+    <?php
+    include '../conexao.php';
+
+    session_start();
+    // Verificar se o usuário está logado
+    if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
+        // Se não estiver logado, redirecionar para a página de login
+        header("Location: ../index.html");
+        exit();
+    }
+
+    include '../conexaoMain.php';
+    $conn = conectarBanco();
+
+    $clientes = obterClientes($conn);
+    $obras = obterObras($conn);
+    $colaboradores = obterColaboradores($conn);
+
+    $conn->close();
+    ?>
+
+    <?php
+
+    include '../sidebar.php';
+
+    ?>
     <header>
-        <button id="menuButton">
-            <i class="fa-solid fa-bars"></i>
-        </button>
+
 
         <div id="menu" class="hidden">
             <a href="../inicio.php" id="tab-imagens">Página Principal</a>
@@ -79,6 +105,7 @@ $idusuario = $_SESSION['idusuario'];
     </div>
 
     <script src="script.js"></script>
+    <script src="../script/sidebar.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
 </body>
 

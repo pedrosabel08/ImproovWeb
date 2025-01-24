@@ -16,16 +16,15 @@ require_once __DIR__ . '/vendor/autoload.php'; // Para garantir que o Composer s
 $dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
 $dotenv->load();
 
-$slackToken = $_ENV['SLACK_TOKEN'] ?? null;  // Tenta acessar via $_ENV
-// var_dump($slackToken);  // Verifica se o token foi carregado
+$slackToken = $_ENV['SLACK_TOKEN'] ?? null;
 
 // Verifique se a solicitação é POST e contém os dados necessários
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Leia os dados enviados via JSON
     $data = json_decode(file_get_contents('php://input'), true);
     $idfuncao_imagem = $data['idfuncao_imagem'] ?? null;
-    // $nome_colaborador = $data['nome_colaborador'] ?? null;
-    $nome_colaborador = 'Pedro Sabel';
+    $isChecked = $data['isChecked'] ?? null;
+    $nome_colaborador = 'Pedro Sabel'; // Ajuste conforme necessário
     $imagem_nome = $data['imagem_nome'] ?? null;
     $nome_funcao = $data['nome_funcao'] ?? null;
 
@@ -35,8 +34,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    // Prepare a consulta para atualizar a tarefa
-    $stmt = $conn->prepare("UPDATE funcao_imagem SET check_funcao = 1 WHERE idfuncao_imagem = ?");
+    $stmt = $conn->prepare(
+        $isChecked
+            ? "UPDATE funcao_imagem SET check_funcao = 1 WHERE idfuncao_imagem = ?"
+            : "UPDATE funcao_imagem SET status = 'Em andamento' WHERE idfuncao_imagem = ?"
+    );
     if ($stmt) {
         $stmt->bind_param("i", $idfuncao_imagem);
 
@@ -87,10 +89,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 exit;
             }
 
-            // Enviar mensagem para o Slack com o ID do usuário
+            // Configuração da mensagem do Slack
             $slackMessage = [
-                "channel" => $userID,  // Usando o ID do usuário encontrado
-                "text" => "A {$nome_funcao} da {$imagem_nome} está revisada!",
+                "channel" => $userID,
+                "text" => $isChecked
+                    ? "A {$nome_funcao} da {$imagem_nome} está revisada!"
+                    : "A {$nome_funcao} da {$imagem_nome} possui alteração!",
             ];
 
             // Enviar mensagem usando cURL

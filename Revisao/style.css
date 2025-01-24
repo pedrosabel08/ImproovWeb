@@ -127,12 +127,12 @@ h2 {
 }
 
 .action-btn {
-    background-color: #007bff;
     color: #fff;
+    transition: 0.3s all ease;
 }
 
 .action-btn:hover {
-    background-color: #0056b3;
+    filter: brightness(0.8);
 }
 
 .whatsapp-btn {
@@ -166,4 +166,13 @@ h2 {
     100% {
         opacity: 1;
     }
+}
+
+
+#check {
+    background-color: #1a9cf3;
+}
+
+#xmark {
+    background-color: #ec2727;
 }

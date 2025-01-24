@@ -57,37 +57,7 @@ $idusuario = $_SESSION['idusuario'];
 
     ?>
     <header>
-
-
-        <div id="menu" class="hidden">
-            <a href="../inicio.php" id="tab-imagens">Página Principal</a>
-            <a href="../main.php" id="tab-imagens">Visualizar tabela com imagens</a>
-            <a href="../Pos-Producao/index.php">Lista Pós-Produção</a>
-            <a href="../Render/index.php">Lista Render</a>
-
-            <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 3)): ?>
-                <a href="../infoCliente/index.php">Informações clientes</a>
-                <a href="../Acompanhamento/index.php">Acompanhamentos</a>
-            <?php endif; ?>
-
-            <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 4)): ?>
-                <a href="../Animacao/index.php">Lista Animação</a>
-            <?php endif; ?>
-            <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1)): ?>
-                <a href="../Imagens/index.php">Lista Imagens</a>
-                <a href="../Pagamento/index.php">Pagamento</a>
-                <a href="../Obras/index.php">Obras</a>
-            <?php endif; ?>
-
-            <a href="../Metas/index.php">Metas e progresso</a>
-
-            <a id="calendar" class="calendar-btn" href="../Calendario/index.php">
-                <i class="fa-solid fa-calendar-days"></i>
-            </a>
-        </div>
-
         <img src="../gif/assinatura_preto.gif" alt="Logo Improov + Flow" style="width: 150px;">
-
     </header>
 
     <div class="main" style="display: flex; flex-direction: column;">

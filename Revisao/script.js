@@ -2,25 +2,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
     fetchTarefas();
 
-    document.getElementById('menuButton').addEventListener('click', function () {
-        const menu = document.getElementById('menu');
-        menu.classList.toggle('hidden');
-    });
-
-    window.addEventListener('click', function (event) {
-        const menu = document.getElementById('menu');
-        const button = document.getElementById('menuButton');
-
-        if (!button.contains(event.target) && !menu.contains(event.target)) {
-            menu.classList.add('hidden');
-        }
-    });
-
 });
 
-// Função para revisar uma tarefa com confirmação e solicitação ao PHP
-function revisarTarefa(idfuncao_imagem, nome_colaborador, imagem_nome, nome_funcao) {
-    if (confirm("Você tem certeza de que deseja marcar esta tarefa como revisada?")) {
+function revisarTarefa(idfuncao_imagem, nome_colaborador, imagem_nome, nome_funcao, isChecked) {
+    const actionText = isChecked
+        ? "marcar esta tarefa como revisada"
+        : "indicar que esta tarefa precisa de alterações";
+    if (confirm(`Você tem certeza de que deseja ${actionText}?`)) {
         fetch('revisarTarefa.php', {
             method: 'POST',
             headers: {
@@ -30,7 +18,8 @@ function revisarTarefa(idfuncao_imagem, nome_colaborador, imagem_nome, nome_func
                 idfuncao_imagem: idfuncao_imagem,
                 nome_colaborador: nome_colaborador,
                 imagem_nome: imagem_nome,
-                nome_funcao: nome_funcao
+                nome_funcao: nome_funcao,
+                isChecked: isChecked
             }),
         })
             .then(response => {
@@ -40,23 +29,24 @@ function revisarTarefa(idfuncao_imagem, nome_colaborador, imagem_nome, nome_func
                 return response.json();
             })
             .then(data => {
-                if (data.success) {
-                    // Exibe o sucesso usando Toastify
-                    Toastify({
-                        text: "Tarefa marcada como revisada com sucesso!",
-                        duration: 3000, // duração do toast (3 segundos)
-                        backgroundColor: "green", // cor de fundo
-                        close: true, // botao de fechar
-                        gravity: "top", // aparece no topo
-                        position: "right" // posição do lado direito
-                    }).showToast();
+                const message = isChecked
+                    ? "Tarefa marcada como revisada com sucesso!"
+                    : "Tarefa marcada como necessitando de alterações!";
+                const bgColor = isChecked ? "green" : "orange";
 
-                    fetchTarefas();
-                    // location.reload(); // Atualiza a página para refletir a mudança
-                } else {
-                    // Exibe a falha usando Toastify
+                if (data.success) {
                     Toastify({
-                        text: "Falha ao marcar a tarefa como revisada: " + data.message,
+                        text: message,
+                        duration: 3000,
+                        backgroundColor: bgColor,
+                        close: true,
+                        gravity: "top",
+                        position: "right"
+                    }).showToast();
+                    fetchTarefas();
+                } else {
+                    Toastify({
+                        text: "Falha ao atualizar a tarefa: " + data.message,
                         duration: 3000,
                         backgroundColor: "red",
                         close: true,
@@ -67,7 +57,6 @@ function revisarTarefa(idfuncao_imagem, nome_colaborador, imagem_nome, nome_func
             })
             .catch(error => {
                 console.error("Erro:", error);
-                // Exibe o erro usando Toastify
                 Toastify({
                     text: "Ocorreu um erro ao processar a solicitação.",
                     duration: 3000,
@@ -78,8 +67,9 @@ function revisarTarefa(idfuncao_imagem, nome_colaborador, imagem_nome, nome_func
                 }).showToast();
             });
     }
-    event.stopPropagation(); // Impede o clique na tarefa de abrir os detalhes
+    event.stopPropagation();
 }
+
 
 // Função para alternar a visibilidade dos detalhes da tarefa
 function toggleTaskDetails(taskElement) {
@@ -144,8 +134,11 @@ function exibirTarefas(tarefas) {
                     <p>${tarefa.imagem_nome}</p>
                 </div>
                 <div class="task-actions">
-                    <button class="action-btn" onclick="revisarTarefa(${tarefa.idfuncao_imagem}, '${tarefa.nome_colaborador}', '${tarefa.imagem_nome}', '${tarefa.nome_funcao}')">
+                    <button class="action-btn" id="check" onclick="revisarTarefa(${tarefa.idfuncao_imagem}, '${tarefa.nome_colaborador}', '${tarefa.imagem_nome}', '${tarefa.nome_funcao}', true)">
                         <i class="fa-solid fa-check"></i>
+                    </button>
+                    <button class="action-btn" id="xmark" onclick="revisarTarefa(${tarefa.idfuncao_imagem}, '${tarefa.nome_colaborador}', '${tarefa.imagem_nome}', '${tarefa.nome_funcao}', false)">
+                        <i class="fa-solid fa-xmark"></i>
                     </button>
                     <a href="https://wa.me/55${tarefa.telefone.replace(/\D/g, '')}?text=Olá, tenho uma dúvida sobre a tarefa. Poderia me ajudar?" target="_blank">
                         <button class="whatsapp-btn">

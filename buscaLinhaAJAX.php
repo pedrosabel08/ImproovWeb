@@ -18,19 +18,19 @@ if ($_SERVER["REQUEST_METHOD"] == "GET") {
 
     // Consulta para buscar funções, colaboradores, prazos e nome do status
     $sqlFuncao = "SELECT 
-                    img.imagem_nome,
-                    f.nome_funcao, 
-                    col.idcolaborador AS colaborador_id, 
-                    col.nome_colaborador, 
-                    fi.prazo, 
-                    fi.status,
-                    fi.observacao,
-                    fi.check_funcao
-                 FROM funcao_imagem fi
-                 JOIN colaborador col ON fi.colaborador_id = col.idcolaborador
-                 JOIN funcao f ON fi.funcao_id = f.idfuncao
-                 JOIN imagens_cliente_obra img ON fi.imagem_id = img.idimagens_cliente_obra
-                 WHERE fi.imagem_id = $idImagemSelecionada";
+    img.imagem_nome,
+    f.nome_funcao, 
+    col.idcolaborador AS colaborador_id, 
+    col.nome_colaborador, 
+    fi.prazo, 
+    fi.status,
+    fi.observacao,
+    fi.check_funcao
+FROM imagens_cliente_obra img
+LEFT JOIN funcao_imagem fi ON img.idimagens_cliente_obra = fi.imagem_id
+LEFT JOIN colaborador col ON fi.colaborador_id = col.idcolaborador
+LEFT JOIN funcao f ON fi.funcao_id = f.idfuncao
+WHERE img.idimagens_cliente_obra = $idImagemSelecionada";
 
     $resultFuncao = $conn->query($sqlFuncao);
 

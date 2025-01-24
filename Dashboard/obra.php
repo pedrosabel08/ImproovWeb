@@ -86,7 +86,10 @@ $conn->close();
                 </select>
             </div>
 
-            <button id="editImagesBtn">Editar Imagens</button>
+            <div class="buttons">
+                <button id="editImagesBtn">Editar Imagens</button>
+                <button id="addImagem">Adicionar Imagem</button>
+            </div>
 
             <div id="editImagesModal" style="display: none;">
                 <div class="modal-content-images" style="overflow-y: auto; max-height: 600px;">
@@ -105,6 +108,44 @@ $conn->close();
                         <button id="saveChangesBtn">Salvar Alterações</button>
                     </div> -->
                 </div>
+            </div>
+
+            <div id="add-imagem" class="modal">
+                <form class="modal-content" id="add-imagem-form" onsubmit="submitFormImagem(event)">
+                    <h2>Adicionar Imagem</h2>
+                    <label for="opcao">Cliente:</label>
+                    <select name="cliente_id" id="opcao_cliente">
+                        <?php foreach ($clientes as $cliente): ?>
+                            <option value="<?= htmlspecialchars($cliente['idcliente']); ?>">
+                                <?= htmlspecialchars($cliente['nome_cliente']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <label for="opcao">Obra:</label>
+                    <select name="opcao" id="opcao_obra">
+                        <?php foreach ($obras as $obra): ?>
+                            <option value="<?= $obra['idobra']; ?>"><?= htmlspecialchars($obra['nome_obra']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <label for="arquivos">Recebimento de arquivos: </label>
+                    <input type="date" name="arquivos" id="arquivos">
+
+                    <label for="data_inicio">Data Início: </label>
+                    <input type="date" name="data_inicio" id="data_inicio">
+
+                    <label for="prazo">Prazo: </label>
+                    <input type="date" name="prazo" id="prazo">
+
+                    <label for="nome-imagem">Nome da imagem:</label>
+                    <input type="text" name="nome" id="nome-imagem">
+
+                    <label for="tipo-imagem">Tipo da imagem:</label>
+                    <input type="text" name="tipo" id="tipo-imagem">
+                    <div class="buttons" style="margin: auto">
+                        <button type="submit" id="salvar">Salvar</button>
+                    </div>
+                </form>
             </div>
 
             <div class="tabela">
@@ -139,8 +180,8 @@ $conn->close();
             <!-- <button id="follow-up">Follow-up</button> -->
 
             <div class="obra-identificacao">
-                <h4 id="data_inicio"></h4>
-                <h4 id="prazo"></h4>
+                <h4 id="data_inicio_obra"></h4>
+                <h4 id="prazo_obra"></h4>
                 <h4 id="dias_trabalhados"></h4>
             </div>
 

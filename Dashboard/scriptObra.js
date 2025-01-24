@@ -287,8 +287,8 @@ if (obraId) {
 
             const obra = data.obra;
             document.getElementById('nomenclatura').textContent = obra.nomenclatura || "Nome não disponível";
-            document.getElementById('data_inicio').textContent = `Data de Início: ${obra.data_inicio}`;
-            document.getElementById('prazo').textContent = `Prazo: ${obra.prazo}`;
+            document.getElementById('data_inicio_obra').textContent = `Data de Início: ${obra.data_inicio}`;
+            document.getElementById('prazo_obra').textContent = `Prazo: ${obra.prazo}`;
             document.getElementById('dias_trabalhados').innerHTML = obra.dias_trabalhados ? `<strong>${obra.dias_trabalhados}</strong> dias` : '';
             document.getElementById('total_imagens').textContent = `Total de Imagens: ${obra.total_imagens}`;
             document.getElementById('total_imagens_antecipadas').textContent = `Imagens Antecipadas: ${obra.total_imagens_antecipadas}`;
@@ -641,6 +641,7 @@ closeModalImages.addEventListener('touchstart', function () {
     editImagesModal.style.display = 'none';
 });
 
+
 document.getElementById("adicionar_acomp").addEventListener("submit", function (e) {
     e.preventDefault(); // Previne o envio padrão do formulário
 
@@ -726,6 +727,9 @@ window.addEventListener('click', function (event) {
     if (event.target == editImagesModal) {
         editImagesModal.style.display = "none";
     }
+    if (event.target == addImagemModal) {
+        addImagemModal.style.display = "none";
+    }
 });
 
 window.addEventListener('touchstart', function (event) {
@@ -743,6 +747,9 @@ window.addEventListener('touchstart', function (event) {
     }
     if (event.target == editImagesModal) {
         editImagesModal.style.display = "none";
+    }
+    if (event.target == addImagemModal) {
+        addImagemModal.style.display = "none";
     }
 });
 
@@ -931,3 +938,81 @@ document.getElementById("saveChangesBtn").addEventListener("click", () => {
         });
 });
 
+const addImagemModal = document.getElementById('add-imagem');
+const addImagem = document.getElementById('addImagem');
+addImagem.addEventListener('click', function () {
+    addImagemModal.style.display = 'flex';
+})
+
+function submitFormImagem(event) {
+    event.preventDefault();
+
+    const opcaoCliente = document.getElementById('opcao_cliente').value;
+    const opcaoObra = document.getElementById('opcao_obra').value;
+    const arquivo = document.getElementById('arquivos').value;
+    const data_inicio = document.getElementById('data_inicio').value;
+    const prazo = document.getElementById('prazo').value;
+    const imagem = document.getElementById('nome-imagem').value;
+    const tipo = document.getElementById('tipo-imagem').value;
+
+    const data = {
+        opcaoCliente: opcaoCliente,
+        opcaoObra: opcaoObra,
+        arquivo: arquivo,
+        data_inicio: data_inicio,
+        prazo: prazo,
+        imagem: imagem,
+        tipo: tipo
+    };
+
+    console.log(data);
+
+    fetch('inserir_imagem.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+    })
+        .then(response => response.json())
+        .then(result => {
+            if (result.status === 'success') {
+                Toastify({
+                    text: result.message,
+                    duration: 3000,
+                    close: true,
+                    gravity: "top",
+                    position: "right",
+                    backgroundColor: "green",
+                    stopOnFocus: true,
+                }).showToast();
+
+                setTimeout(() => {
+                    window.location.reload();
+                }, 500);
+            } else {
+                Toastify({
+                    text: result.message,
+                    duration: 3000,
+                    close: true,
+                    gravity: "top",
+                    position: "right",
+                    backgroundColor: "red",
+                    stopOnFocus: true,
+                }).showToast();
+            }
+
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            Toastify({
+                text: "Erro ao tentar salvar. Tente novamente.",
+                duration: 3000,
+                close: true,
+                gravity: "top",
+                position: "right",
+                backgroundColor: "red",
+                stopOnFocus: true,
+            }).showToast();
+        });
+}

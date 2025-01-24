@@ -259,10 +259,19 @@ a {
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
 }
 
+/* #form-add {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+} */
 
+/*
 .close,
 .close-modal,
-.close-modal-images {
+.close-modal-images,
+.close-modal-add {
     color: #aaa;
     float: right;
     font-size: 28px;
@@ -722,6 +731,14 @@ span#obras_finalizadas {
     animation: fadeIn .2s ease-in-out forwards;
 }
 
+#add-imagem-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    width: 20%;
+    overflow-y: auto;
+}
+
 #campoNomeImagem {
     font-weight: 600;
     font-size: 18px;
@@ -761,7 +778,8 @@ form#form-add .funcao {
 }
 
 form#form-add button,
-#saveChangesBtn {
+#saveChangesBtn,
+#salvar {
     background-color: #119111;
     text-align: center;
     color: #ffffff;
@@ -1033,7 +1051,7 @@ table#tabela-logs {
     margin-top: 30px;
 }
 
-#editImagesBtn {
+#editImagesBtn, #addImagem {
     background-color: red;
     width: 120px;
     text-align: center;
@@ -1045,6 +1063,11 @@ table#tabela-logs {
     cursor: pointer;
 }
 
-#editImagesBtn:hover {
+#addImagem {
+    width: 150px;
+    background-color: #0056b3;
+}
+
+.buttons button:hover {
     font-weight: 600;
 }

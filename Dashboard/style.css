@@ -257,6 +257,23 @@ a {
     border-radius: 8px;
     width: 50%;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    animation: scale 0.2s;
+}
+
+
+/* Estilo geral para o assunto */
+.acomp-assunto {
+    font-size: 16px;
+    font-weight: bold;
+    margin-bottom: 8px;
+    color: #333;
+}
+
+/* Estilo geral para a data */
+.acomp-data {
+    font-size: 14px;
+    color: #666;
+    margin-top: 4px;
 }
 
 /* #form-add {
@@ -532,6 +549,18 @@ a {
     }
 }
 
+@keyframes scale {
+    from {
+        transform: scale(0);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
 @media (max-width: 600px) {
 
     .stats-container {
@@ -728,7 +757,6 @@ span#obras_finalizadas {
     background-color: rgba(0, 0, 0, 0.5);
     justify-content: center;
     align-items: center;
-    animation: fadeIn .2s ease-in-out forwards;
 }
 
 #add-imagem-form {
@@ -1031,18 +1059,22 @@ table#tabela-logs {
     margin-bottom: 20px;
 }
 
-.modal-content-images::-webkit-scrollbar {
+.modal-content-images::-webkit-scrollbar,
+form#form-add::-webkit-scrollbar {
     width: 8px;
 }
 
-.modal-content-images::-webkit-scrollbar-thumb {
+.modal-content-images::-webkit-scrollbar-thumb,
+form#form-add::-webkit-scrollbar-thumb {
     background-color: #d3d1d1;
     border-radius: 10px;
 }
 
-.modal-content-images::-webkit-scrollbar-track {
+.modal-content-images::-webkit-scrollbar-track,
+form#form-add::-webkit-scrollbar-track {
     background-color: white;
 }
+
 
 #imageList {
     display: flex;
@@ -1051,7 +1083,8 @@ table#tabela-logs {
     margin-top: 30px;
 }
 
-#editImagesBtn, #addImagem {
+#editImagesBtn,
+#addImagem {
     background-color: red;
     width: 120px;
     text-align: center;
@@ -1070,4 +1103,103 @@ table#tabela-logs {
 
 .buttons button:hover {
     font-weight: 600;
+}
+
+
+th.resizable {
+    position: relative;
+}
+
+th .resize-handle {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 5px;
+    height: 100%;
+    cursor: col-resize;
+    background-color: transparent;
+}
+
+
+/* Estilo Base do Botão */
+#infosBtn {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    cursor: pointer;
+    transition: transform 0.2s ease, background-color 0.3s ease;
+
+    position: fixed;
+    top: 10px;
+    right: 10px;
+}
+
+#infosBtn:hover {
+    background-color: #45a049;
+    transform: scale(1.1);
+    box-shadow: 0 6px 8px rgba(0, 0, 0, 0.2);
+}
+
+#infosBtn:active {
+    transform: scale(0.95);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+#infosBtn i {
+    font-size: 1.5rem;
+}
+
+
+/* Estilo geral para o container de informações */
+.info {
+    border: 1px solid #dcdcdc;
+    border-radius: 8px;
+    background-color: #f9f9f9;
+    margin: 10px 0;
+    padding: 15px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Efeito ao passar o mouse */
+.info:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Estilo para descrição */
+.info-descricao {
+    font-size: 16px;
+    font-weight: bold;
+    margin-bottom: 8px;
+    color: #333;
+}
+
+/* Estilo para data */
+.info-data {
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 8px;
+}
+
+
+.list-acomp {
+    max-height: 140px;
+    overflow: hidden;
+}
+
+.list-acomp.expanded {
+    max-height: max-content;
+}
+
+.acomp-assunto,
+.acomp-data {
+    margin: 5px 0;
 }

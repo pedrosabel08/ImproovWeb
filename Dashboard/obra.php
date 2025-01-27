@@ -67,6 +67,8 @@ $conn->close();
         <header>
             <h1 id="nomenclatura"></h1>
         </header>
+        <button id="infosBtn" onclick="document.querySelector('.obs').scrollIntoView({behavior: 'smooth'})"><i class="fa-solid fa-circle-info"></i></button>
+        <button id="infosBtn" onclick="document.querySelector('.filtro-tabela').scrollIntoView({behavior: 'smooth'})"><i class="fa-solid fa-info"></i></button>
 
         <!-- Tabela para exibir as funções da obra -->
         <div class="filtro-tabela">
@@ -104,9 +106,6 @@ $conn->close();
                         </div>
                     </div>
                     <div id="imageList"></div>
-                    <!-- <div class="buttons">
-                        <button id="saveChangesBtn">Salvar Alterações</button>
-                    </div> -->
                 </div>
             </div>
 
@@ -152,7 +151,8 @@ $conn->close();
                 <table id="tabela-obra">
                     <thead>
                         <tr>
-                            <th>Imagem</th>
+                            <th class="resizable">Imagem<div class="resize-handle"></div>
+                            </th>
                             <th>Tipo de Imagem</th>
                             <th>Caderno</th>
                             <th>Status</th>
@@ -260,10 +260,20 @@ $conn->close();
 
 
         <div id="infos-obra" style="width: 95%; margin: 30px auto; box-shadow: 0 1px 10px rgba(0, 0, 0, 0.7);">
-            <h1>Acompanhamentos</h1>
-            <button id="acomp" style="background-color: steelblue; width: 140px; text-align: center;">Acompanhamento</button>
+            <div class="acompanhamentos">
+                <h1>Acompanhamentos</h1>
+                <button id="acomp" style="background-color: steelblue; width: 140px; text-align: center;">Acompanhamento</button>
 
-            <div id="list_acomp"></div>
+                <div id="list_acomp" class="list-acomp"></div>
+                <button id="btnMostrarAcomps"><i class="fas fa-chevron-down"></i> Mostrar Todos</button>
+            </div>
+
+            <div class="obs">
+                <h1>Observações</h1>
+                <button id="obsAdd" style="background-color: steelblue; width: 140px; text-align: center;">Observação</button>
+
+                <div id="infos"></div>
+            </div>
         </div>
     </div>
     <div class="form-edicao" id="form-edicao">

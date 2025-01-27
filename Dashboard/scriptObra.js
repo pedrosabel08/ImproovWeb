@@ -60,9 +60,11 @@ function limparCampos() {
 
 let idsImagensObra = []; // Array para armazenar os IDs das imagens da obra
 let indiceImagemAtual = 0; // Índice da imagem atualmente exibida no modal
+let linhasTabela = [];
 
 function addEventListenersToRows() {
-    const linhasTabela = document.querySelectorAll(".linha-tabela");
+
+    linhasTabela = document.querySelectorAll(".linha-tabela");
 
     linhasTabela.forEach(function (linha) {
         linha.addEventListener("click", function () {
@@ -78,10 +80,13 @@ function addEventListenersToRows() {
             // Encontrar o índice da imagem clicada no array de IDs
             indiceImagemAtual = idsImagensObra.indexOf(parseInt(idImagemSelecionada));
 
+            console.log("Linha selecionada: ID da imagem = " + idImagemSelecionada);
+
             atualizarModal(idImagemSelecionada);
         });
     });
 }
+
 function atualizarModal(idImagem) {
     // Limpar campos do formulário de edição
     limparCampos();
@@ -160,7 +165,6 @@ function atualizarModal(idImagem) {
         })
         .catch(error => console.error("Erro ao buscar dados da linha:", error));
 
-    console.log("Linha selecionada: ID da imagem = " + idImagemSelecionada);
 
 }
 
@@ -238,7 +242,6 @@ if (obraId) {
 
                 tabela.appendChild(row);
             });
-            addEventListenersToRows();
 
             // Adicionar os event listeners aos botões "Anterior" e "Próximo" APÓS carregar os dados
             const btnAnterior = document.getElementById("btnAnterior");
@@ -263,26 +266,29 @@ if (obraId) {
 
 
             function navegar(direcao) {
+                // Atualiza o índice da imagem atual
                 indiceImagemAtual += direcao;
 
+                // Garante que o índice está dentro dos limites
                 if (indiceImagemAtual < 0) {
                     indiceImagemAtual = idsImagensObra.length - 1;
                 } else if (indiceImagemAtual >= idsImagensObra.length) {
                     indiceImagemAtual = 0;
                 }
 
+                // Obtém o ID da imagem atual
                 const idImagem = idsImagensObra[indiceImagemAtual];
                 atualizarModal(idImagem);
                 document.getElementById("imagem_id").value = idImagem;
 
+                // Atualiza a seleção na tabela
                 linhasTabela.forEach(linha => linha.classList.remove("selecionada"));
                 let linhaSelecionada = document.querySelector(`tr[data-id="${idImagem}"]`);
-
                 if (linhaSelecionada) {
                     linhaSelecionada.classList.add("selecionada");
                 }
-
             }
+            addEventListenersToRows();
 
 
             const obra = data.obra;
@@ -310,6 +316,32 @@ if (obraId) {
             `;
                 funcoesDiv.appendChild(funcaoDiv);
             });
+
+            const infosDiv = document.getElementById('infos');
+            const infosBtn = document.getElementById('infosBtn');
+
+            // Limpa o conteúdo da div
+            infosDiv.innerHTML = "";
+
+            // Verifica se há dados no array
+            if (data.infos.length === 0) {
+                // Se não houver dados, oculta o botão
+                infosBtn.style.display = 'none';
+            } else {
+                // Preenche a div com as informações
+                data.infos.forEach(info => {
+                    const infoDiv = document.createElement('div');
+                    infoDiv.classList.add('info');
+                    infoDiv.innerHTML = `
+                        <p class="info-descricao">${info.descricao}</p>
+                        <p class="info-data">${info.data}</p>
+                    `;
+                    infosDiv.appendChild(infoDiv);
+                });
+
+            }
+
+
 
             // const valores = data.valores;
             // document.getElementById('valor_orcamento').textContent = `R$ ${parseFloat(valores.valor_orcamento).toFixed(2)}`;
@@ -411,6 +443,10 @@ function applyStatusStyle(cell, status, colaborador) {
             break;
         case 'Em andamento':
             cell.style.backgroundColor = 'orange';
+            cell.style.color = 'black';
+            break;
+        case 'Em aprovação':
+            cell.style.backgroundColor = 'yellow';
             cell.style.color = 'black';
             break;
         default:
@@ -550,7 +586,7 @@ document.getElementById("salvar_funcoes").addEventListener("click", function (ev
             }).showToast();
 
 
-            form_edicao.style.display = "none"
+            // form_edicao.style.display = "none"
         },
         error: function (jqXHR, textStatus, errorThrown) {
             console.error("Erro ao salvar dados: " + textStatus, errorThrown);
@@ -571,11 +607,16 @@ const modalInfos = document.getElementById('modalInfos')
 const modalOrcamento = document.getElementById('modalOrcamento')
 const modal = document.getElementById('modalAcompanhamento');
 const modalImages = document.getElementById('editImagesModal');
+const infosModal = document.getElementById('infosModal');
 const form_edicao = document.getElementById('form-edicao');
 
 
 document.getElementById('orcamento').addEventListener('click', function () {
     document.getElementById('modalOrcamento').style.display = 'flex';
+});
+
+document.getElementById('infosBtn').addEventListener('click', function () {
+    infosModal.style.display = 'flex';
 });
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -604,7 +645,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (acompanhamentos.length > 0) {
                     acompanhamentos.forEach(acomp => {
                         const item = document.createElement('p');
-                        item.innerHTML = `<strong>Assunto:</strong> ${acomp.assunto}<br><strong>Data:</strong> ${acomp.data}`;
+                        item.innerHTML = `
+                        <p class="acomp-assunto"><strong>Assunto:</strong> ${acomp.assunto}</p>
+                        <p class="acomp-data"><strong>Data:</strong> ${acomp.data}</p>
+                    `;
                         acompanhamentoConteudo.appendChild(item);
                     });
                 } else {
@@ -617,6 +661,8 @@ document.addEventListener('DOMContentLoaded', function () {
             });
     }
 });
+
+
 
 document.getElementById('acomp').addEventListener('click', function () {
     modal.style.display = 'block';
@@ -640,6 +686,7 @@ closeModalImages.addEventListener('click', function () {
 closeModalImages.addEventListener('touchstart', function () {
     editImagesModal.style.display = 'none';
 });
+
 
 
 document.getElementById("adicionar_acomp").addEventListener("submit", function (e) {
@@ -730,6 +777,9 @@ window.addEventListener('click', function (event) {
     if (event.target == addImagemModal) {
         addImagemModal.style.display = "none";
     }
+    if (event.target == infosModal) {
+        infosModal.style.display = "none";
+    }
 });
 
 window.addEventListener('touchstart', function (event) {
@@ -750,6 +800,9 @@ window.addEventListener('touchstart', function (event) {
     }
     if (event.target == addImagemModal) {
         addImagemModal.style.display = "none";
+    }
+    if (event.target == infosModal) {
+        infosModal.style.display = "none";
     }
 });
 
@@ -1016,3 +1069,46 @@ function submitFormImagem(event) {
             }).showToast();
         });
 }
+
+
+document.addEventListener("DOMContentLoaded", () => {
+    const resizeHandles = document.querySelectorAll(".resize-handle");
+
+    resizeHandles.forEach(handle => {
+        let startX;
+        let startWidth;
+
+        handle.addEventListener("mousedown", (e) => {
+            const th = handle.parentElement;
+            startX = e.pageX;
+            startWidth = th.offsetWidth;
+
+            const onMouseMove = (e) => {
+                const newWidth = startWidth + (e.pageX - startX);
+                th.style.width = `${newWidth}px`;
+            };
+
+            const onMouseUp = () => {
+                document.removeEventListener("mousemove", onMouseMove);
+                document.removeEventListener("mouseup", onMouseUp);
+            };
+
+            document.addEventListener("mousemove", onMouseMove);
+            document.addEventListener("mouseup", onMouseUp);
+        });
+    });
+});
+
+
+
+// Adiciona o botão de mostrar todos
+const btnMostrarAcomps = document.getElementById('btnMostrarAcomps');
+const acompanhamentoConteudo = document.getElementById('list_acomp');
+// Ao clicar no botão "Mostrar Todos"
+btnMostrarAcomps.addEventListener('click', () => {
+    acompanhamentoConteudo.classList.toggle('expanded');
+    const isExpanded = acompanhamentoConteudo.classList.contains('expanded');
+    btnMostrarAcomps.innerHTML = isExpanded ?
+        '<i class="fas fa-chevron-up"></i>' :
+        '<i class="fas fa-chevron-down"></i>';
+});

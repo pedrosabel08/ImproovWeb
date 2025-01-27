@@ -176,6 +176,27 @@ $response['imagens'] = $imagens;
 
 $stmtImagens->close();
 
+
+$sqlInfos = "SELECT * from observacao_obra where obra_id = ?";
+
+$stmtInfos = $conn->prepare($sqlInfos);
+if ($stmtInfos === false) {
+    die('Erro na preparação da consulta (imagens): ' . $conn->error);
+}
+
+$stmtInfos->bind_param("i", $obraId);
+$stmtInfos->execute();
+$resultInfos = $stmtInfos->get_result();
+
+// Processa os resultados do novo SELECT
+$infos = [];
+while ($row = $resultInfos->fetch_assoc()) {
+    $infos[] = $row;
+}
+$response['infos'] = $infos;
+
+$stmtInfos->close();
+
 $conn->close();
 
 // Retorna o resultado como JSON

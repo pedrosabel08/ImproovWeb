@@ -197,6 +197,43 @@ $response['infos'] = $infos;
 
 $stmtInfos->close();
 
+$sqlTotalObra = "SELECT 
+    COUNT(*) AS total_funcoes,
+    COUNT(CASE WHEN f.status = 'Finalizado' THEN 1 END) AS funcoes_finalizadas,
+    ROUND(
+        (COUNT(CASE WHEN f.status = 'Finalizado' THEN 1 END) * 100.0) 
+        / COUNT(*), 
+        2
+    ) AS porcentagem_finalizada
+FROM 
+    funcao fun
+LEFT JOIN 
+    funcao_imagem f 
+    ON fun.idfuncao = f.funcao_id
+LEFT JOIN 
+    imagens_cliente_obra i 
+    ON f.imagem_id = i.idimagens_cliente_obra
+WHERE 
+    i.obra_id = ?";
+
+$stmtTotalObra = $conn->prepare($sqlTotalObra);
+if ($stmtInfos === false) {
+    die('Erro na preparação da consulta (imagens): ' . $conn->error);
+}
+
+$stmtTotalObra->bind_param("i", $obraId);
+$stmtTotalObra->execute();
+$resultTotalObra = $stmtTotalObra->get_result();
+
+// Processa os resultados do novo SELECT
+$totalObra = [];
+while ($row = $resultTotalObra->fetch_assoc()) {
+    $totalObra[] = $row;
+}
+$response['totalObra'] = $totalObra;
+
+$stmtTotalObra->close();
+
 $conn->close();
 
 // Retorna o resultado como JSON

@@ -70,6 +70,7 @@ $stmt_total->close();
         integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="../css/styleSidebar.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper/swiper-bundle.min.css" />
     <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
         type="image/x-icon">
@@ -90,23 +91,13 @@ $funcoes = obterFuncoes($conn);
 ?>
 
 <body>
+
+    <?
+
+    include '../sidebar.php';
+
+    ?>
     <main>
-        <div class="sidebar">
-            <div class="content">
-                <div class="nav">
-                    <p class="top">+</p>
-                    <a href="index.php" id="dashboard" class="tooltip active"><i class="fa-solid fa-chart-line"></i><span class="tooltiptext">Dashboard</span></a>
-                    <a href="projetos.php" id="projects" class="tooltip"><i class="fa-solid fa-list-check"></i><span class="tooltiptext">Projetos</span></a>
-                    <?php if ($nivel_acesso === 1): ?>
-                        <a href="#" id="colabs" class="tooltip"><i class="fa-solid fa-users"></i><span class="tooltiptext">Colaboradores</span></a>
-                        <a href="controle_comercial.html" id="controle_comercial" class="tooltip"><i class="fa-solid fa-dollar-sign"></i><span class="tooltiptext">Controle Comercial</span></a>
-                    <?php endif; ?>
-                </div>
-                <div class="bottom">
-                    <a href="#" id="sair" class="tooltip"><i class="fa fa-arrow-left"></i><span class="tooltiptext">Sair</span></a>
-                </div>
-            </div>
-        </div>
 
         <div class="main-content">
             <!-- Cabeçalho do Dashboard -->
@@ -383,10 +374,11 @@ $funcoes = obterFuncoes($conn);
         const idColaborador = <?php echo json_encode($idcolaborador); ?>;
         localStorage.setItem('idcolaborador', idColaborador);
     </script>
-    <script src="script.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/swiper/swiper-bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="script.js"></script>
+    <script src="../script/sidebar.js"></script>
 </body>
 
 </html>

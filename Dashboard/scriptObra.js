@@ -318,7 +318,6 @@ if (obraId) {
             });
 
             const infosDiv = document.getElementById('infos');
-            const infosBtn = document.getElementById('infosBtn');
 
             // Limpa o conteúdo da div
             infosDiv.innerHTML = "";
@@ -326,7 +325,6 @@ if (obraId) {
             // Verifica se há dados no array
             if (data.infos.length === 0) {
                 // Se não houver dados, oculta o botão
-                infosBtn.style.display = 'none';
             } else {
                 // Preenche a div com as informações
                 data.infos.forEach(info => {
@@ -606,6 +604,7 @@ document.getElementById("salvar_funcoes").addEventListener("click", function (ev
 const modalInfos = document.getElementById('modalInfos')
 const modalOrcamento = document.getElementById('modalOrcamento')
 const modal = document.getElementById('modalAcompanhamento');
+const modalObs = document.getElementById('modalObservacao');
 const modalImages = document.getElementById('editImagesModal');
 const infosModal = document.getElementById('infosModal');
 const form_edicao = document.getElementById('form-edicao');
@@ -615,9 +614,6 @@ document.getElementById('orcamento').addEventListener('click', function () {
     document.getElementById('modalOrcamento').style.display = 'flex';
 });
 
-document.getElementById('infosBtn').addEventListener('click', function () {
-    infosModal.style.display = 'flex';
-});
 
 document.addEventListener('DOMContentLoaded', function () {
 
@@ -666,7 +662,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
 document.getElementById('acomp').addEventListener('click', function () {
     modal.style.display = 'block';
+});
 
+document.getElementById('obsAdd').addEventListener('click', function () {
+    modalObs.style.display = 'block';
 });
 
 const closeModal = document.querySelector('.close-modal');
@@ -735,6 +734,70 @@ document.getElementById("adicionar_acomp").addEventListener("submit", function (
                 }).showToast();
                 document.getElementById("adicionar_acomp").reset(); // Reseta o formulário
                 modal.style.display = 'none';
+            } else {
+                Toastify({
+                    text: data.message,
+                    duration: 3000,
+                    gravity: "top",
+                    position: "right",
+                    backgroundColor: "#f44336", // Cor de erro
+                }).showToast();
+            }
+        })
+        .catch(error => {
+            console.error("Erro ao enviar acompanhamento:", error);
+            Toastify({
+                text: "Erro ao adicionar acompanhamento.",
+                duration: 3000,
+                gravity: "top",
+                position: "right",
+                backgroundColor: "#f44336", // Cor de erro
+            }).showToast();
+        });
+});
+
+document.getElementById("adicionar_observacao").addEventListener("submit", function (e) {
+    e.preventDefault(); // Previne o envio padrão do formulário
+
+    // Obtendo os dados do formulário
+    const desc = document.getElementById("desc").value.trim();
+
+    // Validações simples
+    if (!desc) {
+        Toastify({
+            text: "Preencha todos os campos corretamente.",
+            duration: 3000,
+            gravity: "top",
+            position: "right",
+            backgroundColor: "#f44336", // Cor de erro
+        }).showToast();
+        return;
+    }
+
+    // Enviando os dados via AJAX
+    fetch("addAcompanhamento.php", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({
+            idobra: obraId,
+            desc: desc,
+        }),
+    })
+        .then(response => response.json()) // Converte a resposta para JSON
+        .then(data => {
+            // Exibe o Toastify com base na resposta
+            if (data.success) {
+                Toastify({
+                    text: data.message,
+                    duration: 3000,
+                    gravity: "top",
+                    position: "right",
+                    backgroundColor: "#4caf50", // Cor de sucesso
+                }).showToast();
+                document.getElementById("adicionar_observacao").reset(); // Reseta o formulário
+                modalObs.style.display = 'none';
             } else {
                 Toastify({
                     text: data.message,

@@ -67,8 +67,10 @@ $conn->close();
         <header>
             <h1 id="nomenclatura"></h1>
         </header>
-        <button id="infosBtn" onclick="document.querySelector('.obs').scrollIntoView({behavior: 'smooth'})"><i class="fa-solid fa-circle-info"></i></button>
-        <button id="infosBtn" onclick="document.querySelector('.filtro-tabela').scrollIntoView({behavior: 'smooth'})"><i class="fa-solid fa-info"></i></button>
+        <div class="buttons-nav">
+            <button onclick="document.querySelector('.obs').scrollIntoView({behavior: 'smooth'})"><i class="fa-solid fa-circle-info"></i></button>
+            <button onclick="document.querySelector('.filtro-tabela').scrollIntoView({behavior: 'smooth'})"><i class="fa-solid fa-info"></i></button>
+        </div>
 
         <!-- Tabela para exibir as funções da obra -->
         <div class="filtro-tabela">
@@ -221,31 +223,6 @@ $conn->close();
                 </div>
             </div>
 
-            <div id="modalAcompanhamento" class="modal">
-                <div class="modal-content" style="width: 500px;">
-                    <span class="close-modal">&times;</span>
-                    <h2 style="margin-bottom: 30px;">Acompanhamento por Email</h2>
-                    <div id="acompanhamentoConteudo">
-                        <form id="adicionar_acomp" style="align-items: center;">
-
-                            <!-- Campo de assunto -->
-                            <div id="campo">
-                                <label for="assunto">Assunto:</label>
-                                <textarea name="assunto" id="assunto" name="assunto" required></textarea>
-                            </div>
-
-                            <!-- Campo de data -->
-                            <div id="campo">
-                                <label for="data">Data:</label>
-                                <input type="date" name="data_acomp" id="data_acomp" required>
-                            </div>
-
-                            <!-- Botão para enviar -->
-                            <button type="submit" id="add-acomp">Adicionar Acompanhamento</button>
-                        </form>
-                    </div>
-                </div>
-            </div>
             <div class="obra-imagens">
                 <h4 id="total_imagens"></h4>
                 <h4 id="total_imagens_antecipadas"></h4>
@@ -261,20 +238,68 @@ $conn->close();
 
         <div id="infos-obra" style="width: 95%; margin: 30px auto; box-shadow: 0 1px 10px rgba(0, 0, 0, 0.7);">
             <div class="acompanhamentos">
-                <h1>Acompanhamentos</h1>
-                <button id="acomp" style="background-color: steelblue; width: 140px; text-align: center;">Acompanhamento</button>
+                <h1>Histórico</h1>
+                <button id="acomp" class="btnAcompObs">Acompanhamento</button>
 
                 <div id="list_acomp" class="list-acomp"></div>
                 <button id="btnMostrarAcomps"><i class="fas fa-chevron-down"></i> Mostrar Todos</button>
             </div>
+        </div>
+        <div id="infos-obra" style="width: 95%; margin: 30px auto; box-shadow: 0 1px 10px rgba(0, 0, 0, 0.7);">
 
             <div class="obs">
-                <h1>Observações</h1>
-                <button id="obsAdd" style="background-color: steelblue; width: 140px; text-align: center;">Observação</button>
+                <h1>Informações da Obra</h1>
+                <button id="obsAdd" class="btnAcompObs">Adicionar Informação</button>
 
                 <div id="infos"></div>
             </div>
         </div>
+        <div id="modalAcompanhamento" class="modal">
+            <div class="modal-content" style="width: 500px;">
+                <span class="close-modal">&times;</span>
+                <h2 style="margin-bottom: 30px;">Acompanhamento por Email</h2>
+                <div id="acompanhamentoConteudo">
+                    <form id="adicionar_acomp" style="align-items: center;">
+
+                        <!-- Campo de assunto -->
+                        <div id="campo">
+                            <label for="assunto">Assunto:</label>
+                            <textarea name="assunto" id="assunto" name="assunto" required></textarea>
+                        </div>
+
+                        <!-- Campo de data -->
+                        <div id="campo">
+                            <label for="data">Data:</label>
+                            <input type="date" name="data_acomp" id="data_acomp" required>
+                        </div>
+
+                        <!-- Botão para enviar -->
+                        <button type="submit" id="add-acomp">Adicionar Acompanhamento</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div id="modalObservacao" class="modal">
+            <div class="modal-content" style="width: 500px;">
+                <span class="close-modal">&times;</span>
+                <h2 style="margin-bottom: 30px;">Observação</h2>
+                <div id="acompanhamentoConteudo">
+                    <form id="adicionar_observacao" style="align-items: center;">
+
+                        <!-- Campo de descrição -->
+                        <div id="campo">
+                            <label for="desc">Descrição:</label>
+                            <textarea name="desc" id="desc" name="desc" required></textarea>
+                        </div>
+
+                        <!-- Botão para enviar -->
+                        <button type="submit" id="add-acomp">Salvar</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
     </div>
     <div class="form-edicao" id="form-edicao">
         <form id="form-add" method="post" action="insereFuncao.php">

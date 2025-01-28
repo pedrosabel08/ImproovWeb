@@ -3,18 +3,32 @@ include '../conexao.php';
 
 // SELECT com filtro WHERE
 $query1 = "SELECT 
-    o.nome_obra, 
+    o.nomenclatura, 
     o.idobra,
-    MAX(i.prazo) AS prazo 
+    MAX(i.prazo) AS prazo,
+    COUNT(fun.idfuncao) AS total_funcoes,
+    COUNT(CASE WHEN f.status = 'Finalizado' THEN 1 END) AS funcoes_finalizadas,
+    ROUND(
+        (COUNT(CASE WHEN f.status = 'Finalizado' THEN 1 END) * 100.0) 
+        / COUNT(fun.idfuncao), 
+        2
+    ) AS porcentagem_finalizada
 FROM 
-    obra o 
-JOIN 
+    obra o
+LEFT JOIN 
     imagens_cliente_obra i 
-    ON i.obra_id = o.idobra 
+    ON i.obra_id = o.idobra
+LEFT JOIN 
+    funcao_imagem f 
+    ON i.idimagens_cliente_obra = f.imagem_id
+LEFT JOIN 
+    funcao fun 
+    ON fun.idfuncao = f.funcao_id
 WHERE 
-    o.status_obra = 0 
+    o.status_obra = 0
 GROUP BY 
-    o.nome_obra;";
+    o.nomenclatura, 
+    o.idobra";
 
 $result1 = $conn->query($query1);
 $data_with_filter = [];
@@ -24,7 +38,7 @@ while ($row = $result1->fetch_assoc()) {
 
 // SELECT sem o filtro WHERE
 $query2 = "SELECT 
-    o.nome_obra, 
+    o.nomenclatura, 
     o.idobra,
     MAX(i.prazo) AS prazo,
     o.status_obra

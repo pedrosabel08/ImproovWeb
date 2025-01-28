@@ -1,17 +1,23 @@
 {
   "name": "improovweb",
   "version": "1.0.0",
+  "description": "Este é um sistema desenvolvido por **Pedro Sabel** para a IMPROOV com o objetivo de otimizar a agilidade dos recursos e melhorar a comunicação entre as equipes. O sistema foi projetado para atender às necessidades específicas da empresa, proporcionando uma interface amigável e eficiente para o gerenciamento de tarefas, projetos e colaboração entre os colaboradores.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node scriptLog.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pedrosabel08/ImproovWeb.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
+  "bugs": {
+    "url": "https://github.com/pedrosabel08/ImproovWeb/issues"
+  },
+  "homepage": "https://github.com/pedrosabel08/ImproovWeb#readme",
   "dependencies": {
-    "dotenv": "^16.4.5",
-    "express": "^4.21.0",
-    "googleapis": "^144.0.0"
+    "mysql2": "^3.12.0"
   }
 }

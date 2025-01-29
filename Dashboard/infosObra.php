@@ -134,6 +134,8 @@ $stmtValores->close();
 $sqlImagens = "SELECT
         ico.idimagens_cliente_obra AS imagem_id,
         ico.imagem_nome,
+        s.nome_status AS imagem_status,
+        ico.prazo,
         ico.tipo_imagem,
         ico.antecipada,
         MAX(CASE WHEN fi.funcao_id = 1 THEN c.nome_colaborador END) AS caderno_colaborador,
@@ -153,6 +155,7 @@ $sqlImagens = "SELECT
     FROM imagens_cliente_obra ico
     LEFT JOIN funcao_imagem fi ON fi.imagem_id = ico.idimagens_cliente_obra
     LEFT JOIN colaborador c ON fi.colaborador_id = c.idcolaborador
+    LEFT JOIN status_imagem s ON ico.status_id = s.idstatus
     WHERE ico.obra_id = ?
     GROUP BY ico.imagem_nome
     ORDER BY FIELD(ico.tipo_imagem, 'Fachada', 'Imagem Interna', 'Imagem Externa', 'Planta Humanizada'), ico.idimagens_cliente_obra;

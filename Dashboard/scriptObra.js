@@ -96,7 +96,6 @@ function atualizarModal(idImagem) {
         .then(response => response.json())
         .then(response => {
             document.getElementById('form-edicao').style.display = 'flex';
-
             if (response.funcoes && response.funcoes.length > 0) {
                 document.getElementById("campoNomeImagem").textContent = response.funcoes[0].imagem_nome;
 
@@ -178,6 +177,8 @@ if (obraId) {
                 console.warn('Nenhuma função encontrada para esta obra.');
                 data.imagens = [{ // Exemplo de dados padrão para evitar que a tabela fique vazia
                     imagem_nome: 'Sem imagem',
+                    status: '-',
+                    prazo: '-',
                     tipo_imagem: 'N/A',
                     caderno_colaborador: '-',
                     caderno_status: '-',
@@ -204,6 +205,7 @@ if (obraId) {
                 var row = document.createElement('tr');
                 row.classList.add('linha-tabela');
                 row.setAttribute('data-id', item.imagem_id);
+                row.setAttribute('tipo-imagem', item.tipo_imagem)
 
                 var cellNomeImagem = document.createElement('td');
                 cellNomeImagem.textContent = item.imagem_nome;
@@ -214,9 +216,14 @@ if (obraId) {
                     cellNomeImagem.style.backgroundColor = '#ff9d00';
                 }
 
-                var cellTipoImagem = document.createElement('td');
-                cellTipoImagem.textContent = item.tipo_imagem;
-                row.appendChild(cellTipoImagem);
+                var cellStatus = document.createElement('td');
+                cellStatus.textContent = item.imagem_status;
+                row.appendChild(cellStatus);
+                applyStatusImagem(cellStatus, item.imagem_status);
+
+                var cellPrazo = document.createElement('td');
+                cellPrazo.textContent = item.prazo;
+                row.appendChild(cellPrazo);
 
                 var colunas = [
                     { col: 'caderno', label: 'Caderno' },
@@ -395,6 +402,36 @@ if (obraId) {
 }
 
 
+function applyStatusImagem(cell, status) {
+    switch (status) {
+        case 'P00':
+            cell.style.backgroundColor = '#ffc21c'
+            break;
+        case 'R00':
+            cell.style.backgroundColor = '#1cf4ff'
+            break;
+        case 'R01':
+            cell.style.backgroundColor = '#ff6200'
+            break;
+        case 'R02':
+            cell.style.backgroundColor = '#ff3c00'
+            break;
+        case 'R03':
+            cell.style.backgroundColor = '#ff0000'
+            break;
+        case 'EF':
+            cell.style.backgroundColor = '#0dff00'
+            break;
+        case 'HOLD':
+            cell.style.backgroundColor = '#ff0000';
+            break;
+        case 'TEA':
+            cell.style.backgroundColor = '#f7eb07';
+    }
+};
+
+
+
 function filtrarTabela() {
     var tipoImagemFiltro = document.getElementById("tipo_imagem").value.toLowerCase(); // Captura o filtro de tipo de imagem
     var antecipadaFiltro = document.getElementById("antecipada_obra").value; // Captura o filtro de antecipada
@@ -403,14 +440,14 @@ function filtrarTabela() {
     var linhas = tbody.getElementsByTagName("tr"); // Obtém todas as linhas da tabela
 
     for (var i = 0; i < linhas.length; i++) {
-        var tipoImagemColuna = linhas[i].getElementsByTagName("td")[1].textContent || linhas[i].getElementsByTagName("td")[1].innerText; // Obtém o tipo de imagem da 2ª coluna (ajustado para corresponder à estrutura da sua tabela)
+        var tipoImagemColuna = linhas[i].getAttribute("tipo-imagem"); // Agora obtém o tipo de imagem do atributo
 
-        // Verifica o valor do atributo antecipada da linha (onde o atributo é armazenado no tr)
+        // Verifica o valor do atributo antecipada da linha
         var isAntecipada = linhas[i].getAttribute("antecipada") === '1';
 
         var mostrarLinha = true;
 
-        // Filtro para tipo de imagem
+        // Filtro para tipo de imagem (agora comparando com o atributo)
         if (tipoImagemFiltro && tipoImagemFiltro !== "0" && tipoImagemColuna.toLowerCase() !== tipoImagemFiltro.toLowerCase()) {
             mostrarLinha = false;
         }
@@ -640,10 +677,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 if (acompanhamentos.length > 0) {
                     acompanhamentos.forEach(acomp => {
+                        const dataSemFuso = acomp.data.split(" ")[0]; // Remove a parte de horas
+                        const dataFormatada = new Date(`${dataSemFuso}T00:00:00`).toLocaleDateString("pt-BR");
+
                         const item = document.createElement('p');
                         item.innerHTML = `
                         <p class="acomp-assunto"><strong>Assunto:</strong> ${acomp.assunto}</p>
-                        <p class="acomp-data"><strong>Data:</strong> ${acomp.data}</p>
+                        <p class="acomp-data"><strong>Data:</strong> ${dataFormatada}</p>
                     `;
                         acompanhamentoConteudo.appendChild(item);
                     });
@@ -694,8 +734,16 @@ document.getElementById("adicionar_acomp").addEventListener("submit", function (
     // Obtendo os dados do formulário
     const assunto = document.getElementById("assunto").value.trim(); // Valor do textarea assunto
     const data = document.getElementById("data_acomp").value; // Data selecionada
+    const acompanhamentoSelecionado = document.querySelector('input[name="acompanhamento"]:checked');
 
     console.log(assunto, data, obraId)
+
+    if (acompanhamentoSelecionado && acompanhamentoSelecionado.value === "prazo_alteracao") {
+        const confirmacao = confirm("Você selecionou 'Prazo de alteração'. Lembre-se de preencher a data corretamente!");
+        if (!confirmacao) {
+            return; // Cancela o envio do formulário
+        }
+    }
 
     // Validações simples
     if (!obraId || !assunto || !data) {
@@ -1174,4 +1222,21 @@ btnMostrarAcomps.addEventListener('click', () => {
     btnMostrarAcomps.innerHTML = isExpanded ?
         '<i class="fas fa-chevron-up"></i>' :
         '<i class="fas fa-chevron-down"></i>';
+});
+
+
+
+
+
+document.querySelectorAll('input[name="acompanhamento"]').forEach(radio => {
+    radio.addEventListener('change', function () {
+        if (this.value === "Prazo de alteração") {
+            const confirmacao = confirm("Tem certeza que deseja selecionar 'Prazo de alteração'?");
+            if (!confirmacao) {
+                this.checked = false; // Desmarca a opção se o usuário cancelar
+                return;
+            }
+        }
+        document.getElementById("assunto").value = this.value;
+    });
 });

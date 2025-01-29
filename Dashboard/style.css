@@ -1059,18 +1059,21 @@ table#tabela-logs {
 }
 
 .modal-content-images::-webkit-scrollbar,
-form#form-add::-webkit-scrollbar {
+form#form-add::-webkit-scrollbar,
+.container::-webkit-scrollbar {
     width: 8px;
 }
 
 .modal-content-images::-webkit-scrollbar-thumb,
-form#form-add::-webkit-scrollbar-thumb {
+form#form-add::-webkit-scrollbar-thumb,
+.container::-webkit-scrollbar-thumb {
     background-color: #d3d1d1;
     border-radius: 10px;
 }
 
 .modal-content-images::-webkit-scrollbar-track,
-form#form-add::-webkit-scrollbar-track {
+form#form-add::-webkit-scrollbar-track,
+.container::-webkit-scrollbar-thumb {
     background-color: white;
 }
 
@@ -1137,16 +1140,16 @@ th .resize-handle {
     color: white;
     border: none;
     border-radius: 5px;
-    padding: 10px;
     cursor: pointer;
     transition: transform 0.2s ease, background-color 0.2s ease;
+    width: 45px;
+    height: 45px;
+    text-align: center;
 }
 
 .buttons-nav button:hover {
     background-color: #0056b3;
-    /* Azul mais escuro no hover */
     transform: scale(1.1);
-    /* Aumenta levemente o tamanho */
 }
 
 i.fa-circle-info,

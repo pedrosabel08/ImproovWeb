@@ -155,7 +155,8 @@ $conn->close();
                         <tr>
                             <th class="resizable">Imagem<div class="resize-handle"></div>
                             </th>
-                            <th>Tipo de Imagem</th>
+                            <th>Status</th>
+                            <th>Prazo</th>
                             <th>Caderno</th>
                             <th>Status</th>
                             <th>Modelagem</th>
@@ -178,6 +179,25 @@ $conn->close();
             </div>
         </div>
 
+        <div id="infos-obra" style="width: 95%; margin: 30px auto; box-shadow: 0 1px 10px rgba(0, 0, 0, 0.7);">
+            <div class="acompanhamentos">
+                <h1>Histórico</h1>
+                <button id="acomp" class="btnAcompObs">Acompanhamento</button>
+
+                <div id="list_acomp" class="list-acomp"></div>
+                <button id="btnMostrarAcomps"><i class="fas fa-chevron-down"></i> Mostrar Todos</button>
+            </div>
+        </div>
+        <div id="infos-obra" style="width: 95%; margin: 30px auto; box-shadow: 0 1px 10px rgba(0, 0, 0, 0.7);">
+
+            <div class="obs">
+                <h1>Informações da Obra</h1>
+                <button id="obsAdd" class="btnAcompObs">Adicionar Informação</button>
+
+                <div id="infos"></div>
+            </div>
+        </div>
+        
         <div id="infos-obra" style="width: 95%; margin: 30px auto; box-shadow: 0 1px 10px rgba(0, 0, 0, 0.7);">
             <!-- <button id="follow-up">Follow-up</button> -->
 
@@ -235,31 +255,22 @@ $conn->close();
 
         </div>
 
-
-        <div id="infos-obra" style="width: 95%; margin: 30px auto; box-shadow: 0 1px 10px rgba(0, 0, 0, 0.7);">
-            <div class="acompanhamentos">
-                <h1>Histórico</h1>
-                <button id="acomp" class="btnAcompObs">Acompanhamento</button>
-
-                <div id="list_acomp" class="list-acomp"></div>
-                <button id="btnMostrarAcomps"><i class="fas fa-chevron-down"></i> Mostrar Todos</button>
-            </div>
-        </div>
-        <div id="infos-obra" style="width: 95%; margin: 30px auto; box-shadow: 0 1px 10px rgba(0, 0, 0, 0.7);">
-
-            <div class="obs">
-                <h1>Informações da Obra</h1>
-                <button id="obsAdd" class="btnAcompObs">Adicionar Informação</button>
-
-                <div id="infos"></div>
-            </div>
-        </div>
         <div id="modalAcompanhamento" class="modal">
             <div class="modal-content" style="width: 500px;">
-                <span class="close-modal">&times;</span>
                 <h2 style="margin-bottom: 30px;">Acompanhamento por Email</h2>
                 <div id="acompanhamentoConteudo">
                     <form id="adicionar_acomp" style="align-items: center;">
+                        <div class="radioButtons">
+                            <label><input type="radio" name="acompanhamento" value="Start do Projeto"> Start do Projeto</label>
+                            <label><input type="radio" name="acompanhamento" value="Prazo de dias úteis (45 dias)"> Prazo de dias úteis (45 dias)</label>
+                            <label><input type="radio" name="acompanhamento" value="Recebimento de arquivos"> Recebimento de arquivos</label>
+                            <label><input type="radio" name="acompanhamento" value="Prazo com a entrega (30/01)"> Prazo com a entrega (30/01)</label>
+                            <label><input type="radio" name="acompanhamento" value="Projeto pausado aguardando aprovação do cliente.">Projeto pausado aguardando aprovação do cliente.</label>
+                            <label><input type="radio" name="acompanhamento" value="Enviado os toons da fachada">Enviado os toons da fachada</label>
+                            <label><input type="radio" id="prazo_alteracao" name="acompanhamento" value="Prazo de alteração"> Prazo de alteração</label><br>
+                            <label><input type="radio" name="acompanhamento" value="Enviado imagens prévias"> Enviado imagens prévias</label>
+                        </div>
+
 
                         <!-- Campo de assunto -->
                         <div id="campo">
@@ -531,7 +542,7 @@ $conn->close();
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
-    <script src="scriptObra.js"></script> <!-- Link para o seu script JS -->
+    <script src="scriptObra.js"></script>
     <script src="../script/sidebar.js"></script>
 
 

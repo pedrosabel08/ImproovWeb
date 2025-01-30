@@ -237,6 +237,35 @@ $response['totalObra'] = $totalObra;
 
 $stmtTotalObra->close();
 
+$sqlBriefing = "SELECT 
+    nivel,
+    conceito,
+    valor_media,
+    outro_padrao,
+    assets,
+    comp_planta
+    FROM briefing
+WHERE 
+    briefing.obra_id = ?";
+
+$stmtBriefing = $conn->prepare($sqlBriefing);
+if ($stmtBriefing === false) {
+    die('Erro na preparação da consulta (imagens): ' . $conn->error);
+}
+
+$stmtBriefing->bind_param("i", $obraId);
+$stmtBriefing->execute();
+$resultBriefing = $stmtBriefing->get_result();
+
+// Processa os resultados do novo SELECT
+$briefing = [];
+while ($row = $resultBriefing->fetch_assoc()) {
+    $briefing[] = $row;
+}
+$response['briefing'] = $briefing;
+
+$stmtBriefing->close();
+
 $conn->close();
 
 // Retorna o resultado como JSON

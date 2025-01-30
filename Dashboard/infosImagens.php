@@ -25,7 +25,9 @@ try {
             MAX(i.imagem_nome) AS imagem_nome,
             s.nome_status, 
             i.tipo_imagem, 
-            i.antecipada 
+            i.antecipada,
+            i.clima,
+            i.animacao 
         FROM imagens_cliente_obra i
         JOIN obra o ON i.obra_id = o.idobra 
         LEFT JOIN funcao_imagem fi ON i.idimagens_cliente_obra = fi.imagem_id 

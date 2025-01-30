@@ -68,7 +68,7 @@ $conn->close();
             <h1 id="nomenclatura"></h1>
         </header>
         <div class="buttons-nav">
-            <button onclick="document.querySelector('.obs').scrollIntoView({behavior: 'smooth'})"><i class="fa-solid fa-circle-info"></i></button>
+            <button onclick="document.querySelector('.acompanhamentos').scrollIntoView({behavior: 'smooth'})"><i class="fa-solid fa-circle-info"></i></button>
             <button onclick="document.querySelector('.filtro-tabela').scrollIntoView({behavior: 'smooth'})"><i class="fa-solid fa-info"></i></button>
         </div>
 
@@ -93,6 +93,11 @@ $conn->close();
             <div class="buttons">
                 <button id="editImagesBtn">Editar Imagens</button>
                 <button id="addImagem">Adicionar Imagem</button>
+            </div>
+
+            <div class="contagem_imagens">
+                <p id="imagens-totais"></p>
+                <p id="antecipadas"></p>
             </div>
 
             <div id="editImagesModal" style="display: none;">
@@ -188,16 +193,44 @@ $conn->close();
                 <button id="btnMostrarAcomps"><i class="fas fa-chevron-down"></i> Mostrar Todos</button>
             </div>
         </div>
-        <div id="infos-obra" style="width: 95%; margin: 30px auto; box-shadow: 0 1px 10px rgba(0, 0, 0, 0.7);">
+        <div id="infos-obra" class="infos-obra" style="width: 95%; margin: 30px auto; box-shadow: 0 1px 10px rgba(0, 0, 0, 0.7);">
 
             <div class="obs">
                 <h1>Informações da Obra</h1>
                 <button id="obsAdd" class="btnAcompObs">Adicionar Informação</button>
 
+                <div id="briefing">
+                    <div class="campo">
+                        <label for="nivel">Qual o nível de padrão do empreendimento?</label>
+                        <input type="text" name="nivel" id="nivel">
+                    </div>
+                    <div class="campo">
+                        <label for="conceito">Qual o conceito do empreendimento?</label>
+                        <input type="text" name="conceito" id="conceito">
+                    </div>
+                    <div class="campo">
+                        <label for="valor_media">Qual a faixa média de valor dos apartamentos?</label>
+                        <input type="text" name="valor_media" id="valor_media">
+                    </div>
+                    <div class="campo">
+                        <label for="outro_padrao">Já tem algum outro empreendimento no mesmo padrão?</label>
+                        <input type="text" name="outro_padrao" id="outro_padrao">
+                    </div>
+                    <div class="campo">
+                        <label for="assets">Haverá necessidade de escolha de assets (modelos de mobiliário) especifico?</label>
+                        <input type="checkbox" name="assets" id="assets">
+                    </div>
+                    <div class="campo">
+                        <label for="comp_planta">Existe a necessidade das plantas humanizadas estarem compatibilizadas com as imagens finais?</label>
+                        <input type="checkbox" name="comp_planta" id="comp_planta">
+                    </div>
+                </div>
+
                 <div id="infos"></div>
             </div>
         </div>
-        
+
+
         <div id="infos-obra" style="width: 95%; margin: 30px auto; box-shadow: 0 1px 10px rgba(0, 0, 0, 0.7);">
             <!-- <button id="follow-up">Follow-up</button> -->
 
@@ -297,7 +330,6 @@ $conn->close();
                 <h2 style="margin-bottom: 30px;">Observação</h2>
                 <div id="acompanhamentoConteudo">
                     <form id="adicionar_observacao" style="align-items: center;">
-
                         <!-- Campo de descrição -->
                         <div id="campo">
                             <label for="desc">Descrição:</label>

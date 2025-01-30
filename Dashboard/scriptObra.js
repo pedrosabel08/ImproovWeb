@@ -19,6 +19,13 @@ document.querySelectorAll('.titulo').forEach(titulo => {
     });
 });
 
+
+function formatarData(data) {
+    const dataObj = new Date(data);
+    const dataFormatada = dataObj.toLocaleDateString("pt-BR");
+    return dataFormatada;
+}
+
 function limparCampos() {
     document.getElementById("campoNomeImagem").textContent = "";
 
@@ -200,6 +207,9 @@ if (obraId) {
             var tabela = document.querySelector('#tabela-obra tbody');
             tabela.innerHTML = ''; // Limpa a tabela antes de adicionar os novos dados
 
+            let antecipada = 0;
+            let imagens = 0;
+
             data.imagens.forEach(function (item) {
                 idsImagensObra.push(parseInt(item.imagem_id));
                 var row = document.createElement('tr');
@@ -212,8 +222,11 @@ if (obraId) {
                 cellNomeImagem.setAttribute('antecipada', item.antecipada);
                 row.appendChild(cellNomeImagem);
 
+                imagens++;
+
                 if (Boolean(parseInt(item.antecipada))) {
                     cellNomeImagem.style.backgroundColor = '#ff9d00';
+                    antecipada++;
                 }
 
                 var cellStatus = document.createElement('td');
@@ -250,6 +263,9 @@ if (obraId) {
                 tabela.appendChild(row);
             });
 
+            document.getElementById('imagens-totais').textContent = `Total de imagens: ${imagens}`;
+            document.getElementById('antecipadas').textContent = `Antecipadas: ${antecipada}`;
+
             // Adicionar os event listeners aos botões "Anterior" e "Próximo" APÓS carregar os dados
             const btnAnterior = document.getElementById("btnAnterior");
             const btnProximo = document.getElementById("btnProximo");
@@ -264,10 +280,13 @@ if (obraId) {
 
             // Adicionando evento para as teclas de seta
             document.addEventListener("keydown", (event) => {
-                if (event.key === "ArrowLeft") {
-                    navegar(-1); // Seta para a esquerda
-                } else if (event.key === "ArrowRight") {
-                    navegar(1); // Seta para a direita
+
+                if (form_edicao && form_edicao.style.display === "flex") {
+                    if (event.key === "ArrowLeft") {
+                        navegar(-1); // Seta para a esquerda
+                    } else if (event.key === "ArrowRight") {
+                        navegar(1); // Seta para a direita
+                    }
                 }
             });
 
@@ -296,12 +315,23 @@ if (obraId) {
                 }
             }
             addEventListenersToRows();
-
+            if (data.briefing && data.briefing.length > 0) {  // Verifica se briefing existe e não está vazio
+                const br = data.briefing[0];
+                document.getElementById('nivel').value = br.nivel || "";
+                document.getElementById('conceito').value = br.conceito || "";
+                document.getElementById('valor_media').value = br.valor_media || "";
+                document.getElementById('outro_padrao').value = br.outro_padrao || "";
+                document.getElementById('assets').checked = br.assets === 1; 
+                document.getElementById('comp_planta').checked = br.comp_planta === 1; 
+                
+            } else {
+                console.warn("Briefing não encontrado ou vazio."); // Apenas um aviso, sem erro no console
+            }
 
             const obra = data.obra;
             document.getElementById('nomenclatura').textContent = obra.nomenclatura || "Nome não disponível";
-            document.getElementById('data_inicio_obra').textContent = `Data de Início: ${obra.data_inicio}`;
-            document.getElementById('prazo_obra').textContent = `Prazo: ${obra.prazo}`;
+            document.getElementById('data_inicio_obra').textContent = `Data de Início: ${formatarData(obra.data_inicio)}`;
+            document.getElementById('prazo_obra').textContent = `Prazo: ${formatarData(obra.prazo)}`;
             document.getElementById('dias_trabalhados').innerHTML = obra.dias_trabalhados ? `<strong>${obra.dias_trabalhados}</strong> dias` : '';
             document.getElementById('total_imagens').textContent = `Total de Imagens: ${obra.total_imagens}`;
             document.getElementById('total_imagens_antecipadas').textContent = `Imagens Antecipadas: ${obra.total_imagens_antecipadas}`;
@@ -331,7 +361,8 @@ if (obraId) {
 
             // Verifica se há dados no array
             if (data.infos.length === 0) {
-                // Se não houver dados, oculta o botão
+                // document.querySelector('.infos-obra').style.display = 'none';
+
             } else {
                 // Preenche a div com as informações
                 data.infos.forEach(info => {
@@ -345,6 +376,7 @@ if (obraId) {
                 });
 
             }
+
 
 
 
@@ -677,13 +709,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 if (acompanhamentos.length > 0) {
                     acompanhamentos.forEach(acomp => {
-                        const dataSemFuso = acomp.data.split(" ")[0]; // Remove a parte de horas
-                        const dataFormatada = new Date(`${dataSemFuso}T00:00:00`).toLocaleDateString("pt-BR");
 
                         const item = document.createElement('p');
                         item.innerHTML = `
                         <p class="acomp-assunto"><strong>Assunto:</strong> ${acomp.assunto}</p>
-                        <p class="acomp-data"><strong>Data:</strong> ${dataFormatada}</p>
+                        <p class="acomp-data"><strong>Data:</strong> ${formatarData(acomp.data)}</p>
                     `;
                         acompanhamentoConteudo.appendChild(item);
                     });
@@ -1024,6 +1054,8 @@ document.getElementById("editImagesBtn").addEventListener("click", () => {
                             <label>Data de Início: <input type="date" data-id="${image.idimagem}" name="data_inicio" value="${image.data_inicio}"></label><br>
                             <label>Prazo: <input type="date" data-id="${image.idimagem}" name="prazo" value="${image.prazo}"></label><br>
                             <label>Tipo de Imagem: <input type="text" data-id="${image.idimagem}" name="tipo_imagem" value="${image.tipo_imagem}"></label>
+                            <label>Terá animação?: <input type="checkbox" data-id="${image.idimagem}" name="animacao" value="1" ${image.animacao == 1 ? "checked" : ""}></label>
+                            <label>Clima: <input type="text" data-id="${image.idimagem}" name="clima" value="${image.clima}"></label>
                         </div>
                     </div>
                 `;
@@ -1075,7 +1107,9 @@ document.getElementById("saveChangesBtn").addEventListener("click", () => {
             recebimento_arquivos: document.querySelector(`input[name="recebimento_arquivos"][data-id="${id}"]`).value,
             data_inicio: document.querySelector(`input[name="data_inicio"][data-id="${id}"]`).value,
             prazo: document.querySelector(`input[name="prazo"][data-id="${id}"]`).value,
-            tipo_imagem: document.querySelector(`input[name="tipo_imagem"][data-id="${id}"]`).value
+            tipo_imagem: document.querySelector(`input[name="tipo_imagem"][data-id="${id}"]`).value,
+            animacao: document.querySelector(`input[name="animacao"][data-id="${id}"]`).checked ? "1" : "0",
+            clima: document.querySelector(`input[name="clima"][data-id="${id}"]`).value,
         };
     });
 
@@ -1118,6 +1152,8 @@ function submitFormImagem(event) {
     const prazo = document.getElementById('prazo').value;
     const imagem = document.getElementById('nome-imagem').value;
     const tipo = document.getElementById('tipo-imagem').value;
+    const animacao = document.getElementById('animacao').value;
+    const clima = document.getElementById('clima').value;
 
     const data = {
         opcaoCliente: opcaoCliente,
@@ -1126,7 +1162,10 @@ function submitFormImagem(event) {
         data_inicio: data_inicio,
         prazo: prazo,
         imagem: imagem,
-        tipo: tipo
+        tipo: tipo,
+        animacao: animacao,
+        clima: clima
+
     };
 
     console.log(data);
@@ -1210,6 +1249,68 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 });
 
+document.querySelectorAll(".campo input[type='text']").forEach(input => {
+    input.addEventListener("keydown", function (event) {
+        if (event.key === "Enter" && this.value.trim() !== "") {
+            event.preventDefault(); // Evita o comportamento padrão
+
+            // Coleta os dados do input
+            const campo = this.name;
+            const valor = this.value.trim();
+
+
+            console.log(campo, valor, obraId)
+            // Envia para o banco de dados
+            salvarNoBanco(campo, valor, obraId);
+        }
+    });
+});
+
+// Adiciona evento para os checkboxes
+document.querySelectorAll(".campo input[type='checkbox']").forEach(checkbox => {
+    checkbox.addEventListener("change", function () {
+        const campo = this.name;
+        const valor = this.checked ? "1" : "0"; // 1 para marcado, 0 para desmarcado
+
+        // Envia para o banco de dados
+        console.log(campo, valor, obraId)
+
+        salvarNoBanco(campo, valor, obraId);
+    });
+});
+
+function salvarNoBanco(campo, valor, obraId) {
+    fetch("salvar.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: `campo=${encodeURIComponent(campo)}&valor=${encodeURIComponent(valor)}&obraId=${encodeURIComponent(obraId)}`
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.sucesso) {
+                Toastify({
+                    text: 'Dados salvos com sucesso!',
+                    duration: 1000,
+                    close: true,
+                    gravity: "top",
+                    position: "right",
+                    backgroundColor: "green",
+                    stopOnFocus: true,
+                }).showToast();
+            } else {
+                Toastify({
+                    text: 'Erro ao salvar',
+                    duration: 1000,
+                    close: true,
+                    gravity: "top",
+                    position: "center",
+                    backgroundColor: "red",
+                    stopOnFocus: true,
+                }).showToast();
+            }
+        })
+        .catch(error => console.error("Erro na requisição:", error));
+}
 
 
 // Adiciona o botão de mostrar todos

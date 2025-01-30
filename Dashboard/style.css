@@ -1022,7 +1022,6 @@ table#tabela-logs {
 .conteudo_imagens input[type="date"] {
     width: 100%;
     padding: 8px;
-    margin-bottom: 15px;
     border: none;
     border-radius: 4px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
@@ -1214,4 +1213,9 @@ i.fa-info {
     font-size: 14px;
     color: white;
     transition: 0.2s all ease;
+}
+
+
+.campo {
+    margin: 15px 0;
 }

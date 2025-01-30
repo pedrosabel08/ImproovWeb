@@ -264,7 +264,7 @@ if ($result_imagens->num_rows > 0) {
 
                     <div>
                         <label for="observacao">Observação</label>
-                        <textarea id="observacao" name="obs" rows="3" maxlength="250"></textarea>
+                        <textarea id="observacao" name="obs" rows="3"></textarea>
                     </div>
 
                     <div>

@@ -18,6 +18,9 @@
   },
   "homepage": "https://github.com/pedrosabel08/ImproovWeb#readme",
   "dependencies": {
+    "csv-writer": "^1.6.0",
+    "fs": "^0.0.1-security",
+    "mammoth": "^1.9.0",
     "mysql2": "^3.12.0"
   }
 }

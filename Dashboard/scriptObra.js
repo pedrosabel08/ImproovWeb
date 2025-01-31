@@ -21,10 +21,11 @@ document.querySelectorAll('.titulo').forEach(titulo => {
 
 
 function formatarData(data) {
-    const dataObj = new Date(data);
-    const dataFormatada = dataObj.toLocaleDateString("pt-BR");
+    const partes = data.split("-");
+    const dataFormatada = `${partes[2]}/${partes[1]}/${partes[0]}`;
     return dataFormatada;
 }
+
 
 function limparCampos() {
     document.getElementById("campoNomeImagem").textContent = "";
@@ -321,9 +322,9 @@ if (obraId) {
                 document.getElementById('conceito').value = br.conceito || "";
                 document.getElementById('valor_media').value = br.valor_media || "";
                 document.getElementById('outro_padrao').value = br.outro_padrao || "";
-                document.getElementById('assets').checked = br.assets === 1; 
-                document.getElementById('comp_planta').checked = br.comp_planta === 1; 
-                
+                document.getElementById('assets').checked = br.assets === 1;
+                document.getElementById('comp_planta').checked = br.comp_planta === 1;
+
             } else {
                 console.warn("Briefing não encontrado ou vazio."); // Apenas um aviso, sem erro no console
             }
@@ -712,8 +713,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
                         const item = document.createElement('p');
                         item.innerHTML = `
-                        <p class="acomp-assunto"><strong>Assunto:</strong> ${acomp.assunto}</p>
-                        <p class="acomp-data"><strong>Data:</strong> ${formatarData(acomp.data)}</p>
+                        <div class="acomp-conteudo">
+                            <p class="acomp-assunto"><strong>Assunto:</strong> ${acomp.assunto}</p>
+                            <p class="acomp-data"><strong>Data:</strong> ${formatarData(acomp.data)}</p>
+                        </div>
                     `;
                         acompanhamentoConteudo.appendChild(item);
                     });
@@ -1248,6 +1251,25 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 });
+
+const idusuario = parseInt(localStorage.getItem('idusuario'), 10);
+
+if ([1, 2, 9].includes(idusuario)) {
+    document.querySelectorAll(".campo input[type='text']").forEach(input => {
+        input.readOnly = false;
+    });
+    document.querySelectorAll(".campo input[type='checkbox']").forEach(checkbox => {
+        checkbox.disabled = false;
+    });
+} else {
+    document.querySelectorAll(".campo input[type='text']").forEach(input => {
+        input.readOnly = true;
+    });
+    document.querySelectorAll(".campo input[type='checkbox']").forEach(checkbox => {
+        checkbox.disabled = true;
+    });
+}
+
 
 document.querySelectorAll(".campo input[type='text']").forEach(input => {
     input.addEventListener("keydown", function (event) {

@@ -472,11 +472,6 @@ $conn->close();
                 <div class="funcao" id="status_funcao" style="width: 200px; margin-bottom: 15px;">
                     <div class="render">
                         <p id="render_alta">Render Alta</p>
-                        <!-- <select name="render" id="render" style="width: 120px;">
-                            <option value="Não iniciado">Não iniciado</option>
-                            <option value="Em andamento">Em andamento</option>
-                            <option value="Finalizado">Finalizado</option>
-                        </select> -->
                         <button id="addRender" style="padding: 3px 10px; font-size: 13px; background-color: steelblue;">Adicionar render</button>
                     </div>
                 </div>

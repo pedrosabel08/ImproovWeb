@@ -743,6 +743,7 @@ span#obras_finalizadas {
     display: flex;
     flex-direction: column;
     gap: 8px;
+    flex: 0 0 95%;
 }
 
 .form-edicao {
@@ -801,7 +802,6 @@ form#form-add .funcao {
     background-color: rgb(218, 217, 217);
     padding: 10px;
     border-radius: 10px;
-    margin-bottom: 15px;
 }
 
 form#form-add button,
@@ -1218,4 +1218,17 @@ i.fa-info {
 
 .campo {
     margin: 15px 0;
+}
+
+.funcao_comp {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.check {
+    display: flex;
+    flex: 0 0 5%;
+    align-items: center;
+    justify-content: center;
 }

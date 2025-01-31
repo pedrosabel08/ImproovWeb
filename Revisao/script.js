@@ -43,7 +43,9 @@ function revisarTarefa(idfuncao_imagem, nome_colaborador, imagem_nome, nome_func
                         gravity: "top",
                         position: "right"
                     }).showToast();
-                    fetchTarefas();
+
+                    const filtroAtual = document.getElementById('nome_funcao').value;
+                    fetchTarefas(filtroAtual);
                 } else {
                     Toastify({
                         text: "Falha ao atualizar a tarefa: " + data.message,

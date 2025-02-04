@@ -18,9 +18,15 @@
   },
   "homepage": "https://github.com/pedrosabel08/ImproovWeb#readme",
   "dependencies": {
+    "@notionhq/client": "^2.2.15",
+    "axios": "^1.7.9",
+    "cors": "^2.8.5",
     "csv-writer": "^1.6.0",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
     "fs": "^0.0.1-security",
     "mammoth": "^1.9.0",
-    "mysql2": "^3.12.0"
+    "mysql2": "^3.12.0",
+    "node-fetch": "^3.3.2"
   }
 }

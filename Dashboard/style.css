@@ -620,6 +620,43 @@ a {
 
 }
 
+.filtro {
+    display: flex;
+    align-items: flex-start; 
+    justify-content: space-between;
+    width: 100%; 
+    padding: 10px;
+}
+
+#prazos-list {
+    flex-grow: 1;
+    text-align: center; 
+    display: flex;
+    justify-content: center; 
+    align-items: flex-start; 
+    gap: 20px;
+    margin-right: 370px;
+
+}
+
+#prazos-list ul {
+    list-style: none;
+}
+
+
+.prazo-card {
+    width: max-content;
+    text-align: center;
+    box-shadow: 0 2px 4px rgb(0 0 0.3);
+    padding: 2px 6px;
+    border-radius: 10px;
+}
+
+.nome_status {
+    font-weight: bold;
+    font-size: 18px;
+}
+
 
 .filtro-tabela {
     display: flex;
@@ -636,6 +673,7 @@ a {
     overflow-y: auto;
     animation: slideDown 0.3s ease-out;
     gap: 15px;
+    overflow: hidden;
 }
 
 .filtro select {
@@ -692,7 +730,7 @@ th {
     text-overflow: ellipsis;
     white-space: nowrap;
     text-align: center;
-    max-width: 50px;
+    max-width: 10px;
 }
 
 header {
@@ -792,7 +830,7 @@ form#form-add {
     padding: 20px;
     border-radius: 10px;
     width: 60%;
-    max-height: 70%;
+    max-height: 80%;
     overflow-y: auto;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
     animation: showModal 0.3s ease;
@@ -1232,3 +1270,4 @@ i.fa-info {
     align-items: center;
     justify-content: center;
 }
+

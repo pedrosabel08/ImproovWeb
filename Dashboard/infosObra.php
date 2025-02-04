@@ -266,6 +266,30 @@ $response['briefing'] = $briefing;
 
 $stmtBriefing->close();
 
+$sqlPrazos = "SELECT s.nome_status, i.prazo
+FROM imagens_cliente_obra i 
+JOIN status_imagem s ON i.status_id = s.idstatus 
+WHERE i.obra_id = ?
+GROUP BY s.nome_status, i.prazo";
+
+$stmtPrazos = $conn->prepare($sqlPrazos);
+if ($stmtPrazos === false) {
+    die('Erro na preparação da consulta (imagens): ' . $conn->error);
+}
+
+$stmtPrazos->bind_param("i", $obraId);
+$stmtPrazos->execute();
+$resultPrazos = $stmtPrazos->get_result();
+
+// Processa os resultados do novo SELECT
+$prazos = [];
+while ($row = $resultPrazos->fetch_assoc()) {
+    $prazos[] = $row;
+}
+$response['prazos'] = $prazos;
+
+$stmtPrazos->close();
+
 $conn->close();
 
 // Retorna o resultado como JSON

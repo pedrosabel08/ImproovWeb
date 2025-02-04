@@ -75,9 +75,8 @@ $conn->close();
         <!-- Tabela para exibir as funções da obra -->
         <div class="filtro-tabela">
             <div class="filtro">
-                <h3>Filtro</h3>
                 <select name="tipo_imagem" id="tipo_imagem">
-                    <option value="0">Todos</option>
+                    <option value="0">Tipo de imagem</option>
                     <option value="Fachada">Fachada</option>
                     <option value="Imagem Interna">Imagem Interna</option>
                     <option value="Imagem Externa">Imagem Externa</option>
@@ -88,6 +87,8 @@ $conn->close();
                     <option value="">Todos as imagens</option>
                     <option value="Antecipada">Antecipada</option>
                 </select>
+
+                <div id="prazos-list"></div>
             </div>
 
             <div class="buttons">
@@ -99,6 +100,12 @@ $conn->close();
                 <p id="imagens-totais"></p>
                 <p id="antecipadas"></p>
             </div>
+
+            
+            <button id="copyColumn">
+                <i class="fas fa-copy"></i>
+            </button>
+            
 
             <div id="editImagesModal" style="display: none;">
                 <div class="modal-content-images" style="overflow-y: auto; max-height: 600px;">

@@ -236,7 +236,7 @@ if (obraId) {
                 applyStatusImagem(cellStatus, item.imagem_status);
 
                 var cellPrazo = document.createElement('td');
-                cellPrazo.textContent = item.prazo;
+                cellPrazo.textContent = formatarData(item.prazo);
                 row.appendChild(cellPrazo);
 
                 var colunas = [
@@ -276,6 +276,14 @@ if (obraId) {
             });
 
             btnProximo.addEventListener("click", () => {
+                navegar(1); // Usando uma função para simplificar a lógica
+            });
+
+            btnAnterior.addEventListener("touchstart", () => {
+                navegar(-1); // Usando uma função para simplificar a lógica
+            });
+
+            btnProximo.addEventListener("touchstart", () => {
                 navegar(1); // Usando uma função para simplificar a lógica
             });
 
@@ -377,6 +385,45 @@ if (obraId) {
                 });
 
             }
+            const prazosDiv = document.getElementById('prazos-list');
+
+            // Limpa o conteúdo da div
+            prazosDiv.innerHTML = "";
+
+            // Agrupa os prazos por status
+            const groupedPrazos = data.prazos.reduce((acc, prazo) => {
+                if (!acc[prazo.nome_status]) {
+                    acc[prazo.nome_status] = [];
+                }
+                acc[prazo.nome_status].push(prazo.prazo);
+                return acc;
+            }, {});
+
+            // Renderiza os cards agrupados
+            Object.entries(groupedPrazos).forEach(([status, prazos]) => {
+                const prazoList = document.createElement('div');
+                prazoList.classList.add('prazos');
+
+                // Configura o conteúdo HTML
+                prazoList.innerHTML = `
+                    <div class="prazo-card">
+                        <p class="nome_status">${status}</p>
+                        <ul>
+                            ${prazos.map(prazo => `<li>${formatarData(prazo)}</li>`).join("")}
+                        </ul>
+                    </div>
+                `;
+
+                // Seleciona o elemento "prazo-card" dentro do prazoList
+                const prazoCard = prazoList.querySelector('.prazo-card');
+
+                // Aplica a cor de fundo baseada no status
+                applyStatusImagem(prazoCard, status);
+
+                // Adiciona o prazoList ao container
+                prazosDiv.appendChild(prazoList);
+            });
+
 
 
 
@@ -460,6 +507,15 @@ function applyStatusImagem(cell, status) {
             break;
         case 'TEA':
             cell.style.backgroundColor = '#f7eb07';
+            break;
+        case 'REN':
+            cell.style.backgroundColor = '#0c9ef2';
+            break;
+        case 'APR':
+            cell.style.backgroundColor = '#0c45f2';
+            break;
+        case 'APP':
+            cell.style.backgroundColor = '#7d36f7';
     }
 };
 
@@ -1362,4 +1418,61 @@ document.querySelectorAll('input[name="acompanhamento"]').forEach(radio => {
         }
         document.getElementById("assunto").value = this.value;
     });
+});
+
+
+
+document.getElementById("copyColumn").addEventListener("click", function () {
+    const table = document.getElementById("tabela-obra");
+    const rows = table.querySelectorAll("tbody tr");
+    const columnData = [];
+
+    rows.forEach(row => {
+        // Verifica se a linha está visível (não tem display: none)
+        if (window.getComputedStyle(row).display !== "none") {
+            columnData.push(row.cells[0].innerText);
+        }
+    });
+
+    // Formata como lista
+    const listText = columnData.join("\n");
+
+    navigator.clipboard.writeText(listText)
+        .then(() => {
+            alert("Coluna copiada como lista!");
+        })
+        .catch(err => {
+            console.error("Erro ao copiar a coluna: ", err);
+        });
+});
+
+
+
+document.getElementById("addRender").addEventListener("click", function (event) {
+    event.preventDefault();
+
+    // Captura os valores
+    const imagemId = document.getElementById("imagem_id").value;
+
+    // Configuração do AJAX
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", "../addRender.php", true);
+    xhr.setRequestHeader("Content-Type", "application/json");
+
+    // Define o que fazer após a resposta
+    xhr.onload = function () {
+        if (xhr.status === 200) {
+            alert("Dados enviados com sucesso!");
+        } else {
+            alert("Erro ao enviar os dados.");
+        }
+    };
+
+    // Dados a serem enviados como JSON
+    const data = {
+        imagem_id: imagemId
+    };
+
+    // Envia os dados como JSON
+    xhr.send(JSON.stringify(data));
 });

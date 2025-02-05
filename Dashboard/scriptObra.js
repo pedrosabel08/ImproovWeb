@@ -264,8 +264,10 @@ if (obraId) {
                 tabela.appendChild(row);
             });
 
-            document.getElementById('imagens-totais').textContent = `Total de imagens: ${imagens}`;
-            document.getElementById('antecipadas').textContent = `Antecipadas: ${antecipada}`;
+            const imagens_totais = document.getElementById('imagens-totais')
+            imagens_totais.textContent = `Total de imagens: ${imagens}`
+            const antecipadas = document.getElementById('antecipadas')
+            antecipadas.textContent = `Antecipadas: ${antecipada}`;
 
             // Adicionar os event listeners aos botões "Anterior" e "Próximo" APÓS carregar os dados
             const btnAnterior = document.getElementById("btnAnterior");
@@ -395,35 +397,60 @@ if (obraId) {
                 if (!acc[prazo.nome_status]) {
                     acc[prazo.nome_status] = [];
                 }
-                acc[prazo.nome_status].push(prazo.prazo);
+                acc[prazo.nome_status].push({
+                    prazo: prazo.prazo,
+                    idsImagens: prazo.idImagens || [] // Use idImagens conforme o JSON retornado
+                });
                 return acc;
             }, {});
 
             // Renderiza os cards agrupados
             Object.entries(groupedPrazos).forEach(([status, prazos]) => {
+                console.log('Status:', status, 'Prazos:', prazos);
                 const prazoList = document.createElement('div');
                 prazoList.classList.add('prazos');
 
-                // Configura o conteúdo HTML
                 prazoList.innerHTML = `
-                    <div class="prazo-card">
-                        <p class="nome_status">${status}</p>
-                        <ul>
-                            ${prazos.map(prazo => `<li>${formatarData(prazo)}</li>`).join("")}
-                        </ul>
-                    </div>
-                `;
+                <div class="prazo-card">
+                    <p class="nome_status">${status}</p>
+                    <ul>
+                    ${prazos.map(prazo => `
+                        <li 
+                            data-ids="${(prazo.idsImagens || []).join(',')}" 
+                            class="prazo-item">
+                            ${formatarData(prazo.prazo)}
+                        </li>`).join("")}
+                    </ul>
+                </div>
+            `;
 
-                // Seleciona o elemento "prazo-card" dentro do prazoList
                 const prazoCard = prazoList.querySelector('.prazo-card');
-
-                // Aplica a cor de fundo baseada no status
                 applyStatusImagem(prazoCard, status);
-
-                // Adiciona o prazoList ao container
                 prazosDiv.appendChild(prazoList);
             });
 
+            // Adiciona eventos de mouse para estilizar linhas da tabela
+            prazosDiv.addEventListener('mouseover', (event) => {
+                const target = event.target.closest('.prazo-item');
+                if (target) {
+                    const ids = target.getAttribute('data-ids').split(',');
+                    ids.forEach(id => {
+                        const linha = document.querySelector(`tr[data-id="${id}"]`);
+                        if (linha) linha.classList.add('highlight');
+                    });
+                }
+            });
+
+            prazosDiv.addEventListener('mouseout', (event) => {
+                const target = event.target.closest('.prazo-item');
+                if (target) {
+                    const ids = target.getAttribute('data-ids').split(',');
+                    ids.forEach(id => {
+                        const linha = document.querySelector(`tr[data-id="${id}"]`);
+                        if (linha) linha.classList.remove('highlight');
+                    });
+                }
+            });
 
 
 
@@ -522,33 +549,40 @@ function applyStatusImagem(cell, status) {
 
 
 function filtrarTabela() {
-    var tipoImagemFiltro = document.getElementById("tipo_imagem").value.toLowerCase(); // Captura o filtro de tipo de imagem
-    var antecipadaFiltro = document.getElementById("antecipada_obra").value; // Captura o filtro de antecipada
-    var tabela = document.getElementById("tabela-obra"); // Tabela de imagens
-    var tbody = tabela.getElementsByTagName("tbody")[0]; // Obtém o corpo da tabela
-    var linhas = tbody.getElementsByTagName("tr"); // Obtém todas as linhas da tabela
+    var tipoImagemFiltro = document.getElementById("tipo_imagem").value.toLowerCase();
+    var antecipadaFiltro = document.getElementById("antecipada_obra").value;
+    var tabela = document.getElementById("tabela-obra");
+    var tbody = tabela.getElementsByTagName("tbody")[0];
+    var linhas = tbody.getElementsByTagName("tr");
+
+    let imagensFiltradas = 0;
+    let antecipadasFiltradas = 0;
 
     for (var i = 0; i < linhas.length; i++) {
-        var tipoImagemColuna = linhas[i].getAttribute("tipo-imagem"); // Agora obtém o tipo de imagem do atributo
-
-        // Verifica o valor do atributo antecipada da linha
+        var tipoImagemColuna = linhas[i].getAttribute("tipo-imagem");
         var isAntecipada = linhas[i].getAttribute("antecipada") === '1';
-
         var mostrarLinha = true;
 
-        // Filtro para tipo de imagem (agora comparando com o atributo)
         if (tipoImagemFiltro && tipoImagemFiltro !== "0" && tipoImagemColuna.toLowerCase() !== tipoImagemFiltro.toLowerCase()) {
             mostrarLinha = false;
         }
 
-        // Filtro para imagens antecipadas
         if (antecipadaFiltro === "Antecipada" && !isAntecipada) {
             mostrarLinha = false;
         }
 
-        // Exibe ou esconde a linha dependendo do filtro
+        if (mostrarLinha) {
+            imagensFiltradas++;
+            if (isAntecipada) antecipadasFiltradas++;
+        }
+
         linhas[i].style.display = mostrarLinha ? "" : "none";
     }
+
+    const imagens_totais = document.getElementById('imagens-totais')
+    imagens_totais.textContent = `Total de imagens: ${imagensFiltradas}`
+    const antecipadas = document.getElementById('antecipadas')
+    antecipadas.textContent = `Antecipadas: ${antecipadasFiltradas}`;
 }
 
 // Adiciona evento para filtrar sempre que o filtro mudar

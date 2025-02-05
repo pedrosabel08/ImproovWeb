@@ -266,11 +266,20 @@ $response['briefing'] = $briefing;
 
 $stmtBriefing->close();
 
-$sqlPrazos = "SELECT s.nome_status, i.prazo
+$sqlPrazos = "SELECT 
+    GROUP_CONCAT(i.idimagens_cliente_obra) AS idImagens, 
+    s.nome_status, 
+    i.prazo
 FROM imagens_cliente_obra i 
 JOIN status_imagem s ON i.status_id = s.idstatus 
 WHERE i.obra_id = ?
-GROUP BY s.nome_status, i.prazo";
+GROUP BY s.nome_status, i.prazo;
+";
+
+$stmtPrazos = $conn->prepare($sqlPrazos);
+if ($stmtPrazos === false) {
+    die('Erro na preparação da consulta (imagens): ' . $conn->error);
+}
 
 $stmtPrazos = $conn->prepare($sqlPrazos);
 if ($stmtPrazos === false) {
@@ -284,6 +293,7 @@ $resultPrazos = $stmtPrazos->get_result();
 // Processa os resultados do novo SELECT
 $prazos = [];
 while ($row = $resultPrazos->fetch_assoc()) {
+    $row['idImagens'] = $row['idImagens'] ? explode(',', $row['idImagens']) : []; // Converte string em array
     $prazos[] = $row;
 }
 $response['prazos'] = $prazos;

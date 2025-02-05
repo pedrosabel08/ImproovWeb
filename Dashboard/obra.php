@@ -168,7 +168,7 @@ $conn->close();
                             <th class="resizable">Imagem<div class="resize-handle"></div>
                             </th>
                             <th>Status</th>
-                            <th>Prazo</th>
+                            <th style="max-width: 15px;">Prazo</th>
                             <th>Caderno</th>
                             <th>Status</th>
                             <th>Modelagem</th>

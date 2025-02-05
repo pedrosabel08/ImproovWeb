@@ -622,18 +622,18 @@ a {
 
 .filtro {
     display: flex;
-    align-items: flex-start; 
+    align-items: flex-start;
     justify-content: space-between;
-    width: 100%; 
+    width: 100%;
     padding: 10px;
 }
 
 #prazos-list {
     flex-grow: 1;
-    text-align: center; 
+    text-align: center;
     display: flex;
-    justify-content: center; 
-    align-items: flex-start; 
+    justify-content: center;
+    align-items: flex-start;
     gap: 20px;
     margin-right: 370px;
 
@@ -1271,3 +1271,7 @@ i.fa-info {
     justify-content: center;
 }
 
+.highlight {
+    background-color: #8cbee9;
+    transition: background-color 0.3s ease;
+}

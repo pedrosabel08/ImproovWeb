@@ -338,7 +338,7 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
     const currentMonthName = monthNames[currentMonthIndex].toUpperCase();
     const previousMonthName = monthNames[previousMonthIndex].toUpperCase();
 
-    const year = today.getFullYear() - 1;
+    const year = today.getFullYear();
 
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
@@ -480,7 +480,7 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
     });
 
     totalValorExtenso = `${numeroPorExtenso(totalValor)} reais`;
-    // totalValorExtenso = `Seis mil cento e trinta e seis reais`;
+    // totalValorExtenso = `Mil setecentos e sessenta reais`;
 
 
     // Adiciona a tabela ao documento PDF
@@ -502,9 +502,9 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
     // // Dados da nova tabela
     // const novaTabelaHeaders = ['Categoria', 'Valor'];
     // const novaTabelaBody = [
-    //     ['Gasolina', '0'],
-    //     ['Diaria Drone', '0'],
-    //     ['Outros', '256,00']
+    //     ['Gasolina', '28,60'],
+    //     ['Diaria Drone', '350,00'],
+    //     ['Outros', '490,00']
     // ];
 
     // // Adiciona nova tabela ao PDF

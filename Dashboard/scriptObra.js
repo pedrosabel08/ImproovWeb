@@ -1510,3 +1510,38 @@ document.getElementById("addRender").addEventListener("click", function (event) 
     // Envia os dados como JSON
     xhr.send(JSON.stringify(data));
 });
+
+
+
+document.getElementById("addRevisao").addEventListener("click", function (event) {
+    event.preventDefault();
+
+    // Captura os valores
+    const imagemId = document.getElementById("imagem_id").value;
+    const opcao_alteracao = document.getElementById("opcao_alteracao").value;
+
+    // Configuração do AJAX
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", "addRevisao.php", true);
+    xhr.setRequestHeader("Content-Type", "application/json");
+
+    // Define o que fazer após a resposta
+    xhr.onload = function () {
+        if (xhr.status === 200) {
+            alert("Dados enviados com sucesso!");
+        } else {
+            alert("Erro ao enviar os dados.");
+        }
+    };
+
+    // Dados a serem enviados como JSON
+    const data = {
+        imagem_id: imagemId,
+        colaborador_id: opcao_alteracao
+    };
+
+    console.log(data)
+
+    // Envia os dados como JSON
+    xhr.send(JSON.stringify(data));
+});

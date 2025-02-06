@@ -617,6 +617,12 @@ $conn->close();
                     <button id="addRender" style="padding: 3px 10px; font-size: 13px; background-color: steelblue;">Adicionar render</button>
                 </div>
             </div>
+            <div class="funcao" id="status_funcao" style="width: 200px; margin-bottom: 15px;">
+                <div class="revisao">
+                    <p id="revisao">Revisao</p>
+                    <button id="addRevisao" style="padding: 3px 10px; font-size: 13px; background-color: steelgreen;">Adicionar revisão</button>
+                </div>
+            </div>
             <div class="buttons">
                 <button type="button" id="btnAnterior" style="background: white; color: black"><i class="fa-solid fa-angle-left"></i></button>
                 <button type="submit" id="salvar_funcoes">Salvar</button>

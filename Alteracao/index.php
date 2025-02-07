@@ -56,6 +56,8 @@ $conn->close();
 
     <script src="script.js"></script>
     <script src="../script/sidebar.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+
 </body>
 
 </html>

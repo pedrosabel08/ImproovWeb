@@ -15,12 +15,12 @@ if ($obraId === null) {
 $response = [];
 
 // Consulta para obter as imagens e suas revisões
-$sqlAlteracao = "SELECT i.imagem_nome, a.descricao, a.data_envio, a.data_recebimento, a.status, c.nome_colaborador, a.numero_revisao, i.idimagens_cliente_obra
+$sqlAlteracao = "SELECT a.id_alteracao, i.imagem_nome, a.descricao, a.data_envio, a.data_recebimento, a.status, c.nome_colaborador, a.numero_revisao, i.idimagens_cliente_obra
 FROM alteracoes a 
 LEFT JOIN imagens_cliente_obra i ON a.imagem_id = i.idimagens_cliente_obra 
 JOIN colaborador c ON c.idcolaborador = a.colaborador_id 
 WHERE i.obra_id = ?
-ORDER BY i.imagem_nome, a.numero_revisao";
+ORDER BY i.imagem_nome, a.numero_revisao DESC";
 
 $stmtAlteracao = $conn->prepare($sqlAlteracao);
 if ($stmtAlteracao === false) {
@@ -47,6 +47,7 @@ while ($row = $resultAlteracao->fetch_assoc()) {
 
     // Adiciona a revisão à imagem correspondente
     $imagens[$imagemId]['revisoes'][] = [
+        'id_alteracao' => $row['id_alteracao'],
         'descricao' => $row['descricao'],
         'data_envio' => $row['data_envio'],
         'data_recebimento' => $row['data_recebimento'],

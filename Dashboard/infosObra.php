@@ -281,10 +281,6 @@ if ($stmtPrazos === false) {
     die('Erro na preparação da consulta (imagens): ' . $conn->error);
 }
 
-$stmtPrazos = $conn->prepare($sqlPrazos);
-if ($stmtPrazos === false) {
-    die('Erro na preparação da consulta (imagens): ' . $conn->error);
-}
 
 $stmtPrazos->bind_param("i", $obraId);
 $stmtPrazos->execute();
@@ -299,6 +295,27 @@ while ($row = $resultPrazos->fetch_assoc()) {
 $response['prazos'] = $prazos;
 
 $stmtPrazos->close();
+
+$sqlAlteracao = "SELECT COUNT(*) AS total_revisoes
+FROM alteracoes a
+JOIN imagens_cliente_obra i ON a.imagem_id = i.idimagens_cliente_obra
+WHERE i.obra_id = ?;";
+
+$stmtAlts = $conn->prepare($sqlAlteracao);
+if ($stmtAlts === false) {
+    die('Erro na preparação da consulta (imagens): ' . $conn->error);
+}
+
+$stmtAlts->bind_param("i", $obraId);
+$stmtAlts->execute();
+$resultAlts = $stmtAlts->get_result();
+
+// Processa os resultados do SELECT
+$row = $resultAlts->fetch_assoc();
+$response['alt'] = $row['total_revisoes'];  // Atribui o valor diretamente
+
+
+$stmtAlts->close();
 
 $conn->close();
 

@@ -1,5 +1,11 @@
 // Obtém o 'obra_id' do localStorage
 var obraId = localStorage.getItem('obraId');
+var usuarioId = localStorage.getItem('idusuario');
+
+if (usuarioId != 1 || usuarioId != 2 || usuarioId != 9) {
+    document.getElementById('acomp').style.display = 'none';
+    document.getElementById('obsAdd').style.display = 'none';
+}
 
 let chartInstance = null;
 
@@ -269,6 +275,38 @@ if (obraId) {
             const antecipadas = document.getElementById('antecipadas')
             antecipadas.textContent = `Antecipadas: ${antecipada}`;
 
+            const revisoes = document.getElementById('revisoes');
+            revisoes.textContent = `Total de alterações: ${data.alt}`
+
+            // Determina o número de estrelas com base nas alterações
+            let estrelas = 5;
+
+            if (data.alt >= 41) {
+                estrelas = 1;  // Para mais de 40 alterações, 1 estrela
+            } else if (data.alt >= 31) {
+                estrelas = 2;  // Para 31 a 40 alterações, 2 estrelas
+            } else if (data.alt >= 21) {
+                estrelas = 3;  // Para 21 a 30 alterações, 3 estrelas
+            } else if (data.alt >= 11) {
+                estrelas = 4;  // Para 11 a 20 alterações, 4 estrelas
+            } else {
+                estrelas = 5;  // Para 0 a 10 alterações, 5 estrelas
+            }
+
+            // Preenche as estrelas de acordo com o número calculado
+            // Preenche as estrelas de acordo com o número calculado
+            for (let i = 1; i <= 5; i++) {
+                const estrela = document.getElementById(`estrela${i}`);
+                if (estrela) {  // Verifica se a estrela existe
+                    if (i <= estrelas) {
+                        estrela.classList.add('preenchida');
+                    } else {
+                        estrela.classList.remove('preenchida');
+                    }
+                }
+            }
+
+
             // Adicionar os event listeners aos botões "Anterior" e "Próximo" APÓS carregar os dados
             const btnAnterior = document.getElementById("btnAnterior");
             const btnProximo = document.getElementById("btnProximo");
@@ -355,7 +393,7 @@ if (obraId) {
             funcoesDiv.innerHTML = "";
             data.funcoes.forEach(funcao => {
                 const funcaoDiv = document.createElement('div');
-                funcaoDiv.classList.add('funcao');
+                funcaoDiv.classList.add('funcao_group');
                 funcaoDiv.innerHTML = `
                 <strong>${funcao.nome_funcao}</strong><br>
                 Total de Imagens: ${funcao.total_imagens}<br>
@@ -1545,3 +1583,5 @@ document.getElementById("addRevisao").addEventListener("click", function (event)
     // Envia os dados como JSON
     xhr.send(JSON.stringify(data));
 });
+
+

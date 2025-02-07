@@ -35,7 +35,6 @@ main {
 }
 
 
-/* Estilo básico para os cards */
 .card {
     border: 1px solid #ccc;
     border-radius: 8px;
@@ -69,12 +68,23 @@ main {
     background-color: #0056b3;
 }
 
-/* Estilo para a área das revisões */
 .revisoes-container {
     margin-top: 10px;
 }
 
-/* Estilo para cada revisão */
 .card-info {
     margin-bottom: 15px;
 }
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+input {
+    border: none;
+    border-bottom: 1px solid black;
+    min-width: 20px
+}
+

@@ -82,6 +82,19 @@ if ($result_imagens->num_rows > 0) {
         $imagens[] = $row;
     }
 }
+
+include '../conexaoMain.php';
+
+$conn = conectarBanco();
+
+$clientes = obterClientes($conn);
+$obras = obterObras($conn);
+$colaboradores = obterColaboradores($conn);
+$status_imagens = obterStatusImagens($conn);
+$funcoes = obterFuncoes($conn);
+
+$conn->close();
+
 ?>
 
 <!DOCTYPE html>
@@ -91,6 +104,7 @@ if ($result_imagens->num_rows > 0) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="../css/stylePos.css">
+    <link rel="stylesheet" href="../css/styleSidebar.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastify-js/1.12.0/toastify.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
@@ -99,81 +113,63 @@ if ($result_imagens->num_rows > 0) {
 </head>
 
 <body>
-    <header>
-        <button id="menuButton">
-            <i class="fa-solid fa-bars"></i>
-        </button>
-        <div id="menu" class="hidden">
-            <a href="../inicio.php" id="tab-imagens">Página Principal</a>
-            <a href="../main.php" id="tab-imagens">Visualizar tabela com imagens</a>
-            <a href="Pos-Producao/index.php">Lista Pós-Produção</a>
-            <a href="../Render/index.php">Lista Render</a>
 
-            <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 3)): ?>
-                <a href="../infoCliente/index.php">Informações clientes</a>
-                <a href="../Acompanhamento/index.php">Acompanhamentos</a>
-            <?php endif; ?>
+    <?php
 
-            <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 4)): ?>
-                <a href="../Animacao/index.php">Lista Animação</a>
-            <?php endif; ?>
-            <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1)): ?>
-                <a href="../Imagens/index.php">Lista Imagens</a>
-                <a href="../Pagamento/index.php">Pagamento</a>
-                <a href="../Obras/index.php">Obras</a>
-            <?php endif; ?>
+    include '../sidebar.php';
 
-            <a href="../Metas/index.php">Metas e progresso</a>
-
-            <a id="calendar" class="calendar-btn" href="../Calendario/index.php">
-                <i class="fa-solid fa-calendar-days"></i>
-            </a>
-        </div>
-
-        <h1>Lista Pós-Produção</h1>
-        <img src="../gif/assinatura_preto.gif" alt="" style="width: 200px;">
-
-        <button id="openModalBtn">Inserir render</button>
-        <button id="openModalBtnRender">Ver Render Elements</button>
-    </header>
-
-
+    ?>
     <div id="filtro">
-        <label for="colunaFiltro">Filtrar por:</label>
-        <select id="colunaFiltro">
-            <option value="0">Nome Finalizador</option>
-            <option value="1">Nome Cliente</option>
-            <option value="2">Nome Obra</option>
-            <option value="3">Data</option>
-            <option value="4">Nome Imagem</option>
-            <option value="5">Caminho Pasta</option>
-            <option value="6">Número BG</option>
-            <option value="7">Referências/Caminho</option>
-            <option value="8">Observação</option>
-            <option value="9">Status</option>
-            <option value="10">Revisão</option>
-        </select>
+        <header>
+            <h1>Lista Pós-Produção</h1>
+            <img src="../gif/assinatura_preto.gif" alt="" style="width: 200px;">
 
-        <input type="text" id="filtro-input" placeholder="Digite para filtrar" onkeyup="filtrarTabela()">
+            <button id="openModalBtn">Inserir render</button>
+            <button id="openModalBtnRender">Ver Render Elements</button>
+        </header>
 
-        <select id="filtro-mes" onchange="filtrarPorMes()">
-            <option value="">Todos os Meses</option>
-            <option value="01">Janeiro</option>
-            <option value="02">Fevereiro</option>
-            <option value="03">Março</option>
-            <option value="04">Abril</option>
-            <option value="05">Maio</option>
-            <option value="06">Junho</option>
-            <option value="07">Julho</option>
-            <option value="08">Agosto</option>
-            <option value="09">Setembro</option>
-            <option value="10">Outubro</option>
-            <option value="11">Novembro</option>
-            <option value="12">Dezembro</option>
-        </select>
 
-        <p>Total de pós: </p>
-        <span id="total-pos"></span>
+        <div class="filtro-tabela">
+
+            <div class="selects">
+
+                <label for="colunaFiltro">Filtrar por:</label>
+                <select id="colunaFiltro">
+                    <option value="0">Nome Finalizador</option>
+                    <option value="1">Nome Cliente</option>
+                    <option value="2">Nome Obra</option>
+                    <option value="3">Data</option>
+                    <option value="4">Nome Imagem</option>
+                    <option value="5">Caminho Pasta</option>
+                    <option value="6">Número BG</option>
+                    <option value="7">Referências/Caminho</option>
+                    <option value="8">Observação</option>
+                    <option value="9">Status</option>
+                    <option value="10">Revisão</option>
+                </select>
+
+                <input type="text" id="filtro-input" placeholder="Digite para filtrar" onkeyup="filtrarTabela()">
+
+                <select id="filtro-mes" onchange="filtrarPorMes()">
+                    <option value="">Todos os Meses</option>
+                    <option value="01">Janeiro</option>
+                    <option value="02">Fevereiro</option>
+                    <option value="03">Março</option>
+                    <option value="04">Abril</option>
+                    <option value="05">Maio</option>
+                    <option value="06">Junho</option>
+                    <option value="07">Julho</option>
+                    <option value="08">Agosto</option>
+                    <option value="09">Setembro</option>
+                    <option value="10">Outubro</option>
+                    <option value="11">Novembro</option>
+                    <option value="12">Dezembro</option>
+                </select>
+            </div>
+
+            <p style="margin: 15px 0">Total de pós: <span id="total-pos"></span></p>
+
+        </div>
         <table id="tabela-imagens">
             <thead>
                 <tr>
@@ -181,7 +177,7 @@ if ($result_imagens->num_rows > 0) {
                     <th>Nome Cliente</th>
                     <th>Nome Obra</th>
                     <th>Data</th>
-                    <th>Nome imagem</th>
+                    <th style="max-width: 40px;">Nome imagem</th>
                     <th>Caminho Pasta</th>
                     <th>Número BG</th>
                     <th>Referências/Caminho</th>
@@ -332,6 +328,7 @@ if ($result_imagens->num_rows > 0) {
 
 
     <script src="../script/scriptPos.js"></script>
+    <script src="../script/sidebar.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 

@@ -9,8 +9,7 @@
 body {
 	background-color: #fff;
 	display: grid;
-	grid-template-rows: 100px 1fr;
-	height: 200vh;
+	grid-template-columns: 60px 1fr;
 	text-align: justify;
 }
 
@@ -39,6 +38,7 @@ main {
 	grid-template-rows: auto 1fr;
 	gap: 40px;
 	margin: 40px;
+	grid-column: 2;
 }
 
 .filtro {
@@ -67,6 +67,10 @@ main {
 
 .menu-buttons {
 	margin: 15px 0;
+}
+
+button, a {
+	cursor: pointer;
 }
 
 .buttons button {

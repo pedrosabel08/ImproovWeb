@@ -8,6 +8,15 @@
     font-family: "Montserrat", sans-serif;
 }
 
+body {
+    display: grid;
+    grid-template-columns: 60px 1fr;
+}
+
+main {
+    grid-template-columns: 2;
+}
+
 button,
 a {
     all: unset;

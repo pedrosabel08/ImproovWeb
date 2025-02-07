@@ -19,6 +19,7 @@ $idusuario = $_SESSION['idusuario'];
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="./css/styleMain.css" rel="stylesheet">
+    <link href="./css/styleSidebar.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
     <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
         type="image/x-icon">
@@ -33,38 +34,8 @@ $idusuario = $_SESSION['idusuario'];
 
 
 <header>
-    <button id="menuButton">
-        <i class="fa-solid fa-bars"></i>
-    </button>
 
-    <div id="menu" class="hidden">
-        <a href="inicio.php" id="tab-imagens">Página Principal</a>
-        <a href="main.php" id="tab-imagens">Visualizar tabela com imagens</a>
-        <a href="Pos-Producao/index.php">Lista Pós-Produção</a>
-        <a href="Render/index.php">Lista Render</a>
-
-        <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 3)): ?>
-            <a href="infoCliente/index.php">Informações clientes</a>
-            <a href="Acompanhamento/index.php">Acompanhamentos</a>
-        <?php endif; ?>
-
-        <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 4)): ?>
-            <a href="Animacao/index.php">Lista Animação</a>
-        <?php endif; ?>
-        <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1)): ?>
-            <a href="Imagens/index.php">Lista Imagens</a>
-            <a href="Pagamento/index.php">Pagamento</a>
-            <a href="Obras/index.php">Obras</a>
-        <?php endif; ?>
-
-        <a href="Metas/index.php">Metas e progresso</a>
-
-        <a id="calendar" class="calendar-btn" href="Calendario/index.php">
-            <i class="fa-solid fa-calendar-days"></i>
-        </a>
-    </div>
-
-    <img src="gif/assinatura_preto.gif" alt="Logo Improov + Flow">
+    <img style="position: absolute; right: 15px; top: 15px" src="gif/assinatura_preto.gif" alt="Logo Improov + Flow">
 
 </header>
 
@@ -73,7 +44,7 @@ $idusuario = $_SESSION['idusuario'];
     &#9776;
 </button>
 
-<nav class="nav-menu">
+<nav class="nav-menu" style="display: none;">
     <?php if ($_SESSION['nivel_acesso'] == 1): ?>
         <a href="#add-cliente" onclick="openModal('add-cliente', this)">Adicionar Cliente ou Obra</a>
         <a href="#add-imagem" onclick="openModal('add-imagem', this)">Adicionar Imagem</a>
@@ -101,107 +72,482 @@ $funcoes = obterFuncoes($conn);
 $conn->close();
 ?>
 
+<?php
+
+include 'sidebar.php';
+
+?>
+
+
 <main>
+    <div id="add-cliente" class="modal">
+        <label class="add">Adicionar Cliente ou Obra</label>
+        <form id="form-add" onsubmit="submitForm(event)">
+            <select name="opcao" id="opcao-cliente">
+                <option value="cliente">Cliente</option>
+                <option value="obra">Obra</option>
+            </select>
+            <label for="nome">Digite o nome:</label>
+            <input type="text" name="nome" id="nome" required>
+            <div class="buttons">
+                <button type="submit" id="salvar">Salvar</button>
+                <button type="button" onclick="closeModal('add-cliente', this)" id="fechar">Fechar</button>
+            </div>
+        </form>
+    </div>
 
-    <main>
-        <div id="add-cliente" class="modal">
-            <label class="add">Adicionar Cliente ou Obra</label>
-            <form id="form-add" onsubmit="submitForm(event)">
-                <select name="opcao" id="opcao-cliente">
-                    <option value="cliente">Cliente</option>
-                    <option value="obra">Obra</option>
-                </select>
-                <label for="nome">Digite o nome:</label>
-                <input type="text" name="nome" id="nome" required>
-                <div class="buttons">
-                    <button type="submit" id="salvar">Salvar</button>
-                    <button type="button" onclick="closeModal('add-cliente', this)" id="fechar">Fechar</button>
-                </div>
-            </form>
+    <div id="add-imagem" class="modal">
+        <form id="form-add" onsubmit="submitFormImagem(event)">
+            <label class="add">Adicionar imagem</label>
+            <label for="opcao">Cliente:</label>
+            <select name="cliente_id" id="opcao_cliente">
+                <?php foreach ($clientes as $cliente): ?>
+                    <option value="<?= htmlspecialchars($cliente['idcliente']); ?>">
+                        <?= htmlspecialchars($cliente['nome_cliente']); ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+            <label for="opcao">Obra:</label>
+            <select name="opcao" id="opcao_obra">
+                <?php foreach ($obras as $obra): ?>
+                    <option value="<?= $obra['idobra']; ?>"><?= htmlspecialchars($obra['nome_obra']); ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+            <label for="arquivos">Recebimento de arquivos: </label>
+            <input type="date" name="arquivos" id="arquivos">
+
+            <label for="data_inicio">Data Início: </label>
+            <input type="date" name="data_inicio" id="data_inicio">
+
+            <label for="prazo">Prazo: </label>
+            <input type="date" name="prazo" id="prazo">
+
+            <label for="nome-imagem">Nome da imagem:</label>
+            <input type="text" name="nome" id="nome-imagem">
+
+            <label for="tipo-imagem">Tipo da imagem:</label>
+            <input type="text" name="tipo" id="tipo-imagem">
+            <div class="buttons">
+                <button type="submit" id="salvar">Salvar</button>
+                <button type="button" onclick="closeModal('add-cliente', this)" id="fechar">Fechar</button>
+            </div>
+        </form>
+    </div>
+
+
+    <!-- Tabela com filtros -->
+    <div class="filtro-tabela" id="filtro-tabela">
+
+        <div id="filtro">
+            <h1>Filtro</h1>
+            <select id="colunaFiltro">
+                <option value="0">Cliente</option>
+                <option value="1">Obra</option>
+                <option value="2">Imagem</option>
+                <option value="4">Status</option>
+            </select>
+            <input type="text" id="pesquisa" onkeyup="filtrarTabela()" placeholder="Buscar...">
+
+            <select id="tipoImagemFiltro" onchange="filtrarTabela()">
+                <option value="">Todos os Tipos de Imagem</option>
+                <option value="Fachada">Fachada</option>
+                <option value="Imagem Interna">Imagem Interna</option>
+                <option value="Imagem Externa">Imagem Externa</option>
+                <option value="Planta Humanizada">Planta Humanizada</option>
+            </select>
+
+            <select id="imagem" onchange="filtrarTabela()">
+                <option value="">Todos as imagens</option>
+                <option value="Antecipada">Antecipada</option>
+            </select>
         </div>
 
-        <div id="add-imagem" class="modal">
-            <form id="form-add" onsubmit="submitFormImagem(event)">
-                <label class="add">Adicionar imagem</label>
-                <label for="opcao">Cliente:</label>
-                <select name="cliente_id" id="opcao_cliente">
-                    <?php foreach ($clientes as $cliente): ?>
-                        <option value="<?= htmlspecialchars($cliente['idcliente']); ?>">
-                            <?= htmlspecialchars($cliente['nome_cliente']); ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-                <label for="opcao">Obra:</label>
-                <select name="opcao" id="opcao_obra">
-                    <?php foreach ($obras as $obra): ?>
-                        <option value="<?= $obra['idobra']; ?>"><?= htmlspecialchars($obra['nome_obra']); ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-                <label for="arquivos">Recebimento de arquivos: </label>
-                <input type="date" name="arquivos" id="arquivos">
-
-                <label for="data_inicio">Data Início: </label>
-                <input type="date" name="data_inicio" id="data_inicio">
-
-                <label for="prazo">Prazo: </label>
-                <input type="date" name="prazo" id="prazo">
-
-                <label for="nome-imagem">Nome da imagem:</label>
-                <input type="text" name="nome" id="nome-imagem">
-
-                <label for="tipo-imagem">Tipo da imagem:</label>
-                <input type="text" name="tipo" id="tipo-imagem">
-                <div class="buttons">
-                    <button type="submit" id="salvar">Salvar</button>
-                    <button type="button" onclick="closeModal('add-cliente', this)" id="fechar">Fechar</button>
-                </div>
-            </form>
+        <div class="tabelaClientes">
+            <div class="image-count">
+                <strong>Total de Imagens:</strong> <span id="total-imagens">0</span>
+            </div>
+            <div class="image-count">
+                <strong>Total de Imagens antecipadas:</strong> <span id="total-imagens-antecipada">0</span>
+            </div>
+            <table id="tabelaClientes">
+                <thead>
+                    <tr>
+                        <th id="cliente">Cliente</th>
+                        <th id="obra">Obra</th>
+                        <th id="nome-imagem">Imagem</th>
+                        <th id="status">Status</th>
+                        <th>Tipo Imagem</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
         </div>
+    </div>
+    <div class="form-edicao" id="form-edicao">
+        <form id="form-add" method="post" action="insereFuncao.php">
+            <div class="titulo-funcoes">
+                <span id="campoNomeImagem"></span>
+            </div> <input type="hidden" id="imagem_id" name="imagem_id">
+            <div class="funcao_comp">
+                <div class="funcao">
+                    <div class="titulo">
+                        <p id="caderno">Caderno</p>
+                        <i class="fas fa-chevron-down toggle-options"></i>
+                    </div>
+                    <div class="opcoes" style="display: none;">
+                        <select name="caderno_id" id="opcao_caderno">
+                            <?php foreach ($colaboradores as $colab): ?>
+                                <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                    <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <select name="status_caderno" id="status_caderno">
+                            <option value="Não iniciado">Não iniciado</option>
+                            <option value="Em andamento">Em andamento</option>
+                            <option value="Finalizado">Finalizado</option>
+                            <option value="HOLD">HOLD</option>
+                            <option value="Não se aplica">Não se aplica</option>
+                            <option value="Em aprovação">Em aprovação</option>
+                        </select>
+                        <input type="date" name="prazo_caderno" id="prazo_caderno">
+                        <input type="text" name="obs_caderno" id="obs_caderno" placeholder="Observação">
+                    </div>
+                </div>
+                <div class="check">
+                    <input type="checkbox" name="check_caderno" id="check_caderno">
+                </div>
+            </div>
+            <div class="funcao_comp">
+                <div class="funcao">
+                    <div class="titulo">
+                        <p id="filtro">Filtro de assets</p>
+                        <i class="fas fa-chevron-down" id="toggle-options"></i>
+                    </div>
+                    <div class="opcoes" id="opcoes" style="display: none;">
+                        <select name="filtro_id" id="opcao_filtro">
+                            <?php foreach ($colaboradores as $colab): ?>
+                                <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                    <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <select name="status_filtro" id="status_filtro">
+                            <option value="Não iniciado">Não iniciado</option>
+                            <option value="Em andamento">Em andamento</option>
+                            <option value="Finalizado">Finalizado</option>
+                            <option value="HOLD">HOLD</option>
+                            <option value="Não se aplica">Não se aplica</option>
+                            <option value="Em aprovação">Em aprovação</option>
+                        </select>
+                        <input type="date" name="prazo_filtro" id="prazo_filtro">
+                        <input type="text" name="obs_filtro" id="obs_filtro" placeholder="Observação">
+                    </div>
+                </div>
+                <div class="check">
+                    <input type="checkbox" name="check_filtro" id="check_filtro">
+                </div>
+            </div>
+            <div class="funcao_comp">
+                <div class="funcao">
+                    <div class="titulo">
+                        <p id="modelagem">Modelagem</p>
+                        <i class="fas fa-chevron-down" id="toggle-options"></i>
+                    </div>
+                    <div class="opcoes" style="display: none;">
+                        <select name="model_id" id="opcao_model">
+                            <?php foreach ($colaboradores as $colab): ?>
+                                <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                    <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <select name="status_modelagem" id="status_modelagem">
+                            <option value="Não iniciado">Não iniciado</option>
+                            <option value="Em andamento">Em andamento</option>
+                            <option value="Finalizado">Finalizado</option>
+                            <option value="HOLD">HOLD</option>
+                            <option value="Não se aplica">Não se aplica</option>
+                            <option value="Em aprovação">Em aprovação</option>
+                        </select>
+                        <input type="date" name="prazo_modelagem" id="prazo_modelagem">
+                        <input type="text" name="obs_modelagem" id="obs_modelagem" placeholder="Observação">
+                    </div>
+                </div>
+                <div class="check">
+                    <input type="checkbox" name="check_model" id="check_model">
+                </div>
+            </div>
+            <div class="funcao_comp">
+                <div class="funcao">
+                    <div class="titulo">
+                        <p id="comp">Composição</p>
+                        <i class="fas fa-chevron-down" id="toggle-options"></i>
+                    </div>
+                    <div class="opcoes" id="opcoes" style="display: none;">
+                        <select name="comp_id" id="opcao_comp">
+                            <?php foreach ($colaboradores as $colab): ?>
+                                <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                    <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <select name="status_comp" id="status_comp">
+                            <option value="Não iniciado">Não iniciado</option>
+                            <option value="Em andamento">Em andamento</option>
+                            <option value="Finalizado">Finalizado</option>
+                            <option value="HOLD">HOLD</option>
+                            <option value="Não se aplica">Não se aplica</option>
+                            <option value="Em aprovação">Em aprovação</option>
+                        </select>
+                        <input type="date" name="prazo_comp" id="prazo_comp">
+                        <input type="text" name="obs_comp" id="obs_comp" placeholder="Observação">
+                    </div>
+                </div>
+                <div class="check">
+                    <input type="checkbox" name="check_comp" id="check_comp">
+                </div>
+            </div>
+            <div class="funcao_comp">
+                <div class="funcao">
+                    <div class="titulo">
+                        <p id="final">Finalização</p>
+                        <i class="fas fa-chevron-down" id="toggle-options"></i>
+                    </div>
+                    <div class="opcoes" id="opcoes" style="display: none;">
+                        <select name="final_id" id="opcao_final">
+                            <?php foreach ($colaboradores as $colab): ?>
+                                <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                    <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <select name="status_finalizacao" id="status_finalizacao">
+                            <option value="Não iniciado">Não iniciado</option>
+                            <option value="Em andamento">Em andamento</option>
+                            <option value="Finalizado">Finalizado</option>
+                            <option value="HOLD">HOLD</option>
+                            <option value="Não se aplica">Não se aplica</option>
+                            <option value="Em aprovação">Em aprovação</option>
+                        </select>
+                        <input type="date" name="prazo_finalizacao" id="prazo_finalizacao">
+                        <input type="text" name="obs_finalizacao" id="obs_finalizacao" placeholder="Observação">
+                    </div>
+                </div>
+                <div class="check">
+                    <input type="checkbox" name="check_final" id="check_final">
+                </div>
+            </div>
+            <div class="funcao_comp">
 
+                <div class="funcao">
+                    <div class="titulo">
+                        <p id="pos">Pós-Produção</p>
+                        <i class="fas fa-chevron-down" id="toggle-options"></i>
+                    </div>
+                    <div class="opcoes" id="opcoes" style="display: none;">
+                        <select name="pos_id" id="opcao_pos">
+                            <?php foreach ($colaboradores as $colab): ?>
+                                <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                    <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
 
-        <!-- Tabela com filtros -->
-        <div class="filtro-tabela" id="filtro-tabela">
+                        <select name="status_pos" id="status_pos">
+                            <option value="Não iniciado">Não iniciado</option>
+                            <option value="Em andamento">Em andamento</option>
+                            <option value="Finalizado">Finalizado</option>
+                            <option value="HOLD">HOLD</option>
+                            <option value="Não se aplica">Não se aplica</option>
+                            <option value="Em aprovação">Em aprovação</option>
+                        </select>
+                        <input type="date" name="prazo_pos" id="prazo_pos">
+                        <input type="text" name="obs_pos" id="obs_pos" placeholder="Observação">
+                    </div>
+                </div>
+                <div class="check">
+                    <input type="checkbox" name="check_pos" id="check_pos">
+                </div>
+            </div>
+            <div class="funcao_comp">
+                <div class="funcao">
+                    <div class="titulo">
+                        <p id="alteracao">Alteração</p>
+                        <i class="fas fa-chevron-down" id="toggle-options"></i>
+                    </div>
+                    <div class="opcoes" id="opcoes" style="display: none;">
+                        <select name="alteracao_id" id="opcao_alteracao">
+                            <?php foreach ($colaboradores as $colab): ?>
+                                <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                    <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
 
-            <div id="filtro">
-                <h1>Filtro</h1>
-                <select id="colunaFiltro">
-                    <option value="0">Cliente</option>
-                    <option value="1">Obra</option>
-                    <option value="2">Imagem</option>
-                    <option value="4">Status</option>
-                </select>
-                <input type="text" id="pesquisa" onkeyup="filtrarTabela()" placeholder="Buscar...">
+                        <select name="status_alteracao" id="status_alteracao">
+                            <option value="Não iniciado">Não iniciado</option>
+                            <option value="Em andamento">Em andamento</option>
+                            <option value="Finalizado">Finalizado</option>
+                            <option value="HOLD">HOLD</option>
+                            <option value="Não se aplica">Não se aplica</option>
+                            <option value="Em aprovação">Em aprovação</option>
+                        </select>
+                        <input type="date" name="prazo_alteracao" id="prazo_alteracao">
+                        <input type="text" name="obs_alteracao" id="obs_alteracao" placeholder="Observação">
+                    </div>
+                </div>
+                <div class="check">
+                    <input type="checkbox" name="check_alt" id="check_alt">
+                </div>
+            </div>
+            <div class="funcao_comp">
+                <div class="funcao">
+                    <div class="titulo">
+                        <p id="planta">Planta Humanizada</p>
+                        <i class="fas fa-chevron-down" id="toggle-options"></i>
+                    </div>
+                    <div class="opcoes" id="opcoes" style="display: none;">
+                        <select name="planta_id" id="opcao_planta">
+                            <?php foreach ($colaboradores as $colab): ?>
+                                <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                    <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
 
-                <select id="tipoImagemFiltro" onchange="filtrarTabela()">
-                    <option value="">Todos os Tipos de Imagem</option>
-                    <option value="Fachada">Fachada</option>
-                    <option value="Imagem Interna">Imagem Interna</option>
-                    <option value="Imagem Externa">Imagem Externa</option>
-                    <option value="Planta Humanizada">Planta Humanizada</option>
-                </select>
-
-                <select id="imagem" onchange="filtrarTabela()">
-                    <option value="">Todos as imagens</option>
-                    <option value="Antecipada">Antecipada</option>
+                        <select name="status_planta" id="status_planta">
+                            <option value="Não iniciado">Não iniciado</option>
+                            <option value="Em andamento">Em andamento</option>
+                            <option value="Finalizado">Finalizado</option>
+                            <option value="HOLD">HOLD</option>
+                            <option value="Não se aplica">Não se aplica</option>
+                            <option value="Em aprovação">Em aprovação</option>
+                        </select>
+                        <input type="date" name="prazo_planta" id="prazo_planta">
+                        <input type="text" name="obs_planta" id="obs_planta" placeholder="Observação">
+                    </div>
+                </div>
+                <div class="check">
+                    <input type="checkbox" name="check_planta" id="check_planta">
+                </div>
+            </div>
+            <div class="funcao" id="status_funcao" style="margin-bottom: 15px;">
+                <p id="status">Status</p>
+                <select name="status_id" id="opcao_status">
+                    <?php foreach ($status_imagens as $status): ?>
+                        <option value="<?= htmlspecialchars($status['idstatus']); ?>">
+                            <?= htmlspecialchars($status['nome_status']); ?>
+                        </option>
+                    <?php endforeach; ?>
                 </select>
             </div>
 
-            <div class="tabelaClientes">
-                <div class="image-count">
-                    <strong>Total de Imagens:</strong> <span id="total-imagens">0</span>
+            <div class="funcao" id="status_funcao" style="width: 200px; margin-bottom: 15px;">
+                <div class="render">
+                    <p id="render_alta">Render Alta</p>
+                    <button id="addRender" style="padding: 3px 10px; font-size: 13px; background-color: steelblue;">Adicionar render</button>
                 </div>
-                <div class="image-count">
-                    <strong>Total de Imagens antecipadas:</strong> <span id="total-imagens-antecipada">0</span>
-                </div>
-                <table id="tabelaClientes">
+            </div>
+            <div class="buttons">
+                <button type="submit" id="salvar_funcoes">Salvar</button>
+            </div>
+
+        </form>
+    </div>
+
+    <div id="filtro-colab" class="modal">
+        <h1>Filtro colaboradores</h1>
+        <button id="mostrarLogsBtn" disabled>Mostrar Logs</button>
+        <label for="colaboradorSelect">Selecionar Colaborador:</label>
+        <select id="colaboradorSelect">
+            <option value="0">Selecione:</option>
+            <?php foreach ($colaboradores as $colab): ?>
+                <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                    <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
+
+        <label for="dataInicio">Data Início:</label>
+        <input type="date" id="dataInicio">
+
+        <label for="dataFim">Data Fim:</label>
+        <input type="date" id="dataFim">
+
+        <label for="obra">Obra:</label>
+        <select name="obraSelect" id="obraSelect">
+            <option value="">Selecione:</option>
+            <?php foreach ($obras as $obra): ?>
+                <option value="<?= $obra['idobra']; ?>"><?= htmlspecialchars($obra['nome_obra']); ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
+        <label for="funcaoSelect">Função:</label>
+        <select id="funcaoSelect">
+            <option value="0">Selecione a Função:</option>
+            <?php foreach ($funcoes as $funcao): ?>
+                <option value="<?= htmlspecialchars($funcao['idfuncao']); ?>">
+                    <?= htmlspecialchars($funcao['nome_funcao']); ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
+
+        <label for="statusSelect">Status:</label>
+        <select id="statusSelect">
+            <option value="0">Selecione um status:</option>
+            <option value="Não iniciado">Não iniciado</option>
+            <option value="Em andamento">Em andamento</option>
+            <option value="Finalizado">Finalizado</option>
+            <option value="HOLD">HOLD</option>
+            <option value="Não se aplica">Não se aplica</option>
+            <option value="Em aprovação">Em aprovação</option>
+        </select>
+
+        <label for="prioridadeSelect">Prioridade:</label>
+        <select id="prioridadeSelect">
+            <option value="0">Todas:</option>
+            <option value="1">Alta</option>
+            <option value="2">Média</option>
+            <option value="3">Baixa</option>
+        </select>
+
+        <div class="image-count">
+            <strong>Total de Imagens:</strong> <span id="totalImagens">0</span>
+        </div>
+
+        <button id="copyColumnColab">
+            <i class="fas fa-copy"></i>
+        </button>
+
+        <table id="tabela-colab">
+            <thead>
+                <tr>
+                    <th>Prioridade</th>
+                    <th id="nome">Nome da Imagem</th>
+                    <th>Função</th>
+                    <th>Status</th>
+                    <th>Prazo</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+
+        <div id="modalLogs" class="modal">
+            <div class="modal-content-log">
+                <span class="close">&times;</span>
+                <h2>Logs de Alterações</h2>
+                <table id="tabela-logs">
                     <thead>
                         <tr>
-                            <th id="cliente">Cliente</th>
-                            <th id="obra">Obra</th>
-                            <th id="nome-imagem">Imagem</th>
-                            <th id="status">Status</th>
-                            <th>Tipo Imagem</th>
+                            <th>Imagem</th>
+                            <th>Obra</th>
+                            <th>Status Anterior</th>
+                            <th>Status Novo</th>
+                            <th>Data</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -209,567 +555,198 @@ $conn->close();
                 </table>
             </div>
         </div>
-        <div class="form-edicao" id="form-edicao">
-            <form id="form-add" method="post" action="insereFuncao.php">
-                <div class="titulo-funcoes">
-                    <span id="campoNomeImagem"></span>
-                </div> <input type="hidden" id="imagem_id" name="imagem_id">
-                <div class="funcao_comp">
-                    <div class="funcao">
-                        <div class="titulo">
-                            <p id="caderno">Caderno</p>
-                            <i class="fas fa-chevron-down toggle-options"></i>
-                        </div>
-                        <div class="opcoes" style="display: none;">
-                            <select name="caderno_id" id="opcao_caderno">
-                                <?php foreach ($colaboradores as $colab): ?>
-                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                            <select name="status_caderno" id="status_caderno">
-                                <option value="Não iniciado">Não iniciado</option>
-                                <option value="Em andamento">Em andamento</option>
-                                <option value="Finalizado">Finalizado</option>
-                                <option value="HOLD">HOLD</option>
-                                <option value="Não se aplica">Não se aplica</option>
-                                <option value="Em aprovação">Em aprovação</option>
-                            </select>
-                            <input type="date" name="prazo_caderno" id="prazo_caderno">
-                            <input type="text" name="obs_caderno" id="obs_caderno" placeholder="Observação">
-                        </div>
-                    </div>
-                    <div class="check">
-                        <input type="checkbox" name="check_caderno" id="check_caderno">
-                    </div>
-                </div>
-                <div class="funcao_comp">
-                    <div class="funcao">
-                        <div class="titulo">
-                            <p id="filtro">Filtro de assets</p>
-                            <i class="fas fa-chevron-down" id="toggle-options"></i>
-                        </div>
-                        <div class="opcoes" id="opcoes" style="display: none;">
-                            <select name="filtro_id" id="opcao_filtro">
-                                <?php foreach ($colaboradores as $colab): ?>
-                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                            <select name="status_filtro" id="status_filtro">
-                                <option value="Não iniciado">Não iniciado</option>
-                                <option value="Em andamento">Em andamento</option>
-                                <option value="Finalizado">Finalizado</option>
-                                <option value="HOLD">HOLD</option>
-                                <option value="Não se aplica">Não se aplica</option>
-                                <option value="Em aprovação">Em aprovação</option>
-                            </select>
-                            <input type="date" name="prazo_filtro" id="prazo_filtro">
-                            <input type="text" name="obs_filtro" id="obs_filtro" placeholder="Observação">
-                        </div>
-                    </div>
-                    <div class="check">
-                        <input type="checkbox" name="check_filtro" id="check_filtro">
-                    </div>
-                </div>
-                <div class="funcao_comp">
-                    <div class="funcao">
-                        <div class="titulo">
-                            <p id="modelagem">Modelagem</p>
-                            <i class="fas fa-chevron-down" id="toggle-options"></i>
-                        </div>
-                        <div class="opcoes" style="display: none;">
-                            <select name="model_id" id="opcao_model">
-                                <?php foreach ($colaboradores as $colab): ?>
-                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                            <select name="status_modelagem" id="status_modelagem">
-                                <option value="Não iniciado">Não iniciado</option>
-                                <option value="Em andamento">Em andamento</option>
-                                <option value="Finalizado">Finalizado</option>
-                                <option value="HOLD">HOLD</option>
-                                <option value="Não se aplica">Não se aplica</option>
-                                <option value="Em aprovação">Em aprovação</option>
-                            </select>
-                            <input type="date" name="prazo_modelagem" id="prazo_modelagem">
-                            <input type="text" name="obs_modelagem" id="obs_modelagem" placeholder="Observação">
-                        </div>
-                    </div>
-                    <div class="check">
-                        <input type="checkbox" name="check_model" id="check_model">
-                    </div>
-                </div>
-                <div class="funcao_comp">
-                    <div class="funcao">
-                        <div class="titulo">
-                            <p id="comp">Composição</p>
-                            <i class="fas fa-chevron-down" id="toggle-options"></i>
-                        </div>
-                        <div class="opcoes" id="opcoes" style="display: none;">
-                            <select name="comp_id" id="opcao_comp">
-                                <?php foreach ($colaboradores as $colab): ?>
-                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                            <select name="status_comp" id="status_comp">
-                                <option value="Não iniciado">Não iniciado</option>
-                                <option value="Em andamento">Em andamento</option>
-                                <option value="Finalizado">Finalizado</option>
-                                <option value="HOLD">HOLD</option>
-                                <option value="Não se aplica">Não se aplica</option>
-                                <option value="Em aprovação">Em aprovação</option>
-                            </select>
-                            <input type="date" name="prazo_comp" id="prazo_comp">
-                            <input type="text" name="obs_comp" id="obs_comp" placeholder="Observação">
-                        </div>
-                    </div>
-                    <div class="check">
-                        <input type="checkbox" name="check_comp" id="check_comp">
-                    </div>
-                </div>
-                <div class="funcao_comp">
-                    <div class="funcao">
-                        <div class="titulo">
-                            <p id="final">Finalização</p>
-                            <i class="fas fa-chevron-down" id="toggle-options"></i>
-                        </div>
-                        <div class="opcoes" id="opcoes" style="display: none;">
-                            <select name="final_id" id="opcao_final">
-                                <?php foreach ($colaboradores as $colab): ?>
-                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                            <select name="status_finalizacao" id="status_finalizacao">
-                                <option value="Não iniciado">Não iniciado</option>
-                                <option value="Em andamento">Em andamento</option>
-                                <option value="Finalizado">Finalizado</option>
-                                <option value="HOLD">HOLD</option>
-                                <option value="Não se aplica">Não se aplica</option>
-                                <option value="Em aprovação">Em aprovação</option>
-                            </select>
-                            <input type="date" name="prazo_finalizacao" id="prazo_finalizacao">
-                            <input type="text" name="obs_finalizacao" id="obs_finalizacao" placeholder="Observação">
-                        </div>
-                    </div>
-                    <div class="check">
-                        <input type="checkbox" name="check_final" id="check_final">
-                    </div>
-                </div>
-                <div class="funcao_comp">
 
-                    <div class="funcao">
-                        <div class="titulo">
-                            <p id="pos">Pós-Produção</p>
-                            <i class="fas fa-chevron-down" id="toggle-options"></i>
-                        </div>
-                        <div class="opcoes" id="opcoes" style="display: none;">
-                            <select name="pos_id" id="opcao_pos">
-                                <?php foreach ($colaboradores as $colab): ?>
-                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
+    </div>
 
-                            <select name="status_pos" id="status_pos">
-                                <option value="Não iniciado">Não iniciado</option>
-                                <option value="Em andamento">Em andamento</option>
-                                <option value="Finalizado">Finalizado</option>
-                                <option value="HOLD">HOLD</option>
-                                <option value="Não se aplica">Não se aplica</option>
-                                <option value="Em aprovação">Em aprovação</option>
-                            </select>
-                            <input type="date" name="prazo_pos" id="prazo_pos">
-                            <input type="text" name="obs_pos" id="obs_pos" placeholder="Observação">
-                        </div>
-                    </div>
-                    <div class="check">
-                        <input type="checkbox" name="check_pos" id="check_pos">
-                    </div>
-                </div>
-                <div class="funcao_comp">
-                    <div class="funcao">
-                        <div class="titulo">
-                            <p id="alteracao">Alteração</p>
-                            <i class="fas fa-chevron-down" id="toggle-options"></i>
-                        </div>
-                        <div class="opcoes" id="opcoes" style="display: none;">
-                            <select name="alteracao_id" id="opcao_alteracao">
-                                <?php foreach ($colaboradores as $colab): ?>
-                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
+    <div id="filtro-obra">
+        <h1>Filtro por obra:</h1>
 
-                            <select name="status_alteracao" id="status_alteracao">
-                                <option value="Não iniciado">Não iniciado</option>
-                                <option value="Em andamento">Em andamento</option>
-                                <option value="Finalizado">Finalizado</option>
-                                <option value="HOLD">HOLD</option>
-                                <option value="Não se aplica">Não se aplica</option>
-                                <option value="Em aprovação">Em aprovação</option>
-                            </select>
-                            <input type="date" name="prazo_alteracao" id="prazo_alteracao">
-                            <input type="text" name="obs_alteracao" id="obs_alteracao" placeholder="Observação">
-                        </div>
-                    </div>
-                    <div class="check">
-                        <input type="checkbox" name="check_alt" id="check_alt">
-                    </div>
-                </div>
-                <div class="funcao_comp">
-                    <div class="funcao">
-                        <div class="titulo">
-                            <p id="planta">Planta Humanizada</p>
-                            <i class="fas fa-chevron-down" id="toggle-options"></i>
-                        </div>
-                        <div class="opcoes" id="opcoes" style="display: none;">
-                            <select name="planta_id" id="opcao_planta">
-                                <?php foreach ($colaboradores as $colab): ?>
-                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
+        <label for="obra">Obra:</label>
+        <select name="obraFiltro" id="obraFiltro">
+            <option value="0">Selecione:</option>
+            <?php foreach ($obras as $obra): ?>
+                <option value="<?= htmlspecialchars($obra['idobra']); ?>">
+                    <?= htmlspecialchars($obra['nome_obra']); ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
+        <select name="tipo_imagem" id="tipo_imagem">
+            <option value="0">Todos</option>
+            <option value="Fachada">Fachada</option>
+            <option value="Imagem Interna">Imagem Interna</option>
+            <option value="Imagem Externa">Imagem Externa</option>
+            <option value="Planta Humanizada">Planta Humanizada</option>
+        </select>
 
-                            <select name="status_planta" id="status_planta">
-                                <option value="Não iniciado">Não iniciado</option>
-                                <option value="Em andamento">Em andamento</option>
-                                <option value="Finalizado">Finalizado</option>
-                                <option value="HOLD">HOLD</option>
-                                <option value="Não se aplica">Não se aplica</option>
-                                <option value="Em aprovação">Em aprovação</option>
-                            </select>
-                            <input type="date" name="prazo_planta" id="prazo_planta">
-                            <input type="text" name="obs_planta" id="obs_planta" placeholder="Observação">
-                        </div>
-                    </div>
-                    <div class="check">
-                        <input type="checkbox" name="check_planta" id="check_planta">
-                    </div>
-                </div>
-                <div class="funcao" id="status_funcao" style="margin-bottom: 15px;">
-                    <p id="status">Status</p>
-                    <select name="status_id" id="opcao_status">
-                        <?php foreach ($status_imagens as $status): ?>
-                            <option value="<?= htmlspecialchars($status['idstatus']); ?>">
-                                <?= htmlspecialchars($status['nome_status']); ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
+        <select id="antecipada_obra">
+            <option value="">Todos as imagens</option>
+            <option value="Antecipada">Antecipada</option>
+        </select>
 
-                <div class="funcao" id="status_funcao" style="width: 200px; margin-bottom: 15px;">
-                    <div class="render">
-                        <p id="render_alta">Render Alta</p>
-                        <button id="addRender" style="padding: 3px 10px; font-size: 13px; background-color: steelblue;">Adicionar render</button>
-                    </div>
-                </div>
-                <div class="buttons">
-                    <button type="submit" id="salvar_funcoes">Salvar</button>
-                </div>
-
-            </form>
+        <div class="legenda">
+            <span class="legenda-item">
+                <span class="circulo antecipada"></span> Antecipada
+            </span>
         </div>
 
-        <div id="filtro-colab" class="modal">
-            <h1>Filtro colaboradores</h1>
-            <button id="mostrarLogsBtn" disabled>Mostrar Logs</button>
-            <label for="colaboradorSelect">Selecionar Colaborador:</label>
-            <select id="colaboradorSelect">
-                <option value="0">Selecione:</option>
-                <?php foreach ($colaboradores as $colab): ?>
-                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                    </option>
-                <?php endforeach; ?>
+        <button id="copyColumn">
+            <i class="fas fa-copy"></i>
+        </button>
+
+
+        <table id="tabela-obra">
+            <thead>
+                <th>Nome da Imagem</th>
+                <th style="width: 150px;">Tipo</th>
+                <th>Caderno</th>
+                <th>Status</th>
+                <th>Model</th>
+                <th>Status</th>
+                <th>Comp</th>
+                <th>Status</th>
+                <th>Final</th>
+                <th>Status</th>
+                <th>Pós</th>
+                <th>Status</th>
+                <th>Alteração</th>
+                <th>Status</th>
+                <th>Planta</th>
+                <th>Status</th>
+            </thead>
+
+            <tbody>
+
+            </tbody>
+        </table>
+    </div>
+
+    <div id="follow-up">
+        <h1>Follow up</h1>
+        <label for="obra">Obra:</label>
+        <select name="obra-follow" id="obra-follow">
+            <option value="1">Selecione:</option>
+            <?php foreach ($obras as $obra): ?>
+                <option value="<?= htmlspecialchars($obra['idobra']); ?>">
+                    <?= htmlspecialchars($obra['nome_obra']); ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
+
+        <select name="tipo_imagem_follow" id="tipo_imagem_follow">
+            <option value="0">Todos</option>
+            <option value="Fachada">Fachada</option>
+            <option value="Imagem Interna">Imagem Interna</option>
+            <option value="Imagem Externa">Imagem Externa</option>
+            <option value="Planta Humanizada">Planta Humanizada</option>
+        </select>
+
+        <select name="status_imagem" id="status_imagem">
+            <option value="0">Todos</option>
+            <option value="1">P00</option>
+            <option value="2">R00</option>
+            <option value="3">R01</option>
+            <option value="4">R02</option>
+            <option value="5">R03</option>
+            <option value="6">EF</option>
+            <option value="7">Sem status</option>
+            <option value="9">HOLD</option>
+        </select>
+
+        <select id="antecipada_follow">
+            <option value="">Todos as imagens</option>
+            <option value="Antecipada">Antecipada</option>
+        </select>
+
+        <button id="generate-pdf">Gerar PDF</button>
+
+        <div class="legenda">
+            <span class="legenda-item">
+                <span class="circulo antecipada"></span> Antecipada
+            </span>
+        </div>
+
+        <table id="tabela-follow">
+            <thead>
+                <th>Nome da Imagem</th>
+                <th>Status</th>
+                <th>Prazo</th>
+                <th>Caderno</th>
+                <th>Filtro</th>
+                <th>Model</th>
+                <th>Comp</th>
+                <th>Final</th>
+                <th>Pós</th>
+                <th>Alteração</th>
+                <th>Planta</th>
+                <th>Revisões</th>
+            </thead>
+            <tbody>
+
+            </tbody>
+        </table>
+    </div>
+
+    <div id="add-acomp" class="modal">
+        <h1 class="acompanhamento">Adicionar acompanhamento</h1>
+        <form id="form-add-acomp" onsubmit="submitFormAcomp(event)">
+
+            <label for="">Tipo de acompanhamento:</label>
+            <select name="tipo" id="tipo">
+                <option value="1">Obra</option>
+                <option value="2">Email</option>
             </select>
-
-            <label for="dataInicio">Data Início:</label>
-            <input type="date" id="dataInicio">
-
-            <label for="dataFim">Data Fim:</label>
-            <input type="date" id="dataFim">
-
-            <label for="obra">Obra:</label>
-            <select name="obraSelect" id="obraSelect">
+            <label for="">Obra:</label>
+            <select name="obraAcomp" id="obraAcomp">
                 <option value="">Selecione:</option>
                 <?php foreach ($obras as $obra): ?>
                     <option value="<?= $obra['idobra']; ?>"><?= htmlspecialchars($obra['nome_obra']); ?>
                     </option>
                 <?php endforeach; ?>
             </select>
-            <label for="funcaoSelect">Função:</label>
-            <select id="funcaoSelect">
-                <option value="0">Selecione a Função:</option>
-                <?php foreach ($funcoes as $funcao): ?>
-                    <option value="<?= htmlspecialchars($funcao['idfuncao']); ?>">
-                        <?= htmlspecialchars($funcao['nome_funcao']); ?>
+            <label for="nome">Colaborador:</label>
+            <select name="colab_id" id="colab_id">
+                <?php foreach ($colaboradores as $colab): ?>
+                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
                     </option>
                 <?php endforeach; ?>
             </select>
+            <div id="assunto-email" style="display: none">
+                <label for="">Assunto do email:</label>
 
-            <label for="statusSelect">Status:</label>
-            <select id="statusSelect">
-                <option value="0">Selecione um status:</option>
-                <option value="Não iniciado">Não iniciado</option>
-                <option value="Em andamento">Em andamento</option>
-                <option value="Finalizado">Finalizado</option>
-                <option value="HOLD">HOLD</option>
-                <option value="Não se aplica">Não se aplica</option>
-                <option value="Em aprovação">Em aprovação</option>
-            </select>
+                <textarea name="assunto" id="assunto"></textarea>
+            </div>
+            <div id="data-email" style="display: none">
+                <label for="">Data:</label>
 
-            <label for="prioridadeSelect">Prioridade:</label>
-            <select id="prioridadeSelect">
-                <option value="0">Todas:</option>
-                <option value="1">Alta</option>
-                <option value="2">Média</option>
-                <option value="3">Baixa</option>
-            </select>
-
-            <div class="image-count">
-                <strong>Total de Imagens:</strong> <span id="totalImagens">0</span>
+                <input type="date" name="data" id="data">
             </div>
 
-            <button id="copyColumnColab">
-                <i class="fas fa-copy"></i>
-            </button>
-
-            <table id="tabela-colab">
-                <thead>
-                    <tr>
-                        <th>Prioridade</th>
-                        <th id="nome">Nome da Imagem</th>
-                        <th>Função</th>
-                        <th>Status</th>
-                        <th>Prazo</th>
-                    </tr>
-                </thead>
-                <tbody>
-                </tbody>
-            </table>
-
-            <div id="modalLogs" class="modal">
-                <div class="modal-content-log">
-                    <span class="close">&times;</span>
-                    <h2>Logs de Alterações</h2>
-                    <table id="tabela-logs">
-                        <thead>
-                            <tr>
-                                <th>Imagem</th>
-                                <th>Obra</th>
-                                <th>Status Anterior</th>
-                                <th>Status Novo</th>
-                                <th>Data</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                        </tbody>
-                    </table>
-                </div>
+            <div class="buttons">
+                <button type="submit" id="salvar">Salvar</button>
+                <button type="button" onclick="closeModal('add-acomp', this)" id="fechar">Fechar</button>
             </div>
+        </form>
+    </div>
 
-        </div>
+</main>
 
-        <div id="filtro-obra">
-            <h1>Filtro por obra:</h1>
+<?php if (isset($_SESSION['idusuario']) && ($_SESSION['idusuario'] == 1 || $_SESSION['idusuario'] == 2 || $_SESSION['idusuario'] == 9)): ?>
+    <div id="notificacao-sino" class="notificacao-sino">
+        <i class="fas fa-bell sino" id="icone-sino"></i>
+        <span id="contador-tarefas" class="contador-tarefas">0</span>
+    </div>
+<?php endif; ?>
 
-            <label for="obra">Obra:</label>
-            <select name="obraFiltro" id="obraFiltro">
-                <option value="0">Selecione:</option>
-                <?php foreach ($obras as $obra): ?>
-                    <option value="<?= htmlspecialchars($obra['idobra']); ?>">
-                        <?= htmlspecialchars($obra['nome_obra']); ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
-            <select name="tipo_imagem" id="tipo_imagem">
-                <option value="0">Todos</option>
-                <option value="Fachada">Fachada</option>
-                <option value="Imagem Interna">Imagem Interna</option>
-                <option value="Imagem Externa">Imagem Externa</option>
-                <option value="Planta Humanizada">Planta Humanizada</option>
-            </select>
-
-            <select id="antecipada_obra">
-                <option value="">Todos as imagens</option>
-                <option value="Antecipada">Antecipada</option>
-            </select>
-
-            <div class="legenda">
-                <span class="legenda-item">
-                    <span class="circulo antecipada"></span> Antecipada
-                </span>
-            </div>
-
-            <button id="copyColumn">
-                <i class="fas fa-copy"></i>
-            </button>
-
-
-            <table id="tabela-obra">
-                <thead>
-                    <th>Nome da Imagem</th>
-                    <th style="width: 150px;">Tipo</th>
-                    <th>Caderno</th>
-                    <th>Status</th>
-                    <th>Model</th>
-                    <th>Status</th>
-                    <th>Comp</th>
-                    <th>Status</th>
-                    <th>Final</th>
-                    <th>Status</th>
-                    <th>Pós</th>
-                    <th>Status</th>
-                    <th>Alteração</th>
-                    <th>Status</th>
-                    <th>Planta</th>
-                    <th>Status</th>
-                </thead>
-
-                <tbody>
-
-                </tbody>
-            </table>
-        </div>
-
-        <div id="follow-up">
-            <h1>Follow up</h1>
-            <label for="obra">Obra:</label>
-            <select name="obra-follow" id="obra-follow">
-                <option value="1">Selecione:</option>
-                <?php foreach ($obras as $obra): ?>
-                    <option value="<?= htmlspecialchars($obra['idobra']); ?>">
-                        <?= htmlspecialchars($obra['nome_obra']); ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
-
-            <select name="tipo_imagem_follow" id="tipo_imagem_follow">
-                <option value="0">Todos</option>
-                <option value="Fachada">Fachada</option>
-                <option value="Imagem Interna">Imagem Interna</option>
-                <option value="Imagem Externa">Imagem Externa</option>
-                <option value="Planta Humanizada">Planta Humanizada</option>
-            </select>
-
-            <select name="status_imagem" id="status_imagem">
-                <option value="0">Todos</option>
-                <option value="1">P00</option>
-                <option value="2">R00</option>
-                <option value="3">R01</option>
-                <option value="4">R02</option>
-                <option value="5">R03</option>
-                <option value="6">EF</option>
-                <option value="7">Sem status</option>
-                <option value="9">HOLD</option>
-            </select>
-
-            <select id="antecipada_follow">
-                <option value="">Todos as imagens</option>
-                <option value="Antecipada">Antecipada</option>
-            </select>
-
-            <button id="generate-pdf">Gerar PDF</button>
-
-            <div class="legenda">
-                <span class="legenda-item">
-                    <span class="circulo antecipada"></span> Antecipada
-                </span>
-            </div>
-
-            <table id="tabela-follow">
-                <thead>
-                    <th>Nome da Imagem</th>
-                    <th>Status</th>
-                    <th>Prazo</th>
-                    <th>Caderno</th>
-                    <th>Filtro</th>
-                    <th>Model</th>
-                    <th>Comp</th>
-                    <th>Final</th>
-                    <th>Pós</th>
-                    <th>Alteração</th>
-                    <th>Planta</th>
-                    <th>Revisões</th>
-                </thead>
-                <tbody>
-
-                </tbody>
-            </table>
-        </div>
-
-        <div id="add-acomp" class="modal">
-            <h1 class="acompanhamento">Adicionar acompanhamento</h1>
-            <form id="form-add-acomp" onsubmit="submitFormAcomp(event)">
-
-                <label for="">Tipo de acompanhamento:</label>
-                <select name="tipo" id="tipo">
-                    <option value="1">Obra</option>
-                    <option value="2">Email</option>
-                </select>
-                <label for="">Obra:</label>
-                <select name="obraAcomp" id="obraAcomp">
-                    <option value="">Selecione:</option>
-                    <?php foreach ($obras as $obra): ?>
-                        <option value="<?= $obra['idobra']; ?>"><?= htmlspecialchars($obra['nome_obra']); ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-                <label for="nome">Colaborador:</label>
-                <select name="colab_id" id="colab_id">
-                    <?php foreach ($colaboradores as $colab): ?>
-                        <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                            <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-                <div id="assunto-email" style="display: none">
-                    <label for="">Assunto do email:</label>
-
-                    <textarea name="assunto" id="assunto"></textarea>
-                </div>
-                <div id="data-email" style="display: none">
-                    <label for="">Data:</label>
-
-                    <input type="date" name="data" id="data">
-                </div>
-
-                <div class="buttons">
-                    <button type="submit" id="salvar">Salvar</button>
-                    <button type="button" onclick="closeModal('add-acomp', this)" id="fechar">Fechar</button>
-                </div>
-            </form>
-        </div>
-
-    </main>
-
-    <?php if (isset($_SESSION['idusuario']) && ($_SESSION['idusuario'] == 1 || $_SESSION['idusuario'] == 2 || $_SESSION['idusuario'] == 9)): ?>
-        <div id="notificacao-sino" class="notificacao-sino">
-            <i class="fas fa-bell sino" id="icone-sino"></i>
-            <span id="contador-tarefas" class="contador-tarefas">0</span>
-        </div>
-    <?php endif; ?>
-
-    <script src="script/notificacoes.js"></script>
-    <script src="./script/script.js"></script>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="script/notificacoes.js"></script>
+<script src="./script/script.js"></script>
+<script src="./script/sidebar.js"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 
 
-    </body>
+</body>
 
 </html>

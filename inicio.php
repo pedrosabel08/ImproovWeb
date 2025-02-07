@@ -116,6 +116,20 @@ $conn->close();
             </div>
         </div>
         <div class="main-container">
+            <!-- Modal do Tutorial -->
+            <div id="tutorialModal" class="modal">
+                <div class="modal-content">
+                    <span class="close" onclick="fecharModal()">&times;</span>
+                    <h2>Flow foi atualizado para um novo formato!</h2>
+                    <p>Agora temos a sidebar, podendo acessar todas as páginas do sistema.</p>
+                    <ul>
+                        <li><strong>Para acessar as obras agora temos na sidebar o nome das obras para a acessar a tela da obra completa</strong></li>
+                        <li>Se você quiser favoritar uma obra somente clicar na estrela, para ficar mais fácil a visualização.</li>
+                        <img src="assets/Screenshot_2.png" alt="">
+                    </ul>
+                    <button onclick="fecharModal()">OK</button>
+                </div>
+            </div>
             <div id="container-calendario" class="container active">
                 <div>
                     <iframe src="https://calendar.google.com/calendar/embed?height=600&wkst=1&ctz=America%2FSao_Paulo&showPrint=0&showTz=0&showTitle=0&showCalendars=0&src=dHJhZmVnb2ltcHJvb3ZAZ21haWwuY29t&src=MjE2NGI4MjJkNzVlZDk2MzA2YzVjOTJhZjEyOWYzNjdlYjE5M2JmZDc4ZDljNDhjNjg4N2QyZmExNTk1M2I1OEBncm91cC5jYWxlbmRhci5nb29nbGUuY29t&color=%23039BE5&color=%23E67C73" style="border:solid 1px #777" width="1200" height="600" frameborder="0" scrolling="no"></iframe>
@@ -213,6 +227,23 @@ $conn->close();
 
         const idUsuario = <?php echo json_encode($idusuario); ?>;
         localStorage.setItem('idusuario', idUsuario);
+
+        document.addEventListener("DOMContentLoaded", function() {
+            const modal = document.getElementById("tutorialModal");
+
+            // Verifica se o usuário já viu o tutorial
+            if (localStorage.getItem("tutorialVisto") === "true") {
+                modal.style.display = "none";
+            } else {
+                modal.style.display = "flex"; // Exibe o modal se o tutorial ainda não foi visto
+            }
+        });
+
+        function fecharModal() {
+            const modal = document.getElementById("tutorialModal");
+            modal.style.display = "none"; // Esconde o modal
+            localStorage.setItem("tutorialVisto", "true"); // Marca como visto
+        }
     </script>
 
     <script src="script/notificacoes.js"></script>

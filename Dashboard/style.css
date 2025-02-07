@@ -733,6 +733,10 @@ th {
     max-width: 10px;
 }
 
+.hidden {
+    display: none;
+}
+
 header {
     display: flex;
     justify-content: center;

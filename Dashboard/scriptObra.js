@@ -2,10 +2,29 @@
 var obraId = localStorage.getItem('obraId');
 var usuarioId = localStorage.getItem('idusuario');
 
-if (usuarioId != 1 || usuarioId != 2 || usuarioId != 9) {
-    document.getElementById('acomp').style.display = 'none';
-    document.getElementById('obsAdd').style.display = 'none';
+usuarioId = Number(usuarioId);
+
+if (usuarioId !== 1 && usuarioId !== 2 && usuarioId !== 9) {
+    document.getElementById('acomp').classList.add('hidden')
+    document.getElementById('obsAdd').classList.add('hidden')
+
+    document.querySelectorAll(".campo input[type='text']").forEach(input => {
+        input.readOnly = true;
+    });
+    document.querySelectorAll(".campo input[type='checkbox']").forEach(checkbox => {
+        checkbox.disabled = true;
+    });
+} else {
+    document.getElementById('acomp').style.display = 'block';
+    document.getElementById('obsAdd').style.display = 'block';
+    document.querySelectorAll(".campo input[type='text']").forEach(input => {
+        input.readOnly = false;
+    });
+    document.querySelectorAll(".campo input[type='checkbox']").forEach(checkbox => {
+        checkbox.disabled = false;
+    });
 }
+
 
 let chartInstance = null;
 
@@ -277,6 +296,11 @@ if (obraId) {
 
             const revisoes = document.getElementById('revisoes');
             revisoes.textContent = `Total de alterações: ${data.alt}`
+
+            const alteracao = document.getElementById('altBtn')
+            if (data.alt == 0) {
+                alteracao.style.display = 'none';
+            }
 
             // Determina o número de estrelas com base nas alterações
             let estrelas = 5;
@@ -1379,24 +1403,6 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 });
-
-const idusuario = parseInt(localStorage.getItem('idusuario'), 10);
-
-if ([1, 2, 9].includes(idusuario)) {
-    document.querySelectorAll(".campo input[type='text']").forEach(input => {
-        input.readOnly = false;
-    });
-    document.querySelectorAll(".campo input[type='checkbox']").forEach(checkbox => {
-        checkbox.disabled = false;
-    });
-} else {
-    document.querySelectorAll(".campo input[type='text']").forEach(input => {
-        input.readOnly = true;
-    });
-    document.querySelectorAll(".campo input[type='checkbox']").forEach(checkbox => {
-        checkbox.disabled = true;
-    });
-}
 
 
 document.querySelectorAll(".campo input[type='text']").forEach(input => {

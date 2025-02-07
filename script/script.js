@@ -568,6 +568,24 @@ document.addEventListener("DOMContentLoaded", function () {
     document.getElementById('tipo_imagem_follow').addEventListener('change', fetchFollowUpData);
     document.getElementById('antecipada_follow').addEventListener('change', fetchFollowUpData); // Adiciona evento para "Antecipada"
 
+    function checkHash() {
+        if (window.location.hash === '#add-cliente') {
+            openModal('add-cliente');
+        }
+
+        if (window.location.hash === '#filtro-colab') {
+            openModal('filtro-colab');
+        }
+
+        if (window.location.hash === '#follow-up') {
+            openModal('follow-up');
+        }
+
+        if (window.location.hash === '#filtro-obra') {
+            openModal('filtro-obra');
+        }
+    }
+
     window.addEventListener('load', function () {
         const obraId = localStorage.getItem('obraId');
         if (obraId) {
@@ -576,28 +594,21 @@ document.addEventListener("DOMContentLoaded", function () {
 
             if (obraSelect) {
                 obraSelect.value = obraId;
-                if (window.location.hash === '#follow-up') {
-                    openModal('follow-up');
-                }
-                fetchFollowUpData();
+                fetchFollowUpData(); // Busca os dados ao carregar a página
             }
+
             if (obraSelectObra) {
                 obraSelectObra.value = obraId;
-                if (window.location.hash === '#filtro-obra') {
-                    openModal('filtro-obra')
-                }
-                atualizarFuncoes();
+                atualizarFuncoes(); // Atualiza funções relacionadas à obra
             }
         }
 
-        if (window.location.hash === '#add-cliente') {
-            openModal('add-cliente')
-        }
-
-        if (window.location.hash === '#filtro-colab') {
-            openModal('filtro-colab')
-        }
+        checkHash(); // Verifica o hash ao carregar a página
     });
+
+    // Adiciona um evento para abrir o modal quando o hash mudar
+    window.addEventListener('hashchange', checkHash);
+
 
 
     function fetchFollowUpData() {

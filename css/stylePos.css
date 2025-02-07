@@ -8,6 +8,11 @@
     font-family: "Nunito", sans-serif;
 }
 
+body {
+    display: grid;
+    grid-template-columns: 60px 1fr;
+}
+
 button,
 a {
     all: unset;
@@ -100,7 +105,7 @@ header button#openModalBtnRender {
 
 
 #filtro {
-    padding: 50px;
+    grid-column: 2;
 }
 
 #filtro select,
@@ -113,14 +118,13 @@ header button#openModalBtnRender {
 
 table {
     border-collapse: collapse;
-    width: 100%;
-    margin: 20px auto;
+    width: 95%;
+    margin: 0 auto;
 }
 
 td,
 th {
-    width: 100px;
-    max-width: 150px;
+    max-width: 10px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -374,4 +378,14 @@ span#total-pos {
         opacity: 1;
         transform: translateY(0);
     }
+}
+
+
+.filtro-tabela {
+    width: 95%;
+    margin: 0 auto;
+}
+
+.selects {
+    margin-top: 15px;
 }

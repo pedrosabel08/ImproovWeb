@@ -11,6 +11,8 @@
 body {
     background-color: #292929;
     color: white;
+    display: grid;
+    grid-template-columns: 60px 1fr;
 }
 
 header {
@@ -25,6 +27,7 @@ header {
 
 main {
     padding: 1rem 3rem;
+    grid-column: 2;
 }
 
 #tabela-obras {

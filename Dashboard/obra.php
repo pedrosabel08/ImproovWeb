@@ -68,6 +68,7 @@ $conn->close();
             <h1 id="nomenclatura"></h1>
         </header>
         <div class="buttons-nav">
+            <button onclick="window.location.href='https://improov.com.br/sistema/Alteracao/'"><i class="fa-solid fa-pen-to-square"></i></button>
             <button onclick="document.querySelector('.acompanhamentos').scrollIntoView({behavior: 'smooth'})"><i class="fa-solid fa-circle-info"></i></button>
             <button onclick="document.querySelector('.filtro-tabela').scrollIntoView({behavior: 'smooth'})"><i class="fa-solid fa-info"></i></button>
         </div>
@@ -99,13 +100,23 @@ $conn->close();
             <div class="contagem_imagens">
                 <p id="imagens-totais"></p>
                 <p id="antecipadas"></p>
+                <p id="revisoes"></p>
             </div>
 
-            
+            <div id="estrela-container" style="display: none;">
+                <span class="estrela" id="estrela1">★</span>
+                <span class="estrela" id="estrela2">★</span>
+                <span class="estrela" id="estrela3">★</span>
+                <span class="estrela" id="estrela4">★</span>
+                <span class="estrela" id="estrela5">★</span>
+            </div>
+
+
+
             <button id="copyColumn">
                 <i class="fas fa-copy"></i>
             </button>
-            
+
 
             <div id="editImagesModal" style="display: none;">
                 <div class="modal-content-images" style="overflow-y: auto; max-height: 600px;">

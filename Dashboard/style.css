@@ -783,6 +783,11 @@ span#obras_finalizadas {
     gap: 8px;
     flex: 0 0 95%;
 }
+.funcao_group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
 
 .form-edicao {
     display: none;
@@ -1274,4 +1279,20 @@ i.fa-info {
 .highlight {
     background-color: #8cbee9;
     transition: background-color 0.3s ease;
+}
+
+
+#estrela-container {
+    font-size: 24px;
+    /* Tamanho das estrelas */
+    color: #e0e0e0;
+    /* Cor das estrelas vazias */
+}
+
+.estrela {
+    margin-right: 5px;
+}
+
+.estrela.preenchida {
+    color: gold;
 }

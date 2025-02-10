@@ -202,6 +202,10 @@ function atualizarModal(idImagem) {
 
 // Verifica se obraId está presente no localStorage
 if (obraId) {
+    infosObra(obraId);
+}
+function infosObra(obraId) {
+
     fetch(`infosObra.php?obraId=${obraId}`)
         .then(response => response.json())
         .then(data => {
@@ -805,8 +809,7 @@ document.getElementById("salvar_funcoes").addEventListener("click", function (ev
                 stopOnFocus: true,
             }).showToast();
 
-
-            // form_edicao.style.display = "none"
+            infosObra(obraId);
         },
         error: function (jqXHR, textStatus, errorThrown) {
             console.error("Erro ao salvar dados: " + textStatus, errorThrown);
@@ -837,51 +840,48 @@ document.getElementById('orcamento').addEventListener('click', function () {
 });
 
 
-document.addEventListener('DOMContentLoaded', function () {
 
-    const idObra = localStorage.getItem('obraId'); // Obtém o ID da obra armazenado no localStorage
-    const acompanhamentoConteudo = document.getElementById('list_acomp');
+const idObra = localStorage.getItem('obraId');
 
-    if (idObra) {
-        abrirModalAcompanhamento(idObra); // Carrega os acompanhamentos automaticamente
-    } else {
-        console.warn('ID da obra não encontrado no localStorage.');
-    }
+if (idObra) {
+    abrirModalAcompanhamento(idObra); // Carrega os acompanhamentos automaticamente
+} else {
+    console.warn('ID da obra não encontrado no localStorage.');
+}
 
-    function abrirModalAcompanhamento(obraId) {
-        fetch(`../Obras/getAcompanhamentoEmail.php?idobra=${obraId}`)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`Erro ao carregar dados: ${response.status}`);
-                }
-                return response.json(); // Converte a resposta para JSON
-            })
-            .then(acompanhamentos => {
-                // Limpa o conteúdo anterior
-                acompanhamentoConteudo.innerHTML = '';
+function abrirModalAcompanhamento(obraId) {
+    fetch(`../Obras/getAcompanhamentoEmail.php?idobra=${obraId}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Erro ao carregar dados: ${response.status}`);
+            }
+            return response.json(); // Converte a resposta para JSON
+        })
+        .then(acompanhamentos => {
+            // Limpa o conteúdo anterior
+            acompanhamentoConteudo.innerHTML = '';
 
-                if (acompanhamentos.length > 0) {
-                    acompanhamentos.forEach(acomp => {
+            if (acompanhamentos.length > 0) {
+                acompanhamentos.forEach(acomp => {
 
-                        const item = document.createElement('p');
-                        item.innerHTML = `
+                    const item = document.createElement('p');
+                    item.innerHTML = `
                         <div class="acomp-conteudo">
                             <p class="acomp-assunto"><strong>Assunto:</strong> ${acomp.assunto}</p>
                             <p class="acomp-data"><strong>Data:</strong> ${formatarData(acomp.data)}</p>
                         </div>
                     `;
-                        acompanhamentoConteudo.appendChild(item);
-                    });
-                } else {
-                    acompanhamentoConteudo.innerHTML = '<p>Nenhum acompanhamento encontrado.</p>';
-                }
+                    acompanhamentoConteudo.appendChild(item);
+                });
+            } else {
+                acompanhamentoConteudo.innerHTML = '<p>Nenhum acompanhamento encontrado.</p>';
+            }
 
-            })
-            .catch(error => {
-                console.error('Erro:', error);
-            });
-    }
-});
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+        });
+}
 
 
 
@@ -967,6 +967,7 @@ document.getElementById("adicionar_acomp").addEventListener("submit", function (
                 }).showToast();
                 document.getElementById("adicionar_acomp").reset(); // Reseta o formulário
                 modal.style.display = 'none';
+                abrirModalAcompanhamento(obraId);
             } else {
                 Toastify({
                     text: data.message,
@@ -1307,8 +1308,7 @@ function submitFormImagem(event) {
     const prazo = document.getElementById('prazo').value;
     const imagem = document.getElementById('nome-imagem').value;
     const tipo = document.getElementById('tipo-imagem').value;
-    const animacao = document.getElementById('animacao').value;
-    const clima = document.getElementById('clima').value;
+
 
     const data = {
         opcaoCliente: opcaoCliente,
@@ -1317,10 +1317,7 @@ function submitFormImagem(event) {
         data_inicio: data_inicio,
         prazo: prazo,
         imagem: imagem,
-        tipo: tipo,
-        animacao: animacao,
-        clima: clima
-
+        tipo: tipo
     };
 
     console.log(data);

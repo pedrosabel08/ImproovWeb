@@ -27,7 +27,7 @@ if (obraId) {
                 let ultimaRevisaoHTML = `
                     <div class="card-info">
                         <h4>Revisão ${ultimaRevisao.numero_revisao}</h4>
-                        <p><strong>Descrição:</strong> 
+                        <p><strong>Observação:</strong> 
                             <input id="autoInput" type="text" value="${ultimaRevisao.descricao}" 
                                 onblur="atualizarRevisao(${ultimaRevisao.id_alteracao}, 'descricao', this.value)" oninput="adjustWidth(this)">
                         </p>
@@ -51,7 +51,7 @@ if (obraId) {
                 let revisoesHTML = revisoesAnteriores.map(revisao => `
                     <div class="card-info">
                         <h4>Revisão ${revisao.numero_revisao}</h4>
-                        <p><strong>Descrição:</strong> 
+                        <p><strong>Observação:</strong> 
                             <input id="autoInput" type="text" value="${revisao.descricao}" 
                                 onblur="atualizarRevisao(${revisao.id_alteracao}, 'descricao', this.value)" oninput="adjustWidth(this)">
                         </p>

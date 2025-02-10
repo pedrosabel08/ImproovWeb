@@ -47,7 +47,9 @@ $conn->close();
 
     <main>
 
-        <header>CAP_TIV</header>
+        <header>
+            <p></p>
+        </header>
 
         <div id="imagens-container"></div>
 

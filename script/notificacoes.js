@@ -14,7 +14,7 @@ if (idusuario === '1' || idusuario === '2' || idusuario === '9') {
     }
 
     function atualizarContadorTarefas() {
-        fetch('buscar_tarefas.php', {
+        fetch('https://improov.com.br/sistema/buscar_tarefas.php', {
             method: 'GET'
         })
             .then(response => response.json())
@@ -33,7 +33,7 @@ if (idusuario === '1' || idusuario === '2' || idusuario === '9') {
     }
 
     function buscarTarefas() {
-        fetch('buscar_tarefas.php', {
+        fetch('https://improov.com.br/sistema/buscar_tarefas.php', {
             method: 'GET'
         })
             .then(response => response.json())

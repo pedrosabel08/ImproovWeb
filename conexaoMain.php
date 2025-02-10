@@ -30,7 +30,7 @@ function obterClientes($conn)
 
 function obterObras($conn)
 {
-    $sql = "SELECT idobra, nome_obra, nomenclatura FROM obra WHERE status_obra = 0 ORDER BY nome_obra ASC";
+    $sql = "SELECT idobra, nome_obra, nomenclatura FROM obra WHERE status_obra = 0 ORDER BY nomenclatura ASC";
     $result = $conn->query($sql);
     $obras = array();
 

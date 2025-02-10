@@ -24,6 +24,8 @@ $idusuario = $_SESSION['idusuario'];
         type="image/x-icon">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
     <link rel="stylesheet" href="../css/styleSidebar.css">
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
 
     <title>Revisão de Tarefas</title>
 </head>
@@ -72,6 +74,18 @@ $idusuario = $_SESSION['idusuario'];
             <option value="Planta Humanizada">Planta Humanizada</option>
         </select>
         <div class="container"></div>
+    </div>
+
+    <div id="historico_modal" style="display: none;">
+        <div class="historico-container"></div>
+        <div class="historico-add hidden">
+            <form id="adicionar_obs">
+                <div id="text_obs"></div>
+
+                <p id="id_revisao"></p>
+                <button type="submit">Enviar</button>
+            </form>
+        </div>
     </div>
 
     <script src="script.js"></script>

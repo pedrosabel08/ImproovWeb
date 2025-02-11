@@ -15,6 +15,17 @@ $command = "mysqldump --host=$host --user=$user --password=$password $dbName > $
 exec($command, $output, $returnVar);
 
 if ($returnVar === 0) {
+
+    // Git commands
+    $gitDir = 'C:/xampp/htdocs/ImproovWeb';  // Caminho para o repositório Git
+    
+    exec("cd $gitDir && git checkout Backup");  // Garante que está na branch Backup
+    exec("cd $gitDir && git add Backup/*");  // Adiciona todos os arquivos da pasta Backup
+    exec("cd $gitDir && git commit -m 'Backup automático: " . date('Y-m-d H:i:s') . "'");  // Realiza o commit com a data/hora
+    exec("cd $gitDir && git push origin Backup");  // Push para o repositório remoto
+
+
+
     echo "Backup completo realizado com sucesso: $backupFile";
 
     // Limitar a quantidade de backups

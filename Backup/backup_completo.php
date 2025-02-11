@@ -17,55 +17,6 @@ exec($command, $output, $returnVar);
 if ($returnVar === 0) {
     echo "Backup completo realizado com sucesso: $backupFile\n";
 
-    // Git commands
-    $gitDir = 'C:/xampp/htdocs/ImproovWeb';  // Caminho para o repositório Git
-
-    // Stash para evitar conflitos ao trocar de branch
-    exec("cd $gitDir && git stash", $gitOutput, $gitReturnVar);
-    if ($gitReturnVar !== 0) {
-        echo "Erro ao executar git stash: " . implode("\n", $gitOutput) . "\n";
-        exit;
-    }
-
-    // Troca para a branch Backup
-    exec("cd $gitDir && git checkout Backup", $gitOutput, $gitReturnVar);
-    if ($gitReturnVar !== 0) {
-        echo "Erro ao trocar para a branch Backup: " . implode("\n", $gitOutput) . "\n";
-        exit;
-    }
-
-    // Recupera as mudanças do stash
-    exec("cd $gitDir && git stash pop", $gitOutput, $gitReturnVar);
-    if ($gitReturnVar !== 0) {
-        echo "Erro ao recuperar mudanças do stash: " . implode("\n", $gitOutput) . "\n";
-        exit;
-    }
-
-    // Adiciona todos os arquivos da pasta Backup
-    exec("cd $gitDir && git add Backup/*", $gitOutput, $gitReturnVar);
-    if ($gitReturnVar !== 0) {
-        echo "Erro ao adicionar arquivos ao Git: " . implode("\n", $gitOutput) . "\n";
-        exit;
-    }
-
-    // Realiza o commit com a data/hora
-    exec("cd $gitDir && git commit -m 'Backup automático: " . date('Y-m-d H:i:s') . "'", $gitOutput, $gitReturnVar);
-    if ($gitReturnVar === 0) {
-        echo "Commit do backup realizado com sucesso.\n";
-    } else {
-        echo "Erro ao fazer commit: " . implode("\n", $gitOutput) . "\n";
-        exit;
-    }
-
-    // Push para o repositório remoto
-    exec("cd $gitDir && git push origin Backup", $gitOutput, $gitReturnVar);
-    if ($gitReturnVar === 0) {
-        echo "Push realizado com sucesso para o repositório remoto.\n";
-    } else {
-        echo "Erro ao fazer push para o repositório remoto: " . implode("\n", $gitOutput) . "\n";
-        exit;
-    }
-
     // Limitar a quantidade de backups
     $backupDir = __DIR__; // Diretório onde os backups são armazenados
     $files = glob($backupDir . '/backup_completo_*.sql'); // Pega todos os arquivos de backup completo

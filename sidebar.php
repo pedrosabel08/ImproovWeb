@@ -21,7 +21,7 @@
                 <li><a title="Página Principal" href="https://improov.com.br/sistema/inicio.php"><i class="fas fa-home"></i><span> Página Principal</span></a></li>
                 <li><a title="Lista Pós-Produção" href="https://improov.com.br/sistema/Pos-Producao/index.php"><i class="fas fa-list"></i><span> Lista Pós-Produção</span></a></li>
                 <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 3)): ?>
-                    <!-- <li><a title="Acompanhamentos" href="https://improov.com.br/sistema/Acompanhamento/index.php"><i class="fas fa-chart-line"></i><span> Acompanhamentos</span></a></li> -->
+                    <li><a title="Acompanhamentos" href="https://improov.com.br/sistema/infoCliente/index.php"><i class="fas fa-chart-line"></i><span> Infos Cliente</span></a></li>
                 <?php endif; ?>
                 <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 4)): ?>
                     <li><a title="Lista Animação" href="https://improov.com.br/sistema/Animacao/index.php"><i class="fas fa-film"></i><span> Lista Animação</span></a></li>

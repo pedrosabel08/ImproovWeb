@@ -3,6 +3,7 @@ session_start();
 
 
 include 'conexao.php';
+include '../conexaoMain.php';
 
 $sql_clientes = "SELECT idcliente, nome_cliente FROM cliente";
 $result_cliente = $conn->query($sql_clientes);
@@ -14,7 +15,16 @@ if ($result_cliente->num_rows > 0) {
     }
 }
 
+$conn = conectarBanco();
+
+$clientes = obterClientes($conn);
+$obras = obterObras($conn);
+$colaboradores = obterColaboradores($conn);
+$status_imagens = obterStatusImagens($conn);
+$funcoes = obterFuncoes($conn);
+
 $conn->close();
+?>
 
 ?>
 
@@ -25,6 +35,7 @@ $conn->close();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="../css/styleEditClientes.css">
+    <link rel="stylesheet" href="../css/styleSidebar.css">
     <title>Document</title>
 
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
@@ -37,36 +48,14 @@ $conn->close();
 </head>
 
 <body>
-    <div class="header">
 
-        <button id="menuButton">
-            <i class="fa-solid fa-bars"></i>
-        </button>
-        <div id="menu" class="hidden">
-            <a href="../inicio.php" id="tab-imagens">Página Principal</a>
-            <a href="../main.php" id="tab-imagens">Visualizar tabela com imagens</a>
 
-            <a href="../Pos-Producao/index.php">Lista Pós-Produção</a>
+    <?php
 
-            <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 3)): ?>
-                <a href="../Acompanhamento/index.html">Acompanhamentos</a>
-            <?php endif; ?>
+    include '../sidebar.php';
 
-            <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 4)): ?>
-                <a href="../Animacao/index.php">Lista Animação</a>
-            <?php endif; ?>
+    ?>
 
-            <a href="../Metas/index.php">Metas e progresso</a>
-
-            <a id="calendar" class="calendar-btn" href="../Calendario/index.php">
-                <i class="fa-solid fa-calendar-days"></i>
-            </a>
-        </div>
-        <div>
-            <img src="../assets/ImproovFlow - logo.png" alt="Improov" class="logo">
-        </div>
-
-    </div>
 
     <div class="container mt-5">
         <h2>Selecionar Cliente</h2>
@@ -132,6 +121,7 @@ $conn->close();
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     <script src="../script/scriptEditCliente.js"></script>
+    <script src="../script/sidebar.js"></script>
 
 </body>
 

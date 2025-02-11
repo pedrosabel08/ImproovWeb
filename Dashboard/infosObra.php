@@ -268,12 +268,14 @@ $stmtBriefing->close();
 
 $sqlPrazos = "SELECT 
     GROUP_CONCAT(i.idimagens_cliente_obra) AS idImagens, 
+    COUNT(i.idimagens_cliente_obra) AS totalImagens, -- Adiciona contagem
     s.nome_status, 
     i.prazo
 FROM imagens_cliente_obra i 
 JOIN status_imagem s ON i.status_id = s.idstatus 
 WHERE i.obra_id = ?
 GROUP BY s.nome_status, i.prazo;
+
 ";
 
 $stmtPrazos = $conn->prepare($sqlPrazos);
@@ -289,10 +291,12 @@ $resultPrazos = $stmtPrazos->get_result();
 // Processa os resultados do novo SELECT
 $prazos = [];
 while ($row = $resultPrazos->fetch_assoc()) {
-    $row['idImagens'] = $row['idImagens'] ? explode(',', $row['idImagens']) : []; // Converte string em array
+    $row['idImagens'] = $row['idImagens'] ? explode(',', $row['idImagens']) : []; 
+    $row['totalImagens'] = (int) $row['totalImagens']; // Converte para número
     $prazos[] = $row;
 }
 $response['prazos'] = $prazos;
+
 
 $stmtPrazos->close();
 

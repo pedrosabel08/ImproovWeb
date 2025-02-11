@@ -15,28 +15,43 @@ $command = "mysqldump --host=$host --user=$user --password=$password $dbName > $
 exec($command, $output, $returnVar);
 
 if ($returnVar === 0) {
+    echo "Backup completo realizado com sucesso: $backupFile\n";
 
     // Git commands
     $gitDir = 'C:/xampp/htdocs/ImproovWeb';  // Caminho para o repositório Git
 
-    // Garante que está na branch Backup
+    // Stash para evitar conflitos ao trocar de branch
+    exec("cd $gitDir && git stash", $gitOutput, $gitReturnVar);
+    if ($gitReturnVar !== 0) {
+        echo "Erro ao executar git stash: " . implode("\n", $gitOutput) . "\n";
+        exit;
+    }
+
+    // Troca para a branch Backup
     exec("cd $gitDir && git checkout Backup", $gitOutput, $gitReturnVar);
     if ($gitReturnVar !== 0) {
-        echo "Erro ao trocar para a branch Backup: " . implode("\n", $gitOutput);
+        echo "Erro ao trocar para a branch Backup: " . implode("\n", $gitOutput) . "\n";
+        exit;
+    }
+
+    // Recupera as mudanças do stash
+    exec("cd $gitDir && git stash pop", $gitOutput, $gitReturnVar);
+    if ($gitReturnVar !== 0) {
+        echo "Erro ao recuperar mudanças do stash: " . implode("\n", $gitOutput) . "\n";
         exit;
     }
 
     // Adiciona todos os arquivos da pasta Backup
     exec("cd $gitDir && git add Backup/*", $gitOutput, $gitReturnVar);
     if ($gitReturnVar !== 0) {
-        echo "Erro ao adicionar arquivos ao Git: " . implode("\n", $gitOutput);
+        echo "Erro ao adicionar arquivos ao Git: " . implode("\n", $gitOutput) . "\n";
         exit;
     }
 
     // Realiza o commit com a data/hora
     exec("cd $gitDir && git commit -m 'Backup automático: " . date('Y-m-d H:i:s') . "'", $gitOutput, $gitReturnVar);
     if ($gitReturnVar === 0) {
-        echo "Commit do backup realizado com sucesso: " . implode("\n", $gitOutput) . "\n";
+        echo "Commit do backup realizado com sucesso.\n";
     } else {
         echo "Erro ao fazer commit: " . implode("\n", $gitOutput) . "\n";
         exit;
@@ -50,8 +65,6 @@ if ($returnVar === 0) {
         echo "Erro ao fazer push para o repositório remoto: " . implode("\n", $gitOutput) . "\n";
         exit;
     }
-
-    echo "Backup completo realizado com sucesso: $backupFile";
 
     // Limitar a quantidade de backups
     $backupDir = __DIR__; // Diretório onde os backups são armazenados
@@ -67,5 +80,5 @@ if ($returnVar === 0) {
         unlink(array_pop($files)); // Exclui o arquivo mais antigo
     }
 } else {
-    echo "Erro ao fazer backup do banco de dados.";
+    echo "Erro ao fazer backup do banco de dados.\n";
 }

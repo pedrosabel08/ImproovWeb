@@ -5,6 +5,7 @@ include '../conexao.php';
 $query1 = "SELECT 
     o.nomenclatura, 
     o.idobra,
+    o.recebimento_arquivos,
     MAX(i.prazo) AS prazo,
     COUNT(fun.idfuncao) AS total_funcoes,
     COUNT(CASE WHEN f.status = 'Finalizado' THEN 1 END) AS funcoes_finalizadas,

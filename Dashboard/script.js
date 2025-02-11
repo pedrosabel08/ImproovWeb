@@ -10,6 +10,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
+
+
+function formatarData(data) {
+    const partes = data.split("-");
+    const dataFormatada = `${partes[2]}/${partes[1]}/${partes[0]}`;
+    return dataFormatada;
+}
+
 function mostrarImagens() {
     // Mostra as imagens restantes
     document.getElementById("imagens-restantes").style.display = "block";
@@ -210,8 +218,9 @@ fetch('obras.php')
                 const nomeObra = document.createElement('h3');
                 nomeObra.textContent = item.nomenclatura;
 
-                const prazo = document.createElement('h4');
-                prazo.textContent = formatarData(item.prazo);
+
+                // const prazo = document.createElement('h4');
+                // prazo.textContent = formatarData(item.prazo);
                 const porcentagem = document.createElement('h4');
                 if (item.porcentagem_finalizada !== null) {
                     porcentagem.textContent = `${item.porcentagem_finalizada}%`;
@@ -222,35 +231,44 @@ fetch('obras.php')
                 const diasRestantes = calcularDiferencaDias(item.prazo);
 
                 // Alterar a cor do card com base no prazo
-                if (diasRestantes < 0) {
-                    // Prazo já passou
-                    card.style.backgroundColor = '#ff6f61'; // Vermelho
+                if (item.recebimento_arquivos === '0000-00-00' && item.porcentagem_finalizada <= 0) {
+                    card.style.backgroundColor = '#1bd6f2'; // Azul
                     card.style.color = '#fff';
-                } else if (diasRestantes <= 3) {
-                    // Prazo próximo (3 dias ou menos)
-                    card.style.backgroundColor = '#f7b731'; // Amarelo
-                    card.style.color = '#333';
                 } else {
-                    // Prazo distante
-                    card.style.backgroundColor = '#28a745'; // Verde
-                    card.style.color = '#fff';
+                    if (diasRestantes < 0) {
+                        // Prazo já passou
+                        card.style.backgroundColor = '#ff6f61'; // Vermelho
+                        card.style.color = '#fff';
+                    } else if (diasRestantes <= 3) {
+                        // Prazo próximo (3 dias ou menos)
+                        card.style.backgroundColor = '#f7b731'; // Amarelo
+                        card.style.color = '#333';
+                    } else {
+                        // Prazo distante
+                        card.style.backgroundColor = '#28a745'; // Verde
+                        card.style.color = '#fff';
+                    }
                 }
+
 
 
                 card.addEventListener('click', function () {
                     const obraId = item.idobra;
 
+                    localStorage.setItem("obraId", obraId);
                     document.getElementById('idObraOrcamento').value = obraId;
+
+
                     document.getElementById('modalInfos').style.display = 'flex';
 
-                    fetch(`detalhesObra.php?id=${obraId}`)
+                    fetch(`infosObra.php?obraId=${obraId}`)
                         .then(response => response.json())
                         .then(detalhes => {
 
                             const obra = detalhes.obra;
                             document.getElementById('nomenclatura').textContent = obra.nomenclatura || "Nome não disponível";
                             document.getElementById('data_inicio').textContent = `Data de Início: ${obra.data_inicio}`;
-                            document.getElementById('prazo').textContent = `Prazo: ${obra.prazo}`;
+                            // document.getElementById('prazo').textContent = `Prazo: ${obra.prazo}`;
                             document.getElementById('dias_trabalhados').innerHTML = obra.dias_trabalhados ? `<strong>${obra.dias_trabalhados}</strong> dias` : '';
                             document.getElementById('total_imagens').textContent = `Total de Imagens: ${obra.total_imagens}`;
                             document.getElementById('total_imagens_antecipadas').textContent = `Imagens Antecipadas: ${obra.total_imagens_antecipadas}`;
@@ -273,11 +291,49 @@ fetch('obras.php')
                                 funcoesDiv.appendChild(funcaoDiv);
                             });
 
-                            const valores = detalhes.valores;
-                            document.getElementById('valor_orcamento').textContent = `R$ ${parseFloat(valores.valor_orcamento).toFixed(2)}`;
-                            document.getElementById('valor_producao').textContent = `R$ ${parseFloat(valores.custo_producao).toFixed(2)}`;
-                            document.getElementById('valor_fixo').textContent = `R$ ${parseFloat(valores.custo_fixo).toFixed(2)}`;
-                            document.getElementById('lucro').textContent = `R$ ${parseFloat(valores.lucro).toFixed(2)}`;
+                            const prazosDiv = document.getElementById('prazos-list');
+
+                            // Limpa o conteúdo da div
+                            prazosDiv.innerHTML = "";
+
+                            // Agrupa os prazos por status
+                            const groupedPrazos = detalhes.prazos.reduce((acc, prazo) => {
+                                if (!acc[prazo.nome_status]) {
+                                    acc[prazo.nome_status] = [];
+                                }
+                                acc[prazo.nome_status].push({
+                                    prazo: prazo.prazo,
+                                    idsImagens: prazo.idImagens || [] // Use idImagens conforme o JSON retornado
+                                });
+                                return acc;
+                            }, {});
+
+                            // Renderiza os cards agrupados
+                            Object.entries(groupedPrazos).forEach(([status, prazos]) => {
+                                console.log('Status:', status, 'Prazos:', prazos);
+                                const prazoList = document.createElement('div');
+                                prazoList.classList.add('prazos');
+
+                                prazoList.innerHTML = `
+                                    <div class="prazo-card">
+                                        <p class="nome_status">${status}</p>
+                                        <ul>
+                                        ${prazos.map(prazo => `
+                                            <li 
+                                                data-ids="${(prazo.idsImagens || []).join(',')}" 
+                                                class="prazo-item">
+                                                ${formatarData(prazo.prazo)} - <strong>${prazo.idsImagens.length} imagens</strong>
+                                            </li>`).join("")}
+                                        </ul>
+                                    </div>
+                                    `;
+
+                                const prazoCard = prazoList.querySelector('.prazo-card');
+                                applyStatusImagem(prazoCard, status);
+                                prazosDiv.appendChild(prazoList);
+                            });
+
+
 
                             const ctx = document.getElementById('graficoPorcentagem').getContext('2d');
                             if (chartInstance) {
@@ -327,7 +383,7 @@ fetch('obras.php')
                 });
 
                 card.appendChild(nomeObra);
-                card.appendChild(prazo);
+                // card.appendChild(prazo);
                 card.appendChild(porcentagem);
                 painel.appendChild(card);
             });
@@ -339,6 +395,43 @@ fetch('obras.php')
     })
     .catch(error => console.error('Erro ao carregar os dados:', error));
 
+
+function applyStatusImagem(cell, status) {
+    switch (status) {
+        case 'P00':
+            cell.style.backgroundColor = '#ffc21c'
+            break;
+        case 'R00':
+            cell.style.backgroundColor = '#1cf4ff'
+            break;
+        case 'R01':
+            cell.style.backgroundColor = '#ff6200'
+            break;
+        case 'R02':
+            cell.style.backgroundColor = '#ff3c00'
+            break;
+        case 'R03':
+            cell.style.backgroundColor = '#ff0000'
+            break;
+        case 'EF':
+            cell.style.backgroundColor = '#0dff00'
+            break;
+        case 'HOLD':
+            cell.style.backgroundColor = '#ff0000';
+            break;
+        case 'TEA':
+            cell.style.backgroundColor = '#f7eb07';
+            break;
+        case 'REN':
+            cell.style.backgroundColor = '#0c9ef2';
+            break;
+        case 'APR':
+            cell.style.backgroundColor = '#0c45f2';
+            break;
+        case 'APP':
+            cell.style.backgroundColor = '#7d36f7';
+    }
+};
 
 
 document.getElementById('orcamento').addEventListener('click', function () {
@@ -418,28 +511,59 @@ document.addEventListener('DOMContentLoaded', function () {
     setInterval(nextCard, 3000); // 3000 ms = 3 segundos
 });
 
+// Obtém o 'obra_id' do localStorage
+var obraId = localStorage.getItem('obraId');
 
-// Seleciona o botão, ícone e o corpo do documento
-const themeToggle = document.getElementById('themeToggle');
-const themeIcon = document.getElementById('themeIcon');
-const body = document.body;
-
-// Verifica se há um tema salvo no localStorage
-const savedTheme = localStorage.getItem('theme');
-if (savedTheme) {
-    body.classList.add(savedTheme);
-    themeIcon.className = savedTheme === 'dark' ? 'fas fa-moon' : 'fas fa-sun';
+if (obraId) {
+    abrirModalAcompanhamento(obraId); // Carrega os acompanhamentos automaticamente
+} else {
+    console.warn('ID da obra não encontrado no localStorage.');
 }
 
-// Alterna entre os temas e atualiza o ícone
-themeToggle.addEventListener('click', () => {
-    if (body.classList.contains('dark')) {
-        body.classList.replace('dark', 'light');
-        themeIcon.className = 'fas fa-sun'; // Ícone de sol
-        localStorage.setItem('theme', 'light');
-    } else {
-        body.classList.replace('light', 'dark');
-        themeIcon.className = 'fas fa-moon'; // Ícone de lua
-        localStorage.setItem('theme', 'dark');
-    }
+
+// Adiciona o botão de mostrar todos
+const btnMostrarAcomps = document.getElementById('btnMostrarAcomps');
+const acompanhamentoConteudo = document.getElementById('list_acomp');
+// Ao clicar no botão "Mostrar Todos"
+btnMostrarAcomps.addEventListener('click', () => {
+    acompanhamentoConteudo.classList.toggle('expanded');
+    const isExpanded = acompanhamentoConteudo.classList.contains('expanded');
+    btnMostrarAcomps.innerHTML = isExpanded ?
+        '<i class="fas fa-chevron-up"></i>' :
+        '<i class="fas fa-chevron-down"></i>';
 });
+
+
+function abrirModalAcompanhamento(obraId) {
+    fetch(`../Obras/getAcompanhamentoEmail.php?idobra=${obraId}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Erro ao carregar dados: ${response.status}`);
+            }
+            return response.json(); // Converte a resposta para JSON
+        })
+        .then(acompanhamentos => {
+            // Limpa o conteúdo anterior
+            acompanhamentoConteudo.innerHTML = '';
+
+            if (acompanhamentos.length > 0) {
+                acompanhamentos.forEach(acomp => {
+
+                    const item = document.createElement('p');
+                    item.innerHTML = `
+                        <div class="acomp-conteudo">
+                            <p class="acomp-assunto"><strong>Assunto:</strong> ${acomp.assunto}</p>
+                            <p class="acomp-data"><strong>Data:</strong> ${formatarData(acomp.data)}</p>
+                        </div>
+                    `;
+                    acompanhamentoConteudo.appendChild(item);
+                });
+            } else {
+                acompanhamentoConteudo.innerHTML = '<p>Nenhum acompanhamento encontrado.</p>';
+            }
+
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+        });
+}

@@ -19,17 +19,18 @@
             <ul class="division">
                 <label for="">Insights</label>
                 <li><a title="Página Principal" href="https://improov.com.br/sistema/inicio.php"><i class="fas fa-home"></i><span> Página Principal</span></a></li>
-                <li><a title="Lista Pós-Produção" href="https://improov.com.br/sistema/Pos-Producao/index.php"><i class="fas fa-list"></i><span> Lista Pós-Produção</span></a></li>
+                <li><a title="Lista Pós-Produção" href="https://improov.com.br/sistema/Pos-Producao"><i class="fas fa-list"></i><span> Lista Pós-Produção</span></a></li>
                 <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 3)): ?>
-                    <li><a title="Acompanhamentos" href="https://improov.com.br/sistema/infoCliente/index.php"><i class="fas fa-chart-line"></i><span> Infos Cliente</span></a></li>
+                    <li><a title="Infos Cliente" href="https://improov.com.br/sistema/infoCliente"><i class="fas fa-chart-line"></i><span> Infos Cliente</span></a></li>
                 <?php endif; ?>
                 <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 4)): ?>
-                    <li><a title="Lista Animação" href="https://improov.com.br/sistema/Animacao/index.php"><i class="fas fa-film"></i><span> Lista Animação</span></a></li>
+                    <li><a title="Lista Animação" href="https://improov.com.br/sistema/Animacao"><i class="fas fa-film"></i><span> Lista Animação</span></a></li>
                 <?php endif; ?>
 
                 <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1)): ?>
-                    <li><a title="Pagamento" href="https://improov.com.br/sistema/Pagamento/index.php"><i class="fas fa-money-bill-wave"></i><span> Pagamento</span></a></li>
-                    <li><a title="Obras" href="https://improov.com.br/sistema/Obras/index.php"><i class="fas fa-building"></i><span> Obras</span></a></li>
+                    <li><a title="Pagamento" href="https://improov.com.br/sistema/Pagamento"><i class="fas fa-money-bill-wave"></i><span> Pagamento</span></a></li>
+                    <li><a title="Obras" href="https://improov.com.br/sistema/Obras"><i class="fas fa-building"></i><span> Obras</span></a></li>
+                    <li><a title="Dashboard" href="https://improov.com.br/sistema/Dashboard"><i class="fa-solid fa-chart-line"></i><span> Dashboard</span></a></li>
                 <?php endif; ?>
 
             </ul>

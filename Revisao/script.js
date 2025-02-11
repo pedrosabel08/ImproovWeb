@@ -119,6 +119,18 @@ function formatarData(data) {
     return `${dia}/${mes}/${ano}`; // Retorna o formato 'DD/MM/YYYY'
 }
 
+function formatarDataHora(data) {
+    const date = new Date(data); // Cria um objeto Date a partir da string datetime
+
+    const dia = String(date.getDate()).padStart(2, '0'); // Pega o dia e formata com 2 dígitos
+    const mes = String(date.getMonth() + 1).padStart(2, '0'); // Pega o mês e formata com 2 dígitos (mes começa do 0)
+    const ano = date.getFullYear(); // Pega o ano
+    const horas = String(date.getHours()).padStart(2, '0'); // Pega a hora e formata com 2 dígitos
+    const minutos = String(date.getMinutes()).padStart(2, '0'); // Pega os minutos e formata com 2 dígitos
+
+    return `${dia}/${mes}/${ano} ${horas}:${minutos}`; // Retorna o formato desejado
+}
+
 // Função para exibir as tarefas
 function exibirTarefas(tarefas) {
     const container = document.querySelector('.container');
@@ -134,6 +146,7 @@ function exibirTarefas(tarefas) {
                 <div class="task-info">
                     <h3>${tarefa.nome_funcao}</h3><span>${tarefa.nome_colaborador}</span>
                     <p>${tarefa.imagem_nome}</p>
+                    <p>${formatarDataHora(tarefa.data_aprovacao)}</p>       
                 </div>
                 <div class="task-actions">
                     <button class="action-btn" id="check" onclick="revisarTarefa(${tarefa.idfuncao_imagem}, '${tarefa.nome_colaborador}', '${tarefa.imagem_nome}', '${tarefa.nome_funcao}', true)">
@@ -167,6 +180,10 @@ function historyAJAX(idfuncao_imagem) {
     fetch(`historico.php?ajid=${idfuncao_imagem}`)
         .then(response => response.json())
         .then(response => {
+
+
+            document.getElementById("id_funcao").value = idfuncao_imagem;
+
             // Exibir o modal
             const modal = document.getElementById('historico_modal');
             modal.style.display = 'grid';
@@ -174,7 +191,6 @@ function historyAJAX(idfuncao_imagem) {
             // Limpar o conteúdo atual do modal
             const historicoContainer = modal.querySelector('.historico-container');
             historicoContainer.innerHTML = '';
-
 
             // Verificar se há histórico retornado
             if (response.length > 0) {
@@ -210,8 +226,6 @@ function historyAJAX(idfuncao_imagem) {
                     `;
 
 
-                    console.log(card.innerHTML);
-
                     // Adicionar o card ao container
                     historicoContainer.appendChild(card);
                 });
@@ -230,20 +244,15 @@ function addObservacao(id) {
     const idRevisao = document.getElementById('id_revisao');
     const historicoAdd = modal.querySelector('.historico-add');
 
-    // Mostrar ou esconder o formulário de observação
     historicoAdd.classList.toggle('hidden');
 
-    // Verificar se o formulário está oculto
     if (historicoAdd.classList.contains('hidden')) {
-        // Se estiver oculto, remover a classe 'complete' do modal
         modal.classList.remove('complete');
     } else {
-        // Se não estiver oculto, adicionar a classe 'complete' no modal
         modal.classList.add('complete');
     }
 
-    // Definir o ID de revisão
-    idRevisao.innerText = `Revisão ID: ${id}`;
+    idRevisao.innerText = `${id}`;
 }
 
 
@@ -283,7 +292,8 @@ document.getElementById('adicionar_obs').addEventListener('submit', function (ev
     event.preventDefault(); // Previne o comportamento padrão do envio do formulário
 
     // Exibe um prompt para o usuário digitar o número da revisão
-    const numeroRevisao = prompt("Digite o número da revisão:");
+    const numeroRevisao = document.getElementById('id_revisao').textContent;
+    const idfuncao_imagem = document.getElementById("id_funcao").value;
 
     if (numeroRevisao) {
         // Captura o conteúdo do editor Quill
@@ -308,10 +318,25 @@ document.getElementById('adicionar_obs').addEventListener('submit', function (ev
             .then(data => {
                 // Verifica se a atualização foi bem-sucedida
                 if (data.success) {
-                    alert('Observação adicionada com sucesso!');
+                    Toastify({
+                        text: 'Observação adicionada com sucesso!',
+                        duration: 3000,
+                        backgroundColor: 'green',
+                        close: true,
+                        gravity: "top",
+                        position: "right"
+                    }).showToast();
 
+                    historyAJAX(idfuncao_imagem)
                 } else {
-                    alert('Erro ao adicionar a observação.');
+                    Toastify({
+                        text: "Falha ao atualizar a tarefa: " + data.message,
+                        duration: 3000,
+                        backgroundColor: "red",
+                        close: true,
+                        gravity: "top",
+                        position: "right"
+                    }).showToast();
                 }
             })
             .catch(error => {

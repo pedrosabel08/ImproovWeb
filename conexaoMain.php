@@ -45,7 +45,7 @@ function obterObras($conn)
 
 function obterColaboradores($conn)
 {
-    $sql = "SELECT idcolaborador, nome_colaborador FROM colaborador ORDER BY nome_colaborador";
+    $sql = "SELECT idcolaborador, nome_colaborador FROM colaborador WHERE ativo = 1 ORDER BY nome_colaborador";
     $result = $conn->query($sql);
     $colaboradores = array();
 

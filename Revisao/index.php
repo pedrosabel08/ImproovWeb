@@ -80,10 +80,12 @@ $idusuario = $_SESSION['idusuario'];
         <div class="historico-container"></div>
         <div class="historico-add hidden">
             <form id="adicionar_obs">
+                <h3>Adicionar Observação</h3>
+                <p>ID da revisão: <span id="id_revisao"></span></p>
+                <input type="hidden" id="id_funcao">
                 <div id="text_obs"></div>
 
-                <p id="id_revisao"></p>
-                <button type="submit">Enviar</button>
+                <button id="submit" type="submit">Enviar</button>
             </form>
         </div>
     </div>

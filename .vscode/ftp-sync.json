@@ -15,9 +15,10 @@
     "allow": [],
     "ignore": [
         "\\.vscode",
-        "\\.git", 
+        "\\.git",
         "\\.DS_Store",
-        "node_modules"
+        "node_modules",
+        "Backup"
     ],
     "generatedFiles": {
         "extensionsToInclude": [

@@ -10,7 +10,6 @@ $tabelas = ['funcao_imagem', 'obra', 'imagens_cliente_obra', 'acompanhamento_ema
 
 date_default_timezone_set('America/Sao_Paulo');
 
-
 // Nome do arquivo de backup
 $backupFile = __DIR__ . "/backup_tabelas_" . date('Y-m-d_H-i-s') . ".sql";
 
@@ -21,7 +20,7 @@ $command = "mysqldump --host=$host --user=$user --password=$password $dbName " .
 exec($command, $output, $returnVar);
 
 if ($returnVar === 0) {
-    echo "Backup das tabelas realizado com sucesso: $backupFile";
+    echo "Backup das tabelas realizado com sucesso: $backupFile\n";
 
     // Limitar a quantidade de backups
     $backupDir = __DIR__; // Diretório onde os backups são armazenados
@@ -36,6 +35,20 @@ if ($returnVar === 0) {
     while (count($files) > 1) {
         unlink(array_pop($files)); // Exclui os arquivos mais antigos, mantendo o mais recente
     }
+
+    // Comandos Git para commit e push automático
+    chdir($backupDir); // Muda para o diretório do backup
+
+    exec("git checkout Backup", $gitOutput, $gitReturnVar);
+    if ($gitReturnVar !== 0) {
+        exec("git checkout -b Backup"); // Cria a branch se não existir
+    }
+
+    exec("git add backup_tabelas_*.sql"); // Adiciona os arquivos ao Git
+    exec('git commit -m "Backup automático ' . date('Y-m-d H:i:s') . '"'); // Faz o commit
+    exec("git push origin Backup"); // Envia para o repositório remoto
+
+    echo "Backup commitado e enviado para o repositório na branch Backup.\n";
 } else {
-    echo "Erro ao fazer backup das tabelas.";
+    echo "Erro ao fazer backup das tabelas.\n";
 }

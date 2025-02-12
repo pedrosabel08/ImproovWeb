@@ -389,6 +389,8 @@ $conn->close();
                             <option value="HOLD">HOLD</option>
                             <option value="Não se aplica">Não se aplica</option>
                             <option value="Em aprovação">Em aprovação</option>
+                            <option value="Aprovado">Aprovado</option>
+                            <option value="Reprovado">Reprovado</option>
                         </select>
                         <input type="date" name="prazo_caderno" id="prazo_caderno">
                         <input type="text" name="obs_caderno" id="obs_caderno" placeholder="Observação">
@@ -419,6 +421,8 @@ $conn->close();
                             <option value="HOLD">HOLD</option>
                             <option value="Não se aplica">Não se aplica</option>
                             <option value="Em aprovação">Em aprovação</option>
+                            <option value="Aprovado">Aprovado</option>
+                            <option value="Reprovado">Reprovado</option>
                         </select>
                         <input type="date" name="prazo_filtro" id="prazo_filtro">
                         <input type="text" name="obs_filtro" id="obs_filtro" placeholder="Observação">
@@ -449,6 +453,8 @@ $conn->close();
                             <option value="HOLD">HOLD</option>
                             <option value="Não se aplica">Não se aplica</option>
                             <option value="Em aprovação">Em aprovação</option>
+                            <option value="Aprovado">Aprovado</option>
+                            <option value="Reprovado">Reprovado</option>
                         </select>
                         <input type="date" name="prazo_modelagem" id="prazo_modelagem">
                         <input type="text" name="obs_modelagem" id="obs_modelagem" placeholder="Observação">
@@ -479,6 +485,8 @@ $conn->close();
                             <option value="HOLD">HOLD</option>
                             <option value="Não se aplica">Não se aplica</option>
                             <option value="Em aprovação">Em aprovação</option>
+                            <option value="Aprovado">Aprovado</option>
+                            <option value="Reprovado">Reprovado</option>
                         </select>
                         <input type="date" name="prazo_comp" id="prazo_comp">
                         <input type="text" name="obs_comp" id="obs_comp" placeholder="Observação">
@@ -509,6 +517,8 @@ $conn->close();
                             <option value="HOLD">HOLD</option>
                             <option value="Não se aplica">Não se aplica</option>
                             <option value="Em aprovação">Em aprovação</option>
+                            <option value="Aprovado">Aprovado</option>
+                            <option value="Reprovado">Reprovado</option>
                         </select>
                         <input type="date" name="prazo_finalizacao" id="prazo_finalizacao">
                         <input type="text" name="obs_finalizacao" id="obs_finalizacao" placeholder="Observação">
@@ -541,6 +551,8 @@ $conn->close();
                             <option value="HOLD">HOLD</option>
                             <option value="Não se aplica">Não se aplica</option>
                             <option value="Em aprovação">Em aprovação</option>
+                            <option value="Aprovado">Aprovado</option>
+                            <option value="Reprovado">Reprovado</option>
                         </select>
                         <input type="date" name="prazo_pos" id="prazo_pos">
                         <input type="text" name="obs_pos" id="obs_pos" placeholder="Observação">
@@ -572,6 +584,8 @@ $conn->close();
                             <option value="HOLD">HOLD</option>
                             <option value="Não se aplica">Não se aplica</option>
                             <option value="Em aprovação">Em aprovação</option>
+                            <option value="Aprovado">Aprovado</option>
+                            <option value="Reprovado">Reprovado</option>
                         </select>
                         <input type="date" name="prazo_alteracao" id="prazo_alteracao">
                         <input type="text" name="obs_alteracao" id="obs_alteracao" placeholder="Observação">
@@ -603,6 +617,8 @@ $conn->close();
                             <option value="HOLD">HOLD</option>
                             <option value="Não se aplica">Não se aplica</option>
                             <option value="Em aprovação">Em aprovação</option>
+                            <option value="Aprovado">Aprovado</option>
+                            <option value="Reprovado">Reprovado</option>
                         </select>
                         <input type="date" name="prazo_planta" id="prazo_planta">
                         <input type="text" name="obs_planta" id="obs_planta" placeholder="Observação">

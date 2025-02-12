@@ -23,6 +23,8 @@ $idusuario = $_SESSION['idusuario'];
     <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
         type="image/x-icon">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+
     <link rel="stylesheet" href="../css/styleSidebar.css">
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
     <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
@@ -58,11 +60,13 @@ $idusuario = $_SESSION['idusuario'];
     include '../sidebar.php';
 
     ?>
-    <header>
-        <img src="../gif/assinatura_preto.gif" alt="Logo Improov + Flow" style="width: 150px;">
-    </header>
 
-    <div class="main" style="display: flex; flex-direction: column;">
+
+    <div class="main">
+        <div class="contagem">
+            <h4>Contagem de revisões por função:</h4>
+            <div id="contagem_alt"></div>
+        </div>
         <select name="nome_funcao" id="nome_funcao" style="width: 200px;margin: 0 auto;border: none;border-bottom: 1px solid black;">
             <option value="Todos">Todos</option>
             <option value="Caderno">Caderno</option>
@@ -73,11 +77,36 @@ $idusuario = $_SESSION['idusuario'];
             <option value="Alteração">Alteração</option>
             <option value="Planta Humanizada">Planta Humanizada</option>
         </select>
+
         <div class="container"></div>
     </div>
 
     <div id="historico_modal" style="display: none;">
-        <div class="historico-container"></div>
+        <div class="historico-container">
+            <div class="task-info">
+                <h3 id="funcao_nome"></h3>
+                <p id="imagem_nome"></p>
+            </div>
+            <div class="table-container">
+                <table id="tabelaHistorico" class="display" style="font-size: 12px;">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Status Anterior</th>
+                            <th>Status Novo</th>
+                            <th>Data Aprovação</th>
+                            <th>Colaborador</th>
+                            <th>Responsável</th>
+                            <th>Observações</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+
         <div class="historico-add hidden">
             <form id="adicionar_obs">
                 <h3>Adicionar Observação</h3>
@@ -90,9 +119,13 @@ $idusuario = $_SESSION['idusuario'];
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+
     <script src="script.js"></script>
     <script src="../script/sidebar.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+
 </body>
 
 </html>

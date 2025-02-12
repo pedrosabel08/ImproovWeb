@@ -19,7 +19,20 @@ if ($_SERVER["REQUEST_METHOD"] == "GET") {
     // Proteção contra SQL Injection
     $idFuncaoSelecionada = $conn->real_escape_string($idFuncaoSelecionada);
 
-    $sql = "SELECT * FROM historico_aprovacoes WHERE funcao_imagem_id = $idFuncaoSelecionada";
+    $sql = "SELECT 
+    h.*, 
+    h.responsavel, 
+    c.nome_colaborador AS colaborador_nome, 
+    c2.nome_colaborador AS responsavel_nome,
+    i.imagem_nome, 
+    fun.nome_funcao
+FROM historico_aprovacoes h
+JOIN colaborador c ON h.colaborador_id = c.idcolaborador
+JOIN colaborador c2 ON h.responsavel = c2.idcolaborador
+LEFT JOIN funcao_imagem f ON f.idfuncao_imagem = h.funcao_imagem_id
+LEFT JOIN funcao fun ON fun.idfuncao = f.funcao_id
+LEFT JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
+ WHERE h.funcao_imagem_id = $idFuncaoSelecionada";
 
     $result = $conn->query($sql);
 

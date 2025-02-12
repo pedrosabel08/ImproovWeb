@@ -14,6 +14,11 @@ header {
     padding: 10px;
 }
 
+body {
+    display: grid;
+    grid-template-columns: 60px 1fr;
+}
+
 
 button,
 a {
@@ -23,6 +28,25 @@ a {
 
 .hidden {
     display: none;
+}
+
+.main {
+    display: flex;
+    flex-direction: column;
+    grid-column: 2;
+}
+
+.contagem {
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 20px 0;
+    margin: 15px 0;
+}
+
+#contagem_alt {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
 }
 
 #menu {
@@ -112,14 +136,16 @@ h2 {
 }
 
 .task-actions {
-    display: flex;
+    display: grid;
     gap: 10px;
+    justify-content: center;
+    grid-template-columns: 1fr 1fr 1fr;
 }
 
 .action-btn,
 .whatsapp-btn {
-    padding: 10px 16px;
-    font-size: 14px;
+    padding: 5px 8px;
+    font-size: 12px;
     border: none;
     border-radius: 5px;
     cursor: pointer;
@@ -196,15 +222,23 @@ h2 {
     background: #fff;
     padding: 20px;
     border-radius: 10px;
-    max-width: 600px;
-    width: 100%;
+    max-width: 1200px;
+    width: 1200px;
     overflow-y: auto;
     max-height: 80%;
     margin: auto;
 }
 
+.historico-container {
+    display: flex;
+    flex-direction: column;
+    /* Coloca os elementos em uma coluna */
+    gap: 20px;
+    /* Adiciona um espaço entre as seções */
+}
+
 #historico_modal.complete {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 2fr 1fr;
 }
 
 .historico-card {
@@ -227,12 +261,8 @@ h2 {
     margin-left: 30px;
 }
 
-#add_obs i {
-    background-color: steelblue;
-    padding: 5px;
-    color: white;
-    border-radius: 50%;
-    font-size: 14px;
+#add_obs {
+    background-color: #08af08;
 }
 
 #adicionar_obs button#submit {
@@ -255,4 +285,49 @@ h2 {
 
 #adicionar_obs span {
     font-weight: bold;
+}
+
+
+.table-container {
+    background-color: #ffffff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Ajuste a tabela */
+#tabelaHistorico {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+#tabelaHistorico th,
+#tabelaHistorico td {
+    padding: 8px;
+    text-align: center;
+    border: 1px solid #d8d8d8;
+}
+
+#tabelaHistorico th {
+    background-color: #f2f2f2;
+}
+
+
+.tooltip {
+    position: relative;
+    display: inline-block;
+}
+
+.tooltip:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 5px;
+    background-color: #333;
+    color: #fff;
+    border-radius: 4px;
+    white-space: nowrap;
+    font-size: 12px;
 }

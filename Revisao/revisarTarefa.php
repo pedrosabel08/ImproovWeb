@@ -27,6 +27,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $nome_colaborador = 'Pedro Sabel'; // Ajuste conforme necessário
     $imagem_nome = $data['imagem_nome'] ?? null;
     $nome_funcao = $data['nome_funcao'] ?? null;
+    $colaborador_id = $data['colaborador_id'] ?? null;
+    $responsavel = $data['responsavel'] ?? null;
 
     // Verifique se o ID da função foi fornecido
     if ($idfuncao_imagem === null) {
@@ -36,14 +38,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $stmt = $conn->prepare(
         $isChecked
-            ? "UPDATE funcao_imagem SET check_funcao = 1 WHERE idfuncao_imagem = ?"
-            : "UPDATE funcao_imagem SET status = 'Em andamento' WHERE idfuncao_imagem = ?"
+            ? "UPDATE funcao_imagem SET check_funcao = 1, status = 'Aprovada' WHERE idfuncao_imagem = ?"
+            : "UPDATE funcao_imagem SET status = 'Reprovada' WHERE idfuncao_imagem = ?"
     );
+
     if ($stmt) {
         $stmt->bind_param("i", $idfuncao_imagem);
 
         if ($stmt->execute()) {
+            $stmt->close(); // Fecha o primeiro statement
+
+            // Define os valores do histórico de aprovação
+            $status_anterior = "Em aprovação";
+            $status_novo = $isChecked ? "Aprovado" : "Reprovado";
+
+            $stmt = $conn->prepare("
+                INSERT INTO historico_aprovacoes 
+                (funcao_imagem_id, status_anterior, status_novo, colaborador_id, responsavel) 
+                VALUES (?, ?, ?, ?, ?)
+            ");
+
+            $stmt->bind_param("issii", $idfuncao_imagem, $status_anterior, $status_novo, $colaborador_id, $responsavel);
+            $stmt->execute();
+            $stmt->close(); // Fecha o segundo statement
+
             echo json_encode(['success' => true, 'message' => 'Tarefa atualizada com sucesso.']);
+
 
             // Buscar o ID do usuário no Slack
             $url = "https://slack.com/api/users.list";
@@ -128,7 +148,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             echo json_encode(['success' => false, 'message' => 'Erro ao atualizar a tarefa.']);
         }
 
-        $stmt->close();
+       
     } else {
         echo json_encode(['success' => false, 'message' => 'Erro ao preparar a consulta.']);
     }

@@ -4,10 +4,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
 });
 
-function revisarTarefa(idfuncao_imagem, nome_colaborador, imagem_nome, nome_funcao, isChecked) {
+function revisarTarefa(idfuncao_imagem, nome_colaborador, imagem_nome, nome_funcao, colaborador_id, isChecked) {
     const actionText = isChecked
         ? "marcar esta tarefa como revisada"
         : "indicar que esta tarefa precisa de alterações";
+
+    const idcolaborador = localStorage.getItem('idcolaborador');
+
     if (confirm(`Você tem certeza de que deseja ${actionText}?`)) {
         fetch('revisarTarefa.php', {
             method: 'POST',
@@ -19,7 +22,9 @@ function revisarTarefa(idfuncao_imagem, nome_colaborador, imagem_nome, nome_func
                 nome_colaborador: nome_colaborador,
                 imagem_nome: imagem_nome,
                 nome_funcao: nome_funcao,
-                isChecked: isChecked
+                isChecked: isChecked,
+                responsavel: idcolaborador,
+                colaborador_id: colaborador_id
             }),
         })
             .then(response => {
@@ -29,6 +34,8 @@ function revisarTarefa(idfuncao_imagem, nome_colaborador, imagem_nome, nome_func
                 return response.json();
             })
             .then(data => {
+                console.log("Resposta do servidor:", data);
+
                 const message = isChecked
                     ? "Tarefa marcada como revisada com sucesso!"
                     : "Tarefa marcada como necessitando de alterações!";
@@ -60,7 +67,7 @@ function revisarTarefa(idfuncao_imagem, nome_colaborador, imagem_nome, nome_func
             .catch(error => {
                 console.error("Erro:", error);
                 Toastify({
-                    text: "Ocorreu um erro ao processar a solicitação.",
+                    text: "Ocorreu um erro ao processar a solicitação." + error.message,
                     duration: 3000,
                     backgroundColor: "red",
                     close: true,
@@ -97,10 +104,32 @@ async function fetchTarefas(filtro = 'Todos') {
 
         const data = await response.json();
 
+        // Filtra as tarefas com base no filtro
         const tarefasFiltradas = data.filter(tarefa => {
             return filtro === 'Todos' || tarefa.nome_funcao === filtro;
         });
-        exibirTarefas(tarefasFiltradas); // Passa os dados para a função que vai exibir as tarefas
+
+        // Exibe as tarefas
+        exibirTarefas(tarefasFiltradas);
+
+        // Conta o número de revisões por tipo de função
+        const revisoesPorFuncao = {};
+
+        tarefasFiltradas.forEach(tarefa => {
+            const funcao = tarefa.nome_funcao;
+            revisoesPorFuncao[funcao] = revisoesPorFuncao[funcao] ? revisoesPorFuncao[funcao] + 1 : 1;
+        });
+
+        // Exibe a contagem por função
+        const contagemAltDiv = document.getElementById('contagem_alt');
+        contagemAltDiv.innerHTML = ''; // Limpa o conteúdo anterior
+
+        // Adiciona as contagens na div
+        for (const funcao in revisoesPorFuncao) {
+            const contagem = revisoesPorFuncao[funcao];
+            contagemAltDiv.innerHTML += `<p>${funcao}: ${contagem}</p>`;
+        }
+
     } catch (error) {
         console.error("Erro:", error);
         Toastify({
@@ -113,6 +142,7 @@ async function fetchTarefas(filtro = 'Todos') {
         }).showToast();
     }
 }
+
 
 function formatarData(data) {
     const [ano, mes, dia] = data.split('-'); // Divide a string no formato 'YYYY-MM-DD'
@@ -140,29 +170,13 @@ function exibirTarefas(tarefas) {
         tarefas.forEach(tarefa => {
             const taskItem = document.createElement('div');
             taskItem.classList.add('task-item');
-            taskItem.setAttribute('onclick', 'toggleTaskDetails(this)');
+            taskItem.setAttribute('onclick', `historyAJAX(${tarefa.idfuncao_imagem}, '${tarefa.nome_funcao}', '${tarefa.imagem_nome}')`);
 
             taskItem.innerHTML = `
                 <div class="task-info">
                     <h3>${tarefa.nome_funcao}</h3><span>${tarefa.nome_colaborador}</span>
                     <p>${tarefa.imagem_nome}</p>
                     <p>${formatarDataHora(tarefa.data_aprovacao)}</p>       
-                </div>
-                <div class="task-actions">
-                    <button class="action-btn" id="check" onclick="revisarTarefa(${tarefa.idfuncao_imagem}, '${tarefa.nome_colaborador}', '${tarefa.imagem_nome}', '${tarefa.nome_funcao}', true)">
-                        <i class="fa-solid fa-check"></i>
-                    </button>
-                    <button class="action-btn" id="xmark" onclick="revisarTarefa(${tarefa.idfuncao_imagem}, '${tarefa.nome_colaborador}', '${tarefa.imagem_nome}', '${tarefa.nome_funcao}', false)">
-                        <i class="fa-solid fa-xmark"></i>
-                    </button>
-                    <button class="whatsapp-btn" id="history" onclick="historyAJAX(${tarefa.idfuncao_imagem})">
-                        <i class="fas fa-list"></i>
-                    </button>
-                    </a>
-                </div>
-                <div class="task-details">
-                    <p><strong>Imagem:</strong> ${tarefa.imagem_nome}</p>
-                    <p><strong>Colaborador:</strong> ${tarefa.nome_colaborador}</p>
                 </div>
             `;
             container.appendChild(taskItem);
@@ -175,66 +189,77 @@ function exibirTarefas(tarefas) {
 document.getElementById('nome_funcao').addEventListener('change', filtrarTarefas);
 
 
-function historyAJAX(idfuncao_imagem) {
-    // Fazer requisição AJAX para `historico.php`
+function historyAJAX(idfuncao_imagem, funcao_nome, imagem_nome) {
     fetch(`historico.php?ajid=${idfuncao_imagem}`)
         .then(response => response.json())
-        .then(response => {
-
+        .then(data => {
 
             document.getElementById("id_funcao").value = idfuncao_imagem;
+            document.getElementById("imagem_nome").textContent = imagem_nome;
+            document.getElementById("funcao_nome").textContent = funcao_nome;
 
             // Exibir o modal
             const modal = document.getElementById('historico_modal');
             modal.style.display = 'grid';
 
-            // Limpar o conteúdo atual do modal
-            const historicoContainer = modal.querySelector('.historico-container');
-            historicoContainer.innerHTML = '';
+            // Verifique se os dados estão no formato correto (array de objetos)
+            if (Array.isArray(data)) {
+                // Inicialize a tabela DataTable
+                let tabela = $('#tabelaHistorico').DataTable({
+                    "destroy": true,  // Permite reinicializar a tabela sem erro
+                    "data": data,  // Insere os dados diretos da resposta na tabela
+                    "columns": [
+                        { "data": "id" },
+                        { "data": "status_anterior" },
+                        { "data": "status_novo" },
+                        { "data": "data_aprovacao" },
+                        { "data": "colaborador_nome" },
+                        { "data": "responsavel_nome" },
+                        { "data": "observacoes" },
+                        {
+                            "data": null,
+                            "render": function (data, type, row) {
+                                return `
+                                <div class="task-actions">
+                                    <button class="action-btn tooltip" id="add_obs" onclick="addObservacao(${row.id})" data-tooltip="Adicionar Observação">
+                                        <i class="fa-solid fa-plus"></i>
+                                    </button>
+                                    <button class="action-btn tooltip" id="check" data-tooltip="Aprovar" onclick="revisarTarefa(${row.funcao_imagem_id}, '${row.colaborador_nome}', '${row.imagem_nome}', '${row.nome_funcao}', '${row.colaborador_id}', true)">
+                                        <i class="fa-solid fa-check"></i>
+                                    </button>
+                                    <button class="action-btn tooltip" id="xmark" data-tooltip="Rejeitar" onclick="revisarTarefa(${row.funcao_imagem_id}, '${row.colaborador_nome}', '${row.imagem_nome}', '${row.nome_funcao}', '${row.colaborador_id}', false)">
+                                        <i class="fa-solid fa-xmark"></i>
+                                    </button>
+                                </div>
+                                `;
+                            }
+                        }
+                    ],
+                    // Usando createdRow para manipular cada linha após ser criada
+                    "createdRow": function (row, data, dataIndex) {
+                        // Verifica os valores de status_novo e status_anterior
+                        if (data.status_novo === 'Em aprovação') {
+                            // Alterando o background da coluna "status_novo"
+                            $('td', row).eq(2).css('background-color', 'yellow');  // 2 é o índice da coluna "status_novo"
+                        }
 
-            // Verificar se há histórico retornado
-            if (response.length > 0) {
-                // Iterar sobre os itens do histórico
-                response.forEach(item => {
-                    // Criar o card para cada item
-                    const card = document.createElement('div');
-                    card.classList.add('historico-card'); // Classe para estilizar o card
+                        if (data.status_novo === 'Aprovado') {
+                            // Alterando o background da coluna "status_anterior"
+                            $('td', row).eq(2).css('background-color', 'green');  // 1 é o índice da coluna "status_anterior"
+                            $('td', row).eq(2).css('color', 'white');  // 1 é o índice da coluna "status_anterior"
+                        }
+                        if (data.status_novo === 'Ajuste') {
+                            // Alterando o background da coluna "status_anterior"
+                            $('td', row).eq(2).css('background-color', 'red');  // 1 é o índice da coluna "status_anterior"
+                        }
+                    }
 
-                    // Adicionar conteúdo ao card
-                    card.innerHTML = `
-                        <div class="historico-item">
-                            <strong>ID:</strong> ${item.id || 'N/A'}
-                        </div>
-                        <div class="historico-item">
-                            <strong>Status Anterior:</strong> ${item.status_anterior || 'N/A'}
-                        </div>
-                        <div class="historico-item">
-                            <strong>Status Novo:</strong> ${item.status_novo || 'N/A'}
-                        </div>
-                        <div class="historico-item">
-                            <strong>Data Aprovação:</strong> ${item.data_aprovacao || 'N/A'}
-                        </div>
-                        <div class="historico-item">
-                            <strong>Colaborador:</strong> ${item.colaborador_id || 'N/A'}
-                        </div>
-                        <div class="historico-item obs">
-                            <strong>Observações:</strong>
-                            <div class="observacoes"> ${item.observacoes || 'N/A'} </div>
-                        </div>
-                        <button id="add_obs" onclick="addObservacao(${item.id})"><i class="fa-solid fa-plus"></i></button>
-
-                    `;
-
-
-                    // Adicionar o card ao container
-                    historicoContainer.appendChild(card);
                 });
             } else {
-                // Exibir mensagem caso não haja histórico
-                historicoContainer.innerHTML = '<p>Não há histórico disponível para esta função.</p>';
+                console.error("Os dados recebidos não estão no formato esperado (array).");
             }
         })
-        .catch(error => console.error("Erro ao buscar dados da linha:", error));
+        .catch(error => console.error("Erro ao buscar dados:", error));
 }
 
 const id_revisao = document.getElementById('id_revisao');
@@ -254,8 +279,6 @@ function addObservacao(id) {
 
     idRevisao.innerText = `${id}`;
 }
-
-
 
 // Inicializa o editor Quill
 var quill = new Quill('#text_obs', {

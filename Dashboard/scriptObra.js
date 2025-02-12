@@ -101,6 +101,14 @@ function addEventListenersToRows() {
 
     linhasTabela.forEach(function (linha) {
         linha.addEventListener("click", function () {
+
+            const statusImagem = linha.getAttribute("status");
+
+            if (statusImagem === "STOP") { 
+                alert("Linha bloqueada, ação não permitida.");
+                return; 
+            }
+
             linhasTabela.forEach(function (outraLinha) {
                 outraLinha.classList.remove("selecionada");
             });
@@ -140,48 +148,56 @@ function atualizarModal(idImagem) {
                             document.getElementById("status_caderno").value = funcao.status;
                             document.getElementById("prazo_caderno").value = funcao.prazo;
                             document.getElementById("obs_caderno").value = funcao.observacao;
+                            document.getElementById("check_caderno").checked = funcao.check_funcao === '1';
                             break;
                         case "Modelagem":
                             selectElement = document.getElementById("opcao_model");
                             document.getElementById("status_modelagem").value = funcao.status;
                             document.getElementById("prazo_modelagem").value = funcao.prazo;
                             document.getElementById("obs_modelagem").value = funcao.observacao;
+                            document.getElementById("check_model").checked = funcao.check_funcao === '1';
                             break;
                         case "Composição":
                             selectElement = document.getElementById("opcao_comp");
                             document.getElementById("status_comp").value = funcao.status;
                             document.getElementById("prazo_comp").value = funcao.prazo;
                             document.getElementById("obs_comp").value = funcao.observacao;
+                            document.getElementById("check_comp").checked = funcao.check_funcao === '1';
                             break;
                         case "Finalização":
                             selectElement = document.getElementById("opcao_final");
                             document.getElementById("status_finalizacao").value = funcao.status;
                             document.getElementById("prazo_finalizacao").value = funcao.prazo;
                             document.getElementById("obs_finalizacao").value = funcao.observacao;
+                            document.getElementById("check_final").checked = funcao.check_funcao === '1';
                             break;
                         case "Pós-produção":
                             selectElement = document.getElementById("opcao_pos");
                             document.getElementById("status_pos").value = funcao.status;
                             document.getElementById("prazo_pos").value = funcao.prazo;
                             document.getElementById("obs_pos").value = funcao.observacao;
+                            document.getElementById("check_pos").checked = funcao.check_funcao === '1';
                             break;
                         case "Alteração":
                             selectElement = document.getElementById("opcao_alteracao");
                             document.getElementById("status_alteracao").value = funcao.status;
                             document.getElementById("prazo_alteracao").value = funcao.prazo;
                             document.getElementById("obs_alteracao").value = funcao.observacao;
+                            document.getElementById("check_alt").checked = funcao.check_funcao === '1';
                             break;
                         case "Planta Humanizada":
                             selectElement = document.getElementById("opcao_planta");
                             document.getElementById("status_planta").value = funcao.status;
                             document.getElementById("prazo_planta").value = funcao.prazo;
                             document.getElementById("obs_planta").value = funcao.observacao;
+                            document.getElementById("check_planta").checked = funcao.check_funcao === '1';
                             break;
                         case "Filtro de assets":
                             selectElement = document.getElementById("opcao_filtro");
                             document.getElementById("status_filtro").value = funcao.status;
                             document.getElementById("prazo_filtro").value = funcao.prazo;
                             document.getElementById("obs_filtro").value = funcao.observacao;
+                            document.getElementById("check_filtro").checked = funcao.check_funcao === '1';
                             break;
                     }
                     if (selectElement) {
@@ -246,6 +262,7 @@ function infosObra(obraId) {
                 row.classList.add('linha-tabela');
                 row.setAttribute('data-id', item.imagem_id);
                 row.setAttribute('tipo-imagem', item.tipo_imagem)
+                row.setAttribute('status', item.imagem_status)
 
                 var cellNomeImagem = document.createElement('td');
                 cellNomeImagem.textContent = item.imagem_nome;
@@ -263,6 +280,8 @@ function infosObra(obraId) {
                 cellStatus.textContent = item.imagem_status;
                 row.appendChild(cellStatus);
                 applyStatusImagem(cellStatus, item.imagem_status);
+
+
 
                 var cellPrazo = document.createElement('td');
                 cellPrazo.textContent = formatarData(item.prazo);
@@ -809,7 +828,6 @@ document.getElementById("salvar_funcoes").addEventListener("click", function (ev
                 stopOnFocus: true,
             }).showToast();
 
-            infosObra(obraId);
         },
         error: function (jqXHR, textStatus, errorThrown) {
             console.error("Erro ao salvar dados: " + textStatus, errorThrown);
@@ -1058,6 +1076,8 @@ document.getElementById("adicionar_observacao").addEventListener("submit", funct
 window.addEventListener('click', function (event) {
     if (event.target == form_edicao) {
         form_edicao.style.display = "none"
+        infosObra(obraId);
+
     }
     if (event.target == modal) {
         modal.style.display = "none"
@@ -1082,6 +1102,8 @@ window.addEventListener('click', function (event) {
 window.addEventListener('touchstart', function (event) {
     if (event.target == form_edicao) {
         form_edicao.style.display = "none"
+        infosObra(obraId);
+
     }
     if (event.target == modal) {
         modal.style.display = "none"

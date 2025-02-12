@@ -228,6 +228,10 @@ $conn->close();
         const idUsuario = <?php echo json_encode($idusuario); ?>;
         localStorage.setItem('idusuario', idUsuario);
 
+        const idColaborador = <?php echo json_encode($idcolaborador); ?>;
+
+        localStorage.setItem('idcolaborador', idColaborador);
+
         document.addEventListener("DOMContentLoaded", function() {
             const modal = document.getElementById("tutorialModal");
 

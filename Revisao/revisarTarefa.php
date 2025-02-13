@@ -38,8 +38,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $stmt = $conn->prepare(
         $isChecked
-            ? "UPDATE funcao_imagem SET check_funcao = 1, status = 'Aprovada' WHERE idfuncao_imagem = ?"
-            : "UPDATE funcao_imagem SET status = 'Reprovada' WHERE idfuncao_imagem = ?"
+            ? "UPDATE funcao_imagem SET check_funcao = 1, status = 'Aprovado' WHERE idfuncao_imagem = ?"
+            : "UPDATE funcao_imagem SET status = 'Ajuste' WHERE idfuncao_imagem = ?"
     );
 
     if ($stmt) {

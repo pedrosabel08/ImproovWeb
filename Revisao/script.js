@@ -176,6 +176,7 @@ function exibirTarefas(tarefas) {
                 <div class="task-info">
                     <h3>${tarefa.nome_funcao}</h3><span>${tarefa.nome_colaborador}</span>
                     <p>${tarefa.imagem_nome}</p>
+                    <p>${tarefa.status_novo}</p>
                     <p>${formatarDataHora(tarefa.data_aprovacao)}</p>       
                 </div>
             `;
@@ -296,16 +297,22 @@ var quill = new Quill('#text_obs', {
 
 
 const historico_modal = document.getElementById('historico_modal');
+const historicoAdd = historico_modal.querySelector('.historico-add');
 
 window.addEventListener('click', function (event) {
     if (event.target == historico_modal) {
         historico_modal.style.display = "none"
+        historico_modal.classList.remove('complete');
+        historicoAdd.classList.add('hidden');
     }
 });
 
 window.addEventListener('touchstart', function (event) {
     if (event.target == historico_modal) {
         historico_modal.style.display = "none"
+        historico_modal.classList.remove('complete');
+        historicoAdd.classList.add('hidden');
+
     }
 });
 
@@ -350,6 +357,8 @@ document.getElementById('adicionar_obs').addEventListener('submit', function (ev
                         position: "right"
                     }).showToast();
 
+                    historico_modal.classList.remove('complete');
+                    historicoAdd.classList.toggle('hidden');
                     historyAJAX(idfuncao_imagem)
                 } else {
                     Toastify({

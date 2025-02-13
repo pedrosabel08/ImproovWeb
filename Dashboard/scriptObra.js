@@ -379,21 +379,14 @@ function infosObra(obraId) {
             if (data.briefing && data.briefing.length > 0) {  
                 const br = data.briefing[0];
             
-                function formatarValor(valor) {
-                    if (valor && !valor.startsWith("R.:")) {
-                        return `R.: ${valor}`;
-                    }
-                    return valor || "R.:";
-                }
-            
-                document.getElementById('nivel').value = formatarValor(br.nivel);
-                document.getElementById('conceito').value = formatarValor(br.conceito);
-                document.getElementById('valor_media').value = formatarValor(br.valor_media);
-                document.getElementById('outro_padrao').value = formatarValor(br.outro_padrao);
-                document.getElementById('vidro').value = formatarValor(br.vidro);
-                document.getElementById('esquadria').value = formatarValor(br.esquadria);
-                document.getElementById('assets').value = formatarValor(br.assets);
-                document.getElementById('comp_planta').value = formatarValor(br.comp_planta);
+                document.getElementById('nivel').value = br.nivel;
+                document.getElementById('conceito').value = br.conceito;
+                document.getElementById('valor_media').value = br.valor_media;
+                document.getElementById('outro_padrao').value = br.outro_padrao;
+                document.getElementById('vidro').value = br.vidro;
+                document.getElementById('esquadria').value = br.esquadria;
+                document.getElementById('assets').value = br.assets;
+                document.getElementById('comp_planta').value = br.comp_planta;
             }
              else {
                 console.warn("Briefing não encontrado ou vazio."); // Apenas um aviso, sem erro no console

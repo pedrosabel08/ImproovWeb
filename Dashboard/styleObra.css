@@ -1253,6 +1253,12 @@ i.fa-info {
 
 .campo {
     margin: 15px 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.campo input {
+    border: none;
 }
 
 .funcao_comp {
@@ -1360,4 +1366,29 @@ i.fa-info {
     animation: balanco 0.5s ease infinite;
     color: red;
     /* Cor do sino quando ativado */
+}
+
+#copyColumn {
+    margin-left: 20px;
+    cursor: pointer;
+}
+
+.tooltip {
+    position: relative;
+    display: inline-block;
+}
+
+.tooltip:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 5px;
+    background-color: #333;
+    color: #fff;
+    border-radius: 4px;
+    white-space: nowrap;
+    font-size: 12px;
+    transition: 0.3s all ease;
 }

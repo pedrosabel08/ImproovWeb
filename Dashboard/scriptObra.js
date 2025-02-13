@@ -104,9 +104,9 @@ function addEventListenersToRows() {
 
             const statusImagem = linha.getAttribute("status");
 
-            if (statusImagem === "STOP") { 
+            if (statusImagem === "STOP") {
                 alert("Linha bloqueada, ação não permitida.");
-                return; 
+                return;
             }
 
             linhasTabela.forEach(function (outraLinha) {
@@ -235,6 +235,8 @@ function infosObra(obraId) {
                     tipo_imagem: 'N/A',
                     caderno_colaborador: '-',
                     caderno_status: '-',
+                    filtro_colaborador: '-',
+                    filtro_status: '-',
                     modelagem_colaborador: '-',
                     modelagem_status: '-',
                     composicao_colaborador: '-',
@@ -289,6 +291,7 @@ function infosObra(obraId) {
 
                 var colunas = [
                     { col: 'caderno', label: 'Caderno' },
+                    { col: 'filtro', label: 'Filtro' },
                     { col: 'modelagem', label: 'Modelagem' },
                     { col: 'composicao', label: 'Composição' },
                     { col: 'finalizacao', label: 'Finalização' },
@@ -354,73 +357,45 @@ function infosObra(obraId) {
             }
 
 
-            // Adicionar os event listeners aos botões "Anterior" e "Próximo" APÓS carregar os dados
             const btnAnterior = document.getElementById("btnAnterior");
             const btnProximo = document.getElementById("btnProximo");
 
-            btnAnterior.addEventListener("click", () => {
-                navegar(-1); // Usando uma função para simplificar a lógica
-            });
+            // Remover event listeners antes de adicionar para evitar duplicação
+            btnAnterior.removeEventListener("click", navegarAnterior);
+            btnProximo.removeEventListener("click", navegarProximo);
+            btnAnterior.removeEventListener("touchstart", navegarAnterior);
+            btnProximo.removeEventListener("touchstart", navegarProximo);
+            document.removeEventListener("keydown", navegarTeclado);
 
-            btnProximo.addEventListener("click", () => {
-                navegar(1); // Usando uma função para simplificar a lógica
-            });
-
-            btnAnterior.addEventListener("touchstart", () => {
-                navegar(-1); // Usando uma função para simplificar a lógica
-            });
-
-            btnProximo.addEventListener("touchstart", () => {
-                navegar(1); // Usando uma função para simplificar a lógica
-            });
-
-            // Adicionando evento para as teclas de seta
-            document.addEventListener("keydown", (event) => {
-
-                if (form_edicao && form_edicao.style.display === "flex") {
-                    if (event.key === "ArrowLeft") {
-                        navegar(-1); // Seta para a esquerda
-                    } else if (event.key === "ArrowRight") {
-                        navegar(1); // Seta para a direita
-                    }
-                }
-            });
+            // Adiciona novamente os eventos com funções nomeadas para poderem ser removidas
+            btnAnterior.addEventListener("click", navegarAnterior);
+            btnProximo.addEventListener("click", navegarProximo);
+            btnAnterior.addEventListener("touchstart", navegarAnterior);
+            btnProximo.addEventListener("touchstart", navegarProximo);
+            document.addEventListener("keydown", navegarTeclado);
 
 
-            function navegar(direcao) {
-                // Atualiza o índice da imagem atual
-                indiceImagemAtual += direcao;
-
-                // Garante que o índice está dentro dos limites
-                if (indiceImagemAtual < 0) {
-                    indiceImagemAtual = idsImagensObra.length - 1;
-                } else if (indiceImagemAtual >= idsImagensObra.length) {
-                    indiceImagemAtual = 0;
-                }
-
-                // Obtém o ID da imagem atual
-                const idImagem = idsImagensObra[indiceImagemAtual];
-                atualizarModal(idImagem);
-                document.getElementById("imagem_id").value = idImagem;
-
-                // Atualiza a seleção na tabela
-                linhasTabela.forEach(linha => linha.classList.remove("selecionada"));
-                let linhaSelecionada = document.querySelector(`tr[data-id="${idImagem}"]`);
-                if (linhaSelecionada) {
-                    linhaSelecionada.classList.add("selecionada");
-                }
-            }
             addEventListenersToRows();
-            if (data.briefing && data.briefing.length > 0) {  // Verifica se briefing existe e não está vazio
+            if (data.briefing && data.briefing.length > 0) {  
                 const br = data.briefing[0];
-                document.getElementById('nivel').value = br.nivel || "";
-                document.getElementById('conceito').value = br.conceito || "";
-                document.getElementById('valor_media').value = br.valor_media || "";
-                document.getElementById('outro_padrao').value = br.outro_padrao || "";
-                document.getElementById('assets').checked = br.assets === 1;
-                document.getElementById('comp_planta').checked = br.comp_planta === 1;
-
-            } else {
+            
+                function formatarValor(valor) {
+                    if (valor && !valor.startsWith("R.:")) {
+                        return `R.: ${valor}`;
+                    }
+                    return valor || "R.:";
+                }
+            
+                document.getElementById('nivel').value = formatarValor(br.nivel);
+                document.getElementById('conceito').value = formatarValor(br.conceito);
+                document.getElementById('valor_media').value = formatarValor(br.valor_media);
+                document.getElementById('outro_padrao').value = formatarValor(br.outro_padrao);
+                document.getElementById('vidro').value = formatarValor(br.vidro);
+                document.getElementById('esquadria').value = formatarValor(br.esquadria);
+                document.getElementById('assets').value = formatarValor(br.assets);
+                document.getElementById('comp_planta').value = formatarValor(br.comp_planta);
+            }
+             else {
                 console.warn("Briefing não encontrado ou vazio."); // Apenas um aviso, sem erro no console
             }
 
@@ -431,6 +406,9 @@ function infosObra(obraId) {
             document.getElementById('dias_trabalhados').innerHTML = obra.dias_trabalhados ? `<strong>${obra.dias_trabalhados}</strong> dias` : '';
             document.getElementById('total_imagens').textContent = `Total de Imagens: ${obra.total_imagens}`;
             document.getElementById('total_imagens_antecipadas').textContent = `Imagens Antecipadas: ${obra.total_imagens_antecipadas}`;
+            document.getElementById('local').value = `${obra.local}`;
+            document.getElementById('altura_drone').value = `${obra.altura_drone}`;
+            document.getElementById('link_drive').value = `${obra.link_drive}`;
 
             const funcoes = data.funcoes;
             const nomesFuncoes = funcoes.map(funcao => funcao.nome_funcao);
@@ -593,6 +571,50 @@ function infosObra(obraId) {
         .catch(error => console.error('Erro ao carregar funções:', error));
 }
 
+// Criar funções separadas para evitar problemas de referência
+function navegarAnterior() {
+    navegar(-1);
+}
+
+function navegarProximo() {
+    navegar(1);
+}
+
+function navegarTeclado(event) {
+    if (form_edicao && form_edicao.style.display === "flex") {
+        if (event.key === "ArrowLeft") {
+            navegar(-1);
+        } else if (event.key === "ArrowRight") {
+            navegar(1);
+        }
+    }
+}
+
+
+function navegar(direcao) {
+    // Atualiza o índice da imagem atual
+    indiceImagemAtual += direcao;
+
+    // Garante que o índice está dentro dos limites
+    if (indiceImagemAtual < 0) {
+        indiceImagemAtual = idsImagensObra.length - 1;
+    } else if (indiceImagemAtual >= idsImagensObra.length) {
+        indiceImagemAtual = 0;
+    }
+
+    // Obtém o ID da imagem atual
+    const idImagem = idsImagensObra[indiceImagemAtual];
+    atualizarModal(idImagem);
+    document.getElementById("imagem_id").value = idImagem;
+
+    // Atualiza a seleção na tabela
+    linhasTabela.forEach(linha => linha.classList.remove("selecionada"));
+    let linhaSelecionada = document.querySelector(`tr[data-id="${idImagem}"]`);
+    if (linhaSelecionada) {
+        linhaSelecionada.classList.add("selecionada");
+    }
+}
+
 
 function applyStatusImagem(cell, status) {
     switch (status) {
@@ -692,6 +714,14 @@ function applyStatusStyle(cell, status, colaborador) {
             cell.style.backgroundColor = 'yellow';
             cell.style.color = 'black';
             break;
+        case 'Aprovado':
+            cell.style.backgroundColor = 'lightseagreen';
+            cell.style.color = 'black';
+            break;
+        case 'Ajuste':
+            cell.style.backgroundColor = 'orangered';
+            cell.style.color = 'black';
+            break;
         default:
             cell.style.backgroundColor = '';
             cell.style.color = '';
@@ -711,42 +741,6 @@ function applyStyleNone(cell, cell2, nome) {
         cell2.style.color = '';
     }
 }
-
-// var sidebar = document.getElementById("sidebar");
-// var toggleButton = document.getElementById("toggleSidebar");
-
-// // Adiciona o evento de clique no botão (que contém o ícone)
-// toggleButton.addEventListener("click", function () {
-//     // Verifica se a sidebar está oculta (display: none)
-//     if (sidebar.style.display === "none" || sidebar.style.display === "") {
-//         // Torna a sidebar visível
-//         sidebar.style.display = "flex";
-//         toggleButton.style.display = "none";
-
-//     } else {
-//         // Oculta a sidebar
-//         sidebar.style.display = "none";
-//         toggleButton.style.display = "flex";
-
-//     }
-// });
-
-// // Fecha a sidebar se o usuário clicar fora dela
-// window.onclick = function (event) {
-//     if (event.target !== sidebar && event.target !== toggleButton && !toggleButton.contains(event.target)) {
-//         sidebar.style.display = "none"; // Fecha a sidebar se clicado fora
-//         toggleButton.style.display = "flex";
-
-//     }
-// };
-// window.ontouchstart = function (event) {
-//     if (event.target !== sidebar && event.target !== toggleButton && !toggleButton.contains(event.target)) {
-//         sidebar.style.display = "none"; // Fecha a sidebar se clicado fora
-//         toggleButton.style.display = "flex";
-
-//     }
-// };
-
 
 
 document.getElementById("salvar_funcoes").addEventListener("click", function (event) {
@@ -1077,7 +1071,6 @@ window.addEventListener('click', function (event) {
     if (event.target == form_edicao) {
         form_edicao.style.display = "none"
         infosObra(obraId);
-
     }
     if (event.target == modal) {
         modal.style.display = "none"
@@ -1395,34 +1388,6 @@ function submitFormImagem(event) {
 }
 
 
-document.addEventListener("DOMContentLoaded", () => {
-    const resizeHandles = document.querySelectorAll(".resize-handle");
-
-    resizeHandles.forEach(handle => {
-        let startX;
-        let startWidth;
-
-        handle.addEventListener("mousedown", (e) => {
-            const th = handle.parentElement;
-            startX = e.pageX;
-            startWidth = th.offsetWidth;
-
-            const onMouseMove = (e) => {
-                const newWidth = startWidth + (e.pageX - startX);
-                th.style.width = `${newWidth}px`;
-            };
-
-            const onMouseUp = () => {
-                document.removeEventListener("mousemove", onMouseMove);
-                document.removeEventListener("mouseup", onMouseUp);
-            };
-
-            document.addEventListener("mousemove", onMouseMove);
-            document.addEventListener("mouseup", onMouseUp);
-        });
-    });
-});
-
 
 document.querySelectorAll(".campo input[type='text']").forEach(input => {
     input.addEventListener("keydown", function (event) {
@@ -1433,26 +1398,11 @@ document.querySelectorAll(".campo input[type='text']").forEach(input => {
             const campo = this.name;
             const valor = this.value.trim();
 
-
-            console.log(campo, valor, obraId)
-            // Envia para o banco de dados
             salvarNoBanco(campo, valor, obraId);
         }
     });
 });
 
-// Adiciona evento para os checkboxes
-document.querySelectorAll(".campo input[type='checkbox']").forEach(checkbox => {
-    checkbox.addEventListener("change", function () {
-        const campo = this.name;
-        const valor = this.checked ? "1" : "0"; // 1 para marcado, 0 para desmarcado
-
-        // Envia para o banco de dados
-        console.log(campo, valor, obraId)
-
-        salvarNoBanco(campo, valor, obraId);
-    });
-});
 
 function salvarNoBanco(campo, valor, obraId) {
     fetch("salvar.php", {

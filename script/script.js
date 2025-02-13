@@ -1121,6 +1121,14 @@ function applyStatusStyle(cell, status, colaborador) {
             cell.style.backgroundColor = 'yellow';
             cell.style.color = 'black';
             break;
+        case 'Aprovado':
+            cell.style.backgroundColor = 'lightseagreen';
+            cell.style.color = 'black';
+            break;
+        case 'Ajuste':
+            cell.style.backgroundColor = 'orangered';
+            cell.style.color = 'black';
+            break;
         default:
             cell.style.backgroundColor = '';
             cell.style.color = '';

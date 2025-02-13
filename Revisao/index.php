@@ -70,6 +70,7 @@ $idusuario = $_SESSION['idusuario'];
         <select name="nome_funcao" id="nome_funcao" style="width: 200px;margin: 0 auto;border: none;border-bottom: 1px solid black;">
             <option value="Todos">Todos</option>
             <option value="Caderno">Caderno</option>
+            <option value="Filtro de assets">Filtro de assets</option>
             <option value="Modelagem">Modelagem</option>
             <option value="Composição">Composição</option>
             <option value="Finalização">Finalização</option>
@@ -88,7 +89,7 @@ $idusuario = $_SESSION['idusuario'];
                 <p id="imagem_nome"></p>
             </div>
             <div class="table-container">
-                <table id="tabelaHistorico" class="display" style="font-size: 12px;">
+                <table id="tabelaHistorico" class="display" style="font-size: 12px; width: 0px;">
                     <thead>
                         <tr>
                             <th>ID</th>
@@ -107,7 +108,7 @@ $idusuario = $_SESSION['idusuario'];
         </div>
 
 
-        <div class="historico-add hidden">
+        <div class="historico-add hidden" style="width: 500px;">
             <form id="adicionar_obs">
                 <h3>Adicionar Observação</h3>
                 <p>ID da revisão: <span id="id_revisao"></span></p>

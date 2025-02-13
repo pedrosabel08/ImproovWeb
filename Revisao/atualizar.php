@@ -25,18 +25,23 @@ if ($idusuario == 1 || $idusuario == 2) {
     f.colaborador_id, 
     c.nome_colaborador, 
     c.telefone,
-    -- Subconsulta para pegar a última data de aprovação
     (SELECT MAX(h.data_aprovacao)
      FROM historico_aprovacoes h
-     WHERE h.funcao_imagem_id = f.idfuncao_imagem) AS data_aprovacao
+     WHERE h.funcao_imagem_id = f.idfuncao_imagem) AS data_aprovacao,
+    (SELECT h.status_novo
+     FROM historico_aprovacoes h
+     WHERE h.funcao_imagem_id = f.idfuncao_imagem
+     ORDER BY h.data_aprovacao DESC 
+     LIMIT 1) AS status_novo
 FROM funcao_imagem f
 LEFT JOIN funcao fun ON fun.idfuncao = f.funcao_id
 LEFT JOIN colaborador c ON c.idcolaborador = f.colaborador_id
 LEFT JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
-WHERE f.funcao_id IN (1, 2, 3, 4, 5, 6, 7) 
+WHERE f.funcao_id IN (1, 2, 3, 4, 5, 6, 7, 8) 
   AND f.check_funcao = 0 
   AND f.status = 'Em aprovação'
-ORDER BY data_aprovacao DESC";
+ORDER BY data_aprovacao DESC;
+";
 } elseif ($idusuario == 9) {
     //Nicolle
     $sql = "SELECT 
@@ -58,7 +63,7 @@ FROM funcao_imagem f
 LEFT JOIN funcao fun ON fun.idfuncao = f.funcao_id
 LEFT JOIN colaborador c ON c.idcolaborador = f.colaborador_id
 LEFT JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
-WHERE f.funcao_id IN (1, 2, 3, 4, 5, 6, 7) 
+WHERE f.funcao_id IN (1, 2, 3, 4, 5, 6, 7, 8) 
   AND f.check_funcao = 0 
   AND f.status = 'Em aprovação'
   ORDER BY data_aprovacao DESC";

@@ -61,6 +61,9 @@ $sqlObra = "SELECT
     o.nomenclatura,
     i.data_inicio,
 	i.prazo,
+    o.local,
+    o.altura_drone,
+    o.link_drive,
     COUNT(*) AS total_imagens,
     COUNT(CASE WHEN i.antecipada = 1 THEN 1 ELSE NULL END) AS total_imagens_antecipadas,
     i.dias_trabalhados
@@ -140,6 +143,8 @@ $sqlImagens = "SELECT
         ico.antecipada,
         MAX(CASE WHEN fi.funcao_id = 1 THEN c.nome_colaborador END) AS caderno_colaborador,
         MAX(CASE WHEN fi.funcao_id = 1 THEN fi.status END) AS caderno_status,
+        MAX(CASE WHEN fi.funcao_id = 8 THEN c.nome_colaborador END) AS filtro_colaborador,
+        MAX(CASE WHEN fi.funcao_id = 8 THEN fi.status END) AS filtro_status,
         MAX(CASE WHEN fi.funcao_id = 2 THEN c.nome_colaborador END) AS modelagem_colaborador,
         MAX(CASE WHEN fi.funcao_id = 2 THEN fi.status END) AS modelagem_status,
         MAX(CASE WHEN fi.funcao_id = 3 THEN c.nome_colaborador END) AS composicao_colaborador,
@@ -243,7 +248,9 @@ $sqlBriefing = "SELECT
     valor_media,
     outro_padrao,
     assets,
-    comp_planta
+    comp_planta,
+    vidro,
+    esquadria
     FROM briefing
 WHERE 
     briefing.obra_id = ?";

@@ -7,22 +7,30 @@ if (isset($_POST["campo"], $_POST["valor"], $_POST["obraId"])) {
     $valor = $_POST["valor"];
     $obraId = intval($_POST["obraId"]);
 
-    // Preparar a consulta
-    $sql = "UPDATE briefing SET $campo = ? WHERE obra_id = ?";
+    // Lista de campos que pertencem a cada tabela
+    $camposBriefing = ["assets", "comp_planta", "nivel", "conceito", "valor_media", "outro_padrao", "vidro", "esquadria"];
+    $camposObra = ["link_drive", "local", "altura_drone"];
+
+    // Determinar a tabela e a chave correta
+    if (in_array($campo, $camposBriefing)) {
+        $tabela = "briefing";
+        $chavePrimaria = "obra_id"; // Chave usada na tabela briefing
+    } elseif (in_array($campo, $camposObra)) {
+        $tabela = "obra";
+        $chavePrimaria = "idobra"; // Chave usada na tabela obra
+    } else {
+        die(json_encode(["sucesso" => false, "erro" => "Campo inválido"]));
+    }
+
+    // Preparar a consulta dinamicamente
+    $sql = "UPDATE $tabela SET $campo = ? WHERE $chavePrimaria = ?";
     $stmt = $conn->prepare($sql);
 
     if ($stmt === false) {
         die(json_encode(["sucesso" => false, "erro" => "Erro na preparação da consulta: " . $conn->error]));
     }
 
-    // Verificar se é checkbox (espera-se 1 ou 0) ou texto
-    if (in_array($campo, ["assets", "comp_planta"])) {
-        // Se for checkbox, o valor será um número (1 ou 0)
-        $stmt->bind_param("ii", $valor, $obraId); // "ii" para dois inteiros
-    } else {
-        // Caso contrário, o valor será texto
-        $stmt->bind_param("si", $valor, $obraId); // "si" para string e inteiro
-    }
+    $stmt->bind_param("si", $valor, $obraId);
 
     // Executar a consulta
     $executado = $stmt->execute();

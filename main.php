@@ -461,58 +461,93 @@ include 'sidebar.php';
     <div id="filtro-colab" class="modal">
         <h1>Filtro colaboradores</h1>
         <button id="mostrarLogsBtn" disabled>Mostrar Logs</button>
-        <label for="colaboradorSelect">Selecionar Colaborador:</label>
-        <select id="colaboradorSelect">
-            <option value="0">Selecione:</option>
-            <?php foreach ($colaboradores as $colab): ?>
-                <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                    <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                </option>
-            <?php endforeach; ?>
-        </select>
 
-        <label for="dataInicio">Data Início:</label>
-        <input type="date" id="dataInicio">
+        <div class="filtro-container">
+            <div class="filtro-item" id="div-colab">
+                <label for="colaboradorSelect">Colaborador:</label>
+                <select id="colaboradorSelect">
+                    <option value="0">Selecione:</option>
+                    <?php foreach ($colaboradores as $colab): ?>
+                        <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                            <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
 
-        <label for="dataFim">Data Fim:</label>
-        <input type="date" id="dataFim">
+            <div class="filtro-item">
+                <label for="mes">Mês:</label>
+                <select name="mes" id="mes">
+                    <option value="0">Todos</option>
+                    <option value="1">Janeiro</option>
+                    <option value="2">Fevereiro</option>
+                    <option value="3">Março</option>
+                    <option value="4">Abril</option>
+                    <option value="5">Maio</option>
+                    <option value="6">Junho</option>
+                    <option value="7">Julho</option>
+                    <option value="8">Agosto</option>
+                    <option value="9">Setembro</option>
+                    <option value="10">Outubro</option>
+                    <option value="11">Novembro</option>
+                    <option value="12">Dezembro</option>
+                </select>
+            </div>
 
-        <label for="obra">Obra:</label>
-        <select name="obraSelect" id="obraSelect">
-            <option value="">Selecione:</option>
-            <?php foreach ($obras as $obra): ?>
-                <option value="<?= $obra['idobra']; ?>"><?= htmlspecialchars($obra['nome_obra']); ?>
-                </option>
-            <?php endforeach; ?>
-        </select>
-        <label for="funcaoSelect">Função:</label>
-        <select id="funcaoSelect">
-            <option value="0">Selecione a Função:</option>
-            <?php foreach ($funcoes as $funcao): ?>
-                <option value="<?= htmlspecialchars($funcao['idfuncao']); ?>">
-                    <?= htmlspecialchars($funcao['nome_funcao']); ?>
-                </option>
-            <?php endforeach; ?>
-        </select>
+            <div class="filtro-item">
+                <label for="ano">Ano:</label>
+                <select name="ano" id="ano">
+                    <option value="0">Todos</option>
+                    <option value="2025">2025</option>
+                    <option value="2024">2024</option>
+                </select>
+            </div>
 
-        <label for="statusSelect">Status:</label>
-        <select id="statusSelect">
-            <option value="0">Selecione um status:</option>
-            <option value="Não iniciado">Não iniciado</option>
-            <option value="Em andamento">Em andamento</option>
-            <option value="Finalizado">Finalizado</option>
-            <option value="HOLD">HOLD</option>
-            <option value="Não se aplica">Não se aplica</option>
-            <option value="Em aprovação">Em aprovação</option>
-        </select>
+            <div class="filtro-item">
+                <label for="obraSelect">Obra:</label>
+                <select id="obraSelect">
+                    <option value="">Selecione:</option>
+                    <?php foreach ($obras as $obra): ?>
+                        <option value="<?= $obra['idobra']; ?>"><?= htmlspecialchars($obra['nome_obra']); ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
 
-        <label for="prioridadeSelect">Prioridade:</label>
-        <select id="prioridadeSelect">
-            <option value="0">Todas:</option>
-            <option value="1">Alta</option>
-            <option value="2">Média</option>
-            <option value="3">Baixa</option>
-        </select>
+            <div class="filtro-item">
+                <label for="funcaoSelect">Função:</label>
+                <select id="funcaoSelect">
+                    <option value="0">Selecione a Função:</option>
+                    <?php foreach ($funcoes as $funcao): ?>
+                        <option value="<?= htmlspecialchars($funcao['idfuncao']); ?>">
+                            <?= htmlspecialchars($funcao['nome_funcao']); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <div class="filtro-item">
+                <label for="statusSelect">Status:</label>
+                <select id="statusSelect">
+                    <option value="0">Selecione um status:</option>
+                    <option value="Não iniciado">Não iniciado</option>
+                    <option value="Em andamento">Em andamento</option>
+                    <option value="Finalizado">Finalizado</option>
+                    <option value="HOLD">HOLD</option>
+                    <option value="Não se aplica">Não se aplica</option>
+                    <option value="Em aprovação">Em aprovação</option>
+                </select>
+            </div>
+
+            <div class="filtro-item">
+                <label for="prioridadeSelect">Prioridade:</label>
+                <select id="prioridadeSelect">
+                    <option value="0">Todas:</option>
+                    <option value="1">Alta</option>
+                    <option value="2">Média</option>
+                    <option value="3">Baixa</option>
+                </select>
+            </div>
+        </div>
 
         <div class="image-count">
             <strong>Total de Imagens:</strong> <span id="totalImagens">0</span>

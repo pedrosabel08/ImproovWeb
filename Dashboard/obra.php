@@ -264,10 +264,12 @@ $conn->close();
                         <label for="">Altura drone:</label>
                         <input type="text" name="altura_drone" id="altura_drone">
                     </div>
-                    
-                </div>
 
-                <div id="infos"></div>
+                </div>
+                <div class="infos-container">
+                    <h2>Observações</h2>
+                    <div id="infos"></div>
+                </div>
             </div>
         </div>
 

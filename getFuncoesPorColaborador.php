@@ -12,8 +12,8 @@ if ($conn->connect_error) {
 $conn->set_charset('utf8mb4');
 
 $colaboradorId = intval($_GET['colaborador_id']);
-$dataInicio = isset($_GET['data_inicio']) ? $_GET['data_inicio'] : '';
-$dataFim = isset($_GET['data_fim']) ? $_GET['data_fim'] : '';
+$mes = isset($_GET['mes']) ? $_GET['mes'] : '';
+$ano = isset($_GET['ano']) ? $_GET['ano'] : '';
 $obraId = isset($_GET['obra_id']) ? intval($_GET['obra_id']) : '';
 $funcaoId = isset($_GET['funcao_id']) ? intval($_GET['funcao_id']) : '';
 $status = isset($_GET['status']) ? $_GET['status'] : '';
@@ -33,11 +33,11 @@ $sql = "SELECT
         JOIN prioridade_funcao pc ON fi.idfuncao_imagem = pc.funcao_imagem_id
         WHERE fi.colaborador_id = ? AND o.status_obra = 0";
 
-if ($dataInicio) {
-    $sql .= " AND fi.prazo >= ?";
+if ($mes) {
+    $sql .= " AND MONTH(fi.prazo) = ?";
 }
-if ($dataFim) {
-    $sql .= " AND fi.prazo <= ?";
+if ($ano) {
+    $sql .= " AND YEAR(fi.prazo) = ?";
 }
 if ($obraId) {
     $sql .= " AND o.idobra = ?";
@@ -60,13 +60,13 @@ $stmt = $conn->prepare($sql);
 $bindParams = [$colaboradorId];
 $types = 'i';
 
-if ($dataInicio) {
+if ($mes) {
     $types .= 's';
-    $bindParams[] = $dataInicio;
+    $bindParams[] = $mes;
 }
-if ($dataFim) {
+if ($ano) {
     $types .= 's';
-    $bindParams[] = $dataFim;
+    $bindParams[] = $ano;
 }
 if ($obraId) {
     $types .= 'i';

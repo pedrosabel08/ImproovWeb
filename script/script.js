@@ -363,103 +363,6 @@ document.addEventListener("DOMContentLoaded", function () {
     //     }
     // }
 
-
-    function carregarDados() {
-        var colaboradorId = document.getElementById('colaboradorSelect').value;
-        var dataInicio = document.getElementById('dataInicio').value;
-        var dataFim = document.getElementById('dataFim').value;
-        var obraId = document.getElementById('obraSelect').value;
-        var funcaoId = document.getElementById('funcaoSelect').value;
-        var status = document.getElementById('statusSelect').value;
-        var prioridade = document.getElementById('prioridadeSelect').value;
-
-        if (colaboradorId) {
-            var url = 'getFuncoesPorColaborador.php?colaborador_id=' + colaboradorId;
-
-            if (dataInicio) {
-                url += '&data_inicio=' + encodeURIComponent(dataInicio);
-            }
-            if (dataFim) {
-                url += '&data_fim=' + encodeURIComponent(dataFim);
-            }
-            if (obraId) {
-                url += '&obra_id=' + encodeURIComponent(obraId);
-            }
-            if (funcaoId) {
-                url += '&funcao_id=' + encodeURIComponent(funcaoId);
-            }
-            if (status) {
-                url += '&status=' + encodeURIComponent(status);
-            }
-            if (prioridade) {
-                url += '&prioridade=' + encodeURIComponent(prioridade);
-            }
-
-            fetch(url)
-                .then(response => response.json())
-                .then(data => {
-                    var tabela = document.querySelector('#tabela-colab tbody');
-                    tabela.innerHTML = '';
-
-                    data.forEach(function (item) {
-                        var row = document.createElement('tr');
-                        row.classList.add('linha-tabela');
-                        row.setAttribute('data-id', item.imagem_id);
-
-                        var prioridadeTexto = '';
-                        var prioridadeCor = '';
-                        if (item.prioridade == 3) {
-                            prioridadeTexto = 'Baixa';
-                            prioridadeCor = 'yellow'; // Cor de fundo para prioridade baixa
-                        } else if (item.prioridade == 2) {
-                            prioridadeTexto = 'Média';
-                            prioridadeCor = 'orange'; // Cor de fundo para prioridade média
-                        } else if (item.prioridade == 1) {
-                            prioridadeTexto = 'Alta';
-                            prioridadeCor = 'red'; // Cor de fundo para prioridade alta
-                        }
-
-                        var cellPrioridade = document.createElement('td');
-                        cellPrioridade.textContent = prioridadeTexto;
-                        cellPrioridade.style.backgroundColor = prioridadeCor;
-                        var cellNomeImagem = document.createElement('td');
-                        cellNomeImagem.textContent = item.imagem_nome;
-                        var cellFuncao = document.createElement('td');
-                        cellFuncao.textContent = item.nome_funcao;
-                        var cellStatus = document.createElement('td');
-                        cellStatus.textContent = item.status;
-                        var cellPrazoImagem = document.createElement('td');
-                        cellPrazoImagem.textContent = item.prazo;
-
-                        row.appendChild(cellPrioridade);
-                        row.appendChild(cellNomeImagem);
-                        row.appendChild(cellFuncao);
-                        row.appendChild(cellStatus);
-                        row.appendChild(cellPrazoImagem);
-                        tabela.appendChild(row);
-                    });
-
-                    document.getElementById('totalImagens').textContent = data.length;
-
-                    addEventListenersToRows();
-                })
-                .catch(error => console.error('Erro ao carregar funções:', error));
-        } else {
-            document.querySelector('#tabela-colab tbody').innerHTML = '';
-            document.getElementById('totalImagens').textContent = '0';
-        }
-    }
-
-
-    document.getElementById('colaboradorSelect').addEventListener('change', carregarDados);
-    document.getElementById('dataInicio').addEventListener('change', carregarDados);
-    document.getElementById('dataFim').addEventListener('change', carregarDados);
-    document.getElementById('obraSelect').addEventListener('change', carregarDados);
-    document.getElementById('funcaoSelect').addEventListener('change', carregarDados);
-    document.getElementById('statusSelect').addEventListener('change', carregarDados);
-    document.getElementById('prioridadeSelect').addEventListener('change', carregarDados);
-
-
     document.getElementById('obraFiltro').addEventListener('change', function () {
         atualizarFuncoes();
     });
@@ -690,6 +593,102 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
+});
+
+
+document.addEventListener('DOMContentLoaded', () => {
+    const idusuario = localStorage.getItem('idusuario');
+    const idcolaborador = localStorage.getItem('idcolaborador');
+    const colaboradorSelect = document.getElementById('div-colab');
+
+    function carregarDados(colaboradorId = null) {
+        // Se não tiver colaboradorId, verifica se o usuário é admin ou não
+        if (!colaboradorId) {
+            if (idusuario != 1 && idusuario != 2) {
+                colaboradorId = idcolaborador;
+
+            } else {
+                colaboradorId = colaboradorSelect.value;
+            }
+        }
+
+        var mes = document.getElementById('mes').value;
+        var ano = document.getElementById('ano').value;
+        var obraId = document.getElementById('obraSelect').value;
+        var funcaoId = document.getElementById('funcaoSelect').value;
+        var status = document.getElementById('statusSelect').value;
+        var prioridade = document.getElementById('prioridadeSelect').value;
+
+        var url = `getFuncoesPorColaborador.php?colaborador_id=${colaboradorId}`;
+        if (mes) url += `&mes=${encodeURIComponent(mes)}`;
+        if (ano) url += `&ano=${encodeURIComponent(ano)}`;
+        if (obraId) url += `&obra_id=${encodeURIComponent(obraId)}`;
+        if (funcaoId) url += `&funcao_id=${encodeURIComponent(funcaoId)}`;
+        if (status) url += `&status=${encodeURIComponent(status)}`;
+        if (prioridade) url += `&prioridade=${encodeURIComponent(prioridade)}`;
+
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                var tabela = document.querySelector('#tabela-colab tbody');
+                tabela.innerHTML = '';
+
+                data.forEach(item => {
+                    var row = document.createElement('tr');
+                    row.classList.add('linha-tabela');
+                    row.setAttribute('data-id', item.imagem_id);
+
+                    var prioridadeTexto = item.prioridade == 3 ? 'Baixa' :
+                        item.prioridade == 2 ? 'Média' : 'Alta';
+                    var prioridadeCor = item.prioridade == 3 ? 'yellow' :
+                        item.prioridade == 2 ? 'orange' : 'red';
+
+                    var cellPrioridade = document.createElement('td');
+                    cellPrioridade.textContent = prioridadeTexto;
+                    cellPrioridade.style.backgroundColor = prioridadeCor;
+
+                    var cellNomeImagem = document.createElement('td');
+                    cellNomeImagem.textContent = item.imagem_nome;
+
+                    var cellFuncao = document.createElement('td');
+                    cellFuncao.textContent = item.nome_funcao;
+
+                    var cellStatus = document.createElement('td');
+                    cellStatus.textContent = item.status;
+
+                    var cellPrazoImagem = document.createElement('td');
+                    cellPrazoImagem.textContent = item.prazo;
+
+                    row.appendChild(cellPrioridade);
+                    row.appendChild(cellNomeImagem);
+                    row.appendChild(cellFuncao);
+                    row.appendChild(cellStatus);
+                    row.appendChild(cellPrazoImagem);
+                    tabela.appendChild(row);
+                });
+
+                document.getElementById('totalImagens').textContent = data.length;
+            })
+            .catch(error => console.error('Erro ao carregar funções:', error));
+    }
+
+    // Se não for admin, esconde o select e já carrega os dados
+    if (idusuario != 1 && idusuario != 2) {
+        colaboradorSelect.style.display = 'none';
+        carregarDados(); // Carrega automaticamente para o usuário logado
+    } else {
+        // Se for admin, mostra o select e aguarda seleção
+        colaboradorSelect.style.display = 'block';
+        colaboradorSelect.addEventListener('change', () => carregarDados(colaboradorSelect.value));
+    }
+
+    // Adiciona eventos nos filtros
+    document.getElementById('mes').addEventListener('change', () => carregarDados());
+    document.getElementById('ano').addEventListener('change', () => carregarDados());
+    document.getElementById('obraSelect').addEventListener('change', () => carregarDados());
+    document.getElementById('funcaoSelect').addEventListener('change', () => carregarDados());
+    document.getElementById('statusSelect').addEventListener('change', () => carregarDados());
+    document.getElementById('prioridadeSelect').addEventListener('change', () => carregarDados());
 });
 
 function toggleNav() {
@@ -1178,23 +1177,6 @@ function applyStatusImagem(cell, status) {
     }
 };
 
-document.addEventListener("DOMContentLoaded", function () {
-
-    document.getElementById('menuButton').addEventListener('click', function () {
-        const menu = document.getElementById('menu');
-        menu.classList.toggle('hidden');
-    });
-
-    window.addEventListener('click', function (event) {
-        const menu = document.getElementById('menu');
-        const button = document.getElementById('menuButton');
-
-        if (!button.contains(event.target) && !menu.contains(event.target)) {
-            menu.classList.add('hidden');
-        }
-    });
-
-});
 
 var modalLogs = document.getElementById("modalLogs");
 var closeBtn = document.getElementsByClassName("close")[0];

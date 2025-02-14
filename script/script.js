@@ -14,6 +14,158 @@ document.querySelectorAll('.titulo').forEach(titulo => {
     });
 });
 
+// Função para adicionar eventos de clique nas linhas da tabela
+function addEventListenersToRows() {
+    const linhasTabela = document.querySelectorAll(".linha-tabela");
+
+    linhasTabela.forEach(function (linha) {
+        linha.addEventListener("click", function () {
+            linhasTabela.forEach(function (outraLinha) {
+                outraLinha.classList.remove("selecionada");
+            });
+
+            linha.classList.add("selecionada");
+
+            const idImagemSelecionada = linha.getAttribute("data-id");
+            document.getElementById("imagem_id").value = idImagemSelecionada;
+
+            // Limpar campos do formulário de edição
+            limparCampos();
+
+            // Fazer requisição AJAX para `buscaLinhaAJAX.php` usando Fetch
+            fetch(`buscaLinhaAJAX.php?ajid=${idImagemSelecionada}`)
+                .then(response => response.json())
+                .then(response => {
+                    document.getElementById('form-edicao').style.display = 'flex';
+
+                    if (response.funcoes && response.funcoes.length > 0) {
+                        document.getElementById("campoNomeImagem").textContent = response.funcoes[0].imagem_nome;
+
+                        response.funcoes.forEach(function (funcao) {
+                            let selectElement;
+                            switch (funcao.nome_funcao) {
+                                case "Caderno":
+                                    selectElement = document.getElementById("opcao_caderno");
+                                    document.getElementById("status_caderno").value = funcao.status;
+                                    document.getElementById("prazo_caderno").value = funcao.prazo;
+                                    document.getElementById("obs_caderno").value = funcao.observacao;
+                                    document.getElementById("check_caderno").checked = funcao.check_funcao === '1';
+                                    break;
+                                case "Modelagem":
+                                    selectElement = document.getElementById("opcao_model");
+                                    document.getElementById("status_modelagem").value = funcao.status;
+                                    document.getElementById("prazo_modelagem").value = funcao.prazo;
+                                    document.getElementById("obs_modelagem").value = funcao.observacao;
+                                    document.getElementById("check_model").checked = funcao.check_funcao === '1';
+                                    break;
+                                case "Composição":
+                                    selectElement = document.getElementById("opcao_comp");
+                                    document.getElementById("status_comp").value = funcao.status;
+                                    document.getElementById("prazo_comp").value = funcao.prazo;
+                                    document.getElementById("obs_comp").value = funcao.observacao;
+                                    document.getElementById("check_comp").checked = funcao.check_funcao === '1';
+                                    break;
+                                case "Finalização":
+                                    selectElement = document.getElementById("opcao_final");
+                                    document.getElementById("status_finalizacao").value = funcao.status;
+                                    document.getElementById("prazo_finalizacao").value = funcao.prazo;
+                                    document.getElementById("obs_finalizacao").value = funcao.observacao;
+                                    document.getElementById("check_final").checked = funcao.check_funcao === '1';
+                                    break;
+                                case "Pós-produção":
+                                    selectElement = document.getElementById("opcao_pos");
+                                    document.getElementById("status_pos").value = funcao.status;
+                                    document.getElementById("prazo_pos").value = funcao.prazo;
+                                    document.getElementById("obs_pos").value = funcao.observacao;
+                                    document.getElementById("check_pos").checked = funcao.check_funcao === '1';
+                                    break;
+                                case "Alteração":
+                                    selectElement = document.getElementById("opcao_alteracao");
+                                    document.getElementById("status_alteracao").value = funcao.status;
+                                    document.getElementById("prazo_alteracao").value = funcao.prazo;
+                                    document.getElementById("obs_alteracao").value = funcao.observacao;
+                                    document.getElementById("check_alt").checked = funcao.check_funcao === '1';
+                                    break;
+                                case "Planta Humanizada":
+                                    selectElement = document.getElementById("opcao_planta");
+                                    document.getElementById("status_planta").value = funcao.status;
+                                    document.getElementById("prazo_planta").value = funcao.prazo;
+                                    document.getElementById("obs_planta").value = funcao.observacao;
+                                    document.getElementById("check_planta").checked = funcao.check_funcao === '1';
+                                    break;
+                                case "Filtro de assets":
+                                    selectElement = document.getElementById("opcao_filtro");
+                                    document.getElementById("status_filtro").value = funcao.status;
+                                    document.getElementById("prazo_filtro").value = funcao.prazo;
+                                    document.getElementById("obs_filtro").value = funcao.observacao;
+                                    document.getElementById("check_filtro").checked = funcao.check_funcao === '1';
+                                    break;
+                            }
+                            if (selectElement) {
+                                selectElement.value = funcao.colaborador_id;
+                            }
+                        });
+                    }
+
+                    const statusSelect = document.getElementById("opcao_status");
+                    if (response.status_id !== null) {
+                        statusSelect.value = response.status_id;
+                    }
+                })
+                .catch(error => console.error("Erro ao buscar dados da linha:", error));
+
+            console.log("Linha selecionada: ID da imagem = " + idImagemSelecionada);
+        });
+    });
+}
+
+function limparCampos() {
+    document.getElementById("campoNomeImagem").textContent = "";
+
+    document.getElementById("status_caderno").value = "";
+    document.getElementById("prazo_caderno").value = "";
+    document.getElementById("obs_caderno").value = "";
+    document.getElementById("check_caderno").checked = false;
+    document.getElementById("status_modelagem").value = "";
+    document.getElementById("prazo_modelagem").value = "";
+    document.getElementById("obs_modelagem").value = "";
+    document.getElementById("check_model").checked = false;
+    document.getElementById("status_comp").value = "";
+    document.getElementById("prazo_comp").value = "";
+    document.getElementById("obs_comp").value = "";
+    document.getElementById("check_comp").checked = false;
+    document.getElementById("status_finalizacao").value = "";
+    document.getElementById("prazo_finalizacao").value = "";
+    document.getElementById("obs_finalizacao").value = "";
+    document.getElementById("check_final").value = "";
+    document.getElementById("status_pos").value = "";
+    document.getElementById("prazo_pos").value = "";
+    document.getElementById("obs_pos").value = "";
+    document.getElementById("check_pos").checked = false;
+    document.getElementById("status_alteracao").value = "";
+    document.getElementById("prazo_alteracao").value = "";
+    document.getElementById("obs_alteracao").value = "";
+    document.getElementById("check_alt").checked = false;
+    document.getElementById("status_planta").value = "";
+    document.getElementById("prazo_planta").value = "";
+    document.getElementById("obs_planta").value = "";
+    document.getElementById("check_planta").checked = false;
+    document.getElementById("status_filtro").value = "";
+    document.getElementById("prazo_filtro").value = "";
+    document.getElementById("obs_filtro").value = "";
+    document.getElementById("check_filtro").checked = false;
+
+    document.getElementById("opcao_caderno").value = "";
+    document.getElementById("opcao_model").value = "";
+    document.getElementById("opcao_comp").value = "";
+    document.getElementById("opcao_final").value = "";
+    document.getElementById("opcao_pos").value = "";
+    document.getElementById("opcao_alteracao").value = "";
+    document.getElementById("opcao_planta").value = "";
+    document.getElementById("opcao_filtro").value = "";
+    document.getElementById("opcao_status").value = "";
+}
+
 document.addEventListener("DOMContentLoaded", function () {
     // Função para carregar e atualizar a tabela com dados de `atualizarTabela.php`
     function carregarTabela() {
@@ -66,161 +218,11 @@ document.addEventListener("DOMContentLoaded", function () {
             .catch(error => console.error('Erro ao buscar dados:', error));
     }
 
-    // Função para adicionar eventos de clique nas linhas da tabela
-    function addEventListenersToRows() {
-        const linhasTabela = document.querySelectorAll(".linha-tabela");
-
-        linhasTabela.forEach(function (linha) {
-            linha.addEventListener("click", function () {
-                linhasTabela.forEach(function (outraLinha) {
-                    outraLinha.classList.remove("selecionada");
-                });
-
-                linha.classList.add("selecionada");
-
-                const idImagemSelecionada = linha.getAttribute("data-id");
-                document.getElementById("imagem_id").value = idImagemSelecionada;
-
-                // Limpar campos do formulário de edição
-                limparCampos();
-
-                // Fazer requisição AJAX para `buscaLinhaAJAX.php` usando Fetch
-                fetch(`buscaLinhaAJAX.php?ajid=${idImagemSelecionada}`)
-                    .then(response => response.json())
-                    .then(response => {
-                        document.getElementById('form-edicao').style.display = 'flex';
-
-                        if (response.funcoes && response.funcoes.length > 0) {
-                            document.getElementById("campoNomeImagem").textContent = response.funcoes[0].imagem_nome;
-
-                            response.funcoes.forEach(function (funcao) {
-                                let selectElement;
-                                switch (funcao.nome_funcao) {
-                                    case "Caderno":
-                                        selectElement = document.getElementById("opcao_caderno");
-                                        document.getElementById("status_caderno").value = funcao.status;
-                                        document.getElementById("prazo_caderno").value = funcao.prazo;
-                                        document.getElementById("obs_caderno").value = funcao.observacao;
-                                        document.getElementById("check_caderno").checked = funcao.check_funcao === '1';
-                                        break;
-                                    case "Modelagem":
-                                        selectElement = document.getElementById("opcao_model");
-                                        document.getElementById("status_modelagem").value = funcao.status;
-                                        document.getElementById("prazo_modelagem").value = funcao.prazo;
-                                        document.getElementById("obs_modelagem").value = funcao.observacao;
-                                        document.getElementById("check_model").checked = funcao.check_funcao === '1';
-                                        break;
-                                    case "Composição":
-                                        selectElement = document.getElementById("opcao_comp");
-                                        document.getElementById("status_comp").value = funcao.status;
-                                        document.getElementById("prazo_comp").value = funcao.prazo;
-                                        document.getElementById("obs_comp").value = funcao.observacao;
-                                        document.getElementById("check_comp").checked = funcao.check_funcao === '1';
-                                        break;
-                                    case "Finalização":
-                                        selectElement = document.getElementById("opcao_final");
-                                        document.getElementById("status_finalizacao").value = funcao.status;
-                                        document.getElementById("prazo_finalizacao").value = funcao.prazo;
-                                        document.getElementById("obs_finalizacao").value = funcao.observacao;
-                                        document.getElementById("check_final").checked = funcao.check_funcao === '1';
-                                        break;
-                                    case "Pós-produção":
-                                        selectElement = document.getElementById("opcao_pos");
-                                        document.getElementById("status_pos").value = funcao.status;
-                                        document.getElementById("prazo_pos").value = funcao.prazo;
-                                        document.getElementById("obs_pos").value = funcao.observacao;
-                                        document.getElementById("check_pos").checked = funcao.check_funcao === '1';
-                                        break;
-                                    case "Alteração":
-                                        selectElement = document.getElementById("opcao_alteracao");
-                                        document.getElementById("status_alteracao").value = funcao.status;
-                                        document.getElementById("prazo_alteracao").value = funcao.prazo;
-                                        document.getElementById("obs_alteracao").value = funcao.observacao;
-                                        document.getElementById("check_alt").checked = funcao.check_funcao === '1';
-                                        break;
-                                    case "Planta Humanizada":
-                                        selectElement = document.getElementById("opcao_planta");
-                                        document.getElementById("status_planta").value = funcao.status;
-                                        document.getElementById("prazo_planta").value = funcao.prazo;
-                                        document.getElementById("obs_planta").value = funcao.observacao;
-                                        document.getElementById("check_planta").checked = funcao.check_funcao === '1';
-                                        break;
-                                    case "Filtro de assets":
-                                        selectElement = document.getElementById("opcao_filtro");
-                                        document.getElementById("status_filtro").value = funcao.status;
-                                        document.getElementById("prazo_filtro").value = funcao.prazo;
-                                        document.getElementById("obs_filtro").value = funcao.observacao;
-                                        document.getElementById("check_filtro").checked = funcao.check_funcao === '1';
-                                        break;
-                                }
-                                if (selectElement) {
-                                    selectElement.value = funcao.colaborador_id;
-                                }
-                            });
-                        }
-
-                        const statusSelect = document.getElementById("opcao_status");
-                        if (response.status_id !== null) {
-                            statusSelect.value = response.status_id;
-                        }
-                    })
-                    .catch(error => console.error("Erro ao buscar dados da linha:", error));
-
-                console.log("Linha selecionada: ID da imagem = " + idImagemSelecionada);
-            });
-        });
-    }
-
     // Carregar a tabela ao carregar a página
     carregarTabela();
 
 
-    function limparCampos() {
-        document.getElementById("campoNomeImagem").textContent = "";
 
-        document.getElementById("status_caderno").value = "";
-        document.getElementById("prazo_caderno").value = "";
-        document.getElementById("obs_caderno").value = "";
-        document.getElementById("check_caderno").checked = false;
-        document.getElementById("status_modelagem").value = "";
-        document.getElementById("prazo_modelagem").value = "";
-        document.getElementById("obs_modelagem").value = "";
-        document.getElementById("check_model").checked = false;
-        document.getElementById("status_comp").value = "";
-        document.getElementById("prazo_comp").value = "";
-        document.getElementById("obs_comp").value = "";
-        document.getElementById("check_comp").checked = false;
-        document.getElementById("status_finalizacao").value = "";
-        document.getElementById("prazo_finalizacao").value = "";
-        document.getElementById("obs_finalizacao").value = "";
-        document.getElementById("check_final").value = "";
-        document.getElementById("status_pos").value = "";
-        document.getElementById("prazo_pos").value = "";
-        document.getElementById("obs_pos").value = "";
-        document.getElementById("check_pos").checked = false;
-        document.getElementById("status_alteracao").value = "";
-        document.getElementById("prazo_alteracao").value = "";
-        document.getElementById("obs_alteracao").value = "";
-        document.getElementById("check_alt").checked = false;
-        document.getElementById("status_planta").value = "";
-        document.getElementById("prazo_planta").value = "";
-        document.getElementById("obs_planta").value = "";
-        document.getElementById("check_planta").checked = false;
-        document.getElementById("status_filtro").value = "";
-        document.getElementById("prazo_filtro").value = "";
-        document.getElementById("obs_filtro").value = "";
-        document.getElementById("check_filtro").checked = false;
-
-        document.getElementById("opcao_caderno").value = "";
-        document.getElementById("opcao_model").value = "";
-        document.getElementById("opcao_comp").value = "";
-        document.getElementById("opcao_final").value = "";
-        document.getElementById("opcao_pos").value = "";
-        document.getElementById("opcao_alteracao").value = "";
-        document.getElementById("opcao_planta").value = "";
-        document.getElementById("opcao_filtro").value = "";
-        document.getElementById("opcao_status").value = "";
-    }
 
     document.getElementById("salvar_funcoes").addEventListener("click", function (event) {
         event.preventDefault();
@@ -599,7 +601,8 @@ document.addEventListener("DOMContentLoaded", function () {
 document.addEventListener('DOMContentLoaded', () => {
     const idusuario = localStorage.getItem('idusuario');
     const idcolaborador = localStorage.getItem('idcolaborador');
-    const colaboradorSelect = document.getElementById('div-colab');
+    const colaboradorDiv = document.getElementById('div-colab');
+    const colaboradorSelect = document.getElementById('colaboradorSelect');
 
     function carregarDados(colaboradorId = null) {
         // Se não tiver colaboradorId, verifica se o usuário é admin ou não
@@ -668,13 +671,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
 
                 document.getElementById('totalImagens').textContent = data.length;
+
+                addEventListenersToRows();
             })
             .catch(error => console.error('Erro ao carregar funções:', error));
     }
 
     // Se não for admin, esconde o select e já carrega os dados
     if (idusuario != 1 && idusuario != 2) {
-        colaboradorSelect.style.display = 'none';
+        colaboradorDiv.style.display = 'none';
         carregarDados(); // Carrega automaticamente para o usuário logado
     } else {
         // Se for admin, mostra o select e aguarda seleção

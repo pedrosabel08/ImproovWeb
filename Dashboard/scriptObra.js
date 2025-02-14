@@ -376,9 +376,9 @@ function infosObra(obraId) {
 
 
             addEventListenersToRows();
-            if (data.briefing && data.briefing.length > 0) {  
+            if (data.briefing && data.briefing.length > 0) {
                 const br = data.briefing[0];
-            
+
                 document.getElementById('nivel').value = br.nivel;
                 document.getElementById('conceito').value = br.conceito;
                 document.getElementById('valor_media').value = br.valor_media;
@@ -388,7 +388,7 @@ function infosObra(obraId) {
                 document.getElementById('assets').value = br.assets;
                 document.getElementById('comp_planta').value = br.comp_planta;
             }
-             else {
+            else {
                 console.warn("Briefing não encontrado ou vazio."); // Apenas um aviso, sem erro no console
             }
 
@@ -428,18 +428,31 @@ function infosObra(obraId) {
 
             // Verifica se há dados no array
             if (data.infos.length === 0) {
-                // document.querySelector('.infos-obra').style.display = 'none';
+                document.querySelector('.infos-container').style.display = 'none';
 
             } else {
                 // Preenche a div com as informações
                 data.infos.forEach(info => {
                     const infoDiv = document.createElement('div');
                     infoDiv.classList.add('info');
-                    infoDiv.innerHTML = `
-                        <p class="info-descricao">${info.descricao}</p>
-                        <p class="info-data">${info.data}</p>
-                    `;
+                    const input = document.createElement('input');
+                    input.id = `autoInput_${info.id}`;
+                    input.classList = 'autoInput';
+                    input.type = 'text';
+                    input.value = info.descricao;
+                    input.onkeydown = function (event) {
+                        atualizarRevisao(event, info.id, 'descricao', this.value);
+                    };
+                    input.oninput = function () {
+                        resizeInput(this);
+                    };
+
+                    infoDiv.appendChild(input);
                     infosDiv.appendChild(infoDiv);
+
+                    // Redimensionar o input logo após sua criação
+                    resizeInput(input);
+
                 });
 
             }
@@ -509,14 +522,6 @@ function infosObra(obraId) {
             });
 
 
-
-
-            // const valores = data.valores;
-            // document.getElementById('valor_orcamento').textContent = `R$ ${parseFloat(valores.valor_orcamento).toFixed(2)}`;
-            // document.getElementById('valor_producao').textContent = `R$ ${parseFloat(valores.custo_producao).toFixed(2)}`;
-            // document.getElementById('valor_fixo').textContent = `R$ ${parseFloat(valores.custo_fixo).toFixed(2)}`;
-            // document.getElementById('lucro').textContent = `R$ ${parseFloat(valores.lucro).toFixed(2)}`;
-
             const ctx = document.getElementById('graficoPorcentagem').getContext('2d');
             if (chartInstance) {
                 chartInstance.destroy();
@@ -563,6 +568,14 @@ function infosObra(obraId) {
         })
         .catch(error => console.error('Erro ao carregar funções:', error));
 }
+
+
+const testDiv = document.getElementById('autoInput');
+
+function resizeInput(input) {
+    input.style.width = (input.value.length - 15) + 'ch';
+}
+
 
 // Criar funções separadas para evitar problemas de referência
 function navegarAnterior() {
@@ -1553,3 +1566,41 @@ document.getElementById("addRevisao").addEventListener("click", function (event)
 });
 
 
+
+function atualizarRevisao(event, id, campo, valor) {
+
+    if (event.key === 'Enter') {
+        event.preventDefault();
+
+
+        fetch('atualizarObs.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, campo, valor })
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === "sucesso") {
+                    Toastify({
+                        text: 'Campo atualizado com sucesso',
+                        duration: 3000,
+                        backgroundColor: "green",
+                        close: true,
+                        gravity: "top",
+                        position: "right"
+                    }).showToast();
+                } else {
+                    console.error(`Erro ao atualizar ${campo}:`, data.mensagem);
+                    Toastify({
+                        text: `Erro ao atualizar ${campo}:, ${data.mensagem}`,
+                        duration: 3000,
+                        backgroundColor: "red",
+                        close: true,
+                        gravity: "top",
+                        position: "right"
+                    }).showToast();
+                }
+            })
+            .catch(error => console.error('Erro na requisição:', error));
+    }
+}

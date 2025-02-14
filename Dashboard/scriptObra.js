@@ -736,9 +736,9 @@ function applyStatusStyle(cell, status, colaborador) {
 
 function applyStyleNone(cell, cell2, nome) {
     if (nome === 'Não se aplica') {
-        cell.style.backgroundColor = '#fff8ab';
+        cell.style.backgroundColor = '#b4b4b4';
         cell.style.color = 'black';
-        cell2.style.backgroundColor = '#fff8ab';
+        cell2.style.backgroundColor = '#b4b4b4';
         cell2.style.color = 'black';
     } else {
         cell.style.backgroundColor = '';

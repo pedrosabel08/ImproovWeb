@@ -18,6 +18,7 @@ $stmt = $conn->prepare("
         prazo = ?, 
         imagem_nome = ?, 
         tipo_imagem = ?,
+        antecipada = ?,
         animacao = ?,
         clima = ?
     WHERE idimagens_cliente_obra = ?
@@ -37,13 +38,14 @@ foreach ($data as $image) {
     $prazo = $image['prazo'];
     $imagem_nome = $image['imagem_nome'];
     $tipo_imagem = $image['tipo_imagem'];
+    $antecipada = isset($image['antecipada']) && $image['antecipada'] == "1" ? 1 : 0;
     $animacao = isset($image['animacao']) && $image['animacao'] == "1" ? 1 : 0;
     $clima = $image['clima'];
     $idimagem = $image['idimagem'];
 
     // Executa a consulta
     if (
-        !$stmt->bind_param("sssssssi", $recebimento_arquivos, $data_inicio, $prazo, $imagem_nome, $tipo_imagem, $animacao, $clima, $idimagem) ||
+        !$stmt->bind_param("ssssssssi", $recebimento_arquivos, $data_inicio, $prazo, $imagem_nome, $tipo_imagem, $antecipada, $animacao, $clima, $idimagem) ||
         !$stmt->execute()
     ) {
         $success = false;

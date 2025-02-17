@@ -1231,6 +1231,7 @@ document.getElementById("editImagesBtn").addEventListener("click", () => {
                             <label>Data de Início: <input type="date" data-id="${image.idimagem}" name="data_inicio" value="${image.data_inicio}"></label><br>
                             <label>Prazo: <input type="date" data-id="${image.idimagem}" name="prazo" value="${image.prazo}"></label><br>
                             <label>Tipo de Imagem: <input type="text" data-id="${image.idimagem}" name="tipo_imagem" value="${image.tipo_imagem}"></label>
+                            <label>Antecipada: <input type="checkbox" data-id="${image.idimagem}" name="antecipada" ${image.antecipada == 1 ? "checked" : ""}></label>
                             <label>Terá animação?: <input type="checkbox" data-id="${image.idimagem}" name="animacao" value="1" ${image.animacao == 1 ? "checked" : ""}></label>
                             <label>Clima: <input type="text" data-id="${image.idimagem}" name="clima" value="${image.clima}"></label>
                         </div>
@@ -1285,6 +1286,7 @@ document.getElementById("saveChangesBtn").addEventListener("click", () => {
             data_inicio: document.querySelector(`input[name="data_inicio"][data-id="${id}"]`).value,
             prazo: document.querySelector(`input[name="prazo"][data-id="${id}"]`).value,
             tipo_imagem: document.querySelector(`input[name="tipo_imagem"][data-id="${id}"]`).value,
+            antecipada: document.querySelector(`input[name="antecipada"][data-id="${id}"]`).checked ? "1" : "0",
             animacao: document.querySelector(`input[name="animacao"][data-id="${id}"]`).checked ? "1" : "0",
             clima: document.querySelector(`input[name="clima"][data-id="${id}"]`).value,
         };
@@ -1329,6 +1331,7 @@ function submitFormImagem(event) {
     const prazo = document.getElementById('prazo').value;
     const imagem = document.getElementById('nome-imagem').value;
     const tipo = document.getElementById('tipo-imagem').value;
+    const antecipada = document.getElementById('antecipada').checked ? 1 : 0;
 
 
     const data = {
@@ -1338,7 +1341,8 @@ function submitFormImagem(event) {
         data_inicio: data_inicio,
         prazo: prazo,
         imagem: imagem,
-        tipo: tipo
+        tipo: tipo,
+        antecipada: antecipada
     };
 
     console.log(data);

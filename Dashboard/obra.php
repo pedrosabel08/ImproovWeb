@@ -86,7 +86,7 @@ $conn->close();
 
                 <select id="antecipada_obra">
                     <option value="">Todos as imagens</option>
-                    <option value="Antecipada">Antecipada</option>
+                    <!-- <option value="Antecipada">Antecipada</option> -->
                 </select>
 
                 <div id="prazos-list"></div>

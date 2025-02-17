@@ -14,6 +14,7 @@ $data_inicio = $data['data_inicio'] ?? null;
 $prazo = $data['prazo'] ?? null;
 $imagem = $data['imagem'] ?? null;
 $tipo_imagem = $data['tipo'] ?? null;
+$antecipada = isset($data['antecipada']) && $data['antecipada'] == 1 ? 1 : 0;
 
 
 // Verificar se cliente e obra foram fornecidos
@@ -23,8 +24,8 @@ if (!$opcaoCliente || !$opcaoObra) {
 }
 
 // Construir a query
-$sql = "INSERT INTO imagens_cliente_obra (cliente_id, obra_id, imagem_nome, recebimento_arquivos, data_inicio, prazo, tipo_imagem) 
-        VALUES ('$opcaoCliente', '$opcaoObra', '$imagem', '$arquivo', '$data_inicio', '$prazo', '$tipo_imagem')";
+$sql = "INSERT INTO imagens_cliente_obra (cliente_id, obra_id, imagem_nome, recebimento_arquivos, data_inicio, prazo, tipo_imagem, antecipada) 
+        VALUES ('$opcaoCliente', '$opcaoObra', '$imagem', '$arquivo', '$data_inicio', '$prazo', '$tipo_imagem', '$antecipada')";
 
 // Executar a query
 if ($conn->query($sql) === TRUE) {

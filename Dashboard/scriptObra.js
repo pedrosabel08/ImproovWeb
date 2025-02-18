@@ -216,6 +216,13 @@ function atualizarModal(idImagem) {
 
 }
 
+
+function updateWidth(input) {
+    const hiddenText = input.parentElement.querySelector(".hidden-text"); // Encontra o span correto
+    hiddenText.textContent = input.value || " "; // Evita colapso quando vazio
+    input.style.width = hiddenText.offsetWidth + "px";
+}
+
 // Verifica se obraId está presente no localStorage
 if (obraId) {
     infosObra(obraId);
@@ -315,10 +322,8 @@ function infosObra(obraId) {
                 tabela.appendChild(row);
             });
 
-            const imagens_totais = document.getElementById('imagens-totais')
-            imagens_totais.textContent = `Total de imagens: ${imagens}`
-            const antecipadas = document.getElementById('antecipadas')
-            antecipadas.textContent = `Antecipadas: ${antecipada}`;
+            filtrarTabela();
+
 
             const revisoes = document.getElementById('revisoes');
             revisoes.textContent = `Total de alterações: ${data.alt}`
@@ -385,6 +390,7 @@ function infosObra(obraId) {
                 document.getElementById('outro_padrao').value = br.outro_padrao;
                 document.getElementById('vidro').value = br.vidro;
                 document.getElementById('esquadria').value = br.esquadria;
+                document.getElementById('soleira').value = br.soleira;
                 document.getElementById('assets').value = br.assets;
                 document.getElementById('comp_planta').value = br.comp_planta;
             }
@@ -431,28 +437,24 @@ function infosObra(obraId) {
                 document.querySelector('.infos-container').style.display = 'none';
 
             } else {
+
                 // Preenche a div com as informações
                 data.infos.forEach(info => {
                     const infoDiv = document.createElement('div');
-                    infoDiv.classList.add('info');
-                    const input = document.createElement('input');
-                    input.id = `autoInput_${info.id}`;
-                    input.classList = 'autoInput';
-                    input.type = 'text';
-                    input.value = info.descricao;
-                    input.onkeydown = function (event) {
-                        atualizarRevisao(event, info.id, 'descricao', this.value);
-                    };
-                    input.oninput = function () {
-                        resizeInput(this);
-                    };
-
-                    infoDiv.appendChild(input);
+                    infoDiv.classList.add('input-container');
+                    infoDiv.innerHTML = `
+                    <span class="hidden-text" id="hiddenText">${info.descricao}</span>
+                    <textarea class="auto-width" id="meuInput"
+                        oninput="showSaveButton(this, ${info.id}, 'descricao')"
+                        >${info.descricao}</textarea>
+                    <button class="save-button" data-id="${info.id}" data-campo="descricao"
+                        onclick="atualizarRevisao(event, ${info.id}, 'descricao', this.previousElementSibling.value)"
+                        style="display: none;"><i class="fas fa-edit" style="font-size: 16px; color: green;"></i></button>
+                `;
                     infosDiv.appendChild(infoDiv);
-
-                    // Redimensionar o input logo após sua criação
-                    resizeInput(input);
-
+                    document.querySelectorAll(".auto-width").forEach(input => {
+                        updateWidth(input);
+                    });
                 });
 
             }
@@ -475,7 +477,6 @@ function infosObra(obraId) {
 
             // Renderiza os cards agrupados
             Object.entries(groupedPrazos).forEach(([status, prazos]) => {
-                console.log('Status:', status, 'Prazos:', prazos);
                 const prazoList = document.createElement('div');
                 prazoList.classList.add('prazos');
 
@@ -569,13 +570,11 @@ function infosObra(obraId) {
         .catch(error => console.error('Erro ao carregar funções:', error));
 }
 
-
-const testDiv = document.getElementById('autoInput');
-
-function resizeInput(input) {
-    input.style.width = (input.value.length - 15) + 'ch';
+// Exibe o botão de salvar quando o usuário altera o texto
+function showSaveButton(textarea, id, campo) {
+    const saveButton = textarea.nextElementSibling;
+    saveButton.style.display = "inline-block";
 }
-
 
 // Criar funções separadas para evitar problemas de referência
 function navegarAnterior() {
@@ -1571,40 +1570,38 @@ document.getElementById("addRevisao").addEventListener("click", function (event)
 
 
 
+// Atualiza o campo quando o botão for clicado
 function atualizarRevisao(event, id, campo, valor) {
-
-    if (event.key === 'Enter') {
-        event.preventDefault();
-
-
-        fetch('atualizarObs.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id, campo, valor })
+    fetch('atualizarObs.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, campo, valor })
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === "sucesso") {
+                Toastify({
+                    text: 'Campo atualizado com sucesso',
+                    duration: 3000,
+                    backgroundColor: "green",
+                    close: true,
+                    gravity: "top",
+                    position: "right"
+                }).showToast();
+                document.querySelectorAll('.save-button').forEach(button => {
+                    button.style.display = 'none';
+                });
+            } else {
+                console.error(`Erro ao atualizar ${campo}:`, data.mensagem);
+                Toastify({
+                    text: `Erro ao atualizar ${campo}: ${data.mensagem}`,
+                    duration: 3000,
+                    backgroundColor: "red",
+                    close: true,
+                    gravity: "top",
+                    position: "right"
+                }).showToast();
+            }
         })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === "sucesso") {
-                    Toastify({
-                        text: 'Campo atualizado com sucesso',
-                        duration: 3000,
-                        backgroundColor: "green",
-                        close: true,
-                        gravity: "top",
-                        position: "right"
-                    }).showToast();
-                } else {
-                    console.error(`Erro ao atualizar ${campo}:`, data.mensagem);
-                    Toastify({
-                        text: `Erro ao atualizar ${campo}:, ${data.mensagem}`,
-                        duration: 3000,
-                        backgroundColor: "red",
-                        close: true,
-                        gravity: "top",
-                        position: "right"
-                    }).showToast();
-                }
-            })
-            .catch(error => console.error('Erro na requisição:', error));
-    }
+        .catch(error => console.error('Erro na requisição:', error));
 }

@@ -245,12 +245,16 @@ $conn->close();
                         <input type="text" name="comp_planta" id="comp_planta">
                     </div>
                     <div class="campo">
-                        <label for="comp_planta">Cor dos vidros:</label>
+                        <label for="vidro">Cor dos vidros:</label>
                         <input type="text" name="vidro" id="vidro">
                     </div>
                     <div class="campo">
-                        <label for="comp_planta">Cor das esquadrias:</label>
+                        <label for="esquadria">Cor das esquadrias:</label>
                         <input type="text" name="esquadria" id="esquadria">
+                    </div>
+                    <div class="campo">
+                        <label for="soleira">Cor das soleiras/pingadeiras:</label>
+                        <input type="text" name="soleira" id="soleira">
                     </div>
                     <div class="campo">
                         <label for="">Link do Fotográfico:</label>

@@ -250,7 +250,8 @@ $sqlBriefing = "SELECT
     assets,
     comp_planta,
     vidro,
-    esquadria
+    esquadria,
+    soleira
     FROM briefing
 WHERE 
     briefing.obra_id = ?";

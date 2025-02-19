@@ -40,6 +40,7 @@ function addEventListenersToRows() {
 
                     if (response.funcoes && response.funcoes.length > 0) {
                         document.getElementById("campoNomeImagem").textContent = response.funcoes[0].imagem_nome;
+                        document.getElementById("mood").textContent = `Mood da cena: ${response.funcoes[0].clima || ''}`;
 
                         response.funcoes.forEach(function (funcao) {
                             let selectElement;
@@ -64,6 +65,13 @@ function addEventListenersToRows() {
                                     document.getElementById("prazo_comp").value = funcao.prazo;
                                     document.getElementById("obs_comp").value = funcao.observacao;
                                     document.getElementById("check_comp").checked = funcao.check_funcao === '1';
+                                    break;
+                                case "Pré-Finalização":
+                                    selectElement = document.getElementById("opcao_pre");
+                                    document.getElementById("status_pre").value = funcao.status;
+                                    document.getElementById("prazo_pre").value = funcao.prazo;
+                                    document.getElementById("obs_pre").value = funcao.observacao;
+                                    document.getElementById("check_pre").checked = funcao.check_funcao === '1';
                                     break;
                                 case "Finalização":
                                     selectElement = document.getElementById("opcao_final");
@@ -134,10 +142,14 @@ function limparCampos() {
     document.getElementById("prazo_comp").value = "";
     document.getElementById("obs_comp").value = "";
     document.getElementById("check_comp").checked = false;
+    document.getElementById("status_pre").value = "";
+    document.getElementById("prazo_pre").value = "";
+    document.getElementById("obs_pre").value = "";
+    document.getElementById("check_pre").checked = false;
     document.getElementById("status_finalizacao").value = "";
     document.getElementById("prazo_finalizacao").value = "";
     document.getElementById("obs_finalizacao").value = "";
-    document.getElementById("check_final").value = "";
+    document.getElementById("check_final").checked = false;
     document.getElementById("status_pos").value = "";
     document.getElementById("prazo_pos").value = "";
     document.getElementById("obs_pos").value = "";
@@ -164,6 +176,7 @@ function limparCampos() {
     document.getElementById("opcao_planta").value = "";
     document.getElementById("opcao_filtro").value = "";
     document.getElementById("opcao_status").value = "";
+    document.getElementById("opcao_pre").value = "";
 }
 
 document.addEventListener("DOMContentLoaded", function () {

@@ -52,7 +52,8 @@ $funcao_ids = [
     'Pós-Produção' => 5,
     'Alteração' => 6,
     'Planta Humanizada' => 7,
-    'Filtro de assets' => 8
+    'Filtro de assets' => 8,
+    'Pré-Finalização' => 9
 ];
 
 $textos = $data['textos'];
@@ -64,7 +65,8 @@ $sections = [
     'Pós-Produção' => ['id' => (int)emptyToNull($data['pos_id']), 'status' => emptyToNull($data['status_pos']), 'prazo' => emptyToNull($data['prazo_pos']), 'obs' => emptyToNull($data['obs_pos']), 'check_funcao' => isset($data['check_pos']) ? (int)$data['check_pos'] : 0],
     'Alteração' => ['id' => (int)emptyToNull($data['alteracao_id']), 'status' => emptyToNull($data['status_alteracao']), 'prazo' => emptyToNull($data['prazo_alteracao']), 'obs' => emptyToNull($data['obs_alteracao']), 'check_funcao' => isset($data['check_alt']) ? (int)$data['check_alt'] : 0],
     'Planta Humanizada' => ['id' => (int)emptyToNull($data['planta_id']), 'status' => emptyToNull($data['status_planta']), 'prazo' => emptyToNull($data['prazo_planta']), 'obs' => emptyToNull($data['obs_planta']), 'check_funcao' => isset($data['check_planta']) ? (int)$data['check_planta'] : 0],
-    'Filtro de assets' => ['id' => (int)emptyToNull($data['filtro_id']), 'status' => emptyToNull($data['status_filtro']), 'prazo' => emptyToNull($data['prazo_filtro']), 'obs' => emptyToNull($data['obs_filtro']), 'check_funcao' => isset($data['check_filtro']) ? (int)$data['check_filtro'] : 0]
+    'Filtro de assets' => ['id' => (int)emptyToNull($data['filtro_id']), 'status' => emptyToNull($data['status_filtro']), 'prazo' => emptyToNull($data['prazo_filtro']), 'obs' => emptyToNull($data['obs_filtro']), 'check_funcao' => isset($data['check_filtro']) ? (int)$data['check_filtro'] : 0],
+    'Pré-Finalização' => ['id' => (int)emptyToNull($data['pre_id']), 'status' => emptyToNull($data['status_pre']), 'prazo' => emptyToNull($data['prazo_pre']), 'obs' => emptyToNull($data['obs_pre']), 'check_funcao' => isset($data['check_pre']) ? (int)$data['check_pre'] : 0]
 ];
 
 // Verifica se todas as funções existem

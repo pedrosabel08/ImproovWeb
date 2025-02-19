@@ -17,7 +17,8 @@ if ($_SERVER["REQUEST_METHOD"] == "GET") {
     $idImagemSelecionada = $_GET['ajid'];
 
     // Consulta para buscar funções, colaboradores, prazos e nome do status
-    $sqlFuncao = "SELECT 
+    $sqlFuncao = "SELECT
+    img.clima, 
     img.imagem_nome,
     f.nome_funcao, 
     col.idcolaborador AS colaborador_id, 

@@ -188,6 +188,8 @@ $conn->close();
                             <th>Status</th>
                             <th>Composição</th>
                             <th>Status</th>
+                            <th>Pré-Finalização</th>
+                            <th>Status</th>
                             <th>Finalização</th>
                             <th>Status</th>
                             <th>Pós Produção</th>
@@ -397,6 +399,7 @@ $conn->close();
             <div class="titulo-funcoes">
                 <span id="campoNomeImagem"></span>
             </div> <input type="hidden" id="imagem_id" name="imagem_id">
+            <span id="mood"></span>
             <div class="funcao_comp">
                 <div class="funcao">
                     <div class="titulo">
@@ -523,6 +526,38 @@ $conn->close();
                 </div>
                 <div class="check">
                     <input type="checkbox" name="check_comp" id="check_comp">
+                </div>
+            </div>
+            <div class="funcao_comp">
+                <div class="funcao">
+                    <div class="titulo">
+                        <p id="pre">Pré-Finalização</p>
+                        <i class="fas fa-chevron-down" id="toggle-options"></i>
+                    </div>
+                    <div class="opcoes" style="display: none;">
+                        <select name="opcao_pre" id="opcao_pre">
+                            <?php foreach ($colaboradores as $colab): ?>
+                                <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                    <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <select name="status_pre" id="status_pre">
+                            <option value="Não iniciado">Não iniciado</option>
+                            <option value="Em andamento">Em andamento</option>
+                            <option value="Finalizado">Finalizado</option>
+                            <option value="HOLD">HOLD</option>
+                            <option value="Não se aplica">Não se aplica</option>
+                            <option value="Em aprovação">Em aprovação</option>
+                            <option value="Aprovado">Aprovado</option>
+                            <option value="Ajuste">Ajuste</option>
+                        </select>
+                        <input type="date" name="prazo_pre" id="prazo_pre">
+                        <input type="text" name="obs_pre" id="obs_pre" placeholder="Observação">
+                    </div>
+                </div>
+                <div class="check">
+                    <input type="checkbox" name="check_pre" id="check_pre">
                 </div>
             </div>
             <div class="funcao_comp">

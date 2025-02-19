@@ -58,27 +58,39 @@ function limparCampos() {
     document.getElementById("status_caderno").value = "";
     document.getElementById("prazo_caderno").value = "";
     document.getElementById("obs_caderno").value = "";
+    document.getElementById("check_caderno").checked = false;
     document.getElementById("status_modelagem").value = "";
     document.getElementById("prazo_modelagem").value = "";
     document.getElementById("obs_modelagem").value = "";
+    document.getElementById("check_model").checked = false;
     document.getElementById("status_comp").value = "";
     document.getElementById("prazo_comp").value = "";
     document.getElementById("obs_comp").value = "";
+    document.getElementById("check_comp").checked = false;
+    document.getElementById("status_pre").value = "";
+    document.getElementById("prazo_pre").value = "";
+    document.getElementById("obs_pre").value = "";
+    document.getElementById("check_pre").checked = false;
     document.getElementById("status_finalizacao").value = "";
     document.getElementById("prazo_finalizacao").value = "";
     document.getElementById("obs_finalizacao").value = "";
+    document.getElementById("check_final").checked = false;
     document.getElementById("status_pos").value = "";
     document.getElementById("prazo_pos").value = "";
     document.getElementById("obs_pos").value = "";
+    document.getElementById("check_pos").checked = false;
     document.getElementById("status_alteracao").value = "";
     document.getElementById("prazo_alteracao").value = "";
     document.getElementById("obs_alteracao").value = "";
+    document.getElementById("check_alt").checked = false;
     document.getElementById("status_planta").value = "";
     document.getElementById("prazo_planta").value = "";
     document.getElementById("obs_planta").value = "";
+    document.getElementById("check_planta").checked = false;
     document.getElementById("status_filtro").value = "";
     document.getElementById("prazo_filtro").value = "";
     document.getElementById("obs_filtro").value = "";
+    document.getElementById("check_filtro").checked = false;
 
     document.getElementById("opcao_caderno").value = "";
     document.getElementById("opcao_model").value = "";
@@ -89,6 +101,7 @@ function limparCampos() {
     document.getElementById("opcao_planta").value = "";
     document.getElementById("opcao_filtro").value = "";
     document.getElementById("opcao_status").value = "";
+    document.getElementById("opcao_pre").value = "";
 }
 
 let idsImagensObra = []; // Array para armazenar os IDs das imagens da obra
@@ -139,6 +152,7 @@ function atualizarModal(idImagem) {
             document.getElementById('form-edicao').style.display = 'flex';
             if (response.funcoes && response.funcoes.length > 0) {
                 document.getElementById("campoNomeImagem").textContent = response.funcoes[0].imagem_nome;
+                document.getElementById("mood").textContent = `Mood da cena: ${response.funcoes[0].clima || ''}`;
 
                 response.funcoes.forEach(function (funcao) {
                     let selectElement;
@@ -199,6 +213,13 @@ function atualizarModal(idImagem) {
                             document.getElementById("obs_filtro").value = funcao.observacao;
                             document.getElementById("check_filtro").checked = funcao.check_funcao === '1';
                             break;
+                        case "Pré-Finalização":
+                            selectElement = document.getElementById("opcao_pre");
+                            document.getElementById("status_pre").value = funcao.status;
+                            document.getElementById("prazo_pre").value = funcao.prazo;
+                            document.getElementById("obs_pre").value = funcao.observacao;
+                            document.getElementById("check_pre").checked = funcao.check_funcao === '1';
+                            break;
                     }
                     if (selectElement) {
                         selectElement.value = funcao.colaborador_id;
@@ -248,6 +269,8 @@ function infosObra(obraId) {
                     modelagem_status: '-',
                     composicao_colaborador: '-',
                     composicao_status: '-',
+                    pre_colaborador: '-',
+                    pre_status: '-',
                     finalizacao_colaborador: '-',
                     finalizacao_status: '-',
                     pos_producao_colaborador: '-',
@@ -301,6 +324,7 @@ function infosObra(obraId) {
                     { col: 'filtro', label: 'Filtro' },
                     { col: 'modelagem', label: 'Modelagem' },
                     { col: 'composicao', label: 'Composição' },
+                    { col: 'pre', label: 'Pré-Finalização' },
                     { col: 'finalizacao', label: 'Finalização' },
                     { col: 'pos_producao', label: 'Pós Produção' },
                     { col: 'alteracao', label: 'Alteração' },
@@ -791,6 +815,10 @@ document.getElementById("salvar_funcoes").addEventListener("click", function (ev
         status_finalizacao: document.getElementById("status_finalizacao").value || "",
         prazo_finalizacao: document.getElementById("prazo_finalizacao").value || "",
         obs_finalizacao: document.getElementById("obs_finalizacao").value || "",
+        pre_id: document.getElementById("opcao_pre").value || "",
+        status_pre: document.getElementById("status_pre").value || "",
+        prazo_pre: document.getElementById("prazo_pre").value || "",
+        obs_pre: document.getElementById("obs_pre").value || "",
         pos_id: document.getElementById("opcao_pos").value || "",
         status_pos: document.getElementById("status_pos").value || "",
         prazo_pos: document.getElementById("prazo_pos").value || "",
@@ -807,6 +835,15 @@ document.getElementById("salvar_funcoes").addEventListener("click", function (ev
         status_filtro: document.getElementById("status_filtro").value || "",
         prazo_filtro: document.getElementById("prazo_filtro").value || "",
         obs_filtro: document.getElementById("obs_filtro").value || "",
+        check_caderno: document.getElementById("check_caderno").checked ? 1 : 0,
+        check_filtro: document.getElementById("check_filtro").checked ? 1 : 0,
+        check_model: document.getElementById("check_model").checked ? 1 : 0,
+        check_comp: document.getElementById("check_comp").checked ? 1 : 0,
+        check_final: document.getElementById("check_final").checked ? 1 : 0,
+        check_pos: document.getElementById("check_pos").checked ? 1 : 0,
+        check_alt: document.getElementById("check_alt").checked ? 1 : 0,
+        check_planta: document.getElementById("check_planta").checked ? 1 : 0,
+        check_pre: document.getElementById("check_pre").checked ? 1 : 0,
         textos: textos,
         status_id: document.getElementById("opcao_status").value || ""
     };

@@ -95,9 +95,9 @@ function filtrarTarefas() {
 
 
 // Função para buscar tarefas de revisão
-async function fetchTarefas(filtro = 'Todos') {
+async function fetchTarefas(filtro = 'Todos', status = 'Em aprovação') {
     try {
-        const response = await fetch('atualizar.php'); // Altere para o caminho correto do seu script PHP
+        const response = await fetch(`atualizar.php?status=${status}`); 
         if (!response.ok) {
             throw new Error("Erro ao buscar as tarefas.");
         }

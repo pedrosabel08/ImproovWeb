@@ -50,7 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             // Define os valores do histórico de aprovação
             $status_anterior = "Em aprovação";
-            $status_novo = $isChecked ? "Aprovado" : "Reprovado";
+            $status_novo = $isChecked ? "Aprovado" : "Ajuste";
 
             $stmt = $conn->prepare("
                 INSERT INTO historico_aprovacoes 

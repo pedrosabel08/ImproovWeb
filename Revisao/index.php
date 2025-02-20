@@ -78,6 +78,12 @@ $idusuario = $_SESSION['idusuario'];
             <option value="Alteração">Alteração</option>
             <option value="Planta Humanizada">Planta Humanizada</option>
         </select>
+        <div class="alternar">
+            <button onclick="fetchTarefas('Todos', 'Em aprovação')">Em aprovação</button>
+            <button onclick="fetchTarefas('Todos', 'Ajuste')">Ajuste</button>
+            <button onclick="fetchTarefas('Todos', 'Aprovado')">Aprovado</button>
+        </div>
+
 
         <div class="container"></div>
     </div>

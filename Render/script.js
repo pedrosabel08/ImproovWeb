@@ -9,15 +9,22 @@ function loadRenders() {
             $('#renderList').html('');
             if (response.status == 'sucesso') {
                 response.renders.forEach(function (render) {
-                    $('#renderList').append(`
-                        <tr data-id="${render.idrender_alta}">
-                            <td>${render.idrender_alta}</td>
-                            <td class="imagem-nome">${render.imagem_nome}</td>
-                            <td>${render.status}</td>
-                            <td>${render.data}</td>
-                        </tr>
-                    `);
+                    if (render.status !== 'Arquivado') {
+                        $('#renderList').append(`
+                            <tr data-id="${render.idrender_alta}">
+                                <td>${render.idrender_alta}</td>
+                                <td class="imagem-nome">${render.imagem_nome}</td>
+                                <td>${render.status}</td>
+                                <td>${render.data}</td>
+                            </tr>
+                        `);
+                    }
                 });
+                // Inicializar DataTable com 25 itens por página
+                $('#renderTable').DataTable({
+                    pageLength: 25
+                });
+
                 // Adicionar o evento de clique em cada linha da tabela
                 $('#renderList tr').click(function () {
                     const idrender_alta = $(this).data('id');
@@ -38,7 +45,7 @@ function editRender(idrender_alta) {
         success: function (response) {
             if (response.status == 'sucesso') {
                 $('#render_id').val(response.render.idrender_alta);
-                $('#imagem_nome').text(response.render.imagem_nome); // Atualiza o conteúdo do <p> com o nome da imagem
+                $('#imagem_nome').text(response.render.imagem_nome);
                 $('#render_status').val(response.render.status);
                 $('#myModal').css('display', 'flex');
             }
@@ -98,30 +105,3 @@ $('#deleteRender').click(function () {
 $(document).ready(function () {
     loadRenders();
 });
-
-
-const myModal = document.getElementById('myModal');
-
-document.addEventListener("DOMContentLoaded", function () {
-
-    document.getElementById('menuButton').addEventListener('click', function () {
-        const menu = document.getElementById('menu');
-        menu.classList.toggle('hidden');
-    });
-
-    window.addEventListener('click', function (event) {
-        const menu = document.getElementById('menu');
-        const button = document.getElementById('menuButton');
-
-        if (!button.contains(event.target) && !menu.contains(event.target)) {
-            menu.classList.add('hidden');
-        }
-    });
-
-});
-
-window.onclick = function (event) {
-    if (event.target == myModal) {
-        myModal.style.display = "none";
-    }
-}

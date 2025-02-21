@@ -1367,7 +1367,6 @@ function submitFormImagem(event) {
     const prazo = document.getElementById('prazo').value;
     const imagem = document.getElementById('nome-imagem').value;
     const tipo = document.getElementById('tipo-imagem').value;
-    const antecipada = document.getElementById('antecipada').checked ? 1 : 0;
 
 
     const data = {
@@ -1377,11 +1376,8 @@ function submitFormImagem(event) {
         data_inicio: data_inicio,
         prazo: prazo,
         imagem: imagem,
-        tipo: tipo,
-        antecipada: antecipada
+        tipo: tipo
     };
-
-    console.log(data);
 
     fetch('inserir_imagem.php', {
         method: 'POST',
@@ -1403,9 +1399,7 @@ function submitFormImagem(event) {
                     stopOnFocus: true,
                 }).showToast();
 
-                setTimeout(() => {
-                    window.location.reload();
-                }, 500);
+                infosObra(obraId);
             } else {
                 Toastify({
                     text: result.message,

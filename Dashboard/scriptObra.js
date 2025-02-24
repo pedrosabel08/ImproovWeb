@@ -417,6 +417,7 @@ function infosObra(obraId) {
                 document.getElementById('soleira').value = br.soleira;
                 document.getElementById('assets').value = br.assets;
                 document.getElementById('comp_planta').value = br.comp_planta;
+                document.getElementById('acab_calcadas').value = br.acab_calcadas;
             }
             else {
                 console.warn("Briefing não encontrado ou vazio."); // Apenas um aviso, sem erro no console

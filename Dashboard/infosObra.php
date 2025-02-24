@@ -245,15 +245,7 @@ $response['totalObra'] = $totalObra;
 $stmtTotalObra->close();
 
 $sqlBriefing = "SELECT 
-    nivel,
-    conceito,
-    valor_media,
-    outro_padrao,
-    assets,
-    comp_planta,
-    vidro,
-    esquadria,
-    soleira
+    *
     FROM briefing
 WHERE 
     briefing.obra_id = ?";

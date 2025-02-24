@@ -244,6 +244,12 @@ function updateWidth(input) {
     input.style.width = hiddenText.offsetWidth + "px";
 }
 
+// Função para ajustar a altura do textarea com base nas quebras de linha
+function adjustHeight(textarea) {
+    textarea.style.height = 'auto';
+    textarea.style.height = `${textarea.scrollHeight + 10}px`; // Aumenta 10px para cada linha adicional
+}
+
 // Verifica se obraId está presente no localStorage
 if (obraId) {
     infosObra(obraId);
@@ -468,17 +474,18 @@ function infosObra(obraId) {
                     const infoDiv = document.createElement('div');
                     infoDiv.classList.add('input-container');
                     infoDiv.innerHTML = `
-                    <span class="hidden-text" id="hiddenText">${info.descricao}</span>
-                    <textarea class="auto-width" id="meuInput"
-                        oninput="showSaveButton(this, ${info.id}, 'descricao')"
-                        >${info.descricao}</textarea>
-                    <button class="save-button" data-id="${info.id}" data-campo="descricao"
-                        onclick="atualizarRevisao(event, ${info.id}, 'descricao', this.previousElementSibling.value)"
-                        style="display: none;"><i class="fas fa-edit" style="font-size: 16px; color: green;"></i></button>
-                `;
+                        <span class="hidden-text" id="hiddenText">${info.descricao}</span>
+                        <textarea class="auto-width" id="meuInput"
+                            oninput="adjustHeight(this);"
+                            onblur="atualizarRevisao(event, ${info.id}, 'descricao', this.value)"
+                            >${info.descricao}</textarea>
+                    `;
                     infosDiv.appendChild(infoDiv);
+
+                    // Ajusta a largura
                     document.querySelectorAll(".auto-width").forEach(input => {
                         updateWidth(input);
+                        adjustHeight(input); // Chama também para inicializar a altura
                     });
                 });
 
@@ -595,11 +602,6 @@ function infosObra(obraId) {
         .catch(error => console.error('Erro ao carregar funções:', error));
 }
 
-// Exibe o botão de salvar quando o usuário altera o texto
-function showSaveButton(textarea, id, campo) {
-    const saveButton = textarea.nextElementSibling;
-    saveButton.style.display = "inline-block";
-}
 
 // Criar funções separadas para evitar problemas de referência
 function navegarAnterior() {
@@ -948,13 +950,20 @@ document.getElementById('obsAdd').addEventListener('click', function () {
     modalObs.style.display = 'block';
 });
 
-const closeModal = document.querySelector('.close-modal');
-closeModal.addEventListener('click', function () {
-    modal.style.display = 'none';
-});
+document.querySelectorAll('.close-modal').forEach(closeButton => {
+    closeButton.addEventListener('click', function () {
+        const modal = this.closest('.modal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    });
 
-closeModal.addEventListener('touchstart', function () {
-    modal.style.display = 'none';
+    closeButton.addEventListener('touchstart', function () {
+        const modal = this.closest('.modal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    });
 });
 
 const closeModalImages = document.querySelector('.close-modal-images');
@@ -1133,6 +1142,9 @@ window.addEventListener('click', function (event) {
     if (event.target == infosModal) {
         infosModal.style.display = "none";
     }
+    if (event.target == modalObs) {
+        modalObs.style.display = "none";
+    }
 });
 
 window.addEventListener('touchstart', function (event) {
@@ -1158,6 +1170,9 @@ window.addEventListener('touchstart', function (event) {
     }
     if (event.target == infosModal) {
         infosModal.style.display = "none";
+    }
+    if (event.target == modalObs) {
+        modalObs.style.display = "none";
     }
 });
 

@@ -69,6 +69,7 @@ main {
 
 .container {
     grid-column: 2;
+    width: 100%;
 }
 
 
@@ -1431,6 +1432,8 @@ i.fa-info {
     word-wrap: break-word;
     overflow-wrap: break-word;
     white-space: pre-wrap;
+    overflow-y: auto;
+    box-sizing: border-box;/
 }
 
 .save-button {
@@ -1439,4 +1442,14 @@ i.fa-info {
     padding: 12px;
     box-shadow: 0 4px 6px #808080;
     cursor: pointer;
+}
+
+#desc {
+    white-space: pre-wrap;
+    overflow-y: auto;
+    resize: none;
+    width: 100%;
+    height: 100px;
+    padding: 5px;
+    box-sizing: border-box;
 }

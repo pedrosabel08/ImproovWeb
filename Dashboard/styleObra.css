@@ -823,7 +823,6 @@ span#obras_finalizadas {
 
 form#form-add {
     background-color: white;
-    padding: 20px;
     border-radius: 10px;
     width: 60%;
     max-height: 80%;
@@ -863,6 +862,15 @@ form#form-add button:hover,
     justify-content: center;
     gap: 10px;
     margin-bottom: 40px;
+    position: sticky;
+    top: 0;
+    background-color: white;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    padding: 10px;
+}
+
+.modal-funcoes {
+    padding: 20px;
 }
 
 .titulo,

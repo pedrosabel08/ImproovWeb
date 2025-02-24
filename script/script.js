@@ -14,6 +14,7 @@ document.querySelectorAll('.titulo').forEach(titulo => {
     });
 });
 
+
 // Função para adicionar eventos de clique nas linhas da tabela
 function addEventListenersToRows() {
     const linhasTabela = document.querySelectorAll(".linha-tabela");
@@ -29,102 +30,106 @@ function addEventListenersToRows() {
             const idImagemSelecionada = linha.getAttribute("data-id");
             document.getElementById("imagem_id").value = idImagemSelecionada;
 
-            // Limpar campos do formulário de edição
-            limparCampos();
-
-            // Fazer requisição AJAX para `buscaLinhaAJAX.php` usando Fetch
-            fetch(`buscaLinhaAJAX.php?ajid=${idImagemSelecionada}`)
-                .then(response => response.json())
-                .then(response => {
-                    document.getElementById('form-edicao').style.display = 'flex';
-
-                    if (response.funcoes && response.funcoes.length > 0) {
-                        document.getElementById("campoNomeImagem").textContent = response.funcoes[0].imagem_nome;
-                        document.getElementById("mood").textContent = `Mood da cena: ${response.funcoes[0].clima || ''}`;
-
-                        response.funcoes.forEach(function (funcao) {
-                            let selectElement;
-                            switch (funcao.nome_funcao) {
-                                case "Caderno":
-                                    selectElement = document.getElementById("opcao_caderno");
-                                    document.getElementById("status_caderno").value = funcao.status;
-                                    document.getElementById("prazo_caderno").value = funcao.prazo;
-                                    document.getElementById("obs_caderno").value = funcao.observacao;
-                                    document.getElementById("check_caderno").checked = funcao.check_funcao === '1';
-                                    break;
-                                case "Modelagem":
-                                    selectElement = document.getElementById("opcao_model");
-                                    document.getElementById("status_modelagem").value = funcao.status;
-                                    document.getElementById("prazo_modelagem").value = funcao.prazo;
-                                    document.getElementById("obs_modelagem").value = funcao.observacao;
-                                    document.getElementById("check_model").checked = funcao.check_funcao === '1';
-                                    break;
-                                case "Composição":
-                                    selectElement = document.getElementById("opcao_comp");
-                                    document.getElementById("status_comp").value = funcao.status;
-                                    document.getElementById("prazo_comp").value = funcao.prazo;
-                                    document.getElementById("obs_comp").value = funcao.observacao;
-                                    document.getElementById("check_comp").checked = funcao.check_funcao === '1';
-                                    break;
-                                case "Pré-Finalização":
-                                    selectElement = document.getElementById("opcao_pre");
-                                    document.getElementById("status_pre").value = funcao.status;
-                                    document.getElementById("prazo_pre").value = funcao.prazo;
-                                    document.getElementById("obs_pre").value = funcao.observacao;
-                                    document.getElementById("check_pre").checked = funcao.check_funcao === '1';
-                                    break;
-                                case "Finalização":
-                                    selectElement = document.getElementById("opcao_final");
-                                    document.getElementById("status_finalizacao").value = funcao.status;
-                                    document.getElementById("prazo_finalizacao").value = funcao.prazo;
-                                    document.getElementById("obs_finalizacao").value = funcao.observacao;
-                                    document.getElementById("check_final").checked = funcao.check_funcao === '1';
-                                    break;
-                                case "Pós-produção":
-                                    selectElement = document.getElementById("opcao_pos");
-                                    document.getElementById("status_pos").value = funcao.status;
-                                    document.getElementById("prazo_pos").value = funcao.prazo;
-                                    document.getElementById("obs_pos").value = funcao.observacao;
-                                    document.getElementById("check_pos").checked = funcao.check_funcao === '1';
-                                    break;
-                                case "Alteração":
-                                    selectElement = document.getElementById("opcao_alteracao");
-                                    document.getElementById("status_alteracao").value = funcao.status;
-                                    document.getElementById("prazo_alteracao").value = funcao.prazo;
-                                    document.getElementById("obs_alteracao").value = funcao.observacao;
-                                    document.getElementById("check_alt").checked = funcao.check_funcao === '1';
-                                    break;
-                                case "Planta Humanizada":
-                                    selectElement = document.getElementById("opcao_planta");
-                                    document.getElementById("status_planta").value = funcao.status;
-                                    document.getElementById("prazo_planta").value = funcao.prazo;
-                                    document.getElementById("obs_planta").value = funcao.observacao;
-                                    document.getElementById("check_planta").checked = funcao.check_funcao === '1';
-                                    break;
-                                case "Filtro de assets":
-                                    selectElement = document.getElementById("opcao_filtro");
-                                    document.getElementById("status_filtro").value = funcao.status;
-                                    document.getElementById("prazo_filtro").value = funcao.prazo;
-                                    document.getElementById("obs_filtro").value = funcao.observacao;
-                                    document.getElementById("check_filtro").checked = funcao.check_funcao === '1';
-                                    break;
-                            }
-                            if (selectElement) {
-                                selectElement.value = funcao.colaborador_id;
-                            }
-                        });
-                    }
-
-                    const statusSelect = document.getElementById("opcao_status");
-                    if (response.status_id !== null) {
-                        statusSelect.value = response.status_id;
-                    }
-                })
-                .catch(error => console.error("Erro ao buscar dados da linha:", error));
-
-            console.log("Linha selecionada: ID da imagem = " + idImagemSelecionada);
+            atualizarModal(idImagemSelecionada);
         });
     });
+}
+
+function atualizarModal(idImagem) {
+
+    // Limpar campos do formulário de edição
+    limparCampos();
+
+    // Fazer requisição AJAX para `buscaLinhaAJAX.php` usando Fetch
+    fetch(`buscaLinhaAJAX.php?ajid=${idImagem}`)
+        .then(response => response.json())
+        .then(response => {
+            document.getElementById('form-edicao').style.display = 'flex';
+
+            if (response.funcoes && response.funcoes.length > 0) {
+                document.getElementById("campoNomeImagem").textContent = response.funcoes[0].imagem_nome;
+                document.getElementById("mood").textContent = `Mood da cena: ${response.funcoes[0].clima || ''}`;
+
+                response.funcoes.forEach(function (funcao) {
+                    let selectElement;
+                    switch (funcao.nome_funcao) {
+                        case "Caderno":
+                            selectElement = document.getElementById("opcao_caderno");
+                            document.getElementById("status_caderno").value = funcao.status;
+                            document.getElementById("prazo_caderno").value = funcao.prazo;
+                            document.getElementById("obs_caderno").value = funcao.observacao;
+                            document.getElementById("check_caderno").checked = funcao.check_funcao === '1';
+                            break;
+                        case "Modelagem":
+                            selectElement = document.getElementById("opcao_model");
+                            document.getElementById("status_modelagem").value = funcao.status;
+                            document.getElementById("prazo_modelagem").value = funcao.prazo;
+                            document.getElementById("obs_modelagem").value = funcao.observacao;
+                            document.getElementById("check_model").checked = funcao.check_funcao === '1';
+                            break;
+                        case "Composição":
+                            selectElement = document.getElementById("opcao_comp");
+                            document.getElementById("status_comp").value = funcao.status;
+                            document.getElementById("prazo_comp").value = funcao.prazo;
+                            document.getElementById("obs_comp").value = funcao.observacao;
+                            document.getElementById("check_comp").checked = funcao.check_funcao === '1';
+                            break;
+                        case "Pré-Finalização":
+                            selectElement = document.getElementById("opcao_pre");
+                            document.getElementById("status_pre").value = funcao.status;
+                            document.getElementById("prazo_pre").value = funcao.prazo;
+                            document.getElementById("obs_pre").value = funcao.observacao;
+                            document.getElementById("check_pre").checked = funcao.check_funcao === '1';
+                            break;
+                        case "Finalização":
+                            selectElement = document.getElementById("opcao_final");
+                            document.getElementById("status_finalizacao").value = funcao.status;
+                            document.getElementById("prazo_finalizacao").value = funcao.prazo;
+                            document.getElementById("obs_finalizacao").value = funcao.observacao;
+                            document.getElementById("check_final").checked = funcao.check_funcao === '1';
+                            break;
+                        case "Pós-produção":
+                            selectElement = document.getElementById("opcao_pos");
+                            document.getElementById("status_pos").value = funcao.status;
+                            document.getElementById("prazo_pos").value = funcao.prazo;
+                            document.getElementById("obs_pos").value = funcao.observacao;
+                            document.getElementById("check_pos").checked = funcao.check_funcao === '1';
+                            break;
+                        case "Alteração":
+                            selectElement = document.getElementById("opcao_alteracao");
+                            document.getElementById("status_alteracao").value = funcao.status;
+                            document.getElementById("prazo_alteracao").value = funcao.prazo;
+                            document.getElementById("obs_alteracao").value = funcao.observacao;
+                            document.getElementById("check_alt").checked = funcao.check_funcao === '1';
+                            break;
+                        case "Planta Humanizada":
+                            selectElement = document.getElementById("opcao_planta");
+                            document.getElementById("status_planta").value = funcao.status;
+                            document.getElementById("prazo_planta").value = funcao.prazo;
+                            document.getElementById("obs_planta").value = funcao.observacao;
+                            document.getElementById("check_planta").checked = funcao.check_funcao === '1';
+                            break;
+                        case "Filtro de assets":
+                            selectElement = document.getElementById("opcao_filtro");
+                            document.getElementById("status_filtro").value = funcao.status;
+                            document.getElementById("prazo_filtro").value = funcao.prazo;
+                            document.getElementById("obs_filtro").value = funcao.observacao;
+                            document.getElementById("check_filtro").checked = funcao.check_funcao === '1';
+                            break;
+                    }
+                    if (selectElement) {
+                        selectElement.value = funcao.colaborador_id;
+                    }
+                });
+            }
+
+            const statusSelect = document.getElementById("opcao_status");
+            if (response.status_id !== null) {
+                statusSelect.value = response.status_id;
+            }
+        })
+        .catch(error => console.error("Erro ao buscar dados da linha:", error));
+
 }
 
 function limparCampos() {
@@ -280,6 +285,10 @@ document.addEventListener("DOMContentLoaded", function () {
             status_finalizacao: document.getElementById("status_finalizacao").value || "",
             prazo_finalizacao: document.getElementById("prazo_finalizacao").value || "",
             obs_finalizacao: document.getElementById("obs_finalizacao").value || "",
+            pre_id: document.getElementById("opcao_pre").value || "",
+            status_pre: document.getElementById("status_pre").value || "",
+            prazo_pre: document.getElementById("prazo_pre").value || "",
+            obs_pre: document.getElementById("obs_pre").value || "",
             pos_id: document.getElementById("opcao_pos").value || "",
             status_pos: document.getElementById("status_pos").value || "",
             prazo_pos: document.getElementById("prazo_pos").value || "",
@@ -304,6 +313,7 @@ document.addEventListener("DOMContentLoaded", function () {
             check_pos: document.getElementById("check_pos").checked ? 1 : 0,
             check_alt: document.getElementById("check_alt").checked ? 1 : 0,
             check_planta: document.getElementById("check_planta").checked ? 1 : 0,
+            check_pre: document.getElementById("check_pre").checked ? 1 : 0,
             textos: textos,
             status_id: document.getElementById("opcao_status").value || ""
         };

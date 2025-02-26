@@ -73,6 +73,7 @@ $idusuario = $_SESSION['idusuario'];
             <option value="Filtro de assets">Filtro de assets</option>
             <option value="Modelagem">Modelagem</option>
             <option value="Composição">Composição</option>
+            <option value="Pré-Finalização">Pré-Finalização</option>
             <option value="Finalização">Finalização</option>
             <option value="Pós-produção">Pós-produção</option>
             <option value="Alteração">Alteração</option>

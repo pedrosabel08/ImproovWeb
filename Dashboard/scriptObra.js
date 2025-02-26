@@ -1587,7 +1587,13 @@ document.getElementById("addRevisao").addEventListener("click", function (event)
 
     // Captura os valores
     const imagemId = document.getElementById("imagem_id").value;
-    const opcao_alteracao = document.getElementById("opcao_alteracao").value;
+    const opcaoAlteracao = document.getElementById("opcao_alteracao").value;
+
+    // Verifica se opcao_alteracao está preenchido
+    if (!opcaoAlteracao.trim()) {
+        alert("Por favor, selecione uma opção antes de enviar.");
+        return; // Interrompe a execução se estiver vazio
+    }
 
     // Configuração do AJAX
     const xhr = new XMLHttpRequest();
@@ -1597,25 +1603,37 @@ document.getElementById("addRevisao").addEventListener("click", function (event)
     // Define o que fazer após a resposta
     xhr.onload = function () {
         if (xhr.status === 200) {
-            alert("Dados enviados com sucesso!");
+            Toastify({
+                text: 'Alteração enviada com sucesso!',
+                duration: 3000,
+                backgroundColor: "green",
+                close: true,
+                gravity: "top",
+                position: "right"
+            }).showToast();
         } else {
-            alert("Erro ao enviar os dados.");
+            Toastify({
+                text: 'Erro ao enviar alteração.',
+                duration: 3000,
+                backgroundColor: "red",
+                close: true,
+                gravity: "top",
+                position: "right"
+            }).showToast();
         }
     };
 
     // Dados a serem enviados como JSON
     const data = {
         imagem_id: imagemId,
-        colaborador_id: opcao_alteracao
+        colaborador_id: opcaoAlteracao
     };
 
-    console.log(data)
+    console.log(data);
 
     // Envia os dados como JSON
     xhr.send(JSON.stringify(data));
 });
-
-
 
 // Atualiza o campo quando o botão for clicado
 function atualizarRevisao(event, id, campo, valor) {

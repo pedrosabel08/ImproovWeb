@@ -868,6 +868,7 @@ form#form-add button:hover,
     background-color: white;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
     padding: 10px;
+    z-index: 1000;
 }
 
 .modal-funcoes {

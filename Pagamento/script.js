@@ -85,7 +85,6 @@ document.addEventListener('DOMContentLoaded', function () {
                             } else {
                                 row.classList.remove('checked');
                             }
-                            verificarValoresMaiorQueZero();
 
                         });
                         cellCheckbox.appendChild(checkbox);
@@ -137,7 +136,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
                     contarLinhasTabela();
 
-                    verificarValoresMaiorQueZero();
 
                 })
                 .catch(error => {
@@ -152,29 +150,44 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
 
-    document.getElementById('marcar-todos').addEventListener('click', function () {
+    document.getElementById('marcar-todos').addEventListener('click', function (event) {
         var checkboxes = Array.from(document.querySelectorAll('.pagamento-checkbox')).filter(checkbox => {
             return checkbox.closest('tr').offsetParent !== null; // Checa se a linha está visível
         });
 
-        var todosMarcados = checkboxes.every(checkbox => checkbox.checked);
-
-        checkboxes.forEach(function (checkbox) {
-            checkbox.checked = !todosMarcados; // Marca ou desmarca baseado no estado atual
-            var row = checkbox.closest('tr');
-            if (checkbox.checked) {
-                row.classList.add('checked');
-            } else {
-                row.classList.remove('checked');
-            }
-        });
+        if (event.shiftKey) {
+            // Se a tecla Shift estiver pressionada, marcar/desmarcar todos
+            var allChecked = checkboxes.every(checkbox => checkbox.checked);
+            checkboxes.forEach(function (checkbox) {
+                checkbox.checked = !allChecked; // Marca/desmarca todos os checkboxes
+                var row = checkbox.closest('tr');
+                if (checkbox.checked) {
+                    row.classList.add('checked');
+                } else {
+                    row.classList.remove('checked');
+                }
+            });
+        } else {
+            // Inverte o estado de cada checkbox individualmente
+            checkboxes.forEach(function (checkbox) {
+                checkbox.checked = !checkbox.checked; // Inverte o estado do checkbox
+                var row = checkbox.closest('tr');
+                if (checkbox.checked) {
+                    row.classList.add('checked');
+                } else {
+                    row.classList.remove('checked');
+                }
+            });
+        }
     });
 
     document.getElementById('confirmar-pagamento').addEventListener('click', function () {
+        var colaboradorId = parseInt(document.getElementById('colaborador').value, 10);
         var checkboxes = document.querySelectorAll('.pagamento-checkbox:checked');
         var ids = Array.from(checkboxes).map(cb => ({
-            id: cb.getAttribute('data-id'),
-            origem: cb.getAttribute('data-origem') // Coletando o atributo origem
+            id: parseInt(cb.getAttribute('data-id'), 10),
+            origem: cb.getAttribute('data-origem'), // Coletando o atributo origem
+            funcao_id: parseInt(cb.getAttribute('funcao'), 10) // Coletando o atributo funcao_id
         }));
 
         if (ids.length > 0) {
@@ -183,12 +196,31 @@ document.addEventListener('DOMContentLoaded', function () {
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ ids: ids })
+                body: JSON.stringify({ ids: ids, colaborador_id: colaboradorId })
             })
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
                         alert('Pagamentos atualizados com sucesso!');
+                        // Inserir no histórico
+                        fetch('insertHistorico.php', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ ids: ids, colaborador_id: colaboradorId })
+                        })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success) {
+                                    alert('Histórico atualizado com sucesso!');
+                                } else {
+                                    alert('Erro ao atualizar histórico.');
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Erro ao atualizar histórico:', error);
+                            });
                         carregarDadosColab();
                     } else {
                         alert('Erro ao atualizar pagamentos.');
@@ -759,23 +791,3 @@ function exportToExcel() {
     XLSX.writeFile(wb, nomeArquivo);
 }
 
-
-
-
-document.addEventListener("DOMContentLoaded", function () {
-
-    document.getElementById('menuButton').addEventListener('click', function () {
-        const menu = document.getElementById('menu');
-        menu.classList.toggle('hidden');
-    });
-
-    window.addEventListener('click', function (event) {
-        const menu = document.getElementById('menu');
-        const button = document.getElementById('menuButton');
-
-        if (!button.contains(event.target) && !menu.contains(event.target)) {
-            menu.classList.add('hidden');
-        }
-    });
-
-});

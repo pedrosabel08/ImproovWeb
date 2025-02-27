@@ -32,7 +32,7 @@ document.querySelectorAll('.titulo').forEach(titulo => {
     titulo.addEventListener('click', () => {
         const opcoes = titulo.nextElementSibling;
         if (opcoes.style.display === 'none') {
-            opcoes.style.display = 'block';
+            opcoes.style.display = 'flex';
             titulo.querySelector('i').classList.remove('fa-chevron-down');
             titulo.querySelector('i').classList.add('fa-chevron-up');
             opcoes.classList.add('show-in');
@@ -156,73 +156,104 @@ function atualizarModal(idImagem) {
 
                 response.funcoes.forEach(function (funcao) {
                     let selectElement;
+                    let checkboxElement;
                     switch (funcao.nome_funcao) {
                         case "Caderno":
                             selectElement = document.getElementById("opcao_caderno");
+                            checkboxElement = document.getElementById("check_caderno");
                             document.getElementById("status_caderno").value = funcao.status;
                             document.getElementById("prazo_caderno").value = funcao.prazo;
                             document.getElementById("obs_caderno").value = funcao.observacao;
-                            document.getElementById("check_caderno").checked = funcao.check_funcao === '1';
+                            checkboxElement.checked = funcao.check_funcao === '1';
                             break;
                         case "Modelagem":
                             selectElement = document.getElementById("opcao_model");
+                            checkboxElement = document.getElementById("check_model");
                             document.getElementById("status_modelagem").value = funcao.status;
                             document.getElementById("prazo_modelagem").value = funcao.prazo;
                             document.getElementById("obs_modelagem").value = funcao.observacao;
-                            document.getElementById("check_model").checked = funcao.check_funcao === '1';
+                            checkboxElement.checked = funcao.check_funcao === '1';
                             break;
                         case "Composição":
                             selectElement = document.getElementById("opcao_comp");
+                            checkboxElement = document.getElementById("check_comp");
                             document.getElementById("status_comp").value = funcao.status;
                             document.getElementById("prazo_comp").value = funcao.prazo;
                             document.getElementById("obs_comp").value = funcao.observacao;
-                            document.getElementById("check_comp").checked = funcao.check_funcao === '1';
+                            checkboxElement.checked = funcao.check_funcao === '1';
                             break;
                         case "Finalização":
                             selectElement = document.getElementById("opcao_final");
+                            checkboxElement = document.getElementById("check_final");
                             document.getElementById("status_finalizacao").value = funcao.status;
                             document.getElementById("prazo_finalizacao").value = funcao.prazo;
                             document.getElementById("obs_finalizacao").value = funcao.observacao;
-                            document.getElementById("check_final").checked = funcao.check_funcao === '1';
+                            checkboxElement.checked = funcao.check_funcao === '1';
                             break;
                         case "Pós-produção":
                             selectElement = document.getElementById("opcao_pos");
+                            checkboxElement = document.getElementById("check_pos");
                             document.getElementById("status_pos").value = funcao.status;
                             document.getElementById("prazo_pos").value = funcao.prazo;
                             document.getElementById("obs_pos").value = funcao.observacao;
-                            document.getElementById("check_pos").checked = funcao.check_funcao === '1';
+                            checkboxElement.checked = funcao.check_funcao === '1';
                             break;
                         case "Alteração":
                             selectElement = document.getElementById("opcao_alteracao");
+                            checkboxElement = document.getElementById("check_alt");
                             document.getElementById("status_alteracao").value = funcao.status;
                             document.getElementById("prazo_alteracao").value = funcao.prazo;
                             document.getElementById("obs_alteracao").value = funcao.observacao;
-                            document.getElementById("check_alt").checked = funcao.check_funcao === '1';
+                            checkboxElement.checked = funcao.check_funcao === '1';
                             break;
                         case "Planta Humanizada":
                             selectElement = document.getElementById("opcao_planta");
+                            checkboxElement = document.getElementById("check_planta");
                             document.getElementById("status_planta").value = funcao.status;
                             document.getElementById("prazo_planta").value = funcao.prazo;
                             document.getElementById("obs_planta").value = funcao.observacao;
-                            document.getElementById("check_planta").checked = funcao.check_funcao === '1';
+                            checkboxElement.checked = funcao.check_funcao === '1';
                             break;
                         case "Filtro de assets":
                             selectElement = document.getElementById("opcao_filtro");
+                            checkboxElement = document.getElementById("check_filtro");
                             document.getElementById("status_filtro").value = funcao.status;
                             document.getElementById("prazo_filtro").value = funcao.prazo;
                             document.getElementById("obs_filtro").value = funcao.observacao;
-                            document.getElementById("check_filtro").checked = funcao.check_funcao === '1';
+                            checkboxElement.checked = funcao.check_funcao === '1';
                             break;
                         case "Pré-Finalização":
                             selectElement = document.getElementById("opcao_pre");
+                            checkboxElement = document.getElementById("check_pre");
                             document.getElementById("status_pre").value = funcao.status;
                             document.getElementById("prazo_pre").value = funcao.prazo;
                             document.getElementById("obs_pre").value = funcao.observacao;
-                            document.getElementById("check_pre").checked = funcao.check_funcao === '1';
+                            checkboxElement.checked = funcao.check_funcao === '1';
                             break;
                     }
                     if (selectElement) {
                         selectElement.value = funcao.colaborador_id;
+
+                        // Verifica se o botão de limpar já existe
+                        if (!selectElement.parentElement.querySelector('.clear-button')) {
+                            // Adiciona o botão de limpar se o selectElement tiver um valor
+                            if (selectElement.value) {
+                                const clearButton = document.createElement('button');
+                                clearButton.type = 'button'; // Define o tipo do botão como "button"
+                                clearButton.innerHTML = 'x';
+                                clearButton.classList.add('clear-button');
+                                clearButton.setAttribute('data-id', funcao.id); // Adiciona o ID da função ao botão
+                                clearButton.addEventListener('click', function (event) {
+                                    event.preventDefault(); // Previne o comportamento padrão do botão
+                                    const funcaoId = this.getAttribute('data-id');
+                                    excluirFuncao(funcaoId, selectElement);
+                                });
+                                selectElement.parentElement.appendChild(clearButton);
+                            }
+                        }
+                    }
+                    if (checkboxElement) {
+                        checkboxElement.title = funcao.responsavel_aprovacao || '';
                     }
                 });
             }
@@ -233,10 +264,24 @@ function atualizarModal(idImagem) {
             }
         })
         .catch(error => console.error("Erro ao buscar dados da linha:", error));
-
-
 }
 
+function excluirFuncao(funcaoId, selectElement) {
+    fetch(`../excluirFuncao.php?id=${funcaoId}`, {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            selectElement.value = '';
+            selectElement.dispatchEvent(new Event('change')); // Dispara o evento de mudança
+            alert('Função excluída com sucesso!');
+        } else {
+            alert('Erro ao excluir função.');
+        }
+    })
+    .catch(error => console.error('Erro ao excluir função:', error));
+}
 
 function updateWidth(input) {
     const hiddenText = input.parentElement.querySelector(".hidden-text"); // Encontra o span correto

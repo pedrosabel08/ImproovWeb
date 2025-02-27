@@ -26,13 +26,19 @@ if ($_SERVER["REQUEST_METHOD"] == "GET") {
     fi.prazo, 
     fi.status,
     fi.observacao,
-    fi.check_funcao
+    fi.check_funcao,
+    fi.idfuncao_imagem AS id,
+    (SELECT c.nome_colaborador 
+     FROM historico_aprovacoes h 
+     JOIN colaborador c ON h.responsavel = c.idcolaborador 
+     WHERE h.funcao_imagem_id = fi.idfuncao_imagem 
+     ORDER BY h.id DESC 
+     LIMIT 1) AS responsavel_aprovacao
 FROM imagens_cliente_obra img
 LEFT JOIN funcao_imagem fi ON img.idimagens_cliente_obra = fi.imagem_id
 LEFT JOIN colaborador col ON fi.colaborador_id = col.idcolaborador
 LEFT JOIN funcao f ON fi.funcao_id = f.idfuncao
-WHERE img.idimagens_cliente_obra = $idImagemSelecionada";
-
+WHERE img.idimagens_cliente_obra = $idImagemSelecionada;";
     $resultFuncao = $conn->query($sqlFuncao);
 
     $funcoes = array();

@@ -838,7 +838,6 @@ form#form-add .funcao {
     border-radius: 10px;
 }
 
-form#form-add button,
 #saveChangesBtn,
 #salvar {
     background-color: #119111;
@@ -851,8 +850,8 @@ form#form-add button,
     font-size: 14px;
 }
 
-form#form-add button:hover,
-#saveChangesBtn:hover {
+#saveChangesBtn:hover,
+#salvar {
     background-color: #0c6b0c;
     cursor: pointer;
 }
@@ -1453,4 +1452,22 @@ i.fa-info {
     height: 100px;
     padding: 5px;
     box-sizing: border-box;
+}
+
+
+.clear-button {
+    background-color: red;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+    margin-left: 5px;
+    font-size: 12px;
+    font-weight: bold;
 }

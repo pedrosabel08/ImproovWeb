@@ -28,10 +28,9 @@ $sql = "SELECT
             pc.prioridade
         FROM funcao_imagem fi
         JOIN imagens_cliente_obra ico ON fi.imagem_id = ico.idimagens_cliente_obra
-        JOIN obra o on ico.obra_id = o.idobra
         JOIN funcao f on fi.funcao_id = f.idfuncao
         JOIN prioridade_funcao pc ON fi.idfuncao_imagem = pc.funcao_imagem_id
-        WHERE fi.colaborador_id = ? AND o.status_obra = 0";
+        WHERE fi.colaborador_id = ?";
 
 if ($mes) {
     $sql .= " AND MONTH(fi.prazo) = ?";

@@ -270,17 +270,17 @@ function excluirFuncao(funcaoId, selectElement) {
     fetch(`../excluirFuncao.php?id=${funcaoId}`, {
         method: 'POST'
     })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            selectElement.value = '';
-            selectElement.dispatchEvent(new Event('change')); // Dispara o evento de mudança
-            alert('Função excluída com sucesso!');
-        } else {
-            alert('Erro ao excluir função.');
-        }
-    })
-    .catch(error => console.error('Erro ao excluir função:', error));
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                selectElement.value = '';
+                selectElement.dispatchEvent(new Event('change')); // Dispara o evento de mudança
+                alert('Função excluída com sucesso!');
+            } else {
+                alert('Erro ao excluir função.');
+            }
+        })
+        .catch(error => console.error('Erro ao excluir função:', error));
 }
 
 function updateWidth(input) {
@@ -901,7 +901,6 @@ document.getElementById("salvar_funcoes").addEventListener("click", function (ev
         url: "https://www.improov.com.br/sistema/insereFuncao.php",
         data: dados,
         success: function (response) {
-            console.log(response);
             Toastify({
                 text: "Dados salvos com sucesso!",
                 duration: 3000,
@@ -911,6 +910,8 @@ document.getElementById("salvar_funcoes").addEventListener("click", function (ev
                 backgroundColor: "green",
                 stopOnFocus: true,
             }).showToast();
+
+            checkMetaInserida();
 
         },
         error: function (jqXHR, textStatus, errorThrown) {
@@ -927,6 +928,31 @@ document.getElementById("salvar_funcoes").addEventListener("click", function (ev
         }
     });
 });
+
+function showModal() {
+    document.getElementById('modal-meta').style.display = 'block';
+}
+
+function fecharModal() {
+    document.getElementById('modal-meta').style.display = 'none';
+}
+
+function checkMetaInserida() {
+    const xhr = new XMLHttpRequest();
+    xhr.open("GET", "../verificar_meta.php", true); 
+    xhr.onload = function () {
+        if (xhr.status == 200) {
+            const response = JSON.parse(xhr.responseText);
+            if (response.success) {
+                document.getElementById('metas').innerText = response.message; 
+                showModal(); 
+            }
+        }
+    };
+    xhr.send();
+}
+
+
 
 const modalInfos = document.getElementById('modalInfos')
 const modalOrcamento = document.getElementById('modalOrcamento')

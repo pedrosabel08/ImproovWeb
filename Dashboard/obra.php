@@ -729,6 +729,14 @@ $conn->close();
         </form>
     </div>
 
+    <div class="modal" id="modal-meta" style="display: none;">
+        <div id="modal-content-meta" class="modal-content-meta">
+            <span class="close" onclick="fecharModal()">&times;</span>
+            <h2>🎉 Meta atingida! 🎉</h2>
+            <h3 id="metas">A meta de 100 foi atingida por Pedro na função Caderno.</h3>
+        </div>
+    </div>
+
     <?php if (isset($_SESSION['idusuario']) && ($_SESSION['idusuario'] == 1 || $_SESSION['idusuario'] == 2 || $_SESSION['idusuario'] == 9)): ?>
         <div id="notificacao-sino" class="notificacao-sino">
             <i class="fas fa-bell sino" id="icone-sino"></i>

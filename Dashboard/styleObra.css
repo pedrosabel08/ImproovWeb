@@ -839,7 +839,8 @@ form#form-add .funcao {
 }
 
 #saveChangesBtn,
-#salvar {
+#salvar,
+.buttons-form-add {
     background-color: #119111;
     text-align: center;
     color: #ffffff;
@@ -851,7 +852,8 @@ form#form-add .funcao {
 }
 
 #saveChangesBtn:hover,
-#salvar {
+#salvar:hover,
+.buttons-form-add:hover {
     background-color: #0c6b0c;
     cursor: pointer;
 }
@@ -1007,6 +1009,7 @@ table#tabela-logs {
     width: 80%;
 
 }
+
 table#tabela-logs th {
     max-width: 0;
 }

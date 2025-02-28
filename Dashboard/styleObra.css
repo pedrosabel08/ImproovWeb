@@ -691,7 +691,7 @@ table th:first-child {
     text-overflow: ellipsis;
     white-space: nowrap;
     transition: 0.3s all ease;
-    text-align: left;
+    text-align: center;
 }
 
 
@@ -1005,6 +1005,15 @@ table#tabela-logs {
     border-collapse: collapse;
     margin: 0 auto;
     width: 80%;
+
+}
+table#tabela-logs th {
+    max-width: 0;
+}
+
+table#tabela-logs tbody tr:hover {
+    cursor: default;
+    background-color: white;
 }
 
 
@@ -1469,9 +1478,11 @@ i.fa-info {
     padding: 0;
     margin-left: 5px;
     font-size: 12px;
-    font-weight: bold;
 }
 
+.log-button:hover {
+    cursor: pointer;
+}
 
 #modal-content-meta {
     background-color: #fff;
@@ -1502,4 +1513,10 @@ i.fa-info {
     100% {
         transform: scale(1);
     }
+}
+
+
+input[type="checkbox"] {
+    accent-color: green;
+    transition: 0.2s all ease;
 }

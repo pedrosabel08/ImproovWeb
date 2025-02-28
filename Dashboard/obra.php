@@ -737,6 +737,25 @@ $conn->close();
         </div>
     </div>
 
+    <div id="modalLogs" class="modal">
+        <div class="modal-content-log">
+            <div class="nomes">
+                <h4 id="nome_funcao_log" style="text-align: center;"></h4>
+            </div>
+            <table id="tabela-logs">
+                <thead>
+                    <tr>
+                        <th>Status Anterior</th>
+                        <th>Status Novo</th>
+                        <th>Data</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
     <?php if (isset($_SESSION['idusuario']) && ($_SESSION['idusuario'] == 1 || $_SESSION['idusuario'] == 2 || $_SESSION['idusuario'] == 9)): ?>
         <div id="notificacao-sino" class="notificacao-sino">
             <i class="fas fa-bell sino" id="icone-sino"></i>

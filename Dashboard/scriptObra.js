@@ -241,14 +241,33 @@ function atualizarModal(idImagem) {
                                 const clearButton = document.createElement('button');
                                 clearButton.type = 'button'; // Define o tipo do botão como "button"
                                 clearButton.innerHTML = 'x';
-                                clearButton.classList.add('clear-button');
+                                clearButton.classList.add('clear-button', 'tooltip');
                                 clearButton.setAttribute('data-id', funcao.id); // Adiciona o ID da função ao botão
+                                clearButton.setAttribute('data-tooltip', 'Excluir função'); // Adiciona o tooltip
                                 clearButton.addEventListener('click', function (event) {
                                     event.preventDefault(); // Previne o comportamento padrão do botão
                                     const funcaoId = this.getAttribute('data-id');
                                     excluirFuncao(funcaoId, selectElement);
                                 });
                                 selectElement.parentElement.appendChild(clearButton);
+                            }
+                        }
+
+                        // Adiciona o botão de log se o selectElement tiver um valor
+                        if (!selectElement.parentElement.querySelector('.log-button')) {
+                            if (selectElement.value) {
+                                const logButton = document.createElement('button');
+                                logButton.type = 'button'; // Define o tipo do botão como "button"
+                                logButton.innerHTML = '<i class="fas fa-file-alt"></i>';
+                                logButton.classList.add('log-button', 'tooltip');
+                                logButton.setAttribute('data-id', funcao.id); // Adiciona o ID da função ao botão
+                                logButton.setAttribute('data-tooltip', 'Exibir log'); // Adiciona o tooltip
+                                logButton.addEventListener('click', function (event) {
+                                    event.preventDefault(); // Previne o comportamento padrão do botão
+                                    const funcaoId = this.getAttribute('data-id');
+                                    exibirLog(funcaoId);
+                                });
+                                selectElement.parentElement.appendChild(logButton);
                             }
                         }
                     }
@@ -264,6 +283,42 @@ function atualizarModal(idImagem) {
             }
         })
         .catch(error => console.error("Erro ao buscar dados da linha:", error));
+}
+
+const modalLogs = document.getElementById("modalLogs");
+
+
+// Função para exibir o log, passando o ID da função
+function exibirLog(funcaoId) {
+    // Aqui você pode realizar uma requisição AJAX para pegar o log relacionado à função
+    fetch(`../log_por_funcao.php?funcao_imagem_id=${funcaoId}`)
+        .then(response => response.json())
+        .then(data => {
+            modalLogs.style.display = 'flex';
+            const tabelaLogsBody = document.querySelector('#tabela-logs tbody');
+            tabelaLogsBody.innerHTML = '';
+
+            
+            if (data && data.length > 0) {
+                document.getElementById('nome_funcao_log').textContent = data[0].nome_funcao;
+                data.forEach(log => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${log.status_anterior}</td>
+                        <td>${log.status_novo}</td>
+                        <td>${log.data}</td>
+                    `;
+                    tabelaLogsBody.appendChild(row);
+                });
+            } else {
+                const row = document.createElement('tr');
+                row.innerHTML = '<td colspan="5">Nenhum log encontrado.</td>';
+                tabelaLogsBody.appendChild(row);
+            }
+        })
+        .catch(error => {
+            console.error('Erro ao carregar os logs:', error);
+        });
 }
 
 function excluirFuncao(funcaoId, selectElement) {
@@ -939,13 +994,13 @@ function fecharModal() {
 
 function checkMetaInserida() {
     const xhr = new XMLHttpRequest();
-    xhr.open("GET", "../verificar_meta.php", true); 
+    xhr.open("GET", "../verificar_meta.php", true);
     xhr.onload = function () {
         if (xhr.status == 200) {
             const response = JSON.parse(xhr.responseText);
             if (response.success) {
-                document.getElementById('metas').innerText = response.message; 
-                showModal(); 
+                document.getElementById('metas').innerText = response.message;
+                showModal();
             }
         }
     };
@@ -1216,6 +1271,9 @@ window.addEventListener('click', function (event) {
     if (event.target == modalObs) {
         modalObs.style.display = "none";
     }
+    if (event.target == modalLogs) {
+        modalLogs.style.display = "none";
+    }
 });
 
 window.addEventListener('touchstart', function (event) {
@@ -1244,6 +1302,9 @@ window.addEventListener('touchstart', function (event) {
     }
     if (event.target == modalObs) {
         modalObs.style.display = "none";
+    }
+    if (event.target == modalLogs) {
+        modalLogs.style.display = "none";
     }
 });
 

@@ -140,6 +140,10 @@ $conn->close();
 					<p>Composição</p>
 				</div>
 				<div>
+					<input type="checkbox" name="Pré-Finalização" id="Pré-Finalização" onclick="filtrarTabela()">
+					<p>Pré-Finalização</p>
+				</div>
+				<div>
 					<input type="checkbox" name="Finalização" id="Finalização" onclick="filtrarTabela()">
 					<p>Finalização</p>
 				</div>

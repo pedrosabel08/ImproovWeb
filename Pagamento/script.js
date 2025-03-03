@@ -270,25 +270,6 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 
-// function verificarValoresMaiorQueZero() {
-//     let allGreaterThanZero = true;
-//     document.querySelectorAll('#tabela-faturamento tbody tr').forEach(row => {
-//         let valorCell = row.querySelector('td:nth-child(4)'); // Assume que o valor está na 4ª coluna
-//         let valor = parseFloat(valorCell.textContent.replace('R$', '').replace(',', '.'));
-
-//         if (isNaN(valor) || valor <= 0) {
-//             allGreaterThanZero = false;
-//         }
-//     });
-
-//     // Habilita ou desabilita o botão "Confirmar Pagamento"
-//     const confirmarPagamentoButton = document.getElementById('confirmar-pagamento');
-//     if (allGreaterThanZero) {
-//         confirmarPagamentoButton.disabled = false;
-//     } else {
-//         confirmarPagamentoButton.disabled = true;
-//     }
-// }
 
 function contarLinhasTabela() {
     const tabela = document.getElementById("tabela-faturamento");
@@ -511,8 +492,8 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
         }
     });
 
-    // totalValorExtenso = `${numeroPorExtenso(totalValor)} reais`;
-    totalValorExtenso = `Quatro mil quinhentos e sessenta reais`;
+    totalValorExtenso = `${numeroPorExtenso(totalValor)} reais`;
+    // totalValorExtenso = `Dois mil reais`;
 
 
     // Adiciona a tabela ao documento PDF
@@ -531,31 +512,31 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
 
     }
 
-    // Dados da nova tabela
-    const novaTabelaHeaders = ['Extra', 'Valor'];
-    const novaTabelaBody = [
-        ['Atendimento', '2000,00'],
-        // ['Diaria Drone', '350,00'],
-        // ['Outros', '490,00']
-    ];
+    // // Dados da nova tabela
+    // const novaTabelaHeaders = ['Extra', 'Valor'];
+    // const novaTabelaBody = [
+    //     ['Atendimento', '2000,00'],
+    //     // ['Diaria Drone', '350,00'],
+    //     // ['Outros', '490,00']
+    // ];
 
-    // Adiciona nova tabela ao PDF
-    doc.autoTable({
-        head: [novaTabelaHeaders],
-        body: novaTabelaBody,
-        startY: y, // Posiciona abaixo da tabela anterior
-        theme: 'grid',
-        headStyles: { fillColor: [0, 0, 0], textColor: [255, 255, 255] },
-        bodyStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0] },
-        margin: { top: 10, left: 20, right: 20 },
-        styles: { fontSize: 10, cellPadding: 2 }
-    });
+    // // Adiciona nova tabela ao PDF
+    // doc.autoTable({
+    //     head: [novaTabelaHeaders],
+    //     body: novaTabelaBody,
+    //     startY: y, // Posiciona abaixo da tabela anterior
+    //     theme: 'grid',
+    //     headStyles: { fillColor: [0, 0, 0], textColor: [255, 255, 255] },
+    //     bodyStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0] },
+    //     margin: { top: 10, left: 20, right: 20 },
+    //     styles: { fontSize: 10, cellPadding: 2 }
+    // });
 
     // Atualiza a posição Y para futuras adições no PDF (caso necessário)
     y = doc.lastAutoTable.finalY + 20;
 
     // Parte 3: Segunda parte do contrato
-    let text6 = `Cláusula 2ª - O CONTRATADO  declara que no dia ${day} de ${currentMonthName} de 2025, recebeu do CONTRATANTE o valor de R$ ${totalValor + 2000},00 (${totalValorExtenso}), pela entrega dos serviços acima referidos, e dá a mais ampla, geral e irrestrita quitação à dívida, renunciando seu direito de cobrança relativos a tais valores. `;
+    let text6 = `Cláusula 2ª - O CONTRATADO  declara que no dia ${day} de ${currentMonthName} de 2025, recebeu do CONTRATANTE o valor de R$ ${totalValor + 0},00 (${totalValorExtenso}), pela entrega dos serviços acima referidos, e dá a mais ampla, geral e irrestrita quitação à dívida, renunciando seu direito de cobrança relativos a tais valores. `;
 
     let text7 = `E por estarem justas e perfeitamente acertadas, assinam o presente em 02 (duas) vias de igual teor e forma, vias na presença de 2 (duas) testemunhas.`;
 

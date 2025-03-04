@@ -329,11 +329,6 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
     const cep = document.getElementById("cep").textContent.trim();
     const cepCNPJ = document.getElementById("cepCNPJ").textContent.trim();
 
-
-    // const totalValorElement = document.getElementById('totalValor');
-    // const totalValor = totalValorElement ? parseFloat(totalValorElement.innerText.replace('R$ ', '').replace('.', '').replace(',', '.')) : 0;
-    // const totalValorExtenso = `${numeroPorExtenso(totalValor)} reais`;
-
     const today = new Date();
     today.setDate(today.getDate() + 1); // Adiciona 1 dia
     const day = String(today.getDate()).padStart(2, '0');

@@ -187,7 +187,7 @@ $response['imagens'] = $imagens;
 $stmtImagens->close();
 
 
-$sqlInfos = "SELECT * from observacao_obra where obra_id = ?";
+$sqlInfos = "SELECT * from observacao_obra where obra_id = ? ORDER BY ordem ASC;";
 
 $stmtInfos = $conn->prepare($sqlInfos);
 if ($stmtInfos === false) {

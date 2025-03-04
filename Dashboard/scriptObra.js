@@ -578,10 +578,51 @@ function infosObra(obraId) {
 
                     linha.innerHTML = `
                         <td>${info.descricao}</td>
-                        <td>${info.data}</td>
+                        <td>${formatarData(info.data)}</td>
                     `;
 
+                    linha.setAttribute("data-id", info.id); // Adiciona o ID da imagem à linha
+                    linha.setAttribute("ordem", info.ordem); // Adiciona o ID da imagem à linha
+
                     tabela.querySelector("tbody").appendChild(linha); // Adiciona a linha na tabela
+
+                    // Adiciona evento de clique a cada linha da tabelaInfos
+                    linha.addEventListener('click', function () {
+                        const descricaoId = this.getAttribute('data-id');
+                        const descricao = this.querySelector('td:nth-child(1)').textContent;
+
+                        // Preenche o modal com os dados da linha clicada
+                        document.getElementById('descricaoId').value = descricaoId;
+                        document.getElementById('desc').value = descricao;
+
+                        const deleteObs = document.getElementById('deleteObs');
+                        deleteObs.setAttribute('data-id', descricaoId);
+                        deleteObs.addEventListener('click', function () {
+                            const id = this.getAttribute('data-id');
+                            fetch(`deleteObs.php?id=${id}`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/x-www-form-urlencoded',  // Forma correta de enviar dados via POST
+                                },
+                                body: `id=${id}`  // Envia o id no corpo da requisição
+                            })
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.success) {
+                                        alert('Observação excluída com sucesso!');
+                                        document.getElementById('modalObservacao').style.display = 'none';
+                                    } else {
+                                        alert('Erro ao excluir observação.');
+                                    }
+                                })
+                                .catch(error => console.error('Erro ao excluir observação:', error));
+                        });
+
+                        // Exibe o modal
+                        document.getElementById('modalObservacao').style.display = 'block';
+                    });
+
+
                 });
                 // Inicializa o DataTables
                 $(document).ready(function () {
@@ -590,8 +631,68 @@ function infosObra(obraId) {
                         "lengthChange": false,
                         "info": false,
                         "ordering": true,
-                        "searching": true
+                        "searching": true,
+                        "order": [], // Remove a ordenação padrão
+                        "columnDefs": [{
+                            "targets": 0, // Aplica a ordenação na primeira coluna
+                            "orderData": function (row, type, set, meta) {
+                                // Retorna o valor do atributo data-id para a ordenação
+                                return $(row).attr('ordem');
+                            }
+                        }],
+                        "language": {
+                            "url": "https://cdn.datatables.net/plug-ins/1.10.21/i18n/Portuguese.json"
+                        }
                     });
+                });
+
+                // Inicializa o SortableJS na tabela
+                new Sortable(tabela.querySelector("tbody"), {
+                    animation: 150,
+                    onEnd: function (evt) {
+                        // Obtém a nova ordem das linhas
+                        const linhas = Array.from(tabela.querySelectorAll("tbody tr"));
+                        const novaOrdem = linhas.map(linha => linha.getAttribute("data-id"));
+
+                        // Envia a nova ordem para o servidor (opcional)
+                        fetch('atualizarOrdem.php', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ ordem: novaOrdem }),
+                        })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success) {
+                                    Toastify({
+                                        text: "Ordem atualizada com sucesso!",
+                                        duration: 3000,
+                                        gravity: "top",
+                                        position: "right",
+                                        backgroundColor: "#4caf50", // Cor de sucesso
+                                    }).showToast();
+                                } else {
+                                    Toastify({
+                                        text: "Erro ao atualizar ordem.",
+                                        duration: 3000,
+                                        gravity: "top",
+                                        position: "right",
+                                        backgroundColor: "#f44336", // Cor de erro
+                                    }).showToast();
+                                }
+                            })
+                            .catch(error => {
+                                console.error("Erro ao atualizar ordem:", error);
+                                Toastify({
+                                    text: "Erro ao atualizar ordem.",
+                                    duration: 3000,
+                                    gravity: "top",
+                                    position: "right",
+                                    backgroundColor: "#f44336", // Cor de erro
+                                }).showToast();
+                            });
+                    }
                 });
 
             }
@@ -1061,7 +1162,14 @@ document.getElementById('acomp').addEventListener('click', function () {
 
 document.getElementById('obsAdd').addEventListener('click', function () {
     modalObs.style.display = 'block';
+    limparCamposFormulario();
+
 });
+
+function limparCamposFormulario() {
+    document.getElementById('descricaoId').value = '';
+    document.getElementById('desc').value = '';
+}
 
 document.querySelectorAll('.close-modal').forEach(closeButton => {
     closeButton.addEventListener('click', function () {
@@ -1172,6 +1280,7 @@ document.getElementById("adicionar_observacao").addEventListener("submit", funct
 
     // Obtendo os dados do formulário
     const desc = document.getElementById("desc").value.trim();
+    const descricaoId = document.getElementById("descricaoId").value;
 
     // Validações simples
     if (!desc) {
@@ -1194,6 +1303,7 @@ document.getElementById("adicionar_observacao").addEventListener("submit", funct
         body: new URLSearchParams({
             idobra: obraId,
             desc: desc,
+            id: descricaoId
         }),
     })
         .then(response => response.json()) // Converte a resposta para JSON

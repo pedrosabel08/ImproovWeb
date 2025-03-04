@@ -11,6 +11,7 @@ $colaborador_id = 1; // ID fixo
 $assunto = isset($_POST['assunto']) ? trim($_POST['assunto']) : null;
 $data = isset($_POST['data']) ? $_POST['data'] : null; // Data enviada pelo cliente
 $desc = isset($_POST['desc']) ? trim($_POST['desc']) : null; // Descrição (observação)
+$id = isset($_POST['id']) ? intval($_POST['id']) : null; // ID para update
 
 // Validações básicas
 if (!$obra_id) {
@@ -20,9 +21,16 @@ if (!$obra_id) {
 
 // Verifica se a descrição foi fornecida
 if ($desc) {
-    // Se descrição foi fornecida, insere apenas na tabela observacao_obra
-    $stmtObs = $conn->prepare("INSERT INTO observacao_obra (obra_id, descricao) VALUES (?, ?)");
-    $stmtObs->bind_param("is", $obra_id,  $desc);
+    if ($id) {
+        // Se o ID foi fornecido, faz o UPDATE na tabela observacao_obra
+        $stmtObs = $conn->prepare("UPDATE observacao_obra SET descricao = ? WHERE id = ? AND obra_id = ?");
+        $stmtObs->bind_param("sii", $desc, $id, $obra_id);
+    } else {
+        // Caso contrário, faz o INSERT na tabela observacao_obra
+        $stmtObs = $conn->prepare("INSERT INTO observacao_obra (obra_id, descricao) VALUES (?, ?)");
+        $stmtObs->bind_param("is", $obra_id, $desc);
+    }
+
 
     if ($stmtObs->execute()) {
         echo json_encode(["success" => true, "message" => "Observação adicionada com sucesso."]);

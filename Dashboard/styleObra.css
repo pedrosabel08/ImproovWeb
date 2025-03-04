@@ -453,7 +453,8 @@ a {
 
 #orcamento,
 #salvar_orcamento,
-#add-acomp {
+#add-acomp,
+#deleteObs {
     padding: 2px 6px;
     border-radius: 15px;
     font-size: 14px;
@@ -463,7 +464,8 @@ a {
 }
 
 #orcamento:hover,
-#acomp:hover {
+#acomp:hover,
+#deleteObs:hover {
     font-weight: 600;
     cursor: pointer;
 }

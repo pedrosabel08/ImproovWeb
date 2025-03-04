@@ -283,8 +283,8 @@ $conn->close();
                     <table id="tabelaInfos">
                         <thead>
                             <tr>
-                                <th>Data</th>
                                 <th>Descrição</th>
+                                <th>Data</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -391,18 +391,23 @@ $conn->close();
 
         <div id="modalObservacao" class="modal">
             <div class="modal-content" style="width: 500px;">
-                <span class="close-modal">&times;</span>
                 <h2 style="margin-bottom: 30px;">Observação</h2>
                 <div id="acompanhamentoConteudo">
                     <form id="adicionar_observacao" style="align-items: center;">
                         <!-- Campo de descrição -->
+                        <input type="hidden" id="descricaoId">
+
                         <div id="campo">
                             <label for="desc">Descrição:</label>
                             <textarea name="desc" id="desc" name="desc" required></textarea>
                         </div>
 
                         <!-- Botão para enviar -->
-                        <button type="submit" id="add-acomp">Salvar</button>
+                        <div class="buttons" style="margin-top: 15px;">
+                            <button type="submit" id="add-acomp">Salvar</button>
+                            <button id="deleteObs" style="background-color: red;">Excluir</button>
+                        </div>
+
                     </form>
                 </div>
             </div>
@@ -778,6 +783,7 @@ $conn->close();
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.14.0/Sortable.min.js"></script>
 
     <script src="scriptObra.js"></script>
     <script src="../script/sidebar.js"></script>

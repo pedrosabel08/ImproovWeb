@@ -36,6 +36,8 @@ $conn->close();
     <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
         type="image/x-icon">
     <link rel="stylesheet" href="../css/styleSidebar.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+
 
 </head>
 
@@ -278,7 +280,17 @@ $conn->close();
                 </div>
                 <div class="infos-container">
                     <h2>Observações</h2>
-                    <div id="infos"></div>
+                    <table id="tabelaInfos">
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Descrição</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- As linhas serão adicionadas aqui via JavaScript -->
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -354,7 +366,6 @@ $conn->close();
                             <label><input type="radio" name="acompanhamento" value="Prazo com a entrega (30/01)"> Prazo com a entrega (30/01)</label>
                             <label><input type="radio" name="acompanhamento" value="Projeto pausado aguardando aprovação do cliente.">Projeto pausado aguardando aprovação do cliente.</label>
                             <label><input type="radio" name="acompanhamento" value="Enviado os toons da fachada">Enviado os toons da fachada</label>
-                            <label><input type="radio" id="prazo_alteracao" name="acompanhamento" value="Prazo de alteração"> Prazo de alteração</label><br>
                             <label><input type="radio" name="acompanhamento" value="Enviado imagens prévias"> Enviado imagens prévias</label>
                         </div>
 
@@ -766,6 +777,8 @@ $conn->close();
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+
     <script src="scriptObra.js"></script>
     <script src="../script/sidebar.js"></script>
     <script src="../script/notificacoes.js"></script>

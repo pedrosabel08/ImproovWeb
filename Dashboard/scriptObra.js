@@ -298,7 +298,7 @@ function exibirLog(funcaoId) {
             const tabelaLogsBody = document.querySelector('#tabela-logs tbody');
             tabelaLogsBody.innerHTML = '';
 
-            
+
             if (data && data.length > 0) {
                 document.getElementById('nome_funcao_log').textContent = data[0].nome_funcao;
                 data.forEach(log => {
@@ -558,10 +558,10 @@ function infosObra(obraId) {
                 funcoesDiv.appendChild(funcaoDiv);
             });
 
-            const infosDiv = document.getElementById('infos');
+            // const infosDiv = document.getElementById('infos');
 
-            // Limpa o conteúdo da div
-            infosDiv.innerHTML = "";
+            // // Limpa o conteúdo da div
+            // infosDiv.innerHTML = "";
 
             // Verifica se há dados no array
             if (data.infos.length === 0) {
@@ -569,23 +569,28 @@ function infosObra(obraId) {
 
             } else {
 
-                // Preenche a div com as informações
-                data.infos.forEach(info => {
-                    const infoDiv = document.createElement('div');
-                    infoDiv.classList.add('input-container');
-                    infoDiv.innerHTML = `
-                        <span class="hidden-text" id="hiddenText">${info.descricao}</span>
-                        <textarea class="auto-width" id="meuInput"
-                            oninput="adjustHeight(this);"
-                            onblur="atualizarRevisao(event, ${info.id}, 'descricao', this.value)"
-                            >${info.descricao}</textarea>
-                    `;
-                    infosDiv.appendChild(infoDiv);
+                // Seleciona a tabela onde as informações serão inseridas
+                const tabela = document.getElementById("tabelaInfos");
 
-                    // Ajusta a largura
-                    document.querySelectorAll(".auto-width").forEach(input => {
-                        updateWidth(input);
-                        adjustHeight(input); // Chama também para inicializar a altura
+                // Preenche a tabela com as informações
+                data.infos.forEach(info => {
+                    const linha = document.createElement('tr'); // Cria uma linha para cada info
+
+                    linha.innerHTML = `
+                        <td>${info.descricao}</td>
+                        <td>${info.data}</td>
+                    `;
+
+                    tabela.querySelector("tbody").appendChild(linha); // Adiciona a linha na tabela
+                });
+                // Inicializa o DataTables
+                $(document).ready(function () {
+                    $('#tabelaInfos').DataTable({
+                        "paging": false,
+                        "lengthChange": false,
+                        "info": false,
+                        "ordering": true,
+                        "searching": true
                     });
                 });
 
@@ -966,8 +971,6 @@ document.getElementById("salvar_funcoes").addEventListener("click", function (ev
                 stopOnFocus: true,
             }).showToast();
 
-            checkMetaInserida();
-
         },
         error: function (jqXHR, textStatus, errorThrown) {
             console.error("Erro ao salvar dados: " + textStatus, errorThrown);
@@ -991,22 +994,6 @@ function showModal() {
 function fecharModal() {
     document.getElementById('modal-meta').style.display = 'none';
 }
-
-function checkMetaInserida() {
-    const xhr = new XMLHttpRequest();
-    xhr.open("GET", "../verificar_meta.php", true);
-    xhr.onload = function () {
-        if (xhr.status == 200) {
-            const response = JSON.parse(xhr.responseText);
-            if (response.success) {
-                document.getElementById('metas').innerText = response.message;
-                showModal();
-            }
-        }
-    };
-    xhr.send();
-}
-
 
 
 const modalInfos = document.getElementById('modalInfos')

@@ -1523,3 +1523,25 @@ input[type="checkbox"] {
     accent-color: green;
     transition: 0.2s all ease;
 }
+
+
+#tabelaInfos td {
+    white-space: pre-wrap;
+    text-align: left;
+}
+
+#tabelaInfos th,
+#tabelaInfos td {
+    border: 1px solid #ddd;
+    padding: 8px;
+}
+
+#tabelaInfos {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+.dataTables_wrapper {
+    width: 80%;
+    margin: 0 auto;
+}

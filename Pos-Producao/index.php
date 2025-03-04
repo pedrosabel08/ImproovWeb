@@ -148,9 +148,9 @@ $conn->close();
                     <option value="10">Revisão</option>
                 </select>
 
-                <input type="text" id="filtro-input" placeholder="Digite para filtrar" onkeyup="filtrarTabela()">
+                <input type="text" id="filtro-input" placeholder="Digite para filtrar">
 
-                <select id="filtro-mes" onchange="filtrarPorMes()">
+                <select id="filtro-mes">
                     <option value="">Todos os Meses</option>
                     <option value="01">Janeiro</option>
                     <option value="02">Fevereiro</option>

@@ -286,54 +286,45 @@ function contarLinhasTabela() {
     document.getElementById("total-pos").innerText = totalImagens;
 }
 
-function filtrarTabela() {
-    var indiceColuna = document.getElementById("colunaFiltro").value;
-    var filtro = document.getElementById("filtro-input").value.toLowerCase();
-    var tabela = document.querySelector('#lista-imagens');
-    var linhas = tabela.getElementsByTagName('tr');
-
-    for (var i = 0; i < linhas.length; i++) {
-        var cols = linhas[i].getElementsByTagName('td');
-        var mostraLinha = false;
-
-        if (cols[indiceColuna]) {
-            var valorColuna = cols[indiceColuna].textContent || cols[indiceColuna].innerText;
-            if (valorColuna.toLowerCase().indexOf(filtro) > -1) {
-                mostraLinha = true;
-            }
-        }
-
-        if (mostraLinha) {
-            linhas[i].style.display = '';
-        } else {
-            linhas[i].style.display = 'none';
-        }
-    }
-    contarLinhasTabela();
-
-}
-
-function filtrarPorMes() {
+function aplicarFiltros() {
+    const indiceColuna = document.getElementById("colunaFiltro").value;
+    const filtro = document.getElementById("filtro-input").value.toLowerCase();
     const filtroMes = document.getElementById('filtro-mes').value;
+    const anoAtual = new Date().getFullYear();
     const tabela = document.querySelector('#tabela-imagens tbody');
     const linhas = tabela.getElementsByTagName('tr');
 
     for (let i = 0; i < linhas.length; i++) {
         const linha = linhas[i];
-        const dataCell = linha.cells[3];
+        const cols = linha.getElementsByTagName('td');
+        let mostraLinha = true;
 
-        if (dataCell) {
-            const dataTexto = dataCell.textContent || dataCell.innerText;
-            const mesData = dataTexto.split("-")[1];
-
-            // Exibe ou oculta a linha com base no mês selecionado
-            if (filtroMes === "" || mesData === filtroMes) {
-                linha.style.display = ""; // Mostra a linha
-            } else {
-                linha.style.display = "none"; // Oculta a linha
+        // Filtro por coluna
+        if (cols[indiceColuna]) {
+            const valorColuna = cols[indiceColuna].textContent || cols[indiceColuna].innerText;
+            if (valorColuna.toLowerCase().indexOf(filtro) === -1) {
+                mostraLinha = false;
             }
         }
+
+        // Filtro por mês e ano atual
+        const dataCell = linha.cells[3];
+        if (dataCell) {
+            const dataTexto = dataCell.textContent || dataCell.innerText;
+            const [anoData, mesData] = dataTexto.split("-");
+            if (filtroMes !== "" && (mesData !== filtroMes || anoData !== anoAtual.toString())) {
+                mostraLinha = false;
+            }
+        }
+
+        // Exibe ou oculta a linha com base nos filtros
+        linha.style.display = mostraLinha ? "" : "none";
     }
 
     contarLinhasTabela(); // Atualiza o contador
 }
+
+// Atualiza os eventos para chamar a nova função de filtro combinado
+document.getElementById("colunaFiltro").addEventListener("change", aplicarFiltros);
+document.getElementById("filtro-input").addEventListener("input", aplicarFiltros);
+document.getElementById("filtro-mes").addEventListener("change", aplicarFiltros);

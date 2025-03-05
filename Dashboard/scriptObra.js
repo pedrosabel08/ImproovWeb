@@ -325,18 +325,26 @@ function excluirFuncao(funcaoId, selectElement) {
     fetch(`../excluirFuncao.php?id=${funcaoId}`, {
         method: 'POST'
     })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                selectElement.value = '';
-                selectElement.dispatchEvent(new Event('change')); // Dispara o evento de mudança
-                alert('Função excluída com sucesso!');
-            } else {
-                alert('Erro ao excluir função.');
-            }
-        })
-        .catch(error => console.error('Erro ao excluir função:', error));
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            selectElement.value = '';
+            selectElement.dispatchEvent(new Event('change')); // Dispara o evento de mudança
+            
+            // Remove os botões associados ao selectElement
+            const clearButton = selectElement.parentElement.querySelector('.clear-button');
+            const logButton = selectElement.parentElement.querySelector('.log-button');
+            if (clearButton) clearButton.remove();
+            if (logButton) logButton.remove();
+
+            alert('Função excluída com sucesso!');
+        } else {
+            alert('Erro ao excluir função.');
+        }
+    })
+    .catch(error => console.error('Erro ao excluir função:', error));
 }
+
 
 function updateWidth(input) {
     const hiddenText = input.parentElement.querySelector(".hidden-text"); // Encontra o span correto

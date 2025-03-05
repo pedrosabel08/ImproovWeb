@@ -51,7 +51,7 @@ $conn->close();
         <header>
             <img src="../gif/assinatura_preto.gif" alt="" style="width: 200px;">
         </header>
-        <table border="1" id="renderTable">
+        <table id="renderTable">
             <thead>
                 <tr>
                     <th>ID</th>

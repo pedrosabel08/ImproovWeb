@@ -325,24 +325,24 @@ function excluirFuncao(funcaoId, selectElement) {
     fetch(`../excluirFuncao.php?id=${funcaoId}`, {
         method: 'POST'
     })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            selectElement.value = '';
-            selectElement.dispatchEvent(new Event('change')); // Dispara o evento de mudança
-            
-            // Remove os botões associados ao selectElement
-            const clearButton = selectElement.parentElement.querySelector('.clear-button');
-            const logButton = selectElement.parentElement.querySelector('.log-button');
-            if (clearButton) clearButton.remove();
-            if (logButton) logButton.remove();
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                selectElement.value = '';
+                selectElement.dispatchEvent(new Event('change')); // Dispara o evento de mudança
 
-            alert('Função excluída com sucesso!');
-        } else {
-            alert('Erro ao excluir função.');
-        }
-    })
-    .catch(error => console.error('Erro ao excluir função:', error));
+                // Remove os botões associados ao selectElement
+                const clearButton = selectElement.parentElement.querySelector('.clear-button');
+                const logButton = selectElement.parentElement.querySelector('.log-button');
+                if (clearButton) clearButton.remove();
+                if (logButton) logButton.remove();
+
+                alert('Função excluída com sucesso!');
+            } else {
+                alert('Erro ao excluir função.');
+            }
+        })
+        .catch(error => console.error('Erro ao excluir função:', error));
 }
 
 
@@ -580,6 +580,9 @@ function infosObra(obraId) {
                 // Seleciona a tabela onde as informações serão inseridas
                 const tabela = document.getElementById("tabelaInfos");
 
+                // Limpa a tabela antes de adicionar os novos dados
+                tabela.querySelector("tbody").innerHTML = "";
+
                 // Preenche a tabela com as informações
                 data.infos.forEach(info => {
                     const linha = document.createElement('tr'); // Cria uma linha para cada info
@@ -632,27 +635,31 @@ function infosObra(obraId) {
 
 
                 });
-                // Inicializa o DataTables
-                $(document).ready(function () {
-                    $('#tabelaInfos').DataTable({
-                        "paging": false,
-                        "lengthChange": false,
-                        "info": false,
-                        "ordering": true,
-                        "searching": true,
-                        "order": [], // Remove a ordenação padrão
-                        "columnDefs": [{
-                            "targets": 0, // Aplica a ordenação na primeira coluna
-                            "orderData": function (row, type, set, meta) {
-                                // Retorna o valor do atributo data-id para a ordenação
-                                return $(row).attr('ordem');
+
+                // Inicializa o DataTables se ainda não foi inicializado
+                if (!$.fn.DataTable.isDataTable('#tabelaInfos')) {
+                    $(document).ready(function () {
+                        $('#tabelaInfos').DataTable({
+                            "paging": false,
+                            "lengthChange": false,
+                            "info": false,
+                            "ordering": true,
+                            "searching": true,
+                            "order": [], // Remove a ordenação padrão
+                            "columnDefs": [{
+                                "targets": 0, // Aplica a ordenação na primeira coluna
+                                "orderData": function (row, type, set, meta) {
+                                    // Retorna o valor do atributo data-id para a ordenação
+                                    return $(row).attr('ordem');
+                                }
+                            }],
+                            "language": {
+                                "url": "https://cdn.datatables.net/plug-ins/1.10.21/i18n/Portuguese.json"
                             }
-                        }],
-                        "language": {
-                            "url": "https://cdn.datatables.net/plug-ins/1.10.21/i18n/Portuguese.json"
-                        }
+                        });
                     });
-                });
+                }
+
 
                 // Inicializa o SortableJS na tabela
                 new Sortable(tabela.querySelector("tbody"), {

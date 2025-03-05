@@ -32,39 +32,27 @@ h1 {
 }
 
 /* Estilos da tabela */
-table {
+table#renderTable {
     width: 100%;
     border-collapse: collapse;
     margin-top: 20px;
 }
 
-table,
 th,
 td {
-    border: 1px solid #ddd;
+    font-size: 14px;
+    padding: 7px;
+    text-align: left;
+    border: 1px solid black;
 }
 
 th {
-    background-color: #4CAF50;
+    background-color: black;
     color: white;
     padding: 10px;
     text-align: left;
 }
 
-td {
-    padding: 10px;
-    text-align: left;
-    color: #333;
-}
-
-tr:nth-child(even) {
-    background-color: #f2f2f2;
-}
-
-tr:hover {
-    background-color: #ddd;
-    cursor: pointer;
-}
 
 .buttons button {
     padding: 8px 12px;
@@ -238,4 +226,15 @@ form {
     button {
         padding: 6px 10px;
     }
+}
+
+
+.status-tea {
+    background-color: #fff3cd;
+    /* Amarelo claro */
+}
+
+.status-finalizado {
+    background-color: #d4edda;
+    /* Verde claro */
 }

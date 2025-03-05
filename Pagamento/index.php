@@ -144,8 +144,12 @@ $conn->close();
 					<p>Pré-Finalização</p>
 				</div>
 				<div>
-					<input type="checkbox" name="Finalização" id="Finalização" onclick="filtrarTabela()">
-					<p>Finalização</p>
+					<input type="checkbox" name="Finalização Completa" id="Finalização Completa" onclick="filtrarTabela()">
+					<p>Finalização Completa</p>
+				</div>
+				<div>
+					<input type="checkbox" name="Finalização Parcial" id="Finalização Parcial" onclick="filtrarTabela()">
+					<p>Finalização Parcial</p>
 				</div>
 				<div>
 					<input type="checkbox" name="Alteração" id="Alteração" onclick="filtrarTabela()">

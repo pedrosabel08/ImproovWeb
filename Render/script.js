@@ -10,8 +10,10 @@ function loadRenders() {
             if (response.status == 'sucesso') {
                 response.renders.forEach(function (render) {
                     if (render.status !== 'Arquivado') {
+                        let statusStyle = applyStatusStyle(render.status); // Obtém o estilo do status
+
                         $('#renderList').append(`
-                            <tr data-id="${render.idrender_alta}">
+                            <tr data-id="${render.idrender_alta}" style="${statusStyle}">
                                 <td>${render.idrender_alta}</td>
                                 <td class="imagem-nome">${render.imagem_nome}</td>
                                 <td>${render.status}</td>
@@ -20,9 +22,17 @@ function loadRenders() {
                         `);
                     }
                 });
+
                 // Inicializar DataTable com 25 itens por página
                 $('#renderTable').DataTable({
-                    pageLength: 25
+                    "paging": false,
+                    "lengthChange": false,
+                    "info": false,
+                    "ordering": true,
+                    "searching": true,
+                    "language": {
+                        "url": "https://cdn.datatables.net/plug-ins/1.10.21/i18n/Portuguese.json"
+                    }
                 });
 
                 // Adicionar o evento de clique em cada linha da tabela
@@ -33,6 +43,18 @@ function loadRenders() {
             }
         }
     });
+}
+
+// Função que retorna o estilo inline para o status
+function applyStatusStyle(status) {
+    switch (status) {
+        case 'Finalizado':
+            return 'background-color: green; color: white;';
+        case 'Em andamento':
+            return 'background-color: orange; color: black;';
+        default:
+            return '';
+    }
 }
 
 // Função para abrir o modal e carregar os dados para edição

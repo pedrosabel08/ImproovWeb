@@ -45,10 +45,15 @@ fetch('usuarios.php')
 
                 const idusuario = this.getAttribute('data-idusuario');
 
+                document.getElementById('idusuario').value = idusuario;
+
                 fetch(`get_usuario.php?idusuario=${idusuario}`)
                     .then(response => response.json())
-                    .then(usuario => {
-                        document.getElementById('nome_usuario').value = usuario.primeiro_nome_formatado;
+                    .then(data => {
+                        document.getElementById('nome_usuario').value = data.usuario.primeiro_nome_formatado;
+
+                        // Marcar os cargos no Select2
+                        $('#cargoSelect').val(data.cargos).trigger('change');
                     });
             });
         });
@@ -62,66 +67,36 @@ window.onclick = function (event) {
     }
 }
 
-document.addEventListener('DOMContentLoaded', function () {
-    const inputCargo = document.getElementById("cargo");
-    const suggestions = document.getElementById("suggestions");
-
-    // Lista de cargos simulada (pode vir de uma API)
-    let cargosDisponiveis = ["Gerente", "Desenvolvedor", "Designer", "Analista", "Estagiário"];
-
-    // Função para exibir sugestões
-    function mostrarSugestoes(filtro) {
-        const filtrados = cargosDisponiveis.filter(cargo => cargo.toLowerCase().includes(filtro.toLowerCase()));
-        suggestions.innerHTML = ""; // Limpa sugestões anteriores
-
-        if (filtrados.length > 0) {
-            filtrados.forEach(cargo => {
-                const div = document.createElement("div");
-                div.classList.add("cargo-item");
-                div.textContent = cargo;
-                div.onclick = () => selecionarCargo(cargo);
-                suggestions.appendChild(div);
-            });
-            suggestions.style.display = "block";
-        } else {
-            suggestions.innerHTML = `<div class="cargo-item">Pressione Enter para adicionar "${filtro}"</div>`;
-            suggestions.style.display = "block";
-        }
-    }
-
-    // Função para selecionar um cargo existente
-    function selecionarCargo(cargo) {
-        inputCargo.value = cargo;
-        suggestions.style.display = "none";
-    }
-
-    // Evento de digitação para buscar sugestões
-    inputCargo.addEventListener("input", (e) => {
-        const valor = e.target.value.trim();
-        if (valor) {
-            mostrarSugestoes(valor);
-        } else {
-            suggestions.style.display = "none";
-        }
+$(document).ready(function () {
+    $('#cargoSelect').select2({
+        placeholder: "Selecione os cargos",
+        allowClear: true
     });
+});
 
-    // Evento para adicionar novo cargo pressionando Enter
-    inputCargo.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") {
-            e.preventDefault();
-            const novoCargo = inputCargo.value.trim();
-            if (novoCargo && !cargosDisponiveis.includes(novoCargo)) {
-                cargosDisponiveis.push(novoCargo); // Adiciona à lista
-                selecionarCargo(novoCargo); // Seleciona automaticamente
-            }
-            suggestions.style.display = "none";
-        }
-    });
+$('#form').on('submit', function (e) {
+    e.preventDefault();
 
-    // Oculta sugestões se clicar fora
-    document.addEventListener("click", (e) => {
-        if (!inputCargo.contains(e.target) && !suggestions.contains(e.target)) {
-            suggestions.style.display = "none";
+    const idusuario = $('#idusuario').val();
+    const cargos = $('#cargoSelect').val();
+
+    const formData = {
+        idusuario: idusuario,
+        cargos: cargos
+    };
+
+    console.log(formData);
+
+    $.ajax({
+        type: 'POST',
+        url: 'salvar_colaborador.php',
+        data: formData,
+        success: function (response) {
+            alert('Cargos atualizados com sucesso!');
+            $('#modal').hide();
+        },
+        error: function () {
+            alert('Erro ao salvar os cargos.');
         }
     });
 });

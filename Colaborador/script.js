@@ -9,7 +9,7 @@ fetch('usuarios.php')
                 <tr class="usuario-row" data-idusuario="${element.idusuario}">
                     <td>${element.idusuario}</td>
                     <td>${element.nome_usuario}</td>
-                    <td>${element.cargos}</td>
+                    <td>${element.nome_cargo}</td>
                     <td>${element.ativo == 1 ? 'Sim' : 'Não'}</td>
                 </tr>
             `;

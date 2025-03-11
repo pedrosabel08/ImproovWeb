@@ -37,7 +37,8 @@ $conn->close();
         type="image/x-icon">
     <link rel="stylesheet" href="../css/styleSidebar.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
-
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/airbnb.css">
 
 </head>
 
@@ -477,7 +478,7 @@ $conn->close();
                                 <option value="Aprovado">Aprovado</option>
                                 <option value="Ajuste">Ajuste</option>
                             </select>
-                            <input type="date" name="prazo_filtro" id="prazo_filtro">
+                            <input type="date" name="prazo_filtro" id="prazo_filtro" placeholder="Data">
                             <input type="text" name="obs_filtro" id="obs_filtro" placeholder="Observação">
                         </div>
                     </div>
@@ -784,11 +785,16 @@ $conn->close();
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.14.0/Sortable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/pt.js"></script>
 
     <script src="scriptObra.js"></script>
     <script src="../script/sidebar.js"></script>
     <script src="../script/notificacoes.js"></script>
 
+    <script>
+
+    </script>
 
 </body>
 

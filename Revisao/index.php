@@ -94,6 +94,7 @@ $idusuario = $_SESSION['idusuario'];
             <div class="task-info">
                 <h3 id="funcao_nome"></h3>
                 <p id="imagem_nome"></p>
+                <button id="vizu_imagens">Vizualizar Imagens</button>
             </div>
             <div class="table-container">
                 <table id="tabelaHistorico" class="display" style="font-size: 12px; width: 0px;">

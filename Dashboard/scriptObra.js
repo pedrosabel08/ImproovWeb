@@ -162,7 +162,7 @@ function atualizarModal(idImagem) {
                             selectElement = document.getElementById("opcao_caderno");
                             checkboxElement = document.getElementById("check_caderno");
                             document.getElementById("status_caderno").value = funcao.status;
-                            document.getElementById("prazo_caderno").value = funcao.prazo;
+                            document.getElementById("prazo_caderno").value = formatarData(funcao.prazo);
                             document.getElementById("obs_caderno").value = funcao.observacao;
                             checkboxElement.checked = funcao.check_funcao === '1';
                             break;
@@ -170,7 +170,7 @@ function atualizarModal(idImagem) {
                             selectElement = document.getElementById("opcao_model");
                             checkboxElement = document.getElementById("check_model");
                             document.getElementById("status_modelagem").value = funcao.status;
-                            document.getElementById("prazo_modelagem").value = funcao.prazo;
+                            document.getElementById("prazo_modelagem").value = formatarData(funcao.prazo);
                             document.getElementById("obs_modelagem").value = funcao.observacao;
                             checkboxElement.checked = funcao.check_funcao === '1';
                             break;
@@ -178,7 +178,7 @@ function atualizarModal(idImagem) {
                             selectElement = document.getElementById("opcao_comp");
                             checkboxElement = document.getElementById("check_comp");
                             document.getElementById("status_comp").value = funcao.status;
-                            document.getElementById("prazo_comp").value = funcao.prazo;
+                            document.getElementById("prazo_comp").value = formatarData(funcao.prazo);
                             document.getElementById("obs_comp").value = funcao.observacao;
                             checkboxElement.checked = funcao.check_funcao === '1';
                             break;
@@ -186,7 +186,7 @@ function atualizarModal(idImagem) {
                             selectElement = document.getElementById("opcao_final");
                             checkboxElement = document.getElementById("check_final");
                             document.getElementById("status_finalizacao").value = funcao.status;
-                            document.getElementById("prazo_finalizacao").value = funcao.prazo;
+                            document.getElementById("prazo_finalizacao").value = formatarData(funcao.prazo);
                             document.getElementById("obs_finalizacao").value = funcao.observacao;
                             checkboxElement.checked = funcao.check_funcao === '1';
                             break;
@@ -194,7 +194,7 @@ function atualizarModal(idImagem) {
                             selectElement = document.getElementById("opcao_pos");
                             checkboxElement = document.getElementById("check_pos");
                             document.getElementById("status_pos").value = funcao.status;
-                            document.getElementById("prazo_pos").value = funcao.prazo;
+                            document.getElementById("prazo_pos").value = formatarData(funcao.prazo);
                             document.getElementById("obs_pos").value = funcao.observacao;
                             checkboxElement.checked = funcao.check_funcao === '1';
                             break;
@@ -202,7 +202,7 @@ function atualizarModal(idImagem) {
                             selectElement = document.getElementById("opcao_alteracao");
                             checkboxElement = document.getElementById("check_alt");
                             document.getElementById("status_alteracao").value = funcao.status;
-                            document.getElementById("prazo_alteracao").value = funcao.prazo;
+                            document.getElementById("prazo_alteracao").value = formatarData(funcao.prazo);
                             document.getElementById("obs_alteracao").value = funcao.observacao;
                             checkboxElement.checked = funcao.check_funcao === '1';
                             break;
@@ -210,7 +210,7 @@ function atualizarModal(idImagem) {
                             selectElement = document.getElementById("opcao_planta");
                             checkboxElement = document.getElementById("check_planta");
                             document.getElementById("status_planta").value = funcao.status;
-                            document.getElementById("prazo_planta").value = funcao.prazo;
+                            document.getElementById("prazo_planta").value = formatarData(funcao.prazo);
                             document.getElementById("obs_planta").value = funcao.observacao;
                             checkboxElement.checked = funcao.check_funcao === '1';
                             break;
@@ -218,7 +218,7 @@ function atualizarModal(idImagem) {
                             selectElement = document.getElementById("opcao_filtro");
                             checkboxElement = document.getElementById("check_filtro");
                             document.getElementById("status_filtro").value = funcao.status;
-                            document.getElementById("prazo_filtro").value = funcao.prazo;
+                            document.getElementById("prazo_filtro").value = formatarData(funcao.prazo);
                             document.getElementById("obs_filtro").value = funcao.observacao;
                             checkboxElement.checked = funcao.check_funcao === '1';
                             break;
@@ -226,7 +226,7 @@ function atualizarModal(idImagem) {
                             selectElement = document.getElementById("opcao_pre");
                             checkboxElement = document.getElementById("check_pre");
                             document.getElementById("status_pre").value = funcao.status;
-                            document.getElementById("prazo_pre").value = funcao.prazo;
+                            document.getElementById("prazo_pre").value = formatarData(funcao.prazo);
                             document.getElementById("obs_pre").value = funcao.observacao;
                             checkboxElement.checked = funcao.check_funcao === '1';
                             break;
@@ -1914,3 +1914,17 @@ function atualizarRevisao(event, id, campo, valor) {
         })
         .catch(error => console.error('Erro na requisição:', error));
 }
+
+
+document.addEventListener('DOMContentLoaded', function () {
+    // Seleciona todos os inputs que começam com 'prazo_'
+    const inputsPrazo = document.querySelectorAll('input[id^="prazo_"]');
+
+    // Aplica o Flatpickr para cada input encontrado
+    inputsPrazo.forEach(input => {
+        flatpickr(input, {
+            dateFormat: "d/m/Y", // Formato da data
+            locale: "pt" // Deixa o calendário em português
+        });
+    });
+});

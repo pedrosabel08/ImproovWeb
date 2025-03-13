@@ -113,8 +113,18 @@ $idusuario = $_SESSION['idusuario'];
                     <tbody></tbody>
                 </table>
             </div>
-        </div>
+            <div id="imageContainer">
 
+            </div>
+        </div>
+        <div id="modalComment">
+            <div id="modalContent">
+                <h3>Adicionar Comentário</h3>
+                <textarea id="commentText" rows="4" style="width: 100%;"></textarea><br>
+                <button id="saveComment">Salvar</button>
+                <button id="closeModal">Cancelar</button>
+            </div>
+        </div>
 
         <div class="historico-add hidden" style="width: 500px;">
             <form id="adicionar_obs">

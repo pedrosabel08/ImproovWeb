@@ -97,7 +97,7 @@ function filtrarTarefas() {
 // Função para buscar tarefas de revisão
 async function fetchTarefas(filtro = 'Todos', status = 'Em aprovação') {
     try {
-        const response = await fetch(`atualizar.php?status=${status}`); 
+        const response = await fetch(`atualizar.php?status=${status}`);
         if (!response.ok) {
             throw new Error("Erro ao buscar as tarefas.");
         }
@@ -188,13 +188,12 @@ function exibirTarefas(tarefas) {
 }
 
 document.getElementById('nome_funcao').addEventListener('change', filtrarTarefas);
-
+const modalComment = document.getElementById('modalComment');
 
 function historyAJAX(idfuncao_imagem, funcao_nome, imagem_nome) {
     fetch(`historico.php?ajid=${idfuncao_imagem}`)
         .then(response => response.json())
-        .then(data => {
-
+        .then(response => {
             document.getElementById("id_funcao").value = idfuncao_imagem;
             document.getElementById("imagem_nome").textContent = imagem_nome;
             document.getElementById("funcao_nome").textContent = funcao_nome;
@@ -203,12 +202,54 @@ function historyAJAX(idfuncao_imagem, funcao_nome, imagem_nome) {
             const modal = document.getElementById('historico_modal');
             modal.style.display = 'grid';
 
-            // Verifique se os dados estão no formato correto (array de objetos)
-            if (Array.isArray(data)) {
-                // Inicialize a tabela DataTable
+            const { historico, imagens } = response;
+
+            // Renderizar as imagens
+            const imageContainer = document.getElementById('imageContainer');
+            imageContainer.innerHTML = ''; // Limpa as imagens anteriores
+
+            imagens.forEach(img => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'imageWrapper';
+
+                const imgElement = document.createElement('img');
+                imgElement.src = `../${img.imagem}`;
+                imgElement.alt = img.imagem;
+                imgElement.style.width = '500px';
+                imgElement.style.margin = '5px';
+                imgElement.setAttribute('data-id', img.id);
+
+                imgElement.addEventListener('click', (event) => {
+                    currentImageId = img.id;
+                    clickX = event.offsetX;
+                    clickY = event.offsetY;
+                    commentText.value = '';
+                    modalComment.style.display = 'flex';
+                });
+
+                wrapper.appendChild(imgElement);
+                imageContainer.appendChild(wrapper); // Adiciona o wrapper ao imageContainer
+
+                fetch(`carregar_comentarios.php?ap_imagem_id=${img.id}`)
+                    .then(response => response.json())
+                    .then(comentarios => {
+                        comentarios.forEach(comentario => {
+                            const marker = document.createElement('div');
+                            marker.className = 'comment-marker';
+                            marker.style.left = `${comentario.x}px`;
+                            marker.style.top = `${comentario.y}px`;
+                            marker.title = comentario.texto;
+                            wrapper.appendChild(marker); // Adiciona o marcador ao wrapper
+                        });
+                    });
+            });
+
+
+
+            if (Array.isArray(historico)) {
                 let tabela = $('#tabelaHistorico').DataTable({
-                    "destroy": true,  // Permite reinicializar a tabela sem erro
-                    "data": data,  // Insere os dados diretos da resposta na tabela
+                    "destroy": true,
+                    "data": historico,
                     "columns": [
                         { "data": "id" },
                         { "data": "status_anterior" },
@@ -221,47 +262,70 @@ function historyAJAX(idfuncao_imagem, funcao_nome, imagem_nome) {
                             "data": null,
                             "render": function (data, type, row) {
                                 return `
-                                <div class="task-actions">
-                                    <button class="action-btn tooltip" id="add_obs" onclick="addObservacao(${row.id})" data-tooltip="Adicionar Observação">
-                                        <i class="fa-solid fa-plus"></i>
-                                    </button>
-                                    <button class="action-btn tooltip" id="check" data-tooltip="Aprovar" onclick="revisarTarefa(${row.funcao_imagem_id}, '${row.colaborador_nome}', '${row.imagem_nome}', '${row.nome_funcao}', '${row.colaborador_id}', true)">
-                                        <i class="fa-solid fa-check"></i>
-                                    </button>
-                                    <button class="action-btn tooltip" id="xmark" data-tooltip="Rejeitar" onclick="revisarTarefa(${row.funcao_imagem_id}, '${row.colaborador_nome}', '${row.imagem_nome}', '${row.nome_funcao}', '${row.colaborador_id}', false)">
-                                        <i class="fa-solid fa-xmark"></i>
-                                    </button>
-                                </div>
+                                    <div class="task-actions">
+                                        <button class="action-btn tooltip" id="add_obs" onclick="addObservacao(${row.id})" data-tooltip="Adicionar Observação">
+                                            <i class="fa-solid fa-plus"></i>
+                                        </button>
+                                        <button class="action-btn tooltip" id="check" data-tooltip="Aprovar" onclick="revisarTarefa(${row.funcao_imagem_id}, '${row.colaborador_nome}', '${row.imagem_nome}', '${row.nome_funcao}', '${row.colaborador_id}', true)">
+                                            <i class="fa-solid fa-check"></i>
+                                        </button>
+                                        <button class="action-btn tooltip" id="xmark" data-tooltip="Rejeitar" onclick="revisarTarefa(${row.funcao_imagem_id}, '${row.colaborador_nome}', '${row.imagem_nome}', '${row.nome_funcao}', '${row.colaborador_id}', false)">
+                                            <i class="fa-solid fa-xmark"></i>
+                                        </button>
+                                    </div>
                                 `;
                             }
                         }
                     ],
-                    // Usando createdRow para manipular cada linha após ser criada
-                    "createdRow": function (row, data, dataIndex) {
-                        // Verifica os valores de status_novo e status_anterior
+                    "createdRow": function (row, data) {
                         if (data.status_novo === 'Em aprovação') {
-                            // Alterando o background da coluna "status_novo"
-                            $('td', row).eq(2).css('background-color', 'yellow');  // 2 é o índice da coluna "status_novo"
+                            $('td', row).eq(2).css('background-color', 'yellow');
                         }
-
                         if (data.status_novo === 'Aprovado') {
-                            // Alterando o background da coluna "status_anterior"
-                            $('td', row).eq(2).css('background-color', 'green');  // 1 é o índice da coluna "status_anterior"
-                            $('td', row).eq(2).css('color', 'white');  // 1 é o índice da coluna "status_anterior"
+                            $('td', row).eq(2).css('background-color', 'green').css('color', 'white');
                         }
                         if (data.status_novo === 'Ajuste') {
-                            // Alterando o background da coluna "status_anterior"
-                            $('td', row).eq(2).css('background-color', 'red');  // 1 é o índice da coluna "status_anterior"
+                            $('td', row).eq(2).css('background-color', 'red');
                         }
                     }
-
                 });
             } else {
-                console.error("Os dados recebidos não estão no formato esperado (array).");
+                console.error("Os dados recebidos não estão no formato esperado.");
             }
         })
         .catch(error => console.error("Erro ao buscar dados:", error));
 }
+
+saveComment.addEventListener('click', () => {
+    const comentario = commentText.value;
+
+    if (comentario.trim() === '') {
+        alert('Por favor, escreva um comentário.');
+        return;
+    }
+
+    fetch('salvar_comentario.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            ap_imagem_id: currentImageId,
+            x: clickX,
+            y: clickY,
+            texto: comentario
+        })
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.sucesso) {
+                alert('Comentário salvo com sucesso!');
+                modal.style.display = 'none';
+            } else {
+                alert('Erro ao salvar o comentário.');
+            }
+        })
+        .catch(error => console.error('Erro:', error));
+});
+
 
 const id_revisao = document.getElementById('id_revisao');
 

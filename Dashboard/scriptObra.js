@@ -157,6 +157,7 @@ function atualizarModal(idImagem) {
                 response.funcoes.forEach(function (funcao) {
                     let selectElement;
                     let checkboxElement;
+                    let revisaoImagemElement;
                     switch (funcao.nome_funcao) {
                         case "Caderno":
                             selectElement = document.getElementById("opcao_caderno");
@@ -165,6 +166,7 @@ function atualizarModal(idImagem) {
                             document.getElementById("prazo_caderno").value = funcao.prazo;
                             document.getElementById("obs_caderno").value = funcao.observacao;
                             checkboxElement.checked = funcao.check_funcao === '1';
+                            revisaoImagemElement = document.getElementById("revisao_imagem_caderno");
                             break;
                         case "Modelagem":
                             selectElement = document.getElementById("opcao_model");
@@ -173,6 +175,7 @@ function atualizarModal(idImagem) {
                             document.getElementById("prazo_modelagem").value = funcao.prazo;
                             document.getElementById("obs_modelagem").value = funcao.observacao;
                             checkboxElement.checked = funcao.check_funcao === '1';
+                            revisaoImagemElement = document.getElementById("revisao_imagem_model");
                             break;
                         case "Composição":
                             selectElement = document.getElementById("opcao_comp");
@@ -181,6 +184,8 @@ function atualizarModal(idImagem) {
                             document.getElementById("prazo_comp").value = funcao.prazo;
                             document.getElementById("obs_comp").value = funcao.observacao;
                             checkboxElement.checked = funcao.check_funcao === '1';
+                            revisaoImagemElement = document.getElementById("revisao_imagem_comp");
+
                             break;
                         case "Finalização":
                             selectElement = document.getElementById("opcao_final");
@@ -189,6 +194,7 @@ function atualizarModal(idImagem) {
                             document.getElementById("prazo_finalizacao").value = funcao.prazo;
                             document.getElementById("obs_finalizacao").value = funcao.observacao;
                             checkboxElement.checked = funcao.check_funcao === '1';
+                            revisaoImagemElement = document.getElementById("revisao_imagem_final");
                             break;
                         case "Pós-produção":
                             selectElement = document.getElementById("opcao_pos");
@@ -197,6 +203,7 @@ function atualizarModal(idImagem) {
                             document.getElementById("prazo_pos").value = funcao.prazo;
                             document.getElementById("obs_pos").value = funcao.observacao;
                             checkboxElement.checked = funcao.check_funcao === '1';
+                            revisaoImagemElement = document.getElementById("revisao_imagem_pos");
                             break;
                         case "Alteração":
                             selectElement = document.getElementById("opcao_alteracao");
@@ -205,6 +212,7 @@ function atualizarModal(idImagem) {
                             document.getElementById("prazo_alteracao").value = funcao.prazo;
                             document.getElementById("obs_alteracao").value = funcao.observacao;
                             checkboxElement.checked = funcao.check_funcao === '1';
+                            revisaoImagemElement = document.getElementById("revisao_imagem_alt");
                             break;
                         case "Planta Humanizada":
                             selectElement = document.getElementById("opcao_planta");
@@ -213,6 +221,7 @@ function atualizarModal(idImagem) {
                             document.getElementById("prazo_planta").value = funcao.prazo;
                             document.getElementById("obs_planta").value = funcao.observacao;
                             checkboxElement.checked = funcao.check_funcao === '1';
+                            revisaoImagemElement = document.getElementById("revisao_imagem_ph");
                             break;
                         case "Filtro de assets":
                             selectElement = document.getElementById("opcao_filtro");
@@ -221,6 +230,7 @@ function atualizarModal(idImagem) {
                             document.getElementById("prazo_filtro").value = funcao.prazo;
                             document.getElementById("obs_filtro").value = funcao.observacao;
                             checkboxElement.checked = funcao.check_funcao === '1';
+                            revisaoImagemElement = document.getElementById("revisao_imagem_filtro");
                             break;
                         case "Pré-Finalização":
                             selectElement = document.getElementById("opcao_pre");
@@ -229,7 +239,11 @@ function atualizarModal(idImagem) {
                             document.getElementById("prazo_pre").value = funcao.prazo;
                             document.getElementById("obs_pre").value = funcao.observacao;
                             checkboxElement.checked = funcao.check_funcao === '1';
+                            revisaoImagemElement = document.getElementById("revisao_imagem_pre");
                             break;
+                    }
+                    if (revisaoImagemElement) {
+                        revisaoImagemElement.setAttribute('data-id-funcao', funcao.id);
                     }
                     if (selectElement) {
                         selectElement.value = funcao.colaborador_id;
@@ -995,6 +1009,22 @@ function applyStyleNone(cell, cell2, nome) {
     }
 }
 
+// // Seleciona todos os selects com id que começam com 'status_'
+// const statusSelects = document.querySelectorAll("select[id^='status_']");
+
+// statusSelects.forEach(select => {
+//     select.addEventListener("change", function () {
+//         // Pega o próximo elemento irmão que possui a classe 'revisao_imagem'
+//         const revisaoImagem = this.closest('.funcao').querySelector('.revisao_imagem');
+
+//         if (this.value === "Em aprovação") {
+//             revisaoImagem.style.display = "block";
+//         } else {
+//             revisaoImagem.style.display = "none";
+//         }
+//     });
+// });
+
 
 document.getElementById("salvar_funcoes").addEventListener("click", function (event) {
     event.preventDefault();
@@ -1099,8 +1129,64 @@ document.getElementById("salvar_funcoes").addEventListener("click", function (ev
                 backgroundColor: "red",
                 stopOnFocus: true,
             }).showToast();
+
+
         }
     });
+    // Segundo fetch - agora enviando como JSON
+    var fileInputs = document.querySelectorAll("input[type='file']");
+    var filesExistem = Array.from(fileInputs).some(input => input.files.length > 0);
+    const dataIdFuncoes = [];
+
+    const formData = new FormData();
+
+    console.log("Arquivos existem?", filesExistem);
+
+    fileInputs.forEach(input => {
+        // Verifica se o input tem arquivos
+        if (input.files.length > 0) {
+            const dataIdFuncao = input.getAttribute('data-id-funcao');
+
+            // Adiciona apenas se o data-id-funcao existir e o input tiver arquivos
+            if (dataIdFuncao && dataIdFuncao.trim() !== '') {
+                dataIdFuncoes.push(dataIdFuncao);
+            }
+
+            // Adiciona os arquivos ao FormData
+            for (let i = 0; i < input.files.length; i++) {
+                formData.append('imagens[]', input.files[i]);
+            }
+        }
+    });
+
+    if (filesExistem) {
+        // Adicionando apenas os valores válidos de dataIdFuncoes
+        formData.append('dataIdFuncoes', JSON.stringify(dataIdFuncoes));
+
+        console.log("Funções válidas: ", dataIdFuncoes);  // Para ver o array filtrado
+
+        fetch('../uploadArquivos.php', {
+            method: "POST",
+            body: formData,
+            headers: {
+                'Accept': 'application/json'
+            }
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log(data);
+                // Aqui você pode adicionar lógica para lidar com a resposta do servidor
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+            });
+
+    }
 });
 
 function showModal() {

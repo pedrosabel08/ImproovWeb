@@ -363,3 +363,13 @@ h2 {
 .alternar button:hover {
     opacity: 0.8;
 }
+
+.comment-marker {
+    position: absolute;
+    width: 15px;
+    height: 15px;
+    background-color: red;
+    border-radius: 50%;
+    cursor: pointer;
+    transform: translate(-50%, -50%);
+}

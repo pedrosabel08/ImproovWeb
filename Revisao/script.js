@@ -170,7 +170,10 @@ function exibirTarefas(tarefas) {
         tarefas.forEach(tarefa => {
             const taskItem = document.createElement('div');
             taskItem.classList.add('task-item');
-            taskItem.setAttribute('onclick', `historyAJAX(${tarefa.idfuncao_imagem}, '${tarefa.nome_funcao}', '${tarefa.imagem_nome}')`);
+            taskItem.setAttribute('onclick', `historyAJAX(${tarefa.idfuncao_imagem}, '${tarefa.nome_funcao}', '${tarefa.imagem_nome}', '${tarefa.nome_colaborador}')`);
+
+            const imageContainer = document.getElementById('imagens');
+            imageContainer.innerHTML = ''; // Limpa as imagens anteriores
 
             taskItem.innerHTML = `
                 <div class="task-info">
@@ -190,13 +193,14 @@ function exibirTarefas(tarefas) {
 document.getElementById('nome_funcao').addEventListener('change', filtrarTarefas);
 const modalComment = document.getElementById('modalComment');
 
-function historyAJAX(idfuncao_imagem, funcao_nome, imagem_nome) {
+function historyAJAX(idfuncao_imagem, funcao_nome, imagem_nome, colaborador_nome) {
     fetch(`historico.php?ajid=${idfuncao_imagem}`)
         .then(response => response.json())
         .then(response => {
             document.getElementById("id_funcao").value = idfuncao_imagem;
             document.getElementById("imagem_nome").textContent = imagem_nome;
             document.getElementById("funcao_nome").textContent = funcao_nome;
+            document.getElementById("colaborador_nome").textContent = colaborador_nome;
 
             // Exibir o modal
             const modal = document.getElementById('historico_modal');
@@ -204,8 +208,21 @@ function historyAJAX(idfuncao_imagem, funcao_nome, imagem_nome) {
 
             const { historico, imagens } = response;
 
+            historico.forEach(historico => {
+                document.getElementById('buttons-task').innerHTML = `
+                <button class="action-btn tooltip" id="add_obs" onclick="addObservacao(${historico.id})" data-tooltip="Adicionar Observação">
+                    <i class="fa-solid fa-plus"></i>
+                </button>
+                <button class="action-btn tooltip" id="check" data-tooltip="Aprovar" onclick="revisarTarefa(${historico.funcao_imagem_id}, '${historico.colaborador_nome}', '${historico.imagem_nome}', '${historico.nome_funcao}', '${historico.colaborador_id}', true)">
+                    <i class="fa-solid fa-check"></i>
+                </button>
+                <button class="action-btn tooltip" id="xmark" data-tooltip="Rejeitar" onclick="revisarTarefa(${historico.funcao_imagem_id}, '${historico.colaborador_nome}', '${historico.imagem_nome}', '${historico.nome_funcao}', '${historico.colaborador_id}', false)">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>`;
+            });
+
             // Renderizar as imagens
-            const imageContainer = document.getElementById('imageContainer');
+            const imageContainer = document.getElementById('imagens');
             imageContainer.innerHTML = ''; // Limpa as imagens anteriores
 
             imagens.forEach(img => {
@@ -215,77 +232,44 @@ function historyAJAX(idfuncao_imagem, funcao_nome, imagem_nome) {
                 const imgElement = document.createElement('img');
                 imgElement.src = `../${img.imagem}`;
                 imgElement.alt = img.imagem;
-                imgElement.style.width = '500px';
-                imgElement.style.margin = '5px';
+                imgElement.className = 'image';
                 imgElement.setAttribute('data-id', img.id);
 
                 imgElement.addEventListener('click', (event) => {
-                    currentImageId = img.id;
-                    clickX = event.offsetX;
-                    clickY = event.offsetY;
-                    commentText.value = '';
-                    modalComment.style.display = 'flex';
+                    mostrarImagemCompleta(imgElement.src, img.id);
                 });
 
                 wrapper.appendChild(imgElement);
-                imageContainer.appendChild(wrapper); // Adiciona o wrapper ao imageContainer
+                imageContainer.appendChild(wrapper);
 
-                fetch(`carregar_comentarios.php?ap_imagem_id=${img.id}`)
-                    .then(response => response.json())
-                    .then(comentarios => {
-                        comentarios.forEach(comentario => {
-                            const marker = document.createElement('div');
-                            marker.className = 'comment-marker';
-                            marker.style.left = `${comentario.x}px`;
-                            marker.style.top = `${comentario.y}px`;
-                            marker.title = comentario.texto;
-                            wrapper.appendChild(marker); // Adiciona o marcador ao wrapper
-                        });
-                    });
             });
-
 
 
             if (Array.isArray(historico)) {
                 let tabela = $('#tabelaHistorico').DataTable({
                     "destroy": true,
+                    "paging": false,
+                    "lengthChange": false,
+                    "info": false,
+                    "ordering": true,
+                    "searching": true,
                     "data": historico,
                     "columns": [
-                        { "data": "id" },
                         { "data": "status_anterior" },
                         { "data": "status_novo" },
                         { "data": "data_aprovacao" },
-                        { "data": "colaborador_nome" },
                         { "data": "responsavel_nome" },
                         { "data": "observacoes" },
-                        {
-                            "data": null,
-                            "render": function (data, type, row) {
-                                return `
-                                    <div class="task-actions">
-                                        <button class="action-btn tooltip" id="add_obs" onclick="addObservacao(${row.id})" data-tooltip="Adicionar Observação">
-                                            <i class="fa-solid fa-plus"></i>
-                                        </button>
-                                        <button class="action-btn tooltip" id="check" data-tooltip="Aprovar" onclick="revisarTarefa(${row.funcao_imagem_id}, '${row.colaborador_nome}', '${row.imagem_nome}', '${row.nome_funcao}', '${row.colaborador_id}', true)">
-                                            <i class="fa-solid fa-check"></i>
-                                        </button>
-                                        <button class="action-btn tooltip" id="xmark" data-tooltip="Rejeitar" onclick="revisarTarefa(${row.funcao_imagem_id}, '${row.colaborador_nome}', '${row.imagem_nome}', '${row.nome_funcao}', '${row.colaborador_id}', false)">
-                                            <i class="fa-solid fa-xmark"></i>
-                                        </button>
-                                    </div>
-                                `;
-                            }
-                        }
                     ],
                     "createdRow": function (row, data) {
                         if (data.status_novo === 'Em aprovação') {
-                            $('td', row).eq(2).css('background-color', 'yellow');
+                            $('td', row).eq(1).css('background-color', 'yellow');
                         }
                         if (data.status_novo === 'Aprovado') {
-                            $('td', row).eq(2).css('background-color', 'green').css('color', 'white');
+                            $('td', row).eq(1).css('background-color', 'green').css('color', 'white');
                         }
                         if (data.status_novo === 'Ajuste') {
-                            $('td', row).eq(2).css('background-color', 'red');
+                            $('td', row).eq(1).css('background-color', 'red');
                         }
                     }
                 });
@@ -296,36 +280,167 @@ function historyAJAX(idfuncao_imagem, funcao_nome, imagem_nome) {
         .catch(error => console.error("Erro ao buscar dados:", error));
 }
 
-saveComment.addEventListener('click', () => {
-    const comentario = commentText.value;
 
-    if (comentario.trim() === '') {
-        alert('Por favor, escreva um comentário.');
-        return;
-    }
+let ap_imagem_id = null; // Variável para armazenar o ID da imagem atual
 
-    fetch('salvar_comentario.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            ap_imagem_id: currentImageId,
-            x: clickX,
-            y: clickY,
-            texto: comentario
-        })
-    })
-        .then(response => response.json())
-        .then(data => {
-            if (data.sucesso) {
-                alert('Comentário salvo com sucesso!');
-                modal.style.display = 'none';
-            } else {
-                alert('Erro ao salvar o comentário.');
+function mostrarImagemCompleta(src, id) {
+    ap_imagem_id = id; // Armazena o id da imagem clicada
+    const imagemCompletaDiv = document.getElementById("imagem_completa");
+    imagemCompletaDiv.innerHTML = '';
+
+    const imgElement = document.createElement("img");
+    imgElement.src = src;
+    imgElement.style.maxWidth = "100%";
+    imgElement.style.borderRadius = "10px";
+    imgElement.id = "imagem_atual";
+
+    imagemCompletaDiv.appendChild(imgElement);
+
+    renderComments(id);
+
+
+    imgElement.addEventListener('click', async function (event) {
+        const rect = imgElement.getBoundingClientRect();
+        const relativeX = ((event.clientX - rect.left) / rect.width) * 100;
+        const relativeY = ((event.clientY - rect.top) / rect.height) * 100;
+
+        const commentText = prompt("Digite seu comentário:");
+        if (commentText) {
+            const comentario = { ap_imagem_id, x: relativeX, y: relativeY, texto: commentText };
+
+            console.log('Comentário:', comentario);
+
+            try {
+                const response = await fetch('salvar_comentario.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(comentario)
+                });
+
+                const result = await response.json();
+
+                if (result.sucesso) {
+                    addComment(relativeX, relativeY, commentText);
+
+                    alert('Comentário salvo com sucesso!');
+                } else {
+                    alert('Erro ao salvar o comentário.');
+                }
+            } catch (error) {
+                console.error('Erro na requisição:', error);
+                alert('Ocorreu um erro ao tentar salvar o comentário.');
             }
-        })
-        .catch(error => console.error('Erro:', error));
-});
+        }
+    });
+}
 
+function addComment(x, y, text) {
+    const imagemCompletaDiv = document.getElementById("imagem_completa");
+
+    // Cria o div do comentário
+    const commentDiv = document.createElement('div');
+    commentDiv.classList.add('comment');
+    commentDiv.innerText = text;
+    commentDiv.style.left = `${x}%`;
+    commentDiv.style.top = `${y}%`;
+
+    imagemCompletaDiv.appendChild(commentDiv);
+}
+
+const image = document.getElementById("imagem_atual");
+
+
+async function renderComments(id) {
+    const imagemCompletaDiv = document.getElementById("imagem_completa");
+    const response = await fetch(`buscar_comentarios.php?id=${id}`);
+    const comentarios = await response.json();
+
+    // Limpa os comentários antigos
+    imagemCompletaDiv.querySelectorAll('.comment').forEach(comment => comment.remove());
+
+    comentarios.forEach(comentario => {
+        // Cria um novo div para cada comentário
+        const commentDiv = document.createElement('div');
+        commentDiv.classList.add('comment');
+        commentDiv.classList.add('tooltip');
+        commentDiv.innerText = comentario.numero_comentario;
+        commentDiv.style.left = `${comentario.x}%`;
+        commentDiv.style.top = `${comentario.y}%`;
+
+        // Adiciona o texto do comentário ao atributo data-tooltip
+        commentDiv.setAttribute('data-tooltip', comentario.texto);
+
+        // Adiciona um event listener para detectar o clique no comentário
+        commentDiv.addEventListener('click', function () {
+            // Exibe opções de editar ou excluir o comentário
+            const action = prompt("Digite 1 para modificar o comentário ou 2 para removê-lo:");
+
+            if (action === '1') {
+                // Se o usuário escolher editar, abre um prompt para modificar o texto
+                const novoTexto = prompt("Digite o novo comentário:", comentario.texto);
+                const numeroComment = comentario.numero_comentario;
+                if (novoTexto !== null && novoTexto !== "") {
+                    // Chama uma função para salvar a atualização no banco
+                    updateComment(comentario.id, novoTexto);  // Passando o id do comentário e o novo texto
+                    commentDiv.innerText = numeroComment;  // Atualiza o comentário na tela
+                    commentDiv.setAttribute('data-tooltip', novoTexto);
+
+                }
+            } else if (action === '2') {
+                // Se o usuário escolher excluir, chama uma função para remover o comentário
+                if (confirm("Tem certeza de que deseja excluir este comentário?")) {
+                    deleteComment(comentario.id);  // Passando o id do comentário
+                    imagemCompletaDiv.removeChild(commentDiv);  // Remove o comentário da tela
+                }
+            }
+        });
+
+        // Adiciona o comentário à imagem
+        imagemCompletaDiv.appendChild(commentDiv);
+    });
+}
+
+// Função para atualizar o comentário no banco de dados
+async function updateComment(commentId, novoTexto) {
+    try {
+        const response = await fetch('atualizar_comentario.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: commentId, texto: novoTexto })
+        });
+
+        const result = await response.json();
+        if (result.sucesso) {
+            alert('Comentário atualizado com sucesso!');
+        } else {
+            alert('Erro ao atualizar o comentário.');
+        }
+    } catch (error) {
+        console.error('Erro ao atualizar comentário:', error);
+        alert('Ocorreu um erro ao tentar atualizar o comentário.');
+    }
+}
+
+// Função para excluir o comentário do banco de dados
+async function deleteComment(commentId) {
+    try {
+        const response = await fetch('excluir_comentario.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: commentId })
+        });
+
+        const result = await response.json();
+        if (result.sucesso) {
+            alert('Comentário excluído com sucesso!');
+        } else {
+            alert('Erro ao excluir o comentário.');
+        }
+    } catch (error) {
+        console.error('Erro ao excluir comentário:', error);
+        alert('Ocorreu um erro ao tentar excluir o comentário.');
+    }
+}
 
 const id_revisao = document.getElementById('id_revisao');
 

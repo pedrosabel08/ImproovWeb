@@ -373,3 +373,66 @@ h2 {
     cursor: pointer;
     transform: translate(-50%, -50%);
 }
+
+.image {
+    width: 200px;
+    height: 200px;
+    border: 1px solid black;
+    transition: 0.3s;
+}
+
+.image:hover {
+    transform: scale(1.05);
+}
+
+#imageContainer {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
+    flex-direction: column;
+}
+
+#imagens {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+}
+
+#imagem_completa {
+    position: relative;
+    display: inline-block;
+    margin-top: 20px;
+}
+
+#imagem_completa img {
+    width: 100%;
+}
+
+/* Estilo para o comentário */
+.comment {
+    position: absolute;
+    cursor: pointer;
+    padding: 5px;
+    background-color: black;
+    color: white;
+    border-radius: 5px;
+    font-size: 12px;
+    transition: all 0.3s ease-in-out;
+}
+
+
+.tooltip:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 5px;
+    background-color: #333;
+    color: #fff;
+    border-radius: 4px;
+    white-space: nowrap;
+    font-size: 12px;
+    transition: 0.3s all ease;
+}

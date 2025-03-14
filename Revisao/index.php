@@ -93,36 +93,31 @@ $idusuario = $_SESSION['idusuario'];
         <div class="historico-container">
             <div class="task-info">
                 <h3 id="funcao_nome"></h3>
+                <h3 id="colaborador_nome"></h3>
                 <p id="imagem_nome"></p>
-                <button id="vizu_imagens">Vizualizar Imagens</button>
-            </div>
-            <div class="table-container">
+                <button id="vizu_imagens">Visualizar Imagens</button>
+                <div id="buttons-task">
+
+                </div>
                 <table id="tabelaHistorico" class="display" style="font-size: 12px; width: 0px;">
                     <thead>
                         <tr>
-                            <th>ID</th>
                             <th>Status Anterior</th>
                             <th>Status Novo</th>
                             <th>Data Aprovação</th>
-                            <th>Colaborador</th>
                             <th>Responsável</th>
                             <th>Observações</th>
-                            <th>Ações</th>
                         </tr>
                     </thead>
                     <tbody></tbody>
                 </table>
             </div>
             <div id="imageContainer">
+                <div id="imagens"></div>
 
-            </div>
-        </div>
-        <div id="modalComment">
-            <div id="modalContent">
-                <h3>Adicionar Comentário</h3>
-                <textarea id="commentText" rows="4" style="width: 100%;"></textarea><br>
-                <button id="saveComment">Salvar</button>
-                <button id="closeModal">Cancelar</button>
+                <div id="imagem_completa">
+                    <div id="imagem_atual"></div>
+                </div>
             </div>
         </div>
 

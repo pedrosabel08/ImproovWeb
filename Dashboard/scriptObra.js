@@ -917,6 +917,10 @@ function applyStatusImagem(cell, status) {
             break;
         case 'APP':
             cell.style.backgroundColor = '#7d36f7';
+        case 'RVW':
+            cell.style.backgroundColor = 'green';
+            cell.style.color = 'white';
+            break;
     }
 };
 

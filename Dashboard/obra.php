@@ -3,12 +3,28 @@ session_start();
 $nome_usuario = $_SESSION['nome_usuario'];
 
 include '../conexaoMain.php';
+include '../conexao.php';
 
 if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
     // Se não estiver logado, redirecionar para a página de login
     header("Location: ../index.html");
     exit();
 }
+
+// Buscar a quantidade de funções do colaborador com status "Em andamento"
+$colaboradorId = $_SESSION['idcolaborador'];
+$funcoesCountSql = "SELECT COUNT(*) AS total_funcoes_em_andamento
+                    FROM funcao_imagem
+                    WHERE colaborador_id = ? AND status = 'Em andamento'";
+$funcoesCountStmt = $conn->prepare($funcoesCountSql);
+$funcoesCountStmt->bind_param("i", $colaboradorId);
+$funcoesCountStmt->execute();
+$funcoesCountResult = $funcoesCountStmt->get_result();
+
+// Armazenar a quantidade na sessão
+$funcoesCount = $funcoesCountResult->fetch_assoc();
+
+$funcoesCountStmt->close();
 
 $conn = conectarBanco();
 
@@ -39,6 +55,7 @@ $conn->close();
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/airbnb.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
 
 </head>
 
@@ -696,7 +713,7 @@ $conn->close();
                             </select>
                             <input type="date" name="prazo_alteracao" id="prazo_alteracao">
                             <input type="text" name="obs_alteracao" id="obs_alteracao" placeholder="Observação">
-                            <div class="revisao_imagem"  style="display: none;">
+                            <div class="revisao_imagem" style="display: none;">
                                 <input type="file" name="imagens[]" id="revisao_imagem_ph" accept="image/*" multiple>
                             </div>
                         </div>
@@ -814,12 +831,16 @@ $conn->close();
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.14.0/Sortable.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/pt.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <script src="scriptObra.js"></script>
     <script src="../script/sidebar.js"></script>
     <script src="../script/notificacoes.js"></script>
 
     <script>
+        // Converte o valor do COUNT para JSON e armazena no localStorage
+        const funcoesTEA = <?php echo json_encode($funcoesCount['total_funcoes_em_andamento']); ?>;
+        localStorage.setItem('funcoesTEA', funcoesTEA);
 
     </script>
 

@@ -1013,21 +1013,30 @@ function applyStyleNone(cell, cell2, nome) {
     }
 }
 
-// // Seleciona todos os selects com id que começam com 'status_'
-// const statusSelects = document.querySelectorAll("select[id^='status_']");
+// Seleciona todos os selects com id que começam com 'status_'
+const statusSelects = document.querySelectorAll("select[id^='status_']");
 
-// statusSelects.forEach(select => {
-//     select.addEventListener("change", function () {
-//         // Pega o próximo elemento irmão que possui a classe 'revisao_imagem'
-//         const revisaoImagem = this.closest('.funcao').querySelector('.revisao_imagem');
+statusSelects.forEach(select => {
+    select.addEventListener("change", function () {
+        // Pega o próximo elemento irmão que possui a classe 'revisao_imagem'
+        const revisaoImagem = this.closest('.funcao').querySelector('.revisao_imagem');
 
-//         if (this.value === "Em aprovação") {
-//             revisaoImagem.style.display = "block";
-//         } else {
-//             revisaoImagem.style.display = "none";
-//         }
-//     });
-// });
+        if (this.value === "Em aprovação") {
+            revisaoImagem.style.display = "block";
+        } else {
+            revisaoImagem.style.display = "none";
+        }
+
+        // Pega o próximo elemento de prazo
+        const prazoInput = this.closest('.funcao').querySelector('input[type="date"]');
+
+        if (this.value === "Em andamento") {
+            prazoInput.required = true;
+        } else {
+            prazoInput.required = false;
+        }
+    });
+});
 
 
 document.getElementById("salvar_funcoes").addEventListener("click", function (event) {
@@ -1048,6 +1057,34 @@ document.getElementById("salvar_funcoes").addEventListener("click", function (ev
     }
 
     var idImagemSelecionada = linhaSelecionada.getAttribute("data-id");
+
+    // Verifica todos os campos de prazo que devem ser obrigatórios
+    var form = document.getElementById("form-add");
+    var camposPrazo = form.querySelectorAll("input[type='date'][required]");
+    var camposVazios = Array.from(camposPrazo).filter(input => !input.value);
+
+    var funcoesTEA = localStorage.getItem("funcoesTEA");
+    if (funcoesTEA >= 4) {
+        Swal.fire({
+            icon: 'warning', // Ícone de aviso
+            title: 'Atenção!',
+            text: 'Termine as tarefas que estão em andamento primeiro!',
+            confirmButtonText: 'Ok',
+            confirmButtonColor: '#f39c12', // Cor do botão
+        });
+        return;
+    }
+
+    if (camposVazios.length > 0) {
+        Swal.fire({
+            icon: 'warning', // Ícone de aviso
+            title: 'Atenção!',
+            text: 'Coloque a data de quando irá terminar a tarefa!',
+            confirmButtonText: 'Ok',
+            confirmButtonColor: '#f39c12', // Cor do botão
+        });
+        return;
+    }
 
     var textos = {};
     var pElements = document.querySelectorAll(".form-edicao p");

@@ -121,9 +121,13 @@ h2 {
     flex-grow: 1;
 }
 
+#task-info {
+    text-align: center;
+}
+
 .task-info h3 {
     margin: 0;
-    font-size: 18px;
+    font-size: 24px;
     color: #333;
 }
 
@@ -138,34 +142,6 @@ h2 {
     gap: 10px;
     justify-content: center;
     grid-template-columns: 1fr 1fr 1fr;
-}
-
-.action-btn,
-.whatsapp-btn {
-    padding: 5px 8px;
-    font-size: 12px;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-}
-
-.action-btn {
-    color: #fff;
-    transition: 0.3s all ease;
-}
-
-.action-btn:hover {
-    filter: brightness(0.8);
-}
-
-.whatsapp-btn {
-    background-color: #25D366;
-    color: #fff;
-}
-
-.whatsapp-btn:hover {
-    background-color: #128C7E;
 }
 
 .task-details {
@@ -293,8 +269,9 @@ h2 {
 
 /* Ajuste a tabela */
 #tabelaHistorico {
-    width: 100% !important;
+    width: 80% !important;
     border-collapse: collapse;
+    margin: 30px auto;
 }
 
 #tabelaHistorico th,
@@ -435,4 +412,18 @@ h2 {
     white-space: nowrap;
     font-size: 12px;
     transition: 0.3s all ease;
+}
+
+
+.action-btn {
+    padding: 5px 10px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: 0.3s all ease;
+    color: white;
+}
+
+.action-btn:hover {
+    filter: brightness(0.8);
 }

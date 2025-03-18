@@ -663,6 +663,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     var row = document.createElement('tr');
                     row.classList.add('linha-tabela');
                     row.setAttribute('data-id', item.imagem_id);
+                    row.setAttribute('liberada', item.liberada);
 
                     var prioridadeTexto = item.prioridade == 3 ? 'Baixa' :
                         item.prioridade == 2 ? 'Média' : 'Alta';
@@ -676,6 +677,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     var cellNomeImagem = document.createElement('td');
                     cellNomeImagem.textContent = item.imagem_nome;
 
+                    // Cria o círculo
+                    var circle = document.createElement('span');
+                    circle.style.width = '10px';
+                    circle.style.height = '10px';
+                    circle.style.borderRadius = '50%';
+                    circle.style.display = 'inline-block';
+                    circle.style.marginLeft = '8px';
+                    circle.style.backgroundColor = item.liberada ? 'green' : 'red'; // Verde se true, vermelho se false
+
+                    // Adiciona o círculo e o nome da imagem na célula
+                    cellNomeImagem.appendChild(circle);
+                    
                     var cellFuncao = document.createElement('td');
                     cellFuncao.textContent = item.nome_funcao;
 

@@ -591,6 +591,17 @@ include 'sidebar.php';
             <i class="fas fa-copy"></i>
         </button>
 
+        <div id="legenda" class="legenda">
+            <div class="legenda-item">
+                <div class="cor" style="background-color: red;"></div>
+                <span>Esperando concluir função anterior</span>
+            </div>
+            <div class="legenda-item">
+                <div class="cor" style="background-color: green;"></div>
+                <span>Função liberada</span>
+            </div>
+        </div>
+
         <table id="tabela-colab">
             <thead>
                 <tr>

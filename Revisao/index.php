@@ -91,11 +91,10 @@ $idusuario = $_SESSION['idusuario'];
 
     <div id="historico_modal" style="display: none;">
         <div class="historico-container">
-            <div class="task-info">
+            <div class="task-info" id="task-info">
                 <h3 id="funcao_nome"></h3>
                 <h3 id="colaborador_nome"></h3>
                 <p id="imagem_nome"></p>
-                <button id="vizu_imagens">Visualizar Imagens</button>
                 <div id="buttons-task">
 
                 </div>

@@ -193,14 +193,20 @@ function exibirTarefas(tarefas) {
 document.getElementById('nome_funcao').addEventListener('change', filtrarTarefas);
 const modalComment = document.getElementById('modalComment');
 
+const idusuario = parseInt(localStorage.getItem('idusuario')); // Obtém o idusuario do localStorage
+
+
 function historyAJAX(idfuncao_imagem, funcao_nome, imagem_nome, colaborador_nome) {
     fetch(`historico.php?ajid=${idfuncao_imagem}`)
         .then(response => response.json())
         .then(response => {
+
+            const titulo = document.getElementById('funcao_nome');
+            titulo.textContent = `${colaborador_nome} - ${funcao_nome}`;
             document.getElementById("id_funcao").value = idfuncao_imagem;
             document.getElementById("imagem_nome").textContent = imagem_nome;
-            document.getElementById("funcao_nome").textContent = funcao_nome;
-            document.getElementById("colaborador_nome").textContent = colaborador_nome;
+            // document.getElementById("funcao_nome").textContent = funcao_nome;
+            // document.getElementById("colaborador_nome").textContent = colaborador_nome;
 
             // Exibir o modal
             const modal = document.getElementById('historico_modal');
@@ -209,21 +215,27 @@ function historyAJAX(idfuncao_imagem, funcao_nome, imagem_nome, colaborador_nome
             const { historico, imagens } = response;
 
             historico.forEach(historico => {
-                document.getElementById('buttons-task').innerHTML = `
-                <button class="action-btn tooltip" id="add_obs" onclick="addObservacao(${historico.id})" data-tooltip="Adicionar Observação">
-                    <i class="fa-solid fa-plus"></i>
-                </button>
-                <button class="action-btn tooltip" id="check" data-tooltip="Aprovar" onclick="revisarTarefa(${historico.funcao_imagem_id}, '${historico.colaborador_nome}', '${historico.imagem_nome}', '${historico.nome_funcao}', '${historico.colaborador_id}', true)">
-                    <i class="fa-solid fa-check"></i>
-                </button>
-                <button class="action-btn tooltip" id="xmark" data-tooltip="Rejeitar" onclick="revisarTarefa(${historico.funcao_imagem_id}, '${historico.colaborador_nome}', '${historico.imagem_nome}', '${historico.nome_funcao}', '${historico.colaborador_id}', false)">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>`;
-            });
 
+                if ([1, 2, 9].includes(idusuario)) { // Verifica se o idusuario é 1, 2 ou 9
+                    document.getElementById('buttons-task').innerHTML = `
+                        <button class="action-btn tooltip" id="add_obs" onclick="addObservacao(${historico.id})" data-tooltip="Adicionar Observação">
+                            <i class="fa-solid fa-plus"></i>
+                        </button>
+                        <button class="action-btn tooltip" id="check" data-tooltip="Aprovar" onclick="revisarTarefa(${historico.funcao_imagem_id}, '${historico.colaborador_nome}', '${historico.imagem_nome}', '${historico.nome_funcao}', '${historico.colaborador_id}', true)">
+                            <i class="fa-solid fa-check"></i>
+                        </button>
+                        <button class="action-btn tooltip" id="xmark" data-tooltip="Rejeitar" onclick="revisarTarefa(${historico.funcao_imagem_id}, '${historico.colaborador_nome}', '${historico.imagem_nome}', '${historico.nome_funcao}', '${historico.colaborador_id}', false)">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>`;
+                } else {
+                    document.getElementById('buttons-task').innerHTML = ''; // Não exibe os botões para outros usuários
+                }
+            });
             // Renderizar as imagens
             const imageContainer = document.getElementById('imagens');
             imageContainer.innerHTML = ''; // Limpa as imagens anteriores
+            const imagemCompletaDiv = document.getElementById("imagem_completa");
+            imagemCompletaDiv.innerHTML = '';
 
             imagens.forEach(img => {
                 const wrapper = document.createElement('div');
@@ -245,36 +257,46 @@ function historyAJAX(idfuncao_imagem, funcao_nome, imagem_nome, colaborador_nome
             });
 
 
-            if (Array.isArray(historico)) {
-                let tabela = $('#tabelaHistorico').DataTable({
-                    "destroy": true,
-                    "paging": false,
-                    "lengthChange": false,
-                    "info": false,
-                    "ordering": true,
-                    "searching": true,
-                    "data": historico,
-                    "columns": [
-                        { "data": "status_anterior" },
-                        { "data": "status_novo" },
-                        { "data": "data_aprovacao" },
-                        { "data": "responsavel_nome" },
-                        { "data": "observacoes" },
-                    ],
-                    "createdRow": function (row, data) {
-                        if (data.status_novo === 'Em aprovação') {
-                            $('td', row).eq(1).css('background-color', 'yellow');
+            if ([1, 2, 9].includes(idusuario)) { // Verifica se o idusuario é 1, 2 ou 9
+
+
+
+                if (Array.isArray(historico)) {
+                    let tabela = $('#tabelaHistorico').DataTable({
+                        "destroy": true,
+                        "paging": false,
+                        "lengthChange": false,
+                        "info": false,
+                        "ordering": true,
+                        "searching": false,
+                        "data": historico,
+                        "columns": [
+                            { "data": "status_anterior" },
+                            { "data": "status_novo" },
+                            { "data": "data_aprovacao" },
+                            { "data": "responsavel_nome" },
+                            { "data": "observacoes" },
+                        ],
+                        "createdRow": function (row, data) {
+                            if (data.status_novo === 'Em aprovação') {
+                                $('td', row).eq(1).css('background-color', 'yellow');
+                            }
+                            if (data.status_novo === 'Aprovado') {
+                                $('td', row).eq(1).css('background-color', 'green').css('color', 'white');
+                            }
+                            if (data.status_novo === 'Ajuste') {
+                                $('td', row).eq(1).css('background-color', 'red');
+                            }
                         }
-                        if (data.status_novo === 'Aprovado') {
-                            $('td', row).eq(1).css('background-color', 'green').css('color', 'white');
-                        }
-                        if (data.status_novo === 'Ajuste') {
-                            $('td', row).eq(1).css('background-color', 'red');
-                        }
-                    }
-                });
+                    });
+                } else {
+                    console.error("Os dados recebidos não estão no formato esperado.");
+                }
             } else {
-                console.error("Os dados recebidos não estão no formato esperado.");
+                console.log("Usuário não autorizado a visualizar a tabela.");
+                const tabela = document.getElementById('tabelaHistorico');
+                tabela.style.display = 'none';
+
             }
         })
         .catch(error => console.error("Erro ao buscar dados:", error));
@@ -300,6 +322,10 @@ function mostrarImagemCompleta(src, id) {
 
 
     imgElement.addEventListener('click', async function (event) {
+
+        if(![1, 2, 9].includes(idusuario)) {
+            return;
+        }
         const rect = imgElement.getBoundingClientRect();
         const relativeX = ((event.clientX - rect.left) / rect.width) * 100;
         const relativeY = ((event.clientY - rect.top) / rect.height) * 100;

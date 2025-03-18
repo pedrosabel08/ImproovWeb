@@ -977,6 +977,34 @@ input[type="checkbox"] {
     transition: 0.2s all ease;
 }
 
+.legenda {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 30px;
+    margin: 20px 0;
+}
+
+.legenda h3 {
+    font-size: 12px;
+}
+
+.legenda-item {
+    display: flex;
+    align-items: center;
+}
+
+.legenda-item .cor {
+    width: 10px;
+    height: 10px;
+    margin-right: 10px;
+    border-radius: 50%;
+}
+
+.legenda-item span {
+    font-size: 16px;
+}
+
 .notificacao-sino {
     position: fixed;
     bottom: 20px;

@@ -4,7 +4,8 @@
   "description": "Este é um sistema desenvolvido por **Pedro Sabel** para a IMPROOV com o objetivo de otimizar a agilidade dos recursos e melhorar a comunicação entre as equipes. O sistema foi projetado para atender às necessidades específicas da empresa, proporcionando uma interface amigável e eficiente para o gerenciamento de tarefas, projetos e colaboração entre os colaboradores.",
   "main": "index.js",
   "scripts": {
-    "start": "node scriptLog.js"
+    "start": "node scriptLog.js",
+    "changelog": "auto-changelog -p"
   },
   "repository": {
     "type": "git",

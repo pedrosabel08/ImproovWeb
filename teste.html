@@ -1,151 +1,20 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Comentários na Imagem com Captura</title>
-    <style>
-        #image-container {
-            position: relative;
-            display: inline-block;
-            width: 100%;
-            max-width: 1000px;
-            /* Limitar a largura da imagem a 1000px */
-            margin: 0 auto;
-        }
-
-        img {
-            width: 100%;
-            /* A imagem será redimensionada para caber no container */
-            height: auto;
-        }
-
-        .comment {
-            position: absolute;
-            background-color: rgba(255, 255, 255, 0.7);
-            padding: 5px;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-
-        .comment-box {
-            position: absolute;
-            background-color: rgba(0, 0, 0, 0.5);
-            color: white;
-            padding: 5px;
-            border-radius: 5px;
-        }
-
-        button {
-            margin-top: 20px;
-            padding: 10px 20px;
-            font-size: 16px;
-            cursor: pointer;
-        }
-    </style>
+    <title>Changelog Viewer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css">
 </head>
 
-<body>
-
-    <div id="image-container">
-        <img id="image" src="assets/25_CAP_TIV_LivingSacada_AptoTipo2_EF.jpg" alt="Imagem" />
+<body class="bg-gray-100 text-gray-900 p-6">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold mb-4">📄 Changelog</h1>
+        <div id="changelog" class="bg-white shadow-md rounded-lg p-6"></div>
     </div>
 
-    <button id="finalize-comments">Finalizar Comentários</button>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/0.4.1/html2canvas.min.js"></script>
-    <script>
-        const imageContainer = document.getElementById('image-container');
-        const image = document.getElementById('image');
-        const finalizeButton = document.getElementById('finalize-comments');
-
-        // Função para salvar os comentários no localStorage
-        function saveComment(x, y, text) {
-            const comments = JSON.parse(localStorage.getItem('comments')) || [];
-            comments.push({ x, y, text });
-            localStorage.setItem('comments', JSON.stringify(comments));
-        }
-
-        // Carregar os comentários salvos e adaptá-los para o tamanho da tela atual
-        window.onload = () => {
-            const savedComments = JSON.parse(localStorage.getItem('comments')) || [];
-            savedComments.forEach(comment => {
-                const scaledX = comment.x * image.width;
-                const scaledY = comment.y * image.height;
-                createComment(scaledX, scaledY, comment.text);
-            });
-        };
-
-        // Função para criar um comentário na tela
-        function createComment(x, y, text) {
-            const commentDiv = document.createElement('div');
-            commentDiv.classList.add('comment');
-            commentDiv.style.left = `${x}px`;
-            commentDiv.style.top = `${y}px`;
-            commentDiv.innerHTML = `<span class="comment-box">${text}</span>`;
-            imageContainer.appendChild(commentDiv);
-
-            // Evento para editar o comentário
-            commentDiv.addEventListener('click', () => {
-                const newText = prompt('Editar comentário:', text);
-                if (newText !== null) {
-                    commentDiv.querySelector('.comment-box').textContent = newText;
-                    updateCommentsInLocalStorage();
-                }
-            });
-        }
-
-        // Atualizar os comentários no localStorage com base na nova resolução
-        function updateCommentsInLocalStorage() {
-            const comments = [];
-            const commentDivs = document.querySelectorAll('.comment');
-            commentDivs.forEach(div => {
-                const x = div.offsetLeft;
-                const y = div.offsetTop;
-                const text = div.querySelector('.comment-box').textContent;
-                const proportionX = x / image.width;
-                const proportionY = y / image.height;
-                comments.push({ x: proportionX, y: proportionY, text });
-            });
-            localStorage.setItem('comments', JSON.stringify(comments));
-        }
-
-        // Detecta cliques na imagem e salva a posição do comentário
-        image.addEventListener('click', (e) => {
-            const imageRect = image.getBoundingClientRect();
-            const x = e.clientX - imageRect.left; // Posição X do clique na imagem
-            const y = e.clientY - imageRect.top;  // Posição Y do clique na imagem
-            const text = prompt("Digite seu comentário:");
-
-            if (text) {
-                const proportionX = x / image.width;
-                const proportionY = y / image.height;
-
-                // Salvar coordenadas proporcionais
-                saveComment(proportionX, proportionY, text);
-
-                // Exibir o comentário na tela com a escala aplicada
-                const scaledX = proportionX * image.width;
-                const scaledY = proportionY * image.height;
-                createComment(scaledX, scaledY, text);
-            }
-        });
-
-        // Função para finalizar comentários e salvar a imagem com os ícones
-        finalizeButton.addEventListener('click', () => {
-            html2canvas(imageContainer, {
-                onrendered: function (canvas) {
-                    // Criação de um link para download da imagem
-                    const link = document.createElement('a');
-                    link.href = canvas.toDataURL();  // Convertendo o canvas para imagem
-                    link.download = 'imagem_com_comentarios.png'; // Nome do arquivo de download
-                    link.click(); // Simula o clique para download
-                }
-            });
-        });
-    </script>
-
+    <script src="gitLogs.js"></script>
 </body>
 
 </html>

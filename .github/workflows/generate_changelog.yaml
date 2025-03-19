@@ -3,7 +3,7 @@ name: Generate Changelog
 on:
   push:
     tags:
-      - 'v*.*.*'  # Dispara o workflow quando um push é feito em uma tag de versão (ex: v1.0.0)
+      - 'v*.*.*'
 
 jobs:
   build:
@@ -12,6 +12,8 @@ jobs:
     steps:
     - name: Checkout Code
       uses: actions/checkout@v3
+      with:
+        fetch-depth: 0  # Garante que todas as tags e histórico sejam recuperados
 
     - name: Generate Changelog
       id: changelog
@@ -25,4 +27,4 @@ jobs:
         git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
         git add CHANGELOG.md
         git commit -m "🔖 Update CHANGELOG.md for $GITHUB_REF"
-        git push
+        git push origin HEAD:main  # Certifique-se de usar o nome correto do seu branch principal

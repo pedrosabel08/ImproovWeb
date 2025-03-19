@@ -1,10 +1,11 @@
-@import url('https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,200..1000;1,200..1000&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&family=Nunito:ital,wght@0,200..1000;1,200..1000&family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap');
+
 
 * {
     padding: 0;
     margin: 0;
     box-sizing: border-box;
-    font-family: "Nunito", sans-serif;
+    font-family: "Open Sans", sans-serif;
 }
 
 body {
@@ -482,7 +483,6 @@ main {
 /* Estilos do modal */
 .modal {
     display: none;
-    /* Escondido por padrão */
     position: fixed;
     z-index: 1000;
     left: 0;
@@ -493,6 +493,7 @@ main {
     display: flex;
     justify-content: center;
     align-items: center;
+
 }
 
 .modal-content {
@@ -504,6 +505,8 @@ main {
     text-align: center;
     position: relative;
     color: #000;
+    animation: boomAnimation 0.8s forwards;
+
 }
 
 .close {
@@ -532,4 +535,43 @@ li {
     background-color: green;
     color: white;
     cursor: pointer;
+}
+
+.modal-content button:hover {
+    filter: brightness(0.9);
+}
+
+textarea {
+    width: 100%;
+    resize: none;
+    border-radius: 10px;
+    margin: 10px 0;
+    padding: 5px;
+}
+
+textarea:focus {
+    outline: none;
+}
+
+h1 {
+    margin-bottom: 15px;
+}
+
+
+/* Animação de boom (explosão) */
+@keyframes boomAnimation {
+    0% {
+        transform: scale(0);
+        opacity: 0;
+    }
+
+    50% {
+        transform: scale(1.2);
+        opacity: 1;
+    }
+
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
 }

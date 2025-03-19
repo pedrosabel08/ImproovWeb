@@ -1,56 +1,21 @@
-const simpleGit = require('simple-git');
-const fs = require('fs');
+document.addEventListener("DOMContentLoaded", () => {
+    const changelogDiv = document.getElementById("changelog");
 
-const git = simpleGit();
+    fetch("CHANGELOG.md")
+        .then(response => response.text())
+        .then(data => {
+            // Converte o Markdown para HTML simples (Básico)
+            const htmlContent = data
+                .replace(/^### (.*$)/gim, '<h3 class="text-xl font-semibold mt-4">$1</h3>')
+                .replace(/^## (.*$)/gim, '<h2 class="text-2xl font-bold mt-6">$1</h2>')
+                .replace(/^# (.*$)/gim, '<h1 class="text-3xl font-bold mt-8">$1</h1>')
+                .replace(/^\- (.*$)/gim, '<li class="list-disc ml-6">$1</li>')
+                .replace(/\n\n/g, '<br>');
 
-async function getTagsAndCommits() {
-    try {
-        // Obtém todas as tags
-        const tags = await git.tags();
-
-        const allCommits = [];
-
-        // Lê os commits associados a cada tag
-        for (const tag of tags.all) {
-            const commits = await git.log({ from: tag });
-
-            const filteredCommits = commits.all.filter(commit =>
-                !commit.message.startsWith('backup')
-            );
-
-            allCommits.push({
-                tag,
-                commits: filteredCommits
-            });
-        }
-
-        return allCommits;
-    } catch (error) {
-        console.error('Erro ao obter tags e commits:', error);
-        return [];
-    }
-}
-
-function saveToChangelog(commitsByTag) {
-    const changelogContent = commitsByTag.map(tagInfo => {
-        const tagSection = `## ${tagInfo.tag}\n`;
-        const commitMessages = tagInfo.commits.map(commit => `- ${commit.message} (${commit.hash})`).join('\n');
-
-        return `${tagSection}${commitMessages}`;
-    }).join('\n\n');
-
-    fs.writeFileSync('CHANGELOG.md', changelogContent);
-    console.log('CHANGELOG.md atualizado com sucesso!');
-}
-
-(async () => {
-    const commitsByTag = await getTagsAndCommits();
-
-    if (commitsByTag.length > 0) {
-        console.log('Tags e commits obtidos com sucesso!');
-        console.log(commitsByTag);
-
-        // Salva no CHANGELOG.md
-        saveToChangelog(commitsByTag);
-    }
-})();
+            // Exibe o conteúdo convertido no DIV
+            changelogDiv.innerHTML = htmlContent;
+        })
+        .catch(error => {
+            changelogDiv.innerHTML = `<p class="text-red-500">Erro ao carregar o changelog: ${error.message}</p>`;
+        });
+});

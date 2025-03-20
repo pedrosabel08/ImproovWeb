@@ -41,7 +41,7 @@ if ($ano) {
     $sql .= " AND YEAR(fi.prazo) = ?";
 }
 if ($obraId) {
-    $sql .= " AND ico.idobra = ?";
+    $sql .= " AND ico.obra_id = ?";
 }
 if ($funcaoId) {
     $sql .= " AND f.idfuncao = ?";

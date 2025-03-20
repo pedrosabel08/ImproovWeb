@@ -1102,11 +1102,11 @@ document.getElementById("salvar_funcoes").addEventListener("click", function (ev
         status_comp: document.getElementById("status_comp").value || "",
         prazo_comp: document.getElementById("prazo_comp").value || "",
         obs_comp: document.getElementById("obs_comp").value || "",
-        model_id: document.getElementById("opcao_model").value || "",
+        modelagem_id: document.getElementById("opcao_model").value || "",
         status_modelagem: document.getElementById("status_modelagem").value || "",
         prazo_modelagem: document.getElementById("prazo_modelagem").value || "",
         obs_modelagem: document.getElementById("obs_modelagem").value || "",
-        final_id: document.getElementById("opcao_final").value || "",
+        finalizacao_id: document.getElementById("opcao_final").value || "",
         status_finalizacao: document.getElementById("status_finalizacao").value || "",
         prazo_finalizacao: document.getElementById("prazo_finalizacao").value || "",
         obs_finalizacao: document.getElementById("obs_finalizacao").value || "",
@@ -1143,6 +1143,7 @@ document.getElementById("salvar_funcoes").addEventListener("click", function (ev
         status_id: document.getElementById("opcao_status").value || ""
     };
 
+    
     $.ajax({
         type: "POST",
         url: "https://www.improov.com.br/sistema/insereFuncao.php",

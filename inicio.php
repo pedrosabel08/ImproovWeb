@@ -74,6 +74,8 @@ $conn->close();
     <link rel="stylesheet" href="css/styleSidebar.css">
     <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s" type="image/x-icon">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+
     <title>Improov+Flow</title>
 </head>
 
@@ -238,17 +240,28 @@ $conn->close();
 
         // Função para verificar se já foi enviado o formulário no dia de hoje
         function checkDailyAccess() {
-            const today = new Date().toISOString().split('T')[0]; // Formato YYYY-MM-DD
-            const lastSubmissionDate = localStorage.getItem('lastSubmissionDate'); // Obtém a data do último envio
+            const idColaborador = <?php echo json_encode($idcolaborador); ?>; // ID do colaborador vindo do PHP
 
-            if (lastSubmissionDate !== today) {
-                // Se não houver envio no dia de hoje, exibe o modal
-                document.getElementById('modal').style.display = 'flex';
-            } else {
-                document.getElementById('modal').style.display = 'none';
-
-            }
+            fetch('verifica_respostas.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `idcolaborador=${idColaborador}`
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.hasResponses) {
+                        // Se já houver respostas, não exibe o modal
+                        document.getElementById('modal').style.display = 'none';
+                    } else {
+                        // Se não houver respostas, exibe o modal
+                        document.getElementById('modal').style.display = 'flex';
+                    }
+                })
+                .catch(error => console.error('Erro ao verificar respostas:', error));
         }
+
 
         document.getElementById('dailyForm').addEventListener('submit', function(e) {
             e.preventDefault();
@@ -262,13 +275,22 @@ $conn->close();
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-
-                        // Armazenar a data de envio no localStorage
-                        const today = new Date().toISOString().split('T')[0];
-                        localStorage.setItem('lastSubmissionDate', today);
                         document.getElementById('modal').style.display = 'none';
-
+                        Swal.fire({
+                            icon: 'success',
+                            text: 'Respostas enviadas com sucesso!',
+                            showConfirmButton: false,
+                            timer: 2000 // Tempo em milissegundos (3 segundos)
+                        });
+                        return;
                     } else {
+                        Swal.fire({
+                            icon: 'error',
+                            text: 'Erro ao enviar as tarefas, tente novamente!',
+                            showConfirmButton: false,
+                            timer: 2000 // Tempo em milissegundos (3 segundos)
+                        });
+                        return;
                     }
                 })
                 .catch(error => console.error('Erro:', error));
@@ -280,6 +302,8 @@ $conn->close();
     <script src="script/notificacoes.js"></script>
     <script src="./script/scriptIndex.js"></script>
     <script src="./script/sidebar.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 </body>
 
 </html>

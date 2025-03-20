@@ -7,7 +7,7 @@ include '../conexao.php';
 $id = $_GET['id'];
 
 // Busca os comentários no banco de dados
-$query = "SELECT * FROM comentarios_imagem WHERE ap_imagem_id = ?";
+$query = "SELECT ci.*, c.nome_colaborador as nome_responsavel FROM comentarios_imagem ci JOIN colaborador c ON ci.responsavel_id = c.idcolaborador WHERE ap_imagem_id = ?";
 $stmt = $conn->prepare($query);
 $stmt->bind_param('i', $id);
 $stmt->execute();

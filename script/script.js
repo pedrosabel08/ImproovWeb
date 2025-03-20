@@ -277,11 +277,11 @@ document.addEventListener("DOMContentLoaded", function () {
             status_comp: document.getElementById("status_comp").value || "",
             prazo_comp: document.getElementById("prazo_comp").value || "",
             obs_comp: document.getElementById("obs_comp").value || "",
-            model_id: document.getElementById("opcao_model").value || "",
+            modelagem_id: document.getElementById("opcao_model").value || "",
             status_modelagem: document.getElementById("status_modelagem").value || "",
             prazo_modelagem: document.getElementById("prazo_modelagem").value || "",
             obs_modelagem: document.getElementById("obs_modelagem").value || "",
-            final_id: document.getElementById("opcao_final").value || "",
+            finalizacao_id: document.getElementById("opcao_final").value || "",
             status_finalizacao: document.getElementById("status_finalizacao").value || "",
             prazo_finalizacao: document.getElementById("prazo_finalizacao").value || "",
             obs_finalizacao: document.getElementById("obs_finalizacao").value || "",
@@ -307,16 +307,17 @@ document.addEventListener("DOMContentLoaded", function () {
             obs_filtro: document.getElementById("obs_filtro").value || "",
             check_caderno: document.getElementById("check_caderno").checked ? 1 : 0,
             check_filtro: document.getElementById("check_filtro").checked ? 1 : 0,
-            check_model: document.getElementById("check_model").checked ? 1 : 0,
+            check_modelagem: document.getElementById("check_model").checked ? 1 : 0,
             check_comp: document.getElementById("check_comp").checked ? 1 : 0,
-            check_final: document.getElementById("check_final").checked ? 1 : 0,
+            check_finalizacao: document.getElementById("check_final").checked ? 1 : 0,
             check_pos: document.getElementById("check_pos").checked ? 1 : 0,
-            check_alt: document.getElementById("check_alt").checked ? 1 : 0,
+            check_alteracao: document.getElementById("check_alt").checked ? 1 : 0,
             check_planta: document.getElementById("check_planta").checked ? 1 : 0,
             check_pre: document.getElementById("check_pre").checked ? 1 : 0,
             textos: textos,
             status_id: document.getElementById("opcao_status").value || ""
         };
+
 
         $.ajax({
             type: "POST",
@@ -688,7 +689,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     // Adiciona o círculo e o nome da imagem na célula
                     cellNomeImagem.appendChild(circle);
-                    
+
                     var cellFuncao = document.createElement('td');
                     cellFuncao.textContent = item.nome_funcao;
 

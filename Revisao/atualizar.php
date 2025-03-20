@@ -42,7 +42,6 @@ LEFT JOIN funcao fun ON fun.idfuncao = f.funcao_id
 LEFT JOIN colaborador c ON c.idcolaborador = f.colaborador_id
 LEFT JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
 WHERE f.funcao_id IN (1, 2, 3, 4, 5, 6, 7, 8, 9) 
-  AND f.check_funcao = 0 
   AND f.status = ?
 ORDER BY data_aprovacao DESC";
 } elseif ($idusuario == 9) {
@@ -66,7 +65,6 @@ LEFT JOIN funcao fun ON fun.idfuncao = f.funcao_id
 LEFT JOIN colaborador c ON c.idcolaborador = f.colaborador_id
 LEFT JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
 WHERE f.funcao_id IN (1, 2, 3, 4, 5, 6, 7, 8, 9) 
-  AND f.check_funcao = 0 
   AND f.status = ?
 ORDER BY data_aprovacao DESC";
 } else {
@@ -94,7 +92,6 @@ LEFT JOIN funcao fun ON fun.idfuncao = f.funcao_id
 LEFT JOIN colaborador c ON c.idcolaborador = f.colaborador_id
 LEFT JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
 WHERE f.funcao_id IN (1, 2, 3, 4, 5, 6, 7, 8, 9) 
-  AND f.check_funcao = 0 
   AND f.status = ?
   AND c.idcolaborador = ?
 ORDER BY data_aprovacao DESC";

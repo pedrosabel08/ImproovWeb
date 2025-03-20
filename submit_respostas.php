@@ -14,9 +14,9 @@ if (!file_exists($envPath)) {
 $dotenv = Dotenv::createImmutable(__DIR__ . '/Revisao');
 $dotenv->load();
 
-$webhookUrl = $_ENV['SLACK_WEBHOOK_DAILY_URL'] ?? null;
+$slack_webhook_url = $_ENV['SLACK_WEBHOOK_DAILY_URL'] ?? null;
 
-if (!$webhookUrl) {
+if (!$slack_webhook_url) {
     die('Erro: Variável SLACK_WEBHOOK_URL não encontrada no .env');
 }
 
@@ -51,7 +51,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         // Executa a inserção
         if ($stmt->execute()) {
             // Enviar mensagem ao Slack
-            $slack_webhook_url = 'https://hooks.slack.com/services/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'; // Substitua pela URL do seu webhook
             $colaborador_nome = $_SESSION['nome_usuario'] ?? 'Desconhecido'; // Certifique-se de que o nome do colaborador está na sessão
             $mensagem = [
                 'text' => "*$colaborador_nome* respondeu o questionário: \n✅ *Finalizado:* $finalizado\n*⏳ Hoje:* $hoje\n*🚧 Bloqueio:* $bloqueio"

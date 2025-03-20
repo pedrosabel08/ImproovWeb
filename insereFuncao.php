@@ -58,13 +58,13 @@ try {
 
         // Verifica se o parâmetro existe no array $data
         if (!empty($data[$parametro . '_id'])) {
-            
+
             $colaborador_id = (int)emptyToNull($data[$parametro . '_id']);
 
             $prazo = emptyToNull($data['prazo_' . $parametro]);
             $status = emptyToNull($data['status_' . $parametro]);
             $obs = emptyToNull($data['obs_' . $parametro]);
-            $check_funcao = isset($data['check_' . $parametro]) ? 1 : 0;
+            $check_funcao = !empty($data['check_' . $parametro]) && $data['check_' . $parametro] == 1 ? 1 : 0;
 
             // Verifique se o colaborador_id existe na tabela colaborador
             $check_colaborador = $conn->prepare("SELECT COUNT(*) FROM colaborador WHERE idcolaborador = ?");

@@ -122,6 +122,7 @@ foreach ($funcoes as $funcao) {
     $statusAnterior = null;
     $liberada = false;
     $funcaoAnteriorId = null;
+    $prazoAnterior = null;
 
     if ($indiceAtual !== false) {
         // Tentar pegar a última função anterior válida

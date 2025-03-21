@@ -59,7 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $data = json_decode(file_get_contents('php://input'), true);
     $idfuncao_imagem = $data['idfuncao_imagem'] ?? null;
     $isChecked = $data['isChecked'] ?? null;
-    $nome_colaborador = 'Bruna Tavares'; // Ajuste conforme necessário
+    $nome_colaborador = 'Pedro Sabel'; // Ajuste conforme necessário
     $imagem_nome = $data['imagem_nome'] ?? null;
     $nome_funcao = $data['nome_funcao'] ?? null;
     $colaborador_id = $data['colaborador_id'] ?? null;

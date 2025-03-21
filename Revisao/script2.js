@@ -295,7 +295,7 @@ function mostrarImagemCompleta(src, id) {
 
         const commentText = prompt("Digite seu comentário:");
         if (commentText) {
-            const comentario = { ap_imagem_id, x: relativeX, y: relativeY, texto: commentText };
+            const comentario = { ap_imagem_id, x: relativeX, y: relativeY, texto: commentText, responsavel: idusuario };
 
             console.log('Comentário:', comentario);
 
@@ -362,15 +362,35 @@ async function renderComments(id) {
                  <div class="comment-number">${comentario.numero_comentario}</div>
                  <div class="comment-user">${comentario.nome_responsavel}</div>
              </div>
-             <div class="comment-body">${comentario.texto}</div>
+        <div class="comment-body" contenteditable="false">${comentario.texto}</div>
              <div class="comment-footer">
                  <div class="comment-date">${comentario.data}</div>
                  <div class="comment-actions">
                      <button class="comment-edit">✏️</button>
-                     <button class="comment-delete">🗑️</button>
+                     <button class="comment-delete" onclick='deleteComment(${comentario.id})'>🗑️</button>
                  </div>
              </div>
          `;
+
+        // Adiciona evento ao botão "edit"
+        const editButton = commentCard.querySelector('.comment-edit');
+        const commentBody = commentCard.querySelector('.comment-body');
+
+        editButton.addEventListener('click', () => {
+            // Torna o comment-body editável
+            commentBody.setAttribute('contenteditable', 'true');
+            commentBody.focus(); // Foca no elemento para edição
+        });
+
+        // Adiciona evento para salvar ao perder o foco
+        commentBody.addEventListener('blur', () => {
+            // Torna o comment-body não editável novamente
+            commentBody.setAttribute('contenteditable', 'false');
+
+            // Chama a função updateComment para salvar as alterações
+            const novoTexto = commentBody.textContent.trim();
+            updateComment(comentario.id, novoTexto);
+        });
 
         // Cria um novo div para cada comentário
         const commentDiv = document.createElement('div');
@@ -385,32 +405,25 @@ async function renderComments(id) {
 
         // Adiciona um event listener para detectar o clique no comentário
         commentDiv.addEventListener('click', function () {
-            // Exibe opções de editar ou excluir o comentário
-            const action = prompt("Digite 1 para modificar o comentário ou 2 para removê-lo:");
 
-            if (action === '1') {
-                // Se o usuário escolher editar, abre um prompt para modificar o texto
-                const novoTexto = prompt("Digite o novo comentário:", comentario.texto);
-                const numeroComment = comentario.numero_comentario;
-                if (novoTexto !== null && novoTexto !== "") {
-                    // Chama uma função para salvar a atualização no banco
-                    updateComment(comentario.id, novoTexto);  // Passando o id do comentário e o novo texto
-                    commentDiv.innerText = numeroComment;  // Atualiza o comentário na tela
-                    commentDiv.setAttribute('data-tooltip', novoTexto);
+            document.querySelectorAll('.comment-number').forEach(number => {
+                number.classList.remove('highlight');
+            });
 
-                }
-            } else if (action === '2') {
-                // Se o usuário escolher excluir, chama uma função para remover o comentário
-                if (confirm("Tem certeza de que deseja excluir este comentário?")) {
-                    deleteComment(comentario.id);  // Passando o id do comentário
-                    imagemCompletaDiv.removeChild(commentDiv);  // Remove o comentário da tela
-                }
+            // Adiciona o destaque ao card correspondente
+            const commentNumber = document.querySelector(`.comment-card[data-id="${comentario.id}"] .comment-number`);
+            if (commentNumber) {
+                commentNumber.classList.add('highlight');
+                commentNumber.scrollIntoView({ behavior: 'smooth', block: 'center' }); // Rola até o card
+
             }
+
         });
 
         // Adiciona o comentário à imagem
         imagemCompletaDiv.appendChild(commentDiv);
         comentariosDiv.appendChild(commentCard);
+        commentCard.setAttribute('data-id', comentario.id);
 
     });
 }
@@ -448,6 +461,8 @@ async function deleteComment(commentId) {
         const result = await response.json();
         if (result.sucesso) {
             alert('Comentário excluído com sucesso!');
+
+            renderComments(ap_imagem_id); // Atualiza a lista de comentários
         } else {
             alert('Erro ao excluir o comentário.');
         }
@@ -456,6 +471,22 @@ async function deleteComment(commentId) {
         alert('Ocorreu um erro ao tentar excluir o comentário.');
     }
 }
+
+
+const btnBack = document.getElementById('btnBack');
+btnBack.addEventListener('click', function () {
+    const main = document.querySelector('.main');
+    main.classList.remove('hidden');
+
+    const container_aprovacao = document.querySelector('.container-aprovacao');
+    container_aprovacao.classList.add('hidden');
+
+    const imagemCompletaDiv = document.getElementById("imagem_completa");
+    imagemCompletaDiv.innerHTML = '';
+
+    const comentariosDiv = document.querySelector(".comentarios");
+    comentariosDiv.innerHTML = '';
+});
 
 const id_revisao = document.getElementById('id_revisao');
 

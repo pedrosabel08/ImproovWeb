@@ -10,6 +10,10 @@ header {
     display: flex;
     justify-content: flex-end;
     padding: 10px;
+    position: sticky;
+    top: 0;
+    background-color: #f1f1f1;
+    z-index: 1;
 }
 
 body {
@@ -368,7 +372,7 @@ nav {
 }
 
 .image:hover {
-    transform: scale(1.05);
+    cursor: pointer;
 }
 
 .imagens {
@@ -420,7 +424,7 @@ nav {
     transition: all 0.3s ease-in-out;
 }
 
-
+/* 
 .tooltip:hover::after {
     content: attr(data-tooltip);
     position: absolute;
@@ -435,7 +439,13 @@ nav {
     font-size: 12px;
     transition: 0.3s all ease;
 }
+ */
 
+.comment-number.highlight {
+    background-color: #007bff;
+    color: white;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
 
 .action-btn {
     padding: 5px 10px;

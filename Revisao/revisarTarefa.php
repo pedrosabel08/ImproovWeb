@@ -18,7 +18,8 @@ $dotenv->load();
 
 $slackToken = $_ENV['SLACK_TOKEN'] ?? null;
 
-function enviarNotificacaoSlack($slackUserId, $mensagem) {
+function enviarNotificacaoSlack($slackUserId, $mensagem)
+{
     global $slackToken;
 
     $slackMessage = [
@@ -58,7 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $data = json_decode(file_get_contents('php://input'), true);
     $idfuncao_imagem = $data['idfuncao_imagem'] ?? null;
     $isChecked = $data['isChecked'] ?? null;
-    $nome_colaborador = 'Pedro Sabel'; // Ajuste conforme necessário
+    $nome_colaborador = 'Bruna Tavares'; // Ajuste conforme necessário
     $imagem_nome = $data['imagem_nome'] ?? null;
     $nome_funcao = $data['nome_funcao'] ?? null;
     $colaborador_id = $data['colaborador_id'] ?? null;
@@ -208,7 +209,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 "channel" => $userID,
                 "text" => $isChecked
                     ? "A {$nome_funcao} da {$imagem_nome} está revisada por {$nome_responsavel}!"
-                    : "A {$nome_funcao} da {$imagem_nome} possui alteração, analisada por {$nome_responsavel}!",
+                    : "A {$nome_funcao} da {$imagem_nome} possui alteração, analisada por {$nome_responsavel}! Acesse: <https://improov.com.br/sistema/Revisao|Clique aqui para revisar>",
             ];
 
             // Enviar mensagem usando cURL

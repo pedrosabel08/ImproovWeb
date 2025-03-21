@@ -91,6 +91,11 @@ $idusuario = $_SESSION['idusuario'];
 
     <div class="container-aprovacao hidden">
         <header>
+            <button id="btnBack"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon turn-left-arrow" viewBox="0 0 24 24">
+                    <path d="M9 14L4 9l5-5" />
+                    <path d="M20 20v-7a4 4 0 0 0-4-4H4" />
+                </svg>
+            </button>
             <div class="task-info" id="task-info">
                 <h3 id="funcao_nome"></h3>
                 <h3 id="colaborador_nome"></h3>

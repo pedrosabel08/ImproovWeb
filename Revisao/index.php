@@ -89,7 +89,43 @@ $idusuario = $_SESSION['idusuario'];
         <div class="container"></div>
     </div>
 
-    <div id="historico_modal" style="display: none;">
+    <div class="container-aprovacao hidden">
+        <header>
+            <button id="btnBack"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon turn-left-arrow" viewBox="0 0 24 24">
+                    <path d="M9 14L4 9l5-5" />
+                    <path d="M20 20v-7a4 4 0 0 0-4-4H4" />
+                </svg>
+            </button>
+            <div class="task-info" id="task-info">
+                <h3 id="funcao_nome"></h3>
+                <h3 id="colaborador_nome"></h3>
+                <p id="imagem_nome"></p>
+                <div id="buttons-task">
+
+                </div>
+
+            </div>
+        </header>
+
+        <nav>
+            <div id="imagens"></div>
+        </nav>
+
+        <div class="imagens">
+            <div id="imagem_completa">
+                <div id="imagem_atual"></div>
+            </div>
+            <div class="sidebar-direita">
+                <h3>Comentários</h3>
+                <div class="comentarios"></div>
+            </div>
+        </div>
+    </div>
+
+
+    </div>
+
+    <!-- <div id="historico_modal" style="display: none;">
         <div class="historico-container">
             <div class="task-info" id="task-info">
                 <h3 id="funcao_nome"></h3>
@@ -130,7 +166,7 @@ $idusuario = $_SESSION['idusuario'];
                 <button id="submit" type="submit">Enviar</button>
             </form>
         </div>
-    </div>
+    </div> -->
 
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>

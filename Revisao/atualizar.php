@@ -29,6 +29,7 @@ if ($idusuario == 1 || $idusuario == 2) {
     f.colaborador_id, 
     c.nome_colaborador, 
     c.telefone,
+    u.id_slack,
     (SELECT MAX(h.data_aprovacao)
      FROM historico_aprovacoes h
      WHERE h.funcao_imagem_id = f.idfuncao_imagem) AS data_aprovacao,
@@ -40,6 +41,7 @@ if ($idusuario == 1 || $idusuario == 2) {
 FROM funcao_imagem f
 LEFT JOIN funcao fun ON fun.idfuncao = f.funcao_id
 LEFT JOIN colaborador c ON c.idcolaborador = f.colaborador_id
+LEFT JOIN usuario u ON u.idcolaborador = c.idcolaborador
 LEFT JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
 WHERE f.funcao_id IN (1, 2, 3, 4, 5, 6, 7, 8, 9) 
   AND f.status = ?
@@ -57,12 +59,14 @@ ORDER BY data_aprovacao DESC";
     f.colaborador_id, 
     c.nome_colaborador, 
     c.telefone,
+    u.id_slack,
     (SELECT MAX(h.data_aprovacao)
      FROM historico_aprovacoes h
      WHERE h.funcao_imagem_id = f.idfuncao_imagem) AS data_aprovacao
 FROM funcao_imagem f
 LEFT JOIN funcao fun ON fun.idfuncao = f.funcao_id
 LEFT JOIN colaborador c ON c.idcolaborador = f.colaborador_id
+LEFT JOIN usuario u ON u.idcolaborador = c.idcolaborador
 LEFT JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
 WHERE f.funcao_id IN (1, 2, 3, 4, 5, 6, 7, 8, 9) 
   AND f.status = ?
@@ -79,6 +83,7 @@ ORDER BY data_aprovacao DESC";
     f.colaborador_id, 
     c.nome_colaborador, 
     c.telefone,
+    u.id_slack,
     (SELECT MAX(h.data_aprovacao)
      FROM historico_aprovacoes h
      WHERE h.funcao_imagem_id = f.idfuncao_imagem) AS data_aprovacao,
@@ -90,6 +95,7 @@ ORDER BY data_aprovacao DESC";
 FROM funcao_imagem f
 LEFT JOIN funcao fun ON fun.idfuncao = f.funcao_id
 LEFT JOIN colaborador c ON c.idcolaborador = f.colaborador_id
+LEFT JOIN usuario u ON u.idcolaborador = c.idcolaborador
 LEFT JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
 WHERE f.funcao_id IN (1, 2, 3, 4, 5, 6, 7, 8, 9) 
   AND f.status = ?

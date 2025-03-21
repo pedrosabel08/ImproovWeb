@@ -44,6 +44,7 @@
                 <label for="">Ferramentas</label>
                 <li><a title="Filtro Colaborador" href="https://improov.com.br/sistema/main.php#filtro-colab"><i class="fa-solid fa-user"></i><span>Filtro Colaborador</span></a></li>
                 <li><a title="Lista Render" href="https://improov.com.br/sistema/Render"><i class="fas fa-list"></i><span> Lista Render</span></a></li>
+                <li><a title="Flow Review" href="https://improov.com.br/sistema/Revisao"><i class="fas fa-check"></i><span> Flow Review</span></a></li>
                 <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1)): ?>
                     <li><a title="Adicionar cliente ou obra" href="https://improov.com.br/sistema/main.php#add-cliente"><i class="fa-solid fa-person"></i><span>Adicionar cliente ou obra</span></a></li>
                     <li><a title="Gerenciar prioridades" href="https://improov.com.br/sistema/Prioridade"><i class="fa-solid fa-user-plus"></i><span>Gerenciar prioridades</span></a></li>

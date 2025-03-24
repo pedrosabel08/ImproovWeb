@@ -111,14 +111,22 @@ body {
 }
 
 .card {
-    width: 180px;
-    padding: 20px;
+    width: max-content;
+    padding: 15px;
     border: 1px solid #ccc;
     border-radius: 8px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     background-color: #fff;
     transition: 0.3s all ease;
     cursor: pointer;
+}
+
+.card-main {
+    font-size: 14px;
+}
+
+.card-main h4 {
+    font-weight: 500;
 }
 
 .card h3 {
@@ -422,4 +430,3 @@ body {
     }
 
 }
-

@@ -215,17 +215,49 @@ fetch('obras.php')
                 card.classList.add('card'); // Adiciona a classe para estilo do card
                 card.setAttribute('idobra', item.idobra);
 
+                // Cria o cabeçalho do card
+                const cardHeader = document.createElement('div');
+                cardHeader.classList.add('card-header'); // Classe para o cabeçalho do card
+
                 const nomeObra = document.createElement('h3');
+                nomeObra.classList.add('nomeObra');
                 nomeObra.textContent = item.nomenclatura;
 
+                cardHeader.appendChild(nomeObra);
 
-                // const prazo = document.createElement('h4');
-                // prazo.textContent = formatarData(item.prazo);
-                const porcentagem = document.createElement('h4');
-                if (item.porcentagem_finalizada !== null) {
-                    porcentagem.textContent = `${item.porcentagem_finalizada}%`;
-                }
+                // Cria o cabeçalho do card
+                const cardMain = document.createElement('div');
+                cardMain.classList.add('card-main'); // Classe para o cabeçalho do card
 
+                const recebimento_arquivos = document.createElement('h4');
+                recebimento_arquivos.classList.add('liberado');
+                // liberado.textContent = `Arquivos: ${item.recebimento_arquivos} - ${item.recebimento_arquivos === '0000-00-00' ? 'Não' : 'Sim'}`;
+                recebimento_arquivos.textContent = `Arquivos: ${formatarData(item.recebimento_arquivos)}`;
+
+                const liberado = document.createElement('h4');
+                liberado.textContent = `Check: ${item.recebimento_arquivos === '0000-00-00' ? 'Não' : 'Sim'}`;
+
+                // const entrega = document.createElement('h4');
+                // entrega.textContent = item.status_ids;
+
+                const prazo = document.createElement('h4');
+                prazo.classList.add('prazo');
+                prazo.textContent = `Prazo: ${formatarData(item.prazo)}`;
+
+                // const porcentagem = document.createElement('h4');
+                // if (item.porcentagem_finalizada !== null) {
+                //     porcentagem.textContent = `${item.porcentagem_finalizada}%`;
+                // }
+
+                const statusObra = document.createElement('h4');
+                statusObra.classList.add('status-obra');
+                statusObra.textContent = item.status_obra; // Exibe "Alterações" ou "Prévias"
+
+                cardMain.appendChild(recebimento_arquivos);
+                cardMain.appendChild(liberado);
+                // cardMain.appendChild(entrega);
+                cardMain.appendChild(prazo);
+                cardMain.appendChild(statusObra);
 
                 // Calcular a diferença de dias
                 const diasRestantes = calcularDiferencaDias(item.prazo);
@@ -382,9 +414,13 @@ fetch('obras.php')
 
                 });
 
-                card.appendChild(nomeObra);
+                card.appendChild(cardHeader);
+                card.appendChild(cardMain);
+                // card.appendChild(liberado);
+                // card.appendChild(entrega);
                 // card.appendChild(prazo);
-                card.appendChild(porcentagem);
+                // card.appendChild(statusObra);
+                // card.appendChild(porcentagem);
                 painel.appendChild(card);
             });
 

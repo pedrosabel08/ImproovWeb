@@ -6,6 +6,7 @@ $query1 = "SELECT
     o.nomenclatura, 
     o.idobra,
     o.recebimento_arquivos,
+    GROUP_CONCAT(DISTINCT i.status_id ORDER BY i.status_id ASC SEPARATOR ', ') AS status_ids, -- Concatena os status_id
     MAX(i.prazo) AS prazo,
     COUNT(fun.idfuncao) AS total_funcoes,
     COUNT(CASE WHEN f.status = 'Finalizado' THEN 1 END) AS funcoes_finalizadas,
@@ -13,7 +14,11 @@ $query1 = "SELECT
         (COUNT(CASE WHEN f.status = 'Finalizado' THEN 1 END) * 100.0) 
         / COUNT(fun.idfuncao), 
         2
-    ) AS porcentagem_finalizada
+    ) AS porcentagem_finalizada,
+    CASE 
+        WHEN SUM(CASE WHEN i.status_id IN (3, 4, 5, 14, 15) THEN 1 ELSE 0 END) > 0 THEN 'Alterações'
+        ELSE 'Prévias'
+    END AS status_obra -- Define o status da obra com base nos status_id
 FROM 
     obra o
 LEFT JOIN 

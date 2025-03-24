@@ -44,6 +44,7 @@ td {
     padding: 7px;
     text-align: left;
     border: 1px solid black;
+    width: max-content !important;
 }
 
 th {

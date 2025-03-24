@@ -2,7 +2,7 @@ document.querySelectorAll('.titulo').forEach(titulo => {
     titulo.addEventListener('click', () => {
         const opcoes = titulo.nextElementSibling;
         if (opcoes.style.display === 'none') {
-            opcoes.style.display = 'block';
+            opcoes.style.display = 'flex';
             titulo.querySelector('i').classList.remove('fa-chevron-down');
             titulo.querySelector('i').classList.add('fa-chevron-up');
             opcoes.classList.add('show-in');
@@ -35,8 +35,33 @@ function addEventListenersToRows() {
     });
 }
 
-function atualizarModal(idImagem) {
+// Seleciona todos os selects com id que começam com 'status_'
+const statusSelects = document.querySelectorAll("select[id^='status_']");
 
+statusSelects.forEach(select => {
+    select.addEventListener("change", function () {
+        // Pega o próximo elemento irmão que possui a classe 'revisao_imagem'
+        const revisaoImagem = this.closest('.funcao').querySelector('.revisao_imagem');
+
+        if (this.value === "Em aprovação") {
+            revisaoImagem.style.display = "block";
+        } else {
+            revisaoImagem.style.display = "none";
+        }
+
+        // Pega o próximo elemento de prazo
+        const prazoInput = this.closest('.funcao').querySelector('input[type="date"]');
+
+        if (this.value === "Em andamento") {
+            prazoInput.required = true;
+        } else {
+            prazoInput.required = false;
+        }
+    });
+});
+
+
+function atualizarModal(idImagem) {
     // Limpar campos do formulário de edição
     limparCampos();
 
@@ -45,80 +70,147 @@ function atualizarModal(idImagem) {
         .then(response => response.json())
         .then(response => {
             document.getElementById('form-edicao').style.display = 'flex';
-
             if (response.funcoes && response.funcoes.length > 0) {
                 document.getElementById("campoNomeImagem").textContent = response.funcoes[0].imagem_nome;
                 document.getElementById("mood").textContent = `Mood da cena: ${response.funcoes[0].clima || ''}`;
 
+                document.querySelectorAll('.revisao_imagem').forEach(element => {
+                    element.style.display = 'none';
+                });
+                
                 response.funcoes.forEach(function (funcao) {
                     let selectElement;
+                    let checkboxElement;
+                    let revisaoImagemElement;
                     switch (funcao.nome_funcao) {
                         case "Caderno":
                             selectElement = document.getElementById("opcao_caderno");
+                            checkboxElement = document.getElementById("check_caderno");
                             document.getElementById("status_caderno").value = funcao.status;
                             document.getElementById("prazo_caderno").value = funcao.prazo;
                             document.getElementById("obs_caderno").value = funcao.observacao;
-                            document.getElementById("check_caderno").checked = funcao.check_funcao === '1';
+                            checkboxElement.checked = funcao.check_funcao === '1';
+                            revisaoImagemElement = document.getElementById("revisao_imagem_caderno");
                             break;
                         case "Modelagem":
                             selectElement = document.getElementById("opcao_model");
+                            checkboxElement = document.getElementById("check_model");
                             document.getElementById("status_modelagem").value = funcao.status;
                             document.getElementById("prazo_modelagem").value = funcao.prazo;
                             document.getElementById("obs_modelagem").value = funcao.observacao;
-                            document.getElementById("check_model").checked = funcao.check_funcao === '1';
+                            checkboxElement.checked = funcao.check_funcao === '1';
+                            revisaoImagemElement = document.getElementById("revisao_imagem_model");
                             break;
                         case "Composição":
                             selectElement = document.getElementById("opcao_comp");
+                            checkboxElement = document.getElementById("check_comp");
                             document.getElementById("status_comp").value = funcao.status;
                             document.getElementById("prazo_comp").value = funcao.prazo;
                             document.getElementById("obs_comp").value = funcao.observacao;
-                            document.getElementById("check_comp").checked = funcao.check_funcao === '1';
-                            break;
-                        case "Pré-Finalização":
-                            selectElement = document.getElementById("opcao_pre");
-                            document.getElementById("status_pre").value = funcao.status;
-                            document.getElementById("prazo_pre").value = funcao.prazo;
-                            document.getElementById("obs_pre").value = funcao.observacao;
-                            document.getElementById("check_pre").checked = funcao.check_funcao === '1';
+                            checkboxElement.checked = funcao.check_funcao === '1';
+                            revisaoImagemElement = document.getElementById("revisao_imagem_comp");
+
                             break;
                         case "Finalização":
                             selectElement = document.getElementById("opcao_final");
+                            checkboxElement = document.getElementById("check_final");
                             document.getElementById("status_finalizacao").value = funcao.status;
                             document.getElementById("prazo_finalizacao").value = funcao.prazo;
                             document.getElementById("obs_finalizacao").value = funcao.observacao;
-                            document.getElementById("check_final").checked = funcao.check_funcao === '1';
+                            checkboxElement.checked = funcao.check_funcao === '1';
+                            revisaoImagemElement = document.getElementById("revisao_imagem_final");
                             break;
                         case "Pós-produção":
                             selectElement = document.getElementById("opcao_pos");
+                            checkboxElement = document.getElementById("check_pos");
                             document.getElementById("status_pos").value = funcao.status;
                             document.getElementById("prazo_pos").value = funcao.prazo;
                             document.getElementById("obs_pos").value = funcao.observacao;
-                            document.getElementById("check_pos").checked = funcao.check_funcao === '1';
+                            checkboxElement.checked = funcao.check_funcao === '1';
+                            revisaoImagemElement = document.getElementById("revisao_imagem_pos");
                             break;
                         case "Alteração":
                             selectElement = document.getElementById("opcao_alteracao");
+                            checkboxElement = document.getElementById("check_alt");
                             document.getElementById("status_alteracao").value = funcao.status;
                             document.getElementById("prazo_alteracao").value = funcao.prazo;
                             document.getElementById("obs_alteracao").value = funcao.observacao;
-                            document.getElementById("check_alt").checked = funcao.check_funcao === '1';
+                            checkboxElement.checked = funcao.check_funcao === '1';
+                            revisaoImagemElement = document.getElementById("revisao_imagem_alt");
                             break;
                         case "Planta Humanizada":
                             selectElement = document.getElementById("opcao_planta");
+                            checkboxElement = document.getElementById("check_planta");
                             document.getElementById("status_planta").value = funcao.status;
                             document.getElementById("prazo_planta").value = funcao.prazo;
                             document.getElementById("obs_planta").value = funcao.observacao;
-                            document.getElementById("check_planta").checked = funcao.check_funcao === '1';
+                            checkboxElement.checked = funcao.check_funcao === '1';
+                            revisaoImagemElement = document.getElementById("revisao_imagem_ph");
                             break;
                         case "Filtro de assets":
                             selectElement = document.getElementById("opcao_filtro");
+                            checkboxElement = document.getElementById("check_filtro");
                             document.getElementById("status_filtro").value = funcao.status;
                             document.getElementById("prazo_filtro").value = funcao.prazo;
                             document.getElementById("obs_filtro").value = funcao.observacao;
-                            document.getElementById("check_filtro").checked = funcao.check_funcao === '1';
+                            checkboxElement.checked = funcao.check_funcao === '1';
+                            revisaoImagemElement = document.getElementById("revisao_imagem_filtro");
                             break;
+                        case "Pré-Finalização":
+                            selectElement = document.getElementById("opcao_pre");
+                            checkboxElement = document.getElementById("check_pre");
+                            document.getElementById("status_pre").value = funcao.status;
+                            document.getElementById("prazo_pre").value = funcao.prazo;
+                            document.getElementById("obs_pre").value = funcao.observacao;
+                            checkboxElement.checked = funcao.check_funcao === '1';
+                            revisaoImagemElement = document.getElementById("revisao_imagem_pre");
+                            break;
+                    }
+                    if (revisaoImagemElement) {
+                        revisaoImagemElement.setAttribute('data-id-funcao', funcao.id);
                     }
                     if (selectElement) {
                         selectElement.value = funcao.colaborador_id;
+
+                        // Verifica se o botão de limpar já existe
+                        if (!selectElement.parentElement.querySelector('.clear-button')) {
+                            // Adiciona o botão de limpar se o selectElement tiver um valor
+                            if (selectElement.value) {
+                                const clearButton = document.createElement('button');
+                                clearButton.type = 'button'; // Define o tipo do botão como "button"
+                                clearButton.innerHTML = 'x';
+                                clearButton.classList.add('clear-button', 'tooltip');
+                                clearButton.setAttribute('data-id', funcao.id); // Adiciona o ID da função ao botão
+                                clearButton.setAttribute('data-tooltip', 'Excluir função'); // Adiciona o tooltip
+                                clearButton.addEventListener('click', function (event) {
+                                    event.preventDefault(); // Previne o comportamento padrão do botão
+                                    const funcaoId = this.getAttribute('data-id');
+                                    excluirFuncao(funcaoId, selectElement);
+                                });
+                                selectElement.parentElement.appendChild(clearButton);
+                            }
+                        }
+
+                        // Adiciona o botão de log se o selectElement tiver um valor
+                        if (!selectElement.parentElement.querySelector('.log-button')) {
+                            if (selectElement.value) {
+                                const logButton = document.createElement('button');
+                                logButton.type = 'button'; // Define o tipo do botão como "button"
+                                logButton.innerHTML = '<i class="fas fa-file-alt"></i>';
+                                logButton.classList.add('log-button', 'tooltip');
+                                logButton.setAttribute('data-id', funcao.id); // Adiciona o ID da função ao botão
+                                logButton.setAttribute('data-tooltip', 'Exibir log'); // Adiciona o tooltip
+                                logButton.addEventListener('click', function (event) {
+                                    event.preventDefault(); // Previne o comportamento padrão do botão
+                                    const funcaoId = this.getAttribute('data-id');
+                                    exibirLog(funcaoId);
+                                });
+                                selectElement.parentElement.appendChild(logButton);
+                            }
+                        }
+                    }
+                    if (checkboxElement) {
+                        checkboxElement.title = funcao.responsavel_aprovacao || '';
                     }
                 });
             }
@@ -129,7 +221,6 @@ function atualizarModal(idImagem) {
             }
         })
         .catch(error => console.error("Erro ao buscar dados da linha:", error));
-
 }
 
 function limparCampos() {
@@ -182,6 +273,12 @@ function limparCampos() {
     document.getElementById("opcao_filtro").value = "";
     document.getElementById("opcao_status").value = "";
     document.getElementById("opcao_pre").value = "";
+
+    // Limpa todos os campos cujo id começa com "revisao_imagem"
+    document.querySelectorAll('[id^="revisao_imagem"]').forEach(element => {
+        element.value = ""; // Define o valor como vazio
+    });
+
 }
 
 document.addEventListener("DOMContentLoaded", function () {
@@ -261,6 +358,34 @@ document.addEventListener("DOMContentLoaded", function () {
 
         var idImagemSelecionada = linhaSelecionada.getAttribute("data-id");
 
+        // Verifica todos os campos de prazo que devem ser obrigatórios
+        var form = document.getElementById("form-add");
+        var camposPrazo = form.querySelectorAll("input[type='date'][required]");
+        var camposVazios = Array.from(camposPrazo).filter(input => !input.value);
+
+        var funcoesTEA = localStorage.getItem("funcoesTEA");
+        if (funcoesTEA >= 4) {
+            Swal.fire({
+                icon: 'warning', // Ícone de aviso
+                title: 'Atenção!',
+                text: 'Termine as tarefas que estão em andamento primeiro!',
+                confirmButtonText: 'Ok',
+                confirmButtonColor: '#f39c12', // Cor do botão
+            });
+            return;
+        }
+
+        if (camposVazios.length > 0) {
+            Swal.fire({
+                icon: 'warning', // Ícone de aviso
+                title: 'Atenção!',
+                text: 'Coloque a data de quando irá terminar a tarefa!',
+                confirmButtonText: 'Ok',
+                confirmButtonColor: '#f39c12', // Cor do botão
+            });
+            return;
+        }
+
         var textos = {};
         var pElements = document.querySelectorAll(".form-edicao p");
         pElements.forEach(function (p) {
@@ -324,35 +449,16 @@ document.addEventListener("DOMContentLoaded", function () {
             url: "https://www.improov.com.br/sistema/insereFuncao.php",
             data: dados,
             success: function (response) {
-                console.log(response);
+                Toastify({
+                    text: "Dados salvos com sucesso!",
+                    duration: 3000,
+                    close: true,
+                    gravity: "top",
+                    position: "left",
+                    backgroundColor: "green",
+                    stopOnFocus: true,
+                }).showToast();
 
-                // Verifique se a resposta tem as informações esperadas
-                if (response.success) {
-                    Toastify({
-                        text: "Dados salvos com sucesso!",
-                        duration: 3000,
-                        close: true,
-                        gravity: "top",
-                        position: "left",
-                        backgroundColor: "green",
-                        stopOnFocus: true,
-                    }).showToast();
-
-                    // // Enviar uma notificação com base nas funções e status
-                    // if (response.funcao_nome && response.imagem_nome) {
-                    //     const nomeFuncao = response.funcao_nome;  // Nome da função
-                    //     const nomeImagem = response.imagem_nome;  // Nome da imagem
-
-                    //     // Chama a função de notificação com os parâmetros do item
-                    //     enviarNotificacao(
-                    //         nomeFuncao + ' Finalizada!',  // Exibe o nome da função
-                    //         'Nome da imagem: ' + nomeImagem, // Exibe o nome da imagem
-                    //         'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s' // Ícone exemplo
-                    //     );
-                    // }
-                }
-
-                form_edicao.style.display = "none";
             },
             error: function (jqXHR, textStatus, errorThrown) {
                 console.error("Erro ao salvar dados: " + textStatus, errorThrown);
@@ -365,8 +471,64 @@ document.addEventListener("DOMContentLoaded", function () {
                     backgroundColor: "red",
                     stopOnFocus: true,
                 }).showToast();
+
+
             }
         });
+        // Segundo fetch - agora enviando como JSON
+        var fileInputs = document.querySelectorAll("input[type='file']");
+        var filesExistem = Array.from(fileInputs).some(input => input.files.length > 0);
+        const dataIdFuncoes = [];
+
+        const formData = new FormData();
+
+        console.log("Arquivos existem?", filesExistem);
+
+        fileInputs.forEach(input => {
+            // Verifica se o input tem arquivos
+            if (input.files.length > 0) {
+                const dataIdFuncao = input.getAttribute('data-id-funcao');
+
+                // Adiciona apenas se o data-id-funcao existir e o input tiver arquivos
+                if (dataIdFuncao && dataIdFuncao.trim() !== '') {
+                    dataIdFuncoes.push(dataIdFuncao);
+                }
+
+                // Adiciona os arquivos ao FormData
+                for (let i = 0; i < input.files.length; i++) {
+                    formData.append('imagens[]', input.files[i]);
+                }
+            }
+        });
+
+        if (filesExistem) {
+            // Adicionando apenas os valores válidos de dataIdFuncoes
+            formData.append('dataIdFuncoes', JSON.stringify(dataIdFuncoes));
+
+            console.log("Funções válidas: ", dataIdFuncoes);  // Para ver o array filtrado
+
+            fetch('uploadArquivos.php', {
+                method: "POST",
+                body: formData,
+                headers: {
+                    'Accept': 'application/json'
+                }
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log(data);
+                    // Aqui você pode adicionar lógica para lidar com a resposta do servidor
+                })
+                .catch(error => {
+                    console.error('Erro:', error);
+                });
+
+        }
     });
 
     // Função para enviar notificações

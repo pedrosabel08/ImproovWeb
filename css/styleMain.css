@@ -5,7 +5,7 @@
     padding: 0;
     margin: 0;
     box-sizing: border-box;
-    font-family: "Montserrat", sans-serif;
+    font-family: "Open Sans", sans-serif;
 }
 
 body {
@@ -430,6 +430,26 @@ table tbody tr:hover {
     gap: 10px;
 }
 
+#saveChangesBtn,
+#salvar,
+.buttons-form-add {
+    background-color: #119111;
+    text-align: center;
+    color: #ffffff;
+    padding: 0.5rem 2rem;
+    border-radius: 20px;
+    transition: .3s;
+    text-transform: uppercase;
+    font-size: 14px;
+}
+
+#saveChangesBtn:hover,
+#salvar:hover,
+.buttons-form-add:hover {
+    background-color: #0c6b0c;
+    cursor: pointer;
+}
+
 
 #add-cliente,
 #add-imagem,
@@ -563,7 +583,7 @@ button {
     all: unset;
 }
 
-form#form-add button {
+/* form#form-add button {
     background-color: #119111;
     text-align: center;
     color: #ffffff;
@@ -577,7 +597,7 @@ form#form-add button {
 form#form-add button:hover {
     background-color: #0c6b0c;
     cursor: pointer;
-}
+} */
 
 .buttons {
     display: flex;
@@ -1102,4 +1122,25 @@ input[type="checkbox"] {
     padding: 5px;
     border: 1px solid #ccc;
     border-radius: 5px;
+}
+
+
+.clear-button {
+    background-color: red;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+    margin-left: 5px;
+    font-size: 12px;
+}
+
+.log-button:hover {
+    cursor: pointer;
 }

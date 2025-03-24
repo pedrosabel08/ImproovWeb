@@ -6,8 +6,14 @@ function loadRenders() {
         data: { action: 'getRenders' },
         dataType: 'json',
         success: function (response) {
-            $('#renderList').html('');
-            if (response.status == 'sucesso') {
+            if (response.status === 'sucesso') {
+                // Se o DataTable já estiver inicializado, destrói-o primeiro
+                if ($.fn.DataTable.isDataTable('#renderTable')) {
+                    $('#renderTable').DataTable().clear().destroy();
+                }
+
+                $('#renderList').html(''); // Limpa o conteúdo da tabela
+
                 response.renders.forEach(function (render) {
                     if (render.status !== 'Arquivado') {
                         let statusStyle = applyStatusStyle(render.status); // Obtém o estilo do status
@@ -23,15 +29,15 @@ function loadRenders() {
                     }
                 });
 
-                // Inicializar DataTable com 25 itens por página
+                // Inicializar o DataTable novamente após limpar os dados
                 $('#renderTable').DataTable({
-                    "paging": false,
-                    "lengthChange": false,
-                    "info": false,
-                    "ordering": true,
-                    "searching": true,
-                    "language": {
-                        "url": "https://cdn.datatables.net/plug-ins/1.10.21/i18n/Portuguese.json"
+                    paging: false,
+                    lengthChange: false,
+                    info: false,
+                    ordering: true,
+                    searching: true,
+                    language: {
+                        url: "https://cdn.datatables.net/plug-ins/1.10.21/i18n/Portuguese.json"
                     }
                 });
 
@@ -44,7 +50,6 @@ function loadRenders() {
         }
     });
 }
-
 // Função que retorna o estilo inline para o status
 function applyStatusStyle(status) {
     switch (status) {

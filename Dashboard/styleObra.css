@@ -1547,3 +1547,8 @@ input[type="checkbox"] {
     width: 80%;
     margin: 0 auto;
 }
+
+
+td:first-child {
+    max-width: 100px;
+}

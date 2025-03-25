@@ -1,4 +1,5 @@
 <?php
+
 // Conectar ao banco de dados
 include 'conexao.php';
 
@@ -13,29 +14,61 @@ if ($data && isset($data['imagem_id'])) {
     $conn->begin_transaction();
 
     try {
+        // Verifica se o ID existe na tabela imagens_cliente_obra
+        $stmt_check_exists = $conn->prepare("SELECT idimagens_cliente_obra FROM imagens_cliente_obra WHERE idimagens_cliente_obra = ?");
+        $stmt_check_exists->bind_param("i", $imagem_id);
+        $stmt_check_exists->execute();
+        $stmt_check_exists->store_result();
+
+        if ($stmt_check_exists->num_rows === 0) {
+            echo json_encode([
+                'status' => 'erro',
+                'message' => 'ID não encontrado na tabela imagens_cliente_obra.'
+            ]);
+            $stmt_check_exists->close();
+            exit;
+        }
+
+        // Verifica o status atual da imagem
+        $stmt_check_status = $conn->prepare("SELECT status_id FROM imagens_cliente_obra WHERE idimagens_cliente_obra = ?");
+        $stmt_check_status->bind_param("i", $imagem_id);
+        $stmt_check_status->execute();
+        $stmt_check_status->bind_result($current_status);
+        $stmt_check_status->fetch();
+        $stmt_check_status->close();
+
         // Primeira consulta: Insere na tabela render_alta
         $stmt1 = $conn->prepare("INSERT INTO render_alta (imagem_id) VALUES (?)");
         $stmt1->bind_param("i", $imagem_id);
         $stmt1->execute();
         $stmt1->close();
 
-        // Segunda consulta: Atualiza o status na tabela imagens_cliente_obra
-        $stmt2 = $conn->prepare("UPDATE imagens_cliente_obra SET status_id = 13 WHERE idimagens_cliente_obra = ?");
-        $stmt2->bind_param("i", $imagem_id);
-        $stmt2->execute();
+        // Segunda consulta: Atualiza o status na tabela imagens_cliente_obra apenas se o status não for 13
+        if ($current_status != 13) {
+            $stmt2 = $conn->prepare("UPDATE imagens_cliente_obra SET status_id = 13 WHERE idimagens_cliente_obra = ?");
+            $stmt2->bind_param("i", $imagem_id);
+            $stmt2->execute();
 
-        // Verifica se a atualização afetou alguma linha
-        if ($stmt2->affected_rows > 0) {
-            $conn->commit(); // Confirma a transação
+            // Verifica se a atualização afetou alguma linha
+            if ($stmt2->affected_rows > 0) {
+                $conn->commit(); // Confirma a transação
+                echo json_encode([
+                    'status' => 'sucesso',
+                    'message' => "Imagem ID '$imagem_id' inserida e status atualizado com sucesso."
+                ]);
+            } else {
+                throw new Exception("Nenhuma linha foi atualizada. Verifique se o ID existe.");
+            }
+
+            $stmt2->close();
+        } else {
+            // Confirma a transação mesmo sem atualizar o status
+            $conn->commit();
             echo json_encode([
                 'status' => 'sucesso',
-                'message' => "Imagem ID '$imagem_id' inserida e status atualizado com sucesso."
+                'message' => "Imagem ID '$imagem_id' inserida, mas o status já era 13."
             ]);
-        } else {
-            throw new Exception("Nenhuma linha foi atualizada. Verifique se o ID existe.");
         }
-
-        $stmt2->close();
     } catch (Exception $e) {
         // Se ocorrer um erro, desfaz a transação
         $conn->rollback();

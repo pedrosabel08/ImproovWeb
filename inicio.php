@@ -236,65 +236,65 @@ $conn->close();
 
 
         document.getElementById('modal').style.display = 'none';
-        // // Função para verificar se já foi enviado o formulário no dia de hoje
-        // function checkDailyAccess() {
-        //     const idColaborador = <?php echo json_encode($idcolaborador); ?>; // ID do colaborador vindo do PHP
+        // Função para verificar se já foi enviado o formulário no dia de hoje
+        function checkDailyAccess() {
+            const idColaborador = <?php echo json_encode($idcolaborador); ?>; // ID do colaborador vindo do PHP
 
-        //     fetch('verifica_respostas.php', {
-        //             method: 'POST',
-        //             headers: {
-        //                 'Content-Type': 'application/x-www-form-urlencoded',
-        //             },
-        //             body: `idcolaborador=${idColaborador}`
-        //         })
-        //         .then(response => response.json())
-        //         .then(data => {
-        //             if (data.hasResponses) {
-        //                 // Se já houver respostas, não exibe o modal
-        //                 document.getElementById('modal').style.display = 'none';
-        //             } else {
-        //                 // Se não houver respostas, exibe o modal
-        //                 document.getElementById('modal').style.display = 'flex';
-        //             }
-        //         })
-        //         .catch(error => console.error('Erro ao verificar respostas:', error));
-        // }
+            fetch('verifica_respostas.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `idcolaborador=${idColaborador}`
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.hasResponses) {
+                        // Se já houver respostas, não exibe o modal
+                        document.getElementById('modal').style.display = 'none';
+                    } else {
+                        // Se não houver respostas, exibe o modal
+                        document.getElementById('modal').style.display = 'flex';
+                    }
+                })
+                .catch(error => console.error('Erro ao verificar respostas:', error));
+        }
 
 
-        // document.getElementById('dailyForm').addEventListener('submit', function(e) {
-        //     e.preventDefault();
+        document.getElementById('dailyForm').addEventListener('submit', function(e) {
+            e.preventDefault();
 
-        //     const formData = new FormData(this);
+            const formData = new FormData(this);
 
-        //     fetch('submit_respostas.php', {
-        //             method: 'POST',
-        //             body: formData
-        //         })
-        //         .then(response => response.json())
-        //         .then(data => {
-        //             if (data.success) {
-        //                 document.getElementById('modal').style.display = 'none';
-        //                 Swal.fire({
-        //                     icon: 'success',
-        //                     text: 'Respostas enviadas com sucesso!',
-        //                     showConfirmButton: false,
-        //                     timer: 2000 // Tempo em milissegundos (3 segundos)
-        //                 });
-        //                 return;
-        //             } else {
-        //                 Swal.fire({
-        //                     icon: 'error',
-        //                     text: 'Erro ao enviar as tarefas, tente novamente!',
-        //                     showConfirmButton: false,
-        //                     timer: 2000 // Tempo em milissegundos (3 segundos)
-        //                 });
-        //                 return;
-        //             }
-        //         })
-        //         .catch(error => console.error('Erro:', error));
-        // });
+            fetch('submit_respostas.php', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('modal').style.display = 'none';
+                        Swal.fire({
+                            icon: 'success',
+                            text: 'Respostas enviadas com sucesso!',
+                            showConfirmButton: false,
+                            timer: 2000 // Tempo em milissegundos (3 segundos)
+                        });
+                        return;
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            text: 'Erro ao enviar as tarefas, tente novamente!',
+                            showConfirmButton: false,
+                            timer: 2000 // Tempo em milissegundos (3 segundos)
+                        });
+                        return;
+                    }
+                })
+                .catch(error => console.error('Erro:', error));
+        });
 
-        // checkDailyAccess();
+        checkDailyAccess();
     </script>
 
     <script src="script/notificacoes.js"></script>

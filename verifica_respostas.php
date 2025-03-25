@@ -9,7 +9,7 @@ if (!isset($_POST['idcolaborador'])) {
 
 // Verifica se o usuário é o ID 3
 if (isset($_SESSION['idusuario']) && $_SESSION['idusuario'] == 3) {
-    echo json_encode(['hasResponses' => false]);
+    echo json_encode(['hasResponses' => true]);
     exit;
 }
 

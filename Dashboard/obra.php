@@ -109,6 +109,10 @@ $conn->close();
                     <!-- <option value="Antecipada">Antecipada</option> -->
                 </select>
 
+                <select name="imagem_status_filtro" id="imagem_status_filtro">
+                    <option value="">Selecione um status</option>
+                </select>
+
                 <div id="prazos-list"></div>
             </div>
 
@@ -767,6 +771,15 @@ $conn->close();
                             </option>
                         <?php endforeach; ?>
                     </select>
+                    <select name="status_hold" id="status_hold" multiple>
+                        <option value="Paisagismo">Paisagismo</option>
+                        <option value="Mood">Mood</option>
+                        <option value="Interiores">Interiores</option>
+                        <option value="Luminotécnico">Luminotécnico</option>
+                        <option value="Arquitetônico">Arquitetônico</option>
+                        <option value="Definição de unidade">Definição de unidade</option>
+                        <option value="Aguardando aprovações">Aguardando aprovações</option>
+                    </select>
                 </div>
                 <div class="funcao" id="status_funcao" style="width: 200px; margin-bottom: 15px;">
                     <div class="render">
@@ -789,6 +802,9 @@ $conn->close();
 
         </form>
     </div>
+
+    <div class="tooltip-box" id="tooltip"></div>
+
 
     <div class="modal" id="modal-meta" style="display: none;">
         <div id="modal-content-meta" class="modal-content-meta">
@@ -841,7 +857,6 @@ $conn->close();
         // Converte o valor do COUNT para JSON e armazena no localStorage
         const funcoesTEA = <?php echo json_encode($funcoesCount['total_funcoes_em_andamento']); ?>;
         localStorage.setItem('funcoesTEA', funcoesTEA);
-
     </script>
 
 </body>

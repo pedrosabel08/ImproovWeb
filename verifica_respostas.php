@@ -1,8 +1,15 @@
 <?php
 include 'conexao.php';
+session_start(); // Certifique-se de iniciar a sessão
 
 if (!isset($_POST['idcolaborador'])) {
     echo json_encode(['error' => 'ID do colaborador não fornecido.']);
+    exit;
+}
+
+// Verifica se o usuário é o ID 3
+if (isset($_SESSION['idusuario']) && $_SESSION['idusuario'] == 3) {
+    echo json_encode(['hasResponses' => false]);
     exit;
 }
 

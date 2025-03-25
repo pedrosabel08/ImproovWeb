@@ -204,12 +204,10 @@ $conn->close();
 
     </main>
 
-    <?php if (isset($_SESSION['idusuario']) && ($_SESSION['idusuario'] == 1 || $_SESSION['idusuario'] == 2 || $_SESSION['idusuario'] == 9)): ?>
         <div id="notificacao-sino" class="notificacao-sino">
             <i class="fas fa-bell sino" id="icone-sino"></i>
             <span id="contador-tarefas" class="contador-tarefas">0</span>
         </div>
-    <?php endif; ?>
 
     <script>
         const nome_user = <?php echo json_encode($nome_usuario); ?>;
@@ -234,73 +232,73 @@ $conn->close();
         localStorage.setItem('idusuario', idUsuario);
 
         const idColaborador = <?php echo json_encode($idcolaborador); ?>;
-
         localStorage.setItem('idcolaborador', idColaborador);
 
 
-        // Função para verificar se já foi enviado o formulário no dia de hoje
-        function checkDailyAccess() {
-            const idColaborador = <?php echo json_encode($idcolaborador); ?>; // ID do colaborador vindo do PHP
+        document.getElementById('modal').style.display = 'none';
+        // // Função para verificar se já foi enviado o formulário no dia de hoje
+        // function checkDailyAccess() {
+        //     const idColaborador = <?php echo json_encode($idcolaborador); ?>; // ID do colaborador vindo do PHP
 
-            fetch('verifica_respostas.php', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    body: `idcolaborador=${idColaborador}`
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.hasResponses) {
-                        // Se já houver respostas, não exibe o modal
-                        document.getElementById('modal').style.display = 'none';
-                    } else {
-                        // Se não houver respostas, exibe o modal
-                        document.getElementById('modal').style.display = 'flex';
-                    }
-                })
-                .catch(error => console.error('Erro ao verificar respostas:', error));
-        }
+        //     fetch('verifica_respostas.php', {
+        //             method: 'POST',
+        //             headers: {
+        //                 'Content-Type': 'application/x-www-form-urlencoded',
+        //             },
+        //             body: `idcolaborador=${idColaborador}`
+        //         })
+        //         .then(response => response.json())
+        //         .then(data => {
+        //             if (data.hasResponses) {
+        //                 // Se já houver respostas, não exibe o modal
+        //                 document.getElementById('modal').style.display = 'none';
+        //             } else {
+        //                 // Se não houver respostas, exibe o modal
+        //                 document.getElementById('modal').style.display = 'flex';
+        //             }
+        //         })
+        //         .catch(error => console.error('Erro ao verificar respostas:', error));
+        // }
 
 
-        document.getElementById('dailyForm').addEventListener('submit', function(e) {
-            e.preventDefault();
+        // document.getElementById('dailyForm').addEventListener('submit', function(e) {
+        //     e.preventDefault();
 
-            const formData = new FormData(this);
+        //     const formData = new FormData(this);
 
-            fetch('submit_respostas.php', {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        document.getElementById('modal').style.display = 'none';
-                        Swal.fire({
-                            icon: 'success',
-                            text: 'Respostas enviadas com sucesso!',
-                            showConfirmButton: false,
-                            timer: 2000 // Tempo em milissegundos (3 segundos)
-                        });
-                        return;
-                    } else {
-                        Swal.fire({
-                            icon: 'error',
-                            text: 'Erro ao enviar as tarefas, tente novamente!',
-                            showConfirmButton: false,
-                            timer: 2000 // Tempo em milissegundos (3 segundos)
-                        });
-                        return;
-                    }
-                })
-                .catch(error => console.error('Erro:', error));
-        });
+        //     fetch('submit_respostas.php', {
+        //             method: 'POST',
+        //             body: formData
+        //         })
+        //         .then(response => response.json())
+        //         .then(data => {
+        //             if (data.success) {
+        //                 document.getElementById('modal').style.display = 'none';
+        //                 Swal.fire({
+        //                     icon: 'success',
+        //                     text: 'Respostas enviadas com sucesso!',
+        //                     showConfirmButton: false,
+        //                     timer: 2000 // Tempo em milissegundos (3 segundos)
+        //                 });
+        //                 return;
+        //             } else {
+        //                 Swal.fire({
+        //                     icon: 'error',
+        //                     text: 'Erro ao enviar as tarefas, tente novamente!',
+        //                     showConfirmButton: false,
+        //                     timer: 2000 // Tempo em milissegundos (3 segundos)
+        //                 });
+        //                 return;
+        //             }
+        //         })
+        //         .catch(error => console.error('Erro:', error));
+        // });
 
-        checkDailyAccess();
+        // checkDailyAccess();
     </script>
 
     <script src="script/notificacoes.js"></script>
-    <script src="./script/scriptIndex.js"></script>
+    <script src="script/scriptIndex.js"></script>
     <script src="./script/sidebar.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 

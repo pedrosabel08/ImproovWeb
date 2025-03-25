@@ -158,11 +158,13 @@ $sqlImagens = "SELECT
         MAX(CASE WHEN fi.funcao_id = 6 THEN c.nome_colaborador END) AS alteracao_colaborador,
         MAX(CASE WHEN fi.funcao_id = 6 THEN fi.status END) AS alteracao_status,
         MAX(CASE WHEN fi.funcao_id = 7 THEN c.nome_colaborador END) AS planta_colaborador,
-        MAX(CASE WHEN fi.funcao_id = 7 THEN fi.status END) AS planta_status
+        MAX(CASE WHEN fi.funcao_id = 7 THEN fi.status END) AS planta_status,
+    GROUP_CONCAT(DISTINCT sh.descricao ORDER BY sh.descricao SEPARATOR ', ') AS descricao
     FROM imagens_cliente_obra ico
     LEFT JOIN funcao_imagem fi ON fi.imagem_id = ico.idimagens_cliente_obra
     LEFT JOIN colaborador c ON fi.colaborador_id = c.idcolaborador
     LEFT JOIN status_imagem s ON ico.status_id = s.idstatus
+    LEFT JOIN status_hold sh ON sh.imagem_id = ico.idimagens_cliente_obra
     WHERE ico.obra_id = ?
     GROUP BY ico.imagem_nome
     ORDER BY FIELD(ico.tipo_imagem, 'Fachada', 'Imagem Interna', 'Imagem Externa', 'Planta Humanizada'), ico.idimagens_cliente_obra;
@@ -293,7 +295,7 @@ $resultPrazos = $stmtPrazos->get_result();
 // Processa os resultados do novo SELECT
 $prazos = [];
 while ($row = $resultPrazos->fetch_assoc()) {
-    $row['idImagens'] = $row['idImagens'] ? explode(',', $row['idImagens']) : []; 
+    $row['idImagens'] = $row['idImagens'] ? explode(',', $row['idImagens']) : [];
     $row['totalImagens'] = (int) $row['totalImagens']; // Converte para número
     $prazos[] = $row;
 }

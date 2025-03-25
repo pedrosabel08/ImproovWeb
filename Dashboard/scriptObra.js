@@ -154,6 +154,10 @@ function atualizarModal(idImagem) {
                 document.getElementById("campoNomeImagem").textContent = response.funcoes[0].imagem_nome;
                 document.getElementById("mood").textContent = `Mood da cena: ${response.funcoes[0].clima || ''}`;
 
+                const statusHoldSelect = document.getElementById('status_hold'); // Seleciona o elemento <select>
+
+                statusHoldSelect.value = '';
+
                 response.funcoes.forEach(function (funcao) {
                     let selectElement;
                     let checkboxElement;
@@ -288,6 +292,25 @@ function atualizarModal(idImagem) {
                     if (checkboxElement) {
                         checkboxElement.title = funcao.responsavel_aprovacao || '';
                     }
+                    // Suponha que 'response.descricao' contenha os valores concatenados do GROUP_CONCAT
+                    if (funcao.descricao) {
+                        const statusHoldValues = funcao.descricao.split(','); // Converte a string em um array
+                        const statusHoldSelect = document.getElementById('status_hold'); // Seleciona o elemento <select>
+
+                        statusHoldSelect.value = '';
+                        statusHoldSelect.style.display = 'block';
+
+                        // Itera sobre os valores e marca os <option>s correspondentes
+                        Array.from(statusHoldSelect.options).forEach(option => {
+                            option.selected = statusHoldValues.includes(option.value);
+                        });
+                    }
+
+                    if (!funcao.descricao) {
+                        const statusHoldSelect = document.getElementById('status_hold'); // Seleciona o elemento <select>
+                        statusHoldSelect.style.display = 'none';
+                    }
+
                 });
             }
 
@@ -416,6 +439,12 @@ function infosObra(obraId) {
             let antecipada = 0;
             let imagens = 0;
 
+            // Seleciona o elemento select
+            const statusSelect = document.getElementById("imagem_status_filtro");
+
+            // Objeto para armazenar os status únicos
+            const statusUnicos = new Set();
+
             data.imagens.forEach(function (item) {
                 idsImagensObra.push(parseInt(item.imagem_id));
                 var row = document.createElement('tr');
@@ -439,8 +468,9 @@ function infosObra(obraId) {
                 var cellStatus = document.createElement('td');
                 cellStatus.textContent = item.imagem_status;
                 row.appendChild(cellStatus);
-                applyStatusImagem(cellStatus, item.imagem_status);
+                applyStatusImagem(cellStatus, item.imagem_status, item.descricao);
 
+                statusUnicos.add(item.imagem_status);
 
 
                 var cellPrazo = document.createElement('td');
@@ -472,6 +502,13 @@ function infosObra(obraId) {
                 });
 
                 tabela.appendChild(row);
+            });
+
+            statusUnicos.forEach(status => {
+                let option = document.createElement("option");
+                option.value = status;
+                option.textContent = status;
+                statusSelect.appendChild(option);
             });
 
             filtrarTabela();
@@ -882,8 +919,9 @@ function navegar(direcao) {
     }
 }
 
+const tooltip = document.getElementById('tooltip');
 
-function applyStatusImagem(cell, status) {
+function applyStatusImagem(cell, status, descricao = '') {
     switch (status) {
         case 'P00':
             cell.style.backgroundColor = '#ffc21c'
@@ -905,6 +943,24 @@ function applyStatusImagem(cell, status) {
             break;
         case 'HOLD':
             cell.style.backgroundColor = '#ff0000';
+            cell.classList.add('tool'); // Adiciona a classe tooltip
+            if (descricao) {
+                cell.addEventListener('mouseenter', (event) => {
+                    tooltip.textContent = descricao;
+                    tooltip.style.display = 'block';
+                    tooltip.style.left = event.pageX + 'px';
+                    tooltip.style.top = event.pageY - 30 + 'px';
+                });
+
+                cell.addEventListener('mouseleave', () => {
+                    tooltip.style.display = 'none';
+                });
+
+                cell.addEventListener('mousemove', (event) => {
+                    tooltip.style.left = event.pageX + 'px';
+                    tooltip.style.top = event.pageY - 30 + 'px';
+                });
+            }
             break;
         case 'TEA':
             cell.style.backgroundColor = '#f7eb07';
@@ -929,6 +985,7 @@ function applyStatusImagem(cell, status) {
 function filtrarTabela() {
     var tipoImagemFiltro = document.getElementById("tipo_imagem").value.toLowerCase();
     var antecipadaFiltro = document.getElementById("antecipada_obra").value;
+    var statusImagemFiltro = document.getElementById("imagem_status_filtro").value;
     var tabela = document.getElementById("tabela-obra");
     var tbody = tabela.getElementsByTagName("tbody")[0];
     var linhas = tbody.getElementsByTagName("tr");
@@ -939,6 +996,7 @@ function filtrarTabela() {
     for (var i = 0; i < linhas.length; i++) {
         var tipoImagemColuna = linhas[i].getAttribute("tipo-imagem");
         var isAntecipada = linhas[i].getAttribute("antecipada") === '1';
+        var statusColuna = linhas[i].querySelector("td:nth-child(2)").textContent.trim(); // Pegando o status da terceira coluna (ajuste conforme necessário)
         var mostrarLinha = true;
 
         if (tipoImagemFiltro && tipoImagemFiltro !== "0" && tipoImagemColuna.toLowerCase() !== tipoImagemFiltro.toLowerCase()) {
@@ -948,6 +1006,11 @@ function filtrarTabela() {
         if (antecipadaFiltro === "Antecipada" && !isAntecipada) {
             mostrarLinha = false;
         }
+
+        // Filtra pelo status da imagem
+        if (statusImagemFiltro && statusImagemFiltro !== "0" && statusColuna !== statusImagemFiltro) {
+            mostrarLinha = false;
+        }   
 
         if (mostrarLinha) {
             imagensFiltradas++;
@@ -966,6 +1029,7 @@ function filtrarTabela() {
 // Adiciona evento para filtrar sempre que o filtro mudar
 document.getElementById("tipo_imagem").addEventListener("change", filtrarTabela);
 document.getElementById("antecipada_obra").addEventListener("change", filtrarTabela);
+document.getElementById("imagem_status_filtro").addEventListener("change", filtrarTabela);
 
 function applyStatusStyle(cell, status, colaborador) {
     if (colaborador === 'Não se aplica') {
@@ -1036,6 +1100,18 @@ statusSelects.forEach(select => {
             prazoInput.required = false;
         }
     });
+});
+
+const selectStatus = document.getElementById("opcao_status");
+const statusHold = document.getElementById("status_hold");
+
+selectStatus.addEventListener("change", function () {
+    console.log(this.value);
+    if (parseInt(this.value) === 9) { // Converte o valor para número antes de comparar
+        statusHold.style.display = "block";
+    } else {
+        statusHold.style.display = "none";
+    }
 });
 
 
@@ -1143,7 +1219,7 @@ document.getElementById("salvar_funcoes").addEventListener("click", function (ev
         status_id: document.getElementById("opcao_status").value || ""
     };
 
-    
+
     $.ajax({
         type: "POST",
         url: "https://www.improov.com.br/sistema/insereFuncao.php",
@@ -1228,6 +1304,63 @@ document.getElementById("salvar_funcoes").addEventListener("click", function (ev
                 console.error('Erro:', error);
             });
 
+    }
+
+    // Obtém os valores selecionados no campo status_hold
+    const selectedOptions = Array.from(statusHold.selectedOptions).map(option => option.value);
+
+    const obraId = localStorage.getItem("obraId");
+
+
+    if (selectedOptions.length > 0) {
+        // Dados a serem enviados para o backend
+        const data = {
+            status_hold: selectedOptions,
+            imagem_id: idImagemSelecionada,
+            obra_id: obraId
+        };
+
+        // Envia os dados para o backend via fetch
+        fetch("../atualizarStatusHold.php", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(data)
+        })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    Toastify({
+                        text: "Status HOLD atualizado com sucesso!",
+                        duration: 3000,
+                        backgroundColor: "green",
+                        close: true,
+                        gravity: "top",
+                        position: "right"
+                    }).showToast();
+                } else {
+                    Toastify({
+                        text: "Erro ao atualizar o status HOLD.",
+                        duration: 3000,
+                        backgroundColor: "red",
+                        close: true,
+                        gravity: "top",
+                        position: "right"
+                    }).showToast();
+                }
+            })
+            .catch(error => {
+                console.error("Erro ao atualizar o status HOLD:", error);
+                Toastify({
+                    text: "Erro ao atualizar o status HOLD.",
+                    duration: 3000,
+                    backgroundColor: "red",
+                    close: true,
+                    gravity: "top",
+                    position: "right"
+                }).showToast();
+            });
     }
 });
 

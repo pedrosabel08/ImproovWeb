@@ -17,7 +17,7 @@ if ($_SERVER["REQUEST_METHOD"] == "GET") {
     $idImagemSelecionada = $_GET['ajid'];
 
     // Consulta para buscar funções, colaboradores, prazos e nome do status
-    $sqlFuncao = "SELECT
+    $sqlFuncao = "SELECT 
     img.clima, 
     img.imagem_nome,
     f.nome_funcao, 
@@ -34,11 +34,14 @@ if ($_SERVER["REQUEST_METHOD"] == "GET") {
      WHERE h.funcao_imagem_id = fi.idfuncao_imagem 
      ORDER BY h.id DESC 
      LIMIT 1) AS responsavel_aprovacao
+    -- GROUP_CONCAT(sh.descricao SEPARATOR ',') AS descricao
 FROM imagens_cliente_obra img
 LEFT JOIN funcao_imagem fi ON img.idimagens_cliente_obra = fi.imagem_id
 LEFT JOIN colaborador col ON fi.colaborador_id = col.idcolaborador
 LEFT JOIN funcao f ON fi.funcao_id = f.idfuncao
-WHERE img.idimagens_cliente_obra = $idImagemSelecionada;";
+-- LEFT JOIN status_hold sh ON sh.imagem_id = img.idimagens_cliente_obra
+WHERE img.idimagens_cliente_obra = $idImagemSelecionada";
+
     $resultFuncao = $conn->query($sqlFuncao);
 
     $funcoes = array();

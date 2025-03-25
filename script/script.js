@@ -793,7 +793,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function carregarDados(colaboradorId = null) {
         // Se não tiver colaboradorId, verifica se o usuário é admin ou não
         if (!colaboradorId) {
-            if (idusuario != 1 && idusuario != 2) {
+            if (idusuario != 1 && idusuario != 2 && idusuario != 9) {
                 colaboradorId = idcolaborador;
 
             } else {
@@ -877,7 +877,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Se não for admin, esconde o select e já carrega os dados
-    if (idusuario != 1 && idusuario != 2) {
+    if (idusuario != 1 && idusuario != 2 && idusuario != 9) {
         colaboradorDiv.style.display = 'none';
         carregarDados(); // Carrega automaticamente para o usuário logado
     } else {

@@ -690,12 +690,13 @@ table tbody tr:hover {
 }
 
 table th:first-child {
-    max-width: 200px;
+    max-width: max-content;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
     transition: 0.3s all ease;
     text-align: center;
+    resize: horizontal;
 }
 
 

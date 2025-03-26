@@ -458,6 +458,22 @@ function infosObra(obraId) {
                 cellNomeImagem.setAttribute('antecipada', item.antecipada);
                 row.appendChild(cellNomeImagem);
 
+                cellNomeImagem.addEventListener('mouseenter', (event) => {
+                    tooltip.textContent = item.imagem_nome;
+                    tooltip.style.display = 'block';
+                    tooltip.style.left = event.clientX + 'px';
+                    tooltip.style.top = event.clientY - 30 + 'px';
+                });
+
+                cellNomeImagem.addEventListener('mouseleave', () => {
+                    tooltip.style.display = 'none';
+                });
+
+                cellNomeImagem.addEventListener('mousemove', (event) => {
+                    tooltip.style.left = event.clientX + 'px';
+                    tooltip.style.top = event.clientY - 30 + 'px';
+                });
+
                 imagens++;
 
                 if (Boolean(parseInt(item.antecipada))) {
@@ -971,8 +987,8 @@ function applyStatusImagem(cell, status, descricao = '') {
                 cell.addEventListener('mouseenter', (event) => {
                     tooltip.textContent = descricao;
                     tooltip.style.display = 'block';
-                    tooltip.style.left = event.pageX + 'px';
-                    tooltip.style.top = event.pageY - 30 + 'px';
+                    tooltip.style.left = event.clientX + 'px';
+                    tooltip.style.top = event.clientY - 30 + 'px';
                 });
 
                 cell.addEventListener('mouseleave', () => {
@@ -980,8 +996,8 @@ function applyStatusImagem(cell, status, descricao = '') {
                 });
 
                 cell.addEventListener('mousemove', (event) => {
-                    tooltip.style.left = event.pageX + 'px';
-                    tooltip.style.top = event.pageY - 30 + 'px';
+                    tooltip.style.left = event.clientX + 'px';
+                    tooltip.style.top = event.clientY - 30 + 'px';
                 });
             }
             break;

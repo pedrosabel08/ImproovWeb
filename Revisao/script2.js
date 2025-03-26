@@ -94,9 +94,14 @@ function filtrarTarefas() {
 }
 
 
-// Função para buscar tarefas de revisão
+let todasAsObras = new Set();
+let todosOsColaboradores = new Set();
+
 async function fetchTarefas(filtro = 'Todos', status = 'Em aprovação') {
     try {
+        const obraSelecionada = document.getElementById('filtro_obra').value;
+        const colaboradorSelecionado = document.getElementById('filtro_colaborador').value;
+
         const response = await fetch(`atualizar.php?status=${status}`);
         if (!response.ok) {
             throw new Error("Erro ao buscar as tarefas.");
@@ -104,12 +109,23 @@ async function fetchTarefas(filtro = 'Todos', status = 'Em aprovação') {
 
         const data = await response.json();
 
-        // Filtra as tarefas com base no filtro
+        // Armazena todas as obras e colaboradores da resposta original
+        if (todasAsObras.size === 0 && todosOsColaboradores.size === 0) {
+            todasAsObras = new Set(data.map(tarefa => tarefa.nome_obra));
+            todosOsColaboradores = new Set(data.map(tarefa => tarefa.nome_colaborador));
+            atualizarFiltros(); // Atualiza os selects apenas uma vez
+        }
+
+        // Filtra as tarefas conforme os selects
         const tarefasFiltradas = data.filter(tarefa => {
-            return filtro === 'Todos' || tarefa.nome_funcao === filtro;
+            const filtroFuncao = filtro === 'Todos' || tarefa.nome_funcao === filtro;
+            const filtroObra = !obraSelecionada || tarefa.nome_obra === obraSelecionada;
+            const filtroColaborador = !colaboradorSelecionado || tarefa.nome_colaborador === colaboradorSelecionado;
+
+            return filtroFuncao && filtroObra && filtroColaborador;
         });
 
-        // Exibe as tarefas
+        // Apenas exibe as tarefas filtradas
         exibirTarefas(tarefasFiltradas);
 
         // Conta o número de revisões por tipo de função
@@ -130,6 +146,7 @@ async function fetchTarefas(filtro = 'Todos', status = 'Em aprovação') {
             contagemAltDiv.innerHTML += `<p>${funcao}: ${contagem}</p>`;
         }
 
+
     } catch (error) {
         console.error("Erro:", error);
         Toastify({
@@ -143,6 +160,37 @@ async function fetchTarefas(filtro = 'Todos', status = 'Em aprovação') {
     }
 }
 
+// Atualiza os filtros sem apagá-los
+function atualizarFiltros() {
+    const filtroObra = document.getElementById("filtro_obra");
+    const filtroColaborador = document.getElementById("filtro_colaborador");
+
+    filtroObra.innerHTML = '<option value="">Todas as Obras</option>';
+    filtroColaborador.innerHTML = '<option value="">Todos os Colaboradores</option>';
+
+    todasAsObras.forEach(obra => {
+        let option = document.createElement("option");
+        option.value = obra;
+        option.textContent = obra;
+        filtroObra.appendChild(option);
+    });
+
+    todosOsColaboradores.forEach(colaborador => {
+        let option = document.createElement("option");
+        option.value = colaborador;
+        option.textContent = colaborador;
+        filtroColaborador.appendChild(option);
+    });
+}
+
+// Eventos para os filtros
+document.getElementById('filtro_obra').addEventListener('change', () => {
+    fetchTarefas(document.getElementById('nome_funcao').value);
+});
+
+document.getElementById('filtro_colaborador').addEventListener('change', () => {
+    fetchTarefas(document.getElementById('nome_funcao').value);
+});
 
 function formatarData(data) {
     const [ano, mes, dia] = data.split('-'); // Divide a string no formato 'YYYY-MM-DD'
@@ -161,10 +209,10 @@ function formatarDataHora(data) {
     return `${dia}/${mes}/${ano} ${horas}:${minutos}`; // Retorna o formato desejado
 }
 
-// Função para exibir as tarefas
+// Função para exibir as tarefas e abastecer os filtros
 function exibirTarefas(tarefas) {
     const container = document.querySelector('.container');
-    container.innerHTML = ''; // Limpa o conteúdo da página antes de exibir as novas tarefas
+    container.innerHTML = ''; // Limpa o conteúdo antes de exibir as tarefas
 
     if (tarefas.length > 0) {
         tarefas.forEach(tarefa => {
@@ -172,23 +220,22 @@ function exibirTarefas(tarefas) {
             taskItem.classList.add('task-item');
             taskItem.setAttribute('onclick', `historyAJAX(${tarefa.idfuncao_imagem}, '${tarefa.nome_funcao}', '${tarefa.imagem_nome}', '${tarefa.nome_colaborador}')`);
 
-            const imageContainer = document.getElementById('imagens');
-            imageContainer.innerHTML = ''; // Limpa as imagens anteriores
-
             taskItem.innerHTML = `
                 <div class="task-info">
                     <h3>${tarefa.nome_funcao}</h3><span>${tarefa.nome_colaborador}</span>
-                    <p>${tarefa.imagem_nome}</p>
+                    <p data-obra="${tarefa.nome_obra}">${tarefa.imagem_nome}</p>
                     <p>${tarefa.status_novo}</p>
                     <p>${formatarDataHora(tarefa.data_aprovacao)}</p>       
                 </div>
             `;
+
             container.appendChild(taskItem);
         });
     } else {
         container.innerHTML = '<p style="text-align: center; color: #888;">Não há tarefas de revisão no momento.</p>';
     }
 }
+
 
 document.getElementById('nome_funcao').addEventListener('change', filtrarTarefas);
 const modalComment = document.getElementById('modalComment');
@@ -275,7 +322,7 @@ function mostrarImagemCompleta(src, id) {
 
     const imgElement = document.createElement("img");
     imgElement.src = src;
-    imgElement.style.maxWidth = "100%";
+    imgElement.style.width = "100%";
     imgElement.style.borderRadius = "10px";
     imgElement.id = "imagem_atual";
 
@@ -295,7 +342,7 @@ function mostrarImagemCompleta(src, id) {
 
         const commentText = prompt("Digite seu comentário:");
         if (commentText) {
-            const comentario = { ap_imagem_id, x: relativeX, y: relativeY, texto: commentText, responsavel: idusuario };
+            const comentario = { ap_imagem_id, x: relativeX, y: relativeY, texto: commentText };
 
             console.log('Comentário:', comentario);
 
@@ -309,9 +356,11 @@ function mostrarImagemCompleta(src, id) {
                 const result = await response.json();
 
                 if (result.sucesso) {
-                    addComment(relativeX, relativeY, commentText);
+                    addComment(relativeX, relativeY);
 
                     alert('Comentário salvo com sucesso!');
+                    renderComments(ap_imagem_id); // Atualiza a lista de comentários
+
                 } else {
                     alert('Erro ao salvar o comentário.');
                 }
@@ -323,13 +372,12 @@ function mostrarImagemCompleta(src, id) {
     });
 }
 
-function addComment(x, y, text) {
+function addComment(x, y) {
     const imagemCompletaDiv = document.getElementById("imagem_completa");
 
     // Cria o div do comentário
     const commentDiv = document.createElement('div');
     commentDiv.classList.add('comment');
-    commentDiv.innerText = text;
     commentDiv.style.left = `${x}%`;
     commentDiv.style.top = `${y}%`;
 

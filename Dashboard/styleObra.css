@@ -454,7 +454,8 @@ a {
 #orcamento,
 #salvar_orcamento,
 #add-acomp,
-#deleteObs {
+#deleteObs,
+#salvarArquivo {
     padding: 2px 6px;
     border-radius: 15px;
     font-size: 14px;
@@ -465,7 +466,8 @@ a {
 
 #orcamento:hover,
 #acomp:hover,
-#deleteObs:hover {
+#deleteObs:hover,
+#salvarArquivo:hover {
     font-weight: 600;
     cursor: pointer;
 }
@@ -1142,7 +1144,8 @@ form#form-add::-webkit-scrollbar-track,
 }
 
 #editImagesBtn,
-#addImagem {
+#addImagem,
+#editArquivos {
     background-color: red;
     width: 120px;
     text-align: center;
@@ -1157,6 +1160,10 @@ form#form-add::-webkit-scrollbar-track,
 #addImagem {
     width: 150px;
     background-color: #0056b3;
+}
+
+#editArquivos {
+    background-color: #017d16;
 }
 
 .buttons button:hover {
@@ -1570,4 +1577,19 @@ input[type="checkbox"] {
 
 td:first-child {
     max-width: 100px;
+}
+
+form#formArquivos {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    width: 30%;
+    overflow-y: auto;
+    margin: auto;
+}
+
+.arquivos label {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
 }

@@ -325,7 +325,37 @@ $response['alt'] = $row['total_revisoes'];  // Atribui o valor diretamente
 
 $stmtAlts->close();
 
-$conn->close();
 
+
+$sqlRecebimento = "SELECT 
+        tipo_imagem,
+        GROUP_CONCAT(DISTINCT recebimento_arquivos ORDER BY recebimento_arquivos ASC SEPARATOR ', ') AS datas_recebimento
+    FROM 
+        imagens_cliente_obra
+    WHERE 
+        obra_id = ?
+    GROUP BY 
+        tipo_imagem;
+";
+
+$stmtRecebimento = $conn->prepare($sqlRecebimento);
+if ($stmtRecebimento === false) {
+    die('Erro na preparação da consulta (recebimento): ' . $conn->error);
+}
+
+$stmtRecebimento->bind_param("i", $obraId);
+$stmtRecebimento->execute();
+$resultRecebimento = $stmtRecebimento->get_result();
+
+// Processa os resultados
+$recebimentos = [];
+while ($row = $resultRecebimento->fetch_assoc()) {
+    $recebimentos[] = $row;
+}
+$response['recebimentos'] = $recebimentos;
+
+$stmtRecebimento->close();
 // Retorna o resultado como JSON
 echo json_encode($response);
+
+$conn->close();

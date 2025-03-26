@@ -119,6 +119,7 @@ $conn->close();
             <div class="buttons">
                 <button id="editImagesBtn">Editar Imagens</button>
                 <button id="addImagem">Adicionar Imagem</button>
+                <button id="editArquivos">Editar Arquivos</button>
             </div>
 
             <div class="contagem_imagens">
@@ -315,6 +316,41 @@ $conn->close();
                     </table>
                 </div>
             </div>
+        </div>
+
+
+        <div class="modal" id="modalArquivos">
+            <form action="" id="formArquivos">
+                <div class="modal-content">
+                    <h2 style="margin-bottom: 15px;">Editar Arquivos</h2>
+                    <div class="arquivos">
+                        <label>Arquivos Fachada
+                            <input type="checkbox" class="tipo-imagem" data-tipo="Fachada">
+                            <input type="date" class="data-recebimento" id="data-fachada" disabled>
+                        </label>
+                        <label>Arquivos Imagens Externas
+                            <input type="checkbox" class="tipo-imagem" data-tipo="Imagem Externa">
+                            <input type="date" class="data-recebimento" id="data-imagens-externas" disabled>
+                        </label>
+                        <label>Arquivos Internas Áreas Comuns
+                            <input type="checkbox" class="tipo-imagem" data-tipo="Imagem Interna">
+                            <input type="date" class="data-recebimento" id="data-internas-comuns" disabled>
+                        </label>
+                        <label>Arquivos Unidades
+                            <input type="checkbox" class="tipo-imagem" data-tipo="Unidades">
+                            <input type="date" class="data-recebimento" id="data-unidades" disabled>
+                        </label>
+                        <label>Arquivos PH
+                            <input type="checkbox" class="tipo-imagem" data-tipo="Planta Humanizada">
+                            <input type="date" class="data-recebimento" id="data-ph" disabled>
+                        </label>
+                    </div>
+                    <input type="date" name="data_arquivos" id="data_arquivos" required>
+                    <div class="buttons" style="margin-top: 15px; text-align: center;">
+                        <button type="button" id="salvarArquivo">Salvar</button>
+                    </div>
+                </div>
+            </form>
         </div>
 
 

@@ -762,6 +762,29 @@ function infosObra(obraId) {
                 });
 
             }
+
+            if (data.recebimentos && data.recebimentos.length > 0) {
+                data.recebimentos.forEach(recebimento => {
+                    const tipoImagem = recebimento.tipo_imagem;
+                    const datasRecebimento = recebimento.datas_recebimento.split(', '); // Divide as datas por vírgula
+                    const primeiraData = datasRecebimento[0]; // Pega a primeira data
+
+                    // Mapeia os IDs dos campos de data com base no tipo de imagem
+                    const campoDataMap = {
+                        "Fachada": "data-fachada",
+                        "Imagem Externa": "data-imagens-externas",
+                        "Imagem Interna": "data-internas-comuns",
+                        "Unidades": "data-unidades",
+                        "Planta Humanizada": "data-ph"
+                    };
+
+                    // Preenche o campo de data correspondente
+                    const campoData = document.getElementById(campoDataMap[tipoImagem]);
+                    if (campoData) {
+                        campoData.value = primeiraData; // Define a primeira data no campo
+                    }
+                });
+            }
             const prazosDiv = document.getElementById('prazos-list');
 
             // Limpa o conteúdo da div
@@ -1010,7 +1033,7 @@ function filtrarTabela() {
         // Filtra pelo status da imagem
         if (statusImagemFiltro && statusImagemFiltro !== "0" && statusColuna !== statusImagemFiltro) {
             mostrarLinha = false;
-        }   
+        }
 
         if (mostrarLinha) {
             imagensFiltradas++;
@@ -1364,6 +1387,64 @@ document.getElementById("salvar_funcoes").addEventListener("click", function (ev
     }
 });
 
+const editArquivos = document.getElementById('editArquivos');
+
+const iduser = parseInt(localStorage.getItem('idusuario')); // Obtém o idusuario do localStorage
+
+
+if (![1, 2, 9].includes(iduser)) {
+    editArquivos.style.display = 'none';
+}
+
+const modalArquivos = document.getElementById('modalArquivos');
+
+editArquivos.addEventListener('click', function () {
+    modalArquivos.style.display = 'flex';
+});
+
+document.getElementById("salvarArquivo").addEventListener("click", function () {
+    const tiposSelecionados = [];
+    const obraId = localStorage.getItem("obraId");
+    const dataArquivos = document.getElementById("data_arquivos").value;
+
+    // Pega todos os checkboxes marcados
+    document.querySelectorAll(".tipo-imagem:checked").forEach(checkbox => {
+        tiposSelecionados.push(checkbox.getAttribute("data-tipo"));
+    });
+
+    if (tiposSelecionados.length === 0) {
+        alert("Selecione pelo menos um tipo de imagem!");
+        return;
+    }
+
+    // Enviar os dados para o backend via AJAX
+    fetch("atualizar_prazo.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ obraId, tipos: tiposSelecionados, data_arquivos: dataArquivos })
+    })
+        .then(response => response.text())
+        .then(data => {
+            Swal.fire({
+                icon: 'success',
+                text: 'Prazo atualizado com sucesso!',
+                showConfirmButton: false,
+                timer: 1000 // Tempo em milissegundos (3 segundos)
+            });
+            modalArquivos.style.display = 'none';
+            return;
+        })
+        .catch(error => {
+            Swal.fire({
+                icon: 'error',
+                text: 'Erro ao atualizar o prazo. Tente novamente!',
+                showConfirmButton: true
+            });
+            console.error("Erro:", error);
+        });
+});
+
+
 function showModal() {
     document.getElementById('modal-meta').style.display = 'block';
 }
@@ -1647,6 +1728,10 @@ window.addEventListener('click', function (event) {
     if (event.target == modalLogs) {
         modalLogs.style.display = "none";
     }
+    if (event.target == modalArquivos) {
+        modalArquivos.style.display = "none";
+        infosObra(obraId)
+    }
 });
 
 window.addEventListener('touchstart', function (event) {
@@ -1678,6 +1763,10 @@ window.addEventListener('touchstart', function (event) {
     }
     if (event.target == modalLogs) {
         modalLogs.style.display = "none";
+    }
+    if (event.target == modalArquivos) {
+        modalArquivos.style.display = "none";
+        infosObra(obraId)
     }
 });
 

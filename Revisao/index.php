@@ -67,18 +67,23 @@ $idusuario = $_SESSION['idusuario'];
             <h4>Contagem de revisões por função:</h4>
             <div id="contagem_alt"></div>
         </div>
-        <select name="nome_funcao" id="nome_funcao" style="width: 200px;margin: 0 auto;border: none;border-bottom: 1px solid black;">
-            <option value="Todos">Todos</option>
-            <option value="Caderno">Caderno</option>
-            <option value="Filtro de assets">Filtro de assets</option>
-            <option value="Modelagem">Modelagem</option>
-            <option value="Composição">Composição</option>
-            <option value="Pré-Finalização">Pré-Finalização</option>
-            <option value="Finalização">Finalização</option>
-            <option value="Pós-produção">Pós-produção</option>
-            <option value="Alteração">Alteração</option>
-            <option value="Planta Humanizada">Planta Humanizada</option>
-        </select>
+        <div class="filtros">
+            <select name="nome_funcao" id="nome_funcao">
+                <option value="Todos">Todos</option>
+                <option value="Caderno">Caderno</option>
+                <option value="Filtro de assets">Filtro de assets</option>
+                <option value="Modelagem">Modelagem</option>
+                <option value="Composição">Composição</option>
+                <option value="Pré-Finalização">Pré-Finalização</option>
+                <option value="Finalização">Finalização</option>
+                <option value="Pós-produção">Pós-produção</option>
+                <option value="Alteração">Alteração</option>
+                <option value="Planta Humanizada">Planta Humanizada</option>
+            </select>
+            <select name="filtro_obra" id="filtro_obra"></select>
+            <select name="filtro_colaborador" id="filtro_colaborador"></select>
+        </div>
+
         <div class="alternar">
             <button onclick="fetchTarefas('Todos', 'Em aprovação')">Em aprovação</button>
             <button onclick="fetchTarefas('Todos', 'Ajuste')">Ajuste</button>
@@ -172,7 +177,7 @@ $idusuario = $_SESSION['idusuario'];
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 
-    <script src="script.js"></script>
+    <script src="script2.js"></script>
     <script src="../script/sidebar.js"></script>
 
 </body>

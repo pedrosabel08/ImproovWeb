@@ -522,3 +522,16 @@ nav {
 .comment-actions button:hover {
     color: red;
 }
+
+.filtros {
+    margin: auto;
+    display: flex;
+    gap: 50px;
+}
+
+.filtros select {
+    width: max-content;
+    margin: 0 auto;
+    border: none;
+    border-bottom: 1px solid black;
+}

@@ -535,3 +535,22 @@ nav {
     border: none;
     border-bottom: 1px solid black;
 }
+
+.imageWrapper {
+    position: relative;
+}
+
+.notification-dot {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    width: 10px;
+    height: 15px;
+    background-color: red;
+    border-radius: 50%;
+    z-index: 10;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+    font-size: 10px;
+    text-align: center;
+    color: white;
+}

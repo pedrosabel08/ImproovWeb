@@ -45,10 +45,16 @@ if ($_SERVER["REQUEST_METHOD"] == "GET") {
 
     // Query para buscar imagens associadas
     $sqlImagens = "SELECT 
-        hi.*
-    FROM historico_aprovacoes_imagens hi
-    JOIN funcao_imagem f ON f.idfuncao_imagem = hi.funcao_imagem_id
-    WHERE hi.funcao_imagem_id = $idFuncaoSelecionada";
+    hi.*,
+    COUNT(ci.id) AS comment_count,
+    CASE 
+        WHEN COUNT(ci.id) > 0 THEN true
+        ELSE false
+    END AS has_comments
+FROM historico_aprovacoes_imagens hi
+LEFT JOIN comentarios_imagem ci ON ci.ap_imagem_id = hi.id
+WHERE hi.funcao_imagem_id = $idFuncaoSelecionada
+GROUP BY hi.id";
 
     $resultImagens = $conn->query($sqlImagens);
     $imagens = array();

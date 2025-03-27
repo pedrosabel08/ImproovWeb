@@ -292,7 +292,7 @@ h2 {
 }
 
 
-.tooltip {
+/* .tooltip {
     position: relative;
     display: inline-block;
 }
@@ -309,7 +309,7 @@ h2 {
     border-radius: 4px;
     white-space: nowrap;
     font-size: 12px;
-}
+} */
 
 .alternar {
     display: flex;

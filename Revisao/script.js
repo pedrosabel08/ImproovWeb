@@ -264,6 +264,7 @@ function historyAJAX(idfuncao_imagem, funcao_nome, imagem_nome, colaborador_nome
             const container_aprovacao = document.querySelector('.container-aprovacao');
             container_aprovacao.classList.remove('hidden');
 
+
             const { historico, imagens } = response;
 
             historico.forEach(historico => {
@@ -288,6 +289,8 @@ function historyAJAX(idfuncao_imagem, funcao_nome, imagem_nome, colaborador_nome
             imageContainer.innerHTML = ''; // Limpa as imagens anteriores
             const imagemCompletaDiv = document.getElementById("imagem_completa");
             imagemCompletaDiv.innerHTML = '';
+            const commentDiv = document.querySelector('.sidebar-direita');
+            commentDiv.style.display = 'none';
 
             imagens.forEach(img => {
                 const wrapper = document.createElement('div');
@@ -302,6 +305,13 @@ function historyAJAX(idfuncao_imagem, funcao_nome, imagem_nome, colaborador_nome
                 imgElement.addEventListener('click', (event) => {
                     mostrarImagemCompleta(imgElement.src, img.id);
                 });
+
+                if (img.has_comments === "1" || img.has_comments === 1) {
+                    const notificationDot = document.createElement('div');
+                    notificationDot.className = 'notification-dot';
+                    notificationDot.textContent = `${img.comment_count}`; // Exibe a quantidade de comentários como tooltip
+                    wrapper.appendChild(notificationDot);
+                }
 
                 wrapper.appendChild(imgElement);
                 imageContainer.appendChild(wrapper);
@@ -319,6 +329,8 @@ function mostrarImagemCompleta(src, id) {
     ap_imagem_id = id; // Armazena o id da imagem clicada
     const imagemCompletaDiv = document.getElementById("imagem_completa");
     imagemCompletaDiv.innerHTML = '';
+    const commentDiv = document.querySelector('.sidebar-direita');
+    commentDiv.style.display = 'block';
 
     const imgElement = document.createElement("img");
     imgElement.src = src;
@@ -343,7 +355,7 @@ function mostrarImagemCompleta(src, id) {
         const commentText = prompt("Digite seu comentário:");
         if (commentText) {
 
-            const comentario = { ap_imagem_id, x: relativeX, y: relativeY, texto: commentText};
+            const comentario = { ap_imagem_id, x: relativeX, y: relativeY, texto: commentText };
 
             console.log('Comentário:', comentario);
 

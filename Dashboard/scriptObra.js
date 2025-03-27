@@ -1419,13 +1419,28 @@ editArquivos.addEventListener('click', function () {
 });
 
 document.getElementById("salvarArquivo").addEventListener("click", function () {
-    const tiposSelecionados = [];
     const obraId = localStorage.getItem("obraId");
     const dataArquivos = document.getElementById("data_arquivos").value;
+    const tiposSelecionados = [];
 
-    // Pega todos os checkboxes marcados
-    document.querySelectorAll(".tipo-imagem:checked").forEach(checkbox => {
-        tiposSelecionados.push(checkbox.getAttribute("data-tipo"));
+    // Pega todos os blocos de tipos de imagem
+    document.querySelectorAll(".tipo-imagem").forEach(checkbox => {
+        const tipo = checkbox.getAttribute("data-tipo");
+
+        if (checkbox.checked) {
+            // Verifica quais subtipos estão marcados
+            const subtipos = {};
+            checkbox.closest("label").querySelectorAll(".subtipos input[type='checkbox']").forEach(subCheckbox => {
+                const nomeSubtipo = subCheckbox.parentNode.textContent.trim();
+                subtipos[nomeSubtipo] = subCheckbox.checked ? true : false;
+            });
+
+            tiposSelecionados.push({
+                tipo: tipo,
+                dataRecebimento: checkbox.nextElementSibling.value, // Data específica do tipo
+                subtipos: subtipos
+            });
+        }
     });
 
     if (tiposSelecionados.length === 0) {
@@ -1437,7 +1452,7 @@ document.getElementById("salvarArquivo").addEventListener("click", function () {
     fetch("atualizar_prazo.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ obraId, tipos: tiposSelecionados, data_arquivos: dataArquivos })
+        body: JSON.stringify({ obraId, dataArquivos, tiposSelecionados })
     })
         .then(response => response.text())
         .then(data => {
@@ -1445,10 +1460,9 @@ document.getElementById("salvarArquivo").addEventListener("click", function () {
                 icon: 'success',
                 text: 'Prazo atualizado com sucesso!',
                 showConfirmButton: false,
-                timer: 1000 // Tempo em milissegundos (3 segundos)
+                timer: 1000
             });
             modalArquivos.style.display = 'none';
-            return;
         })
         .catch(error => {
             Swal.fire({
@@ -1459,8 +1473,6 @@ document.getElementById("salvarArquivo").addEventListener("click", function () {
             console.error("Erro:", error);
         });
 });
-
-
 function showModal() {
     document.getElementById('modal-meta').style.display = 'block';
 }

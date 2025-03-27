@@ -321,37 +321,75 @@ $conn->close();
 
         <div class="modal" id="modalArquivos">
             <form action="" id="formArquivos">
-                <div class="modal-content">
+                <div class="modal-content" style="overflow-y: auto;">
                     <h2 style="margin-bottom: 15px;">Editar Arquivos</h2>
-                    <div class="arquivos">
-                        <label>Arquivos Fachada
-                            <input type="checkbox" class="tipo-imagem" data-tipo="Fachada">
-                            <input type="date" class="data-recebimento" id="data-fachada" disabled>
-                        </label>
-                        <label>Arquivos Imagens Externas
-                            <input type="checkbox" class="tipo-imagem" data-tipo="Imagem Externa">
-                            <input type="date" class="data-recebimento" id="data-imagens-externas" disabled>
-                        </label>
-                        <label>Arquivos Internas Áreas Comuns
-                            <input type="checkbox" class="tipo-imagem" data-tipo="Imagem Interna">
-                            <input type="date" class="data-recebimento" id="data-internas-comuns" disabled>
-                        </label>
-                        <label>Arquivos Unidades
-                            <input type="checkbox" class="tipo-imagem" data-tipo="Unidades">
-                            <input type="date" class="data-recebimento" id="data-unidades" disabled>
-                        </label>
-                        <label>Arquivos PH
-                            <input type="checkbox" class="tipo-imagem" data-tipo="Planta Humanizada">
-                            <input type="date" class="data-recebimento" id="data-ph" disabled>
-                        </label>
+                    <div class="arquivos-container">
+                        <div class="arquivo-item">
+                            <label>
+                                <span>Arquivos Fachada</span>
+                                <input type="checkbox" class="tipo-imagem" data-tipo="Fachada">
+                                <input type="date" class="data-recebimento" id="data-fachada" disabled>
+                            </label>
+                            <div class="subtipos">
+                                <label>DWG<input type="checkbox"> </label>
+                                <label>PDF<input type="checkbox"> </label>
+                                <label>3D ou Referências/Mood<input type="checkbox"> </label>
+                                <label>Paisagismo<input type="checkbox"> </label>
+                            </div>
+                        </div>
+
+                        <div class="arquivo-item">
+                            <label>
+                                <span>Arquivos Imagens Externas</span>
+                                <input type="checkbox" class="tipo-imagem" data-tipo="Imagem Externa">
+                                <input type="date" class="data-recebimento" id="data-imagens-externas" disabled>
+                            </label>
+                            <div class="subtipos">
+                                <label>DWG<input type="checkbox"> </label>
+                                <label>PDF<input type="checkbox"> </label>
+                                <label>3D ou Referências/Mood<input type="checkbox"> </label>
+                                <label>Paisagismo<input type="checkbox"> </label>
+                            </div>
+                        </div>
+
+                        <div class="arquivo-item">
+                            <label>
+                                <span>Arquivos Internas Áreas Comuns</span>
+                                <input type="checkbox" class="tipo-imagem" data-tipo="Imagem Interna">
+                                <input type="date" class="data-recebimento" id="data-internas-comuns" disabled>
+                            </label>
+                            <div class="subtipos">
+                                <label>DWG<input type="checkbox"> </label>
+                                <label>PDF<input type="checkbox"> </label>
+                                <label>3D ou Referências/Mood<input type="checkbox"> </label>
+                                <label>Luminotécnico<input type="checkbox"> </label>
+                            </div>
+                        </div>
+
+                        <div class="arquivo-item">
+                            <label>
+                                <span>Arquivos Unidades</span>
+                                <input type="checkbox" class="tipo-imagem" data-tipo="Unidades">
+                                <input type="date" class="data-recebimento" id="data-unidades" disabled>
+                            </label>
+                            <div class="subtipos">
+                                <label>DWG<input type="checkbox"> </label>
+                                <label>PDF<input type="checkbox"> </label>
+                                <label>3D ou Referências/Mood<input type="checkbox"> </label>
+                                <label>Unidades Definidas<input type="checkbox"> </label>
+                                <label>Luminotécnico<input type="checkbox"> </label>
+                            </div>
+                        </div>
                     </div>
-                    <input type="date" name="data_arquivos" id="data_arquivos" required>
-                    <div class="buttons" style="margin-top: 15px; text-align: center;">
+
+                    <div class="arquivo-actions">
+                        <input type="date" name="data_arquivos" id="data_arquivos" required>
                         <button type="button" id="salvarArquivo">Salvar</button>
                     </div>
                 </div>
             </form>
         </div>
+
 
 
         <div id="infos-obra" style="width: 95%; margin: 30px auto; box-shadow: 0 1px 10px rgba(0, 0, 0, 0.7);">

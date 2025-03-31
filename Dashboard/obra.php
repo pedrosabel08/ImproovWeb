@@ -403,7 +403,7 @@ $conn->close();
 
             <div class="obra-acompanhamento">
 
-                <?php
+                <!-- <?php
                 // Exibir somente se o usuário tiver nível de acesso 1
                 if (isset($_SESSION['logado']) && $_SESSION['logado'] === true && $_SESSION['nivel_acesso'] == 1) {
                 ?>
@@ -411,7 +411,7 @@ $conn->close();
                 <?php
                 }
                 ?>
-                <button id="orcamento" style="display: none;">Orçamento</button>
+                <button id="orcamento" style="display: none;">Orçamento</button> -->
             </div>
 
             <div class="modalOrcamento" id="modalOrcamento">
@@ -441,11 +441,11 @@ $conn->close();
             <div class="obra-imagens">
                 <h4 id="total_imagens"></h4>
                 <h4 id="total_imagens_antecipadas"></h4>
-                <div id="funcoes" style="display: flex;flex-wrap: wrap; gap: 50px; justify-content: space-around;">
+                <!-- <div id="funcoes" style="display: flex;flex-wrap: wrap; gap: 50px; justify-content: space-around;">
                 </div>
                 <div id="grafico">
                     <canvas id="graficoPorcentagem" width="400" height="200"></canvas>
-                </div>
+                </div> -->
             </div>
 
         </div>

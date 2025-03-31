@@ -615,24 +615,6 @@ function infosObra(obraId) {
             document.getElementById('altura_drone').value = `${obra.altura_drone}`;
             document.getElementById('link_drive').value = `${obra.link_drive}`;
 
-            const funcoes = data.funcoes;
-            const nomesFuncoes = funcoes.map(funcao => funcao.nome_funcao);
-            const porcentagensFinalizadas = funcoes.map(funcao => parseFloat(funcao.porcentagem_finalizada));
-
-            const funcoesDiv = document.getElementById('funcoes');
-            funcoesDiv.innerHTML = "";
-            data.funcoes.forEach(funcao => {
-                const funcaoDiv = document.createElement('div');
-                funcaoDiv.classList.add('funcao_group');
-                funcaoDiv.innerHTML = `
-                <strong>${funcao.nome_funcao}</strong><br>
-                Total de Imagens: ${funcao.total_imagens}<br>
-                Imagens Finalizadas: ${funcao.funcoes_finalizadas}<br>
-                Porcentagem Finalizada: ${funcao.porcentagem_finalizada}%<br><br>
-            `;
-                funcoesDiv.appendChild(funcaoDiv);
-            });
-
             // const infosDiv = document.getElementById('infos');
 
             // // Limpa o conteúdo da div
@@ -865,49 +847,6 @@ function infosObra(obraId) {
                 }
             });
 
-
-            const ctx = document.getElementById('graficoPorcentagem').getContext('2d');
-            if (chartInstance) {
-                chartInstance.destroy();
-            }
-            chartInstance = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: nomesFuncoes,
-                    datasets: [{
-                        label: 'Porcentagem de Conclusão (%)',
-                        data: porcentagensFinalizadas,
-                        backgroundColor: [
-                            'rgba(54, 162, 235, 0.2)',  // Cor para a 1ª barra
-                            'rgba(255, 99, 132, 0.2)',  // Cor para a 2ª barra
-                            'rgba(255, 159, 64, 0.2)',  // Cor para a 3ª barra
-                            'rgba(75, 192, 192, 0.2)',  // Cor para a 4ª barra
-                            'rgba(153, 102, 255, 0.2)', // Cor para a 5ª barra
-                            'rgba(255, 159, 64, 0.2)'   // Cor para a 6ª barra, e assim por diante
-                        ],
-                        borderColor: [
-                            'rgba(54, 162, 235, 1)',  // Cor para a borda da 1ª barra
-                            'rgba(255, 99, 132, 1)',  // Cor para a borda da 2ª barra
-                            'rgba(255, 159, 64, 1)',  // Cor para a borda da 3ª barra
-                            'rgba(75, 192, 192, 1)',  // Cor para a borda da 4ª barra
-                            'rgba(153, 102, 255, 1)', // Cor para a borda da 5ª barra
-                            'rgba(255, 159, 64, 1)'
-                        ],
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                stepSize: 10
-                            }
-                        }
-                    }
-                }
-            });
 
         })
         .catch(error => console.error('Erro ao carregar funções:', error));
@@ -1491,12 +1430,6 @@ const infosModal = document.getElementById('infosModal');
 const form_edicao = document.getElementById('form-edicao');
 
 
-document.getElementById('orcamento').addEventListener('click', function () {
-    document.getElementById('modalOrcamento').style.display = 'flex';
-});
-
-
-
 const idObra = localStorage.getItem('obraId');
 
 if (idObra) {
@@ -1831,9 +1764,6 @@ document.getElementById('formOrcamento').addEventListener('submit', function (e)
 window.addEventListener('touchstart', function (event) {
     if (event.target == modalInfos) {
         modalInfos.style.display = "none";
-    }
-    if (event.target == modalOrcamento) {
-        modalOrcamento.style.display = "none";
     }
     if (event.target == form_edicao) {
         form_edicao.style.display = "none"

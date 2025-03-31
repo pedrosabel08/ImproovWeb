@@ -689,7 +689,7 @@ table tbody tr:hover {
     background-color: #FF5833;
 }
 
-table th:first-child {
+table#tabela-obra th:first-child {
     max-width: max-content;
     overflow: hidden;
     text-overflow: ellipsis;

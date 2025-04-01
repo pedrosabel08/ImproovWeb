@@ -167,7 +167,7 @@ $sqlImagens = "SELECT
     LEFT JOIN status_hold sh ON sh.imagem_id = ico.idimagens_cliente_obra
     WHERE ico.obra_id = ?
     GROUP BY ico.imagem_nome
-    ORDER BY FIELD(ico.tipo_imagem, 'Fachada', 'Imagem Interna', 'Imagem Externa', 'Planta Humanizada'), ico.idimagens_cliente_obra;
+    ORDER BY FIELD(ico.tipo_imagem, 'Fachada', 'Imagem Interna', 'Unidade', 'Imagem Externa', 'Planta Humanizada'), ico.idimagens_cliente_obra;
 ";
 
 $stmtImagens = $conn->prepare($sqlImagens);

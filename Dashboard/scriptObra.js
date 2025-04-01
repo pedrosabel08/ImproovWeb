@@ -444,6 +444,8 @@ function infosObra(obraId) {
 
             // Objeto para armazenar os status únicos
             const statusUnicos = new Set();
+            const tipoImagemUnicos = new Set();
+
 
             data.imagens.forEach(function (item) {
                 idsImagensObra.push(parseInt(item.imagem_id));
@@ -487,6 +489,7 @@ function infosObra(obraId) {
                 applyStatusImagem(cellStatus, item.imagem_status, item.descricao);
 
                 statusUnicos.add(item.imagem_status);
+                tipoImagemUnicos.add(item.tipo_imagem);
 
 
                 var cellPrazo = document.createElement('td');
@@ -520,11 +523,21 @@ function infosObra(obraId) {
                 tabela.appendChild(row);
             });
 
+            // Adiciona os valores únicos de status ao statusSelect
             statusUnicos.forEach(status => {
                 let option = document.createElement("option");
                 option.value = status;
                 option.textContent = status;
                 statusSelect.appendChild(option);
+            });
+
+            // Adiciona os valores únicos de tipo_imagem ao tipoImagemSelect
+            let tipoImagemSelect = document.getElementById("tipo_imagem"); // Certifique-se de ter um <select> com id="tipo_imagem" no HTML
+            tipoImagemUnicos.forEach(tipoImagem => {
+                let tipoOption = document.createElement("option");
+                tipoOption.value = tipoImagem;
+                tipoOption.textContent = tipoImagem;
+                tipoImagemSelect.appendChild(tipoOption);
             });
 
             filtrarTabela();
@@ -1342,13 +1355,22 @@ document.getElementById("salvar_funcoes").addEventListener("click", function (ev
     }
 });
 
+const addImagemModal = document.getElementById('add-imagem');
+const addImagem = document.getElementById('addImagem');
+addImagem.addEventListener('click', function () {
+    addImagemModal.style.display = 'flex';
+})
+
 const editArquivos = document.getElementById('editArquivos');
+const editImagesBtn = document.getElementById('editImagesBtn');
 
 const iduser = parseInt(localStorage.getItem('idusuario')); // Obtém o idusuario do localStorage
 
 
 if (![1, 2, 9].includes(iduser)) {
     editArquivos.style.display = 'none';
+    editImagesBtn.style.display = 'none';
+    addImagem.style.display = 'none';
 }
 
 const modalArquivos = document.getElementById('modalArquivos');
@@ -1919,11 +1941,6 @@ document.getElementById("saveChangesBtn").addEventListener("click", () => {
         });
 });
 
-const addImagemModal = document.getElementById('add-imagem');
-const addImagem = document.getElementById('addImagem');
-addImagem.addEventListener('click', function () {
-    addImagemModal.style.display = 'flex';
-})
 
 function submitFormImagem(event) {
     event.preventDefault();

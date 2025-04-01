@@ -33,13 +33,13 @@ if ($_SERVER["REQUEST_METHOD"] == "GET") {
      JOIN colaborador c ON h.responsavel = c.idcolaborador 
      WHERE h.funcao_imagem_id = fi.idfuncao_imagem 
      ORDER BY h.id DESC 
-     LIMIT 1) AS responsavel_aprovacao
-    -- GROUP_CONCAT(sh.descricao SEPARATOR ',') AS descricao
+     LIMIT 1) AS responsavel_aprovacao,
+    (SELECT DISTINCT GROUP_CONCAT(sh.descricao SEPARATOR ',') FROM status_hold sh JOIN imagens_cliente_obra img ON sh.imagem_id = img.idimagens_cliente_obra WHERE sh.imagem_id = $idImagemSelecionada) AS descricao  
 FROM imagens_cliente_obra img
 LEFT JOIN funcao_imagem fi ON img.idimagens_cliente_obra = fi.imagem_id
 LEFT JOIN colaborador col ON fi.colaborador_id = col.idcolaborador
 LEFT JOIN funcao f ON fi.funcao_id = f.idfuncao
--- LEFT JOIN status_hold sh ON sh.imagem_id = img.idimagens_cliente_obra
+LEFT JOIN status_hold sh ON sh.imagem_id = img.idimagens_cliente_obra
 WHERE img.idimagens_cliente_obra = $idImagemSelecionada";
 
     $resultFuncao = $conn->query($sqlFuncao);

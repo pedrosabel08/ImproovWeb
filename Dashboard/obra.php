@@ -97,16 +97,12 @@ $conn->close();
         <div class="filtro-tabela">
             <div class="filtro">
                 <select name="tipo_imagem" id="tipo_imagem">
-                    <option value="0">Tipo de imagem</option>
-                    <option value="Fachada">Fachada</option>
-                    <option value="Imagem Interna">Imagem Interna</option>
-                    <option value="Imagem Externa">Imagem Externa</option>
-                    <option value="Planta Humanizada">Planta Humanizada</option>
+                    <option value="0">Todos</option>
                 </select>
 
                 <select id="antecipada_obra">
                     <option value="">Todos as imagens</option>
-                    <!-- <option value="Antecipada">Antecipada</option> -->
+                    <option value="Antecipada">Antecipada</option>
                 </select>
 
                 <select name="imagem_status_filtro" id="imagem_status_filtro">
@@ -120,6 +116,7 @@ $conn->close();
                 <button id="editImagesBtn">Editar Imagens</button>
                 <button id="addImagem">Adicionar Imagem</button>
                 <button id="editArquivos">Editar Arquivos</button>
+                <!-- <button id="flowReviewBtn">Flow Review</button> -->
             </div>
 
             <div class="contagem_imagens">
@@ -404,12 +401,12 @@ $conn->close();
             <div class="obra-acompanhamento">
 
                 <!-- <?php
-                // Exibir somente se o usuário tiver nível de acesso 1
-                if (isset($_SESSION['logado']) && $_SESSION['logado'] === true && $_SESSION['nivel_acesso'] == 1) {
-                ?>
+                        // Exibir somente se o usuário tiver nível de acesso 1
+                        if (isset($_SESSION['logado']) && $_SESSION['logado'] === true && $_SESSION['nivel_acesso'] == 1) {
+                        ?>
                     <button id="orcamento" style="display: block;">Orçamento</button>
                 <?php
-                }
+                        }
                 ?>
                 <button id="orcamento" style="display: none;">Orçamento</button> -->
             </div>
@@ -836,7 +833,7 @@ $conn->close();
                         <input type="checkbox" name="check_planta" id="check_planta">
                     </div>
                 </div>
-                <div class="funcao" id="status_funcao" style="margin-bottom: 15px;">
+                <div class="funcao" id="status_funcao" style="margin-bottom: 15px;width: max-content;">
                     <p id="status">Status</p>
                     <select name="status_id" id="opcao_status">
                         <?php foreach ($status_imagens as $status): ?>
@@ -845,7 +842,7 @@ $conn->close();
                             </option>
                         <?php endforeach; ?>
                     </select>
-                    <select name="status_hold" id="status_hold" multiple>
+                    <select name="status_hold" id="status_hold" multiple style="width: 200px;">
                         <option value="Paisagismo">Paisagismo</option>
                         <option value="Mood">Mood</option>
                         <option value="Interiores">Interiores</option>
@@ -853,6 +850,7 @@ $conn->close();
                         <option value="Arquitetônico">Arquitetônico</option>
                         <option value="Definição de unidade">Definição de unidade</option>
                         <option value="Aguardando aprovações">Aguardando aprovações</option>
+                        <option value="Aguardando arquivos">Aguardando arquivos</option>
                     </select>
                 </div>
                 <div class="funcao" id="status_funcao" style="width: 200px; margin-bottom: 15px;">

@@ -30,13 +30,20 @@ $stmt->close();
 $novosValores = array_diff($statusHold, $valoresExistentes);
 
 if (!empty($novosValores)) {
-    // 3️⃣ Inserir apenas os novos valores
     $sqlInsert = "INSERT INTO status_hold (descricao, obra_id, imagem_id) VALUES (?, ?, ?)";
     $stmtInsert = $conn->prepare($sqlInsert);
 
+    if (!$stmtInsert) {
+        error_log("Erro ao preparar a consulta: " . $conn->error);
+        echo json_encode(["success" => false, "message" => "Erro ao preparar a consulta"]);
+        exit;
+    }
+
     foreach ($novosValores as $valor) {
-        $stmtInsert->bind_param("sii", $valor, $imagemId, $obra_id);
-        $stmtInsert->execute();
+        $stmtInsert->bind_param("sii", $valor, $obra_id, $imagemId);
+        if (!$stmtInsert->execute()) {
+            error_log("Erro ao executar a consulta: " . $stmtInsert->error);
+        }
     }
     $stmtInsert->close();
 }

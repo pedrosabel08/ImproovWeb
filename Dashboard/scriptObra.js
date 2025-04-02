@@ -441,6 +441,10 @@ function infosObra(obraId) {
 
             // Seleciona o elemento select
             const statusSelect = document.getElementById("imagem_status_filtro");
+            const tipoImagemSelect = document.getElementById("tipo_imagem"); // Certifique-se de ter um <select> com id="tipo_imagem" no HTML
+
+            tipoImagemSelect.innerHTML = '<option value="0">Todos</option>';
+            statusSelect.innerHTML = '<option value="">Selecione um status</option>';
 
             // Objeto para armazenar os status únicos
             const statusUnicos = new Set();
@@ -532,7 +536,6 @@ function infosObra(obraId) {
             });
 
             // Adiciona os valores únicos de tipo_imagem ao tipoImagemSelect
-            let tipoImagemSelect = document.getElementById("tipo_imagem"); // Certifique-se de ter um <select> com id="tipo_imagem" no HTML
             tipoImagemUnicos.forEach(tipoImagem => {
                 let tipoOption = document.createElement("option");
                 tipoOption.value = tipoImagem;
@@ -961,6 +964,7 @@ function applyStatusImagem(cell, status, descricao = '') {
             break;
         case 'APR':
             cell.style.backgroundColor = '#0c45f2';
+            cell.style.color = 'white';
             break;
         case 'APP':
             cell.style.backgroundColor = '#7d36f7';
@@ -1033,12 +1037,12 @@ function applyStatusStyle(cell, status, colaborador) {
             cell.style.color = 'white';
             break;
         case 'Em andamento':
-            cell.style.backgroundColor = 'orange';
+            cell.style.backgroundColor = '#f7eb07';
             cell.style.color = 'black';
             break;
         case 'Em aprovação':
-            cell.style.backgroundColor = 'yellow';
-            cell.style.color = 'black';
+            cell.style.backgroundColor = '#0c45f2';
+            cell.style.color = 'white';
             break;
         case 'Aprovado':
             cell.style.backgroundColor = 'lightseagreen';

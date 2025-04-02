@@ -694,7 +694,6 @@ table#tabela-obra th:first-child {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    transition: 0.3s all ease;
     text-align: center;
     resize: horizontal;
 }

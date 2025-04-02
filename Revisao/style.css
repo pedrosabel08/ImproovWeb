@@ -13,7 +13,7 @@ header {
     position: sticky;
     top: 0;
     background-color: #f1f1f1;
-    z-index: 1;
+    z-index: 100;
 }
 
 body {
@@ -400,7 +400,8 @@ nav {
     position: relative;
     display: inline-block;
     margin: 20px auto;
-    width: 70%;
+    width: 80%;
+    height: max-content;
 }
 
 
@@ -422,6 +423,8 @@ nav {
     border-radius: 5px;
     font-size: 12px;
     transition: all 0.3s ease-in-out;
+    transform: translate(-50%, -50%);
+
 }
 
 /* 
@@ -466,7 +469,37 @@ nav {
     flex-direction: column;
     gap: 10px;
     padding: 10px;
+    max-height: 80vh;
+    overflow-y: auto;
 }
+
+.comentarios::-webkit-scrollbar {
+    width: 5px;
+}
+
+.comentarios::-webkit-scrollbar-thumb {
+    background-color: #747474;
+    border-radius: 10px;
+}
+
+.comentarios::-webkit-scrollbar-track {
+    background-color: #f1f1f1;
+}
+
+body::-webkit-scrollbar {
+    width: 5px;
+}
+
+body::-webkit-scrollbar-thumb {
+    background-color: #747474;
+    border-radius: 10px;
+}
+
+body::-webkit-scrollbar-track {
+    background-color: #f1f1f1;
+}
+
+
 
 .comment-card {
     background-color: #333;

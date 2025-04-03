@@ -306,7 +306,7 @@ function atualizarModal(idImagem) {
                         });
                     }
 
-                    if (!funcao.descricao) {
+                    if (!funcao.descricao || response.status_id != 9) {
                         const statusHoldSelect = document.getElementById('status_hold'); // Seleciona o elemento <select>
                         statusHoldSelect.style.display = 'none';
                     }
@@ -970,6 +970,10 @@ function applyStatusImagem(cell, status, descricao = '') {
             cell.style.backgroundColor = '#7d36f7';
         case 'RVW':
             cell.style.backgroundColor = 'green';
+            cell.style.color = 'white';
+            break;
+        case 'OK':
+            cell.style.backgroundColor = 'cornflowerblue';
             cell.style.color = 'white';
             break;
     }

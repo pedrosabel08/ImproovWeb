@@ -789,7 +789,7 @@ $conn->close();
                             <input type="date" name="prazo_alteracao" id="prazo_alteracao">
                             <input type="text" name="obs_alteracao" id="obs_alteracao" placeholder="Observação">
                             <div class="revisao_imagem" style="display: none;">
-                                <input type="file" name="imagens[]" id="revisao_imagem_ph" accept="image/*" multiple>
+                                <input type="file" name="imagens[]" id="revisao_imagem_alt" accept="image/*" multiple>
                             </div>
                         </div>
                     </div>
@@ -824,8 +824,8 @@ $conn->close();
                             </select>
                             <input type="date" name="prazo_planta" id="prazo_planta">
                             <input type="text" name="obs_planta" id="obs_planta" placeholder="Observação">
-                            <div class="revisao_imagem" id="revisao_imagem_ph" style="display: none;">
-                                <input type="file" name="imagens[]" id="imagens" accept="image/*" multiple>
+                            <div class="revisao_imagem" style="display: none;">
+                                <input type="file" name="imagens[]" id="revisao_imagem_ph" accept="image/*" multiple>
                             </div>
                         </div>
                     </div>

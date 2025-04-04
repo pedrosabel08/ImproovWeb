@@ -1138,17 +1138,17 @@ document.getElementById("salvar_funcoes").addEventListener("click", function (ev
     var camposPrazo = form.querySelectorAll("input[type='date'][required]");
     var camposVazios = Array.from(camposPrazo).filter(input => !input.value);
 
-    var funcoesTEA = localStorage.getItem("funcoesTEA");
-    if (funcoesTEA >= 4) {
-        Swal.fire({
-            icon: 'warning', // Ícone de aviso
-            title: 'Atenção!',
-            text: 'Termine as tarefas que estão em andamento primeiro!',
-            confirmButtonText: 'Ok',
-            confirmButtonColor: '#f39c12', // Cor do botão
-        });
-        return;
-    }
+    // var funcoesTEA = localStorage.getItem("funcoesTEA");
+    // if (funcoesTEA >= 4) {
+    //     Swal.fire({
+    //         icon: 'warning', // Ícone de aviso
+    //         title: 'Atenção!',
+    //         text: 'Termine as tarefas que estão em andamento primeiro!',
+    //         confirmButtonText: 'Ok',
+    //         confirmButtonColor: '#f39c12', // Cor do botão
+    //     });
+    //     return;
+    // }
 
     if (camposVazios.length > 0) {
         Swal.fire({

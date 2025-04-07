@@ -620,6 +620,8 @@ include 'sidebar.php';
                     <option value="HOLD">HOLD</option>
                     <option value="Não se aplica">Não se aplica</option>
                     <option value="Em aprovação">Em aprovação</option>
+                    <option value="Ajuste">Ajuste</option>
+                    <option value="Aprovado">Aprovado</option>
                 </select>
             </div>
 

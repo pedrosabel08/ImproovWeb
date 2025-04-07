@@ -1690,75 +1690,44 @@ document.getElementById("adicionar_observacao").addEventListener("submit", funct
 });
 
 
-window.addEventListener('click', function (event) {
-    if (event.target == form_edicao) {
-        form_edicao.style.display = "none"
-        infosObra(obraId);
-    }
-    if (event.target == modal) {
-        modal.style.display = "none"
-    }
-    if (event.target == modalInfos) {
-        modalInfos.style.display = "none";
-    }
-    if (event.target == modalOrcamento) {
-        modalOrcamento.style.display = "none";
-    }
-    if (event.target == editImagesModal) {
-        editImagesModal.style.display = "none";
-    }
-    if (event.target == addImagemModal) {
-        addImagemModal.style.display = "none";
-    }
-    if (event.target == infosModal) {
-        infosModal.style.display = "none";
-    }
-    if (event.target == modalObs) {
-        modalObs.style.display = "none";
-    }
-    if (event.target == modalLogs) {
-        modalLogs.style.display = "none";
-    }
-    if (event.target == modalArquivos) {
-        modalArquivos.style.display = "none";
-        infosObra(obraId)
-    }
-});
+['click', 'touchstart', 'keydown'].forEach(eventType => {
+    window.addEventListener(eventType, function (event) {
+        // Fecha os modais ao clicar fora ou pressionar Esc
+        if (eventType === 'keydown' && event.key !== 'Escape') return;
 
-window.addEventListener('touchstart', function (event) {
-    if (event.target == form_edicao) {
-        form_edicao.style.display = "none"
-        infosObra(obraId);
-
-    }
-    if (event.target == modal) {
-        modal.style.display = "none"
-    }
-    if (event.target == modalInfos) {
-        modalInfos.style.display = "none";
-    }
-    if (event.target == modalOrcamento) {
-        modalOrcamento.style.display = "none";
-    }
-    if (event.target == editImagesModal) {
-        editImagesModal.style.display = "none";
-    }
-    if (event.target == addImagemModal) {
-        addImagemModal.style.display = "none";
-    }
-    if (event.target == infosModal) {
-        infosModal.style.display = "none";
-    }
-    if (event.target == modalObs) {
-        modalObs.style.display = "none";
-    }
-    if (event.target == modalLogs) {
-        modalLogs.style.display = "none";
-    }
-    if (event.target == modalArquivos) {
-        modalArquivos.style.display = "none";
-        infosObra(obraId)
-    }
+        if (event.target == form_edicao || (eventType === 'keydown' && event.key === 'Escape')) {
+            form_edicao.style.display = "none";
+            infosObra(obraId);
+        }
+        if (event.target == modal || (eventType === 'keydown' && event.key === 'Escape')) {
+            modal.style.display = "none";
+        }
+        if (event.target == modalInfos || (eventType === 'keydown' && event.key === 'Escape')) {
+            modalInfos.style.display = "none";
+        }
+        if (event.target == modalOrcamento || (eventType === 'keydown' && event.key === 'Escape')) {
+            modalOrcamento.style.display = "none";
+        }
+        if (event.target == editImagesModal || (eventType === 'keydown' && event.key === 'Escape')) {
+            editImagesModal.style.display = "none";
+        }
+        if (event.target == addImagemModal || (eventType === 'keydown' && event.key === 'Escape')) {
+            addImagemModal.style.display = "none";
+        }
+        if (event.target == infosModal || (eventType === 'keydown' && event.key === 'Escape')) {
+            infosModal.style.display = "none";
+        }
+        if (event.target == modalObs || (eventType === 'keydown' && event.key === 'Escape')) {
+            modalObs.style.display = "none";
+        }
+        if (event.target == modalLogs || (eventType === 'keydown' && event.key === 'Escape')) {
+            modalLogs.style.display = "none";
+        }
+        if (event.target == modalArquivos || (eventType === 'keydown' && event.key === 'Escape')) {
+            modalArquivos.style.display = "none";
+            infosObra(obraId);
+        }
+    });
 });
 
 

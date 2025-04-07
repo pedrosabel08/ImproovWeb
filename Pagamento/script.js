@@ -330,7 +330,7 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
     const cepCNPJ = document.getElementById("cepCNPJ").textContent.trim();
 
     const today = new Date();
-    today.setDate(today.getDate() + 1); // Adiciona 1 dia
+    today.setDate(today.getDate()); // Adiciona 1 dia
     const day = String(today.getDate()).padStart(2, '0');
 
     // Obtém o número do mês (0 = Janeiro, 11 = Dezembro)
@@ -488,7 +488,7 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
     });
 
     // totalValorExtenso = `${numeroPorExtenso(totalValor)} reais`;
-    totalValorExtenso = `Três mil reais`;
+    totalValorExtenso = `Oito mil duzentos e setenta reais`;
 
 
     // Adiciona a tabela ao documento PDF
@@ -508,10 +508,13 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
     }
 
     // Dados da nova tabela
-    const novaTabelaHeaders = ['Extra', 'Valor'];
+    // const novaTabelaHeaders = ['Extra', 'Valor'];
+    const novaTabelaHeaders = ['Categoria', 'Valor'];
     const novaTabelaBody = [
-        ['Atendimento', '3000,00'],
-        // ['Diaria Drone', '350,00'],
+        // ['Atendimento', '3000,00'],
+        ['Reembolso almoço', '220,00'],
+        ['Gasolina', '0,00'],
+        ['Diaria Drone', '0,00'],
         // ['Outros', '490,00']
     ];
 
@@ -531,7 +534,7 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
     y = doc.lastAutoTable.finalY + 20;
 
     // Parte 3: Segunda parte do contrato
-    let text6 = `Cláusula 2ª - O CONTRATADO  declara que no dia ${day} de ${currentMonthName} de 2025, recebeu do CONTRATANTE o valor de R$ ${totalValor + 3000},00 (${totalValorExtenso}), pela entrega dos serviços acima referidos, e dá a mais ampla, geral e irrestrita quitação à dívida, renunciando seu direito de cobrança relativos a tais valores. `;
+    let text6 = `Cláusula 2ª - O CONTRATADO  declara que no dia ${day} de ${currentMonthName} de 2025, recebeu do CONTRATANTE o valor de R$ ${totalValor + 220},00 (${totalValorExtenso}), pela entrega dos serviços acima referidos, e dá a mais ampla, geral e irrestrita quitação à dívida, renunciando seu direito de cobrança relativos a tais valores. `;
     // let text6 = `O CONTRATADO declara que o contrato se extingue diante deste dando a mais ampla, geral e irrestrita quitação à qualquer dívida, renunciando seu direito de cobrança relativos a quaisquer valores referentes a este contrato. `;
 
     let text7 = `E por estarem justas e perfeitamente acertadas, assinam o presente em 02 (duas) vias de igual teor e forma, vias na presença de 2 (duas) testemunhas.`;

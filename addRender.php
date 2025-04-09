@@ -61,6 +61,25 @@ if ($data && isset($data['imagem_id'])) {
             }
 
             $stmt2->close();
+
+            $stmt_update_funcao = $conn->prepare("UPDATE funcao_imagem SET status = 'Não iniciado' WHERE imagem_id = ? AND funcao_id = 5");
+            $stmt_update_funcao->bind_param("i", $imagem_id);
+            $stmt_update_funcao->execute();
+
+            // Verifica se a atualização foi bem-sucedida
+            if ($stmt_update_funcao->affected_rows > 0) {
+                echo json_encode([
+                    'status' => 'sucesso',
+                    'message' => "Status da funcao_id 5 atualizado para 'Não iniciado' para o imagem_id '$imagem_id'."
+                ]);
+            } else {
+                echo json_encode([
+                    'status' => 'aviso',
+                    'message' => "Nenhuma linha foi atualizada para funcao_id 5 no imagem_id '$imagem_id'."
+                ]);
+            }
+
+            $stmt_update_funcao->close();
         } else {
             // Confirma a transação mesmo sem atualizar o status
             $conn->commit();

@@ -28,7 +28,7 @@ if ($idusuario == 1 || $idusuario == 2) {
             LEFT JOIN colaborador c ON c.idcolaborador = f.colaborador_id
             LEFT JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
             WHERE f.funcao_id IN (1, 2, 3, 4, 5, 6, 7, 8, 9) AND f.check_funcao = 0 AND f.status = 'Em aprovação'";
-} elseif ($idusuario == 9) {
+} elseif ($idusuario == 9 || $idusuario == 20) {
     // Nicolle
     $sql = "SELECT 
         f.idfuncao_imagem,

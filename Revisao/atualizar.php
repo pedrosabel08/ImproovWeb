@@ -48,7 +48,7 @@ LEFT JOIN obra o ON i.obra_id = o.idobra
 WHERE f.funcao_id IN (1, 2, 3, 4, 5, 6, 7, 8, 9) 
   AND f.status = ?
 ORDER BY data_aprovacao DESC";
-} elseif ($idusuario == 9) {
+} elseif ($idusuario == 9 || $idusuario == 20) {
   //Nicolle
   $sql = "SELECT 
     f.idfuncao_imagem,
@@ -112,7 +112,7 @@ ORDER BY data_aprovacao DESC";
 if ($idusuario == 1 || $idusuario == 2) {
   $stmt = $conn->prepare($sql);
   $stmt->bind_param("s", $status);
-} elseif ($idusuario == 9) {
+} elseif ($idusuario == 9 || $idusuario == 20) {
   $stmt = $conn->prepare($sql);
   $stmt->bind_param("s", $status);
 } else {

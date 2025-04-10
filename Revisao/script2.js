@@ -289,7 +289,29 @@ function historyAJAX(idfuncao_imagem, funcao_nome, imagem_nome, colaborador_nome
             const imagemCompletaDiv = document.getElementById("imagem_completa");
             imagemCompletaDiv.innerHTML = '';
 
+            const containersPorIndice = {}; // Mapa para armazenar containers por indice_envio
+
             imagens.forEach(img => {
+                const indice = img.indice_envio;
+
+                // Verifica se já criamos um container para esse índice
+                if (!containersPorIndice[indice]) {
+                    // Cria o container para esse índice
+                    const indiceWrapper = document.createElement('div');
+                    indiceWrapper.className = 'indice-wrapper';
+
+                    const titulo = document.createElement('h3');
+                    titulo.textContent = `Envio ${indice}`;
+                    titulo.className = 'indice-titulo';
+
+                    indiceWrapper.appendChild(titulo);
+                    imageContainer.appendChild(indiceWrapper);
+
+                    // Armazena o wrapper no mapa
+                    containersPorIndice[indice] = indiceWrapper;
+                }
+
+                // Agora adiciona a imagem no container correto
                 const wrapper = document.createElement('div');
                 wrapper.className = 'imageWrapper';
 
@@ -303,9 +325,17 @@ function historyAJAX(idfuncao_imagem, funcao_nome, imagem_nome, colaborador_nome
                     mostrarImagemCompleta(imgElement.src, img.id);
                 });
 
-                wrapper.appendChild(imgElement);
-                imageContainer.appendChild(wrapper);
+                if (img.has_comments === "1" || img.has_comments === 1) {
+                    const notificationDot = document.createElement('div');
+                    notificationDot.className = 'notification-dot';
+                    notificationDot.textContent = `${img.comment_count}`;
+                    wrapper.appendChild(notificationDot);
+                }
 
+                wrapper.appendChild(imgElement);
+
+                // Adiciona no grupo correspondente
+                containersPorIndice[indice].appendChild(wrapper);
             });
 
         })

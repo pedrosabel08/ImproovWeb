@@ -269,7 +269,7 @@ function historyAJAX(idfuncao_imagem, funcao_nome, imagem_nome, colaborador_nome
 
             historico.forEach(historico => {
 
-                if ([1, 2, 9, 20].includes(idusuario)) { // Verifica se o idusuario é 1, 2 ou 9
+                if ([1, 2, 9, 20, 3].includes(idusuario)) { // Verifica se o idusuario é 1, 2 ou 9
                     document.getElementById('buttons-task').innerHTML = `
                         <button class="action-btn tooltip" id="add_obs" onclick="addObservacao(${historico.id})" data-tooltip="Adicionar Observação">
                             <i class="fa-solid fa-plus"></i>
@@ -345,7 +345,7 @@ function mostrarImagemCompleta(src, id) {
 
     imgElement.addEventListener('click', async function (event) {
 
-        if (![1, 2, 9, 20].includes(idusuario)) {
+        if (![1, 2, 9, 20, 3].includes(idusuario)) {
             return;
         }
         const rect = imgElement.getBoundingClientRect();

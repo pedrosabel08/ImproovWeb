@@ -698,6 +698,10 @@ table#tabela-obra th:first-child {
     resize: horizontal;
 }
 
+table#tabela-obra tbody td:nth-child(3) {
+    font-size: 13px;
+}
+
 
 td {
     overflow: hidden;

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Produção Mensal</title>
+    <style>
+        table,
+        th,
+        td {
+            border: 1px solid black;
+            border-collapse: collapse;
+            padding: 8px;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>Total Produção - Mês: <span id="mesSelecionado">Abril</span></h2>
+
+    <label for="mes">Selecione o mês:</label>
+    <select id="mes" onchange="buscarDados()">
+        <option value="01">Janeiro</option>
+        <option value="02">Fevereiro</option>
+        <option value="03">Março</option>
+        <option value="04" selected>Abril</option>
+        <option value="05">Maio</option>
+        <option value="06">Junho</option>
+        <option value="07">Julho</option>
+        <option value="08">Agosto</option>
+        <option value="09">Setembro</option>
+        <option value="10">Outubro</option>
+        <option value="11">Novembro</option>
+        <option value="12">Dezembro</option>
+    </select>
+
+    <br><br>
+
+    <table id="tabelaProducao">
+        <thead>
+            <tr>
+                <th>Colaborador</th>
+                <th>Função</th>
+                <th>Valor Total</th>
+                <th>Data Pagamento</th>
+                <th>Quantidade</th>
+                <th>Mês Anterior</th>
+                <th>Recorde de Produção</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Dados virão via AJAX -->
+        </tbody>
+    </table>
+
+    <h2>Total de produção mês: <span id="mesSelecionadoFuncao">---</span></h2>
+
+    <label for="mesFuncao">Selecione o mês:</label>
+    <select id="mesFuncao" onchange="buscarDadosFuncao()">
+        <option value="1">Janeiro</option>
+        <option value="2">Fevereiro</option>
+        <option value="3">Março</option>
+        <option value="4" selected>Abril</option>
+        <option value="5">Maio</option>
+        <option value="6">Junho</option>
+        <option value="7">Julho</option>
+        <option value="8">Agosto</option>
+        <option value="9">Setembro</option>
+        <option value="10">Outubro</option>
+        <option value="11">Novembro</option>
+        <option value="12">Dezembro</option>
+    </select>
+
+    <table id="tabelaFuncao">
+        <thead>
+            <tr>
+                <th>Processo</th>
+                <th>Quantidade</th>
+                <th>Valor</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- conteúdo JS -->
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="2"><strong>Valor total:</strong></td>
+                <td id="valorTotal"><strong>R$ 0,00</strong></td>
+            </tr>
+        </tfoot>
+    </table>
+
+    <script src="script.js"></script>
+</body>
+
+</html>

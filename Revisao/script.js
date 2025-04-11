@@ -590,6 +590,23 @@ btnBack.addEventListener('click', function () {
     comentariosDiv.innerHTML = '';
 });
 
+// Adiciona o evento para a tecla Esc
+document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape') { // Verifica se a tecla pressionada é Esc
+        const main = document.querySelector('.main');
+        main.classList.remove('hidden');
+
+        const container_aprovacao = document.querySelector('.container-aprovacao');
+        container_aprovacao.classList.add('hidden');
+
+        const imagemCompletaDiv = document.getElementById("imagem_completa");
+        imagemCompletaDiv.innerHTML = '';
+
+        const comentariosDiv = document.querySelector(".comentarios");
+        comentariosDiv.innerHTML = '';
+    }
+});
+
 const id_revisao = document.getElementById('id_revisao');
 
 // function addObservacao(id) {

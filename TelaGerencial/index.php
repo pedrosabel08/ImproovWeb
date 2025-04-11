@@ -1,8 +1,17 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 
-
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="../css/styleSidebar.css">
+    <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
+    type="image/x-icon">
+    <title>Tela Gerencial</title>
+</head>
 <?php
+session_start();
+include '../conexao.php'; // Inclui o arquivo de conexão com mysqli
 include '../conexaoMain.php';
 
 $conn = conectarBanco();
@@ -16,137 +25,99 @@ $funcoes = obterFuncoes($conn);
 $conn->close();
 ?>
 
-<head>
-    <meta charset="UTF-8">
-    <title>Resumo por Colaborador e Mês</title>
-    <style>
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-
-        th,
-        td {
-            border: 1px solid #ccc;
-            padding: 8px;
-        }
-
-        th {
-            background-color: #f4f4f4;
-        }
-    </style>
-</head>
-
 <body>
+    <?php
 
-    <h2>Resumo por Colaborador</h2>
+    include '../sidebar.php';
 
-    <label for="colaborador">Selecione um colaborador:</label>
-    <select id="colaborador">
-        <?php foreach ($colaboradores as $colab): ?>
-            <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                <?= htmlspecialchars($colab['nome_colaborador']); ?>
-            </option>
-        <?php endforeach; ?>
-    </select>
+    ?>
+    <div class="container">
+        <header>
+            <img src="../gif/assinatura_preto.gif" alt="" style="width: 200px;">
+        </header>
 
-    <table id="tabelaResumo" style="display:none;">
-        <thead>
-            <tr>
-                <th>Função</th>
-                <th>Mês/Ano</th>
-                <th>Total Valor</th>
-                <th>Total Quantidade</th>
-                <th>Mês anterior</th>
-                <th>Recorde Produção</th>
-            </tr>
-        </thead>
-        <tbody></tbody>
-    </table>
+        <div class="select">
 
-    <h2>Resumo por Mês</h2>
+            <h2>Total Produção - Mês: <span id="mesSelecionado">Abril</span></h2>
 
-    <label for="mes">Selecione um mês:</label>
-    <select id="mes">
-        <option value="">Selecione</option>
-        <?php for ($i = 1; $i <= 12; $i++): ?>
-            <option value="<?= $i; ?>"><?= DateTime::createFromFormat('!m', $i)->format('F'); ?></option>
-        <?php endfor; ?>
-    </select>
+            <label for="mes">Selecione o mês:</label>
+            <select id="mes" onchange="buscarDados()">
+                <option value="01">Janeiro</option>
+                <option value="02">Fevereiro</option>
+                <option value="03">Março</option>
+                <option value="04" selected>Abril</option>
+                <option value="05">Maio</option>
+                <option value="06">Junho</option>
+                <option value="07">Julho</option>
+                <option value="08">Agosto</option>
+                <option value="09">Setembro</option>
+                <option value="10">Outubro</option>
+                <option value="11">Novembro</option>
+                <option value="12">Dezembro</option>
+            </select>
+        </div>
 
-    <table id="tabelaResumoMes" style="display:none;">
-        <thead>
-            <tr>
-                <th>Função</th>
-                <th>Total Quantidade</th>
-                <th>Total Valor</th>
-            </tr>
-        </thead>
-        <tbody></tbody>
-    </table>
+        <table id="tabelaProducao">
+            <thead>
+                <tr>
+                    <th>Colaborador</th>
+                    <th>Função</th>
+                    <th>Valor Total</th>
+                    <th>Data Pagamento</th>
+                    <th>Quantidade</th>
+                    <th>Mês Anterior</th>
+                    <th>Recorde de Produção</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Dados virão via AJAX -->
+            </tbody>
+        </table>
 
-    <script>
-        const selectColaborador = document.getElementById('colaborador');
-        const tabelaColaborador = document.getElementById('tabelaResumo');
-        const tbodyColaborador = tabelaColaborador.querySelector('tbody');
+        <div class="select">
 
-        const selectMes = document.getElementById('mes');
-        const tabelaMes = document.getElementById('tabelaResumoMes');
-        const tbodyMes = tabelaMes.querySelector('tbody');
+            <h2>Total de produção mês: <span id="mesSelecionadoFuncao">---</span></h2>
 
-        selectColaborador.addEventListener('change', () => {
-            const nome = selectColaborador.value;
-            if (!nome) {
-                tabelaColaborador.style.display = 'none';
-                return;
-            }
+            <label for="mesFuncao">Selecione o mês:</label>
+            <select id="mesFuncao" onchange="buscarDadosFuncao()">
+                <option value="1">Janeiro</option>
+                <option value="2">Fevereiro</option>
+                <option value="3">Março</option>
+                <option value="4" selected>Abril</option>
+                <option value="5">Maio</option>
+                <option value="6">Junho</option>
+                <option value="7">Julho</option>
+                <option value="8">Agosto</option>
+                <option value="9">Setembro</option>
+                <option value="10">Outubro</option>
+                <option value="11">Novembro</option>
+                <option value="12">Dezembro</option>
+            </select>
 
-            fetch(`backend.php?colaborador=${encodeURIComponent(nome)}`)
-                .then(res => res.json())
-                .then(data => {
-                    tbodyColaborador.innerHTML = '';
-                    data.forEach(item => {
-                        const tr = document.createElement('tr');
-                        tr.innerHTML = `
-                            <td>${item.nome_funcao}</td>
-                            <td>${item.data_pagamento}</td>
-                            <td>R$ ${Number(item.total_valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                            <td>${item.quantidade}</td>
-                            <td>${item.quantidade_mes_anterior}</td>
-                            <td>${item.recorde}</td>
-                        `;
-                        tbodyColaborador.appendChild(tr);
-                    });
-                    tabelaColaborador.style.display = '';
-                });
-        });
+            <table id="tabelaFuncao">
+                <thead>
+                    <tr>
+                        <th>Processo</th>
+                        <th>Quantidade</th>
+                        <th>Valor</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- conteúdo JS -->
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="2"><strong>Valor total:</strong></td>
+                        <td id="valorTotal"><strong>R$ 0,00</strong></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
 
-        selectMes.addEventListener('change', () => {
-            const mes = selectMes.value;
-            if (!mes) {
-                tabelaMes.style.display = 'none';
-                return;
-            }
 
-            fetch(`backend.php?mes=${encodeURIComponent(mes)}`)
-                .then(res => res.json())
-                .then(data => {
-                    tbodyMes.innerHTML = '';
-                    data.forEach(item => {
-                        const tr = document.createElement('tr');
-                        tr.innerHTML = `
-                            <td>${item.nome_funcao}</td>
-                            <td>${item.quantidade}</td>
-                            <td>R$ ${Number(item.total_valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                        `;
-                        tbodyMes.appendChild(tr);
-                    });
-                    tabelaMes.style.display = '';
-                });
-        });
-    </script>
-
+    <script src="script.js"></script>
+    <script src="../script/sidebar.js"></script>
 </body>
 
 </html>

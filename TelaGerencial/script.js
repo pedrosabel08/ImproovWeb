@@ -1,3 +1,10 @@
+function formatarData(data) {
+    const partes = data.split("-");
+    const dataFormatada = `${partes[2]}/${partes[1]}/${partes[0]}`;
+    return dataFormatada;
+}
+
+
 function buscarDados() {
     const mes = document.getElementById('mes').value;
     const nomeMeses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
@@ -15,7 +22,7 @@ function buscarDados() {
             <td>${linha.nome_colaborador}</td>
             <td>${linha.nome_funcao}</td>
             <td>R$ ${parseFloat(linha.total_valor).toFixed(2)}</td>
-            <td>${linha.data_pagamento}</td>
+            <td>${formatarData(linha.data_pagamento)}</td>
             <td>${linha.quantidade}</td>
             <td>${linha.mes_anterior}</td>
             <td>${linha.recorde_producao}</td>

@@ -1,31 +1,58 @@
 <?php
 include '../conexao.php'; // Inclui o arquivo de conexão com mysqli
 
-// Pega o mês atual selecionado
-$mes = $_GET['mes'] ?? date('m');
+// Verifica os parâmetros recebidos
+$mes = $_GET['mes'] ?? null;
+$data = $_GET['data'] ?? null;
+$inicio = $_GET['inicio'] ?? null;
+$fim = $_GET['fim'] ?? null;
 
-// 1. Busca os dados do mês selecionado
-$sql = "SELECT 
-    f.nome_funcao, 
-    COUNT(*) AS quantidade
-  FROM funcao_imagem fi 
-  JOIN funcao f ON f.idfuncao = fi.funcao_id
-  WHERE MONTH(fi.prazo) = ? AND YEAR(fi.prazo) = YEAR(CURDATE()) AND (status = 'Finalizado' OR status = 'Em aprovação' OR status = 'Ajuste' OR status = 'Aprovado')
-  GROUP BY f.nome_funcao";
-$stmt = $conn->prepare($sql); // Usa a conexão do arquivo conexao.php
-$stmt->bind_param("i", $mes);
-$stmt->execute();
-$result = $stmt->get_result();
-$dadosMesAtual = $result->fetch_all(MYSQLI_ASSOC);
-
-$resultado = [];
-foreach ($dadosMesAtual as $linha) {
-    $colaborador = $linha['nome_colaborador'];
-    $funcao = $linha['nome_funcao'];
-    $chave = $colaborador . '_' . $funcao;
-
-
-    $resultado[] = $linha;
+if ($mes) {
+  // Filtro por mês
+  $sql = "SELECT 
+                f.nome_funcao, 
+                COUNT(*) AS quantidade
+            FROM funcao_imagem fi 
+            JOIN funcao f ON f.idfuncao = fi.funcao_id
+            WHERE MONTH(fi.prazo) = ? AND YEAR(fi.prazo) = YEAR(CURDATE()) 
+                AND (status <> 'Não iniciado' OR status IS NULL)
+            GROUP BY f.nome_funcao";
+  $stmt = $conn->prepare($sql);
+  $stmt->bind_param("i", $mes);
+} elseif ($data) {
+  // Filtro por dia específico
+  $sql = "SELECT 
+                f.nome_funcao, 
+                COUNT(*) AS quantidade
+            FROM funcao_imagem fi 
+            JOIN funcao f ON f.idfuncao = fi.funcao_id
+            WHERE DATE(fi.prazo) = ? 
+                AND (status <> 'Não iniciado' OR status IS NULL)
+            GROUP BY f.nome_funcao";
+  $stmt = $conn->prepare($sql);
+  $stmt->bind_param("s", $data);
+} elseif ($inicio && $fim) {
+  // Filtro por intervalo de semana
+  $sql = "SELECT 
+                f.nome_funcao, 
+                COUNT(*) AS quantidade
+            FROM funcao_imagem fi 
+            JOIN funcao f ON f.idfuncao = fi.funcao_id
+            WHERE DATE(fi.prazo) BETWEEN ? AND ? 
+                AND (status <> 'Não iniciado' OR status IS NULL)
+            GROUP BY f.nome_funcao";
+  $stmt = $conn->prepare($sql);
+  $stmt->bind_param("ss", $inicio, $fim);
+} else {
+  // Caso nenhum parâmetro válido seja enviado
+  echo json_encode(["error" => "Parâmetros inválidos"]);
+  exit;
 }
 
-echo json_encode($resultado);
+// Executa a consulta
+$stmt->execute();
+$result = $stmt->get_result();
+$dados = $result->fetch_all(MYSQLI_ASSOC);
+
+// Retorna os dados em formato JSON
+echo json_encode($dados);

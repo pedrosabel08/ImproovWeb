@@ -6,7 +6,7 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="../css/styleSidebar.css">
     <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
-    type="image/x-icon">
+        type="image/x-icon">
     <title>Tela Gerencial</title>
 </head>
 <?php
@@ -75,6 +75,12 @@ $conn->close();
         </table>
 
         <div class="select">
+
+            <select name="tipo" id="tipo" onchange="filtrarPorTipo()">
+                <option value="mes_tipo" selected>Mês</option>
+                <option value="semana_tipo">Semana</option>
+                <option value="dia_tipo">Dia Anterior</option>
+            </select>
 
             <h2>Total de produção mês: <span id="mesSelecionadoFuncao">---</span></h2>
 

@@ -82,9 +82,9 @@ $conn->close();
                 <option value="dia_tipo">Dia Anterior</option>
             </select>
 
-            <h2>Total de produção mês: <span id="mesSelecionadoFuncao">---</span></h2>
+            <h2 id="total_producao">Total de produção <span id="mesSelecionadoFuncao">---</span></h2>
 
-            <label for="mesFuncao">Selecione o mês:</label>
+            <label id="labelMesFuncao" for="mesFuncao">Selecione o mês:</label>
             <select id="mesFuncao" onchange="buscarDadosFuncao()">
                 <option value="1">Janeiro</option>
                 <option value="2">Fevereiro</option>
@@ -109,7 +109,6 @@ $conn->close();
                     </tr>
                 </thead>
                 <tbody>
-                    <!-- conteúdo JS -->
                 </tbody>
                 <tfoot>
                     <tr>

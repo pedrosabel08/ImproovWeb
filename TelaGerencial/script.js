@@ -42,7 +42,7 @@ const valoresPorFuncao = {
     "alteração": 0,
     "composição": 50,
     "modelagem": 50,
-    "finalização": 300,
+    "finalização": 350,
     "pré-finalização": 140,
     "pós-produção": 60
 };
@@ -69,6 +69,10 @@ function buscarDadosPorDiaAnterior() {
     const mes = (diaAnterior.getMonth() + 1).toString().padStart(2, '0');
     const ano = diaAnterior.getFullYear();
 
+    document.getElementById("mesSelecionadoFuncao").innerText = `do dia ${dia}/${mes}/${ano}`; // Atualiza o mês selecionado
+    document.getElementById("labelMesFuncao").style.display = "none";
+    document.getElementById("mesFuncao").style.display = "none";
+    
     fetch(`buscar_producao_funcao.php?data=${ano}-${mes}-${dia}`)
         .then(res => res.json())
         .then(data => {
@@ -110,6 +114,11 @@ function buscarDadosPorSemana() {
     const inicio = `${inicioSemana.getFullYear()}-${(inicioSemana.getMonth() + 1).toString().padStart(2, '0')}-${inicioSemana.getDate().toString().padStart(2, '0')}`;
     const fim = `${fimSemana.getFullYear()}-${(fimSemana.getMonth() + 1).toString().padStart(2, '0')}-${fimSemana.getDate().toString().padStart(2, '0')}`;
 
+    document.getElementById("mesSelecionadoFuncao").innerText = `de ${formatarData(inicio)} até ${formatarData(fim)}`; // Atualiza o mês selecionado
+    document.getElementById("labelMesFuncao").style.display = "none";
+    document.getElementById("mesFuncao").style.display = "none";
+
+
     fetch(`buscar_producao_funcao.php?inicio=${inicio}&fim=${fim}`)
         .then(res => res.json())
         .then(data => {
@@ -143,8 +152,10 @@ function buscarDadosPorSemana() {
 function buscarDadosFuncao() {
     const mes = document.getElementById('mesFuncao').value;
     const nomeMeses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
-    document.getElementById("mesSelecionadoFuncao").innerText = nomeMeses[parseInt(mes) - 1];
+    document.getElementById("mesSelecionadoFuncao").innerText = `mês: ${nomeMeses[parseInt(mes) - 1]}`;
 
+    document.getElementById("labelMesFuncao").style.display = "flex";
+    document.getElementById("mesFuncao").style.display = "flex";
 
     fetch(`buscar_producao_funcao.php?mes=${mes}`)
         .then(res => res.json())

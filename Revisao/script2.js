@@ -264,11 +264,12 @@ function historyAJAX(idfuncao_imagem, funcao_nome, imagem_nome, colaborador_nome
             const container_aprovacao = document.querySelector('.container-aprovacao');
             container_aprovacao.classList.remove('hidden');
 
+
             const { historico, imagens } = response;
 
             historico.forEach(historico => {
 
-                if ([1, 2, 9].includes(idusuario)) { // Verifica se o idusuario é 1, 2 ou 9
+                if ([1, 2, 9, 20, 3].includes(idusuario)) { // Verifica se o idusuario é 1, 2 ou 9
                     document.getElementById('buttons-task').innerHTML = `
                         <button class="action-btn tooltip" id="add_obs" onclick="addObservacao(${historico.id})" data-tooltip="Adicionar Observação">
                             <i class="fa-solid fa-plus"></i>
@@ -288,30 +289,11 @@ function historyAJAX(idfuncao_imagem, funcao_nome, imagem_nome, colaborador_nome
             imageContainer.innerHTML = ''; // Limpa as imagens anteriores
             const imagemCompletaDiv = document.getElementById("imagem_completa");
             imagemCompletaDiv.innerHTML = '';
+            const commentDiv = document.querySelector('.sidebar-direita');
+            commentDiv.style.display = 'none';
 
-            const containersPorIndice = {}; // Mapa para armazenar containers por indice_envio
 
             imagens.forEach(img => {
-                const indice = img.indice_envio;
-
-                // Verifica se já criamos um container para esse índice
-                if (!containersPorIndice[indice]) {
-                    // Cria o container para esse índice
-                    const indiceWrapper = document.createElement('div');
-                    indiceWrapper.className = 'indice-wrapper';
-
-                    const titulo = document.createElement('h3');
-                    titulo.textContent = `Envio ${indice}`;
-                    titulo.className = 'indice-titulo';
-
-                    indiceWrapper.appendChild(titulo);
-                    imageContainer.appendChild(indiceWrapper);
-
-                    // Armazena o wrapper no mapa
-                    containersPorIndice[indice] = indiceWrapper;
-                }
-
-                // Agora adiciona a imagem no container correto
                 const wrapper = document.createElement('div');
                 wrapper.className = 'imageWrapper';
 
@@ -325,22 +307,88 @@ function historyAJAX(idfuncao_imagem, funcao_nome, imagem_nome, colaborador_nome
                     mostrarImagemCompleta(imgElement.src, img.id);
                 });
 
+                imgElement.addEventListener('contextmenu', (event) => {
+                    event.preventDefault();
+
+                    const imgId = imgElement.getAttribute('data-id');
+                    const imgSrc = imgElement.src;
+
+                    abrirMenuContexto(event.pageX, event.pageY, imgId, imgSrc);
+                });
+
                 if (img.has_comments === "1" || img.has_comments === 1) {
                     const notificationDot = document.createElement('div');
                     notificationDot.className = 'notification-dot';
-                    notificationDot.textContent = `${img.comment_count}`;
+                    notificationDot.textContent = `${img.comment_count}`; // Exibe a quantidade de comentários como tooltip
                     wrapper.appendChild(notificationDot);
                 }
 
                 wrapper.appendChild(imgElement);
+                imageContainer.appendChild(wrapper);
 
-                // Adiciona no grupo correspondente
-                containersPorIndice[indice].appendChild(wrapper);
             });
 
         })
         .catch(error => console.error("Erro ao buscar dados:", error));
 }
+
+function abrirMenuContexto(x, y, id, src) {
+    const menu = document.getElementById('menuContexto');
+
+    // Coloca info da imagem (caso precise usar depois)
+    menu.setAttribute('data-id', id);
+    menu.setAttribute('data-src', src);
+
+    menu.style.top = `${y}px`;
+    menu.style.left = `${x}px`;
+    menu.style.display = 'block';
+}
+
+function excluirImagem() {
+    const menu = document.getElementById('menuContexto');
+    const idImagem = menu.getAttribute('data-id');
+
+    if (!idImagem) {
+        alert("ID da imagem não encontrado!");
+        return;
+    }
+
+    if (confirm("Tem certeza que deseja excluir esta imagem?")) {
+        fetch('excluir_imagem.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `id=${idImagem}`
+        })
+            .then(response => response.text())
+            .then(data => {
+                console.log(data);
+                // Remove a imagem da tela também, se quiser
+                const imgElement = document.querySelector(`img[data-id='${idImagem}']`);
+                if (imgElement) {
+                    imgElement.parentElement.remove(); // Remove o wrapper da imagem
+                }
+                // Esconde o menu
+                menu.style.display = 'none';
+            })
+            .catch(error => {
+                console.error('Erro ao excluir imagem:', error);
+                alert("Erro ao excluir imagem.");
+            });
+    } else {
+        // Fecha o menu caso cancele
+        menu.style.display = 'none';
+    }
+}
+
+document.addEventListener('click', (e) => {
+    const menu = document.getElementById('menuContexto');
+    if (!menu.contains(e.target)) {
+        menu.style.display = 'none';
+    }
+});
+
 
 
 let ap_imagem_id = null; // Variável para armazenar o ID da imagem atual
@@ -349,6 +397,8 @@ function mostrarImagemCompleta(src, id) {
     ap_imagem_id = id; // Armazena o id da imagem clicada
     const imagemCompletaDiv = document.getElementById("imagem_completa");
     imagemCompletaDiv.innerHTML = '';
+    const commentDiv = document.querySelector('.sidebar-direita');
+    commentDiv.style.display = 'block';
 
     const imgElement = document.createElement("img");
     imgElement.src = src;
@@ -363,7 +413,7 @@ function mostrarImagemCompleta(src, id) {
 
     imgElement.addEventListener('click', async function (event) {
 
-        if (![1, 2, 9].includes(idusuario)) {
+        if (![1, 2, 9, 20, 3].includes(idusuario)) {
             return;
         }
         const rect = imgElement.getBoundingClientRect();
@@ -372,6 +422,7 @@ function mostrarImagemCompleta(src, id) {
 
         const commentText = prompt("Digite seu comentário:");
         if (commentText) {
+
             const comentario = { ap_imagem_id, x: relativeX, y: relativeY, texto: commentText };
 
             console.log('Comentário:', comentario);
@@ -388,11 +439,25 @@ function mostrarImagemCompleta(src, id) {
                 if (result.sucesso) {
                     addComment(relativeX, relativeY);
 
-                    alert('Comentário salvo com sucesso!');
+                    Toastify({
+                        text: 'Comentário adicionado com sucesso!',
+                        duration: 3000,
+                        backgroundColor: 'green',
+                        close: true,
+                        gravity: "top",
+                        position: "left"
+                    }).showToast();
                     renderComments(ap_imagem_id); // Atualiza a lista de comentários
 
                 } else {
-                    alert('Erro ao salvar o comentário.');
+                    Toastify({
+                        text: 'Erro ao salvar comentário!',
+                        duration: 3000,
+                        backgroundColor: 'red',
+                        close: true,
+                        gravity: "top",
+                        position: "left"
+                    }).showToast();
                 }
             } catch (error) {
                 console.error('Erro na requisição:', error);
@@ -517,9 +582,23 @@ async function updateComment(commentId, novoTexto) {
 
         const result = await response.json();
         if (result.sucesso) {
-            alert('Comentário atualizado com sucesso!');
+            Toastify({
+                text: 'Comentário atualizado com sucesso!',
+                duration: 3000,
+                backgroundColor: 'green',
+                close: true,
+                gravity: "top",
+                position: "left"
+            }).showToast();
         } else {
-            alert('Erro ao atualizar o comentário.');
+            Toastify({
+                text: 'Erro ao atualizar comentário!',
+                duration: 3000,
+                backgroundColor: 'green',
+                close: true,
+                gravity: "top",
+                position: "left"
+            }).showToast();
         }
     } catch (error) {
         console.error('Erro ao atualizar comentário:', error);
@@ -538,11 +617,24 @@ async function deleteComment(commentId) {
 
         const result = await response.json();
         if (result.sucesso) {
-            alert('Comentário excluído com sucesso!');
-
+            Toastify({
+                text: 'Comentário excluído com sucesso!',
+                duration: 3000,
+                backgroundColor: 'green',
+                close: true,
+                gravity: "top",
+                position: "left"
+            }).showToast();
             renderComments(ap_imagem_id); // Atualiza a lista de comentários
         } else {
-            alert('Erro ao excluir o comentário.');
+            Toastify({
+                text: 'Erro ao excluir comentário!',
+                duration: 3000,
+                backgroundColor: 'green',
+                close: true,
+                gravity: "top",
+                position: "left"
+            }).showToast();
         }
     } catch (error) {
         console.error('Erro ao excluir comentário:', error);
@@ -564,6 +656,23 @@ btnBack.addEventListener('click', function () {
 
     const comentariosDiv = document.querySelector(".comentarios");
     comentariosDiv.innerHTML = '';
+});
+
+// Adiciona o evento para a tecla Esc
+document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape') { // Verifica se a tecla pressionada é Esc
+        const main = document.querySelector('.main');
+        main.classList.remove('hidden');
+
+        const container_aprovacao = document.querySelector('.container-aprovacao');
+        container_aprovacao.classList.add('hidden');
+
+        const imagemCompletaDiv = document.getElementById("imagem_completa");
+        imagemCompletaDiv.innerHTML = '';
+
+        const comentariosDiv = document.querySelector(".comentarios");
+        comentariosDiv.innerHTML = '';
+    }
 });
 
 const id_revisao = document.getElementById('id_revisao');

@@ -28,6 +28,7 @@ $idusuario = $_SESSION['idusuario'];
     <link rel="stylesheet" href="../css/styleSidebar.css">
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
     <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
 
     <title>Revisão de Tarefas</title>
 </head>
@@ -126,58 +127,16 @@ $idusuario = $_SESSION['idusuario'];
             </div>
         </div>
     </div>
-
-
-    </div>
-
-    <!-- <div id="historico_modal" style="display: none;">
-        <div class="historico-container">
-            <div class="task-info" id="task-info">
-                <h3 id="funcao_nome"></h3>
-                <h3 id="colaborador_nome"></h3>
-                <p id="imagem_nome"></p>
-                <div id="buttons-task">
-
-                </div>
-                <table id="tabelaHistorico" class="display" style="font-size: 12px; width: 0px;">
-                    <thead>
-                        <tr>
-                            <th>Status Anterior</th>
-                            <th>Status Novo</th>
-                            <th>Data Aprovação</th>
-                            <th>Responsável</th>
-                            <th>Observações</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-            </div>
-            <div id="imageContainer">
-                <div id="imagens"></div>
-
-                <div id="imagem_completa">
-                    <div id="imagem_atual"></div>
-                </div>
-            </div>
-        </div>
-
-        <div class="historico-add hidden" style="width: 500px;">
-            <form id="adicionar_obs">
-                <h3>Adicionar Observação</h3>
-                <p>ID da revisão: <span id="id_revisao"></span></p>
-                <input type="hidden" id="id_funcao">
-                <div id="text_obs"></div>
-
-                <button id="submit" type="submit">Enviar</button>
-            </form>
-        </div>
-    </div> -->
+    <ul id="menuContexto">
+        <li onclick="excluirImagem()">Excluir <span>🗑️</span></li>
+    </ul>
 
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
 
-    <script src="script.js"></script>
+    <script src="script2.js"></script>
     <script src="../script/sidebar.js"></script>
 
 </body>

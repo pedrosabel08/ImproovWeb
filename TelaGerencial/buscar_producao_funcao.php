@@ -39,7 +39,7 @@ if ($mes) {
             FROM funcao_imagem fi 
             JOIN funcao f ON f.idfuncao = fi.funcao_id
             WHERE DATE(fi.prazo) BETWEEN ? AND ? 
-                AND (status <> 'Não iniciado' OR status IS NULL)
+                AND (status = 'Não iniciado' OR status IS NULL)
             GROUP BY f.nome_funcao";
   $stmt = $conn->prepare($sql);
   $stmt->bind_param("ss", $inicio, $fim);

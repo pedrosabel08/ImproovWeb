@@ -292,6 +292,7 @@ function historyAJAX(idfuncao_imagem, funcao_nome, imagem_nome, colaborador_nome
             const commentDiv = document.querySelector('.sidebar-direita');
             commentDiv.style.display = 'none';
 
+
             imagens.forEach(img => {
                 const wrapper = document.createElement('div');
                 wrapper.className = 'imageWrapper';
@@ -304,6 +305,15 @@ function historyAJAX(idfuncao_imagem, funcao_nome, imagem_nome, colaborador_nome
 
                 imgElement.addEventListener('click', (event) => {
                     mostrarImagemCompleta(imgElement.src, img.id);
+                });
+
+                imgElement.addEventListener('contextmenu', (event) => {
+                    event.preventDefault();
+
+                    const imgId = imgElement.getAttribute('data-id');
+                    const imgSrc = imgElement.src;
+
+                    abrirMenuContexto(event.pageX, event.pageY, imgId, imgSrc);
                 });
 
                 if (img.has_comments === "1" || img.has_comments === 1) {
@@ -321,6 +331,64 @@ function historyAJAX(idfuncao_imagem, funcao_nome, imagem_nome, colaborador_nome
         })
         .catch(error => console.error("Erro ao buscar dados:", error));
 }
+
+function abrirMenuContexto(x, y, id, src) {
+    const menu = document.getElementById('menuContexto');
+
+    // Coloca info da imagem (caso precise usar depois)
+    menu.setAttribute('data-id', id);
+    menu.setAttribute('data-src', src);
+
+    menu.style.top = `${y}px`;
+    menu.style.left = `${x}px`;
+    menu.style.display = 'block';
+}
+
+function excluirImagem() {
+    const menu = document.getElementById('menuContexto');
+    const idImagem = menu.getAttribute('data-id');
+
+    if (!idImagem) {
+        alert("ID da imagem não encontrado!");
+        return;
+    }
+
+    if (confirm("Tem certeza que deseja excluir esta imagem?")) {
+        fetch('excluir_imagem.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `id=${idImagem}`
+        })
+            .then(response => response.text())
+            .then(data => {
+                console.log(data);
+                // Remove a imagem da tela também, se quiser
+                const imgElement = document.querySelector(`img[data-id='${idImagem}']`);
+                if (imgElement) {
+                    imgElement.parentElement.remove(); // Remove o wrapper da imagem
+                }
+                // Esconde o menu
+                menu.style.display = 'none';
+            })
+            .catch(error => {
+                console.error('Erro ao excluir imagem:', error);
+                alert("Erro ao excluir imagem.");
+            });
+    } else {
+        // Fecha o menu caso cancele
+        menu.style.display = 'none';
+    }
+}
+
+document.addEventListener('click', (e) => {
+    const menu = document.getElementById('menuContexto');
+    if (!menu.contains(e.target)) {
+        menu.style.display = 'none';
+    }
+});
+
 
 
 let ap_imagem_id = null; // Variável para armazenar o ID da imagem atual

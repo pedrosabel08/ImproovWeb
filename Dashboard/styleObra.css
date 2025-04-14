@@ -242,7 +242,6 @@ a {
     padding: 20px;
     background: white;
     border-radius: 8px;
-    width: 50%;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
     animation: scale 0.2s;
 }
@@ -263,127 +262,6 @@ a {
     margin-top: 4px;
 }
 
-/* #form-add {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    gap: 15px;
-}
-
-
-.close,
-.close-modal,
-.close-modal-images,
-.close-modal-add {
-    color: #aaa;
-    float: right;
-    font-size: 28px;
-    font-weight: bold;
-    cursor: pointer;
-}
-
-
-.modal-content p {
-    margin: 20px 0;
-}
-
-#list_acomp p {
-    margin: 20px 0;
-}
-
-#obras {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    justify-content: center;
-    padding: 20px;
-}
-
-#obras span {
-    font-weight: bold;
-}
-
-.valor {
-    filter: blur(5px);
-    transition: 0.3s;
-}
-
-.valor:hover {
-    filter: blur(0);
-}
-
-.legenda {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 30px;
-    margin: 20px 0;
-}
-
-.legenda h3 {
-    font-size: 18px;
-}
-
-.legenda-item {
-    display: flex;
-    align-items: center;
-}
-
-.legenda-item .cor {
-    width: 15px;
-    height: 15px;
-    margin-right: 10px;
-    border-radius: 50%;
-}
-
-.legenda-item span {
-    font-size: 16px;
-}
-
-#painel,
-#obrasInativas {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 20px;
-    justify-content: center;
-}
-
-.card {
-    width: 180px;
-    padding: 20px;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    background-color: #fff;
-    transition: 0.3s all ease;
-    cursor: pointer;
-}
-
-.card h3 {
-    margin: 0;
-    font-size: 1.2em;
-    color: #333;
-}
-
-.card:hover {
-    filter: brightness(0.85);
-    transform: scale(1.05);
-}
-
-#grafico {
-    width: 700px;
-    height: 500px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin: 0 auto;
-}
-
- #graficoPorcentagem {
-    width: 100%;
-    height: 100%;
-} */
 
 #funcoes {
     display: grid;
@@ -1587,7 +1465,6 @@ form#formArquivos {
     display: flex;
     flex-direction: column;
     gap: 15px;
-    width: 50%;
     overflow-y: auto;
     margin: auto;
     max-height: 90%;

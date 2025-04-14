@@ -5,7 +5,7 @@ include '../conexao.php'; // Inclui o arquivo de conexão
 $data = json_decode(file_get_contents('php://input'), true);
 
 // Verifica se os dados foram recebidos corretamente
-if (!isset($data['obraId']) || !isset($data['tiposSelecionados']) || !isset($data['dataArquivos'])) {
+if (!isset($data['obraId']) || !isset($data['tiposSelecionados'])) {
     echo "Dados inválidos!";
     exit;
 }
@@ -21,6 +21,9 @@ foreach ($tiposSelecionados as $tipo) {
 
     // Verificar se o tipo de imagem já existe para essa obra
     $stmt = $conn->prepare("SELECT id FROM arquivos WHERE obra_id = ? AND tipo = ?");
+    if (!$stmt) {
+        die("Erro ao preparar statement: " . $conn->error);
+    }
     $stmt->bind_param('is', $obraId, $tipoImagem);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -37,8 +40,7 @@ foreach ($tiposSelecionados as $tipo) {
     if ($existingArquivo) {
         // Atualizar os dados existentes
         $arquivoId = $existingArquivo['id'];
-        $updateStmt = $conn->prepare("
-            UPDATE arquivos
+        $updateStmt = $conn->prepare("UPDATE arquivos
             SET data_recebimento = ?, dwg = ?, pdf = ?, trid = ?, paisagismo = ?, luminotecnico = ?, unidades_definidas = ?
             WHERE id = ?
         ");
@@ -56,8 +58,7 @@ foreach ($tiposSelecionados as $tipo) {
         $updateStmt->execute();
     } else {
         // Inserir um novo registro
-        $insertStmt = $conn->prepare("
-            INSERT INTO arquivos (obra_id, tipo, dwg, pdf, trid, paisagismo, luminotecnico, unidades_definidas, data_recebimento)
+        $insertStmt = $conn->prepare("INSERT INTO arquivos (obra_id, tipo, dwg, pdf, trid, paisagismo, luminotecnico, unidades_definidas, data_recebimento)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         $insertStmt->bind_param(
@@ -107,7 +108,7 @@ WHERE a.obra_id = ?
         OR
         (a.tipo = 'Imagem Interna' AND a.dwg = 1 AND a.pdf = 1 AND (a.trid = 1 OR a.luminotecnico = 1))
         OR
-        (a.tipo = 'Unidades' AND a.dwg = 1 AND a.pdf = 1 AND (a.trid = 1 OR a.unidades_definidas = 1) AND a.luminotecnico = 1)
+        (a.tipo = 'Unidade' AND a.dwg = 1 AND a.pdf = 1 AND (a.trid = 1 OR a.unidades_definidas = 1) AND a.luminotecnico = 1)
     )
 GROUP BY a.tipo
 ";
@@ -181,10 +182,11 @@ function gerarGantt($conn, $obra_id, $grupos)
             $data_fim = adicionarDiasUteis($data_inicio, $dias);
 
             // Inserir na tabela `gantt_prazos`
-            $stmt = $conn->prepare("
-                INSERT INTO gantt_prazos (obra_id, grupo, etapa, dias, data_inicio, data_fim) 
-                VALUES (?, ?, ?, ?, ?, ?)
-            ");
+            $stmt = $conn->prepare("INSERT INTO gantt_prazos (obra_id, tipo_imagem, etapa, dias, data_inicio, data_fim) 
+                VALUES (?, ?, ?, ?, ?, ?)");
+            if (!$stmt) {
+                die("Erro ao preparar statement: " . $conn->error);
+            }
             $stmt->bind_param('ississ', $obra_id, $grupo, $etapa, $dias, $data_inicio, $data_fim);
             $stmt->execute();
 
@@ -213,7 +215,7 @@ $grupos = [
         "Finalização imagens internas comuns" => 1,
         "Pós-Produção imagens internas comuns" => 1
     ],
-    "Unidades" => [
+    "Unidade" => [
         "Cadernos imagens internas unidades" => 1,
         "Modelagem imagens internas unidades" => 1,
         "Finalização imagens internas unidades" => 1,

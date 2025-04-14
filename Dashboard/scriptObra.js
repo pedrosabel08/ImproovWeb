@@ -1392,21 +1392,31 @@ document.getElementById("salvarArquivo").addEventListener("click", function () {
     const dataArquivos = document.getElementById("data_arquivos").value;
     const tiposSelecionados = [];
 
-    // Pega todos os blocos de tipos de imagem
     document.querySelectorAll(".tipo-imagem").forEach(checkbox => {
-        const tipo = checkbox.getAttribute("data-tipo");
-
         if (checkbox.checked) {
-            // Verifica quais subtipos estão marcados
+            const tipo = checkbox.getAttribute("data-tipo");
+
+            // Correto: pegar o container pai do checkbox, depois localizar os inputs relacionados
+            const arquivoItem = checkbox.closest(".arquivo-item");
+
+            // Agora sim: pegar corretamente a data relacionada
+            const data_arquivosInput = document.getElementById("data_arquivos");
+            const data_arquivos = data_arquivosInput ? data_arquivosInput.value : "";
+
+            // E pegar os subtipos relacionados
             const subtipos = {};
-            checkbox.closest("label").querySelectorAll(".subtipos input[type='checkbox']").forEach(subCheckbox => {
-                const nomeSubtipo = subCheckbox.parentNode.textContent.trim();
-                subtipos[nomeSubtipo] = subCheckbox.checked ? true : false;
-            });
+            const subtipoContainer = arquivoItem.querySelector(".subtipos");
+
+            if (subtipoContainer) {
+                subtipoContainer.querySelectorAll("input[type='checkbox']").forEach(subCheckbox => {
+                    const nomeSubtipo = subCheckbox.parentNode.textContent.trim();
+                    subtipos[nomeSubtipo] = subCheckbox.checked;
+                });
+            }
 
             tiposSelecionados.push({
                 tipo: tipo,
-                dataRecebimento: checkbox.nextElementSibling.value, // Data específica do tipo
+                dataRecebimento: data_arquivos,
                 subtipos: subtipos
             });
         }
@@ -1417,7 +1427,9 @@ document.getElementById("salvarArquivo").addEventListener("click", function () {
         return;
     }
 
-    // Enviar os dados para o backend via AJAX
+    console.log(tiposSelecionados); // Agora deve vir completinho!
+
+    // Enviar pro backend
     fetch("atualizar_prazo.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1442,6 +1454,7 @@ document.getElementById("salvarArquivo").addEventListener("click", function () {
             console.error("Erro:", error);
         });
 });
+
 function showModal() {
     document.getElementById('modal-meta').style.display = 'block';
 }

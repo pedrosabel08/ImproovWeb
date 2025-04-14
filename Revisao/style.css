@@ -38,6 +38,7 @@ a {
     display: flex;
     flex-direction: column;
     grid-column: 2;
+    overflow-x: auto;
 }
 
 .contagem {
@@ -361,13 +362,12 @@ nav {
     border-top: 1px solid;
     border-bottom: 1px solid;
     color: black;
-    max-height: 150px;
+    max-height: 100px;
     background: gainsboro;
 }
 
 .image {
-    width: 150px;
-    height: 150px;
+    height: 100px;
     transition: 0.3s;
 }
 
@@ -390,9 +390,12 @@ nav {
 
 #imagens {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 10px;
     justify-content: center;
+    overflow-x: auto;
+    max-width: 90%;
+    margin: auto;
 }
 
 
@@ -584,4 +587,85 @@ body::-webkit-scrollbar-track {
     font-size: 10px;
     text-align: center;
     color: white;
+}
+
+
+.context-menu {
+    display: none;
+    position: absolute;
+    z-index: 1000;
+    background-color: #fff;
+    border: 1px solid #ccc;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    border-radius: 5px;
+    padding: 5px 0;
+}
+
+.context-menu ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.context-menu ul li {
+    padding: 10px 15px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.context-menu ul li:hover {
+    background-color: #f0f0f0;
+}
+
+#menuContexto {
+    display: none;
+    position: absolute;
+    background: black;
+    border: 1px solid black;
+    padding: 4px;
+    list-style: none;
+    top: 183px;
+    left: 1485px;
+    font-size: 14px;
+    color: white;
+    border-radius: 10px;
+    cursor: pointer;
+
+}
+
+#menuContexto li span {
+    display: inline-block;
+    transition: transform 0.3s ease;
+}
+
+#menuContexto li:hover span {
+    animation: balanco 0.5s ease infinite;
+}
+
+@keyframes balanco {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    25% {
+        transform: rotate(10deg);
+    }
+
+    50% {
+        transform: rotate(-10deg);
+    }
+
+    75% {
+        transform: rotate(5deg);
+    }
+
+    100% {
+        transform: rotate(0deg);
+    }
+}
+
+
+img {
+    -webkit-user-drag: none;
+    user-select: none;
 }

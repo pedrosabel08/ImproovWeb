@@ -46,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $numero_bg = $_POST['numero_bg'];
     $refs = $_POST['refs'];
     $obs = $_POST['obs'];
-    $status_pos = isset($_POST['status_pos']) ? 0 : 1; // Define status_pos com base no checkbox
+    $status_pos = isset($_POST['status_pos']) ? 0 : 1;
     $status_id = $_POST['status_id'];
 
     // Buscar o nome da imagem
@@ -65,23 +65,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $resultado_obra = $stmt_obra->get_result();
     $nome_obra = $resultado_obra->fetch_assoc()['nome_obra'] ?? 'Obra não encontrada';
 
+    // Verificar se a obra já está cadastrada na tabela pos_producao
+    $sql_verificar = "SELECT responsavel_id FROM pos_producao WHERE obra_id = ? LIMIT 1";
+    $stmt_verificar = $conn->prepare($sql_verificar);
+    $stmt_verificar->bind_param("i", $obra_id);
+    $stmt_verificar->execute();
+    $resultado_verificar = $stmt_verificar->get_result();
+    $responsavel_existente = $resultado_verificar->fetch_assoc()['responsavel_id'] ?? null;
+
+    // Verificar se um responsavel_id foi enviado pelo formulário
+    if (!empty($_POST['responsavel_id'])) {
+        $responsavel_id = $_POST['responsavel_id']; // Usar o valor enviado pelo formulário
+    } elseif ($responsavel_existente === null) {
+        $responsavel_id = rand(0, 1) ? 14 : 28; // Sorteia entre 14 ou 28 se não houver um existente
+    } else {
+        $responsavel_id = $responsavel_existente; // Reutiliza o responsavel_id existente
+    }
+
+
     // Inserir ou atualizar dados
-    $sql = "INSERT INTO pos_producao (colaborador_id, cliente_id, obra_id, data_pos, imagem_id, caminho_pasta, numero_bg, refs, obs, status_pos, status_id) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON DUPLICATE KEY UPDATE
-                colaborador_id = VALUES(colaborador_id),
-                cliente_id = VALUES(cliente_id),
-                obra_id = VALUES(obra_id),
-                data_pos = VALUES(data_pos),
-                caminho_pasta = VALUES(caminho_pasta),
-                numero_bg = VALUES(numero_bg),
-                refs = VALUES(refs),
-                obs = VALUES(obs),
-                status_pos = VALUES(status_pos),
-                status_id = VALUES(status_id)";
+    $sql = "INSERT INTO pos_producao (colaborador_id, cliente_id, obra_id, data_pos, imagem_id, caminho_pasta, numero_bg, refs, obs, status_pos, status_id, responsavel_id) 
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+ON DUPLICATE KEY UPDATE
+    colaborador_id = VALUES(colaborador_id),
+    cliente_id = VALUES(cliente_id),
+    obra_id = VALUES(obra_id),
+    data_pos = VALUES(data_pos),
+    caminho_pasta = VALUES(caminho_pasta),
+    numero_bg = VALUES(numero_bg),
+    refs = VALUES(refs),
+    obs = VALUES(obs),
+    status_pos = VALUES(status_pos),
+    status_id = VALUES(status_id),
+    responsavel_id = VALUES(responsavel_id)";
 
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param("iiissssssii", $colaborador_id, $cliente_id, $obra_id, $data_pos, $imagem_id, $caminho_pasta, $numero_bg, $refs, $obs, $status_pos, $status_id);
+    $stmt->bind_param(
+        "iiissssssiii",
+        $colaborador_id,
+        $cliente_id,
+        $obra_id,
+        $data_pos,
+        $imagem_id,
+        $caminho_pasta,
+        $numero_bg,
+        $refs,
+        $obs,
+        $status_pos,
+        $status_id,
+        $responsavel_id
+    );
 
     if ($stmt->execute()) {
         echo "Dados inseridos ou atualizados com sucesso!";

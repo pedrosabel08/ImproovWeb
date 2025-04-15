@@ -366,7 +366,7 @@ $conn->close();
                         <div class="arquivo-item">
                             <label>
                                 <span>Arquivos Unidades</span>
-                                <input type="checkbox" class="tipo-imagem" data-tipo="Unidades">
+                                <input type="checkbox" class="tipo-imagem" data-tipo="Unidade">
                                 <input type="date" class="data-recebimento" id="data-unidades" disabled>
                             </label>
                             <div class="subtipos">

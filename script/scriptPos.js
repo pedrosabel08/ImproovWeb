@@ -198,6 +198,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         <td>${imagem.obs}</td>
                         <td style="background-color: ${statusCor}; color: white;">${statusTexto}</td>
                         <td>${imagem.nome_status}</td>
+                        <td>${imagem.nome_responsavel}</td>
                     `;
 
                     tabela.appendChild(tr);
@@ -217,6 +218,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         this.classList.add('selecionada');
 
                         var idImagemSelecionada = this.getAttribute('data-id');
+                        console.log("ID da imagem selecionada:", idImagemSelecionada);
 
                         $.ajax({
                             type: "GET",
@@ -241,6 +243,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                     checkboxStatusPos.disabled = false;
 
                                     document.getElementById('alterar_imagem').value = 'true';
+                                    setSelectValue('responsavel_id', response[0].nome_responsavel);
 
                                 } else {
                                     console.log("Nenhum produto encontrado.");

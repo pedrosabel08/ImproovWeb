@@ -146,6 +146,7 @@ $conn->close();
                     <option value="8">Observação</option>
                     <option value="9">Status</option>
                     <option value="10">Revisão</option>
+                    <option value="11">Responsável</option>
                 </select>
 
                 <input type="text" id="filtro-input" placeholder="Digite para filtrar">
@@ -184,6 +185,7 @@ $conn->close();
                     <th>Observação</th>
                     <th>Status</th>
                     <th>Revisão</th>
+                    <th>Responsável</th>
                 </tr>
             </thead>
             <tbody id="lista-imagens">
@@ -279,6 +281,15 @@ $conn->close();
                     <div>
                         <label for="status_pos">Status</label>
                         <input type="checkbox" name="status_pos" id="status_pos" disabled>
+                    </div>
+
+                    <div>
+                        <label for="nome_responsavel">Nome Responsável</label>
+                        <select name="responsavel_id" id="responsavel_id">
+                            <option value="14" id="Adriana">Adriana</option>
+                            <option value="28" id="Eduardo">Eduardo</option>
+
+                        </select>
                     </div>
 
                     <div>

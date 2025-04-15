@@ -32,7 +32,7 @@ foreach ($tiposSelecionados as $tipo) {
     // Atribuir os valores dos subtipos a variáveis (default: 0)
     $dwg = isset($subtipos['DWG']) ? 1 : 0;
     $pdf = isset($subtipos['PDF']) ? 1 : 0;
-    $trid = isset($subtipos['3D']) || isset($subtipos['Referências/Mood']) ? 1 : 0;
+    $trid = isset($subtipos['3D ou Referências/Mood']) ? 1 : 0;
     $paisagismo = isset($subtipos['Paisagismo']) ? 1 : 0;
     $luminotecnico = isset($subtipos['Luminotécnico']) ? 1 : 0;
     $unidadesDefinidas = isset($subtipos['Unidades Definidas']) ? 1 : 0;
@@ -136,33 +136,52 @@ while ($row = $result->fetch_assoc()) {
 
     // Atualizar a tabela `imagens_cliente_obra`
     $updatePrazoStmt = $conn->prepare("UPDATE imagens_cliente_obra AS ico
-        JOIN arquivos AS a ON ico.obra_id = a.obra_id
-        SET 
-            ico.recebimento_arquivos = ?,
-            ico.prazo = ?
-        WHERE a.tipo = ? AND a.obra_id = ?
+    JOIN arquivos AS a 
+        ON ico.obra_id = a.obra_id 
+        AND ico.tipo_imagem = a.tipo 
+        AND a.data_recebimento = ?
+    SET 
+        ico.recebimento_arquivos = ?,
+        ico.prazo = ?
+    WHERE a.tipo = ? AND a.obra_id = ?
     ");
-    $updatePrazoStmt->bind_param('sssi', $dataRecebimento, $novoPrazo, $tipoImagem, $obraId);
+    $updatePrazoStmt->bind_param('ssssi', $dataRecebimento, $dataRecebimento, $novoPrazo, $tipoImagem, $obraId);
     $updatePrazoStmt->execute();
 }
 
 // Agora que os prazos foram atualizados, geramos o Gantt
 function gerarGantt($conn, $obra_id, $grupos)
 {
-    // Buscar a data de recebimento de arquivos
-    $stmt = $conn->prepare("SELECT recebimento_arquivos FROM imagens_cliente_obra WHERE obra_id = ?");
+    // Buscar os tipos de imagem que possuem data de recebimento
+    $stmt = $conn->prepare("SELECT DISTINCT tipo_imagem FROM imagens_cliente_obra WHERE obra_id = ? AND recebimento_arquivos IS NOT NULL");
     $stmt->bind_param('i', $obra_id);
     $stmt->execute();
     $result = $stmt->get_result();
-    $row = $result->fetch_assoc();
-    $data_recebimento = $row['recebimento_arquivos'] ?? null;
 
-    if (!$data_recebimento) {
-        echo "Nenhuma data de recebimento encontrada para obra $obra_id.";
-        return;
+    // Criar uma lista de tipos de imagem que possuem dados de recebimento
+    $tiposComRecebimento = [];
+    while ($row = $result->fetch_assoc()) {
+        $tiposComRecebimento[] = $row['tipo_imagem'];
     }
 
-    foreach ($grupos as $grupo => $etapas) {
+    // Filtrar os grupos para processar apenas os tipos com recebimento
+    $gruposFiltrados = array_filter($grupos, function ($grupo) use ($tiposComRecebimento) {
+        return in_array($grupo, $tiposComRecebimento);
+    }, ARRAY_FILTER_USE_KEY);
+
+    foreach ($gruposFiltrados as $grupo => $etapas) {
+        // Buscar a data de recebimento para o tipo de imagem
+        $stmt = $conn->prepare("SELECT recebimento_arquivos FROM imagens_cliente_obra WHERE obra_id = ? AND tipo_imagem = ?");
+        $stmt->bind_param('is', $obra_id, $grupo);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
+        $data_recebimento = $row['recebimento_arquivos'] ?? null;
+
+        if (!$data_recebimento) {
+            continue; // Pular se não houver data de recebimento
+        }
+
         // Buscar quantas imagens existem para multiplicar a finalização
         $stmt = $conn->prepare("SELECT COUNT(*) AS total FROM imagens_cliente_obra WHERE obra_id = ? AND tipo_imagem = ?");
         $stmt->bind_param('is', $obra_id, $grupo);

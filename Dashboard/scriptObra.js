@@ -622,6 +622,7 @@ function infosObra(obraId) {
 
             const obra = data.obra;
             document.getElementById('nomenclatura').textContent = obra.nomenclatura || "Nome não disponível";
+            document.title = obra.nomenclatura || "Nome não disponível";
             document.getElementById('data_inicio_obra').textContent = `Data de Início: ${formatarData(obra.data_inicio)}`;
             document.getElementById('prazo_obra').textContent = `Prazo: ${formatarData(obra.prazo)}`;
             document.getElementById('dias_trabalhados').innerHTML = obra.dias_trabalhados ? `<strong>${obra.dias_trabalhados}</strong> dias` : '';
@@ -1105,12 +1106,46 @@ const selectStatus = document.getElementById("opcao_status");
 const statusHold = document.getElementById("status_hold");
 
 selectStatus.addEventListener("change", function () {
-    console.log(this.value);
-    if (parseInt(this.value) === 9) { // Converte o valor para número antes de comparar
+    if (parseInt(this.value) === 9) {
         statusHold.style.display = "block";
     } else {
         statusHold.style.display = "none";
     }
+});
+
+$(document).ready(function () {
+    $('#status_hold option').on('mousedown', function (e) {
+        e.preventDefault(); // Evita o comportamento padrão do mousedown
+
+        const $option = $(this);
+        const imagemId = $('#imagem_id').val();
+        const valor = $option.val();
+
+        if ($option.prop('selected')) {
+            // Se já está selecionado, vamos desmarcar e deletar do banco
+            $option.prop('selected', false);
+
+            $.ajax({
+                url: 'delete_status_hold.php',
+                method: 'POST',
+                data: {
+                    imagem_id: imagemId,
+                    status: valor
+                },
+                success: function (response) {
+                    console.log('Deletado com sucesso:', response);
+                },
+                error: function () {
+                    console.error('Erro ao deletar o status.');
+                }
+            });
+        } else {
+            // Se não está selecionado, apenas marca (sem salvar no banco ainda)
+            $option.prop('selected', true);
+        }
+
+        return false;
+    });
 });
 
 

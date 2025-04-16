@@ -113,6 +113,14 @@ $idusuario = $_SESSION['idusuario'];
             </div>
         </header>
 
+        <div class="nav-select">
+
+            <select id="indiceSelect">
+            </select>
+            <div>
+                <h2 id="dataEnvio"></h2>
+            </div>
+        </div>
         <nav>
             <div id="imagens"></div>
         </nav>
@@ -136,7 +144,7 @@ $idusuario = $_SESSION['idusuario'];
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
 
-    <script src="script2.js"></script>
+    <script src="script.js"></script>
     <script src="../script/sidebar.js"></script>
 
 </body>

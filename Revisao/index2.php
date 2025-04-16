@@ -113,6 +113,9 @@ $idusuario = $_SESSION['idusuario'];
             </div>
         </header>
 
+        <select id="indiceSelect">
+            <option value="">Selecione o índice de envio</option>
+        </select>
         <nav>
             <div id="imagens"></div>
         </nav>

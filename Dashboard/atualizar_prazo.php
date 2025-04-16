@@ -83,16 +83,56 @@ function adicionarDiasUteis($dataInicial, $diasUteis)
     $diasAdicionados = 0;
     $data = strtotime($dataInicial);
 
+    // Lista de feriados fixos (formato MM-DD)
+    $feriadosFixos = [
+        '01-01', // Confraternização Universal
+        '04-21', // Tiradentes
+        '05-01', // Dia do Trabalho
+        '09-07', // Independência do Brasil
+        '10-12', // Nossa Senhora Aparecida
+        '11-02', // Finados
+        '11-15', // Proclamação da República
+        '12-25', // Natal
+    ];
+
     while ($diasAdicionados < $diasUteis) {
         $data = strtotime("+1 day", $data);
+        $diaSemana = date('N', $data);
+        $mesDia = date('m-d', $data);
+        $ano = date('Y', $data);
 
-        // Verificar se o novo dia é útil (segunda a sexta)
-        if (date('N', $data) < 6) {
-            $diasAdicionados++;
-        }
+        // Verifica se é final de semana
+        if ($diaSemana >= 6) continue;
+
+        // Verifica se é feriado fixo
+        if (in_array($mesDia, $feriadosFixos)) continue;
+
+        // Verifica se é feriado móvel (tipo Páscoa, Corpus Christi...)
+        if (in_array(date('Y-m-d', $data), feriadosMoveis($ano))) continue;
+
+        $diasAdicionados++;
     }
 
     return date('Y-m-d', $data);
+}
+
+function feriadosMoveis($ano)
+{
+    // Cálculo da Páscoa
+    $pascoa = easter_date($ano);
+    $dataPascoa = date('Y-m-d', $pascoa);
+
+    // Feriados móveis com base na Páscoa
+    $feriados = [
+        $dataPascoa, // Páscoa
+        date('Y-m-d', strtotime('-2 days', $pascoa)), // Sexta-feira Santa
+        date('Y-m-d', strtotime('+60 days', $pascoa)), // Corpus Christi
+        date('Y-m-d', strtotime('+47 days', $pascoa)), // Ascensão
+        date('Y-m-d', strtotime('-48 days', $pascoa)), // Carnaval (terça-feira)
+        date('Y-m-d', strtotime('-49 days', $pascoa)), // Segunda de Carnaval (opcional)
+    ];
+
+    return $feriados;
 }
 
 // Preparar o SQL para buscar a última data de recebimento por tipo de imagem
@@ -171,7 +211,10 @@ function gerarGantt($conn, $obra_id, $grupos)
 
     foreach ($gruposFiltrados as $grupo => $etapas) {
         // Buscar a data de recebimento para o tipo de imagem
-        $stmt = $conn->prepare("SELECT recebimento_arquivos FROM imagens_cliente_obra WHERE obra_id = ? AND tipo_imagem = ?");
+        $stmt = $conn->prepare("SELECT recebimento_arquivos FROM imagens_cliente_obra WHERE obra_id = ? AND tipo_imagem = ? AND recebimento_arquivos IS NOT NULL AND recebimento_arquivos != '0000-00-00' LIMIT 1");
+        if (!$stmt) {
+            die("Erro ao preparar statement: " . $conn->error);
+        }
         $stmt->bind_param('is', $obra_id, $grupo);
         $stmt->execute();
         $result = $stmt->get_result();
@@ -192,13 +235,17 @@ function gerarGantt($conn, $obra_id, $grupos)
         $data_inicio = $data_recebimento;
 
         foreach ($etapas as $etapa => $dias) {
-            // Multiplicar os dias da finalização pelo número de imagens
-            if (strpos($etapa, 'Finalização') !== false) {
-                $dias *= $quantidade_imagens;
+            // Verificar se é "Modelagem" para "Fachada" ou "Imagem Externa"
+            if ($etapa === "Modelagem" && ($grupo === "Fachada" || $grupo === "Imagem Externa")) {
+                // Não multiplicar os dias para "Modelagem" de "Fachada" ou "Imagem Externa"
+                $diasCalculados = $dias;
+            } else {
+                // Multiplicar os dias da finalização pelo número de imagens
+                $diasCalculados = $dias * $quantidade_imagens;
             }
 
             // Calcular data final somando apenas dias úteis
-            $data_fim = adicionarDiasUteis($data_inicio, $dias);
+            $data_fim = adicionarDiasUteis($data_inicio, $diasCalculados);
 
             // Inserir na tabela `gantt_prazos`
             $stmt = $conn->prepare("INSERT INTO gantt_prazos (obra_id, tipo_imagem, etapa, dias, data_inicio, data_fim) 
@@ -206,7 +253,7 @@ function gerarGantt($conn, $obra_id, $grupos)
             if (!$stmt) {
                 die("Erro ao preparar statement: " . $conn->error);
             }
-            $stmt->bind_param('ississ', $obra_id, $grupo, $etapa, $dias, $data_inicio, $data_fim);
+            $stmt->bind_param('ississ', $obra_id, $grupo, $etapa, $diasCalculados, $data_inicio, $data_fim);
             $stmt->execute();
 
             // A próxima etapa começa no dia seguinte ao término da anterior
@@ -218,27 +265,30 @@ function gerarGantt($conn, $obra_id, $grupos)
 // Definição das etapas e seus prazos
 $grupos = [
     "Fachada" => [
-        "Modelagem Fachada" => 7,
-        "Finalização Fachada" => 2,
-        "Pós-Produção Fachada" => 1
+        "Modelagem" => 7,
+        "Finalização" => 2,
+        "Pós-Produção" => 0.2
     ],
     "Imagem Externa" => [
-        "Cadernos imagens Externas" => 1,
-        "Modelagem Imagens Externas" => 7,
-        "Finalização Imagens Externas" => 1,
-        "Pós-Produção Imagens Externas" => 1
+        "Caderno" => 0.5,
+        "Modelagem" => 7,
+        "Composição" => 1,
+        "Finalização" => 1,
+        "Pós-Produção" => 0.2
     ],
     "Imagem Interna" => [
-        "Cadernos imagens internas comuns" => 1,
-        "Modelagem imagens internas comuns" => 1,
-        "Finalização imagens internas comuns" => 1,
-        "Pós-Produção imagens internas comuns" => 1
+        "Caderno" => 0.5,
+        "Modelagem" => 0.5,
+        "Composição" => 1,
+        "Finalização" => 1,
+        "Pós-Produção" => 0.2
     ],
     "Unidade" => [
-        "Cadernos imagens internas unidades" => 1,
-        "Modelagem imagens internas unidades" => 1,
-        "Finalização imagens internas unidades" => 1,
-        "Pós-Produção imagens internas unidades" => 1
+        "Caderno" => 0.5,
+        "Modelagem" => 0.5,
+        "Composição" => 1,
+        "Finalização" => 1,
+        "Pós-Produção" => 0.2
     ]
 ];
 

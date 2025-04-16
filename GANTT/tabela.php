@@ -4,7 +4,7 @@ include '../conexao.php'; // Conexão com o banco
 $sqlImagens = "SELECT img.tipo_imagem, img.imagem_nome
 FROM imagens_cliente_obra img
 JOIN obra o ON img.obra_id = o.idobra
-WHERE o.idobra = 58
+WHERE o.idobra = 55
   AND EXISTS (
       SELECT 1
       FROM arquivos a
@@ -16,11 +16,11 @@ $resultImagens = $conn->query($sqlImagens);
 
 $sqlEtapas = "SELECT etapa, tipo_imagem, data_inicio, data_fim 
               FROM gantt_prazos 
-              WHERE obra_id = 58";
+              WHERE obra_id = 55";
 $resultEtapas = $conn->query($sqlEtapas);
 
 // Determinar intervalo de datas
-$sqlDatas = "SELECT MIN(data_inicio) as primeira_data, MAX(data_fim) as ultima_data FROM gantt_prazos WHERE obra_id = 58 AND data_inicio <> '0000-00-00' AND data_fim <> '0000-00-00'";
+$sqlDatas = "SELECT MIN(data_inicio) as primeira_data, MAX(data_fim) as ultima_data FROM gantt_prazos WHERE obra_id = 55 AND data_inicio <> '0000-00-00' AND data_fim <> '0000-00-00'";
 $resultDatas = $conn->query($sqlDatas);
 $rowDatas = $resultDatas->fetch_assoc();
 $primeiraData = new DateTime($rowDatas['primeira_data']);

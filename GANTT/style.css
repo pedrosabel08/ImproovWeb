@@ -47,11 +47,18 @@ table th {
     /* Laranja escuro */
 }
 
-.cadernos {
+.caderno {
     background-color: #fce4ec;
     /* Rosa claro */
     color: #880e4f;
     /* Rosa escuro */
 }
+
+.composicao {
+    background-color: #e1f5fe;
+    /* Azul claro */
+    color: #01579b;
+    /* Azul escuro */
+}	
 
 /* Adicione mais estilos conforme necessário para outros tipos de imagens */

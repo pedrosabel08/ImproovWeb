@@ -293,7 +293,7 @@ h2 {
 }
 
 
-/* .tooltip {
+.tooltip {
     position: relative;
     display: inline-block;
 }
@@ -301,7 +301,7 @@ h2 {
 .tooltip:hover::after {
     content: attr(data-tooltip);
     position: absolute;
-    bottom: 100%;
+    top: 110%;
     left: 50%;
     transform: translateX(-50%);
     padding: 5px;
@@ -310,7 +310,7 @@ h2 {
     border-radius: 4px;
     white-space: nowrap;
     font-size: 12px;
-} */
+}
 
 .alternar {
     display: flex;
@@ -454,16 +454,12 @@ nav {
 }
 
 .action-btn {
-    padding: 5px 10px;
+    padding: 5px 2rem;
     border: none;
     border-radius: 5px;
     cursor: pointer;
     transition: 0.3s all ease;
     color: white;
-}
-
-.action-btn:hover {
-    filter: brightness(0.8);
 }
 
 
@@ -668,4 +664,30 @@ body::-webkit-scrollbar-track {
 img {
     -webkit-user-drag: none;
     user-select: none;
+}
+
+.nav-select {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+}
+
+#indiceSelect {
+    border: none;
+    background: #676565;
+    color: white;
+    width: 100px;
+    border-radius: 15px;
+    padding: 5px 10px;
+    text-align: center;
+    font-weight: bold;
+    box-shadow: 0px 4px 4px rgba(0, 0, 0, 0.3);
+}
+
+h2#dataEnvio {
+    text-align: center;
+    font-size: 14px;
+    color: #555;
+    margin-bottom: 0;
 }

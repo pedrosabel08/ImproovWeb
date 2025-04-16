@@ -293,40 +293,73 @@ function historyAJAX(idfuncao_imagem, funcao_nome, imagem_nome, colaborador_nome
             commentDiv.style.display = 'none';
 
 
-            imagens.forEach(img => {
-                const wrapper = document.createElement('div');
-                wrapper.className = 'imageWrapper';
+            const indiceSelect = document.getElementById('indiceSelect');
 
-                const imgElement = document.createElement('img');
-                imgElement.src = `../${img.imagem}`;
-                imgElement.alt = img.imagem;
-                imgElement.className = 'image';
-                imgElement.setAttribute('data-id', img.id);
-
-                imgElement.addEventListener('click', (event) => {
-                    mostrarImagemCompleta(imgElement.src, img.id);
-                });
-
-                imgElement.addEventListener('contextmenu', (event) => {
-                    event.preventDefault();
-
-                    const imgId = imgElement.getAttribute('data-id');
-                    const imgSrc = imgElement.src;
-
-                    abrirMenuContexto(event.pageX, event.pageY, imgId, imgSrc);
-                });
-
-                if (img.has_comments === "1" || img.has_comments === 1) {
-                    const notificationDot = document.createElement('div');
-                    notificationDot.className = 'notification-dot';
-                    notificationDot.textContent = `${img.comment_count}`; // Exibe a quantidade de comentários como tooltip
-                    wrapper.appendChild(notificationDot);
+            // 1. Agrupar imagens por indice_envio
+            const imagensAgrupadas = imagens.reduce((acc, img) => {
+                if (!acc[img.indice_envio]) {
+                    acc[img.indice_envio] = [];
                 }
+                acc[img.indice_envio].push(img);
+                return acc;
+            }, {});
 
-                wrapper.appendChild(imgElement);
-                imageContainer.appendChild(wrapper);
+            // 2. Popular o <select> com os índices de envio (ordenado desc)
+            const indicesOrdenados = Object.keys(imagensAgrupadas).sort((a, b) => b - a);
 
+            // Preenche o select
+            indicesOrdenados.forEach(indice => {
+                const option = document.createElement('option');
+                option.value = indice;
+                option.textContent = `Envio ${indice}`;
+                indiceSelect.appendChild(option);
             });
+
+            // 3. Evento de mudança no select
+            indiceSelect.addEventListener('change', () => {
+                const indiceSelecionado = indiceSelect.value;
+
+                // Limpa as imagens anteriores
+                imageContainer.innerHTML = '';
+
+                if (indiceSelecionado && imagensAgrupadas[indiceSelecionado]) {
+                    imagensAgrupadas[indiceSelecionado].forEach(img => {
+                        const wrapper = document.createElement('div');
+                        wrapper.className = 'imageWrapper';
+
+                        const imgElement = document.createElement('img');
+                        imgElement.src = `../${img.imagem}`;
+                        imgElement.alt = img.imagem;
+                        imgElement.className = 'image';
+                        imgElement.setAttribute('data-id', img.id);
+
+                        imgElement.addEventListener('click', () => {
+                            mostrarImagemCompleta(imgElement.src, img.id);
+                        });
+
+                        imgElement.addEventListener('contextmenu', (event) => {
+                            event.preventDefault();
+                            abrirMenuContexto(event.pageX, event.pageY, img.id, imgElement.src);
+                        });
+
+                        if (img.has_comments == "1" || img.has_comments === 1) {
+                            const notificationDot = document.createElement('div');
+                            notificationDot.className = 'notification-dot';
+                            notificationDot.textContent = `${img.comment_count}`;
+                            wrapper.appendChild(notificationDot);
+                        }
+
+                        wrapper.appendChild(imgElement);
+                        imageContainer.appendChild(wrapper);
+                    });
+                }
+            });
+
+            // Já seleciona o mais recente e mostra as imagens
+            if (indicesOrdenados.length > 0) {
+                indiceSelect.value = indicesOrdenados[0]; // pega o mais recente
+                indiceSelect.dispatchEvent(new Event('change')); // já mostra as imagens
+            }
 
         })
         .catch(error => console.error("Erro ao buscar dados:", error));

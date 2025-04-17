@@ -6,27 +6,56 @@
     font-family: "Open Sans", sans-serif;
 }
 
-/* Estilo geral para a tabela */
-table {
-    border-collapse: collapse;
-    width: 95%;
-    font-size: 14px;
-    margin: 20px auto;
+body {
+    display: grid;
+    grid-template-columns: 60px 1fr;
 }
 
-table th,
-table td {
-    border: 1px solid #ddd;
+.container {
+    grid-column: 2;
+}
+
+h2 {
     text-align: center;
 }
 
-table th {
+/* Estilo geral para a tabela */
+table#gantt {
+    border-collapse: collapse;
+    width: 95%;
+    font-size: 12px;
+    margin: 20px auto;
+}
+
+table#gantt th,
+table#gantt td {
+    border: 1px solid #ddd;
+    text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 10px;
+}
+
+
+table#gantt td:nth-child(2) {
+    text-align: left;
+    max-width: 100px;
+}
+
+table#gantt th:nth-child(2) {
+    resize: horizontal;
+    max-width: max-content;
+}
+
+table#gantt th {
     background-color: #f4f4f4;
     font-weight: bold;
 }
 
+
 /* Estilos específicos para cada tipo de imagem */
-.pos-producao {
+.posproducao {
     background-color: #e3f2fd;
     /* Azul claro */
     color: #0d47a1;
@@ -55,10 +84,8 @@ table th {
 }
 
 .composicao {
-    background-color: #e1f5fe;
-    /* Azul claro */
-    color: #01579b;
-    /* Azul escuro */
-}	
-
-/* Adicione mais estilos conforme necessário para outros tipos de imagens */
+    background-color: #f9ffc6;
+    /* Verde claro */
+    color: #596112;
+    /* Verde escuro*/
+}

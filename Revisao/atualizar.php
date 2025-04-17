@@ -31,6 +31,7 @@ if ($idusuario == 1 || $idusuario == 2) {
     c.telefone,
     u.id_slack,
 	  o.nome_obra,
+    o.nomenclatura,
     (SELECT MAX(h.data_aprovacao)
      FROM historico_aprovacoes h
      WHERE h.funcao_imagem_id = f.idfuncao_imagem) AS data_aprovacao,
@@ -38,7 +39,12 @@ if ($idusuario == 1 || $idusuario == 2) {
      FROM historico_aprovacoes h
      WHERE h.funcao_imagem_id = f.idfuncao_imagem
      ORDER BY h.data_aprovacao DESC 
-     LIMIT 1) AS status_novo
+     LIMIT 1) AS status_novo,
+	(SELECT hi.imagem
+     FROM historico_aprovacoes_imagens hi 
+     WHERE hi.funcao_imagem_id = f.idfuncao_imagem
+     ORDER BY hi.data_envio DESC 
+     LIMIT 1) AS imagem
 FROM funcao_imagem f
 LEFT JOIN funcao fun ON fun.idfuncao = f.funcao_id
 LEFT JOIN colaborador c ON c.idcolaborador = f.colaborador_id

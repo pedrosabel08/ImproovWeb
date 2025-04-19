@@ -89,9 +89,9 @@ let dadosTarefas = [];
 let todasAsObras = new Set();
 let todosOsColaboradores = new Set();
 
-async function fetchObrasETarefas(status = 'Em aprovação') {
+async function fetchObrasETarefas() {
     try {
-        const response = await fetch(`atualizar.php?status=${status}`);
+        const response = await fetch(`atualizar2.php`);
         if (!response.ok) throw new Error("Erro ao buscar tarefas");
 
         dadosTarefas = await response.json();
@@ -100,6 +100,7 @@ async function fetchObrasETarefas(status = 'Em aprovação') {
         todosOsColaboradores = new Set(dadosTarefas.map(t => t.nome_colaborador));
 
         exibirCardsDeObra(dadosTarefas); // Mostra os cards
+
 
     } catch (error) {
         console.error(error);
@@ -133,10 +134,13 @@ function exibirCardsDeObra(tarefas) {
             ${imagemPreview ? `
             <div class="obra-img-preview">
                 <img src="${imagemPreview}" alt="Imagem da obra ${nome_obra}">
-            </div>` : ''}
+            </div>` : `
+            <div class="obra-img-preview">
+                <img src="../assets/logo.jpg" alt="Imagem da obra ${nome_obra}">
+            </div>`}
             <div class="obra-info">
-                <h3>${nome_obra}</h3>
-                <p>${tarefasDaObra.length} tarefas</p>
+                <h3>${tarefasDaObra[0].nomenclatura}</h3>
+                <p>${tarefasDaObra.length} aprovações</p>
             </div>
         `;
 
@@ -172,6 +176,45 @@ function filtrarTarefasPorObra(obraSelecionada) {
     // Exibe as tarefas filtradas
     exibirTarefas(tarefasFiltradas);
 }
+
+function atualizarSelectColaborador(tarefas) {
+    const selectColaborador = document.getElementById('filtro_colaborador');
+    const valorAnterior = selectColaborador.value;
+
+    const colaboradores = [...new Set(tarefas.map(t => t.nome_colaborador))];
+
+    selectColaborador.innerHTML = '<option value="">Todos</option>';
+    colaboradores.forEach(colab => {
+        const option = document.createElement('option');
+        option.value = colab;
+        option.textContent = colab;
+        selectColaborador.appendChild(option);
+    });
+
+    if ([...selectColaborador.options].some(o => o.value === valorAnterior)) {
+        selectColaborador.value = valorAnterior;
+    }
+}
+
+function atualizarSelectFuncao(tarefas) {
+    const selectFuncao = document.getElementById('nome_funcao');
+    const valorAnterior = selectFuncao.value;
+
+    const funcoes = [...new Set(tarefas.map(t => t.nome_funcao))];
+
+    selectFuncao.innerHTML = '<option value="Todos">Todos</option>';
+    funcoes.forEach(funcao => {
+        const option = document.createElement('option');
+        option.value = funcao;
+        option.textContent = funcao;
+        selectFuncao.appendChild(option);
+    });
+
+    if ([...selectFuncao.options].some(o => o.value === valorAnterior)) {
+        selectFuncao.value = valorAnterior;
+    }
+}
+
 // Eventos para os filtros
 function atualizarFiltrosDinamicos(tarefas) {
     const selectColaborador = document.getElementById('filtro_colaborador');
@@ -214,11 +257,29 @@ function atualizarFiltrosDinamicos(tarefas) {
 
 document.getElementById('filtro_colaborador').addEventListener('change', () => {
     const obraSelecionada = document.getElementById('filtro_obra').value;
+    const colaboradorSelecionado = document.getElementById('filtro_colaborador').value;
+
+    const tarefasDaObra = dadosTarefas.filter(t => t.nome_obra === obraSelecionada);
+    const tarefasFiltradas = tarefasDaObra.filter(t =>
+        !colaboradorSelecionado || t.nome_colaborador === colaboradorSelecionado
+    );
+
+    atualizarSelectFuncao(tarefasFiltradas); // atualiza o outro filtro com base nesse
+
     filtrarTarefasPorObra(obraSelecionada);
 });
 
 document.getElementById('nome_funcao').addEventListener('change', () => {
     const obraSelecionada = document.getElementById('filtro_obra').value;
+    const funcaoSelecionada = document.getElementById('nome_funcao').value;
+
+    const tarefasDaObra = dadosTarefas.filter(t => t.nome_obra === obraSelecionada);
+    const tarefasFiltradas = tarefasDaObra.filter(t =>
+        funcaoSelecionada === 'Todos' || t.nome_funcao === funcaoSelecionada
+    );
+
+    atualizarSelectColaborador(tarefasFiltradas); // atualiza o outro filtro com base nesse
+
     filtrarTarefasPorObra(obraSelecionada);
 });
 
@@ -241,12 +302,15 @@ function exibirTarefas(tarefas) {
             taskItem.classList.add('task-item');
             taskItem.setAttribute('onclick', `historyAJAX(${tarefa.idfuncao_imagem}, '${tarefa.nome_funcao}', '${tarefa.imagem_nome}', '${tarefa.nome_colaborador}')`);
 
+            // Define a cor de fundo com base no status
+            const bgColor = tarefa.status_novo === 'Em aprovação' ? 'green' : tarefa.status_novo === 'Ajuste' ? 'red' : 'transparent';
+
             taskItem.innerHTML = `
                 <div class="task-info">
-                    <h3>${tarefa.nome_funcao}</h3><span>${tarefa.nome_colaborador}</span>
-                    <p data-obra="${tarefa.nome_obra}">${tarefa.imagem_nome}</p>
-                    <p>${tarefa.status_novo}</p>
-                    <p>${formatarDataHora(tarefa.data_aprovacao)}</p>       
+                    <h3 class="nome_funcao">${tarefa.nome_funcao}</h3><span class="colaborador">${tarefa.nome_colaborador}</span>
+                    <p class="imagem_nome" data-obra="${tarefa.nome_obra}">${tarefa.imagem_nome}</p>
+                    <p class="data_aprovacao">${formatarDataHora(tarefa.data_aprovacao)}</p>       
+                    <p id="status_funcao" style="background-color: ${bgColor};">${tarefa.status_novo}</p>
                 </div>
             `;
 
@@ -256,7 +320,6 @@ function exibirTarefas(tarefas) {
         container.innerHTML = '<p style="text-align: center; color: #888;">Não há tarefas de revisão no momento.</p>';
     }
 }
-
 
 function formatarData(data) {
     const [ano, mes, dia] = data.split('-'); // Divide a string no formato 'YYYY-MM-DD'
@@ -310,9 +373,6 @@ function historyAJAX(idfuncao_imagem, funcao_nome, imagem_nome, colaborador_nome
 
                 if ([1, 2, 9, 20, 3].includes(idusuario)) { // Verifica se o idusuario é 1, 2 ou 9
                     document.getElementById('buttons-task').innerHTML = `
-                        <button class="action-btn tooltip" id="add_obs" onclick="addObservacao(${historico.id})" data-tooltip="Adicionar Observação">
-                            <i class="fa-solid fa-plus"></i>
-                        </button>
                         <button class="action-btn tooltip" id="check" data-tooltip="Aprovar" onclick="revisarTarefa(${historico.funcao_imagem_id}, '${historico.colaborador_nome}', '${historico.imagem_nome}', '${historico.nome_funcao}', '${historico.colaborador_id}', true)">
                             <i class="fa-solid fa-check"></i>
                         </button>
@@ -346,13 +406,27 @@ function historyAJAX(idfuncao_imagem, funcao_nome, imagem_nome, colaborador_nome
             // 2. Popular o <select> com os índices de envio (ordenado desc)
             const indicesOrdenados = Object.keys(imagensAgrupadas).sort((a, b) => b - a);
 
-            // Preenche o select
-            indicesOrdenados.forEach(indice => {
-                const option = document.createElement('option');
-                option.value = indice;
-                option.textContent = `Envio ${indice}`;
-                indiceSelect.appendChild(option);
-            });
+            // Verifica se há índices disponíveis
+            if (indicesOrdenados.length === 0) {
+                indiceSelect.style.display = 'none'; // Oculta o select se não houver índices
+                dataEnvio.textContent = ''; // Limpa a data de envio
+            } else {
+                indiceSelect.style.display = 'block'; // Exibe o select se houver índices
+
+                // Preenche o select
+                indicesOrdenados.forEach(indice => {
+                    const option = document.createElement('option');
+                    option.value = indice;
+                    option.textContent = `Envio ${indice}`;
+                    indiceSelect.appendChild(option);
+                });
+
+                // Já seleciona o mais recente e mostra as imagens
+                if (indicesOrdenados.length > 0) {
+                    indiceSelect.value = indicesOrdenados[0]; // pega o mais recente
+                    indiceSelect.dispatchEvent(new Event('change')); // já mostra as imagens
+                }
+            }
 
             // 3. Evento de mudança no select
             indiceSelect.addEventListener('change', () => {
@@ -393,12 +467,6 @@ function historyAJAX(idfuncao_imagem, funcao_nome, imagem_nome, colaborador_nome
                     });
                 }
             });
-
-            // Já seleciona o mais recente e mostra as imagens
-            if (indicesOrdenados.length > 0) {
-                indiceSelect.value = indicesOrdenados[0]; // pega o mais recente
-                indiceSelect.dispatchEvent(new Event('change')); // já mostra as imagens
-            }
 
         })
         .catch(error => console.error("Erro ao buscar dados:", error));

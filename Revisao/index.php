@@ -30,7 +30,7 @@ $idusuario = $_SESSION['idusuario'];
     <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
 
-    <title>Revisão de Tarefas</title>
+    <title>Flow Review</title>
 </head>
 
 <body>

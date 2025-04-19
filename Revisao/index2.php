@@ -18,7 +18,7 @@ $idusuario = $_SESSION['idusuario'];
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style2.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css" integrity="sha512-5Hs3dF2AEPkpNAR7UiOHba+lRSJNeM2ECkwxUIxC1Q/FLycGTbNapWXB4tP889k5T5Ju8fs4b1P5z/iB4nMfSQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
         type="image/x-icon">
@@ -30,7 +30,7 @@ $idusuario = $_SESSION['idusuario'];
     <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
 
-    <title>Revisão de Tarefas</title>
+    <title>Flow Review</title>
 </head>
 
 <body>
@@ -68,35 +68,31 @@ $idusuario = $_SESSION['idusuario'];
 
 
         <div class="container-main">
-            <div class="containerObra"></div>
+            <div class="containerObra">
+                <div class="contagem">
+                    <h4>Contagem de revisões por função:</h4>
+                    <div id="contagem_alt"></div>
+                </div>
+            </div>
             <div class="tarefasObra hidden">
                 <div class="header">
-                    <div class="contagem">
-                        <h4>Contagem de revisões por função:</h4>
-                        <div id="contagem_alt"></div>
-                    </div>
-                    <div class="filtros">
-                        <select name="nome_funcao" id="nome_funcao">
-                            <option value="Todos">Todos</option>
-                            <option value="Caderno">Caderno</option>
-                            <option value="Filtro de assets">Filtro de assets</option>
-                            <option value="Modelagem">Modelagem</option>
-                            <option value="Composição">Composição</option>
-                            <option value="Pré-Finalização">Pré-Finalização</option>
-                            <option value="Finalização">Finalização</option>
-                            <option value="Pós-produção">Pós-produção</option>
-                            <option value="Alteração">Alteração</option>
-                            <option value="Planta Humanizada">Planta Humanizada</option>
-                        </select>
-                        <input type="hidden" name="filtro_obra" id="filtro_obra">
-                        <select name="filtro_colaborador" id="filtro_colaborador"></select>
-                    </div>
 
-                    <div class="alternar">
-                        <button onclick="fetchTarefas('Todos', 'Em aprovação')">Em aprovação</button>
-                        <button onclick="fetchTarefas('Todos', 'Ajuste')">Ajuste</button>
-                        <button onclick="fetchTarefas('Todos', 'Aprovado')">Aprovado</button>
+                    <div class="filtros">
+                        <div>
+                            <label for="nome_funcao">Função:</label>
+                            <select name="nome_funcao" id="nome_funcao"></select>
+                        </div>
+                        <div>
+                            <label for="filtro_colaborador">Colaborador:</label>
+                            <select name="filtro_colaborador" id="filtro_colaborador"></select>
+                        </div>
+                        <input type="hidden" name="filtro_obra" id="filtro_obra">
                     </div>
+                    <!-- 
+                    <div class="alternar">
+                        <button onclick="fetchObrasETarefas('Todos', 'Em aprovação')">Em aprovação</button>
+                        <button onclick="fetchObrasETarefas('Todos', 'Ajuste')">Ajuste</button>
+                    </div> -->
                 </div>
                 <div class="tarefasImagensObra"></div>
             </div>

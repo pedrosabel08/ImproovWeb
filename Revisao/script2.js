@@ -391,8 +391,9 @@ function historyAJAX(idfuncao_imagem, funcao_nome, imagem_nome, colaborador_nome
             const commentDiv = document.querySelector('.sidebar-direita');
             commentDiv.style.display = 'none';
 
-
             const indiceSelect = document.getElementById('indiceSelect');
+            indiceSelect.innerHTML = ''; // Limpa o select anterior
+            const dataEnvio = document.getElementById('dataEnvio');
 
             // 1. Agrupar imagens por indice_envio
             const imagensAgrupadas = imagens.reduce((acc, img) => {
@@ -422,21 +423,23 @@ function historyAJAX(idfuncao_imagem, funcao_nome, imagem_nome, colaborador_nome
                 });
 
                 // Já seleciona o mais recente e mostra as imagens
-                if (indicesOrdenados.length > 0) {
-                    indiceSelect.value = indicesOrdenados[0]; // pega o mais recente
-                    indiceSelect.dispatchEvent(new Event('change')); // já mostra as imagens
-                }
+                indiceSelect.value = indicesOrdenados[0]; // pega o mais recente
+                indiceSelect.dispatchEvent(new Event('change')); // já mostra as imagens
             }
 
             // 3. Evento de mudança no select
             indiceSelect.addEventListener('change', () => {
                 const indiceSelecionado = indiceSelect.value;
-
-                // Limpa as imagens anteriores
                 imageContainer.innerHTML = '';
 
-                if (indiceSelecionado && imagensAgrupadas[indiceSelecionado]) {
-                    imagensAgrupadas[indiceSelecionado].forEach(img => {
+                const imagensDoIndice = imagensAgrupadas[indiceSelecionado];
+
+                if (imagensDoIndice && imagensDoIndice.length > 0) {
+                    // ⏰ Atualiza a data de envio
+                    const data = imagensDoIndice[0].data_envio;
+                    dataEnvio.textContent = `${formatarDataHora(data)}`;
+
+                    imagensDoIndice.forEach(img => {
                         const wrapper = document.createElement('div');
                         wrapper.className = 'imageWrapper';
 
@@ -465,8 +468,15 @@ function historyAJAX(idfuncao_imagem, funcao_nome, imagem_nome, colaborador_nome
                         wrapper.appendChild(imgElement);
                         imageContainer.appendChild(wrapper);
                     });
+                } else {
+                    dataEnvio.textContent = ''; // caso não tenha imagens
                 }
             });
+            // Já seleciona o mais recente e mostra as imagens
+            if (indicesOrdenados.length > 0) {
+                indiceSelect.value = indicesOrdenados[0]; // pega o mais recente
+                indiceSelect.dispatchEvent(new Event('change')); // já mostra as imagens
+            }
 
         })
         .catch(error => console.error("Erro ao buscar dados:", error));

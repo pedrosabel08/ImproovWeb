@@ -4,12 +4,21 @@ document.addEventListener("DOMContentLoaded", function () {
 
 });
 
-function revisarTarefa(idfuncao_imagem, nome_colaborador, imagem_nome, nome_funcao, colaborador_id, isChecked) {
-    const actionText = isChecked
-        ? "marcar esta tarefa como revisada"
-        : "indicar que esta tarefa precisa de alterações";
-
+function revisarTarefa(idfuncao_imagem, nome_colaborador, imagem_nome, nome_funcao, colaborador_id, tipoRevisao) {
     const idcolaborador = localStorage.getItem('idcolaborador');
+
+    let actionText = "";
+    switch (tipoRevisao) {
+        case "aprovado":
+            actionText = "aprovar esta tarefa";
+            break;
+        case "ajuste":
+            actionText = "marcar esta tarefa como necessitando de ajustes";
+            break;
+        case "aprovado_com_ajustes":
+            actionText = "aprovar com ajustes";
+            break;
+    }
 
     if (confirm(`Você tem certeza de que deseja ${actionText}?`)) {
         fetch('revisarTarefa.php', {
@@ -18,56 +27,67 @@ function revisarTarefa(idfuncao_imagem, nome_colaborador, imagem_nome, nome_func
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                idfuncao_imagem: idfuncao_imagem,
-                nome_colaborador: nome_colaborador,
-                imagem_nome: imagem_nome,
-                nome_funcao: nome_funcao,
-                isChecked: isChecked,
+                idfuncao_imagem,
+                nome_colaborador,
+                imagem_nome,
+                nome_funcao,
+                colaborador_id,
                 responsavel: idcolaborador,
-                colaborador_id: colaborador_id
+                tipoRevisao
             }),
         })
             .then(response => {
-                if (!response.ok) {
-                    throw new Error("Erro ao atualizar a tarefa.");
-                }
+                if (!response.ok) throw new Error("Erro ao atualizar a tarefa.");
                 return response.json();
             })
             .then(data => {
                 console.log("Resposta do servidor:", data);
 
-                const message = isChecked
-                    ? "Tarefa marcada como revisada com sucesso!"
-                    : "Tarefa marcada como necessitando de alterações!";
-                const bgColor = isChecked ? "green" : "orange";
+                let message = "";
+                let bgColor = "";
+
+                switch (tipoRevisao) {
+                    case "aprovado":
+                        message = "Tarefa aprovada com sucesso!";
+                        bgColor = "green";
+                        break;
+                    case "ajuste":
+                        message = "Tarefa marcada como necessitando de ajustes!";
+                        bgColor = "orange";
+                        break;
+                    case "aprovado_com_ajustes":
+                        message = "Tarefa aprovada com ajustes!";
+                        bgColor = "blue";
+                        break;
+                }
+
+                Toastify({
+                    text: data.success ? message : "Falha ao atualizar a tarefa: " + data.message,
+                    duration: 3000,
+                    backgroundColor: data.success ? bgColor : "red",
+                    close: true,
+                    gravity: "top",
+                    position: "right"
+                }).showToast();
 
                 if (data.success) {
-                    Toastify({
-                        text: message,
-                        duration: 3000,
-                        backgroundColor: bgColor,
-                        close: true,
-                        gravity: "top",
-                        position: "right"
-                    }).showToast();
+                    const main = document.querySelector('.main');
+                    main.classList.remove('hidden');
 
-                    const filtroAtual = document.getElementById('nome_funcao').value;
-                    fetchTarefas(filtroAtual);
-                } else {
-                    Toastify({
-                        text: "Falha ao atualizar a tarefa: " + data.message,
-                        duration: 3000,
-                        backgroundColor: "red",
-                        close: true,
-                        gravity: "top",
-                        position: "right"
-                    }).showToast();
+                    const container_aprovacao = document.querySelector('.container-aprovacao');
+                    container_aprovacao.classList.add('hidden');
+
+                    const imagemCompletaDiv = document.getElementById("imagem_completa");
+                    imagemCompletaDiv.innerHTML = '';
+
+                    const comentariosDiv = document.querySelector(".comentarios");
+                    comentariosDiv.innerHTML = '';
                 }
             })
             .catch(error => {
                 console.error("Erro:", error);
                 Toastify({
-                    text: "Ocorreu um erro ao processar a solicitação." + error.message,
+                    text: "Ocorreu um erro ao processar a solicitação. " + error.message,
                     duration: 3000,
                     backgroundColor: "red",
                     close: true,
@@ -76,9 +96,9 @@ function revisarTarefa(idfuncao_imagem, nome_colaborador, imagem_nome, nome_func
                 }).showToast();
             });
     }
+
     event.stopPropagation();
 }
-
 
 // Função para alternar a visibilidade dos detalhes da tarefa
 function toggleTaskDetails(taskElement) {
@@ -303,8 +323,7 @@ function exibirTarefas(tarefas) {
             taskItem.setAttribute('onclick', `historyAJAX(${tarefa.idfuncao_imagem}, '${tarefa.nome_funcao}', '${tarefa.imagem_nome}', '${tarefa.nome_colaborador}')`);
 
             // Define a cor de fundo com base no status
-            const bgColor = tarefa.status_novo === 'Em aprovação' ? 'green' : tarefa.status_novo === 'Ajuste' ? 'red' : 'transparent';
-
+            const bgColor = tarefa.status_novo === 'Em aprovação' ? 'green' : tarefa.status_novo === 'Ajuste' ? 'red' : tarefa.status_novo === 'Aprovado com ajustes' ? 'blue' : 'transparent';
             taskItem.innerHTML = `
                 <div class="task-info">
                     <h3 class="nome_funcao">${tarefa.nome_funcao}</h3><span class="colaborador">${tarefa.nome_colaborador}</span>
@@ -373,12 +392,19 @@ function historyAJAX(idfuncao_imagem, funcao_nome, imagem_nome, colaborador_nome
 
                 if ([1, 2, 9, 20, 3].includes(idusuario)) { // Verifica se o idusuario é 1, 2 ou 9
                     document.getElementById('buttons-task').innerHTML = `
-                        <button class="action-btn tooltip" id="check" data-tooltip="Aprovar" onclick="revisarTarefa(${historico.funcao_imagem_id}, '${historico.colaborador_nome}', '${historico.imagem_nome}', '${historico.nome_funcao}', '${historico.colaborador_id}', true)">
-                            <i class="fa-solid fa-check"></i>
-                        </button>
-                        <button class="action-btn tooltip" id="xmark" data-tooltip="Rejeitar" onclick="revisarTarefa(${historico.funcao_imagem_id}, '${historico.colaborador_nome}', '${historico.imagem_nome}', '${historico.nome_funcao}', '${historico.colaborador_id}', false)">
-                            <i class="fa-solid fa-xmark"></i>
-                        </button>`;
+                    <button class="action-btn tooltip" id="check" data-tooltip="Aprovar"
+                        onclick="revisarTarefa(${historico.funcao_imagem_id}, '${historico.colaborador_nome}', '${historico.imagem_nome}', '${historico.nome_funcao}', '${historico.colaborador_id}', 'aprovado')">
+                        <i class="fa-solid fa-check"></i>
+                    </button>
+                    <button class="action-btn tooltip" id="xmark" data-tooltip="Rejeitar"
+                        onclick="revisarTarefa(${historico.funcao_imagem_id}, '${historico.colaborador_nome}', '${historico.imagem_nome}', '${historico.nome_funcao}', '${historico.colaborador_id}', 'ajuste')">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                    <button class="action-btn tooltip" id="check_ajuste" data-tooltip="Aprovar com ajustes"
+                        onclick="revisarTarefa(${historico.funcao_imagem_id}, '${historico.colaborador_nome}', '${historico.imagem_nome}', '${historico.nome_funcao}', '${historico.colaborador_id}', 'aprovado_com_ajustes')">
+                        <i class="fa-solid fa-pen-ruler"></i>
+                    </button>
+                `;
                 } else {
                     document.getElementById('buttons-task').innerHTML = ''; // Não exibe os botões para outros usuários
                 }

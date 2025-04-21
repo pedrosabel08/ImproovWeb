@@ -1172,66 +1172,35 @@ document.getElementById("salvar_funcoes").addEventListener("click", function (ev
 
     var idImagemSelecionada = linhaSelecionada.getAttribute("data-id");
 
-    // Verifica todos os campos de prazo que devem ser obrigatórios
     var form = document.getElementById("form-add");
     var camposPrazo = form.querySelectorAll("input[type='date'][required]");
     var camposVazios = Array.from(camposPrazo).filter(input => !input.value);
 
-    // Verifica se algum status anterior está "Aprovado com ajustes"
-    const statusAnteriorAjuste = ["status_caderno", "status_comp", "status_modelagem", "status_finalizacao", "status_pre", "status_pos", "status_alteracao", "status_planta", "status_filtro"].some(id => {
-        const el = document.getElementById(id);
-        return el && el.value === "Aprovado com ajustes";
-    });
-
-    if (statusAnteriorAjuste) {
-        Swal.fire({
-            title: "Atenção!",
-            text: "Há uma função anterior com o status 'Aprovado com ajustes'. Você ja conferiu?",
-            icon: "warning",
-            showCancelButton: true,
-            confirmButtonText: "Sim, já conferi",
-            cancelButtonText: "Não, revisar agora"
-        }).then((result) => {
-            if (result.isConfirmed) {
-                enviarFormulario(); // Função que envia os dados via AJAX
-            } else {
-                return; // Não faz nada, deixa o usuário revisar
-            }
-        });
-    } else {
-        enviarFormulario(); // Nenhum status com ajuste, pode seguir
-    }
-
-    // var funcoesTEA = localStorage.getItem("funcoesTEA");
-    // if (funcoesTEA >= 4) {
-    //     Swal.fire({
-    //         icon: 'warning', // Ícone de aviso
-    //         title: 'Atenção!',
-    //         text: 'Termine as tarefas que estão em andamento primeiro!',
-    //         confirmButtonText: 'Ok',
-    //         confirmButtonColor: '#f39c12', // Cor do botão
-    //     });
-    //     return;
-    // }
-
     if (camposVazios.length > 0) {
         Swal.fire({
-            icon: 'warning', // Ícone de aviso
+            icon: 'warning',
             title: 'Atenção!',
             text: 'Coloque a data de quando irá terminar a tarefa!',
             confirmButtonText: 'Ok',
-            confirmButtonColor: '#f39c12', // Cor do botão
+            confirmButtonColor: '#f39c12',
         });
         return;
     }
 
+    const statusAnteriorAjuste = [
+        "status_caderno", "status_comp", "status_modelagem", "status_finalizacao",
+        "status_pre", "status_pos", "status_alteracao", "status_planta", "status_filtro"
+    ].some(id => {
+        const el = document.getElementById(id);
+        return el && el.value === "Aprovado com ajustes";
+    });
+
     var textos = {};
-    var pElements = document.querySelectorAll(".form-edicao p");
-    pElements.forEach(function (p) {
+    document.querySelectorAll(".form-edicao p").forEach(function (p) {
         textos[p.id] = p.textContent.trim();
     });
 
-    var dados = {
+    const dados = {
         imagem_id: idImagemSelecionada,
         caderno_id: document.getElementById("opcao_caderno").value || "",
         status_caderno: document.getElementById("status_caderno").value || "",
@@ -1282,7 +1251,6 @@ document.getElementById("salvar_funcoes").addEventListener("click", function (ev
         status_id: document.getElementById("opcao_status").value || ""
     };
 
-
     function enviarFormulario() {
         $.ajax({
             type: "POST",
@@ -1298,7 +1266,6 @@ document.getElementById("salvar_funcoes").addEventListener("click", function (ev
                     backgroundColor: "green",
                     stopOnFocus: true,
                 }).showToast();
-
             },
             error: function (jqXHR, textStatus, errorThrown) {
                 console.error("Erro ao salvar dados: " + textStatus, errorThrown);
@@ -1311,10 +1278,25 @@ document.getElementById("salvar_funcoes").addEventListener("click", function (ev
                     backgroundColor: "red",
                     stopOnFocus: true,
                 }).showToast();
-
-
             }
         });
+    }
+
+    if (statusAnteriorAjuste) {
+        Swal.fire({
+            title: "Atenção!",
+            text: "Há uma função anterior com o status 'Aprovado com ajustes'. Você já conferiu?",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonText: "Sim, já conferi",
+            cancelButtonText: "Não, revisar agora"
+        }).then((result) => {
+            if (result.isConfirmed) {
+                enviarFormulario();
+            }
+        });
+    } else {
+        enviarFormulario();
     }
     // Segundo fetch - agora enviando como JSON
     var fileInputs = document.querySelectorAll("input[type='file']");

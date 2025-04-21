@@ -1057,6 +1057,10 @@ function applyStatusStyle(cell, status, colaborador) {
             cell.style.backgroundColor = 'orangered';
             cell.style.color = 'black';
             break;
+        case 'Aprovado com ajustes':
+            cell.style.backgroundColor = 'mediumslateblue';
+            cell.style.color = 'black';
+            break;
         default:
             cell.style.backgroundColor = '';
             cell.style.color = '';
@@ -1173,6 +1177,31 @@ document.getElementById("salvar_funcoes").addEventListener("click", function (ev
     var camposPrazo = form.querySelectorAll("input[type='date'][required]");
     var camposVazios = Array.from(camposPrazo).filter(input => !input.value);
 
+    // Verifica se algum status anterior está "Aprovado com ajustes"
+    const statusAnteriorAjuste = ["status_caderno", "status_comp", "status_modelagem", "status_finalizacao", "status_pre", "status_pos", "status_alteracao", "status_planta", "status_filtro"].some(id => {
+        const el = document.getElementById(id);
+        return el && el.value === "Aprovado com ajustes";
+    });
+
+    if (statusAnteriorAjuste) {
+        Swal.fire({
+            title: "Atenção!",
+            text: "Há uma função anterior com o status 'Aprovado com ajustes'. Você ja conferiu?",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonText: "Sim, já conferi",
+            cancelButtonText: "Não, revisar agora"
+        }).then((result) => {
+            if (result.isConfirmed) {
+                enviarFormulario(); // Função que envia os dados via AJAX
+            } else {
+                return; // Não faz nada, deixa o usuário revisar
+            }
+        });
+    } else {
+        enviarFormulario(); // Nenhum status com ajuste, pode seguir
+    }
+
     // var funcoesTEA = localStorage.getItem("funcoesTEA");
     // if (funcoesTEA >= 4) {
     //     Swal.fire({
@@ -1254,37 +1283,39 @@ document.getElementById("salvar_funcoes").addEventListener("click", function (ev
     };
 
 
-    $.ajax({
-        type: "POST",
-        url: "https://www.improov.com.br/sistema/insereFuncao.php",
-        data: dados,
-        success: function (response) {
-            Toastify({
-                text: "Dados salvos com sucesso!",
-                duration: 3000,
-                close: true,
-                gravity: "top",
-                position: "left",
-                backgroundColor: "green",
-                stopOnFocus: true,
-            }).showToast();
+    function enviarFormulario() {
+        $.ajax({
+            type: "POST",
+            url: "https://www.improov.com.br/sistema/insereFuncao.php",
+            data: dados,
+            success: function (response) {
+                Toastify({
+                    text: "Dados salvos com sucesso!",
+                    duration: 3000,
+                    close: true,
+                    gravity: "top",
+                    position: "left",
+                    backgroundColor: "green",
+                    stopOnFocus: true,
+                }).showToast();
 
-        },
-        error: function (jqXHR, textStatus, errorThrown) {
-            console.error("Erro ao salvar dados: " + textStatus, errorThrown);
-            Toastify({
-                text: "Erro ao salvar dados.",
-                duration: 3000,
-                close: true,
-                gravity: "top",
-                position: "left",
-                backgroundColor: "red",
-                stopOnFocus: true,
-            }).showToast();
+            },
+            error: function (jqXHR, textStatus, errorThrown) {
+                console.error("Erro ao salvar dados: " + textStatus, errorThrown);
+                Toastify({
+                    text: "Erro ao salvar dados.",
+                    duration: 3000,
+                    close: true,
+                    gravity: "top",
+                    position: "left",
+                    backgroundColor: "red",
+                    stopOnFocus: true,
+                }).showToast();
 
 
-        }
-    });
+            }
+        });
+    }
     // Segundo fetch - agora enviando como JSON
     var fileInputs = document.querySelectorAll("input[type='file']");
     var filesExistem = Array.from(fileInputs).some(input => input.files.length > 0);

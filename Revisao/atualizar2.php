@@ -65,7 +65,7 @@ LEFT JOIN (
 
 -- Filtro baseado apenas no último status do histórico
 WHERE f.funcao_id IN (1, 2, 3, 4, 5, 6, 7, 8, 9)
-  AND h.status_novo IN ('Em aprovação', 'Ajuste')
+  AND h.status_novo IN ('Em aprovação', 'Ajuste', 'Aprovado com ajustes')
   AND f.status <> 'Finalizado'
 
 ORDER BY h.data_aprovacao DESC";

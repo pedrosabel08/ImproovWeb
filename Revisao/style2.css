@@ -180,11 +180,15 @@ h2 {
 
 
 #check {
-    background-color: #1a9cf3;
+    background-color: #34ca3c;
 }
 
 #xmark {
     background-color: #ec2727;
+}
+
+#check_ajuste {
+    background-color: #1a9cf3;
 }
 
 #historico_modal {

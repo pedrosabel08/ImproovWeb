@@ -115,8 +115,11 @@ h2 {
     border-radius: 8px;
     display: flex;
     justify-content: space-between;
-    align-items: center;
     transition: transform 0.2s ease, background-color 0.3s ease;
+    position: relative;
+    width: 30%;
+    height: fit-content;
+    cursor: pointer;
 }
 
 .task-item:hover {
@@ -134,13 +137,13 @@ h2 {
 
 .task-info h3 {
     margin: 0;
-    font-size: 24px;
+    font-size: 18px;
     color: #333;
 }
 
 .task-info p {
     margin: 5px 0;
-    font-size: 14px;
+    font-size: 13px;
     color: #666;
 }
 
@@ -177,11 +180,15 @@ h2 {
 
 
 #check {
-    background-color: #1a9cf3;
+    background-color: #34ca3c;
 }
 
 #xmark {
     background-color: #ec2727;
+}
+
+#check_ajuste {
+    background-color: #1a9cf3;
 }
 
 #historico_modal {
@@ -427,7 +434,6 @@ nav {
     font-size: 12px;
     transition: all 0.3s ease-in-out;
     transform: translate(-50%, -50%);
-
 }
 
 /* 
@@ -470,16 +476,22 @@ nav {
     padding: 10px;
 }
 
-.comentarios::-webkit-scrollbar {
+.comentarios::-webkit-scrollbar,
+.tarefasObra::-webkit-scrollbar,
+.containerObra::-webkit-scrollbar {
     width: 5px;
 }
 
-.comentarios::-webkit-scrollbar-thumb {
+.comentarios::-webkit-scrollbar-thumb,
+.tarefasObra::-webkit-scrollbar-thumb,
+.containerObra::-webkit-scrollbar-thumb {
     background-color: #747474;
     border-radius: 10px;
 }
 
-.comentarios::-webkit-scrollbar-track {
+.comentarios::-webkit-scrollbar-track,
+.tarefasObra::-webkit-scrollbar-track,
+.containerObra::-webkit-scrollbar-track {
     background-color: #f1f1f1;
 }
 
@@ -556,6 +568,8 @@ body::-webkit-scrollbar-track {
 .filtros {
     margin: auto;
     display: flex;
+    justify-content: space-around;
+
     gap: 50px;
 }
 
@@ -564,6 +578,13 @@ body::-webkit-scrollbar-track {
     margin: 0 auto;
     border: none;
     border-bottom: 1px solid black;
+}
+
+.filtros div {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    text-align: center;
 }
 
 .imageWrapper {
@@ -700,18 +721,28 @@ h2#dataEnvio {
     cursor: pointer;
     font-weight: bold;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: 0.3s all ease;
 }
 
 .obra-card:hover {
     background: #e0e0e0;
 }
 
+.obra-img-preview {
+    display: flex;
+    justify-content: center;
+}
+
 .obra-img-preview img {
-    width: 80px;
-    height: 80px;
+    width: 250px;
+    height: 250px;
     object-fit: cover;
     border-radius: 8px;
-    margin-right: 15px;
+    margin-bottom: 15px;
+}
+
+.obra-info {
+    text-align: center;
 }
 
 .obra-info h3 {
@@ -728,8 +759,10 @@ h2#dataEnvio {
     display: grid;
     grid-template-columns: 2.5fr 1fr;
     transition: 0.5s all ease;
-    margin: 40px auto;
-    gap: 100px;
+}
+
+.container-main {
+    height: 100vh;
 }
 
 .containerObra {
@@ -737,14 +770,58 @@ h2#dataEnvio {
     max-width: 1200px;
     padding: 20px;
     background-color: #ffffff;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.4);
     border-radius: 8px;
     margin: auto;
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 30px;
+    margin-top: 40px;
+    padding: 0 50px;
+    max-height: 95%;
+    overflow-y: auto;
 }
 
 .tarefasObra {
-    max-height: 70vh;
+    max-height: 95%;
     overflow-y: auto;
+    border-left: 1px solid;
+    padding: 40px 0;
+}
+
+.tarefasImagensObra {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    justify-content: center;
+    margin-top: 50px;
+}
+
+p#data_aprovacao {
+    font-weight: bold;
+}
+
+p#status_funcao {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    z-index: 10;
+    font-size: 10px;
+    text-align: center;
+    color: transparent;
+}
+
+p.imagem_nome {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.filtros label {
+    font-weight: bold;
+    font-size: 14px;
 }

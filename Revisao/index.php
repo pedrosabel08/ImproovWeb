@@ -64,35 +64,39 @@ $idusuario = $_SESSION['idusuario'];
 
 
     <div class="main">
-        <div class="contagem">
-            <h4>Contagem de revisões por função:</h4>
-            <div id="contagem_alt"></div>
-        </div>
-        <div class="filtros">
-            <select name="nome_funcao" id="nome_funcao">
-                <option value="Todos">Todos</option>
-                <option value="Caderno">Caderno</option>
-                <option value="Filtro de assets">Filtro de assets</option>
-                <option value="Modelagem">Modelagem</option>
-                <option value="Composição">Composição</option>
-                <option value="Pré-Finalização">Pré-Finalização</option>
-                <option value="Finalização">Finalização</option>
-                <option value="Pós-produção">Pós-produção</option>
-                <option value="Alteração">Alteração</option>
-                <option value="Planta Humanizada">Planta Humanizada</option>
-            </select>
-            <select name="filtro_obra" id="filtro_obra"></select>
-            <select name="filtro_colaborador" id="filtro_colaborador"></select>
-        </div>
-
-        <div class="alternar">
-            <button onclick="fetchTarefas('Todos', 'Em aprovação')">Em aprovação</button>
-            <button onclick="fetchTarefas('Todos', 'Ajuste')">Ajuste</button>
-            <button onclick="fetchTarefas('Todos', 'Aprovado')">Aprovado</button>
-        </div>
 
 
-        <div class="container"></div>
+
+        <div class="container-main">
+            <div class="containerObra">
+                <div class="contagem">
+                    <h4>Contagem de revisões por função:</h4>
+                    <div id="contagem_alt"></div>
+                </div>
+            </div>
+            <div class="tarefasObra hidden">
+                <div class="header">
+
+                    <div class="filtros">
+                        <div>
+                            <label for="nome_funcao">Função:</label>
+                            <select name="nome_funcao" id="nome_funcao"></select>
+                        </div>
+                        <div>
+                            <label for="filtro_colaborador">Colaborador:</label>
+                            <select name="filtro_colaborador" id="filtro_colaborador"></select>
+                        </div>
+                        <input type="hidden" name="filtro_obra" id="filtro_obra">
+                    </div>
+                    <!-- 
+                    <div class="alternar">
+                        <button onclick="fetchObrasETarefas('Todos', 'Em aprovação')">Em aprovação</button>
+                        <button onclick="fetchObrasETarefas('Todos', 'Ajuste')">Ajuste</button>
+                    </div> -->
+                </div>
+                <div class="tarefasImagensObra"></div>
+            </div>
+        </div>
     </div>
 
     <div class="container-aprovacao hidden">

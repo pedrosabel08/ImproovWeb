@@ -71,17 +71,9 @@ function revisarTarefa(idfuncao_imagem, nome_colaborador, imagem_nome, nome_func
                 }).showToast();
 
                 if (data.success) {
-                    const main = document.querySelector('.main');
-                    main.classList.remove('hidden');
+                    const obraSelecionada = document.getElementById('filtro_obra').value;
 
-                    const container_aprovacao = document.querySelector('.container-aprovacao');
-                    container_aprovacao.classList.add('hidden');
-
-                    const imagemCompletaDiv = document.getElementById("imagem_completa");
-                    imagemCompletaDiv.innerHTML = '';
-
-                    const comentariosDiv = document.querySelector(".comentarios");
-                    comentariosDiv.innerHTML = '';
+                    filtrarTarefasPorObra(obraSelecionada);
                 }
             })
             .catch(error => {
@@ -412,8 +404,8 @@ function historyAJAX(idfuncao_imagem, funcao_nome, imagem_nome, colaborador_nome
             // Renderizar as imagens
             const imageContainer = document.getElementById('imagens');
             imageContainer.innerHTML = ''; // Limpa as imagens anteriores
-            const imagemCompletaDiv = document.getElementById("imagem_completa");
-            imagemCompletaDiv.innerHTML = '';
+            // const imagemWrapperDiv = document.getElementById("imagem_wrapper");
+            // imagemWrapperDiv.innerHTML = '';
             const commentDiv = document.querySelector('.sidebar-direita');
             commentDiv.style.display = 'none';
 
@@ -571,21 +563,28 @@ let ap_imagem_id = null; // Variável para armazenar o ID da imagem atual
 
 function mostrarImagemCompleta(src, id) {
     ap_imagem_id = id; // Armazena o id da imagem clicada
-    const imagemCompletaDiv = document.getElementById("imagem_completa");
-    imagemCompletaDiv.innerHTML = '';
-    const commentDiv = document.querySelector('.sidebar-direita');
-    commentDiv.style.display = 'block';
 
+    const imageWrapper = document.getElementById("image_wrapper");
+    const sidebar = document.querySelector(".sidebar-direita");
+    sidebar.style.display = "block";
+
+    // limpa filhos: imagem antiga + comentários antigos
+    while (imageWrapper.firstChild) {
+        imageWrapper.removeChild(imageWrapper.firstChild);
+    }
+
+    // cria nova <img>
     const imgElement = document.createElement("img");
+    imgElement.id = "imagem_atual";
     imgElement.src = src;
     imgElement.style.width = "100%";
     imgElement.style.borderRadius = "10px";
-    imgElement.id = "imagem_atual";
 
-    imagemCompletaDiv.appendChild(imgElement);
+    imageWrapper.appendChild(imgElement);
+    document.querySelector('#imagem_atual').scrollIntoView({ behavior: 'smooth' })
+
 
     renderComments(id);
-
 
     imgElement.addEventListener('click', async function (event) {
 
@@ -658,92 +657,80 @@ function addComment(x, y) {
 const image = document.getElementById("imagem_atual");
 
 
+// ---- CONFIGURAÇÃO ---------------------------------------------------------
+const USERS_PERMITIDOS = [1, 2, 3, 9, 20];   // quem pode editar / excluir
+// --------------------------------------------------------------------------
+
 async function renderComments(id) {
     const comentariosDiv = document.querySelector(".comentarios");
-    const imagemCompletaDiv = document.getElementById("imagem_completa");
+    const imagemCompletaDiv = document.getElementById("image_wrapper");
     const response = await fetch(`buscar_comentarios.php?id=${id}`);
     const comentarios = await response.json();
 
-
-    // Limpa os comentários antigos
+    // Limpa comentários antigos
     comentariosDiv.innerHTML = '';
-    // Limpa os comentários antigos
-    imagemCompletaDiv.querySelectorAll('.comment').forEach(comment => comment.remove());
+    imagemCompletaDiv.querySelectorAll('.comment').forEach(c => c.remove());
 
     comentarios.forEach(comentario => {
 
-        // Cria o card do comentário
+        /* ---------- CARD NA SIDEBAR ---------- */
         const commentCard = document.createElement('div');
         commentCard.classList.add('comment-card');
+        commentCard.setAttribute('data-id', comentario.id);
 
         commentCard.innerHTML = `
-             <div class="comment-header">
-                 <div class="comment-number">${comentario.numero_comentario}</div>
-                 <div class="comment-user">${comentario.nome_responsavel}</div>
-             </div>
-        <div class="comment-body" contenteditable="false">${comentario.texto}</div>
-             <div class="comment-footer">
-                 <div class="comment-date">${comentario.data}</div>
-                 <div class="comment-actions">
-                     <button class="comment-edit">✏️</button>
-                     <button class="comment-delete" onclick='deleteComment(${comentario.id})'>🗑️</button>
-                 </div>
-             </div>
-         `;
+            <div class="comment-header">
+                <div class="comment-number">${comentario.numero_comentario}</div>
+                <div class="comment-user">${comentario.nome_responsavel}</div>
+            </div>
+            <div class="comment-body" contenteditable="false">${comentario.texto}</div>
+            <div class="comment-footer">
+                <div class="comment-date">${comentario.data}</div>
+                <div class="comment-actions">
+                    <button class="comment-edit">✏️</button>
+                    <button class="comment-delete" onclick="deleteComment(${comentario.id})">🗑️</button>
+                </div>
+            </div>
+        `;
 
-        // Adiciona evento ao botão "edit"
+        /* --- PERMISSÃO: esconde ações pra quem não pode --- */
+        if (!USERS_PERMITIDOS.includes(idusuario)) {
+            commentCard.querySelector('.comment-actions').style.display = 'none';
+        }
+
+        /* ---------- BOTÃO EDITAR ---------- */
         const editButton = commentCard.querySelector('.comment-edit');
         const commentBody = commentCard.querySelector('.comment-body');
 
         editButton.addEventListener('click', () => {
-            // Torna o comment-body editável
             commentBody.setAttribute('contenteditable', 'true');
-            commentBody.focus(); // Foca no elemento para edição
+            commentBody.focus();
         });
 
-        // Adiciona evento para salvar ao perder o foco
         commentBody.addEventListener('blur', () => {
-            // Torna o comment-body não editável novamente
             commentBody.setAttribute('contenteditable', 'false');
-
-            // Chama a função updateComment para salvar as alterações
             const novoTexto = commentBody.textContent.trim();
             updateComment(comentario.id, novoTexto);
         });
 
-        // Cria um novo div para cada comentário
         const commentDiv = document.createElement('div');
         commentDiv.classList.add('comment');
-        commentDiv.classList.add('tooltip');
         commentDiv.innerText = comentario.numero_comentario;
         commentDiv.style.left = `${comentario.x}%`;
         commentDiv.style.top = `${comentario.y}%`;
 
-        // Adiciona o texto do comentário ao atributo data-tooltip
-        commentDiv.setAttribute('data-tooltip', comentario.texto);
-
-        // Adiciona um event listener para detectar o clique no comentário
-        commentDiv.addEventListener('click', function () {
-
-            document.querySelectorAll('.comment-number').forEach(number => {
-                number.classList.remove('highlight');
-            });
-
-            // Adiciona o destaque ao card correspondente
-            const commentNumber = document.querySelector(`.comment-card[data-id="${comentario.id}"] .comment-number`);
-            if (commentNumber) {
-                commentNumber.classList.add('highlight');
-                commentNumber.scrollIntoView({ behavior: 'smooth', block: 'center' }); // Rola até o card
-
+        commentDiv.addEventListener('click', () => {
+            document.querySelectorAll('.comment-number').forEach(n => n.classList.remove('highlight'));
+            const number = document.querySelector(`.comment-card[data-id="${comentario.id}"] .comment-number`);
+            if (number) {
+                number.classList.add('highlight');
+                number.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
-
         });
 
-        // Adiciona o comentário à imagem
+        /* ---------- ADICIONA AO DOM ---------- */
         imagemCompletaDiv.appendChild(commentDiv);
         comentariosDiv.appendChild(commentCard);
-        commentCard.setAttribute('data-id', comentario.id);
-
     });
 }
 
@@ -827,8 +814,8 @@ btnBack.addEventListener('click', function () {
     const container_aprovacao = document.querySelector('.container-aprovacao');
     container_aprovacao.classList.add('hidden');
 
-    const imagemCompletaDiv = document.getElementById("imagem_completa");
-    imagemCompletaDiv.innerHTML = '';
+    const imagemWrapperDiv = document.querySelector(".image_wrapper");
+    imagemWrapperDiv.innerHTML = '';
 
     const comentariosDiv = document.querySelector(".comentarios");
     comentariosDiv.innerHTML = '';
@@ -843,8 +830,8 @@ document.addEventListener('keydown', function (event) {
         const container_aprovacao = document.querySelector('.container-aprovacao');
         container_aprovacao.classList.add('hidden');
 
-        const imagemCompletaDiv = document.getElementById("imagem_completa");
-        imagemCompletaDiv.innerHTML = '';
+        const imagemWrapperDiv = document.querySelector(".image_wrapper");
+        imagemWrapperDiv.innerHTML = '';
 
         const comentariosDiv = document.querySelector(".comentarios");
         comentariosDiv.innerHTML = '';

@@ -1,15 +1,24 @@
 document.addEventListener("DOMContentLoaded", function () {
 
-    fetchTarefas();
+    fetchObrasETarefas();
 
 });
 
-function revisarTarefa(idfuncao_imagem, nome_colaborador, imagem_nome, nome_funcao, colaborador_id, isChecked) {
-    const actionText = isChecked
-        ? "marcar esta tarefa como revisada"
-        : "indicar que esta tarefa precisa de alterações";
-
+function revisarTarefa(idfuncao_imagem, nome_colaborador, imagem_nome, nome_funcao, colaborador_id, tipoRevisao) {
     const idcolaborador = localStorage.getItem('idcolaborador');
+
+    let actionText = "";
+    switch (tipoRevisao) {
+        case "aprovado":
+            actionText = "aprovar esta tarefa";
+            break;
+        case "ajuste":
+            actionText = "marcar esta tarefa como necessitando de ajustes";
+            break;
+        case "aprovado_com_ajustes":
+            actionText = "aprovar com ajustes";
+            break;
+    }
 
     if (confirm(`Você tem certeza de que deseja ${actionText}?`)) {
         fetch('revisarTarefa.php', {
@@ -18,56 +27,67 @@ function revisarTarefa(idfuncao_imagem, nome_colaborador, imagem_nome, nome_func
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                idfuncao_imagem: idfuncao_imagem,
-                nome_colaborador: nome_colaborador,
-                imagem_nome: imagem_nome,
-                nome_funcao: nome_funcao,
-                isChecked: isChecked,
+                idfuncao_imagem,
+                nome_colaborador,
+                imagem_nome,
+                nome_funcao,
+                colaborador_id,
                 responsavel: idcolaborador,
-                colaborador_id: colaborador_id
+                tipoRevisao
             }),
         })
             .then(response => {
-                if (!response.ok) {
-                    throw new Error("Erro ao atualizar a tarefa.");
-                }
+                if (!response.ok) throw new Error("Erro ao atualizar a tarefa.");
                 return response.json();
             })
             .then(data => {
                 console.log("Resposta do servidor:", data);
 
-                const message = isChecked
-                    ? "Tarefa marcada como revisada com sucesso!"
-                    : "Tarefa marcada como necessitando de alterações!";
-                const bgColor = isChecked ? "green" : "orange";
+                let message = "";
+                let bgColor = "";
+
+                switch (tipoRevisao) {
+                    case "aprovado":
+                        message = "Tarefa aprovada com sucesso!";
+                        bgColor = "green";
+                        break;
+                    case "ajuste":
+                        message = "Tarefa marcada como necessitando de ajustes!";
+                        bgColor = "orange";
+                        break;
+                    case "aprovado_com_ajustes":
+                        message = "Tarefa aprovada com ajustes!";
+                        bgColor = "blue";
+                        break;
+                }
+
+                Toastify({
+                    text: data.success ? message : "Falha ao atualizar a tarefa: " + data.message,
+                    duration: 3000,
+                    backgroundColor: data.success ? bgColor : "red",
+                    close: true,
+                    gravity: "top",
+                    position: "right"
+                }).showToast();
 
                 if (data.success) {
-                    Toastify({
-                        text: message,
-                        duration: 3000,
-                        backgroundColor: bgColor,
-                        close: true,
-                        gravity: "top",
-                        position: "right"
-                    }).showToast();
+                    const main = document.querySelector('.main');
+                    main.classList.remove('hidden');
 
-                    const filtroAtual = document.getElementById('nome_funcao').value;
-                    fetchTarefas(filtroAtual);
-                } else {
-                    Toastify({
-                        text: "Falha ao atualizar a tarefa: " + data.message,
-                        duration: 3000,
-                        backgroundColor: "red",
-                        close: true,
-                        gravity: "top",
-                        position: "right"
-                    }).showToast();
+                    const container_aprovacao = document.querySelector('.container-aprovacao');
+                    container_aprovacao.classList.add('hidden');
+
+                    const imagemCompletaDiv = document.getElementById("imagem_completa");
+                    imagemCompletaDiv.innerHTML = '';
+
+                    const comentariosDiv = document.querySelector(".comentarios");
+                    comentariosDiv.innerHTML = '';
                 }
             })
             .catch(error => {
                 console.error("Erro:", error);
                 Toastify({
-                    text: "Ocorreu um erro ao processar a solicitação." + error.message,
+                    text: "Ocorreu um erro ao processar a solicitação. " + error.message,
                     duration: 3000,
                     backgroundColor: "red",
                     close: true,
@@ -76,121 +96,249 @@ function revisarTarefa(idfuncao_imagem, nome_colaborador, imagem_nome, nome_func
                 }).showToast();
             });
     }
+
     event.stopPropagation();
 }
-
 
 // Função para alternar a visibilidade dos detalhes da tarefa
 function toggleTaskDetails(taskElement) {
     taskElement.classList.toggle('open');
 }
 
-function filtrarTarefas() {
-    const select = document.getElementById('nome_funcao');
-    const valorSelecionado = select.value; // Obtém o valor selecionado no select
-
-    // Recarrega as tarefas e exibe apenas as que correspondem ao filtro
-    fetchTarefas(valorSelecionado);
-}
-
-
+let dadosTarefas = [];
 let todasAsObras = new Set();
 let todosOsColaboradores = new Set();
 
-async function fetchTarefas(filtro = 'Todos', status = 'Em aprovação') {
+async function fetchObrasETarefas() {
     try {
-        const obraSelecionada = document.getElementById('filtro_obra').value;
-        const colaboradorSelecionado = document.getElementById('filtro_colaborador').value;
+        const response = await fetch(`atualizar2.php`);
+        if (!response.ok) throw new Error("Erro ao buscar tarefas");
 
-        const response = await fetch(`atualizar.php?status=${status}`);
-        if (!response.ok) {
-            throw new Error("Erro ao buscar as tarefas.");
-        }
+        dadosTarefas = await response.json();
 
-        const data = await response.json();
+        todasAsObras = new Set(dadosTarefas.map(t => t.nome_obra));
+        todosOsColaboradores = new Set(dadosTarefas.map(t => t.nome_colaborador));
 
-        // Armazena todas as obras e colaboradores da resposta original
-        if (todasAsObras.size === 0 && todosOsColaboradores.size === 0) {
-            todasAsObras = new Set(data.map(tarefa => tarefa.nome_obra));
-            todosOsColaboradores = new Set(data.map(tarefa => tarefa.nome_colaborador));
-            atualizarFiltros(); // Atualiza os selects apenas uma vez
-        }
-
-        // Filtra as tarefas conforme os selects
-        const tarefasFiltradas = data.filter(tarefa => {
-            const filtroFuncao = filtro === 'Todos' || tarefa.nome_funcao === filtro;
-            const filtroObra = !obraSelecionada || tarefa.nome_obra === obraSelecionada;
-            const filtroColaborador = !colaboradorSelecionado || tarefa.nome_colaborador === colaboradorSelecionado;
-
-            return filtroFuncao && filtroObra && filtroColaborador;
-        });
-
-        // Apenas exibe as tarefas filtradas
-        exibirTarefas(tarefasFiltradas);
-
-        // Conta o número de revisões por tipo de função
-        const revisoesPorFuncao = {};
-
-        tarefasFiltradas.forEach(tarefa => {
-            const funcao = tarefa.nome_funcao;
-            revisoesPorFuncao[funcao] = revisoesPorFuncao[funcao] ? revisoesPorFuncao[funcao] + 1 : 1;
-        });
-
-        // Exibe a contagem por função
-        const contagemAltDiv = document.getElementById('contagem_alt');
-        contagemAltDiv.innerHTML = ''; // Limpa o conteúdo anterior
-
-        // Adiciona as contagens na div
-        for (const funcao in revisoesPorFuncao) {
-            const contagem = revisoesPorFuncao[funcao];
-            contagemAltDiv.innerHTML += `<p>${funcao}: ${contagem}</p>`;
-        }
+        exibirCardsDeObra(dadosTarefas); // Mostra os cards
 
 
     } catch (error) {
-        console.error("Erro:", error);
-        Toastify({
-            text: "Ocorreu um erro ao carregar as tarefas.",
-            duration: 3000,
-            backgroundColor: "red",
-            close: true,
-            gravity: "top",
-            position: "right"
-        }).showToast();
+        console.error(error);
     }
 }
 
-// Atualiza os filtros sem apagá-los
-function atualizarFiltros() {
-    const filtroObra = document.getElementById("filtro_obra");
-    const filtroColaborador = document.getElementById("filtro_colaborador");
+function exibirCardsDeObra(tarefas) {
+    const container = document.querySelector('.containerObra');
+    container.innerHTML = '';
 
-    filtroObra.innerHTML = '<option value="">Todas as Obras</option>';
-    filtroColaborador.innerHTML = '<option value="">Todos os Colaboradores</option>';
-
-    todasAsObras.forEach(obra => {
-        let option = document.createElement("option");
-        option.value = obra;
-        option.textContent = obra;
-        filtroObra.appendChild(option);
+    // Agrupar tarefas por nome_obra
+    const obrasMap = new Map();
+    tarefas.forEach(tarefa => {
+        if (!obrasMap.has(tarefa.nome_obra)) {
+            obrasMap.set(tarefa.nome_obra, []);
+        }
+        obrasMap.get(tarefa.nome_obra).push(tarefa);
     });
 
-    todosOsColaboradores.forEach(colaborador => {
-        let option = document.createElement("option");
-        option.value = colaborador;
-        option.textContent = colaborador;
-        filtroColaborador.appendChild(option);
+    obrasMap.forEach((tarefasDaObra, nome_obra) => {
+        tarefasDaObra.sort((a, b) => new Date(b.data_aprovacao) - new Date(a.data_aprovacao));
+
+        const tarefaComImagem = tarefasDaObra.find(t => t.imagem);
+        const imagemPreview = tarefaComImagem ? `../${tarefaComImagem.imagem}` : null;
+
+        const card = document.createElement('div');
+        card.classList.add('obra-card');
+
+        // Monta o conteúdo do card com ou sem imagem
+        card.innerHTML = `
+            ${imagemPreview ? `
+            <div class="obra-img-preview">
+                <img src="${imagemPreview}" alt="Imagem da obra ${nome_obra}">
+            </div>` : `
+            <div class="obra-img-preview">
+                <img src="../assets/logo.jpg" alt="Imagem da obra ${nome_obra}">
+            </div>`}
+            <div class="obra-info">
+                <h3>${tarefasDaObra[0].nomenclatura}</h3>
+                <p>${tarefasDaObra.length} aprovações</p>
+            </div>
+        `;
+
+        card.addEventListener('click', () => {
+            filtrarTarefasPorObra(nome_obra);
+        });
+
+        container.appendChild(card);
     });
 }
 
+function filtrarTarefasPorObra(obraSelecionada) {
+
+    document.getElementById('filtro_obra').value = obraSelecionada;
+
+    // Filtra todas as tarefas da obra
+    const tarefasDaObra = dadosTarefas.filter(t => t.nome_obra === obraSelecionada);
+
+    // Atualiza os filtros dinamicamente com base nessa obra
+    atualizarFiltrosDinamicos(tarefasDaObra);
+
+    // Captura os novos valores dos selects após atualização
+    const colaboradorSelecionado = document.getElementById('filtro_colaborador').value;
+    const funcaoSelecionada = document.getElementById('nome_funcao').value;
+
+    // Aplica os filtros adicionais (colaborador e função)
+    const tarefasFiltradas = tarefasDaObra.filter(t => {
+        const matchColaborador = !colaboradorSelecionado || t.nome_colaborador === colaboradorSelecionado;
+        const matchFuncao = funcaoSelecionada === 'Todos' || t.nome_funcao === funcaoSelecionada;
+        return matchColaborador && matchFuncao;
+    });
+
+    // Exibe as tarefas filtradas
+    exibirTarefas(tarefasFiltradas);
+}
+
+function atualizarSelectColaborador(tarefas) {
+    const selectColaborador = document.getElementById('filtro_colaborador');
+    const valorAnterior = selectColaborador.value;
+
+    const colaboradores = [...new Set(tarefas.map(t => t.nome_colaborador))];
+
+    selectColaborador.innerHTML = '<option value="">Todos</option>';
+    colaboradores.forEach(colab => {
+        const option = document.createElement('option');
+        option.value = colab;
+        option.textContent = colab;
+        selectColaborador.appendChild(option);
+    });
+
+    if ([...selectColaborador.options].some(o => o.value === valorAnterior)) {
+        selectColaborador.value = valorAnterior;
+    }
+}
+
+function atualizarSelectFuncao(tarefas) {
+    const selectFuncao = document.getElementById('nome_funcao');
+    const valorAnterior = selectFuncao.value;
+
+    const funcoes = [...new Set(tarefas.map(t => t.nome_funcao))];
+
+    selectFuncao.innerHTML = '<option value="Todos">Todos</option>';
+    funcoes.forEach(funcao => {
+        const option = document.createElement('option');
+        option.value = funcao;
+        option.textContent = funcao;
+        selectFuncao.appendChild(option);
+    });
+
+    if ([...selectFuncao.options].some(o => o.value === valorAnterior)) {
+        selectFuncao.value = valorAnterior;
+    }
+}
+
 // Eventos para os filtros
-document.getElementById('filtro_obra').addEventListener('change', () => {
-    fetchTarefas(document.getElementById('nome_funcao').value);
-});
+function atualizarFiltrosDinamicos(tarefas) {
+    const selectColaborador = document.getElementById('filtro_colaborador');
+    const selectFuncao = document.getElementById('nome_funcao');
+
+    // Salva os valores antes de atualizar
+    const valorAnteriorColaborador = selectColaborador.value;
+    const valorAnteriorFuncao = selectFuncao.value;
+
+    const colaboradores = [...new Set(tarefas.map(t => t.nome_colaborador))];
+    const funcoes = [...new Set(tarefas.map(t => t.nome_funcao))];
+
+    // Atualiza select de colaborador
+    selectColaborador.innerHTML = '<option value="">Todos</option>';
+    colaboradores.forEach(colaborador => {
+        const option = document.createElement('option');
+        option.value = colaborador;
+        option.textContent = colaborador;
+        selectColaborador.appendChild(option);
+    });
+
+    // Atualiza select de função
+    selectFuncao.innerHTML = '<option value="Todos">Todos</option>';
+    funcoes.forEach(funcao => {
+        const option = document.createElement('option');
+        option.value = funcao;
+        option.textContent = funcao;
+        selectFuncao.appendChild(option);
+    });
+
+    // Reatribui os valores anteriores (se ainda existirem nas opções)
+    if ([...selectColaborador.options].some(o => o.value === valorAnteriorColaborador)) {
+        selectColaborador.value = valorAnteriorColaborador;
+    }
+
+    if ([...selectFuncao.options].some(o => o.value === valorAnteriorFuncao)) {
+        selectFuncao.value = valorAnteriorFuncao;
+    }
+}
 
 document.getElementById('filtro_colaborador').addEventListener('change', () => {
-    fetchTarefas(document.getElementById('nome_funcao').value);
+    const obraSelecionada = document.getElementById('filtro_obra').value;
+    const colaboradorSelecionado = document.getElementById('filtro_colaborador').value;
+
+    const tarefasDaObra = dadosTarefas.filter(t => t.nome_obra === obraSelecionada);
+    const tarefasFiltradas = tarefasDaObra.filter(t =>
+        !colaboradorSelecionado || t.nome_colaborador === colaboradorSelecionado
+    );
+
+    atualizarSelectFuncao(tarefasFiltradas); // atualiza o outro filtro com base nesse
+
+    filtrarTarefasPorObra(obraSelecionada);
 });
+
+document.getElementById('nome_funcao').addEventListener('change', () => {
+    const obraSelecionada = document.getElementById('filtro_obra').value;
+    const funcaoSelecionada = document.getElementById('nome_funcao').value;
+
+    const tarefasDaObra = dadosTarefas.filter(t => t.nome_obra === obraSelecionada);
+    const tarefasFiltradas = tarefasDaObra.filter(t =>
+        funcaoSelecionada === 'Todos' || t.nome_funcao === funcaoSelecionada
+    );
+
+    atualizarSelectColaborador(tarefasFiltradas); // atualiza o outro filtro com base nesse
+
+    filtrarTarefasPorObra(obraSelecionada);
+});
+
+// Função para exibir as tarefas e abastecer os filtros
+function exibirTarefas(tarefas) {
+    const container = document.querySelector('.containerObra');
+    const containerMain = document.querySelector('.container-main');
+    containerMain.classList.add('expanded');
+
+    const tarefasObra = document.querySelector('.tarefasObra');
+    tarefasObra.classList.remove('hidden');
+
+    const tarefasImagensObra = document.querySelector('.tarefasImagensObra');
+
+    tarefasImagensObra.innerHTML = ''; // Limpa as tarefas anteriores
+
+    if (tarefas.length > 0) {
+        tarefas.forEach(tarefa => {
+            const taskItem = document.createElement('div');
+            taskItem.classList.add('task-item');
+            taskItem.setAttribute('onclick', `historyAJAX(${tarefa.idfuncao_imagem}, '${tarefa.nome_funcao}', '${tarefa.imagem_nome}', '${tarefa.nome_colaborador}')`);
+
+            // Define a cor de fundo com base no status
+            const bgColor = tarefa.status_novo === 'Em aprovação' ? 'green' : tarefa.status_novo === 'Ajuste' ? 'red' : tarefa.status_novo === 'Aprovado com ajustes' ? 'blue' : 'transparent';
+            taskItem.innerHTML = `
+                <div class="task-info">
+                    <h3 class="nome_funcao">${tarefa.nome_funcao}</h3><span class="colaborador">${tarefa.nome_colaborador}</span>
+                    <p class="imagem_nome" data-obra="${tarefa.nome_obra}">${tarefa.imagem_nome}</p>
+                    <p class="data_aprovacao">${formatarDataHora(tarefa.data_aprovacao)}</p>       
+                    <p id="status_funcao" style="background-color: ${bgColor};">${tarefa.status_novo}</p>
+                </div>
+            `;
+
+            tarefasImagensObra.appendChild(taskItem);
+        });
+    } else {
+        container.innerHTML = '<p style="text-align: center; color: #888;">Não há tarefas de revisão no momento.</p>';
+    }
+}
 
 function formatarData(data) {
     const [ano, mes, dia] = data.split('-'); // Divide a string no formato 'YYYY-MM-DD'
@@ -209,35 +357,8 @@ function formatarDataHora(data) {
     return `${dia}/${mes}/${ano} ${horas}:${minutos}`; // Retorna o formato desejado
 }
 
-// Função para exibir as tarefas e abastecer os filtros
-function exibirTarefas(tarefas) {
-    const container = document.querySelector('.container');
-    container.innerHTML = ''; // Limpa o conteúdo antes de exibir as tarefas
-
-    if (tarefas.length > 0) {
-        tarefas.forEach(tarefa => {
-            const taskItem = document.createElement('div');
-            taskItem.classList.add('task-item');
-            taskItem.setAttribute('onclick', `historyAJAX(${tarefa.idfuncao_imagem}, '${tarefa.nome_funcao}', '${tarefa.imagem_nome}', '${tarefa.nome_colaborador}')`);
-
-            taskItem.innerHTML = `
-                <div class="task-info">
-                    <h3>${tarefa.nome_funcao}</h3><span>${tarefa.nome_colaborador}</span>
-                    <p data-obra="${tarefa.nome_obra}">${tarefa.imagem_nome}</p>
-                    <p>${tarefa.status_novo}</p>
-                    <p>${formatarDataHora(tarefa.data_aprovacao)}</p>       
-                </div>
-            `;
-
-            container.appendChild(taskItem);
-        });
-    } else {
-        container.innerHTML = '<p style="text-align: center; color: #888;">Não há tarefas de revisão no momento.</p>';
-    }
-}
 
 
-document.getElementById('nome_funcao').addEventListener('change', filtrarTarefas);
 const modalComment = document.getElementById('modalComment');
 
 const idusuario = parseInt(localStorage.getItem('idusuario')); // Obtém o idusuario do localStorage
@@ -271,12 +392,19 @@ function historyAJAX(idfuncao_imagem, funcao_nome, imagem_nome, colaborador_nome
 
                 if ([1, 2, 9, 20, 3].includes(idusuario)) { // Verifica se o idusuario é 1, 2 ou 9
                     document.getElementById('buttons-task').innerHTML = `
-                        <button class="action-btn tooltip" id="check" data-tooltip="Aprovar" onclick="revisarTarefa(${historico.funcao_imagem_id}, '${historico.colaborador_nome}', '${historico.imagem_nome}', '${historico.nome_funcao}', '${historico.colaborador_id}', true)">
-                            <i class="fa-solid fa-check"></i>
-                        </button>
-                        <button class="action-btn tooltip" id="xmark" data-tooltip="Rejeitar" onclick="revisarTarefa(${historico.funcao_imagem_id}, '${historico.colaborador_nome}', '${historico.imagem_nome}', '${historico.nome_funcao}', '${historico.colaborador_id}', false)">
-                            <i class="fa-solid fa-xmark"></i>
-                        </button>`;
+                    <button class="action-btn tooltip" id="check" data-tooltip="Aprovar"
+                        onclick="revisarTarefa(${historico.funcao_imagem_id}, '${historico.colaborador_nome}', '${historico.imagem_nome}', '${historico.nome_funcao}', '${historico.colaborador_id}', 'aprovado')">
+                        <i class="fa-solid fa-check"></i>
+                    </button>
+                    <button class="action-btn tooltip" id="xmark" data-tooltip="Rejeitar"
+                        onclick="revisarTarefa(${historico.funcao_imagem_id}, '${historico.colaborador_nome}', '${historico.imagem_nome}', '${historico.nome_funcao}', '${historico.colaborador_id}', 'ajuste')">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                    <button class="action-btn tooltip" id="check_ajuste" data-tooltip="Aprovar com ajustes"
+                        onclick="revisarTarefa(${historico.funcao_imagem_id}, '${historico.colaborador_nome}', '${historico.imagem_nome}', '${historico.nome_funcao}', '${historico.colaborador_id}', 'aprovado_com_ajustes')">
+                        <i class="fa-solid fa-pen-ruler"></i>
+                    </button>
+                `;
                 } else {
                     document.getElementById('buttons-task').innerHTML = ''; // Não exibe os botões para outros usuários
                 }
@@ -555,7 +683,7 @@ async function renderComments(id) {
              </div>
         <div class="comment-body" contenteditable="false">${comentario.texto}</div>
              <div class="comment-footer">
-                 <div class="comment-date">${formatarDataHora(comentario.data)}</div>
+                 <div class="comment-date">${comentario.data}</div>
                  <div class="comment-actions">
                      <button class="comment-edit">✏️</button>
                      <button class="comment-delete" onclick='deleteComment(${comentario.id})'>🗑️</button>

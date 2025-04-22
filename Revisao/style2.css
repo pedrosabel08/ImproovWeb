@@ -408,15 +408,26 @@ nav {
 
 #imagem_completa {
     position: relative;
-    display: inline-block;
-    margin: 20px auto;
-    width: 80%;
+    max-width: 80%;
     height: max-content;
+    width: auto;
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+    margin: auto;
+}
+
+@media (min-width: 3400px) {
+    #imagem_completa {
+        max-width: 60%;
+    }
 }
 
 
 .sidebar-direita {
     border-left: 1px solid black;
+    overflow: auto;
+    max-height: 80vh;
 }
 
 .sidebar-direita h3 {
@@ -823,4 +834,27 @@ p.imagem_nome {
 .filtros label {
     font-weight: bold;
     font-size: 14px;
+}
+
+
+/* seletor bonitinho */
+.zoom-select {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    padding: 4px 8px;
+    font-size: .9rem;
+    border-radius: 6px;
+}
+
+.image_wrapper {
+    position: relative;
+    display: inline-block;
+    /* encolhe ao tamanho da imagem */
+}
+
+.image_wrapper img {
+    max-width: 100%;
+    height: auto;
+    display: block;
 }

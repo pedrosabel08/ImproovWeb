@@ -131,7 +131,8 @@ $idusuario = $_SESSION['idusuario'];
 
         <div class="imagens">
             <div id="imagem_completa">
-                <div id="imagem_atual"></div>
+                <div id="image_wrapper" class="image_wrapper">
+                </div>
             </div>
             <div class="sidebar-direita">
                 <h3>Comentários</h3>

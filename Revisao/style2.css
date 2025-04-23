@@ -573,7 +573,11 @@ body::-webkit-scrollbar-track {
 }
 
 .comment-actions button:hover {
-    color: red;
+    transform: scale(1.1);
+}
+
+.comment-resp {
+    color: #ffffff;
 }
 
 .filtros {
@@ -763,6 +767,7 @@ h2#dataEnvio {
 
 .obra-img-preview img {
     width: 90%;
+    height: 200px;
     object-fit: cover;
     border-radius: 8px;
     margin-bottom: 15px;
@@ -937,4 +942,39 @@ p.imagem_nome {
     max-height: 90%;
     border-radius: 8px;
     box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+}
+
+.resposta {
+    margin-top: 10px;
+    margin-left: 10px;
+    color: #f1f1f1;
+}
+
+.resposta-nome {
+    font-size: 0.8rem;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+}
+
+.corpo-resposta {
+    margin-left: 18px;
+}
+
+.resposta-texto {
+    font-size: 0.8rem;
+    color: #ffffff;
+    margin-bottom: 4px;
+}
+
+.resposta-data {
+    font-size: 0.7rem;
+    color: #888;
+}
+
+.reply-icon {
+    color: #00df30;
+    transform: scaleX(-1);
 }

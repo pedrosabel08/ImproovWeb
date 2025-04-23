@@ -71,10 +71,6 @@ $idusuario = $_SESSION['idusuario'];
 
         <div class="container-main">
             <div class="containerObra">
-                <div class="contagem">
-                    <h4>Contagem de revisões por função:</h4>
-                    <div id="contagem_alt"></div>
-                </div>
             </div>
             <div class="tarefasObra hidden">
                 <div class="header">

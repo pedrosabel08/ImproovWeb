@@ -29,6 +29,8 @@ $idusuario = $_SESSION['idusuario'];
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
     <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+    <link rel="stylesheet" href="https://unpkg.com/tributejs@5.1.3/dist/tribute.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
 
     <title>Flow Review</title>
 </head>
@@ -143,11 +145,27 @@ $idusuario = $_SESSION['idusuario'];
     <ul id="menuContexto">
         <li onclick="excluirImagem()">Excluir <span>🗑️</span></li>
     </ul>
+    <div id="comentarioModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h3>Novo Comentário</h3>
+            <div id="quillEditor" class="resposta-editor" style="height: 200px;"></div>
+            <div class="modal-actions">
+                <button id="enviarComentario">Enviar</button>
+                <button id="fecharComentarioModal">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-imagem" class="modal-imagem" onclick="fecharImagemModal()">
+        <img id="imagem-ampliada" src="" alt="Imagem ampliada">
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+    <script src="https://unpkg.com/tributejs@5.1.3/dist/tribute.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <script src="script2.js"></script>
     <script src="../script/sidebar.js"></script>

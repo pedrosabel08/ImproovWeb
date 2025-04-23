@@ -18,7 +18,8 @@ $comentarios = [];
 
 while ($comentario = $result->fetch_assoc()) {
     $comentario_id = $comentario['id'];
-    $resQuery = $conn->prepare("SELECT id, texto, data FROM respostas_comentario WHERE comentario_id = ?");
+    $resQuery = $conn->prepare("SELECT id, texto, data, c.nome_colaborador as nome_responsavel FROM respostas_comentario r 
+    JOIN colaborador c on r.responsavel = c.idcolaborador WHERE comentario_id = ?");
     $resQuery->bind_param('i', $comentario_id);
     $resQuery->execute();
     $resResult = $resQuery->get_result();

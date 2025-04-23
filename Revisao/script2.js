@@ -598,8 +598,6 @@ const quill = new Quill('#quillEditor', {
     placeholder: 'Digite um comentário...',
     modules: {
         toolbar: [
-            ['bold', 'italic', 'underline'],
-            [{ 'list': 'ordered' }, { 'list': 'bullet' }],
             ['image'] // Ativa o botão de imagem
         ]
     }
@@ -772,6 +770,7 @@ async function renderComments(id) {
             <div class="comment-footer">
                 <div class="comment-date">${comentario.data}</div>
                 <div class="comment-actions">
+                    <button class="comment-resp">&#8617</button>
                     <button class="comment-edit">✏️</button>
                     <button class="comment-delete" onclick="deleteComment(${comentario.id})">🗑️</button>
                 </div>
@@ -780,7 +779,8 @@ async function renderComments(id) {
         `;
 
         if (!USERS_PERMITIDOS.includes(idusuario)) {
-            commentCard.querySelector('.comment-actions').style.display = 'none';
+            commentCard.querySelector('.comment-delete').style.display = 'none';
+            commentCard.querySelector('.comment-edit').style.display = 'none';
         }
 
         const editButton = commentCard.querySelector('.comment-edit');
@@ -832,7 +832,9 @@ async function renderComments(id) {
             }
         });
 
-        commentBody.addEventListener('dblclick', async () => {
+        const respButton = commentCard.querySelector('.comment-resp');
+
+        respButton.addEventListener('click', async () => {
             const textoResposta = prompt("Digite sua resposta:");
             if (textoResposta && textoResposta.trim() !== '') {
                 const respostaSalva = await salvarResposta(comentario.id, textoResposta);
@@ -892,8 +894,11 @@ function adicionarRespostaDOM(comentarioId, resposta) {
     const respostaDiv = document.createElement('div');
     respostaDiv.classList.add('resposta');
     respostaDiv.innerHTML = `
-        <div class="resposta-texto">${resposta.texto}</div>
-        <div class="resposta-data">${resposta.data}</div>
+        <div class="resposta-nome"><span class="reply-icon">&#8617;</span>  ${resposta.nome_responsavel}</div>
+        <div class="corpo-resposta">
+            <div class="resposta-texto">${resposta.texto}</div>
+            <div class="resposta-data">${resposta.data}</div>
+        </div>
     `;
     container.appendChild(respostaDiv);
 }

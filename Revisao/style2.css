@@ -733,10 +733,27 @@ h2#dataEnvio {
     font-weight: bold;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     transition: 0.3s all ease;
+    position: relative;
 }
 
 .obra-card:hover {
     background: #e0e0e0;
+}
+
+.mencao-badge {
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    background-color: red;
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+    border-radius: 50%;
+    padding: 5px;
+    min-width: 15px;
+    text-align: center;
+    box-shadow: 0 0 0 2px white;
+    z-index: 10;
 }
 
 .obra-img-preview {
@@ -857,4 +874,67 @@ p.imagem_nome {
     max-width: 100%;
     height: auto;
     display: block;
+}
+
+
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    width: 400px;
+    max-width: 90%;
+}
+
+.resposta-editor {
+    border: 1px solid #ccc;
+    padding: 10px;
+    min-height: 80px;
+    margin-bottom: 15px;
+}
+
+
+.comment-img-thumb {
+    width: 100px;
+    height: auto;
+    cursor: pointer;
+    margin-top: 10px;
+    border-radius: 6px;
+    transition: transform 0.2s ease-in-out;
+}
+
+.comment-img-thumb:hover {
+    transform: scale(1.05);
+}
+
+.modal-imagem {
+    display: none;
+    position: fixed;
+    z-index: 9999;
+    left: 0;
+    top: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.8);
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-imagem img {
+    max-width: 90%;
+    max-height: 90%;
+    border-radius: 8px;
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
 }

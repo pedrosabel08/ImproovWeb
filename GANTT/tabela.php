@@ -18,19 +18,19 @@ $resultImagens = $conn->query($sqlImagens);
 // Query para buscar as etapas
 $sqlEtapas = "SELECT etapa, tipo_imagem, data_inicio, data_fim 
               FROM gantt_prazos 
-              WHERE obra_id = 55";
+              WHERE obra_id = 57";
 $resultEtapas = $conn->query($sqlEtapas);
 
 // Query para determinar o intervalo de datas
 $sqlDatas = "SELECT MIN(data_inicio) as primeira_data, MAX(data_fim) as ultima_data 
              FROM gantt_prazos 
-             WHERE obra_id = 55 AND data_inicio <> '0000-00-00' AND data_fim <> '0000-00-00'";
+             WHERE obra_id = 57 AND data_inicio <> '0000-00-00' AND data_fim <> '0000-00-00'";
 $resultDatas = $conn->query($sqlDatas);
 $rowDatas = $resultDatas->fetch_assoc();
 $primeiraData = $rowDatas['primeira_data'];
 $ultimaData = $rowDatas['ultima_data'];
 
-$sqlObra = "SELECT * FROM obra WHERE idobra = 55";
+$sqlObra = "SELECT * FROM obra WHERE idobra = 57";
 $resultObra = $conn->query($sqlObra);
 $rowObra = $resultObra->fetch_assoc();
 

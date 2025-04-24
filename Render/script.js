@@ -15,18 +15,18 @@ function loadRenders() {
                 $('#renderList').html(''); // Limpa o conteúdo da tabela
 
                 response.renders.forEach(function (render) {
-                    if (render.status !== 'Arquivado') {
-                        let statusStyle = applyStatusStyle(render.status); // Obtém o estilo do status
+                    let statusStyle = applyStatusStyle(render.status); // Obtém o estilo do status
 
-                        $('#renderList').append(`
+                    $('#renderList').append(`
                             <tr data-id="${render.idrender_alta}" style="${statusStyle}">
                                 <td>${render.idrender_alta}</td>
+                                <td>${render.nome_colaborador}</td>
                                 <td class="imagem-nome">${render.imagem_nome}</td>
                                 <td>${render.status}</td>
                                 <td>${render.data}</td>
                             </tr>
                         `);
-                    }
+
                 });
 
                 // Inicializar o DataTable novamente após limpar os dados

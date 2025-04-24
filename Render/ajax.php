@@ -7,7 +7,10 @@ if (isset($_GET['action'])) {
     switch ($_GET['action']) {
         case 'getRenders':
             // Buscar todos os renders
-            $sql = "SELECT idrender_alta, imagem_id, status, data, i.imagem_nome FROM render_alta r join imagens_cliente_obra i on r.imagem_id = i.idimagens_cliente_obra";
+            $sql = "SELECT c.nome_colaborador, idrender_alta, imagem_id, status, data, i.imagem_nome FROM render_alta r 
+            join imagens_cliente_obra i on r.imagem_id = i.idimagens_cliente_obra
+            JOIN colaborador c on r.responsavel_id = c.idcolaborador
+            WHERE r.status != 'Arquivado' ORDER BY data DESC";
             $result = $conn->query($sql);
             $renders = [];
 

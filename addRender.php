@@ -2,6 +2,9 @@
 
 // Conectar ao banco de dados
 include 'conexao.php';
+session_start();
+
+$responsavel_id = $_SESSION['idcolaborador'] ?? null;
 
 // Lê os dados enviados via POST (JSON)
 $data = json_decode(file_get_contents("php://input"), true);
@@ -38,8 +41,8 @@ if ($data && isset($data['imagem_id'])) {
         $stmt_check_status->close();
 
         // Primeira consulta: Insere na tabela render_alta
-        $stmt1 = $conn->prepare("INSERT INTO render_alta (imagem_id) VALUES (?)");
-        $stmt1->bind_param("i", $imagem_id);
+        $stmt1 = $conn->prepare("INSERT INTO render_alta (imagem_id, responsavel_id) VALUES (?, ?)");
+        $stmt1->bind_param("ii", $imagem_id, $responsavel_id);
         $stmt1->execute();
         $stmt1->close();
 

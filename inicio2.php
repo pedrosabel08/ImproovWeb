@@ -186,7 +186,7 @@ $conn->close();
         </div>
         <div class="modal" id="modal">
             <div class="modal-content" style="width: 500px;">
-                <h1>📝 Daily Meet Assíncrono</h1>
+                <h1>Daily meet Assíncrono</h1>
                 <form id="dailyForm">
                     <label for="finalizado">✅ O que finalizei ontem?</label>
                     <textarea id="finalizado" name="finalizado" required></textarea>
@@ -197,24 +197,10 @@ $conn->close();
                     <label for="bloqueio">🚧 Algum bloqueio ou dúvida?</label>
                     <textarea id="bloqueio" name="bloqueio" required></textarea>
 
-                    <label for="mood">🎭 Como você está se sentindo hoje?</label>
-                    <select id="mood" name="mood" required>
-                        <option value="">Selecione seu mood...</option>
-                        <option value="zen">🧘 Zen</option>
-                        <option value="empolgado">🚀 Empolgado</option>
-                        <option value="fritando">🔥 Fritando o cérebro</option>
-                        <option value="cansado">💤 Só o pó da rabiola</option>
-                        <option value="irritado">☕ Preciso de café e silêncio</option>
-                    </select>
-
-                    <label for="sugestao">💡 Alguma sugestão de melhoria para o time ou o Flow?</label>
-                    <textarea id="sugestao" name="sugestao" placeholder="Manda aquela ideia braba aqui!"></textarea>
-
-                    <button type="submit">📤 Enviar respostas</button>
+                    <button type="submit">Enviar respostas</button>
                 </form>
             </div>
         </div>
-
 
     </main>
 
@@ -250,10 +236,8 @@ $conn->close();
 
 
         document.getElementById('modal').style.display = 'none';
-        // Função para verificar se já foi enviado o formulário no dia de hoje
-        function checkDailyAccess() {
-            const idColaborador = <?php echo json_encode($idcolaborador); ?>; // ID do colaborador vindo do PHP
 
+        function checkDailyAccess() {
             fetch('verifica_respostas.php', {
                     method: 'POST',
                     headers: {
@@ -264,17 +248,17 @@ $conn->close();
                 .then(response => response.json())
                 .then(data => {
                     if (data.hasResponses) {
-                        // Se já houver respostas, não exibe o modal
-                        document.getElementById('modal').style.display = 'flex';
+                        // 👉 Já respondeu hoje? Então só mostra render
+                        checkRenderItems(idColaborador);
                     } else {
-                        // Se não houver respostas, exibe o modal
+                        // 👉 Ainda não respondeu hoje? Mostra o modal
                         document.getElementById('modal').style.display = 'flex';
                     }
                 })
                 .catch(error => console.error('Erro ao verificar respostas:', error));
         }
 
-
+        // Após enviar o Daily
         document.getElementById('dailyForm').addEventListener('submit', function(e) {
             e.preventDefault();
 
@@ -292,22 +276,53 @@ $conn->close();
                             icon: 'success',
                             text: 'Respostas enviadas com sucesso!',
                             showConfirmButton: false,
-                            timer: 2000 // Tempo em milissegundos (3 segundos)
+                            timer: 2000
+                        }).then(() => {
+                            // 👉 Agora sim, mostra os itens de render
+                            checkRenderItems(idColaborador);
                         });
-                        return;
                     } else {
                         Swal.fire({
                             icon: 'error',
                             text: 'Erro ao enviar as tarefas, tente novamente!',
                             showConfirmButton: false,
-                            timer: 2000 // Tempo em milissegundos (3 segundos)
+                            timer: 2000
                         });
-                        return;
                     }
                 })
                 .catch(error => console.error('Erro:', error));
         });
 
+        // Verifica a lista de render
+        function checkRenderItems(idColaborador) {
+            fetch('verifica_render.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `idcolaborador=${idColaborador}`
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.total > 0) {
+                        Swal.fire({
+                            title: `Você tem ${data.total} item(ns) na sua lista de render!`,
+                            text: "Deseja ver agora ou depois?",
+                            icon: "info",
+                            showCancelButton: true,
+                            confirmButtonText: "Ver agora",
+                            cancelButtonText: "Ver depois",
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                window.location.href = "./Render/";
+                            }
+                        });
+                    }
+                })
+                .catch(error => console.error('Erro ao verificar itens de render:', error));
+        }
+
+        // 🚀 Dispara tudo ao carregar a página
         checkDailyAccess();
     </script>
 

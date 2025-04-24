@@ -45,30 +45,24 @@ $stmt->execute();
 $comentario_id = $conn->insert_id; // ID do comentário recém-inserido
 
 // 3. Procurar por menções (@Nome)
-preg_match_all('/@([\wÀ-ú]+)/u', $texto, $matches);
-$mencionados = $matches[1]; // Array de nomes mencionados
+// Recebe os IDs mencionados do front-end
+$mencionados = json_decode($_POST['mencionados'], true);
 
 if (!empty($mencionados)) {
-    // 4. Buscar IDs dos colaboradores mencionados
-    $placeholders = implode(',', array_fill(0, count($mencionados), '?'));
-    $tipos = str_repeat('s', count($mencionados));
-    $stmt = $conn->prepare("SELECT idcolaborador FROM colaborador WHERE nome_colaborador IN ($placeholders)");
-    $stmt->bind_param($tipos, ...$mencionados);
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    // 5. Inserir menções
     $stmtInsert = $conn->prepare("INSERT INTO mencoes (comentario_id, mencionado_id) VALUES (?, ?)");
-    while ($row = $result->fetch_assoc()) {
-        $mencionado_id = $row['idcolaborador'];
+
+    foreach ($mencionados as $mencionado_id) {
         $stmtInsert->bind_param("ii", $comentario_id, $mencionado_id);
         $stmtInsert->execute();
     }
+
+    $stmtInsert->close();
 }
 
 $response = [
     'sucesso' => true,
-    'comentario_id' => $comentario_id // Caso precise usar depois
+    'comentario_id' => $comentario_id,
+    'mencionados' => $mencionados,
 ];
 
 header('Content-Type: application/json');

@@ -71,17 +71,9 @@ function revisarTarefa(idfuncao_imagem, nome_colaborador, imagem_nome, nome_func
                 }).showToast();
 
                 if (data.success) {
-                    const main = document.querySelector('.main');
-                    main.classList.remove('hidden');
+                    const obraSelecionada = document.getElementById('filtro_obra').value;
 
-                    const container_aprovacao = document.querySelector('.container-aprovacao');
-                    container_aprovacao.classList.add('hidden');
-
-                    const imagemCompletaDiv = document.getElementById("imagem_completa");
-                    imagemCompletaDiv.innerHTML = '';
-
-                    const comentariosDiv = document.querySelector(".comentarios");
-                    comentariosDiv.innerHTML = '';
+                    filtrarTarefasPorObra(obraSelecionada);
                 }
             })
             .catch(error => {
@@ -127,11 +119,26 @@ async function fetchObrasETarefas() {
     }
 }
 
-function exibirCardsDeObra(tarefas) {
+async function buscarMencoesDoUsuario() {
+    const response = await fetch('buscar_mencoes.php');
+    return await response.json();
+}
+
+async function exibirCardsDeObra(tarefas) {
+    const mencoes = await buscarMencoesDoUsuario();
+
+    if (mencoes.total_mencoes > 0) {
+        Swal.fire({
+            title: '📣 Você foi mencionado!',
+            text: `Há ${mencoes.total_mencoes} menção(ões) nas tarefas.`,
+            icon: 'info',
+            confirmButtonText: 'Ver cards'
+        });
+    }
+
     const container = document.querySelector('.containerObra');
     container.innerHTML = '';
 
-    // Agrupar tarefas por nome_obra
     const obrasMap = new Map();
     tarefas.forEach(tarefa => {
         if (!obrasMap.has(tarefa.nome_obra)) {
@@ -142,27 +149,24 @@ function exibirCardsDeObra(tarefas) {
 
     obrasMap.forEach((tarefasDaObra, nome_obra) => {
         tarefasDaObra.sort((a, b) => new Date(b.data_aprovacao) - new Date(a.data_aprovacao));
-
         const tarefaComImagem = tarefasDaObra.find(t => t.imagem);
-        const imagemPreview = tarefaComImagem ? `../${tarefaComImagem.imagem}` : null;
+        const imagemPreview = tarefaComImagem ? `../${tarefaComImagem.imagem}` : '../assets/logo.jpg';
+
+        const mencoesNaObra = mencoes.mencoes_por_obra[nome_obra] || 0;
 
         const card = document.createElement('div');
         card.classList.add('obra-card');
 
-        // Monta o conteúdo do card com ou sem imagem
         card.innerHTML = `
-            ${imagemPreview ? `
-            <div class="obra-img-preview">
-                <img src="${imagemPreview}" alt="Imagem da obra ${nome_obra}">
-            </div>` : `
-            <div class="obra-img-preview">
-                <img src="../assets/logo.jpg" alt="Imagem da obra ${nome_obra}">
-            </div>`}
-            <div class="obra-info">
-                <h3>${tarefasDaObra[0].nomenclatura}</h3>
-                <p>${tarefasDaObra.length} aprovações</p>
-            </div>
-        `;
+        ${mencoesNaObra > 0 ? `<div class="mencao-badge">${mencoesNaObra}</div>` : ''}
+        <div class="obra-img-preview">
+            <img src="${imagemPreview}" alt="Imagem da obra ${nome_obra}">
+        </div>
+        <div class="obra-info">
+            <h3>${tarefasDaObra[0].nomenclatura}</h3>
+            <p>${tarefasDaObra.length} aprovações</p>
+        </div>
+    `;
 
         card.addEventListener('click', () => {
             filtrarTarefasPorObra(nome_obra);
@@ -412,8 +416,8 @@ function historyAJAX(idfuncao_imagem, funcao_nome, imagem_nome, colaborador_nome
             // Renderizar as imagens
             const imageContainer = document.getElementById('imagens');
             imageContainer.innerHTML = ''; // Limpa as imagens anteriores
-            const imagemCompletaDiv = document.getElementById("imagem_completa");
-            imagemCompletaDiv.innerHTML = '';
+            // const imagemWrapperDiv = document.getElementById("imagem_wrapper");
+            // imagemWrapperDiv.innerHTML = '';
             const commentDiv = document.querySelector('.sidebar-direita');
             commentDiv.style.display = 'none';
 
@@ -565,83 +569,138 @@ document.addEventListener('click', (e) => {
     }
 });
 
+let tribute; // variável global
+let mencionadosIds = []; // armazenar os IDs dos mencionados
 
+document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        const response = await fetch('buscar_usuarios.php');
+        const users = await response.json();
+
+        tribute = new Tribute({
+            values: users.map(user => ({
+                key: user.nome_colaborador,
+                value: user.nome_colaborador,
+                id: user.idcolaborador
+            })),
+            selectTemplate: item => {
+                // Evita duplicados
+                if (!mencionadosIds.includes(item.original.id)) {
+                    mencionadosIds.push(item.original.id);
+                }
+                return `@${item.original.value}`; // Aparece só o nome no texto
+            },
+            menuItemTemplate: item => item.string
+        });
+
+        tribute.attach(document.getElementById('comentarioTexto'));
+    } catch (error) {
+        console.error('Erro ao carregar usuários:', error);
+    }
+
+    // Modal: fechar
+    document.getElementById('fecharComentarioModal').onclick = () => {
+        document.getElementById('comentarioModal').style.display = 'none';
+    };
+});
 
 let ap_imagem_id = null; // Variável para armazenar o ID da imagem atual
 
+// Mostra imagem e abre modal
 function mostrarImagemCompleta(src, id) {
-    ap_imagem_id = id; // Armazena o id da imagem clicada
-    const imagemCompletaDiv = document.getElementById("imagem_completa");
-    imagemCompletaDiv.innerHTML = '';
-    const commentDiv = document.querySelector('.sidebar-direita');
-    commentDiv.style.display = 'block';
+    ap_imagem_id = id;
+
+    const imageWrapper = document.getElementById("image_wrapper");
+    const sidebar = document.querySelector(".sidebar-direita");
+    sidebar.style.display = "block";
+
+    while (imageWrapper.firstChild) {
+        imageWrapper.removeChild(imageWrapper.firstChild);
+    }
 
     const imgElement = document.createElement("img");
+    imgElement.id = "imagem_atual";
     imgElement.src = src;
     imgElement.style.width = "100%";
     imgElement.style.borderRadius = "10px";
-    imgElement.id = "imagem_atual";
 
-    imagemCompletaDiv.appendChild(imgElement);
-
+    imageWrapper.appendChild(imgElement);
+    document.querySelector('#imagem_atual').scrollIntoView({ behavior: 'smooth' });
     renderComments(id);
 
+    imgElement.addEventListener('click', function (event) {
+        if (![1, 2, 9, 20, 3].includes(idusuario)) return;
 
-    imgElement.addEventListener('click', async function (event) {
-
-        if (![1, 2, 9, 20, 3].includes(idusuario)) {
-            return;
-        }
         const rect = imgElement.getBoundingClientRect();
-        const relativeX = ((event.clientX - rect.left) / rect.width) * 100;
-        const relativeY = ((event.clientY - rect.top) / rect.height) * 100;
+        relativeX = ((event.clientX - rect.left) / rect.width) * 100;
+        relativeY = ((event.clientY - rect.top) / rect.height) * 100;
 
-        const commentText = prompt("Digite seu comentário:");
-        if (commentText) {
+        document.getElementById('comentarioTexto').value = '';
+        document.getElementById('imagemComentario').value = '';
+        document.getElementById('comentarioModal').style.display = 'flex';
 
-            const comentario = { ap_imagem_id, x: relativeX, y: relativeY, texto: commentText };
-
-            console.log('Comentário:', comentario);
-
-            try {
-                const response = await fetch('salvar_comentario.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(comentario)
-                });
-
-                const result = await response.json();
-
-                if (result.sucesso) {
-                    addComment(relativeX, relativeY);
-
-                    Toastify({
-                        text: 'Comentário adicionado com sucesso!',
-                        duration: 3000,
-                        backgroundColor: 'green',
-                        close: true,
-                        gravity: "top",
-                        position: "left"
-                    }).showToast();
-                    renderComments(ap_imagem_id); // Atualiza a lista de comentários
-
-                } else {
-                    Toastify({
-                        text: 'Erro ao salvar comentário!',
-                        duration: 3000,
-                        backgroundColor: 'red',
-                        close: true,
-                        gravity: "top",
-                        position: "left"
-                    }).showToast();
-                }
-            } catch (error) {
-                console.error('Erro na requisição:', error);
-                alert('Ocorreu um erro ao tentar salvar o comentário.');
-            }
-        }
+        // Limpa os mencionados quando abre um novo comentário
+        mencionadosIds = [];
     });
 }
+
+// Enviar comentário
+document.getElementById('enviarComentario').onclick = async () => {
+    const texto = document.getElementById('comentarioTexto').value.trim();
+    const imagemFile = document.getElementById('imagemComentario').files[0];
+
+    if (!texto && !imagemFile) return;
+
+    const formData = new FormData();
+    formData.append('ap_imagem_id', ap_imagem_id);
+    formData.append('x', relativeX);
+    formData.append('y', relativeY);
+    formData.append('texto', texto);
+    formData.append('mencionados', JSON.stringify(mencionadosIds)); // Envia os IDs mencionados
+
+    if (imagemFile) {
+        formData.append('imagem', imagemFile);
+    }
+
+    try {
+        const response = await fetch('salvar_comentario.php', {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await response.json();
+        document.getElementById('comentarioModal').style.display = 'none';
+
+        if (result.sucesso) {
+            Toastify({
+                text: 'Comentário adicionado com sucesso!',
+                duration: 3000,
+                backgroundColor: 'green',
+                close: true,
+                gravity: "top",
+                position: "left"
+            }).showToast();
+
+            renderComments(ap_imagem_id);
+        } else {
+            Toastify({
+                text: 'Erro ao salvar comentário!',
+                duration: 3000,
+                backgroundColor: 'red',
+                close: true,
+                gravity: "top",
+                position: "left"
+            }).showToast();
+        }
+
+        // Limpa os IDs após envio
+        mencionadosIds = [];
+
+    } catch (error) {
+        console.error('Erro na requisição:', error);
+        alert('Ocorreu um erro ao tentar salvar o comentário.');
+    }
+};
 
 function addComment(x, y) {
     const imagemCompletaDiv = document.getElementById("imagem_completa");
@@ -658,93 +717,190 @@ function addComment(x, y) {
 const image = document.getElementById("imagem_atual");
 
 
+// ---- CONFIGURAÇÃO ---------------------------------------------------------
+const USERS_PERMITIDOS = [1, 2, 3, 9, 20];   // quem pode editar / excluir
+// --------------------------------------------------------------------------
+
 async function renderComments(id) {
     const comentariosDiv = document.querySelector(".comentarios");
-    const imagemCompletaDiv = document.getElementById("imagem_completa");
+    const imagemCompletaDiv = document.getElementById("image_wrapper");
     const response = await fetch(`buscar_comentarios.php?id=${id}`);
     const comentarios = await response.json();
 
-
-    // Limpa os comentários antigos
     comentariosDiv.innerHTML = '';
-    // Limpa os comentários antigos
-    imagemCompletaDiv.querySelectorAll('.comment').forEach(comment => comment.remove());
+    imagemCompletaDiv.querySelectorAll('.comment').forEach(c => c.remove());
+
+    const users = await fetch('buscar_usuarios.php').then(res => res.json());
+
+    const tribute = new Tribute({
+        values: users.map(user => ({ key: user.nome_colaborador, value: user.nome_colaborador })),
+        selectTemplate: function (item) {
+            return `@${item.original.value}`;
+        }
+    });
 
     comentarios.forEach(comentario => {
-
-        // Cria o card do comentário
         const commentCard = document.createElement('div');
         commentCard.classList.add('comment-card');
+        commentCard.setAttribute('data-id', comentario.id);
 
-        commentCard.innerHTML = `
-             <div class="comment-header">
-                 <div class="comment-number">${comentario.numero_comentario}</div>
-                 <div class="comment-user">${comentario.nome_responsavel}</div>
-             </div>
-        <div class="comment-body" contenteditable="false">${comentario.texto}</div>
-             <div class="comment-footer">
-                 <div class="comment-date">${comentario.data}</div>
-                 <div class="comment-actions">
-                     <button class="comment-edit">✏️</button>
-                     <button class="comment-delete" onclick='deleteComment(${comentario.id})'>🗑️</button>
-                 </div>
-             </div>
-         `;
+        const header = document.createElement('div');
+        header.classList.add('comment-header');
+        header.innerHTML = `
+            <div class="comment-number">${comentario.numero_comentario}</div>
+            <div class="comment-user">${comentario.nome_responsavel}</div>
+        `;
 
-        // Adiciona evento ao botão "edit"
-        const editButton = commentCard.querySelector('.comment-edit');
-        const commentBody = commentCard.querySelector('.comment-body');
+        const commentBody = document.createElement('div');
+        commentBody.classList.add('comment-body');
+
+        const p = document.createElement('p');
+        p.classList.add('comment-input');
+        p.textContent = comentario.texto;
+
+        commentBody.appendChild(p);
+
+        const footer = document.createElement('div');
+        footer.classList.add('comment-footer');
+        footer.innerHTML = `
+            <div class="comment-date">${comentario.data}</div>
+            <div class="comment-actions">
+                <button class="comment-resp">&#8617</button>
+                <button class="comment-edit">✏️</button>
+                <button class="comment-delete" onclick="deleteComment(${comentario.id})">🗑️</button>
+            </div>
+        `;
+
+        const respostas = document.createElement('div');
+        respostas.classList.add('respostas-container');
+        respostas.id = `respostas-${comentario.id}`;
+
+        commentCard.appendChild(header);
+        if (comentario.imagem) {
+            const imagemDiv = document.createElement('div');
+            imagemDiv.classList.add('comment-image');
+            imagemDiv.innerHTML = `
+                <img src="${comentario.imagem}" class="comment-img-thumb" onclick="abrirImagemModal('${comentario.imagem}')">
+            `;
+            commentCard.appendChild(imagemDiv);
+        }
+        commentCard.appendChild(commentBody);
+        commentCard.appendChild(footer);
+        commentCard.appendChild(respostas);
+
+        // Permissões
+        if (!USERS_PERMITIDOS.includes(idusuario)) {
+            footer.querySelector('.comment-delete').style.display = 'none';
+            footer.querySelector('.comment-edit').style.display = 'none';
+        }
+
+        const editButton = footer.querySelector('.comment-edit');
 
         editButton.addEventListener('click', () => {
-            // Torna o comment-body editável
-            commentBody.setAttribute('contenteditable', 'true');
-            commentBody.focus(); // Foca no elemento para edição
+            p.focus();
+
+            // Listener de Enter dentro do botão, mas só adiciona uma vez!
+            p.addEventListener('keydown', async function handleKeyDown(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault(); // Impede quebra de linha
+
+                    const novoTexto = p.value.trim();
+
+                    inpput.readOnly = true;
+                    updateComment(comentario.id, novoTexto);
+
+                    // Remover o listener após salvar pra evitar múltiplos binds
+                    this.prefix.removeEventListener('keydown', handleKeyDown);
+                }
+            });
         });
 
-        // Adiciona evento para salvar ao perder o foco
-        commentBody.addEventListener('blur', () => {
-            // Torna o comment-body não editável novamente
-            commentBody.setAttribute('contenteditable', 'false');
 
-            // Chama a função updateComment para salvar as alterações
-            const novoTexto = commentBody.textContent.trim();
-            updateComment(comentario.id, novoTexto);
-        });
-
-        // Cria um novo div para cada comentário
         const commentDiv = document.createElement('div');
         commentDiv.classList.add('comment');
-        commentDiv.classList.add('tooltip');
+        commentDiv.setAttribute('data-id', comentario.id);
         commentDiv.innerText = comentario.numero_comentario;
         commentDiv.style.left = `${comentario.x}%`;
         commentDiv.style.top = `${comentario.y}%`;
 
-        // Adiciona o texto do comentário ao atributo data-tooltip
-        commentDiv.setAttribute('data-tooltip', comentario.texto);
-
-        // Adiciona um event listener para detectar o clique no comentário
-        commentDiv.addEventListener('click', function () {
-
-            document.querySelectorAll('.comment-number').forEach(number => {
-                number.classList.remove('highlight');
-            });
-
-            // Adiciona o destaque ao card correspondente
-            const commentNumber = document.querySelector(`.comment-card[data-id="${comentario.id}"] .comment-number`);
-            if (commentNumber) {
-                commentNumber.classList.add('highlight');
-                commentNumber.scrollIntoView({ behavior: 'smooth', block: 'center' }); // Rola até o card
-
+        commentDiv.addEventListener('click', () => {
+            document.querySelectorAll('.comment-number').forEach(n => n.classList.remove('highlight'));
+            const number = document.querySelector(`.comment-card[data-id="${comentario.id}"] .comment-number`);
+            if (number) {
+                number.classList.add('highlight');
+                number.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
-
         });
 
-        // Adiciona o comentário à imagem
+        const respButton = commentCard.querySelector('.comment-resp');
+
+        respButton.addEventListener('click', async () => {
+            const textoResposta = prompt("Digite sua resposta:");
+            if (textoResposta && textoResposta.trim() !== '') {
+                const respostaSalva = await salvarResposta(comentario.id, textoResposta);
+                if (respostaSalva) {
+                    adicionarRespostaDOM(comentario.id, respostaSalva);
+
+                    const mencoes = textoResposta.match(/@(\w+)/g);
+                    if (mencoes) {
+                        for (const mencao of mencoes) {
+                            const nome = mencao.replace('@', '');
+                            const colaborador = users.find(u => u.nome_colaborador === nome);
+                            if (colaborador) {
+                                await fetch('registrar_mencao.php', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                        comentario_id: comentario.id,
+                                        mencionado_id: colaborador.idcolaborador
+                                    })
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
         imagemCompletaDiv.appendChild(commentDiv);
         comentariosDiv.appendChild(commentCard);
-        commentCard.setAttribute('data-id', comentario.id);
 
+        if (comentario.respostas && comentario.respostas.length > 0) {
+            comentario.respostas.forEach(resposta => {
+                adicionarRespostaDOM(comentario.id, resposta);
+            });
+        }
     });
+}
+
+// Função para enviar resposta pro backend
+async function salvarResposta(comentarioId, texto) {
+    const response = await fetch('responder_comentario.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            comentario_id: comentarioId,
+            texto: texto
+        })
+    });
+    return await response.json();
+}
+
+// Função pra adicionar resposta no DOM
+function adicionarRespostaDOM(comentarioId, resposta) {
+    const container = document.getElementById(`respostas-${comentarioId}`);
+    const respostaDiv = document.createElement('div');
+    respostaDiv.classList.add('resposta');
+    respostaDiv.innerHTML = `
+        <div class="resposta-nome"><span class="reply-icon">&#8617;</span>  ${resposta.nome_responsavel}</div>
+        <div class="corpo-resposta">
+            <div class="resposta-texto">${resposta.texto}</div>
+            <div class="resposta-data">${resposta.data}</div>
+        </div>
+    `;
+    container.appendChild(respostaDiv);
 }
 
 // Função para atualizar o comentário no banco de dados
@@ -818,6 +974,19 @@ async function deleteComment(commentId) {
     }
 }
 
+function abrirImagemModal(src) {
+    const modal = document.getElementById('modal-imagem');
+    const imagem = document.getElementById('imagem-ampliada');
+    imagem.src = src;
+    modal.style.display = 'flex';
+}
+
+function fecharImagemModal() {
+    const modal = document.getElementById('modal-imagem');
+    modal.style.display = 'none';
+}
+
+
 
 const btnBack = document.getElementById('btnBack');
 btnBack.addEventListener('click', function () {
@@ -827,8 +996,8 @@ btnBack.addEventListener('click', function () {
     const container_aprovacao = document.querySelector('.container-aprovacao');
     container_aprovacao.classList.add('hidden');
 
-    const imagemCompletaDiv = document.getElementById("imagem_completa");
-    imagemCompletaDiv.innerHTML = '';
+    const imagemWrapperDiv = document.querySelector(".image_wrapper");
+    imagemWrapperDiv.innerHTML = '';
 
     const comentariosDiv = document.querySelector(".comentarios");
     comentariosDiv.innerHTML = '';
@@ -843,8 +1012,8 @@ document.addEventListener('keydown', function (event) {
         const container_aprovacao = document.querySelector('.container-aprovacao');
         container_aprovacao.classList.add('hidden');
 
-        const imagemCompletaDiv = document.getElementById("imagem_completa");
-        imagemCompletaDiv.innerHTML = '';
+        const imagemWrapperDiv = document.querySelector(".image_wrapper");
+        imagemWrapperDiv.innerHTML = '';
 
         const comentariosDiv = document.querySelector(".comentarios");
         comentariosDiv.innerHTML = '';

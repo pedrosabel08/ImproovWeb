@@ -570,6 +570,7 @@ document.addEventListener('click', (e) => {
 });
 
 let tribute; // variável global
+let mencionadosIds = []; // armazenar os IDs dos mencionados
 
 document.addEventListener('DOMContentLoaded', async () => {
     try {
@@ -579,43 +580,44 @@ document.addEventListener('DOMContentLoaded', async () => {
         tribute = new Tribute({
             values: users.map(user => ({
                 key: user.nome_colaborador,
-                value: user.nome_colaborador
+                value: user.nome_colaborador,
+                id: user.idcolaborador
             })),
-            selectTemplate: item => '@' + item.original.value,
+            selectTemplate: item => {
+                // Evita duplicados
+                if (!mencionadosIds.includes(item.original.id)) {
+                    mencionadosIds.push(item.original.id);
+                }
+                return `@${item.original.value}`; // Aparece só o nome no texto
+            },
             menuItemTemplate: item => item.string
         });
 
-        console.log('Usuários carregados no Tribute:', users);
+        tribute.attach(document.getElementById('comentarioTexto'));
     } catch (error) {
         console.error('Erro ao carregar usuários:', error);
     }
+
+    // Modal: fechar
+    document.getElementById('fecharComentarioModal').onclick = () => {
+        document.getElementById('comentarioModal').style.display = 'none';
+    };
 });
 
 let ap_imagem_id = null; // Variável para armazenar o ID da imagem atual
 
-const quill = new Quill('#quillEditor', {
-    theme: 'snow',
-    placeholder: 'Digite um comentário...',
-    modules: {
-        toolbar: [
-            ['image'] // Ativa o botão de imagem
-        ]
-    }
-});
-
+// Mostra imagem e abre modal
 function mostrarImagemCompleta(src, id) {
-    ap_imagem_id = id; // Armazena o id da imagem clicada
+    ap_imagem_id = id;
 
     const imageWrapper = document.getElementById("image_wrapper");
     const sidebar = document.querySelector(".sidebar-direita");
     sidebar.style.display = "block";
 
-    // limpa filhos: imagem antiga + comentários antigos
     while (imageWrapper.firstChild) {
         imageWrapper.removeChild(imageWrapper.firstChild);
     }
 
-    // cria nova <img>
     const imgElement = document.createElement("img");
     imgElement.id = "imagem_atual";
     imgElement.src = src;
@@ -623,98 +625,82 @@ function mostrarImagemCompleta(src, id) {
     imgElement.style.borderRadius = "10px";
 
     imageWrapper.appendChild(imgElement);
-    document.querySelector('#imagem_atual').scrollIntoView({ behavior: 'smooth' })
-
-
+    document.querySelector('#imagem_atual').scrollIntoView({ behavior: 'smooth' });
     renderComments(id);
 
     imgElement.addEventListener('click', function (event) {
-        if (![1, 2, 9, 20, 3].includes(idusuario)) {
-            return;
-        }
+        if (![1, 2, 9, 20, 3].includes(idusuario)) return;
 
         const rect = imgElement.getBoundingClientRect();
-        const relativeX = ((event.clientX - rect.left) / rect.width) * 100;
-        const relativeY = ((event.clientY - rect.top) / rect.height) * 100;
+        relativeX = ((event.clientX - rect.left) / rect.width) * 100;
+        relativeY = ((event.clientY - rect.top) / rect.height) * 100;
 
-        const modal = document.getElementById('comentarioModal');
-        const commentText = quill.root.innerHTML.trim();
+        document.getElementById('comentarioTexto').value = '';
+        document.getElementById('imagemComentario').value = '';
+        document.getElementById('comentarioModal').style.display = 'flex';
 
-        commentText.innerHTML = '';
-        modal.style.display = 'flex';
-
-        tribute.attach(quill.root);
-
-        document.getElementById('enviarComentario').onclick = async () => {
-            const delta = quill.getContents();
-
-            let imageSrc = null;
-            let textParts = [];
-
-            delta.ops.forEach(op => {
-                if (op.insert?.image) {
-                    imageSrc = op.insert.image; // salva o caminho da imagem (base64 ou URL)
-                } else if (typeof op.insert === 'string') {
-                    textParts.push(op.insert); // salva o texto puro
-                }
-            });
-
-            const plainText = textParts.join('').trim();
-            if (!plainText && !imageSrc) return;
-
-            const formData = new FormData();
-            formData.append('ap_imagem_id', ap_imagem_id);
-            formData.append('x', relativeX);
-            formData.append('y', relativeY);
-            formData.append('texto', plainText);
-
-            if (imageSrc && imageSrc.startsWith('data:image')) {
-                const blob = await (await fetch(imageSrc)).blob();
-                const file = new File([blob], 'comentario_imagem.png', { type: blob.type });
-                formData.append('imagem', file);
-            }
-
-            try {
-                const response = await fetch('salvar_comentario.php', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                const result = await response.json();
-                modal.style.display = 'none';
-
-                if (result.sucesso) {
-                    Toastify({
-                        text: 'Comentário adicionado com sucesso!',
-                        duration: 3000,
-                        backgroundColor: 'green',
-                        close: true,
-                        gravity: "top",
-                        position: "left"
-                    }).showToast();
-
-                    renderComments(ap_imagem_id);
-                } else {
-                    Toastify({
-                        text: 'Erro ao salvar comentário!',
-                        duration: 3000,
-                        backgroundColor: 'red',
-                        close: true,
-                        gravity: "top",
-                        position: "left"
-                    }).showToast();
-                }
-            } catch (error) {
-                console.error('Erro na requisição:', error);
-                alert('Ocorreu um erro ao tentar salvar o comentário.');
-            }
-        };
-
-        document.getElementById('fecharComentarioModal').onclick = () => {
-            modal.style.display = 'none';
-        };
+        // Limpa os mencionados quando abre um novo comentário
+        mencionadosIds = [];
     });
 }
+
+// Enviar comentário
+document.getElementById('enviarComentario').onclick = async () => {
+    const texto = document.getElementById('comentarioTexto').value.trim();
+    const imagemFile = document.getElementById('imagemComentario').files[0];
+
+    if (!texto && !imagemFile) return;
+
+    const formData = new FormData();
+    formData.append('ap_imagem_id', ap_imagem_id);
+    formData.append('x', relativeX);
+    formData.append('y', relativeY);
+    formData.append('texto', texto);
+    formData.append('mencionados', JSON.stringify(mencionadosIds)); // Envia os IDs mencionados
+
+    if (imagemFile) {
+        formData.append('imagem', imagemFile);
+    }
+
+    try {
+        const response = await fetch('salvar_comentario.php', {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await response.json();
+        document.getElementById('comentarioModal').style.display = 'none';
+
+        if (result.sucesso) {
+            Toastify({
+                text: 'Comentário adicionado com sucesso!',
+                duration: 3000,
+                backgroundColor: 'green',
+                close: true,
+                gravity: "top",
+                position: "left"
+            }).showToast();
+
+            renderComments(ap_imagem_id);
+        } else {
+            Toastify({
+                text: 'Erro ao salvar comentário!',
+                duration: 3000,
+                backgroundColor: 'red',
+                close: true,
+                gravity: "top",
+                position: "left"
+            }).showToast();
+        }
+
+        // Limpa os IDs após envio
+        mencionadosIds = [];
+
+    } catch (error) {
+        console.error('Erro na requisição:', error);
+        alert('Ocorreu um erro ao tentar salvar o comentário.');
+    }
+};
 
 function addComment(x, y) {
     const imagemCompletaDiv = document.getElementById("imagem_completa");
@@ -758,67 +744,81 @@ async function renderComments(id) {
         commentCard.classList.add('comment-card');
         commentCard.setAttribute('data-id', comentario.id);
 
-        commentCard.innerHTML = `
-            <div class="comment-header">
-                <div class="comment-number">${comentario.numero_comentario}</div>
-                <div class="comment-user">${comentario.nome_responsavel}</div>
-            </div>
-            <div class="comment-body" contenteditable="false">${comentario.texto}</div>
-            ${comentario.imagem ? `<div class="comment-image">
-                <img src="${comentario.imagem}" alt="Imagem do comentário" class="comment-img-thumb" onclick="abrirImagemModal('${comentario.imagem}')">
-            </div>` : ''}
-            <div class="comment-footer">
-                <div class="comment-date">${comentario.data}</div>
-                <div class="comment-actions">
-                    <button class="comment-resp">&#8617</button>
-                    <button class="comment-edit">✏️</button>
-                    <button class="comment-delete" onclick="deleteComment(${comentario.id})">🗑️</button>
-                </div>
-            </div>
-            <div class="respostas-container" id="respostas-${comentario.id}"></div>
+        const header = document.createElement('div');
+        header.classList.add('comment-header');
+        header.innerHTML = `
+            <div class="comment-number">${comentario.numero_comentario}</div>
+            <div class="comment-user">${comentario.nome_responsavel}</div>
         `;
 
+        const commentBody = document.createElement('div');
+        commentBody.classList.add('comment-body');
+
+        const p = document.createElement('p');
+        p.classList.add('comment-input');
+        p.textContent = comentario.texto;
+        
+        commentBody.appendChild(p);
+
+        const footer = document.createElement('div');
+        footer.classList.add('comment-footer');
+        footer.innerHTML = `
+            <div class="comment-date">${comentario.data}</div>
+            <div class="comment-actions">
+                <button class="comment-resp">&#8617</button>
+                <button class="comment-edit">✏️</button>
+                <button class="comment-delete" onclick="deleteComment(${comentario.id})">🗑️</button>
+            </div>
+        `;
+
+        const respostas = document.createElement('div');
+        respostas.classList.add('respostas-container');
+        respostas.id = `respostas-${comentario.id}`;
+
+        commentCard.appendChild(header);
+        if (comentario.imagem) {
+            const imagemDiv = document.createElement('div');
+            imagemDiv.classList.add('comment-image');
+            imagemDiv.innerHTML = `
+                <img src="${comentario.imagem}" class="comment-img-thumb" onclick="abrirImagemModal('${comentario.imagem}')">
+            `;
+            commentCard.appendChild(imagemDiv);
+        }
+        commentCard.appendChild(commentBody);
+        commentCard.appendChild(footer);
+        commentCard.appendChild(respostas);
+
+        // Permissões
         if (!USERS_PERMITIDOS.includes(idusuario)) {
-            commentCard.querySelector('.comment-delete').style.display = 'none';
-            commentCard.querySelector('.comment-edit').style.display = 'none';
+            footer.querySelector('.comment-delete').style.display = 'none';
+            footer.querySelector('.comment-edit').style.display = 'none';
         }
 
-        const editButton = commentCard.querySelector('.comment-edit');
-        const commentBody = commentCard.querySelector('.comment-body');
-
-        tribute.attach(commentBody);
+        const editButton = footer.querySelector('.comment-edit');
 
         editButton.addEventListener('click', () => {
-            commentBody.setAttribute('contenteditable', 'true');
-            commentBody.focus();
-        });
+            p.focus();
 
-        commentBody.addEventListener('blur', async () => {
-            commentBody.setAttribute('contenteditable', 'false');
-            const novoTexto = commentBody.textContent.trim();
-            updateComment(comentario.id, novoTexto);
+            // Listener de Enter dentro do botão, mas só adiciona uma vez!
+            p.addEventListener('keydown', async function handleKeyDown(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault(); // Impede quebra de linha
 
-            const mencoes = novoTexto.match(/@(\w+)/g);
-            if (mencoes) {
-                for (const mencao of mencoes) {
-                    const nome = mencao.replace('@', '');
-                    const colaborador = users.find(u => u.nome_colaborador === nome);
-                    if (colaborador) {
-                        await fetch('registrar_mencao.php', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                comentario_id: comentario.id,
-                                mencionado_id: colaborador.idcolaborador
-                            })
-                        });
-                    }
+                    const novoTexto = p.value.trim();
+
+                    inpput.readOnly = true;
+                    updateComment(comentario.id, novoTexto);
+
+                    // Remover o listener após salvar pra evitar múltiplos binds
+                    this.prefix.removeEventListener('keydown', handleKeyDown);
                 }
-            }
+            });
         });
+
 
         const commentDiv = document.createElement('div');
         commentDiv.classList.add('comment');
+        commentDiv.setAttribute('data-id', comentario.id);
         commentDiv.innerText = comentario.numero_comentario;
         commentDiv.style.left = `${comentario.x}%`;
         commentDiv.style.top = `${comentario.y}%`;

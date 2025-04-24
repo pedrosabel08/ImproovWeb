@@ -29,6 +29,8 @@ $idusuario = $_SESSION['idusuario'];
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
     <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+    <link rel="stylesheet" href="https://unpkg.com/tributejs@5.1.3/dist/tribute.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
 
     <title>Flow Review</title>
 </head>
@@ -69,10 +71,6 @@ $idusuario = $_SESSION['idusuario'];
 
         <div class="container-main">
             <div class="containerObra">
-                <div class="contagem">
-                    <h4>Contagem de revisões por função:</h4>
-                    <div id="contagem_alt"></div>
-                </div>
             </div>
             <div class="tarefasObra hidden">
                 <div class="header">
@@ -131,7 +129,8 @@ $idusuario = $_SESSION['idusuario'];
 
         <div class="imagens">
             <div id="imagem_completa">
-                <div id="imagem_atual"></div>
+                <div id="image_wrapper" class="image_wrapper">
+                </div>
             </div>
             <div class="sidebar-direita">
                 <h3>Comentários</h3>
@@ -142,11 +141,29 @@ $idusuario = $_SESSION['idusuario'];
     <ul id="menuContexto">
         <li onclick="excluirImagem()">Excluir <span>🗑️</span></li>
     </ul>
+    <div id="comentarioModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h3>Novo Comentário</h3>
+            <textarea id="comentarioTexto" rows="5" placeholder="Digite um comentário..." style="width: calc(100% - 10px); padding: 5px;"></textarea>
+            <input type="file" id="imagemComentario" accept="image/*" />
+            <div class="modal-actions">
+                <button id="enviarComentario" style="background-color: green;">Enviar</button>
+                <button id="fecharComentarioModal" style="background-color: red;">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+
+    <div id="modal-imagem" class="modal-imagem" onclick="fecharImagemModal()">
+        <img id="imagem-ampliada" src="" alt="Imagem ampliada">
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+    <script src="https://unpkg.com/tributejs@5.1.3/dist/tribute.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <script src="script.js"></script>
     <script src="../script/sidebar.js"></script>

@@ -105,36 +105,36 @@ LEFT JOIN usuario u ON u.idcolaborador = c.idcolaborador
 LEFT JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
 LEFT JOIN obra o ON i.obra_id = o.idobra
 WHERE f.funcao_id IN (1, 2, 3, 4, 5, 6, 7, 8, 9) 
-  AND h.status_novo IN ('Em aprovação', 'Ajuste', 'Aprovado com ajustes')
+  AND (f.status = 'Em aprovação' OR f.status = 'Ajuste')
 ORDER BY data_aprovacao DESC";
 } else {
   $sql = "SELECT 
-    f.idfuncao_imagem,
-    f.funcao_id, 
-    fun.nome_funcao, 
-    f.status, 
-    f.check_funcao, 
-    f.imagem_id, 
-    i.imagem_nome, 
-    f.colaborador_id, 
-    c.nome_colaborador, 
-    c.telefone,
-    u.id_slack,
-    o.nome_obra,
-    o.nomenclatura,
-    (SELECT MAX(h.data_aprovacao)
-     FROM historico_aprovacoes h
-     WHERE h.funcao_imagem_id = f.idfuncao_imagem) AS data_aprovacao,
-    (SELECT h.status_novo
-     FROM historico_aprovacoes h
-     WHERE h.funcao_imagem_id = f.idfuncao_imagem
-     ORDER BY h.data_aprovacao DESC 
-     LIMIT 1) AS status_novo,
-    (SELECT hi.imagem
-     FROM historico_aprovacoes_imagens hi 
-     WHERE hi.funcao_imagem_id = f.idfuncao_imagem
-     ORDER BY hi.data_envio DESC 
-     LIMIT 1) AS imagem
+  f.idfuncao_imagem,
+  f.funcao_id, 
+  fun.nome_funcao, 
+  f.status, 
+  f.check_funcao, 
+  f.imagem_id, 
+  i.imagem_nome, 
+  f.colaborador_id, 
+  c.nome_colaborador, 
+  c.telefone,
+  u.id_slack,
+  o.nome_obra,
+  o.nomenclatura,
+  (SELECT MAX(h.data_aprovacao)
+   FROM historico_aprovacoes h
+   WHERE h.funcao_imagem_id = f.idfuncao_imagem) AS data_aprovacao,
+  (SELECT h.status_novo
+   FROM historico_aprovacoes h
+   WHERE h.funcao_imagem_id = f.idfuncao_imagem
+   ORDER BY h.data_aprovacao DESC 
+   LIMIT 1) AS status_novo,
+  (SELECT hi.imagem
+   FROM historico_aprovacoes_imagens hi 
+   WHERE hi.funcao_imagem_id = f.idfuncao_imagem
+   ORDER BY hi.data_envio DESC 
+   LIMIT 1) AS imagem
 FROM funcao_imagem f
 LEFT JOIN funcao fun ON fun.idfuncao = f.funcao_id
 LEFT JOIN colaborador c ON c.idcolaborador = f.colaborador_id
@@ -142,8 +142,13 @@ LEFT JOIN usuario u ON u.idcolaborador = c.idcolaborador
 LEFT JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
 LEFT JOIN obra o ON i.obra_id = o.idobra
 WHERE f.funcao_id IN (1, 2, 3, 4, 5, 6, 7, 8, 9) 
-  AND h.status_novo IN ('Em aprovação', 'Ajuste', 'Aprovado com ajustes')
-  AND c.idcolaborador = ?
+AND (f.status = 'Em aprovação' OR f.status = 'Ajuste')
+AND o.idobra IN (
+    SELECT i2.obra_id
+    FROM imagens_cliente_obra i2
+    JOIN funcao_imagem f2 ON f2.imagem_id = i2.idimagens_cliente_obra
+    WHERE f2.colaborador_id = ?
+)
 ORDER BY data_aprovacao DESC";
 }
 

@@ -144,13 +144,15 @@ $idusuario = $_SESSION['idusuario'];
     <div id="comentarioModal" class="modal" style="display: none;">
         <div class="modal-content">
             <h3>Novo Comentário</h3>
-            <div id="quillEditor" class="resposta-editor" style="height: 200px;"></div>
+            <textarea id="comentarioTexto" rows="5" placeholder="Digite um comentário..." style="width: 100%;"></textarea>
+            <input type="file" id="imagemComentario" accept="image/*" />
             <div class="modal-actions">
                 <button id="enviarComentario">Enviar</button>
                 <button id="fecharComentarioModal">Cancelar</button>
             </div>
         </div>
     </div>
+
 
     <div id="modal-imagem" class="modal-imagem" onclick="fecharImagemModal()">
         <img id="imagem-ampliada" src="" alt="Imagem ampliada">

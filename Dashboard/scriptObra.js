@@ -102,6 +102,14 @@ function limparCampos() {
     document.getElementById("opcao_filtro").value = "";
     document.getElementById("opcao_status").value = "";
     document.getElementById("opcao_pre").value = "";
+    document.getElementById('opcao_finalizador').selectedIndex = 0; // Resetar select
+    document.getElementById('opcao_obra_pos').selectedIndex = 0; // Resetar select
+    document.getElementById('imagem_id_pos').value = ''; // Limpar campo de texto
+    document.getElementById('id-pos').value = ''; // Limpar campo de texto
+    document.getElementById('caminhoPasta').value = ''; // Limpar campo de texto
+    document.getElementById('numeroBG').value = ''; // Limpar campo de texto
+    document.getElementById('referenciasCaminho').value = ''; // Limpar campo de texto
+    document.getElementById('observacao').value = ''; // Limpar campo de texto
 }
 
 let idsImagensObra = []; // Array para armazenar os IDs das imagens da obra
@@ -1750,6 +1758,8 @@ document.getElementById("adicionar_observacao").addEventListener("submit", funct
         });
 });
 
+const modalPos = document.getElementById("modal_pos");
+
 
 ['click', 'touchstart', 'keydown'].forEach(eventType => {
     window.addEventListener(eventType, function (event) {
@@ -1787,6 +1797,9 @@ document.getElementById("adicionar_observacao").addEventListener("submit", funct
         if (event.target == modalArquivos || (eventType === 'keydown' && event.key === 'Escape')) {
             modalArquivos.style.display = "none";
             infosObra(obraId);
+        }
+        if (event.target == modalPos || (eventType === 'keydown' && event.key === 'Escape')) {
+            modalPos.classList.remove("hidden");
         }
     });
 });
@@ -2161,86 +2174,230 @@ document.getElementById("copyColumn").addEventListener("click", function () {
 document.getElementById("addRender").addEventListener("click", function (event) {
     event.preventDefault();
 
-    // Captura os valores
-    const imagemId = document.getElementById("imagem_id").value;
+    var linhaSelecionada = document.querySelector(".linha-tabela.selecionada");
+    if (!linhaSelecionada) {
+        Toastify({
+            text: "Nenhuma imagem selecionada",
+            duration: 3000,
+            close: true,
+            gravity: "top",
+            position: "left",
+            backgroundColor: "red",
+            stopOnFocus: true,
+        }).showToast();
+        return;
+    }
 
-    // Configuração do AJAX
+
+    var idImagemSelecionada = linhaSelecionada.getAttribute("data-id");
+
+    const statusId = document.getElementById("opcao_status").value;
+
+    // Lista de status permitidos
+    const statusPermitidos = ["2", "3", "4", "5", "6", "14", "15"];
+
+    if (!statusPermitidos.includes(statusId)) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Status inválido',
+            text: 'Este status não é permitido. Selecione um status válido.'
+        });
+        return;
+    }
+
     const xhr = new XMLHttpRequest();
     xhr.open("POST", "../addRender.php", true);
     xhr.setRequestHeader("Content-Type", "application/json");
 
-    // Define o que fazer após a resposta
     xhr.onload = function () {
         if (xhr.status === 200) {
-            alert("Dados enviados com sucesso!");
+            if (statusId !== "6") {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Render adicionado!',
+                    text: 'Agora você pode preencher os dados da pós-produção.',
+                    confirmButtonText: 'Continuar'
+                }).then(() => {
+                    const modal = document.getElementById("modal_pos");
+                    modal.classList.remove("hidden");
+
+                    // Preenche os selects com os valores salvos/localizados
+
+                    // Finalizador (idcolaborador do localStorage)
+                    const finalizador = localStorage.getItem("idcolaborador");
+                    if (finalizador) {
+                        document.getElementById("opcao_finalizador").value = finalizador;
+                    }
+
+                    // Obra (idobra do localStorage)
+                    const obra = localStorage.getItem("obraId");
+                    if (obra) {
+                        document.getElementById("opcao_obra_pos").value = obra;
+                    }
+
+                    document.getElementById("imagem_id_pos").value = idImagemSelecionada;
+
+
+                    // Status (valor do elemento com id 'status_id')
+                    const statusSelecionado = document.getElementById("opcao_status");
+                    if (statusSelecionado) {
+                        const statusValue = statusSelecionado.value;
+                        document.getElementById("opcao_status_pos").value = statusValue;
+                    }
+
+                    console.log("Status selecionado:", statusSelecionado);
+                    console.log("ID da imagem selecionada:", idImagemSelecionada);
+                    console.log("ID da obra:", obra);
+                    console.log("Finalizador:", finalizador);
+
+
+                    const form_edicao = document.getElementById("form-edicao");
+                    form_edicao.style.display = "none";
+                });
+            } else {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Render com status 6 adicionado!',
+                    text: 'Sem necessidade de pós-produção.'
+                });
+            }
         } else {
-            alert("Erro ao enviar os dados.");
+            Swal.fire({
+                icon: 'error',
+                title: 'Erro ao enviar',
+                text: 'Tente novamente ou avise a NASA.'
+            });
         }
     };
 
-    // Dados a serem enviados como JSON
     const data = {
-        imagem_id: imagemId
+        imagem_id: idImagemSelecionada,
+        status_id: statusId,
     };
 
-    // Envia os dados como JSON
     xhr.send(JSON.stringify(data));
 });
 
 
+// document.getElementById('opcao_obra_pos').addEventListener('change', function () {
+//     var obraId = this.value;
+//     buscarImagens(obraId);
+// });
 
-document.getElementById("addRevisao").addEventListener("click", function (event) {
-    event.preventDefault();
+// function buscarImagens(obraId) {
+//     var imagemSelect = document.getElementById('imagem_id_pos');
 
-    // Captura os valores
-    const imagemId = document.getElementById("imagem_id").value;
-    const opcaoAlteracao = document.getElementById("opcao_alteracao").value;
+//     // Verifica se o valor selecionado é 0, então busca todas as imagens
+//     var url = '../Pos-Producao/buscar_imagens.php';
+//     if (obraId != "0") {
+//         url += '?obra_id=' + obraId;
+//     }
 
-    // Verifica se opcao_alteracao está preenchido
-    if (!opcaoAlteracao.trim()) {
-        alert("Por favor, selecione uma opção antes de enviar.");
-        return; // Interrompe a execução se estiver vazio
-    }
+//     var xhr = new XMLHttpRequest();
+//     xhr.open('GET', url, true);
+//     xhr.onreadystatechange = function () {
+//         if (xhr.readyState === 4 && xhr.status === 200) {
+//             var response = JSON.parse(xhr.responseText);
 
-    // Configuração do AJAX
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", "addRevisao.php", true);
-    xhr.setRequestHeader("Content-Type", "application/json");
+//             // Limpa as opções atuais
+//             imagemSelect.innerHTML = '';
 
-    // Define o que fazer após a resposta
-    xhr.onload = function () {
-        if (xhr.status === 200) {
+//             // Adiciona as novas opções com base na resposta
+//             response.forEach(function (imagem) {
+//                 var option = document.createElement('option');
+//                 option.value = imagem.idimagens_cliente_obra;
+//                 option.text = imagem.imagem_nome;
+//                 imagemSelect.add(option);
+//             });
+//         }
+//     };
+//     xhr.send();
+// }
+
+
+formPosProducao.addEventListener('submit', function (e) {
+    e.preventDefault();
+
+    var formData = new FormData(this);
+
+    fetch('../Pos-Producao/inserir_pos_producao.php', {
+        method: 'POST',
+        body: formData
+    })
+        .then(response => response.text())
+        .then(data => {
+
+            document.getElementById('form-edicao').style.display = 'none';
+            limparCampos();
             Toastify({
-                text: 'Alteração enviada com sucesso!',
+                text: "Dados inseridos com sucesso!",
                 duration: 3000,
+                close: true,
+                gravity: "top",
+                position: "left",
                 backgroundColor: "green",
-                close: true,
-                gravity: "top",
-                position: "right"
+                stopOnFocus: true,
             }).showToast();
-        } else {
-            Toastify({
-                text: 'Erro ao enviar alteração.',
-                duration: 3000,
-                backgroundColor: "red",
-                close: true,
-                gravity: "top",
-                position: "right"
-            }).showToast();
-        }
-    };
 
-    // Dados a serem enviados como JSON
-    const data = {
-        imagem_id: imagemId,
-        colaborador_id: opcaoAlteracao
-    };
-
-    console.log(data);
-
-    // Envia os dados como JSON
-    xhr.send(JSON.stringify(data));
+            const modal = document.getElementById("modal_pos");
+            modal.classList.add("hidden");
+        })
+        .catch(error => console.error('Erro:', error));
 });
+
+
+// document.getElementById("addRevisao").addEventListener("click", function (event) {
+//     event.preventDefault();
+
+//     // Captura os valores
+//     const imagemId = document.getElementById("imagem_id").value;
+//     const opcaoAlteracao = document.getElementById("opcao_alteracao").value;
+
+//     // Verifica se opcao_alteracao está preenchido
+//     if (!opcaoAlteracao.trim()) {
+//         alert("Por favor, selecione uma opção antes de enviar.");
+//         return; // Interrompe a execução se estiver vazio
+//     }
+
+//     // Configuração do AJAX
+//     const xhr = new XMLHttpRequest();
+//     xhr.open("POST", "addRevisao.php", true);
+//     xhr.setRequestHeader("Content-Type", "application/json");
+
+//     // Define o que fazer após a resposta
+//     xhr.onload = function () {
+//         if (xhr.status === 200) {
+//             Toastify({
+//                 text: 'Alteração enviada com sucesso!',
+//                 duration: 3000,
+//                 backgroundColor: "green",
+//                 close: true,
+//                 gravity: "top",
+//                 position: "right"
+//             }).showToast();
+//         } else {
+//             Toastify({
+//                 text: 'Erro ao enviar alteração.',
+//                 duration: 3000,
+//                 backgroundColor: "red",
+//                 close: true,
+//                 gravity: "top",
+//                 position: "right"
+//             }).showToast();
+//         }
+//     };
+
+//     // Dados a serem enviados como JSON
+//     const data = {
+//         imagem_id: imagemId,
+//         colaborador_id: opcaoAlteracao
+//     };
+
+//     console.log(data);
+
+//     // Envia os dados como JSON
+//     xhr.send(JSON.stringify(data));
+// });
 
 // Atualiza o campo quando o botão for clicado
 function atualizarRevisao(event, id, campo, valor) {

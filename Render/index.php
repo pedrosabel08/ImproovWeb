@@ -57,6 +57,7 @@ $conn->close();
                     <th>ID</th>
                     <th>Nome colaborador</th>
                     <th>Nome imagem</th>
+                    <th>Revisão</th>
                     <th>Status</th>
                     <th>Data</th>
                 </tr>

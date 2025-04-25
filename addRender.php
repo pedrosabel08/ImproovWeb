@@ -12,6 +12,7 @@ $data = json_decode(file_get_contents("php://input"), true);
 // Verifica se os dados existem
 if ($data && isset($data['imagem_id'])) {
     $imagem_id = $data['imagem_id'];
+    $status_id = $data['status_id'];
 
     // Inicia uma transação para garantir que ambas as consultas sejam executadas com segurança
     $conn->begin_transaction();
@@ -41,8 +42,8 @@ if ($data && isset($data['imagem_id'])) {
         $stmt_check_status->close();
 
         // Primeira consulta: Insere na tabela render_alta
-        $stmt1 = $conn->prepare("INSERT INTO render_alta (imagem_id, responsavel_id) VALUES (?, ?)");
-        $stmt1->bind_param("ii", $imagem_id, $responsavel_id);
+        $stmt1 = $conn->prepare("INSERT INTO render_alta (imagem_id, responsavel_id, status_id) VALUES (?, ?, ?)");
+        $stmt1->bind_param("iii", $imagem_id, $responsavel_id, $status_id);
         $stmt1->execute();
         $stmt1->close();
 

@@ -644,19 +644,59 @@ function mostrarImagemCompleta(src, id) {
     });
 }
 
-// Enviar comentário
+// Capturar colagem de imagem no campo de texto
+document.getElementById('comentarioTexto').addEventListener('paste', function (event) {
+    const items = (event.clipboardData || event.originalEvent.clipboardData).items;
+
+    for (let index in items) {
+        const item = items[index];
+        if (item.kind === 'file') {
+            const blob = item.getAsFile();
+            if (blob && blob.type.startsWith('image/')) {
+                const fileInput = document.getElementById('imagemComentario');
+
+                // Cria um objeto DataTransfer para injetar o arquivo no input
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(new File([blob], 'imagem_colada.png', { type: blob.type }));
+
+                fileInput.files = dataTransfer.files;
+
+                Toastify({
+                    text: 'Imagem colada com sucesso!',
+                    duration: 3000,
+                    backgroundColor: 'linear-gradient(to right, #00b09b, #96c93d)',
+                    close: true,
+                    gravity: "top",
+                    position: "right"
+                }).showToast();
+            }
+        }
+    }
+});
+
+// Função para enviar o comentário
 document.getElementById('enviarComentario').onclick = async () => {
     const texto = document.getElementById('comentarioTexto').value.trim();
     const imagemFile = document.getElementById('imagemComentario').files[0];
 
-    if (!texto && !imagemFile) return;
+    if (!texto && !imagemFile) {
+        Toastify({
+            text: 'Escreva um comentário ou anexe uma imagem!',
+            duration: 3000,
+            backgroundColor: 'orange',
+            close: true,
+            gravity: "top",
+            position: "right"
+        }).showToast();
+        return;
+    }
 
     const formData = new FormData();
     formData.append('ap_imagem_id', ap_imagem_id);
     formData.append('x', relativeX);
     formData.append('y', relativeY);
     formData.append('texto', texto);
-    formData.append('mencionados', JSON.stringify(mencionadosIds)); // Envia os IDs mencionados
+    formData.append('mencionados', JSON.stringify(mencionadosIds));
 
     if (imagemFile) {
         formData.append('imagem', imagemFile);
@@ -669,6 +709,7 @@ document.getElementById('enviarComentario').onclick = async () => {
         });
 
         const result = await response.json();
+
         document.getElementById('comentarioModal').style.display = 'none';
 
         if (result.sucesso) {
@@ -681,10 +722,11 @@ document.getElementById('enviarComentario').onclick = async () => {
                 position: "left"
             }).showToast();
 
+            // Atualiza comentários
             renderComments(ap_imagem_id);
         } else {
             Toastify({
-                text: 'Erro ao salvar comentário!',
+                text: result.mensagem || 'Erro ao salvar comentário!',
                 duration: 3000,
                 backgroundColor: 'red',
                 close: true,
@@ -693,12 +735,19 @@ document.getElementById('enviarComentario').onclick = async () => {
             }).showToast();
         }
 
-        // Limpa os IDs após envio
+        // Limpa os mencionados depois do envio
         mencionadosIds = [];
 
     } catch (error) {
         console.error('Erro na requisição:', error);
-        alert('Ocorreu um erro ao tentar salvar o comentário.');
+        Toastify({
+            text: 'Erro de conexão! Tente novamente.',
+            duration: 3000,
+            backgroundColor: 'red',
+            close: true,
+            gravity: "top",
+            position: "left"
+        }).showToast();
     }
 };
 
@@ -757,7 +806,7 @@ async function renderComments(id) {
         const p = document.createElement('p');
         p.classList.add('comment-input');
         p.textContent = comentario.texto;
-        
+
         commentBody.appendChild(p);
 
         const footer = document.createElement('div');

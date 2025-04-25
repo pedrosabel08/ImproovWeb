@@ -38,10 +38,9 @@ if (!$slackWebhookUrl) {
 // Verificar se os dados foram enviados via POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $colaborador_id = $_POST['final_id'];
-    $cliente_id = $_POST['cliente_id'];
     $obra_id = $_POST['obra_id'];
     $data_pos = date('Y-m-d H:i');
-    $imagem_id = $_POST['imagem_id'];
+    $imagem_id = $_POST['imagem_id_pos'];
     $caminho_pasta = $_POST['caminho_pasta'];
     $numero_bg = $_POST['numero_bg'];
     $refs = $_POST['refs'];
@@ -84,11 +83,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 
     // Inserir ou atualizar dados
-    $sql = "INSERT INTO pos_producao (colaborador_id, cliente_id, obra_id, data_pos, imagem_id, caminho_pasta, numero_bg, refs, obs, status_pos, status_id, responsavel_id) 
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    $sql = "INSERT INTO pos_producao (colaborador_id, obra_id, data_pos, imagem_id, caminho_pasta, numero_bg, refs, obs, status_pos, status_id, responsavel_id) 
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON DUPLICATE KEY UPDATE
     colaborador_id = VALUES(colaborador_id),
-    cliente_id = VALUES(cliente_id),
     obra_id = VALUES(obra_id),
     data_pos = VALUES(data_pos),
     caminho_pasta = VALUES(caminho_pasta),
@@ -101,9 +99,8 @@ ON DUPLICATE KEY UPDATE
 
     $stmt = $conn->prepare($sql);
     $stmt->bind_param(
-        "iiissssssiii",
+        "iissssssiii",
         $colaborador_id,
-        $cliente_id,
         $obra_id,
         $data_pos,
         $imagem_id,

@@ -103,3 +103,18 @@ function oberUsuarios($conn)
     return $usuarios;
 }
 
+function obterImagens($conn)
+{
+    $sql = "SELECT idimagens_cliente_obra, imagem_nome FROM imagens_cliente_obra ORDER BY obra_id ASC";
+    $result = $conn->query($sql);
+    $imagens = array();
+
+    if ($result->num_rows > 0) {
+        while ($row = $result->fetch_assoc()) {
+            $imagens[] = $row;
+        }
+    }
+
+    return $imagens;
+}
+

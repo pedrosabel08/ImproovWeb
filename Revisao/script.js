@@ -644,6 +644,38 @@ function mostrarImagemCompleta(src, id) {
     });
 }
 
+
+// Capturar colagem de imagem no campo de texto
+document.getElementById('comentarioTexto').addEventListener('paste', function (event) {
+    const items = (event.clipboardData || event.originalEvent.clipboardData).items;
+
+    for (let index in items) {
+        const item = items[index];
+        if (item.kind === 'file') {
+            const blob = item.getAsFile();
+            if (blob && blob.type.startsWith('image/')) {
+                const fileInput = document.getElementById('imagemComentario');
+
+                // Cria um objeto DataTransfer para injetar o arquivo no input
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(new File([blob], 'imagem_colada.png', { type: blob.type }));
+
+                fileInput.files = dataTransfer.files;
+
+                Toastify({
+                    text: 'Imagem colada com sucesso!',
+                    duration: 3000,
+                    backgroundColor: 'linear-gradient(to right, #00b09b, #96c93d)',
+                    close: true,
+                    gravity: "top",
+                    position: "right"
+                }).showToast();
+            }
+        }
+    }
+});
+
+
 // Enviar comentário
 document.getElementById('enviarComentario').onclick = async () => {
     const texto = document.getElementById('comentarioTexto').value.trim();
@@ -763,7 +795,7 @@ async function renderComments(id) {
         const footer = document.createElement('div');
         footer.classList.add('comment-footer');
         footer.innerHTML = `
-            <div class="comment-date">${comentario.data}</div>
+            <div class="comment-date">${formatarDataHora(comentario.data)}</div>
             <div class="comment-actions">
                 <button class="comment-resp">&#8617</button>
                 <button class="comment-edit">✏️</button>
@@ -797,22 +829,25 @@ async function renderComments(id) {
         const editButton = footer.querySelector('.comment-edit');
 
         editButton.addEventListener('click', () => {
+            p.contentEditable = true;
             p.focus();
 
-            // Listener de Enter dentro do botão, mas só adiciona uma vez!
-            p.addEventListener('keydown', async function handleKeyDown(e) {
+            const handleKeyDown = async function (e) {
                 if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault(); // Impede quebra de linha
+                    e.preventDefault();
 
-                    const novoTexto = p.value.trim();
+                    const novoTexto = p.textContent.trim();
 
-                    inpput.readOnly = true;
+                    p.contentEditable = false;
+
                     updateComment(comentario.id, novoTexto);
 
-                    // Remover o listener após salvar pra evitar múltiplos binds
-                    this.prefix.removeEventListener('keydown', handleKeyDown);
+                    // Remove o listener pra não acumular
+                    p.removeEventListener('keydown', handleKeyDown);
                 }
-            });
+            };
+
+            p.addEventListener('keydown', handleKeyDown);
         });
 
 
@@ -829,6 +864,17 @@ async function renderComments(id) {
             if (number) {
                 number.classList.add('highlight');
                 number.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        });
+        commentCard.addEventListener('click', () => {
+            // Remove o highlight de todas as bolinhas
+            document.querySelectorAll('.comment.highlight').forEach(n => n.classList.remove('highlight'));
+
+            // Pega a bolinha correspondente ao comentário
+            const number = document.querySelector(`.comment[data-id="${comentario.id}"]`);
+
+            if (number) {
+                number.classList.add('highlight');
             }
         });
 
@@ -897,7 +943,7 @@ function adicionarRespostaDOM(comentarioId, resposta) {
         <div class="resposta-nome"><span class="reply-icon">&#8617;</span>  ${resposta.nome_responsavel}</div>
         <div class="corpo-resposta">
             <div class="resposta-texto">${resposta.texto}</div>
-            <div class="resposta-data">${resposta.data}</div>
+            <div class="resposta-data">${formatarDataHora(resposta.data)}</div>
         </div>
     `;
     container.appendChild(respostaDiv);

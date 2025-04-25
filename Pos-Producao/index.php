@@ -140,13 +140,9 @@ $conn->close();
                     <option value="2">Nome Obra</option>
                     <option value="3">Data</option>
                     <option value="4">Nome Imagem</option>
-                    <option value="5">Caminho Pasta</option>
-                    <option value="6">Número BG</option>
-                    <option value="7">Referências/Caminho</option>
-                    <option value="8">Observação</option>
-                    <option value="9">Status</option>
-                    <option value="10">Revisão</option>
-                    <option value="11">Responsável</option>
+                    <option value="5">Status</option>
+                    <option value="6">Revisão</option>
+                    <option value="7">Responsável</option>
                 </select>
 
                 <input type="text" id="filtro-input" placeholder="Digite para filtrar">
@@ -175,14 +171,14 @@ $conn->close();
             <thead>
                 <tr>
                     <th>Nome Finalizador</th>
-                    <th>Nome Cliente</th>
+                    <!-- <th>Nome Cliente</th> -->
                     <th>Nome Obra</th>
                     <th>Data</th>
                     <th style="max-width: 40px;">Nome imagem</th>
-                    <th>Caminho Pasta</th>
+                    <!-- <th>Caminho Pasta</th>
                     <th>Número BG</th>
                     <th>Referências/Caminho</th>
-                    <th>Observação</th>
+                    <th>Observação</th> -->
                     <th>Status</th>
                     <th>Revisão</th>
                     <th>Responsável</th>
@@ -207,18 +203,6 @@ $conn->close();
                             <?php foreach ($colaboradores as $colab): ?>
                                 <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
                                     <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label for="nomeCliente">Nome Cliente</label>
-                        <select name="cliente_id" id="opcao_cliente" required>
-                            <option value="0">Selecione um cliente:</option>
-                            <?php foreach ($clientes as $cliente): ?>
-                                <option value="<?= htmlspecialchars($cliente['idcliente']); ?>">
-                                    <?= htmlspecialchars($cliente['nome_cliente']); ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>

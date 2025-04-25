@@ -33,6 +33,7 @@ $obras = obterObras($conn);
 $colaboradores = obterColaboradores($conn);
 $status_imagens = obterStatusImagens($conn);
 $funcoes = obterFuncoes($conn);
+$imagens = obterImagens($conn);
 
 $conn->close();
 ?>
@@ -511,7 +512,7 @@ $conn->close();
         <form id="form-add" method="post" action="insereFuncao.php">
             <div class="titulo-funcoes">
                 <span id="campoNomeImagem"></span>
-            </div> <input type="hidden" id="imagem_id" name="imagem_id">
+            </div> <input type="hidden" id="imagem_id" name="imagem_id" value="">
             <div class="modal-funcoes">
                 <span id="mood"></span>
                 <div class="funcao_comp">
@@ -885,6 +886,101 @@ $conn->close();
     </div>
 
     <div class="tooltip-box" id="tooltip"></div>
+
+    <div id="modal_pos" class="modal hidden">
+        <div class="modal-content" style="width: 40%; max-height: 80%; overflow-y: auto; margin: 100px auto;">
+            <span class="close">&times;</span>
+            <button id="deleteButton">Excluir</button>
+            <div id="form-inserir">
+                <h2>Formulário de Dados</h2>
+                <form id="formPosProducao">
+                    <div>
+                        <label for="nomeFinalizador">Nome Finalizador</label>
+                        <select name="final_id" id="opcao_finalizador" required>
+                            <option value="0">Selecione um colaborador:</option>
+                            <?php foreach ($colaboradores as $colab): ?>
+                                <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                    <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="nomeObra">Nome Obra</label>
+                        <select name="obra_id" id="opcao_obra_pos" required>
+                            <option value="0">Selecione uma obra:</option>
+                            <?php foreach ($obras as $obra): ?>
+                                <option value="<?= $obra['idobra']; ?>"><?= htmlspecialchars($obra['nome_obra']); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="imagem_id_pos">Nome Imagem</label>
+                        <select id="imagem_id_pos" name="imagem_id_pos" required>
+                            <option value="">Selecione uma imagem:</option>
+                            <?php foreach ($imagens as $imagem): ?>
+                                <option value="<?= $imagem['idimagens_cliente_obra']; ?>">
+                                    <?= htmlspecialchars($imagem['imagem_nome']); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="caminhoPasta">Caminho Pasta</label>
+                        <input type="text" id="caminhoPasta" name="caminho_pasta">
+                    </div>
+
+                    <div>
+                        <label for="numeroBG">Número BG</label>
+                        <input type="text" id="numeroBG" name="numero_bg">
+                    </div>
+
+                    <div>
+                        <label for="referenciasCaminho">Referências/Caminho</label>
+                        <input type="text" id="referenciasCaminho" name="refs">
+                    </div>
+
+                    <div>
+                        <label for="observacao">Observação</label>
+                        <textarea id="observacao" name="obs" rows="3"></textarea>
+                    </div>
+
+                    <div>
+                        <label for="status">Revisão</label>
+                        <select name="status_id" id="opcao_status_pos">
+                            <?php foreach ($status_imagens as $status): ?>
+                                <option value="<?= htmlspecialchars($status['idstatus']); ?>">
+                                    <?= htmlspecialchars($status['nome_status']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <input type="text" name="id-pos" id="id-pos" hidden>
+                    <input type="hidden" id="alterar_imagem" name="alterar_imagem" value="false">
+
+                    <div>
+                        <label for="status_pos">Status</label>
+                        <input type="checkbox" name="status_pos" id="status_pos" disabled>
+                    </div>
+
+                    <div>
+                        <label for="nome_responsavel">Nome Responsável</label>
+                        <select name="responsavel_id" id="responsavel_id">
+                            <option value="14" id="Adriana">Adriana</option>
+                            <option value="28" id="Eduardo">Eduardo</option>
+
+                        </select>
+                    </div>
+
+                    <div>
+                        <button type="submit">Enviar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
 
     <div class="modal" id="modal-meta" style="display: none;">

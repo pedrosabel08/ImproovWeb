@@ -22,6 +22,7 @@ function loadRenders() {
                                 <td>${render.idrender_alta}</td>
                                 <td>${render.nome_colaborador}</td>
                                 <td class="imagem-nome">${render.imagem_nome}</td>
+                                <td>${render.nome_status}</td>
                                 <td>${render.status}</td>
                                 <td>${render.data}</td>
                             </tr>

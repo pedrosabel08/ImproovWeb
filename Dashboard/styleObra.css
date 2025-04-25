@@ -607,7 +607,7 @@ th {
 }
 
 .hidden {
-    display: none;
+    display: none !important;
 }
 
 header {
@@ -1524,4 +1524,103 @@ form#formArquivos {
 
 .image-item .titulo_imagem {
     border-bottom: 1px solid;
+}
+
+
+#form-inserir {
+    padding: 10px;
+    font-family: 'Arial', sans-serif;
+}
+
+#form-inserir h2 {
+    text-align: center;
+    font-family: 'Arial', sans-serif;
+    color: #333;
+    margin-bottom: 40px;
+}
+
+#form-inserir form {
+    display: flex;
+    flex-direction: column;
+}
+
+#form-inserir div {
+    margin-bottom: 15px;
+}
+
+#form-inserir label {
+    font-family: 'Arial', sans-serif;
+    font-size: 14px;
+    color: #333;
+    margin-bottom: 5px;
+    display: block;
+}
+
+#form-inserir input[type="text"],
+#form-inserir input[type="date"],
+#form-inserir textarea,
+#form-inserir select {
+    width: 100%;
+    padding: 8px;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    box-sizing: border-box;
+    transition: border-color 0.3s;
+}
+
+#form-inserir input[type="text"]:focus,
+#form-inserir input[type="date"]:focus,
+#form-inserir textarea:focus,
+#form-inserir select:focus {
+    border-color: #007bff;
+    outline: none;
+}
+
+#form-inserir textarea {
+    resize: vertical;
+}
+
+#form-inserir button {
+    background-color: #00ff37;
+    color: black;
+    padding: 8px;
+    font-size: 16px;
+    font-weight: 500;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+#form-inserir button:hover {
+    background-color: #0056b3;
+}
+
+button#deleteButton {
+    background-color: #ff0000;
+    color: white;
+    padding: 5px;
+    font-size: 14px;
+    font-weight: 500;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.close:hover {
+    color: black;
+}
+
+#modal_pos {
+    display: flex;
 }

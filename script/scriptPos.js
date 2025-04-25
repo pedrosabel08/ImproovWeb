@@ -8,7 +8,6 @@ const formPosProducao = document.getElementById('formPosProducao');
 
 function limparCampos() {
     document.getElementById('opcao_finalizador').selectedIndex = 0; // Resetar select
-    document.getElementById('opcao_cliente').selectedIndex = 0; // Resetar select
     document.getElementById('opcao_obra').selectedIndex = 0; // Resetar select
     document.getElementById('imagem_id').value = ''; // Limpar campo de texto
     document.getElementById('id-pos').value = ''; // Limpar campo de texto
@@ -188,14 +187,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
                     tr.innerHTML = `
                         <td>${imagem.nome_colaborador}</td>
-                        <td>${imagem.nome_cliente}</td>
                         <td>${imagem.nome_obra}</td>
-                        <td>${imagem.data_pos}</td>
+                        <td>${formatarDataHora(imagem.data_pos)}</td>
                         <td>${imagem.imagem_nome}</td>
-                        <td>${imagem.caminho_pasta}</td>
-                        <td>${imagem.numero_bg}</td>
-                        <td>${imagem.refs}</td>
-                        <td>${imagem.obs}</td>
                         <td style="background-color: ${statusCor}; color: white;">${statusTexto}</td>
                         <td>${imagem.nome_status}</td>
                         <td>${imagem.nome_responsavel}</td>
@@ -228,7 +222,6 @@ document.addEventListener("DOMContentLoaded", function () {
                             success: function (response) {
                                 if (response.length > 0) {
                                     setSelectValue('opcao_finalizador', response[0].nome_colaborador);
-                                    setSelectValue('opcao_cliente', response[0].nome_cliente);
                                     setSelectValue('opcao_obra', response[0].nome_obra);
                                     setSelectValue('imagem_id', response[0].imagem_nome);
                                     document.getElementById('id-pos').value = response[0].idpos_producao;
@@ -273,6 +266,20 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 });
+
+function formatarDataHora(data) {
+    const date = new Date(data); // Cria um objeto Date a partir da string datetime
+
+    const dia = String(date.getDate()).padStart(2, '0'); // Pega o dia e formata com 2 dígitos
+    const mes = String(date.getMonth() + 1).padStart(2, '0'); // Pega o mês e formata com 2 dígitos (mes começa do 0)
+    const ano = date.getFullYear(); // Pega o ano
+    const horas = String(date.getHours()).padStart(2, '0'); // Pega a hora e formata com 2 dígitos
+    const minutos = String(date.getMinutes()).padStart(2, '0'); // Pega os minutos e formata com 2 dígitos
+
+    return `${dia}/${mes}/${ano} ${horas}:${minutos}`; // Retorna o formato desejado
+}
+
+
 
 function contarLinhasTabela() {
     const tabela = document.getElementById("tabela-imagens");

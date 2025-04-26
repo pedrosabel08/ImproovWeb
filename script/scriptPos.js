@@ -9,7 +9,7 @@ const formPosProducao = document.getElementById('formPosProducao');
 function limparCampos() {
     document.getElementById('opcao_finalizador').selectedIndex = 0; // Resetar select
     document.getElementById('opcao_obra').selectedIndex = 0; // Resetar select
-    document.getElementById('imagem_id').value = ''; // Limpar campo de texto
+    document.getElementById('imagem_id_pos').value = ''; // Limpar campo de texto
     document.getElementById('id-pos').value = ''; // Limpar campo de texto
     document.getElementById('caminhoPasta').value = ''; // Limpar campo de texto
     document.getElementById('numeroBG').value = ''; // Limpar campo de texto
@@ -49,7 +49,7 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     function buscarImagens(obraId) {
-        var imagemSelect = document.getElementById('imagem_id');
+        var imagemSelect = document.getElementById('imagem_id_pos');
 
         // Verifica se o valor selecionado é 0, então busca todas as imagens
         var url = 'buscar_imagens.php';
@@ -184,8 +184,19 @@ document.addEventListener("DOMContentLoaded", function () {
 
                     let statusTexto = imagem.status_pos == 1 ? 'Não começou' : 'Finalizado';
                     let statusCor = imagem.status_pos == 1 ? 'red' : 'green';
+                    let statusCorStatus = '';
+
+
+                    if (imagem.status_render === 'Não iniciado') {
+                        statusCorStatus = 'red';
+                    } else if (imagem.status_render === 'Em andamento') {
+                        statusCorStatus = 'orange';
+                    } else if (imagem.status_render === 'Finalizado') {
+                        statusCorStatus = 'green';
+                    }
 
                     tr.innerHTML = `
+                        <td style="background-color ${statusCorStatus}">${imagem.status_render ?? ''}</td>
                         <td>${imagem.nome_colaborador}</td>
                         <td>${imagem.nome_obra}</td>
                         <td>${formatarDataHora(imagem.data_pos)}</td>
@@ -203,13 +214,40 @@ document.addEventListener("DOMContentLoaded", function () {
                 const linhasTabela = document.querySelectorAll('.linha-tabela');
                 linhasTabela.forEach(linha => {
                     linha.addEventListener('click', function () {
-                        modal.style.display = "flex";
-                        limparCampos();
-                        linhasTabela.forEach(outro => {
-                            outro.classList.remove('selecionada');
-                        });
+                        // Pega o status_render da primeira coluna (ajuste conforme necessário, se a estrutura for diferente)
+                        const statusRender = this.querySelector('td:first-child').textContent.trim(); // Assume que a primeira coluna tem o status_render
 
-                        this.classList.add('selecionada');
+                        // Verifica se o status não é 'Finalizado'
+                        if (statusRender !== 'Finalizado') {
+                            // Mostra o alerta com SweetAlert
+                            Swal.fire({
+                                icon: 'warning',
+                                title: 'Atenção',
+                                text: 'O status deste item não é "Finalizado". Deseja continuar?',
+                                showCancelButton: true,
+                                confirmButtonText: 'OK',
+                                cancelButtonText: 'Sair'
+                            }).then((result) => {
+                                if (result.isConfirmed) {
+                                    // Se o usuário clicar em OK, mostra o modal
+                                    modal.style.display = "flex";
+                                    limparCampos();
+                                    linhasTabela.forEach(outro => {
+                                        outro.classList.remove('selecionada');
+                                    });
+                                    this.classList.add('selecionada');
+                                }
+                                // Se o usuário clicar em Sair, não faz nada e não mostra o modal
+                            });
+                        } else {
+                            // Se o status for 'Finalizado', mostra o modal diretamente
+                            modal.style.display = "flex";
+                            limparCampos();
+                            linhasTabela.forEach(outro => {
+                                outro.classList.remove('selecionada');
+                            });
+                            this.classList.add('selecionada');
+                        }
 
                         var idImagemSelecionada = this.getAttribute('data-id');
                         console.log("ID da imagem selecionada:", idImagemSelecionada);
@@ -223,12 +261,13 @@ document.addEventListener("DOMContentLoaded", function () {
                                 if (response.length > 0) {
                                     setSelectValue('opcao_finalizador', response[0].nome_colaborador);
                                     setSelectValue('opcao_obra', response[0].nome_obra);
-                                    setSelectValue('imagem_id', response[0].imagem_nome);
+                                    setSelectValue('imagem_id_pos', response[0].imagem_nome);
                                     document.getElementById('id-pos').value = response[0].idpos_producao;
                                     document.getElementById('caminhoPasta').value = response[0].caminho_pasta;
                                     document.getElementById('numeroBG').value = response[0].numero_bg;
                                     document.getElementById('referenciasCaminho').value = response[0].refs;
                                     document.getElementById('observacao').value = response[0].obs;
+                                    document.getElementById('render_id_pos').value = response[0].idrender;
                                     setSelectValue('opcao_status', response[0].nome_status);
 
                                     const checkboxStatusPos = document.getElementById('status_pos');

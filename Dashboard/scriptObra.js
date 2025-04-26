@@ -1604,6 +1604,22 @@ document.querySelectorAll('.close-modal').forEach(closeButton => {
     });
 });
 
+document.querySelectorAll('.close').forEach(closeButton => {
+    closeButton.addEventListener('click', function () {
+        const modal = this.closest('.modal');
+        if (modal) {
+            modal.classList.add('hidden');
+        }
+    });
+
+    closeButton.addEventListener('touchstart', function () {
+        const modal = this.closest('.modal');
+        if (modal) {
+            modal.classList.add('hidden');
+        }
+    });
+});
+
 const closeModalImages = document.querySelector('.close-modal-images');
 closeModalImages.addEventListener('click', function () {
     editImagesModal.style.display = 'none';
@@ -1798,9 +1814,9 @@ const modalPos = document.getElementById("modal_pos");
             modalArquivos.style.display = "none";
             infosObra(obraId);
         }
-        if (event.target == modalPos || (eventType === 'keydown' && event.key === 'Escape')) {
-            modalPos.classList.remove("hidden");
-        }
+        // if (event.target == modalPos || (eventType === 'keydown' && event.key === 'Escape')) {
+        //     modalPos.classList.add("hidden");
+        // }
     });
 });
 
@@ -2188,7 +2204,6 @@ document.getElementById("addRender").addEventListener("click", function (event) 
         return;
     }
 
-
     var idImagemSelecionada = linhaSelecionada.getAttribute("data-id");
 
     const statusId = document.getElementById("opcao_status").value;
@@ -2211,6 +2226,19 @@ document.getElementById("addRender").addEventListener("click", function (event) 
 
     xhr.onload = function () {
         if (xhr.status === 200) {
+            const response = JSON.parse(xhr.responseText);
+            const idRenderAdicionado = response.idrender;
+
+            if (response.status === "erro") {
+                // Aqui vamos tratar o erro mais específico
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Erro ao adicionar render',
+                    text: response.message  // Exibe a mensagem de erro do PHP diretamente
+                });
+                return;
+            }
+
             if (statusId !== "6") {
                 Swal.fire({
                     icon: 'success',
@@ -2222,34 +2250,24 @@ document.getElementById("addRender").addEventListener("click", function (event) 
                     modal.classList.remove("hidden");
 
                     // Preenche os selects com os valores salvos/localizados
-
-                    // Finalizador (idcolaborador do localStorage)
                     const finalizador = localStorage.getItem("idcolaborador");
                     if (finalizador) {
                         document.getElementById("opcao_finalizador").value = finalizador;
                     }
 
-                    // Obra (idobra do localStorage)
                     const obra = localStorage.getItem("obraId");
                     if (obra) {
                         document.getElementById("opcao_obra_pos").value = obra;
                     }
 
                     document.getElementById("imagem_id_pos").value = idImagemSelecionada;
-
-
-                    // Status (valor do elemento com id 'status_id')
                     const statusSelecionado = document.getElementById("opcao_status");
                     if (statusSelecionado) {
                         const statusValue = statusSelecionado.value;
                         document.getElementById("opcao_status_pos").value = statusValue;
                     }
 
-                    console.log("Status selecionado:", statusSelecionado);
-                    console.log("ID da imagem selecionada:", idImagemSelecionada);
-                    console.log("ID da obra:", obra);
-                    console.log("Finalizador:", finalizador);
-
+                    document.getElementById("render_id_pos").value = idRenderAdicionado;
 
                     const form_edicao = document.getElementById("form-edicao");
                     form_edicao.style.display = "none";
@@ -2257,7 +2275,7 @@ document.getElementById("addRender").addEventListener("click", function (event) 
             } else {
                 Swal.fire({
                     icon: 'success',
-                    title: 'Render com status 6 adicionado!',
+                    title: 'Render com status EF adicionado!',
                     text: 'Sem necessidade de pós-produção.'
                 });
             }

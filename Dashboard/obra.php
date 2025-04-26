@@ -975,6 +975,9 @@ $conn->close();
                         </select>
                     </div>
 
+                    <input type="hidden" id="render_id_pos" name="render_id_pos">
+
+
                     <div>
                         <button type="submit">Enviar</button>
                     </div>

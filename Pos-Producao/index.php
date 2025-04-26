@@ -109,6 +109,8 @@ $conn->close();
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
         type="image/x-icon">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+
     <title>Lista Pós-Produção</title>
 </head>
 
@@ -170,15 +172,11 @@ $conn->close();
         <table id="tabela-imagens">
             <thead>
                 <tr>
+                    <th>Status Render</th>
                     <th>Nome Finalizador</th>
-                    <!-- <th>Nome Cliente</th> -->
                     <th>Nome Obra</th>
                     <th>Data</th>
-                    <th style="max-width: 40px;">Nome imagem</th>
-                    <!-- <th>Caminho Pasta</th>
-                    <th>Número BG</th>
-                    <th>Referências/Caminho</th>
-                    <th>Observação</th> -->
+                    <th style="min-width: 80px;padding: 3px;">Nome imagem</th>
                     <th>Status</th>
                     <th>Revisão</th>
                     <th>Responsável</th>
@@ -220,7 +218,7 @@ $conn->close();
 
                     <div>
                         <label for="imagem_id">Nome Imagem</label>
-                        <select id="imagem_id" name="imagem_id" required>
+                        <select id="imagem_id_pos" name="imagem_id_pos" required>
                             <option value="">Selecione uma imagem:</option>
                             <?php foreach ($imagens as $imagem): ?>
                                 <option value="<?= $imagem['idimagens_cliente_obra']; ?>">
@@ -272,9 +270,11 @@ $conn->close();
                         <select name="responsavel_id" id="responsavel_id">
                             <option value="14" id="Adriana">Adriana</option>
                             <option value="28" id="Eduardo">Eduardo</option>
-
                         </select>
                     </div>
+
+                    <input type="hidden" id="render_id_pos" name="render_id_pos">
+
 
                     <div>
                         <button type="submit">Enviar</button>
@@ -326,6 +326,7 @@ $conn->close();
     <script src="../script/sidebar.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 </body>
 

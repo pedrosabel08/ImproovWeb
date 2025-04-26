@@ -47,6 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $obs = $_POST['obs'];
     $status_pos = isset($_POST['status_pos']) ? 0 : 1;
     $status_id = $_POST['status_id'];
+    $render_id = $_POST['render_id_pos'] ?? null; // Adicionando render_id como opcional
 
     // Buscar o nome da imagem
     $sql_imagem = "SELECT imagem_nome FROM imagens_cliente_obra WHERE idimagens_cliente_obra = ?";
@@ -83,8 +84,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 
     // Inserir ou atualizar dados
-    $sql = "INSERT INTO pos_producao (colaborador_id, obra_id, data_pos, imagem_id, caminho_pasta, numero_bg, refs, obs, status_pos, status_id, responsavel_id) 
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    $sql = "INSERT INTO pos_producao (colaborador_id, obra_id, data_pos, imagem_id, caminho_pasta, numero_bg, refs, obs, status_pos, status_id, responsavel_id, render_id) 
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON DUPLICATE KEY UPDATE
     colaborador_id = VALUES(colaborador_id),
     obra_id = VALUES(obra_id),
@@ -95,11 +96,12 @@ ON DUPLICATE KEY UPDATE
     obs = VALUES(obs),
     status_pos = VALUES(status_pos),
     status_id = VALUES(status_id),
-    responsavel_id = VALUES(responsavel_id)";
+    responsavel_id = VALUES(responsavel_id),
+    render_id = VALUES(render_id)";
 
     $stmt = $conn->prepare($sql);
     $stmt->bind_param(
-        "iissssssiii",
+        "iissssssiiii",
         $colaborador_id,
         $obra_id,
         $data_pos,
@@ -110,7 +112,8 @@ ON DUPLICATE KEY UPDATE
         $obs,
         $status_pos,
         $status_id,
-        $responsavel_id
+        $responsavel_id,
+        $render_id
     );
 
     if ($stmt->execute()) {

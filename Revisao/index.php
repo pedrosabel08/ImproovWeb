@@ -26,6 +26,7 @@ $idusuario = $_SESSION['idusuario'];
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
 
     <link rel="stylesheet" href="../css/styleSidebar.css">
+    <link rel="stylesheet" href="../css/modalSessao.css">
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
     <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
@@ -158,6 +159,16 @@ $idusuario = $_SESSION['idusuario'];
         <img id="imagem-ampliada" src="" alt="Imagem ampliada">
     </div>
 
+    <div id="modalSessao" class="modal-sessao">
+        <div class="modal-conteudo">
+            <h2>Sessão Expirada</h2>
+            <p>Sua sessão expirou. Deseja continuar?</p>
+            <button onclick="renovarSessao()">Continuar Sessão</button>
+            <button onclick="sair()">Sair</button>
+        </div>
+    </div>
+
+
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
@@ -167,6 +178,8 @@ $idusuario = $_SESSION['idusuario'];
 
     <script src="script.js"></script>
     <script src="../script/sidebar.js"></script>
+    <script src="../script/controleSessao.js"></script>
+
 
 </body>
 

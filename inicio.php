@@ -72,6 +72,7 @@ $conn->close();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="css/styleIndex.css">
     <link rel="stylesheet" href="css/styleSidebar.css">
+    <link rel="stylesheet" href="css/modalSessao.css">
     <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s" type="image/x-icon">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
@@ -204,10 +205,20 @@ $conn->close();
 
     </main>
 
-        <div id="notificacao-sino" class="notificacao-sino">
-            <i class="fas fa-bell sino" id="icone-sino"></i>
-            <span id="contador-tarefas" class="contador-tarefas">0</span>
+    <div id="notificacao-sino" class="notificacao-sino">
+        <i class="fas fa-bell sino" id="icone-sino"></i>
+        <span id="contador-tarefas" class="contador-tarefas">0</span>
+    </div>
+
+    <div id="modalSessao" class="modal-sessao">
+        <div class="modal-conteudo">
+            <h2>Sessão Expirada</h2>
+            <p>Sua sessão expirou. Deseja continuar?</p>
+            <button onclick="renovarSessao()">Continuar Sessão</button>
+            <button onclick="sair()">Sair</button>
         </div>
+    </div>
+
 
     <script>
         const nome_user = <?php echo json_encode($nome_usuario); ?>;
@@ -300,6 +311,7 @@ $conn->close();
     <script src="script/notificacoes.js"></script>
     <script src="script/scriptIndex.js"></script>
     <script src="./script/sidebar.js"></script>
+    <script src="./script/controleSessao.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 </body>

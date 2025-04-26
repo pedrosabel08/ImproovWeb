@@ -53,6 +53,7 @@ $conn->close();
     <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
         type="image/x-icon">
     <link rel="stylesheet" href="../css/styleSidebar.css">
+    <link rel="stylesheet" href="../css/modalSessao.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/airbnb.css">
@@ -1017,6 +1018,15 @@ $conn->close();
         </div>
     <?php endif; ?>
 
+    <div id="modalSessao" class="modal-sessao">
+        <div class="modal-conteudo">
+            <h2>Sessão Expirada</h2>
+            <p>Sua sessão expirou. Deseja continuar?</p>
+            <button onclick="renovarSessao()">Continuar Sessão</button>
+            <button onclick="sair()">Sair</button>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
@@ -1029,6 +1039,7 @@ $conn->close();
     <script src="scriptObra.js"></script>
     <script src="../script/sidebar.js"></script>
     <script src="../script/notificacoes.js"></script>
+    <script src="../script/controleSessao.js"></script>
 
     <script>
         // Converte o valor do COUNT para JSON e armazena no localStorage

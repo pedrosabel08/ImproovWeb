@@ -4,6 +4,9 @@ header("Access-Control-Allow-Origin: *"); // Allows all domains
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS"); // Allow specific methods
 header("Access-Control-Allow-Headers: Content-Type");
 
+$tempoSessao = 3600; // 1h
+session_set_cookie_params($tempoSessao);
+ini_set('session.gc_maxlifetime', $tempoSessao);
 session_start();
 
 // Conectar ao banco de dados

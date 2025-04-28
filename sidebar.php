@@ -32,6 +32,7 @@
                     <li><a title="Obras" href="https://improov.com.br/sistema/Obras"><i class="fas fa-building"></i><span> Obras</span></a></li>
                     <li><a title="Dashboard" href="https://improov.com.br/sistema/Dashboard"><i class="fa-solid fa-chart-line"></i><span> Dashboard</span></a></li>
                     <li><a title="Tela Gerencial" href="https://improov.com.br/sistema/TelaGerencial"><i class="fa-solid fa-desktop"></i><span> Tela Gerencial</span></a></li>
+                    <li><a title="Tela de custos" href="https://improov.com.br/sistema/Custos"><i class="fa-solid fa-desktop"></i><span> Tela Custos</span></a></li>
                 <?php endif; ?>
 
             </ul>

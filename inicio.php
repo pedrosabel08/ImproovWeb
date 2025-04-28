@@ -72,7 +72,6 @@ $conn->close();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="css/styleIndex.css">
     <link rel="stylesheet" href="css/styleSidebar.css">
-    <link rel="stylesheet" href="css/modalSessao.css">
     <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s" type="image/x-icon">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
@@ -210,16 +209,6 @@ $conn->close();
         <span id="contador-tarefas" class="contador-tarefas">0</span>
     </div>
 
-    <div id="modalSessao" class="modal-sessao">
-        <div class="modal-conteudo">
-            <h2>Sessão Expirada</h2>
-            <p>Sua sessão expirou. Deseja continuar?</p>
-            <button onclick="renovarSessao()">Continuar Sessão</button>
-            <button onclick="sair()">Sair</button>
-        </div>
-    </div>
-
-
     <script>
         const nome_user = <?php echo json_encode($nome_usuario); ?>;
 
@@ -247,10 +236,8 @@ $conn->close();
 
 
         document.getElementById('modal').style.display = 'none';
-        // Função para verificar se já foi enviado o formulário no dia de hoje
-        function checkDailyAccess() {
-            const idColaborador = <?php echo json_encode($idcolaborador); ?>; // ID do colaborador vindo do PHP
 
+        function checkDailyAccess() {
             fetch('verifica_respostas.php', {
                     method: 'POST',
                     headers: {
@@ -261,17 +248,17 @@ $conn->close();
                 .then(response => response.json())
                 .then(data => {
                     if (data.hasResponses) {
-                        // Se já houver respostas, não exibe o modal
-                        document.getElementById('modal').style.display = 'none';
+                        // 👉 Já respondeu hoje? Então só mostra render
+                        checkRenderItems(idColaborador);
                     } else {
-                        // Se não houver respostas, exibe o modal
+                        // 👉 Ainda não respondeu hoje? Mostra o modal
                         document.getElementById('modal').style.display = 'flex';
                     }
                 })
                 .catch(error => console.error('Erro ao verificar respostas:', error));
         }
 
-
+        // Após enviar o Daily
         document.getElementById('dailyForm').addEventListener('submit', function(e) {
             e.preventDefault();
 
@@ -289,29 +276,59 @@ $conn->close();
                             icon: 'success',
                             text: 'Respostas enviadas com sucesso!',
                             showConfirmButton: false,
-                            timer: 2000 // Tempo em milissegundos (3 segundos)
+                            timer: 2000
+                        }).then(() => {
+                            // 👉 Agora sim, mostra os itens de render
+                            checkRenderItems(idColaborador);
                         });
-                        return;
                     } else {
                         Swal.fire({
                             icon: 'error',
                             text: 'Erro ao enviar as tarefas, tente novamente!',
                             showConfirmButton: false,
-                            timer: 2000 // Tempo em milissegundos (3 segundos)
+                            timer: 2000
                         });
-                        return;
                     }
                 })
                 .catch(error => console.error('Erro:', error));
         });
 
+        // Verifica a lista de render
+        function checkRenderItems(idColaborador) {
+            fetch('verifica_render.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `idcolaborador=${idColaborador}`
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.total > 0) {
+                        Swal.fire({
+                            title: `Você tem ${data.total} item(ns) na sua lista de render!`,
+                            text: "Deseja ver agora ou depois?",
+                            icon: "info",
+                            showCancelButton: true,
+                            confirmButtonText: "Ver agora",
+                            cancelButtonText: "Ver depois",
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                window.location.href = "./Render/";
+                            }
+                        });
+                    }
+                })
+                .catch(error => console.error('Erro ao verificar itens de render:', error));
+        }
+
+        // 🚀 Dispara tudo ao carregar a página
         checkDailyAccess();
     </script>
 
     <script src="script/notificacoes.js"></script>
     <script src="script/scriptIndex.js"></script>
     <script src="./script/sidebar.js"></script>
-    <script src="./script/controleSessao.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 </body>

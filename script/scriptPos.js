@@ -236,8 +236,15 @@ document.addEventListener("DOMContentLoaded", function () {
                                         outro.classList.remove('selecionada');
                                     });
                                     this.classList.add('selecionada');
+
+                                    const idImagemSelecionada = this.getAttribute('data-id');
+                                    console.log("ID da imagem selecionada:", idImagemSelecionada);
+
+                                    buscarInfosImagem(idImagemSelecionada);
+
                                 }
                                 // Se o usuário clicar em Sair, não faz nada e não mostra o modal
+
                             });
                         } else {
                             // Se o status for 'Finalizado', mostra o modal diretamente
@@ -249,42 +256,11 @@ document.addEventListener("DOMContentLoaded", function () {
                             this.classList.add('selecionada');
                         }
 
-                        var idImagemSelecionada = this.getAttribute('data-id');
+                        const idImagemSelecionada = this.getAttribute('data-id');
                         console.log("ID da imagem selecionada:", idImagemSelecionada);
 
-                        $.ajax({
-                            type: "GET",
-                            dataType: "json",
-                            url: "https://www.improov.com.br/sistema/Pos-Producao/buscaAJAX.php",
-                            data: { ajid: idImagemSelecionada },
-                            success: function (response) {
-                                if (response.length > 0) {
-                                    setSelectValue('opcao_finalizador', response[0].nome_colaborador);
-                                    setSelectValue('opcao_obra', response[0].nome_obra);
-                                    setSelectValue('imagem_id_pos', response[0].imagem_nome);
-                                    document.getElementById('id-pos').value = response[0].idpos_producao;
-                                    document.getElementById('caminhoPasta').value = response[0].caminho_pasta;
-                                    document.getElementById('numeroBG').value = response[0].numero_bg;
-                                    document.getElementById('referenciasCaminho').value = response[0].refs;
-                                    document.getElementById('observacao').value = response[0].obs;
-                                    document.getElementById('render_id_pos').value = response[0].idrender;
-                                    setSelectValue('opcao_status', response[0].nome_status);
+                        buscarInfosImagem(idImagemSelecionada);
 
-                                    const checkboxStatusPos = document.getElementById('status_pos');
-                                    checkboxStatusPos.checked = response[0].status_pos == 0;
-                                    checkboxStatusPos.disabled = false;
-
-                                    document.getElementById('alterar_imagem').value = 'true';
-                                    setSelectValue('responsavel_id', response[0].nome_responsavel);
-
-                                } else {
-                                    console.log("Nenhum produto encontrado.");
-                                }
-                            },
-                            error: function (jqXHR, textStatus, errorThrown) {
-                                console.error("Erro na requisição AJAX: " + textStatus, errorThrown);
-                            }
-                        });
                     });
                 });
             })
@@ -293,18 +269,56 @@ document.addEventListener("DOMContentLoaded", function () {
 
     atualizarTabela();
 
-    function setSelectValue(selectId, valueToSelect) {
-        var selectElement = document.getElementById(selectId);
-        var options = selectElement.options;
 
-        for (var i = 0; i < options.length; i++) {
-            if (options[i].text === valueToSelect) {
-                selectElement.selectedIndex = i;
-                break;
-            }
+});
+
+function setSelectValue(selectId, valueToSelect) {
+    var selectElement = document.getElementById(selectId);
+    var options = selectElement.options;
+
+    for (var i = 0; i < options.length; i++) {
+        if (options[i].text === valueToSelect) {
+            selectElement.selectedIndex = i;
+            break;
         }
     }
-});
+}
+
+function buscarInfosImagem(idImagemSelecionada) {
+    $.ajax({
+        type: "GET",
+        dataType: "json",
+        url: "https://www.improov.com.br/sistema/Pos-Producao/buscaAJAX.php",
+        data: { ajid: idImagemSelecionada },
+        success: function (response) {
+            if (response.length > 0) {
+                setSelectValue('opcao_finalizador', response[0].nome_colaborador);
+                setSelectValue('opcao_obra', response[0].nome_obra);
+                setSelectValue('imagem_id_pos', response[0].imagem_nome);
+                document.getElementById('id-pos').value = response[0].idpos_producao;
+                document.getElementById('caminhoPasta').value = response[0].caminho_pasta;
+                document.getElementById('numeroBG').value = response[0].numero_bg;
+                document.getElementById('referenciasCaminho').value = response[0].refs;
+                document.getElementById('observacao').value = response[0].obs;
+                document.getElementById('render_id_pos').value = response[0].idrender;
+                setSelectValue('opcao_status', response[0].nome_status);
+
+                const checkboxStatusPos = document.getElementById('status_pos');
+                checkboxStatusPos.checked = response[0].status_pos == 0;
+                checkboxStatusPos.disabled = false;
+
+                document.getElementById('alterar_imagem').value = 'true';
+                setSelectValue('responsavel_id', response[0].nome_responsavel);
+
+            } else {
+                console.log("Nenhum produto encontrado.");
+            }
+        },
+        error: function (jqXHR, textStatus, errorThrown) {
+            console.error("Erro na requisição AJAX: " + textStatus, errorThrown);
+        }
+    });
+}
 
 function formatarDataHora(data) {
     const date = new Date(data); // Cria um objeto Date a partir da string datetime

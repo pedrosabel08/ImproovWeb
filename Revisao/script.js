@@ -103,7 +103,7 @@ let todosOsColaboradores = new Set();
 
 async function fetchObrasETarefas() {
     try {
-        const response = await fetch(`atualizar2.php`);
+        const response = await fetch(`atualizar.php`);
         if (!response.ok) throw new Error("Erro ao buscar tarefas");
 
         dadosTarefas = await response.json();

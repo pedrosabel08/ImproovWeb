@@ -31,7 +31,9 @@ $conn->close();
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="../css/styleSidebar.css">
     <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
-    type="image/x-icon">
+        type="image/x-icon">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+
 </head>
 
 <body>
@@ -43,7 +45,7 @@ $conn->close();
     ?>
 
     <div class="container">
-        <h1>Selecionar Imagem/Obra</h1>
+        <h1>Tela de custos</h1>
 
         <label for="opcao">Obra:</label>
         <select id="selectImagem">
@@ -53,11 +55,11 @@ $conn->close();
             <?php endforeach; ?>
         </select>
 
-        <table id="tabelaComercial">
+        <table id="tabelaComercial" class="display">
             <thead>
                 <tr>
-                    <th>Número do Contrato</th>
-                    <th>Nome da imagem</th>
+                    <th>Nº Contrato</th>
+                    <th>Imagem</th>
                     <th>Valor</th>
                     <th>Imposto</th>
                     <th>Valor com Imposto</th>
@@ -79,10 +81,28 @@ $conn->close();
 
     </div>
 
+    <div class="modal" id="modalDetalhes">
+        <h3>Detalhamento da Produção</h3>
+        <table id="tabelaDetalhes" style="width:100%; border-collapse: collapse;">
+            <thead>
+                <tr>
+                    <th>Função</th>
+                    <th>Colaborador</th>
+                    <th>Valor (R$)</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+        <br />
+        <button onclick="$('#modalDetalhes').hide()">Fechar</button>
+    </div>
+
+
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="script.js"></script>
     <script src="../script/sidebar.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 
 </body>
 

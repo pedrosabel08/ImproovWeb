@@ -1,5 +1,6 @@
 let graficoGeral;      // variáveis globais para os gráficos
 let graficoDetalhado;
+let dataTable = null;
 
 $('#selectImagem').on('change', function () {
     var obra_id = $(this).val();
@@ -22,7 +23,7 @@ $('#selectImagem').on('change', function () {
 
                     response.forEach(function (item) {
                         linhas += `
-                            <tr>
+                            <tr data-idimagem="${item.imagem_id}">   
                                 <td>${item.numero_contrato}</td>
                                 <td>${item.imagem_nome}</td>
                                 <td>R$ ${parseFloat(item.valor_comercial_bruto).toFixed(2)}</td>
@@ -35,7 +36,6 @@ $('#selectImagem').on('change', function () {
                             </tr>
                         `;
 
-                        // Preparar os dados para os gráficos
                         totalComercial += parseFloat(item.valor_comercial_liquido);
                         totalProducao += parseFloat(item.valor_producao_total);
 
@@ -44,14 +44,38 @@ $('#selectImagem').on('change', function () {
                         valoresProducao.push(parseFloat(item.valor_producao_total));
                     });
 
+                    // Atualiza o corpo da tabela
                     $('#tabelaComercial tbody').html(linhas);
+
+                    // Destroi o DataTable anterior, se existir
+                    if (dataTable) {
+                        dataTable.destroy();
+                    }
+
+                    // Recria o DataTable
+                    dataTable = $('#tabelaComercial').DataTable({
+                        language: {
+                            url: "//cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json"
+                        },
+                        "paging": false,
+                        "lengthChange": false,
+                        "info": false,
+                        "ordering": true,
+                        "searching": true,
+                        order: [] // <-- impede ordenação inicial
+
+                    });
 
                     atualizarGraficoGeral(totalComercial, totalProducao);
                     atualizarGraficoDetalhado(nomesImagens, valoresComercial, valoresProducao);
 
                 } else {
-                    $('#tabelaComercial tbody').html('<tr><td colspan="9" style="text-align:center;">Nenhum dado encontrado</td></tr>');
-                    destruirGraficos(); // limpar gráficos se não tiver dados
+                    if (dataTable) {
+                        dataTable.clear().draw(); // limpa o datatable
+                    } else {
+                        $('#tabelaComercial tbody').html('<tr><td colspan="9" style="text-align:center;">Nenhum dado encontrado</td></tr>');
+                    }
+                    destruirGraficos();
                 }
             },
             error: function () {
@@ -59,8 +83,73 @@ $('#selectImagem').on('change', function () {
             }
         });
     } else {
-        $('#tabelaComercial tbody').html('<tr><td colspan="9" style="text-align:center;">Selecione uma imagem para ver os dados</td></tr>');
+        if (dataTable) {
+            dataTable.clear().draw();
+        } else {
+            $('#tabelaComercial tbody').html('<tr><td colspan="9" style="text-align:center;">Selecione uma imagem para ver os dados</td></tr>');
+        }
         destruirGraficos();
+    }
+});
+
+$('#tabelaComercial tbody').on('click', 'tr', function () {
+    const imagemId = $(this).data('idimagem');
+
+    // Remove a classe 'selecionada' de todas as linhas
+    $('#tabelaComercial tbody tr').removeClass('selecionada');
+
+    // Adiciona a classe 'selecionada' apenas à linha clicada
+    this.classList.add('selecionada');
+
+    // POSICIONA O MODAL LOGO ABAIXO DA CÉLULA "Valor Produção Total"
+    const cell = $(this).find('td').last(); // ou use .eq(N) se não for a última coluna
+    const position = cell.offset();
+
+    $('#modalDetalhes').css({
+        top: position.top + cell.outerHeight(),
+        left: position.left - 100,
+        position: 'absolute',
+        display: 'block',
+        zIndex: 9999
+    });
+
+    const modal = $('#modalDetalhes');
+    const modalHeight = modal.outerHeight();
+    const windowHeight = $(window).height();
+    const scrollTop = modal.offset().top - ((windowHeight - modalHeight) / 2);
+
+    $('html, body').animate({
+        scrollTop: scrollTop
+    }, 300);
+
+    // CHAMA A REQUISIÇÃO AJAX NORMALMENTE
+    if (imagemId) {
+        $.ajax({
+            url: 'busca_detalhes.php',
+            type: 'GET',
+            dataType: 'json',
+            data: { imagem_id: imagemId },
+            success: function (response) {
+                if (response.length > 0) {
+                    let linhasDetalhes = '';
+                    response.forEach(function (item) {
+                        linhasDetalhes += `
+                            <tr>
+                                <td>${item.nome_funcao}</td>
+                                <td>${item.nome_colaborador}</td>
+                                <td>R$ ${parseFloat(item.valor).toFixed(2)}</td>
+                            </tr>
+                        `;
+                    });
+                    $('#tabelaDetalhes tbody').html(linhasDetalhes);
+                } else {
+                    $('#tabelaDetalhes tbody').html('<tr><td colspan="3" style="text-align:center;">Sem dados</td></tr>');
+                }
+            },
+            error: function () {
+                alert('Erro ao buscar detalhes da função.');
+            }
+        });
     }
 });
 

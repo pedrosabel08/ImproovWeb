@@ -4,8 +4,8 @@ include '../conexao.php';
 if (isset($_GET['obra_id'])) {
     $obra_id = (int) $_GET['obra_id'];
 
-    $stmt = $conn->prepare("
-        SELECT
+    $stmt = $conn->prepare("SELECT
+            ic.imagem_id,
             img.imagem_nome,
             ic.numero_contrato,
             ic.valor AS valor_comercial_bruto,

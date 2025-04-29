@@ -17,10 +17,10 @@ body {
     padding: 20px;
 }
 
-table {
-    width: 100%;
+table#tabelaComercial {
+    width: 95% !important;
     border-collapse: collapse;
-    margin-top: 20px;
+    margin: 20px auto;
 }
 
 table,
@@ -36,13 +36,92 @@ td {
     font-size: 14px;
 }
 
+th {
+    text-overflow: ellipsis;
+    overflow-x: hidden;
+    white-space: nowrap;
+}
+
+table.dataTable {
+    border-collapse: collapse !important;
+    border-spacing: 0;
+    width: 95% !important;
+    margin: 20px auto;
+    border: none;
+    background-color: none !important;
+}
+
+table.dataTable th,
+table.dataTable td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+table.dataTable thead th {
+    border-bottom: 2px solid #ccc;
+}
+
 select {
     width: 300px;
     padding: 8px;
+}
+
+#tabelaComercial tbody tr.selecionada {
+    background-color: #44a2f5;
+    font-weight: bold;
+    color: #333;
+}
+
+#tabelaComercial tbody tr:hover {
+    background-color: #44a2f5 !important;
+    cursor: pointer;
 }
 
 #tabelaComercial tbody tr:last-child {
     background-color: #f0f8ff;
     font-weight: bold;
     color: #333;
+}
+
+#tabelaComercial tbody td:first-child {
+    text-align: center;
+}
+
+table.dataTable tbody tr {
+    background-color: white;
+}
+
+.modal button {
+    margin: 0 auto;
+    display: flex;
+    background: red;
+    padding: 5px 8px;
+    border-radius: 15px;
+    font-size: 14px;
+    color: white;
+    transition: 0.3s all ease;
+}
+
+.modal button:hover {
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.modal h3 {
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+#modalDetalhes {
+    display: none;
+    background: #fff;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    border: 1px solid #ccc;
+    padding: 20px;
+    border-radius: 6px;
+    position: absolute;
+    z-index: 9999;
 }

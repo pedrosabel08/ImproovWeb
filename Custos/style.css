@@ -40,3 +40,9 @@ select {
     width: 300px;
     padding: 8px;
 }
+
+#tabelaComercial tbody tr:last-child {
+    background-color: #f0f8ff;
+    font-weight: bold;
+    color: #333;
+}

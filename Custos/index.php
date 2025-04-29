@@ -27,9 +27,11 @@ $conn->close();
 
 <head>
     <meta charset="UTF-8">
-    <title>Informações Comerciais da Imagem</title>
+    <title>Tela de custos</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="../css/styleSidebar.css">
+    <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
+    type="image/x-icon">
 </head>
 
 <body>
@@ -67,7 +69,7 @@ $conn->close();
             </thead>
             <tbody>
                 <tr>
-                    <td colspan="6" style="text-align: center;">Selecione uma imagem para ver os dados</td>
+                    <td colspan="9" style="text-align: center;">Selecione uma imagem para ver os dados</td>
                 </tr>
             </tbody>
         </table>

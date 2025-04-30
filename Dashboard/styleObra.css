@@ -504,7 +504,8 @@ a {
     justify-content: center;
     align-items: flex-start;
     gap: 20px;
-    margin-right: 370px;
+    max-width: 20%;
+    flex-wrap: wrap;
 
 }
 

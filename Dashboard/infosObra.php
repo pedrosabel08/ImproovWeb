@@ -355,6 +355,25 @@ while ($row = $resultRecebimento->fetch_assoc()) {
 $response['recebimentos'] = $recebimentos;
 
 $stmtRecebimento->close();
+
+$sqlEventos = "SELECT e.*, c.nome_colaborador AS nome_responsavel FROM eventos_obra e JOIN colaborador c ON e.responsavel_id = c.idcolaborador 
+    WHERE e.obra_id = ? ORDER BY e.data_evento DESC;";
+$stmtEventos = $conn->prepare($sqlEventos);
+if ($stmtEventos === false) {
+    die('Erro na preparação da consulta (eventos): ' . $conn->error);
+}
+$stmtEventos->bind_param("i", $obraId);
+$stmtEventos->execute();
+$resultEventos = $stmtEventos->get_result();
+
+// Processa os resultados
+$eventos = [];
+while ($row = $resultEventos->fetch_assoc()) {
+    $eventos[] = $row;
+}
+$response['eventos'] = $eventos;
+
+$stmtEventos->close();
 // Retorna o resultado como JSON
 echo json_encode($response);
 

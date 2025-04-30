@@ -27,7 +27,8 @@ $sql = "SELECT
             f.nome_funcao,
             pc.prioridade,
             fi.idfuncao_imagem,
-            fi.funcao_id
+            fi.funcao_id,
+            ico.obra_id
         FROM funcao_imagem fi
         JOIN imagens_cliente_obra ico ON fi.imagem_id = ico.idimagens_cliente_obra
         JOIN funcao f on fi.funcao_id = f.idfuncao
@@ -166,7 +167,8 @@ foreach ($funcoes as $funcao) {
         'status_funcao_anterior' => $statusAnterior,
         'prazo_funcao_anterior' => $prazoAnterior,
         'liberada' => $liberada,
-        'funcaoAnteriorId' => $funcaoAnteriorId
+        'funcaoAnteriorId' => $funcaoAnteriorId,
+        'obra_id' => $funcao['obra_id']
     ];
 }
 

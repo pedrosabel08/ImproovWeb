@@ -406,6 +406,7 @@ function adjustHeight(textarea) {
 // Verifica se obraId está presente no localStorage
 if (obraId) {
     infosObra(obraId);
+    carregarEventos(obraId);
 }
 function infosObra(obraId) {
 
@@ -871,7 +872,6 @@ function infosObra(obraId) {
                     });
                 }
             });
-
 
         })
         .catch(error => console.error('Erro ao carregar funções:', error));
@@ -1775,6 +1775,9 @@ document.getElementById("adicionar_observacao").addEventListener("submit", funct
 });
 
 const modalPos = document.getElementById("modal_pos");
+const eventModal = document.getElementById("eventModal");
+const calendarModal = document.getElementById("calendarModal");
+const editImagesModal = document.getElementById("editImagesModal");
 
 
 ['click', 'touchstart', 'keydown'].forEach(eventType => {
@@ -1797,6 +1800,8 @@ const modalPos = document.getElementById("modal_pos");
         }
         if (event.target == editImagesModal || (eventType === 'keydown' && event.key === 'Escape')) {
             editImagesModal.style.display = "none";
+            infosObra(obraId);
+
         }
         if (event.target == addImagemModal || (eventType === 'keydown' && event.key === 'Escape')) {
             addImagemModal.style.display = "none";
@@ -1817,6 +1822,12 @@ const modalPos = document.getElementById("modal_pos");
         // if (event.target == modalPos || (eventType === 'keydown' && event.key === 'Escape')) {
         //     modalPos.classList.add("hidden");
         // }
+        if (event.target == eventModal || (eventType === 'keydown' && event.key === 'Escape')) {
+            eventModal.style.display = "none";
+        }
+        if (event.target == calendarModal || (eventType === 'keydown' && event.key === 'Escape')) {
+            calendarModal.style.display = "none";
+        }
     });
 });
 
@@ -2454,3 +2465,218 @@ function atualizarRevisao(event, id, campo, valor) {
 }
 
 
+let events = [];
+
+function carregarEventos(obraId) {
+    fetch(`./Calendario/getEventos.php?obraId=${obraId}`)
+        .then(res => res.json())
+        .then(data => {
+            console.log("Eventos recebidos do PHP:", data); // 👈 Verifique isso
+
+            events = data.map(evento => ({
+                id: evento.id,
+                title: evento.descricao,
+                start: evento.start,
+                allDay: true,
+                backgroundColor: getEventColor(evento.tipo_evento)
+            }));
+
+            console.log("Eventos formatados:", events); // 👈 Verifique isso
+
+            if (!miniCalendar) {
+                criarMiniCalendar();
+            } else {
+                miniCalendar.removeAllEvents();
+                miniCalendar.addEventSource(events);
+            }
+
+            if (fullCalendar) {
+                fullCalendar.removeAllEvents();
+                fullCalendar.addEventSource(events);
+            }
+        });
+}
+
+// Função para definir a cor com base no tipo_evento
+function getEventColor(tipoEvento) {
+    switch (tipoEvento) {
+        case 'Reunião':
+            return '#ffd700'; // Cor para reuniões
+        case 'Entrega':
+            return '#ff9f89'; // Cor para prazos
+        case 'Arquivos':
+            return '#90ee90'; // Cor para entregas
+        case 'Outro':
+            return '#87ceeb'; // Cor para outros tipos
+        default:
+            return '#d3d3d3'; // Cor padrão
+    }
+}
+
+
+
+let miniCalendar;
+
+function criarMiniCalendar() {
+    miniCalendar = new FullCalendar.Calendar(document.getElementById('calendarMini'), {
+        initialView: 'dayGridWeek',
+        height: 'auto',
+        headerToolbar: {
+            left: '',
+            center: 'title',
+            right: ''
+        },
+        navLinks: false,
+        selectable: false,
+        editable: false,
+        locale: 'pt-br',
+        events: events,
+        dateClick: () => openFullCalendar(),
+
+        // Apenas o nome do dia da semana (ex: Seg, Ter, Qua...)
+        dayHeaderFormat: { weekday: 'short' }
+    });
+
+    miniCalendar.render();
+}
+
+let fullCalendar;
+
+function openFullCalendar() {
+    document.getElementById('calendarModal').style.display = 'flex';
+
+    if (!fullCalendar) {
+        fullCalendar = new FullCalendar.Calendar(document.getElementById('calendarFull'), {
+            initialView: 'dayGridMonth',
+            editable: true,
+            selectable: true,
+            locale: 'pt-br',
+            events: events, // Usa os eventos já formatados corretamente
+
+            dateClick: function (info) {
+                const clickedDate = new Date(info.date);
+                const formattedDate = clickedDate.toISOString().split('T')[0];
+
+                document.getElementById('eventId').value = '';
+                document.getElementById('eventTitle').value = '';
+                document.getElementById('eventDate').value = formattedDate;
+                document.getElementById('eventModal').style.display = 'flex';
+
+            },
+
+            eventClick: function (info) {
+
+                document.getElementById('eventId').value = info.event.id;
+                document.getElementById('eventTitle').value = info.event.title;
+                document.getElementById('eventDate').value = info.event.start;
+                document.getElementById('eventModal').style.display = 'flex';
+            },
+
+            eventDrop: function (info) {
+                const event = info.event;
+                updateEvent(event);
+            }
+        });
+
+        fullCalendar.render();
+    } else {
+        fullCalendar.refetchEvents();
+    }
+}
+
+function closeModal() {
+    document.getElementById('calendarModal').style.display = 'none';
+}
+
+function closeEventModal() {
+    document.getElementById('eventModal').style.display = 'none';
+    const obraId = localStorage.getItem("obraId");
+    carregarEventos(obraId); // Recarrega os eventos após fechar o modal
+}
+
+function showToast(message, success = true) {
+    Toastify({
+        text: message,
+        duration: 4000,
+        gravity: "top",
+        position: "right",
+        backgroundColor: success ? "green" : "red",
+    }).showToast();
+}
+
+document.getElementById('eventForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    const id = document.getElementById('eventId').value;
+    const title = document.getElementById('eventTitle').value;
+    const start = document.getElementById('eventDate').value;
+    const type = document.getElementById('eventType').value;
+    const obraId = localStorage.getItem("obraId");
+
+    if (id) {
+        fetch('./Calendario/eventoController.php', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, title, start, type })
+        })
+            .then(res => res.json())
+            .then(res => {
+                if (res.error) throw new Error(res.message);
+                fullCalendar.getEventById(id)?.remove();
+                fullCalendar.addEvent({ id, title, start });
+                closeEventModal();
+                showToast(res.message);
+            })
+            .catch(err => showToast(err.message, false));
+    } else {
+        fetch('./Calendario/eventoController.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title, start, type, obra_id: obraId })
+        })
+            .then(res => res.json())
+            .then(res => {
+                if (res.error) throw new Error(res.message);
+                fullCalendar.addEvent({ id: res.id, title, start });
+                closeEventModal();
+                showToast(res.message);
+            })
+            .catch(err => showToast(err.message, false));
+    }
+});
+
+function deleteEvent() {
+    const id = document.getElementById('eventId').value;
+    if (!id) return;
+
+    fetch('./Calendario/eventoController.php', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+    })
+        .then(res => res.json())
+        .then(res => {
+            if (res.error) throw new Error(res.message);
+            fullCalendar.getEventById(id)?.remove();
+            closeEventModal();
+            showToast(res.message);
+        })
+        .catch(err => showToast(err.message, false));
+}
+
+function updateEvent(event) {
+    fetch('./Calendario/eventoController.php', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            id: event.id,
+            title: event.title,
+            start: event.start.toISOString().substring(0, 10)
+        })
+    })
+        .then(res => res.json())
+        .then(res => {
+            if (res.error) throw new Error(res.message);
+            showToast(res.message);
+        })
+        .catch(err => showToast(err.message, false));
+}

@@ -145,7 +145,7 @@ $conn->close();
 
 
             <div id="editImagesModal" style="display: none;">
-                <div class="modal-content-images" style="overflow-y: auto; max-height: 600px; width: 50%;">
+                <div class="modal-content-images" style="overflow-y: auto; max-height: 600px;">
                     <div id="modalHeader">
                         <div id="unsavedChanges" style="display: none;">
                             <p>Você fez alterações. Não esqueça de salvar!</p>
@@ -455,8 +455,8 @@ $conn->close();
             <div class="modal-content" style="width: 500px;">
                 <h2 style="margin-bottom: 30px;">Acompanhamento por Email</h2>
                 <div id="acompanhamentoConteudo">
-                    <form id="adicionar_acomp">
-                        <div class="radioButtons" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <form id="adicionar_acomp" style="align-items: center;">
+                        <div class="radioButtons">
                             <label><input type="radio" name="acompanhamento" value="Start do Projeto"> Start do Projeto</label>
                             <label><input type="radio" name="acompanhamento" value="Prazo de dias úteis (45 dias)"> Prazo de dias úteis (45 dias)</label>
                             <label><input type="radio" name="acompanhamento" value="Recebimento de arquivos"> Recebimento de arquivos</label>
@@ -470,7 +470,7 @@ $conn->close();
                         <!-- Campo de assunto -->
                         <div id="campo">
                             <label for="assunto">Assunto:</label>
-                            <textarea name="assunto" id="assunto" name="assunto" style="width: 50%;" required></textarea>
+                            <textarea name="assunto" id="assunto" name="assunto" required></textarea>
                         </div>
 
                         <!-- Campo de data -->
@@ -480,7 +480,7 @@ $conn->close();
                         </div>
 
                         <!-- Botão para enviar -->
-                        <button type="submit" id="add-acomp" style="width: max-content;margin: auto;">Adicionar Acompanhamento</button>
+                        <button type="submit" id="add-acomp">Adicionar Acompanhamento</button>
                     </form>
                 </div>
             </div>
@@ -1051,10 +1051,9 @@ $conn->close();
                 <label>Tipo de Evento:</label>
                 <select name="eventType" id="eventType" required>
                     <option value="">Selecione</option>
-                    <option value="Entrega">Entrega</option>
-                    <option value="Arquivos">Arquivos</option>
                     <option value="Reunião">Reunião</option>
-                    <option value="Outro">Outro</option>
+                    <option value="Entrega">Entrega</option>
+                    <option value="Vistoria">Vistoria</option>
                 </select>
                 <label>Data:</label>
                 <input type="date" name="date" id="eventDate" required>

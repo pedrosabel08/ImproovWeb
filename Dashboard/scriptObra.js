@@ -2249,47 +2249,39 @@ document.getElementById("addRender").addEventListener("click", function (event) 
                 });
                 return;
             }
+            Swal.fire({
+                icon: 'success',
+                title: 'Render adicionado!',
+                text: 'Agora você pode preencher os dados da pós-produção.',
+                confirmButtonText: 'Continuar'
+            }).then(() => {
+                const modal = document.getElementById("modal_pos");
+                modal.classList.remove("hidden");
 
-            if (statusId !== "6") {
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Render adicionado!',
-                    text: 'Agora você pode preencher os dados da pós-produção.',
-                    confirmButtonText: 'Continuar'
-                }).then(() => {
-                    const modal = document.getElementById("modal_pos");
-                    modal.classList.remove("hidden");
+                // Preenche os selects com os valores salvos/localizados
+                const finalizador = localStorage.getItem("idcolaborador");
+                if (finalizador) {
+                    document.getElementById("opcao_finalizador").value = finalizador;
+                }
 
-                    // Preenche os selects com os valores salvos/localizados
-                    const finalizador = localStorage.getItem("idcolaborador");
-                    if (finalizador) {
-                        document.getElementById("opcao_finalizador").value = finalizador;
-                    }
+                const obra = localStorage.getItem("obraId");
+                if (obra) {
+                    document.getElementById("opcao_obra_pos").value = obra;
+                }
 
-                    const obra = localStorage.getItem("obraId");
-                    if (obra) {
-                        document.getElementById("opcao_obra_pos").value = obra;
-                    }
+                document.getElementById("imagem_id_pos").value = idImagemSelecionada;
+                const statusSelecionado = document.getElementById("opcao_status");
+                if (statusSelecionado) {
+                    const statusValue = statusSelecionado.value;
+                    document.getElementById("opcao_status_pos").value = statusValue;
+                }
 
-                    document.getElementById("imagem_id_pos").value = idImagemSelecionada;
-                    const statusSelecionado = document.getElementById("opcao_status");
-                    if (statusSelecionado) {
-                        const statusValue = statusSelecionado.value;
-                        document.getElementById("opcao_status_pos").value = statusValue;
-                    }
+                document.getElementById("render_id_pos").value = idRenderAdicionado;
 
-                    document.getElementById("render_id_pos").value = idRenderAdicionado;
+                const form_edicao = document.getElementById("form-edicao");
+                form_edicao.style.display = "none";
+            });
 
-                    const form_edicao = document.getElementById("form-edicao");
-                    form_edicao.style.display = "none";
-                });
-            } else {
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Render com status EF adicionado!',
-                    text: 'Sem necessidade de pós-produção.'
-                });
-            }
         } else {
             Swal.fire({
                 icon: 'error',
@@ -2481,7 +2473,6 @@ function carregarEventos(obraId) {
                 backgroundColor: getEventColor(evento.tipo_evento)
             }));
 
-            console.log("Eventos formatados:", events); // 👈 Verifique isso
 
             if (!miniCalendar) {
                 criarMiniCalendar();
@@ -2508,6 +2499,32 @@ function getEventColor(tipoEvento) {
             return '#90ee90'; // Cor para entregas
         case 'Outro':
             return '#87ceeb'; // Cor para outros tipos
+        case 'P00':
+            return '#ffc21c'
+        case 'R00':
+            return '#1cf4ff'
+        case 'R01':
+            return '#ff6200'
+        case 'R02':
+            return '#ff3c00'
+        case 'R03':
+            return '#ff0000'
+        case 'EF':
+            return '#0dff00'
+        case 'HOLD':
+            return '#ff0000';
+        case 'TEA':
+            return '#f7eb07';
+        case 'REN':
+            return '#0c9ef2';
+        case 'APR':
+            return '#0c45f2';
+        case 'APP':
+            return '#7d36f7';
+        case 'RVW':
+            return 'green';
+        case 'OK':
+            return 'cornflowerblue';
         default:
             return '#d3d3d3'; // Cor padrão
     }
@@ -2565,10 +2582,13 @@ function openFullCalendar() {
             },
 
             eventClick: function (info) {
+                const clickedDate = new Date(info.event.start);
+                const formattedDate = clickedDate.toISOString().split('T')[0];
+
 
                 document.getElementById('eventId').value = info.event.id;
                 document.getElementById('eventTitle').value = info.event.title;
-                document.getElementById('eventDate').value = info.event.start;
+                document.getElementById('eventDate').value = formattedDate;
                 document.getElementById('eventModal').style.display = 'flex';
             },
 

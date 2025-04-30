@@ -98,18 +98,20 @@ $conn->close();
         <!-- Tabela para exibir as funções da obra -->
         <div class="filtro-tabela">
             <div class="filtro">
-                <select name="tipo_imagem" id="tipo_imagem">
-                    <option value="0">Todos</option>
-                </select>
+                <div class="filtros-select">
+                    <select name="tipo_imagem" id="tipo_imagem">
+                        <option value="0">Todos</option>
+                    </select>
 
-                <select id="antecipada_obra">
-                    <option value="">Todos as imagens</option>
-                    <option value="Antecipada">Antecipada</option>
-                </select>
+                    <select id="antecipada_obra">
+                        <option value="">Todos as imagens</option>
+                        <option value="Antecipada">Antecipada</option>
+                    </select>
 
-                <select name="imagem_status_filtro" id="imagem_status_filtro">
-                    <option value="">Selecione um status</option>
-                </select>
+                    <select name="imagem_status_filtro" id="imagem_status_filtro">
+                        <option value="">Selecione um status</option>
+                    </select>
+                </div>
 
                 <div id="prazos-list"></div>
                 <div id="calendarMini"></div>
@@ -868,7 +870,7 @@ $conn->close();
                 </div>
                 <div class="funcao" id="status_funcao" style="width: 200px; margin-bottom: 15px;">
                     <div class="render">
-                        <p id="render_alta">Render Alta</p>
+                        <p id="render_alta">Render</p>
                         <button id="addRender" class="buttons-form-add" style=" padding: 3px 10px; font-size: 13px; background-color: steelblue;">Adicionar render</button>
                     </div>
                 </div>

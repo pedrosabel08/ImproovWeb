@@ -20,13 +20,13 @@ $stmt->close();
 // Prazos das imagens com tipo_evento baseado no status
 $sql2 = "SELECT 
         NULL AS id,
-        i.imagem_nome AS descricao,
+        s.nome_status AS descricao,
         i.prazo AS start,
         s.nome_status AS tipo_evento
     FROM imagens_cliente_obra i 
     JOIN status_imagem s ON i.status_id = s.idstatus 
     WHERE i.obra_id = ?
-    GROUP BY s.nome_status, i.prazo, i.imagem_nome
+    GROUP BY s.nome_status, i.prazo
 ";
 $stmt2 = $conn->prepare($sql2);
 $stmt2->bind_param("i", $obraId);

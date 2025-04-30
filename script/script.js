@@ -77,7 +77,7 @@ function atualizarModal(idImagem) {
                 document.querySelectorAll('.revisao_imagem').forEach(element => {
                     element.style.display = 'none';
                 });
-                
+
                 response.funcoes.forEach(function (funcao) {
                     let selectElement;
                     let checkboxElement;
@@ -273,6 +273,12 @@ function limparCampos() {
     document.getElementById("opcao_filtro").value = "";
     document.getElementById("opcao_status").value = "";
     document.getElementById("opcao_pre").value = "";
+    document.getElementById('imagem_id_pos').value = ''; // Limpar campo de texto
+    document.getElementById('id-pos').value = ''; // Limpar campo de texto
+    document.getElementById('caminhoPasta').value = ''; // Limpar campo de texto
+    document.getElementById('numeroBG').value = ''; // Limpar campo de texto
+    document.getElementById('referenciasCaminho').value = ''; // Limpar campo de texto
+    document.getElementById('observacao').value = ''; // Limpar campo de texto
 
     // Limpa todos os campos cujo id começa com "revisao_imagem"
     document.querySelectorAll('[id^="revisao_imagem"]').forEach(element => {
@@ -602,6 +608,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         var row = document.createElement('tr');
                         row.classList.add('linha-tabela');
                         row.setAttribute('data-id', item.imagem_id);
+                        row.setAttribute('obra-id', item.obra_id);
 
                         var cellNomeImagem = document.createElement('td');
                         cellNomeImagem.textContent = item.imagem_nome;
@@ -827,6 +834,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     row.classList.add('linha-tabela');
                     row.setAttribute('data-id', item.imagem_id);
                     row.setAttribute('liberada', item.liberada);
+                    row.setAttribute('obra-id', item.obra_id);
+
 
                     var prioridadeTexto = item.prioridade == 3 ? 'Baixa' :
                         item.prioridade == 2 ? 'Média' : 'Alta';
@@ -1478,31 +1487,137 @@ window.ontouchstart = function (event) {
 document.getElementById("addRender").addEventListener("click", function (event) {
     event.preventDefault();
 
-    // Captura os valores
-    const imagemId = document.getElementById("imagem_id").value;
+    var linhaSelecionada = document.querySelector(".linha-tabela.selecionada");
+    if (!linhaSelecionada) {
+        Toastify({
+            text: "Nenhuma imagem selecionada",
+            duration: 3000,
+            close: true,
+            gravity: "top",
+            position: "left",
+            backgroundColor: "red",
+            stopOnFocus: true,
+        }).showToast();
+        return;
+    }
 
-    // Configuração do AJAX
+    var idImagemSelecionada = linhaSelecionada.getAttribute("data-id");
+    var idObraSelecionada = linhaSelecionada.getAttribute("obra-id");
+
+    const statusId = document.getElementById("opcao_status").value;
+
+    // Lista de status permitidos
+    const statusPermitidos = ["2", "3", "4", "5", "6", "14", "15"];
+
+    if (!statusPermitidos.includes(statusId)) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Status inválido',
+            text: 'Este status não é permitido. Selecione um status válido.'
+        });
+        return;
+    }
+
     const xhr = new XMLHttpRequest();
     xhr.open("POST", "addRender.php", true);
     xhr.setRequestHeader("Content-Type", "application/json");
 
-    // Define o que fazer após a resposta
     xhr.onload = function () {
         if (xhr.status === 200) {
-            alert("Dados enviados com sucesso!");
+            const response = JSON.parse(xhr.responseText);
+            const idRenderAdicionado = response.idrender;
+
+            if (response.status === "erro") {
+                // Aqui vamos tratar o erro mais específico
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Erro ao adicionar render',
+                    text: response.message  // Exibe a mensagem de erro do PHP diretamente
+                });
+                return;
+            }
+            Swal.fire({
+                icon: 'success',
+                title: 'Render adicionado!',
+                text: 'Agora você pode preencher os dados da pós-produção.',
+                confirmButtonText: 'Continuar'
+            }).then(() => {
+                const modal = document.getElementById("modal_pos");
+                modal.classList.remove("hidden");
+
+                // Preenche os selects com os valores salvos/localizados
+                const finalizador = localStorage.getItem("idcolaborador");
+                if (finalizador) {
+                    document.getElementById("opcao_finalizador").value = finalizador;
+                }
+
+                const obra = idObraSelecionada;
+                if (obra) {
+                    document.getElementById("opcao_obra_pos").value = obra;
+                }
+
+                document.getElementById("imagem_id_pos").value = idImagemSelecionada;
+                const statusSelecionado = document.getElementById("opcao_status");
+                if (statusSelecionado) {
+                    const statusValue = statusSelecionado.value;
+                    document.getElementById("opcao_status_pos").value = statusValue;
+                }
+
+                document.getElementById("render_id_pos").value = idRenderAdicionado;
+
+                const form_edicao = document.getElementById("form-edicao");
+                form_edicao.style.display = "none";
+            });
+
         } else {
-            alert("Erro ao enviar os dados.");
+            Swal.fire({
+                icon: 'error',
+                title: 'Erro ao enviar',
+                text: 'Tente novamente ou avise a NASA.'
+            });
         }
     };
 
-    // Dados a serem enviados como JSON
     const data = {
-        imagem_id: imagemId
+        imagem_id: idImagemSelecionada,
+        status_id: statusId,
     };
 
-    // Envia os dados como JSON
     xhr.send(JSON.stringify(data));
 });
+
+
+
+formPosProducao.addEventListener('submit', function (e) {
+    e.preventDefault();
+
+    var formData = new FormData(this);
+
+    fetch('./Pos-Producao/inserir_pos_producao.php', {
+        method: 'POST',
+        body: formData
+    })
+        .then(response => response.text())
+        .then(data => {
+
+            document.getElementById('form-edicao').style.display = 'none';
+            limparCampos();
+            Toastify({
+                text: "Dados inseridos com sucesso!",
+                duration: 3000,
+                close: true,
+                gravity: "top",
+                position: "left",
+                backgroundColor: "green",
+                stopOnFocus: true,
+            }).showToast();
+
+            const modal = document.getElementById("modal_pos");
+            modal.classList.add("hidden");
+        })
+        .catch(error => console.error('Erro:', error));
+});
+
 
 
 document.getElementById('generate-pdf').addEventListener('click', function () {

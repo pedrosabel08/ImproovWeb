@@ -28,6 +28,7 @@ $idusuario = $_SESSION['idusuario'];
         crossorigin="anonymous" referrerpolicy="no-referrer" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
 
     <title>Improov+Flow</title>
 </head>
@@ -68,6 +69,7 @@ $obras = obterObras($conn);
 $colaboradores = obterColaboradores($conn);
 $status_imagens = obterStatusImagens($conn);
 $funcoes = obterFuncoes($conn);
+$imagens = obterImagens($conn);
 
 $conn->close();
 ?>
@@ -536,16 +538,16 @@ include 'sidebar.php';
                 </div>
                 <div class="funcao" id="status_funcao" style="width: 200px; margin-bottom: 15px;">
                     <div class="render">
-                        <p id="render_alta">Render Alta</p>
+                        <p id="render_alta">Render</p>
                         <button id="addRender" class="buttons-form-add" style=" padding: 3px 10px; font-size: 13px; background-color: steelblue;">Adicionar render</button>
                     </div>
                 </div>
-                <div class="funcao" id="status_funcao" style="width: 200px; margin-bottom: 15px;">
+                <!-- <div class="funcao" id="status_funcao" style="width: 200px; margin-bottom: 15px;">
                     <div class="revisao">
                         <p id="revisao">Revisao</p>
                         <button id="addRevisao" class="buttons-form-add" style=" padding: 3px 10px; font-size: 13px; background-color: steelgreen;">Adicionar revisão</button>
                     </div>
-                </div>
+                </div> -->
                 <div class="buttons">
                     <button type="button" id="btnAnterior" style="background: white; color: black"><i class="fa-solid fa-angle-left"></i></button>
                     <button type="submit" id="salvar_funcoes" class="buttons-form-add">Salvar</button>
@@ -876,6 +878,104 @@ include 'sidebar.php';
         </form>
     </div>
 
+    <div id="modal_pos" class="modal hidden">
+        <div class="modal-content" style="width: 40%; max-height: 80%; overflow-y: auto; margin: 100px auto;">
+            <span class="close">&times;</span>
+            <button id="deleteButton">Excluir</button>
+            <div id="form-inserir">
+                <h2>Formulário de Dados</h2>
+                <form id="formPosProducao">
+                    <div>
+                        <label for="nomeFinalizador">Nome Finalizador</label>
+                        <select name="final_id" id="opcao_finalizador" required>
+                            <option value="0">Selecione um colaborador:</option>
+                            <?php foreach ($colaboradores as $colab): ?>
+                                <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                    <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="nomeObra">Nome Obra</label>
+                        <select name="obra_id" id="opcao_obra_pos" required>
+                            <option value="0">Selecione uma obra:</option>
+                            <?php foreach ($obras as $obra): ?>
+                                <option value="<?= $obra['idobra']; ?>"><?= htmlspecialchars($obra['nome_obra']); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="imagem_id_pos">Nome Imagem</label>
+                        <select id="imagem_id_pos" name="imagem_id_pos" required>
+                            <option value="">Selecione uma imagem:</option>
+                            <?php foreach ($imagens as $imagem): ?>
+                                <option value="<?= $imagem['idimagens_cliente_obra']; ?>">
+                                    <?= htmlspecialchars($imagem['imagem_nome']); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="caminhoPasta">Caminho Pasta</label>
+                        <input type="text" id="caminhoPasta" name="caminho_pasta">
+                    </div>
+
+                    <div>
+                        <label for="numeroBG">Número BG</label>
+                        <input type="text" id="numeroBG" name="numero_bg">
+                    </div>
+
+                    <div>
+                        <label for="referenciasCaminho">Referências/Caminho</label>
+                        <input type="text" id="referenciasCaminho" name="refs">
+                    </div>
+
+                    <div>
+                        <label for="observacao">Observação</label>
+                        <textarea id="observacao" name="obs" rows="3"></textarea>
+                    </div>
+
+                    <div>
+                        <label for="status">Revisão</label>
+                        <select name="status_id" id="opcao_status_pos">
+                            <?php foreach ($status_imagens as $status): ?>
+                                <option value="<?= htmlspecialchars($status['idstatus']); ?>">
+                                    <?= htmlspecialchars($status['nome_status']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <input type="text" name="id-pos" id="id-pos" hidden>
+                    <input type="hidden" id="alterar_imagem" name="alterar_imagem" value="false">
+
+                    <div>
+                        <label for="status_pos">Status</label>
+                        <input type="checkbox" name="status_pos" id="status_pos" disabled>
+                    </div>
+
+                    <div>
+                        <label for="nome_responsavel">Nome Responsável</label>
+                        <select name="responsavel_id" id="responsavel_id">
+                            <option value="14" id="Adriana">Adriana</option>
+                            <option value="28" id="Eduardo">Eduardo</option>
+
+                        </select>
+                    </div>
+
+                    <input type="hidden" id="render_id_pos" name="render_id_pos">
+
+
+                    <div>
+                        <button type="submit">Enviar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
 </main>
 
 <?php if (isset($_SESSION['idusuario']) && ($_SESSION['idusuario'] == 1 || $_SESSION['idusuario'] == 2 || $_SESSION['idusuario'] == 9)): ?>
@@ -896,6 +996,7 @@ include 'sidebar.php';
 <script src="./script/sidebar.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 
 

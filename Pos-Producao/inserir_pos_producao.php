@@ -85,19 +85,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Inserir ou atualizar dados
     $sql = "INSERT INTO pos_producao (colaborador_id, obra_id, data_pos, imagem_id, caminho_pasta, numero_bg, refs, obs, status_pos, status_id, responsavel_id, render_id) 
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-ON DUPLICATE KEY UPDATE
-    colaborador_id = VALUES(colaborador_id),
-    obra_id = VALUES(obra_id),
-    data_pos = VALUES(data_pos),
-    caminho_pasta = VALUES(caminho_pasta),
-    numero_bg = VALUES(numero_bg),
-    refs = VALUES(refs),
-    obs = VALUES(obs),
-    status_pos = VALUES(status_pos),
-    status_id = VALUES(status_id),
-    responsavel_id = VALUES(responsavel_id),
-    render_id = VALUES(render_id)";
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE
+            colaborador_id = VALUES(colaborador_id),
+            obra_id = VALUES(obra_id),
+            data_pos = VALUES(data_pos),
+            caminho_pasta = VALUES(caminho_pasta),
+            numero_bg = VALUES(numero_bg),
+            refs = VALUES(refs),
+            obs = VALUES(obs),
+            status_pos = VALUES(status_pos),
+            status_id = VALUES(status_id),
+            responsavel_id = VALUES(responsavel_id),
+            render_id = VALUES(render_id)";
 
     $stmt = $conn->prepare($sql);
     $stmt->bind_param(
@@ -125,6 +125,22 @@ ON DUPLICATE KEY UPDATE
             $slackMessage = [
                 'text' => "A imagem $nome_imagem foi feita a pós.",
             ];
+
+            $sqlImagem = 'UPDATE imagens_cliente_obra SET status_id = ? WHERE idimagens_cliente_obra = ?';
+
+            // Atualizar o status na tabela imagens_cliente_obra
+            $stmtUpdate = $conn->prepare($sqlImagem);
+            if ($stmtUpdate) {
+                $stmtUpdate->bind_param("ii", $status_id, $imagem_id);
+                if ($stmtUpdate->execute()) {
+                    echo "Status da imagem atualizado com sucesso!";
+                } else {
+                    echo "Erro ao atualizar o status da imagem: " . $stmtUpdate->error;
+                }
+                $stmtUpdate->close();
+            } else {
+                echo "Erro ao preparar o UPDATE da imagem: " . $conn->error;
+            }
 
             $ch = curl_init();
             curl_setopt($ch, CURLOPT_URL, $slackWebhookUrl);

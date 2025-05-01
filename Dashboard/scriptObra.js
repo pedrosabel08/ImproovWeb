@@ -1788,6 +1788,8 @@ const editImagesModal = document.getElementById("editImagesModal");
         if (event.target == form_edicao || (eventType === 'keydown' && event.key === 'Escape')) {
             form_edicao.style.display = "none";
             infosObra(obraId);
+            carregarEventos(obraId);
+
         }
         if (event.target == modal || (eventType === 'keydown' && event.key === 'Escape')) {
             modal.style.display = "none";
@@ -1801,6 +1803,7 @@ const editImagesModal = document.getElementById("editImagesModal");
         if (event.target == editImagesModal || (eventType === 'keydown' && event.key === 'Escape')) {
             editImagesModal.style.display = "none";
             infosObra(obraId);
+            carregarEventos(obraId);
 
         }
         if (event.target == addImagemModal || (eventType === 'keydown' && event.key === 'Escape')) {
@@ -1818,6 +1821,8 @@ const editImagesModal = document.getElementById("editImagesModal");
         if (event.target == modalArquivos || (eventType === 'keydown' && event.key === 'Escape')) {
             modalArquivos.style.display = "none";
             infosObra(obraId);
+            carregarEventos(obraId);
+
         }
         // if (event.target == modalPos || (eventType === 'keydown' && event.key === 'Escape')) {
         //     modalPos.classList.add("hidden");
@@ -2367,58 +2372,60 @@ formPosProducao.addEventListener('submit', function (e) {
 });
 
 
-// document.getElementById("addRevisao").addEventListener("click", function (event) {
-//     event.preventDefault();
+document.getElementById("addRevisao").addEventListener("click", function (event) {
+    event.preventDefault();
 
-//     // Captura os valores
-//     const imagemId = document.getElementById("imagem_id").value;
-//     const opcaoAlteracao = document.getElementById("opcao_alteracao").value;
+    // Captura os valores
+    const imagemId = document.getElementById("imagem_id").value;
+    const opcaoAlteracao = document.getElementById("opcao_alteracao").value;
+    const obraId = localStorage.getItem("obraId");
 
-//     // Verifica se opcao_alteracao está preenchido
-//     if (!opcaoAlteracao.trim()) {
-//         alert("Por favor, selecione uma opção antes de enviar.");
-//         return; // Interrompe a execução se estiver vazio
-//     }
+    // Verifica se opcao_alteracao está preenchido
+    if (!opcaoAlteracao.trim()) {
+        alert("Por favor, selecione uma opção antes de enviar.");
+        return; // Interrompe a execução se estiver vazio
+    }
 
-//     // Configuração do AJAX
-//     const xhr = new XMLHttpRequest();
-//     xhr.open("POST", "addRevisao.php", true);
-//     xhr.setRequestHeader("Content-Type", "application/json");
+    // Configuração do AJAX
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", "addRevisao.php", true);
+    xhr.setRequestHeader("Content-Type", "application/json");
 
-//     // Define o que fazer após a resposta
-//     xhr.onload = function () {
-//         if (xhr.status === 200) {
-//             Toastify({
-//                 text: 'Alteração enviada com sucesso!',
-//                 duration: 3000,
-//                 backgroundColor: "green",
-//                 close: true,
-//                 gravity: "top",
-//                 position: "right"
-//             }).showToast();
-//         } else {
-//             Toastify({
-//                 text: 'Erro ao enviar alteração.',
-//                 duration: 3000,
-//                 backgroundColor: "red",
-//                 close: true,
-//                 gravity: "top",
-//                 position: "right"
-//             }).showToast();
-//         }
-//     };
+    // Define o que fazer após a resposta
+    xhr.onload = function () {
+        if (xhr.status === 200) {
+            Toastify({
+                text: 'Alteração enviada com sucesso!',
+                duration: 3000,
+                backgroundColor: "green",
+                close: true,
+                gravity: "top",
+                position: "right"
+            }).showToast();
+        } else {
+            Toastify({
+                text: 'Erro ao enviar alteração.',
+                duration: 3000,
+                backgroundColor: "red",
+                close: true,
+                gravity: "top",
+                position: "right"
+            }).showToast();
+        }
+    };
 
-//     // Dados a serem enviados como JSON
-//     const data = {
-//         imagem_id: imagemId,
-//         colaborador_id: opcaoAlteracao
-//     };
+    // Dados a serem enviados como JSON
+    const data = {
+        imagem_id: imagemId,
+        colaborador_id: opcaoAlteracao,
+        obra_id: obraId
+    };
 
-//     console.log(data);
+    console.log(data);
 
-//     // Envia os dados como JSON
-//     xhr.send(JSON.stringify(data));
-// });
+    // Envia os dados como JSON
+    xhr.send(JSON.stringify(data));
+});
 
 // Atualiza o campo quando o botão for clicado
 function atualizarRevisao(event, id, campo, valor) {

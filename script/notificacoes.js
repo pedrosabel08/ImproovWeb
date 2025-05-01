@@ -37,21 +37,61 @@ function buscarTarefas() {
     })
         .then(response => response.json())
         .then(tarefas => {
-            if (tarefas.length > 0) {
-                // Notificação Web
-                const contadorTarefas = document.getElementById('contador-tarefas');
-                contadorTarefas.textContent = tarefas.length;
+            const contadorTarefas = document.getElementById('contador-tarefas');
+            const idColaborador = parseInt(localStorage.getItem('idcolaborador'));
 
+            if (tarefas.length > 0) {
+                contadorTarefas.textContent = tarefas.length;
                 ativarSino();
 
+                // Contagem por função (considerando filtro por idcolaborador)
+                const contagemPorFuncao = {};
+                const funcoesPermitidas = filtrarFuncoesPorColaborador(idColaborador);
 
+                tarefas.forEach(tarefa => {
+                    const funcao = tarefa.nome_funcao || 'Desconhecida';
+
+                    if (funcoesPermitidas.includes(funcao)) {
+                        contagemPorFuncao[funcao] = (contagemPorFuncao[funcao] || 0) + 1;
+                    }
+                });
+
+                // Exibir SweetAlert com resumo
+                let mensagem = '';
+                for (const funcao in contagemPorFuncao) {
+                    mensagem += `<p><strong>${funcao}</strong>: ${contagemPorFuncao[funcao]} tarefas</p>`;
+                }
+
+                // Envolve todas as <p> em uma <div>
+                const htmlContent = `<div>${mensagem || '<p>Nenhuma tarefa para aprovação.</p>'}</div>`;
+
+                Swal.fire({
+                    title: 'Tarefas em aprovação',
+                    icon: 'info',
+                    html: htmlContent,
+                    confirmButtonText: 'OK'
+                });
             } else {
-
-                const contadorTarefas = document.getElementById('contador-tarefas');
                 contadorTarefas.textContent = '';
+                console.log("Nenhuma tarefa pendente.");
             }
         })
         .catch(error => console.error('Erro ao buscar tarefas:', error));
+}
+
+function filtrarFuncoesPorColaborador(id) {
+    switch (id) {
+        case 21:
+            return ['Finalização', 'Pós-produção', 'Modelagem', 'Composição', 'Caderno', 'Filtro de assets']; // Todas
+        case 9:
+            return ['Finalização', 'Pós-produção'];
+        case 1:
+            return ['Modelagem', 'Composição', 'Caderno', 'Filtro de assets']; // Todas menos finalização e pós-produção
+        case 19:
+            return ['Modelagem', 'Composição'];
+        default:
+            return []; // Nenhuma função por padrão
+    }
 }
 
 function agendarProximaExecucao() {
@@ -73,16 +113,12 @@ function agendarProximaExecucao() {
 
 
 document.addEventListener('DOMContentLoaded', () => {
-    const isInicio = window.location.pathname.includes('inicio.php');
+    const isInicio = window.location.pathname.includes('inicio2.php');
 
     // Atualiza o contador ao carregar a página
     atualizarContadorTarefas();
 
-    if (isInicio) {
-        // Mostrar as tarefas imediatamente na página de início com notificação
-        buscarTarefas();
-    } else {
-        // Mostrar notificações somente após 15 minutos nas outras páginas
+    if (!isInicio) {
         agendarProximaExecucao();
     }
 });

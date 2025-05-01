@@ -237,93 +237,117 @@ $conn->close();
 
         document.getElementById('modal').style.display = 'none';
 
+        // checkDailyAccess agora retorna uma Promise
         function checkDailyAccess() {
-            fetch('verifica_respostas.php', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    body: `idcolaborador=${idColaborador}`
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.hasResponses) {
-                        // 👉 Já respondeu hoje? Então só mostra render
-                        checkRenderItems(idColaborador);
-                    } else {
-                        // 👉 Ainda não respondeu hoje? Mostra o modal
-                        document.getElementById('modal').style.display = 'flex';
-                    }
-                })
-                .catch(error => console.error('Erro ao verificar respostas:', error));
+            return new Promise((resolve, reject) => {
+                fetch('verifica_respostas.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: `idcolaborador=${idColaborador}`
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.hasResponses) {
+                            // Se já respondeu, segue para checkRender
+                            resolve();
+                        } else {
+                            // Se não respondeu, exibe modal e interrompe fluxo (não resolve ainda)
+                            document.getElementById('modal').style.display = 'flex';
+                            // Resolve apenas após o envio do formulário
+                            document.getElementById('dailyForm').addEventListener('submit', function onSubmit(e) {
+                                e.preventDefault();
+                                this.removeEventListener('submit', onSubmit); // evita múltiplas submissões
+
+                                const formData = new FormData(this);
+
+                                fetch('submit_respostas.php', {
+                                        method: 'POST',
+                                        body: formData
+                                    })
+                                    .then(response => response.json())
+                                    .then(data => {
+                                        if (data.success) {
+                                            document.getElementById('modal').style.display = 'none';
+                                            Swal.fire({
+                                                icon: 'success',
+                                                text: 'Respostas enviadas com sucesso!',
+                                                showConfirmButton: false,
+                                                timer: 2000
+                                            }).then(() => resolve()); // continua depois de enviar
+                                        } else {
+                                            Swal.fire({
+                                                icon: 'error',
+                                                text: 'Erro ao enviar as tarefas, tente novamente!',
+                                                showConfirmButton: false,
+                                                timer: 2000
+                                            });
+                                            reject(); // interrompe a sequência
+                                        }
+                                    })
+                                    .catch(error => {
+                                        console.error('Erro:', error);
+                                        reject();
+                                    });
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erro ao verificar respostas:', error);
+                        reject();
+                    });
+            });
         }
 
-        // Após enviar o Daily
-        document.getElementById('dailyForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-
-            const formData = new FormData(this);
-
-            fetch('submit_respostas.php', {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        document.getElementById('modal').style.display = 'none';
-                        Swal.fire({
-                            icon: 'success',
-                            text: 'Respostas enviadas com sucesso!',
-                            showConfirmButton: false,
-                            timer: 2000
-                        }).then(() => {
-                            // 👉 Agora sim, mostra os itens de render
-                            checkRenderItems(idColaborador);
-                        });
-                    } else {
-                        Swal.fire({
-                            icon: 'error',
-                            text: 'Erro ao enviar as tarefas, tente novamente!',
-                            showConfirmButton: false,
-                            timer: 2000
-                        });
-                    }
-                })
-                .catch(error => console.error('Erro:', error));
-        });
-
-        // Verifica a lista de render
+        // checkRenderItems também retorna uma Promise
         function checkRenderItems(idColaborador) {
-            fetch('verifica_render.php', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    body: `idcolaborador=${idColaborador}`
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.total > 0) {
-                        Swal.fire({
-                            title: `Você tem ${data.total} item(ns) na sua lista de render!`,
-                            text: "Deseja ver agora ou depois?",
-                            icon: "info",
-                            showCancelButton: true,
-                            confirmButtonText: "Ver agora",
-                            cancelButtonText: "Ver depois",
-                        }).then((result) => {
-                            if (result.isConfirmed) {
-                                window.location.href = "./Render/";
-                            }
-                        });
-                    }
-                })
-                .catch(error => console.error('Erro ao verificar itens de render:', error));
+            return new Promise((resolve, reject) => {
+                fetch('verifica_render.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: `idcolaborador=${idColaborador}`
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.total > 0) {
+                            Swal.fire({
+                                title: `Você tem ${data.total} item(ns) na sua lista de render!`,
+                                text: "Deseja ver agora ou depois?",
+                                icon: "info",
+                                showCancelButton: true,
+                                confirmButtonText: "Ver agora",
+                                cancelButtonText: "Ver depois",
+                            }).then((result) => {
+                                if (result.isConfirmed) {
+                                    window.location.href = "./Render/";
+                                } else {
+                                    resolve(); // segue o fluxo
+                                }
+                            });
+                        } else {
+                            resolve(); // segue o fluxo mesmo sem render
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erro ao verificar itens de render:', error);
+                        reject();
+                    });
+            });
         }
+
 
         // 🚀 Dispara tudo ao carregar a página
-        checkDailyAccess();
+        checkDailyAccess()
+            .then(() => checkRenderItems(idColaborador))
+            .then(() => {
+                buscarTarefas(); // Agora sim, só depois dos anteriores
+            })
+            .catch(() => {
+                console.log('Fluxo interrompido devido a erro ou resposta incompleta.');
+            });
     </script>
 
     <script src="script/notificacoes.js"></script>

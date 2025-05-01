@@ -575,6 +575,7 @@ table#tabela-obra th:first-child {
     white-space: nowrap;
     text-align: center;
     resize: horizontal;
+    min-width: 120px;
 }
 
 table#tabela-obra tbody td:nth-child(3) {
@@ -582,22 +583,22 @@ table#tabela-obra tbody td:nth-child(3) {
 }
 
 
-td {
+#tabela-obra td {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
     padding: 5px;
 }
 
-th {
+#tabela-obra th {
     background-color: #333;
     color: white;
     font-weight: 500;
     padding: 5px;
 }
 
-td,
-th {
+#tabela-obra td,
+#tabela-obra th {
     border: 1px solid black;
     font-size: 14px;
     overflow: hidden;
@@ -1642,6 +1643,7 @@ button#deleteButton {
     background-color: rgba(0, 0, 0, 0.6);
     justify-content: center;
     align-items: center;
+    z-index: 100;
 }
 
 #calendarContainer {
@@ -1700,4 +1702,43 @@ button#deleteButton {
 #eventModal h3 {
     text-align: center;
     margin-bottom: 10px;
+}
+
+.fc .fc-scrollgrid-section,
+.fc .fc-scrollgrid-section table,
+.fc .fc-scrollgrid-section>td {
+    height: 1px;
+    font-size: 14px;
+    text-align: center;
+}
+
+.fc th {
+    text-align: center;
+    background: #333;
+    color: white;
+    font-size: 14px;
+}
+
+.fc-event-title {
+    color: #000;
+}
+
+#eventModal {
+    display: none;
+    position: fixed;
+    background-color: rgba(0, 0, 0, 0.7);
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.eventos {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    width: 20%;
 }

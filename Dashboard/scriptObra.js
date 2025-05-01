@@ -2465,13 +2465,22 @@ function carregarEventos(obraId) {
         .then(data => {
             console.log("Eventos recebidos do PHP:", data); // 👈 Verifique isso
 
-            events = data.map(evento => ({
-                id: evento.id,
-                title: evento.descricao,
-                start: evento.start,
-                allDay: true,
-                backgroundColor: getEventColor(evento.tipo_evento)
-            }));
+            events = data.map(evento => {
+
+                delete evento.eventDate;
+
+                const colors = getEventColors(evento.tipo_evento);
+                return {
+                    id: evento.id,
+                    title: evento.descricao,
+                    start: evento.start,
+                    end: evento.end && evento.end !== evento.start ? evento.end : null,
+                    allDay: evento.end ? true : false,
+                    tipo_evento: evento.tipo_evento, // 👈 necessário para o eventDidMount
+                    backgroundColor: colors.backgroundColor,
+                    color: colors.color
+                };
+            });
 
 
             if (!miniCalendar) {
@@ -2485,48 +2494,92 @@ function carregarEventos(obraId) {
                 fullCalendar.removeAllEvents();
                 fullCalendar.addEventSource(events);
             }
+
+            // 👇 Notificar se for colaborador 1 ou 2
+            const colaboradorId = localStorage.getItem("idcolaborador"); // implemente essa função ou defina a variável
+
+            if (colaboradorId === '1' || colaboradorId === '9' || colaboradorId === '21') {
+                notificarEventosDaSemana(events);
+            }
         });
 }
 
-// Função para definir a cor com base no tipo_evento
-function getEventColor(tipoEvento) {
+// 👇 Função que retorna eventos desta semana
+function notificarEventosDaSemana(eventos) {
+    const hoje = new Date();
+    const inicioSemana = new Date(hoje);
+    inicioSemana.setDate(hoje.getDate() - hoje.getDay()); // domingo
+    const fimSemana = new Date(inicioSemana);
+    fimSemana.setDate(inicioSemana.getDate() + 6); // sábado
+
+    const eventosSemana = eventos.filter(evento => {
+        const startDate = new Date(evento.start);
+        return startDate >= inicioSemana && startDate <= fimSemana;
+    });
+
+    if (eventosSemana.length > 0) {
+        const listaEventos = eventosSemana
+            .map(ev => `<li><strong>${ev.title}</strong> em ${new Date(ev.start).toLocaleDateString()}</li>`)
+            .join('');
+
+        Swal.fire({
+            icon: 'info',
+            title: 'Eventos desta semana',
+            html: `<ul style="text-align: left; padding: 0 20px">${listaEventos}</ul>`,
+            confirmButtonText: 'Entendi'
+        });
+    }
+}
+
+// Função para definir as cores com base no tipo_evento
+function getEventColors(tipoEvento) {
     switch (tipoEvento) {
         case 'Reunião':
-            return '#ffd700'; // Cor para reuniões
+            return { backgroundColor: '#ffd700', color: '#000000' };
         case 'Entrega':
-            return '#ff9f89'; // Cor para prazos
+            return { backgroundColor: '#ff9f89', color: '#000000' };
         case 'Arquivos':
-            return '#90ee90'; // Cor para entregas
+            return { backgroundColor: '#90ee90', color: '#000000' };
         case 'Outro':
-            return '#87ceeb'; // Cor para outros tipos
+            return { backgroundColor: '#87ceeb', color: '#000000' };
         case 'P00':
-            return '#ffc21c'
+            return { backgroundColor: '#ffc21c', color: '#000000' };
         case 'R00':
-            return '#1cf4ff'
+            return { backgroundColor: '#1cf4ff', color: '#000000' };
         case 'R01':
-            return '#ff6200'
+            return { backgroundColor: '#ff6200', color: '#ffffff' };
         case 'R02':
-            return '#ff3c00'
+            return { backgroundColor: '#ff3c00', color: '#ffffff' };
         case 'R03':
-            return '#ff0000'
+            return { backgroundColor: '#ff0000', color: '#ffffff' };
         case 'EF':
-            return '#0dff00'
+            return { backgroundColor: '#0dff00', color: '#000000' };
         case 'HOLD':
-            return '#ff0000';
+            return { backgroundColor: '#ff0000', color: '#ffffff' };
         case 'TEA':
-            return '#f7eb07';
+            return { backgroundColor: '#f7eb07', color: '#000000' };
         case 'REN':
-            return '#0c9ef2';
+            return { backgroundColor: '#0c9ef2', color: '#ffffff' };
         case 'APR':
-            return '#0c45f2';
+            return { backgroundColor: '#0c45f2', color: '#ffffff' };
         case 'APP':
-            return '#7d36f7';
+            return { backgroundColor: '#7d36f7', color: '#ffffff' };
         case 'RVW':
-            return 'green';
+            return { backgroundColor: 'green', color: '#ffffff' };
         case 'OK':
-            return 'cornflowerblue';
+            return { backgroundColor: 'cornflowerblue', color: '#ffffff' };
+        case 'Pós-Produção':
+            return { backgroundColor: '#e3f2fd', color: '#000000' };
+        case 'Finalização':
+            return { backgroundColor: '#e8f5e9', color: '#000000' };
+        case 'Modelagem':
+            return { backgroundColor: '#fff3e0', color: '#000000' };
+        case 'Caderno':
+            return { backgroundColor: '#fce4ec', color: '#000000' };
+        case 'Composição':
+            return { backgroundColor: '#f9ffc6', color: '#000000' };
         default:
-            return '#d3d3d3'; // Cor padrão
+            return { backgroundColor: '#d3d3d3', color: '#000000' };
     }
 }
 
@@ -2546,6 +2599,7 @@ function criarMiniCalendar() {
         navLinks: false,
         selectable: false,
         editable: false,
+        displayEventTime: false,
         locale: 'pt-br',
         events: events,
         dateClick: () => openFullCalendar(),
@@ -2560,7 +2614,8 @@ function criarMiniCalendar() {
 let fullCalendar;
 
 function openFullCalendar() {
-    document.getElementById('calendarModal').style.display = 'flex';
+
+    calendarModal.style.display = 'flex';
 
     if (!fullCalendar) {
         fullCalendar = new FullCalendar.Calendar(document.getElementById('calendarFull'), {
@@ -2568,7 +2623,18 @@ function openFullCalendar() {
             editable: true,
             selectable: true,
             locale: 'pt-br',
+            displayEventTime: false,
             events: events, // Usa os eventos já formatados corretamente
+            eventDidMount: function (info) {
+                const colors = getEventColors(info.event.extendedProps.tipo_evento);
+
+                // Aplica as cores manualmente
+                info.el.style.backgroundColor = colors.backgroundColor;
+                info.el.style.color = colors.color;
+
+                // Garante contraste se necessário
+                info.el.style.borderColor = colors.backgroundColor;
+            },
 
             dateClick: function (info) {
                 const clickedDate = new Date(info.date);
@@ -2614,13 +2680,32 @@ function closeEventModal() {
     carregarEventos(obraId); // Recarrega os eventos após fechar o modal
 }
 
-function showToast(message, success = true) {
+function showToast(message, type = 'success') {
+    let backgroundColor;
+
+    switch (type) {
+        case 'create':
+            backgroundColor = 'linear-gradient(to right, #00b09b, #96c93d)'; // verde limão
+            break;
+        case 'update':
+            backgroundColor = 'linear-gradient(to right, #2193b0, #6dd5ed)'; // azul claro
+            break;
+        case 'delete':
+            backgroundColor = 'linear-gradient(to right, #ff416c, #ff4b2b)'; // vermelho/rosa
+            break;
+        case 'error':
+            backgroundColor = 'linear-gradient(to right, #e53935, #e35d5b)'; // vermelho
+            break;
+        default:
+            backgroundColor = 'linear-gradient(to right, #00b09b, #96c93d)'; // sucesso padrão
+    }
+
     Toastify({
         text: message,
         duration: 4000,
         gravity: "top",
         position: "right",
-        backgroundColor: success ? "green" : "red",
+        backgroundColor: backgroundColor,
     }).showToast();
 }
 
@@ -2641,13 +2726,11 @@ document.getElementById('eventForm').addEventListener('submit', function (e) {
             .then(res => res.json())
             .then(res => {
                 if (res.error) throw new Error(res.message);
-                fullCalendar.getEventById(id)?.remove();
-                fullCalendar.addEvent({ id, title, start });
-                closeEventModal();
-                showToast(res.message);
+                closeEventModal(); // ✅ fecha o modal após excluir
+                showToast(res.message, 'update'); // para PUT
             })
-            .catch(err => showToast(err.message, false));
-    } else {
+            .catch(err => showToast(err.message, 'error'));
+        } else {
         fetch('./Calendario/eventoController.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -2656,12 +2739,11 @@ document.getElementById('eventForm').addEventListener('submit', function (e) {
             .then(res => res.json())
             .then(res => {
                 if (res.error) throw new Error(res.message);
-                fullCalendar.addEvent({ id: res.id, title, start });
-                closeEventModal();
-                showToast(res.message);
+                closeEventModal(); // ✅ fecha o modal após excluir
+                showToast(res.message, 'create'); // para POST
             })
-            .catch(err => showToast(err.message, false));
-    }
+            .catch(err => showToast(err.message, 'error'));
+        }
 });
 
 function deleteEvent() {
@@ -2676,12 +2758,12 @@ function deleteEvent() {
         .then(res => res.json())
         .then(res => {
             if (res.error) throw new Error(res.message);
-            fullCalendar.getEventById(id)?.remove();
-            closeEventModal();
-            showToast(res.message);
+            closeEventModal(); // ✅ fecha o modal após excluir
+
+            showToast(res.message, 'delete');
         })
-        .catch(err => showToast(err.message, false));
-}
+        .catch(err => showToast(err.message, 'error'));
+    }
 
 function updateEvent(event) {
     fetch('./Calendario/eventoController.php', {
@@ -2690,7 +2772,9 @@ function updateEvent(event) {
         body: JSON.stringify({
             id: event.id,
             title: event.title,
-            start: event.start.toISOString().substring(0, 10)
+            start: event.start.toISOString().substring(0, 10),
+            type: event.extendedProps?.tipo_evento // 👈 forma segura de acessar
+
         })
     })
         .then(res => res.json())

@@ -12,7 +12,6 @@ $stmt->execute();
 $result = $stmt->get_result();
 
 while ($row = $result->fetch_assoc()) {
-    $row['allDay'] = true;
     $eventos[] = $row;
 }
 $stmt->close();
@@ -35,10 +34,30 @@ $result2 = $stmt2->get_result();
 
 while ($row = $result2->fetch_assoc()) {
     $row['id'] = uniqid('img_'); // cria um id único
-    $row['allDay'] = true;
     $eventos[] = $row;
 }
 $stmt2->close();
+
+// Eventos longos (ex: reuniões ou etapas com data início e fim)
+$sql3 = "SELECT 
+            id,
+            CONCAT(tipo_imagem, ' - ', etapa) AS descricao,
+            data_inicio AS start,
+            data_fim AS end,
+            etapa AS tipo_evento
+        FROM gantt_prazos 
+        WHERE obra_id = ?";
+
+$stmt3 = $conn->prepare($sql3);
+$stmt3->bind_param("i", $obraId);
+$stmt3->execute();
+$result3 = $stmt3->get_result();
+
+while ($row = $result3->fetch_assoc()) {
+    $eventos[] = $row;
+}
+$stmt3->close();
+
 
 header('Content-Type: application/json');
 echo json_encode($eventos);

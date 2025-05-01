@@ -1043,8 +1043,8 @@ $conn->close();
     </div>
 
     <!-- Modal simples para adicionar evento -->
-    <div id="eventModal" style="display:none; position: fixed; background-color: rgba(0,0,0,0.7); top: 0; left: 0; right: 0; bottom: 0; justify-content: center; align-items: center;">
-        <div style="background: white; padding: 20px; border-radius: 8px; width: 20%;">
+    <div id="eventModal">
+        <div class="eventos">
             <h3>Evento</h3>
             <form id="eventForm">
                 <input type="hidden" name="id" id="eventId">

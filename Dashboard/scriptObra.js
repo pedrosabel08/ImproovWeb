@@ -2612,7 +2612,13 @@ function criarMiniCalendar() {
         dateClick: () => openFullCalendar(),
 
         // Apenas o nome do dia da semana (ex: Seg, Ter, Qua...)
-        dayHeaderFormat: { weekday: 'short' }
+        dayHeaderFormat: { weekday: 'short' },
+        // FORMATA O TÍTULO DA SEMANA
+        titleFormat: {
+            day: '2-digit',
+            month: 'long'  // Ex: "27 de março"
+            // Não incluímos 'year' para omitir o ano
+        }
     });
 
     miniCalendar.render();
@@ -2641,6 +2647,14 @@ function openFullCalendar() {
 
                 // Garante contraste se necessário
                 info.el.style.borderColor = colors.backgroundColor;
+            },
+            datesSet: function (info) {
+                const tituloOriginal = info.view.title;
+                const partes = tituloOriginal.replace('de ', '').split(' ');
+                const mes = partes[0];
+                const ano = partes[1];
+                const mesCapitalizado = mes.charAt(0).toUpperCase() + mes.slice(1);
+                document.querySelector('#calendarFull .fc-toolbar-title').textContent = `${mesCapitalizado} ${ano}`;
             },
 
             dateClick: function (info) {
@@ -2737,7 +2751,7 @@ document.getElementById('eventForm').addEventListener('submit', function (e) {
                 showToast(res.message, 'update'); // para PUT
             })
             .catch(err => showToast(err.message, 'error'));
-        } else {
+    } else {
         fetch('./Calendario/eventoController.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -2750,7 +2764,7 @@ document.getElementById('eventForm').addEventListener('submit', function (e) {
                 showToast(res.message, 'create'); // para POST
             })
             .catch(err => showToast(err.message, 'error'));
-        }
+    }
 });
 
 function deleteEvent() {
@@ -2770,7 +2784,7 @@ function deleteEvent() {
             showToast(res.message, 'delete');
         })
         .catch(err => showToast(err.message, 'error'));
-    }
+}
 
 function updateEvent(event) {
     fetch('./Calendario/eventoController.php', {

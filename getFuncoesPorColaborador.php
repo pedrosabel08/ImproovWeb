@@ -54,7 +54,7 @@ if ($prioridade) {
     $sql .= " AND pc.prioridade = ?";
 }
 
-$sql .= " ORDER BY pc.prioridade ASC, imagem_id";
+$sql .= " ORDER BY FIELD(fi.status,'Não iniciado', 'Em andamento', 'Ajuste', 'Em aprovação', 'Aprovado com ajustes', 'Aprovado', 'Finalizado'), pc.prioridade ASC, imagem_id";
 
 $stmt = $conn->prepare($sql);
 
@@ -151,7 +151,7 @@ foreach ($funcoes as $funcao) {
     }
 
     // Verificando se a imagem pode ser liberada
-    if ($statusAnterior && ($statusAnterior == 'Finalizado' || $statusAnterior == 'Aprovado')) {
+    if ($statusAnterior && ($statusAnterior == 'Finalizado' || $statusAnterior == 'Aprovado' || $statusAnterior = 'Aprovado com ajustes')) {
         $liberada = true;
     }
 

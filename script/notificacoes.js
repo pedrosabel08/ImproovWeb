@@ -100,7 +100,7 @@ function agendarProximaExecucao() {
     const segundos = now.getSeconds();
 
     // Calcular próximo intervalo (00, 15, 30, 45)
-    const proximosMinutos = [0, 15, 30, 45].find(min => min > minutos) || 60;
+    const proximosMinutos = [0, 30].find(min => min > minutos) || 60;
     const minutosRestantes = proximosMinutos === 60 ? 60 - minutos : proximosMinutos - minutos;
     const milissegundosRestantes = (minutosRestantes * 60 - segundos) * 1000;
 

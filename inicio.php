@@ -75,6 +75,8 @@ $conn->close();
     <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s" type="image/x-icon">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
 
     <title>Improov+Flow</title>
 </head>
@@ -121,7 +123,9 @@ $conn->close();
 
             <div id="container-calendario" class="container active">
                 <div>
-                    <iframe src="https://calendar.google.com/calendar/embed?height=600&wkst=1&ctz=America%2FSao_Paulo&showPrint=0&showTz=0&showTitle=0&showCalendars=0&src=dHJhZmVnb2ltcHJvb3ZAZ21haWwuY29t&src=MjE2NGI4MjJkNzVlZDk2MzA2YzVjOTJhZjEyOWYzNjdlYjE5M2JmZDc4ZDljNDhjNjg4N2QyZmExNTk1M2I1OEBncm91cC5jYWxlbmRhci5nb29nbGUuY29t&color=%23039BE5&color=%23E67C73" style="border:solid 1px #777" width="1200" height="600" frameborder="0" scrolling="no"></iframe>
+                    <div class="calendario">
+                        <div id="calendarFull"></div>
+                    </div>
                 </div>
                 <!-- <div class="last-tasks">
                     <h2>Notificações</h2>
@@ -207,6 +211,39 @@ $conn->close();
     <div id="notificacao-sino" class="notificacao-sino">
         <i class="fas fa-bell sino" id="icone-sino"></i>
         <span id="contador-tarefas" class="contador-tarefas">0</span>
+    </div>
+
+    <!-- Modal simples para adicionar evento -->
+    <div id="eventModal">
+        <div class="eventos">
+            <h3>Evento</h3>
+            <form id="eventForm">
+                <input type="hidden" name="id" id="eventId">
+                <label for="opcao">Obra:</label>
+                <select name="opcao" id="obra_calendar">
+                    <?php foreach ($obras as $obra): ?>
+                        <option value="<?= $obra['idobra']; ?>"><?= htmlspecialchars($obra['nomenclatura']); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <label>Título:</label>
+                <input type="text" name="title" id="eventTitle" required>
+                <label>Tipo de Evento:</label>
+                <select name="eventType" id="eventType" required>
+                    <option value="">Selecione</option>
+                    <option value="Entrega">Entrega</option>
+                    <option value="Arquivos">Arquivos</option>
+                    <option value="Reunião">Reunião</option>
+                    <option value="Outro">Outro</option>
+                </select>
+                <label>Data:</label>
+                <input type="date" name="date" id="eventDate" required>
+                <div class="buttons">
+                    <button type="submit" style="background-color: green;">Salvar</button>
+                    <button type="button" style="background-color: red;" onclick="deleteEvent()">Excluir</button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <script>
@@ -354,6 +391,8 @@ $conn->close();
     <script src="script/scriptIndex.js"></script>
     <script src="./script/sidebar.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
 
 </body>
 

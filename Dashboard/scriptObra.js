@@ -1788,7 +1788,6 @@ const editImagesModal = document.getElementById("editImagesModal");
         if (event.target == form_edicao || (eventType === 'keydown' && event.key === 'Escape')) {
             form_edicao.style.display = "none";
             infosObra(obraId);
-            carregarEventos(obraId);
 
         }
         if (event.target == modal || (eventType === 'keydown' && event.key === 'Escape')) {
@@ -1803,7 +1802,6 @@ const editImagesModal = document.getElementById("editImagesModal");
         if (event.target == editImagesModal || (eventType === 'keydown' && event.key === 'Escape')) {
             editImagesModal.style.display = "none";
             infosObra(obraId);
-            carregarEventos(obraId);
 
         }
         if (event.target == addImagemModal || (eventType === 'keydown' && event.key === 'Escape')) {
@@ -1821,7 +1819,6 @@ const editImagesModal = document.getElementById("editImagesModal");
         if (event.target == modalArquivos || (eventType === 'keydown' && event.key === 'Escape')) {
             modalArquivos.style.display = "none";
             infosObra(obraId);
-            carregarEventos(obraId);
 
         }
         // if (event.target == modalPos || (eventType === 'keydown' && event.key === 'Escape')) {

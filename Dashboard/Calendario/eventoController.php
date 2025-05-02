@@ -19,6 +19,21 @@ try {
             throw new Exception("Dados incompletos para criar o evento.");
         }
 
+        // Buscar a nomenclatura da obra
+        $sqlObra = "SELECT nomenclatura FROM obra WHERE idobra = ?";
+        $stmtObra = $conn->prepare($sqlObra);
+        $stmtObra->bind_param("i", $obra_id);
+        $stmtObra->execute();
+        $resultObra = $stmtObra->get_result();
+
+        if ($rowObra = $resultObra->fetch_assoc()) {
+            $nomenclatura = $rowObra['nomenclatura'];
+            $titulo = $nomenclatura . ' - ' . $titulo; // Atualiza o título com nome da obra
+        } else {
+            throw new Exception("Obra não encontrada para o ID fornecido.");
+        }
+        $stmtObra->close();
+
         $sql = "INSERT INTO eventos_obra (descricao, data_evento, tipo_evento, obra_id, responsavel_id) VALUES (?, ?, ?, ?, ?)";
         $stmt = $conn->prepare($sql);
         $stmt->bind_param("sssii", $titulo, $data_evento, $tipo_evento, $obra_id, $responsavel_id);

@@ -114,6 +114,9 @@ $idusuario = $_SESSION['idusuario'];
                 </div>
 
             </div>
+            <div>
+                <button id="add-imagem" class="tooltip" data-tooltip="Adicionar imagem" style="transform: translateX(-90%);">+</button>
+            </div>
         </header>
 
         <div class="nav-select">
@@ -168,6 +171,16 @@ $idusuario = $_SESSION['idusuario'];
         </div>
     </div>
 
+    <!-- Modal -->
+    <div id="imagem-modal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Enviar Imagens</h2>
+            <input type="file" id="input-imagens" multiple accept="image/*">
+            <div id="preview" class="preview-container"></div>
+            <button id="btn-enviar-imagens">Enviar</button>
+        </div>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>

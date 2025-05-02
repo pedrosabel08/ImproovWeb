@@ -576,6 +576,7 @@ document.getElementById('btn-enviar-imagens').addEventListener('click', () => {
             alert('Erro na comunicação com o servidor.');
         });
 });
+
 function abrirMenuContexto(x, y, id, src) {
     const menu = document.getElementById('menuContexto');
 

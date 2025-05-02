@@ -48,35 +48,35 @@ document.addEventListener("DOMContentLoaded", function () {
         buscarImagens(obraId);
     });
 
-    function buscarImagens(obraId) {
-        var imagemSelect = document.getElementById('imagem_id_pos');
+    // function buscarImagens(obraId) {
+    //     var imagemSelect = document.getElementById('imagem_id_pos');
 
-        // Verifica se o valor selecionado é 0, então busca todas as imagens
-        var url = 'buscar_imagens.php';
-        if (obraId != "0") {
-            url += '?obra_id=' + obraId;
-        }
+    //     // Verifica se o valor selecionado é 0, então busca todas as imagens
+    //     var url = 'buscar_imagens.php';
+    //     if (obraId != "0") {
+    //         url += '?obra_id=' + obraId;
+    //     }
 
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', url, true);
-        xhr.onreadystatechange = function () {
-            if (xhr.readyState === 4 && xhr.status === 200) {
-                var response = JSON.parse(xhr.responseText);
+    //     var xhr = new XMLHttpRequest();
+    //     xhr.open('GET', url, true);
+    //     xhr.onreadystatechange = function () {
+    //         if (xhr.readyState === 4 && xhr.status === 200) {
+    //             var response = JSON.parse(xhr.responseText);
 
-                // Limpa as opções atuais
-                imagemSelect.innerHTML = '';
+    //             // Limpa as opções atuais
+    //             imagemSelect.innerHTML = '';
 
-                // Adiciona as novas opções com base na resposta
-                response.forEach(function (imagem) {
-                    var option = document.createElement('option');
-                    option.value = imagem.idimagens_cliente_obra;
-                    option.text = imagem.imagem_nome;
-                    imagemSelect.add(option);
-                });
-            }
-        };
-        xhr.send();
-    }
+    //             // Adiciona as novas opções com base na resposta
+    //             response.forEach(function (imagem) {
+    //                 var option = document.createElement('option');
+    //                 option.value = imagem.idimagens_cliente_obra;
+    //                 option.text = imagem.imagem_nome;
+    //                 imagemSelect.add(option);
+    //             });
+    //         }
+    //     };
+    //     xhr.send();
+    // }
 
 
     formPosProducao.addEventListener('submit', function (e) {
@@ -94,7 +94,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 document.getElementById('modal').style.display = 'none';
                 limparCampos();
                 atualizarTabela();
-                buscarImagens();
+                // buscarImagens();
                 Toastify({
                     text: "Dados inseridos com sucesso!",
                     duration: 3000,
@@ -294,7 +294,7 @@ function buscarInfosImagem(idImagemSelecionada) {
             if (response.length > 0) {
                 setSelectValue('opcao_finalizador', response[0].nome_colaborador);
                 setSelectValue('opcao_obra', response[0].nome_obra);
-                setSelectValue('imagem_id_pos', response[0].imagem_nome);
+                document.getElementById('imagem_id_pos').value = response[0].id_imagem;
                 document.getElementById('id-pos').value = response[0].idpos_producao;
                 document.getElementById('caminhoPasta').value = response[0].caminho_pasta;
                 document.getElementById('numeroBG').value = response[0].numero_bg;

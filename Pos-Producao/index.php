@@ -74,14 +74,14 @@ if ($result_status->num_rows > 0) {
         $status_imagens[] = $row;
     }
 }
-$sql_imagens = "SELECT idimagens_cliente_obra, imagem_nome FROM imagens_cliente_obra";
-$result_imagens = $conn->query($sql_imagens);
-$imagens = array();
-if ($result_imagens->num_rows > 0) {
-    while ($row = $result_imagens->fetch_assoc()) {
-        $imagens[] = $row;
-    }
-}
+// $sql_imagens = "SELECT idimagens_cliente_obra, imagem_nome FROM imagens_cliente_obra";
+// $result_imagens = $conn->query($sql_imagens);
+// $imagens = array();
+// if ($result_imagens->num_rows > 0) {
+//     while ($row = $result_imagens->fetch_assoc()) {
+//         $imagens[] = $row;
+//     }
+// }
 
 include '../conexaoMain.php';
 
@@ -92,6 +92,7 @@ $obras = obterObras($conn);
 $colaboradores = obterColaboradores($conn);
 $status_imagens = obterStatusImagens($conn);
 $funcoes = obterFuncoes($conn);
+$imagens = obterImagens($conn);
 
 $conn->close();
 

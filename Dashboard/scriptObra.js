@@ -2473,7 +2473,7 @@ function carregarEventos(obraId) {
 
                 delete evento.eventDate;
 
-                const colors = getEventColors(evento.tipo_evento);
+                const colors = getEventColors(evento); // 👈 adiciona o título
                 return {
                     id: evento.id,
                     title: evento.descricao,
@@ -2536,8 +2536,28 @@ function notificarEventosDaSemana(eventos) {
 }
 
 // Função para definir as cores com base no tipo_evento
-function getEventColors(tipoEvento) {
-    switch (tipoEvento) {
+function getEventColors(event) {
+    const { id, descricao, tipo_evento } = event;
+    const normalizedTitle = (descricao || '').toUpperCase().trim();
+
+    if (normalizedTitle.includes('R00')) {
+        return { backgroundColor: '#1cf4ff', color: '#000000' };
+    }
+    if (normalizedTitle.includes('R01')) {
+        return { backgroundColor: '#ff6200', color: '#000000' };
+    }
+    if (normalizedTitle.includes('R02')) {
+        return { backgroundColor: '#ff3c00', color: '#000000' };
+    }
+    if (normalizedTitle.includes('R02')) {
+        return { backgroundColor: '#ff0000', color: '#000000' };
+    }
+    if (normalizedTitle.includes('EF')) {
+        return { backgroundColor: '#0dff00', color: '#000000' };
+    }
+
+    // Se não encontrou no título, usa o tipoEvento
+    switch (tipo_evento) {
         case 'Reunião':
             return { backgroundColor: '#ffd700', color: '#000000' };
         case 'Entrega':
@@ -2636,13 +2656,16 @@ function openFullCalendar() {
             displayEventTime: false,
             events: events, // Usa os eventos já formatados corretamente
             eventDidMount: function (info) {
-                const colors = getEventColors(info.event.extendedProps.tipo_evento);
+                const eventProps = {
+                    id: info.event.id,
+                    descricao: info.event.title || '', // título do evento (pode ser usado como descrição)
+                    tipo_evento: info.event.extendedProps.tipo_evento || ''
+                };
 
-                // Aplica as cores manualmente
+                const colors = getEventColors(eventProps);
+
                 info.el.style.backgroundColor = colors.backgroundColor;
                 info.el.style.color = colors.color;
-
-                // Garante contraste se necessário
                 info.el.style.borderColor = colors.backgroundColor;
             },
             datesSet: function (info) {

@@ -575,3 +575,91 @@ h1 {
         opacity: 1;
     }
 }
+
+#calendarFull {
+    background: white;
+    color: black;
+    border-radius: 10px;
+    padding: 10px;
+    width: 1200px;
+    height: 650px;
+}
+
+
+.fc .fc-toolbar.fc-header-toolbar {
+    margin-bottom: 1.5em;
+}
+
+#eventForm {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.close-btn {
+    position: absolute;
+    top: 20px;
+    right: 40px;
+    font-size: 24px;
+    color: white;
+    cursor: pointer;
+}
+
+
+#eventModal {
+    display: none;
+    position: fixed;
+    background-color: rgba(0, 0, 0, 0.7);
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.eventos {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    width: 20%;
+    color: #000;
+}
+
+.fc th {
+    text-align: center;
+    background: #333;
+    color: white;
+    font-size: 14px;
+}
+
+.fc-event-title {
+    color: #000;
+}
+
+#eventForm .buttons {
+    display: flex;
+    justify-content: space-between;
+}
+
+#eventForm .buttons button {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    padding: 5px 8px;
+    font-size: 14px;
+    transition: background-color 0.3s ease;
+}
+
+.fc-scroller .fc-scroller-liquid-absolute {
+    overflow: hidden;
+}
+
+.fc .fc-daygrid-body-unbalanced .fc-daygrid-day-events {
+    min-height: 2em;
+    position: relative;
+    font-size: 14px;
+}

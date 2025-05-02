@@ -814,64 +814,64 @@ function infosObra(obraId) {
             // Limpa o conteúdo da div
             prazosDiv.innerHTML = "";
 
-            // Agrupa os prazos por status
-            const groupedPrazos = data.prazos.reduce((acc, prazo) => {
-                if (!acc[prazo.nome_status]) {
-                    acc[prazo.nome_status] = [];
-                }
-                acc[prazo.nome_status].push({
-                    prazo: prazo.prazo,
-                    idsImagens: prazo.idImagens || [] // Use idImagens conforme o JSON retornado
-                });
-                return acc;
-            }, {});
+            // // Agrupa os prazos por status
+            // const groupedPrazos = data.prazos.reduce((acc, prazo) => {
+            //     if (!acc[prazo.nome_status]) {
+            //         acc[prazo.nome_status] = [];
+            //     }
+            //     acc[prazo.nome_status].push({
+            //         prazo: prazo.prazo,
+            //         idsImagens: prazo.idImagens || [] // Use idImagens conforme o JSON retornado
+            //     });
+            //     return acc;
+            // }, {});
 
-            // Renderiza os cards agrupados
-            Object.entries(groupedPrazos).forEach(([status, prazos]) => {
-                const prazoList = document.createElement('div');
-                prazoList.classList.add('prazos');
+            // // Renderiza os cards agrupados
+            // Object.entries(groupedPrazos).forEach(([status, prazos]) => {
+            //     const prazoList = document.createElement('div');
+            //     prazoList.classList.add('prazos');
 
-                prazoList.innerHTML = `
-                <div class="prazo-card">
-                    <p class="nome_status">${status}</p>
-                    <ul>
-                    ${prazos.map(prazo => `
-                        <li 
-                            data-ids="${(prazo.idsImagens || []).join(',')}" 
-                            class="prazo-item">
-                            ${formatarData(prazo.prazo)}
-                        </li>`).join("")}
-                    </ul>
-                </div>
-            `;
+            //     prazoList.innerHTML = `
+            //     <div class="prazo-card">
+            //         <p class="nome_status">${status}</p>
+            //         <ul>
+            //         ${prazos.map(prazo => `
+            //             <li 
+            //                 data-ids="${(prazo.idsImagens || []).join(',')}" 
+            //                 class="prazo-item">
+            //                 ${formatarData(prazo.prazo)}
+            //             </li>`).join("")}
+            //         </ul>
+            //     </div>
+            // `;
 
-                const prazoCard = prazoList.querySelector('.prazo-card');
-                applyStatusImagem(prazoCard, status);
-                prazosDiv.appendChild(prazoList);
-            });
+            //     const prazoCard = prazoList.querySelector('.prazo-card');
+            //     applyStatusImagem(prazoCard, status);
+            //     prazosDiv.appendChild(prazoList);
+            // });
 
-            // Adiciona eventos de mouse para estilizar linhas da tabela
-            prazosDiv.addEventListener('mouseover', (event) => {
-                const target = event.target.closest('.prazo-item');
-                if (target) {
-                    const ids = target.getAttribute('data-ids').split(',');
-                    ids.forEach(id => {
-                        const linha = document.querySelector(`tr[data-id="${id}"]`);
-                        if (linha) linha.classList.add('highlight');
-                    });
-                }
-            });
+            // // Adiciona eventos de mouse para estilizar linhas da tabela
+            // prazosDiv.addEventListener('mouseover', (event) => {
+            //     const target = event.target.closest('.prazo-item');
+            //     if (target) {
+            //         const ids = target.getAttribute('data-ids').split(',');
+            //         ids.forEach(id => {
+            //             const linha = document.querySelector(`tr[data-id="${id}"]`);
+            //             if (linha) linha.classList.add('highlight');
+            //         });
+            //     }
+            // });
 
-            prazosDiv.addEventListener('mouseout', (event) => {
-                const target = event.target.closest('.prazo-item');
-                if (target) {
-                    const ids = target.getAttribute('data-ids').split(',');
-                    ids.forEach(id => {
-                        const linha = document.querySelector(`tr[data-id="${id}"]`);
-                        if (linha) linha.classList.remove('highlight');
-                    });
-                }
-            });
+            // prazosDiv.addEventListener('mouseout', (event) => {
+            //     const target = event.target.closest('.prazo-item');
+            //     if (target) {
+            //         const ids = target.getAttribute('data-ids').split(',');
+            //         ids.forEach(id => {
+            //             const linha = document.querySelector(`tr[data-id="${id}"]`);
+            //             if (linha) linha.classList.remove('highlight');
+            //         });
+            //     }
+            // });
 
         })
         .catch(error => console.error('Erro ao carregar funções:', error));

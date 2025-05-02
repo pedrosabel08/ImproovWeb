@@ -412,6 +412,10 @@ function historyAJAX(idfuncao_imagem, funcao_nome, imagem_nome, colaborador_nome
                 } else {
                     document.getElementById('buttons-task').innerHTML = ''; // Não exibe os botões para outros usuários
                 }
+                document.getElementById('add-imagem').addEventListener('click', () => {
+                    funcaoImagemId = historico.funcao_imagem_id; // você já tem esse objeto
+                    document.getElementById('imagem-modal').style.display = 'flex';
+                });
             });
             // Renderizar as imagens
             const imageContainer = document.getElementById('imagens');
@@ -511,6 +515,67 @@ function historyAJAX(idfuncao_imagem, funcao_nome, imagem_nome, colaborador_nome
         })
         .catch(error => console.error("Erro ao buscar dados:", error));
 }
+
+
+
+
+
+document.querySelector('.close').addEventListener('click', () => {
+    document.getElementById('imagem-modal').style.display = 'none';
+    document.getElementById('input-imagens').value = '';
+    document.getElementById('preview').innerHTML = '';
+});
+
+document.getElementById('input-imagens').addEventListener('change', function () {
+    const preview = document.getElementById('preview');
+    preview.innerHTML = '';
+
+    const arquivos = this.files;
+
+    for (let i = 0; i < arquivos.length; i++) {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            const img = document.createElement('img');
+            img.src = e.target.result;
+            preview.appendChild(img);
+        };
+        reader.readAsDataURL(arquivos[i]);
+    }
+});
+
+document.getElementById('btn-enviar-imagens').addEventListener('click', () => {
+    const input = document.getElementById('input-imagens');
+    const arquivos = input.files;
+    if (arquivos.length === 0 || !funcaoImagemId) return;
+
+    const formData = new FormData();
+    for (let i = 0; i < arquivos.length; i++) {
+        formData.append('imagens[]', arquivos[i]);
+    }
+
+    formData.append('dataIdFuncoes', JSON.stringify([funcaoImagemId]));
+
+    fetch('../uploadArquivos.php', {
+        method: 'POST',
+        body: formData
+    })
+        .then(r => r.json())
+        .then(res => {
+            if (res.success) {
+                alert(res.success);
+                document.getElementById('imagem-modal').style.display = 'none';
+                document.getElementById('input-imagens').value = '';
+                document.getElementById('preview').innerHTML = '';
+            } else {
+                alert(res.error || 'Erro ao enviar imagens.');
+            }
+        })
+        .catch(e => {
+            console.error(e);
+            alert('Erro na comunicação com o servidor.');
+        });
+});
+
 
 function abrirMenuContexto(x, y, id, src) {
     const menu = document.getElementById('menuContexto');
@@ -1063,6 +1128,10 @@ document.addEventListener('keydown', function (event) {
 
         const comentariosDiv = document.querySelector(".comentarios");
         comentariosDiv.innerHTML = '';
+
+        document.getElementById('imagem-modal').style.display = 'none';
+        document.getElementById('input-imagens').value = '';
+        document.getElementById('preview').innerHTML = '';
     }
 });
 

@@ -2508,23 +2508,35 @@ function carregarEventos(obraId) {
         });
 }
 
-// 👇 Função que retorna eventos desta semana
 function notificarEventosDaSemana(eventos) {
+    console.log(eventos)
     const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0); // Zera hora, minuto, segundo e milissegundo
+
     const inicioSemana = new Date(hoje);
-    inicioSemana.setDate(hoje.getDate() - hoje.getDay()); // domingo
+    inicioSemana.setDate(hoje.getDate() - hoje.getDay()); // Domingo
+    inicioSemana.setHours(0, 0, 0, 0);
+
+    function parseDateLocal(dateStr) {
+        const [ano, mes, dia] = dateStr.split('-');
+        return new Date(ano, mes - 1, dia); // mês é 0-based
+    }
+
     const fimSemana = new Date(inicioSemana);
-    fimSemana.setDate(inicioSemana.getDate() + 6); // sábado
+    fimSemana.setDate(inicioSemana.getDate() + 6); // Sábado
+    fimSemana.setHours(23, 59, 59, 999);
 
     const eventosSemana = eventos.filter(evento => {
-        const startDate = new Date(evento.start);
+        const startDate = parseDateLocal(evento.start);
         return startDate >= inicioSemana && startDate <= fimSemana;
     });
 
     if (eventosSemana.length > 0) {
         const listaEventos = eventosSemana
-            .map(ev => `<li><strong>${ev.title}</strong> em ${new Date(ev.start).toLocaleDateString()}</li>`)
-            .join('');
+            .map(ev => {
+                const dataLocal = parseDateLocal(ev.start);
+                return `<li><strong>${ev.title}</strong> em ${dataLocal.toLocaleDateString()}</li>`;
+            }).join('');
 
         Swal.fire({
             icon: 'info',
@@ -2634,7 +2646,6 @@ function criarMiniCalendar() {
         titleFormat: {
             day: '2-digit',
             month: 'long'  // Ex: "27 de março"
-            // Não incluímos 'year' para omitir o ano
         }
     });
 

@@ -204,7 +204,7 @@ if ($colaboradorId == 1) {
         AND (fi.status = 'Finalizado' OR fi.status = 'Em aprovação' OR fi.status = 'Ajuste' OR fi.status = 'Aprovado com ajustes')";
 
     if ($mesNumero && $ano) {
-        $sql .= " AND YEAR(fi.prazo) = ? AND MONTH(fi.prazo) = ?";
+        $sql .= " AND YEAR(fi.prazo) = ? AND MONTH(fi.prazo) = ? ORDER BY fi.funcao_id";
     }
 }
 

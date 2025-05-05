@@ -3,7 +3,7 @@ fetch('tabela.php')
     .then(data => {
         const { imagens, etapas, primeiraData, ultimaData, obra } = data;
 
-        document.getElementById('nomenclatura').textContent = `${obra.nomenclatura}`;
+        document.getElementById('nomenclatura').textContent = obra.nomenclatura;
 
         // Lista de feriados fixos
         const feriadosFixos = [
@@ -93,7 +93,12 @@ fetch('tabela.php')
                     etapas[tipoImagem].forEach(etapa => {
                         const dataInicio = new Date(etapa.data_inicio);
                         const dataFim = new Date(etapa.data_fim);
-                        const colspan = Math.ceil((dataFim - dataInicio) / (1000 * 60 * 60 * 24)) + 1;
+
+                        // Calcular o índice da data de início e fim em relação ao array de datas
+                        const indexInicio = datas.findIndex(d => d.getTime() === dataInicio.getTime());
+                        const indexFim = datas.findIndex(d => d.getTime() === dataFim.getTime());
+
+                        const colspan = indexFim - indexInicio + 1;
 
                         const etapaCell = document.createElement('td');
                         etapaCell.setAttribute('colspan', colspan);
@@ -114,7 +119,9 @@ fetch('tabela.php')
                     const diasUsados = etapas[tipoImagem]?.reduce((total, etapa) => {
                         const dataInicio = new Date(etapa.data_inicio);
                         const dataFim = new Date(etapa.data_fim);
-                        return total + Math.ceil((dataFim - dataInicio) / (1000 * 60 * 60 * 24)) + 1;
+                        const indexInicio = datas.findIndex(d => d.getTime() === dataInicio.getTime());
+                        const indexFim = datas.findIndex(d => d.getTime() === dataFim.getTime());
+                        return total + (indexFim - indexInicio + 1);
                     }, 0) || 0;
 
                     const diasRestantes = datas.length - diasUsados;
@@ -130,9 +137,11 @@ fetch('tabela.php')
                 firstRow = false; // Apenas a primeira linha terá o tipo_imagem e etapas
             });
         });
+
         table.appendChild(tbody);
     })
     .catch(error => console.error('Erro ao carregar os dados:', error));
+
 
 function calcularFeriadosMoveis(ano) {
     const a = ano % 19;

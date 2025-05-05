@@ -5,32 +5,36 @@ include '../conexao.php'; // Conexão com o banco
 $sqlImagens = "SELECT img.tipo_imagem, img.imagem_nome
 FROM imagens_cliente_obra img
 JOIN obra o ON img.obra_id = o.idobra
-WHERE o.idobra = 55
-  AND EXISTS (
-      SELECT 1
-      FROM arquivos a
-      WHERE a.obra_id = o.idobra
-        AND a.tipo = img.tipo_imagem
+WHERE o.idobra = 66
+  AND (
+      EXISTS (
+          SELECT 1
+          FROM arquivos a
+          WHERE a.obra_id = o.idobra
+            AND a.tipo = img.tipo_imagem
+      )
+      OR img.tipo_imagem = 'Planta Humanizada'
   )
-ORDER BY img.tipo_imagem, img.imagem_nome";
+ORDER BY img.tipo_imagem, img.imagem_nome
+";
 $resultImagens = $conn->query($sqlImagens);
 
 // Query para buscar as etapas
 $sqlEtapas = "SELECT etapa, tipo_imagem, data_inicio, data_fim 
               FROM gantt_prazos 
-              WHERE obra_id = 57";
+              WHERE obra_id = 66";
 $resultEtapas = $conn->query($sqlEtapas);
 
 // Query para determinar o intervalo de datas
 $sqlDatas = "SELECT MIN(data_inicio) as primeira_data, MAX(data_fim) as ultima_data 
              FROM gantt_prazos 
-             WHERE obra_id = 57 AND data_inicio <> '0000-00-00' AND data_fim <> '0000-00-00'";
+             WHERE obra_id = 66 AND data_inicio <> '0000-00-00' AND data_fim <> '0000-00-00'";
 $resultDatas = $conn->query($sqlDatas);
 $rowDatas = $resultDatas->fetch_assoc();
 $primeiraData = $rowDatas['primeira_data'];
 $ultimaData = $rowDatas['ultima_data'];
 
-$sqlObra = "SELECT * FROM obra WHERE idobra = 57";
+$sqlObra = "SELECT * FROM obra WHERE idobra = 66";
 $resultObra = $conn->query($sqlObra);
 $rowObra = $resultObra->fetch_assoc();
 

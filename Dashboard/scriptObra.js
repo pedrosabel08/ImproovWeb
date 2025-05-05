@@ -2509,32 +2509,32 @@ function carregarEventos(obraId) {
 }
 
 function notificarEventosDaSemana(eventos) {
-    console.log(eventos)
+    console.log(eventos);
     const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0); // Zera hora, minuto, segundo e milissegundo
+    hoje.setHours(0, 0, 0, 0);
 
     const inicioSemana = new Date(hoje);
     inicioSemana.setDate(hoje.getDate() - hoje.getDay()); // Domingo
     inicioSemana.setHours(0, 0, 0, 0);
+
+    const fimSemana = new Date(inicioSemana);
+    fimSemana.setDate(inicioSemana.getDate() + 6); // Sábado
+    fimSemana.setHours(23, 59, 59, 999);
 
     function parseDateLocal(dateStr) {
         const [ano, mes, dia] = dateStr.split('-');
         return new Date(ano, mes - 1, dia); // mês é 0-based
     }
 
-    const fimSemana = new Date(inicioSemana);
-    fimSemana.setDate(inicioSemana.getDate() + 6); // Sábado
-    fimSemana.setHours(23, 59, 59, 999);
-
     const eventosSemana = eventos.filter(evento => {
-        const startDate = parseDateLocal(evento.start);
-        return startDate >= inicioSemana && startDate <= fimSemana;
+        const dataReferencia = evento.end ? parseDateLocal(evento.end) : parseDateLocal(evento.start);
+        return dataReferencia >= inicioSemana && dataReferencia <= fimSemana;
     });
 
     if (eventosSemana.length > 0) {
         const listaEventos = eventosSemana
             .map(ev => {
-                const dataLocal = parseDateLocal(ev.start);
+                const dataLocal = ev.end ? parseDateLocal(ev.end) : parseDateLocal(ev.start);
                 return `<li><strong>${ev.title}</strong> em ${dataLocal.toLocaleDateString()}</li>`;
             }).join('');
 
@@ -2638,6 +2638,19 @@ function criarMiniCalendar() {
         displayEventTime: false,
         locale: 'pt-br',
         events: events,
+        eventDidMount: function (info) {
+            const eventProps = {
+                id: info.event.id,
+                descricao: info.event.title || '', // título do evento (pode ser usado como descrição)
+                tipo_evento: info.event.extendedProps.tipo_evento || ''
+            };
+
+            const colors = getEventColors(eventProps);
+
+            info.el.style.backgroundColor = colors.backgroundColor;
+            info.el.style.color = colors.color;
+            info.el.style.borderColor = colors.backgroundColor;
+        },
         dateClick: () => openFullCalendar(),
 
         // Apenas o nome do dia da semana (ex: Seg, Ter, Qua...)

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calendário da Obra</title>
+
+    <!-- Incluindo os CSS do FullCalendar -->
+    <link href="https://cdn.jsdelivr.net/npm/@fullcalendar/core/main.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/@fullcalendar/daygrid/main.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/@fullcalendar/list/main.css" rel="stylesheet">
+
+    <!-- Incluindo o jQuery (necessário para FullCalendar) -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+
+
+    <style>
+        #calendar {
+            max-width: 100%;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Calendário de Etapas da Obra</h1>
+
+    <div id="calendar"></div>
+
+    <script>
+        $(document).ready(function () {
+            // Fazer a requisição do PHP que retorna os dados
+            $.ajax({
+                url: 'tabela.php', // Caminho do seu script PHP
+                type: 'GET',
+                dataType: 'json',
+                success: function (data) {
+                    console.log(data);  // Verifique o que está sendo retornado
+
+                    let events = [];
+
+                    // Iterar sobre todas as chaves (tipos de imagem) dentro de 'data.etapas'
+                    for (let tipoImagem in data.etapas) {
+                        // Para cada tipo de imagem, iterar sobre as etapas correspondentes
+                        data.etapas[tipoImagem].forEach(function (etapa) {
+                            events.push({
+                                title: etapa.etapa,  // Nome da etapa
+                                start: etapa.data_inicio,  // Data de início
+                                end: etapa.data_fim,  // Data de fim
+                                description: tipoImagem  // Adicionar tipo de imagem como descrição (opcional)
+                            });
+                        });
+                    }
+
+                    // Inicializando o FullCalendar v6 com uma visualização contínua
+                    var calendar = new FullCalendar.Calendar($('#calendar')[0], {
+                        headerToolbar: {
+                            left: 'prev,next today',
+                            center: 'title',
+                            right: 'timeGridWeek,timeGridDay'  // Alterna entre semana e dia
+                        },
+                        initialView: 'timeGrid',  // Define a visualização inicial
+                        duration: { days: 50 },  // Exibe 50 dias contínuos
+                        events: events,  // Passa os eventos para o calendário
+                        eventTimeFormat: {  // Formato de exibição de horário
+                            hour: 'numeric',
+                            minute: '2-digit',
+                            meridiem: 'short'
+                        },
+                        eventDisplay: 'block',  // Exibe eventos como blocos
+                        eventDurationEditable: true,  // Permite editar a duração do evento
+                        views: {
+                            timeGrid: {
+                                buttonText: 'Vista Contínua',
+                                duration: { days: 50 },  // Especifica a duração contínua de 50 dias
+                            },
+                        }
+                    });
+
+                    calendar.render(); // Renderiza o calendário
+                },
+                error: function (xhr, status, error) {
+                    console.error('Erro ao carregar os dados do PHP: ' + error);
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>

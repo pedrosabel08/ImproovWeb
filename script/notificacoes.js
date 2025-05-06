@@ -56,21 +56,26 @@ function buscarTarefas() {
                     }
                 });
 
-                // Exibir SweetAlert com resumo
-                let mensagem = '';
-                for (const funcao in contagemPorFuncao) {
-                    mensagem += `<p><strong>${funcao}</strong>: ${contagemPorFuncao[funcao]} tarefas</p>`;
+                // Verifica se o usuário está autorizado a ver o alerta
+                const idsPermitidos = [1, 9, 19, 21]; // IDs com permissão
+
+                if (idsPermitidos.includes(idColaborador)) {
+                    // Exibir SweetAlert com resumo
+                    let mensagem = '';
+                    for (const funcao in contagemPorFuncao) {
+                        mensagem += `<p><strong>${funcao}</strong>: ${contagemPorFuncao[funcao]} tarefas</p>`;
+                    }
+
+                    const htmlContent = `<div>${mensagem || '<p>Nenhuma tarefa para aprovação.</p>'}</div>`;
+
+                    Swal.fire({
+                        title: 'Tarefas em aprovação',
+                        icon: 'info',
+                        html: htmlContent,
+                        confirmButtonText: 'OK'
+                    });
                 }
 
-                // Envolve todas as <p> em uma <div>
-                const htmlContent = `<div>${mensagem || '<p>Nenhuma tarefa para aprovação.</p>'}</div>`;
-
-                Swal.fire({
-                    title: 'Tarefas em aprovação',
-                    icon: 'info',
-                    html: htmlContent,
-                    confirmButtonText: 'OK'
-                });
             } else {
                 contadorTarefas.textContent = '';
                 console.log("Nenhuma tarefa pendente.");

@@ -329,6 +329,8 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
     const cep = document.getElementById("cep").textContent.trim();
     const cepCNPJ = document.getElementById("cepCNPJ").textContent.trim();
 
+
+
     const today = new Date();
     today.setDate(today.getDate() + 1); // Adiciona 1 dia
     const day = String(today.getDate()).padStart(2, '0');
@@ -418,7 +420,7 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
 
     // Parte 1: Texto do contrato
     // Definição das variáveis de texto
-    let text1 = "De um lado IMPROOV LTDA., CNPJ: 37.066.879/0001-84, com endereço/sede na RUA BAHIA, 988, SALA 304, BAIRRO DO SALTO, BLUMENAU, SC, CEP 89.031-001;Se seguir denominado simplesmente parte CONTRATANTE, neste ato representado por DIOGO JOSÉ POFFO, nacionalidade: brasileira, estado civil: divorciado, inscrito no CPF sob o nº. 036.698.519-17, residente e domiciliado na Avenida Senador Atílio Fontana, nº 2101 apt. 308 Edifício Caravelas, bairro Balneário Pereque – Porto Belo/SC – CEP 88210-000, doravante denominada parte CONTRATANTE.";
+    let text1 = "De um lado IMPROOV LTDA., CNPJ: 37.066.879/0001-84, com endereço/sede na RUA BAHIA, 988, SALA 503, BAIRRO DO SALTO, BLUMENAU, SC, CEP 89.031-001;Se seguir denominado simplesmente parte CONTRATANTE, neste ato representado por DIOGO JOSÉ POFFO, nacionalidade: brasileira, estado civil: divorciado, inscrito no CPF sob o nº. 036.698.519-17, residente e domiciliado na Avenida Senador Atílio Fontana, nº 2101 apt. 308 Edifício Caravelas, bairro Balneário Pereque – Porto Belo/SC – CEP 88210-000, doravante denominada parte CONTRATANTE.";
 
     let text2 = `De outro, ${nomeEmpresarial} ,CNPJ: ${cnpjColaborador}, com endereço/sede na ${enderecoColaborador}, CEP: ${cep} ; se seguir denominado simplesmente parte CONTRATADA; neste ato representado por ${nomeColaborador}, brasileiro(a), ${estadoCivil}, inscrito(a) no CPF sob  o nº. ${cpfColaborador}, residente e domiciliado na ${enderecoCNPJ} e CEP: ${cepCNPJ} doravante denominada parte CONTRATADA.`;
 
@@ -446,7 +448,7 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
     const headers = [];
     const rows = [];
     let totalValor = 0; // Inicializa o total em 0
-    let totalValorExtenso = "";
+
     let totalLinhas = 0;
     let rowNumber = 1; // Variável para a numeração das linhas
 
@@ -463,7 +465,7 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
         const cells = row.querySelectorAll('td');
         const dataPagamento = cells[dataPagamentoColumnIndex]?.innerText.trim(); // Data de pagamento
         if (dataPagamento === '0000-00-00' && row.style.display !== 'none') {
-            // if (row.style.display !== 'none') {
+        // if (row.style.display !== 'none') {
 
             const rowData = [];
 
@@ -488,7 +490,7 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
     });
 
     // totalValorExtenso = `${numeroPorExtenso(totalValor)} reais`;
-    totalValorExtenso = `Mil novecentos e vinte reais`;
+    // totalValorExtenso = `Mil novecentos e vinte reais`;
 
 
     // Adiciona a tabela ao documento PDF
@@ -507,37 +509,48 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
 
     }
 
-    // // Dados da nova tabela
-    // // const novaTabelaHeaders = ['Extra', 'Valor'];
-    // const novaTabelaHeaders = ['Categoria', 'Valor'];
-    // const novaTabelaBody = [
-    //     // ['Atendimento', '3000,00'],
-    //     ['Reembolso almoço', '220,00'],
-    //     ['Gasolina', '0,00'],
-    //     ['Diaria Drone', '0,00'],
-    //     // ['Outros', '490,00']
-    // ];
+    // Dados da nova tabela
+    // const novaTabelaHeaders = ['Extra', 'Valor'];
+    const novaTabelaHeaders = ['Categoria', 'Valor'];
+    const novaTabelaBody = [
+        ['Atendimento', '3000,00'],
+        // ['Reembolso almoço', '220,00'],
+        // ['Gasolina', '0,00'],
+        // ['Diaria Drone', '0,00'],
+        // ['Outros', '490,00']
+    ];
 
-    // // Adiciona nova tabela ao PDF
-    // doc.autoTable({
-    //     head: [novaTabelaHeaders],
-    //     body: novaTabelaBody,
-    //     startY: y, // Posiciona abaixo da tabela anterior
-    //     theme: 'grid',
-    //     headStyles: { fillColor: [0, 0, 0], textColor: [255, 255, 255] },
-    //     bodyStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0] },
-    //     margin: { top: 10, left: 20, right: 20 },
-    //     styles: { fontSize: 10, cellPadding: 2 }
-    // });
+    // Adiciona nova tabela ao PDF
+    doc.autoTable({
+        head: [novaTabelaHeaders],
+        body: novaTabelaBody,
+        startY: y, // Posiciona abaixo da tabela anterior
+        theme: 'grid',
+        headStyles: { fillColor: [0, 0, 0], textColor: [255, 255, 255] },
+        bodyStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0] },
+        margin: { top: 10, left: 20, right: 20 },
+        styles: { fontSize: 10, cellPadding: 2 }
+    });
 
     // Atualiza a posição Y para futuras adições no PDF (caso necessário)
     y = doc.lastAutoTable.finalY + 20;
 
+    const valorFixo = prompt("Digite o valor fixo (somente número):");
+    const totalValorExtenso = prompt(`Digite o valor por extenso: (totalValor = ${totalValor})`);
+
+    if (!valorFixo || isNaN(valorFixo)) {
+        alert("Por favor, insira um valor numérico válido.");
+        return;
+    }
+
+    const novoTotal = parseFloat(totalValor) + parseFloat(valorFixo);
+
+
     // Parte 3: Segunda parte do contrato
-    let text6 = `Cláusula 2ª - O CONTRATADO  declara que no dia ${day} de ${currentMonthName} de 2025, recebeu do CONTRATANTE o valor de R$ ${totalValor + 1600},00 (${totalValorExtenso}), pela entrega dos serviços acima referidos, e dá a mais ampla, geral e irrestrita quitação à dívida, renunciando seu direito de cobrança relativos a tais valores. `;
+    let text6 = `Cláusula 2ª - O CONTRATADO  declara que no dia ${day} de ${currentMonthName} de 2025, recebeu do CONTRATANTE o valor de R$ ${novoTotal},00 (${totalValorExtenso}), pela entrega dos serviços acima referidos, e dá a mais ampla, geral e irrestrita quitação à dívida, renunciando seu direito de cobrança relativos a tais valores. `;
     // let text6 = `O CONTRATADO declara que o contrato se extingue diante deste dando a mais ampla, geral e irrestrita quitação à qualquer dívida, renunciando seu direito de cobrança relativos a quaisquer valores referentes a este contrato. `;
 
-    let text7 = `E por estarem justas e perfeitamente acertadas, assinam o presente em 02 (duas) vias de igual teor e forma, vias na presença de 2 (duas) testemunhas.`;
+    let text7 = `E, assim, para que produza seus efeitos legais e jurídicos, por estarem juntas e contratadas, confirmamos, via assinatura eletrônica, nos moldes do art. 10 da MO 2.200/01 em vigor no Brasil, que estamos de acordo com o presente CONTRATO DE PRESTAÇÃO DE SERVIÇOS, e por estar plenamente cientes dos termos, reafirmamos o nosso dever de observar e fazer cumprir as cláusulas aqui estabelecidas, em vista de que possamos acessar a via do contrato através do endereço https://zapsign.com.br e gerar versão impressa do mesmo, considerado o fato de já tê-lo recebido por e-mail.`;
 
     let text8 = `Blumenau/SC, ${day} de ${currentMonthName} de 2025.`;
 
@@ -579,26 +592,36 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
     y += 40; // Espaço após a assinatura de IMPROOV LTDA.
 
     y += 40;
-    // Assinaturas das testemunhas (lado a lado)
-    const xTestemunha1 = 20;    // Posição para a primeira testemunha
-    const xTestemunha2 = 105;   // Posição para a segunda testemunha (ajustada para segunda coluna)
+    // // Assinaturas das testemunhas (lado a lado)
+    // const xTestemunha1 = 20;    // Posição para a primeira testemunha
+    // const xTestemunha2 = 105;   // Posição para a segunda testemunha (ajustada para segunda coluna)
 
-    // Testemunha 1
-    y = checkAndAddPageIfNeeded(doc, y); // Verifica se há espaço para a assinatura
-    doc.text("_________________________", xTestemunha1, y); // Linha de assinatura
-    doc.text("Testemunha 1", xTestemunha1, y + 8); // Nome da testemunha 1
-    doc.text("Nome completo:", xTestemunha1, y + 18); // Detalhes de testemunha 1
-    doc.text("CPF:", xTestemunha1, y + 28); // CPF de testemunha 1
+    // // Testemunha 1
+    // y = checkAndAddPageIfNeeded(doc, y); // Verifica se há espaço para a assinatura
+    // doc.text("_________________________", xTestemunha1, y); // Linha de assinatura
+    // doc.text("Testemunha 1", xTestemunha1, y + 8); // Nome da testemunha 1
+    // doc.text("Nome completo:", xTestemunha1, y + 18); // Detalhes de testemunha 1
+    // doc.text("CPF:", xTestemunha1, y + 28); // CPF de testemunha 1
 
-    // Testemunha 2 (na posição horizontal diferente, criando a coluna)
-    y = checkAndAddPageIfNeeded(doc, y); // Verifica se há espaço para a assinatura
-    doc.text("_________________________", xTestemunha2, y); // Linha de assinatura
-    doc.text("Testemunha 2", xTestemunha2, y + 8); // Nome da testemunha 2
-    doc.text("Nome completo:", xTestemunha2, y + 18); // Detalhes de testemunha 2
-    doc.text("CPF:", xTestemunha2, y + 28); // CPF de testemunha 2
+    // // Testemunha 2 (na posição horizontal diferente, criando a coluna)
+    // y = checkAndAddPageIfNeeded(doc, y); // Verifica se há espaço para a assinatura
+    // doc.text("_________________________", xTestemunha2, y); // Linha de assinatura
+    // doc.text("Testemunha 2", xTestemunha2, y + 8); // Nome da testemunha 2
+    // doc.text("Nome completo:", xTestemunha2, y + 18); // Detalhes de testemunha 2
+    // doc.text("CPF:", xTestemunha2, y + 28); // CPF de testemunha 2
+
+
+
+    const adendo = `
+        Valor total atualizado: R$ ${novoTotal},00<br>
+        Valor por extenso: ${totalValorExtenso} reais
+    `;
+
 
     // Gerar o PDF
     doc.save(`ADENDO_CONTRATUAL_${nomeColaborador}_${previousMonthName}_${year}.pdf`);
+
+    console.log(adendo)
 });
 
 

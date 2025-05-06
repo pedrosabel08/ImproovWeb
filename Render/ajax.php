@@ -60,7 +60,10 @@ if (isset($_POST['action'])) {
                 if ($conn->query($sql) === TRUE) {
                     echo json_encode(['status' => 'sucesso', 'message' => 'Render excluído com sucesso']);
                 } else {
-                    echo json_encode(['status' => 'erro', 'message' => 'Erro ao excluir o render']);
+                    echo json_encode([
+                        'status' => 'erro',
+                        'message' => 'Erro ao excluir o render: ' . $conn->error
+                    ]);
                 }
             }
             break;

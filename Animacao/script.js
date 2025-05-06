@@ -1,6 +1,5 @@
 var modal = document.getElementById("modal");
 var modal_imagem = document.getElementById("modal_imagem");
-var openModalBtn = document.getElementById("openModalBtn");
 var add_imagem = document.getElementById("add_imagem");
 var closeModal = document.getElementsByClassName("close")[0];
 var closeModalImagem = document.getElementsByClassName("close_imagem")[0];
@@ -28,10 +27,6 @@ function limparCamposImagem() {
     document.getElementById('imagem_nome').value = '';
 }
 
-openModalBtn.onclick = function () {
-    modal.style.display = "flex";
-    limparCampos();
-};
 
 add_imagem.onclick = function () {
     modal_imagem.style.display = "flex";

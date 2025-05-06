@@ -26,7 +26,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $senha = htmlspecialchars(trim($_POST['senha']));
 
     // Preparar a consulta SQL
-    $sql = "SELECT idusuario, nome_usuario, nivel_acesso, idcolaborador FROM usuario WHERE login = ? AND senha = ?";
+    $sql = "SELECT idusuario, nome_usuario, nivel_acesso, idcolaborador FROM usuario WHERE login = ? AND senha = ? AND ativo = 1";
     $stmt = $conn->prepare($sql);
     $stmt->bind_param("ss", $login, $senha);
     $stmt->execute();

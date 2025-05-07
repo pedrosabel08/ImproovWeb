@@ -509,28 +509,28 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
 
     }
 
-    // Dados da nova tabela
-    // const novaTabelaHeaders = ['Extra', 'Valor'];
-    const novaTabelaHeaders = ['Categoria', 'Valor'];
-    const novaTabelaBody = [
-        ['Atendimento', '3000,00'],
-        // ['Reembolso almoço', '220,00'],
-        // ['Gasolina', '0,00'],
-        // ['Diaria Drone', '0,00'],
-        // ['Outros', '490,00']
-    ];
+    // // Dados da nova tabela
+    // // const novaTabelaHeaders = ['Extra', 'Valor'];
+    // const novaTabelaHeaders = ['Categoria', 'Valor'];
+    // const novaTabelaBody = [
+    //     // ['Atendimento', '3000,00'],
+    //     // ['Reembolso almoço', '204,00'],
+    //     // ['Gasolina', '0,00'],
+    //     // ['Diaria Drone', '700,00'],
+    //     // ['Outros', '490,00']
+    // ];
 
-    // Adiciona nova tabela ao PDF
-    doc.autoTable({
-        head: [novaTabelaHeaders],
-        body: novaTabelaBody,
-        startY: y, // Posiciona abaixo da tabela anterior
-        theme: 'grid',
-        headStyles: { fillColor: [0, 0, 0], textColor: [255, 255, 255] },
-        bodyStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0] },
-        margin: { top: 10, left: 20, right: 20 },
-        styles: { fontSize: 10, cellPadding: 2 }
-    });
+    // // Adiciona nova tabela ao PDF
+    // doc.autoTable({
+    //     head: [novaTabelaHeaders],
+    //     body: novaTabelaBody,
+    //     startY: y, // Posiciona abaixo da tabela anterior
+    //     theme: 'grid',
+    //     headStyles: { fillColor: [0, 0, 0], textColor: [255, 255, 255] },
+    //     bodyStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0] },
+    //     margin: { top: 10, left: 20, right: 20 },
+    //     styles: { fontSize: 10, cellPadding: 2 }
+    // });
 
     // Atualiza a posição Y para futuras adições no PDF (caso necessário)
     y = doc.lastAutoTable.finalY + 20;

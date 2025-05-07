@@ -4,8 +4,14 @@ include 'conexao.php';
 
 $response = ["success" => false, "message" => "Erro ao atualizar informações."];
 
+if (!isset($_SESSION['idcolaborador'])) {
+    die("Erro: usuário não autenticado.");
+}
+
+
 if (isset($_SESSION['idusuario'])) {
     $usuario_id = $_SESSION['idusuario'];
+    $colaborador_id = $_SESSION['idcolaborador'];
 
     // Receber e validar os dados do formulário
     $nome = $_POST['nome'] ?? null;
@@ -31,10 +37,14 @@ if (isset($_SESSION['idusuario'])) {
     $data_nascimento = $_POST['data'] ?? null;
     $estado_civil = $_POST['estado_civil'] ?? null;
     $filhos = $_POST['filho'] ?? null;
+    $horario_disponivel = $_POST['horario_disponivel'] ?? '';
+    $modalidade         = $_POST['modalidade'] ?? '';
+    $tamanho_camisa     = $_POST['tamanho_camisa'] ?? '';
+    $tamanho_calcado    = $_POST['tamanho_calcado'] ?? '';
+    $observacoes        = $_POST['observacoes'] ?? '';
 
     // Atualizando o usuário (tabela usuario)
-    $queryUsuario = "
-        INSERT INTO usuario (idusuario, nome_usuario, senha, email)
+    $queryUsuario = "INSERT INTO usuario (idusuario, nome_usuario, senha, email)
         VALUES (?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE
             nome_usuario = VALUES(nome_usuario),
@@ -49,8 +59,7 @@ if (isset($_SESSION['idusuario'])) {
     $stmtUsuario->close();
 
     // Atualizando informações do usuário (tabela informacoes_usuario)
-    $queryInformacoes = "
-        INSERT INTO informacoes_usuario (usuario_id, telefone, data_nascimento, estado_civil, filhos, cnpj, nome_empresarial, nome_fantasia, cpf)
+    $queryInformacoes = "INSERT INTO informacoes_usuario (usuario_id, telefone, data_nascimento, estado_civil, filhos, cnpj, nome_empresarial, nome_fantasia, cpf)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE
             telefone = VALUES(telefone),
@@ -70,8 +79,7 @@ if (isset($_SESSION['idusuario'])) {
     $stmtInformacoes->close();
 
     // Atualizando o endereço (tabela endereco)
-    $queryEndereco = "
-        INSERT INTO endereco (usuario_id, rua, numero, bairro, complemento, cep)
+    $queryEndereco = "INSERT INTO endereco (usuario_id, rua, numero, bairro, complemento, cep)
         VALUES (?, ?, ?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE
             rua = VALUES(rua),
@@ -88,8 +96,7 @@ if (isset($_SESSION['idusuario'])) {
     $stmtEndereco->close();
 
     // Atualizando o endereço do CNPJ (tabela endereco_cnpj)
-    $queryEnderecoCnpj = "
-        INSERT INTO endereco_cnpj (usuario_id, rua_cnpj, numero_cnpj, bairro_cnpj, complemento_cnpj, cep_cnpj, uf_cnpj, localidade_cnpj)
+    $queryEnderecoCnpj = "INSERT INTO endereco_cnpj (usuario_id, rua_cnpj, numero_cnpj, bairro_cnpj, complemento_cnpj, cep_cnpj, uf_cnpj, localidade_cnpj)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE
             rua_cnpj = VALUES(rua_cnpj),
@@ -109,7 +116,41 @@ if (isset($_SESSION['idusuario'])) {
 
     $response["success"] = true;
     $response["message"] = "Informações atualizadas com sucesso!";
+
+    $sql = "INSERT INTO perfil_colaborador (
+        colaborador_id, 
+        horario_disponivel, 
+        modalidade, 
+        tamanho_camisa, 
+        tamanho_calcado, 
+        observacoes
+    ) VALUES (?, ?, ?, ?, ?, ?)
+    ON DUPLICATE KEY UPDATE 
+        horario_disponivel = VALUES(horario_disponivel),
+        modalidade = VALUES(modalidade),
+        tamanho_camisa = VALUES(tamanho_camisa),
+        tamanho_calcado = VALUES(tamanho_calcado),
+        observacoes = VALUES(observacoes)";
+
+    $stmt = $conn->prepare($sql);
+    if ($stmt === false) {
+        die("Erro ao preparar a query: " . $conn->error);
+    }
+
+    $stmt->bind_param(
+        "isssss",
+        $colaborador_id,
+        $horario_disponivel,
+        $modalidade,
+        $tamanho_camisa,
+        $tamanho_calcado,
+        $observacoes
+    );
+
+    $stmt->execute();
+    $stmt->close();
 } else {
+
     $response["message"] = "Usuário não autenticado.";
 }
 

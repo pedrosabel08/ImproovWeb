@@ -59,9 +59,9 @@ document.getElementById("userForm").addEventListener("submit", function (e) {
 
             // Opcional: limpar os campos ou realizar outras ações após a resposta
             if (data.success) {
-                setTimeout(function () {
-                    window.location.reload(); // Recarrega a página
-                }, 3000); // Aguarda o tempo do Toastify (3 segundos)
+                // setTimeout(function () {
+                //     window.location.reload(); // Recarrega a página
+                // }, 3000); // Aguarda o tempo do Toastify (3 segundos)
 
             }
         })

@@ -10,6 +10,7 @@ include 'conexao.php';
 
 // Obter informações do usuário
 $usuario_id = $_SESSION['idusuario'];
+$colaborador_id = $_SESSION['idcolaborador'];
 $query = "
     SELECT 
         u.nome_usuario,
@@ -54,8 +55,18 @@ $stmt->execute();
 $result = $stmt->get_result();
 $userData = $result->fetch_assoc();
 
-
 $stmt->close();
+
+$sql = "SELECT * FROM perfil_colaborador WHERE colaborador_id = ?";
+// Prepara a consulta
+$stmt2 = $conn->prepare($sql);
+$stmt2->bind_param("i", $colaborador_id);
+$stmt2->execute();
+$result2 = $stmt2->get_result();
+$perfilData = $result2->fetch_assoc();
+
+
+$stmt2->close();
 $conn->close();
 ?>
 
@@ -220,9 +231,66 @@ $conn->close();
                 </div>
             </fieldset>
 
+            <fieldset class="mb-6">
+                <legend class="text-2xl font-bold mb-4">Perfil do Colaborador</legend>
+
+                <div class="mb-4">
+                    <h3 class="text-lg mb-2">Horário Disponível:</h3>
+                    <input class="border border-black w-full p-2 rounded"
+                        type="text"
+                        name="horario_disponivel"
+                        id="horario_disponivel"
+                        placeholder="Ex: Seg a Sex, 09h às 18h"
+                        value="<?php echo htmlspecialchars($perfilData['horario_disponivel'] ?? ''); ?>">
+                </div>
+
+                <div class="mb-4">
+                    <h3 class="text-lg mb-2">Modalidade:</h3>
+                    <select class="border border-black w-full p-2 rounded"
+                        name="modalidade"
+                        id="modalidade">
+                        <?php
+                        $modalidades = ['Presencial', 'Híbrido', 'Remoto'];
+                        foreach ($modalidades as $modo) {
+                            $selected = ($perfilData['modalidade'] ?? '') === $modo ? 'selected' : '';
+                            echo "<option value=\"$modo\" $selected>$modo</option>";
+                        }
+                        ?>
+                    </select>
+                </div>
+
+                <div class="mb-4">
+                    <h3 class="text-lg mb-2">Tamanho da Camisa:</h3>
+                    <input class="border border-black w-full p-2 rounded"
+                        type="text"
+                        name="tamanho_camisa"
+                        id="tamanho_camisa"
+                        placeholder="Ex: P, M, G, GG"
+                        value="<?php echo htmlspecialchars($perfilData['tamanho_camisa'] ?? ''); ?>">
+                </div>
+
+                <div class="mb-4">
+                    <h3 class="text-lg mb-2">Tamanho do Calçado:</h3>
+                    <input class="border border-black w-full p-2 rounded"
+                        type="text"
+                        name="tamanho_calcado"
+                        id="tamanho_calcado"
+                        placeholder="Ex: 37, 38, 39, 40"
+                        value="<?php echo htmlspecialchars($perfilData['tamanho_calcado'] ?? ''); ?>">
+                </div>
+
+                <div class="mb-4">
+                    <h3 class="text-lg mb-2">Observações:</h3>
+                    <textarea class="border border-black w-full p-2 rounded"
+                        name="observacoes"
+                        id="observacoes"
+                        rows="4"
+                        placeholder="Informe alergias, restrições alimentares, preferências, entre outras observações."><?php echo htmlspecialchars(trim($perfilData['observacoes'] ?? '')); ?></textarea>
+                </div>
+            </fieldset>
+
             <div class="mt-6">
-                <button type="submit" class="bg-blue-500 text-white py-2 px-4 rounded w-full">Atualizar
-                    informações</button>
+                <button type="submit" class="bg-blue-500 text-white py-2 px-4 rounded w-full">Atualizar informações</button>
             </div>
         </form>
     </div>

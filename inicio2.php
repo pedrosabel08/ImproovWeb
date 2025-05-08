@@ -9,6 +9,25 @@ if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
 }
 
 $idusuario = $_SESSION['idusuario'];
+$tela_atual = basename($_SERVER['PHP_SELF']);
+$ultima_atividade = date('Y-m-d H:i:s');
+
+$sql2 = "UPDATE logs_usuarios 
+         SET tela_atual = ?, ultima_atividade = ?
+         WHERE usuario_id = ?";
+$stmt2 = $conn->prepare($sql2);
+
+if (!$stmt2) {
+    die("Erro no prepare: " . $conn->error);
+}
+
+// 'ssi' indica os tipos: string, string, integer
+$stmt2->bind_param("ssi", $tela_atual, $ultima_atividade, $idusuario);
+
+if (!$stmt2->execute()) {
+    die("Erro no execute: " . $stmt2->error);
+}
+
 $nome_usuario = $_SESSION['nome_usuario'];
 $idcolaborador = $_SESSION['idcolaborador'];
 

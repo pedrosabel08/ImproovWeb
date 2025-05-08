@@ -514,9 +514,9 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
     // const novaTabelaHeaders = ['Categoria', 'Valor'];
     // const novaTabelaBody = [
     //     // ['Atendimento', '3000,00'],
-    //     // ['Reembolso almoço', '204,00'],
-    //     // ['Gasolina', '0,00'],
-    //     // ['Diaria Drone', '700,00'],
+    //     ['Reembolso almoço', '220,00'],
+    //     ['Gasolina', '22,00'],
+    //     ['Diaria Drone', '175,00'],
     //     // ['Outros', '490,00']
     // ];
 

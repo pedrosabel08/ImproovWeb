@@ -83,37 +83,41 @@ function adicionarDiasUteis($dataInicial, $diasUteis)
     $diasAdicionados = 0;
     $data = strtotime($dataInicial);
 
-    // Lista de feriados fixos (formato MM-DD)
+    $diasUteisContados = []; // Array para armazenar os dias úteis
+
     $feriadosFixos = [
-        '01-01', // Confraternização Universal
-        '04-21', // Tiradentes
-        '05-01', // Dia do Trabalho
-        '09-07', // Independência do Brasil
-        '10-12', // Nossa Senhora Aparecida
-        '11-02', // Finados
-        '11-15', // Proclamação da República
-        '12-25', // Natal
+        '01-01',
+        '04-21',
+        '05-01',
+        '09-07',
+        '10-12',
+        '11-02',
+        '11-15',
+        '12-25',
     ];
 
     while ($diasAdicionados < $diasUteis) {
         $data = strtotime("+1 day", $data);
         $diaSemana = date('N', $data);
         $mesDia = date('m-d', $data);
+        $dataFormatada = date('Y-m-d', $data);
         $ano = date('Y', $data);
 
-        // Verifica se é final de semana
         if ($diaSemana >= 6) continue;
-
-        // Verifica se é feriado fixo
         if (in_array($mesDia, $feriadosFixos)) continue;
-
-        // Verifica se é feriado móvel (tipo Páscoa, Corpus Christi...)
-        if (in_array(date('Y-m-d', $data), feriadosMoveis($ano))) continue;
+        if (in_array($dataFormatada, feriadosMoveis($ano))) continue;
 
         $diasAdicionados++;
+        $diasUteisContados[] = $dataFormatada;
     }
 
-    return date('Y-m-d', $data);
+    // Exibir os dias úteis
+    echo "Dias úteis contados a partir de {$dataInicial}:\n";
+    foreach ($diasUteisContados as $i => $dia) {
+        echo str_pad($i + 1, 2, '0', STR_PAD_LEFT) . " → $dia\n";
+    }
+
+    return end($diasUteisContados); // Retorna o último dia útil
 }
 
 function feriadosMoveis($ano)
@@ -187,6 +191,8 @@ while ($row = $result->fetch_assoc()) {
     ");
     $updatePrazoStmt->bind_param('ssssi', $dataRecebimento, $dataRecebimento, $novoPrazo, $tipoImagem, $obraId);
     $updatePrazoStmt->execute();
+
+    echo "Tipo: {$tipoImagem} | Data de Recebimento: {$dataRecebimento} | Dias Úteis: {$diasUteis} | Novo Prazo: {$novoPrazo}<br>";
 }
 
 // Verificar se existe alguma data de recebimento válida para os outros tipos (base para Planta Humanizada)

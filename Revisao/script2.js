@@ -1117,9 +1117,15 @@ btnBack.addEventListener('click', function () {
     comentariosDiv.innerHTML = '';
 });
 
-// Adiciona o evento para a tecla Esc
 document.addEventListener('keydown', function (event) {
-    if (event.key === 'Escape') { // Verifica se a tecla pressionada é Esc
+    if (event.key === 'Escape') {
+        const comentarioModal = document.getElementById("comentarioModal");
+
+        if (comentarioModal.style.display === 'flex') {
+            comentarioModal.style.display = 'none';
+            return; // Interrompe aqui se o modal estava visível
+        }
+
         const main = document.querySelector('.main');
         main.classList.remove('hidden');
 
@@ -1133,6 +1139,7 @@ document.addEventListener('keydown', function (event) {
         comentariosDiv.innerHTML = '';
     }
 });
+
 
 const id_revisao = document.getElementById('id_revisao');
 

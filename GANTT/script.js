@@ -25,6 +25,7 @@ fetch('tabela.php')
 
         const datas = [];
         const startDate = new Date(primeiraData);
+        startDate.setDate(startDate.getDate() + 1);
         const endDate = new Date(ultimaData);
         while (startDate <= endDate) {
             datas.push(new Date(startDate));
@@ -37,11 +38,8 @@ fetch('tabela.php')
         // Cabeçalho
         const headerRow = document.createElement('tr');
         const headerCell = document.createElement('th');
-        const headerCell2 = document.createElement('th');
         headerCell.textContent = 'Tipo de Imagem';
-        headerCell2.textContent = 'Nome da Imagem';
         headerRow.appendChild(headerCell);
-        headerRow.appendChild(headerCell2);
 
         datas.forEach(data => {
             const dateCell = document.createElement('th');
@@ -83,35 +81,72 @@ fetch('tabela.php')
                     tipoCell.style.writingMode = 'sideways-lr'; // Rotacionar o texto
                 }
 
-                // Adicionar a célula do nome da imagem
-                const nameCell = document.createElement('td');
-                nameCell.textContent = imagemNome;
-                row.appendChild(nameCell);
+                // // Adicionar a célula do nome da imagem
+                // const nameCell = document.createElement('td');
+                // nameCell.textContent = imagemNome;
+                // row.appendChild(nameCell);
 
                 // Adicionar as etapas, se existirem
                 if (etapas[tipoImagem] && firstRow) {
-                    etapas[tipoImagem].forEach(etapa => {
-                        const dataInicio = new Date(etapa.data_inicio);
-                        const dataFim = new Date(etapa.data_fim);
+                    const etapasTipo = etapas[tipoImagem];
 
-                        // Calcular o índice da data de início e fim em relação ao array de datas
-                        const indexInicio = datas.findIndex(d => d.getTime() === dataInicio.getTime());
-                        const indexFim = datas.findIndex(d => d.getTime() === dataFim.getTime());
+                    if (etapasTipo.length > 0) {
+                        // Cálculo do espaço vazio antes da primeira etapa
+                        const primeiraEtapa = etapasTipo[0];
+                        const dataInicioPrimeiraEtapa = new Date(primeiraEtapa.data_inicio);
+                        const indexInicioEtapa = datas.findIndex(d => d.getTime() === dataInicioPrimeiraEtapa.getTime());
 
-                        const colspan = indexFim - indexInicio + 1;
+                        if (indexInicioEtapa > 0) {
+                            const emptyBefore = document.createElement('td');
+                            emptyBefore.setAttribute('colspan', indexInicioEtapa + 1);
+                            emptyBefore.setAttribute('rowspan', rowSpan);
+                            row.appendChild(emptyBefore);
+                        }
 
-                        const etapaCell = document.createElement('td');
-                        etapaCell.setAttribute('colspan', colspan);
-                        etapaCell.setAttribute('rowspan', rowSpan); // Adicionar rowspan para etapas
-                        etapaCell.className = etapa.etapa
-                            .toLowerCase()
-                            .normalize('NFD')
-                            .replace(/[\u0300-\u036f]/g, '')
-                            .replace(/\s/g, '')
-                            .replace(/[^a-z0-9]/g, '');
-                        etapaCell.textContent = etapa.etapa;
-                        row.appendChild(etapaCell);
-                    });
+                        etapasTipo.forEach(etapa => {
+                            const dataInicio = new Date(etapa.data_inicio);
+                            const dataFim = new Date(etapa.data_fim);
+
+                            const indexInicio = datas.findIndex(d => d.getTime() === dataInicio.getTime());
+                            const indexFim = datas.findIndex(d => d.getTime() === dataFim.getTime());
+
+                            const colspan = indexFim - indexInicio + 1;
+
+                            const etapaCell = document.createElement('td');
+                            etapaCell.setAttribute('colspan', colspan);
+                            etapaCell.setAttribute('rowspan', rowSpan);
+                            etapaCell.className = etapa.etapa
+                                .toLowerCase()
+                                .normalize('NFD')
+                                .replace(/[\u0300-\u036f]/g, '')
+                                .replace(/\s/g, '')
+                                .replace(/[^a-z0-9]/g, '');
+                            etapaCell.textContent = etapa.etapa;
+                            // Atribuição de colaborador ao clicar
+                            etapaCell.onclick = (event) => {
+                                etapaAtual = etapa;
+
+                                const rect = event.target.getBoundingClientRect();
+                                const modal = document.getElementById("colaboradorModal");
+                                select.value = '';
+
+                                modal.style.position = "absolute";
+
+                                // Decide se o modal aparece à direita ou à esquerda, dependendo do espaço disponível
+                                const isRightSpace = rect.right + modal.offsetWidth < window.innerWidth;
+                                modal.style.left = isRightSpace
+                                    ? `${rect.right + 10}px`
+                                    : `${rect.left - modal.offsetWidth - 10}px`;
+
+                                modal.style.top = `${rect.top + window.scrollY}px`;
+                                modal.style.display = "block";
+
+
+                            };
+
+                            row.appendChild(etapaCell);
+                        });
+                    }
                 }
 
                 // Adicionar células vazias para os dias restantes
@@ -141,6 +176,50 @@ fetch('tabela.php')
         table.appendChild(tbody);
     })
     .catch(error => console.error('Erro ao carregar os dados:', error));
+
+
+const modal = document.getElementById("colaboradorModal");
+const confirmarBtn = document.getElementById("confirmarBtn");
+const select = document.getElementById("colaborador_id");
+let etapaAtual = null;
+
+
+confirmarBtn.onclick = () => {
+    const colaboradorId = select.value;
+    if (colaboradorId && etapaAtual) {
+        fetch('atribuir_colaborador.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                gantt_id: etapaAtual.id,
+                colaborador_id: colaboradorId
+            })
+        })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                modal.style.display = "none";
+            })
+            .catch(error => alert("Erro ao atribuir colaborador."));
+    }
+};
+
+document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape') {
+
+        modal.style.display = 'none';
+
+    }
+});
+
+window.addEventListener('click', function (event) {
+    if (event.target == modal) {
+        modal.style.display = 'none';
+
+    }
+});
+
+
 
 
 function calcularFeriadosMoveis(ano) {

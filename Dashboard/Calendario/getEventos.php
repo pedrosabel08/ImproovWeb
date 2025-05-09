@@ -5,7 +5,15 @@ $obraId = $_GET['obraId'] ?? 0;
 $eventos = [];
 
 // Eventos do banco de eventos_obra
-$sql = "SELECT id, descricao, data_evento AS start, tipo_evento FROM eventos_obra WHERE obra_id = ?";
+$sql = "SELECT 
+  MIN(id) AS id, 
+  descricao, 
+  data_evento AS start, 
+  tipo_evento 
+FROM eventos_obra 
+WHERE obra_id = ? 
+GROUP BY descricao, data_evento, tipo_evento";
+
 $stmt = $conn->prepare($sql);
 $stmt->bind_param("i", $obraId);
 $stmt->execute();

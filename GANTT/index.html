@@ -21,6 +21,11 @@
             max-width: 100%;
             margin: 0 auto;
         }
+
+        .fc th,
+        .fc td {
+            width: 50px;
+        }
     </style>
 </head>
 
@@ -59,27 +64,23 @@
                         headerToolbar: {
                             left: 'prev,next today',
                             center: 'title',
-                            right: 'timeGridWeek,timeGridDay'  // Alterna entre semana e dia
                         },
-                        initialView: 'timeGrid',  // Define a visualização inicial
-                        duration: { days: 50 },  // Exibe 50 dias contínuos
-                        events: events,  // Passa os eventos para o calendário
-                        eventTimeFormat: {  // Formato de exibição de horário
-                            hour: 'numeric',
-                            minute: '2-digit',
-                            meridiem: 'short'
-                        },
-                        eventDisplay: 'block',  // Exibe eventos como blocos
-                        eventDurationEditable: true,  // Permite editar a duração do evento
+                        initialView: 'dayGrid',
+                        duration: { days: 50 },  // Duração personalizada de 50 dias
+                        events: events.map(event => ({
+                            ...event,
+                            allDay: true  // Todos os eventos serão do tipo "all day"
+                        })),
                         views: {
-                            timeGrid: {
-                                buttonText: 'Vista Contínua',
-                                duration: { days: 50 },  // Especifica a duração contínua de 50 dias
-                            },
-                        }
-                    });
+                            dayGrid: {
+                                type: 'dayGrid',
+                                duration: { days: 50 },
+                            }
+                        },
+                        dayHeaderFormat: { day: '2-digit', month: '2-digit' }
 
-                    calendar.render(); // Renderiza o calendário
+                    });
+                    calendar.render();
                 },
                 error: function (xhr, status, error) {
                     console.error('Erro ao carregar os dados do PHP: ' + error);

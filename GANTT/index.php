@@ -51,6 +51,20 @@ $conn->close();
         </div>
     </div>
 
+    <div id="colaboradorModal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <label for="colaboradorInput">ID do Colaborador:</label>
+            <select name="colaborador_id" id="colaborador_id">
+                <?php foreach ($colaboradores as $colab): ?>
+                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+            <button id="confirmarBtn">Atribuir</button>
+        </div>
+    </div>
+
     <script src="../script/sidebar.js"></script>
 </body>
 

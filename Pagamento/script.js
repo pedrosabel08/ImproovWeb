@@ -332,14 +332,14 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
 
 
     const today = new Date();
-    today.setDate(today.getDate() + 1); // Adiciona 1 dia
+    today.setDate(today.getDate() + 0); // Adiciona 1 dia
     const day = String(today.getDate()).padStart(2, '0');
 
     // Obtém o número do mês (0 = Janeiro, 11 = Dezembro)
     const currentMonthIndex = today.getMonth();
 
     // Calcula o índice do mês anterior
-    const previousMonthIndex = currentMonthIndex === 0 ? 11 : currentMonthIndex - 1;
+    const previousMonthIndex = currentMonthIndex === 0 ? 11 : currentMonthIndex - 2;
 
     // Lista dos nomes dos meses
     const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];

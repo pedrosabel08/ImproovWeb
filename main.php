@@ -641,7 +641,7 @@ include 'sidebar.php';
                 </select>
             </div>
 
-            <div class="filtro-item">
+            <!-- <div class="filtro-item">
                 <label for="prioridadeSelect">Prioridade:</label>
                 <select id="prioridadeSelect">
                     <option value="0">Todas:</option>
@@ -649,7 +649,7 @@ include 'sidebar.php';
                     <option value="2">Média</option>
                     <option value="3">Baixa</option>
                 </select>
-            </div>
+            </div> -->
         </div>
 
         <div class="image-count">
@@ -674,7 +674,7 @@ include 'sidebar.php';
         <table id="tabela-colab">
             <thead>
                 <tr>
-                    <th>Prioridade</th>
+                    <!-- <th>Prioridade</th> -->
                     <th id="nome">Nome da Imagem</th>
                     <th>Função</th>
                     <th>Status</th>

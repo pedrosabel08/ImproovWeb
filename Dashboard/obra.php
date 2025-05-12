@@ -882,7 +882,12 @@ $conn->close();
                 </div>
                 <div class="buttons">
                     <button type="button" id="btnAnterior" style="background: white; color: black"><i class="fa-solid fa-angle-left"></i></button>
-                    <button type="submit" id="salvar_funcoes" class="buttons-form-add">Salvar</button>
+                    <div>
+                        <button type="submit" id="salvar_funcoes" class="buttons-form-add">Salvar</button>
+                        <div id="loadingBar" style="display: none;">
+                            <div class="progress"></div>
+                        </div>
+                    </div>
                     <button type="button" id="btnProximo" style="background: white; color: black"><i class="fa-solid fa-angle-right"></i></button>
                 </div>
             </div>

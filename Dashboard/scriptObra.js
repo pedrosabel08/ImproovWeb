@@ -1259,6 +1259,9 @@ document.getElementById("salvar_funcoes").addEventListener("click", function (ev
         status_id: document.getElementById("opcao_status").value || ""
     };
 
+    const loadingBar = document.getElementById('loadingBar');
+    loadingBar.style.display = 'block'; // mostra a barra
+
     function enviarFormulario() {
         $.ajax({
             type: "POST",
@@ -1286,6 +1289,9 @@ document.getElementById("salvar_funcoes").addEventListener("click", function (ev
                     backgroundColor: "red",
                     stopOnFocus: true,
                 }).showToast();
+            },
+            complete: function () {
+                loadingBar.style.display = 'none'; // mostra a barra
             }
         });
     }
@@ -1357,6 +1363,10 @@ document.getElementById("salvar_funcoes").addEventListener("click", function (ev
             })
             .catch(error => {
                 console.error('Erro:', error);
+            })
+            .finally(() => {
+                loadingBar.style.display = 'none'; // mostra a barra
+
             });
 
     }
@@ -1415,6 +1425,10 @@ document.getElementById("salvar_funcoes").addEventListener("click", function (ev
                     gravity: "top",
                     position: "right"
                 }).showToast();
+            })
+            .finally(() => {
+                loadingBar.style.display = 'none'; // mostra a barra
+
             });
     }
 });

@@ -158,6 +158,8 @@ function atualizarTabela() {
                                 const etapaCell = document.createElement('td');
                                 etapaCell.setAttribute('colspan', colspan);
                                 etapaCell.setAttribute('rowspan', rowSpan);
+                                etapaCell.setAttribute('data-inicio', etapa.data_inicio);
+                                etapaCell.setAttribute('data-fim', etapa.data_fim);
                                 etapaCell.className = etapa.etapa
                                     .toLowerCase()
                                     .normalize('NFD')
@@ -174,22 +176,65 @@ function atualizarTabela() {
 
                                 etapaCell.contentEditable = false;
 
+                                const etapaParaFuncao = {
+                                    "Caderno": 1,
+                                    "Modelagem": 2,
+                                    "Composição": 3,
+                                    "Finalização": 4,
+                                    "Pós-Produção": 5,
+                                    "Alteração": 6,
+                                    "Planta Humanizada": 7,
+                                    "Filtro de assets": 8
+                                };
+
                                 etapaCell.oncontextmenu = (event) => {
                                     event.preventDefault();
                                     etapaAtual = etapa;
 
-                                    const rect = event.target.getBoundingClientRect();
-                                    const modal = document.getElementById("colaboradorModal");
-                                    select.value = '';
+                                    const nomeEtapa = etapa.etapa;
+                                    const funcaoId = etapaParaFuncao[nomeEtapa];
+                                    const dataInicio = etapaCell.getAttribute('data-inicio');
+                                    const dataFim = etapaCell.getAttribute('data-fim');
 
-                                    modal.style.position = "absolute";
-                                    const isRightSpace = rect.right + modal.offsetWidth < window.innerWidth;
-                                    modal.style.left = isRightSpace
-                                        ? `${rect.right + 10}px`
-                                        : `${rect.left - modal.offsetWidth - 10}px`;
+                                    const select = document.getElementById("colaborador_id");
+                                    select.innerHTML = ""; // Limpa todas as opções
 
-                                    modal.style.top = `${rect.top + window.scrollY}px`;
-                                    modal.style.display = "block";
+                                    const defaultOption = document.createElement("option");
+                                    defaultOption.value = "";
+                                    defaultOption.textContent = "Selecione";
+                                    defaultOption.disabled = true;
+                                    defaultOption.selected = true;
+                                    select.appendChild(defaultOption);
+
+                                    if (!funcaoId) {
+                                        console.warn(`Função não encontrada para a etapa: ${nomeEtapa}`);
+                                        return;
+                                    }
+
+
+                                    fetch(`get_colaboradores_por_funcao.php?funcao_id=${funcaoId}&data_inicio=${dataInicio}&data_fim=${dataFim}`)
+                                        .then(res => res.json())
+                                        .then(colaboradores => {
+                                            colaboradores.forEach(colab => {
+                                                const option = document.createElement("option");
+                                                option.value = colab.idcolaborador;
+                                                option.textContent = colab.nome_colaborador + (colab.ocupado ? ` ${(colab.nomenclatura)}` : "");
+                                                option.disabled = colab.ocupado; // opcional, desabilita se já estiver ocupado
+                                                select.appendChild(option);
+                                            });
+
+                                            // Exibir o modal
+                                            const rect = event.target.getBoundingClientRect();
+                                            const modal = document.getElementById("colaboradorModal");
+                                            modal.style.position = "absolute";
+                                            const isRightSpace = rect.right + modal.offsetWidth < window.innerWidth;
+                                            modal.style.left = isRightSpace
+                                                ? `${rect.right + 10}px`
+                                                : `${rect.left - modal.offsetWidth - 10}px`;
+                                            modal.style.top = `${rect.top + window.scrollY}px`;
+                                            modal.style.display = "block";
+                                        })
+                                        .catch(err => console.error("Erro ao buscar colaboradores:", err));
                                 };
 
                                 // Implementação do arrasto horizontal

@@ -6,7 +6,8 @@ $eventos = [];
 // Buscar apenas eventos do tipo 'Entrega' de todas as obras
 $sql = "SELECT id, descricao, data_evento AS start, tipo_evento 
         FROM eventos_obra 
-        WHERE tipo_evento = 'Entrega'";
+        WHERE tipo_evento = 'Entrega'
+GROUP BY descricao, data_evento, tipo_evento";
 
 $result = $conn->query($sql);
 

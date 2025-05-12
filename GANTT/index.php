@@ -29,10 +29,13 @@ $conn->close();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tabela de Imagens e Etapas</title>
+    <title>GANTT</title>
     <script defer src="script.js"></script>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="../css/styleSidebar.css">
+    <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
+        type="image/x-icon">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
 
 </head>
 
@@ -46,6 +49,12 @@ $conn->close();
     <div class="container">
 
         <h2>GANTT - <span id="nomenclatura"></span></h2>
+        <select name="opcao" id="opcao_obra">
+            <?php foreach ($obras as $obra): ?>
+                <option value="<?= $obra['idobra']; ?>"><?= htmlspecialchars($obra['nomenclatura']); ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
         <div id="tabela-container">
             <table id="gantt"></table>
         </div>
@@ -66,6 +75,8 @@ $conn->close();
     </div>
 
     <script src="../script/sidebar.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 </body>
 
 </html>

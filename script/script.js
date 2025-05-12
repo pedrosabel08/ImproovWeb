@@ -813,7 +813,7 @@ document.addEventListener('DOMContentLoaded', () => {
         var obraId = document.getElementById('obraSelect').value;
         var funcaoId = document.getElementById('funcaoSelect').value;
         var status = document.getElementById('statusSelect').value;
-        var prioridade = document.getElementById('prioridadeSelect').value;
+        // var prioridade = document.getElementById('prioridadeSelect').value;
 
         var url = `getFuncoesPorColaborador.php?colaborador_id=${colaboradorId}`;
         if (mes) url += `&mes=${encodeURIComponent(mes)}`;
@@ -821,7 +821,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (obraId) url += `&obra_id=${encodeURIComponent(obraId)}`;
         if (funcaoId) url += `&funcao_id=${encodeURIComponent(funcaoId)}`;
         if (status) url += `&status=${encodeURIComponent(status)}`;
-        if (prioridade) url += `&prioridade=${encodeURIComponent(prioridade)}`;
+        // if (prioridade) url += `&prioridade=${encodeURIComponent(prioridade)}`;
 
         fetch(url)
             .then(response => response.json())
@@ -842,9 +842,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     var prioridadeCor = item.prioridade == 3 ? 'yellow' :
                         item.prioridade == 2 ? 'orange' : 'red';
 
-                    var cellPrioridade = document.createElement('td');
-                    cellPrioridade.textContent = prioridadeTexto;
-                    cellPrioridade.style.backgroundColor = prioridadeCor;
+                    // var cellPrioridade = document.createElement('td');
+                    // cellPrioridade.textContent = prioridadeTexto;
+                    // cellPrioridade.style.backgroundColor = prioridadeCor;
 
                     var cellNomeImagem = document.createElement('td');
                     cellNomeImagem.textContent = item.imagem_nome;
@@ -870,7 +870,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     var cellPrazoImagem = document.createElement('td');
                     cellPrazoImagem.textContent = item.prazo;
 
-                    row.appendChild(cellPrioridade);
+                    // row.appendChild(cellPrioridade);
                     row.appendChild(cellNomeImagem);
                     row.appendChild(cellFuncao);
                     row.appendChild(cellStatus);

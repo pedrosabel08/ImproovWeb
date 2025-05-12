@@ -54,7 +54,7 @@ if ($prioridade) {
     $sql .= " AND pc.prioridade = ?";
 }
 
-$sql .= " ORDER BY FIELD(fi.status,'Não iniciado', 'Em andamento', 'Ajuste', 'Em aprovação', 'Aprovado com ajustes', 'Aprovado', 'Finalizado'), imagem_id, obra_id";
+$sql .= " ORDER BY obra_id, FIELD(fi.status,'Não iniciado', 'Em andamento', 'Ajuste', 'Em aprovação', 'Aprovado com ajustes', 'Aprovado', 'Finalizado'), imagem_id";
 
 $stmt = $conn->prepare($sql);
 

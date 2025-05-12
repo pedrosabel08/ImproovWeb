@@ -901,7 +901,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('obraSelect').addEventListener('change', () => carregarDados());
     document.getElementById('funcaoSelect').addEventListener('change', () => carregarDados());
     document.getElementById('statusSelect').addEventListener('change', () => carregarDados());
-    document.getElementById('prioridadeSelect').addEventListener('change', () => carregarDados());
+    // document.getElementById('prioridadeSelect').addEventListener('change', () => carregarDados());
 });
 
 function toggleNav() {

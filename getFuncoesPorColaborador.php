@@ -117,23 +117,25 @@ foreach ($funcoes as $funcao) {
     $imagemId = $funcao['imagem_id']; // Adicionando o ID da imagem para a consulta
 
     // Verificando a função anterior com base no array $ordemFuncoes
-    $ordem = array_keys($ordemFuncoes); // Invertendo o array para facilitar a busca
-    $indiceAtual = array_search($funcaoAtualId, $ordem);
+    // Verifica a função anterior com base na ordem definida
+    $ordemIds = array_keys($ordemFuncoes);
+    $indiceAtual = array_search($funcaoAtualId, $ordemIds);
 
     $statusAnterior = null;
     $liberada = false;
     $funcaoAnteriorId = null;
     $prazoAnterior = null;
 
-    if ($indiceAtual !== false) {
-        // Tentar pegar a última função anterior válida
+    if ($indiceAtual !== false && $indiceAtual > 0) {
+        // Percorrer em ordem decrescente até encontrar uma função anterior válida
         for ($i = $indiceAtual - 1; $i >= 0; $i--) {
-            $funcaoAnteriorId = $ordem[$i];
+            $funcaoAnteriorId = $ordemIds[$i];
 
-            // Agora buscamos o status da função anterior
-            $sqlAnterior = "SELECT fi.status, fi.prazo
-                            FROM funcao_imagem fi
-                            WHERE fi.imagem_id = ? AND fi.funcao_id = ?";
+            // Buscar a função anterior apenas da MESMA imagem
+            $sqlAnterior = "SELECT status, prazo 
+                        FROM funcao_imagem 
+                        WHERE imagem_id = ? AND funcao_id = ? LIMIT 1";
+
             $stmtAnterior = $conn->prepare($sqlAnterior);
             $stmtAnterior->bind_param('ii', $imagemId, $funcaoAnteriorId);
             $stmtAnterior->execute();
@@ -142,18 +144,19 @@ foreach ($funcoes as $funcao) {
             if ($rowAnterior = $resultAnterior->fetch_assoc()) {
                 $statusAnterior = $rowAnterior['status'];
                 $prazoAnterior = $rowAnterior['prazo'];
+
+                if (in_array($statusAnterior, ['Finalizado', 'Aprovado', 'Aprovado com ajustes'])) {
+                    $liberada = true;
+                }
+
                 $stmtAnterior->close();
-                break; // Encontrou a função anterior válida, sair do loop
+                break;
             }
 
             $stmtAnterior->close();
         }
     }
 
-    // Verificando se a imagem pode ser liberada
-    if ($statusAnterior && ($statusAnterior == 'Finalizado' || $statusAnterior == 'Aprovado' || $statusAnterior = 'Aprovado com ajustes')) {
-        $liberada = true;
-    }
 
     // Adicionando a função ao response com o status de "liberação" da imagem e status anterior
     $response[] = [

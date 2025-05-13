@@ -34,11 +34,15 @@
                 <?php endif; ?>
             </ul>
 
-            <ul class="division">
-                <label for="">Comercial</label>
-                <li><a title="Tela Gerencial" href="https://improov.com.br/sistema/TelaGerencial"><i class="fa-solid fa-desktop"></i><span> Tela Gerencial</span></a></li>
-                <li><a title="Tela de custos" href="https://improov.com.br/sistema/Custos"><i class="fa-solid fa-desktop"></i><span> Tela Custos</span></a></li>
-            </ul>
+            <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1)): ?>
+
+                <ul class="division">
+                    <label for="">Comercial</label>
+                    <li><a title="Tela Gerencial" href="https://improov.com.br/sistema/TelaGerencial"><i class="fa-solid fa-desktop"></i><span> Tela Gerencial</span></a></li>
+                    <li><a title="Tela de custos" href="https://improov.com.br/sistema/Custos"><i class="fa-solid fa-desktop"></i><span> Tela Custos</span></a></li>
+                </ul>
+            <?php endif; ?>
+
 
 
             <ul class="division" id="favoritos">

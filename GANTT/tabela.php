@@ -49,7 +49,11 @@ $sqlEtapas = "SELECT
         colaborador c ON c.idcolaborador = ec.colaborador_id
     WHERE 
         gp.obra_id = ?
+    ORDER BY 
+        gp.tipo_imagem,
+        FIELD(gp.etapa, 'Caderno', 'Modelagem', 'Composição', 'Finalização', 'Pós-Produção') -- ajuste conforme suas etapas reais
 ";
+
 $stmtEtapas = $conn->prepare($sqlEtapas);
 $stmtEtapas->bind_param("i", $id_obra);
 $stmtEtapas->execute();

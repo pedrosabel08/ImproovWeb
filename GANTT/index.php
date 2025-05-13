@@ -62,17 +62,57 @@ $conn->close();
 
     <div id="colaboradorModal" class="modal" style="display:none;">
         <div class="modal-content">
-            <label for="colaboradorInput">ID do Colaborador:</label>
-            <select name="colaborador_id" id="colaborador_id">
-                <?php foreach ($colaboradores as $colab): ?>
-                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
+            <div>
+                <label for="colaboradorInput">ID do Colaborador:</label>
+                <select name="colaborador_id" id="colaborador_id">
+                    <?php foreach ($colaboradores as $colab): ?>
+                        <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                            <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
             <button id="confirmarBtn">Atribuir</button>
         </div>
     </div>
+
+    <div id="modalConflito" class="modal" style="display:none; position:fixed; top:30%; left:50%; transform:translate(-50%, -30%); background:#fff; padding:20px; border:1px solid #ccc; z-index:999;">
+        <div id="textoConflito"></div>
+        <div style="margin-top:15px;">
+            <div class="buttons">
+                <button id="btnTrocar">🔁 Trocar</button>
+                <button id="btnRemoverEAlocar">🚫 Remover e alocar</button>
+                <button id="btnAgenda">📅 Ver agenda</button>
+                <button id="btnVoltar" style="display:none;">🔙 Voltar</button>
+            </div>
+
+            <div class="trocar" style="display: none; margin-top: 10px;">
+                <select name="colaborador_id_troca" id="colaborador_id_troca">
+                    <?php foreach ($colaboradores as $colab): ?>
+                        <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                            <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <button id="confirmarBtnTroca">Trocar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modalEtapa" style="display:none; position:fixed; top:30%; left:50%; transform:translate(-50%,-50%);
+     background:white; padding:20px; border:1px solid #ccc; z-index:1000;">
+        <label for="nomeEtapa">Etapa Coringa:</label>
+        <input type="text" id="nomeEtapa" placeholder="Nome da etapa">
+        <br><br>
+        <button onclick="confirmarEtapaCoringa()">Confirmar</button>
+        <button onclick="fecharModalEtapa()">Cancelar</button>
+    </div>
+
+    <div class="tooltip-box" id="tooltip"></div>
+
+
+
+
 
     <script src="../script/sidebar.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>

@@ -1,3 +1,15 @@
+
+const etapaParaFuncao = {
+    "Caderno": 1,
+    "Modelagem": 2,
+    "Composição": 3,
+    "Finalização": 4,
+    "Pós-Produção": 5,
+    "Alteração": 6,
+    "Planta Humanizada": 7,
+    "Filtro de assets": 8
+};
+
 function atualizarTabela() {
     const obraId = localStorage.getItem('obraId'); // ou o nome que você usou no localStorage
 
@@ -95,6 +107,73 @@ function atualizarTabela() {
                     dateCell.style.fontWeight = 'bold'; // Para destacar mais
                 }
 
+                let isSelecting = false;
+                let startCell = null;
+                let endCell = null;
+
+                // Para guardar a referência das células selecionadas
+                const selectedDayCells = [];
+
+                dateCell.addEventListener('mousedown', (e) => {
+                    isSelecting = true;
+                    startCell = dateCell;
+                    selectedDayCells.length = 0;
+                    selectedDayCells.push(dateCell);
+                    dateCell.classList.add('selecionado');
+                });
+
+                dayRow.addEventListener('mousemove', (e) => {
+                    if (!isSelecting || !startCell) return;
+
+                    const target = e.target;
+                    if (target.tagName !== 'TH' || !target.hasAttribute('data-date')) return;
+
+                    // Evita refazer seleção se o target for o mesmo
+                    if (selectedDayCells.includes(target)) return;
+
+                    // Limpa seleção anterior
+                    selectedDayCells.forEach(cell => cell.classList.remove('selecionado'));
+                    selectedDayCells.length = 0;
+
+                    const allDayCells = Array.from(dayRow.children);
+                    const startIndex = allDayCells.indexOf(startCell);
+                    const currentIndex = allDayCells.indexOf(target);
+
+                    const [from, to] = startIndex < currentIndex
+                        ? [startIndex, currentIndex]
+                        : [currentIndex, startIndex];
+
+                    for (let i = from; i <= to; i++) {
+                        allDayCells[i].classList.add('selecionado');
+                        selectedDayCells.push(allDayCells[i]);
+                    }
+                });
+
+                document.addEventListener('mouseup', () => {
+                    if (isSelecting) {
+                        isSelecting = false;
+
+                        // Se não teve mouseenter suficiente, garante ao menos a célula de início
+                        if (selectedDayCells.length === 0 && startCell) {
+                            selectedDayCells.push(startCell);
+                            startCell.classList.add('selecionado');
+                        }
+
+                        endCell = selectedDayCells[selectedDayCells.length - 1];
+
+                        const dataInicio = selectedDayCells[0].getAttribute('data-date');
+                        const dataFim = endCell.getAttribute('data-date');
+
+                        abrirModalEtapaCoringa(dataInicio, dataFim);
+
+                        // Limpa seleção visual
+                        selectedDayCells.forEach(cell => cell.classList.remove('selecionado'));
+                        selectedDayCells.length = 0;
+                        startCell = null;
+                        endCell = null;
+                    }
+                });
+
 
                 dayRow.appendChild(dateCell);
             });
@@ -175,66 +254,83 @@ function atualizarTabela() {
                                 }
 
                                 etapaCell.contentEditable = false;
+                                const tooltip = document.getElementById('tooltip');
 
-                                const etapaParaFuncao = {
-                                    "Caderno": 1,
-                                    "Modelagem": 2,
-                                    "Composição": 3,
-                                    "Finalização": 4,
-                                    "Pós-Produção": 5,
-                                    "Alteração": 6,
-                                    "Planta Humanizada": 7,
-                                    "Filtro de assets": 8
-                                };
+                                etapaCell.addEventListener('mouseenter', (event) => {
+                                    if (etapa.porcentagem_conclusao != null) {
+                                        tooltip.textContent = `${etapa.porcentagem_conclusao}%`;
+                                    }
+                                    tooltip.style.display = 'block';
+                                    tooltip.style.left = event.clientX + 'px';
+                                    tooltip.style.top = event.clientY - 30 + 'px';
+                                });
+
+                                etapaCell.addEventListener('mouseleave', () => {
+                                    tooltip.style.display = 'none';
+                                });
+
+                                etapaCell.addEventListener('mousemove', (event) => {
+                                    tooltip.style.left = event.clientX + 'px';
+                                    tooltip.style.top = event.clientY - 30 + 'px';
+                                });
 
                                 etapaCell.oncontextmenu = (event) => {
+                                    const btnAtribuir = document.getElementById("confirmarBtn");
+                                    btnAtribuir.style.display = "block";
                                     event.preventDefault();
                                     etapaAtual = etapa;
+                                    const colaboradorAtualId = etapa.colaborador_id;
 
                                     const nomeEtapa = etapa.etapa;
                                     const funcaoId = etapaParaFuncao[nomeEtapa];
                                     const dataInicio = etapaCell.getAttribute('data-inicio');
                                     const dataFim = etapaCell.getAttribute('data-fim');
 
-                                    const select = document.getElementById("colaborador_id");
-                                    select.innerHTML = ""; // Limpa todas as opções
-
-                                    const defaultOption = document.createElement("option");
-                                    defaultOption.value = "";
-                                    defaultOption.textContent = "Selecione";
-                                    defaultOption.disabled = true;
-                                    defaultOption.selected = true;
-                                    select.appendChild(defaultOption);
-
                                     if (!funcaoId) {
                                         console.warn(`Função não encontrada para a etapa: ${nomeEtapa}`);
                                         return;
                                     }
 
+                                    preencherSelectComColaboradores({
+                                        selectId: "colaborador_id",
+                                        funcaoId,
+                                        dataInicio,
+                                        dataFim,
+                                        colaboradorAtualId,
+                                        onConflitoSelecionado: (selected) => {
+                                            const nome = selected.textContent;
+                                            const obra = selected.dataset.obra;
+                                            const etapa = selected.dataset.etapa;
+                                            const inicio = formatarData(selected.dataset.inicio);
+                                            const fim = formatarData(selected.dataset.fim);
+                                            const etapaId = selected.dataset.ganttId;
 
-                                    fetch(`get_colaboradores_por_funcao.php?funcao_id=${funcaoId}&data_inicio=${dataInicio}&data_fim=${dataFim}`)
-                                        .then(res => res.json())
-                                        .then(colaboradores => {
-                                            colaboradores.forEach(colab => {
-                                                const option = document.createElement("option");
-                                                option.value = colab.idcolaborador;
-                                                option.textContent = colab.nome_colaborador + (colab.ocupado ? ` ${(colab.nomenclatura)}` : "");
-                                                option.disabled = colab.ocupado; // opcional, desabilita se já estiver ocupado
-                                                select.appendChild(option);
+                                            abrirModalConflito({
+                                                colaboradorId: selected.value,
+                                                nome,
+                                                obra,
+                                                etapa,
+                                                inicio,
+                                                fim,
+                                                etapaId
                                             });
+                                        }
+                                    });
 
-                                            // Exibir o modal
-                                            const rect = event.target.getBoundingClientRect();
-                                            const modal = document.getElementById("colaboradorModal");
-                                            modal.style.position = "absolute";
-                                            const isRightSpace = rect.right + modal.offsetWidth < window.innerWidth;
-                                            modal.style.left = isRightSpace
-                                                ? `${rect.right + 10}px`
-                                                : `${rect.left - modal.offsetWidth - 10}px`;
-                                            modal.style.top = `${rect.top + window.scrollY}px`;
-                                            modal.style.display = "block";
-                                        })
-                                        .catch(err => console.error("Erro ao buscar colaboradores:", err));
+                                    // Exibir o modal
+                                    const rect = event.target.getBoundingClientRect();
+                                    const modal = document.getElementById("colaboradorModal");
+                                    const modalConflito = document.getElementById("modalConflito");
+
+
+                                    modal.style.position = "absolute";
+                                    const isRightSpace = rect.right + modal.offsetWidth < window.innerWidth;
+                                    modal.style.left = isRightSpace
+                                        ? `${rect.right + 10}px`
+                                        : `${rect.left - modal.offsetWidth - 10}px`;
+                                    modal.style.top = `${rect.top + window.scrollY}px`;
+                                    modal.style.display = "block";
+                                    modalConflito.style.display = "none";
                                 };
 
                                 // Implementação do arrasto horizontal
@@ -341,11 +437,318 @@ function atualizarTabela() {
         .catch(error => console.error('Erro ao carregar os dados:', error));
 }
 
+let dataInicioGlobal = '';
+let dataFimGlobal = '';
+let obraSelecionadaId = localStorage.getItem('obraId'); // ou o nome que você usou no localStorage
+
+
+
+function abrirModalEtapaCoringa(dataInicio, dataFim) {
+    dataInicioGlobal = dataInicio;
+    dataFimGlobal = dataFim;
+    console.log('Data Inicio' + dataInicioGlobal)
+    console.log('Data Fim' + dataFimGlobal)
+    document.getElementById('modalEtapa').style.display = 'block';
+}
+
+function fecharModalEtapa() {
+    document.getElementById('modalEtapa').style.display = 'none';
+    document.getElementById('nomeEtapa').value = '';
+}
+
+function confirmarEtapaCoringa() {
+    const nomeEtapa = document.getElementById('nomeEtapa').value.trim();
+    if (!nomeEtapa) {
+        alert('Digite o nome da etapa.');
+        return;
+    }
+
+    fetch('inserir_etapa_coringa.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            etapa: nomeEtapa,
+            data_inicio: dataInicioGlobal,
+            data_fim: dataFimGlobal,
+            obra_id: obraSelecionadaId // supondo que você tenha a obra selecionada em algum lugar
+        })
+    })
+        .then(resp => resp.json())
+        .then(data => {
+            if (data.success) {
+                alert('Etapa coringa adicionada com sucesso!');
+                atualizarTabela(); // Atualiza o Gantt
+            } else {
+                alert('Erro: ' + data.message);
+            }
+            fecharModalEtapa();
+        })
+        .catch(err => {
+            console.error(err);
+            alert('Erro ao inserir etapa.');
+            fecharModalEtapa();
+        });
+}
+
+
+function preencherSelectComColaboradores({
+    selectId,
+    funcaoId,
+    dataInicio,
+    dataFim,
+    colaboradorAtualId = null,
+    onConflitoSelecionado = null
+}) {
+    const select = document.getElementById(selectId);
+    select.innerHTML = "";
+
+    const defaultOption = document.createElement("option");
+    defaultOption.value = "";
+    defaultOption.textContent = "Selecione";
+    defaultOption.disabled = true;
+    defaultOption.selected = true;
+    select.appendChild(defaultOption);
+
+    if (!funcaoId) {
+        console.warn(`Função ID inválido: ${funcaoId}`);
+        return;
+    }
+
+    fetch(`get_colaboradores_por_funcao.php?funcao_id=${funcaoId}&data_inicio=${dataInicio}&data_fim=${dataFim}`)
+        .then(res => res.json())
+        .then(colaboradores => {
+            let colaboradorSelecionado = null;
+
+            colaboradores.forEach(colab => {
+                const option = document.createElement("option");
+                option.value = colab.idcolaborador;
+                option.textContent = colab.nome_colaborador + (colab.ocupado ? ` (${colab.obra_conflitante})` : "");
+
+                if (colab.ocupado) {
+                    option.style.color = "red";
+                    option.dataset.ocupado = true;
+                    option.dataset.obra = colab.obra_conflitante;
+                    option.dataset.etapa = colab.etapa_conflitante;
+                    option.dataset.inicio = colab.data_inicio_conflito;
+                    option.dataset.fim = colab.data_fim_conflito;
+                    option.dataset.ganttId = colab.gantt_id;
+                }
+
+                if (colab.idcolaborador == colaboradorAtualId) {
+                    option.selected = true;
+                    colaboradorSelecionado = option;
+                }
+
+                select.appendChild(option);
+            });
+
+            // Abre o modal automaticamente se o colaborador selecionado estiver em conflito
+            if (colaboradorSelecionado && colaboradorSelecionado.dataset.ocupado && typeof onConflitoSelecionado === 'function') {
+                onConflitoSelecionado(colaboradorSelecionado);
+            }
+
+            // Adiciona onchange se quiser tratar conflito após seleção manual
+            select.onchange = function () {
+                const selected = select.options[select.selectedIndex];
+                if (selected.dataset.ocupado && typeof onConflitoSelecionado === 'function') {
+                    onConflitoSelecionado(selected);
+                }
+            };
+        });
+}
+
+
+
+function formatarData(data) {
+    const partes = data.split("-");
+    const dataFormatada = `${partes[2]}/${partes[1]}/${partes[0]}`;
+    return dataFormatada;
+}
+
 document.getElementById('opcao_obra').addEventListener('change', (e) => {
     localStorage.setItem('obraId', e.target.value); // armazena novo valor
     atualizarTabela();
 });
 
+let colaboradorIdAtual = null;
+let etapaIdAtual = null;
+let nomeEtapaAtual = null;
+let dataInicioAtual = null;
+let dataFimAtual = null;
+
+function abrirModalConflito({ colaboradorId, nome, obra, etapa, inicio, fim, etapaId }) {
+    colaboradorIdAtual = colaboradorId;
+    etapaIdAtual = etapaId;
+    nomeEtapaAtual = etapa;
+    dataInicioAtual = inicio;
+    dataFimAtual = fim;
+
+
+    const modal = document.getElementById("modalConflito");
+    const texto = document.getElementById("textoConflito");
+
+    const divTrocar = document.querySelector(".trocar");
+
+    const btnAtribuir = document.getElementById("confirmarBtn");
+    btnAtribuir.style.display = "none";
+
+    // reset visual
+    document.getElementById("btnTrocar").classList.remove("active");
+    divTrocar.style.display = "none";
+    document.getElementById("btnVoltar").style.display = "none";
+
+    texto.innerHTML = `
+        <p><strong>${nome}</strong> já está na obra <strong>${obra}</strong>, etapa <strong>${etapa}</strong>, de <strong>${inicio}</strong> a <strong>${fim}</strong>.</p>
+        <p>O que deseja fazer?</p>
+    `;
+
+    modal.style.display = "block";
+}
+
+// botão "Trocar"
+document.getElementById("btnTrocar").onclick = () => {
+    document.getElementById("btnTrocar").classList.add("active");
+    document.querySelector(".trocar").style.display = "block";
+    document.getElementById("btnVoltar").style.display = "inline-block";
+
+    // Pegando dados da etapa atual
+    const nomeEtapa = nomeEtapaAtual;
+    const funcaoId = etapaParaFuncao[nomeEtapa];
+    const dataInicio = dataInicioAtual;
+    const dataFim = dataFimAtual;
+    const colaboradorAtualId = colaboradorIdAtual;
+
+    if (!funcaoId) {
+        console.warn(`Função não encontrada para a etapa: ${nomeEtapa}`);
+        return;
+    }
+
+    preencherSelectComColaboradores({
+        selectId: "colaborador_id_troca", // ID do <select> de troca
+        funcaoId,
+        dataInicio,
+        dataFim,
+        colaboradorAtualId,
+        onConflitoSelecionado: (selected) => {
+            const nome = selected.textContent;
+            const obra = selected.dataset.obra;
+            const etapa = selected.dataset.etapa;
+            const inicio = formatarData(selected.dataset.inicio);
+            const fim = formatarData(selected.dataset.fim);
+            const etapaId = selected.dataset.ganttId;
+
+            abrirModalConflito({
+                colaboradorId: selected.value,
+                nome,
+                obra,
+                etapa,
+                inicio,
+                fim,
+                etapaId
+            });
+        }
+    });
+};
+
+document.getElementById("btnRemoverEAlocar").onclick = () => {
+    const nomeEtapa = nomeEtapaAtual;
+    const funcaoId = etapaParaFuncao[nomeEtapa];
+    const dataInicio = dataInicioAtual;
+    const dataFim = dataFimAtual;
+
+    if (!funcaoId) {
+        console.warn(`Função não encontrada para a etapa: ${nomeEtapa}`);
+        return;
+    }
+
+    preencherSelectComColaboradores({
+        selectId: "colaborador_id_troca",
+        funcaoId,
+        dataInicio,
+        dataFim,
+        colaboradorAtualId: colaboradorIdAtual,
+        onConflitoSelecionado: (selected) => {
+            const novoColaboradorId = selected.value;
+            const novoColaboradorNome = selected.textContent;
+
+            Swal.fire({
+                title: "Confirmar alocação?",
+                html: `Deseja <strong>remover</strong> o colaborador atual (ID ${colaboradorIdAtual}) e <strong>alocar</strong> <strong>${novoColaboradorNome}</strong> (ID ${novoColaboradorId}) nesta etapa?`,
+                icon: "question",
+                showCancelButton: true,
+                confirmButtonText: "Sim, alocar",
+                cancelButtonText: "Cancelar"
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch('remover_e_alocar.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            antigoId: colaboradorIdAtual,
+                            novoId: novoColaboradorId,
+                            etapaId: etapaIdAtual
+                        })
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.sucesso) {
+                                Swal.fire("Sucesso", "Colaborador removido e novo alocado!", "success");
+                                atualizarTabela();
+                                document.getElementById("modalConflito").style.display = "none";
+                            } else {
+                                Swal.fire("Erro", "Não foi possível alocar o novo colaborador.", "error");
+                            }
+                        })
+                        .catch(err => {
+                            console.error("Erro no fetch:", err);
+                            Swal.fire("Erro", "Erro de comunicação com o servidor.", "error");
+                        });
+                }
+            });
+        }
+    });
+
+    // Exibir visual do select
+    document.getElementById("btnRemoverEAlocar").classList.add("active");
+    document.querySelector(".trocar").style.display = "block";
+    document.getElementById("btnVoltar").style.display = "inline-block";
+};
+
+// botão "Trocar" dentro do bloco .trocar
+document.getElementById("confirmarBtnTroca").onclick = () => {
+    const novoId = document.getElementById("colaborador_id_troca").value;
+    const novoNome = document.getElementById("colaborador_id_troca").options[document.getElementById("colaborador_id_troca").selectedIndex].text;
+
+    if (!colaboradorIdAtual || !novoId) {
+        Swal.fire("Erro", "Dados incompletos para a troca.", "error");
+        return;
+    }
+
+    Swal.fire({
+        title: "Confirmar troca?",
+        html: `Deseja trocar o colaborador <strong>ID ${colaboradorIdAtual}</strong> pelo <strong>${novoNome} (ID ${novoId})</strong>?`,
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonText: "Sim, trocar",
+        cancelButtonText: "Cancelar"
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Aqui entra sua lógica para fazer a troca, como via AJAX ou formulário oculto
+            console.log(`Trocando ${colaboradorIdAtual} por ${novoId}`);
+
+            fetch('trocar_colaborador.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ antigoId: colaboradorIdAtual, novoId: novoId, etapaId: etapaIdAtual })
+            }).then(response => response.json())
+                .then(data => {
+                    Swal.fire("Sucesso", "Colaborador trocado!", "success");
+                });
+            atualizarTabela();
+            document.getElementById("modalConflito").style.display = "none";
+        }
+    });
+};
 
 // Função para somar dias a uma data
 function novaData(dataStr, dias) {
@@ -396,7 +799,6 @@ confirmarBtn.onclick = () => {
 
 document.addEventListener('keydown', function (event) {
     if (event.key === 'Escape') {
-
         modal.style.display = 'none';
 
     }
@@ -405,7 +807,6 @@ document.addEventListener('keydown', function (event) {
 window.addEventListener('click', function (event) {
     if (event.target == modal) {
         modal.style.display = 'none';
-
     }
 });
 

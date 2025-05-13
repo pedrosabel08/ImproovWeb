@@ -280,7 +280,12 @@ function gerarGantt($conn, $obra_id, $grupos)
 
             $data_fim = adicionarDiasUteis($data_inicio, $diasCalculados);
 
-            $stmt = $conn->prepare("INSERT INTO gantt_prazos (obra_id, tipo_imagem, etapa, dias, data_inicio, data_fim) VALUES (?, ?, ?, ?, ?, ?)");
+            $stmt = $conn->prepare("INSERT INTO gantt_prazos (obra_id, tipo_imagem, etapa, dias, data_inicio, data_fim)
+                                VALUES (?, ?, ?, ?, ?, ?)
+                                ON DUPLICATE KEY UPDATE
+                                    dias = VALUES(dias),
+                                    data_inicio = VALUES(data_inicio),
+                                    data_fim = VALUES(data_fim)");
             $stmt->bind_param('ississ', $obra_id, $grupo, $etapa, $diasCalculados, $data_inicio, $data_fim);
 
             if (!$stmt->execute()) {

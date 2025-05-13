@@ -39,19 +39,57 @@ $resultImagens = $stmtImagens->get_result();
 
 // Query para buscar as etapas
 $sqlEtapas = "SELECT 
-        gp.*, 
-        c.nome_colaborador AS nome_colaborador 
-    FROM 
-        gantt_prazos gp
-    LEFT JOIN 
-        etapa_colaborador ec ON ec.gantt_id = gp.id
-    LEFT JOIN 
-        colaborador c ON c.idcolaborador = ec.colaborador_id
-    WHERE 
-        gp.obra_id = ?
-    ORDER BY 
-        gp.tipo_imagem,
-        FIELD(gp.etapa, 'Caderno', 'Modelagem', 'Composição', 'Finalização', 'Pós-Produção') -- ajuste conforme suas etapas reais
+    gp.*, 
+    c.nome_colaborador AS nome_colaborador,
+    ec.colaborador_id,
+
+    COUNT(fi.status) AS total_funcoes,
+    
+    SUM(CASE WHEN fi.status = 'Finalizado' THEN 1 ELSE 0 END) AS total_finalizadas,
+
+    ROUND(
+        (SUM(CASE WHEN fi.status = 'Finalizado' THEN 1 ELSE 0 END) / COUNT(fi.status)) * 100, 
+        2
+    ) AS porcentagem_conclusao
+
+FROM 
+    gantt_prazos gp
+
+LEFT JOIN 
+    etapa_colaborador ec ON ec.gantt_id = gp.id
+
+LEFT JOIN 
+    colaborador c ON c.idcolaborador = ec.colaborador_id
+
+LEFT JOIN 
+    imagens_cliente_obra ico 
+    ON ico.obra_id = gp.obra_id 
+    AND ico.tipo_imagem = gp.tipo_imagem
+
+-- JOIN com função, filtrando conforme a etapa correspondente
+LEFT JOIN 
+    funcao_imagem fi 
+    ON fi.imagem_id = ico.idimagens_cliente_obra 
+    AND fi.funcao_id = (
+        CASE gp.etapa
+            WHEN 'Caderno' THEN 1
+            WHEN 'Modelagem' THEN 2
+            WHEN 'Composição' THEN 3
+            WHEN 'Finalização' THEN 4
+            WHEN 'Pós-Produção' THEN 5
+            ELSE NULL
+        END
+    )
+
+WHERE 
+    gp.obra_id = ?
+
+GROUP BY 
+    gp.id, c.idcolaborador
+
+ORDER BY 
+    gp.tipo_imagem,
+    FIELD(gp.etapa, 'Caderno', 'Modelagem', 'Composição', 'Finalização', 'Pós-Produção') -- ajuste conforme suas etapas reais
 ";
 
 $stmtEtapas = $conn->prepare($sqlEtapas);

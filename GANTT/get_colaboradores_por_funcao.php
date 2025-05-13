@@ -9,28 +9,44 @@ if (isset($_GET['funcao_id'], $_GET['data_inicio'], $_GET['data_fim'])) {
     $stmt = $conn->prepare("SELECT 
     c.idcolaborador,
     c.nome_colaborador,
-    o.nomenclatura,
-    EXISTS (
-        SELECT 1 
-        FROM etapa_colaborador ec
-        INNER JOIN gantt_prazos g ON g.id = ec.gantt_id
-        WHERE ec.colaborador_id = c.idcolaborador 
-        AND (
-            -- Verifica se a etapa do colaborador sobrepõe o período da nova etapa
-            (g.data_inicio <= ? AND g.data_fim >= ?) OR
-            (g.data_inicio BETWEEN ? AND ?) OR
-            (g.data_fim BETWEEN ? AND ?) OR
-            (? BETWEEN g.data_inicio AND g.data_fim) OR
-            (? BETWEEN g.data_inicio AND g.data_fim)
-        )
-    ) AS ocupado
+    o_conflitante.nomenclatura AS obra_conflitante,
+    g_conflitante.data_inicio AS data_inicio_conflito,
+    g_conflitante.data_fim AS data_fim_conflito,
+    conflito.etapa AS etapa_conflitante,
+    conflito.id AS gantt_id,  -- vírgula corrigida aqui
+    CASE 
+        WHEN conflito.colaborador_id IS NOT NULL THEN 1
+        ELSE 0
+    END AS ocupado
 FROM colaborador c
 LEFT JOIN funcao_colaborador fc ON fc.colaborador_id = c.idcolaborador
-LEFT JOIN etapa_colaborador ecol on ecol.colaborador_id = c.idcolaborador
-LEFT JOIN gantt_prazos g2 ON g2.id = ecol.gantt_id
-LEFT JOIN obra o ON o.idobra = g2.obra_id  -- A tabela obra agora é conectada corretamente
-WHERE fc.funcao_id = ?;
+LEFT JOIN (
+    SELECT 
+        ec.colaborador_id,
+        g.data_inicio,
+        g.data_fim,
+        g.id,
+        o.nomenclatura,
+        g.etapa
+    FROM etapa_colaborador ec
+    INNER JOIN gantt_prazos g ON g.id = ec.gantt_id
+    INNER JOIN obra o ON o.idobra = g.obra_id
+    WHERE (
+        (g.data_inicio <= ? AND g.data_fim >= ?) OR
+        (g.data_inicio BETWEEN ? AND ?) OR
+        (g.data_fim BETWEEN ? AND ?) OR
+        (? BETWEEN g.data_inicio AND g.data_fim) OR
+        (? BETWEEN g.data_inicio AND g.data_fim)
+    )
+) AS conflito ON conflito.colaborador_id = c.idcolaborador
+LEFT JOIN obra o_conflitante ON o_conflitante.nomenclatura = conflito.nomenclatura
+LEFT JOIN gantt_prazos g_conflitante ON g_conflitante.id = conflito.id
+WHERE fc.funcao_id = ?
 ;
+
+
+
+
 ");
 
     if ($stmt) {

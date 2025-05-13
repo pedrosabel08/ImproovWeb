@@ -42,7 +42,7 @@ table#gantt td {
 table#gantt th {
     background-color: #f4f4f4;
     font-weight: bold;
-        border: 1px solid #000000;
+    border: 1px solid #000000;
 
 }
 
@@ -112,9 +112,34 @@ td {
 
 .modal-content {
     background: white;
-    padding: 20px;
+    padding: 10px;
     border-radius: 8px;
     min-width: 300px;
+    display: flex;
+    flex-direction: column;
+    text-align: center;
+}
+
+.modal-content div {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+}
+
+#confirmarBtn {
+    background-color: #1b5e20;
+    color: white;
+    border-radius: 5px;
+    font-size: 14px;
+    width: max-content;
+    margin: 10px auto 0 auto;
+    padding: 2px 4px;
+    transition: 0.3s all ease;
+}
+
+#confirmarBtn:hover {
+    background-color: #114b14;
+    cursor: pointer;
 }
 
 .arrastando {
@@ -122,4 +147,48 @@ td {
     transition: transform 0.1s ease;
     position: relative;
     z-index: 5;
+}
+
+#btnTrocar.active {
+    background-color: #ffc107;
+    color: black;
+    font-weight: bold;
+}
+
+#modalConflito {
+    display: none;
+    position: fixed;
+    top: 30%;
+    left: 50%;
+    transform: translate(-50%, -30%);
+    background: rgb(255, 255, 255);
+    padding: 20px;
+    border: 1px solid rgb(204, 204, 204);
+    z-index: 999;
+    box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.2);
+    border-radius: 5px;
+    transition: opacity 0.3s ease;
+}
+
+.buttons {
+    display: flex;
+    justify-content: space-around;
+}
+
+
+th.selecionado {
+    background-color: rgba(0, 128, 255, 0.3) !important;
+    outline: 1px solid #007bff !important;
+}
+
+.tooltip-box {
+    position: fixed;
+    background-color: rgba(0, 0, 0, 0.8);
+    color: #fff;
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-size: 12px;
+    white-space: nowrap;
+    display: none;
+    z-index: 1000;
 }

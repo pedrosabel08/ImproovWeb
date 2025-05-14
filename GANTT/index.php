@@ -64,7 +64,7 @@ $conn->close();
         <div class="modal-content">
             <div>
                 <label for="colaboradorInput">ID do Colaborador:</label>
-                <select name="colaborador_id" id="colaborador_id">
+                <select name="colaborador_id" id="colaborador_id" multiple>
                     <?php foreach ($colaboradores as $colab): ?>
                         <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
                             <?= htmlspecialchars($colab['nome_colaborador']); ?>
@@ -76,6 +76,34 @@ $conn->close();
         </div>
     </div>
 
+    <div id="modalAvancado" class="modal" style="display:none;">
+        <div class="modal-content" style="display: flex; gap: 20px; max-width: 900px;">
+            <!-- Coluna de Imagens -->
+            <div style="flex: 1;" class="imagemDiv">
+                <h3>Imagens do Tipo</h3>
+                <div id="listaImagens" style="max-height: 400px; overflow-y: auto;">
+                    <!-- As imagens serão carregadas via JS aqui -->
+                </div>
+            </div>
+
+            <!-- Coluna de Colaboradores -->
+            <div style="flex: 1;" class="colabDiv">
+                <h3>Colaboradores</h3>
+                <div id="colaboradoresArrastaveis" style="border: 1px solid #ccc; padding: 10px;">
+                    <?php foreach ($colaboradores as $colab): ?>
+                        <div class="colaborador-draggable"
+                            draggable="true"
+                            data-id="<?= $colab['idcolaborador'] ?>"
+                            style="border: 1px solid #888; margin: 5px 0; padding: 5px; cursor: grab;">
+                            <?= htmlspecialchars($colab['nome_colaborador']) ?>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
     <div id="modalConflito" class="modal" style="display:none; position:fixed; top:30%; left:50%; transform:translate(-50%, -30%); background:#fff; padding:20px; border:1px solid #ccc; z-index:999;">
         <div id="textoConflito"></div>
         <div style="margin-top:15px;">
@@ -86,7 +114,7 @@ $conn->close();
                 <button id="btnVoltar" style="display:none;">🔙 Voltar</button>
             </div>
 
-            <div class="trocar" style="display: none; margin-top: 10px;">
+            <div class="trocar" style="display: none; margin-top: 10px; align-items: center; flex-direction: column;">
                 <select name="colaborador_id_troca" id="colaborador_id_troca">
                     <?php foreach ($colaboradores as $colab): ?>
                         <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">

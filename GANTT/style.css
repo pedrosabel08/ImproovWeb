@@ -97,6 +97,14 @@ td {
     border: 1px solid !important;
 }
 
+table#gantt td:has(.plantahumanizada) {
+    border: none !important;
+}
+
+table#gantt td:not(.plantahumanizada) {
+    border: 1px solid #ddd;
+}
+
 #colaboradorModal {
     display: none;
     position: absolute;
@@ -126,7 +134,8 @@ td {
     font-size: 14px;
 }
 
-#confirmarBtn {
+#confirmarBtn,
+#confirmarBtnTroca {
     background-color: #1b5e20;
     color: white;
     border-radius: 5px;
@@ -137,7 +146,8 @@ td {
     transition: 0.3s all ease;
 }
 
-#confirmarBtn:hover {
+#confirmarBtn:hover,
+#confirmarBtnTroca:hover {
     background-color: #114b14;
     cursor: pointer;
 }
@@ -149,7 +159,8 @@ td {
     z-index: 5;
 }
 
-#btnTrocar.active {
+#btnTrocar.active,
+#btnRemoverEAlocar.active {
     background-color: #ffc107;
     color: black;
     font-weight: bold;
@@ -191,4 +202,52 @@ th.selecionado {
     white-space: nowrap;
     display: none;
     z-index: 1000;
+}
+
+
+.drag-list {
+    list-style: none;
+    padding: 0;
+    border: 1px solid #ccc;
+    min-width: 200px;
+    min-height: 200px;
+}
+
+.drag-item {
+    padding: 6px;
+    margin: 4px;
+    background-color: #eee;
+    cursor: grab;
+    border: 1px solid #aaa;
+}
+
+.dragged {
+    background-color: #add8e6 !important;
+}
+
+.colaborador-draggable:hover {
+    background-color: #f0f0f0;
+}
+
+.imagem-dropzone:hover {
+    background-color: #e0f7fa;
+}
+
+.imagemDiv, .colabDiv {
+    display: flex;
+    flex-direction: column;
+}
+
+#listaImagens {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 10px;
+    margin-top: 10px;
+}
+
+#colaboradoresArrastaveis {
+    display: flex;
+    justify-content: center;
+    gap: 0 10px;
+    margin-top: 10px;
 }

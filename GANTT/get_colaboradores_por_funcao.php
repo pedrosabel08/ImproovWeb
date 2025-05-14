@@ -6,7 +6,7 @@ if (isset($_GET['funcao_id'], $_GET['data_inicio'], $_GET['data_fim'])) {
     $data_inicio = $_GET['data_inicio'];
     $data_fim = $_GET['data_fim'];
 
-    $stmt = $conn->prepare("SELECT 
+    $stmt = $conn->prepare("SELECT DISTINCT
     c.idcolaborador,
     c.nome_colaborador,
     o_conflitante.nomenclatura AS obra_conflitante,
@@ -41,7 +41,7 @@ LEFT JOIN (
 ) AS conflito ON conflito.colaborador_id = c.idcolaborador
 LEFT JOIN obra o_conflitante ON o_conflitante.nomenclatura = conflito.nomenclatura
 LEFT JOIN gantt_prazos g_conflitante ON g_conflitante.id = conflito.id
-WHERE fc.funcao_id = ?
+WHERE fc.funcao_id = ? AND c.ativo = 1
 ;
 
 

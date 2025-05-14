@@ -351,14 +351,14 @@ $grupos = [
     "Imagem Interna" => [
         "Caderno" => 0.5,
         "Modelagem" => 0.5,
-        "Composição" => 1,
+        "Composição" => 0.5,
         "Finalização" => 1,
         "Pós-Produção" => 0.2
     ],
     "Unidade" => [
         "Caderno" => 0.5,
         "Modelagem" => 0.5,
-        "Composição" => 1,
+        "Composição" => 0.5,
         "Finalização" => 1,
         "Pós-Produção" => 0.2
     ],

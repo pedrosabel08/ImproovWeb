@@ -111,11 +111,6 @@ function adicionarDiasUteis($dataInicial, $diasUteis)
         $diasUteisContados[] = $dataFormatada;
     }
 
-    // Exibir os dias úteis
-    echo "Dias úteis contados a partir de {$dataInicial}:\n";
-    foreach ($diasUteisContados as $i => $dia) {
-        echo str_pad($i + 1, 2, '0', STR_PAD_LEFT) . " → $dia\n";
-    }
 
     return end($diasUteisContados); // Retorna o último dia útil
 }
@@ -191,8 +186,6 @@ while ($row = $result->fetch_assoc()) {
     ");
     $updatePrazoStmt->bind_param('ssssi', $dataRecebimento, $dataRecebimento, $novoPrazo, $tipoImagem, $obraId);
     $updatePrazoStmt->execute();
-
-    echo "Tipo: {$tipoImagem} | Data de Recebimento: {$dataRecebimento} | Dias Úteis: {$diasUteis} | Novo Prazo: {$novoPrazo}<br>";
 }
 
 // Verificar se existe alguma data de recebimento válida para os outros tipos (base para Planta Humanizada)
@@ -253,52 +246,58 @@ function gerarGantt($conn, $obra_id, $grupos)
     foreach ($gruposFiltrados as $grupo => $etapas) {
         if ($grupo === "Planta Humanizada") continue; // Ignora por enquanto
 
-        // Buscar a data de recebimento
-        $stmt = $conn->prepare("SELECT recebimento_arquivos FROM imagens_cliente_obra WHERE obra_id = ? AND tipo_imagem = ? AND recebimento_arquivos IS NOT NULL AND recebimento_arquivos != '0000-00-00' LIMIT 1");
+        // Obter todos os imagem_id do tipo atual
+        $stmt = $conn->prepare("SELECT idimagens_cliente_obra AS id FROM imagens_cliente_obra WHERE obra_id = ? AND tipo_imagem = ?");
         $stmt->bind_param('is', $obra_id, $grupo);
         $stmt->execute();
         $result = $stmt->get_result();
-        $row = $result->fetch_assoc();
-        $data_recebimento = $row['recebimento_arquivos'] ?? null;
+        $imagens_ids = [];
+        while ($row = $result->fetch_assoc()) {
+            $imagens_ids[] = $row['id'];
+        }
 
-        if (!$data_recebimento) continue;
+        foreach ($imagens_ids as $imagem_id) {
+            // Buscar data de recebimento específica para essa imagem
+            $stmt = $conn->prepare("SELECT recebimento_arquivos FROM imagens_cliente_obra WHERE idimagens_cliente_obra = ? AND recebimento_arquivos IS NOT NULL AND recebimento_arquivos != '0000-00-00' LIMIT 1");
+            $stmt->bind_param('i', $imagem_id);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $row = $result->fetch_assoc();
+            $data_recebimento_imagem = $row['recebimento_arquivos'] ?? null;
 
-        $stmt = $conn->prepare("SELECT COUNT(*) AS total FROM imagens_cliente_obra WHERE obra_id = ? AND tipo_imagem = ?");
-        $stmt->bind_param('is', $obra_id, $grupo);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $quantidade_imagens = $result->fetch_assoc()['total'] ?? 1;
+            if (!$data_recebimento_imagem) continue; // Pula se não tiver data válida
 
-        $data_inicio = $data_recebimento;
+            $data_inicio = $data_recebimento_imagem;
 
-        foreach ($etapas as $etapa => $dias) {
-            if ($etapa === "Modelagem" && ($grupo === "Fachada" || $grupo === "Imagem Externa")) {
+            foreach ($etapas as $etapa => $dias) {
                 $diasCalculados = $dias;
-            } else {
-                $diasCalculados = $dias * $quantidade_imagens;
-            }
-
-            $data_fim = adicionarDiasUteis($data_inicio, $diasCalculados);
-
-            $stmt = $conn->prepare("INSERT INTO gantt_prazos (obra_id, tipo_imagem, etapa, dias, data_inicio, data_fim)
-                                VALUES (?, ?, ?, ?, ?, ?)
-                                ON DUPLICATE KEY UPDATE
-                                    dias = VALUES(dias),
-                                    data_inicio = VALUES(data_inicio),
-                                    data_fim = VALUES(data_fim)");
-            $stmt->bind_param('ississ', $obra_id, $grupo, $etapa, $diasCalculados, $data_inicio, $data_fim);
-
-            if (!$stmt->execute()) {
-                echo "Erro ao inserir Gantt para $grupo - $etapa: " . $stmt->error;
-            }
-            // Se a etapa for "Caderno", registrar a maior data_fim
-            if ($etapa === "Caderno") {
-                if (!$maiorDataCaderno || $data_fim > $maiorDataCaderno) {
-                    $maiorDataCaderno = $data_fim;
+                if ($etapa === "Modelagem" && ($grupo === "Fachada" || $grupo === "Imagem Externa")) {
+                    $diasCalculados = $dias;
                 }
-            }
 
-            $data_inicio = adicionarDiasUteis($data_fim, 1);
+                $data_fim = adicionarDiasUteis($data_inicio, $diasCalculados);
+
+                $stmt = $conn->prepare("INSERT INTO gantt_prazos (obra_id, tipo_imagem, imagem_id, etapa, dias, data_inicio, data_fim)
+                                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                                        ON DUPLICATE KEY UPDATE
+                                            dias = VALUES(dias),
+                                            data_inicio = VALUES(data_inicio),
+                                            data_fim = VALUES(data_fim)");
+                $stmt->bind_param('isissss', $obra_id, $grupo, $imagem_id, $etapa, $diasCalculados, $data_inicio, $data_fim);
+
+                if (!$stmt->execute()) {
+                    echo "Erro ao inserir Gantt para $grupo - $etapa - imagem_id $imagem_id: " . $stmt->error;
+                }
+
+                // Se a etapa for "Caderno", registrar a maior data_fim (considerando todas as imagens)
+                if ($etapa === "Caderno") {
+                    if (!$maiorDataCaderno || $data_fim > $maiorDataCaderno) {
+                        $maiorDataCaderno = $data_fim;
+                    }
+                }
+
+                $data_inicio = adicionarDiasUteis($data_fim, 1);
+            }
         }
     }
 
@@ -309,27 +308,40 @@ function gerarGantt($conn, $obra_id, $grupos)
         $stmt->execute();
         $result = $stmt->get_result();
         $row = $result->fetch_assoc();
-        $data_recebimento = $row['recebimento_arquivos'] ?? null;
+        $data_recebimento_planta = $row['recebimento_arquivos'] ?? null;
 
-        if ($data_recebimento && $maiorDataCaderno) {
-            $stmt = $conn->prepare("SELECT COUNT(*) AS total FROM imagens_cliente_obra WHERE obra_id = ? AND tipo_imagem = 'Planta Humanizada'");
+        if ($data_recebimento_planta && $maiorDataCaderno) {
+            $stmt = $conn->prepare("SELECT idimagens_cliente_obra as id FROM imagens_cliente_obra WHERE obra_id = ? AND tipo_imagem = 'Planta Humanizada'");
             $stmt->bind_param('i', $obra_id);
             $stmt->execute();
             $result = $stmt->get_result();
-            $quantidade_imagens = $result->fetch_assoc()['total'] ?? 1;
 
-            $data_inicio = adicionarDiasUteis($maiorDataCaderno, 1); // Começa após o último caderno
+            $imagem_ids_planta = [];
+            while ($row = $result->fetch_assoc()) {
+                $imagem_ids_planta[] = $row['id'];
+            }
 
-            foreach ($grupos['Planta Humanizada'] as $etapa => $dias) {
-                $diasCalculados = $dias * $quantidade_imagens;
-                $data_fim = adicionarDiasUteis($data_inicio, $diasCalculados);
+            foreach ($imagem_ids_planta as $imagem_id) {
+                $data_inicio = adicionarDiasUteis($maiorDataCaderno, 1); // Começa após o último caderno
 
-                $stmt = $conn->prepare("INSERT INTO gantt_prazos (obra_id, tipo_imagem, etapa, dias, data_inicio, data_fim) VALUES (?, ?, ?, ?, ?, ?)");
-                $stmt->bind_param('ississ', $obra_id, $grupo = 'Planta Humanizada', $etapa, $diasCalculados, $data_inicio, $data_fim);
-                if (!$stmt->execute()) {
-                    echo "Erro ao inserir Gantt para Planta Humanizada - $etapa: " . $stmt->error;
+                foreach ($grupos['Planta Humanizada'] as $etapa => $dias) {
+                    $data_fim = adicionarDiasUteis($data_inicio, $dias);
+                    $tipo_imagem = 'Planta Humanizada';
+
+                    $stmt = $conn->prepare("INSERT INTO gantt_prazos (obra_id, imagem_id, tipo_imagem, etapa, dias, data_inicio, data_fim)
+                                            VALUES (?, ?, ?, ?, ?, ?, ?)
+                                            ON DUPLICATE KEY UPDATE
+                                                dias = VALUES(dias),
+                                                data_inicio = VALUES(data_inicio),
+                                                data_fim = VALUES(data_fim)");
+                    $stmt->bind_param('iississ', $obra_id, $imagem_id, $tipo_imagem, $etapa, $dias, $data_inicio, $data_fim);
+
+                    if (!$stmt->execute()) {
+                        echo "Erro ao inserir Gantt para Planta Humanizada (imagem $imagem_id) - $etapa: " . $stmt->error;
+                    }
+
+                    $data_inicio = adicionarDiasUteis($data_fim, 1); // Próxima etapa começa depois da anterior
                 }
-                $data_inicio = adicionarDiasUteis($data_fim, 1);
             }
         }
     }
@@ -343,6 +355,7 @@ $grupos = [
     ],
     "Imagem Externa" => [
         "Caderno" => 0.5,
+        "Filtro de assets" => 0.5,
         "Modelagem" => 7,
         "Composição" => 1,
         "Finalização" => 1,
@@ -350,6 +363,7 @@ $grupos = [
     ],
     "Imagem Interna" => [
         "Caderno" => 0.5,
+        "Filtro de assets" => 0.5,
         "Modelagem" => 0.5,
         "Composição" => 0.5,
         "Finalização" => 1,
@@ -357,6 +371,7 @@ $grupos = [
     ],
     "Unidade" => [
         "Caderno" => 0.5,
+        "Filtro de assets" => 0.5,
         "Modelagem" => 0.5,
         "Composição" => 0.5,
         "Finalização" => 1,

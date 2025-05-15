@@ -194,7 +194,7 @@ function atualizarTabela() {
 
             // Corpo da tabela
             Object.keys(imagens).forEach(tipoImagem => {
-                const nomesImagens = imagens[tipoImagem];
+                const nomesImagens = imagens[tipoImagem]; // ex: ["1568", "1570"]
                 const rowSpan = nomesImagens.length;
 
                 let firstRow = true;
@@ -207,307 +207,347 @@ function atualizarTabela() {
                         tipoCell.setAttribute('rowspan', rowSpan);
                         row.appendChild(tipoCell);
                         tipoCell.style.writingMode = 'sideways-lr';
+                        firstRow = false;
                     }
 
-                    // Adicionar as etapas, se existirem
-                    if (etapas[tipoImagem] && firstRow) {
-                        const etapasTipo = etapas[tipoImagem];
+                    const nomeImagemCell = document.createElement('td');
+                    nomeImagemCell.textContent = imagemNome.nome;
+                    row.appendChild(nomeImagemCell);
 
-                        if (etapasTipo.length > 0) {
-                            const primeiraEtapa = etapasTipo[0];
-                            const dataInicioPrimeiraEtapa = new Date(primeiraEtapa.data_inicio);
-                            const indexInicioEtapa = datas.findIndex(d => d.getTime() === dataInicioPrimeiraEtapa.getTime());
+                    const etapasTipo = etapas[tipoImagem] || [];
+                    const etapasImagem = etapasTipo.filter(e => e.imagem_id == imagemNome.imagem_id);
 
-                            if (indexInicioEtapa > 0) {
-                                const emptyBefore = document.createElement('td');
-                                emptyBefore.setAttribute('colspan', indexInicioEtapa + 1);
-                                emptyBefore.setAttribute('rowspan', rowSpan);
-                                row.appendChild(emptyBefore);
+                    if (etapasImagem.length > 0) {
+                        const primeiraEtapa = etapasImagem[0];
+                        const dataInicioPrimeiraEtapa = new Date(primeiraEtapa.data_inicio);
+                        const indexInicioEtapa = datas.findIndex(d => d.getTime() === dataInicioPrimeiraEtapa.getTime());
+
+                        if (indexInicioEtapa > 0) {
+                            const emptyBefore = document.createElement('td');
+                            emptyBefore.setAttribute('colspan', indexInicioEtapa);
+                            row.appendChild(emptyBefore);
+                        }
+
+                        // Ordena as etapas por data de início
+                        etapasImagem.sort((a, b) => new Date(a.data_inicio) - new Date(b.data_inicio));
+
+                        let ultimaDataFim = null;
+
+                        etapasImagem.forEach(etapa => {
+                            const dataInicio = new Date(etapa.data_inicio);
+                            const dataFim = new Date(etapa.data_fim);
+
+                            const indexInicio = datas.findIndex(d => d.getTime() === dataInicio.getTime());
+                            const indexFim = datas.findIndex(d => d.getTime() === dataFim.getTime());
+
+                            // Verifica se há espaço entre a última etapa e a atual
+                            if (ultimaDataFim) {
+                                const indexUltimaFim = datas.findIndex(d => d.getTime() === ultimaDataFim.getTime());
+                                const lacuna = indexInicio - indexUltimaFim - 1;
+
+                                if (lacuna > 0) {
+                                    const tdVazio = document.createElement('td');
+                                    tdVazio.setAttribute('colspan', lacuna);
+                                    row.appendChild(tdVazio);
+                                }
                             }
 
-                            etapasTipo.forEach(etapa => {
-                                const dataInicio = new Date(etapa.data_inicio);
-                                const dataFim = new Date(etapa.data_fim);
+                            const colspan = indexFim - indexInicio + 1;
 
-                                const indexInicio = datas.findIndex(d => d.getTime() === dataInicio.getTime());
-                                const indexFim = datas.findIndex(d => d.getTime() === dataFim.getTime());
+                            const etapaCell = document.createElement('td');
+                            etapaCell.setAttribute('colspan', colspan);
+                            etapaCell.setAttribute('data-inicio', etapa.data_inicio);
+                            etapaCell.setAttribute('data-fim', etapa.data_fim);
+                            etapaCell.setAttribute('imagem_id', etapa.imagem_id);
+                            etapaCell.setAttribute('data-etapa', etapa.etapa);
 
-                                const colspan = indexFim - indexInicio + 1;
+                            if(etapa.funcao_colaborador_id === 15){
+                                etapaCell.style.display = 'none';
+                            }
 
-                                const etapaCell = document.createElement('td');
-                                etapaCell.setAttribute('colspan', colspan);
-                                etapaCell.setAttribute('rowspan', rowSpan);
-                                etapaCell.setAttribute('data-inicio', etapa.data_inicio);
-                                etapaCell.setAttribute('data-fim', etapa.data_fim);
-                                etapaCell.className = etapa.etapa
-                                    .toLowerCase()
-                                    .normalize('NFD')
-                                    .replace(/[\u0300-\u036f]/g, '')
-                                    .replace(/\s/g, '')
-                                    .replace(/[^a-z0-9]/g, '');
+                            etapaCell.className = etapa.etapa
+                                .toLowerCase()
+                                .normalize('NFD')
+                                .replace(/[\u0300-\u036f]/g, '')
+                                .replace(/\s/g, '')
+                                .replace(/[^a-z0-9]/g, '');
 
-                                // Inclui o nome do colaborador, se existir
-                                if (etapa.nome_colaborador) {
-                                    etapaCell.textContent = `${etapa.etapa} - ${etapa.nome_colaborador}`;
-                                } else {
-                                    etapaCell.textContent = etapa.etapa;
+                            etapaCell.textContent = etapa.nome_colaborador
+                                ? `${etapa.etapa} - ${etapa.nome_colaborador}`
+                                : etapa.etapa;
+                            ultimaDataFim = dataFim;
+
+                            etapaCell.contentEditable = false;
+                            const tooltip = document.getElementById('tooltip');
+
+                            etapaCell.addEventListener('mouseenter', (event) => {
+                                if (etapa.porcentagem_conclusao != null) {
+                                    tooltip.textContent = `${etapa.porcentagem_conclusao}%`;
+                                }
+                                tooltip.style.display = 'block';
+                                tooltip.style.left = event.clientX + 'px';
+                                tooltip.style.top = event.clientY - 30 + 'px';
+                            });
+
+                            etapaCell.addEventListener('mouseleave', () => {
+                                tooltip.style.display = 'none';
+                            });
+
+                            etapaCell.addEventListener('mousemove', (event) => {
+                                tooltip.style.left = event.clientX + 'px';
+                                tooltip.style.top = event.clientY - 30 + 'px';
+                            });
+
+                            etapaCell.oncontextmenu = async (event) => {
+                                const btnAtribuir = document.getElementById("confirmarBtn");
+                                btnAtribuir.style.display = "block";
+                                event.preventDefault();
+
+                                etapaAtual = etapa;
+
+                                const colaboradorAtualId = etapa.colaborador_id;
+                                const nomeEtapa = etapa.etapa;
+                                const tipoImagem = etapa.tipo_imagem; // <== Certifique-se de que `etapa` tem isso
+
+                                const funcaoId = etapaParaFuncao[nomeEtapa];
+                                const dataInicio = etapaCell.getAttribute('data-inicio');
+                                const dataFim = etapaCell.getAttribute('data-fim');
+
+                                if (!funcaoId) {
+                                    console.warn(`Função não encontrada para a etapa: ${nomeEtapa}`);
+                                    return;
                                 }
 
-                                etapaCell.contentEditable = false;
-                                const tooltip = document.getElementById('tooltip');
+                                const isModalSimples = tipoImagem === "Fachada" &&
+                                    (nomeEtapa === "Modelagem" || nomeEtapa === "Pós-Produção");
 
-                                etapaCell.addEventListener('mouseenter', (event) => {
-                                    if (etapa.porcentagem_conclusao != null) {
-                                        tooltip.textContent = `${etapa.porcentagem_conclusao}%`;
-                                    }
-                                    tooltip.style.display = 'block';
-                                    tooltip.style.left = event.clientX + 'px';
-                                    tooltip.style.top = event.clientY - 30 + 'px';
-                                });
+                                const modalSimples = document.getElementById("colaboradorModal");
+                                const modalAvancado = document.getElementById("modalAvancado");
 
-                                etapaCell.addEventListener('mouseleave', () => {
-                                    tooltip.style.display = 'none';
-                                });
+                                if (isModalSimples) {
+                                    preencherSelectComColaboradores({
+                                        selectId: "colaborador_id",
+                                        funcaoId,
+                                        dataInicio,
+                                        dataFim,
+                                        colaboradorAtualId,
+                                        onConflitoSelecionado: (selected) => {
+                                            const nome = selected.textContent;
+                                            const obra = selected.dataset.obra;
+                                            const etapa = selected.dataset.etapa;
+                                            const inicio = formatarData(selected.dataset.inicio);
+                                            const fim = formatarData(selected.dataset.fim);
+                                            const etapaId = selected.dataset.ganttId;
 
-                                etapaCell.addEventListener('mousemove', (event) => {
-                                    tooltip.style.left = event.clientX + 'px';
-                                    tooltip.style.top = event.clientY - 30 + 'px';
-                                });
-
-                                etapaCell.oncontextmenu = async (event) => {
-                                    const btnAtribuir = document.getElementById("confirmarBtn");
-                                    btnAtribuir.style.display = "block";
-                                    event.preventDefault();
-
-                                    etapaAtual = etapa;
-
-                                    const colaboradorAtualId = etapa.colaborador_id;
-                                    const nomeEtapa = etapa.etapa;
-                                    const tipoImagem = etapa.tipo_imagem; // <== Certifique-se de que `etapa` tem isso
-
-                                    const funcaoId = etapaParaFuncao[nomeEtapa];
-                                    const dataInicio = etapaCell.getAttribute('data-inicio');
-                                    const dataFim = etapaCell.getAttribute('data-fim');
-
-                                    if (!funcaoId) {
-                                        console.warn(`Função não encontrada para a etapa: ${nomeEtapa}`);
-                                        return;
-                                    }
-
-                                    const isModalSimples = tipoImagem === "Fachada" &&
-                                        (nomeEtapa === "Modelagem" || nomeEtapa === "Pós-Produção");
-
-                                    const modalSimples = document.getElementById("colaboradorModal");
-                                    const modalAvancado = document.getElementById("modalAvancado");
-
-                                    if (isModalSimples) {
-                                        preencherSelectComColaboradores({
-                                            selectId: "colaborador_id",
-                                            funcaoId,
-                                            dataInicio,
-                                            dataFim,
-                                            colaboradorAtualId,
-                                            onConflitoSelecionado: (selected) => {
-                                                const nome = selected.textContent;
-                                                const obra = selected.dataset.obra;
-                                                const etapa = selected.dataset.etapa;
-                                                const inicio = formatarData(selected.dataset.inicio);
-                                                const fim = formatarData(selected.dataset.fim);
-                                                const etapaId = selected.dataset.ganttId;
-
-                                                abrirModalConflito({
-                                                    colaboradorId: selected.value,
-                                                    nome,
-                                                    obra,
-                                                    etapa,
-                                                    inicio,
-                                                    fim,
-                                                    etapaId
-                                                });
-                                            }
-                                        });
-
-                                        modalSimples.style.display = "block";
-                                        modalAvancado.style.display = "none";
-
-                                    } else {
-                                        // Carregar imagens via fetch
-                                        const response = await fetch(`buscar_imagens.php?tipo_imagem=${encodeURIComponent(tipoImagem)}&obra_id=${obraId}&funcao_id=${funcaoId}`);
-                                        const imagens = await response.json();
-
-                                        const imagensContainer = document.getElementById("listaImagens");
-                                        imagensContainer.innerHTML = ""; // Limpa conteúdo anterior
-
-
-                                        const coresColaboradores = new Map();
-
-                                        function gerarCorAleatoria() {
-                                            const letras = "0123456789ABCDEF";
-                                            let cor = "#";
-                                            for (let i = 0; i < 6; i++) {
-                                                cor += letras[Math.floor(Math.random() * 16)];
-                                            }
-                                            return cor;
-                                        }
-
-                                        function obterCorColaborador(colaboradorId) {
-                                            if (!coresColaboradores.has(colaboradorId)) {
-                                                coresColaboradores.set(colaboradorId, gerarCorAleatoria());
-                                            }
-                                            return coresColaboradores.get(colaboradorId);
-                                        }
-
-                                        const imagensPorColaborador = new Map();
-
-                                        // Criar imagens com dropzones
-                                        imagens.forEach(img => {
-                                            const imgDiv = document.createElement("div");
-                                            imgDiv.dataset.imagemId = img.idimagens_cliente_obra;
-                                            imgDiv.style.padding = "10px";
-                                            imgDiv.style.border = "1px solid #ccc";
-                                            imgDiv.style.marginBottom = "5px";
-                                            imgDiv.style.transition = "background-color 0.3s";
-
-                                            const nome = document.createElement("p");
-                                            nome.textContent = img.imagem_nome;
-
-                                            // Se já tiver colaborador atribuído, aplica a cor
-                                            if (img.colaborador_id) {
-                                                const cor = obterCorColaborador(img.colaborador_id);
-                                                nome.style.backgroundColor = cor;
-
-                                                if (!imagensPorColaborador.has(img.colaborador_id)) {
-                                                    imagensPorColaborador.set(img.colaborador_id, []);
-                                                }
-
-                                                imagensPorColaborador.get(img.colaborador_id).push(cor);
-                                            }
-
-                                            imgDiv.appendChild(nome);
-                                            imagensContainer.appendChild(imgDiv);
-
-                                            // Dropzone
-                                            imgDiv.addEventListener("dragover", (e) => e.preventDefault());
-                                            imgDiv.addEventListener("drop", async (e) => {
-                                                e.preventDefault();
-                                                const colaboradorId = e.dataTransfer.getData("text/plain");
-                                                const imagemId = imgDiv.dataset.imagemId;
-
-                                                await fetch("atribuir_colab.php", {
-                                                    method: "POST",
-                                                    headers: { "Content-Type": "application/json" },
-                                                    body: JSON.stringify({ colaborador_id: colaboradorId, imagem_id: imagemId, funcao_id: funcaoId })
-                                                });
-
-                                                const cor = obterCorColaborador(colaboradorId);
-                                                nome.style.backgroundColor = cor;
-
-                                                alert("Colaborador atribuído com sucesso!");
-                                                console.log(`Colab: ${colaboradorId}, imagem: ${imagemId}, funcao: ${funcaoId}`)
+                                            abrirModalConflito({
+                                                colaboradorId: selected.value,
+                                                nome,
+                                                obra,
+                                                etapa,
+                                                inicio,
+                                                fim,
+                                                etapaId
                                             });
-                                        });
+                                        }
+                                    });
 
-                                        preencherColaboradoresArrastaveis({
-                                            funcaoId,
-                                            dataInicio,
-                                            dataFim,
-                                            colaboradorAtualId,
-                                            imagensPorColaborador
-                                        });
+                                    modalSimples.style.display = "block";
+                                    modalAvancado.style.display = "none";
+
+                                } else {
+                                    // Carregar imagens via fetch
+                                    const response = await fetch(`buscar_imagens.php?tipo_imagem=${encodeURIComponent(tipoImagem)}&obra_id=${obraId}&funcao_id=${funcaoId}`);
+                                    const imagens = await response.json();
+
+                                    const imagensContainer = document.getElementById("listaImagens");
+                                    imagensContainer.innerHTML = ""; // Limpa conteúdo anterior
 
 
+                                    const coresColaboradores = new Map();
 
-                                        modalAvancado.style.display = "block";
-                                        modalSimples.style.display = "none";
+                                    function gerarCorAleatoria() {
+                                        const letras = "0123456789ABCDEF";
+                                        let cor = "#";
+                                        for (let i = 0; i < 6; i++) {
+                                            cor += letras[Math.floor(Math.random() * 16)];
+                                        }
+                                        return cor;
                                     }
 
-                                    // Posicionar modal (pode aplicar em ambos)
-                                    const rect = event.target.getBoundingClientRect();
-                                    const modal = isModalSimples ? modalSimples : modalAvancado;
-                                    const isRightSpace = rect.right + modal.offsetWidth < window.innerWidth;
+                                    function obterCorColaborador(colaboradorId) {
+                                        if (!coresColaboradores.has(colaboradorId)) {
+                                            coresColaboradores.set(colaboradorId, gerarCorAleatoria());
+                                        }
+                                        return coresColaboradores.get(colaboradorId);
+                                    }
 
-                                    modal.style.position = "absolute";
-                                    modal.style.left = isRightSpace
-                                        ? `${rect.right + 10}px`
-                                        : `${rect.left - modal.offsetWidth - 10}px`;
-                                    modal.style.top = `${rect.top + window.scrollY}px`;
-                                    const modalConflito = document.getElementById("modalConflito");
-                                    modalConflito.style.display = 'none';
+                                    const imagensPorColaborador = new Map();
+
+                                    // Criar imagens com dropzones
+                                    imagens.forEach(img => {
+                                        const imgDiv = document.createElement("div");
+                                        imgDiv.dataset.imagemId = img.idimagens_cliente_obra;
+                                        imgDiv.style.padding = "10px";
+                                        imgDiv.style.border = "1px solid #ccc";
+                                        imgDiv.style.marginBottom = "5px";
+                                        imgDiv.style.transition = "background-color 0.3s";
+
+                                        const nome = document.createElement("p");
+                                        nome.textContent = img.imagem_nome;
+
+                                        // Se já tiver colaborador atribuído, aplica a cor
+                                        if (img.colaborador_id) {
+                                            const cor = obterCorColaborador(img.colaborador_id);
+                                            nome.style.backgroundColor = cor;
+
+                                            if (!imagensPorColaborador.has(img.colaborador_id)) {
+                                                imagensPorColaborador.set(img.colaborador_id, []);
+                                            }
+
+                                            imagensPorColaborador.get(img.colaborador_id).push(cor);
+                                        }
+
+                                        imgDiv.appendChild(nome);
+                                        imagensContainer.appendChild(imgDiv);
+
+                                        // Dropzone
+                                        imgDiv.addEventListener("dragover", (e) => e.preventDefault());
+                                        imgDiv.addEventListener("drop", async (e) => {
+                                            e.preventDefault();
+                                            const colaboradorId = e.dataTransfer.getData("text/plain");
+                                            const imagemId = imgDiv.dataset.imagemId;
+
+                                            await fetch("atribuir_colab.php", {
+                                                method: "POST",
+                                                headers: { "Content-Type": "application/json" },
+                                                body: JSON.stringify({ colaborador_id: colaboradorId, imagem_id: imagemId, funcao_id: funcaoId })
+                                            });
+
+                                            const cor = obterCorColaborador(colaboradorId);
+                                            nome.style.backgroundColor = cor;
+
+                                            alert("Colaborador atribuído com sucesso!");
+                                            console.log(`Colab: ${colaboradorId}, imagem: ${imagemId}, funcao: ${funcaoId}`)
+                                        });
+                                    });
+
+                                    preencherColaboradoresArrastaveis({
+                                        funcaoId,
+                                        dataInicio,
+                                        dataFim,
+                                        colaboradorAtualId,
+                                        imagensPorColaborador
+                                    });
+
+
+
+                                    modalAvancado.style.display = "block";
+                                    modalSimples.style.display = "none";
+                                }
+
+                                // Posicionar modal (pode aplicar em ambos)
+                                const rect = event.target.getBoundingClientRect();
+                                const modal = isModalSimples ? modalSimples : modalAvancado;
+                                const isRightSpace = rect.right + modal.offsetWidth < window.innerWidth;
+
+                                modal.style.position = "absolute";
+                                modal.style.left = isRightSpace
+                                    ? `${rect.right + 10}px`
+                                    : `${rect.left - modal.offsetWidth - 10}px`;
+                                modal.style.top = `${rect.top + window.scrollY}px`;
+                                const modalConflito = document.getElementById("modalConflito");
+                                modalConflito.style.display = 'none';
+                            };
+
+                            // Implementação do arrasto horizontal
+                            let isDragging = false;
+                            let startX = 0;
+                            
+                            const imagemId = etapaCell.getAttribute('imagem_id');
+
+                            etapaCell.onmousedown = (e) => {
+                                isDragging = true;
+                                startX = e.clientX;
+                                document.body.style.cursor = 'ew-resize';
+                                etapaCell.classList.add('arrastando');
+
+                                document.onmousemove = (eMove) => {
+                                    if (!isDragging) return;
+
+                                    const diffX = eMove.clientX - startX;
+                                    etapaCell.style.transform = `translateX(${diffX}px)`;
                                 };
 
-                                // Implementação do arrasto horizontal
-                                let isDragging = false;
-                                let startX = 0;
+                                document.onmouseup = (eUp) => {
+                                    if (!isDragging) return;
 
-                                etapaCell.onmousedown = (e) => {
-                                    isDragging = true;
-                                    startX = e.clientX;
-                                    document.body.style.cursor = 'ew-resize';
-                                    etapaCell.classList.add('arrastando');
+                                    const diffX = eUp.clientX - startX;
+                                    const cellWidth = etapaCell.offsetWidth / etapaCell.colSpan;
+                                    const daysMoved = Math.round(diffX / cellWidth);
 
-                                    document.onmousemove = (eMove) => {
-                                        if (!isDragging) return;
+                                    // Reset visual
+                                    etapaCell.style.transform = 'translateX(0)';
+                                    etapaCell.classList.remove('arrastando');
+                                    document.body.style.cursor = 'default';
+                                    document.onmousemove = null;
+                                    isDragging = false;
 
-                                        const diffX = eMove.clientX - startX;
-                                        etapaCell.style.transform = `translateX(${diffX}px)`;
-                                    };
+                                    if (daysMoved !== 0) {
+                                        // Identifica a etapa atual
+                                        const etapaAtual = etapaCell.getAttribute('data-etapa');
 
-                                    document.onmouseup = (eUp) => {
-                                        if (!isDragging) return;
-
-                                        const diffX = eUp.clientX - startX;
-                                        const cellWidth = etapaCell.offsetWidth / etapaCell.colSpan;
-                                        const daysMoved = Math.round(diffX / cellWidth);
-
-                                        // Reset visual
-                                        etapaCell.style.transform = 'translateX(0)';
-                                        etapaCell.classList.remove('arrastando');
-                                        document.body.style.cursor = 'default';
-                                        document.onmousemove = null;
-                                        isDragging = false;
-
-                                        if (daysMoved !== 0) {
-                                            etapas[tipoImagem].forEach(et => {
-                                                et.data_inicio = novaData(et.data_inicio, daysMoved);
-                                                et.data_fim = novaData(et.data_fim, daysMoved);
+                                        // Filtra apenas as etapas com o mesmo imagem_id e ordem posterior ou igual à etapa atual
+                                        const etapasImagemOrdenadas = etapas[tipoImagem]
+                                            .filter(et => et.imagem_id == imagemId)
+                                            .sort((a, b) => {
+                                                const ordem = ['Caderno', 'Filtro de assets', 'Modelagem', 'Composição', 'Finalização', 'Pós-Produção'];
+                                                return ordem.indexOf(a.etapa) - ordem.indexOf(b.etapa);
                                             });
 
-                                            console.log(`Tipo Imagem: ${tipoImagem}`);
-                                            etapas[tipoImagem].forEach(et => {
-                                                console.log(`Etapa: ${et.etapa}, Início: ${et.data_inicio}, Fim: ${et.data_fim}`);
-                                            });
+                                        let encontrouAtual = false;
+                                        const etapasParaAtualizar = etapasImagemOrdenadas.filter(et => {
+                                            if (et.etapa === etapaAtual) encontrouAtual = true;
+                                            return encontrouAtual;
+                                        });
 
-                                            // Envia as novas datas para o back-end
-                                            fetch('atualizar_datas.php', {
-                                                method: 'POST',
-                                                headers: {
-                                                    'Content-Type': 'application/json'
-                                                },
-                                                body: JSON.stringify({
-                                                    tipoImagem: tipoImagem,
-                                                    etapas: etapas[tipoImagem]
-                                                })
+                                        // Atualiza apenas as etapas posteriores ou iguais
+                                        etapasParaAtualizar.forEach(et => {
+                                            et.data_inicio = novaData(et.data_inicio, daysMoved);
+                                            et.data_fim = novaData(et.data_fim, daysMoved);
+                                        });
+
+                                        // Envia apenas as etapas filtradas ao back-end
+                                        fetch('atualizar_datas.php', {
+                                            method: 'POST',
+                                            headers: {
+                                                'Content-Type': 'application/json'
+                                            },
+                                            body: JSON.stringify({
+                                                tipoImagem: tipoImagem,
+                                                imagemId: imagemId,
+                                                etapas: etapasParaAtualizar
                                             })
-                                                .then(response => response.json())
-                                                .then(data => {
-                                                    if (data.success) {
-                                                        console.log('Datas atualizadas com sucesso no banco.');
-                                                        atualizarTabela();
-                                                    } else {
-                                                        console.error('Erro ao atualizar no banco:', data.message);
-                                                    }
-                                                })
-                                                .catch(error => {
-                                                    console.error('Erro na requisição:', error);
-                                                });
-                                        }
-                                    };
+                                        })
+                                            .then(response => response.json())
+                                            .then(data => {
+                                                if (data.success) {
+                                                    console.log('Datas atualizadas com sucesso no banco.');
+                                                    atualizarTabela();
+                                                } else {
+                                                    console.error('Erro ao atualizar no banco:', data.message);
+                                                }
+                                            })
+                                            .catch(error => {
+                                                console.error('Erro na requisição:', error);
+                                            });
+                                    }
                                 };
+                            };
 
 
-                                row.appendChild(etapaCell);
-                            });
-                        }
+                            row.appendChild(etapaCell);
+
+                        });
                     }
 
                     if (firstRow) {

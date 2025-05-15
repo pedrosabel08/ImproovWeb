@@ -10,7 +10,7 @@ if (!$id_obra) {
 }
 
 // Query para buscar as imagens
-$sqlImagens = "SELECT img.tipo_imagem, img.imagem_nome
+$sqlImagens = "SELECT img.idimagens_cliente_obra, img.tipo_imagem, img.imagem_nome
 FROM imagens_cliente_obra img
 JOIN obra o ON img.obra_id = o.idobra
 WHERE o.idobra = ?
@@ -40,8 +40,11 @@ $resultImagens = $stmtImagens->get_result();
 // Query para buscar as etapas
 $sqlEtapas = "SELECT 
     gp.*, 
-    c.nome_colaborador AS nome_colaborador,
-    ec.colaborador_id,
+    c.nome_colaborador AS nome_etapa_colaborador,
+    ec.colaborador_id AS etapa_colaborador_id,
+
+    cfi.nome_colaborador AS nome_funcao_colaborador,
+    fi.colaborador_id AS funcao_colaborador_id,
 
     COUNT(fi.status) AS total_funcoes,
     
@@ -66,7 +69,6 @@ LEFT JOIN
     ON ico.obra_id = gp.obra_id 
     AND ico.tipo_imagem = gp.tipo_imagem
 
--- JOIN com função, filtrando conforme a etapa correspondente
 LEFT JOIN 
     funcao_imagem fi 
     ON fi.imagem_id = ico.idimagens_cliente_obra 
@@ -81,15 +83,19 @@ LEFT JOIN
         END
     )
 
+-- Novo JOIN com colaborador da função
+LEFT JOIN 
+    colaborador cfi ON cfi.idcolaborador = fi.colaborador_id
+
 WHERE 
     gp.obra_id = ?
 
 GROUP BY 
-    gp.id, c.idcolaborador
+    gp.id, c.idcolaborador, cfi.idcolaborador
 
 ORDER BY 
     gp.tipo_imagem,
-    FIELD(gp.etapa, 'Caderno', 'Modelagem', 'Composição', 'Finalização', 'Pós-Produção') -- ajuste conforme suas etapas reais
+    FIELD(gp.etapa, 'Caderno', 'Filtro de assets', 'Modelagem', 'Composição', 'Finalização', 'Pós-Produção') 
 ";
 
 $stmtEtapas = $conn->prepare($sqlEtapas);
@@ -119,7 +125,10 @@ $rowObra = $resultObra->fetch_assoc();
 // Organizar os dados
 $imagens = [];
 while ($row = $resultImagens->fetch_assoc()) {
-    $imagens[$row['tipo_imagem']][] = $row['imagem_nome'];
+    $imagens[$row['tipo_imagem']][] = [
+        'imagem_id' => $row['idimagens_cliente_obra'],
+        'nome' => $row['imagem_nome']
+    ];
 }
 
 $etapas = [];

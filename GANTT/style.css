@@ -97,12 +97,10 @@ td {
     border: 1px solid !important;
 }
 
-table#gantt td:has(.plantahumanizada) {
-    border: none !important;
-}
-
-table#gantt td:not(.plantahumanizada) {
-    border: 1px solid #ddd;
+.filtrodeassets {
+    background-color: #dcffec;
+    color: rgb(0, 153, 33);
+    border: 1px solid !important;
 }
 
 #colaboradorModal {
@@ -233,7 +231,8 @@ th.selecionado {
     background-color: #e0f7fa;
 }
 
-.imagemDiv, .colabDiv {
+.imagemDiv,
+.colabDiv {
     display: flex;
     flex-direction: column;
 }
@@ -250,4 +249,15 @@ th.selecionado {
     justify-content: center;
     gap: 0 10px;
     margin-top: 10px;
+}
+
+td:nth-child(1) {
+    min-width: 50px;
+    max-width: 120px;
+    text-overflow: ellipsis;
+    overflow: hidden;
+}
+
+.arrastando-header {
+    background-color: lightblue !important;
 }

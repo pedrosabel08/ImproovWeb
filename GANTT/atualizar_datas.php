@@ -2,23 +2,36 @@
 
 include '../conexao.php';
 
-// Receber os dados
 $data = json_decode(file_get_contents("php://input"), true);
 
 $tipoImagem = $data['tipoImagem'];
+$imagemId = (int)$data['imagemId'];
 $etapas = $data['etapas'];
 
-// Atualizar cada etapa
+if (!is_array($etapas)) {
+    echo json_encode(['success' => false, 'message' => 'Formato de etapas inválido.']);
+    exit;
+}
+
+$stmt = $conn->prepare("UPDATE gantt_prazos 
+    SET data_inicio = ?, data_fim = ? 
+    WHERE tipo_imagem = ? AND etapa = ? AND imagem_id = ?
+");
+
+if (!$stmt) {
+    echo json_encode(['success' => false, 'message' => 'Erro ao preparar statement: ' . $conn->error]);
+    exit;
+}
+
 foreach ($etapas as $etapa) {
-    $etapaNome = $conn->real_escape_string($etapa['etapa']);
-    $inicio = $conn->real_escape_string($etapa['data_inicio']);
-    $fim = $conn->real_escape_string($etapa['data_fim']);
+    $inicio = $etapa['data_inicio'];
+    $fim = $etapa['data_fim'];
+    $etapaNome = $etapa['etapa'];
 
-    $sql = "UPDATE gantt_prazos SET data_inicio = '$inicio', data_fim = '$fim' 
-            WHERE tipo_imagem = '$tipoImagem' AND etapa = '$etapaNome'";
+    $stmt->bind_param("ssssi", $inicio, $fim, $tipoImagem, $etapaNome, $imagemId);
 
-    if (!$conn->query($sql)) {
-        echo json_encode(['success' => false, 'message' => 'Erro ao atualizar: ' . $conn->error]);
+    if (!$stmt->execute()) {
+        echo json_encode(['success' => false, 'message' => 'Erro ao atualizar: ' . $stmt->error]);
         exit;
     }
 }

@@ -34,8 +34,9 @@ table#gantt td {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    max-width: 10px;
     user-select: none;
+    width: 40px;
+    max-width: 40px;
 }
 
 
@@ -251,11 +252,12 @@ th.selecionado {
     margin-top: 10px;
 }
 
-td:nth-child(1) {
+.nome_imagem_header {
     min-width: 50px;
     max-width: 120px;
-    text-overflow: ellipsis;
     overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .arrastando-header {

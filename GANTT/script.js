@@ -19,6 +19,7 @@ function atualizarTabela() {
             const { imagens, etapas, primeiraData, ultimaData, obra } = data;
 
             document.getElementById('nomenclatura').textContent = obra.nomenclatura;
+            document.title = `GANTT - ${obra.nomenclatura}` || "Nome não disponível";
 
             // Lista de feriados fixos
             const feriadosFixos = [
@@ -59,7 +60,12 @@ function atualizarTabela() {
             const monthHeader = document.createElement('th');
             monthHeader.textContent = '';
             monthHeader.rowSpan = 2; // Ocupa as duas linhas do cabeçalho
+            const nomeImgHeader = document.createElement('th');
+            nomeImgHeader.textContent = '';
+            nomeImgHeader.rowSpan = 2; // Ocupa as duas linhas do cabeçalho
+            nomeImgHeader.classList.add('nome_imagem_header')
             monthRow.appendChild(monthHeader);
+            monthRow.appendChild(nomeImgHeader);
 
             let currentMonth = '';
             let currentMonthStartIndex = 0;
@@ -206,7 +212,9 @@ function atualizarTabela() {
                         tipoCell.textContent = tipoImagem;
                         tipoCell.setAttribute('rowspan', rowSpan);
                         row.appendChild(tipoCell);
-                        tipoCell.style.writingMode = 'sideways-lr';
+                        monthHeader.style.fontWeight = 'bold';
+
+                        // tipoCell.style.writingMode = 'sideways-lr';
                         firstRow = false;
                     }
 
@@ -261,7 +269,7 @@ function atualizarTabela() {
                             etapaCell.setAttribute('imagem_id', etapa.imagem_id);
                             etapaCell.setAttribute('data-etapa', etapa.etapa);
 
-                            if(etapa.funcao_colaborador_id === 15){
+                            if (etapa.etapa_colaborador_id === 15) {
                                 etapaCell.style.display = 'none';
                             }
 
@@ -272,8 +280,8 @@ function atualizarTabela() {
                                 .replace(/\s/g, '')
                                 .replace(/[^a-z0-9]/g, '');
 
-                            etapaCell.textContent = etapa.nome_colaborador
-                                ? `${etapa.etapa} - ${etapa.nome_colaborador}`
+                            etapaCell.textContent = etapa.nome_etapa_colaborador
+                                ? `${etapa.etapa} - ${etapa.nome_etapa_colaborador}`
                                 : etapa.etapa;
                             ultimaDataFim = dataFim;
 
@@ -307,147 +315,50 @@ function atualizarTabela() {
 
                                 const colaboradorAtualId = etapa.colaborador_id;
                                 const nomeEtapa = etapa.etapa;
-                                const tipoImagem = etapa.tipo_imagem; // <== Certifique-se de que `etapa` tem isso
 
                                 const funcaoId = etapaParaFuncao[nomeEtapa];
                                 const dataInicio = etapaCell.getAttribute('data-inicio');
                                 const dataFim = etapaCell.getAttribute('data-fim');
+
+                                document.getElementById('imagemId').value = etapa.imagem_id;
+                                document.getElementById('etapaNome').value = etapa.etapa;
 
                                 if (!funcaoId) {
                                     console.warn(`Função não encontrada para a etapa: ${nomeEtapa}`);
                                     return;
                                 }
 
-                                const isModalSimples = tipoImagem === "Fachada" &&
-                                    (nomeEtapa === "Modelagem" || nomeEtapa === "Pós-Produção");
 
-                                const modalSimples = document.getElementById("colaboradorModal");
-                                const modalAvancado = document.getElementById("modalAvancado");
+                                preencherSelectComColaboradores({
+                                    selectId: "colaborador_id",
+                                    funcaoId,
+                                    dataInicio,
+                                    dataFim,
+                                    colaboradorAtualId,
+                                    onConflitoSelecionado: (selected) => {
+                                        const nome = selected.textContent;
+                                        const obra = selected.dataset.obra;
+                                        const etapa = selected.dataset.etapa;
+                                        const inicio = formatarData(selected.dataset.inicio);
+                                        const fim = formatarData(selected.dataset.fim);
+                                        const etapaId = selected.dataset.ganttId;
 
-                                if (isModalSimples) {
-                                    preencherSelectComColaboradores({
-                                        selectId: "colaborador_id",
-                                        funcaoId,
-                                        dataInicio,
-                                        dataFim,
-                                        colaboradorAtualId,
-                                        onConflitoSelecionado: (selected) => {
-                                            const nome = selected.textContent;
-                                            const obra = selected.dataset.obra;
-                                            const etapa = selected.dataset.etapa;
-                                            const inicio = formatarData(selected.dataset.inicio);
-                                            const fim = formatarData(selected.dataset.fim);
-                                            const etapaId = selected.dataset.ganttId;
-
-                                            abrirModalConflito({
-                                                colaboradorId: selected.value,
-                                                nome,
-                                                obra,
-                                                etapa,
-                                                inicio,
-                                                fim,
-                                                etapaId
-                                            });
-                                        }
-                                    });
-
-                                    modalSimples.style.display = "block";
-                                    modalAvancado.style.display = "none";
-
-                                } else {
-                                    // Carregar imagens via fetch
-                                    const response = await fetch(`buscar_imagens.php?tipo_imagem=${encodeURIComponent(tipoImagem)}&obra_id=${obraId}&funcao_id=${funcaoId}`);
-                                    const imagens = await response.json();
-
-                                    const imagensContainer = document.getElementById("listaImagens");
-                                    imagensContainer.innerHTML = ""; // Limpa conteúdo anterior
-
-
-                                    const coresColaboradores = new Map();
-
-                                    function gerarCorAleatoria() {
-                                        const letras = "0123456789ABCDEF";
-                                        let cor = "#";
-                                        for (let i = 0; i < 6; i++) {
-                                            cor += letras[Math.floor(Math.random() * 16)];
-                                        }
-                                        return cor;
-                                    }
-
-                                    function obterCorColaborador(colaboradorId) {
-                                        if (!coresColaboradores.has(colaboradorId)) {
-                                            coresColaboradores.set(colaboradorId, gerarCorAleatoria());
-                                        }
-                                        return coresColaboradores.get(colaboradorId);
-                                    }
-
-                                    const imagensPorColaborador = new Map();
-
-                                    // Criar imagens com dropzones
-                                    imagens.forEach(img => {
-                                        const imgDiv = document.createElement("div");
-                                        imgDiv.dataset.imagemId = img.idimagens_cliente_obra;
-                                        imgDiv.style.padding = "10px";
-                                        imgDiv.style.border = "1px solid #ccc";
-                                        imgDiv.style.marginBottom = "5px";
-                                        imgDiv.style.transition = "background-color 0.3s";
-
-                                        const nome = document.createElement("p");
-                                        nome.textContent = img.imagem_nome;
-
-                                        // Se já tiver colaborador atribuído, aplica a cor
-                                        if (img.colaborador_id) {
-                                            const cor = obterCorColaborador(img.colaborador_id);
-                                            nome.style.backgroundColor = cor;
-
-                                            if (!imagensPorColaborador.has(img.colaborador_id)) {
-                                                imagensPorColaborador.set(img.colaborador_id, []);
-                                            }
-
-                                            imagensPorColaborador.get(img.colaborador_id).push(cor);
-                                        }
-
-                                        imgDiv.appendChild(nome);
-                                        imagensContainer.appendChild(imgDiv);
-
-                                        // Dropzone
-                                        imgDiv.addEventListener("dragover", (e) => e.preventDefault());
-                                        imgDiv.addEventListener("drop", async (e) => {
-                                            e.preventDefault();
-                                            const colaboradorId = e.dataTransfer.getData("text/plain");
-                                            const imagemId = imgDiv.dataset.imagemId;
-
-                                            await fetch("atribuir_colab.php", {
-                                                method: "POST",
-                                                headers: { "Content-Type": "application/json" },
-                                                body: JSON.stringify({ colaborador_id: colaboradorId, imagem_id: imagemId, funcao_id: funcaoId })
-                                            });
-
-                                            const cor = obterCorColaborador(colaboradorId);
-                                            nome.style.backgroundColor = cor;
-
-                                            alert("Colaborador atribuído com sucesso!");
-                                            console.log(`Colab: ${colaboradorId}, imagem: ${imagemId}, funcao: ${funcaoId}`)
+                                        abrirModalConflito({
+                                            colaboradorId: selected.value,
+                                            nome,
+                                            obra,
+                                            etapa,
+                                            inicio,
+                                            fim,
+                                            etapaId
                                         });
-                                    });
+                                    }
+                                });
 
-                                    preencherColaboradoresArrastaveis({
-                                        funcaoId,
-                                        dataInicio,
-                                        dataFim,
-                                        colaboradorAtualId,
-                                        imagensPorColaborador
-                                    });
-
-
-
-                                    modalAvancado.style.display = "block";
-                                    modalSimples.style.display = "none";
-                                }
 
                                 // Posicionar modal (pode aplicar em ambos)
                                 const rect = event.target.getBoundingClientRect();
-                                const modal = isModalSimples ? modalSimples : modalAvancado;
+                                const modal = document.getElementById('colaboradorModal');
                                 const isRightSpace = rect.right + modal.offsetWidth < window.innerWidth;
 
                                 modal.style.position = "absolute";
@@ -455,14 +366,18 @@ function atualizarTabela() {
                                     ? `${rect.right + 10}px`
                                     : `${rect.left - modal.offsetWidth - 10}px`;
                                 modal.style.top = `${rect.top + window.scrollY}px`;
+
                                 const modalConflito = document.getElementById("modalConflito");
                                 modalConflito.style.display = 'none';
+
+                                modal.style.display = "flex";
+
                             };
 
                             // Implementação do arrasto horizontal
                             let isDragging = false;
                             let startX = 0;
-                            
+
                             const imagemId = etapaCell.getAttribute('imagem_id');
 
                             etapaCell.onmousedown = (e) => {
@@ -495,6 +410,8 @@ function atualizarTabela() {
                                     if (daysMoved !== 0) {
                                         // Identifica a etapa atual
                                         const etapaAtual = etapaCell.getAttribute('data-etapa');
+
+
 
                                         // Filtra apenas as etapas com o mesmo imagem_id e ordem posterior ou igual à etapa atual
                                         const etapasImagemOrdenadas = etapas[tipoImagem]
@@ -699,13 +616,13 @@ function preencherSelectComColaboradores({
             colaboradores.forEach(colab => {
                 const option = document.createElement("option");
                 option.value = colab.idcolaborador;
-                option.textContent = colab.nome_colaborador + (colab.ocupado ? ` (${colab.obra_conflitante})` : "");
+                option.textContent = colab.nome_colaborador + (colab.ocupado ? ` (${colab.obras_conflitantes})` : "");
 
                 if (colab.ocupado) {
                     option.style.color = "red";
                     option.dataset.ocupado = true;
-                    option.dataset.obra = colab.obra_conflitante;
-                    option.dataset.etapa = colab.etapa_conflitante;
+                    option.dataset.obra = colab.obras_conflitantes;
+                    option.dataset.etapa = colab.etapas_conflitantes;
                     option.dataset.inicio = colab.data_inicio_conflito;
                     option.dataset.fim = colab.data_fim_conflito;
                     option.dataset.ganttId = colab.gantt_id;
@@ -760,6 +677,7 @@ function abrirModalConflito({ colaboradorId, nome, obra, etapa, inicio, fim, eta
     dataInicioAtual = inicio;
     dataFimAtual = fim;
 
+    console.log(nomeEtapaAtual);
 
     const modal = document.getElementById("modalConflito");
     const texto = document.getElementById("textoConflito");
@@ -939,48 +857,74 @@ function novaData(dataStr, dias) {
 
 
 const modal = document.getElementById("colaboradorModal");
-const confirmarBtn = document.getElementById("confirmarBtn");
+const modalConflito = document.getElementById("modalConflito");
 const select = document.getElementById("colaborador_id");
 let etapaAtual = null;
 
 
-confirmarBtn.onclick = () => {
+const confirmarBtn = document.getElementById('confirmarBtn');
+const btnAddForcado = document.getElementById('btnAddForcado');
+
+function enviarAtribuicao() {
     const colaboradorId = select.value;
-    if (colaboradorId && etapaAtual) {
-        fetch('atribuir_colaborador.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                gantt_id: etapaAtual.id,
-                colaborador_id: colaboradorId
-            })
-        })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Etapa atribuída com sucesso!',
-                        text: data.message,
-                    });
-                    atualizarTabela();
-                } else {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Erro ao atribuir função.',
-                        text: data.message,
-                    });
-                }
-                modal.style.display = "none";
-            })
-            .catch(error => alert("Erro ao atribuir colaborador."));
+    const imagem_id = document.getElementById("imagemId").value;
+    const etapaNome = document.getElementById("etapaNome").value;
+
+    if (!colaboradorId || !etapaAtual || !imagem_id) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Campos obrigatórios ausentes',
+            text: 'Certifique-se de selecionar um colaborador e que o ID da imagem esteja definido.',
+        });
+        return;
     }
-};
+
+    fetch('atribuir_colaborador.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            gantt_id: etapaAtual.id,
+            colaborador_id: colaboradorId,
+            imagemId: imagem_id,
+            etapaNome: etapaNome
+        })
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Etapa atribuída com sucesso!',
+                    text: data.message,
+                });
+                atualizarTabela();
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Erro ao atribuir função.',
+                    text: data.message,
+                });
+            }
+            modal.style.display = "none";
+            modalConflito.style.display = "none";
+        })
+        .catch(error => {
+            Swal.fire({
+                icon: 'error',
+                title: 'Erro inesperado',
+                text: 'Não foi possível conectar ao servidor.',
+            });
+        });
+}
+
+// Adiciona o evento para os dois botões
+confirmarBtn.onclick = enviarAtribuicao;
+btnAddForcado.onclick = enviarAtribuicao;
 
 document.addEventListener('keydown', function (event) {
     if (event.key === 'Escape') {
         modal.style.display = 'none';
-
+        document.getElementById('modalConflito').style.display = 'none';
     }
 });
 

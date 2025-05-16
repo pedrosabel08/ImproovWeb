@@ -6,17 +6,16 @@ if (isset($_GET['funcao_id'], $_GET['data_inicio'], $_GET['data_fim'])) {
     $data_inicio = $_GET['data_inicio'];
     $data_fim = $_GET['data_fim'];
 
-    $stmt = $conn->prepare("SELECT DISTINCT
+    $stmt = $conn->prepare("SELECT 
     c.idcolaborador,
     c.nome_colaborador,
-    o_conflitante.nomenclatura AS obra_conflitante,
-    g_conflitante.data_inicio AS data_inicio_conflito,
-    g_conflitante.data_fim AS data_fim_conflito,
-    conflito.etapa AS etapa_conflitante,
-    conflito.id AS gantt_id,  -- vírgula corrigida aqui
+    GROUP_CONCAT(DISTINCT o_conflitante.nomenclatura SEPARATOR ', ') AS obras_conflitantes,
+    MIN(g_conflitante.data_inicio) AS data_inicio_conflito,
+    MAX(g_conflitante.data_fim) AS data_fim_conflito,
+    GROUP_CONCAT(DISTINCT conflito.etapa SEPARATOR ', ') AS etapas_conflitantes,
+    COUNT(conflito.id) AS total_conflitos,
     CASE 
-        WHEN conflito.colaborador_id IS NOT NULL THEN 1
-        ELSE 0
+        WHEN COUNT(conflito.id) > 0 THEN 1 ELSE 0
     END AS ocupado
 FROM colaborador c
 LEFT JOIN funcao_colaborador fc ON fc.colaborador_id = c.idcolaborador
@@ -38,10 +37,15 @@ LEFT JOIN (
         (? BETWEEN g.data_inicio AND g.data_fim) OR
         (? BETWEEN g.data_inicio AND g.data_fim)
     )
+
 ) AS conflito ON conflito.colaborador_id = c.idcolaborador
 LEFT JOIN obra o_conflitante ON o_conflitante.nomenclatura = conflito.nomenclatura
 LEFT JOIN gantt_prazos g_conflitante ON g_conflitante.id = conflito.id
-WHERE fc.funcao_id = ? AND c.ativo = 1
+WHERE fc.funcao_id = ?
+  AND c.ativo = 1
+GROUP BY c.idcolaborador, c.nome_colaborador
+ORDER BY c.nome_colaborador
+
 ;
 
 

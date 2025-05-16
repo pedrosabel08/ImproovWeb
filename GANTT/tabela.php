@@ -42,18 +42,9 @@ $sqlEtapas = "SELECT
     gp.*, 
     c.nome_colaborador AS nome_etapa_colaborador,
     ec.colaborador_id AS etapa_colaborador_id,
-
-    cfi.nome_colaborador AS nome_funcao_colaborador,
-    fi.colaborador_id AS funcao_colaborador_id,
-
-    COUNT(fi.status) AS total_funcoes,
-    
-    SUM(CASE WHEN fi.status = 'Finalizado' THEN 1 ELSE 0 END) AS total_finalizadas,
-
-    ROUND(
-        (SUM(CASE WHEN fi.status = 'Finalizado' THEN 1 ELSE 0 END) / COUNT(fi.status)) * 100, 
-        2
-    ) AS porcentagem_conclusao
+    COALESCE(fi_data.total_funcoes, 0) AS total_funcoes,
+    COALESCE(fi_data.total_finalizadas, 0) AS total_finalizadas,
+    COALESCE(fi_data.porcentagem_conclusao, 0) AS porcentagem_conclusao
 
 FROM 
     gantt_prazos gp
@@ -64,42 +55,45 @@ LEFT JOIN
 LEFT JOIN 
     colaborador c ON c.idcolaborador = ec.colaborador_id
 
-LEFT JOIN 
-    imagens_cliente_obra ico 
-    ON ico.obra_id = gp.obra_id 
-    AND ico.tipo_imagem = gp.tipo_imagem
-
-LEFT JOIN 
-    funcao_imagem fi 
-    ON fi.imagem_id = ico.idimagens_cliente_obra 
-    AND fi.funcao_id = (
-        CASE gp.etapa
-            WHEN 'Caderno' THEN 1
-            WHEN 'Modelagem' THEN 2
-            WHEN 'Composição' THEN 3
-            WHEN 'Finalização' THEN 4
-            WHEN 'Pós-Produção' THEN 5
-            ELSE NULL
-        END
-    )
-
--- Novo JOIN com colaborador da função
-LEFT JOIN 
-    colaborador cfi ON cfi.idcolaborador = fi.colaborador_id
+-- Subquery com agregação isolada
+LEFT JOIN (
+    SELECT 
+        gp_sub.id AS gantt_id,
+        COUNT(fi.status) AS total_funcoes,
+        SUM(CASE WHEN fi.status = 'Finalizado' THEN 1 ELSE 0 END) AS total_finalizadas,
+        ROUND(
+            (SUM(CASE WHEN fi.status = 'Finalizado' THEN 1 ELSE 0 END) / COUNT(fi.status)) * 100, 
+            2
+        ) AS porcentagem_conclusao
+    FROM gantt_prazos gp_sub
+    LEFT JOIN imagens_cliente_obra ico ON ico.obra_id = gp_sub.obra_id AND ico.tipo_imagem = gp_sub.tipo_imagem
+    LEFT JOIN funcao_imagem fi ON fi.imagem_id = ico.idimagens_cliente_obra 
+        AND fi.funcao_id = (
+            CASE gp_sub.etapa
+                WHEN 'Caderno' THEN 1
+                WHEN 'Modelagem' THEN 2
+                WHEN 'Composição' THEN 3
+                WHEN 'Finalização' THEN 4
+                WHEN 'Pós-Produção' THEN 5
+                ELSE NULL
+            END
+        )
+    WHERE gp_sub.obra_id = ?
+    GROUP BY gp_sub.id
+) fi_data ON fi_data.gantt_id = gp.id
 
 WHERE 
     gp.obra_id = ?
 
-GROUP BY 
-    gp.id, c.idcolaborador, cfi.idcolaborador
-
 ORDER BY 
     gp.tipo_imagem,
-    FIELD(gp.etapa, 'Caderno', 'Filtro de assets', 'Modelagem', 'Composição', 'Finalização', 'Pós-Produção') 
+    FIELD(gp.etapa, 'Caderno', 'Filtro de assets', 'Modelagem', 'Composição', 'Finalização', 'Pós-Produção')
+
+
 ";
 
 $stmtEtapas = $conn->prepare($sqlEtapas);
-$stmtEtapas->bind_param("i", $id_obra);
+$stmtEtapas->bind_param("ii", $id_obra, $id_obra);
 $stmtEtapas->execute();
 $resultEtapas = $stmtEtapas->get_result();
 

@@ -1003,7 +1003,7 @@ function filtrarTabela() {
 
     for (var i = 0; i < linhas.length; i++) {
         var tipoImagemColuna = linhas[i].getAttribute("tipo-imagem");
-        var isAntecipada = linhas[i].getAttribute("antecipada") === '1';
+        var isAntecipada = linhas[i].querySelector('td[antecipada]').getAttribute("antecipada") === '1';
         var statusColuna = linhas[i].querySelector("td:nth-child(2)").textContent.trim(); // Pegando o status da terceira coluna (ajuste conforme necessário)
         var mostrarLinha = true;
 
@@ -1011,9 +1011,10 @@ function filtrarTabela() {
             mostrarLinha = false;
         }
 
-        if (antecipadaFiltro === "Antecipada" && !isAntecipada) {
+        if (antecipadaFiltro === "1" && !isAntecipada) {
             mostrarLinha = false;
         }
+
 
         // Filtra pelo status da imagem
         if (statusImagemFiltro && statusImagemFiltro !== "0" && statusColuna !== statusImagemFiltro) {

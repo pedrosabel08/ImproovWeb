@@ -105,7 +105,7 @@ $conn->close();
 
                     <select id="antecipada_obra">
                         <option value="">Todos as imagens</option>
-                        <option value="Antecipada">Antecipada</option>
+                        <option value="1">Antecipada</option>
                     </select>
 
                     <select name="imagem_status_filtro" id="imagem_status_filtro">

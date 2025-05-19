@@ -73,6 +73,7 @@ $conn->close();
                 </select>
                 <input type="hidden" name="imagemId" id="imagemId">
                 <input type="hidden" name="etapaNome" id="etapaNome">
+                <input type="hidden" name="funcaoId" id="funcaoId">
             </div>
             <button id="confirmarBtn">Atribuir</button>
         </div>

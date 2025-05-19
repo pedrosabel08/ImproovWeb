@@ -1,13 +1,26 @@
 <?php
-$tempoSessao = 3600; // 1 hora em segundos
+$tempoSessao = 3600; // 1 hora
 
-// Reaplica os mesmos parâmetros da sessão
-session_set_cookie_params($tempoSessao);
-ini_set('session.gc_maxlifetime', $tempoSessao);
+session_set_cookie_params([
+    'lifetime' => $tempoSessao,
+    'path' => '/',
+    'secure' => true,
+    'httponly' => true,
+    'samesite' => 'Lax' // ou 'Strict' se não estiver usando links externos
+]);
 
 session_start();
 
-// Opcional: Atualiza o tempo de expiração do cookie do navegador
-setcookie(session_name(), session_id(), time() + $tempoSessao);
+// Salva o momento em que a sessão foi renovada
+$_SESSION['ultimo_renovado'] = date('H:i:s');
 
-echo 'ok';
+// Renova o cookie
+setcookie(session_name(), session_id(), [
+    'expires' => time() + $tempoSessao,
+    'path' => '/',
+    'secure' => true,
+    'httponly' => true,
+    'samesite' => 'Lax'
+]);
+
+echo 'Sessão renovada às ' . $_SESSION['ultimo_renovado'];

@@ -11,15 +11,16 @@ $input          = json_decode(file_get_contents('php://input'), true);
 $gantt_id       = intval($input['gantt_id']       ?? 0);
 $colaborador_id = intval($input['colaborador_id'] ?? 0);
 $imagem_id      = intval($input['imagemId']       ?? 0);
+$funcao_id      = intval($input['funcaoId']       ?? 0);
 $etapaNome = trim($input['etapaNome'] ?? '');
 
 /* ----------------------------------------------------------
    Validação básica
    ---------------------------------------------------------- */
-if (!$gantt_id || !$colaborador_id || !$imagem_id) {
+if (!$gantt_id || !$colaborador_id || !$imagem_id || !$funcao_id) {
     echo json_encode([
         'success' => false,
-        'message' => 'Todos os campos (gantt_id, colaborador_id e imagemId) são obrigatórios.'
+        'message' => 'Todos os campos (gantt_id, colaborador_id, funcao_id e imagemId) são obrigatórios.'
     ]);
     exit;
 }
@@ -97,14 +98,25 @@ if ($tipoImagem === 'fachada') {
 $conn->begin_transaction();
 
 try {
-    $sqlInsert = "INSERT INTO etapa_colaborador (gantt_id, colaborador_id, imagem_id)
+    $sqlInsertEtapa = "INSERT INTO etapa_colaborador (gantt_id, colaborador_id, imagem_id)
         VALUES (?, ?, ?)
         ON DUPLICATE KEY UPDATE colaborador_id = VALUES(colaborador_id)";
-    $stmtInsert = $conn->prepare($sqlInsert);
+    $stmtEtapa = $conn->prepare($sqlInsertEtapa);
+
+    $sqlInsertFuncao = "INSERT INTO funcao_imagem (colaborador_id, imagem_id, funcao_id)
+        VALUES (?, ?, ?)
+        ON DUPLICATE KEY UPDATE colaborador_id = VALUES(colaborador_id)";
+    $stmtFuncao = $conn->prepare($sqlInsertFuncao);
 
     foreach ($imagensComGantt as $item) {
-        $stmtInsert->bind_param("iii", $item['gantt_id'], $colaborador_id, $item['imagem_id']);
-        $stmtInsert->execute();
+        // etapa_colaborador
+        $stmtEtapa->bind_param("iii", $item['gantt_id'], $colaborador_id, $item['imagem_id']);
+        $stmtEtapa->execute();
+
+        // funcao_imagem
+        $imagem_id = $item['imagem_id'];
+        $stmtFuncao->bind_param("iii", $colaborador_id, $imagem_id, $funcao_id);
+        $stmtFuncao->execute();
     }
 
     $conn->commit();

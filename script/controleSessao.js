@@ -1,7 +1,7 @@
 // controleSessao.js
 
-let tempoSessao = 3600 * 1000; // 10 segundos só pra teste
-let avisoAntes = 0; // pode ser alterado pra avisar antes
+let tempoSessao = 3600 * 1000; 
+let avisoAntes = 0; 
 let timeoutSessao;
 
 iniciarContadorSessao();

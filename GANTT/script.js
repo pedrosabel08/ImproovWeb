@@ -322,6 +322,7 @@ function atualizarTabela() {
 
                                 document.getElementById('imagemId').value = etapa.imagem_id;
                                 document.getElementById('etapaNome').value = etapa.etapa;
+                                document.getElementById('funcaoId').value = funcaoId;
 
                                 if (!funcaoId) {
                                     console.warn(`Função não encontrada para a etapa: ${nomeEtapa}`);
@@ -869,8 +870,9 @@ function enviarAtribuicao() {
     const colaboradorId = select.value;
     const imagem_id = document.getElementById("imagemId").value;
     const etapaNome = document.getElementById("etapaNome").value;
+    const funcaoId = document.getElementById("funcaoId").value;
 
-    if (!colaboradorId || !etapaAtual || !imagem_id) {
+    if (!colaboradorId || !etapaAtual || !imagem_id || !funcaoId) {
         Swal.fire({
             icon: 'warning',
             title: 'Campos obrigatórios ausentes',
@@ -886,7 +888,8 @@ function enviarAtribuicao() {
             gantt_id: etapaAtual.id,
             colaborador_id: colaboradorId,
             imagemId: imagem_id,
-            etapaNome: etapaNome
+            etapaNome: etapaNome,
+            funcaoId: funcaoId,
         })
     })
         .then(response => response.json())

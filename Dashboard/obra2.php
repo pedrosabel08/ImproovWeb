@@ -58,7 +58,7 @@ $conn->close();
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/airbnb.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
-    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
 </head>
 
 <body>
@@ -98,18 +98,20 @@ $conn->close();
         <!-- Tabela para exibir as funções da obra -->
         <div class="filtro-tabela">
             <div class="filtro">
-                <select name="tipo_imagem" id="tipo_imagem">
-                    <option value="0">Todos</option>
-                </select>
+                <div class="filtros-select">
+                    <select name="tipo_imagem" id="tipo_imagem">
+                        <option value="0">Todos</option>
+                    </select>
 
-                <select id="antecipada_obra">
-                    <option value="">Todos as imagens</option>
-                    <option value="Antecipada">Antecipada</option>
-                </select>
+                    <select id="antecipada_obra">
+                        <option value="">Todos as imagens</option>
+                        <option value="1">Antecipada</option>
+                    </select>
 
-                <select name="imagem_status_filtro" id="imagem_status_filtro">
-                    <option value="">Selecione um status</option>
-                </select>
+                    <select name="imagem_status_filtro" id="imagem_status_filtro">
+                        <option value="">Selecione um status</option>
+                    </select>
+                </div>
 
                 <div id="prazos-list"></div>
                 <div id="calendarMini"></div>
@@ -145,7 +147,7 @@ $conn->close();
 
 
             <div id="editImagesModal" style="display: none;">
-                <div class="modal-content-images" style="overflow-y: auto; max-height: 600px;">
+                <div class="modal-content-images" style="overflow-y: auto; max-height: 600px; width: 50%;">
                     <div id="modalHeader">
                         <div id="unsavedChanges" style="display: none;">
                             <p>Você fez alterações. Não esqueça de salvar!</p>
@@ -455,8 +457,8 @@ $conn->close();
             <div class="modal-content" style="width: 500px;">
                 <h2 style="margin-bottom: 30px;">Acompanhamento por Email</h2>
                 <div id="acompanhamentoConteudo">
-                    <form id="adicionar_acomp" style="align-items: center;">
-                        <div class="radioButtons">
+                    <form id="adicionar_acomp">
+                        <div class="radioButtons" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                             <label><input type="radio" name="acompanhamento" value="Start do Projeto"> Start do Projeto</label>
                             <label><input type="radio" name="acompanhamento" value="Prazo de dias úteis (45 dias)"> Prazo de dias úteis (45 dias)</label>
                             <label><input type="radio" name="acompanhamento" value="Recebimento de arquivos"> Recebimento de arquivos</label>
@@ -470,7 +472,7 @@ $conn->close();
                         <!-- Campo de assunto -->
                         <div id="campo">
                             <label for="assunto">Assunto:</label>
-                            <textarea name="assunto" id="assunto" name="assunto" required></textarea>
+                            <textarea name="assunto" id="assunto" name="assunto" style="width: 50%;" required></textarea>
                         </div>
 
                         <!-- Campo de data -->
@@ -480,7 +482,7 @@ $conn->close();
                         </div>
 
                         <!-- Botão para enviar -->
-                        <button type="submit" id="add-acomp">Adicionar Acompanhamento</button>
+                        <button type="submit" id="add-acomp" style="width: max-content;margin: auto;">Adicionar Acompanhamento</button>
                     </form>
                 </div>
             </div>
@@ -868,19 +870,24 @@ $conn->close();
                 </div>
                 <div class="funcao" id="status_funcao" style="width: 200px; margin-bottom: 15px;">
                     <div class="render">
-                        <p id="render_alta">Render Alta</p>
+                        <p id="render_alta">Render</p>
                         <button id="addRender" class="buttons-form-add" style=" padding: 3px 10px; font-size: 13px; background-color: steelblue;">Adicionar render</button>
                     </div>
                 </div>
-                <!-- <div class="funcao" id="status_funcao" style="width: 200px; margin-bottom: 15px;">
+                <div class="funcao" id="status_funcao" style="width: 200px; margin-bottom: 15px;">
                     <div class="revisao">
                         <p id="revisao">Revisao</p>
                         <button id="addRevisao" class="buttons-form-add" style=" padding: 3px 10px; font-size: 13px; background-color: steelgreen;">Adicionar revisão</button>
                     </div>
-                </div> -->
+                </div>
                 <div class="buttons">
                     <button type="button" id="btnAnterior" style="background: white; color: black"><i class="fa-solid fa-angle-left"></i></button>
-                    <button type="submit" id="salvar_funcoes" class="buttons-form-add">Salvar</button>
+                    <div>
+                        <button type="submit" id="salvar_funcoes" class="buttons-form-add">Salvar</button>
+                        <div id="loadingBar" style="display: none;">
+                            <div class="progress"></div>
+                        </div>
+                    </div>
                     <button type="button" id="btnProximo" style="background: white; color: black"><i class="fa-solid fa-angle-right"></i></button>
                 </div>
             </div>
@@ -1041,8 +1048,8 @@ $conn->close();
     </div>
 
     <!-- Modal simples para adicionar evento -->
-    <div id="eventModal" style="display:none; position: fixed; background-color: rgba(0,0,0,0.7); top: 0; left: 0; right: 0; bottom: 0; justify-content: center; align-items: center;">
-        <div style="background: white; padding: 20px; border-radius: 8px; width: 20%;">
+    <div id="eventModal">
+        <div class="eventos">
             <h3>Evento</h3>
             <form id="eventForm">
                 <input type="hidden" name="id" id="eventId">
@@ -1051,16 +1058,16 @@ $conn->close();
                 <label>Tipo de Evento:</label>
                 <select name="eventType" id="eventType" required>
                     <option value="">Selecione</option>
-                    <option value="Reunião">Reunião</option>
                     <option value="Entrega">Entrega</option>
-                    <option value="Vistoria">Vistoria</option>
+                    <option value="Arquivos">Arquivos</option>
+                    <option value="Reunião">Reunião</option>
+                    <option value="Outro">Outro</option>
                 </select>
                 <label>Data:</label>
                 <input type="date" name="date" id="eventDate" required>
                 <div class="buttons">
                     <button type="submit" style="background-color: green;">Salvar</button>
                     <button type="button" style="background-color: red;" onclick="deleteEvent()">Excluir</button>
-                    <!-- <button type="button" onclick="closeEventModal()">Cancelar</button> -->
                 </div>
             </form>
         </div>

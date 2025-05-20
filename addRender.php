@@ -1,13 +1,16 @@
-<?php
-
+<?php 
 include 'conexao.php';
+
 session_start();
 
-header('Content-Type: application/json');
+header('Content-Type: application/json'); // Verificar se o usuário está logado 
 
-$responsavel_id = $_SESSION['idcolaborador'] ?? null;
+if (!isset($_SESSION['idcolaborador'])) {
+    echo json_encode(['status' => 'erro', 'message' => 'Sessão expirada. Faça login novamente.']);
+    exit;
+}
+$responsavel_id = $_SESSION['idcolaborador'];
 $data = json_decode(file_get_contents("php://input"), true);
-
 $response = []; // <- vamos acumular as respostas aqui!
 
 if ($data && isset($data['imagem_id'])) {

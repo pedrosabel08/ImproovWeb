@@ -56,7 +56,10 @@ $conn->close();
             <?php endforeach; ?>
         </select>
         <div id="tabela-container">
-            <table id="gantt"></table>
+            <table id="gantt">
+                <thead></thead>
+                <tbody></tbody>
+            </table>
         </div>
     </div>
 

@@ -36,12 +36,10 @@ table#gantt td {
     white-space: nowrap;
     user-select: none;
     width: 40px;
-    max-width: 40px;
 }
 
 
 table#gantt th {
-    background-color: #f4f4f4;
     font-weight: bold;
     border: 1px solid #000000;
 
@@ -103,6 +101,19 @@ td {
     color: rgb(0, 153, 33);
     border: 1px solid !important;
 }
+
+.feriado {
+    background-color: #00ff3d;
+}
+
+.fim-semana {
+    background-color: #ff0500;
+}
+
+.hoje {
+    background-color: #ffff30;
+}
+
 
 #colaboradorModal {
     display: none;
@@ -260,6 +271,17 @@ th.selecionado {
     white-space: nowrap;
 }
 
+.nomenclatura_header {
+    padding: 0 2rem;
+}
+
 .arrastando-header {
     background-color: lightblue !important;
+}
+
+th:not(.nome_imagem_header):not(.nomenclatura_header) {
+    max-width: 40px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }

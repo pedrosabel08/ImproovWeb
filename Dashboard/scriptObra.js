@@ -2258,14 +2258,18 @@ document.getElementById("addRender").addEventListener("click", function (event) 
             const idRenderAdicionado = response.idrender;
 
             if (response.status === "erro") {
-                // Aqui vamos tratar o erro mais específico
                 Swal.fire({
                     icon: 'error',
                     title: 'Erro ao adicionar render',
-                    text: response.message  // Exibe a mensagem de erro do PHP diretamente
+                    text: response.message
+                }).then(() => {
+                    if (response.message.includes("Sessão expirada")) {
+                        window.location.href = "../index.html"; // redireciona imediatamente ao clicar em OK
+                    }
                 });
                 return;
             }
+
             Swal.fire({
                 icon: 'success',
                 title: 'Render adicionado!',

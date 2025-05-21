@@ -10,33 +10,6 @@ const etapaParaFuncao = {
     "Filtro de assets": 8
 };
 
-function dividirPorDiasUteis(datas, dataInicio, dataFim) {
-    const blocos = [];
-    let blocoInicio = null;
-    let blocoFim = null;
-
-    for (let i = 0; i < datas.length; i++) {
-        const data = datas[i];
-        if (data >= dataInicio && data <= dataFim) {
-            const diaSemana = data.getDay();
-            if (diaSemana !== 0 && diaSemana !== 6) { // 0 = domingo, 6 = sábado
-                if (blocoInicio === null) blocoInicio = i;
-                blocoFim = i;
-            } else {
-                if (blocoInicio !== null) {
-                    blocos.push([blocoInicio, blocoFim]);
-                    blocoInicio = null;
-                    blocoFim = null;
-                }
-            }
-        }
-    }
-    if (blocoInicio !== null) {
-        blocos.push([blocoInicio, blocoFim]);
-    }
-    return blocos;
-}
-
 function atualizarTabela() {
     const obraId = localStorage.getItem('obraId'); // ou o nome que você usou no localStorage
 
@@ -223,335 +196,305 @@ function atualizarTabela() {
             thead.appendChild(dayRow);
             table.appendChild(thead);
 
-            // // Corpo da tabela
-            // Object.keys(imagens).forEach(tipoImagem => {
-            //     const nomesImagens = imagens[tipoImagem]; // ex: ["1568", "1570"]
-            //     const rowSpan = nomesImagens.length;
+            const tbody = document.createElement('tbody');
 
-            //     function sameDay(d1, d2) {
-            //         return d1.getFullYear() === d2.getFullYear() &&
-            //             d1.getMonth() === d2.getMonth() &&
-            //             d1.getDate() === d2.getDate();
-            //     }
+            // Corpo da tabela
+            Object.keys(imagens).forEach(tipoImagem => {
+                const nomesImagens = imagens[tipoImagem]; // ex: ["1568", "1570"]
+                const rowSpan = nomesImagens.length;
 
-            //     let firstRow = true;
-            //     let pos = 0;
+                let firstRow = true;
+                nomesImagens.forEach(imagemNome => {
+                    const row = document.createElement('tr');
 
-            //     nomesImagens.forEach(imagemNome => {
-            //         const row = document.createElement('tr');
+                    if (firstRow) {
+                        const tipoCell = document.createElement('td');
+                        tipoCell.textContent = tipoImagem;
+                        tipoCell.setAttribute('rowspan', rowSpan);
+                        row.appendChild(tipoCell);
+                        monthHeader.style.fontWeight = 'bold';
 
-            //         if (firstRow) {
-            //             const tipoCell = document.createElement('td');
-            //             tipoCell.textContent = tipoImagem;
-            //             tipoCell.setAttribute('rowspan', rowSpan);
-            //             row.appendChild(tipoCell);
-            //             monthHeader.style.fontWeight = 'bold';
+                        // tipoCell.style.writingMode = 'sideways-lr';
+                        firstRow = false;
+                    }
 
-            //             // tipoCell.style.writingMode = 'sideways-lr';
-            //             firstRow = false;
-            //         }
+                    const nomeImagemCell = document.createElement('td');
+                    nomeImagemCell.textContent = imagemNome.nome;
+                    row.appendChild(nomeImagemCell);
 
-            //         const nomeImagemCell = document.createElement('td');
-            //         nomeImagemCell.textContent = imagemNome.nome;
-            //         row.appendChild(nomeImagemCell);
+                    const etapasTipo = etapas[tipoImagem] || [];
+                    const etapasImagem = etapasTipo.filter(e => e.imagem_id == imagemNome.imagem_id);
 
-            //         const etapasTipo = etapas[tipoImagem] || [];
-            //         const etapasImagem = etapasTipo.filter(e => e.imagem_id == imagemNome.imagem_id);
+                    if (etapasImagem.length > 0) {
+                        const primeiraEtapa = etapasImagem[0];
+                        const dataInicioPrimeiraEtapa = new Date(primeiraEtapa.data_inicio);
+                        const indexInicioEtapa = datas.findIndex(d => d.getTime() === dataInicioPrimeiraEtapa.getTime());
 
-            //         if (etapasImagem.length > 0) {
-            //             const primeiraEtapa = etapasImagem[0];
-            //             const dataInicioPrimeiraEtapa = new Date(primeiraEtapa.data_inicio);
-            //             const indexInicioEtapa = datas.findIndex(d => d.getTime() === dataInicioPrimeiraEtapa.getTime());
+                        if (indexInicioEtapa > 0) {
+                            const emptyBefore = document.createElement('td');
+                            emptyBefore.setAttribute('colspan', indexInicioEtapa);
+                            row.appendChild(emptyBefore);
+                        }
 
-            //             if (indexInicioEtapa > 0) {
-            //                 const emptyBefore = document.createElement('td');
-            //                 emptyBefore.setAttribute('colspan', indexInicioEtapa);
-            //                 row.appendChild(emptyBefore);
-            //             }
+                        // Ordena as etapas por data de início
+                        etapasImagem.sort((a, b) => new Date(a.data_inicio) - new Date(b.data_inicio));
 
-            //             // Ordena as etapas por data de início
-            //             etapasImagem.sort((a, b) => new Date(a.data_inicio) - new Date(b.data_inicio));
+                        let ultimaDataFim = null;
 
-            //             // let ultimaDataFim = 0;
+                        etapasImagem.forEach(etapa => {
+                            const dataInicio = new Date(etapa.data_inicio);
+                            const dataFim = new Date(etapa.data_fim);
 
-            //             etapaCell.contentEditable = false;
-            //             const tooltip = document.getElementById('tooltip');
+                            const indexInicio = datas.findIndex(d => d.getTime() === dataInicio.getTime());
+                            const indexFim = datas.findIndex(d => d.getTime() === dataFim.getTime());
 
-            //             etapaCell.addEventListener('mouseenter', (event) => {
-            //                 if (etapa.porcentagem_conclusao != null) {
-            //                     tooltip.textContent = `${etapa.porcentagem_conclusao}%`;
-            //                 }
-            //                 tooltip.style.display = 'block';
-            //                 tooltip.style.left = event.clientX + 'px';
-            //                 tooltip.style.top = event.clientY - 30 + 'px';
-            //             });
+                            // Verifica se há espaço entre a última etapa e a atual
+                            if (ultimaDataFim) {
+                                const indexUltimaFim = datas.findIndex(d => d.getTime() === ultimaDataFim.getTime());
+                                const lacuna = indexInicio - indexUltimaFim - 1;
 
-            //             etapaCell.addEventListener('mouseleave', () => {
-            //                 tooltip.style.display = 'none';
-            //             });
+                                if (lacuna > 0) {
+                                    const tdVazio = document.createElement('td');
+                                    tdVazio.setAttribute('colspan', lacuna);
+                                    row.appendChild(tdVazio);
+                                }
+                            }
 
-            //             etapaCell.addEventListener('mousemove', (event) => {
-            //                 tooltip.style.left = event.clientX + 'px';
-            //                 tooltip.style.top = event.clientY - 30 + 'px';
-            //             });
+                            const colspan = indexFim - indexInicio + 1;
 
-            //             etapaCell.oncontextmenu = async (event) => {
-            //                 const btnAtribuir = document.getElementById("confirmarBtn");
-            //                 btnAtribuir.style.display = "block";
-            //                 event.preventDefault();
+                            const etapaCell = document.createElement('td');
+                            etapaCell.setAttribute('colspan', colspan);
+                            etapaCell.setAttribute('data-inicio', etapa.data_inicio);
+                            etapaCell.setAttribute('data-fim', etapa.data_fim);
+                            etapaCell.setAttribute('imagem_id', etapa.imagem_id);
+                            etapaCell.setAttribute('data-etapa', etapa.etapa);
 
-            //                 etapaAtual = etapa;
+                            if (etapa.etapa_colaborador_id === 15) {
+                                etapaCell.style.display = 'none';
+                            }
 
-            //                 const colaboradorAtualId = etapa.colaborador_id;
-            //                 const nomeEtapa = etapa.etapa;
+                            etapaCell.className = etapa.etapa
+                                .toLowerCase()
+                                .normalize('NFD')
+                                .replace(/[\u0300-\u036f]/g, '')
+                                .replace(/\s/g, '')
+                                .replace(/[^a-z0-9]/g, '');
 
-            //                 const funcaoId = etapaParaFuncao[nomeEtapa];
-            //                 const dataInicio = etapaCell.getAttribute('data-inicio');
-            //                 const dataFim = etapaCell.getAttribute('data-fim');
+                            etapaCell.textContent = etapa.nome_etapa_colaborador
+                                ? `${etapa.etapa} - ${etapa.nome_etapa_colaborador}`
+                                : etapa.etapa;
+                            ultimaDataFim = dataFim;
 
-            //                 document.getElementById('imagemId').value = etapa.imagem_id;
-            //                 document.getElementById('etapaNome').value = etapa.etapa;
-            //                 document.getElementById('funcaoId').value = funcaoId;
+                            etapaCell.contentEditable = false;
+                            const tooltip = document.getElementById('tooltip');
 
-            //                 if (!funcaoId) {
-            //                     console.warn(`Função não encontrada para a etapa: ${nomeEtapa}`);
-            //                     return;
-            //                 }
+                            etapaCell.addEventListener('mouseenter', (event) => {
+                                if (etapa.porcentagem_conclusao != null) {
+                                    tooltip.textContent = `${etapa.porcentagem_conclusao}%`;
+                                }
+                                tooltip.style.display = 'block';
+                                tooltip.style.left = event.clientX + 'px';
+                                tooltip.style.top = event.clientY - 30 + 'px';
+                            });
 
+                            etapaCell.addEventListener('mouseleave', () => {
+                                tooltip.style.display = 'none';
+                            });
 
-            //                 preencherSelectComColaboradores({
-            //                     selectId: "colaborador_id",
-            //                     funcaoId,
-            //                     dataInicio,
-            //                     dataFim,
-            //                     colaboradorAtualId,
-            //                     onConflitoSelecionado: (selected) => {
-            //                         const nome = selected.textContent;
-            //                         const obra = selected.dataset.obra;
-            //                         const etapa = selected.dataset.etapa;
-            //                         const inicio = formatarData(selected.dataset.inicio);
-            //                         const fim = formatarData(selected.dataset.fim);
-            //                         const etapaId = selected.dataset.ganttId;
+                            etapaCell.addEventListener('mousemove', (event) => {
+                                tooltip.style.left = event.clientX + 'px';
+                                tooltip.style.top = event.clientY - 30 + 'px';
+                            });
 
-            //                         abrirModalConflito({
-            //                             colaboradorId: selected.value,
-            //                             nome,
-            //                             obra,
-            //                             etapa,
-            //                             inicio,
-            //                             fim,
-            //                             etapaId
-            //                         });
-            //                     }
-            //                 });
+                            etapaCell.oncontextmenu = async (event) => {
+                                const btnAtribuir = document.getElementById("confirmarBtn");
+                                btnAtribuir.style.display = "block";
+                                event.preventDefault();
 
+                                etapaAtual = etapa;
 
-            //                 // Posicionar modal (pode aplicar em ambos)
-            //                 const rect = event.target.getBoundingClientRect();
-            //                 const modal = document.getElementById('colaboradorModal');
-            //                 const isRightSpace = rect.right + modal.offsetWidth < window.innerWidth;
+                                const colaboradorAtualId = etapa.colaborador_id;
+                                const nomeEtapa = etapa.etapa;
 
-            //                 modal.style.position = "absolute";
-            //                 modal.style.left = isRightSpace
-            //                     ? `${rect.right + 10}px`
-            //                     : `${rect.left - modal.offsetWidth - 10}px`;
-            //                 modal.style.top = `${rect.top + window.scrollY}px`;
+                                const funcaoId = etapaParaFuncao[nomeEtapa];
+                                const dataInicio = etapaCell.getAttribute('data-inicio');
+                                const dataFim = etapaCell.getAttribute('data-fim');
 
-            //                 const modalConflito = document.getElementById("modalConflito");
-            //                 modalConflito.style.display = 'none';
+                                document.getElementById('imagemId').value = etapa.imagem_id;
+                                document.getElementById('etapaNome').value = etapa.etapa;
+                                document.getElementById('funcaoId').value = funcaoId;
 
-            //                 modal.style.display = "flex";
-
-            //             };
-
-            //             // Implementação do arrasto horizontal
-            //             let isDragging = false;
-            //             let startX = 0;
-
-            //             const imagemId = etapaCell.getAttribute('imagem_id');
-
-            //             etapaCell.onmousedown = (e) => {
-            //                 isDragging = true;
-            //                 startX = e.clientX;
-            //                 document.body.style.cursor = 'ew-resize';
-            //                 etapaCell.classList.add('arrastando');
-
-            //                 document.onmousemove = (eMove) => {
-            //                     if (!isDragging) return;
-
-            //                     const diffX = eMove.clientX - startX;
-            //                     etapaCell.style.transform = `translateX(${diffX}px)`;
-            //                 };
-
-            //                 document.onmouseup = (eUp) => {
-            //                     if (!isDragging) return;
-
-            //                     const diffX = eUp.clientX - startX;
-            //                     const cellWidth = etapaCell.offsetWidth / etapaCell.colSpan;
-            //                     const daysMoved = Math.round(diffX / cellWidth);
-
-            //                     // Reset visual
-            //                     etapaCell.style.transform = 'translateX(0)';
-            //                     etapaCell.classList.remove('arrastando');
-            //                     document.body.style.cursor = 'default';
-            //                     document.onmousemove = null;
-            //                     isDragging = false;
-
-            //                     if (daysMoved !== 0) {
-            //                         // Identifica a etapa atual
-            //                         const etapaAtual = etapaCell.getAttribute('data-etapa');
+                                if (!funcaoId) {
+                                    console.warn(`Função não encontrada para a etapa: ${nomeEtapa}`);
+                                    return;
+                                }
 
 
+                                preencherSelectComColaboradores({
+                                    selectId: "colaborador_id",
+                                    funcaoId,
+                                    dataInicio,
+                                    dataFim,
+                                    colaboradorAtualId,
+                                    onConflitoSelecionado: (selected) => {
+                                        const nome = selected.textContent;
+                                        const obra = selected.dataset.obra;
+                                        const etapa = selected.dataset.etapa;
+                                        const inicio = formatarData(selected.dataset.inicio);
+                                        const fim = formatarData(selected.dataset.fim);
+                                        const etapaId = selected.dataset.ganttId;
 
-            //                         // Filtra apenas as etapas com o mesmo imagem_id e ordem posterior ou igual à etapa atual
-            //                         const etapasImagemOrdenadas = etapas[tipoImagem]
-            //                             .filter(et => et.imagem_id == imagemId)
-            //                             .sort((a, b) => {
-            //                                 const ordem = ['Caderno', 'Filtro de assets', 'Modelagem', 'Composição', 'Finalização', 'Pós-Produção'];
-            //                                 return ordem.indexOf(a.etapa) - ordem.indexOf(b.etapa);
-            //                             });
-
-            //                         let encontrouAtual = false;
-            //                         const etapasParaAtualizar = etapasImagemOrdenadas.filter(et => {
-            //                             if (et.etapa === etapaAtual) encontrouAtual = true;
-            //                             return encontrouAtual;
-            //                         });
-
-            //                         // Atualiza apenas as etapas posteriores ou iguais
-            //                         etapasParaAtualizar.forEach(et => {
-            //                             et.data_inicio = novaData(et.data_inicio, daysMoved);
-            //                             et.data_fim = novaData(et.data_fim, daysMoved);
-            //                         });
-
-            //                         // Envia apenas as etapas filtradas ao back-end
-            //                         fetch('atualizar_datas.php', {
-            //                             method: 'POST',
-            //                             headers: {
-            //                                 'Content-Type': 'application/json'
-            //                             },
-            //                             body: JSON.stringify({
-            //                                 tipoImagem: tipoImagem,
-            //                                 imagemId: imagemId,
-            //                                 etapas: etapasParaAtualizar
-            //                             })
-            //                         })
-            //                             .then(response => response.json())
-            //                             .then(data => {
-            //                                 if (data.success) {
-            //                                     console.log('Datas atualizadas com sucesso no banco.');
-            //                                     atualizarTabela();
-            //                                 } else {
-            //                                     console.error('Erro ao atualizar no banco:', data.message);
-            //                                 }
-            //                             })
-            //                             .catch(error => {
-            //                                 console.error('Erro na requisição:', error);
-            //                             });
-            //                     }
-            //                 };
-            //             };
+                                        abrirModalConflito({
+                                            colaboradorId: selected.value,
+                                            nome,
+                                            obra,
+                                            etapa,
+                                            inicio,
+                                            fim,
+                                            etapaId
+                                        });
+                                    }
+                                });
 
 
-            //             row.appendChild(etapaCell);
-            //         };
-            //     });
-            // });
+                                // Posicionar modal (pode aplicar em ambos)
+                                const rect = event.target.getBoundingClientRect();
+                                const modal = document.getElementById('colaboradorModal');
+                                const isRightSpace = rect.right + modal.offsetWidth < window.innerWidth;
 
-            const tbody = montarGantt(imagens, etapas, datas);
+                                modal.style.position = "absolute";
+                                modal.style.left = isRightSpace
+                                    ? `${rect.right + 10}px`
+                                    : `${rect.left - modal.offsetWidth - 10}px`;
+                                modal.style.top = `${rect.top + window.scrollY}px`;
+
+                                const modalConflito = document.getElementById("modalConflito");
+                                modalConflito.style.display = 'none';
+
+                                modal.style.display = "flex";
+
+                            };
+
+                            // Implementação do arrasto horizontal
+                            let isDragging = false;
+                            let startX = 0;
+
+                            const imagemId = etapaCell.getAttribute('imagem_id');
+
+                            etapaCell.onmousedown = (e) => {
+                                isDragging = true;
+                                startX = e.clientX;
+                                document.body.style.cursor = 'ew-resize';
+                                etapaCell.classList.add('arrastando');
+
+                                document.onmousemove = (eMove) => {
+                                    if (!isDragging) return;
+
+                                    const diffX = eMove.clientX - startX;
+                                    etapaCell.style.transform = `translateX(${diffX}px)`;
+                                };
+
+                                document.onmouseup = (eUp) => {
+                                    if (!isDragging) return;
+
+                                    const diffX = eUp.clientX - startX;
+                                    const cellWidth = etapaCell.offsetWidth / etapaCell.colSpan;
+                                    const daysMoved = Math.round(diffX / cellWidth);
+
+                                    // Reset visual
+                                    etapaCell.style.transform = 'translateX(0)';
+                                    etapaCell.classList.remove('arrastando');
+                                    document.body.style.cursor = 'default';
+                                    document.onmousemove = null;
+                                    isDragging = false;
+
+                                    if (daysMoved !== 0) {
+                                        // Identifica a etapa atual
+                                        const etapaAtual = etapaCell.getAttribute('data-etapa');
+
+
+
+                                        // Filtra apenas as etapas com o mesmo imagem_id e ordem posterior ou igual à etapa atual
+                                        const etapasImagemOrdenadas = etapas[tipoImagem]
+                                            .filter(et => et.imagem_id == imagemId)
+                                            .sort((a, b) => {
+                                                const ordem = ['Caderno', 'Filtro de assets', 'Modelagem', 'Composição', 'Finalização', 'Pós-Produção'];
+                                                return ordem.indexOf(a.etapa) - ordem.indexOf(b.etapa);
+                                            });
+
+                                        let encontrouAtual = false;
+                                        const etapasParaAtualizar = etapasImagemOrdenadas.filter(et => {
+                                            if (et.etapa === etapaAtual) encontrouAtual = true;
+                                            return encontrouAtual;
+                                        });
+
+                                        // Atualiza apenas as etapas posteriores ou iguais
+                                        etapasParaAtualizar.forEach(et => {
+                                            et.data_inicio = novaData(et.data_inicio, daysMoved);
+                                            et.data_fim = novaData(et.data_fim, daysMoved);
+                                        });
+
+                                        // Envia apenas as etapas filtradas ao back-end
+                                        fetch('atualizar_datas.php', {
+                                            method: 'POST',
+                                            headers: {
+                                                'Content-Type': 'application/json'
+                                            },
+                                            body: JSON.stringify({
+                                                tipoImagem: tipoImagem,
+                                                imagemId: imagemId,
+                                                etapas: etapasParaAtualizar
+                                            })
+                                        })
+                                            .then(response => response.json())
+                                            .then(data => {
+                                                if (data.success) {
+                                                    console.log('Datas atualizadas com sucesso no banco.');
+                                                    atualizarTabela();
+                                                } else {
+                                                    console.error('Erro ao atualizar no banco:', data.message);
+                                                }
+                                            })
+                                            .catch(error => {
+                                                console.error('Erro na requisição:', error);
+                                            });
+                                    }
+                                };
+                            };
+
+
+                            row.appendChild(etapaCell);
+
+                        });
+                    }
+
+                    if (firstRow) {
+                        const diasUsados = etapas[tipoImagem]?.reduce((total, etapa) => {
+                            const dataInicio = new Date(etapa.data_inicio);
+                            const dataFim = new Date(etapa.data_fim);
+                            const indexInicio = datas.findIndex(d => d.getTime() === dataInicio.getTime());
+                            const indexFim = datas.findIndex(d => d.getTime() === dataFim.getTime());
+                            return total + (indexFim - indexInicio + 1);
+                        }, 0) || 0;
+
+                        const diasRestantes = datas.length - diasUsados;
+                        if (diasRestantes > 0) {
+                            const emptyCell = document.createElement('td');
+                            emptyCell.setAttribute('colspan', diasRestantes);
+                            emptyCell.setAttribute('rowspan', rowSpan);
+                            row.appendChild(emptyCell);
+                        }
+                    }
+
+                    tbody.appendChild(row);
+                    firstRow = false;
+                });
+            });
+
             table.appendChild(tbody);
 
         })
         .catch(error => console.error('Erro ao carregar os dados:', error));
-}
-
-function criarLinhaImagem(imagemNome, tipoImagem, etapasImagem, datas) {
-    const row = document.createElement('tr');
-    const nomeImagemCell = document.createElement('td');
-    nomeImagemCell.textContent = imagemNome.nome;
-    row.appendChild(nomeImagemCell);
-
-    let pos = 0;
-
-    // Ordena as etapas por data de início
-    etapasImagem.sort((a, b) => new Date(a.data_inicio) - new Date(b.data_inicio));
-
-    etapasImagem.forEach(etapa => {
-        const dataInicio = new Date(etapa.data_inicio);
-        const dataFim = new Date(etapa.data_fim);
-        const blocos = dividirPorDiasUteis(datas, dataInicio, dataFim);
-
-        blocos.forEach(([inicioIndex, fimIndex]) => {
-            if (inicioIndex > pos) {
-                const tdVazio = document.createElement("td");
-                tdVazio.setAttribute("colspan", inicioIndex - pos);
-                row.appendChild(tdVazio);
-            }
-
-            const etapaCell = document.createElement("td");
-            etapaCell.setAttribute("colspan", fimIndex - inicioIndex + 1);
-            etapaCell.setAttribute("data-inicio", etapa.data_inicio);
-            etapaCell.setAttribute("data-fim", etapa.data_fim);
-            etapaCell.setAttribute("imagem_id", etapa.imagem_id);
-            etapaCell.setAttribute("data-etapa", etapa.etapa);
-
-            if (etapa.etapa_colaborador_id === 15) {
-                etapaCell.style.display = "none";
-            }
-
-            etapaCell.className = etapa.etapa
-                .toLowerCase()
-                .normalize("NFD")
-                .replace(/[\u0300-\u036f]/g, "")
-                .replace(/\s/g, "")
-                .replace(/[^a-z0-9]/g, "");
-
-            etapaCell.textContent = etapa.nome_etapa_colaborador
-                ? `${etapa.etapa} - ${etapa.nome_etapa_colaborador}`
-                : etapa.etapa;
-
-            row.appendChild(etapaCell);
-            pos = fimIndex + 1;
-        });
-    });
-
-    // Preenche o final da linha
-    if (pos < datas.length) {
-        const tdVazio = document.createElement("td");
-        tdVazio.setAttribute("colspan", datas.length - pos);
-        row.appendChild(tdVazio);
-    }
-
-    return row;
-}
-
-function montarGantt(imagens, etapas, datas) {
-    const tbody = document.createElement('tbody');
-
-    Object.keys(imagens).forEach(tipoImagem => {
-        const nomesImagens = imagens[tipoImagem];
-        const rowSpan = nomesImagens.length;
-
-        let firstRow = true;
-
-        nomesImagens.forEach(imagemNome => {
-            const etapasTipo = etapas[tipoImagem] || [];
-            const etapasImagem = etapasTipo.filter(e => e.imagem_id == imagemNome.imagem_id);
-
-            const row = criarLinhaImagem(imagemNome, tipoImagem, etapasImagem, datas);
-
-            if (firstRow) {
-                const tipoCell = document.createElement('td');
-                tipoCell.textContent = tipoImagem;
-                tipoCell.setAttribute('rowspan', rowSpan);
-                row.insertBefore(tipoCell, row.firstChild);
-                firstRow = false;
-            }
-
-            tbody.appendChild(row);
-        });
-    });
-
-    return tbody;
 }
 
 let dataInicioGlobal = '';

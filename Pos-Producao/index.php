@@ -127,7 +127,7 @@ $conn->close();
             <h1>Lista Pós-Produção</h1>
             <img src="../gif/assinatura_preto.gif" alt="" style="width: 200px;">
 
-            <button id="openModalBtn">Inserir render</button>
+            <button id="openModalBtn" style="display: none;">Inserir render</button>
             <button id="openModalBtnRender">Ver Render Elements</button>
         </header>
 

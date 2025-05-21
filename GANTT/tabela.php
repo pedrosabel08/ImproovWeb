@@ -44,8 +44,8 @@ $sqlEtapas = "SELECT
     ec.colaborador_id AS etapa_colaborador_id,
     COALESCE(fi_data.total_funcoes, 0) AS total_funcoes,
     COALESCE(fi_data.total_finalizadas, 0) AS total_finalizadas,
-    COALESCE(fi_data.porcentagem_conclusao, 0) AS porcentagem_conclusao
-
+    COALESCE(fi_data.porcentagem_conclusao, 0) AS porcentagem_conclusao,
+    f.idfuncao AS funcao_id
 FROM 
     gantt_prazos gp
 
@@ -54,6 +54,19 @@ LEFT JOIN
 
 LEFT JOIN 
     colaborador c ON c.idcolaborador = ec.colaborador_id
+
+LEFT JOIN funcao f 
+    ON f.idfuncao = (
+        CASE gp.etapa
+            WHEN 'Caderno' THEN 1
+            WHEN 'Modelagem' THEN 2
+            WHEN 'Composição' THEN 3
+            WHEN 'Finalização' THEN 4
+            WHEN 'Pós-Produção' THEN 5
+            WHEN 'Filtro de assets' THEN 8
+            ELSE NULL
+        END
+    )
 
 -- Subquery com agregação isolada
 LEFT JOIN (

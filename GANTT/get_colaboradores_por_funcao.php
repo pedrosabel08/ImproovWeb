@@ -15,10 +15,11 @@ if (isset($_GET['funcao_id'], $_GET['data_inicio'], $_GET['data_fim'])) {
     GROUP_CONCAT(DISTINCT conflito.etapa SEPARATOR ', ') AS etapas_conflitantes,
     COUNT(conflito.id) AS total_conflitos,
     CASE 
-        WHEN COUNT(conflito.id) > 0 THEN 1 ELSE 0
+        WHEN COUNT(conflito.id) >= f.limite THEN 1 ELSE 0
     END AS ocupado
 FROM colaborador c
 LEFT JOIN funcao_colaborador fc ON fc.colaborador_id = c.idcolaborador
+LEFT JOIN funcao f ON f.idfuncao = fc.funcao_id
 LEFT JOIN (
     SELECT 
         ec.colaborador_id,
@@ -43,7 +44,7 @@ LEFT JOIN obra o_conflitante ON o_conflitante.nomenclatura = conflito.nomenclatu
 LEFT JOIN gantt_prazos g_conflitante ON g_conflitante.id = conflito.id
 WHERE fc.funcao_id = ?
   AND c.ativo = 1
-GROUP BY c.idcolaborador, c.nome_colaborador
+GROUP BY c.idcolaborador, c.nome_colaborador, f.limite
 ORDER BY c.nome_colaborador
 
 ;

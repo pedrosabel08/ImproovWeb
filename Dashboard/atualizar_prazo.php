@@ -275,18 +275,58 @@ function gerarGantt($conn, $obra_id, $grupos)
                     $diasCalculados = $dias;
                 }
 
-                $data_fim = adicionarDiasUteis($data_inicio, $diasCalculados);
+                // Verificar disponibilidade de colaboradores
+                $data_inicio_disponivel = verificarDisponibilidadeColaborador($conn, $etapa, $data_inicio, $diasCalculados);
 
+                if ($data_inicio_disponivel['freelancer']) {
+                    // Enviar alerta sobre alocação de freelancer
+                    enviarAlertaFreelancer($etapa, $imagem_id);
+                }
+
+                $data_fim = adicionarDiasUteis($data_inicio_disponivel['data_inicio'], $diasCalculados);
+
+                // Inserir ou atualizar no banco de dados
                 $stmt = $conn->prepare("INSERT INTO gantt_prazos (obra_id, tipo_imagem, imagem_id, etapa, dias, data_inicio, data_fim)
                                         VALUES (?, ?, ?, ?, ?, ?, ?)
                                         ON DUPLICATE KEY UPDATE
                                             dias = VALUES(dias),
                                             data_inicio = VALUES(data_inicio),
                                             data_fim = VALUES(data_fim)");
-                $stmt->bind_param('isissss', $obra_id, $grupo, $imagem_id, $etapa, $diasCalculados, $data_inicio, $data_fim);
+                $stmt->bind_param('isissss', $obra_id, $grupo, $imagem_id, $etapa, $diasCalculados, $data_inicio_disponivel['data_inicio'], $data_fim);
 
                 if (!$stmt->execute()) {
                     echo "Erro ao inserir Gantt para $grupo - $etapa - imagem_id $imagem_id: " . $stmt->error;
+                }
+
+                $gantt_id = null;
+
+                // Se foi um INSERT novo, pega o insert_id
+                if ($stmt->insert_id) {
+                    $gantt_id = $stmt->insert_id;
+                } else {
+                    // Se foi UPDATE, busca o id pelo identificador único
+                    $stmtBuscaId = $conn->prepare("SELECT id FROM gantt_prazos WHERE obra_id = ? AND tipo_imagem = ? AND imagem_id = ? AND etapa = ?");
+                    $stmtBuscaId->bind_param('isis', $obra_id, $grupo, $imagem_id, $etapa);
+                    $stmtBuscaId->execute();
+                    $resultBuscaId = $stmtBuscaId->get_result();
+                    $rowBuscaId = $resultBuscaId->fetch_assoc();
+                    $gantt_id = $rowBuscaId['id'] ?? null;
+                }
+
+                if (!$data_inicio_disponivel['freelancer'] && $data_inicio_disponivel['colaborador_id'] && $gantt_id) {
+                    $colaborador_id = $data_inicio_disponivel['colaborador_id'];
+
+                    // Verifica se já existe para evitar duplicidade
+                    $stmtCheckEC = $conn->prepare("SELECT 1 FROM etapa_colaborador WHERE gantt_id = ? AND colaborador_id = ?");
+                    $stmtCheckEC->bind_param('ii', $gantt_id, $colaborador_id);
+                    $stmtCheckEC->execute();
+                    $resultCheckEC = $stmtCheckEC->get_result();
+
+                    if ($resultCheckEC->num_rows == 0) {
+                        $stmtEC = $conn->prepare("INSERT INTO etapa_colaborador (gantt_id, colaborador_id) VALUES (?, ?)");
+                        $stmtEC->bind_param('ii', $gantt_id, $colaborador_id);
+                        $stmtEC->execute();
+                    }
                 }
 
                 // Se a etapa for "Caderno", registrar a maior data_fim (considerando todas as imagens)
@@ -384,3 +424,79 @@ $grupos = [
 
 // Agora chamamos a função **uma única vez** após processar todas as imagens
 gerarGantt($conn, $obraId, $grupos);
+
+
+
+function verificarDisponibilidadeColaborador($conn, $etapa, $data_inicio, $dias)
+{
+    $tentativas = 0;
+    $data_tentativa = $data_inicio;
+
+    while ($tentativas < 5) {
+        $disponivel = colaboradorDisponivel($conn, $etapa, $data_tentativa, $dias);
+        if (!$disponivel['freelancer'] && $disponivel['colaborador_id']) {
+            return [
+                'data_inicio' => $data_tentativa,
+                'freelancer' => false,
+                'colaborador_id' => $disponivel['colaborador_id']
+            ];
+        }
+        $data_tentativa = adicionarDiasUteis($data_tentativa, 1);
+        $tentativas++;
+    }
+
+    // Alocar freelancer
+    return ['data_inicio' => $data_tentativa, 'freelancer' => true, 'colaborador_id' => null];
+}
+
+function colaboradorDisponivel($conn, $etapa, $data_inicio, $dias)
+{
+    $data_fim = adicionarDiasUteis($data_inicio, $dias);
+
+    $query = "SELECT fc.colaborador_id, f.limite
+        FROM funcao_colaborador fc
+        JOIN funcao f ON fc.funcao_id = f.idfuncao
+        WHERE f.nome_funcao = ?";
+    $stmt = $conn->prepare($query);
+    $stmt->bind_param("s", $etapa);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    while ($row = $result->fetch_assoc()) {
+        $colaborador_id = $row['colaborador_id'];
+        $limite = $row['limite'];
+
+        $stmt_tarefas = $conn->prepare("SELECT COUNT(*) AS total
+            FROM gantt_prazos gp
+            INNER JOIN etapa_colaborador ec ON ec.gantt_id = gp.id
+            WHERE gp.etapa = ? AND ec.colaborador_id = ? AND (
+                (gp.data_inicio BETWEEN ? AND ?) OR
+                (gp.data_fim BETWEEN ? AND ?) OR
+                (? BETWEEN gp.data_inicio AND gp.data_fim)
+            )");
+        $stmt_tarefas->bind_param("sisssss", $etapa, $colaborador_id, $data_inicio, $data_fim, $data_inicio, $data_fim, $data_inicio);
+        $stmt_tarefas->execute();
+        $result_tarefas = $stmt_tarefas->get_result();
+        $tarefa = $result_tarefas->fetch_assoc();
+
+        if ($tarefa['total'] < $limite) {
+            return [
+                'data_inicio' => $data_inicio,
+                'freelancer' => false,
+                'colaborador_id' => $colaborador_id
+            ];
+        }
+    }
+
+    return [
+        'data_inicio' => $data_inicio,
+        'freelancer' => true,
+        'colaborador_id' => null
+    ];
+}
+
+
+function enviarAlertaFreelancer($etapa, $imagem_id)
+{
+    // Implementar lógica para enviar alerta sobre alocação de freelancer
+}

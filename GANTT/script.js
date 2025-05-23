@@ -1,591 +1,3 @@
-
-const etapaParaFuncao = {
-    "Caderno": 1,
-    "Modelagem": 2,
-    "Composição": 3,
-    "Finalização": 4,
-    "Pós-Produção": 5,
-    "Alteração": 6,
-    "Planta Humanizada": 7,
-    "Filtro de assets": 8
-};
-
-function atualizarTabela() {
-    const obraId = localStorage.getItem('obraId'); // ou o nome que você usou no localStorage
-
-    fetch(`tabela.php?id_obra=${obraId}`)
-        .then(response => response.json())
-        .then(data => {
-            const { imagens, etapas, primeiraData, ultimaData, obra } = data;
-
-            document.getElementById('nomenclatura').textContent = obra.nomenclatura;
-            document.title = `GANTT - ${obra.nomenclatura}` || "Nome não disponível";
-
-            // Lista de feriados fixos
-            const feriadosFixos = [
-                '01/01', '21/04', '01/05', '07/09', '12/10',
-                '11/02', '15/11', '25/12', '31/12',
-            ];
-
-            const anoAtual = new Date().getFullYear();
-            const feriadosMoveis = calcularFeriadosMoveis(anoAtual);
-
-            const feriados = [
-                ...feriadosFixos,
-                feriadosMoveis.pascoa,
-                feriadosMoveis.sextaFeiraSanta,
-                feriadosMoveis.corpusChristi,
-                feriadosMoveis.carnaval,
-                feriadosMoveis.segundaCarnaval
-            ].map(d => d instanceof Date ? d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : d);
-
-            const datas = [];
-            const startDate = new Date(primeiraData);
-            startDate.setDate(startDate.getDate() + 1);
-            const endDate = new Date(ultimaData);
-            endDate.setDate(endDate.getDate() + 2);
-            while (startDate <= endDate) {
-                datas.push(new Date(startDate));
-                startDate.setDate(startDate.getDate() + 1);
-            }
-
-            const table = document.getElementById('gantt');
-            table.innerHTML = ''; // Limpar conteúdo anterior
-
-            const thead = document.createElement('thead');
-            const monthRow = document.createElement('tr'); // Linha dos meses
-            const dayRow = document.createElement('tr');   // Linha dos dias
-
-            // Primeira célula vazia para alinhar com "Tipo de Imagem"
-            const monthHeader = document.createElement('th');
-            monthHeader.textContent = '';
-            monthHeader.rowSpan = 2; // Ocupa as duas linhas do cabeçalho
-            const nomeImgHeader = document.createElement('th');
-            nomeImgHeader.textContent = '';
-            nomeImgHeader.rowSpan = 2; // Ocupa as duas linhas do cabeçalho
-            nomeImgHeader.classList.add('nome_imagem_header')
-            monthRow.appendChild(monthHeader);
-            monthRow.appendChild(nomeImgHeader);
-
-            let currentMonth = '';
-            let currentMonthStartIndex = 0;
-
-            datas.forEach((data, index) => {
-                const mes = data.toLocaleDateString('pt-BR', { month: 'long' });
-
-                // Se for o primeiro ou mudou o mês
-                if (index === 0 || mes !== currentMonth) {
-                    if (index !== 0) {
-                        const monthCell = document.createElement('th');
-                        monthCell.textContent = currentMonth.charAt(0).toUpperCase() + currentMonth.slice(1);
-                        monthCell.colSpan = index - currentMonthStartIndex;
-                        monthRow.appendChild(monthCell);
-                        currentMonthStartIndex = index;
-                    }
-                    currentMonth = mes;
-                }
-
-                const dateCell = document.createElement('th');
-                const formattedDate = data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-                dateCell.textContent = formattedDate;
-                // Armazena a data completa no atributo
-                const formattedDateAtt = data.toLocaleDateString('pt-BR'); // dd/mm/yyyy
-                dateCell.setAttribute('data-date', formattedDateAtt);
-
-                // Mostra apenas o dia no conteúdo visível
-                dateCell.textContent = data.getDate(); // Apenas o número do dia
-
-                // Verifica se é fim de semana
-                const dayOfWeek = data.getDay();
-                if (dayOfWeek === 0 || dayOfWeek === 6) {
-                    dateCell.style.backgroundColor = '#ff0500';
-                }
-
-                // Verifica se é feriado com base no atributo completo
-                const formattedHoliday = formattedDateAtt.slice(0, 5); // dd/mm
-                if (feriados.includes(formattedHoliday)) {
-                    dateCell.style.backgroundColor = '#00ff3d';
-                }
-
-                const hoje = new Date(); // Data atual
-                if (data.getDate() === hoje.getDate() && data.getMonth() === hoje.getMonth() && data.getFullYear() === hoje.getFullYear()) {
-                    dateCell.style.backgroundColor = '#ffff30'; // Cor de fundo para o dia atual
-                    dateCell.style.fontWeight = 'bold'; // Para destacar mais
-                }
-
-                let isSelecting = false;
-                let startCell = null;
-                let endCell = null;
-
-                // Para guardar a referência das células selecionadas
-                const selectedDayCells = [];
-
-                dateCell.addEventListener('mousedown', (e) => {
-                    isSelecting = true;
-                    startCell = dateCell;
-                    selectedDayCells.length = 0;
-                    selectedDayCells.push(dateCell);
-                    dateCell.classList.add('selecionado');
-                });
-
-                dayRow.addEventListener('mousemove', (e) => {
-                    if (!isSelecting || !startCell) return;
-
-                    const target = e.target;
-                    if (target.tagName !== 'TH' || !target.hasAttribute('data-date')) return;
-
-                    // Evita refazer seleção se o target for o mesmo
-                    if (selectedDayCells.includes(target)) return;
-
-                    // Limpa seleção anterior
-                    selectedDayCells.forEach(cell => cell.classList.remove('selecionado'));
-                    selectedDayCells.length = 0;
-
-                    const allDayCells = Array.from(dayRow.children);
-                    const startIndex = allDayCells.indexOf(startCell);
-                    const currentIndex = allDayCells.indexOf(target);
-
-                    const [from, to] = startIndex < currentIndex
-                        ? [startIndex, currentIndex]
-                        : [currentIndex, startIndex];
-
-                    for (let i = from; i <= to; i++) {
-                        allDayCells[i].classList.add('selecionado');
-                        selectedDayCells.push(allDayCells[i]);
-                    }
-                });
-
-                document.addEventListener('mouseup', () => {
-                    if (isSelecting) {
-                        isSelecting = false;
-
-                        // Se não teve mouseenter suficiente, garante ao menos a célula de início
-                        if (selectedDayCells.length === 0 && startCell) {
-                            selectedDayCells.push(startCell);
-                            startCell.classList.add('selecionado');
-                        }
-
-                        endCell = selectedDayCells[selectedDayCells.length - 1];
-
-                        const dataInicio = selectedDayCells[0].getAttribute('data-date');
-                        const dataFim = endCell.getAttribute('data-date');
-
-                        abrirModalEtapaCoringa(dataInicio, dataFim);
-
-                        // Limpa seleção visual
-                        selectedDayCells.forEach(cell => cell.classList.remove('selecionado'));
-                        selectedDayCells.length = 0;
-                        startCell = null;
-                        endCell = null;
-                    }
-                });
-
-
-                dayRow.appendChild(dateCell);
-            });
-
-            // Adiciona o último mês
-            if (currentMonth) {
-                const monthCell = document.createElement('th');
-                monthCell.textContent = currentMonth.charAt(0).toUpperCase() + currentMonth.slice(1);
-                monthCell.colSpan = datas.length - currentMonthStartIndex;
-                monthRow.appendChild(monthCell);
-            }
-
-            thead.appendChild(monthRow);
-            thead.appendChild(dayRow);
-            table.appendChild(thead);
-
-            const tbody = document.createElement('tbody');
-
-            // Corpo da tabela
-            Object.keys(imagens).forEach(tipoImagem => {
-                const nomesImagens = imagens[tipoImagem]; // ex: ["1568", "1570"]
-                const rowSpan = nomesImagens.length;
-
-                let firstRow = true;
-                nomesImagens.forEach(imagemNome => {
-                    const row = document.createElement('tr');
-
-                    if (firstRow) {
-                        const tipoCell = document.createElement('td');
-                        tipoCell.textContent = tipoImagem;
-                        tipoCell.setAttribute('rowspan', rowSpan);
-                        row.appendChild(tipoCell);
-                        monthHeader.style.fontWeight = 'bold';
-
-                        // tipoCell.style.writingMode = 'sideways-lr';
-                        firstRow = false;
-                    }
-
-                    const nomeImagemCell = document.createElement('td');
-                    nomeImagemCell.textContent = imagemNome.nome;
-                    row.appendChild(nomeImagemCell);
-
-                    const etapasTipo = etapas[tipoImagem] || [];
-                    const etapasImagem = etapasTipo.filter(e => e.imagem_id == imagemNome.imagem_id);
-
-                    if (etapasImagem.length > 0) {
-                        const primeiraEtapa = etapasImagem[0];
-                        const dataInicioPrimeiraEtapa = new Date(primeiraEtapa.data_inicio);
-                        const indexInicioEtapa = datas.findIndex(d => d.getTime() === dataInicioPrimeiraEtapa.getTime());
-
-                        if (indexInicioEtapa > 0) {
-                            const emptyBefore = document.createElement('td');
-                            emptyBefore.setAttribute('colspan', indexInicioEtapa);
-                            row.appendChild(emptyBefore);
-                        }
-
-                        // Ordena as etapas por data de início
-                        etapasImagem.sort((a, b) => new Date(a.data_inicio) - new Date(b.data_inicio));
-
-                        let ultimaDataFim = null;
-
-                        etapasImagem.forEach(etapa => {
-                            const dataInicio = new Date(etapa.data_inicio);
-                            const dataFim = new Date(etapa.data_fim);
-
-                            const indexInicio = datas.findIndex(d => d.getTime() === dataInicio.getTime());
-                            const indexFim = datas.findIndex(d => d.getTime() === dataFim.getTime());
-
-                            // Verifica se há espaço entre a última etapa e a atual
-                            if (ultimaDataFim) {
-                                const indexUltimaFim = datas.findIndex(d => d.getTime() === ultimaDataFim.getTime());
-                                const lacuna = indexInicio - indexUltimaFim - 1;
-
-                                if (lacuna > 0) {
-                                    const tdVazio = document.createElement('td');
-                                    tdVazio.setAttribute('colspan', lacuna);
-                                    row.appendChild(tdVazio);
-                                }
-                            }
-
-                            const colspan = indexFim - indexInicio + 1;
-
-                            const etapaCell = document.createElement('td');
-                            etapaCell.setAttribute('colspan', colspan);
-                            etapaCell.setAttribute('data-inicio', etapa.data_inicio);
-                            etapaCell.setAttribute('data-fim', etapa.data_fim);
-                            etapaCell.setAttribute('imagem_id', etapa.imagem_id);
-                            etapaCell.setAttribute('data-etapa', etapa.etapa);
-
-                            if (etapa.etapa_colaborador_id === 15) {
-                                etapaCell.style.display = 'none';
-                            }
-
-                            etapaCell.className = etapa.etapa
-                                .toLowerCase()
-                                .normalize('NFD')
-                                .replace(/[\u0300-\u036f]/g, '')
-                                .replace(/\s/g, '')
-                                .replace(/[^a-z0-9]/g, '');
-
-                            etapaCell.textContent = etapa.nome_etapa_colaborador
-                                ? `${etapa.etapa} - ${etapa.nome_etapa_colaborador}`
-                                : etapa.etapa;
-                            ultimaDataFim = dataFim;
-
-                            etapaCell.contentEditable = false;
-                            const tooltip = document.getElementById('tooltip');
-
-                            etapaCell.addEventListener('mouseenter', (event) => {
-                                if (etapa.porcentagem_conclusao != null) {
-                                    tooltip.textContent = `${etapa.porcentagem_conclusao}%`;
-                                }
-                                tooltip.style.display = 'block';
-                                tooltip.style.left = event.clientX + 'px';
-                                tooltip.style.top = event.clientY - 30 + 'px';
-                            });
-
-                            etapaCell.addEventListener('mouseleave', () => {
-                                tooltip.style.display = 'none';
-                            });
-
-                            etapaCell.addEventListener('mousemove', (event) => {
-                                tooltip.style.left = event.clientX + 'px';
-                                tooltip.style.top = event.clientY - 30 + 'px';
-                            });
-
-                            etapaCell.oncontextmenu = async (event) => {
-                                const btnAtribuir = document.getElementById("confirmarBtn");
-                                btnAtribuir.style.display = "block";
-                                event.preventDefault();
-
-                                etapaAtual = etapa;
-
-                                const colaboradorAtualId = etapa.colaborador_id;
-                                const nomeEtapa = etapa.etapa;
-
-                                const funcaoId = etapaParaFuncao[nomeEtapa];
-                                const dataInicio = etapaCell.getAttribute('data-inicio');
-                                const dataFim = etapaCell.getAttribute('data-fim');
-
-                                document.getElementById('imagemId').value = etapa.imagem_id;
-                                document.getElementById('etapaNome').value = etapa.etapa;
-                                document.getElementById('funcaoId').value = funcaoId;
-
-                                if (!funcaoId) {
-                                    console.warn(`Função não encontrada para a etapa: ${nomeEtapa}`);
-                                    return;
-                                }
-
-
-                                preencherSelectComColaboradores({
-                                    selectId: "colaborador_id",
-                                    funcaoId,
-                                    dataInicio,
-                                    dataFim,
-                                    colaboradorAtualId,
-                                    onConflitoSelecionado: (selected) => {
-                                        const nome = selected.textContent;
-                                        const obra = selected.dataset.obra;
-                                        const etapa = selected.dataset.etapa;
-                                        const inicio = formatarData(selected.dataset.inicio);
-                                        const fim = formatarData(selected.dataset.fim);
-                                        const etapaId = selected.dataset.ganttId;
-
-                                        abrirModalConflito({
-                                            colaboradorId: selected.value,
-                                            nome,
-                                            obra,
-                                            etapa,
-                                            inicio,
-                                            fim,
-                                            etapaId
-                                        });
-                                    }
-                                });
-
-
-                                // Posicionar modal (pode aplicar em ambos)
-                                const rect = event.target.getBoundingClientRect();
-                                const modal = document.getElementById('colaboradorModal');
-                                const isRightSpace = rect.right + modal.offsetWidth < window.innerWidth;
-
-                                modal.style.position = "absolute";
-                                modal.style.left = isRightSpace
-                                    ? `${rect.right + 10}px`
-                                    : `${rect.left - modal.offsetWidth - 10}px`;
-                                modal.style.top = `${rect.top + window.scrollY}px`;
-
-                                const modalConflito = document.getElementById("modalConflito");
-                                modalConflito.style.display = 'none';
-
-                                modal.style.display = "flex";
-
-                            };
-
-                            // Implementação do arrasto horizontal
-                            let isDragging = false;
-                            let startX = 0;
-
-                            const imagemId = etapaCell.getAttribute('imagem_id');
-
-                            etapaCell.onmousedown = (e) => {
-                                isDragging = true;
-                                startX = e.clientX;
-                                document.body.style.cursor = 'ew-resize';
-                                etapaCell.classList.add('arrastando');
-
-                                document.onmousemove = (eMove) => {
-                                    if (!isDragging) return;
-
-                                    const diffX = eMove.clientX - startX;
-                                    etapaCell.style.transform = `translateX(${diffX}px)`;
-                                };
-
-                                document.onmouseup = (eUp) => {
-                                    if (!isDragging) return;
-
-                                    const diffX = eUp.clientX - startX;
-                                    const cellWidth = etapaCell.offsetWidth / etapaCell.colSpan;
-                                    const daysMoved = Math.round(diffX / cellWidth);
-
-                                    // Reset visual
-                                    etapaCell.style.transform = 'translateX(0)';
-                                    etapaCell.classList.remove('arrastando');
-                                    document.body.style.cursor = 'default';
-                                    document.onmousemove = null;
-                                    isDragging = false;
-
-                                    if (daysMoved !== 0) {
-                                        // Identifica a etapa atual
-                                        const etapaAtual = etapaCell.getAttribute('data-etapa');
-
-
-
-                                        // Filtra apenas as etapas com o mesmo imagem_id e ordem posterior ou igual à etapa atual
-                                        const etapasImagemOrdenadas = etapas[tipoImagem]
-                                            .filter(et => et.imagem_id == imagemId)
-                                            .sort((a, b) => {
-                                                const ordem = ['Caderno', 'Filtro de assets', 'Modelagem', 'Composição', 'Finalização', 'Pós-Produção'];
-                                                return ordem.indexOf(a.etapa) - ordem.indexOf(b.etapa);
-                                            });
-
-                                        let encontrouAtual = false;
-                                        const etapasParaAtualizar = etapasImagemOrdenadas.filter(et => {
-                                            if (et.etapa === etapaAtual) encontrouAtual = true;
-                                            return encontrouAtual;
-                                        });
-
-                                        // Atualiza apenas as etapas posteriores ou iguais
-                                        etapasParaAtualizar.forEach(et => {
-                                            et.data_inicio = novaData(et.data_inicio, daysMoved);
-                                            et.data_fim = novaData(et.data_fim, daysMoved);
-                                        });
-
-                                        // Envia apenas as etapas filtradas ao back-end
-                                        fetch('atualizar_datas.php', {
-                                            method: 'POST',
-                                            headers: {
-                                                'Content-Type': 'application/json'
-                                            },
-                                            body: JSON.stringify({
-                                                tipoImagem: tipoImagem,
-                                                imagemId: imagemId,
-                                                etapas: etapasParaAtualizar
-                                            })
-                                        })
-                                            .then(response => response.json())
-                                            .then(data => {
-                                                if (data.success) {
-                                                    console.log('Datas atualizadas com sucesso no banco.');
-                                                    atualizarTabela();
-                                                } else {
-                                                    console.error('Erro ao atualizar no banco:', data.message);
-                                                }
-                                            })
-                                            .catch(error => {
-                                                console.error('Erro na requisição:', error);
-                                            });
-                                    }
-                                };
-                            };
-
-
-                            row.appendChild(etapaCell);
-
-                        });
-                    }
-
-                    if (firstRow) {
-                        const diasUsados = etapas[tipoImagem]?.reduce((total, etapa) => {
-                            const dataInicio = new Date(etapa.data_inicio);
-                            const dataFim = new Date(etapa.data_fim);
-                            const indexInicio = datas.findIndex(d => d.getTime() === dataInicio.getTime());
-                            const indexFim = datas.findIndex(d => d.getTime() === dataFim.getTime());
-                            return total + (indexFim - indexInicio + 1);
-                        }, 0) || 0;
-
-                        const diasRestantes = datas.length - diasUsados;
-                        if (diasRestantes > 0) {
-                            const emptyCell = document.createElement('td');
-                            emptyCell.setAttribute('colspan', diasRestantes);
-                            emptyCell.setAttribute('rowspan', rowSpan);
-                            row.appendChild(emptyCell);
-                        }
-                    }
-
-                    tbody.appendChild(row);
-                    firstRow = false;
-                });
-            });
-
-            table.appendChild(tbody);
-
-        })
-        .catch(error => console.error('Erro ao carregar os dados:', error));
-}
-
-let dataInicioGlobal = '';
-let dataFimGlobal = '';
-let obraSelecionadaId = localStorage.getItem('obraId'); // ou o nome que você usou no localStorage
-
-async function preencherColaboradoresArrastaveis({ funcaoId, dataInicio, dataFim, colaboradorAtualId, imagensPorColaborador }) {
-    const response = await fetch(`get_colaboradores_por_funcao.php?funcao_id=${funcaoId}&data_inicio=${dataInicio}&data_fim=${dataFim}`);
-    const colaboradores = await response.json();
-
-    const container = document.getElementById("colaboradoresArrastaveis");
-    container.innerHTML = "";
-
-    colaboradores.forEach(colab => {
-        const div = document.createElement("div");
-        div.classList.add("colaborador-draggable");
-        div.draggable = true;
-        div.dataset.id = colab.idcolaborador;
-        div.textContent = colab.nome_colaborador;
-        div.style.border = "1px solid #888";
-        div.style.margin = "5px 0";
-        div.style.padding = "5px";
-        div.style.cursor = "grab";
-
-        // Definir o background da div com a cor da imagem atribuída (se houver)
-        if (imagensPorColaborador.has(colab.idcolaborador)) {
-            const cores = imagensPorColaborador.get(colab.idcolaborador);
-            if (cores.length > 0) {
-                div.style.backgroundColor = cores[0]; // Usa a primeira cor
-                div.style.color = "#fff"; // Opcional: melhora a leitura se fundo for escuro
-            }
-        }
-
-        div.addEventListener("dragstart", (e) => {
-            e.dataTransfer.setData("text/plain", div.dataset.id);
-        });
-
-        container.appendChild(div);
-    });
-}
-
-
-
-function abrirModalEtapaCoringa(dataInicio, dataFim) {
-    dataInicioGlobal = dataInicio;
-    dataFimGlobal = dataFim;
-    console.log('Data Inicio' + dataInicioGlobal)
-    console.log('Data Fim' + dataFimGlobal)
-    document.getElementById('modalEtapa').style.display = 'block';
-}
-
-function fecharModalEtapa() {
-    document.getElementById('modalEtapa').style.display = 'none';
-    document.getElementById('nomeEtapa').value = '';
-}
-
-function confirmarEtapaCoringa() {
-    const nomeEtapa = document.getElementById('nomeEtapa').value.trim();
-    if (!nomeEtapa) {
-        alert('Digite o nome da etapa.');
-        return;
-    }
-
-    fetch('inserir_etapa_coringa.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            etapa: nomeEtapa,
-            data_inicio: dataInicioGlobal,
-            data_fim: dataFimGlobal,
-            obra_id: obraSelecionadaId // supondo que você tenha a obra selecionada em algum lugar
-        })
-    })
-        .then(resp => resp.json())
-        .then(data => {
-            if (data.success) {
-                alert('Etapa coringa adicionada com sucesso!');
-                atualizarTabela(); // Atualiza o Gantt
-            } else {
-                alert('Erro: ' + data.message);
-            }
-            fecharModalEtapa();
-        })
-        .catch(err => {
-            console.error(err);
-            alert('Erro ao inserir etapa.');
-            fecharModalEtapa();
-        });
-}
-
-
 function preencherSelectComColaboradores({
     selectId,
     funcaoId,
@@ -645,25 +57,459 @@ function preencherSelectComColaboradores({
             // Adiciona onchange se quiser tratar conflito após seleção manual
             select.onchange = function () {
                 const selected = select.options[select.selectedIndex];
-                if (selected.dataset.ocupado && typeof onConflitoSelecionado === 'function') {
+                if (typeof onConflitoSelecionado === 'function') {
                     onConflitoSelecionado(selected);
                 }
             };
         });
 }
 
+const etapaParaFuncao = {
+    "Caderno": 1,
+    "Modelagem": 2,
+    "Composição": 3,
+    "Finalização": 4,
+    "Pós-Produção": 5,
+    "Alteração": 6,
+    "Planta Humanizada": 7,
+    "Filtro de assets": 8
+};
+// Função para gerar array de datas do período
+function gerarDatas(primeiraData, ultimaData) {
+    const datas = [];
+    let atual = new Date(primeiraData + "T00:00:00");
+    let fim = new Date(ultimaData + "T00:00:00");
 
+    while (atual <= fim) {
+        // Cria uma nova data para evitar referência
+        datas.push(new Date(atual.getTime()));
+        atual.setDate(atual.getDate() + 1);
+    }
 
-function formatarData(data) {
-    const partes = data.split("-");
-    const dataFormatada = `${partes[2]}/${partes[1]}/${partes[0]}`;
-    return dataFormatada;
+    return datas;
+}
+// Função para formatar mês "Abr 2025"
+function formatarMes(data) {
+    return data.toLocaleDateString('pt-BR', {
+        month: 'short',
+        year: 'numeric'
+    });
 }
 
-document.getElementById('opcao_obra').addEventListener('change', (e) => {
-    localStorage.setItem('obraId', e.target.value); // armazena novo valor
-    atualizarTabela();
-});
+// Função para montar cabeçalho com meses e dias
+function montarCabecalho(datas) {
+    const headerMeses = document.getElementById('headerMeses');
+    const headerDias = document.getElementById('headerDias');
+    headerMeses.innerHTML = '';
+    headerDias.innerHTML = '';
+
+    // Cria células em branco separadas para cada linha
+    const cellBrancoMeses = document.createElement('th');
+    headerMeses.appendChild(cellBrancoMeses);
+
+    const cellBrancoDias = document.createElement('th');
+    headerDias.appendChild(cellBrancoDias);
+
+    let mesAtual = '';
+    let mesContador = 0;
+
+    datas.forEach((data, i) => {
+        const mesFormat = formatarMes(data);
+        if (mesFormat !== mesAtual) {
+            if (mesAtual !== '') {
+                const th = document.createElement('th');
+                th.className = 'month';
+                th.colSpan = mesContador;
+                th.innerText = mesAtual;
+                headerMeses.appendChild(th);
+            }
+            mesAtual = mesFormat;
+            mesContador = 1;
+        } else {
+            mesContador++;
+        }
+
+        if (i === datas.length - 1) {
+            const th = document.createElement('th');
+            th.className = 'month';
+            th.colSpan = mesContador;
+            th.innerText = mesAtual;
+            headerMeses.appendChild(th);
+        }
+    });
+
+    // Preencher linha de dias
+    datas.forEach(data => {
+        const th = document.createElement('th');
+        th.className = 'day';
+
+        const diaSemana = data.getDay(); // 0 = domingo, 6 = sábado
+        if (diaSemana === 0 || diaSemana === 6) {
+            th.style.backgroundColor = '#ffe0e0'; // destaque para final de semana
+            th.style.fontWeight = 'bold';
+        }
+
+        th.innerText = data.getDate();
+        headerDias.appendChild(th);
+    });
+}
+
+// Montar o corpo da tabela com imagens e etapas
+function montarCorpo(imagens, etapas, datas) {
+    const tbody = document.getElementById('ganttBody');
+    tbody.innerHTML = '';
+
+    function criarDataLocal(dataStr) {
+        const [ano, mes, dia] = dataStr.split('-').map(Number);
+        return new Date(ano, mes - 1, dia); // mes é zero-based no JS
+    }
+
+    function zerarHorario(data) {
+        return new Date(data.getFullYear(), data.getMonth(), data.getDate());
+    }
+
+    function calcularDataFim(dataInicio, diasUteis, datas) {
+        let contador = 0;
+        const inicio = criarDataLocal(dataInicio);
+
+        for (let i = 0; i < datas.length; i++) {
+            const d = datas[i];
+            d.setHours(0, 0, 0, 0);
+
+            if (d >= inicio) {
+                const diaSemana = d.getDay();
+                if (diaSemana !== 0 && diaSemana !== 6) { // útil
+                    contador++;
+                }
+                if (contador === diasUteis) {
+                    return d;
+                }
+            }
+        }
+        return datas[datas.length - 1];
+    }
+
+
+    Object.keys(imagens).forEach(tipo => {
+        imagens[tipo].forEach(img => {
+            const tr = document.createElement('tr');
+
+            // Info da linha
+            const tdInfo = document.createElement('td');
+            tdInfo.className = 'etapas';
+            tdInfo.innerHTML = `<strong>${tipo}</strong> | ${img.nome} <br>`;
+            tr.appendChild(tdInfo);
+
+            // Pega as etapas dessa imagem
+            const etapasTipo = (etapas[tipo] || []).filter(e => e.imagem_id === img.imagem_id);
+            etapasTipo.sort((a, b) => new Date(a.data_inicio) - new Date(b.data_inicio));
+
+            // Para cada dia do período
+            datas.forEach((data, diaIdx) => {
+                const diaSemana = data.getDay();
+
+                let etapaDoDia = null;
+                for (let i = 0; i < etapasTipo.length; i++) {
+                    const etapa = etapasTipo[i];
+                    const inicioData = zerarHorario(criarDataLocal(etapa.data_inicio));
+                    const fimDataCalculada = calcularDataFim(etapa.data_inicio, etapa.dias, datas);
+
+                    const dataAtual = zerarHorario(data);
+
+                    if (dataAtual >= inicioData && dataAtual <= fimDataCalculada && diaSemana !== 0 && diaSemana !== 6) {
+                        etapaDoDia = {
+                            etapa,
+                            index: i
+                        };
+                        break;
+                    }
+                }
+
+                const td = document.createElement('td');
+                if (etapaDoDia) {
+                    td.classList.add('bar');
+                    td.className = `${etapaDoDia.etapa.etapa}`
+                        .toLowerCase()
+                        .normalize("NFD")
+                        .replace(/[\u0300-\u036f]/g, "")
+                        .replace(/\s/g, "")
+                        .replace(/[^a-z0-9]/g, "");
+
+                    td.setAttribute('data-inicio', etapaDoDia.etapa.data_inicio);
+                    td.setAttribute('data-fim', etapaDoDia.etapa.data_fim);
+                    td.setAttribute('dias-uteis', etapaDoDia.etapa.dias);
+                    td.setAttribute('data-etapa', etapaDoDia.etapa.etapa);
+                    td.setAttribute('imagem_id', img.imagem_id);
+
+                    if (etapaDoDia.etapa.nome_etapa_colaborador) {
+                        td.innerHTML = `${etapaDoDia.etapa.nome_etapa_colaborador}`;
+                    }
+
+                    if (etapaDoDia.etapa.etapa_colaborador_id == 15) {
+                        td.innerHTML = ""; // Deixa a célula vazia
+                        td.className = ""; // Remove classes de cor, se quiser
+                    }
+
+                    // ⬇️ Adiciona clique direito
+                    td.oncontextmenu = (event) => {
+                        event.preventDefault();
+                        etapaAtual = etapaDoDia.etapa;
+
+                        const colaboradorAtualId = etapaAtual.etapa_colaborador_id;
+                        const nomeEtapa = etapaAtual.etapa;
+                        const funcaoId = etapaParaFuncao[nomeEtapa];
+                        const dataInicio = td.getAttribute('data-inicio');
+                        const dataFim = td.getAttribute('data-fim');
+
+                        document.getElementById('imagemId').value = etapaAtual.imagem_id;
+                        document.getElementById('etapaNome').value = nomeEtapa;
+                        document.getElementById('funcaoId').value = funcaoId;
+
+
+
+                        preencherSelectComColaboradores({
+                            selectId: "colaborador_id",
+                            funcaoId,
+                            dataInicio,
+                            dataFim,
+                            colaboradorAtualId,
+                            onConflitoSelecionado: (selected) => {
+                                abrirModalConflito({
+                                    colaboradorId: selected.value,
+                                    nome: selected.textContent,
+                                    obra: selected.dataset.obra,
+                                    etapa: selected.dataset.etapa,
+                                    inicio: formatarData(selected.dataset.inicio),
+                                    fim: formatarData(selected.dataset.fim),
+                                    etapaId: selected.dataset.ganttId
+                                });
+                            }
+                        });
+
+                        const rect = td.getBoundingClientRect();
+                        const modal = document.getElementById('colaboradorModal');
+                        const isRightSpace = rect.right + modal.offsetWidth < window.innerWidth;
+
+                        modal.style.position = "absolute";
+                        modal.style.left = isRightSpace ?
+                            `${rect.right + 10}px` :
+                            `${rect.left - modal.offsetWidth - 10}px`;
+                        modal.style.top = `${rect.top + window.scrollY}px`;
+
+                        document.getElementById("modalConflito").style.display = 'none';
+                        modal.style.display = "flex";
+                    };
+                    // ⬇️ Adiciona arrasto
+                    td.onmousedown = (e) => {
+                        let isDragging = true;
+                        let startX = e.clientX;
+                        const imagemId = td.getAttribute('imagem_id');
+                        const etapaAtualNome = td.getAttribute('data-etapa');
+                        const tipoImagem = tipo;
+
+                        td.classList.add('arrastando');
+                        document.body.style.cursor = 'ew-resize';
+
+                        document.onmousemove = (eMove) => {
+                            if (!isDragging) return;
+                            const diffX = eMove.clientX - startX;
+                            td.style.transform = `translateX(${diffX}px)`;
+                        };
+
+                        document.onmouseup = (eUp) => {
+                            if (!isDragging) return;
+                            const diffX = eUp.clientX - startX;
+                            const cellWidth = td.offsetWidth;
+                            const daysMoved = Math.round(diffX / cellWidth);
+
+                            td.style.transform = 'translateX(0)';
+                            td.classList.remove('arrastando');
+                            document.body.style.cursor = 'default';
+                            document.onmousemove = null;
+                            isDragging = false;
+
+                            if (Math.abs(diffX) < 5) {
+                                td.style.transform = 'translateX(0)';
+                                return; // ignora clique sem intenção de arrastar
+                            }
+
+                            if (daysMoved !== 0) {
+                                const etapasImagemOrdenadas = etapas[tipoImagem]
+                                    .filter(et => et.imagem_id == imagemId)
+                                    .sort((a, b) => {
+                                        const ordem = ['Caderno', 'Filtro de assets', 'Modelagem', 'Composição', 'Finalização', 'Pós-Produção'];
+                                        return ordem.indexOf(a.etapa) - ordem.indexOf(b.etapa);
+                                    });
+                                let etapasParaAtualizar = [];
+
+                                if (daysMoved > 0) {
+                                    // Movendo para frente →: etapa atual + próximas, se estiverem "grudadas"
+                                    etapasParaAtualizar = [];
+                                    let encontrouAtual = false;
+                                    let podeMover = true;
+
+                                    for (let i = 0; i < etapasImagemOrdenadas.length; i++) {
+                                        const et = etapasImagemOrdenadas[i];
+
+                                        if (et.etapa === etapaAtualNome) {
+                                            encontrouAtual = true;
+                                            etapasParaAtualizar.push(et);
+                                        } else if (encontrouAtual && podeMover) {
+                                            const etapaAnterior = etapasParaAtualizar[etapasParaAtualizar.length - 1];
+                                            const fimAnterior = new Date(etapaAnterior.data_fim);
+                                            const inicioAtual = new Date(et.data_inicio);
+
+                                            // Se a nova etapa começar exatamente no dia seguinte à anterior
+                                            const diffDias = (inicioAtual - fimAnterior) / (1000 * 60 * 60 * 24);
+
+                                            if (diffDias <= 1) {
+                                                etapasParaAtualizar.push(et);
+                                            } else {
+                                                podeMover = false; // Parar de mover se houver "quebra"
+                                            }
+                                        }
+                                    }
+                                } else if (daysMoved < 0) {
+                                    etapasImagemOrdenadas.reverse(); // começa da última para a primeira
+                                    let encontrouAtual = false;
+                                    let podeMover = true;
+                                    etapasParaAtualizar = [];
+
+                                    for (let i = 0; i < etapasImagemOrdenadas.length; i++) {
+                                        const et = etapasImagemOrdenadas[i];
+
+                                        if (et.etapa === etapaAtualNome) {
+                                            encontrouAtual = true;
+                                            etapasParaAtualizar.push(et);
+                                        } else if (encontrouAtual && podeMover) {
+                                            const etapaPosterior = etapasParaAtualizar[etapasParaAtualizar.length - 1];
+                                            const inicioPosterior = new Date(etapaPosterior.data_inicio);
+                                            const fimAtual = new Date(et.data_fim);
+
+                                            // Verifica se o fim da etapa atual é exatamente um dia antes do início da próxima
+                                            const diffDias = (inicioPosterior - fimAtual) / (1000 * 60 * 60 * 24);
+
+                                            if (diffDias <= 1) {
+                                                etapasParaAtualizar.push(et);
+                                            } else {
+                                                podeMover = false; // Interrompe caso haja quebra
+                                            }
+                                        }
+                                    }
+
+                                    etapasParaAtualizar.reverse(); // retorna para ordem original
+                                } else {
+                                    // Movimento zero (sem arrasto real)
+                                    etapasParaAtualizar = [];
+                                }
+
+                                etapasParaAtualizar.forEach(et => {
+                                    et.data_inicio = novaData(et.data_inicio, daysMoved);
+                                    et.data_fim = novaData(et.data_fim, daysMoved);
+                                });
+
+                                console.log('Etapas para atualizar:', etapasParaAtualizar);
+
+                                fetch('atualizar_datas.php', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json'
+                                    },
+                                    body: JSON.stringify({
+                                        tipoImagem: tipoImagem,
+                                        imagemId: imagemId,
+                                        etapas: etapasParaAtualizar
+                                    })
+                                })
+                                    .then(res => res.json())
+                                    .then(data => {
+                                        if (data.success) {
+                                            console.log('Datas atualizadas com sucesso no banco.');
+                                            atualizarTabela();
+                                        } else if (data.message === 'O colaborador já atingiu o limite de etapas simultâneas para essa função nesse período.') {
+                                            // Preencher modal com os dados retornados
+                                            const conflitosDiv = document.getElementById('conflitosDetalhes');
+                                            conflitosDiv.innerHTML = '';
+
+                                            if (Array.isArray(data.obras_conflitantes)) {
+                                                data.obras_conflitantes.forEach(conflito => {
+                                                    const item = document.createElement('div');
+                                                    item.innerHTML = `
+                                                        <strong>Obra ID:</strong> ${conflito.obra_id || 'N/A'}<br>
+                                                        <strong>Período:</strong> ${conflito.data_inicio} até ${conflito.data_fim}<br><br>
+                                                    `;
+                                                    conflitosDiv.appendChild(item);
+                                                });
+                                            }
+
+                                            // Exibir o período que causou o conflito
+                                            const periodo = document.getElementById('periodoConflitante');
+                                            periodo.innerText = `Tentativa de inserir no período: ${data.periodo_conflitante.data_inicio} até ${data.periodo_conflitante.data_fim}`;
+
+                                            // Mostrar modal
+                                            const modal = document.getElementById('modalConflitoData');
+                                            modal.style.display = 'block';
+
+                                            document.getElementById('verAgendaBtn').addEventListener('click', () => {
+                                                // Exibe o calendário
+                                                const input = document.getElementById('calendarioDatasDisponiveis');
+                                                input.style.display = 'block';
+
+                                                if (input._flatpickr) {
+                                                    input._flatpickr.destroy();
+                                                }
+
+                                                flatpickr(input, {
+                                                    dateFormat: "Y-m-d",
+                                                    disable: data.datas_ocupadas,
+                                                    onChange: function (selectedDates, dateStr) {
+                                                        console.log('Nova data escolhida:', dateStr);
+                                                        console.log('Gantt ID:', data.gantt_id);
+
+                                                        fetch('update_data.php', {
+                                                            method: 'POST',
+                                                            headers: {
+                                                                'Content-Type': 'application/x-www-form-urlencoded'
+                                                            },
+                                                            body: `gantt_id=${data.gantt_id}&data_inicio=${dateStr}`
+                                                        })
+                                                            .then(response => response.json())
+                                                            .then(result => {
+                                                                if (result.success) {
+                                                                    alert('Etapa atualizada com sucesso! Nova data fim: ' + result.data_fim);
+                                                                    // Aqui você pode atualizar a interface se necessário
+                                                                } else {
+                                                                    alert(result.message);
+                                                                }
+                                                            })
+                                                            .catch(error => {
+                                                                console.error('Erro ao atualizar etapa:', error);
+                                                            });
+                                                    }
+                                                });
+                                            });
+                                        } else {
+                                            console.error('Erro ao atualizar:', data.message);
+                                        }
+                                    })
+                                    .catch(error => console.error('Erro na requisição:', error));
+                            }
+                        };
+                    };
+                } else {
+                    // Se for fim de semana, pode adicionar uma classe para destacar se quiser
+                    if (diaSemana === 0 || diaSemana === 6) {
+                        td.className = 'fim-de-semana';
+                    }
+                    // td vazio
+                }
+                tr.appendChild(td);
+            });
+
+            tbody.appendChild(tr);
+        });
+    });
+}
 
 let colaboradorIdAtual = null;
 let etapaIdAtual = null;
@@ -671,7 +517,15 @@ let nomeEtapaAtual = null;
 let dataInicioAtual = null;
 let dataFimAtual = null;
 
-function abrirModalConflito({ colaboradorId, nome, obra, etapa, inicio, fim, etapaId }) {
+function abrirModalConflito({
+    colaboradorId,
+    nome,
+    obra,
+    etapa,
+    inicio,
+    fim,
+    etapaId
+}) {
     colaboradorIdAtual = colaboradorId;
     etapaIdAtual = etapaId;
     nomeEtapaAtual = etapa;
@@ -680,7 +534,9 @@ function abrirModalConflito({ colaboradorId, nome, obra, etapa, inicio, fim, eta
 
     console.log(nomeEtapaAtual);
 
-    const modal = document.getElementById("modalConflito");
+    const modalConflito = document.getElementById("modalConflito");
+    const modal = document.getElementById("colaboradorModal");
+
     const texto = document.getElementById("textoConflito");
 
     const divTrocar = document.querySelector(".trocar");
@@ -698,7 +554,8 @@ function abrirModalConflito({ colaboradorId, nome, obra, etapa, inicio, fim, eta
         <p>O que deseja fazer?</p>
     `;
 
-    modal.style.display = "block";
+    modalConflito.style.display = "block";
+    modal.style.display = "none";
 }
 
 // botão "Trocar"
@@ -779,7 +636,9 @@ document.getElementById("btnRemoverEAlocar").onclick = () => {
                 if (result.isConfirmed) {
                     fetch('remover_e_alocar.php', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
                         body: JSON.stringify({
                             antigoId: colaboradorIdAtual,
                             novoId: novoColaboradorId,
@@ -837,8 +696,14 @@ document.getElementById("confirmarBtnTroca").onclick = () => {
 
             fetch('trocar_colaborador.php', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ antigoId: colaboradorIdAtual, novoId: novoId, etapaId: etapaIdAtual })
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    antigoId: colaboradorIdAtual,
+                    novoId: novoId,
+                    etapaId: etapaIdAtual
+                })
             }).then(response => response.json())
                 .then(data => {
                     Swal.fire("Sucesso", "Colaborador trocado!", "success");
@@ -849,20 +714,32 @@ document.getElementById("confirmarBtnTroca").onclick = () => {
     });
 };
 
+function formatarData(data) {
+    const partes = data.split("-");
+    const dataFormatada = `${partes[2]}/${partes[1]}/${partes[0]}`;
+    return dataFormatada;
+}
+
 // Função para somar dias a uma data
-function novaData(dataStr, dias) {
-    const data = new Date(dataStr);
-    data.setDate(data.getDate() + dias);
+function novaData(dataOriginal, diasParaMover) {
+    let data = new Date(dataOriginal);
+    data.setDate(data.getDate() + diasParaMover);
+
+    // if (data.getDay() === 0 || data.getDay() === 6) {
+    //     alert("A data caiu em um final de semana. Será ajustada para o próximo dia útil.");
+    //     while (data.getDay() === 0 || data.getDay() === 6) {
+    //         data.setDate(data.getDate() + 1);
+    //     }
+    // }
+
     return data.toISOString().split('T')[0];
 }
 
 
-const modal = document.getElementById("colaboradorModal");
-const modalConflito = document.getElementById("modalConflito");
-const select = document.getElementById("colaborador_id");
 let etapaAtual = null;
 
-
+const modal = document.getElementById("colaboradorModal");
+const modalConflito = document.getElementById("modalConflito");
 const confirmarBtn = document.getElementById('confirmarBtn');
 const btnAddForcado = document.getElementById('btnAddForcado');
 
@@ -883,7 +760,9 @@ function enviarAtribuicao() {
 
     fetch('atribuir_colaborador.php', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+            'Content-Type': 'application/json'
+        },
         body: JSON.stringify({
             gantt_id: etapaAtual.id,
             colaborador_id: colaboradorId,
@@ -940,41 +819,25 @@ window.addEventListener('click', function (event) {
 
 
 
-function calcularFeriadosMoveis(ano) {
-    const a = ano % 19;
-    const b = Math.floor(ano / 100);
-    const c = ano % 100;
-    const d = Math.floor(b / 4);
-    const e = b % 4;
-    const f = Math.floor((b + 8) / 25);
-    const g = Math.floor((b - f + 1) / 3);
-    const h = (19 * a + b - d - g + 15) % 30;
-    const i = Math.floor(c / 4);
-    const k = c % 4;
-    const l = (32 + 2 * e + 2 * i - h - k) % 7;
-    const m = Math.floor((a + 11 * h + 22 * l) / 451);
-    const mes = Math.floor((h + l - 7 * m + 114) / 31) - 1;
-    const dia = ((h + l - 7 * m + 114) % 31) + 1;
 
-    const pascoa = new Date(ano, mes, dia);
+// Buscar dados do PHP (substitua pela URL correta e id_obra real)
+const obraId = localStorage.getItem('obraId'); // ou o nome que você usou no localStorage
 
-    const sextaFeiraSanta = new Date(pascoa);
-    sextaFeiraSanta.setDate(pascoa.getDate() - 2);
+function atualizarTabela() {
 
-    const corpusChristi = new Date(pascoa);
-    corpusChristi.setDate(pascoa.getDate() + 60);
-
-    const carnaval = new Date(pascoa);
-    carnaval.setDate(pascoa.getDate() - 47);
-
-    const segundaCarnaval = new Date(pascoa);
-    segundaCarnaval.setDate(pascoa.getDate() - 48);
-
-    return {
-        pascoa,
-        sextaFeiraSanta,
-        corpusChristi,
-        carnaval,
-        segundaCarnaval,
-    };
+    fetch(`tabela.php?id_obra=${obraId}`)
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById('obraNome').innerText = data.obra.nome_obra || 'Sem nome';
+            const datas = gerarDatas(data.primeiraData, data.ultimaData);
+            montarCabecalho(datas);
+            montarCorpo(data.imagens, data.etapas, datas);
+        })
+        .catch(e => {
+            console.error('Erro ao carregar dados:', e);
+        });
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+    atualizarTabela();
+});

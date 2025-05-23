@@ -14,15 +14,15 @@ $sqlImagens = "SELECT img.idimagens_cliente_obra, img.tipo_imagem, img.imagem_no
 FROM imagens_cliente_obra img
 JOIN obra o ON img.obra_id = o.idobra
 WHERE o.idobra = ?
-  AND (
-      EXISTS (
-          SELECT 1
-          FROM arquivos a
-          WHERE a.obra_id = o.idobra
-            AND a.tipo = img.tipo_imagem
-      )
-      OR img.tipo_imagem = 'Planta Humanizada'
-  )
+--   AND (
+--       EXISTS (
+--           SELECT 1
+--           FROM arquivos a
+--           WHERE a.obra_id = o.idobra
+--             AND a.tipo = img.tipo_imagem
+--       )
+--       OR img.tipo_imagem = 'Planta Humanizada'
+--   )
 ORDER BY FIELD(
     img.tipo_imagem,
     'Fachada',

@@ -1,7 +1,6 @@
 <?php
 include '../conexao.php';
 
-// Exemplo de parâmetros para teste
 $obra_id = 67; // Altere para o ID da obra que deseja simular
 
 $grupos = [
@@ -21,16 +20,16 @@ $grupos = [
     ],
     "Imagem Interna" => [
         "Caderno" => 0.5,
-        "Modelagem" => 0.5,
         "Filtro de assets" => 0.5,
+        "Modelagem" => 0.5,
         "Composição" => 0.5,
         "Finalização" => 1,
         "Pós-Produção" => 0.2
     ],
     "Unidade" => [
         "Caderno" => 0.5,
-        "Modelagem" => 0.5,
         "Filtro de assets" => 0.5,
+        "Modelagem" => 0.5,
         "Composição" => 0.5,
         "Finalização" => 1,
         "Pós-Produção" => 0.2
@@ -39,10 +38,15 @@ $grupos = [
         "Planta Humanizada" => 1
     ]
 ];
+
 simularGantt($conn, $obra_id, $grupos);
+
 function simularGantt($conn, $obra_id, $grupos)
 {
-    $stmt = $conn->prepare("SELECT DISTINCT tipo_imagem FROM imagens_cliente_obra WHERE obra_id = ? AND recebimento_arquivos IS NOT NULL");
+    $data_inicio_gantt = '2025-05-23';
+
+    // Busca todos os tipos de imagem válidos para a obra
+    $stmt = $conn->prepare("SELECT DISTINCT tipo_imagem FROM imagens_cliente_obra WHERE obra_id = ? AND recebimento_arquivos IS NOT NULL AND recebimento_arquivos != '0000-00-00'");
     $stmt->bind_param('i', $obra_id);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -56,7 +60,7 @@ function simularGantt($conn, $obra_id, $grupos)
         return in_array($grupo, $tiposComRecebimento);
     }, ARRAY_FILTER_USE_KEY);
 
-    // Junta todas as imagens de todos os grupos para Caderno/Filtro
+    // Junta todas as imagens de todos os grupos
     $imagensTodas = [];
     foreach ($gruposFiltrados as $grupo => $etapas) {
         if ($grupo === "Planta Humanizada") continue;
@@ -69,7 +73,6 @@ function simularGantt($conn, $obra_id, $grupos)
             $imagensTodas[] = $row;
         }
     }
-    // Ordena todas as imagens por data de recebimento
     usort($imagensTodas, function ($a, $b) {
         return strcmp($a['recebimento_arquivos'], $b['recebimento_arquivos']);
     });
@@ -77,11 +80,9 @@ function simularGantt($conn, $obra_id, $grupos)
     // 1. Processa Caderno e Filtro de assets apenas para grupos que possuem essas etapas
     $etapasConjunto = ['Caderno', 'Filtro de assets'];
     $datasEtapas = [];
-    $data_inicio_gantt = '2025-05-23'; // Coloque aqui a data desejada para início do cronograma
-
     $data_atual = $data_inicio_gantt;
     $colaborador_id = 19;
-    $limite = buscarLimiteColaborador($conn, $colaborador_id, 'Caderno'); // ou 'Filtro de assets', devem ser iguais
+    $limite = buscarLimiteColaborador($conn, $colaborador_id, 'Caderno');
 
     $gruposComCadernoFiltro = array_filter($grupos, function ($etapas) {
         return isset($etapas['Caderno']) && isset($etapas['Filtro de assets']);
@@ -95,24 +96,19 @@ function simularGantt($conn, $obra_id, $grupos)
     while (count($fila) > 0) {
         $lote = array_splice($fila, 0, $limite);
         foreach ($lote as $img) {
-            // Caderno e Filtro de assets no mesmo dia para cada imagem do lote
-            $datasEtapas[$img['id']]['Caderno'] = [
-                'data_inicio' => $data_atual_etapa,
-                'data_fim' => $data_atual_etapa,
-                'colaborador_id' => $colaborador_id,
-                'grupo' => $img['grupo']
-            ];
-            $datasEtapas[$img['id']]['Filtro de assets'] = [
-                'data_inicio' => $data_atual_etapa,
-                'data_fim' => $data_atual_etapa,
-                'colaborador_id' => $colaborador_id,
-                'grupo' => $img['grupo']
-            ];
-            $nomeColaborador = buscarNomeColaborador($conn, $colaborador_id);
-            echo "Simular: Colaborador = $nomeColaborador ($colaborador_id) | {$img['grupo']} | imagem {$img['id']} | Caderno: $data_atual_etapa - $data_atual_etapa\n";
-            echo "Simular: Colaborador = $nomeColaborador ($colaborador_id) | {$img['grupo']} | imagem {$img['id']} | Filtro de assets: $data_atual_etapa - $data_atual_etapa\n";
+            foreach (['Caderno', 'Filtro de assets'] as $etapa) {
+                $datasEtapas[$img['id']][$etapa] = [
+                    'data_inicio' => $data_atual_etapa,
+                    'data_fim' => $data_atual_etapa,
+                    'colaborador_id' => $colaborador_id,
+                    'grupo' => $img['grupo']
+                ];
+                // Salva no banco
+                inserirGanttEPessoa($conn, $obra_id, $img['id'], $img['grupo'], $etapa, 1, $data_atual_etapa, $data_atual_etapa, $colaborador_id);
+                $nomeColaborador = buscarNomeColaborador($conn, $colaborador_id);
+                echo "Simular: Colaborador = $nomeColaborador ($colaborador_id) | {$img['grupo']} | imagem {$img['id']} | $etapa: $data_atual_etapa - $data_atual_etapa\n";
+            }
         }
-        // Só avança o dia depois de processar o lote (respeitando o limite)
         $data_atual_etapa = adicionarDiasUteis($data_atual_etapa, 1);
     }
     $data_atual = $data_atual_etapa;
@@ -120,8 +116,7 @@ function simularGantt($conn, $obra_id, $grupos)
     // 2. Modelagem em lote para Fachada e Imagem Externa
     foreach (['Fachada', 'Imagem Externa'] as $grupoLote) {
         if (!isset($gruposFiltrados[$grupoLote])) continue;
-
-        $stmt = $conn->prepare("SELECT idimagens_cliente_obra AS id FROM imagens_cliente_obra WHERE obra_id = ? AND tipo_imagem = ? AND recebimento_arquivos IS NOT NULL AND recebimento_arquivos != '0000-00-00'");
+        $stmt = $conn->prepare("SELECT idimagens_cliente_obra AS id, recebimento_arquivos FROM imagens_cliente_obra WHERE obra_id = ? AND tipo_imagem = ? AND recebimento_arquivos IS NOT NULL AND recebimento_arquivos != '0000-00-00'");
         $stmt->bind_param('is', $obra_id, $grupoLote);
         $stmt->execute();
         $result = $stmt->get_result();
@@ -131,20 +126,9 @@ function simularGantt($conn, $obra_id, $grupos)
         }
         if (empty($imagensLote)) continue;
 
-        // Defina a data de início: após o fim do Filtro de assets de todas as imagens desse grupo
         $maxFiltroFim = null;
         foreach ($imagensLote as $img) {
-            $filtroFim = $datasEtapas[$img['id']]['Filtro de assets']['data_fim'] ?? $data_inicio_gantt;
-            if (!$filtroFim) {
-                // Busca a data de recebimento da imagem
-                foreach ($imagensTodas as $imgAll) {
-                    if ($imgAll['id'] == $img['id']) {
-                        $filtroFim = $imgAll['recebimento_arquivos'];
-                        break;
-                    }
-                }
-            }
-            // ATUALIZA O MAXIMO
+            $filtroFim = $datasEtapas[$img['id']]['Filtro de assets']['data_fim'] ?? $img['recebimento_arquivos'] ?? $data_inicio_gantt;
             if ($filtroFim && ($maxFiltroFim === null || $filtroFim > $maxFiltroFim)) {
                 $maxFiltroFim = $filtroFim;
             }
@@ -162,16 +146,15 @@ function simularGantt($conn, $obra_id, $grupos)
                 'colaborador_id' => 16,
                 'grupo' => $grupoLote
             ];
+            inserirGanttEPessoa($conn, $obra_id, $img['id'], $grupoLote, 'Modelagem', $diasModelagem, $data_inicio_modelagem, $data_fim_modelagem, 16);
             $nomeColaborador = buscarNomeColaborador($conn, 16);
             echo "Simular: Colaborador = $nomeColaborador (16) | $grupoLote | imagem {$img['id']} | Modelagem: $data_inicio_modelagem - $data_fim_modelagem\n";
         }
     }
 
-    // 3. Agora processa as demais etapas, por grupo e imagem
+    // 3. Demais etapas (sequencial)
     foreach ($gruposFiltrados as $grupo => $etapas) {
         if ($grupo === "Planta Humanizada") continue;
-
-        // Busca imagens do grupo
         $stmt = $conn->prepare("SELECT idimagens_cliente_obra AS id, recebimento_arquivos FROM imagens_cliente_obra WHERE obra_id = ? AND tipo_imagem = ? AND recebimento_arquivos IS NOT NULL AND recebimento_arquivos != '0000-00-00'");
         $stmt->bind_param('is', $obra_id, $grupo);
         $stmt->execute();
@@ -335,6 +318,9 @@ function simularGantt($conn, $obra_id, $grupos)
                     'grupo' => $grupo
                 ];
 
+                inserirGanttEPessoa($conn, $obra_id, $img['id'], $grupo, $etapa, $dias, $data_aloc, $data_fim, $colaboradorEscolhido);
+
+
                 // Para a próxima etapa, começa 1 dia útil após o fim da etapa atual
                 $data_inicio_etapa = adicionarDiasUteis($data_fim, 1);
 
@@ -353,6 +339,53 @@ function simularGantt($conn, $obra_id, $grupos)
                 unset($idsPermitidos);
             }
         }
+    }
+}
+
+function inserirGanttEPessoa($conn, $obra_id, $imagem_id, $grupo, $etapa, $dias, $data_inicio, $data_fim, $colaborador_id)
+{
+    $stmtGantt = $conn->prepare("INSERT INTO gantt_prazos 
+        (obra_id, imagem_id, tipo_imagem, etapa, dias, data_inicio, data_fim)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE data_inicio=VALUES(data_inicio), data_fim=VALUES(data_fim), dias=VALUES(dias)");
+    $diasInt = (int)ceil($dias);
+    $stmtGantt->bind_param(
+        "iississ",
+        $obra_id,
+        $imagem_id,
+        $grupo,
+        $etapa,
+        $diasInt,
+        $data_inicio,
+        $data_fim
+    );
+    $stmtGantt->execute();
+    if (!$stmtGantt->execute()) {
+        echo "Erro ao inserir em gantt_prazos: " . $stmtGantt->error . "\n";
+        var_dump([
+            $obra_id,
+            $imagem_id,
+            $grupo,
+            $etapa,
+            $diasInt,
+            $data_inicio,
+            $data_fim
+        ]);
+    }
+
+    $gantt_id = $stmtGantt->insert_id;
+    if ($gantt_id == 0) {
+        $stmtBusca = $conn->prepare("SELECT id FROM gantt_prazos WHERE obra_id=? AND tipo_imagem=? AND imagem_id=? AND etapa=?");
+        $stmtBusca->bind_param("isis", $obra_id, $grupo, $imagem_id, $etapa);
+        $stmtBusca->execute();
+        $resBusca = $stmtBusca->get_result();
+        $rowBusca = $resBusca->fetch_assoc();
+        $gantt_id = $rowBusca['id'] ?? 0;
+    }
+    if ($colaborador_id) {
+        $stmtColab = $conn->prepare("INSERT IGNORE INTO etapa_colaborador (gantt_id, colaborador_id) VALUES (?, ?)");
+        $stmtColab->bind_param("ii", $gantt_id, $colaborador_id);
+        $stmtColab->execute();
     }
 }
 

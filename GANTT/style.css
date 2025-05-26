@@ -114,6 +114,10 @@ td {
     background-color: #ffff30;
 }
 
+.fim-de-semana {
+    background-color: #ff6663;
+    border: none;
+}
 
 #colaboradorModal {
     display: none;

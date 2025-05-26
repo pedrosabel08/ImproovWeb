@@ -1,3 +1,29 @@
+<?php
+session_start();
+$nome_usuario = $_SESSION['nome_usuario'];
+
+include '../conexaoMain.php';
+include '../conexao.php';
+
+if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
+    // Se não estiver logado, redirecionar para a página de login
+    header("Location: ../index.html");
+    exit();
+}
+
+
+$conn = conectarBanco();
+
+$clientes = obterClientes($conn);
+$obras = obterObras($conn);
+$colaboradores = obterColaboradores($conn);
+$status_imagens = obterStatusImagens($conn);
+$funcoes = obterFuncoes($conn);
+
+$conn->close();
+?>
+
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 
@@ -6,87 +32,34 @@
     <title>Gantt por Obra</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="../css/styleSidebar.css">
+    <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
+        type="image/x-icon">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
 
-    <style>
-        th,
-        td {
-            border: 1px solid #ccc;
-            padding: 4px;
-            text-align: center;
-        }
-
-        th.month {
-            background-color: #eee;
-        }
-
-        th.day {
-            background-color: #f9f9f9;
-            width: 30px;
-        }
-
-        td.etapas {
-            text-align: left;
-            white-space: nowrap;
-        }
-
-        .fim-de-semana {
-            background-color: #ffdada !important;
-        }
-
-        .bar {
-            height: 20px;
-            margin: 2px 0;
-        }
-
-        /* Estilos específicos para cada tipo de imagem */
-        .posproducao {
-            background-color: #e3f2fd;
-            border: none !important;
-        }
-
-        .finalizacao {
-            background-color: #e8f5e9;
-            border: none !important;
-        }
-
-        .modelagem {
-            background-color: #fff3e0;
-            border: none !important;
-        }
-
-        .caderno {
-            background-color: #fce4ec;
-            border: none !important;
-        }
-
-        .composicao {
-            background-color: #f9ffc6;
-            border: none !important;
-        }
-
-        .plantahumanizada {
-            background-color: #d0edf5;
-            border: none !important;
-        }
-
-        .filtrodeassets {
-            background-color: #dcffec;
-            border: none !important;
-        }
-    </style>
 </head>
 
 <body>
 
-    <h2>Gantt - Obra: <span id="obraNome"></span></h2>
 
-    <table id="ganttTable">
-        <thead>
-            <tr id="headerMeses"></tr>
-            <tr id="headerDias"></tr>
-        </thead>
-        <tbody id="ganttBody"></tbody>
-    </table>
+    <?php
+
+    include '../sidebar.php';
+
+    ?>
+
+    <div class="container">
+
+        <h2>Gantt - Obra: <span id="obraNome"></span></h2>
+
+        <table id="ganttTable">
+            <thead>
+                <tr id="headerMeses"></tr>
+                <tr id="headerDias"></tr>
+            </thead>
+            <tbody id="ganttBody"></tbody>
+        </table>
+    </div>
 
     <div id="colaboradorModal" class="modal" style="display:none;">
         <div class="modal-content">
@@ -155,9 +128,9 @@
 
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 
-    <script src="script.js">
-
-    </script>
+    <script src="script.js"></script>
+    <script src="../script/sidebar.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 </body>
 

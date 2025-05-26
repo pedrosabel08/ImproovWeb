@@ -742,6 +742,7 @@ const modal = document.getElementById("colaboradorModal");
 const modalConflito = document.getElementById("modalConflito");
 const confirmarBtn = document.getElementById('confirmarBtn');
 const btnAddForcado = document.getElementById('btnAddForcado');
+const select = document.getElementById('colaborador_id');
 
 function enviarAtribuicao() {
     const colaboradorId = select.value;

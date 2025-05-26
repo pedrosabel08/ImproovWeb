@@ -31,6 +31,8 @@ function preencherSelectComColaboradores({
                 option.value = colab.idcolaborador;
                 option.textContent = colab.nome_colaborador + (colab.ocupado ? ` (${colab.obras_conflitantes})` : "");
 
+                option.dataset.ganttId = colab.id || "";
+
                 if (colab.ocupado) {
                     option.style.color = "red";
                     option.dataset.ocupado = true;
@@ -38,7 +40,7 @@ function preencherSelectComColaboradores({
                     option.dataset.etapa = colab.etapas_conflitantes;
                     option.dataset.inicio = colab.data_inicio_conflito;
                     option.dataset.fim = colab.data_fim_conflito;
-                    option.dataset.ganttId = colab.gantt_id;
+                    // option.dataset.ganttId = colab.id;
                 }
 
                 if (colab.idcolaborador == colaboradorAtualId) {
@@ -264,7 +266,7 @@ function montarCorpo(imagens, etapas, datas) {
                         document.getElementById('imagemId').value = etapaAtual.imagem_id;
                         document.getElementById('etapaNome').value = nomeEtapa;
                         document.getElementById('funcaoId').value = funcaoId;
-
+                        document.getElementById('etapaId').value = etapaAtual.id;
 
 
                         preencherSelectComColaboradores({
@@ -532,7 +534,6 @@ function abrirModalConflito({
     dataInicioAtual = inicio;
     dataFimAtual = fim;
 
-    console.log(nomeEtapaAtual);
 
     const modalConflito = document.getElementById("modalConflito");
     const modal = document.getElementById("colaboradorModal");
@@ -591,6 +592,7 @@ document.getElementById("btnTrocar").onclick = () => {
             const fim = formatarData(selected.dataset.fim);
             const etapaId = selected.dataset.ganttId;
 
+
             abrirModalConflito({
                 colaboradorId: selected.value,
                 nome,
@@ -624,6 +626,13 @@ document.getElementById("btnRemoverEAlocar").onclick = () => {
         onConflitoSelecionado: (selected) => {
             const novoColaboradorId = selected.value;
             const novoColaboradorNome = selected.textContent;
+            const ganttId = selected.dataset.ganttId;
+
+            console.log({
+                antigoId: colaboradorIdAtual,
+                novoId: novoColaboradorId,
+                etapaId: ganttId
+            });
 
             Swal.fire({
                 title: "Confirmar alocação?",
@@ -642,7 +651,7 @@ document.getElementById("btnRemoverEAlocar").onclick = () => {
                         body: JSON.stringify({
                             antigoId: colaboradorIdAtual,
                             novoId: novoColaboradorId,
-                            etapaId: etapaIdAtual
+                            etapaId: ganttId
                         })
                     })
                         .then(response => response.json())

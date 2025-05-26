@@ -14,6 +14,7 @@ if (isset($_GET['funcao_id'], $_GET['data_inicio'], $_GET['data_fim'])) {
     MAX(g_conflitante.data_fim) AS data_fim_conflito,
     GROUP_CONCAT(DISTINCT conflito.etapa SEPARATOR ', ') AS etapas_conflitantes,
     COUNT(conflito.id) AS total_conflitos,
+    g_conflitante.id,
     CASE 
         WHEN COUNT(conflito.id) >= f.limite THEN 1 ELSE 0
     END AS ocupado

@@ -1,78 +1,87 @@
-function gerarDatas() {
-    const datas = [];
-    const hoje = new Date();
-    const inicio = new Date();
-    const fim = new Date();
-    inicio.setDate(hoje.getDate() - 10);
-    fim.setDate(hoje.getDate() + 20);
+function gerarDatasComBaseNasEtapas(tarefas) {
+    let minData = null;
+    let maxData = null;
 
-    while (inicio <= fim) {
-        datas.push(new Date(inicio));
-        inicio.setDate(inicio.getDate() + 1);
+    tarefas.forEach(tarefa => {
+        tarefa.etapas.forEach(etapa => {
+            const ini = parseDataBR(etapa.data_inicio);
+            const fim = parseDataBR(etapa.data_fim);
+            if (!minData || ini < minData) minData = ini;
+            if (!maxData || fim > maxData) maxData = fim;
+        });
+    });
+
+    // Adiciona uma folga de alguns dias antes e depois
+    minData.setDate(minData.getDate() - 5);
+    maxData.setDate(maxData.getDate() + 5);
+
+    const datas = [];
+    const atual = new Date(minData);
+    while (atual <= maxData) {
+        datas.push(new Date(atual));
+        atual.setDate(atual.getDate() + 1);
     }
     return datas;
 }
 
 function criarCabecalho(datas, feriados) {
-    const thead = document.querySelector("#gantt thead");
-    thead.innerHTML = '';
+    const headerMeses = document.querySelector('#gantt thead');
+    const headerDias = document.createElement('tr');
+    const headerMesesRow = document.createElement('tr');
+    headerMeses.innerHTML = '';
 
-    const mesRow = document.createElement("tr");
-    const diaRow = document.createElement("tr");
+    // Célula em branco para alinhar com a coluna de nomes (se houver)
+    const cellBrancoMeses = document.createElement('th');
+    headerMesesRow.appendChild(cellBrancoMeses);
 
-    const thObra = document.createElement("th");
-    thObra.textContent = "Obra";
-    thObra.classList.add('nomenclatura_header')
-    thObra.rowSpan = 2;
-    mesRow.appendChild(thObra);
-
-    const thImagem = document.createElement("th");
-    thImagem.textContent = "Imagem";
-    thImagem.classList.add('nome_imagem_header')
-    thImagem.rowSpan = 2;
-    mesRow.appendChild(thImagem);
+    const cellBrancoDias = document.createElement('th');
+    const cellBrancoDias2 = document.createElement('th');
+    headerDias.appendChild(cellBrancoDias);
+    headerDias.appendChild(cellBrancoDias2);
 
     let mesAtual = '';
-    let mesInicio = 0;
+    let mesContador = 0;
 
     datas.forEach((data, i) => {
-        const mes = data.toLocaleDateString('pt-BR', { month: 'long' });
-
-        if (i === 0 || mes !== mesAtual) {
-            if (i !== 0) {
-                const thMes = document.createElement("th");
-                thMes.textContent = mesAtual.charAt(0).toUpperCase() + mesAtual.slice(1);
-                thMes.colSpan = i - mesInicio;
-                mesRow.appendChild(thMes);
-                mesInicio = i;
+        const mes = data.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' });
+        if (mes !== mesAtual) {
+            if (mesAtual !== '') {
+                const th = document.createElement('th');
+                th.className = 'month';
+                th.colSpan = mesContador;
+                th.innerText = mesAtual;
+                headerMesesRow.appendChild(th);
             }
             mesAtual = mes;
+            mesContador = 1;
+        } else {
+            mesContador++;
         }
 
-        const thDia = document.createElement("th");
-        thDia.textContent = data.getDate();
-        const dataStr = data.toLocaleDateString('pt-BR');
-        const diaSemana = data.getDay();
-        const dataMMDD = dataStr.slice(0, 5);
-
-        if (diaSemana === 0 || diaSemana === 6) thDia.classList.add('fim-semana');
-        if (feriados.includes(dataMMDD)) thDia.classList.add('feriado');
-
-        const hoje = new Date();
-        if (data.getDate() === hoje.getDate() && data.getMonth() === hoje.getMonth() && data.getFullYear() === hoje.getFullYear()) {
-            thDia.classList.add('hoje');
+        if (i === datas.length - 1) {
+            const th = document.createElement('th');
+            th.className = 'month';
+            th.colSpan = mesContador;
+            th.innerText = mesAtual;
+            headerMesesRow.appendChild(th);
         }
-
-        diaRow.appendChild(thDia);
     });
 
-    const thMesFinal = document.createElement("th");
-    thMesFinal.textContent = mesAtual.charAt(0).toUpperCase() + mesAtual.slice(1);
-    thMesFinal.colSpan = datas.length - mesInicio;
-    mesRow.appendChild(thMesFinal);
+    // Linha de dias
+    datas.forEach(data => {
+        const th = document.createElement('th');
+        th.className = 'day';
+        const diaSemana = data.getDay();
+        if (diaSemana === 0 || diaSemana === 6) {
+            th.style.backgroundColor = '#ffe0e0';
+            th.style.fontWeight = 'bold';
+        }
+        th.innerText = data.getDate();
+        headerDias.appendChild(th);
+    });
 
-    thead.appendChild(mesRow);
-    thead.appendChild(diaRow);
+    headerMeses.appendChild(headerMesesRow);
+    headerMeses.appendChild(headerDias);
 }
 
 function dividirPorDiasUteis(datas, dataInicio, dataFim) {
@@ -102,6 +111,12 @@ function dividirPorDiasUteis(datas, dataInicio, dataFim) {
     return blocos;
 }
 
+function parseDataBR(dataStr) {
+    // dataStr: "2025-06-09"
+    const [ano, mes, dia] = dataStr.split('-');
+    return new Date(ano, mes - 1, dia);
+}
+
 function montarCorpo(datas, tarefasObj) {
     const tbody = document.querySelector("#gantt tbody");
     tbody.innerHTML = '';
@@ -125,8 +140,10 @@ function montarCorpo(datas, tarefasObj) {
         let pos = 0;
 
         tarefa.etapas.forEach(etapa => {
-            const dataInicio = new Date(etapa.data_inicio);
-            const dataFim = new Date(etapa.data_fim);
+            const dataInicio = parseDataBR(etapa.data_inicio);
+            const dataFim = parseDataBR(etapa.data_fim);
+
+            console.log(`Etapa: ${etapa.etapa}, Início: ${dataInicio}, Fim: ${dataFim}`);
 
             // Divide em blocos de dias úteis
             const blocos = dividirPorDiasUteis(datas, dataInicio, dataFim);
@@ -172,14 +189,12 @@ function montarCorpo(datas, tarefasObj) {
 // Mock de feriados fixos
 const feriadosFixos = ['01/01', '21/04', '01/05', '07/09', '12/10', '15/11', '25/12'];
 
-const datas = gerarDatas();
-criarCabecalho(datas, feriadosFixos);
-
-// Carrega JSON do PHP
+// Use assim após carregar os dados:
 fetch('dados_colaborador.php')
     .then(response => response.json())
     .then(tarefas => {
+        const datas = gerarDatasComBaseNasEtapas(Object.values(tarefas));
+        criarCabecalho(datas, feriadosFixos);
         montarCorpo(datas, tarefas);
     })
     .catch(error => console.error('Erro ao carregar dados:', error));
-

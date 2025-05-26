@@ -21,7 +21,7 @@ function preencherSelectComColaboradores({
         return;
     }
 
-    fetch(`get_colaboradores_por_funcao.php?funcao_id=${funcaoId}&data_inicio=${dataInicio}&data_fim=${dataFim}`)
+    fetch(`get_colaboradores_por_funcao.php?funcao_id=${funcaoId}&data_inicio=${dataInicio}&data_fim=${dataFim}&gantt_id=${etapaIdAtual}`)
         .then(res => res.json())
         .then(colaboradores => {
             let colaboradorSelecionado = null;
@@ -37,7 +37,7 @@ function preencherSelectComColaboradores({
                     option.style.color = "red";
                     option.dataset.ocupado = true;
                     option.dataset.obra = colab.obras_conflitantes;
-                    option.dataset.etapa = colab.etapas_conflitantes;
+                    // option.dataset.etapa = colab.etapas_conflitantes;
                     option.dataset.inicio = colab.data_inicio_conflito;
                     option.dataset.fim = colab.data_fim_conflito;
                     // option.dataset.ganttId = colab.id;
@@ -258,7 +258,7 @@ function montarCorpo(imagens, etapas, datas) {
                         etapaAtual = etapaDoDia.etapa;
 
                         const colaboradorAtualId = etapaAtual.etapa_colaborador_id;
-                        const nomeEtapa = etapaAtual.etapa;
+                        let nomeEtapa = etapaAtual.etapa;
                         const funcaoId = etapaParaFuncao[nomeEtapa];
                         const dataInicio = td.getAttribute('data-inicio');
                         const dataFim = td.getAttribute('data-fim');
@@ -567,7 +567,7 @@ document.getElementById("btnTrocar").onclick = () => {
     document.getElementById("btnRemoverEAlocar").classList.remove("active");
 
     // Pegando dados da etapa atual
-    const nomeEtapa = nomeEtapaAtual;
+    let nomeEtapa = etapaAtual.etapa; // etapaAtual deve ser sempre a etapa única do contexto
     const funcaoId = etapaParaFuncao[nomeEtapa];
     const dataInicio = dataInicioAtual;
     const dataFim = dataFimAtual;
@@ -607,7 +607,8 @@ document.getElementById("btnTrocar").onclick = () => {
 };
 
 document.getElementById("btnRemoverEAlocar").onclick = () => {
-    const nomeEtapa = nomeEtapaAtual;
+    // Pegando dados da etapa atual
+    let nomeEtapa = etapaAtual.etapa; // etapaAtual deve ser sempre a etapa única do contexto
     const funcaoId = etapaParaFuncao[nomeEtapa];
     const dataInicio = dataInicioAtual;
     const dataFim = dataFimAtual;

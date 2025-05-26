@@ -2,7 +2,7 @@
 include '../conexao.php';
 
 // Exemplo de parâmetros para teste
-$obra_id = 67; // Altere para o ID da obra que deseja simular
+$obra_id = 55; // Altere para o ID da obra que deseja simular
 
 $grupos = [
     "Fachada" => [

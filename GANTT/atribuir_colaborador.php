@@ -98,8 +98,8 @@ if ($tipoImagem === 'fachada') {
 $conn->begin_transaction();
 
 try {
-    $sqlInsertEtapa = "INSERT INTO etapa_colaborador (gantt_id, colaborador_id, imagem_id)
-        VALUES (?, ?, ?)
+    $sqlInsertEtapa = "INSERT INTO etapa_colaborador (gantt_id, colaborador_id)
+        VALUES (?, ?)
         ON DUPLICATE KEY UPDATE colaborador_id = VALUES(colaborador_id)";
     $stmtEtapa = $conn->prepare($sqlInsertEtapa);
 
@@ -110,7 +110,7 @@ try {
 
     foreach ($imagensComGantt as $item) {
         // etapa_colaborador
-        $stmtEtapa->bind_param("iii", $item['gantt_id'], $colaborador_id, $item['imagem_id']);
+        $stmtEtapa->bind_param("ii", $item['gantt_id'], $colaborador_id);
         $stmtEtapa->execute();
 
         // funcao_imagem

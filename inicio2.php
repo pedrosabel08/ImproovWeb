@@ -265,7 +265,42 @@ $conn->close();
         </div>
     </div>
 
+    <!-- Modal para o iframe do changelog -->
+    <div id="modalIframeChangelog" class="modal" style="display:none;">
+        <div class="modal-content" style="width:90vw;max-width:60vw;height:80vh;position:relative;">
+            <!-- <button onclick="fecharModalIframe()" style="position:absolute;top:10px;right:10px;z-index:2;">Fechar</button> -->
+            <iframe id="iframeChangelog" src="CHANGELOG/Flow/imagens.html" frameborder="0" style="width:100%;height:100%;border:none;"></iframe>
+        </div>
+    </div>
+
     <script>
+        function abrirModalIframe() {
+            document.getElementById('modalIframeChangelog').style.display = 'flex';
+        }
+
+        const modalIframeChangelog = document.getElementById('modalIframeChangelog');
+
+        const CHANGELOG_VERSION = "3.2.3"; // Altere este valor sempre que atualizar o changelog
+
+        function mostrarChangelogSeNecessario() {
+            const chave = "changelog_visto_" + CHANGELOG_VERSION;
+            if (!localStorage.getItem(chave)) {
+                abrirModalIframe();
+                localStorage.setItem(chave, "1");
+            }
+        }
+
+        ['click', 'touchstart', 'keydown'].forEach(eventType => {
+            window.addEventListener(eventType, function(event) {
+                // Fecha os modais ao clicar fora ou pressionar Esc
+                if (eventType === 'keydown' && event.key !== 'Escape') return;
+
+                if (event.target == modalIframeChangelog || (eventType === 'keydown' && event.key === 'Escape')) {
+                    modalIframeChangelog.style.display = 'none';
+                }
+            })
+        });
+
         const nome_user = <?php echo json_encode($nome_usuario); ?>;
 
         function obterSaudacao() {
@@ -399,7 +434,8 @@ $conn->close();
         checkDailyAccess()
             .then(() => checkRenderItems(idColaborador))
             .then(() => {
-                buscarTarefas(); // Agora sim, só depois dos anteriores
+                buscarTarefas();
+                mostrarChangelogSeNecessario(); // Só mostra se não viu esta versão
             })
             .catch(() => {
                 console.log('Fluxo interrompido devido a erro ou resposta incompleta.');

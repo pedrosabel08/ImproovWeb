@@ -9,6 +9,25 @@ if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
 }
 
 $idusuario = $_SESSION['idusuario'];
+$tela_atual = basename($_SERVER['PHP_SELF']);
+$ultima_atividade = date('Y-m-d H:i:s');
+
+$sql2 = "UPDATE logs_usuarios 
+         SET tela_atual = ?, ultima_atividade = ?
+         WHERE usuario_id = ?";
+$stmt2 = $conn->prepare($sql2);
+
+if (!$stmt2) {
+    die("Erro no prepare: " . $conn->error);
+}
+
+// 'ssi' indica os tipos: string, string, integer
+$stmt2->bind_param("ssi", $tela_atual, $ultima_atividade, $idusuario);
+
+if (!$stmt2->execute()) {
+    die("Erro no execute: " . $stmt2->error);
+}
+
 $nome_usuario = $_SESSION['nome_usuario'];
 $idcolaborador = $_SESSION['idcolaborador'];
 
@@ -246,7 +265,42 @@ $conn->close();
         </div>
     </div>
 
+    <!-- Modal para o iframe do changelog -->
+    <div id="modalIframeChangelog" class="modal" style="display:none;">
+        <div class="modal-content" style="width:90vw;max-width:60vw;height:80vh;position:relative;">
+            <!-- <button onclick="fecharModalIframe()" style="position:absolute;top:10px;right:10px;z-index:2;">Fechar</button> -->
+            <iframe id="iframeChangelog" src="CHANGELOG/Flow/imagens.html" frameborder="0" style="width:100%;height:100%;border:none;"></iframe>
+        </div>
+    </div>
+
     <script>
+        function abrirModalIframe() {
+            document.getElementById('modalIframeChangelog').style.display = 'flex';
+        }
+
+        const modalIframeChangelog = document.getElementById('modalIframeChangelog');
+
+        const CHANGELOG_VERSION = "3.2.3"; // Altere este valor sempre que atualizar o changelog
+
+        function mostrarChangelogSeNecessario() {
+            const chave = "changelog_visto_" + CHANGELOG_VERSION;
+            if (!localStorage.getItem(chave)) {
+                abrirModalIframe();
+                localStorage.setItem(chave, "1");
+            }
+        }
+
+        ['click', 'touchstart', 'keydown'].forEach(eventType => {
+            window.addEventListener(eventType, function(event) {
+                // Fecha os modais ao clicar fora ou pressionar Esc
+                if (eventType === 'keydown' && event.key !== 'Escape') return;
+
+                if (event.target == modalIframeChangelog || (eventType === 'keydown' && event.key === 'Escape')) {
+                    modalIframeChangelog.style.display = 'none';
+                }
+            })
+        });
+
         const nome_user = <?php echo json_encode($nome_usuario); ?>;
 
         function obterSaudacao() {
@@ -380,7 +434,8 @@ $conn->close();
         checkDailyAccess()
             .then(() => checkRenderItems(idColaborador))
             .then(() => {
-                buscarTarefas(); // Agora sim, só depois dos anteriores
+                buscarTarefas();
+                mostrarChangelogSeNecessario(); // Só mostra se não viu esta versão
             })
             .catch(() => {
                 console.log('Fluxo interrompido devido a erro ou resposta incompleta.');

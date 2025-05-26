@@ -546,7 +546,7 @@ $conn->close();
                                 <option value="Aprovado com ajustes">Aprovado com ajustes</option>
                             </select>
                             <input type="date" name="prazo_caderno" id="prazo_caderno">
-                            <input type="text" name="obs_caderno" id="obs_caderno" placeholder="Observação">
+                            <input type="text" name="obs_caderno" id="obs_caderno" placeholder="Caminho arquivo">
                             <div class="revisao_imagem" style="display: none;">
                                 <input type="file" name="imagens[]" id="revisao_imagem_caderno" accept="image/*" multiple>
                             </div>
@@ -582,7 +582,7 @@ $conn->close();
                                 <option value="Aprovado com ajustes">Aprovado com ajustes</option>
                             </select>
                             <input type="date" name="prazo_filtro" id="prazo_filtro" placeholder="Data">
-                            <input type="text" name="obs_filtro" id="obs_filtro" placeholder="Observação">
+                            <input type="text" name="obs_filtro" id="obs_filtro" placeholder="Caminho arquivo">
                             <div class="revisao_imagem" style="display: none;">
                                 <input type="file" name="imagens[]" id="revisao_imagem_filtro" accept="image/*" multiple>
                             </div>
@@ -618,7 +618,7 @@ $conn->close();
                                 <option value="Aprovado com ajustes">Aprovado com ajustes</option>
                             </select>
                             <input type="date" name="prazo_modelagem" id="prazo_modelagem">
-                            <input type="text" name="obs_modelagem" id="obs_modelagem" placeholder="Observação">
+                            <input type="text" name="obs_modelagem" id="obs_modelagem" placeholder="Caminho arquivo">
                             <div class="revisao_imagem" style="display: none;">
                                 <input type="file" name="imagens[]" id="revisao_imagem_model" accept="image/*" multiple>
                             </div>
@@ -654,7 +654,7 @@ $conn->close();
                                 <option value="Aprovado com ajustes">Aprovado com ajustes</option>
                             </select>
                             <input type="date" name="prazo_comp" id="prazo_comp">
-                            <input type="text" name="obs_comp" id="obs_comp" placeholder="Observação">
+                            <input type="text" name="obs_comp" id="obs_comp" placeholder="Caminho arquivo">
                             <div class="revisao_imagem" style="display: none;">
                                 <input type="file" name="imagens[]" id="revisao_imagem_comp" accept="image/*" multiple>
                             </div>
@@ -690,7 +690,7 @@ $conn->close();
                                 <option value="Aprovado com ajustes">Aprovado com ajustes</option>
                             </select>
                             <input type="date" name="prazo_pre" id="prazo_pre">
-                            <input type="text" name="obs_pre" id="obs_pre" placeholder="Observação">
+                            <input type="text" name="obs_pre" id="obs_pre" placeholder="Caminho arquivo">
                             <div class="revisao_imagem" style="display: none;">
                                 <input type="file" name="imagens[]" id="revisao_imagem_pre" accept="image/*" multiple>
                             </div>
@@ -726,7 +726,7 @@ $conn->close();
                                 <option value="Aprovado com ajustes">Aprovado com ajustes</option>
                             </select>
                             <input type="date" name="prazo_finalizacao" id="prazo_finalizacao">
-                            <input type="text" name="obs_finalizacao" id="obs_finalizacao" placeholder="Observação">
+                            <input type="text" name="obs_finalizacao" id="obs_finalizacao" placeholder="Caminho arquivo">
                             <div class="revisao_imagem" style="display: none;">
                                 <input type="file" name="imagens[]" id="revisao_imagem_final" accept="image/*" multiple>
                             </div>
@@ -764,7 +764,7 @@ $conn->close();
                                 <option value="Aprovado com ajustes">Aprovado com ajustes</option>
                             </select>
                             <input type="date" name="prazo_pos" id="prazo_pos">
-                            <input type="text" name="obs_pos" id="obs_pos" placeholder="Observação">
+                            <input type="text" name="obs_pos" id="obs_pos" placeholder="Caminho arquivo">
                             <div class="revisao_imagem" style="display: none;">
                                 <input type="file" name="imagens[]" id="revisao_imagem_pos" accept="image/*" multiple>
                             </div>
@@ -801,7 +801,7 @@ $conn->close();
                                 <option value="Aprovado com ajustes">Aprovado com ajustes</option>
                             </select>
                             <input type="date" name="prazo_alteracao" id="prazo_alteracao">
-                            <input type="text" name="obs_alteracao" id="obs_alteracao" placeholder="Observação">
+                            <input type="text" name="obs_alteracao" id="obs_alteracao" placeholder="Caminho arquivo">
                             <div class="revisao_imagem" style="display: none;">
                                 <input type="file" name="imagens[]" id="revisao_imagem_alt" accept="image/*" multiple>
                             </div>
@@ -838,7 +838,7 @@ $conn->close();
                                 <option value="Aprovado com ajustes">Aprovado com ajustes</option>
                             </select>
                             <input type="date" name="prazo_planta" id="prazo_planta">
-                            <input type="text" name="obs_planta" id="obs_planta" placeholder="Observação">
+                            <input type="text" name="obs_planta" id="obs_planta" placeholder="Caminho arquivo">
                             <div class="revisao_imagem" style="display: none;">
                                 <input type="file" name="imagens[]" id="revisao_imagem_ph" accept="image/*" multiple>
                             </div>

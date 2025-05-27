@@ -114,10 +114,18 @@ header button#openModalBtnRender {
     padding: 5px;
 }
 
+.dataTables_filter {
+    margin-bottom: 20px;
+}
+
+
+.tabela-container {
+    margin: 0 20px;
+}
 
 table {
-    border-collapse: collapse;
-    width: 95%;
+    border-collapse: collapse !important;
+    width: 100% !important;
     margin: 0 auto;
     font-size: 14px;
 }

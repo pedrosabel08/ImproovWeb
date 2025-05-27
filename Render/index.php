@@ -53,9 +53,19 @@ $conn->close();
 
     ?>
     <div class="container">
-        <header>
+        <header style="position: relative;">
             <img src="../gif/assinatura_preto.gif" alt="" style="width: 200px;">
         </header>
+        <button id="startTutorial"
+            style="position: fixed;top: 1rem;right: 1rem;font-size: 24px;color: darkblue;"
+            onmouseover="document.getElementById('tooltipTutorial').style.display='block'; this.style.color='#007bff'; this.style.cursor='pointer';"
+            onmouseout="document.getElementById('tooltipTutorial').style.display='none'; this.style.color='darkblue';">
+            <i class="fa-solid fa-circle-info"></i>
+        </button>
+        <span id="tooltipTutorial"
+            style="display:none;position:fixed;top:3.5rem;right:1rem;background:#222;color:#fff;padding:6px 12px;border-radius:4px;font-size:14px;z-index:100;">
+            Suporte
+        </span>
         <table id="renderTable" data-step="1" data-intro="Esta tabela exibe todos os renders. Você pode clicar em um render para editar ou excluir.">
             <thead>
                 <tr>
@@ -71,7 +81,6 @@ $conn->close();
                 <!-- Os renders serão carregados aqui via AJAX -->
             </tbody>
         </table>
-        <button id="startTutorial" style="margin: 1rem;">Ajuda</button>
     </div>
 
 

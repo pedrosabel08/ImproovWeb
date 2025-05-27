@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "imagens.md",
+                "file": "changelog.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "imagens"
+              "title": "changelog"
             }
           }
         ]
@@ -183,12 +183,16 @@
   },
   "active": "a981b79b18021101",
   "lastOpenFiles": [
-    "imagens/copiar_caminho.png",
+    "suporte.html",
+    "imagens/suporte.png",
     "imagens/image.png",
+    "image.png",
+    "suporte.md",
+    "imagens.md",
+    "imagens/copiar_caminho.png",
     "changelog.md",
     "imagens.html",
     "changelog.html",
-    "imagens.md",
     "imagens/caminho_arquivo.png",
     "Pasted image 20250526160539.png",
     "Registro de atualizações Flow.md",

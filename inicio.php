@@ -267,9 +267,9 @@ $conn->close();
 
     <!-- Modal para o iframe do changelog -->
     <div id="modalIframeChangelog" class="modal" style="display:none;">
-        <div class="modal-content" style="width:90vw;max-width:60vw;height:80vh;position:relative;">
+        <div class="modal-content" style="width:90vw;max-width: 50vw;height: 40vh;position:relative;">
             <!-- <button onclick="fecharModalIframe()" style="position:absolute;top:10px;right:10px;z-index:2;">Fechar</button> -->
-            <iframe id="iframeChangelog" src="CHANGELOG/Flow/imagens.html" frameborder="0" style="width:100%;height:100%;border:none;"></iframe>
+            <iframe id="iframeChangelog" src="CHANGELOG/Flow/suporte.html" frameborder="0" style="width:100%;height:100%;border:none;"></iframe>
         </div>
     </div>
 

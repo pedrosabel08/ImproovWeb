@@ -211,6 +211,41 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 contarLinhasTabela();
 
+                // Inicializa ou recarrega o DataTable
+                if ($.fn.DataTable.isDataTable('#tabela-imagens')) {
+                    $('#tabela-imagens').DataTable().destroy();
+                }
+                const dataTable = $('#tabela-imagens').DataTable({
+                    language: {
+                        url: "//cdn.datatables.net/plug-ins/1.11.5/i18n/pt-BR.json",
+                        searchPlaceholder: "Buscar imagens...",
+                        search: ""
+                    },
+                    pageLength: 100,
+                    lengthChange: false,
+                    order: [],
+                    searching: true,
+                    paging: true,
+                    info: true,
+                    ordering: true,
+                    responsive: true,
+                    autoWidth: false,
+                });
+
+                $('#tabela-imagens_filter label').contents().filter(function () {
+                    return this.nodeType === 3; // nó de texto
+                }).remove();
+
+                // Atualiza o contador sempre que filtrar ou paginar
+                dataTable.on('draw', function () {
+                    // Exibe apenas as linhas filtradas (não as totais)
+                    const totalVisiveis = dataTable.rows({ filter: 'applied' }).count();
+                    document.getElementById('total-pos').innerText = totalVisiveis;
+                });
+
+                // Atualiza o contador na primeira carga
+                document.getElementById('total-pos').innerText = dataTable.rows({ filter: 'applied' }).count();
+
                 const linhasTabela = document.querySelectorAll('.linha-tabela');
                 linhasTabela.forEach(linha => {
                     linha.addEventListener('click', function () {
@@ -387,7 +422,7 @@ function aplicarFiltros() {
     contarLinhasTabela(); // Atualiza o contador
 }
 
-// Atualiza os eventos para chamar a nova função de filtro combinado
-document.getElementById("colunaFiltro").addEventListener("change", aplicarFiltros);
-document.getElementById("filtro-input").addEventListener("input", aplicarFiltros);
-document.getElementById("filtro-mes").addEventListener("change", aplicarFiltros);
+// // Atualiza os eventos para chamar a nova função de filtro combinado
+// document.getElementById("colunaFiltro").addEventListener("change", aplicarFiltros);
+// document.getElementById("filtro-input").addEventListener("input", aplicarFiltros);
+// document.getElementById("filtro-mes").addEventListener("change", aplicarFiltros);

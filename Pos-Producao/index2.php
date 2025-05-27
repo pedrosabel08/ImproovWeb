@@ -131,26 +131,62 @@ $conn->close();
             <button id="openModalBtn" style="display: none;">Inserir render</button>
             <button id="openModalBtnRender">Ver Render Elements</button>
         </header>
-        
-        <div class="tabela-container">
-            <p style="margin: 15px 0; text-align: right;" >Total de pós: <span id="total-pos"></span></p>
-            <table id="tabela-imagens" class="display">
-                <thead>
-                    <tr>
-                        <th>Status Render</th>
-                        <th>Nome Finalizador</th>
-                        <th>Nome Obra</th>
-                        <th>Data</th>
-                        <th style="min-width: 80px;padding: 3px;">Nome imagem</th>
-                        <th>Status</th>
-                        <th>Revisão</th>
-                        <th>Responsável</th>
-                    </tr>
-                </thead>
-                <tbody id="lista-imagens">
-                </tbody>
-            </table>
-        </div>
+        <p style="margin: 15px 0">Total de pós: <span id="total-pos"></span></p>
+
+
+        <!-- <div class="filtro-tabela">
+
+            <div class="selects">
+
+                <label for="colunaFiltro">Filtrar por:</label>
+                <select id="colunaFiltro">
+                    <option value="0">Nome Finalizador</option>
+                    <option value="1">Nome Cliente</option>
+                    <option value="2">Nome Obra</option>
+                    <option value="3">Data</option>
+                    <option value="4">Nome Imagem</option>
+                    <option value="5">Status</option>
+                    <option value="6">Revisão</option>
+                    <option value="7">Responsável</option>
+                </select>
+
+                <input type="text" id="filtro-input" placeholder="Digite para filtrar">
+
+                <select id="filtro-mes">
+                    <option value="">Todos os Meses</option>
+                    <option value="01">Janeiro</option>
+                    <option value="02">Fevereiro</option>
+                    <option value="03">Março</option>
+                    <option value="04">Abril</option>
+                    <option value="05">Maio</option>
+                    <option value="06">Junho</option>
+                    <option value="07">Julho</option>
+                    <option value="08">Agosto</option>
+                    <option value="09">Setembro</option>
+                    <option value="10">Outubro</option>
+                    <option value="11">Novembro</option>
+                    <option value="12">Dezembro</option>
+                </select>
+            </div>
+
+
+        </div> -->
+        <table id="tabela-imagens" class="display">
+            <thead>
+                <tr>
+                    <th>Status Render</th>
+                    <th>Nome Finalizador</th>
+                    <th>Nome Obra</th>
+                    <th>Data</th>
+                    <th style="min-width: 80px;padding: 3px;">Nome imagem</th>
+                    <th>Status</th>
+                    <th>Revisão</th>
+                    <th>Responsável</th>
+                </tr>
+            </thead>
+            <tbody id="lista-imagens">
+            </tbody>
+        </table>
     </div>
 
     <div id="modal" class="modal">

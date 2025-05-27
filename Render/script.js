@@ -132,4 +132,42 @@ $('#deleteRender').click(function () {
 // Carregar os renders quando a página for carregada
 $(document).ready(function () {
     loadRenders();
+
+    // Iniciar tutorial ao clicar no botão
+    $('#startTutorial').on('click', function () {
+        startIntroWithStepCallback();
+    });
 });
+
+// Função para iniciar o Intro.js e simular o clique no step 2
+function startIntroWithStepCallback() {
+    $('#myModal').css('display', 'flex'); // Abre o modal ANTES do tutorial
+
+    setTimeout(() => {
+        var intro = introJs();
+        intro.setOptions({
+            nextLabel: 'Próximo',
+            prevLabel: 'Anterior',
+            doneLabel: 'Finalizar'
+        });
+
+        intro.onchange(function (targetElement) {
+            if (this._currentStep === 2) {
+                const statusElement = document.getElementById('render_status');
+                if (statusElement) {
+                    statusElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        });
+
+        intro.oncomplete(function () {
+            $('#myModal').css('display', 'none');
+        });
+
+        intro.onexit(function () {
+            $('#myModal').css('display', 'none');
+        });
+
+        intro.start();
+    }, 1); // tempo suficiente para o modal renderizar
+}

@@ -39,7 +39,10 @@ $conn->close();
         integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
     <!-- Adicione os links para DataTables no seu HTML -->
-
+    <!-- ...existing code... -->
+    <link rel="stylesheet" href="https://unpkg.com/intro.js/minified/introjs.min.css">
+    <script src="https://unpkg.com/intro.js/minified/intro.min.js"></script>
+    <!-- ...existing code... -->
     <title>Renders</title>
 </head>
 
@@ -53,7 +56,7 @@ $conn->close();
         <header>
             <img src="../gif/assinatura_preto.gif" alt="" style="width: 200px;">
         </header>
-        <table id="renderTable">
+        <table id="renderTable" data-step="1" data-intro="Esta tabela exibe todos os renders. Você pode clicar em um render para editar ou excluir.">
             <thead>
                 <tr>
                     <th>ID</th>
@@ -68,7 +71,10 @@ $conn->close();
                 <!-- Os renders serão carregados aqui via AJAX -->
             </tbody>
         </table>
+        <button id="startTutorial" style="margin: 1rem;">Ajuda</button>
     </div>
+
+
 
     <!-- Modal -->
     <div id="myModal" class="modal">
@@ -79,15 +85,15 @@ $conn->close();
                 <p id="imagem_nome"></p>
                 <div style="padding: 1rem 0;">
                     <label for="render_status">Status:</label>
-                    <select id="render_status" name="render_status">
+                    <select id="render_status" name="render_status" data-step="2" data-intro="Selecione o status do render.">
                         <option value="Não iniciado">Não iniciado</option>
                         <option value="Em andamento">Em andamento</option>
                         <option value="Finalizado">Finalizado</option>
                     </select>
                 </div>
                 <div class="buttons">
-                    <button type="submit" id="salvar">Salvar</button>
-                    <button id="deleteRender">Excluir Render</button>
+                    <button type="submit" id="salvar" data-step="3" data-intro="Clique em salvar.">Salvar</button>
+                    <button id="deleteRender" data-step="4" data-intro="Pode excluir o render.">Excluir Render</button>
                 </div>
             </form>
         </div>

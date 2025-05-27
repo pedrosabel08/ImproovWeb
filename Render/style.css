@@ -107,7 +107,7 @@ a {
     max-height: 70%;
     overflow-y: auto;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    animation: fadeIn 0.2s ease-in-out forwards;
+    /* animation: fadeIn 0.2s ease-in-out forwards; */
 }
 
 /* Estilos para o botão de excluir */

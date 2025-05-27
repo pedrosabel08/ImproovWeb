@@ -89,11 +89,11 @@ $conn->close();
         <header>
             <h1 id="nomenclatura"></h1>
         </header>
-        <div class="buttons-nav">
+        <!-- <div class="buttons-nav">
             <button id="altBtn" onclick="window.location.href='https://improov.com.br/sistema/Alteracao/'"><i class="fa-solid fa-pen-to-square"></i></button>
             <button onclick="document.querySelector('.acompanhamentos').scrollIntoView({behavior: 'smooth'})"><i class="fa-solid fa-circle-info"></i></button>
             <button onclick="document.querySelector('.filtro-tabela').scrollIntoView({behavior: 'smooth'})"><i class="fa-solid fa-info"></i></button>
-        </div>
+        </div> -->
 
         <!-- Tabela para exibir as funções da obra -->
         <div class="filtro-tabela">

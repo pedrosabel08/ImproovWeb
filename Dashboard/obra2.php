@@ -872,6 +872,10 @@ $conn->close();
                     <div class="render">
                         <p id="render_alta">Render</p>
                         <button id="addRender" class="buttons-form-add" style=" padding: 3px 10px; font-size: 13px; background-color: steelblue;">Adicionar render</button>
+                        <label class="switch">
+                            <input type="checkbox" id="notificar">
+                            <span class="slider"></span>
+                        </label>
                     </div>
                 </div>
                 <div class="funcao" id="status_funcao" style="width: 200px; margin-bottom: 15px;">

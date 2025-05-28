@@ -17,11 +17,14 @@ function atualizarContadorTarefas() {
         method: 'GET'
     })
         .then(response => response.json())
-        .then(tarefas => {
+        .then(data => {
+            const tarefas = data.tarefas || [];
+
             const contadorTarefas = document.getElementById('contador-tarefas');
 
-            if (tarefas.length > 0) {
-                contadorTarefas.textContent = tarefas.length;
+            if (tarefas.length > 0 || data.notificacoes.length > 0) {
+                contadorTarefas.textContent = tarefas.length + data.notificacoes.length;
+
             } else {
                 contadorTarefas.textContent = '';
                 contadorTarefas.style.display = 'none';
@@ -31,17 +34,23 @@ function atualizarContadorTarefas() {
         .catch(error => console.error('Erro ao buscar tarefas:', error));
 }
 
-function buscarTarefas() {
-    fetch('https://improov.com.br/sistema/buscar_tarefas.php', {
+let contagemTarefasGlobal = {};
+let htmlNotificacoes = '';
+
+
+function buscarTarefas(mostrarAlerta = true) {
+    return fetch('https://improov.com.br/sistema/buscar_tarefas.php', {
         method: 'GET'
     })
         .then(response => response.json())
-        .then(tarefas => {
+        .then(data => {
+            const tarefas = data.tarefas || [];
+            const notificacoes = data.notificacoes || [];
             const contadorTarefas = document.getElementById('contador-tarefas');
             const idColaborador = parseInt(localStorage.getItem('idcolaborador'));
 
-            if (tarefas.length > 0) {
-                contadorTarefas.textContent = tarefas.length;
+            if (tarefas.length > 0 || notificacoes.length > 0) {
+                contadorTarefas.textContent = tarefas.length + notificacoes.length;
                 ativarSino();
 
                 // Contagem por função (considerando filtro por idcolaborador)
@@ -56,11 +65,11 @@ function buscarTarefas() {
                     }
                 });
 
-                // Verifica se o usuário está autorizado a ver o alerta
-                const idsPermitidos = [1, 9, 19, 21]; // IDs com permissão
+                contagemTarefasGlobal = contagemPorFuncao; // Atualiza global
 
-                if (idsPermitidos.includes(idColaborador)) {
-                    // Exibir SweetAlert com resumo
+                const idsPermitidos = [1, 9, 19, 21];
+
+                if (idsPermitidos.includes(idColaborador) && mostrarAlerta) {
                     let mensagem = '';
                     for (const funcao in contagemPorFuncao) {
                         mensagem += `<p><strong>${funcao}</strong>: ${contagemPorFuncao[funcao]} tarefas</p>`;
@@ -78,8 +87,19 @@ function buscarTarefas() {
 
             } else {
                 contadorTarefas.textContent = '';
+                contagemTarefasGlobal = {};
                 console.log("Nenhuma tarefa pendente.");
             }
+
+
+            if (notificacoes.length > 0) {
+                notificacoes.forEach(notificacao => {
+                    htmlNotificacoes = `<p class="notificacao" data-not-id="${notificacao.id}">${notificacao.mensagem}</p>`;
+                });
+            } else {
+                htmlNotificacoes = '';
+            }
+
         })
         .catch(error => console.error('Erro ao buscar tarefas:', error));
 }
@@ -127,14 +147,111 @@ document.addEventListener('DOMContentLoaded', () => {
         agendarProximaExecucao();
     }
 });
-
 const sino = document.getElementById('icone-sino');
+const popover = document.getElementById('popover-tarefas');
+const conteudoTarefas = document.getElementById('conteudo-tarefas');
+const conteudoNotificacoes = document.getElementById('conteudo-notificacoes');
+const btnIr = document.getElementById('btn-ir-revisao');
+
+const badgeTarefas = document.getElementById('badge-tarefas');
+const badgeNotificacoes = document.getElementById('badge-notificacoes');
 
 sino.addEventListener('click', function () {
+    const idColaborador = parseInt(localStorage.getItem('idcolaborador'));
+    const funcoes = filtrarFuncoesPorColaborador(idColaborador);
 
-    const result = confirm("Você quer ir para a página de revisão?");
+    // 🔊 Som ao clicar
+    const audio = new Audio('https://improov.com.br/sistema/sons/not.mp3');
+    audio.play();
 
-    if (result) {
-        window.open('https://improov.com.br/sistema/Revisao', '_blank');
+    buscarTarefas(false).then(() => {
+        // --- TAREFAS ---
+        let htmlTarefas = '';
+        let qtdTarefas = 0;
+
+        for (const funcao of funcoes) {
+            if (contagemTarefasGlobal[funcao]) {
+                htmlTarefas += `<p><strong>${funcao}</strong>: ${contagemTarefasGlobal[funcao]} tarefas</p>`;
+                qtdTarefas += contagemTarefasGlobal[funcao];
+            }
+        }
+
+        conteudoTarefas.innerHTML = htmlTarefas || '<p>Sem tarefas para você.</p>';
+
+        // --- NOTIFICAÇÕES ---
+        conteudoNotificacoes.innerHTML = htmlNotificacoes;
+
+        // --- Atualiza badges ---
+        badgeTarefas.textContent = qtdTarefas;
+        const qtdNotificacoes = conteudoNotificacoes.querySelectorAll('p').length;
+        if (qtdTarefas === 0) {
+            document.querySelector('.secao-tarefas').classList.add('oculto');
+            btnIr.classList.add('oculto');
+        }
+        if (qtdNotificacoes === 0) {
+            document.querySelector('.secao-notificacoes').classList.add('oculto');
+        }
+        badgeNotificacoes.textContent = qtdNotificacoes;
+
+        // --- Mostrar popover ---
+        popover.classList.toggle('oculto');
+
+        // --- Posicionamento do popover ---
+        const sinoRect = sino.getBoundingClientRect();
+        const popoverHeight = popover.offsetHeight;
+        const popoverWidth = popover.offsetWidth;
+
+        const top = sinoRect.top - popoverHeight - 10;
+        const left = sinoRect.left - popoverWidth + 20;
+
+        popover.style.top = `${top}px`;
+        popover.style.left = `${left}px`;
+    });
+});
+
+
+function toggleSecao(secao) {
+    const conteudo = document.getElementById(`conteudo-${secao}`);
+    const isHidden = conteudo.classList.contains('oculto');
+    conteudo.classList.toggle('oculto', !isHidden);
+}
+
+// Oculta o popover se clicar fora
+document.addEventListener('click', function (event) {
+    if (!popover.contains(event.target) && event.target !== sino) {
+        popover.classList.add('oculto');
+    }
+});
+
+// Botão "Ir para Revisão"
+btnIr.addEventListener('click', function () {
+    window.open('https://improov.com.br/sistema/Revisao', '_blank');
+});
+
+
+document.addEventListener('click', function (event) {
+    if (event.target.classList.contains('notificacao')) {
+        const notificacao = event.target;
+        const idNotificacao = notificacao.getAttribute('data-not-id');
+
+        if (idNotificacao) {
+            fetch(`https://improov.com.br/sistema/ler_notificacao.php?id=${idNotificacao}`, {
+                method: 'POST'
+            })
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Notificação lida:', data);
+
+                    // ✨ Efeito visual de sumir
+                    notificacao.classList.add('fade-out');
+                    setTimeout(() => {
+                        notificacao.remove();
+                    }, 200);
+                    atualizarContadorTarefas(); // Atualiza as tarefas após marcar como lida
+                    popover.classList.add('oculto');
+
+                })
+                .catch(error => console.error('Erro ao marcar notificação como lida:', error));
+        }
     }
 });

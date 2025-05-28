@@ -89,11 +89,11 @@ $conn->close();
         <header>
             <h1 id="nomenclatura"></h1>
         </header>
-        <!-- <div class="buttons-nav">
+        <div class="buttons-nav">
             <button id="altBtn" onclick="window.location.href='https://improov.com.br/sistema/Alteracao/'"><i class="fa-solid fa-pen-to-square"></i></button>
             <button onclick="document.querySelector('.acompanhamentos').scrollIntoView({behavior: 'smooth'})"><i class="fa-solid fa-circle-info"></i></button>
             <button onclick="document.querySelector('.filtro-tabela').scrollIntoView({behavior: 'smooth'})"><i class="fa-solid fa-info"></i></button>
-        </div> -->
+        </div>
 
         <!-- Tabela para exibir as funções da obra -->
         <div class="filtro-tabela">
@@ -872,6 +872,10 @@ $conn->close();
                     <div class="render">
                         <p id="render_alta">Render</p>
                         <button id="addRender" class="buttons-form-add" style=" padding: 3px 10px; font-size: 13px; background-color: steelblue;">Adicionar render</button>
+                        <label class="switch">
+                            <input type="checkbox" id="notificar">
+                            <span class="slider"></span>
+                        </label>
                     </div>
                 </div>
                 <div class="funcao" id="status_funcao" style="width: 200px; margin-bottom: 15px;">
@@ -1023,12 +1027,33 @@ $conn->close();
         </div>
     </div>
 
-    <?php if (isset($_SESSION['idusuario']) && ($_SESSION['idusuario'] == 1 || $_SESSION['idusuario'] == 2 || $_SESSION['idusuario'] == 9)): ?>
-        <div id="notificacao-sino" class="notificacao-sino">
-            <i class="fas fa-bell sino" id="icone-sino"></i>
-            <span id="contador-tarefas" class="contador-tarefas">0</span>
+    <div id="notificacao-sino" class="notificacao-sino">
+        <i class="fas fa-bell sino" id="icone-sino"></i>
+        <span id="contador-tarefas" class="contador-tarefas">0</span>
+    </div>
+
+    <!-- Popover unificado -->
+    <div id="popover-tarefas" class="popover oculto">
+        <!-- Tarefas -->
+        <div class="secao">
+            <div class="secao-titulo secao-tarefas" onclick="toggleSecao('tarefas')">
+                <strong>Tarefas</strong>
+                <span id="badge-tarefas" class="badge-interna"></span>
+            </div>
+            <div id="conteudo-tarefas" class="secao-conteudo oculto"></div>
         </div>
-    <?php endif; ?>
+
+        <!-- Notificações -->
+        <div class="secao">
+            <div class="secao-titulo secao-notificacoes">
+                <strong>Notificações</strong>
+                <span id="badge-notificacoes" class="badge-interna"></span>
+            </div>
+            <div id="conteudo-notificacoes" class="secao-conteudo">
+            </div>
+        </div>
+        <button id="btn-ir-revisao">Ir para Revisão</button>
+    </div>
 
     <div id="modalSessao" class="modal-sessao">
         <div class="modal-conteudo">

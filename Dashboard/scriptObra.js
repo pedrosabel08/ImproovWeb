@@ -1442,6 +1442,7 @@ addImagem.addEventListener('click', function () {
 
 const editArquivos = document.getElementById('editArquivos');
 const editImagesBtn = document.getElementById('editImagesBtn');
+const labelSwitch = document.querySelectorAll('.switch');
 
 const iduser = parseInt(localStorage.getItem('idusuario')); // Obtém o idusuario do localStorage
 
@@ -1450,6 +1451,7 @@ if (![1, 2, 9].includes(iduser)) {
     editArquivos.style.display = 'none';
     editImagesBtn.style.display = 'none';
     addImagem.style.display = 'none';
+    labelSwitch.style.display = 'none';
 }
 
 const modalArquivos = document.getElementById('modalArquivos');
@@ -2248,6 +2250,8 @@ document.getElementById("addRender").addEventListener("click", function (event) 
         return;
     }
 
+    const notificar = document.getElementById("notificar").checked;
+
     const xhr = new XMLHttpRequest();
     xhr.open("POST", "../addRender.php", true);
     xhr.setRequestHeader("Content-Type", "application/json");
@@ -2268,56 +2272,72 @@ document.getElementById("addRender").addEventListener("click", function (event) 
                     }
                 });
                 return;
+
+            } else if (response.status === "sucesso") {
+                if (!notificar) {
+                    // Quando "notificar" não está marcado → mostra modal de pós-produção
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Render adicionado!',
+                        text: 'Agora você pode preencher os dados da pós-produção.',
+                        confirmButtonText: 'Continuar'
+                    }).then(() => {
+                        const modal = document.getElementById("modal_pos");
+                        modal.classList.remove("hidden");
+
+                        // Preenche os selects com os valores salvos/localizados
+                        const finalizador = localStorage.getItem("idcolaborador");
+                        if (finalizador) {
+                            document.getElementById("opcao_finalizador").value = finalizador;
+                        }
+
+                        const obra = localStorage.getItem("obraId");
+                        if (obra) {
+                            document.getElementById("opcao_obra_pos").value = obra;
+                        }
+
+                        document.getElementById("imagem_id_pos").value = idImagemSelecionada;
+
+                        const statusSelecionado = document.getElementById("opcao_status");
+                        if (statusSelecionado) {
+                            const statusValue = statusSelecionado.value;
+                            document.getElementById("opcao_status_pos").value = statusValue;
+                        }
+
+                        document.getElementById("render_id_pos").value = idRenderAdicionado;
+
+                        const form_edicao = document.getElementById("form-edicao");
+                        form_edicao.style.display = "none";
+                    });
+
+                } else {
+                    // Quando "notificar" está marcado → apenas exibe mensagem de notificação
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Notificação enviada!',
+                        text: response.mensagem_notificacao || 'Notificação enviada com sucesso.',
+                        confirmButtonText: 'OK'
+                    });
+                }
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Erro ao enviar',
+                    text: 'Tente novamente ou avise a NASA.'
+                });
             }
-
-            Swal.fire({
-                icon: 'success',
-                title: 'Render adicionado!',
-                text: 'Agora você pode preencher os dados da pós-produção.',
-                confirmButtonText: 'Continuar'
-            }).then(() => {
-                const modal = document.getElementById("modal_pos");
-                modal.classList.remove("hidden");
-
-                // Preenche os selects com os valores salvos/localizados
-                const finalizador = localStorage.getItem("idcolaborador");
-                if (finalizador) {
-                    document.getElementById("opcao_finalizador").value = finalizador;
-                }
-
-                const obra = localStorage.getItem("obraId");
-                if (obra) {
-                    document.getElementById("opcao_obra_pos").value = obra;
-                }
-
-                document.getElementById("imagem_id_pos").value = idImagemSelecionada;
-                const statusSelecionado = document.getElementById("opcao_status");
-                if (statusSelecionado) {
-                    const statusValue = statusSelecionado.value;
-                    document.getElementById("opcao_status_pos").value = statusValue;
-                }
-
-                document.getElementById("render_id_pos").value = idRenderAdicionado;
-
-                const form_edicao = document.getElementById("form-edicao");
-                form_edicao.style.display = "none";
-            });
-
-        } else {
-            Swal.fire({
-                icon: 'error',
-                title: 'Erro ao enviar',
-                text: 'Tente novamente ou avise a NASA.'
-            });
         }
     };
 
     const data = {
         imagem_id: idImagemSelecionada,
         status_id: statusId,
+        notificar: notificar ? "1" : "0",
+        finalizador: document.getElementById("opcao_final").value,
     };
 
     xhr.send(JSON.stringify(data));
+
 });
 
 

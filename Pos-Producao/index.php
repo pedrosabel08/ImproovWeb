@@ -19,17 +19,6 @@ $conn->set_charset('utf8mb4');
 
 $usuario_id = $_SESSION['idusuario']; // ID do usuário logado
 
-// Recuperar notificações não lidas
-$sql = "SELECT n.id AS notificacao_id, n.mensagem, nu.lida 
-        FROM notificacoes n 
-        JOIN notificacoes_usuarios nu ON n.id = nu.notificacao_id 
-        WHERE nu.usuario_id = ? AND nu.lida = 0";
-
-$stmt = $conn->prepare($sql);
-$stmt->bind_param("i", $usuario_id);
-$stmt->execute();
-$result = $stmt->get_result();
-$notificacoes = $result->fetch_all(MYSQLI_ASSOC);
 
 $sql_clientes = "SELECT idcliente, nome_cliente FROM cliente";
 $result_cliente = $conn->query($sql_clientes);

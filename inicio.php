@@ -31,20 +31,6 @@ if (!$stmt2->execute()) {
 $nome_usuario = $_SESSION['nome_usuario'];
 $idcolaborador = $_SESSION['idcolaborador'];
 
-$sql = "SELECT n.mensagem, op.prazo, nu.lida 
-        FROM notificacoes n
-        JOIN notificacoes_usuarios nu ON n.id = nu.notificacao_id
-        LEFT JOIN obra_prazo op ON n.id = op.notificacoes_id
-        WHERE nu.usuario_id = ?
-        AND n.tipo_notificacao <> 'pos'
-        AND op.prazo >= CURDATE() 
-        ORDER BY op.prazo ASC;";
-
-$stmt = $conn->prepare($sql);
-$stmt->bind_param("i", $idusuario);
-$stmt->execute();
-$resultNotificacoes = $stmt->get_result();
-
 
 $sql_finalizadas = "SELECT COUNT(*) as count_finalizadas FROM funcao_imagem WHERE status = 'Finalizado' AND colaborador_id = ?";
 $stmt_finalizadas = $conn->prepare($sql_finalizadas);
@@ -63,7 +49,6 @@ $result_pendentes = $stmt_pendentes->get_result();
 $row_pendentes = $result_pendentes->fetch_assoc();
 $count_pendentes = $row_pendentes['count_pendentes'];
 
-$stmt->close();
 $conn->close();
 ?>
 

@@ -35,7 +35,6 @@ function atualizarContadorTarefas() {
 }
 
 let contagemTarefasGlobal = {};
-let htmlNotificacoes = '';
 
 
 function buscarTarefas(mostrarAlerta = true) {
@@ -92,13 +91,7 @@ function buscarTarefas(mostrarAlerta = true) {
             }
 
 
-            if (notificacoes.length > 0) {
-                notificacoes.forEach(notificacao => {
-                    htmlNotificacoes = `<p class="notificacao" data-not-id="${notificacao.id}">${notificacao.mensagem}</p>`;
-                });
-            } else {
-                htmlNotificacoes = '';
-            }
+            return { tarefas, notificacoes };
 
         })
         .catch(error => console.error('Erro ao buscar tarefas:', error));
@@ -164,7 +157,7 @@ sino.addEventListener('click', function () {
     const audio = new Audio('https://improov.com.br/sistema/sons/not.mp3');
     audio.play();
 
-    buscarTarefas(false).then(() => {
+    buscarTarefas(false).then(({ notificacoes }) => {
         // --- TAREFAS ---
         let htmlTarefas = '';
         let qtdTarefas = 0;
@@ -178,7 +171,16 @@ sino.addEventListener('click', function () {
 
         conteudoTarefas.innerHTML = htmlTarefas || '<p>Sem tarefas para você.</p>';
 
-        // --- NOTIFICAÇÕES ---
+        let htmlNotificacoes = '';
+
+        if (notificacoes.length > 0) {
+            notificacoes.forEach(notificacao => {
+                htmlNotificacoes += `<p class="notificacao" data-not-id="${notificacao.id}">${notificacao.mensagem}</p><hr>`;
+            });
+        } else {
+            htmlNotificacoes = '<p>Sem notificações no momento.</p>';
+        }
+
         conteudoNotificacoes.innerHTML = htmlNotificacoes;
 
         // --- Atualiza badges ---

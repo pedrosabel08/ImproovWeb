@@ -121,6 +121,10 @@ input:checked+.slider:before {
     color: black;
 }
 
+.secao-conteudo hr {
+    margin: 10px 0;
+}
+
 .badge,
 .badge-interna {
     background-color: red;

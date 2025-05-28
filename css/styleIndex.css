@@ -716,6 +716,10 @@ h1 {
     color: black;
 }
 
+.secao-conteudo hr {
+    margin: 10px 0;
+}
+
 
 .badge,
 .badge-interna {

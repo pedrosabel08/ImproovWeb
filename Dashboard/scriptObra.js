@@ -2330,11 +2330,14 @@ document.getElementById("addRender").addEventListener("click", function (event) 
         }
     };
 
+    const opcaoAlt = document.getElementById("opcao_alteracao").value;
+    const opcaoFinal = opcaoAlt.trim() !== "" ? opcaoAlt : document.getElementById("opcao_final").value;
+
     const data = {
         imagem_id: idImagemSelecionada,
         status_id: statusId,
         notificar: notificar ? "1" : "0",
-        finalizador: document.getElementById("opcao_final").value,
+        finalizador: opcaoFinal,
     };
 
     xhr.send(JSON.stringify(data));

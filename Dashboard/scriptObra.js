@@ -1443,15 +1443,16 @@ addImagem.addEventListener('click', function () {
 const editArquivos = document.getElementById('editArquivos');
 const editImagesBtn = document.getElementById('editImagesBtn');
 const labelSwitch = document.querySelectorAll('.switch');
-
-const iduser = parseInt(localStorage.getItem('idusuario')); // Obtém o idusuario do localStorage
-
+const iduser = parseInt(localStorage.getItem('idusuario'));
 
 if (![1, 2, 9].includes(iduser)) {
     editArquivos.style.display = 'none';
     editImagesBtn.style.display = 'none';
     addImagem.style.display = 'none';
-    labelSwitch.style.display = 'none';
+
+    labelSwitch.forEach(label => {
+        label.style.display = 'none';
+    });
 }
 
 const modalArquivos = document.getElementById('modalArquivos');

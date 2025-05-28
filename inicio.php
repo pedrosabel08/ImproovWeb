@@ -217,6 +217,30 @@ $conn->close();
         <span id="contador-tarefas" class="contador-tarefas">0</span>
     </div>
 
+    <!-- Popover unificado -->
+    <div id="popover-tarefas" class="popover oculto">
+        <!-- Tarefas -->
+        <div class="secao">
+            <div class="secao-titulo secao-tarefas" onclick="toggleSecao('tarefas')">
+                <strong>Tarefas</strong>
+                <span id="badge-tarefas" class="badge-interna"></span>
+            </div>
+            <div id="conteudo-tarefas" class="secao-conteudo oculto"></div>
+        </div>
+
+        <!-- Notificações -->
+        <div class="secao">
+            <div class="secao-titulo secao-notificacoes">
+                <strong>Notificações</strong>
+                <span id="badge-notificacoes" class="badge-interna"></span>
+            </div>
+            <div id="conteudo-notificacoes" class="secao-conteudo">
+            </div>
+        </div>
+        <button id="btn-ir-revisao">Ir para Revisão</button>
+    </div>
+
+
     <!-- Modal simples para adicionar evento -->
     <div id="eventModal">
         <div class="eventos">

@@ -101,10 +101,11 @@ let dadosTarefas = [];
 let todasAsObras = new Set();
 let todosOsColaboradores = new Set();
 let todasAsFuncoes = new Set();
+let funcaoGlobalSelecionada = null;
 
 async function fetchObrasETarefas() {
     try {
-        const response = await fetch(`atualizar2.php`);
+        const response = await fetch(`atualizar.php`);
         if (!response.ok) throw new Error("Erro ao buscar tarefas");
 
         dadosTarefas = await response.json();
@@ -127,10 +128,10 @@ async function fetchObrasETarefas() {
         });
 
         document.getElementById('filtroFuncao').addEventListener('change', (event) => {
-            const funcaoSelecionada = event.target.value;
+            funcaoGlobalSelecionada = event.target.value || null;
 
-            const tarefasFiltradas = funcaoSelecionada
-                ? dadosTarefas.filter(t => t.nome_funcao === funcaoSelecionada)
+            const tarefasFiltradas = funcaoGlobalSelecionada
+                ? dadosTarefas.filter(t => t.nome_funcao === funcaoGlobalSelecionada)
                 : dadosTarefas;
 
             exibirCardsDeObra(tarefasFiltradas);
@@ -210,7 +211,18 @@ function filtrarTarefasPorObra(obraSelecionada) {
 
     // Captura os novos valores dos selects após atualização
     const colaboradorSelecionado = document.getElementById('filtro_colaborador').value;
-    const funcaoSelecionada = document.getElementById('nome_funcao').value;
+    let funcaoSelecionada = document.getElementById('nome_funcao').value;
+
+    // Se houver filtro global ativo, aplica e reflete visualmente
+    if (funcaoGlobalSelecionada) {
+        funcaoSelecionada = funcaoGlobalSelecionada;
+
+        const selectFuncao = document.getElementById('nome_funcao');
+        const opcoes = Array.from(selectFuncao.options).map(opt => opt.value);
+        if (opcoes.includes(funcaoGlobalSelecionada)) {
+            selectFuncao.value = funcaoGlobalSelecionada;
+        }
+    }
 
     // Aplica os filtros adicionais (colaborador e função)
     const tarefasFiltradas = tarefasDaObra.filter(t => {

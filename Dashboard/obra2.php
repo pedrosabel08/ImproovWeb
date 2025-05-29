@@ -520,7 +520,7 @@ $conn->close();
             </div> <input type="hidden" id="imagem_id" name="imagem_id" value="">
             <div class="modal-funcoes">
                 <span id="mood"></span>
-                <div class="funcao_comp">
+                <div class="funcao_comp" data-parametro="caderno">
                     <div class="funcao">
                         <div class="titulo">
                             <p id="caderno">Caderno</p>
@@ -556,7 +556,7 @@ $conn->close();
                         <input type="checkbox" name="check_caderno" id="check_caderno">
                     </div>
                 </div>
-                <div class="funcao_comp">
+                <div class="funcao_comp" data-parametro="filtro">
                     <div class="funcao">
                         <div class="titulo">
                             <p id="filtro">Filtro de assets</p>
@@ -592,14 +592,14 @@ $conn->close();
                         <input type="checkbox" name="check_filtro" id="check_filtro">
                     </div>
                 </div>
-                <div class="funcao_comp">
+                <div class="funcao_comp" data-parametro="modelagem">
                     <div class="funcao">
                         <div class="titulo">
                             <p id="modelagem">Modelagem</p>
                             <i class="fas fa-chevron-down" id="toggle-options"></i>
                         </div>
                         <div class="opcoes" style="display: none;">
-                            <select name="model_id" id="opcao_model">
+                            <select name="model_id" id="opcao_modelagem">
                                 <?php foreach ($colaboradores as $colab): ?>
                                     <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
                                         <?= htmlspecialchars($colab['nome_colaborador']); ?>
@@ -625,10 +625,10 @@ $conn->close();
                         </div>
                     </div>
                     <div class="check">
-                        <input type="checkbox" name="check_model" id="check_model">
+                        <input type="checkbox" name="check_model" id="check_modelagem">
                     </div>
                 </div>
-                <div class="funcao_comp">
+                <div class="funcao_comp" data-parametro="comp">
                     <div class="funcao">
                         <div class="titulo">
                             <p id="comp">Composição</p>
@@ -664,7 +664,7 @@ $conn->close();
                         <input type="checkbox" name="check_comp" id="check_comp">
                     </div>
                 </div>
-                <div class="funcao_comp">
+                <div class="funcao_comp" data-parametro="pre">
                     <div class="funcao">
                         <div class="titulo">
                             <p id="pre">Pré-Finalização</p>
@@ -700,14 +700,14 @@ $conn->close();
                         <input type="checkbox" name="check_pre" id="check_pre">
                     </div>
                 </div>
-                <div class="funcao_comp">
+                <div class="funcao_comp" data-parametro="finalizacao">
                     <div class="funcao">
                         <div class="titulo">
                             <p id="final">Finalização</p>
                             <i class="fas fa-chevron-down" id="toggle-options"></i>
                         </div>
                         <div class="opcoes" id="opcoes" style="display: none;">
-                            <select name="final_id" id="opcao_final">
+                            <select name="final_id" id="opcao_finalizacao">
                                 <?php foreach ($colaboradores as $colab): ?>
                                     <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
                                         <?= htmlspecialchars($colab['nome_colaborador']); ?>
@@ -736,8 +736,7 @@ $conn->close();
                         <input type="checkbox" name="check_final" id="check_final">
                     </div>
                 </div>
-                <div class="funcao_comp">
-
+                <div class="funcao_comp" data-parametro="pos">
                     <div class="funcao">
                         <div class="titulo">
                             <p id="pos">Pós-Produção</p>
@@ -774,7 +773,7 @@ $conn->close();
                         <input type="checkbox" name="check_pos" id="check_pos">
                     </div>
                 </div>
-                <div class="funcao_comp">
+                <div class="funcao_comp" data-parametro="alteracao">
                     <div class="funcao">
                         <div class="titulo">
                             <p id="alteracao">Alteração</p>
@@ -811,7 +810,7 @@ $conn->close();
                         <input type="checkbox" name="check_alt" id="check_alt">
                     </div>
                 </div>
-                <div class="funcao_comp">
+                <div class="funcao_comp" data-parametro="planta">
                     <div class="funcao">
                         <div class="titulo">
                             <p id="planta">Planta Humanizada</p>
@@ -1107,7 +1106,7 @@ $conn->close();
     <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/pt.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
-    <script src="scriptObra.js"></script>
+    <script src="scriptObra2.js"></script>
     <script src="../script/sidebar.js"></script>
     <script src="../script/notificacoes.js"></script>
     <script src="../script/controleSessao.js"></script>

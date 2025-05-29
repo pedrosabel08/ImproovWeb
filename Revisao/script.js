@@ -100,19 +100,41 @@ function toggleTaskDetails(taskElement) {
 let dadosTarefas = [];
 let todasAsObras = new Set();
 let todosOsColaboradores = new Set();
+let todasAsFuncoes = new Set();
 
 async function fetchObrasETarefas() {
     try {
-        const response = await fetch(`atualizar.php`);
+        const response = await fetch(`atualizar2.php`);
         if (!response.ok) throw new Error("Erro ao buscar tarefas");
 
         dadosTarefas = await response.json();
 
         todasAsObras = new Set(dadosTarefas.map(t => t.nome_obra));
         todosOsColaboradores = new Set(dadosTarefas.map(t => t.nome_colaborador));
+        todasAsFuncoes = new Set(dadosTarefas.map(t => t.nome_funcao)); // ou o nome do campo correspondente
 
         exibirCardsDeObra(dadosTarefas); // Mostra os cards
 
+        const filtroSelect = document.getElementById('filtroFuncao');
+        filtroSelect.style.display = 'block'; // Exibe o filtro de função
+        filtroSelect.innerHTML = '<option value="">Todas as funções</option>';
+
+        todasAsFuncoes.forEach(funcao => {
+            const option = document.createElement('option');
+            option.value = funcao;
+            option.textContent = funcao;
+            filtroSelect.appendChild(option);
+        });
+
+        document.getElementById('filtroFuncao').addEventListener('change', (event) => {
+            const funcaoSelecionada = event.target.value;
+
+            const tarefasFiltradas = funcaoSelecionada
+                ? dadosTarefas.filter(t => t.nome_funcao === funcaoSelecionada)
+                : dadosTarefas;
+
+            exibirCardsDeObra(tarefasFiltradas);
+        });
 
     } catch (error) {
         console.error(error);
@@ -367,6 +389,7 @@ const modalComment = document.getElementById('modalComment');
 
 const idusuario = parseInt(localStorage.getItem('idusuario')); // Obtém o idusuario do localStorage
 
+let funcaoImagemId = null; // armazenado globalmente
 
 function historyAJAX(idfuncao_imagem, funcao_nome, imagem_nome, colaborador_nome) {
     fetch(`historico.php?ajid=${idfuncao_imagem}`)
@@ -412,6 +435,7 @@ function historyAJAX(idfuncao_imagem, funcao_nome, imagem_nome, colaborador_nome
                 } else {
                     document.getElementById('buttons-task').innerHTML = ''; // Não exibe os botões para outros usuários
                 }
+
                 document.getElementById('add-imagem').addEventListener('click', () => {
                     funcaoImagemId = historico.funcao_imagem_id; // você já tem esse objeto
                     document.getElementById('imagem-modal').style.display = 'flex';
@@ -519,7 +543,6 @@ function historyAJAX(idfuncao_imagem, funcao_nome, imagem_nome, colaborador_nome
 
 
 
-
 document.querySelector('.close').addEventListener('click', () => {
     document.getElementById('imagem-modal').style.display = 'none';
     document.getElementById('input-imagens').value = '';
@@ -575,7 +598,6 @@ document.getElementById('btn-enviar-imagens').addEventListener('click', () => {
             alert('Erro na comunicação com o servidor.');
         });
 });
-
 
 function abrirMenuContexto(x, y, id, src) {
     const menu = document.getElementById('menuContexto');
@@ -709,7 +731,6 @@ function mostrarImagemCompleta(src, id) {
     });
 }
 
-
 // Capturar colagem de imagem no campo de texto
 document.getElementById('comentarioTexto').addEventListener('paste', function (event) {
     const items = (event.clipboardData || event.originalEvent.clipboardData).items;
@@ -740,20 +761,29 @@ document.getElementById('comentarioTexto').addEventListener('paste', function (e
     }
 });
 
-
-// Enviar comentário
+// Função para enviar o comentário
 document.getElementById('enviarComentario').onclick = async () => {
     const texto = document.getElementById('comentarioTexto').value.trim();
     const imagemFile = document.getElementById('imagemComentario').files[0];
 
-    if (!texto && !imagemFile) return;
+    if (!texto && !imagemFile) {
+        Toastify({
+            text: 'Escreva um comentário ou anexe uma imagem!',
+            duration: 3000,
+            backgroundColor: 'orange',
+            close: true,
+            gravity: "top",
+            position: "right"
+        }).showToast();
+        return;
+    }
 
     const formData = new FormData();
     formData.append('ap_imagem_id', ap_imagem_id);
     formData.append('x', relativeX);
     formData.append('y', relativeY);
     formData.append('texto', texto);
-    formData.append('mencionados', JSON.stringify(mencionadosIds)); // Envia os IDs mencionados
+    formData.append('mencionados', JSON.stringify(mencionadosIds));
 
     if (imagemFile) {
         formData.append('imagem', imagemFile);
@@ -766,6 +796,7 @@ document.getElementById('enviarComentario').onclick = async () => {
         });
 
         const result = await response.json();
+
         document.getElementById('comentarioModal').style.display = 'none';
 
         if (result.sucesso) {
@@ -778,10 +809,11 @@ document.getElementById('enviarComentario').onclick = async () => {
                 position: "left"
             }).showToast();
 
+            // Atualiza comentários
             renderComments(ap_imagem_id);
         } else {
             Toastify({
-                text: 'Erro ao salvar comentário!',
+                text: result.mensagem || 'Erro ao salvar comentário!',
                 duration: 3000,
                 backgroundColor: 'red',
                 close: true,
@@ -790,12 +822,19 @@ document.getElementById('enviarComentario').onclick = async () => {
             }).showToast();
         }
 
-        // Limpa os IDs após envio
+        // Limpa os mencionados depois do envio
         mencionadosIds = [];
 
     } catch (error) {
         console.error('Erro na requisição:', error);
-        alert('Ocorreu um erro ao tentar salvar o comentário.');
+        Toastify({
+            text: 'Erro de conexão! Tente novamente.',
+            duration: 3000,
+            backgroundColor: 'red',
+            close: true,
+            gravity: "top",
+            position: "left"
+        }).showToast();
     }
 };
 
@@ -860,7 +899,7 @@ async function renderComments(id) {
         const footer = document.createElement('div');
         footer.classList.add('comment-footer');
         footer.innerHTML = `
-            <div class="comment-date">${formatarDataHora(comentario.data)}</div>
+            <div class="comment-date">${comentario.data}</div>
             <div class="comment-actions">
                 <button class="comment-resp">&#8617</button>
                 <button class="comment-edit">✏️</button>
@@ -894,25 +933,22 @@ async function renderComments(id) {
         const editButton = footer.querySelector('.comment-edit');
 
         editButton.addEventListener('click', () => {
-            p.contentEditable = true;
             p.focus();
 
-            const handleKeyDown = async function (e) {
+            // Listener de Enter dentro do botão, mas só adiciona uma vez!
+            p.addEventListener('keydown', async function handleKeyDown(e) {
                 if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
+                    e.preventDefault(); // Impede quebra de linha
 
-                    const novoTexto = p.textContent.trim();
+                    const novoTexto = p.value.trim();
 
-                    p.contentEditable = false;
-
+                    inpput.readOnly = true;
                     updateComment(comentario.id, novoTexto);
 
-                    // Remove o listener pra não acumular
-                    p.removeEventListener('keydown', handleKeyDown);
+                    // Remover o listener após salvar pra evitar múltiplos binds
+                    this.prefix.removeEventListener('keydown', handleKeyDown);
                 }
-            };
-
-            p.addEventListener('keydown', handleKeyDown);
+            });
         });
 
 
@@ -929,17 +965,6 @@ async function renderComments(id) {
             if (number) {
                 number.classList.add('highlight');
                 number.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-        });
-        commentCard.addEventListener('click', () => {
-            // Remove o highlight de todas as bolinhas
-            document.querySelectorAll('.comment.highlight').forEach(n => n.classList.remove('highlight'));
-
-            // Pega a bolinha correspondente ao comentário
-            const number = document.querySelector(`.comment[data-id="${comentario.id}"]`);
-
-            if (number) {
-                number.classList.add('highlight');
             }
         });
 
@@ -1008,7 +1033,7 @@ function adicionarRespostaDOM(comentarioId, resposta) {
         <div class="resposta-nome"><span class="reply-icon">&#8617;</span>  ${resposta.nome_responsavel}</div>
         <div class="corpo-resposta">
             <div class="resposta-texto">${resposta.texto}</div>
-            <div class="resposta-data">${formatarDataHora(resposta.data)}</div>
+            <div class="resposta-data">${resposta.data}</div>
         </div>
     `;
     container.appendChild(respostaDiv);
@@ -1114,7 +1139,6 @@ btnBack.addEventListener('click', function () {
     comentariosDiv.innerHTML = '';
 });
 
-// Adiciona o evento para a tecla Esc
 document.addEventListener('keydown', function (event) {
     if (event.key === 'Escape') {
         const comentarioModal = document.getElementById("comentarioModal");
@@ -1135,12 +1159,9 @@ document.addEventListener('keydown', function (event) {
 
         const comentariosDiv = document.querySelector(".comentarios");
         comentariosDiv.innerHTML = '';
-
-        document.getElementById('imagem-modal').style.display = 'none';
-        document.getElementById('input-imagens').value = '';
-        document.getElementById('preview').innerHTML = '';
     }
 });
+
 
 const id_revisao = document.getElementById('id_revisao');
 

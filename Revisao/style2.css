@@ -33,6 +33,10 @@ a {
 
 }
 
+#filtroFuncao {
+    margin: 15px auto;
+}
+
 .main,
 .container-aprovacao {
     display: flex;
@@ -739,6 +743,7 @@ h2#dataEnvio {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     transition: 0.3s all ease;
     position: relative;
+    height: max-content;
 }
 
 .obra-card:hover {
@@ -792,10 +797,13 @@ h2#dataEnvio {
     display: grid;
     grid-template-columns: 2.5fr 1fr;
     transition: 0.5s all ease;
+    grid-template-rows: 50px 1fr;
 }
 
 .container-main {
     height: 100vh;
+    display: flex;
+    flex-direction: column;
 }
 
 .containerObra {
@@ -804,14 +812,15 @@ h2#dataEnvio {
     padding: 20px;
     background-color: #ffffff;
     border-radius: 8px;
-    margin: auto;
+    margin: 0 auto;
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 30px;
-    margin-top: 40px;
+    /* margin-top: 40px; */
     padding: 0 50px;
     max-height: 95%;
     overflow-y: auto;
+    grid-column: 1;
 }
 
 .tarefasObra {
@@ -819,6 +828,8 @@ h2#dataEnvio {
     overflow-y: auto;
     border-left: 1px solid;
     padding: 40px 0;
+    grid-column: 2;
+    grid-row: 1 / -1;
 }
 
 .tarefasImagensObra {

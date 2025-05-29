@@ -100,6 +100,7 @@ function toggleTaskDetails(taskElement) {
 let dadosTarefas = [];
 let todasAsObras = new Set();
 let todosOsColaboradores = new Set();
+let todasAsFuncoes = new Set();
 
 async function fetchObrasETarefas() {
     try {
@@ -110,9 +111,30 @@ async function fetchObrasETarefas() {
 
         todasAsObras = new Set(dadosTarefas.map(t => t.nome_obra));
         todosOsColaboradores = new Set(dadosTarefas.map(t => t.nome_colaborador));
+        todasAsFuncoes = new Set(dadosTarefas.map(t => t.nome_funcao)); // ou o nome do campo correspondente
 
         exibirCardsDeObra(dadosTarefas); // Mostra os cards
 
+        const filtroSelect = document.getElementById('filtroFuncao');
+        filtroSelect.style.display = 'block'; // Exibe o filtro de função
+        filtroSelect.innerHTML = '<option value="">Todas as funções</option>';
+
+        todasAsFuncoes.forEach(funcao => {
+            const option = document.createElement('option');
+            option.value = funcao;
+            option.textContent = funcao;
+            filtroSelect.appendChild(option);
+        });
+
+        document.getElementById('filtroFuncao').addEventListener('change', (event) => {
+            const funcaoSelecionada = event.target.value;
+
+            const tarefasFiltradas = funcaoSelecionada
+                ? dadosTarefas.filter(t => t.nome_funcao === funcaoSelecionada)
+                : dadosTarefas;
+
+            exibirCardsDeObra(tarefasFiltradas);
+        });
 
     } catch (error) {
         console.error(error);

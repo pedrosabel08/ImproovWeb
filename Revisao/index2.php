@@ -70,6 +70,9 @@ $idusuario = $_SESSION['idusuario'];
 
 
         <div class="container-main">
+            <select id="filtroFuncao" style="display: none;">
+                <option value="">Todas as funções</option>
+            </select>
             <div class="containerObra">
             </div>
             <div class="tarefasObra hidden">

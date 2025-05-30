@@ -1,5 +1,5 @@
 document.querySelector('form').addEventListener('submit', function (e) {
-    e.preventDefault(); 
+    e.preventDefault();
     const login = document.getElementById('login').value;
     const senha = document.getElementById('senha').value;
 
@@ -23,6 +23,8 @@ document.querySelector('form').addEventListener('submit', function (e) {
                 setTimeout(function () {
                     window.location.href = 'inicio.php';
                 }, 500);
+                localStorage.setItem('tocarSomAoEntrar', 'true');
+
             } else {
                 Toastify({
                     text: data.message,

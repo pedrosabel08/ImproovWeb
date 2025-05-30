@@ -178,7 +178,7 @@ sino.addEventListener('click', function () {
                 htmlNotificacoes += `<p class="notificacao" data-not-id="${notificacao.id}">${notificacao.mensagem}</p><hr>`;
             });
         } else {
-            htmlNotificacoes = '<p>Sem notificações no momento.</p>';
+            htmlNotificacoes = '';
         }
 
         conteudoNotificacoes.innerHTML = htmlNotificacoes;

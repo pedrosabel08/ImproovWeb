@@ -16,12 +16,15 @@ $stmt = $conn->prepare($sql);
 $stmt->bind_param("iii", $novoId, $etapaId, $antigoId);
 
 if ($stmt->execute()) {
-    // Se a execução for bem-sucedida, retorna um JSON com sucesso
-    echo json_encode(["sucesso" => true]);
+    if ($stmt->affected_rows > 0) {
+        echo json_encode(["sucesso" => true]);
+    } else {
+        echo json_encode(["sucesso" => false, "mensagem" => "Nenhuma linha foi atualizada."]);
+    }
 } else {
-    // Se ocorrer um erro, retorna um JSON com falha
     echo json_encode(["sucesso" => false, "erro" => $stmt->error]);
 }
+
 
 // Fechando a conexão
 $stmt->close();

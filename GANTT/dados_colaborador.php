@@ -26,18 +26,26 @@ $sql = "SELECT
     o.nomenclatura,
     fi.status AS status_funcao_atual,
     fi.funcao_id AS funcao_id_atual,
-    fi.colaborador_id,
+    ec.colaborador_id,
     c.nome_colaborador
 FROM gantt_prazos gp
-INNER JOIN imagens_cliente_obra ico ON ico.idimagens_cliente_obra = gp.imagem_id
-INNER JOIN obra o ON o.idobra = ico.obra_id
-LEFT JOIN funcao_imagem fi ON fi.imagem_id = gp.imagem_id 
-   AND fi.funcao_id = (
-        SELECT idfuncao FROM funcao WHERE nome_funcao = gp.etapa LIMIT 1
-   )
-INNER JOIN colaborador c ON c.idcolaborador = fi.colaborador_id
-WHERE fi.colaborador_id = 6
-ORDER BY gp.imagem_id, gp.etapa";
+INNER JOIN imagens_cliente_obra ico 
+    ON ico.idimagens_cliente_obra = gp.imagem_id
+INNER JOIN obra o 
+    ON o.idobra = ico.obra_id
+LEFT JOIN funcao f 
+    ON f.nome_funcao = gp.etapa
+LEFT JOIN funcao_imagem fi 
+    ON fi.imagem_id = gp.imagem_id AND fi.funcao_id = f.idfuncao
+LEFT JOIN etapa_colaborador ec 
+    ON ec.gantt_id = gp.id
+LEFT JOIN colaborador c 
+    ON c.idcolaborador = ec.colaborador_id
+LEFT JOIN funcao_colaborador fc 
+    ON fc.colaborador_id = ec.colaborador_id AND fc.funcao_id = 2
+WHERE fc.colaborador_id IS NOT NULL
+ORDER BY gp.imagem_id, gp.etapa;
+";
 
 $result = $conn->query($sql);
 if (!$result) {

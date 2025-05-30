@@ -118,6 +118,9 @@ header button#openModalBtnRender {
     margin-bottom: 20px;
 }
 
+#tabela-imagens_filter label {
+    color: transparent;
+}
 
 .tabela-container {
     margin: 0 20px;

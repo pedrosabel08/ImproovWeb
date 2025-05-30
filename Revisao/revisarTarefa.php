@@ -209,28 +209,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $chaves = array_keys($ordemFuncoes);
     $posicaoAtual = array_search($funcaoAtualId, $chaves);
 
-    if ($posicaoAtual !== false && isset($chaves[$posicaoAtual + 1])) {
-        $proximaFuncaoId = $chaves[$posicaoAtual + 1];
+    $proximaFuncao = null; // inicializa a variável
 
-        // Buscar no banco a próxima função dessa imagem
-        $query = "SELECT fi.idfuncao_imagem, fi.colaborador_id, c.nome_colaborador, i.imagem_nome, f.nome_funcao
+    if ($posicaoAtual !== false) {
+        // Loop para encontrar a próxima função cadastrada no banco
+        for ($i = $posicaoAtual + 1; $i < count($chaves); $i++) {
+            $proximaFuncaoId = $chaves[$i];
+
+            $query = "SELECT fi.idfuncao_imagem, fi.colaborador_id, c.nome_colaborador, i.imagem_nome, f.nome_funcao
             FROM funcao_imagem fi
             JOIN colaborador c ON fi.colaborador_id = c.idcolaborador
             JOIN funcao f ON fi.funcao_id = f.idfuncao
             JOIN imagens_cliente_obra i ON fi.imagem_id = i.idimagens_cliente_obra
             WHERE fi.imagem_id = ? AND fi.funcao_id = ?";
-        $stmt = $conn->prepare($query);
-        $stmt->bind_param("ii", $imagemId, $proximaFuncaoId);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $proximaFuncao = $result->fetch_assoc();
+            $stmt = $conn->prepare($query);
+            $stmt->bind_param("ii", $imagemId, $proximaFuncaoId);
+            $stmt->execute();
+            $result = $stmt->get_result();
+
+            if ($result->num_rows > 0) {
+                $proximaFuncao = $result->fetch_assoc();
+                break; // achou a próxima função cadastrada, encerra o loop
+            }
+        }
     }
 
     // Verifica se o status exige notificar o próximo
     if (in_array($status, ['Aprovado', 'Aprovado com ajustes']) && $proximaFuncao) {
         $nomeResponsavel = $proximaFuncao['nome_colaborador'];
+        $nomeFuncao = $proximaFuncao['nome_funcao'];
         $mensagem = "Olá, *{$nomeResponsavel}*! A etapa *{$ordemFuncoes[$funcaoAtualId]}* da imagem *{$imagem_nome}* foi concluída. 🚀";
-        $mensagem2 = "A etapa {$ordemFuncoes[$funcaoAtualId]} da imagem {$imagem_resumida} foi concluída, pode iniciar a {$proximaFuncao['nome_funcao']}. 🚀";
+        $mensagem2 = "A etapa {$ordemFuncoes[$funcaoAtualId]} da imagem {$imagem_resumida} foi concluída, pode iniciar a {$nomeFuncao}. 🚀";
 
         enviarNotificacaoSlack($userID, $mensagem);
 

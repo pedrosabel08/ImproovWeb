@@ -225,7 +225,7 @@ $conn->close();
                 <strong>Tarefas</strong>
                 <span id="badge-tarefas" class="badge-interna"></span>
             </div>
-            <div id="conteudo-tarefas" class="secao-conteudo oculto"></div>
+            <div id="conteudo-tarefas" class="secao-conteudo"></div>
         </div>
 
         <!-- Notificações -->

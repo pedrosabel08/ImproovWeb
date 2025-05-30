@@ -26,7 +26,6 @@ if ($_SERVER["REQUEST_METHOD"] == "GET") {
     fi.prazo, 
     fi.status,
     fi.observacao,
-    fi.check_funcao,
     fi.idfuncao_imagem AS id,
     (SELECT c.nome_colaborador 
      FROM historico_aprovacoes h 

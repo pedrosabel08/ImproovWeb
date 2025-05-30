@@ -625,7 +625,7 @@ $conn->close();
                         </div>
                     </div>
                     <div class="check">
-                        <input type="checkbox" name="check_model" id="check_modelagem">
+                        <input type="checkbox" name="check_modelagem" id="check_modelagem">
                     </div>
                 </div>
                 <div class="funcao_comp" data-parametro="comp">
@@ -733,7 +733,7 @@ $conn->close();
                         </div>
                     </div>
                     <div class="check">
-                        <input type="checkbox" name="check_final" id="check_final">
+                        <input type="checkbox" name="check_finalizacao" id="check_finalizacao">
                     </div>
                 </div>
                 <div class="funcao_comp" data-parametro="pos">
@@ -807,7 +807,7 @@ $conn->close();
                         </div>
                     </div>
                     <div class="check">
-                        <input type="checkbox" name="check_alt" id="check_alt">
+                        <input type="checkbox" name="check_alteracao" id="check_alteracao">
                     </div>
                 </div>
                 <div class="funcao_comp" data-parametro="planta">

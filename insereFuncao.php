@@ -67,10 +67,10 @@ try {
     $update_image_status->close();
 
     // Prepara statement de insert/update
-    $stmt = $conn->prepare("INSERT INTO funcao_imagem (imagem_id, colaborador_id, funcao_id, prazo, status, observacao, check_funcao)
-                            VALUES (?, ?, ?, ?, ?, ?, ?)
-                            ON DUPLICATE KEY UPDATE colaborador_id = VALUES(colaborador_id), prazo = VALUES(prazo), 
-                            status = VALUES(status), observacao = VALUES(observacao), check_funcao = VALUES(check_funcao)");
+    $stmt = $conn->prepare("INSERT INTO funcao_imagem (imagem_id, colaborador_id, funcao_id, prazo, status, observacao)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                        ON DUPLICATE KEY UPDATE colaborador_id = VALUES(colaborador_id), prazo = VALUES(prazo), 
+                        status = VALUES(status), observacao = VALUES(observacao)");
 
     foreach ($funcao_ids as $funcao => $funcao_id) {
         $parametro = $funcao_parametros[$funcao];
@@ -80,7 +80,6 @@ try {
             $prazo = emptyToNull($data['prazo_' . $parametro]);
             $status = emptyToNull($data['status_' . $parametro]);
             $obs = emptyToNull($data['obs_' . $parametro]);
-            $check_funcao = !empty($data['check_' . $parametro]) && $data['check_' . $parametro] == 1 ? 1 : 0;
 
             // Verifica se o colaborador existe
             $check_colaborador = $conn->prepare("SELECT COUNT(*) FROM colaborador WHERE idcolaborador = ?");
@@ -94,7 +93,7 @@ try {
                 throw new Exception("Colaborador ID $colaborador_id não encontrado na tabela colaborador. parametro_id = {$parametro}_id");
             }
 
-            $stmt->bind_param("iiisssi", $imagem_id, $colaborador_id, $funcao_id, $prazo, $status, $obs, $check_funcao);
+            $stmt->bind_param("iiisss", $imagem_id, $colaborador_id, $funcao_id, $prazo, $status, $obs);
             $stmt->execute();
 
             // Se função concluída, guardamos o ID

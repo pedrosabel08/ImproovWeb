@@ -74,7 +74,7 @@ function limparCampos() {
     document.getElementById("status_finalizacao").value = "";
     document.getElementById("prazo_finalizacao").value = "";
     document.getElementById("obs_finalizacao").value = "";
-    document.getElementById("check_final").checked = false;
+    document.getElementById("check_finalizacao").checked = false;
     document.getElementById("status_pos").value = "";
     document.getElementById("prazo_pos").value = "";
     document.getElementById("obs_pos").value = "";
@@ -82,7 +82,7 @@ function limparCampos() {
     document.getElementById("status_alteracao").value = "";
     document.getElementById("prazo_alteracao").value = "";
     document.getElementById("obs_alteracao").value = "";
-    document.getElementById("check_alt").checked = false;
+    document.getElementById("check_alteracao").checked = false;
     document.getElementById("status_planta").value = "";
     document.getElementById("prazo_planta").value = "";
     document.getElementById("obs_planta").value = "";
@@ -203,8 +203,8 @@ function atualizarModal(idImagem) {
 
                             break;
                         case "Finalização":
-                            selectElement = document.getElementById("opcao_final");
-                            checkboxElement = document.getElementById("check_final");
+                            selectElement = document.getElementById("opcao_finalizacao");
+                            checkboxElement = document.getElementById("check_finalizacao");
                             document.getElementById("status_finalizacao").value = funcao.status;
                             document.getElementById("prazo_finalizacao").value = funcao.prazo;
                             document.getElementById("obs_finalizacao").value = funcao.observacao;
@@ -222,7 +222,7 @@ function atualizarModal(idImagem) {
                             break;
                         case "Alteração":
                             selectElement = document.getElementById("opcao_alteracao");
-                            checkboxElement = document.getElementById("check_alt");
+                            checkboxElement = document.getElementById("check_alteracao");
                             document.getElementById("status_alteracao").value = funcao.status;
                             document.getElementById("prazo_alteracao").value = funcao.prazo;
                             document.getElementById("obs_alteracao").value = funcao.observacao;
@@ -2332,7 +2332,7 @@ document.getElementById("addRender").addEventListener("click", function (event) 
     };
 
     const opcaoAlt = document.getElementById("opcao_alteracao").value;
-    const opcaoFinal = opcaoAlt.trim() !== "" ? opcaoAlt : document.getElementById("opcao_final").value;
+    const opcaoFinal = opcaoAlt.trim() !== "" ? opcaoAlt : document.getElementById("opcao_finalizacao").value;
 
     const data = {
         imagem_id: idImagemSelecionada,

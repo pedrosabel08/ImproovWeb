@@ -58,39 +58,30 @@ function limparCampos() {
     document.getElementById("status_caderno").value = "";
     document.getElementById("prazo_caderno").value = "";
     document.getElementById("obs_caderno").value = "";
-    document.getElementById("check_caderno").checked = false;
     document.getElementById("status_modelagem").value = "";
     document.getElementById("prazo_modelagem").value = "";
     document.getElementById("obs_modelagem").value = "";
-    document.getElementById("check_model").checked = false;
     document.getElementById("status_comp").value = "";
     document.getElementById("prazo_comp").value = "";
     document.getElementById("obs_comp").value = "";
-    document.getElementById("check_comp").checked = false;
     document.getElementById("status_pre").value = "";
     document.getElementById("prazo_pre").value = "";
     document.getElementById("obs_pre").value = "";
-    document.getElementById("check_pre").checked = false;
     document.getElementById("status_finalizacao").value = "";
     document.getElementById("prazo_finalizacao").value = "";
     document.getElementById("obs_finalizacao").value = "";
-    document.getElementById("check_final").checked = false;
     document.getElementById("status_pos").value = "";
     document.getElementById("prazo_pos").value = "";
     document.getElementById("obs_pos").value = "";
-    document.getElementById("check_pos").checked = false;
     document.getElementById("status_alteracao").value = "";
     document.getElementById("prazo_alteracao").value = "";
     document.getElementById("obs_alteracao").value = "";
-    document.getElementById("check_alt").checked = false;
     document.getElementById("status_planta").value = "";
     document.getElementById("prazo_planta").value = "";
     document.getElementById("obs_planta").value = "";
-    document.getElementById("check_planta").checked = false;
     document.getElementById("status_filtro").value = "";
     document.getElementById("prazo_filtro").value = "";
     document.getElementById("obs_filtro").value = "";
-    document.getElementById("check_filtro").checked = false;
 
     document.getElementById("opcao_caderno").value = "";
     document.getElementById("opcao_model").value = "";
@@ -173,84 +164,66 @@ function atualizarModal(idImagem) {
                     switch (funcao.nome_funcao) {
                         case "Caderno":
                             selectElement = document.getElementById("opcao_caderno");
-                            checkboxElement = document.getElementById("check_caderno");
                             document.getElementById("status_caderno").value = funcao.status;
                             document.getElementById("prazo_caderno").value = funcao.prazo;
                             document.getElementById("obs_caderno").value = funcao.observacao;
-                            checkboxElement.checked = funcao.check_funcao === '1';
                             revisaoImagemElement = document.getElementById("revisao_imagem_caderno");
                             break;
                         case "Modelagem":
                             selectElement = document.getElementById("opcao_model");
-                            checkboxElement = document.getElementById("check_model");
                             document.getElementById("status_modelagem").value = funcao.status;
                             document.getElementById("prazo_modelagem").value = funcao.prazo;
                             document.getElementById("obs_modelagem").value = funcao.observacao;
-                            checkboxElement.checked = funcao.check_funcao === '1';
                             revisaoImagemElement = document.getElementById("revisao_imagem_model");
                             break;
                         case "Composição":
                             selectElement = document.getElementById("opcao_comp");
-                            checkboxElement = document.getElementById("check_comp");
                             document.getElementById("status_comp").value = funcao.status;
                             document.getElementById("prazo_comp").value = funcao.prazo;
                             document.getElementById("obs_comp").value = funcao.observacao;
-                            checkboxElement.checked = funcao.check_funcao === '1';
                             revisaoImagemElement = document.getElementById("revisao_imagem_comp");
 
                             break;
                         case "Finalização":
                             selectElement = document.getElementById("opcao_final");
-                            checkboxElement = document.getElementById("check_final");
                             document.getElementById("status_finalizacao").value = funcao.status;
                             document.getElementById("prazo_finalizacao").value = funcao.prazo;
                             document.getElementById("obs_finalizacao").value = funcao.observacao;
-                            checkboxElement.checked = funcao.check_funcao === '1';
                             revisaoImagemElement = document.getElementById("revisao_imagem_final");
                             break;
                         case "Pós-produção":
                             selectElement = document.getElementById("opcao_pos");
-                            checkboxElement = document.getElementById("check_pos");
                             document.getElementById("status_pos").value = funcao.status;
                             document.getElementById("prazo_pos").value = funcao.prazo;
                             document.getElementById("obs_pos").value = funcao.observacao;
-                            checkboxElement.checked = funcao.check_funcao === '1';
                             revisaoImagemElement = document.getElementById("revisao_imagem_pos");
                             break;
                         case "Alteração":
                             selectElement = document.getElementById("opcao_alteracao");
-                            checkboxElement = document.getElementById("check_alt");
                             document.getElementById("status_alteracao").value = funcao.status;
                             document.getElementById("prazo_alteracao").value = funcao.prazo;
                             document.getElementById("obs_alteracao").value = funcao.observacao;
-                            checkboxElement.checked = funcao.check_funcao === '1';
                             revisaoImagemElement = document.getElementById("revisao_imagem_alt");
                             break;
                         case "Planta Humanizada":
                             selectElement = document.getElementById("opcao_planta");
-                            checkboxElement = document.getElementById("check_planta");
                             document.getElementById("status_planta").value = funcao.status;
                             document.getElementById("prazo_planta").value = funcao.prazo;
                             document.getElementById("obs_planta").value = funcao.observacao;
-                            checkboxElement.checked = funcao.check_funcao === '1';
                             revisaoImagemElement = document.getElementById("revisao_imagem_ph");
                             break;
                         case "Filtro de assets":
                             selectElement = document.getElementById("opcao_filtro");
-                            checkboxElement = document.getElementById("check_filtro");
                             document.getElementById("status_filtro").value = funcao.status;
                             document.getElementById("prazo_filtro").value = funcao.prazo;
                             document.getElementById("obs_filtro").value = funcao.observacao;
-                            checkboxElement.checked = funcao.check_funcao === '1';
                             revisaoImagemElement = document.getElementById("revisao_imagem_filtro");
                             break;
                         case "Pré-Finalização":
                             selectElement = document.getElementById("opcao_pre");
-                            checkboxElement = document.getElementById("check_pre");
                             document.getElementById("status_pre").value = funcao.status;
                             document.getElementById("prazo_pre").value = funcao.prazo;
                             document.getElementById("obs_pre").value = funcao.observacao;
-                            checkboxElement.checked = funcao.check_funcao === '1';
                             revisaoImagemElement = document.getElementById("revisao_imagem_pre");
                             break;
                     }
@@ -1247,15 +1220,6 @@ document.getElementById("salvar_funcoes").addEventListener("click", function (ev
         status_filtro: document.getElementById("status_filtro").value || "",
         prazo_filtro: document.getElementById("prazo_filtro").value || "",
         obs_filtro: document.getElementById("obs_filtro").value || "",
-        check_caderno: document.getElementById("check_caderno").checked ? 1 : 0,
-        check_filtro: document.getElementById("check_filtro").checked ? 1 : 0,
-        check_modelagem: document.getElementById("check_model").checked ? 1 : 0,
-        check_comp: document.getElementById("check_comp").checked ? 1 : 0,
-        check_finalizacao: document.getElementById("check_final").checked ? 1 : 0,
-        check_pos: document.getElementById("check_pos").checked ? 1 : 0,
-        check_alteracao: document.getElementById("check_alt").checked ? 1 : 0,
-        check_planta: document.getElementById("check_planta").checked ? 1 : 0,
-        check_pre: document.getElementById("check_pre").checked ? 1 : 0,
         textos: textos,
         status_id: document.getElementById("opcao_status").value || ""
     };

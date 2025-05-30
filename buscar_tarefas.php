@@ -17,7 +17,6 @@ if ($idusuario == 1 || $idusuario == 2) {
             fun.nome_funcao, 
             f.status, 
             f.prazo,
-            f.check_funcao, 
             f.imagem_id, 
             i.imagem_nome, 
             f.colaborador_id, 
@@ -27,7 +26,7 @@ if ($idusuario == 1 || $idusuario == 2) {
             LEFT JOIN funcao fun ON fun.idfuncao = f.funcao_id
             LEFT JOIN colaborador c ON c.idcolaborador = f.colaborador_id
             LEFT JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
-            WHERE f.funcao_id IN (1, 2, 3, 4, 5, 6, 7, 8, 9) AND f.check_funcao = 0 AND f.status = 'Em aprovação'";
+            WHERE f.funcao_id IN (1, 2, 3, 4, 5, 6, 7, 8, 9) AND f.status = 'Em aprovação'";
 } elseif ($idusuario == 9 || $idusuario == 20 || $idusuario == 3) {
     // Nicolle
     $sql = "SELECT 
@@ -35,7 +34,6 @@ if ($idusuario == 1 || $idusuario == 2) {
         f.funcao_id, 
         fun.nome_funcao, 
         f.status, 
-        f.check_funcao, 
         f.imagem_id, 
         i.imagem_nome, 
         f.colaborador_id, 
@@ -46,7 +44,6 @@ if ($idusuario == 1 || $idusuario == 2) {
     LEFT JOIN colaborador c ON c.idcolaborador = f.colaborador_id
     LEFT JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
     WHERE f.funcao_id IN (1, 2, 3, 4, 5, 6, 7, 8, 9)
-      AND f.check_funcao = 0 
       AND f.status = 'Em aprovação'";
 } else {
     $sql = "SELECT 
@@ -54,7 +51,6 @@ if ($idusuario == 1 || $idusuario == 2) {
     f.funcao_id, 
     fun.nome_funcao, 
     f.status, 
-    f.check_funcao, 
     f.imagem_id, 
     i.imagem_nome, 
     f.colaborador_id, 
@@ -65,7 +61,6 @@ if ($idusuario == 1 || $idusuario == 2) {
     LEFT JOIN colaborador c ON c.idcolaborador = f.colaborador_id
     LEFT JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
     WHERE f.funcao_id IN (1, 2, 3, 4, 5, 6, 7, 8, 9)
-      AND f.check_funcao = 0 
       AND f.status = 'Ajuste'
       AND c.idcolaborador = ?";
 

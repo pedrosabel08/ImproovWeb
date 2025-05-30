@@ -35,6 +35,10 @@ a {
 
 #filtroFuncao {
     margin: 15px auto;
+    margin: 15px auto;
+    padding: 5px;
+    border: none;
+    border-bottom: 1px solid;
 }
 
 .main,

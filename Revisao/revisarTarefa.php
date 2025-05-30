@@ -65,6 +65,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $responsavel = $data['responsavel'] ?? null;
     $nome_colaborador = 'Pedro Sabel'; // Ajuste conforme necessário
 
+    if (preg_match('/^\d+\.\s+\S+/', $imagem_nome, $matches)) {
+        $imagem_resumida = $matches[0];
+    } else {
+        $imagem_resumida = $imagem_nome; // fallback caso o padrão não seja encontrado
+    }
 
     if ($idfuncao_imagem === null || $tipoRevisao === null) {
         echo json_encode(['success' => false, 'message' => 'Dados incompletos.']);
@@ -79,27 +84,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt2->fetch();
     $stmt2->close();
 
+    // Extrair somente o prefixo da imagem (ex: "43. ARS_VIE")
+    if (preg_match('/^\d+\.\s+\S+/', $imagem_nome, $matches)) {
+        $imagem_resumida = $matches[0];
+    } else {
+        $imagem_resumida = $imagem_nome; // fallback caso o padrão não seja encontrado
+    }
 
-    // Depois: define status, check e mensagem Slack
+    // Define status, check e mensagem Slack
     switch ($tipoRevisao) {
         case "aprovado":
             $status = "Aprovado";
             $check_funcao = 1;
-            $mensagemSlack = "A {$nome_funcao} da {$imagem_nome} está revisada por {$nome_responsavel}!";
+            $mensagemSlack = "A {$nome_funcao} da imagem {$imagem_resumida} está revisada por {$nome_responsavel}!";
             break;
         case "ajuste":
             $status = "Ajuste";
             $check_funcao = 0;
-            $mensagemSlack = "A {$nome_funcao} da {$imagem_nome} possui alteração, analisada por {$nome_responsavel}! Acesse: <https://improov.com.br/sistema/Revisao | Clique aqui para revisar>";
+            $mensagemSlack = "A {$nome_funcao} da imagem {$imagem_resumida} possui alteração, analisada por {$nome_responsavel}! 😓";
             break;
         case "aprovado_com_ajustes":
             $status = "Aprovado com ajustes";
             $check_funcao = 1;
-            $mensagemSlack = "A {$nome_funcao} da {$imagem_nome} foi aprovada com ajustes por {$nome_responsavel}.";
+            $mensagemSlack = "A {$nome_funcao} da imagem {$imagem_resumida} foi aprovada com ajustes por {$nome_responsavel}.";
             break;
         default:
             echo json_encode(['success' => false, 'message' => 'Tipo de revisão inválido.']);
             exit;
+    }
+
+    // Inserir notificação somente se for ajuste
+    if ($tipoRevisao === "ajuste") {
+        $stmtNotif = $conn->prepare("INSERT INTO notificacoes (mensagem, colaborador_id) VALUES (?, ?)");
+        $stmtNotif->bind_param("si", $mensagemSlack, $colaborador_id);
+        $stmtNotif->execute();
+        $stmtNotif->close();
     }
 
 
@@ -197,9 +216,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $proximaFuncaoId = $chaves[$posicaoAtual + 1];
 
         // Buscar no banco a próxima função dessa imagem
-        $query = "SELECT fi.idfuncao_imagem, fi.colaborador_id, c.nome_colaborador, i.imagem_nome
+        $query = "SELECT fi.idfuncao_imagem, fi.colaborador_id, c.nome_colaborador, i.imagem_nome, f.nome_funcao
             FROM funcao_imagem fi
             JOIN colaborador c ON fi.colaborador_id = c.idcolaborador
+            JOIN funcao f ON fi.funcao_id = f.idfuncao
             JOIN imagens_cliente_obra i ON fi.imagem_id = i.idimagens_cliente_obra
             WHERE fi.imagem_id = ? AND fi.funcao_id = ?";
         $stmt = $conn->prepare($query);
@@ -213,8 +233,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (in_array($status, ['Aprovado', 'Aprovado com ajustes']) && $proximaFuncao) {
         $nomeResponsavel = $proximaFuncao['nome_colaborador'];
         $mensagem = "Olá, *{$nomeResponsavel}*! A etapa *{$ordemFuncoes[$funcaoAtualId]}* da imagem *{$imagem_nome}* foi concluída. 🚀";
+        $mensagem2 = "A etapa {$ordemFuncoes[$funcaoAtualId]} da imagem {$imagem_resumida} foi concluída, pode iniciar a {$proximaFuncao['nome_funcao']}. 🚀";
 
         enviarNotificacaoSlack($userID, $mensagem);
+
+        // Inserir notificação para o próximo colaborador
+        $stmtNotif = $conn->prepare("INSERT INTO notificacoes (mensagem, colaborador_id) VALUES (?, ?)");
+        $stmtNotif->bind_param("si", $mensagem2, $proximaFuncao['colaborador_id']);
+        $stmtNotif->execute();
+        $stmtNotif->close();
     }
 
     // Configuração da mensagem do Slack

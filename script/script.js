@@ -211,39 +211,30 @@ function limparCampos() {
     document.getElementById("status_caderno").value = "";
     document.getElementById("prazo_caderno").value = "";
     document.getElementById("obs_caderno").value = "";
-    document.getElementById("check_caderno").checked = false;
     document.getElementById("status_modelagem").value = "";
     document.getElementById("prazo_modelagem").value = "";
     document.getElementById("obs_modelagem").value = "";
-    document.getElementById("check_model").checked = false;
     document.getElementById("status_comp").value = "";
     document.getElementById("prazo_comp").value = "";
     document.getElementById("obs_comp").value = "";
-    document.getElementById("check_comp").checked = false;
     document.getElementById("status_pre").value = "";
     document.getElementById("prazo_pre").value = "";
     document.getElementById("obs_pre").value = "";
-    document.getElementById("check_pre").checked = false;
     document.getElementById("status_finalizacao").value = "";
     document.getElementById("prazo_finalizacao").value = "";
     document.getElementById("obs_finalizacao").value = "";
-    document.getElementById("check_final").checked = false;
     document.getElementById("status_pos").value = "";
     document.getElementById("prazo_pos").value = "";
     document.getElementById("obs_pos").value = "";
-    document.getElementById("check_pos").checked = false;
     document.getElementById("status_alteracao").value = "";
     document.getElementById("prazo_alteracao").value = "";
     document.getElementById("obs_alteracao").value = "";
-    document.getElementById("check_alt").checked = false;
     document.getElementById("status_planta").value = "";
     document.getElementById("prazo_planta").value = "";
     document.getElementById("obs_planta").value = "";
-    document.getElementById("check_planta").checked = false;
     document.getElementById("status_filtro").value = "";
     document.getElementById("prazo_filtro").value = "";
     document.getElementById("obs_filtro").value = "";
-    document.getElementById("check_filtro").checked = false;
 
     document.getElementById("opcao_caderno").value = "";
     document.getElementById("opcao_model").value = "";
@@ -418,15 +409,6 @@ document.addEventListener("DOMContentLoaded", function () {
             status_filtro: document.getElementById("status_filtro").value || "",
             prazo_filtro: document.getElementById("prazo_filtro").value || "",
             obs_filtro: document.getElementById("obs_filtro").value || "",
-            check_caderno: document.getElementById("check_caderno").checked ? 1 : 0,
-            check_filtro: document.getElementById("check_filtro").checked ? 1 : 0,
-            check_modelagem: document.getElementById("check_model").checked ? 1 : 0,
-            check_comp: document.getElementById("check_comp").checked ? 1 : 0,
-            check_finalizacao: document.getElementById("check_final").checked ? 1 : 0,
-            check_pos: document.getElementById("check_pos").checked ? 1 : 0,
-            check_alteracao: document.getElementById("check_alt").checked ? 1 : 0,
-            check_planta: document.getElementById("check_planta").checked ? 1 : 0,
-            check_pre: document.getElementById("check_pre").checked ? 1 : 0,
             textos: textos,
             status_id: document.getElementById("opcao_status").value || ""
         };

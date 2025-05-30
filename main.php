@@ -226,9 +226,6 @@ include 'sidebar.php';
                             </div>
                         </div>
                     </div>
-                    <div class="check">
-                        <input type="checkbox" name="check_caderno" id="check_caderno">
-                    </div>
                 </div>
                 <div class="funcao_comp">
                     <div class="funcao">
@@ -261,9 +258,6 @@ include 'sidebar.php';
                                 <input type="file" name="imagens[]" id="revisao_imagem_filtro" accept="image/*" multiple>
                             </div>
                         </div>
-                    </div>
-                    <div class="check">
-                        <input type="checkbox" name="check_filtro" id="check_filtro">
                     </div>
                 </div>
                 <div class="funcao_comp">
@@ -298,9 +292,6 @@ include 'sidebar.php';
                             </div>
                         </div>
                     </div>
-                    <div class="check">
-                        <input type="checkbox" name="check_model" id="check_model">
-                    </div>
                 </div>
                 <div class="funcao_comp">
                     <div class="funcao">
@@ -333,9 +324,6 @@ include 'sidebar.php';
                                 <input type="file" name="imagens[]" id="revisao_imagem_comp" accept="image/*" multiple>
                             </div>
                         </div>
-                    </div>
-                    <div class="check">
-                        <input type="checkbox" name="check_comp" id="check_comp">
                     </div>
                 </div>
                 <div class="funcao_comp">
@@ -370,9 +358,6 @@ include 'sidebar.php';
                             </div>
                         </div>
                     </div>
-                    <div class="check">
-                        <input type="checkbox" name="check_pre" id="check_pre">
-                    </div>
                 </div>
                 <div class="funcao_comp">
                     <div class="funcao">
@@ -406,9 +391,6 @@ include 'sidebar.php';
                                 <input type="file" name="imagens[]" id="revisao_imagem_final" accept="image/*" multiple>
                             </div>
                         </div>
-                    </div>
-                    <div class="check">
-                        <input type="checkbox" name="check_final" id="check_final">
                     </div>
                 </div>
                 <div class="funcao_comp">
@@ -446,9 +428,6 @@ include 'sidebar.php';
                             </div>
                         </div>
                     </div>
-                    <div class="check">
-                        <input type="checkbox" name="check_pos" id="check_pos">
-                    </div>
                 </div>
                 <div class="funcao_comp">
                     <div class="funcao">
@@ -484,9 +463,6 @@ include 'sidebar.php';
                             </div>
                         </div>
                     </div>
-                    <div class="check">
-                        <input type="checkbox" name="check_alt" id="check_alt">
-                    </div>
                 </div>
                 <div class="funcao_comp">
                     <div class="funcao">
@@ -521,9 +497,6 @@ include 'sidebar.php';
                                 <input type="file" name="imagens[]" id="imagens" accept="image/*" multiple>
                             </div>
                         </div>
-                    </div>
-                    <div class="check">
-                        <input type="checkbox" name="check_planta" id="check_planta">
                     </div>
                 </div>
                 <div class="funcao" id="status_funcao" style="margin-bottom: 15px;">

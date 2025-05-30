@@ -95,17 +95,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     switch ($tipoRevisao) {
         case "aprovado":
             $status = "Aprovado";
-            $check_funcao = 1;
             $mensagemSlack = "A {$nome_funcao} da imagem {$imagem_resumida} está revisada por {$nome_responsavel}!";
             break;
         case "ajuste":
             $status = "Ajuste";
-            $check_funcao = 0;
             $mensagemSlack = "A {$nome_funcao} da imagem {$imagem_resumida} possui alteração, analisada por {$nome_responsavel}! 😓";
             break;
         case "aprovado_com_ajustes":
             $status = "Aprovado com ajustes";
-            $check_funcao = 1;
             $mensagemSlack = "A {$nome_funcao} da imagem {$imagem_resumida} foi aprovada com ajustes por {$nome_responsavel}.";
             break;
         default:
@@ -122,8 +119,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
 
-    $stmt = $conn->prepare("UPDATE funcao_imagem SET status = ?, check_funcao = ? WHERE idfuncao_imagem = ?");
-    $stmt->bind_param("sii", $status, $check_funcao, $idfuncao_imagem);
+    $stmt = $conn->prepare("UPDATE funcao_imagem SET status = ? WHERE idfuncao_imagem = ?");
+    $stmt->bind_param("si", $status, $idfuncao_imagem);
 
     if ($stmt->execute()) {
         $stmt->close();

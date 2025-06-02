@@ -945,24 +945,26 @@ async function renderComments(id) {
         const editButton = footer.querySelector('.comment-edit');
 
         editButton.addEventListener('click', () => {
+            p.contentEditable = true;
             p.focus();
 
-            // Listener de Enter dentro do botão, mas só adiciona uma vez!
-            p.addEventListener('keydown', async function handleKeyDown(e) {
+            const handleKeyDown = async function (e) {
                 if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault(); // Impede quebra de linha
+                    e.preventDefault();
 
-                    const novoTexto = p.value.trim();
+                    const novoTexto = p.textContent.trim();
 
-                    inpput.readOnly = true;
+                    p.contentEditable = false;
+
                     updateComment(comentario.id, novoTexto);
 
-                    // Remover o listener após salvar pra evitar múltiplos binds
-                    this.prefix.removeEventListener('keydown', handleKeyDown);
+                    // Remove o listener pra não acumular
+                    p.removeEventListener('keydown', handleKeyDown);
                 }
-            });
-        });
+            };
 
+            p.addEventListener('keydown', handleKeyDown);
+        });
 
         const commentDiv = document.createElement('div');
         commentDiv.classList.add('comment');

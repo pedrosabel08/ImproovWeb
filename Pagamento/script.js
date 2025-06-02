@@ -465,7 +465,7 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
         const cells = row.querySelectorAll('td');
         const dataPagamento = cells[dataPagamentoColumnIndex]?.innerText.trim(); // Data de pagamento
         if (dataPagamento === '0000-00-00' && row.style.display !== 'none') {
-        // if (row.style.display !== 'none') {
+            // if (row.style.display !== 'none') {
 
             const rowData = [];
 
@@ -688,8 +688,8 @@ document.getElementById('generate-lista').addEventListener('click', function () 
                 table.querySelectorAll('tbody tr').forEach(row => {
                     const cells = row.querySelectorAll('td');
                     const dataPagamento = cells[dataPagamentoColumnIndex]?.innerText.trim(); // Data de pagamento
-                    // if (dataPagamento === '0000-00-00' && row.style.display !== 'none') {
-                    if (row.style.display !== 'none') {
+                    if (dataPagamento === '0000-00-00' && row.style.display !== 'none') {
+                        // if (row.style.display !== 'none') {
                         const rowData = [];
                         row.querySelectorAll('td').forEach((cell, index) => {
                             if (selectedColumnIndexes.includes(index)) {

@@ -32,7 +32,7 @@ $sqlAnterior = "SELECT
   FROM funcao_imagem fi 
   JOIN colaborador c ON c.idcolaborador = fi.colaborador_id 
   JOIN funcao f ON f.idfuncao = fi.funcao_id
-  WHERE MONTH(fi.data_pagamento) = ?
+  WHERE MONTH(fi.data_pagamento) = ? AND YEAR(fi.data_pagamento) = YEAR(CURDATE())
   GROUP BY c.nome_colaborador, f.nome_funcao";
 $stmtAnterior = $conn->prepare($sqlAnterior);
 $stmtAnterior->bind_param("i", $mesAnterior);
@@ -60,10 +60,11 @@ FROM (
   FROM funcao_imagem fi
   JOIN colaborador c ON c.idcolaborador = fi.colaborador_id
   JOIN funcao f ON f.idfuncao = fi.funcao_id
-  WHERE fi.data_pagamento <> '0000-00-00'
+  WHERE fi.data_pagamento <> '0000-00-00' AND fi.valor > 1
   GROUP BY c.nome_colaborador, f.nome_funcao, MONTH(fi.data_pagamento), YEAR(fi.data_pagamento)
 ) AS sub
 GROUP BY nome_colaborador, nome_funcao";
+
 
 $resultRecorde = $conn->query($sqlRecorde);
 $recordes = $resultRecorde->fetch_all(MYSQLI_ASSOC);

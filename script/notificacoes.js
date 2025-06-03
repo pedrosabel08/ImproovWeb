@@ -108,7 +108,7 @@ function filtrarFuncoesPorColaborador(id) {
         case 19:
             return ['Modelagem', 'Composição'];
         default:
-            return []; // Nenhuma função por padrão
+            return ['Finalização', 'Pós-produção', 'Modelagem', 'Composição', 'Caderno', 'Filtro de assets']; // Todas
     }
 }
 

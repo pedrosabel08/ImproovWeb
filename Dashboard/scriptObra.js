@@ -50,6 +50,11 @@ function formatarData(data) {
     const dataFormatada = `${partes[2]}/${partes[1]}/${partes[0]}`;
     return dataFormatada;
 }
+function formatarDataDiaMes(data) {
+    const partes = data.split("-");
+    const dataFormatada = `${partes[2]}/${partes[1]}`;
+    return dataFormatada;
+}
 
 
 function limparCampos() {
@@ -479,7 +484,7 @@ function infosObra(obraId) {
 
 
                 var cellPrazo = document.createElement('td');
-                cellPrazo.textContent = formatarData(item.prazo);
+                cellPrazo.textContent = formatarDataDiaMes(item.prazo);
                 row.appendChild(cellPrazo);
 
                 var colunas = [

@@ -1,7 +1,7 @@
 <?php
 include '../conexao.php';
 
-$obra_id = 55; // Altere para o ID da obra que deseja simular
+$obra_id = 58; // Altere para o ID da obra que deseja simular
 
 $grupos = [
     "Fachada" => [
@@ -273,6 +273,11 @@ function simularGantt($conn, $obra_id, $grupos)
                             $idsPermitidos = array_filter($idsPermitidos, fn($c) => $c !== 5 && $c !== 32);
                             $idsPermitidos = array_values($idsPermitidos);
                         }
+                        shuffle($idsPermitidos);
+                    } elseif ($etapa === 'Finalização' && in_array($grupo, ['Imagem Interna', 'Unidade'])) {
+                        $idsPermitidos = buscarTodosColaboradores($conn, $etapa);
+                        $idsPermitidos = array_filter($idsPermitidos, fn($c) => $c !== 8);
+                        $idsPermitidos = array_values($idsPermitidos);
                         shuffle($idsPermitidos);
                     } elseif ($etapa === 'Finalização') {
                         $idsPermitidos = buscarTodosColaboradores($conn, $etapa);

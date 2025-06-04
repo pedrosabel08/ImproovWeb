@@ -32,7 +32,9 @@ function criarCabecalho(datas, feriados) {
 
     // Célula em branco para alinhar com a coluna de nomes (se houver)
     const cellBrancoMeses = document.createElement('th');
+    const cellBrancoMeses2 = document.createElement('th');
     headerMesesRow.appendChild(cellBrancoMeses);
+    headerMesesRow.appendChild(cellBrancoMeses2);
 
     const cellBrancoDias = document.createElement('th');
     const cellBrancoDias2 = document.createElement('th');

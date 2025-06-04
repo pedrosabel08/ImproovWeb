@@ -13,6 +13,23 @@ if (!is_array($etapas)) {
     exit;
 }
 
+function proximoDiaUtil($data)
+{
+    $timestamp = strtotime($data);
+    $diaSemana = date('N', $timestamp); // 1 = segunda, ..., 7 = domingo
+
+    // Se sábado (6), soma 2 dias (segunda)
+    // Se domingo (7), soma 1 dia (segunda)
+    if ($diaSemana == 6) {
+        $timestamp = strtotime('+2 days', $timestamp);
+    } elseif ($diaSemana == 7) {
+        $timestamp = strtotime('+1 day', $timestamp);
+    }
+
+    return date('Y-m-d', $timestamp);
+}
+
+
 // Verificação de conflito para cada etapa
 $datasOcupadasGeral = []; // Para acumular datas ocupadas por colaborador e função, evitando repetir
 
@@ -116,8 +133,8 @@ if (!$stmt) {
 }
 
 foreach ($etapas as $etapa) {
-    $inicio = $etapa['data_inicio'];
-    $fim = $etapa['data_fim'];
+    $inicio = proximoDiaUtil($etapa['data_inicio']);
+    $fim = proximoDiaUtil($etapa['data_fim']);
     $etapaNome = $etapa['etapa'];
 
     $stmt->bind_param("ssssi", $inicio, $fim, $tipoImagem, $etapaNome, $imagemId);

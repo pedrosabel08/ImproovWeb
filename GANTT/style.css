@@ -36,6 +36,7 @@ table td {
     white-space: nowrap;
     user-select: none;
     width: 40px;
+    max-width: 40px;
 }
 
 

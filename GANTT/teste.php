@@ -115,7 +115,7 @@ $conn->close();
     </div>
 
     <div id="modalConflitoData" style="display:none; position:fixed; z-index:1000; top:0; left:0; width:100%; height:100%; background-color: rgba(0,0,0,0.5);">
-        <div style="background:white; padding:20px; margin:100px auto; width:80%; max-width:600px; border-radius:10px;">
+        <div style="background:white; padding:20px; margin:100px auto; width:80%; max-width:600px; border-radius:10px; max-height: 60vh; overflow: auto;">
             <h2>Conflito de Etapas</h2>
             <p id="periodoConflitante"></p>
             <div id="conflitosDetalhes"></div>

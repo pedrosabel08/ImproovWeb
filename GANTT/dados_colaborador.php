@@ -26,26 +26,19 @@ $sql = "SELECT
     o.nomenclatura,
     fi.status AS status_funcao_atual,
     fi.funcao_id AS funcao_id_atual,
-    ec.colaborador_id,
+    fi.colaborador_id,
     c.nome_colaborador
 FROM gantt_prazos gp
-INNER JOIN imagens_cliente_obra ico 
-    ON ico.idimagens_cliente_obra = gp.imagem_id
-INNER JOIN obra o 
-    ON o.idobra = ico.obra_id
-LEFT JOIN funcao f 
-    ON f.nome_funcao = gp.etapa
-LEFT JOIN funcao_imagem fi 
-    ON fi.imagem_id = gp.imagem_id AND fi.funcao_id = f.idfuncao
-LEFT JOIN etapa_colaborador ec 
-    ON ec.gantt_id = gp.id
-LEFT JOIN colaborador c 
-    ON c.idcolaborador = ec.colaborador_id
-LEFT JOIN funcao_colaborador fc 
-    ON fc.colaborador_id = ec.colaborador_id AND fc.funcao_id = 2
-WHERE fc.colaborador_id IS NOT NULL
-ORDER BY gp.imagem_id, gp.etapa;
-";
+INNER JOIN imagens_cliente_obra ico ON ico.idimagens_cliente_obra = gp.imagem_id
+INNER JOIN obra o ON o.idobra = ico.obra_id
+LEFT JOIN funcao_imagem fi ON fi.imagem_id = gp.imagem_id 
+   AND fi.funcao_id = (
+        SELECT idfuncao FROM funcao WHERE nome_funcao = gp.etapa LIMIT 1
+   )
+INNER JOIN colaborador c ON c.idcolaborador = fi.colaborador_id
+WHERE fi.colaborador_id = 8
+ORDER BY ico.obra_id, gp.imagem_id, gp.etapa";
+
 
 $result = $conn->query($sql);
 if (!$result) {
@@ -86,11 +79,30 @@ foreach ($dados as &$imagem) {
 
         $statusAnterior = null;
         $funcaoAnteriorId = null;
+        $nomeFuncaoAnterior = null;
+        $nomeColabAnterior = null;
+
 
         if ($indiceAtual !== false && $indiceAtual > 0) {
             for ($i = $indiceAtual - 1; $i >= 0; $i--) {
                 $funcaoAnteriorId = $ordemIds[$i];
-                $sqlAnterior = "SELECT status FROM funcao_imagem WHERE imagem_id = ? AND funcao_id = ? LIMIT 1";
+                if ($funcaoAnteriorId !== null) {
+                    $sqlNomeFuncao = "SELECT nome_funcao FROM funcao WHERE idfuncao = ? LIMIT 1";
+                    $stmtNome = $conn->prepare($sqlNomeFuncao);
+                    $stmtNome->bind_param('i', $funcaoAnteriorId);
+                    $stmtNome->execute();
+                    $resultNome = $stmtNome->get_result();
+                    if ($rowNome = $resultNome->fetch_assoc()) {
+                        $nomeFuncaoAnterior = $rowNome['nome_funcao'];
+                    }
+                    $stmtNome->close();
+                }
+                $sqlAnterior = "SELECT fi.status, c.nome_colaborador 
+                FROM funcao_imagem fi
+                LEFT JOIN colaborador c ON c.idcolaborador = fi.colaborador_id
+                WHERE fi.imagem_id = ? AND fi.funcao_id = ? 
+                LIMIT 1";
+
                 $stmtAnterior = $conn->prepare($sqlAnterior);
                 $stmtAnterior->bind_param('ii', $imagemId, $funcaoAnteriorId);
                 $stmtAnterior->execute();
@@ -98,6 +110,7 @@ foreach ($dados as &$imagem) {
 
                 if ($rowAnterior = $resultAnterior->fetch_assoc()) {
                     $statusAnterior = $rowAnterior['status'];
+                    $nomeColabAnterior = $rowAnterior['nome_colaborador'];
                     $stmtAnterior->close();
                     break;
                 }
@@ -107,6 +120,9 @@ foreach ($dados as &$imagem) {
 
         $etapa['status_funcao_anterior'] = $statusAnterior;
         $etapa['funcao_anterior_id'] = $funcaoAnteriorId;
+        $etapa['nome_funcao_anterior'] = $nomeFuncaoAnterior;
+        $etapa['nome_colab_anterior'] = $nomeColabAnterior;
+
     }
 }
 

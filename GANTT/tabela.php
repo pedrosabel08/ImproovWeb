@@ -30,7 +30,7 @@ ORDER BY FIELD(
     'Unidade',
     'Imagem Externa',
     'Planta Humanizada'
-), img.imagem_nome";
+), img.idimagens_cliente_obra, img.imagem_nome";
 
 $stmtImagens = $conn->prepare($sqlImagens);
 $stmtImagens->bind_param("i", $id_obra);

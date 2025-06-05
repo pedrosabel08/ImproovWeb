@@ -201,7 +201,7 @@ if ($colaboradorId == 1) {
         funcao f ON fi.funcao_id = f.idfuncao
     WHERE 
         fi.colaborador_id = ?
-        AND (fi.status = 'Finalizado' OR fi.status = 'Em aprovação' OR fi.status = 'Ajuste' OR fi.status = 'Aprovado com ajustes')";
+        AND (fi.status = 'Finalizado' OR fi.status = 'Em aprovação' OR fi.status = 'Ajuste' OR fi.status = 'Aprovado com ajustes' OR fi.status = 'Aprovado')";
 
     if ($mesNumero && $ano) {
         $sql .= " AND YEAR(fi.prazo) = ? AND MONTH(fi.prazo) = ? ORDER BY fi.funcao_id, ico.obra_id";

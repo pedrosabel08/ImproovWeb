@@ -333,13 +333,13 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
 
     const today = new Date();
     today.setDate(today.getDate() + 0); // Adiciona 1 dia
-    const day = String(today.getDate()).padStart(2, '0');
+    const day = String(today.getDate() + 1).padStart(2, '0');
 
     // Obtém o número do mês (0 = Janeiro, 11 = Dezembro)
     const currentMonthIndex = today.getMonth();
 
     // Calcula o índice do mês anterior
-    const previousMonthIndex = currentMonthIndex === 0 ? 11 : currentMonthIndex - 2;
+    const previousMonthIndex = currentMonthIndex === 0 ? 11 : currentMonthIndex - 1;
 
     // Lista dos nomes dos meses
     const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
@@ -513,10 +513,10 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
     // // const novaTabelaHeaders = ['Extra', 'Valor'];
     // const novaTabelaHeaders = ['Categoria', 'Valor'];
     // const novaTabelaBody = [
-    //     // ['Atendimento', '3000,00'],
-    //     ['Reembolso almoço', '220,00'],
-    //     ['Gasolina', '22,00'],
-    //     ['Diaria Drone', '175,00'],
+    //     ['Atendimento', '3000,00'],
+    //     // ['Reembolso almoço', '220,00'],
+    //     // ['Gasolina', '22,00'],
+    //     // ['Diaria Drone', '175,00'],
     //     // ['Outros', '490,00']
     // ];
 

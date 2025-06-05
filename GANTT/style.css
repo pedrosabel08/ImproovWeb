@@ -50,6 +50,34 @@ td {
     padding: 10px 0;
 }
 
+td.etapas {
+    max-width: max-content;
+}
+
+/* Envolve a tabela em uma div para permitir scroll horizontal */
+#ganttWrapper {
+    overflow: auto;
+    max-width: 100%;
+    /* ou defina uma largura específica */
+}
+
+/* Deixa a primeira coluna fixa */
+#ganttTable th.sticky-col,
+#ganttTable td.sticky-col {
+    position: sticky;
+    left: 0;
+    background-color: #fff;
+    /* Evita sobreposição */
+    z-index: 1;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+    /* opcional, para destacar a divisão */
+}
+
+/* Garante que o cabeçalho da primeira coluna fique acima das células */
+#ganttTable thead th.sticky-col {
+    z-index: 2;
+}
+
 /* Estilos específicos para cada tipo de imagem */
 .posproducao {
     background-color: #e3f2fd;
@@ -116,7 +144,7 @@ td {
 }
 
 .fim-de-semana {
-    background-color: #ff6663;
+    background-color: #bdbdbd;
     border: none;
 }
 

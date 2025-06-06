@@ -312,6 +312,9 @@ $conn->close();
 
         const nome_user = <?php echo json_encode($nome_usuario); ?>;
 
+        const primeiro_nome = nome_user.split(" ")[0];
+
+
         function obterSaudacao() {
             const agora = new Date();
             const hora = agora.getHours();
@@ -326,7 +329,7 @@ $conn->close();
         }
 
         const saudacao = document.getElementById('saudacao');
-        saudacao.textContent = obterSaudacao() + ", " + nome_user + "!";
+        saudacao.textContent = obterSaudacao() + ", " + primeiro_nome + "!";
 
         const idUsuario = <?php echo json_encode($idusuario); ?>;
         localStorage.setItem('idusuario', idUsuario);

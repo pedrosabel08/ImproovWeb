@@ -31,20 +31,6 @@ if (!$stmt2->execute()) {
 $nome_usuario = $_SESSION['nome_usuario'];
 $idcolaborador = $_SESSION['idcolaborador'];
 
-$sql = "SELECT n.mensagem, op.prazo, nu.lida 
-        FROM notificacoes n
-        JOIN notificacoes_usuarios nu ON n.id = nu.notificacao_id
-        LEFT JOIN obra_prazo op ON n.id = op.notificacoes_id
-        WHERE nu.usuario_id = ?
-        AND n.tipo_notificacao <> 'pos'
-        AND op.prazo >= CURDATE() 
-        ORDER BY op.prazo ASC;";
-
-$stmt = $conn->prepare($sql);
-$stmt->bind_param("i", $idusuario);
-$stmt->execute();
-$resultNotificacoes = $stmt->get_result();
-
 
 $sql_finalizadas = "SELECT COUNT(*) as count_finalizadas FROM funcao_imagem WHERE status = 'Finalizado' AND colaborador_id = ?";
 $stmt_finalizadas = $conn->prepare($sql_finalizadas);
@@ -63,7 +49,6 @@ $result_pendentes = $stmt_pendentes->get_result();
 $row_pendentes = $result_pendentes->fetch_assoc();
 $count_pendentes = $row_pendentes['count_pendentes'];
 
-$stmt->close();
 $conn->close();
 ?>
 
@@ -146,20 +131,7 @@ $conn->close();
                         <div id="calendarFull"></div>
                     </div>
                 </div>
-                <!-- <div class="last-tasks">
-                    <h2>Notificações</h2>
-                    <ul>
-                        <?php if ($resultNotificacoes->num_rows > 0): ?>
-                            <?php while ($row = $resultNotificacoes->fetch_assoc()): ?>
-                                <li>
-                                    <span class="notification-message"><?php echo htmlspecialchars($row['mensagem']); ?></span>
-                                </li>
-                            <?php endwhile; ?>
-                        <?php else: ?>
-                            <li>Não há notificações recentes.</li>
-                        <?php endif; ?>
-                    </ul>
-                </div> -->
+
             </div>
 
             <div id="container-andamento" class="container">
@@ -232,6 +204,30 @@ $conn->close();
         <span id="contador-tarefas" class="contador-tarefas">0</span>
     </div>
 
+    <!-- Popover unificado -->
+    <div id="popover-tarefas" class="popover oculto">
+        <!-- Tarefas -->
+        <div class="secao">
+            <div class="secao-titulo secao-tarefas" onclick="toggleSecao('tarefas')">
+                <strong>Tarefas</strong>
+                <span id="badge-tarefas" class="badge-interna"></span>
+            </div>
+            <div id="conteudo-tarefas" class="secao-conteudo"></div>
+        </div>
+
+        <!-- Notificações -->
+        <div class="secao">
+            <div class="secao-titulo secao-notificacoes">
+                <strong>Notificações</strong>
+                <span id="badge-notificacoes" class="badge-interna"></span>
+            </div>
+            <div id="conteudo-notificacoes" class="secao-conteudo">
+            </div>
+        </div>
+        <button id="btn-ir-revisao">Ir para Revisão</button>
+    </div>
+
+
     <!-- Modal simples para adicionar evento -->
     <div id="eventModal">
         <div class="eventos">
@@ -267,11 +263,39 @@ $conn->close();
 
     <!-- Modal para o iframe do changelog -->
     <div id="modalIframeChangelog" class="modal" style="display:none;">
-        <div class="modal-content" style="width:90vw;max-width:60vw;height:80vh;position:relative;">
+        <div class="modal-content" style="width:90vw;max-width: 50vw;height: 40vh;position:relative;">
             <!-- <button onclick="fecharModalIframe()" style="position:absolute;top:10px;right:10px;z-index:2;">Fechar</button> -->
-            <iframe id="iframeChangelog" src="CHANGELOG/Flow/imagens.html" frameborder="0" style="width:100%;height:100%;border:none;"></iframe>
+            <iframe id="iframeChangelog" src="CHANGELOG/Flow/suporte.html" frameborder="0" style="width:100%;height:100%;border:none;"></iframe>
         </div>
     </div>
+
+    <!-- Modal para o iframe do changelog -->
+    <div id="modalLastDay" class="modal" style="display:none;">
+        <div class="modal-content" style="width:90vw;max-width: 50vw;height: 40vh;position:relative;">
+            <div id="textoAlerta"></div>
+            <div id="imagens-list"></div>
+        </div>
+    </div>
+
+    <div id="modalPrimeiroDia" class="modal" style="display:none;">
+        <div class="modal-content" style="width:90vw; max-width: 50vw; position:relative;">
+            <h2>Revisão do mês anterior</h2>
+            <div id="imagens_list_primeiro_dia"></div>
+
+            <div class="situacaoDiv">
+                <label><input type="radio" name="situacao" value="check"> Sim, está tudo certo (Check)</label>
+                <label><input type="radio" name="situacao" value="alteracao"> Não, fiz alterações</label>
+            </div>
+                
+            <div id="observacaoDiv" style="display:none;">
+                <label>Observações:</label>
+                <textarea id="observacaoTexto" rows="4" style="width:100%"></textarea>
+            </div>
+
+            <button onclick="enviarRevisaoMes()">Enviar</button>
+        </div>
+    </div>
+
 
     <script>
         function abrirModalIframe() {
@@ -436,6 +460,7 @@ $conn->close();
             .then(() => {
                 buscarTarefas();
                 mostrarChangelogSeNecessario(); // Só mostra se não viu esta versão
+                exibirModalPrimeiroDiaUtil()
             })
             .catch(() => {
                 console.log('Fluxo interrompido devido a erro ou resposta incompleta.');

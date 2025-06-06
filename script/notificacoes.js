@@ -135,11 +135,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Atualiza o contador ao carregar a página
     atualizarContadorTarefas();
-
+    // avisoUltimoDiaUtil()
     if (!isInicio) {
         agendarProximaExecucao();
     }
 });
+
 const sino = document.getElementById('icone-sino');
 const popover = document.getElementById('popover-tarefas');
 const conteudoTarefas = document.getElementById('conteudo-tarefas');
@@ -257,3 +258,181 @@ document.addEventListener('click', function (event) {
         }
     }
 });
+
+
+
+function exibirAvisoUltimoDiaUtil() {
+    const hoje = new Date();
+    const ano = hoje.getFullYear();
+    const mes = hoje.getMonth() + 1;
+
+    const ultimoDiaDoMes = new Date(ano, mes, 0);
+    let ultimoDiaUtil = new Date(ultimoDiaDoMes);
+
+    while (ultimoDiaUtil.getDay() === 0 || ultimoDiaUtil.getDay() === 6) {
+        ultimoDiaUtil.setDate(ultimoDiaUtil.getDate() - 1);
+    }
+
+    const hojeStr = hoje.toISOString().slice(0, 10);
+    const ultimoDiaStr = ultimoDiaUtil.toISOString().slice(0, 10);
+
+    if (hojeStr !== ultimoDiaStr) {
+        console.log("Hoje não é o último dia útil do mês.");
+        return;
+    }
+
+    // Mostrar modal
+    const modal = document.getElementById("modalLastDay");
+    const textoAlerta = document.getElementById("textoAlerta");
+    const imagensList = document.getElementById("imagens-list");
+
+    textoAlerta.innerHTML = `
+        <h2>Hoje é o último dia útil do mês.</h2>
+        <p>Atualize todos os status e prazos das tarefas que você trabalhou nesse mês!</p>
+    `;
+
+    imagensList.innerHTML = `<p>Carregando produção do mês...</p>`;
+
+    modal.style.display = "flex";
+
+    // Buscar e exibir a lista de produção
+    const idColaborador = parseInt(localStorage.getItem('idcolaborador'));
+    const mesFormatado = String(mes).padStart(2, '0');
+
+    fetch(`getFuncoesPorColaborador.php?colaborador_id=${idColaborador}&ano=${ano}&mes=${mesFormatado}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.length === 0) {
+                imagensList.innerHTML = `<p style="color:red;">Nenhuma produção registrada neste mês.</p>`;
+                return;
+            }
+
+            let html = '<ul style="text-align: left">';
+            data.forEach((item, i) => {
+                html += `<li><strong>${i + 1}.</strong> ${item.imagem_nome} — ${item.nome_funcao}</li>`;
+            });
+            html += '</ul>';
+
+            imagensList.innerHTML = html;
+        })
+        .catch(err => {
+            imagensList.innerHTML = `<p style="color:red;">Erro ao buscar dados de produção.</p>`;
+            console.error(err);
+        });
+}
+
+
+function exibirModalPrimeiroDiaUtil() {
+    if (!isHojePrimeiroDiaUtil()) return;
+
+    const modal = document.getElementById("modalPrimeiroDia");
+    const radios = document.getElementsByName("situacao");
+    const observacaoDiv = document.getElementById("observacaoDiv");
+
+    modal.style.display = "block";
+
+    // Mostrar campo de observação se "alteracao" for selecionado
+    radios.forEach(radio => {
+        radio.addEventListener('change', () => {
+            observacaoDiv.style.display = (radio.value === "alteracao" && radio.checked) ? 'block' : 'none';
+        });
+    });
+}
+
+function isHojePrimeiroDiaUtil() {
+    const hoje = new Date();
+    const ano = hoje.getFullYear();
+    const mes = hoje.getMonth(); // 0 a 11
+
+    let primeiroDiaUtil = new Date(ano, mes, 1);
+
+    while (primeiroDiaUtil.getDay() === 0 || primeiroDiaUtil.getDay() === 6) {
+        primeiroDiaUtil.setDate(primeiroDiaUtil.getDate() + 1);
+    }
+
+    const hojeStr = hoje.toISOString().slice(0, 10);
+    const primeiroStr = primeiroDiaUtil.toISOString().slice(0, 10);
+
+    return hojeStr === primeiroStr;
+}
+
+
+function exibirModalPrimeiroDiaUtil() {
+    // if (!isHojePrimeiroDiaUtil()) return;
+
+    // Buscar e exibir a lista de produção
+    const hoje = new Date();
+    const idColaborador = parseInt(localStorage.getItem('idcolaborador'));
+    const mes = hoje.getMonth() + 1; // <- Certifique-se de definir o mês
+    const mesFormatado = String(mes).padStart(2, '0');
+    const ano = hoje.getFullYear();
+
+    const modal = document.getElementById("modalPrimeiroDia");
+    const radios = document.getElementsByName("situacao");
+    const observacaoDiv = document.getElementById("observacaoDiv");
+    const imagensList = document.getElementById("imagens_list_primeiro_dia");
+
+    modal.style.display = "flex";
+
+    fetch(`getFuncoesPorColaborador.php?colaborador_id=${idColaborador}&ano=${ano}&mes=${mesFormatado}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.length === 0) {
+                imagensList.innerHTML = `<p style="color:red;">Nenhuma produção registrada neste mês.</p>`;
+                return;
+            }
+
+            let html = '<ul style="text-align: left">';
+            data.forEach((item, i) => {
+                html += `<li><strong>${i + 1}.</strong> ${item.imagem_nome} — ${item.nome_funcao}</li>`;
+            });
+            html += '</ul>';
+
+            imagensList.innerHTML = html;
+        })
+        .catch(err => {
+            imagensList.innerHTML = `<p style="color:red;">Erro ao buscar dados de produção.</p>`;
+            console.error(err);
+        });
+
+    // Mostrar campo de observação se "alteracao" for selecionado
+    radios.forEach(radio => {
+        radio.addEventListener('change', () => {
+            observacaoDiv.style.display = (radio.value === "alteracao" && radio.checked) ? 'block' : 'none';
+        });
+    });
+}
+
+function enviarRevisaoMes() {
+    const idColaborador = parseInt(localStorage.getItem('idcolaborador'));
+    const situacao = document.querySelector('input[name="situacao"]:checked');
+    const observacao = document.getElementById("observacaoTexto").value;
+    const data = new Date().toISOString().slice(0, 10);
+
+    if (!situacao) {
+        alert("Selecione uma opção.");
+        return;
+    }
+
+    const dados = {
+        idcolaborador: idColaborador,
+        situacao: situacao.value,
+        observacao: observacao,
+        data: data
+    };
+
+    fetch("salvarRevisaoMes.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(dados)
+    })
+        .then(response => response.text())
+        .then(res => {
+            alert("Revisão enviada com sucesso.");
+            document.getElementById("modalPrimeiroDia").style.display = "none";
+        })
+        .catch(err => {
+            alert("Erro ao enviar revisão.");
+            console.error(err);
+        });
+}

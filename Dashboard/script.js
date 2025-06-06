@@ -27,119 +27,8 @@ function mostrarImagens() {
 
 const modalColab = document.getElementById('filtro-colab');
 
-document.getElementById('ver_todas').addEventListener('click', function () {
-    modalColab.style.display = 'flex';
-    carregarDados();
-})
 
 var colaboradorId = localStorage.getItem('idcolaborador');
-function carregarDados() {
-
-    var dataInicio = document.getElementById('dataInicio').value;
-    var dataFim = document.getElementById('dataFim').value;
-    var obraId = document.getElementById('obraSelect').value;
-    var funcaoId = document.getElementById('funcaoSelect').value;
-    var status = document.getElementById('statusSelect').value;
-
-    if (colaboradorId) {
-        var url = '../getFuncoesPorColaborador.php?colaborador_id=' + colaboradorId;
-
-        if (dataInicio) {
-            url += '&data_inicio=' + encodeURIComponent(dataInicio);
-        }
-        if (dataFim) {
-            url += '&data_fim=' + encodeURIComponent(dataFim);
-        }
-        if (obraId) {
-            url += '&obra_id=' + encodeURIComponent(obraId);
-        }
-        if (funcaoId) {
-            url += '&funcao_id=' + encodeURIComponent(funcaoId);
-        }
-        if (status) {
-            url += '&status=' + encodeURIComponent(status);
-        }
-
-        fetch(url)
-            .then(response => response.json())
-            .then(data => {
-                var tabela = document.querySelector('#tabela-colab tbody');
-                tabela.innerHTML = '';
-
-                data.forEach(function (item) {
-                    var row = document.createElement('tr');
-                    row.classList.add('linha-tabela');
-                    row.setAttribute('data-id', item.imagem_id);
-                    var cellNomeImagem = document.createElement('td');
-                    cellNomeImagem.textContent = item.imagem_nome;
-                    var cellFuncao = document.createElement('td');
-                    cellFuncao.textContent = item.nome_funcao;
-                    var cellStatus = document.createElement('td');
-                    cellStatus.textContent = item.status;
-                    var cellPrazoImagem = document.createElement('td');
-                    cellPrazoImagem.textContent = item.prazo;
-
-                    row.appendChild(cellNomeImagem);
-                    row.appendChild(cellFuncao);
-                    row.appendChild(cellStatus);
-                    row.appendChild(cellPrazoImagem);
-                    tabela.appendChild(row);
-                });
-
-                document.getElementById('totalImagens').textContent = data.length;
-
-            })
-            .catch(error => console.error('Erro ao carregar funções:', error));
-    } else {
-        document.querySelector('#tabela-colab tbody').innerHTML = '';
-        document.getElementById('totalImagens').textContent = '0';
-    }
-}
-
-
-document.getElementById('dataInicio').addEventListener('change', carregarDados);
-document.getElementById('dataFim').addEventListener('change', carregarDados);
-document.getElementById('obraSelect').addEventListener('change', carregarDados);
-document.getElementById('funcaoSelect').addEventListener('change', carregarDados);
-document.getElementById('statusSelect').addEventListener('change', carregarDados);
-
-
-const obraSelect = document.getElementById('obraSelect');
-const mostrarLogsBtn = document.getElementById('mostrarLogsBtn');
-const modalLogs = document.getElementById('modalLogs');
-
-mostrarLogsBtn.addEventListener('click', function () {
-    const obraId = obraSelect.value;
-    modalLogs.style.display = 'flex';
-
-    fetch(`../carregar_logs.php?colaboradorId=${colaboradorId}&obraId=${obraId}`)
-        .then(response => response.json())
-        .then(data => {
-            const tabelaLogsBody = document.querySelector('#tabela-logs tbody');
-            tabelaLogsBody.innerHTML = '';
-
-            if (data && data.length > 0) {
-                data.forEach(log => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${log.imagem_nome}</td>
-                        <td>${log.nome_obra}</td>
-                        <td>${log.status_anterior}</td>
-                        <td>${log.status_novo}</td>
-                        <td>${log.data}</td>
-                    `;
-                    tabelaLogsBody.appendChild(row);
-                });
-            } else {
-                const row = document.createElement('tr');
-                row.innerHTML = '<td colspan="5">Nenhum log encontrado.</td>';
-                tabelaLogsBody.appendChild(row);
-            }
-        })
-        .catch(error => {
-            console.error('Erro ao carregar os logs:', error);
-        });
-});
 
 
 fetch('atualizarValores.php')
@@ -187,249 +76,36 @@ fetch('atualizarValores.php')
 
 let chartInstance = null;
 
-
 fetch('obras.php')
-    .then(response => response.json())
+    .then(res => res.json())
     .then(data => {
-        const painel = document.getElementById('painel');
+        // Obras Paradas
+        const holdCards = document.getElementById('hold-cards');
+        holdCards.innerHTML = '';
+        data.hold.forEach(obra => {
+            holdCards.innerHTML += `
+                <div class="kanban-card" id="${obra.idobra}">${obra.nomenclatura} - (${obra.idobra})</div>`;
+        });
+        document.getElementById('count-hold').textContent = data.hold.length;
 
-        function calcularDiferencaDias(prazo) {
-            const dataAtual = new Date();
-            const prazoDate = new Date(prazo);
-            const diffTime = prazoDate - dataAtual;  // Diferença em milissegundos
-            return Math.ceil(diffTime / (1000 * 3600 * 24));  // Converte para dias
-        }
+        // Obras em Andamento
+        const andamentoCards = document.getElementById('andamento-cards');
+        andamentoCards.innerHTML = '';
+        data.andamento.forEach(obra => {
+            andamentoCards.innerHTML += `
+                <div class="kanban-card" id="${obra.idobra}">${obra.nomenclatura} - (${obra.idobra})</div>`;
+        });
+        document.getElementById('count-andamento').textContent = data.andamento.length;
 
-        function formatarData(data) {
-            const partes = data.split('-');  // Divide a data em partes (ano, mês, dia)
-            return `${partes[2]}/${partes[1]}/${partes[0]}`;  // Reorganiza para DD/MM/YYYY
-        }
-
-        // Iterar sobre os dados de obras e criar um card para cada obra
-
-        function criarCards(obras, painel) {
-
-
-            obras.forEach(item => {
-                const card = document.createElement('div');
-                card.classList.add('card'); // Adiciona a classe para estilo do card
-                card.setAttribute('idobra', item.idobra);
-
-                // Cria o cabeçalho do card
-                const cardHeader = document.createElement('div');
-                cardHeader.classList.add('card-header'); // Classe para o cabeçalho do card
-
-                const nomeObra = document.createElement('h3');
-                nomeObra.classList.add('nomeObra');
-                nomeObra.textContent = item.nomenclatura;
-
-                cardHeader.appendChild(nomeObra);
-
-                // Cria o cabeçalho do card
-                const cardMain = document.createElement('div');
-                cardMain.classList.add('card-main'); // Classe para o cabeçalho do card
-
-                const recebimento_arquivos = document.createElement('h4');
-                recebimento_arquivos.classList.add('liberado');
-                // liberado.textContent = `Arquivos: ${item.recebimento_arquivos} - ${item.recebimento_arquivos === '0000-00-00' ? 'Não' : 'Sim'}`;
-                recebimento_arquivos.textContent = `Arquivos: ${formatarData(item.recebimento_arquivos)}`;
-
-                const liberado = document.createElement('h4');
-                liberado.textContent = `Check: ${item.recebimento_arquivos === '0000-00-00' ? 'Não' : 'Sim'}`;
-
-                // const entrega = document.createElement('h4');
-                // entrega.textContent = item.status_ids;
-
-                const prazo = document.createElement('h4');
-                prazo.classList.add('prazo');
-                prazo.textContent = `Prazo: ${formatarData(item.prazo)}`;
-
-                // const porcentagem = document.createElement('h4');
-                // if (item.porcentagem_finalizada !== null) {
-                //     porcentagem.textContent = `${item.porcentagem_finalizada}%`;
-                // }
-
-                const statusObra = document.createElement('h4');
-                statusObra.classList.add('status-obra');
-                statusObra.textContent = item.status_obra; // Exibe "Alterações" ou "Prévias"
-
-                cardMain.appendChild(recebimento_arquivos);
-                cardMain.appendChild(liberado);
-                // cardMain.appendChild(entrega);
-                cardMain.appendChild(prazo);
-                cardMain.appendChild(statusObra);
-
-                // Calcular a diferença de dias
-                const diasRestantes = calcularDiferencaDias(item.prazo);
-
-                // Alterar a cor do card com base no prazo
-                if (item.recebimento_arquivos === '0000-00-00' && item.porcentagem_finalizada <= 0) {
-                    card.style.backgroundColor = '#1bd6f2'; // Azul
-                    card.style.color = '#fff';
-                } else {
-                    if (diasRestantes < 0) {
-                        // Prazo já passou
-                        card.style.backgroundColor = '#ff6f61'; // Vermelho
-                        card.style.color = '#fff';
-                    } else if (diasRestantes <= 3) {
-                        // Prazo próximo (3 dias ou menos)
-                        card.style.backgroundColor = '#f7b731'; // Amarelo
-                        card.style.color = '#333';
-                    } else {
-                        // Prazo distante
-                        card.style.backgroundColor = '#28a745'; // Verde
-                        card.style.color = '#fff';
-                    }
-                }
-
-
-
-                card.addEventListener('click', function () {
-                    const obraId = item.idobra;
-
-                    localStorage.setItem("obraId", obraId);
-                    document.getElementById('idObraOrcamento').value = obraId;
-
-
-                    document.getElementById('modalInfos').style.display = 'flex';
-
-                    fetch(`infosObra.php?obraId=${obraId}`)
-                        .then(response => response.json())
-                        .then(detalhes => {
-
-                            const obra = detalhes.obra;
-                            document.getElementById('nomenclatura').textContent = obra.nomenclatura || "Nome não disponível";
-                            document.getElementById('data_inicio').textContent = `Data de Início: ${obra.data_inicio}`;
-                            // document.getElementById('prazo').textContent = `Prazo: ${obra.prazo}`;
-                            document.getElementById('dias_trabalhados').innerHTML = obra.dias_trabalhados ? `<strong>${obra.dias_trabalhados}</strong> dias` : '';
-                            document.getElementById('total_imagens').textContent = `Total de Imagens: ${obra.total_imagens}`;
-                            document.getElementById('total_imagens_antecipadas').textContent = `Imagens Antecipadas: ${obra.total_imagens_antecipadas}`;
-
-                            const funcoes = detalhes.funcoes;
-                            const nomesFuncoes = funcoes.map(funcao => funcao.nome_funcao);
-                            const porcentagensFinalizadas = funcoes.map(funcao => parseFloat(funcao.porcentagem_finalizada));
-
-                            const funcoesDiv = document.getElementById('funcoes');
-                            funcoesDiv.innerHTML = "";
-                            detalhes.funcoes.forEach(funcao => {
-                                const funcaoDiv = document.createElement('div');
-                                funcaoDiv.classList.add('funcao');
-                                funcaoDiv.innerHTML = `
-                                <strong>${funcao.nome_funcao}</strong><br>
-                                Total de Imagens: ${funcao.total_imagens}<br>
-                                Imagens Finalizadas: ${funcao.funcoes_finalizadas}<br>
-                                Porcentagem Finalizada: ${funcao.porcentagem_finalizada}%<br><br>
-                            `;
-                                funcoesDiv.appendChild(funcaoDiv);
-                            });
-
-                            const prazosDiv = document.getElementById('prazos-list');
-
-                            // Limpa o conteúdo da div
-                            prazosDiv.innerHTML = "";
-
-                            // Agrupa os prazos por status
-                            const groupedPrazos = detalhes.prazos.reduce((acc, prazo) => {
-                                if (!acc[prazo.nome_status]) {
-                                    acc[prazo.nome_status] = [];
-                                }
-                                acc[prazo.nome_status].push({
-                                    prazo: prazo.prazo,
-                                    idsImagens: prazo.idImagens || [] // Use idImagens conforme o JSON retornado
-                                });
-                                return acc;
-                            }, {});
-
-                            // Renderiza os cards agrupados
-                            Object.entries(groupedPrazos).forEach(([status, prazos]) => {
-                                console.log('Status:', status, 'Prazos:', prazos);
-                                const prazoList = document.createElement('div');
-                                prazoList.classList.add('prazos');
-
-                                prazoList.innerHTML = `
-                                    <div class="prazo-card">
-                                        <p class="nome_status">${status}</p>
-                                        <ul>
-                                        ${prazos.map(prazo => `
-                                            <li 
-                                                data-ids="${(prazo.idsImagens || []).join(',')}" 
-                                                class="prazo-item">
-                                                ${formatarData(prazo.prazo)} - <strong>${prazo.idsImagens.length} imagens</strong>
-                                            </li>`).join("")}
-                                        </ul>
-                                    </div>
-                                    `;
-
-                                const prazoCard = prazoList.querySelector('.prazo-card');
-                                applyStatusImagem(prazoCard, status);
-                                prazosDiv.appendChild(prazoList);
-                            });
-
-
-
-                            const ctx = document.getElementById('graficoPorcentagem').getContext('2d');
-                            if (chartInstance) {
-                                chartInstance.destroy();
-                            }
-                            chartInstance = new Chart(ctx, {
-                                type: 'bar',
-                                data: {
-                                    labels: nomesFuncoes,
-                                    datasets: [{
-                                        label: 'Porcentagem de Conclusão (%)',
-                                        data: porcentagensFinalizadas,
-                                        backgroundColor: [
-                                            'rgba(54, 162, 235, 0.2)',  // Cor para a 1ª barra
-                                            'rgba(255, 99, 132, 0.2)',  // Cor para a 2ª barra
-                                            'rgba(255, 159, 64, 0.2)',  // Cor para a 3ª barra
-                                            'rgba(75, 192, 192, 0.2)',  // Cor para a 4ª barra
-                                            'rgba(153, 102, 255, 0.2)', // Cor para a 5ª barra
-                                            'rgba(255, 159, 64, 0.2)'   // Cor para a 6ª barra, e assim por diante
-                                        ],
-                                        borderColor: [
-                                            'rgba(54, 162, 235, 1)',  // Cor para a borda da 1ª barra
-                                            'rgba(255, 99, 132, 1)',  // Cor para a borda da 2ª barra
-                                            'rgba(255, 159, 64, 1)',  // Cor para a borda da 3ª barra
-                                            'rgba(75, 192, 192, 1)',  // Cor para a borda da 4ª barra
-                                            'rgba(153, 102, 255, 1)', // Cor para a borda da 5ª barra
-                                            'rgba(255, 159, 64, 1)'
-                                        ],
-                                        borderWidth: 1
-                                    }]
-                                },
-                                options: {
-                                    responsive: true,
-                                    scales: {
-                                        y: {
-                                            beginAtZero: true,
-                                            ticks: {
-                                                stepSize: 10
-                                            }
-                                        }
-                                    }
-                                }
-                            });
-                        })
-                        .catch(error => console.error('Erro ao carregar os detalhes da obra:', error));
-
-                });
-
-                card.appendChild(cardHeader);
-                card.appendChild(cardMain);
-                // card.appendChild(liberado);
-                // card.appendChild(entrega);
-                // card.appendChild(prazo);
-                // card.appendChild(statusObra);
-                // card.appendChild(porcentagem);
-                painel.appendChild(card);
-            });
-
-        }
-
-        criarCards(data.with_filter, painel);
-
-    })
-    .catch(error => console.error('Erro ao carregar os dados:', error));
+        // Obras Finalizadas
+        const finalizadasCards = document.getElementById('finalizadas-cards');
+        finalizadasCards.innerHTML = '';
+        data.finalizadas.forEach(obra => {
+            finalizadasCards.innerHTML += `
+                <div class="kanban-card" id="${obra.idobra}">${obra.nomenclatura} - (${obra.idobra})</div>`;
+        });
+        document.getElementById('count-finalizadas').textContent = data.finalizadas.length;
+    });
 
 
 function applyStatusImagem(cell, status) {

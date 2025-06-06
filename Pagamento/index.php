@@ -120,8 +120,7 @@ $conn->close();
 				</select>
 			</div>
 
-			<div class="tipo-imagem">
-				<h2>Função:</h2>
+			<div class="tipo-imagem" style="display: grid; grid-template-columns: repeat(3, 1fr);">
 
 				<div>
 					<input type="checkbox" name="Caderno" id="Caderno" onclick="filtrarTabela()">

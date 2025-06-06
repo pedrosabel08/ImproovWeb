@@ -353,7 +353,7 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
     doc.setFont("helvetica");
-    doc.setFontSize(12);
+    doc.setFontSize(10);
 
     let y = 30; // Posição inicial
     const maxHeight = 260; // Limite para a altura
@@ -416,7 +416,7 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
     y += 20; // Espaço após o título
 
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(12); // Tamanho padrão para o corpo do texto
+    doc.setFontSize(10); // Tamanho padrão para o corpo do texto
 
     // Parte 1: Texto do contrato
     // Definição das variáveis de texto
@@ -513,10 +513,10 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
     // // const novaTabelaHeaders = ['Extra', 'Valor'];
     // const novaTabelaHeaders = ['Categoria', 'Valor'];
     // const novaTabelaBody = [
-    //     ['Atendimento', '3000,00'],
-    //     // ['Reembolso almoço', '220,00'],
-    //     // ['Gasolina', '22,00'],
-    //     // ['Diaria Drone', '175,00'],
+    //     // ['Atendimento', '3000,00'],
+    //     ['Reembolso almoço', '114,00'],
+    //     ['Gasolina', '88,00'],
+    //     ['Diaria Drone', '525,00'],
     //     // ['Outros', '490,00']
     // ];
 

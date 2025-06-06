@@ -142,56 +142,22 @@ $conn->close();
             <?php endif; ?>
         </div>
 
-        <?php if ($nivel_acesso == 1): ?>
-
-            <div id="legenda" class="legenda">
-                <div class="legenda-item">
-                    <div class="cor" style="background-color: #ff6f61;"></div>
-                    <span>Prazo já passou</span>
-                </div>
-                <div class="legenda-item">
-                    <div class="cor" style="background-color: #f7b731;"></div>
-                    <span>Prazo próximo (3 dias ou menos)</span>
-                </div>
-                <div class="legenda-item">
-                    <div class="cor" style="background-color: #28a745;"></div>
-                    <span>Prazo distante</span>
-                </div>
-                <div class="legenda-item">
-                    <div class="cor" style="background-color: #1bd6f2;"></div>
-                    <span>Esperando arquivos</span>
-                </div>
+        <div class="kanban-board">
+            <div class="kanban-column hold">
+                <h3>Obras Paradas (<span id="count-hold">0</span>)</h3>
+                <div class="kanban-cards" id="hold-cards"></div>
             </div>
 
-            <!-- Para nível de acesso 1, exibe a div painel -->
-            <div id="painel"></div>
-            <button id="ver_todas" style="display: none;">Ver Todas</button>
-
-        <?php else: ?>
-            <!-- Para níveis superiores a 1, esconde a div painel e mostra outra div com as imagens pendentes -->
-            <div id="painel" style="display: none;"></div>
-            <div id="container">
-                <div class="grafico">
-                    <canvas id="graficoColab"></canvas>
-                </div>
-                <div class="img-container">
-                    <h2>Imagens</h2>
-                    <div id="imagens">
-                        <?php
-                        // Gerando as tags <p> com os dados do banco
-                        while ($row_imagens = $result_imagens->fetch_assoc()) {
-                            $imagem_nome = htmlspecialchars($row_imagens['imagem_nome']);
-                            $nome_obra = htmlspecialchars($row_imagens['nome_obra']);
-                            $prazo = htmlspecialchars($row_imagens['prazo']);
-
-                            echo "<p>$imagem_nome - $prazo</p>";
-                        }
-                        $conn->close();
-                        ?></div>
-                    <button id="ver_todas">Ver Todas</button>
-                </div>
+            <div class="kanban-column andamento">
+                <h3>Obras em Andamento (<span id="count-andamento">0</span>)</h3>
+                <div class="kanban-cards" id="andamento-cards"></div>
             </div>
-        <?php endif; ?>
+
+            <div class="kanban-column finalizadas">
+                <h3>Obras Finalizadas (<span id="count-finalizadas">0</span>)</h3>
+                <div class="kanban-cards" id="finalizadas-cards"></div>
+            </div>
+        </div>
 
         <div class="modalInfos" id="modalInfos">
             <div id="infos-obra">
@@ -244,33 +210,6 @@ $conn->close();
                     </div>
                 </div>
 
-                <!-- <?php
-                        // Exibir somente se o usuário tiver nível de acesso 1
-                        if (isset($_SESSION['logado']) && $_SESSION['logado'] === true && $_SESSION['nivel_acesso'] == 1) {
-                        ?>
-                    <div class="obra-valores">
-                        <div class="valor-item">
-                            <strong>Valor Orçamento:</strong>
-                            <span id="valor_orcamento"></span>
-                        </div>
-                        <div class="valor-item">
-                            <strong>Valor Produção:</strong>
-                            <span id="valor_producao"></span>
-                        </div>
-                        <div class="valor-item">
-                            <strong>Valor projetado:</strong>
-                            <span id="valor_fixo"></span>
-                        </div>
-                        <div class="valor-item">
-                            <strong>Lucro estimado (produção):</strong>
-                            <span id="lucro"></span>
-                        </div>
-                    </div>
-                <?php
-                        }
-                ?> -->
-
-
                 <div class="acompanhamentos">
                     <h1>Histórico</h1>
                     <button id="acomp" class="btnAcompObs">Acompanhamento</button>
@@ -281,107 +220,6 @@ $conn->close();
             </div>
         </div>
 
-
-        <div id="filtro-colab" class="modal">
-            <div class="modal-content" style="margin: auto; width: 80%; height: 80%;">
-
-                <button id="mostrarLogsBtn">Mostrar Logs</button>
-
-                <div class="labels">
-                    <div>
-                        <label for="dataInicio">Data Início:</label>
-                        <input type="date" id="dataInicio">
-                    </div>
-
-                    <div>
-                        <label for="dataFim">Data Fim:</label>
-                        <input type="date" id="dataFim">
-                    </div>
-
-                    <div>
-                        <label for="obra">Obra:</label>
-                        <select name="obraSelect" id="obraSelect">
-                            <option value="">Selecione:</option>
-                            <?php foreach ($obras as $obra): ?>
-                                <option value="<?= $obra['idobra']; ?>"><?= htmlspecialchars($obra['nome_obra']); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label for="funcaoSelect">Função:</label>
-                        <select id="funcaoSelect">
-                            <option value="0">Selecione a Função:</option>
-                            <?php foreach ($funcoes as $funcao): ?>
-                                <option value="<?= htmlspecialchars($funcao['idfuncao']); ?>">
-                                    <?= htmlspecialchars($funcao['nome_funcao']); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label for="statusSelect">Status:</label>
-                        <select id="statusSelect">
-                            <option value="0">Selecione um status:</option>
-                            <option value="Não iniciado">Não iniciado</option>
-                            <option value="Em andamento">Em andamento</option>
-                            <option value="Finalizado">Finalizado</option>
-                            <option value="HOLD">HOLD</option>
-                            <option value="Não se aplica">Não se aplica</option>
-                            <option value="Em aprovação">Em aprovação</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="image-count">
-                    <strong>Total de Imagens:</strong> <span id="totalImagens">0</span>
-                </div>
-
-                <div class="table-container" style="max-height: 60vh; overflow-y: auto; margin-top: 30px;">
-                    <table id="tabela-colab" style="width: 100%;">
-                        <thead>
-                            <tr>
-                                <th id="nome">Nome da Imagem</th>
-                                <th>Função</th>
-                                <th>Status</th>
-                                <th>Prazo</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                        </tbody>
-                    </table>
-                </div>
-                <div id="modalLogs" class="modal">
-                    <div class="modal-content-log">
-                        <span class="close">&times;</span>
-                        <h2>Logs de Alterações</h2>
-                        <table id="tabela-logs">
-                            <thead>
-                                <tr>
-                                    <th>Imagem</th>
-                                    <th>Obra</th>
-                                    <th>Status Anterior</th>
-                                    <th>Status Novo</th>
-                                    <th>Data</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-            </div>
-        </div>
-
-
-        <!-- <div class="graficos">
-                        <canvas id="graficoProducao"></canvas>
-                        <canvas id="graficoOrcamento"></canvas>
-                        <canvas id="graficoPercentual"></canvas>
-                    </div> -->
     </div>
 
     <script>

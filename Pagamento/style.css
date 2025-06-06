@@ -124,6 +124,7 @@ button, a {
 	padding: 3px;
 	font-weight: 400;
 	border: 1px solid #2C003E;
+	text-align: center;
 }
 
 #table-list table td {
@@ -131,6 +132,10 @@ button, a {
 	text-align: center;
 	padding: 3px;
 	color: #000000;
+}
+
+#table-list tbody {
+	font-size: 14px;
 }
 
 #graficos-tarefas {

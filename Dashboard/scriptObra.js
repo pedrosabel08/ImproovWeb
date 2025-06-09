@@ -381,6 +381,14 @@ function adjustHeight(textarea) {
     textarea.style.height = `${textarea.scrollHeight + 10}px`; // Aumenta 10px para cada linha adicional
 }
 
+
+const totaisPorFuncao = {};
+const funcoes = ['caderno', 'filtro', 'modelagem', 'composicao', 'pre', 'finalizacao', 'pos_producao', 'alteracao', 'planta'];
+
+funcoes.forEach(func => {
+    totaisPorFuncao[func] = { total: 0, validos: 0 };
+});
+
 // Verifica se obraId está presente no localStorage
 if (obraId) {
     infosObra(obraId);
@@ -499,17 +507,36 @@ function infosObra(obraId) {
                     { col: 'planta', label: 'Planta' }
                 ];
 
-                colunas.forEach(function (coluna) {
-                    var cellColaborador = document.createElement('td');
-                    var cellStatus = document.createElement('td');
-                    cellColaborador.textContent = item[`${coluna.col}_colaborador`] || '-';
-                    cellStatus.textContent = item[`${coluna.col}_status`] || '-';
+
+                colunas.forEach(coluna => {
+                    const colaborador = item[`${coluna.col}_colaborador`] || '-';
+                    const status = item[`${coluna.col}_status`] || '-';
+
+                    const cellColaborador = document.createElement('td');
+                    cellColaborador.textContent = colaborador;
+
+                    const cellStatus = document.createElement('td');
+                    cellStatus.textContent = status;
+
                     row.appendChild(cellColaborador);
                     row.appendChild(cellStatus);
 
-                    applyStyleNone(cellColaborador, cellStatus, item[`${coluna.col}_colaborador`]);
-                    applyStatusStyle(cellStatus, item[`${coluna.col}_status`], item[`${coluna.col}_colaborador`]);
+                    applyStyleNone(cellColaborador, cellStatus, colaborador);
+                    applyStatusStyle(cellStatus, status, colaborador);
+
+
+                    const statusNormalizado = status.trim().toLowerCase();
+                    const statusValidos = ['em aprovação', 'aprovado', 'ajuste', 'finalizado', 'aprovado com ajustes'];
+
+                    if (colaborador !== '-' && colaborador !== 'Não se aplica') {
+                        totaisPorFuncao[coluna.col].total++;
+                        if (statusValidos.includes(statusNormalizado)) {
+                            totaisPorFuncao[coluna.col].validos++;
+                        }
+                    }
+
                 });
+
 
                 tabela.appendChild(row);
             });
@@ -853,6 +880,73 @@ function infosObra(obraId) {
 
         })
         .catch(error => console.error('Erro ao carregar funções:', error));
+}
+
+var colunas = [
+    { col: 'caderno', label: 'Caderno' },
+    { col: 'filtro', label: 'Filtro' },
+    { col: 'modelagem', label: 'Modelagem' },
+    { col: 'composicao', label: 'Composição' },
+    { col: 'pre', label: 'Pré-Finalização' },
+    { col: 'finalizacao', label: 'Finalização' },
+    { col: 'pos_producao', label: 'Pós Produção' },
+    { col: 'alteracao', label: 'Alteração' },
+    { col: 'planta', label: 'Planta' }
+];
+
+function inicializarLinhaPorcentagem() {
+    const linhaPorcentagem = document.getElementById('linha-porcentagem');
+    linhaPorcentagem.innerHTML = '';
+
+    // 3 colunas fixas (imagem, status geral, prazo)
+    for (let i = 0; i < 3; i++) {
+        linhaPorcentagem.appendChild(document.createElement('td'));
+    }
+
+    // Duas <td> para cada função (colaborador e status)
+    colunas.forEach(() => {
+        linhaPorcentagem.appendChild(document.createElement('td')); // colaborador
+        linhaPorcentagem.appendChild(document.createElement('td')); // status
+    });
+
+    // linhaPorcentagem.style.display = 'table-row';
+}
+inicializarLinhaPorcentagem();
+
+
+function mostrarPorcentagem(funcaoSelecionada) {
+    const linhaPorcentagem = document.getElementById('linha-porcentagem');
+    if (!linhaPorcentagem) {
+        console.error('Elemento linha-porcentagem não encontrado.');
+        return;
+    }
+
+    const totais = totaisPorFuncao[funcaoSelecionada];
+    if (!totais) {
+        console.error(`totaisPorFuncao[${funcaoSelecionada}] indefinido`);
+        return;
+    }
+    const { total, validos } = totais;
+    const porcentagem = total > 0 ? Math.round((validos / total) * 100) : 0;
+
+    const indexFuncao = colunas.findIndex(c => c.col === funcaoSelecionada);
+    if (indexFuncao === -1) {
+        console.error(`Função '${funcaoSelecionada}' não encontrada no array colunas.`);
+        return;
+    }
+    const indexTd = 3 + (indexFuncao * 2) + 1;
+
+    linhaPorcentagem.querySelectorAll('td').forEach(td => td.textContent = '');
+
+    const tdAlvo = linhaPorcentagem.children[indexTd];
+    if (!tdAlvo) {
+        console.error(`tdAlvo undefined no índice ${indexTd}`);
+        return;
+    }
+
+    tdAlvo.textContent = porcentagem + '%';
+    tdAlvo.style.fontWeight = 'bold';
+    tdAlvo.style.color = '#007bff';
 }
 
 
@@ -2867,3 +2961,157 @@ function updateEvent(event) {
         })
         .catch(err => showToast(err.message, false));
 }
+
+
+async function gerarFollowUpPDF() {
+    const { jsPDF } = window.jspdf;
+
+    const doc = new jsPDF({
+        orientation: 'landscape',
+    });
+
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 14;
+    const usableWidth = pageWidth - 2 * margin;
+    let currentY = 20;
+
+    const nomenclatura = document.getElementById('nomenclatura').textContent;
+
+    const title = `Olá pessoal do ${nomenclatura},\nSeguem as informações atualizadas sobre o status do seu projeto. Qualquer dúvida ou necessidade de ajuste, estamos à disposição.\n\n`;
+    const legenda = `P00 - Envio em Toon: Primeira versão conceitual do projeto, enviada com estilo gráfico simplificado para avaliação inicial.
+\nR00 - Primeiro Envio: Primeira entrega completa, após ajustes da versão inicial.
+\nR01, R02, etc. - Revisão Enviada: Número de revisões enviadas, indicando cada versão revisada do projeto.
+\nEF - Entrega Final: Projeto concluído e aprovado em sua versão final.
+\nHOLD - Falta de Arquivos: O projeto está temporariamente parado devido à ausência de arquivos ou informações necessárias. O prazo de entrega também ficará pausado até o recebimento dos arquivos para darmos continuidade ao trabalho.
+\nREN - Imagem sendo renderizada: O processo de geração da imagem está em andamento.
+\nAPR - Imagem em aprovação: A imagem foi gerada e está aguardando aprovação.
+\nOK - Imagem pronta para o desenvolvimento: A imagem foi aprovada e está pronta para a fase de desenvolvimento.
+`;
+
+    const imgPath = '../assets/logo.jpg';
+
+    fetch(imgPath)
+        .then(response => response.blob())
+        .then(blob => {
+            const reader = new FileReader();
+            reader.onloadend = function () {
+                const imgData = reader.result;
+
+                // Logo
+                doc.addImage(imgData, 'PNG', margin, currentY, 40, 40);
+                currentY += 50;
+
+                // Title
+                doc.setFontSize(14);
+                doc.setTextColor(0, 0, 0);
+                const titleLines = doc.splitTextToSize(title, usableWidth);
+                doc.text(titleLines, margin, currentY);
+                currentY += titleLines.length * 6;
+
+                // Legenda
+                doc.setFontSize(10);
+                const legendaLines = doc.splitTextToSize(legenda, usableWidth);
+                legendaLines.forEach(line => {
+                    if (currentY >= doc.internal.pageSize.getHeight() - margin) {
+                        doc.addPage();
+                        currentY = margin;
+                    }
+                    doc.text(line, margin, currentY);
+                    currentY += 6;
+                });
+
+                const table = document.getElementById('tabela-obra');
+                const rows = [];
+                const headers = [];
+
+                table.querySelectorAll('thead tr th').forEach((header, index) => {
+                    if (index < 3) headers.push(header.innerText.trim());
+                });
+
+                table.querySelectorAll('tbody tr').forEach(row => {
+                    const rowData = [];
+                    row.querySelectorAll('td').forEach((cell, index) => {
+                        if (index < 3) rowData.push(cell.innerText.trim());
+                    });
+                    rows.push(rowData);
+                });
+
+                doc.autoTable({
+                    head: [headers],
+                    body: rows,
+                    startY: currentY
+                });
+
+                const listAcompDiv = document.getElementById('list_acomp');
+                if (listAcompDiv) {
+                    const acompBlocks = listAcompDiv.querySelectorAll('.acomp-conteudo');
+                    const pageHeight = doc.internal.pageSize.getHeight();
+                    const margin = 14;
+                    let y = doc.lastAutoTable.finalY + 30;
+
+                    if (acompBlocks.length > 0) {
+                        doc.setFontSize(16);
+                        doc.setTextColor(0, 0, 0);
+                        doc.setFont(undefined, 'bold'); // negrito para o título
+                        doc.text("Histórico:", margin, y);
+                        y += 8;
+                        doc.setTextColor(0, 0, 0);
+
+                        acompBlocks.forEach(block => {
+                            const assuntoEl = block.querySelector('.acomp-assunto');
+                            const dataEl = block.querySelector('.acomp-data');
+
+                            const assunto = assuntoEl ? assuntoEl.innerText.trim() : '';
+                            const data = dataEl ? dataEl.innerText.trim() : '';
+
+                            const assuntoLines = doc.splitTextToSize(assunto, usableWidth);
+                            const dataLines = doc.splitTextToSize(data, 260);
+
+                            // Estimar altura total do bloco (assunto + data + espaço entre linhas)
+                            const blocoAltura = (assuntoLines.length * 6) + (dataLines.length * 5) + 6; // assunto + data + espaçamento
+
+                            // Se não couber, adiciona nova página
+                            if (y + blocoAltura > pageHeight - 10) {
+                                doc.addPage();
+                                y = margin;
+                            }
+
+                            // Renderizar assunto
+                            doc.setFontSize(11);
+                            doc.setFont(undefined, 'bold');
+                            assuntoLines.forEach(line => {
+                                doc.text(line, margin, y);
+                                y += 6;
+                            });
+
+                            // Renderizar data
+                            doc.setFontSize(10);
+                            doc.setFont(undefined, 'normal');
+                            dataLines.forEach(line => {
+                                doc.text(line, margin, y);
+                                y += 5;
+                            });
+
+                            y += 6; // espaço entre blocos
+                        });
+                    } else {
+                        console.warn("Nenhum .acomp-conteudo encontrado dentro de #list_acomp.");
+                    }
+                } else {
+                    console.warn("A div#list_acomp não foi encontrada no DOM.");
+                }
+
+                const hoje = new Date();
+                const dia = String(hoje.getDate()).padStart(2, '0');
+                const mes = String(hoje.getMonth() + 1).padStart(2, '0'); // Janeiro é 0
+                const ano = hoje.getFullYear();
+
+                const dataFormatada = `${dia}/${mes}/${ano}`;
+
+                doc.save(`${nomenclatura}-${dataFormatada}.pdf`);
+            }
+            reader.readAsDataURL(blob);
+        })
+        .catch(error => console.error('Erro ao carregar a imagem:', error));
+}
+

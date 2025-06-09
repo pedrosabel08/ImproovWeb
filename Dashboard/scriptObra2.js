@@ -50,6 +50,11 @@ function formatarData(data) {
     const dataFormatada = `${partes[2]}/${partes[1]}/${partes[0]}`;
     return dataFormatada;
 }
+function formatarDataDiaMes(data) {
+    const partes = data.split("-");
+    const dataFormatada = `${partes[2]}/${partes[1]}`;
+    return dataFormatada;
+}
 
 
 function limparCampos() {
@@ -58,44 +63,35 @@ function limparCampos() {
     document.getElementById("status_caderno").value = "";
     document.getElementById("prazo_caderno").value = "";
     document.getElementById("obs_caderno").value = "";
-    document.getElementById("check_caderno").checked = false;
     document.getElementById("status_modelagem").value = "";
     document.getElementById("prazo_modelagem").value = "";
     document.getElementById("obs_modelagem").value = "";
-    document.getElementById("check_modelagem").checked = false;
     document.getElementById("status_comp").value = "";
     document.getElementById("prazo_comp").value = "";
     document.getElementById("obs_comp").value = "";
-    document.getElementById("check_comp").checked = false;
     document.getElementById("status_pre").value = "";
     document.getElementById("prazo_pre").value = "";
     document.getElementById("obs_pre").value = "";
-    document.getElementById("check_pre").checked = false;
     document.getElementById("status_finalizacao").value = "";
     document.getElementById("prazo_finalizacao").value = "";
     document.getElementById("obs_finalizacao").value = "";
-    document.getElementById("check_finalizacao").checked = false;
     document.getElementById("status_pos").value = "";
     document.getElementById("prazo_pos").value = "";
     document.getElementById("obs_pos").value = "";
-    document.getElementById("check_pos").checked = false;
     document.getElementById("status_alteracao").value = "";
     document.getElementById("prazo_alteracao").value = "";
     document.getElementById("obs_alteracao").value = "";
-    document.getElementById("check_alteracao").checked = false;
     document.getElementById("status_planta").value = "";
     document.getElementById("prazo_planta").value = "";
     document.getElementById("obs_planta").value = "";
-    document.getElementById("check_planta").checked = false;
     document.getElementById("status_filtro").value = "";
     document.getElementById("prazo_filtro").value = "";
     document.getElementById("obs_filtro").value = "";
-    document.getElementById("check_filtro").checked = false;
 
     document.getElementById("opcao_caderno").value = "";
-    document.getElementById("opcao_modelagem").value = "";
+    document.getElementById("opcao_model").value = "";
     document.getElementById("opcao_comp").value = "";
-    document.getElementById("opcao_finalizacao").value = "";
+    document.getElementById("opcao_final").value = "";
     document.getElementById("opcao_pos").value = "";
     document.getElementById("opcao_alteracao").value = "";
     document.getElementById("opcao_planta").value = "";
@@ -115,7 +111,6 @@ function limparCampos() {
 let idsImagensObra = []; // Array para armazenar os IDs das imagens da obra
 let indiceImagemAtual = 0; // Índice da imagem atualmente exibida no modal
 let linhasTabela = [];
-let valoresOriginais = {};
 
 function addEventListenersToRows() {
 
@@ -139,8 +134,6 @@ function addEventListenersToRows() {
 
             const idImagemSelecionada = linha.getAttribute("data-id");
             document.getElementById("imagem_id").value = idImagemSelecionada;
-
-            valoresOriginais = {};
 
             // Encontrar o índice da imagem clicada no array de IDs
             indiceImagemAtual = idsImagensObra.indexOf(parseInt(idImagemSelecionada));
@@ -176,84 +169,66 @@ function atualizarModal(idImagem) {
                     switch (funcao.nome_funcao) {
                         case "Caderno":
                             selectElement = document.getElementById("opcao_caderno");
-                            checkboxElement = document.getElementById("check_caderno");
                             document.getElementById("status_caderno").value = funcao.status;
                             document.getElementById("prazo_caderno").value = funcao.prazo;
                             document.getElementById("obs_caderno").value = funcao.observacao;
-                            checkboxElement.checked = funcao.check_funcao === '1';
                             revisaoImagemElement = document.getElementById("revisao_imagem_caderno");
                             break;
                         case "Modelagem":
-                            selectElement = document.getElementById("opcao_modelagem");
-                            checkboxElement = document.getElementById("check_modelagem");
+                            selectElement = document.getElementById("opcao_model");
                             document.getElementById("status_modelagem").value = funcao.status;
                             document.getElementById("prazo_modelagem").value = funcao.prazo;
                             document.getElementById("obs_modelagem").value = funcao.observacao;
-                            checkboxElement.checked = funcao.check_funcao === '1';
                             revisaoImagemElement = document.getElementById("revisao_imagem_model");
                             break;
                         case "Composição":
                             selectElement = document.getElementById("opcao_comp");
-                            checkboxElement = document.getElementById("check_comp");
                             document.getElementById("status_comp").value = funcao.status;
                             document.getElementById("prazo_comp").value = funcao.prazo;
                             document.getElementById("obs_comp").value = funcao.observacao;
-                            checkboxElement.checked = funcao.check_funcao === '1';
                             revisaoImagemElement = document.getElementById("revisao_imagem_comp");
 
                             break;
                         case "Finalização":
-                            selectElement = document.getElementById("opcao_finalizacao");
-                            checkboxElement = document.getElementById("check_finalizacao");
+                            selectElement = document.getElementById("opcao_final");
                             document.getElementById("status_finalizacao").value = funcao.status;
                             document.getElementById("prazo_finalizacao").value = funcao.prazo;
                             document.getElementById("obs_finalizacao").value = funcao.observacao;
-                            checkboxElement.checked = funcao.check_funcao === '1';
                             revisaoImagemElement = document.getElementById("revisao_imagem_final");
                             break;
                         case "Pós-produção":
                             selectElement = document.getElementById("opcao_pos");
-                            checkboxElement = document.getElementById("check_pos");
                             document.getElementById("status_pos").value = funcao.status;
                             document.getElementById("prazo_pos").value = funcao.prazo;
                             document.getElementById("obs_pos").value = funcao.observacao;
-                            checkboxElement.checked = funcao.check_funcao === '1';
                             revisaoImagemElement = document.getElementById("revisao_imagem_pos");
                             break;
                         case "Alteração":
                             selectElement = document.getElementById("opcao_alteracao");
-                            checkboxElement = document.getElementById("check_alteracao");
                             document.getElementById("status_alteracao").value = funcao.status;
                             document.getElementById("prazo_alteracao").value = funcao.prazo;
                             document.getElementById("obs_alteracao").value = funcao.observacao;
-                            checkboxElement.checked = funcao.check_funcao === '1';
                             revisaoImagemElement = document.getElementById("revisao_imagem_alt");
                             break;
                         case "Planta Humanizada":
                             selectElement = document.getElementById("opcao_planta");
-                            checkboxElement = document.getElementById("check_planta");
                             document.getElementById("status_planta").value = funcao.status;
                             document.getElementById("prazo_planta").value = funcao.prazo;
                             document.getElementById("obs_planta").value = funcao.observacao;
-                            checkboxElement.checked = funcao.check_funcao === '1';
                             revisaoImagemElement = document.getElementById("revisao_imagem_ph");
                             break;
                         case "Filtro de assets":
                             selectElement = document.getElementById("opcao_filtro");
-                            checkboxElement = document.getElementById("check_filtro");
                             document.getElementById("status_filtro").value = funcao.status;
                             document.getElementById("prazo_filtro").value = funcao.prazo;
                             document.getElementById("obs_filtro").value = funcao.observacao;
-                            checkboxElement.checked = funcao.check_funcao === '1';
                             revisaoImagemElement = document.getElementById("revisao_imagem_filtro");
                             break;
                         case "Pré-Finalização":
                             selectElement = document.getElementById("opcao_pre");
-                            checkboxElement = document.getElementById("check_pre");
                             document.getElementById("status_pre").value = funcao.status;
                             document.getElementById("prazo_pre").value = funcao.prazo;
                             document.getElementById("obs_pre").value = funcao.observacao;
-                            checkboxElement.checked = funcao.check_funcao === '1';
                             revisaoImagemElement = document.getElementById("revisao_imagem_pre");
                             break;
                     }
@@ -406,6 +381,14 @@ function adjustHeight(textarea) {
     textarea.style.height = `${textarea.scrollHeight + 10}px`; // Aumenta 10px para cada linha adicional
 }
 
+
+const totaisPorFuncao = {};
+const funcoes = ['caderno', 'filtro', 'modelagem', 'composicao', 'pre', 'finalizacao', 'pos_producao', 'alteracao', 'planta'];
+
+funcoes.forEach(func => {
+    totaisPorFuncao[func] = { total: 0, validos: 0 };
+});
+
 // Verifica se obraId está presente no localStorage
 if (obraId) {
     infosObra(obraId);
@@ -509,7 +492,7 @@ function infosObra(obraId) {
 
 
                 var cellPrazo = document.createElement('td');
-                cellPrazo.textContent = formatarData(item.prazo);
+                cellPrazo.textContent = formatarDataDiaMes(item.prazo);
                 row.appendChild(cellPrazo);
 
                 var colunas = [
@@ -524,17 +507,36 @@ function infosObra(obraId) {
                     { col: 'planta', label: 'Planta' }
                 ];
 
-                colunas.forEach(function (coluna) {
-                    var cellColaborador = document.createElement('td');
-                    var cellStatus = document.createElement('td');
-                    cellColaborador.textContent = item[`${coluna.col}_colaborador`] || '-';
-                    cellStatus.textContent = item[`${coluna.col}_status`] || '-';
+
+                colunas.forEach(coluna => {
+                    const colaborador = item[`${coluna.col}_colaborador`] || '-';
+                    const status = item[`${coluna.col}_status`] || '-';
+
+                    const cellColaborador = document.createElement('td');
+                    cellColaborador.textContent = colaborador;
+
+                    const cellStatus = document.createElement('td');
+                    cellStatus.textContent = status;
+
                     row.appendChild(cellColaborador);
                     row.appendChild(cellStatus);
 
-                    applyStyleNone(cellColaborador, cellStatus, item[`${coluna.col}_colaborador`]);
-                    applyStatusStyle(cellStatus, item[`${coluna.col}_status`], item[`${coluna.col}_colaborador`]);
+                    applyStyleNone(cellColaborador, cellStatus, colaborador);
+                    applyStatusStyle(cellStatus, status, colaborador);
+
+
+                    const statusNormalizado = status.trim().toLowerCase();
+                    const statusValidos = ['em aprovação', 'aprovado', 'ajuste', 'finalizado', 'aprovado com ajustes'];
+
+                    if (colaborador !== '-' && colaborador !== 'Não se aplica') {
+                        totaisPorFuncao[coluna.col].total++;
+                        if (statusValidos.includes(statusNormalizado)) {
+                            totaisPorFuncao[coluna.col].validos++;
+                        }
+                    }
+
                 });
+
 
                 tabela.appendChild(row);
             });
@@ -880,6 +882,73 @@ function infosObra(obraId) {
         .catch(error => console.error('Erro ao carregar funções:', error));
 }
 
+var colunas = [
+    { col: 'caderno', label: 'Caderno' },
+    { col: 'filtro', label: 'Filtro' },
+    { col: 'modelagem', label: 'Modelagem' },
+    { col: 'composicao', label: 'Composição' },
+    { col: 'pre', label: 'Pré-Finalização' },
+    { col: 'finalizacao', label: 'Finalização' },
+    { col: 'pos_producao', label: 'Pós Produção' },
+    { col: 'alteracao', label: 'Alteração' },
+    { col: 'planta', label: 'Planta' }
+];
+
+function inicializarLinhaPorcentagem() {
+    const linhaPorcentagem = document.getElementById('linha-porcentagem');
+    linhaPorcentagem.innerHTML = '';
+
+    // 3 colunas fixas (imagem, status geral, prazo)
+    for (let i = 0; i < 3; i++) {
+        linhaPorcentagem.appendChild(document.createElement('td'));
+    }
+
+    // Duas <td> para cada função (colaborador e status)
+    colunas.forEach(() => {
+        linhaPorcentagem.appendChild(document.createElement('td')); // colaborador
+        linhaPorcentagem.appendChild(document.createElement('td')); // status
+    });
+
+    // linhaPorcentagem.style.display = 'table-row';
+}
+inicializarLinhaPorcentagem();
+
+
+function mostrarPorcentagem(funcaoSelecionada) {
+    const linhaPorcentagem = document.getElementById('linha-porcentagem');
+    if (!linhaPorcentagem) {
+        console.error('Elemento linha-porcentagem não encontrado.');
+        return;
+    }
+
+    const totais = totaisPorFuncao[funcaoSelecionada];
+    if (!totais) {
+        console.error(`totaisPorFuncao[${funcaoSelecionada}] indefinido`);
+        return;
+    }
+    const { total, validos } = totais;
+    const porcentagem = total > 0 ? Math.round((validos / total) * 100) : 0;
+
+    const indexFuncao = colunas.findIndex(c => c.col === funcaoSelecionada);
+    if (indexFuncao === -1) {
+        console.error(`Função '${funcaoSelecionada}' não encontrada no array colunas.`);
+        return;
+    }
+    const indexTd = 3 + (indexFuncao * 2) + 1;
+
+    linhaPorcentagem.querySelectorAll('td').forEach(td => td.textContent = '');
+
+    const tdAlvo = linhaPorcentagem.children[indexTd];
+    if (!tdAlvo) {
+        console.error(`tdAlvo undefined no índice ${indexTd}`);
+        return;
+    }
+
+    tdAlvo.textContent = porcentagem + '%';
+    tdAlvo.style.fontWeight = 'bold';
+    tdAlvo.style.color = '#007bff';
+}
+
 
 // Criar funções separadas para evitar problemas de referência
 function navegarAnterior() {
@@ -1165,43 +1234,6 @@ $(document).ready(function () {
 });
 
 
-document.querySelectorAll('.funcao_comp').forEach(funcaoComp => {
-    const parametro = funcaoComp.dataset.parametro; // 'caderno', 'filtro', etc.
-    if (!parametro) return;
-
-    // Inicializa o grupo no objeto
-    if (!valoresOriginais[parametro]) {
-        valoresOriginais[parametro] = {};
-    }
-
-    // Adiciona listeners para inputs e selects
-    funcaoComp.querySelectorAll('input, select').forEach(elemento => {
-        elemento.addEventListener("change", () => {
-            if (!valoresOriginais[parametro]) {
-                valoresOriginais[parametro] = {};
-            }
-
-            const campoId = elemento.id;
-            if (!campoId) return;
-
-            const campos = funcaoComp.querySelectorAll('input, select');
-            campos.forEach(el => {
-                const idCampo = el.id;
-                if (!idCampo) return;
-
-                if (el.type === "checkbox") {
-                    valoresOriginais[parametro][idCampo] = el.checked ? 1 : 0;
-                } else {
-                    valoresOriginais[parametro][idCampo] = el.value || "";
-                }
-            });
-
-            console.log("Valores atualizados:", valoresOriginais);
-        });
-    });
-});
-
-
 document.getElementById("salvar_funcoes").addEventListener("click", function (event) {
     event.preventDefault();
 
@@ -1220,7 +1252,6 @@ document.getElementById("salvar_funcoes").addEventListener("click", function (ev
     }
 
     var idImagemSelecionada = linhaSelecionada.getAttribute("data-id");
-
 
     var form = document.getElementById("form-add");
     var camposPrazo = form.querySelectorAll("input[type='date'][required]");
@@ -1250,23 +1281,55 @@ document.getElementById("salvar_funcoes").addEventListener("click", function (ev
         textos[p.id] = p.textContent.trim();
     });
 
+    const dados = {
+        imagem_id: idImagemSelecionada,
+        caderno_id: document.getElementById("opcao_caderno").value || "",
+        status_caderno: document.getElementById("status_caderno").value || "",
+        prazo_caderno: document.getElementById("prazo_caderno").value || "",
+        obs_caderno: document.getElementById("obs_caderno").value || "",
+        comp_id: document.getElementById("opcao_comp").value || "",
+        status_comp: document.getElementById("status_comp").value || "",
+        prazo_comp: document.getElementById("prazo_comp").value || "",
+        obs_comp: document.getElementById("obs_comp").value || "",
+        modelagem_id: document.getElementById("opcao_model").value || "",
+        status_modelagem: document.getElementById("status_modelagem").value || "",
+        prazo_modelagem: document.getElementById("prazo_modelagem").value || "",
+        obs_modelagem: document.getElementById("obs_modelagem").value || "",
+        finalizacao_id: document.getElementById("opcao_final").value || "",
+        status_finalizacao: document.getElementById("status_finalizacao").value || "",
+        prazo_finalizacao: document.getElementById("prazo_finalizacao").value || "",
+        obs_finalizacao: document.getElementById("obs_finalizacao").value || "",
+        pre_id: document.getElementById("opcao_pre").value || "",
+        status_pre: document.getElementById("status_pre").value || "",
+        prazo_pre: document.getElementById("prazo_pre").value || "",
+        obs_pre: document.getElementById("obs_pre").value || "",
+        pos_id: document.getElementById("opcao_pos").value || "",
+        status_pos: document.getElementById("status_pos").value || "",
+        prazo_pos: document.getElementById("prazo_pos").value || "",
+        obs_pos: document.getElementById("obs_pos").value || "",
+        alteracao_id: document.getElementById("opcao_alteracao").value || "",
+        status_alteracao: document.getElementById("status_alteracao").value || "",
+        prazo_alteracao: document.getElementById("prazo_alteracao").value || "",
+        obs_alteracao: document.getElementById("obs_alteracao").value || "",
+        planta_id: document.getElementById("opcao_planta").value || "",
+        status_planta: document.getElementById("status_planta").value || "",
+        prazo_planta: document.getElementById("prazo_planta").value || "",
+        obs_planta: document.getElementById("obs_planta").value || "",
+        filtro_id: document.getElementById("opcao_filtro").value || "",
+        status_filtro: document.getElementById("status_filtro").value || "",
+        prazo_filtro: document.getElementById("prazo_filtro").value || "",
+        obs_filtro: document.getElementById("obs_filtro").value || "",
+        textos: textos,
+        status_id: document.getElementById("opcao_status").value || ""
+    };
 
     const loadingBar = document.getElementById('loadingBar');
     loadingBar.style.display = 'block'; // mostra a barra
 
-
-    const dados = {
-        imagem_id: idImagemSelecionada,
-        valoresOriginais,
-        status_id: document.getElementById("opcao_status").value || ""
-
-    };
-
-
     function enviarFormulario() {
         $.ajax({
             type: "POST",
-            url: "https://www.improov.com.br/sistema/insereFuncao2.php",
+            url: "https://www.improov.com.br/sistema/insereFuncao.php",
             data: dados,
             success: function (response) {
                 Toastify({
@@ -1278,7 +1341,6 @@ document.getElementById("salvar_funcoes").addEventListener("click", function (ev
                     backgroundColor: "green",
                     stopOnFocus: true,
                 }).showToast();
-                console.log("Dados enviados:", dados);
             },
             error: function (jqXHR, textStatus, errorThrown) {
                 console.error("Erro ao salvar dados: " + textStatus, errorThrown);
@@ -2306,6 +2368,12 @@ document.getElementById("addRender").addEventListener("click", function (event) 
                             document.getElementById("opcao_status_pos").value = statusValue;
                         }
 
+                        const pos = document.getElementById("opcao_pos").value;
+                        if (pos) {
+                            document.getElementById("responsavel_id").value = pos;
+
+                        }
+
                         document.getElementById("render_id_pos").value = idRenderAdicionado;
 
                         const form_edicao = document.getElementById("form-edicao");
@@ -2332,7 +2400,7 @@ document.getElementById("addRender").addEventListener("click", function (event) 
     };
 
     const opcaoAlt = document.getElementById("opcao_alteracao").value;
-    const opcaoFinal = opcaoAlt.trim() !== "" ? opcaoAlt : document.getElementById("opcao_finalizacao").value;
+    const opcaoFinal = opcaoAlt.trim() !== "" ? opcaoAlt : document.getElementById("opcao_final").value;
 
     const data = {
         imagem_id: idImagemSelecionada,
@@ -2892,4 +2960,157 @@ function updateEvent(event) {
             showToast(res.message);
         })
         .catch(err => showToast(err.message, false));
+}
+
+
+async function gerarFollowUpPDF() {
+    const { jsPDF } = window.jspdf;
+
+    const doc = new jsPDF({
+        orientation: 'landscape',
+    });
+
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 14;
+    const usableWidth = pageWidth - 2 * margin;
+    let currentY = 20;
+
+    const nomenclatura = document.getElementById('nomenclatura').textContent;
+
+    const title = `Olá pessoal do ${nomenclatura},\nSeguem as informações atualizadas sobre o status do seu projeto. Qualquer dúvida ou necessidade de ajuste, estamos à disposição.\n\n`;
+    const legenda = `P00 - Envio em Toon: Primeira versão conceitual do projeto, enviada com estilo gráfico simplificado para avaliação inicial.
+\nR00 - Primeiro Envio: Primeira entrega completa, após ajustes da versão inicial.
+\nR01, R02, etc. - Revisão Enviada: Número de revisões enviadas, indicando cada versão revisada do projeto.
+\nEF - Entrega Final: Projeto concluído e aprovado em sua versão final.
+\nHOLD - Falta de Arquivos: O projeto está temporariamente parado devido à ausência de arquivos ou informações necessárias. O prazo de entrega também ficará pausado até o recebimento dos arquivos para darmos continuidade ao trabalho.
+\nREN - Imagem sendo renderizada: O processo de geração da imagem está em andamento.
+\nAPR - Imagem em aprovação: A imagem foi gerada e está aguardando aprovação.
+\nOK - Imagem pronta para o desenvolvimento: A imagem foi aprovada e está pronta para a fase de desenvolvimento.
+`;
+
+    const imgPath = '../assets/logo.jpg';
+
+    fetch(imgPath)
+        .then(response => response.blob())
+        .then(blob => {
+            const reader = new FileReader();
+            reader.onloadend = function () {
+                const imgData = reader.result;
+
+                // Logo
+                doc.addImage(imgData, 'PNG', margin, currentY, 40, 40);
+                currentY += 50;
+
+                // Title
+                doc.setFontSize(14);
+                doc.setTextColor(0, 0, 0);
+                const titleLines = doc.splitTextToSize(title, usableWidth);
+                doc.text(titleLines, margin, currentY);
+                currentY += titleLines.length * 5;
+
+                // Legenda
+                doc.setFontSize(10);
+                const legendaLines = doc.splitTextToSize(legenda, usableWidth);
+                legendaLines.forEach(line => {
+                    if (currentY >= doc.internal.pageSize.getHeight() - margin) {
+                        doc.addPage();
+                        currentY = margin;
+                    }
+                    doc.text(line, margin, currentY);
+                    currentY += 6;
+                });
+
+                const table = document.getElementById('tabela-obra');
+                const rows = [];
+                const headers = [];
+
+                table.querySelectorAll('thead tr th').forEach((header, index) => {
+                    if (index < 3) headers.push(header.innerText.trim());
+                });
+
+                table.querySelectorAll('tbody tr').forEach(row => {
+                    const rowData = [];
+                    row.querySelectorAll('td').forEach((cell, index) => {
+                        if (index < 3) rowData.push(cell.innerText.trim());
+                    });
+                    rows.push(rowData);
+                });
+
+                doc.autoTable({
+                    head: [headers],
+                    body: rows,
+                    startY: currentY
+                });
+
+                const listAcompDiv = document.getElementById('list_acomp');
+                if (listAcompDiv) {
+                    const acompBlocks = listAcompDiv.querySelectorAll('.acomp-conteudo');
+                    const pageHeight = doc.internal.pageSize.getHeight();
+                    const margin = 14;
+                    let y = doc.lastAutoTable.finalY + 30;
+
+                    if (acompBlocks.length > 0) {
+                        doc.setFontSize(16);
+                        doc.setTextColor(0, 0, 0);
+                        doc.setFont(undefined, 'bold'); // negrito para o título
+                        doc.text("Histórico:", margin, y);
+                        y += 8;
+                        doc.setTextColor(0, 0, 0);
+
+                        acompBlocks.forEach(block => {
+                            const assuntoEl = block.querySelector('.acomp-assunto');
+                            const dataEl = block.querySelector('.acomp-data');
+
+                            const assunto = assuntoEl ? assuntoEl.innerText.trim() : '';
+                            const data = dataEl ? dataEl.innerText.trim() : '';
+
+                            const assuntoLines = doc.splitTextToSize(assunto, usableWidth);
+                            const dataLines = doc.splitTextToSize(data, 260);
+
+                            // Estimar altura total do bloco (assunto + data + espaço entre linhas)
+                            const blocoAltura = (assuntoLines.length * 6) + (dataLines.length * 5) + 6; // assunto + data + espaçamento
+
+                            // Se não couber, adiciona nova página
+                            if (y + blocoAltura > pageHeight - 10) {
+                                doc.addPage();
+                                y = margin;
+                            }
+
+                            // Renderizar assunto
+                            doc.setFontSize(11);
+                            doc.setFont(undefined, 'bold');
+                            assuntoLines.forEach(line => {
+                                doc.text(line, margin, y);
+                                y += 6;
+                            });
+
+                            // Renderizar data
+                            doc.setFontSize(10);
+                            doc.setFont(undefined, 'normal');
+                            dataLines.forEach(line => {
+                                doc.text(line, margin, y);
+                                y += 5;
+                            });
+
+                            y += 6; // espaço entre blocos
+                        });
+                    } else {
+                        console.warn("Nenhum .acomp-conteudo encontrado dentro de #list_acomp.");
+                    }
+                } else {
+                    console.warn("A div#list_acomp não foi encontrada no DOM.");
+                }
+
+                const hoje = new Date();
+                const dia = String(hoje.getDate()).padStart(2, '0');
+                const mes = String(hoje.getMonth() + 1).padStart(2, '0'); // Janeiro é 0
+                const ano = hoje.getFullYear();
+
+                const dataFormatada = `${dia}/${mes}/${ano}`;
+
+                doc.save(`${nomenclatura}-${dataFormatada}.pdf`);
+            }
+            reader.readAsDataURL(blob);
+        })
+        .catch(error => console.error('Erro ao carregar a imagem:', error));
 }

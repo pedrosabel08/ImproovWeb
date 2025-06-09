@@ -1,7 +1,7 @@
 <?php
 include '../conexao.php';
 
-$obra_id = 58; // Altere para o ID da obra que deseja simular
+$obra_id = 66; // Altere para o ID da obra que deseja simular
 
 $grupos = [
     "Fachada" => [

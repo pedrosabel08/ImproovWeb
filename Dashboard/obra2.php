@@ -59,6 +59,7 @@ $conn->close();
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/airbnb.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
+
 </head>
 
 <body>
@@ -122,6 +123,7 @@ $conn->close();
                 <button id="editImagesBtn">Editar Imagens</button>
                 <button id="addImagem">Adicionar Imagem</button>
                 <button id="editArquivos">Editar Arquivos</button>
+                <button id="addFollowup" onclick="gerarFollowUpPDF()">Follow Up</button>
                 <!-- <button id="flowReviewBtn">Flow Review</button> -->
             </div>
 
@@ -203,28 +205,30 @@ $conn->close();
             <div class="tabela">
                 <table id="tabela-obra">
                     <thead>
+                        <tr id="linha-porcentagem">
+                        </tr>
                         <tr>
                             <th class="resizable">Imagem<div class="resize-handle"></div>
                             </th>
                             <th>Status</th>
                             <th style="max-width: 15px;">Prazo</th>
-                            <th>Caderno</th>
+                            <th onclick="mostrarPorcentagem('caderno')">Caderno</th>
                             <th>Status</th>
-                            <th>Filtro</th>
+                            <th onclick="mostrarPorcentagem('filtro')">Filtro de assets</th>
                             <th>Status</th>
-                            <th>Modelagem</th>
+                            <th onclick="mostrarPorcentagem('modelagem')">Modelagem</th>
                             <th>Status</th>
-                            <th>Composição</th>
+                            <th onclick="mostrarPorcentagem('composicao')">Composição</th>
                             <th>Status</th>
-                            <th>Pré-Finalização</th>
+                            <th onclick="mostrarPorcentagem('pre')">Pré-Finalização</th>
                             <th>Status</th>
-                            <th>Finalização</th>
+                            <th onclick="mostrarPorcentagem('finalizacao')">Finalização</th>
                             <th>Status</th>
-                            <th>Pós Produção</th>
+                            <th onclick="mostrarPorcentagem('pos_producao')">Pós-Produção</th>
                             <th>Status</th>
-                            <th>Alteração</th>
+                            <th onclick="mostrarPorcentagem('alteracao')">Alteração</th>
                             <th>Status</th>
-                            <th>Planta</th>
+                            <th onclick="mostrarPorcentagem('planta')">Planta</th>
                             <th>Status</th>
                         </tr>
                     </thead>
@@ -1106,6 +1110,8 @@ $conn->close();
     <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/pt.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
     <script src="scriptObra2.js"></script>
     <script src="../script/sidebar.js"></script>
     <script src="../script/notificacoes.js"></script>

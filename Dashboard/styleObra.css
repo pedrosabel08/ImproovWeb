@@ -717,7 +717,7 @@ table#tabela-obra tbody td:nth-child(3) {
     padding: 5px;
 }
 
-#tabela-obra td,
+#tabela-obra tbody td,
 #tabela-obra th {
     border: 1px solid black;
     font-size: 14px;
@@ -726,6 +726,12 @@ table#tabela-obra tbody td:nth-child(3) {
     white-space: nowrap;
     text-align: center;
     max-width: 10px;
+}
+
+tr#linha-porcentagem td {
+    max-width: 10px;
+    text-align: center;
+    font-size: 14px;
 }
 
 .hidden {
@@ -1149,11 +1155,12 @@ form#form-add::-webkit-scrollbar-track,
 
 #editImagesBtn,
 #addImagem,
-#editArquivos {
+#editArquivos,
+#addFollowup {
     background-color: red;
-    width: 120px;
+    width: max-content;
     text-align: center;
-    padding: 0.2rem 0.2rem;
+    padding: 0.2rem 0.6rem;
     border-radius: 10px;
     color: white;
     font-size: 14px;
@@ -1162,12 +1169,15 @@ form#form-add::-webkit-scrollbar-track,
 }
 
 #addImagem {
-    width: 150px;
+    width: max-content;
     background-color: #0056b3;
 }
 
 #editArquivos {
     background-color: #017d16;
+}
+#addFollowup {
+    background-color: #ff9100;
 }
 
 .buttons button:hover {

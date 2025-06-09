@@ -36,7 +36,7 @@ LEFT JOIN funcao_imagem fi ON fi.imagem_id = gp.imagem_id
         SELECT idfuncao FROM funcao WHERE nome_funcao = gp.etapa LIMIT 1
    )
 INNER JOIN colaborador c ON c.idcolaborador = fi.colaborador_id
-WHERE fi.colaborador_id = 23
+WHERE fi.colaborador_id = 6
 ORDER BY ico.obra_id, gp.imagem_id, gp.etapa";
 
 

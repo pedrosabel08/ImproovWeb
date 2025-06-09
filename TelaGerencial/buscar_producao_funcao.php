@@ -16,7 +16,8 @@ if ($mes) {
             JOIN funcao f ON f.idfuncao = fi.funcao_id
             WHERE MONTH(fi.prazo) = ? AND YEAR(fi.prazo) = YEAR(CURDATE()) 
                 AND (status <> 'Não iniciado' OR status IS NULL)
-            GROUP BY f.nome_funcao";
+            GROUP BY f.nome_funcao
+            ORDER BY FILED(funcao_id, 1, 8, 2, 3, 9, 4, 5, 6, 7)";
   $stmt = $conn->prepare($sql);
   $stmt->bind_param("i", $mes);
 } elseif ($data) {
@@ -28,7 +29,9 @@ if ($mes) {
             JOIN funcao f ON f.idfuncao = fi.funcao_id
             WHERE DATE(fi.prazo) = ? 
                 AND (status <> 'Não iniciado' OR status IS NULL)
-            GROUP BY f.nome_funcao";
+            GROUP BY f.nome_funcao,
+           ORDER BY FILED(funcao_id, 1, 8, 2, 3, 9, 4, 5, 6, 7)";
+
   $stmt = $conn->prepare($sql);
   $stmt->bind_param("s", $data);
 } elseif ($inicio && $fim) {
@@ -39,8 +42,9 @@ if ($mes) {
             FROM funcao_imagem fi 
             JOIN funcao f ON f.idfuncao = fi.funcao_id
             WHERE DATE(fi.prazo) BETWEEN ? AND ? 
-                AND (status = 'Não iniciado' OR status IS NULL)
-            GROUP BY f.nome_funcao";
+                AND (status <> 'Não iniciado' OR status IS NULL)
+            GROUP BY f.nome_funcao,
+            ORDER BY FILED(funcao_id, 1, 8, 2, 3, 9, 4, 5, 6, 7)";
   $stmt = $conn->prepare($sql);
   $stmt->bind_param("ss", $inicio, $fim);
 } else {

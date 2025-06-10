@@ -47,24 +47,24 @@ while ($row = $result2->fetch_assoc()) {
 $stmt2->close();
 
 // Eventos longos (ex: reuniões ou etapas com data início e fim)
-$sql3 = "SELECT 
-            id,
-            CONCAT(tipo_imagem, ' - ', etapa) AS descricao,
-            data_inicio AS start,
-            data_fim AS end,
-            etapa AS tipo_evento
-        FROM gantt_prazos 
-        WHERE obra_id = ?";
+// $sql3 = "SELECT 
+//             id,
+//             CONCAT(tipo_imagem, ' - ', etapa) AS descricao,
+//             data_inicio AS start,
+//             data_fim AS end,
+//             etapa AS tipo_evento
+//         FROM gantt_prazos 
+//         WHERE obra_id = ?";
 
-$stmt3 = $conn->prepare($sql3);
-$stmt3->bind_param("i", $obraId);
-$stmt3->execute();
-$result3 = $stmt3->get_result();
+// $stmt3 = $conn->prepare($sql3);
+// $stmt3->bind_param("i", $obraId);
+// $stmt3->execute();
+// $result3 = $stmt3->get_result();
 
-while ($row = $result3->fetch_assoc()) {
-    $eventos[] = $row;
-}
-$stmt3->close();
+// while ($row = $result3->fetch_assoc()) {
+//     $eventos[] = $row;
+// }
+// $stmt3->close();
 
 
 header('Content-Type: application/json');

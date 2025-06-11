@@ -982,6 +982,19 @@ async function renderComments(id) {
             }
         });
 
+        commentCard.addEventListener('click', () => {
+            // Remove o highlight de todas as bolinhas
+            document.querySelectorAll('.comment.highlight').forEach(n => n.classList.remove('highlight'));
+
+            // Pega a bolinha correspondente ao comentário
+            const number = document.querySelector(`.comment[data-id="${comentario.id}"]`);
+
+            if (number) {
+                number.classList.add('highlight');
+            }
+        });
+
+
         const respButton = commentCard.querySelector('.comment-resp');
 
         respButton.addEventListener('click', async () => {

@@ -29,7 +29,6 @@ async function carregarImagensPublicas() {
 
             div.innerHTML = `
         <img src="${src}" alt="${id}">
-        <p>${id}</p>
     `;
 
             wrapper.appendChild(div);
@@ -471,22 +470,26 @@ function fecharImagemModal() {
     modal.style.display = 'none';
 }
 
+// Modal: fechar
+document.getElementById('fecharComentarioModal').onclick = () => {
+    document.getElementById('comentarioModal').style.display = 'none';
+};
 
 
-const btnBack = document.getElementById('btnBack');
-btnBack.addEventListener('click', function () {
-    const main = document.querySelector('.main');
-    main.classList.remove('hidden');
+// const btnBack = document.getElementById('btnBack');
+// btnBack.addEventListener('click', function () {
+//     const main = document.querySelector('.main');
+//     main.classList.remove('hidden');
 
-    const container_aprovacao = document.querySelector('.container-aprovacao');
-    container_aprovacao.classList.add('hidden');
+//     const container_aprovacao = document.querySelector('.container-aprovacao');
+//     container_aprovacao.classList.add('hidden');
 
-    const imagemWrapperDiv = document.querySelector(".image_wrapper");
-    imagemWrapperDiv.innerHTML = '';
+//     const imagemWrapperDiv = document.querySelector(".image_wrapper");
+//     imagemWrapperDiv.innerHTML = '';
 
-    const comentariosDiv = document.querySelector(".comentarios");
-    comentariosDiv.innerHTML = '';
-});
+//     const comentariosDiv = document.querySelector(".comentarios");
+//     comentariosDiv.innerHTML = '';
+// });
 
 document.addEventListener('keydown', function (event) {
     if (event.key === 'Escape') {

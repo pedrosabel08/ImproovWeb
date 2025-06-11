@@ -51,7 +51,13 @@ $conn->close();
     <div class="container">
 
         <h2>Gantt - Obra: <span id="obraNome"></span></h2>
-
+        <select name="obra_id" id="obra_id">
+            <?php foreach ($obras as $obra): ?>
+                <option value="<?= htmlspecialchars($obra['idobra']); ?>">
+                    <?= htmlspecialchars($obra['nomenclatura']); ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
         <table id="ganttTable">
             <thead>
                 <tr id="headerMeses"></tr>

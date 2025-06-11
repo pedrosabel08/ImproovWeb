@@ -1,31 +1,31 @@
 <?php
 include '../conexao.php';
 
-$obra_id = 66; // Altere para o ID da obra que deseja simular
+$obra_id = 70; // Altere para o ID da obra que deseja simular
 
 $grupos = [
-    "Fachada" => [
-        "Modelagem" => 7,
-        "Composição" => 1,
-        "Finalização" => 1,
-        "Pós-Produção" => 0.2
-    ],
-    "Imagem Externa" => [
-        "Caderno" => 0.5,
-        "Filtro de assets" => 0.5,
-        "Modelagem" => 7,
-        "Composição" => 1,
-        "Finalização" => 1,
-        "Pós-Produção" => 0.2
-    ],
-    "Imagem Interna" => [
-        "Caderno" => 0.5,
-        "Filtro de assets" => 0.5,
-        "Modelagem" => 0.5,
-        "Composição" => 0.5,
-        "Finalização" => 1,
-        "Pós-Produção" => 0.2
-    ],
+    // "Fachada" => [
+    //     "Modelagem" => 7,
+    //     "Composição" => 1,
+    //     "Finalização" => 1,
+    //     "Pós-Produção" => 0.2
+    // ],
+    // "Imagem Externa" => [
+    //     "Caderno" => 0.5,
+    //     "Filtro de assets" => 0.5,
+    //     "Modelagem" => 7,
+    //     "Composição" => 1,
+    //     "Finalização" => 1,
+    //     "Pós-Produção" => 0.2
+    // ],
+    // "Imagem Interna" => [
+    //     "Caderno" => 0.5,
+    //     "Filtro de assets" => 0.5,
+    //     "Modelagem" => 0.5,
+    //     "Composição" => 0.5,
+    //     "Finalização" => 1,
+    //     "Pós-Produção" => 0.2
+    // ],
     "Unidade" => [
         "Caderno" => 0.5,
         "Filtro de assets" => 0.5,
@@ -43,7 +43,7 @@ simularGantt($conn, $obra_id, $grupos);
 
 function simularGantt($conn, $obra_id, $grupos)
 {
-    $data_inicio_gantt = '2025-05-23';
+    $data_inicio_gantt = '2025-06-10';
 
     // Busca todos os tipos de imagem válidos para a obra
     $stmt = $conn->prepare("SELECT DISTINCT tipo_imagem FROM imagens_cliente_obra WHERE obra_id = ? AND recebimento_arquivos IS NOT NULL AND recebimento_arquivos != '0000-00-00'");

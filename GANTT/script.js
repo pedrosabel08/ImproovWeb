@@ -829,13 +829,31 @@ window.addEventListener('click', function (event) {
 
 
 
+document.addEventListener('DOMContentLoaded', () => {
+    const selectObra = document.getElementById('obra_id');
+    let obraId = localStorage.getItem('obraId');
 
+    // Define valor inicial do select se já existir no localStorage
+    if (obraId) {
+        selectObra.value = obraId;
+    } else {
+        // Se não houver valor salvo, usar o primeiro valor do select
+        obraId = selectObra.value;
+        localStorage.setItem('obraId', obraId);
+    }
 
-// Buscar dados do PHP (substitua pela URL correta e id_obra real)
-const obraId = localStorage.getItem('obraId'); // ou o nome que você usou no localStorage
+    // Atualiza a tabela com a obra selecionada
+    atualizarTabela(obraId);
 
-function atualizarTabela() {
+    // Quando trocar de obra, atualiza a tabela e salva no localStorage
+    selectObra.addEventListener('change', () => {
+        const novoId = selectObra.value;
+        localStorage.setItem('obraId', novoId);
+        atualizarTabela(novoId);
+    });
+});
 
+function atualizarTabela(obraId) {
     fetch(`tabela.php?id_obra=${obraId}`)
         .then(res => res.json())
         .then(data => {
@@ -848,7 +866,3 @@ function atualizarTabela() {
             console.error('Erro ao carregar dados:', e);
         });
 }
-
-document.addEventListener('DOMContentLoaded', () => {
-    atualizarTabela();
-});

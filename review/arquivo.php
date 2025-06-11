@@ -9,31 +9,25 @@ $obraId = $_GET['obraId'] ?? 1; // ou pegue via query string
     <meta charset="UTF-8">
     <title>Visualização Pública da Obra</title>
     <link rel="stylesheet" href="styleImagens.css">
-    <link rel="stylesheet" href="../Revisao/style.css">
+    <!-- <link rel="stylesheet" href="../Revisao/style.css"> -->
 </head>
 
 <body>
 
-    <div class="container" style="grid-column: 2 !important;">
-        <h1>Imagens da Obra</h1>
-        <div id="wrapper"></div>
-    </div>
-
-    <nav>
-        <div id="imagens"></div>
-    </nav>
-
-    <div class="imagens">
-        <div id="imagem_completa">
-            <div id="image_wrapper" class="image_wrapper">
+    <div class="container">
+        <div class="imagens">
+            <div id="wrapper"></div>
+            <div id="imagem_completa">
+                <div id="image_wrapper" class="image_wrapper">
+                </div>
+            </div>
+            <div class="sidebar-direita">
+                <h3>Comentários</h3>
+                <div class="comentarios"></div>
             </div>
         </div>
-        <div class="sidebar-direita">
-            <h3>Comentários</h3>
-            <div class="comentarios"></div>
-        </div>
     </div>
-    </div>
+
     <ul id="menuContexto">
         <li onclick="excluirImagem()">Excluir <span>🗑️</span></li>
     </ul>

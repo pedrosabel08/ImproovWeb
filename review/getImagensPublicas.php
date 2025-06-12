@@ -10,7 +10,7 @@ if (!$obraId) {
 
 
 // Prepara a consulta
-$sql = "SELECT ir.*
+$sql = "SELECT ir.*, i.imagem_nome
     FROM imagens_cliente_obra i
     INNER JOIN (
         SELECT imagem_id, MAX(id) AS max_id

@@ -28,20 +28,25 @@ if (isset($_FILES['imagem']) && $_FILES['imagem']['error'] === UPLOAD_ERR_OK) {
 }
 
 // 1. Buscar o número do comentário
-$stmt = $conn->prepare('SELECT IFNULL(MAX(numero_comentario), 0) + 1 AS proximo_numero FROM comentarios_review WHERE imagem_id = ?');
-$stmt->bind_param('i', $ap_imagem_id);
+$stmt = $conn->prepare('SELECT IFNULL(MAX(numero_comentario), 0) + 1 AS proximo_numero FROM comentarios_review WHERE review_id = ?');
+$stmt->bind_param('i', $imagem_id);
 $stmt->execute();
 $result = $stmt->get_result();
 $numero_comentario = $result->fetch_assoc()['proximo_numero'];
 
 // 2. Inserir comentário
-$stmt = $conn->prepare('
-    INSERT INTO comentarios_review (imagem_id, numero_comentario, x, y, texto, imagem, usuario_id, data)
+$stmt = $conn->prepare('INSERT INTO comentarios_review (review_id, numero_comentario, x, y, texto, imagem, usuario_id, data)
     VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
 ');
 $stmt->bind_param('iiddssi', $imagem_id, $numero_comentario, $x, $y, $texto, $imagem_path, $usuario_id);
-$stmt->execute();
-
+// Verificar se ocorreu erro na execução
+if (!$stmt->execute()) {
+    echo json_encode([
+        'sucesso' => false,
+        'erro' => $stmt->error
+    ]);
+    exit;
+}
 $comentario_id = $conn->insert_id; // ID do comentário recém-inserido
 
 

@@ -26,9 +26,13 @@ async function carregarImagensPublicas() {
 
             const src = `../uploads/imagens/${imagem.nome_arquivo}`;
             const id = imagem.imagem_id;
+            const imagem_nome = imagem.imagem_nome;
 
             div.innerHTML = `
         <img src="${src}" alt="${id}">
+        <div class="overlay">
+            <p id='nome_imagem'>${imagem_nome}</p>
+        </div>
     `;
 
             wrapper.appendChild(div);
@@ -55,7 +59,16 @@ function mostrarImagemCompleta(src, id) {
 
     const imageWrapper = document.getElementById("image_wrapper");
     const sidebar = document.querySelector(".sidebar-direita");
-    sidebar.style.display = "block";
+    const wrapper = document.getElementById('wrapper');
+    sidebar.style.display = "none";
+    wrapper.style.display = "none";
+
+    const imagens = document.querySelector('.imagens');
+    imagens.className = 'imagens somente-imagem';
+
+    document.getElementById('wrapper_btn').style.display = "block";
+    document.getElementById('comment_btn').style.display = "block";
+
 
     while (imageWrapper.firstChild) {
         imageWrapper.removeChild(imageWrapper.firstChild);
@@ -84,6 +97,74 @@ function mostrarImagemCompleta(src, id) {
 
     });
 }
+
+function showWrapper() {
+    const imagens = document.querySelector('.imagens');
+    const sidebar = document.querySelector(".sidebar-direita");
+    const wrapper = document.getElementById('wrapper');
+
+    if (imagens.classList.contains('com-comentarios')) {
+        // Se já está com comentários, volta pro modo completo
+        imagens.className = 'imagens';
+        wrapper.style.display = 'block';
+        sidebar.style.display = 'block';
+    } else if (imagens.classList.contains('com-wrapper')) {
+        // Se já está no modo wrapper, volta pro modo completo
+        imagens.className = 'imagens';
+        wrapper.style.display = 'block';
+        sidebar.style.display = 'block';
+    } else {
+        // Ativa somente wrapper
+        imagens.className = 'imagens com-wrapper';
+        wrapper.style.display = 'grid';
+        sidebar.style.display = 'none';
+    }
+}
+
+function showComment() {
+    const imagens = document.querySelector('.imagens');
+    const sidebar = document.querySelector(".sidebar-direita");
+    const wrapper = document.getElementById('wrapper');
+
+    if (imagens.classList.contains('com-wrapper')) {
+        // Se já está com wrapper, volta pro modo completo
+        imagens.className = 'imagens';
+        wrapper.style.display = 'block';
+        sidebar.style.display = 'block';
+    } else if (imagens.classList.contains('com-comentarios')) {
+        // Se já está no modo comentários, volta pro modo completo
+        imagens.className = 'imagens';
+        wrapper.style.display = 'block';
+        sidebar.style.display = 'block';
+    } else {
+        // Ativa somente comentários
+        imagens.className = 'imagens com-comentarios';
+        sidebar.style.display = 'block';
+        wrapper.style.display = 'none';
+    }
+}
+
+let zoomLevel = 1;
+
+document.addEventListener('wheel', function (e) {
+    const isCtrlPressed = e.ctrlKey;
+
+    if (isCtrlPressed) {
+        e.preventDefault(); // Impede o zoom da página
+
+        const zoomStep = 0.1;
+
+        if (e.deltaY < 0) {
+            zoomLevel += zoomStep; // Zoom in
+        } else {
+            zoomLevel = Math.max(0.1, zoomLevel - zoomStep); // Zoom out
+        }
+
+        const imageWrapper = document.getElementById('image_wrapper');
+        imageWrapper.style.transform = `scale(${zoomLevel})`;
+        imageWrapper.style.transformOrigin = 'center center';
+    }
+}, { passive: false });
 
 // Capturar colagem de imagem no campo de texto
 document.getElementById('comentarioTexto').addEventListener('paste', function (event) {
@@ -115,6 +196,96 @@ document.getElementById('comentarioTexto').addEventListener('paste', function (e
     }
 });
 
+const imageWrapper = document.getElementById('image_wrapper');
+const comments = document.querySelectorAll('.comment');
+let currentZoom = 1;
+const zoomStep = 0.1;
+const maxZoom = 3;
+const minZoom = 0.5;
+
+// Pan variables
+let isDragging = false;
+let startX;
+let startY;
+let currentTranslateX = 0;
+let currentTranslateY = 0;
+
+// Function to apply transforms (zoom and pan)
+function applyTransforms() {
+    // IMPORTANT: The order of transforms matters. Scale first, then translate,
+    // ensures translation is applied to the scaled element.
+    imageWrapper.style.transform = `scale(${currentZoom}) translate(${currentTranslateX}px, ${currentTranslateY}px)`;
+
+    // Adjust comment scaling based on the new currentZoom
+    comments.forEach(comment => {
+        // This keeps the *visual size* of the comment text and circle somewhat consistent while the image scales.
+        // If you *want* the comment circle itself to get bigger/smaller as the image scales, then remove this line.
+        comment.style.transform = `scale(${1 / currentZoom})`;
+    });
+}
+
+// --- Zoom functionality ---
+document.addEventListener('wheel', function (event) {
+    if (event.ctrlKey) {
+        event.preventDefault(); // Prevent default browser zoom/scroll
+
+        const oldZoom = currentZoom; // Store old zoom for potential pan adjustment (not used in your current code but good practice)
+
+        if (event.deltaY < 0) {
+            currentZoom += zoomStep;
+        } else {
+            currentZoom -= zoomStep;
+        }
+
+        currentZoom = Math.max(minZoom, Math.min(maxZoom, currentZoom));
+
+        if (currentZoom === minZoom) {
+            // When zoomed out completely, reset pan to origin
+            currentTranslateX = 0;
+            currentTranslateY = 0;
+        }
+
+        applyTransforms();
+    }
+}, { passive: false });
+
+// --- Pan functionality ---
+imageWrapper.addEventListener('mousedown', (e) => {
+    // Check if the primary mouse button is pressed (usually left click) AND Ctrl is NOT pressed
+    if (e.button === 0 && !e.ctrlKey) {
+        isDragging = true;
+        imageWrapper.classList.add('grabbing');
+        // Calculate startX/Y relative to the current translation
+        startX = e.clientX - currentTranslateX;
+        startY = e.clientY - currentTranslateY;
+        imageWrapper.style.transition = 'none'; // Disable transition during drag for responsiveness
+    }
+});
+
+// Attach mousemove and mouseup to the document
+// This allows dragging to continue even if the mouse leaves the imageWrapper
+document.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+
+    e.preventDefault(); // Prevent text selection and other default browser behaviors during drag
+
+    // Calculate new translation based on mouse movement
+    currentTranslateX = e.clientX - startX;
+    currentTranslateY = e.clientY - startY;
+
+    applyTransforms();
+});
+
+document.addEventListener('mouseup', () => {
+    if (isDragging) {
+        isDragging = false;
+        imageWrapper.classList.remove('grabbing');
+        imageWrapper.style.transition = 'transform 0.1s ease-out'; // Re-enable transition
+    }
+});
+
+// Initialize transforms
+applyTransforms();
 // Função para enviar o comentário
 document.getElementById('enviarComentario').onclick = async () => {
     const texto = document.getElementById('comentarioTexto').value.trim();
@@ -132,10 +303,10 @@ document.getElementById('enviarComentario').onclick = async () => {
         return;
     }
 
-    const idusuario_externo = parseInt(localStorage.getItem('idusuario_externo')); // Obtém o idusuario do localStorage
+    const idusuario_externo = parseInt(localStorage.getItem('usuario_externo')); // Obtém o idusuario do localStorage
 
     const formData = new FormData();
-    formData.append('ap_imagem_id', imagem_id);
+    formData.append('imagem_id', imagem_id);
     formData.append('x', relativeX);
     formData.append('y', relativeY);
     formData.append('texto', texto);
@@ -166,7 +337,7 @@ document.getElementById('enviarComentario').onclick = async () => {
             }).showToast();
 
             // Atualiza comentários
-            renderComments(ap_imagem_id);
+            renderComments(imagem_id);
         } else {
             Toastify({
                 text: result.mensagem || 'Erro ao salvar comentário!',
@@ -441,7 +612,7 @@ async function deleteComment(commentId) {
                 gravity: "top",
                 position: "left"
             }).showToast();
-            renderComments(ap_imagem_id); // Atualiza a lista de comentários
+            renderComments(imagem_id); // Atualiza a lista de comentários
         } else {
             Toastify({
                 text: 'Erro ao excluir comentário!',

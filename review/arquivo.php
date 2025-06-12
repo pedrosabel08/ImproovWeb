@@ -9,12 +9,22 @@ $obraId = $_GET['obraId'] ?? 1; // ou pegue via query string
     <meta charset="UTF-8">
     <title>Visualização Pública da Obra</title>
     <link rel="stylesheet" href="styleImagens.css">
-    <!-- <link rel="stylesheet" href="../Revisao/style.css"> -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
 </head>
 
 <body>
 
     <div class="container">
+        <div class="buttons">
+            <button id="wrapper_btn" onclick="showWrapper()">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            <button id="comment_btn" onclick="showComment()">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
         <div class="imagens">
             <div id="wrapper"></div>
             <div id="imagem_completa">
@@ -59,6 +69,7 @@ $obraId = $_GET['obraId'] ?? 1; // ou pegue via query string
         </div>
     </div>
     <script src="scriptImagens.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
 
 </body>
 

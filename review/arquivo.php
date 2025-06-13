@@ -17,21 +17,25 @@ $obraId = $_GET['obraId'] ?? 1; // ou pegue via query string
 <body>
 
     <div class="container">
-        <div class="buttons">
-            <button id="wrapper_btn" onclick="showWrapper()">
-                <i class="fas fa-chevron-left"></i>
-            </button>
-            <button id="comment_btn" onclick="showComment()">
+        <div class="imagens com-wrapper">
+            <!-- WRAPPER COM BOTÃO -->
+    <button id="wrapper_btn" onclick="showWrapper()" class="toggle-btn btn-left">
                 <i class="fas fa-chevron-right"></i>
             </button>
-        </div>
-        <div class="imagens">
-            <div id="wrapper"></div>
-            <div id="imagem_completa">
-                <div id="image_wrapper" class="image_wrapper">
-                </div>
+            <div class="wrapper-container" id="wrapper_container">
+                <div id="wrapper"></div>
             </div>
-            <div class="sidebar-direita">
+
+            <!-- IMAGEM COM CONTROLES -->
+            <div id="imagem_completa">
+                <div id="image_wrapper" class="image_wrapper"></div>
+            </div>
+
+            <button id="comment_btn" onclick="showComment()" class="toggle-btn btn-right">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            <!-- SIDEBAR COM BOTÃO -->
+            <div class="sidebar-direita hidden" id="sidebar_direita">
                 <h3>Comentários</h3>
                 <div class="comentarios"></div>
             </div>

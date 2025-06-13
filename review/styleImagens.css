@@ -6,6 +6,10 @@
     font-family: "Open Sans", sans-serif;
 }
 
+body {
+    background-color: #333;
+}
+
 h1 {
     font-size: 24px;
     font-weight: bold;
@@ -35,29 +39,33 @@ h1 {
 
 .imagens {
     display: grid;
-    grid-template-columns: 200px 1fr 200px;
-    transition: grid-template-columns 0.3s ease;
-    gap: 10px;
+    grid-template-columns: auto 1fr auto;
+    /* esquerda | centro | direita */
+    transition: all 0.3s ease;
+    height: 100vh;
 }
 
-/* Só imagem */
-.imagens.somente-imagem {
-    grid-template-columns: 0 1fr 0;
+#wrapper_container,
+.sidebar-direita {
+    transition: all 0.3s ease;
+    margin-top: 100px;
 }
 
-/* Imagem + comentários */
-.imagens.com-comentarios {
-    grid-template-columns: 0 1fr 200px;
+#wrapper_container {
+    min-width: 150px;
 }
 
-/* Imagem + wrapper */
-.imagens.com-wrapper {
-    grid-template-columns: 200px 1fr 0;
+.sidebar-direita {
+    min-width: 200px;
+}
+
+.hidden {
+    display: none !important;
 }
 
 #wrapper {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     gap: 16px;
     max-height: 80vh;
     overflow-y: auto;
@@ -69,14 +77,36 @@ h1 {
 }
 
 #wrapper::-webkit-scrollbar-thumb {
-    background-color: #747474;
+    background-color: #ffffff;
     border-radius: 10px;
 }
 
 #wrapper::-webkit-scrollbar-track {
-    background-color: #f1f1f1;
+    background-color: none;
 }
 
+/* Estado visível */
+.wrapper-container,
+.sidebar-direita {
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* Estado oculto */
+.wrapper-container.hidden {
+    transform: translateX(-100%);
+    /* Sai para a esquerda */
+    opacity: 0;
+    pointer-events: none;
+}
+
+.sidebar-direita.hidden {
+    transform: translateX(100%);
+    /* Sai para a direita */
+    opacity: 0;
+    pointer-events: none;
+}
 
 #imagem_completa {
     position: relative;
@@ -85,6 +115,7 @@ h1 {
     display: flex;
     margin: auto;
     align-items: center;
+    flex-direction: column;
     box-sizing: border-box;
     height: 100vh;
     overflow: hidden;
@@ -98,6 +129,7 @@ h1 {
     width: auto;
     height: auto;
     object-fit: contain;
+    animation: showIn 0.2s ease-in-out;
 }
 
 .card {
@@ -388,7 +420,6 @@ p.imagem_nome {
     display: inline-block;
     transform-origin: 0 0;
     transition: transform 0.2s ease-in-out;
-    cursor: grab;
 }
 
 #image_wrapper.grabbing {
@@ -399,6 +430,7 @@ p.imagem_nome {
     max-width: 100%;
     height: auto;
     display: block;
+    animation: showIn 0.2s ease-in-out;
 }
 
 
@@ -624,11 +656,22 @@ p.imagem_nome {
 
 .comment-card {
     background-color: #333;
-    border-radius: 8px;
-    padding: 15px;
     color: white;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
     position: relative;
+    font-size: calc(100% - 2px);
+}
+
+.sidebar-direita {
+    color: white;
+    box-shadow: -4px 0px 6px #000000;
+    height: max-content;
+}
+
+.sidebar-direita h3 {
+    text-align: center;
+    font-size: 14px;
+    margin-top: 5px;
 }
 
 .comment-header {
@@ -646,9 +689,9 @@ p.imagem_nome {
     font-weight: bold;
 }
 
-.comment-user {
+/* .comment-user {
     font-weight: bold;
-}
+} */
 
 .comment-body {
     margin-bottom: 8px;
@@ -661,8 +704,8 @@ p.imagem_nome {
 }
 
 .comment-date {
-    font-size: 12px;
     color: #888;
+    font-size: 10px;
 }
 
 .comment-actions button {
@@ -681,18 +724,11 @@ p.imagem_nome {
     color: #ffffff;
 }
 
-
 .card {
     position: relative;
     width: 200px;
     /* ajuste conforme necessário */
     display: inline-block;
-}
-
-.card img {
-    width: 100%;
-    height: auto;
-    display: block;
 }
 
 .overlay {
@@ -701,7 +737,6 @@ p.imagem_nome {
     left: 0;
     width: 100%;
     background: rgba(0, 0, 0, 0.6);
-    /* fundo escuro com transparência */
     color: white;
     padding: 4px 8px;
     box-sizing: border-box;
@@ -709,4 +744,59 @@ p.imagem_nome {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+.controls {
+    display: flex;
+    width: 100%;
+    padding: 10px;
+    gap: 20px;
+    justify-content: center;
+}
+
+.controls button {
+    border: none;
+    border-radius: 20px;
+    padding: 8px;
+    box-shadow: 0 2px 4px gray;
+    transition: all 0.2s ease-in-out;
+}
+
+.controls button:hover {
+    filter: brightness(0.8);
+    cursor: pointer;
+}
+
+
+/* Estilo comum para os botões */
+.toggle-btn {
+    position: absolute;
+    top: 10px;
+    background-color: #fff;
+    border: none;
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 4px;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+    z-index: 10;
+}
+
+.btn-left {
+    left: 0;
+    top: 10px;
+}
+
+.btn-right {
+    right: 0;
+    top: 10px;
+}
+
+@keyframes showIn {
+    0% {
+        opacity: 0;
+    }
+
+    100% {
+        opacity: 1;
+    }
 }

@@ -58,16 +58,14 @@ function mostrarImagemCompleta(src, id) {
     imagem_id = id;
 
     const imageWrapper = document.getElementById("image_wrapper");
-    const sidebar = document.querySelector(".sidebar-direita");
-    const wrapper = document.getElementById('wrapper');
-    sidebar.style.display = "none";
-    wrapper.style.display = "none";
 
     const imagens = document.querySelector('.imagens');
     imagens.className = 'imagens somente-imagem';
 
     document.getElementById('wrapper_btn').style.display = "block";
     document.getElementById('comment_btn').style.display = "block";
+
+    expandirImagem();
 
 
     while (imageWrapper.firstChild) {
@@ -78,13 +76,15 @@ function mostrarImagemCompleta(src, id) {
     imgElement.id = "imagem_atual";
     imgElement.src = src;
     imgElement.style.width = "100%";
-    imgElement.style.borderRadius = "10px";
 
     imageWrapper.appendChild(imgElement);
     document.querySelector('#imagem_atual').scrollIntoView({ behavior: 'smooth' });
     renderComments(id);
 
     imgElement.addEventListener('click', function (event) {
+        if (dragMoved) {
+            return;
+        }
         if (![1, 2, 9, 20, 3].includes(idusuario)) return;
 
         const rect = imgElement.getBoundingClientRect();
@@ -98,73 +98,45 @@ function mostrarImagemCompleta(src, id) {
     });
 }
 
-function showWrapper() {
-    const imagens = document.querySelector('.imagens');
-    const sidebar = document.querySelector(".sidebar-direita");
-    const wrapper = document.getElementById('wrapper');
 
-    if (imagens.classList.contains('com-comentarios')) {
-        // Se já está com comentários, volta pro modo completo
-        imagens.className = 'imagens';
-        wrapper.style.display = 'block';
-        sidebar.style.display = 'block';
-    } else if (imagens.classList.contains('com-wrapper')) {
-        // Se já está no modo wrapper, volta pro modo completo
-        imagens.className = 'imagens';
-        wrapper.style.display = 'block';
-        sidebar.style.display = 'block';
-    } else {
-        // Ativa somente wrapper
-        imagens.className = 'imagens com-wrapper';
-        wrapper.style.display = 'grid';
-        sidebar.style.display = 'none';
-    }
+function showWrapper() {
+    const wrapper = document.getElementById('wrapper_container');
+    wrapper.classList.toggle('hidden');
 }
 
 function showComment() {
-    const imagens = document.querySelector('.imagens');
-    const sidebar = document.querySelector(".sidebar-direita");
-    const wrapper = document.getElementById('wrapper');
-
-    if (imagens.classList.contains('com-wrapper')) {
-        // Se já está com wrapper, volta pro modo completo
-        imagens.className = 'imagens';
-        wrapper.style.display = 'block';
-        sidebar.style.display = 'block';
-    } else if (imagens.classList.contains('com-comentarios')) {
-        // Se já está no modo comentários, volta pro modo completo
-        imagens.className = 'imagens';
-        wrapper.style.display = 'block';
-        sidebar.style.display = 'block';
-    } else {
-        // Ativa somente comentários
-        imagens.className = 'imagens com-comentarios';
-        sidebar.style.display = 'block';
-        wrapper.style.display = 'none';
-    }
+    const sidebar = document.getElementById('sidebar_direita');
+    sidebar.classList.toggle('hidden');
 }
 
-let zoomLevel = 1;
+function expandirImagem() {
+    // Oculta os painéis laterais
+    document.getElementById('wrapper_container').classList.add('hidden');
+    document.getElementById('sidebar_direita').classList.add('hidden');
+}
 
-document.addEventListener('wheel', function (e) {
-    const isCtrlPressed = e.ctrlKey;
 
-    if (isCtrlPressed) {
-        e.preventDefault(); // Impede o zoom da página
+// let zoomLevel = 1;
 
-        const zoomStep = 0.1;
+// document.addEventListener('wheel', function (e) {
+//     const isCtrlPressed = e.ctrlKey;
 
-        if (e.deltaY < 0) {
-            zoomLevel += zoomStep; // Zoom in
-        } else {
-            zoomLevel = Math.max(0.1, zoomLevel - zoomStep); // Zoom out
-        }
+//     if (isCtrlPressed) {
+//         e.preventDefault(); // Impede o zoom da página
 
-        const imageWrapper = document.getElementById('image_wrapper');
-        imageWrapper.style.transform = `scale(${zoomLevel})`;
-        imageWrapper.style.transformOrigin = 'center center';
-    }
-}, { passive: false });
+//         const zoomStep = 0.1;
+
+//         if (e.deltaY < 0) {
+//             zoomLevel += zoomStep; // Zoom in
+//         } else {
+//             zoomLevel = Math.max(0.1, zoomLevel - zoomStep); // Zoom out
+//         }
+
+//         const imageWrapper = document.getElementById('image_wrapper');
+//         imageWrapper.style.transform = `scale(${zoomLevel})`;
+//         imageWrapper.style.transformOrigin = 'center center';
+//     }
+// }, { passive: false });
 
 // Capturar colagem de imagem no campo de texto
 document.getElementById('comentarioTexto').addEventListener('paste', function (event) {
@@ -209,17 +181,15 @@ let startX;
 let startY;
 let currentTranslateX = 0;
 let currentTranslateY = 0;
+let dragMoved = false;
 
 // Function to apply transforms (zoom and pan)
 function applyTransforms() {
-    // IMPORTANT: The order of transforms matters. Scale first, then translate,
-    // ensures translation is applied to the scaled element.
     imageWrapper.style.transform = `scale(${currentZoom}) translate(${currentTranslateX}px, ${currentTranslateY}px)`;
 
     // Adjust comment scaling based on the new currentZoom
     comments.forEach(comment => {
-        // This keeps the *visual size* of the comment text and circle somewhat consistent while the image scales.
-        // If you *want* the comment circle itself to get bigger/smaller as the image scales, then remove this line.
+
         comment.style.transform = `scale(${1 / currentZoom})`;
     });
 }
@@ -249,38 +219,42 @@ document.addEventListener('wheel', function (event) {
     }
 }, { passive: false });
 
-// --- Pan functionality ---
 imageWrapper.addEventListener('mousedown', (e) => {
-    // Check if the primary mouse button is pressed (usually left click) AND Ctrl is NOT pressed
     if (e.button === 0 && !e.ctrlKey) {
         isDragging = true;
+        dragMoved = false; // reset
+
         imageWrapper.classList.add('grabbing');
-        // Calculate startX/Y relative to the current translation
         startX = e.clientX - currentTranslateX;
         startY = e.clientY - currentTranslateY;
-        imageWrapper.style.transition = 'none'; // Disable transition during drag for responsiveness
+        imageWrapper.style.transition = 'none';
     }
 });
 
-// Attach mousemove and mouseup to the document
-// This allows dragging to continue even if the mouse leaves the imageWrapper
 document.addEventListener('mousemove', (e) => {
     if (!isDragging) return;
 
-    e.preventDefault(); // Prevent text selection and other default browser behaviors during drag
+    e.preventDefault();
 
-    // Calculate new translation based on mouse movement
-    currentTranslateX = e.clientX - startX;
-    currentTranslateY = e.clientY - startY;
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+
+    // Marcar que houve movimento significativo
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+        dragMoved = true;
+    }
+
+    currentTranslateX = dx;
+    currentTranslateY = dy;
 
     applyTransforms();
 });
 
-document.addEventListener('mouseup', () => {
+document.addEventListener('mouseup', (e) => {
     if (isDragging) {
         isDragging = false;
         imageWrapper.classList.remove('grabbing');
-        imageWrapper.style.transition = 'transform 0.1s ease-out'; // Re-enable transition
+        imageWrapper.style.transition = 'transform 0.1s ease-out';
     }
 });
 

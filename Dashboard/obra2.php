@@ -59,7 +59,6 @@ $conn->close();
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/airbnb.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
-
 </head>
 
 <body>
@@ -524,7 +523,7 @@ $conn->close();
             </div> <input type="hidden" id="imagem_id" name="imagem_id" value="">
             <div class="modal-funcoes">
                 <span id="mood"></span>
-                <div class="funcao_comp" data-parametro="caderno">
+                <div class="funcao_comp">
                     <div class="funcao">
                         <div class="titulo">
                             <p id="caderno">Caderno</p>
@@ -552,15 +551,12 @@ $conn->close();
                             <input type="date" name="prazo_caderno" id="prazo_caderno">
                             <input type="text" name="obs_caderno" id="obs_caderno" placeholder="Caminho arquivo">
                             <div class="revisao_imagem" style="display: none;">
-                                <input type="file" name="imagens[]" id="revisao_imagem_caderno" accept="image/*" multiple>
+                                <button type="button" onclick="abrirModal(this)" id="revisao_imagem_caderno">Adicionar Imagens</button>
                             </div>
                         </div>
                     </div>
-                    <div class="check">
-                        <input type="checkbox" name="check_caderno" id="check_caderno">
-                    </div>
                 </div>
-                <div class="funcao_comp" data-parametro="filtro">
+                <div class="funcao_comp">
                     <div class="funcao">
                         <div class="titulo">
                             <p id="filtro">Filtro de assets</p>
@@ -588,22 +584,19 @@ $conn->close();
                             <input type="date" name="prazo_filtro" id="prazo_filtro" placeholder="Data">
                             <input type="text" name="obs_filtro" id="obs_filtro" placeholder="Caminho arquivo">
                             <div class="revisao_imagem" style="display: none;">
-                                <input type="file" name="imagens[]" id="revisao_imagem_filtro" accept="image/*" multiple>
+                                <button type="button" onclick="abrirModal(this)" id="revisao_imagem_filtro">Adicionar Imagens</button>
                             </div>
                         </div>
                     </div>
-                    <div class="check">
-                        <input type="checkbox" name="check_filtro" id="check_filtro">
-                    </div>
                 </div>
-                <div class="funcao_comp" data-parametro="modelagem">
+                <div class="funcao_comp">
                     <div class="funcao">
                         <div class="titulo">
                             <p id="modelagem">Modelagem</p>
                             <i class="fas fa-chevron-down" id="toggle-options"></i>
                         </div>
                         <div class="opcoes" style="display: none;">
-                            <select name="model_id" id="opcao_modelagem">
+                            <select name="model_id" id="opcao_model">
                                 <?php foreach ($colaboradores as $colab): ?>
                                     <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
                                         <?= htmlspecialchars($colab['nome_colaborador']); ?>
@@ -624,15 +617,12 @@ $conn->close();
                             <input type="date" name="prazo_modelagem" id="prazo_modelagem">
                             <input type="text" name="obs_modelagem" id="obs_modelagem" placeholder="Caminho arquivo">
                             <div class="revisao_imagem" style="display: none;">
-                                <input type="file" name="imagens[]" id="revisao_imagem_model" accept="image/*" multiple>
+                                <button type="button" onclick="abrirModal(this)" id="revisao_imagem_model">Adicionar Imagens</button>
                             </div>
                         </div>
                     </div>
-                    <div class="check">
-                        <input type="checkbox" name="check_modelagem" id="check_modelagem">
-                    </div>
                 </div>
-                <div class="funcao_comp" data-parametro="comp">
+                <div class="funcao_comp">
                     <div class="funcao">
                         <div class="titulo">
                             <p id="comp">Composição</p>
@@ -660,15 +650,12 @@ $conn->close();
                             <input type="date" name="prazo_comp" id="prazo_comp">
                             <input type="text" name="obs_comp" id="obs_comp" placeholder="Caminho arquivo">
                             <div class="revisao_imagem" style="display: none;">
-                                <input type="file" name="imagens[]" id="revisao_imagem_comp" accept="image/*" multiple>
+                                <button type="button" onclick="abrirModal(this)" id="revisao_imagem_comp">Adicionar Imagens</button>
                             </div>
                         </div>
                     </div>
-                    <div class="check">
-                        <input type="checkbox" name="check_comp" id="check_comp">
-                    </div>
                 </div>
-                <div class="funcao_comp" data-parametro="pre">
+                <div class="funcao_comp">
                     <div class="funcao">
                         <div class="titulo">
                             <p id="pre">Pré-Finalização</p>
@@ -696,22 +683,19 @@ $conn->close();
                             <input type="date" name="prazo_pre" id="prazo_pre">
                             <input type="text" name="obs_pre" id="obs_pre" placeholder="Caminho arquivo">
                             <div class="revisao_imagem" style="display: none;">
-                                <input type="file" name="imagens[]" id="revisao_imagem_pre" accept="image/*" multiple>
+                                <button type="button" onclick="abrirModal(this)" id="revisao_imagem_pre">Adicionar Imagens</button>
                             </div>
                         </div>
                     </div>
-                    <div class="check">
-                        <input type="checkbox" name="check_pre" id="check_pre">
-                    </div>
                 </div>
-                <div class="funcao_comp" data-parametro="finalizacao">
+                <div class="funcao_comp">
                     <div class="funcao">
                         <div class="titulo">
                             <p id="final">Finalização</p>
                             <i class="fas fa-chevron-down" id="toggle-options"></i>
                         </div>
                         <div class="opcoes" id="opcoes" style="display: none;">
-                            <select name="final_id" id="opcao_finalizacao">
+                            <select name="final_id" id="opcao_final">
                                 <?php foreach ($colaboradores as $colab): ?>
                                     <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
                                         <?= htmlspecialchars($colab['nome_colaborador']); ?>
@@ -732,15 +716,13 @@ $conn->close();
                             <input type="date" name="prazo_finalizacao" id="prazo_finalizacao">
                             <input type="text" name="obs_finalizacao" id="obs_finalizacao" placeholder="Caminho arquivo">
                             <div class="revisao_imagem" style="display: none;">
-                                <input type="file" name="imagens[]" id="revisao_imagem_final" accept="image/*" multiple>
+                                <button type="button" onclick="abrirModal(this)" id="revisao_imagem_final">Adicionar Imagens</button>
                             </div>
                         </div>
                     </div>
-                    <div class="check">
-                        <input type="checkbox" name="check_finalizacao" id="check_finalizacao">
-                    </div>
                 </div>
-                <div class="funcao_comp" data-parametro="pos">
+                <div class="funcao_comp">
+
                     <div class="funcao">
                         <div class="titulo">
                             <p id="pos">Pós-Produção</p>
@@ -769,15 +751,12 @@ $conn->close();
                             <input type="date" name="prazo_pos" id="prazo_pos">
                             <input type="text" name="obs_pos" id="obs_pos" placeholder="Caminho arquivo">
                             <div class="revisao_imagem" style="display: none;">
-                                <input type="file" name="imagens[]" id="revisao_imagem_pos" accept="image/*" multiple>
+                                <button type="button" onclick="abrirModal(this)" id="revisao_imagem_pos">Adicionar Imagens</button>
                             </div>
                         </div>
                     </div>
-                    <div class="check">
-                        <input type="checkbox" name="check_pos" id="check_pos">
-                    </div>
                 </div>
-                <div class="funcao_comp" data-parametro="alteracao">
+                <div class="funcao_comp">
                     <div class="funcao">
                         <div class="titulo">
                             <p id="alteracao">Alteração</p>
@@ -806,15 +785,12 @@ $conn->close();
                             <input type="date" name="prazo_alteracao" id="prazo_alteracao">
                             <input type="text" name="obs_alteracao" id="obs_alteracao" placeholder="Caminho arquivo">
                             <div class="revisao_imagem" style="display: none;">
-                                <input type="file" name="imagens[]" id="revisao_imagem_alt" accept="image/*" multiple>
+                                <button type="button" onclick="abrirModal(this)" id="revisao_imagem_alt">Adicionar Imagens</button>
                             </div>
                         </div>
                     </div>
-                    <div class="check">
-                        <input type="checkbox" name="check_alteracao" id="check_alteracao">
-                    </div>
                 </div>
-                <div class="funcao_comp" data-parametro="planta">
+                <div class="funcao_comp">
                     <div class="funcao">
                         <div class="titulo">
                             <p id="planta">Planta Humanizada</p>
@@ -843,12 +819,9 @@ $conn->close();
                             <input type="date" name="prazo_planta" id="prazo_planta">
                             <input type="text" name="obs_planta" id="obs_planta" placeholder="Caminho arquivo">
                             <div class="revisao_imagem" style="display: none;">
-                                <input type="file" name="imagens[]" id="revisao_imagem_ph" accept="image/*" multiple>
+                                <button type="button" onclick="abrirModal(this)" id="revisao_imagem_ph">Adicionar Imagens</button>
                             </div>
                         </div>
-                    </div>
-                    <div class="check">
-                        <input type="checkbox" name="check_planta" id="check_planta">
                     </div>
                 </div>
                 <div class="funcao" id="status_funcao" style="margin-bottom: 15px;width: max-content;">
@@ -1043,7 +1016,7 @@ $conn->close();
                 <strong>Tarefas</strong>
                 <span id="badge-tarefas" class="badge-interna"></span>
             </div>
-            <div id="conteudo-tarefas" class="secao-conteudo oculto"></div>
+            <div id="conteudo-tarefas" class="secao-conteudo"></div>
         </div>
 
         <!-- Notificações -->
@@ -1098,6 +1071,31 @@ $conn->close();
                     <button type="button" style="background-color: red;" onclick="deleteEvent()">Excluir</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- MODAL -->
+    <div id="modalUpload" style="display: none;">
+        <div id="overlay" onclick="fecharModal()" style="position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9;"></div>
+        <input type="hidden" id="funcao_id_revisao">
+        <input type="hidden" id="nome_funcao_upload">
+        <div style="position: fixed; top: 50%; left: 50%; width: 600px; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 10px; z-index: 10;">
+            <h2>Upload de Imagens</h2>
+
+            <!-- Dropzone -->
+            <div id="drop-area">
+                Arraste suas imagens aqui ou clique para selecionar
+                <input type="file" id="fileElem" accept="image/*" multiple style="display:none;">
+            </div>
+
+            <!-- Lista -->
+            <ul class="file-list" id="fileList"></ul>
+
+            <!-- Botões -->
+            <div class="buttons-upload">
+                <button onclick="fecharModal()" id="cancelar" style="background-color: red;">Cancelar</button>
+                <button class="upload" onclick="enviarImagens()" id="enviar" style="background-color: green;">Enviar</button>
+            </div>
         </div>
     </div>
 

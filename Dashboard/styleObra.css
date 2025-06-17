@@ -824,6 +824,8 @@ span#obras_finalizadas {
 .form-edicao .funcao input,
 .funcao select {
     padding: 5px;
+    border: none;
+    box-shadow: 0 4px 6px #c1c1c1;
 }
 
 .form-edicao label#imagem_id {
@@ -1176,6 +1178,7 @@ form#form-add::-webkit-scrollbar-track,
 #editArquivos {
     background-color: #017d16;
 }
+
 #addFollowup {
     background-color: #ff9100;
 }
@@ -1908,4 +1911,79 @@ button#deleteButton {
     100% {
         width: 100%;
     }
+}
+
+
+#drop-area {
+    border: 2px dashed #ccc;
+    border-radius: 10px;
+    padding: 30px;
+    text-align: center;
+    color: #999;
+    margin-bottom: 20px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+#drop-area.highlight {
+    background-color: #eef6ff;
+    border-color: #007bff;
+    color: #007bff;
+}
+
+ul.file-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.file-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    margin-bottom: 6px;
+    background-color: #f9f9f9;
+}
+
+.file-info {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.file-size {
+    color: #888;
+    font-size: 0.9em;
+}
+
+.remove-btn {
+    color: #c00;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 1.2em;
+}
+
+.buttons-upload {
+    display: flex;
+    justify-content: space-around;
+}
+
+.buttons-upload button {
+    padding: 4px 8px;
+    border: none;
+    border-radius: 10px;
+    color: white;
+    font-size: 14px;
+}
+
+.buttons-upload button:hover {
+    cursor: pointer;
+}
+
+#modalUpload h2 {
+    text-align: center;
+    margin-bottom: 15px;
 }

@@ -551,7 +551,7 @@ $conn->close();
                             <input type="date" name="prazo_caderno" id="prazo_caderno">
                             <input type="text" name="obs_caderno" id="obs_caderno" placeholder="Caminho arquivo">
                             <div class="revisao_imagem" style="display: none;">
-                                <input type="file" name="imagens[]" id="revisao_imagem_caderno" accept="image/*" multiple>
+                                <button type="button" onclick="abrirModal(this)" id="revisao_imagem_caderno">Adicionar Imagens</button>
                             </div>
                         </div>
                     </div>
@@ -584,7 +584,7 @@ $conn->close();
                             <input type="date" name="prazo_filtro" id="prazo_filtro" placeholder="Data">
                             <input type="text" name="obs_filtro" id="obs_filtro" placeholder="Caminho arquivo">
                             <div class="revisao_imagem" style="display: none;">
-                                <input type="file" name="imagens[]" id="revisao_imagem_filtro" accept="image/*" multiple>
+                                <button type="button" onclick="abrirModal(this)" id="revisao_imagem_filtro">Adicionar Imagens</button>
                             </div>
                         </div>
                     </div>
@@ -617,7 +617,7 @@ $conn->close();
                             <input type="date" name="prazo_modelagem" id="prazo_modelagem">
                             <input type="text" name="obs_modelagem" id="obs_modelagem" placeholder="Caminho arquivo">
                             <div class="revisao_imagem" style="display: none;">
-                                <input type="file" name="imagens[]" id="revisao_imagem_model" accept="image/*" multiple>
+                                <button type="button" onclick="abrirModal(this)" id="revisao_imagem_model">Adicionar Imagens</button>
                             </div>
                         </div>
                     </div>
@@ -650,7 +650,7 @@ $conn->close();
                             <input type="date" name="prazo_comp" id="prazo_comp">
                             <input type="text" name="obs_comp" id="obs_comp" placeholder="Caminho arquivo">
                             <div class="revisao_imagem" style="display: none;">
-                                <input type="file" name="imagens[]" id="revisao_imagem_comp" accept="image/*" multiple>
+                                <button type="button" onclick="abrirModal(this)" id="revisao_imagem_comp">Adicionar Imagens</button>
                             </div>
                         </div>
                     </div>
@@ -683,7 +683,7 @@ $conn->close();
                             <input type="date" name="prazo_pre" id="prazo_pre">
                             <input type="text" name="obs_pre" id="obs_pre" placeholder="Caminho arquivo">
                             <div class="revisao_imagem" style="display: none;">
-                                <input type="file" name="imagens[]" id="revisao_imagem_pre" accept="image/*" multiple>
+                                <button type="button" onclick="abrirModal(this)" id="revisao_imagem_pre">Adicionar Imagens</button>
                             </div>
                         </div>
                     </div>
@@ -716,7 +716,7 @@ $conn->close();
                             <input type="date" name="prazo_finalizacao" id="prazo_finalizacao">
                             <input type="text" name="obs_finalizacao" id="obs_finalizacao" placeholder="Caminho arquivo">
                             <div class="revisao_imagem" style="display: none;">
-                                <input type="file" name="imagens[]" id="revisao_imagem_final" accept="image/*" multiple>
+                                <button type="button" onclick="abrirModal(this)" id="revisao_imagem_final">Adicionar Imagens</button>
                             </div>
                         </div>
                     </div>
@@ -751,7 +751,7 @@ $conn->close();
                             <input type="date" name="prazo_pos" id="prazo_pos">
                             <input type="text" name="obs_pos" id="obs_pos" placeholder="Caminho arquivo">
                             <div class="revisao_imagem" style="display: none;">
-                                <input type="file" name="imagens[]" id="revisao_imagem_pos" accept="image/*" multiple>
+                                <button type="button" onclick="abrirModal(this)" id="revisao_imagem_pos">Adicionar Imagens</button>
                             </div>
                         </div>
                     </div>
@@ -785,7 +785,7 @@ $conn->close();
                             <input type="date" name="prazo_alteracao" id="prazo_alteracao">
                             <input type="text" name="obs_alteracao" id="obs_alteracao" placeholder="Caminho arquivo">
                             <div class="revisao_imagem" style="display: none;">
-                                <input type="file" name="imagens[]" id="revisao_imagem_alt" accept="image/*" multiple>
+                                <button type="button" onclick="abrirModal(this)" id="revisao_imagem_alt">Adicionar Imagens</button>
                             </div>
                         </div>
                     </div>
@@ -819,7 +819,7 @@ $conn->close();
                             <input type="date" name="prazo_planta" id="prazo_planta">
                             <input type="text" name="obs_planta" id="obs_planta" placeholder="Caminho arquivo">
                             <div class="revisao_imagem" style="display: none;">
-                                <input type="file" name="imagens[]" id="revisao_imagem_ph" accept="image/*" multiple>
+                                <button type="button" onclick="abrirModal(this)" id="revisao_imagem_ph">Adicionar Imagens</button>
                             </div>
                         </div>
                     </div>
@@ -1071,6 +1071,31 @@ $conn->close();
                     <button type="button" style="background-color: red;" onclick="deleteEvent()">Excluir</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- MODAL -->
+    <div id="modalUpload" style="display: none;">
+        <div id="overlay" onclick="fecharModal()" style="position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9;"></div>
+        <input type="hidden" id="funcao_id_revisao">
+        <input type="hidden" id="nome_funcao_upload">
+        <div style="position: fixed; top: 50%; left: 50%; width: 600px; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 10px; z-index: 10;">
+            <h2>Upload de Imagens</h2>
+
+            <!-- Dropzone -->
+            <div id="drop-area">
+                Arraste suas imagens aqui ou clique para selecionar
+                <input type="file" id="fileElem" accept="image/*" multiple style="display:none;">
+            </div>
+
+            <!-- Lista -->
+            <ul class="file-list" id="fileList"></ul>
+
+            <!-- Botões -->
+            <div class="buttons-upload">
+                <button onclick="fecharModal()" id="cancelar" style="background-color: red;">Cancelar</button>
+                <button class="upload" onclick="enviarImagens()" id="enviar" style="background-color: green;">Enviar</button>
+            </div>
         </div>
     </div>
 

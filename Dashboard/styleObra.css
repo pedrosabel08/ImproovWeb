@@ -1513,12 +1513,10 @@ i.fa-info {
 
 
 .clear-button {
-    background-color: red;
+    background-color: transparent;
     color: white;
     border: none;
     border-radius: 50%;
-    width: 20px;
-    height: 20px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1986,4 +1984,13 @@ ul.file-list {
 #modalUpload h2 {
     text-align: center;
     margin-bottom: 15px;
+}
+
+.revisao_imagem button {
+    background-color: yellow;
+    font-size: 14px;
+    padding: 5px;
+    border-radius: 15px;
+    box-shadow: 0 4px 6px #a3a3a3;
+    cursor: pointer;
 }

@@ -244,7 +244,7 @@ function atualizarModal(idImagem) {
                             if (selectElement.value) {
                                 const clearButton = document.createElement('button');
                                 clearButton.type = 'button'; // Define o tipo do botão como "button"
-                                clearButton.innerHTML = 'x';
+                                clearButton.innerHTML = '❌';
                                 clearButton.classList.add('clear-button', 'tooltip');
                                 clearButton.setAttribute('data-id', funcao.id); // Adiciona o ID da função ao botão
                                 clearButton.setAttribute('data-tooltip', 'Excluir função'); // Adiciona o tooltip
@@ -257,23 +257,23 @@ function atualizarModal(idImagem) {
                             }
                         }
 
-                        // Adiciona o botão de log se o selectElement tiver um valor
-                        if (!selectElement.parentElement.querySelector('.log-button')) {
-                            if (selectElement.value) {
-                                const logButton = document.createElement('button');
-                                logButton.type = 'button'; // Define o tipo do botão como "button"
-                                logButton.innerHTML = '<i class="fas fa-file-alt"></i>';
-                                logButton.classList.add('log-button', 'tooltip');
-                                logButton.setAttribute('data-id', funcao.id); // Adiciona o ID da função ao botão
-                                logButton.setAttribute('data-tooltip', 'Exibir log'); // Adiciona o tooltip
-                                logButton.addEventListener('click', function (event) {
-                                    event.preventDefault(); // Previne o comportamento padrão do botão
-                                    const funcaoId = this.getAttribute('data-id');
-                                    exibirLog(funcaoId);
-                                });
-                                selectElement.parentElement.appendChild(logButton);
-                            }
-                        }
+                        // // Adiciona o botão de log se o selectElement tiver um valor
+                        // if (!selectElement.parentElement.querySelector('.log-button')) {
+                        //     if (selectElement.value) {
+                        //         const logButton = document.createElement('button');
+                        //         logButton.type = 'button'; // Define o tipo do botão como "button"
+                        //         logButton.innerHTML = '<i class="fas fa-file-alt"></i>';
+                        //         logButton.classList.add('log-button', 'tooltip');
+                        //         logButton.setAttribute('data-id', funcao.id); // Adiciona o ID da função ao botão
+                        //         logButton.setAttribute('data-tooltip', 'Exibir log'); // Adiciona o tooltip
+                        //         logButton.addEventListener('click', function (event) {
+                        //             event.preventDefault(); // Previne o comportamento padrão do botão
+                        //             const funcaoId = this.getAttribute('data-id');
+                        //             exibirLog(funcaoId);
+                        //         });
+                        //         selectElement.parentElement.appendChild(logButton);
+                        //     }
+                        // }
                     }
                     if (checkboxElement) {
                         checkboxElement.title = funcao.responsavel_aprovacao || '';

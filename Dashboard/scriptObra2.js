@@ -244,7 +244,7 @@ function atualizarModal(idImagem) {
                             if (selectElement.value) {
                                 const clearButton = document.createElement('button');
                                 clearButton.type = 'button'; // Define o tipo do botão como "button"
-                                clearButton.innerHTML = 'x';
+                                clearButton.innerHTML = '❌';
                                 clearButton.classList.add('clear-button', 'tooltip');
                                 clearButton.setAttribute('data-id', funcao.id); // Adiciona o ID da função ao botão
                                 clearButton.setAttribute('data-tooltip', 'Excluir função'); // Adiciona o tooltip
@@ -257,23 +257,23 @@ function atualizarModal(idImagem) {
                             }
                         }
 
-                        // Adiciona o botão de log se o selectElement tiver um valor
-                        if (!selectElement.parentElement.querySelector('.log-button')) {
-                            if (selectElement.value) {
-                                const logButton = document.createElement('button');
-                                logButton.type = 'button'; // Define o tipo do botão como "button"
-                                logButton.innerHTML = '<i class="fas fa-file-alt"></i>';
-                                logButton.classList.add('log-button', 'tooltip');
-                                logButton.setAttribute('data-id', funcao.id); // Adiciona o ID da função ao botão
-                                logButton.setAttribute('data-tooltip', 'Exibir log'); // Adiciona o tooltip
-                                logButton.addEventListener('click', function (event) {
-                                    event.preventDefault(); // Previne o comportamento padrão do botão
-                                    const funcaoId = this.getAttribute('data-id');
-                                    exibirLog(funcaoId);
-                                });
-                                selectElement.parentElement.appendChild(logButton);
-                            }
-                        }
+                        // // Adiciona o botão de log se o selectElement tiver um valor
+                        // if (!selectElement.parentElement.querySelector('.log-button')) {
+                        //     if (selectElement.value) {
+                        //         const logButton = document.createElement('button');
+                        //         logButton.type = 'button'; // Define o tipo do botão como "button"
+                        //         logButton.innerHTML = '<i class="fas fa-file-alt"></i>';
+                        //         logButton.classList.add('log-button', 'tooltip');
+                        //         logButton.setAttribute('data-id', funcao.id); // Adiciona o ID da função ao botão
+                        //         logButton.setAttribute('data-tooltip', 'Exibir log'); // Adiciona o tooltip
+                        //         logButton.addEventListener('click', function (event) {
+                        //             event.preventDefault(); // Previne o comportamento padrão do botão
+                        //             const funcaoId = this.getAttribute('data-id');
+                        //             exibirLog(funcaoId);
+                        //         });
+                        //         selectElement.parentElement.appendChild(logButton);
+                        //     }
+                        // }
                     }
                     if (checkboxElement) {
                         checkboxElement.title = funcao.responsavel_aprovacao || '';
@@ -3117,138 +3117,175 @@ const dropArea = document.getElementById('drop-area');
 const fileInput = document.getElementById('fileElem');
 const fileList = document.getElementById('fileList');
 let imagensSelecionadas = [];
-let botaoOrigemId = null;
+let arquivosFinais = [];
 let dataIdFuncoes = [];
 
 function abrirModal(botao) {
-    botaoOrigemId = botao.id;
+    imagensSelecionadas = [];
+    arquivosFinais = [];
 
     const dataIdFuncao = botao.getAttribute('data-id-funcao');
+    dataIdFuncoes = dataIdFuncao?.split(',').map(f => f.trim()) || [];
 
-    dataIdFuncoes = dataIdFuncao
-        ? dataIdFuncao.includes(',')
-            ? dataIdFuncao.split(',').map(f => f.trim())
-            : [dataIdFuncao.trim()]
-        : [];
-
-    console.log("Funções selecionadas:", dataIdFuncoes);
-    document.getElementById('funcao_id_revisao').value = dataIdFuncoes.join(',');
-
-    // Subir até a div .funcao ou .funcao_comp e buscar o nome da função
     let containerFuncao = botao.closest('.funcao') || botao.closest('.funcao_comp');
-    let nomeFuncao = '';
+    let nomeFuncao = containerFuncao?.querySelector('.titulo p')?.textContent.trim() || '';
 
-    if (containerFuncao) {
-        const titulo = containerFuncao.querySelector('.titulo p');
-        nomeFuncao = titulo?.textContent.trim() || '';
-    }
-
+    document.getElementById('funcao_id_revisao').value = dataIdFuncoes.join(',');
     document.getElementById('nome_funcao_upload').value = nomeFuncao;
 
-    console.log("Função clicada:", nomeFuncao);
     document.getElementById('modalUpload').style.display = 'block';
-    document.getElementById('form-edicao').style.display = 'none';
+    document.getElementById('etapaPrevia').style.display = 'block';
+    document.getElementById('etapaFinal').style.display = 'none';
+    document.getElementById('etapaTitulo').textContent = "1. Envio de Prévia";
+
+    configurarDropzone("drop-area-previa", "fileElemPrevia", "fileListPrevia", imagensSelecionadas);
+    configurarDropzone("drop-area-final", "fileElemFinal", "fileListFinal", arquivosFinais);
 }
 
 function fecharModal() {
     imagensSelecionadas = [];
-    renderizarLista();
+    arquivosFinais = [];
+    renderizarLista(imagensSelecionadas, 'fileListPrevia');
+    renderizarLista(arquivosFinais, 'fileListFinal');
     document.getElementById('modalUpload').style.display = 'none';
 }
 
-// Drag and drop
-['dragenter', 'dragover'].forEach(event => {
-    dropArea.addEventListener(event, e => {
+function configurarDropzone(areaId, inputId, listaId, arquivosArray) {
+    const dropArea = document.getElementById(areaId);
+    const fileInput = document.getElementById(inputId);
+
+    dropArea.addEventListener('click', () => fileInput.click());
+
+    dropArea.ondragover = e => {
         e.preventDefault();
         dropArea.classList.add('highlight');
-    });
-});
-
-['dragleave', 'drop'].forEach(event => {
-    dropArea.addEventListener(event, e => {
+    };
+    dropArea.ondragleave = () => dropArea.classList.remove('highlight');
+    dropArea.ondrop = e => {
         e.preventDefault();
         dropArea.classList.remove('highlight');
+        for (let file of e.dataTransfer.files) arquivosArray.push(file);
+        renderizarLista(arquivosArray, listaId);
+    };
+
+    fileInput.addEventListener('change', () => {
+        for (let file of fileInput.files) arquivosArray.push(file);
+        renderizarLista(arquivosArray, listaId);
     });
-});
-
-dropArea.addEventListener('drop', e => {
-    const files = e.dataTransfer.files;
-    adicionarArquivos(files);
-});
-
-dropArea.addEventListener('click', () => fileInput.click());
-fileInput.addEventListener('change', () => {
-    adicionarArquivos(fileInput.files);
-});
-
-function adicionarArquivos(files) {
-    for (let file of files) {
-        imagensSelecionadas.push(file);
-    }
-    renderizarLista();
 }
 
-function renderizarLista() {
-    fileList.innerHTML = '';
-    imagensSelecionadas.forEach((file, index) => {
+function renderizarLista(array, listaId) {
+    const lista = document.getElementById(listaId);
+    lista.innerHTML = '';
+    array.forEach((file, i) => {
         const li = document.createElement('li');
-        li.className = 'file-item';
-        li.innerHTML = `
-          <div class="file-info">
-          <span class="remove-btn" onclick="removerImagem(${index})">×</span>
-        <span>${file.name}</span>
-        </div>
-        <span class="file-size">${(file.size / 1024 / 1024).toFixed(1)} MB</span>
-      `;
-        fileList.appendChild(li);
+        li.innerHTML = `<div class="file-info"><span>${file.name}</span><span onclick="removerArquivo(${i}, '${listaId}')" style="cursor:pointer;">❌</span></div>`;
+        lista.appendChild(li);
     });
 }
 
-function removerImagem(index) {
-    imagensSelecionadas.splice(index, 1);
-    renderizarLista();
+function removerArquivo(index, listaId) {
+    if (listaId === 'fileListPrevia') {
+        imagensSelecionadas.splice(index, 1);
+        renderizarLista(imagensSelecionadas, listaId);
+    } else {
+        arquivosFinais.splice(index, 1);
+        renderizarLista(arquivosFinais, listaId);
+    }
 }
 
+// ENVIO DA PRÉVIA
 function enviarImagens() {
     const formData = new FormData();
-
-    imagensSelecionadas.forEach(file => {
-        formData.append('imagens[]', file);
-    });
-
-    // Mantém a estrutura igual: envia JSON como string
+    imagensSelecionadas.forEach(file => formData.append('imagens[]', file));
     formData.append('dataIdFuncoes', JSON.stringify(dataIdFuncoes));
-
-    // Pega o valor de #nomenclatura
-    const nomenclatura = document.getElementById('nomenclatura')?.textContent || '';
-    formData.append('nomenclatura', nomenclatura);
-
-    // Pega o valor de #campoNomeImagem e extrai o número inicial (antes do ponto)
+    formData.append('nome_funcao', document.getElementById('nome_funcao_upload').value);
     const campoNomeImagem = document.getElementById('campoNomeImagem')?.textContent || '';
+
+    // Extrai o número inicial antes do ponto
     const numeroImagem = campoNomeImagem.match(/^\d+/)?.[0] || '';
     formData.append('numeroImagem', numeroImagem);
 
-    const nomeFuncaoUpload = document.getElementById('nome_funcao_upload').value;
-    formData.append('nome_funcao', nomeFuncaoUpload);
+    // Extrai a nomenclatura (primeira palavra com "_", depois do número e ponto)
+    const nomenclatura = campoNomeImagem.match(/^\d+\.\s*([A-Z_]+)/)?.[1] || '';
+    formData.append('nomenclatura', nomenclatura);
+
+    // Extrai a primeira palavra da descrição (depois da nomenclatura)
+    const descricaoMatch = campoNomeImagem.match(/^\d+\.\s*[A-Z_]+\s+([^\s]+)/);
+    const primeiraPalavra = descricaoMatch ? descricaoMatch[1] : '';
+    formData.append('primeiraPalavra', primeiraPalavra);
 
 
     fetch('../uploadArquivos.php', {
         method: 'POST',
-        body: formData,
-        headers: {
-            'Accept': 'application/json'
-        }
+        body: formData
     })
-        .then(resp => {
-            if (!resp.ok) throw new Error('Erro na requisição');
-            return resp.json(); // ou .text() se o PHP não retorna JSON
+        .then(resp => resp.json())
+        .then(res => {
+            Toastify({
+                text: "Prévia enviada com sucesso!",
+                duration: 3000,
+                gravity: "top",
+                backgroundColor: "#4caf50"
+            }).showToast();
+
+            // Avança para próxima etapa
+            document.getElementById('etapaPrevia').style.display = 'none';
+            document.getElementById('etapaFinal').style.display = 'block';
+            document.getElementById('etapaTitulo').textContent = "2. Envio do Arquivo Final";
         })
-        .then(msg => {
-            console.log("Resposta:", msg);
-            alert("Imagens enviadas com sucesso!");
+        .catch(err => {
+            Toastify({
+                text: "Erro ao enviar prévia",
+                duration: 3000,
+                gravity: "top",
+                backgroundColor: "#f44336"
+            }).showToast();
+        });
+}
+
+// ENVIO DO ARQUIVO FINAL
+function enviarArquivo() {
+    const formData = new FormData();
+    arquivosFinais.forEach(file => formData.append('arquivo_final[]', file));
+    formData.append('dataIdFuncoes', JSON.stringify(dataIdFuncoes));
+    formData.append('nome_funcao', document.getElementById('nome_funcao_upload').value);
+
+    const campoNomeImagem = document.getElementById('campoNomeImagem')?.textContent || '';
+
+    // Extrai o número inicial antes do ponto
+    const numeroImagem = campoNomeImagem.match(/^\d+/)?.[0] || '';
+    formData.append('numeroImagem', numeroImagem);
+
+    // Extrai a nomenclatura (primeira palavra com "_", depois do número e ponto)
+    const nomenclatura = campoNomeImagem.match(/^\d+\.\s*([A-Z_]+)/)?.[1] || '';
+    formData.append('nomenclatura', nomenclatura);
+
+    // Extrai a primeira palavra da descrição (depois da nomenclatura)
+    const descricaoMatch = campoNomeImagem.match(/^\d+\.\s*[A-Z_]+\s+([^\s]+)/);
+    const primeiraPalavra = descricaoMatch ? descricaoMatch[1] : '';
+    formData.append('primeiraPalavra', primeiraPalavra);
+
+    fetch('../uploadFinal.php', {
+        method: 'POST',
+        body: formData
+    })
+        .then(resp => resp.json())
+        .then(res => {
+            Toastify({
+                text: "Arquivo final enviado!",
+                duration: 3000,
+                gravity: "top",
+                backgroundColor: "#4caf50"
+            }).showToast();
             fecharModal();
         })
-        .catch(erro => {
-            console.error("Erro ao enviar imagens:", erro);
+        .catch(err => {
+            Toastify({
+                text: "Erro ao enviar arquivo final",
+                duration: 3000,
+                gravity: "top",
+                backgroundColor: "#f44336"
+            }).showToast();
         });
 }

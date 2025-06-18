@@ -1074,27 +1074,37 @@ $conn->close();
         </div>
     </div>
 
-    <!-- MODAL -->
+    <!-- MODAL ÚNICO -->
     <div id="modalUpload" style="display: none;">
         <div id="overlay" onclick="fecharModal()" style="position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9;"></div>
         <input type="hidden" id="funcao_id_revisao">
         <input type="hidden" id="nome_funcao_upload">
-        <div style="position: fixed; top: 50%; left: 50%; width: 600px; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 10px; z-index: 10;">
-            <h2>Upload de Imagens</h2>
 
-            <!-- Dropzone -->
-            <div id="drop-area">
-                Arraste suas imagens aqui ou clique para selecionar
-                <input type="file" id="fileElem" accept="image/*" multiple style="display:none;">
+        <div style="position: fixed; top: 50%; left: 50%; width: 600px; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 10px; z-index: 10;">
+            <h2 id="etapaTitulo">1. Envio de Prévia</h2>
+
+            <!-- Conteúdo da etapa 1 -->
+            <div id="etapaPrevia">
+                <div id="drop-area-previa" class="drop-area">
+                    Arraste suas imagens aqui ou clique para selecionar
+                    <input type="file" id="fileElemPrevia" accept="image/*" multiple style="display:none;">
+                </div>
+                <ul class="file-list" id="fileListPrevia"></ul>
+                <button onclick="enviarImagens()" style="background-color: green;">Enviar Prévia</button>
             </div>
 
-            <!-- Lista -->
-            <ul class="file-list" id="fileList"></ul>
+            <!-- Conteúdo da etapa 2 -->
+            <div id="etapaFinal" style="display: none;">
+                <div id="drop-area-final" class="drop-area">
+                    Arraste o arquivo final aqui ou clique para selecionar
+                    <input type="file" id="fileElemFinal" style="display:none;">
+                </div>
+                <ul class="file-list" id="fileListFinal"></ul>
+                <button onclick="enviarArquivo()" style="background-color: green;">Enviar Arquivo Final</button>
+            </div>
 
-            <!-- Botões -->
-            <div class="buttons-upload">
-                <button onclick="fecharModal()" id="cancelar" style="background-color: red;">Cancelar</button>
-                <button class="upload" onclick="enviarImagens()" id="enviar" style="background-color: green;">Enviar</button>
+            <div style="margin-top: 10px;">
+                <button onclick="fecharModal()" style="background-color: red;">Cancelar</button>
             </div>
         </div>
     </div>

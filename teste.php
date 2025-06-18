@@ -1,84 +1,41 @@
 <?php
+$ftp_user = "flow";
+$ftp_pass = "flow@2025";
+$ftp_host = "imp-nas.ddns.net";
+$ftp_port = 2121;
 
+$nome_arquivo = "logo.jpg";
+$local_file = "./assets/logo.jpg";
 
-include 'conexaoMain.php';
+$remote_path = "/clientes/2025/MSA_HYD/02.Projetos/$nome_arquivo";
+$ftp_url = "ftp://$ftp_host:$ftp_port$remote_path";
 
-$conn = conectarBanco();
+if (!file_exists($local_file)) {
+    die("❌ Arquivo local não encontrado: $local_file");
+}
 
-$clientes = obterClientes($conn);
-$obras = obterObras($conn);
-$colaboradores = obterColaboradores($conn);
-$status_imagens = obterStatusImagens($conn);
-$funcoes = obterFuncoes($conn);
+$file = fopen($local_file, 'r');
 
-$conn->close();
-?>
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, $ftp_url);
+curl_setopt($ch, CURLOPT_USERPWD, "$ftp_user:$ftp_pass");
+curl_setopt($ch, CURLOPT_UPLOAD, 1);
+curl_setopt($ch, CURLOPT_INFILE, $file);
+curl_setopt($ch, CURLOPT_INFILESIZE, filesize($local_file));
+curl_setopt($ch, CURLOPT_USE_SSL, CURLUSESSL_ALL);
+curl_setopt($ch, CURLOPT_FTP_SSL, CURLFTPSSL_ALL);
+curl_setopt($ch, CURLOPT_FTPSSLAUTH, CURLFTPAUTH_TLS);
+curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+curl_setopt($ch, CURLOPT_VERBOSE, true);
 
+$response = curl_exec($ch);
 
-<!DOCTYPE html>
-<html lang="pt-BR">
+if ($response) {
+    echo "✅ Upload do arquivo $nome_arquivo realizado com sucesso.";
+} else {
+    echo "❌ Erro no upload: " . curl_error($ch);
+}
 
-<head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="css/styleSidebar.css">
-    <link rel="stylesheet" href="Revisao/style.css">
-    <title>Tela de Aprovação</title>
-
-</head>
-<?php
-
-include 'sidebar.php';
-
-?>
-
-<body>
-
-    <div class="container">
-        <header>
-            <div class="task-info" id="task-info">
-                <h3 id="funcao_nome">Pedro - Composição</h3>
-                <p id="imagem_nome">1. LD_RES Fotomontagem aérea com inserção do empreendimento em fotografia aérea ângulo 1
-
-                </p>
-                <div id="buttons-task">
-                    <button class="action-btn tooltip" id="add_obs" onclick="addObservacao(648)" data-tooltip="Adicionar Observação">
-                        <i class="fa-solid fa-plus"></i>
-                    </button>
-                    <button class="action-btn tooltip" id="check" data-tooltip="Aprovar" onclick="revisarTarefa(61612, 'Pedro', '1. LD_RES &nbsp;Fotomontagem aérea com inserção do empreendimento em fotografia aérea ângulo 1', 'Composição', '21', true)">
-                        <i class="fa-solid fa-check"></i>
-                    </button>
-                    <button class="action-btn tooltip" id="xmark" data-tooltip="Rejeitar" onclick="revisarTarefa(61612, 'Pedro', '1. LD_RES &nbsp;Fotomontagem aérea com inserção do empreendimento em fotografia aérea ângulo 1', 'Composição', '21', false)">
-                        <i class="fa-solid fa-xmark"></i>
-                    </button>
-                </div>
-            </div>
-        </header>
-
-        <nav>
-            <img src="assets/07_HSA_MON_Hall de Entrada_EF.jpg" alt=""></li>
-            <img src="assets/07_HSA_MON_Hall de Entrada_EF.jpg" alt=""></li>
-            <img src="assets/07_HSA_MON_Hall de Entrada_EF.jpg" alt=""></li>
-        </nav>
-
-        <main>
-            <div id="imageContainer">
-                <div id="imagens"></div>
-
-                <div id="imagem_completa">
-                    <div id="imagem_atual"></div>
-                </div>
-            </div>
-        </main>
-
-        <aside class="sidebar-direita">
-            <h3>Comentários</h3>
-            <div class="comentarios"></div>
-        </aside>
-    </div>
-
-    <script src="script/sidebar.js"></script>
-</body>
-
-</html>
+curl_close($ch);
+fclose($file);

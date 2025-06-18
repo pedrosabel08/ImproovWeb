@@ -20,6 +20,7 @@ $idusuario = $_SESSION['idusuario'];
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="./css/styleMain.css" rel="stylesheet">
     <link href="./css/styleSidebar.css" rel="stylesheet">
+    <link href="./css/modalSessao.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
     <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
         type="image/x-icon">
@@ -220,9 +221,9 @@ include 'sidebar.php';
                                 <option value="Aprovado com ajustes">Aprovado com ajustes</option>
                             </select>
                             <input type="date" name="prazo_caderno" id="prazo_caderno">
-                            <input type="text" name="obs_caderno" id="obs_caderno" placeholder="Observação">
+                            <input type="text" name="obs_caderno" id="obs_caderno" placeholder="Caminho arquivo">
                             <div class="revisao_imagem" style="display: none;">
-                                <input type="file" name="imagens[]" id="revisao_imagem_caderno" accept="image/*" multiple>
+                                <button type="button" onclick="abrirModal(this)" id="revisao_imagem_caderno">Adicionar Imagens</button>
                             </div>
                         </div>
                     </div>
@@ -253,9 +254,9 @@ include 'sidebar.php';
                                 <option value="Aprovado com ajustes">Aprovado com ajustes</option>
                             </select>
                             <input type="date" name="prazo_filtro" id="prazo_filtro" placeholder="Data">
-                            <input type="text" name="obs_filtro" id="obs_filtro" placeholder="Observação">
+                            <input type="text" name="obs_filtro" id="obs_filtro" placeholder="Caminho arquivo">
                             <div class="revisao_imagem" style="display: none;">
-                                <input type="file" name="imagens[]" id="revisao_imagem_filtro" accept="image/*" multiple>
+                                <button type="button" onclick="abrirModal(this)" id="revisao_imagem_filtro">Adicionar Imagens</button>
                             </div>
                         </div>
                     </div>
@@ -286,9 +287,9 @@ include 'sidebar.php';
                                 <option value="Aprovado com ajustes">Aprovado com ajustes</option>
                             </select>
                             <input type="date" name="prazo_modelagem" id="prazo_modelagem">
-                            <input type="text" name="obs_modelagem" id="obs_modelagem" placeholder="Observação">
+                            <input type="text" name="obs_modelagem" id="obs_modelagem" placeholder="Caminho arquivo">
                             <div class="revisao_imagem" style="display: none;">
-                                <input type="file" name="imagens[]" id="revisao_imagem_model" accept="image/*" multiple>
+                                <button type="button" onclick="abrirModal(this)" id="revisao_imagem_model">Adicionar Imagens</button>
                             </div>
                         </div>
                     </div>
@@ -319,9 +320,9 @@ include 'sidebar.php';
                                 <option value="Aprovado com ajustes">Aprovado com ajustes</option>
                             </select>
                             <input type="date" name="prazo_comp" id="prazo_comp">
-                            <input type="text" name="obs_comp" id="obs_comp" placeholder="Observação">
+                            <input type="text" name="obs_comp" id="obs_comp" placeholder="Caminho arquivo">
                             <div class="revisao_imagem" style="display: none;">
-                                <input type="file" name="imagens[]" id="revisao_imagem_comp" accept="image/*" multiple>
+                                <button type="button" onclick="abrirModal(this)" id="revisao_imagem_comp">Adicionar Imagens</button>
                             </div>
                         </div>
                     </div>
@@ -352,9 +353,9 @@ include 'sidebar.php';
                                 <option value="Aprovado com ajustes">Aprovado com ajustes</option>
                             </select>
                             <input type="date" name="prazo_pre" id="prazo_pre">
-                            <input type="text" name="obs_pre" id="obs_pre" placeholder="Observação">
+                            <input type="text" name="obs_pre" id="obs_pre" placeholder="Caminho arquivo">
                             <div class="revisao_imagem" style="display: none;">
-                                <input type="file" name="imagens[]" id="revisao_imagem_pre" accept="image/*" multiple>
+                                <button type="button" onclick="abrirModal(this)" id="revisao_imagem_pre">Adicionar Imagens</button>
                             </div>
                         </div>
                     </div>
@@ -383,12 +384,11 @@ include 'sidebar.php';
                                 <option value="Aprovado">Aprovado</option>
                                 <option value="Ajuste">Ajuste</option>
                                 <option value="Aprovado com ajustes">Aprovado com ajustes</option>
-
                             </select>
                             <input type="date" name="prazo_finalizacao" id="prazo_finalizacao">
-                            <input type="text" name="obs_finalizacao" id="obs_finalizacao" placeholder="Observação">
+                            <input type="text" name="obs_finalizacao" id="obs_finalizacao" placeholder="Caminho arquivo">
                             <div class="revisao_imagem" style="display: none;">
-                                <input type="file" name="imagens[]" id="revisao_imagem_final" accept="image/*" multiple>
+                                <button type="button" onclick="abrirModal(this)" id="revisao_imagem_final">Adicionar Imagens</button>
                             </div>
                         </div>
                     </div>
@@ -419,12 +419,11 @@ include 'sidebar.php';
                                 <option value="Aprovado">Aprovado</option>
                                 <option value="Ajuste">Ajuste</option>
                                 <option value="Aprovado com ajustes">Aprovado com ajustes</option>
-
                             </select>
                             <input type="date" name="prazo_pos" id="prazo_pos">
-                            <input type="text" name="obs_pos" id="obs_pos" placeholder="Observação">
+                            <input type="text" name="obs_pos" id="obs_pos" placeholder="Caminho arquivo">
                             <div class="revisao_imagem" style="display: none;">
-                                <input type="file" name="imagens[]" id="revisao_imagem_pos" accept="image/*" multiple>
+                                <button type="button" onclick="abrirModal(this)" id="revisao_imagem_pos">Adicionar Imagens</button>
                             </div>
                         </div>
                     </div>
@@ -454,12 +453,11 @@ include 'sidebar.php';
                                 <option value="Aprovado">Aprovado</option>
                                 <option value="Ajuste">Ajuste</option>
                                 <option value="Aprovado com ajustes">Aprovado com ajustes</option>
-
                             </select>
                             <input type="date" name="prazo_alteracao" id="prazo_alteracao">
-                            <input type="text" name="obs_alteracao" id="obs_alteracao" placeholder="Observação">
+                            <input type="text" name="obs_alteracao" id="obs_alteracao" placeholder="Caminho arquivo">
                             <div class="revisao_imagem" style="display: none;">
-                                <input type="file" name="imagens[]" id="revisao_imagem_ph" accept="image/*" multiple>
+                                <button type="button" onclick="abrirModal(this)" id="revisao_imagem_alt">Adicionar Imagens</button>
                             </div>
                         </div>
                     </div>
@@ -489,17 +487,16 @@ include 'sidebar.php';
                                 <option value="Aprovado">Aprovado</option>
                                 <option value="Ajuste">Ajuste</option>
                                 <option value="Aprovado com ajustes">Aprovado com ajustes</option>
-
                             </select>
                             <input type="date" name="prazo_planta" id="prazo_planta">
-                            <input type="text" name="obs_planta" id="obs_planta" placeholder="Observação">
-                            <div class="revisao_imagem" id="revisao_imagem_ph" style="display: none;">
-                                <input type="file" name="imagens[]" id="imagens" accept="image/*" multiple>
+                            <input type="text" name="obs_planta" id="obs_planta" placeholder="Caminho arquivo">
+                            <div class="revisao_imagem" style="display: none;">
+                                <button type="button" onclick="abrirModal(this)" id="revisao_imagem_ph">Adicionar Imagens</button>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="funcao" id="status_funcao" style="margin-bottom: 15px;">
+                <div class="funcao" id="status_funcao" style="margin-bottom: 15px;width: max-content;">
                     <p id="status">Status</p>
                     <select name="status_id" id="opcao_status">
                         <?php foreach ($status_imagens as $status): ?>
@@ -508,22 +505,41 @@ include 'sidebar.php';
                             </option>
                         <?php endforeach; ?>
                     </select>
+                    <select name="status_hold" id="status_hold" multiple style="width: 200px;">
+                        <option value="Paisagismo">Paisagismo</option>
+                        <option value="Mood">Mood</option>
+                        <option value="Interiores">Interiores</option>
+                        <option value="Luminotécnico">Luminotécnico</option>
+                        <option value="Arquitetônico">Arquitetônico</option>
+                        <option value="Definição de unidade">Definição de unidade</option>
+                        <option value="Aguardando aprovações">Aguardando aprovações</option>
+                        <option value="Aguardando arquivos">Aguardando arquivos</option>
+                    </select>
                 </div>
                 <div class="funcao" id="status_funcao" style="width: 200px; margin-bottom: 15px;">
                     <div class="render">
                         <p id="render_alta">Render</p>
                         <button id="addRender" class="buttons-form-add" style=" padding: 3px 10px; font-size: 13px; background-color: steelblue;">Adicionar render</button>
+                        <label class="switch">
+                            <input type="checkbox" id="notificar">
+                            <span class="slider"></span>
+                        </label>
                     </div>
                 </div>
-                <!-- <div class="funcao" id="status_funcao" style="width: 200px; margin-bottom: 15px;">
+                <div class="funcao" id="status_funcao" style="width: 200px; margin-bottom: 15px;">
                     <div class="revisao">
                         <p id="revisao">Revisao</p>
                         <button id="addRevisao" class="buttons-form-add" style=" padding: 3px 10px; font-size: 13px; background-color: steelgreen;">Adicionar revisão</button>
                     </div>
-                </div> -->
+                </div>
                 <div class="buttons">
                     <button type="button" id="btnAnterior" style="background: white; color: black"><i class="fa-solid fa-angle-left"></i></button>
-                    <button type="submit" id="salvar_funcoes" class="buttons-form-add">Salvar</button>
+                    <div>
+                        <button type="submit" id="salvar_funcoes" class="buttons-form-add">Salvar</button>
+                        <div id="loadingBar" style="display: none;">
+                            <div class="progress"></div>
+                        </div>
+                    </div>
                     <button type="button" id="btnProximo" style="background: white; color: black"><i class="fa-solid fa-angle-right"></i></button>
                 </div>
             </div>
@@ -581,7 +597,7 @@ include 'sidebar.php';
                 <select id="obraSelect">
                     <option value="">Selecione:</option>
                     <?php foreach ($obras as $obra): ?>
-                        <option value="<?= $obra['idobra']; ?>"><?= htmlspecialchars($obra['nome_obra']); ?></option>
+                        <option value="<?= $obra['idobra']; ?>"><?= htmlspecialchars($obra['nomenclatura']); ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
@@ -951,6 +967,62 @@ include 'sidebar.php';
 
 </main>
 
+<!-- Popover unificado -->
+<div id="popover-tarefas" class="popover oculto">
+    <!-- Tarefas -->
+    <div class="secao">
+        <div class="secao-titulo secao-tarefas" onclick="toggleSecao('tarefas')">
+            <strong>Tarefas</strong>
+            <span id="badge-tarefas" class="badge-interna"></span>
+        </div>
+        <div id="conteudo-tarefas" class="secao-conteudo"></div>
+    </div>
+
+    <!-- Notificações -->
+    <div class="secao">
+        <div class="secao-titulo secao-notificacoes">
+            <strong>Notificações</strong>
+            <span id="badge-notificacoes" class="badge-interna"></span>
+        </div>
+        <div id="conteudo-notificacoes" class="secao-conteudo">
+        </div>
+    </div>
+    <button id="btn-ir-revisao">Ir para Revisão</button>
+</div>
+
+<div id="modalSessao" class="modal-sessao">
+    <div class="modal-conteudo">
+        <h2>Sessão Expirada</h2>
+        <p>Sua sessão expirou. Deseja continuar?</p>
+        <button onclick="renovarSessao()">Continuar Sessão</button>
+        <button onclick="sair()">Sair</button>
+    </div>
+</div>
+
+<div id="modalUpload" style="display: none;">
+    <div id="overlay" onclick="fecharModal()" style="position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9;"></div>
+    <input type="hidden" id="funcao_id_revisao">
+    <input type="hidden" id="nome_funcao_upload">
+    <div style="position: fixed; top: 50%; left: 50%; width: 600px; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 10px; z-index: 10;">
+        <h2>Upload de Imagens</h2>
+
+        <!-- Dropzone -->
+        <div id="drop-area">
+            Arraste suas imagens aqui ou clique para selecionar
+            <input type="file" id="fileElem" accept="image/*" multiple style="display:none;">
+        </div>
+
+        <!-- Lista -->
+        <ul class="file-list" id="fileList"></ul>
+
+        <!-- Botões -->
+        <div class="buttons-upload">
+            <button onclick="fecharModal()" id="cancelar" style="background-color: red;">Cancelar</button>
+            <button class="upload" onclick="enviarImagens()" id="enviar" style="background-color: green;">Enviar</button>
+        </div>
+    </div>
+</div>
+
 <?php if (isset($_SESSION['idusuario']) && ($_SESSION['idusuario'] == 1 || $_SESSION['idusuario'] == 2 || $_SESSION['idusuario'] == 9)): ?>
     <div id="notificacao-sino" class="notificacao-sino">
         <i class="fas fa-bell sino" id="icone-sino"></i>
@@ -967,6 +1039,7 @@ include 'sidebar.php';
 <script src="script/notificacoes.js"></script>
 <script src="./script/script.js"></script>
 <script src="./script/sidebar.js"></script>
+<script src="./script/controleSessao.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>

@@ -1708,3 +1708,159 @@ document.getElementById("copyColumnColab").addEventListener("click", function ()
             console.error("Erro ao copiar a coluna: ", err);
         });
 });
+
+
+
+const dropArea = document.getElementById('drop-area');
+const fileInput = document.getElementById('fileElem');
+const fileList = document.getElementById('fileList');
+let imagensSelecionadas = [];
+let botaoOrigemId = null;
+let dataIdFuncoes = [];
+
+function abrirModal(botao) {
+    botaoOrigemId = botao.id;
+
+    const dataIdFuncao = botao.getAttribute('data-id-funcao');
+
+    dataIdFuncoes = dataIdFuncao
+        ? dataIdFuncao.includes(',')
+            ? dataIdFuncao.split(',').map(f => f.trim())
+            : [dataIdFuncao.trim()]
+        : [];
+
+    console.log("Funções selecionadas:", dataIdFuncoes);
+    document.getElementById('funcao_id_revisao').value = dataIdFuncoes.join(',');
+
+    // Subir até a div .funcao ou .funcao_comp e buscar o nome da função
+    let containerFuncao = botao.closest('.funcao') || botao.closest('.funcao_comp');
+    let nomeFuncao = '';
+
+    if (containerFuncao) {
+        const titulo = containerFuncao.querySelector('.titulo p');
+        nomeFuncao = titulo?.textContent.trim() || '';
+    }
+
+    document.getElementById('nome_funcao_upload').value = nomeFuncao;
+
+    console.log("Função clicada:", nomeFuncao);
+    document.getElementById('modalUpload').style.display = 'block';
+    document.getElementById('form-edicao').style.display = 'none';
+}
+
+function fecharModal() {
+    imagensSelecionadas = [];
+    renderizarLista();
+    document.getElementById('modalUpload').style.display = 'none';
+}
+
+// Drag and drop
+['dragenter', 'dragover'].forEach(event => {
+    dropArea.addEventListener(event, e => {
+        e.preventDefault();
+        dropArea.classList.add('highlight');
+    });
+});
+
+['dragleave', 'drop'].forEach(event => {
+    dropArea.addEventListener(event, e => {
+        e.preventDefault();
+        dropArea.classList.remove('highlight');
+    });
+});
+
+dropArea.addEventListener('drop', e => {
+    const files = e.dataTransfer.files;
+    adicionarArquivos(files);
+});
+
+dropArea.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', () => {
+    adicionarArquivos(fileInput.files);
+});
+
+function adicionarArquivos(files) {
+    for (let file of files) {
+        imagensSelecionadas.push(file);
+    }
+    renderizarLista();
+}
+
+function renderizarLista() {
+    fileList.innerHTML = '';
+    imagensSelecionadas.forEach((file, index) => {
+        const li = document.createElement('li');
+        li.className = 'file-item';
+        li.innerHTML = `
+          <div class="file-info">
+          <span class="remove-btn" onclick="removerImagem(${index})">×</span>
+        <span>${file.name}</span>
+        </div>
+        <span class="file-size">${(file.size / 1024 / 1024).toFixed(1)} MB</span>
+      `;
+        fileList.appendChild(li);
+    });
+}
+
+function removerImagem(index) {
+    imagensSelecionadas.splice(index, 1);
+    renderizarLista();
+}
+
+function enviarImagens() {
+    const formData = new FormData();
+
+    imagensSelecionadas.forEach(file => {
+        formData.append('imagens[]', file);
+    });
+
+    // Mantém a estrutura igual: envia JSON como string
+    formData.append('dataIdFuncoes', JSON.stringify(dataIdFuncoes));
+
+
+    // Pega o valor de #campoNomeImagem e extrai o número inicial (antes do ponto)
+    const campoNomeImagem = document.getElementById('campoNomeImagem')?.textContent || '';
+    const numeroImagem = campoNomeImagem.match(/^\d+/)?.[0] || '';
+    formData.append('numeroImagem', numeroImagem);
+
+
+    // Expressão para pegar o texto entre o número e o próximo espaço (ou seja, ARS_VIE)
+    const nomenclatura = campoNomeImagem.match(/^\d+\.\s*([^\s]+)/)?.[1] || '';
+
+    formData.append('nomenclatura', nomenclatura);
+
+    const nomeFuncaoUpload = document.getElementById('nome_funcao_upload').value;
+    formData.append('nome_funcao', nomeFuncaoUpload);
+
+
+    fetch('uploadArquivos.php', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'Accept': 'application/json'
+        }
+    })
+        .then(resp => {
+            if (!resp.ok) throw new Error('Erro na requisição');
+            return resp.json(); // ou .text() se o PHP não retorna JSON
+        })
+        .then(msg => {
+            Toastify({
+                text: "Imagens prévias enviadas!",
+                duration: 3000,
+                gravity: "top",
+                position: "right",
+                backgroundColor: "#4caf50", // Cor de sucesso
+            }).showToast();
+            fecharModal();
+        })
+        .catch(erro => {
+            Toastify({
+                text: "Erro no envio das imagens",
+                duration: 3000,
+                gravity: "top",
+                position: "right",
+                backgroundColor: "#", // Cor de sucesso
+            }).showToast();
+        });
+}

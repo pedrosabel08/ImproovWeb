@@ -1,41 +1,45 @@
 <?php
-$ftp_user = "flow";
-$ftp_pass = "flow@2025";
-$ftp_host = "imp-nas.ddns.net";
-$ftp_port = 2121;
+require 'vendor/autoload.php';
 
-$nome_arquivo = "logo.jpg";
-$local_file = "./assets/logo.jpg";
+use phpseclib\Net\SSH2;
+use phpseclib\Net\SCP;
+use phpseclib\Exception\UnableToConnectException;
 
-$remote_path = "/clientes/2025/MSA_HYD/02.Projetos/$nome_arquivo";
-$ftp_url = "ftp://$ftp_host:$ftp_port$remote_path";
+function enviarArquivoSCP($host, $usuario, $senha, $arquivoLocal, $arquivoRemoto)
+{
+    $porta = 2222;
 
-if (!file_exists($local_file)) {
-    die("❌ Arquivo local não encontrado: $local_file");
+    if (!file_exists($arquivoLocal)) {
+        return "❌ Arquivo local não encontrado: $arquivoLocal";
+    }
+
+    try {
+        $ssh = new SSH2($host, $porta);
+        if (!$ssh->login($usuario, $senha)) {
+            return "❌ Falha na autenticação SSH.";
+        }
+
+        // Garante que o diretório remoto exista
+        $diretorio = dirname($arquivoRemoto);
+        $ssh->exec("mkdir -p " . escapeshellarg($diretorio));
+
+        // Envia o arquivo via SCP
+        $scp = new SCP($ssh);
+        $scp->put($arquivoRemoto, $arquivoLocal, SCP::SOURCE_LOCAL_FILE);
+
+        return "✅ Arquivo enviado com sucesso via SCP!";
+    } catch (UnableToConnectException $e) {
+        return "❌ Erro ao conectar ao servidor SSH: " . $e->getMessage();
+    } catch (Exception $e) {
+        return "⚠ Ocorreu um erro inesperado: " . $e->getMessage();
+    }
 }
 
-$file = fopen($local_file, 'r');
-
-$ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, $ftp_url);
-curl_setopt($ch, CURLOPT_USERPWD, "$ftp_user:$ftp_pass");
-curl_setopt($ch, CURLOPT_UPLOAD, 1);
-curl_setopt($ch, CURLOPT_INFILE, $file);
-curl_setopt($ch, CURLOPT_INFILESIZE, filesize($local_file));
-curl_setopt($ch, CURLOPT_USE_SSL, CURLUSESSL_ALL);
-curl_setopt($ch, CURLOPT_FTP_SSL, CURLFTPSSL_ALL);
-curl_setopt($ch, CURLOPT_FTPSSLAUTH, CURLFTPAUTH_TLS);
-curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-curl_setopt($ch, CURLOPT_VERBOSE, true);
-
-$response = curl_exec($ch);
-
-if ($response) {
-    echo "✅ Upload do arquivo $nome_arquivo realizado com sucesso.";
-} else {
-    echo "❌ Erro no upload: " . curl_error($ch);
-}
-
-curl_close($ch);
-fclose($file);
+// Exemplo de uso:
+echo enviarArquivoSCP(
+    "imp-nas.ddns.net",
+    "flow",
+    "flow@2025",
+    "./assets/teste.pdf",
+    "/mnt/clientes/02/abc/oi.pdf"
+);

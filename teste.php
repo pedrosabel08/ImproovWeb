@@ -1,45 +1,47 @@
 <?php
 require 'vendor/autoload.php';
 
-use phpseclib\Net\SSH2;
-use phpseclib\Net\SCP;
+use phpseclib\Net\SFTP;
 use phpseclib\Exception\UnableToConnectException;
 
-function enviarArquivoSCP($host, $usuario, $senha, $arquivoLocal, $arquivoRemoto)
+function enviarArquivoSFTP($host, $usuario, $senha, $arquivoLocal, $arquivoRemoto)
 {
-    $porta = 2222;
+    $porta = 2222; // Porta SFTP personalizada
 
     if (!file_exists($arquivoLocal)) {
         return "❌ Arquivo local não encontrado: $arquivoLocal";
     }
 
     try {
-        $ssh = new SSH2($host, $porta);
-        if (!$ssh->login($usuario, $senha)) {
-            return "❌ Falha na autenticação SSH.";
+        $sftp = new SFTP($host, $porta);
+        if (!$sftp->login($usuario, $senha)) {
+            return "❌ Falha na autenticação SFTP.";
         }
 
         // Garante que o diretório remoto exista
         $diretorio = dirname($arquivoRemoto);
-        $ssh->exec("mkdir -p " . escapeshellarg($diretorio));
+        if (!$sftp->is_dir($diretorio)) {
+            $sftp->mkdir($diretorio, -1, true); // Recursivo
+        }
 
-        // Envia o arquivo via SCP
-        $scp = new SCP($ssh);
-        $scp->put($arquivoRemoto, $arquivoLocal, SCP::SOURCE_LOCAL_FILE);
-
-        return "✅ Arquivo enviado com sucesso via SCP!";
+        // Envia o arquivo
+        if ($sftp->put($arquivoRemoto, file_get_contents($arquivoLocal))) {
+            return "✅ Arquivo enviado com sucesso via SFTP!";
+        } else {
+            return "⚠ Erro ao enviar o arquivo via SFTP.";
+        }
     } catch (UnableToConnectException $e) {
-        return "❌ Erro ao conectar ao servidor SSH: " . $e->getMessage();
+        return "❌ Erro ao conectar ao servidor SFTP: " . $e->getMessage();
     } catch (Exception $e) {
         return "⚠ Ocorreu um erro inesperado: " . $e->getMessage();
     }
 }
 
 // Exemplo de uso:
-echo enviarArquivoSCP(
+echo enviarArquivoSFTP(
     "imp-nas.ddns.net",
     "flow",
     "flow@2025",
     "./assets/teste.pdf",
-    "/mnt/clientes/02/abc/oi.pdf"
+    "/mnt/clientes/2025/ROM_MAE/02.Projetos/teste.pdf"
 );

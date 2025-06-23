@@ -144,6 +144,7 @@ function addEventListenersToRows() {
         });
     });
 }
+let nomePdf = '';
 
 function atualizarModal(idImagem) {
     // Limpar campos do formulário de edição
@@ -154,6 +155,7 @@ function atualizarModal(idImagem) {
         .then(response => response.json())
         .then(response => {
             document.getElementById('form-edicao').style.display = 'flex';
+
             if (response.funcoes && response.funcoes.length > 0) {
                 document.getElementById("campoNomeImagem").textContent = response.funcoes[0].imagem_nome;
                 document.getElementById("mood").textContent = `Mood da cena: ${response.funcoes[0].clima || ''}`;
@@ -163,6 +165,10 @@ function atualizarModal(idImagem) {
                 statusHoldSelect.value = '';
 
                 response.funcoes.forEach(function (funcao) {
+
+                    if (funcao.nome_pdf && funcao.nome_pdf.trim() !== '') {
+                        nomePdf = funcao.nome_pdf;
+                    }
                     let selectElement;
                     let checkboxElement;
                     let revisaoImagemElement;
@@ -232,6 +238,8 @@ function atualizarModal(idImagem) {
                             revisaoImagemElement = document.getElementById("revisao_imagem_pre");
                             break;
                     }
+
+
                     if (revisaoImagemElement) {
                         revisaoImagemElement.setAttribute('data-id-funcao', funcao.id);
                     }
@@ -298,6 +306,16 @@ function atualizarModal(idImagem) {
                     }
 
                 });
+            }
+            const btnVerPdf = document.getElementById('ver-pdf');
+            if (btnVerPdf) {
+                if (nomePdf) {
+                    btnVerPdf.setAttribute('data-nome-pdf', nomePdf);
+                    btnVerPdf.style.display = 'inline-block';
+                } else {
+                    btnVerPdf.removeAttribute('data-nome-pdf');
+                    btnVerPdf.style.display = 'none';
+                }
             }
 
             const statusSelect = document.getElementById("opcao_status");
@@ -1859,17 +1877,24 @@ const modalPos = document.getElementById("modal_pos");
 const eventModal = document.getElementById("eventModal");
 const calendarModal = document.getElementById("calendarModal");
 const editImagesModal = document.getElementById("editImagesModal");
-
+const modalPdf = document.getElementById("modal_pdf");
 
 ['click', 'touchstart', 'keydown'].forEach(eventType => {
     window.addEventListener(eventType, function (event) {
         // Fecha os modais ao clicar fora ou pressionar Esc
         if (eventType === 'keydown' && event.key !== 'Escape') return;
 
+        // PRIORIDADE: fecha modalPdf primeiro se estiver aberto
+        if (modalPdf && modalPdf.style.display === "flex") {
+            if (event.target == modalPdf || (eventType === 'keydown' && event.key === 'Escape')) {
+                modalPdf.style.display = "none";
+                return; // Sai da função, não fecha outros modais
+            }
+        }
+
         if (event.target == form_edicao || (eventType === 'keydown' && event.key === 'Escape')) {
             form_edicao.style.display = "none";
             infosObra(obraId);
-
         }
         if (event.target == modal || (eventType === 'keydown' && event.key === 'Escape')) {
             modal.style.display = "none";
@@ -1880,7 +1905,6 @@ const editImagesModal = document.getElementById("editImagesModal");
         if (event.target == editImagesModal || (eventType === 'keydown' && event.key === 'Escape')) {
             editImagesModal.style.display = "none";
             infosObra(obraId);
-
         }
         if (event.target == addImagemModal || (eventType === 'keydown' && event.key === 'Escape')) {
             addImagemModal.style.display = "none";
@@ -1897,11 +1921,7 @@ const editImagesModal = document.getElementById("editImagesModal");
         if (event.target == modalArquivos || (eventType === 'keydown' && event.key === 'Escape')) {
             modalArquivos.style.display = "none";
             infosObra(obraId);
-
         }
-        // if (event.target == modalPos || (eventType === 'keydown' && event.key === 'Escape')) {
-        //     modalPos.classList.add("hidden");
-        // }
         if (event.target == eventModal || (eventType === 'keydown' && event.key === 'Escape')) {
             eventModal.style.display = "none";
         }
@@ -3154,6 +3174,13 @@ function configurarDropzone(areaId, inputId, listaId, arquivosArray) {
     const dropArea = document.getElementById(areaId);
     const fileInput = document.getElementById(inputId);
 
+    // Remove listeners antigos para evitar múltiplos disparos
+    dropArea.onclick = null;
+    dropArea.ondragover = null;
+    dropArea.ondragleave = null;
+    dropArea.ondrop = null;
+    fileInput.onchange = null;
+
     dropArea.addEventListener('click', () => fileInput.click());
 
     dropArea.ondragover = e => {
@@ -3173,7 +3200,6 @@ function configurarDropzone(areaId, inputId, listaId, arquivosArray) {
         renderizarLista(arquivosArray, listaId);
     });
 }
-
 function renderizarLista(array, listaId) {
     const lista = document.getElementById(listaId);
     lista.innerHTML = '';
@@ -3196,6 +3222,15 @@ function removerArquivo(index, listaId) {
 
 // ENVIO DA PRÉVIA
 function enviarImagens() {
+    if (imagensSelecionadas.length === 0) {
+        Toastify({
+            text: "Selecione pelo menos uma imagem para enviar a prévia.",
+            duration: 3000,
+            gravity: "top",
+            backgroundColor: "#f44336"
+        }).showToast();
+        return;
+    }
     const formData = new FormData();
     imagensSelecionadas.forEach(file => formData.append('imagens[]', file));
     formData.append('dataIdFuncoes', JSON.stringify(dataIdFuncoes));
@@ -3233,6 +3268,20 @@ function enviarImagens() {
             document.getElementById('etapaPrevia').style.display = 'none';
             document.getElementById('etapaFinal').style.display = 'block';
             document.getElementById('etapaTitulo').textContent = "2. Envio do Arquivo Final";
+
+            Swal.fire({
+                position: "center",
+                icon: "success",
+                title: "Agora adicione o arquivo final",
+                showConfirmButton: false,
+                timer: 1500,
+                didOpen: () => {
+                    const title = Swal.getTitle();
+                    if (title) title.style.fontSize = "18px";
+                }
+            });
+
+
         })
         .catch(err => {
             Toastify({
@@ -3246,6 +3295,15 @@ function enviarImagens() {
 
 // ENVIO DO ARQUIVO FINAL
 function enviarArquivo() {
+    if (arquivosFinais.length === 0) {
+        Toastify({
+            text: "Selecione pelo menos um arquivo para enviar a prévia.",
+            duration: 3000,
+            gravity: "top",
+            backgroundColor: "#f44336"
+        }).showToast();
+        return;
+    }
     const formData = new FormData();
     arquivosFinais.forEach(file => formData.append('arquivo_final[]', file));
     formData.append('dataIdFuncoes', JSON.stringify(dataIdFuncoes));
@@ -3272,12 +3330,19 @@ function enviarArquivo() {
     })
         .then(resp => resp.json())
         .then(res => {
-            Toastify({
-                text: "Arquivo final enviado!",
-                duration: 3000,
-                gravity: "top",
-                backgroundColor: "#4caf50"
-            }).showToast();
+            const destino = res[0]?.destino || 'Caminho não encontrado';
+            Swal.fire({
+                position: "center",
+                icon: "success",
+                title: "Arquivo final enviado com sucesso!",
+                text: `Salvo em: ${destino}, como: ${res[0]?.nome_arquivo || 'Nome não encontrado'}`,
+                showConfirmButton: false,
+                timer: 1500,
+                didOpen: () => {
+                    const title = Swal.getTitle();
+                    if (title) title.style.fontSize = "18px";
+                }
+            });
             fecharModal();
         })
         .catch(err => {
@@ -3288,4 +3353,91 @@ function enviarArquivo() {
                 backgroundColor: "#f44336"
             }).showToast();
         });
+}
+
+
+const btnVerPdf = document.getElementById('ver-pdf');
+btnVerPdf.addEventListener('click', function (event) {
+    event.preventDefault();
+
+    const nomePdf = this.getAttribute('data-nome-pdf');
+    if (nomePdf) {
+        carregarPdf(nomePdf);
+    } else {
+        console.error('Nenhum PDF disponível para visualização.');
+        Toastify({
+            text: "Nenhum PDF disponível para visualização.",
+            duration: 3000,
+            gravity: "top",
+            backgroundColor: "#f44336"
+        }).showToast();
+    }
+});
+
+function carregarPdf(nomeArquivo) {
+    const nomenclatura = document.getElementById('nomenclatura').textContent.trim();
+    const url = 'ver-pdf.php?arquivo=' + encodeURIComponent(nomeArquivo) +
+        '&nomenclatura=' + encodeURIComponent(nomenclatura);
+    pdfjsLib.getDocument(url).promise.then(function (pdfDoc_) {
+        pdfDoc = pdfDoc_;
+        pageNum = 1;
+        document.getElementById('page-count').textContent = pdfDoc.numPages;
+        renderPage(pageNum);
+        document.getElementById('modal_pdf').style.display = 'flex';
+    }).catch(function (error) {
+        alert('Erro ao carregar PDF: ' + error.message);
+    });
+}
+
+let pdfDoc = null,
+    pageNum = 1,
+    pageRendering = false,
+    pageNumPending = null,
+    scale = 1.2,
+    canvas = document.getElementById('pdf-canvas'),
+    ctx = canvas.getContext('2d');
+
+function renderPage(num) {
+    pageRendering = true;
+    pdfDoc.getPage(num).then(function (page) {
+        const viewport = page.getViewport({ scale: scale });
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+
+        const renderContext = {
+            canvasContext: ctx,
+            viewport: viewport
+        };
+        const renderTask = page.render(renderContext);
+
+        renderTask.promise.then(function () {
+            pageRendering = false;
+            if (pageNumPending !== null) {
+                renderPage(pageNumPending);
+                pageNumPending = null;
+            }
+        });
+    });
+
+    document.getElementById('page-num').textContent = num;
+}
+
+function queueRenderPage(num) {
+    if (pageRendering) {
+        pageNumPending = num;
+    } else {
+        renderPage(num);
+    }
+}
+
+function prevPage() {
+    if (pageNum <= 1) return;
+    pageNum--;
+    queueRenderPage(pageNum);
+}
+
+function nextPage() {
+    if (pageNum >= pdfDoc.numPages) return;
+    pageNum++;
+    queueRenderPage(pageNum);
 }

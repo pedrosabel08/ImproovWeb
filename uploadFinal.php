@@ -1,4 +1,12 @@
 <?php
+
+include 'conexao.php';
+
+require __DIR__ . '/vendor/autoload.php';
+
+use phpseclib3\Net\SFTP;
+use phpseclib3\Exception\UnableToConnectException;
+
 header('Content-Type: application/json');
 
 // Log dos limites do PHP
@@ -37,11 +45,11 @@ for ($i = 0; $i < $total; $i++) {
     }
 }
 
-// Dados FTP
+// Dados SFTP
 $ftp_user = "flow";
 $ftp_pass = "flow@2025";
 $ftp_host = "imp-nas.ddns.net";
-$ftp_port = 2121;
+$ftp_port = 2222;
 
 // Recebe dados do POST
 $nome_funcao = $_POST['nome_funcao'] ?? '';
@@ -50,7 +58,7 @@ $nomenclatura = $_POST['nomenclatura'] ?? '';
 $primeiraPalavra = $_POST['primeiraPalavra'] ?? '';
 
 // Diretórios base para pesquisa, ordem preferida
-$clientes_base = ['/clientes/2024', '/clientes/2025'];
+$clientes_base = ['/mnt/clientes/2024', '/mnt/clientes/2025'];
 
 // Define subdiretório conforme nome_funcao
 $mapa_funcao_pasta = [
@@ -87,20 +95,43 @@ function detectarTipoArquivo($ext)
     return 'MDL';
 }
 
-// Checa arquivos enviados
-if (
-    !isset($_FILES['arquivo_final']) ||
-    empty($_FILES['arquivo_final']['name']) ||
-    (is_array($_FILES['arquivo_final']['name']) && empty($_FILES['arquivo_final']['name'][0]))
-) {
-    echo json_encode(['error' => 'Nenhum arquivo enviado']);
-    exit;
+// Função para envio SFTP
+function enviarArquivoSFTP($host, $usuario, $senha, $arquivoLocal, $arquivoRemoto, $porta = 2222)
+{
+    if (!file_exists($arquivoLocal)) {
+        return [false, "❌ Arquivo local não encontrado: $arquivoLocal"];
+    }
+
+    try {
+        $sftp = new SFTP($host, $porta);
+        if (!$sftp->login($usuario, $senha)) {
+            return [false, "❌ Falha na autenticação SFTP."];
+        }
+
+        $diretorio = dirname($arquivoRemoto);
+        // NÃO criar diretório, apenas verifica se existe
+        if (!$sftp->is_dir($diretorio)) {
+            return [false, "❌ Diretório remoto não existe: $diretorio"];
+        }
+
+        if ($sftp->put($arquivoRemoto, file_get_contents($arquivoLocal))) {
+            return [true, "✅ Arquivo enviado com sucesso via SFTP!"];
+        } else {
+            return [false, "⚠ Erro ao enviar o arquivo via SFTP."];
+        }
+    } catch (UnableToConnectException $e) {
+        return [false, "❌ Erro ao conectar ao servidor SFTP: " . $e->getMessage()];
+    } catch (\Exception $e) {
+        return [false, "⚠ Ocorreu um erro inesperado: " . $e->getMessage()];
+    }
 }
+
 $arquivos = $_FILES['arquivo_final'];
 $respostas = [];
 
 // Tenta upload em cada base até funcionar
 $upload_ok = false;
+$base_ok = '';
 foreach ($clientes_base as $base) {
     $destino_base = $base . '/' . $nomenclatura . '/' . $pasta_funcao;
 
@@ -115,35 +146,42 @@ foreach ($clientes_base as $base) {
     $revisao = 'R00';
     $nome_final = "{$numeroImagem}.{$nomenclatura}-{$primeiraPalavra}-{$tipo}-{$processo}-{$revisao}.{$extensao}";
     $remote_path = "$destino_base/$nome_final";
-    $ftp_url = "ftp://$ftp_host:$ftp_port$remote_path";
 
-    $file = fopen($tmp_name, 'rb');
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $ftp_url);
-    curl_setopt($ch, CURLOPT_USERPWD, "$ftp_user:$ftp_pass");
-    curl_setopt($ch, CURLOPT_UPLOAD, 1);
-    curl_setopt($ch, CURLOPT_INFILE, $file);
-    curl_setopt($ch, CURLOPT_INFILESIZE, filesize($tmp_name));
-    curl_setopt($ch, CURLOPT_USE_SSL, CURLUSESSL_ALL);
-    curl_setopt($ch, CURLOPT_FTP_SSL, CURLFTPSSL_ALL);
-    curl_setopt($ch, CURLOPT_FTPSSLAUTH, CURLFTPAUTH_TLS);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-    curl_setopt($ch, CURLOPT_VERBOSE, true); // para debug
-    $response = curl_exec($ch);
-    $error = curl_error($ch);
-    curl_close($ch);
-    fclose($file);
+    list($ok, $msg) = enviarArquivoSFTP(
+        $ftp_host,
+        $ftp_user,
+        $ftp_pass,
+        $tmp_name,
+        $remote_path,
+        $ftp_port
+    );
 
-    if (!$response) {
-        error_log("Erro cURL: $error");
+    if ($ok) {
+        $upload_ok = $destino_base;
+        $base_ok = $base;
+        break;
+    } else {
+        error_log("Erro SFTP: $msg");
     }
 }
+
 // Se não encontrou, erro
 if (!$upload_ok) {
     echo json_encode(['error' => "Nomenclatura '$nomenclatura' não encontrada nas pastas clientes/2024 ou 2025, ou não foi possível fazer upload."]);
     exit;
 }
+
+$dataIdFuncoes = [];
+if (isset($_POST['dataIdFuncoes'])) {
+    $raw = $_POST['dataIdFuncoes'];
+    $decoded = json_decode($raw, true);
+    if (is_array($decoded)) {
+        $dataIdFuncoes = $decoded;
+    } elseif (!empty($raw)) {
+        $dataIdFuncoes = [$raw];
+    }
+}
+
 
 // Agora faça o upload dos demais arquivos normalmente usando $upload_ok
 $total = is_array($arquivos['name']) ? count($arquivos['name']) : 1;
@@ -158,52 +196,65 @@ for ($i = 0; $i < $total; $i++) {
     $revisao = 'R00';
     $nome_final = "{$numeroImagem}.{$nomenclatura}-{$primeiraPalavra}-{$tipo}-{$processo}-{$revisao}.{$extensao}";
     $remote_path = "$upload_ok/$nome_final";
-    $ftp_url = "ftp://$ftp_host:$ftp_port$remote_path";
 
-    // Abre o arquivo temporário em modo binário de leitura
-    $file = fopen($tmp_name, 'rb');
-    if (!$file) {
-        $respostas[] = [
-            'arquivo' => $nome_original,
-            'status' => 'falha',
-            'erro' => 'Erro ao abrir arquivo temporário para leitura binária'
-        ];
-        continue;
-    }
+    list($ok, $msg) = enviarArquivoSFTP(
+        $ftp_host,
+        $ftp_user,
+        $ftp_pass,
+        $tmp_name,
+        $remote_path,
+        $ftp_port
+    );
 
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $ftp_url);
-    curl_setopt($ch, CURLOPT_USERPWD, "$ftp_user:$ftp_pass");
-    curl_setopt($ch, CURLOPT_UPLOAD, 1);
-    curl_setopt($ch, CURLOPT_INFILE, $file);
-    curl_setopt($ch, CURLOPT_INFILESIZE, $tamanho_arquivo); // Usar o tamanho do arquivo original
-    curl_setopt($ch, CURLOPT_USE_SSL, CURLUSESSL_ALL);
-    curl_setopt($ch, CURLOPT_FTP_SSL, CURLFTPSSL_ALL);
-    curl_setopt($ch, CURLOPT_FTPSSLAUTH, CURLFTPAUTH_TLS);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-    curl_setopt($ch, CURLOPT_VERBOSE, true); // Mantenha isso como true durante a depuração
-
-    $response = curl_exec($ch);
-    $curl_error = curl_error($ch);
-
-
-    if ($response) {
-        $respostas[] = [
+    if ($ok) {
+        $respostaArquivo = [
             'arquivo' => $nome_original,
             'status' => 'sucesso',
             'destino' => $remote_path
         ];
+
+        // Se for PDF, faz o insert/update
+        if (strtolower($extensao) === 'pdf' && !empty($dataIdFuncoes)) {
+            error_log("Tentando inserir PDF: $nome_final para funções: " . implode(',', $dataIdFuncoes));
+            // Conexão com o banco (ajuste conforme seu projeto)
+            if ($conn->connect_errno) {
+                $respostaArquivo['erro_db'] = "Erro MySQL: " . $conn->connect_error;
+                error_log("Erro MySQL: " . $conn->connect_error);
+            } else {
+                foreach ($dataIdFuncoes as $id_funcao) {
+                    $stmt = $conn->prepare("INSERT INTO funcao_imagem_pdf (funcao_imagem_id, nome_pdf) VALUES (?, ?) ON DUPLICATE KEY UPDATE nome_pdf = VALUES(nome_pdf)");
+                    if (!$stmt) {
+                        $respostaArquivo['erro_db'] = "Prepare failed: " . $conn->error;
+                        error_log("Prepare failed: " . $conn->error);
+                        break;
+                    }
+                    if (!$stmt->bind_param("is", $id_funcao, $nome_final)) {
+                        $respostaArquivo['erro_db'] = "Bind failed: " . $stmt->error;
+                        error_log("Bind failed: " . $stmt->error);
+                        $stmt->close();
+                        break;
+                    }
+                    if (!$stmt->execute()) {
+                        $respostaArquivo['erro_db'] = "Execute failed: " . $stmt->error;
+                        error_log("Execute failed: " . $stmt->error);
+                        $stmt->close();
+                        break;
+                    }
+                    $stmt->close();
+                }
+            }
+        }
+
+        $respostas[] = $respostaArquivo;
     } else {
         $respostas[] = [
             'arquivo' => $nome_original,
             'status' => 'falha',
-            'erro' => curl_error($ch)
+            'erro' => $msg
         ];
     }
-
-    curl_close($ch);
-    fclose($file);
 }
+$conn->close();
+
 
 echo json_encode($respostas);

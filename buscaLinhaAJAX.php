@@ -27,6 +27,7 @@ if ($_SERVER["REQUEST_METHOD"] == "GET") {
     fi.status,
     fi.observacao,
     fi.idfuncao_imagem AS id,
+    fp.nome_pdf,
     (SELECT c.nome_colaborador 
      FROM historico_aprovacoes h 
      JOIN colaborador c ON h.responsavel = c.idcolaborador 
@@ -38,6 +39,7 @@ FROM imagens_cliente_obra img
 LEFT JOIN funcao_imagem fi ON img.idimagens_cliente_obra = fi.imagem_id
 LEFT JOIN colaborador col ON fi.colaborador_id = col.idcolaborador
 LEFT JOIN funcao f ON fi.funcao_id = f.idfuncao
+LEFT JOIN funcao_imagem_pdf fp ON fi.idfuncao_imagem = fp.funcao_imagem_id
 LEFT JOIN status_hold sh ON sh.imagem_id = img.idimagens_cliente_obra
 WHERE img.idimagens_cliente_obra = $idImagemSelecionada";
 

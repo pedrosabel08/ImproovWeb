@@ -144,9 +144,9 @@ function addEventListenersToRows() {
         });
     });
 }
-let nomePdf = '';
 
 function atualizarModal(idImagem) {
+    let nomePdf = '';
     // Limpar campos do formulário de edição
     limparCampos();
 

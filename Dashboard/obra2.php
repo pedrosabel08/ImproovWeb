@@ -523,6 +523,7 @@ $conn->close();
             </div> <input type="hidden" id="imagem_id" name="imagem_id" value="">
             <div class="modal-funcoes">
                 <span id="mood"></span>
+                <button id="ver-pdf" type="button" style="display:none;">Ver Caderno</button>
                 <div class="funcao_comp">
                     <div class="funcao">
                         <div class="titulo">
@@ -1090,7 +1091,10 @@ $conn->close();
                     <input type="file" id="fileElemPrevia" accept="image/*" multiple style="display:none;">
                 </div>
                 <ul class="file-list" id="fileListPrevia"></ul>
-                <button onclick="enviarImagens()" style="background-color: green;">Enviar Prévia</button>
+                <div class="buttons-upload">
+                    <button onclick="fecharModal()" style="background-color: red;">Cancelar</button>
+                    <button onclick="enviarImagens()" style="background-color: green;">Enviar Prévia</button>
+                </div>
             </div>
 
             <!-- Conteúdo da etapa 2 -->
@@ -1100,12 +1104,24 @@ $conn->close();
                     <input type="file" id="fileElemFinal" style="display:none;">
                 </div>
                 <ul class="file-list" id="fileListFinal"></ul>
-                <button onclick="enviarArquivo()" style="background-color: green;">Enviar Arquivo Final</button>
+                <div class="buttons-upload">
+                    <button onclick="fecharModal()" style="background-color: red;">Cancelar</button>
+                    <button onclick="enviarArquivo()" style="background-color: green;">Enviar Arquivo Final</button>
+                </div>
             </div>
 
-            <div style="margin-top: 10px;">
-                <button onclick="fecharModal()" style="background-color: red;">Cancelar</button>
+        </div>
+    </div>
+
+    <div class="modal" id="modal_pdf">
+        <div class="modal-content" style="margin: 20px auto">
+            <div id="pdf-controls">
+                <button onclick="prevPage()">⬅ Página anterior</button>
+                <button onclick="nextPage()">Próxima página ➡</button>
+                <span>Página: <span id="page-num"></span> / <span id="page-count"></span></span>
             </div>
+
+            <canvas id="pdf-canvas"></canvas>
         </div>
     </div>
 
@@ -1120,6 +1136,7 @@ $conn->close();
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="scriptObra2.js"></script>
     <script src="../script/sidebar.js"></script>
     <script src="../script/notificacoes.js"></script>

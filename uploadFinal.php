@@ -12,10 +12,14 @@ header('Content-Type: application/json');
 // Log dos limites do PHP
 error_log('upload_max_filesize: ' . ini_get('upload_max_filesize'));
 error_log('post_max_size: ' . ini_get('post_max_size'));
+error_log('memory_limit: ' . ini_get('memory_limit'));
 error_log('max_file_uploads: ' . ini_get('max_file_uploads'));
 
 // Log do array $_FILES
 file_put_contents(__DIR__ . '/debug_files.txt', print_r($_FILES, true));
+
+file_put_contents(__DIR__ . '/log_debug_entrada.txt', print_r($_FILES, true));
+error_log('Tamanho do POST: ' . $_SERVER['CONTENT_LENGTH']);
 
 // Checa arquivos enviados
 if (
@@ -56,6 +60,7 @@ $nome_funcao = $_POST['nome_funcao'] ?? '';
 $numeroImagem = $_POST['numeroImagem'] ?? '';
 $nomenclatura = $_POST['nomenclatura'] ?? '';
 $primeiraPalavra = $_POST['primeiraPalavra'] ?? '';
+$nome_imagem = $_POST['nome_imagem'] ?? '';
 
 // Diretórios base para pesquisa, ordem preferida
 $clientes_base = ['/mnt/clientes/2024', '/mnt/clientes/2025'];
@@ -114,7 +119,7 @@ function enviarArquivoSFTP($host, $usuario, $senha, $arquivoLocal, $arquivoRemot
             return [false, "❌ Diretório remoto não existe: $diretorio"];
         }
 
-        if ($sftp->put($arquivoRemoto, file_get_contents($arquivoLocal))) {
+        if ($sftp->put($arquivoRemoto, $arquivoLocal, SFTP::SOURCE_LOCAL_FILE)) {
             return [true, "✅ Arquivo enviado com sucesso via SFTP!"];
         } else {
             return [false, "⚠ Erro ao enviar o arquivo via SFTP."];
@@ -129,39 +134,17 @@ function enviarArquivoSFTP($host, $usuario, $senha, $arquivoLocal, $arquivoRemot
 $arquivos = $_FILES['arquivo_final'];
 $respostas = [];
 
-// Tenta upload em cada base até funcionar
+// Tenta encontrar um diretório válido, sem enviar arquivo
 $upload_ok = false;
 $base_ok = '';
 foreach ($clientes_base as $base) {
     $destino_base = $base . '/' . $nomenclatura . '/' . $pasta_funcao;
 
-    // Testa upload do primeiro arquivo para validar o caminho
-    $nome_original = is_array($arquivos['name']) ? $arquivos['name'][0] : $arquivos['name'];
-    $tmp_name = is_array($arquivos['tmp_name']) ? $arquivos['tmp_name'][0] : $arquivos['tmp_name'];
-    if (empty($nome_original) || empty($tmp_name)) continue;
-
-    $extensao = pathinfo($nome_original, PATHINFO_EXTENSION);
-    $tipo = detectarTipoArquivo($extensao);
-    $processo = strtoupper(mb_substr($nome_funcao, 0, 3, 'UTF-8'));
-    $revisao = 'R00';
-    $nome_final = "{$numeroImagem}.{$nomenclatura}-{$primeiraPalavra}-{$tipo}-{$processo}-{$revisao}.{$extensao}";
-    $remote_path = "$destino_base/$nome_final";
-
-    list($ok, $msg) = enviarArquivoSFTP(
-        $ftp_host,
-        $ftp_user,
-        $ftp_pass,
-        $tmp_name,
-        $remote_path,
-        $ftp_port
-    );
-
-    if ($ok) {
+    $sftp = new SFTP($ftp_host, $ftp_port);
+    if ($sftp->login($ftp_user, $ftp_pass) && $sftp->is_dir($destino_base)) {
         $upload_ok = $destino_base;
         $base_ok = $base;
         break;
-    } else {
-        error_log("Erro SFTP: $msg");
     }
 }
 
@@ -193,9 +176,69 @@ for ($i = 0; $i < $total; $i++) {
     $extensao = pathinfo($nome_original, PATHINFO_EXTENSION);
     $tipo = detectarTipoArquivo($extensao);
     $processo = strtoupper(mb_substr($nome_funcao, 0, 3, 'UTF-8'));
-    $revisao = 'R00';
-    $nome_final = "{$numeroImagem}.{$nomenclatura}-{$primeiraPalavra}-{$tipo}-{$processo}-{$revisao}.{$extensao}";
-    $remote_path = "$upload_ok/$nome_final";
+
+    // Base do nome do arquivo SEM revisão
+    $nome_base = "{$numeroImagem}.{$nomenclatura}-{$primeiraPalavra}-{$tipo}-{$processo}";
+
+    // --- Controle de revisão: busca maior revisão existente ---
+    $maiorRevisao = -1;
+    $arquivo_antigo = '';
+    $padrao = "/^" . preg_quote($nome_base, '/') . "-R(\d{2})\." . preg_quote($extensao, '/') . "$/i";
+
+    $sftp = new SFTP($ftp_host, $ftp_port);
+    if (!$sftp->login($ftp_user, $ftp_pass)) {
+        error_log("Falha ao conectar SFTP para revisão do arquivo $nome_original");
+        $revisao = 'R00';
+        $remote_path = "$upload_ok/{$nome_base}-R00.$extensao";
+    } else {
+        // --- DIFERENCIAÇÃO DE PASTA ---
+        $remote_dir = $upload_ok;
+        if ($pasta_funcao === '03.Models') {
+            // Nome da subpasta da imagem (ex: IMG_001)
+            $subpasta_img = $nome_imagem;
+            // Nome da subpasta da função
+            $mapa_funcao = [
+                'modelagem' => 'MT',
+                'composição' => 'Comp',
+                'finalização' => 'Final'
+            ];
+            $funcao_key = mb_strtolower($nome_funcao, 'UTF-8');
+            $subpasta_funcao = $mapa_funcao[$funcao_key] ?? 'OUTROS';
+
+            // Cria subpastas se não existirem
+            if (!$sftp->is_dir("$remote_dir/$subpasta_img")) {
+                $sftp->mkdir("$remote_dir/$subpasta_img");
+            }
+            if (!$sftp->is_dir("$remote_dir/$subpasta_img/$subpasta_funcao")) {
+                $sftp->mkdir("$remote_dir/$subpasta_img/$subpasta_funcao");
+            }
+            $remote_dir = "$remote_dir/$subpasta_img/$subpasta_funcao";
+        }
+
+        // Agora faz o controle de revisão dentro da pasta correta
+        $arquivos_remotos = $sftp->nlist($remote_dir);
+        if ($arquivos_remotos) {
+            foreach ($arquivos_remotos as $arq) {
+                if (preg_match($padrao, $arq, $matches)) {
+                    $revNum = intval($matches[1]);
+                    if ($revNum > $maiorRevisao) {
+                        $maiorRevisao = $revNum;
+                        $arquivo_antigo = $arq;
+                    }
+                }
+            }
+        }
+        $novaRevisao = str_pad($maiorRevisao + 1, 2, '0', STR_PAD_LEFT);
+        $revisao = "R$novaRevisao";
+        $remote_path = "$remote_dir/{$nome_base}-{$revisao}.{$extensao}";
+    }
+    // --- FIM controle de revisão ---
+
+    // Se já existe um arquivo anterior, exclua-o (só para 02.Projetos)
+    if ($arquivo_antigo && $pasta_funcao === '02.Projetos') {
+        $caminho_antigo = "$upload_ok/$arquivo_antigo";
+        $sftp->delete($caminho_antigo);
+    }
 
     list($ok, $msg) = enviarArquivoSFTP(
         $ftp_host,
@@ -206,53 +249,45 @@ for ($i = 0; $i < $total; $i++) {
         $ftp_port
     );
 
-    if ($ok) {
-        $respostaArquivo = [
-            'arquivo' => $nome_original,
-            'status' => 'sucesso',
-            'destino' => $remote_path
-        ];
+    $respostaArquivo = [
+        'arquivo' => $nome_original,
+        'status' => $ok ? 'sucesso' : 'falha',
+        'destino' => $remote_path,
+        'nome_arquivo' => "{$nome_base}-{$revisao}.{$extensao}"
+    ];
 
-        // Se for PDF, faz o insert/update
-        if (strtolower($extensao) === 'pdf' && !empty($dataIdFuncoes)) {
-            error_log("Tentando inserir PDF: $nome_final para funções: " . implode(',', $dataIdFuncoes));
-            // Conexão com o banco (ajuste conforme seu projeto)
-            if ($conn->connect_errno) {
-                $respostaArquivo['erro_db'] = "Erro MySQL: " . $conn->connect_error;
-                error_log("Erro MySQL: " . $conn->connect_error);
-            } else {
-                foreach ($dataIdFuncoes as $id_funcao) {
-                    $stmt = $conn->prepare("INSERT INTO funcao_imagem_pdf (funcao_imagem_id, nome_pdf) VALUES (?, ?) ON DUPLICATE KEY UPDATE nome_pdf = VALUES(nome_pdf)");
-                    if (!$stmt) {
-                        $respostaArquivo['erro_db'] = "Prepare failed: " . $conn->error;
-                        error_log("Prepare failed: " . $conn->error);
-                        break;
-                    }
-                    if (!$stmt->bind_param("is", $id_funcao, $nome_final)) {
-                        $respostaArquivo['erro_db'] = "Bind failed: " . $stmt->error;
-                        error_log("Bind failed: " . $stmt->error);
-                        $stmt->close();
-                        break;
-                    }
-                    if (!$stmt->execute()) {
-                        $respostaArquivo['erro_db'] = "Execute failed: " . $stmt->error;
-                        error_log("Execute failed: " . $stmt->error);
-                        $stmt->close();
-                        break;
-                    }
-                    $stmt->close();
+    // Se for PDF, faz o insert/update
+    if ($ok && strtolower($extensao) === 'pdf' && !empty($dataIdFuncoes)) {
+        error_log("Tentando inserir PDF: $nome_final para funções: " . implode(',', $dataIdFuncoes));
+        if ($conn->connect_errno) {
+            $respostaArquivo['erro_db'] = "Erro MySQL: " . $conn->connect_error;
+            error_log("Erro MySQL: " . $conn->connect_error);
+        } else {
+            foreach ($dataIdFuncoes as $id_funcao) {
+                $stmt = $conn->prepare("INSERT INTO funcao_imagem_pdf (funcao_imagem_id, nome_pdf) VALUES (?, ?) ON DUPLICATE KEY UPDATE nome_pdf = VALUES(nome_pdf)");
+                if (!$stmt) {
+                    $respostaArquivo['erro_db'] = "Prepare failed: " . $conn->error;
+                    error_log("Prepare failed: " . $conn->error);
+                    break;
                 }
+                if (!$stmt->bind_param("is", $id_funcao, $nome_final)) {
+                    $respostaArquivo['erro_db'] = "Bind failed: " . $stmt->error;
+                    error_log("Bind failed: " . $stmt->error);
+                    $stmt->close();
+                    break;
+                }
+                if (!$stmt->execute()) {
+                    $respostaArquivo['erro_db'] = "Execute failed: " . $stmt->error;
+                    error_log("Execute failed: " . $stmt->error);
+                    $stmt->close();
+                    break;
+                }
+                $stmt->close();
             }
         }
-
-        $respostas[] = $respostaArquivo;
-    } else {
-        $respostas[] = [
-            'arquivo' => $nome_original,
-            'status' => 'falha',
-            'erro' => $msg
-        ];
     }
+
+    $respostas[] = $respostaArquivo;
 }
 $conn->close();
 

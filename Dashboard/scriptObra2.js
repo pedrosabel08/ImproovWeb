@@ -3153,10 +3153,22 @@ function abrirModal(botao) {
     document.getElementById('funcao_id_revisao').value = dataIdFuncoes.join(',');
     document.getElementById('nome_funcao_upload').value = nomeFuncao;
 
+    // Exibir o modal
     document.getElementById('modalUpload').style.display = 'block';
-    document.getElementById('etapaPrevia').style.display = 'block';
-    document.getElementById('etapaFinal').style.display = 'none';
-    document.getElementById('etapaTitulo').textContent = "1. Envio de Prévia";
+
+    // Verificação do nome da função
+    const nomeNormalizado = nomeFuncao.toLowerCase();
+    if (nomeNormalizado === 'caderno' || nomeNormalizado === 'filtro de assets') {
+        // Pula direto para a etapa final
+        document.getElementById('etapaPrevia').style.display = 'none';
+        document.getElementById('etapaFinal').style.display = 'block';
+        document.getElementById('etapaTitulo').textContent = "1. Envio de arquivos";
+    } else {
+        // Etapa padrão
+        document.getElementById('etapaPrevia').style.display = 'block';
+        document.getElementById('etapaFinal').style.display = 'none';
+        document.getElementById('etapaTitulo').textContent = "1. Envio de Prévia";
+    }
 
     configurarDropzone("drop-area-previa", "fileElemPrevia", "fileListPrevia", imagensSelecionadas);
     configurarDropzone("drop-area-final", "fileElemFinal", "fileListFinal", arquivosFinais);
@@ -3310,6 +3322,7 @@ function enviarArquivo() {
     formData.append('nome_funcao', document.getElementById('nome_funcao_upload').value);
 
     const campoNomeImagem = document.getElementById('campoNomeImagem')?.textContent || '';
+    formData.append('nome_imagem', campoNomeImagem);
 
     // Extrai o número inicial antes do ponto
     const numeroImagem = campoNomeImagem.match(/^\d+/)?.[0] || '';

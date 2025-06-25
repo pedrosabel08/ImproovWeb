@@ -2658,29 +2658,13 @@ function notificarEventosDaSemana(eventos) {
 
 // Função para definir as cores com base no tipo_evento
 function getEventColors(event) {
-    const { id, descricao, tipo_evento } = event;
+    const { descricao, tipo_evento } = event;
     const normalizedTitle = (descricao || '').toUpperCase().trim();
 
-    if (normalizedTitle.includes('R00')) {
-        return { backgroundColor: '#1cf4ff', color: '#000000' };
-    }
-    if (normalizedTitle.includes('R01')) {
-        return { backgroundColor: '#ff6200', color: '#000000' };
-    }
-    if (normalizedTitle.includes('R02')) {
-        return { backgroundColor: '#ff3c00', color: '#000000' };
-    }
-    if (normalizedTitle.includes('R02')) {
-        return { backgroundColor: '#ff0000', color: '#000000' };
-    }
-    if (normalizedTitle.includes('EF')) {
-        return { backgroundColor: '#0dff00', color: '#000000' };
-    }
-
-    // Se não encontrou no título, usa o tipoEvento
+    // 1º: Prioriza o tipo_evento
     switch (tipo_evento) {
-        case 'Reunião':
-            return { backgroundColor: '#ffd700', color: '#000000' };
+        case 'Acompanhamento':
+            return { backgroundColor: '#87ceeb', color: '#000000' };
         case 'Entrega':
             return { backgroundColor: '#ff9f89', color: '#000000' };
         case 'Arquivos':
@@ -2723,9 +2707,27 @@ function getEventColors(event) {
             return { backgroundColor: '#fce4ec', color: '#000000' };
         case 'Composição':
             return { backgroundColor: '#f9ffc6', color: '#000000' };
-        default:
-            return { backgroundColor: '#d3d3d3', color: '#000000' };
     }
+
+    // 2º: Só verifica o texto se não bateu no tipo_evento
+    if (normalizedTitle.includes('R00')) {
+        return { backgroundColor: '#1cf4ff', color: '#000000' };
+    }
+    if (normalizedTitle.includes('R01')) {
+        return { backgroundColor: '#ff6200', color: '#000000' };
+    }
+    if (normalizedTitle.includes('R02')) {
+        return { backgroundColor: '#ff3c00', color: '#000000' };
+    }
+    if (normalizedTitle.includes('R03')) {
+        return { backgroundColor: '#ff0000', color: '#000000' };
+    }
+    if (normalizedTitle.includes('EF')) {
+        return { backgroundColor: '#0dff00', color: '#000000' };
+    }
+
+    // Default
+    return { backgroundColor: '#d3d3d3', color: '#000000' };
 }
 
 

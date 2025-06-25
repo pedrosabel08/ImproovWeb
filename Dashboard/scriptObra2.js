@@ -3337,7 +3337,7 @@ function enviarArquivo() {
     const primeiraPalavra = descricaoMatch ? descricaoMatch[1] : '';
     formData.append('primeiraPalavra', primeiraPalavra);
 
-    fetch('../uploadFinal.php', {
+    fetch('https://192.168.0.203/ImproovWeb/uploadFinal.php', {
         method: 'POST',
         body: formData
     })

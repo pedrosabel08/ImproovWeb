@@ -46,6 +46,8 @@ while ($row = $result2->fetch_assoc()) {
 }
 $stmt2->close();
 
+
+
 // Eventos longos (ex: reuniões ou etapas com data início e fim)
 // $sql3 = "SELECT 
 //             id,
@@ -65,6 +67,25 @@ $stmt2->close();
 //     $eventos[] = $row;
 // }
 // $stmt3->close();
+
+// Prazos das imagens com tipo_evento baseado no status
+$sql4 = "SELECT 
+        idacompanhamento_email AS id,
+        assunto AS descricao,
+        data AS start,
+        'Acompanhamento' AS tipo_evento
+    FROM acompanhamento_email  
+    WHERE obra_id = ?
+";
+$stmt4 = $conn->prepare($sql4);
+$stmt4->bind_param("i", $obraId);
+$stmt4->execute();
+$result4 = $stmt4->get_result();
+
+while ($row = $result4->fetch_assoc()) {
+    $eventos[] = $row;
+}
+$stmt4->close();
 
 
 header('Content-Type: application/json');

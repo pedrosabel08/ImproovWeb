@@ -1,0 +1,37 @@
+Array
+(
+    [arquivo_final] => Array
+        (
+            [name] => Array
+                (
+                    [0] => DJI_20250429181319_0003_D.psb
+                )
+
+            [full_path] => Array
+                (
+                    [0] => DJI_20250429181319_0003_D.psb
+                )
+
+            [type] => Array
+                (
+                    [0] => application/octet-stream
+                )
+
+            [tmp_name] => Array
+                (
+                    [0] => C:\xampp\tmp\php8C0F.tmp
+                )
+
+            [error] => Array
+                (
+                    [0] => 0
+                )
+
+            [size] => Array
+                (
+                    [0] => 302794144
+                )
+
+        )
+
+)

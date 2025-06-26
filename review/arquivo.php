@@ -11,6 +11,7 @@ $obraId = $_GET['obraId'] ?? 1; // ou pegue via query string
     <link rel="stylesheet" href="styleImagens.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 
 </head>
 
@@ -19,13 +20,22 @@ $obraId = $_GET['obraId'] ?? 1; // ou pegue via query string
     <div class="container">
         <div class="imagens com-wrapper">
             <!-- WRAPPER COM BOTÃO -->
-    <button id="wrapper_btn" onclick="showWrapper()" class="toggle-btn btn-left">
+            <button id="wrapper_btn" onclick="showWrapper()" class="toggle-btn btn-left">
                 <i class="fas fa-chevron-right"></i>
             </button>
             <div class="wrapper-container" id="wrapper_container">
                 <div id="wrapper"></div>
             </div>
 
+            <div id="submit_decision">
+                <h2>Aprovação da imagem</h2>
+                <select name="apr_imagem" id="apr_imagem">
+                    <option value="aprovada">Aprovada</option>
+                    <option value="reprovada">Reprovada</option>
+                    <option value="aprovada_ajustes">Aprovada com ajustes</option>
+                </select>
+                <button type="button" id="confirmar_aprovacao" style="display: none;">✅</button>
+            </div>
             <!-- IMAGEM COM CONTROLES -->
             <div id="imagem_completa">
                 <div id="image_wrapper" class="image_wrapper"></div>
@@ -72,9 +82,10 @@ $obraId = $_GET['obraId'] ?? 1; // ou pegue via query string
             <button id="btn-enviar-imagens">Enviar</button>
         </div>
     </div>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="scriptImagens.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
-
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 </body>
 
 </html>

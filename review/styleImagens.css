@@ -40,6 +40,7 @@ h1 {
 .imagens {
     display: grid;
     grid-template-columns: auto 1fr auto;
+    grid-template-rows: auto 1fr;
     /* esquerda | centro | direita */
     transition: all 0.3s ease;
     height: 100vh;
@@ -115,11 +116,13 @@ h1 {
     display: flex;
     margin: auto;
     align-items: center;
+    justify-content: center;
     flex-direction: column;
     box-sizing: border-box;
     height: 100vh;
     overflow: hidden;
     grid-column: 2;
+    grid-row: 2;
 }
 
 .image_wrapper img {
@@ -799,4 +802,63 @@ p.imagem_nome {
     100% {
         opacity: 1;
     }
+}
+
+#submit_decision {
+    background-color: #202020;
+    color: white;
+    padding: 20px;
+    border-radius: 8px;
+    margin-top: 20px;
+    text-align: center;
+    margin: auto;
+    width: max-content;
+    grid-column: 2;
+}
+
+#apr_imagem {
+    background-color: transparent;
+    color: white;
+    width: max-content;
+    border: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.select2-container--default .select2-selection--single {
+    background-color: #202020;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+    color: #fff;
+    line-height: 40px;
+}
+
+.select2-container--default .select2-results__option--selected {
+    background-color: #202020;
+}
+
+.select2-container--default .select2-results__option {
+    background: #202020 !important;
+    color: #fff !important;
+    font-size: 14px;
+}
+
+.select2-container--default .select2-results__option:hover {
+    background: #535353 !important;
+    font-weight: bold;
+}
+
+.select2-container--default .select2-results__option--highlighted {
+    background: #444;
+    color: #fff;
+}
+
+#apr_imagem,
+.select2-container {
+    min-width: 0;
+    max-width: 100%;
 }

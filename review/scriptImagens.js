@@ -5,7 +5,15 @@ async function carregarImagensPublicas() {
     const obraId = 1;
     try {
         const res = await fetch(`getImagensPublicas.php?obraId=${obraId}`);
-        const data = await res.json();
+        const text = await res.text();
+        let data = {};
+        try {
+            data = JSON.parse(text);
+        } catch (e) {
+            document.getElementById('wrapper').innerHTML = `<p class="text-red-600">Erro ao processar resposta do servidor.</p>`;
+            console.error('Resposta inválida:', text);
+            return;
+        }
 
         const wrapper = document.getElementById('wrapper');
         wrapper.innerHTML = '';
@@ -53,6 +61,11 @@ carregarImagensPublicas();
 
 let imagem_id = null; // Variável para armazenar o ID da imagem atual
 
+const imagemId = localStorage.getItem('imagem_id_selecionada');
+const imagemSrc = localStorage.getItem('imagem_src_selecionada');
+if (imagemSrc && imagemId) {
+    mostrarImagemCompleta(imagemSrc, imagemId)
+}
 // Mostra imagem e abre modal
 function mostrarImagemCompleta(src, id) {
     imagem_id = id;

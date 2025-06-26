@@ -26,11 +26,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['imagem']) && isset($
     // Também salva o conteúdo binário se necessário
     $conteudo = file_get_contents($caminhoFinal);
 
-    $stmt = $conn->prepare("INSERT INTO review_uploads (imagem_id, arquivo, nome_arquivo, tipo_arquivo) VALUES (?, ?, ?, ?)");
-    $stmt->bind_param("ibss", $imagem_id, $conteudo, $novoNome, $tipoArquivo);
+    // Busca a maior versão já existente para o imagem_id
+    $versao = 1;
+    $stmtVer = $conn->prepare("SELECT MAX(versao) as max_versao FROM review_uploads WHERE imagem_id = ?");
+    $stmtVer->bind_param("i", $imagem_id);
+    $stmtVer->execute();
+    $stmtVer->bind_result($max_versao);
+    if ($stmtVer->fetch() && $max_versao !== null) {
+        $versao = $max_versao + 1;
+    }
+    $stmtVer->close();
+
+    $stmt = $conn->prepare("INSERT INTO review_uploads (imagem_id, nome_arquivo, tipo_arquivo, versao) VALUES (?, ?, ?, ?, ?)");
+    $null = NULL; // Para o bind_param de blob
+    $stmt->bind_param("ibssi", $imagem_id, $null, $novoNome, $tipoArquivo, $versao);
+    $stmt->send_long_data(1, $conteudo);
 
     if ($stmt->execute()) {
-        echo json_encode(['sucesso' => true, 'nome_arquivo' => $novoNome]);
+        echo json_encode(['sucesso' => true, 'nome_arquivo' => $novoNome, 'versao' => $versao]);
     } else {
         echo json_encode(['sucesso' => false, 'erro' => 'Erro ao salvar no banco']);
     }

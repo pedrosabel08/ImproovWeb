@@ -671,3 +671,55 @@ document.addEventListener('keydown', function (event) {
         comentariosDiv.innerHTML = '';
     }
 });
+
+
+$(document).ready(function () {
+    $('#apr_imagem').select2({
+        width: '100%',
+        minimumResultsForSearch: Infinity
+    });
+});
+
+// Mostra o botão quando selecionar uma opção válida
+$('#apr_imagem').on('change', function () {
+    if ($(this).val()) {
+        $('#confirmar_aprovacao').show();
+    } else {
+        $('#confirmar_aprovacao').hide();
+    }
+});
+
+// Ao clicar no botão, pede confirmação e envia via fetch
+$('#confirmar_aprovacao').on('click', async function () {
+    const opcao = $('#apr_imagem').val();
+    const usuario = localStorage.getItem('usuario_externo');
+    const imagemId = imagem_id; // imagem_id já está global no seu script
+
+    if (!opcao || !usuario || !imagemId) {
+        alert('Dados insuficientes para aprovar.');
+        return;
+    }
+
+    if (confirm('Tem certeza que deseja confirmar esta aprovação?')) {
+        try {
+            const response = await fetch('aprovar_imagem.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    usuario: usuario,
+                    imagem_id: imagemId,
+                    aprovacao: opcao
+                })
+            });
+            const result = await response.json();
+            if (result.sucesso) {
+                alert('Aprovação registrada com sucesso!');
+                $('#confirmar_aprovacao').hide();
+            } else {
+                alert(result.mensagem || 'Erro ao registrar aprovação.');
+            }
+        } catch (e) {
+            alert('Erro de conexão ao aprovar.');
+        }
+    }
+});

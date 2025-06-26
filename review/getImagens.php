@@ -20,7 +20,9 @@ $sqlImagens = "SELECT
         ru.id,
         ru.nome_arquivo,
         ru.lock,
-        ru.hide
+        ru.hide,
+        ru.data_envio,
+        ru.versao
     FROM imagens_cliente_obra ico
     LEFT JOIN review_uploads ru ON ico.idimagens_cliente_obra = ru.imagem_id
     WHERE ico.obra_id = ?

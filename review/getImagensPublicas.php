@@ -1,5 +1,5 @@
 <?php
-require_once '../conexao.php';
+include '../conexao.php';
 
 $obraId = $_GET['obraId'] ?? null;
 
@@ -33,7 +33,19 @@ if ($stmt = $conn->prepare($sql)) {
         $imagens[] = $row;
     }
 
-    echo json_encode(['imagens' => $imagens]);
+    $json = json_encode(['imagens' => $imagens]);
+
+    if ($json === false) {
+        echo json_encode([
+            'error' => 'Erro ao gerar JSON.',
+            'json_last_error' => json_last_error(),
+            'mensagem' => json_last_error_msg(),
+            'obraId' => $obraId,
+            'total' => count($imagens),
+        ]);
+    } else {
+        echo $json;
+    }
     $stmt->close();
 } else {
     echo json_encode(['error' => 'Erro na preparação da consulta.']);

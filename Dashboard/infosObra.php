@@ -138,6 +138,7 @@ $sqlImagens = "SELECT
         ico.idimagens_cliente_obra AS imagem_id,
         ico.imagem_nome,
         s.nome_status AS imagem_status,
+		su.nome_substatus AS imagem_sub_status,
         ico.prazo,
         ico.tipo_imagem,
         ico.antecipada,
@@ -164,10 +165,11 @@ $sqlImagens = "SELECT
     LEFT JOIN funcao_imagem fi ON fi.imagem_id = ico.idimagens_cliente_obra
     LEFT JOIN colaborador c ON fi.colaborador_id = c.idcolaborador
     LEFT JOIN status_imagem s ON ico.status_id = s.idstatus
+    LEFT JOIN substatus_imagem su ON su.id = ico.substatus_id
     LEFT JOIN status_hold sh ON sh.imagem_id = ico.idimagens_cliente_obra
     WHERE ico.obra_id = ?
     GROUP BY ico.imagem_nome
-    ORDER BY FIELD(ico.tipo_imagem, 'Fachada', 'Imagem Interna', 'Unidade', 'Imagem Externa', 'Planta Humanizada'), ico.idimagens_cliente_obra;
+    ORDER BY FIELD(ico.tipo_imagem, 'Fachada', 'Imagem Interna', 'Unidade', 'Imagem Externa', 'Planta Humanizada'), ico.idimagens_cliente_obra
 ";
 
 $stmtImagens = $conn->prepare($sqlImagens);

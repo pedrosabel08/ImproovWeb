@@ -422,6 +422,7 @@ function infosObra(obraId) {
                 console.warn('Nenhuma função encontrada para esta obra.');
                 data.imagens = [{ // Exemplo de dados padrão para evitar que a tabela fique vazia
                     imagem_nome: 'Sem imagem',
+                    substatus: '-',
                     status: '-',
                     prazo: '-',
                     tipo_imagem: 'N/A',
@@ -472,6 +473,11 @@ function infosObra(obraId) {
                 row.setAttribute('tipo-imagem', item.tipo_imagem)
                 row.setAttribute('status', item.imagem_status)
 
+                var cellStatus = document.createElement('td');
+                cellStatus.textContent = item.imagem_status;
+                row.appendChild(cellStatus);
+                applyStatusImagem(cellStatus, item.imagem_status, item.descricao);
+
                 var cellNomeImagem = document.createElement('td');
                 cellNomeImagem.textContent = item.imagem_nome;
                 cellNomeImagem.setAttribute('antecipada', item.antecipada);
@@ -500,10 +506,11 @@ function infosObra(obraId) {
                     antecipada++;
                 }
 
-                var cellStatus = document.createElement('td');
-                cellStatus.textContent = item.imagem_status;
-                row.appendChild(cellStatus);
-                applyStatusImagem(cellStatus, item.imagem_status, item.descricao);
+
+                var cellSubStatus = document.createElement('td');
+                cellSubStatus.textContent = item.imagem_sub_status;
+                row.appendChild(cellSubStatus);
+                applyStatusImagem(cellSubStatus, item.imagem_sub_status, item.descricao);
 
                 statusUnicos.add(item.imagem_status);
                 tipoImagemUnicos.add(item.tipo_imagem);
@@ -1073,6 +1080,10 @@ function applyStatusImagem(cell, status, descricao = '') {
             break;
         case 'OK':
             cell.style.backgroundColor = 'cornflowerblue';
+            cell.style.color = 'white';
+            break;
+        case 'FIN':
+            cell.style.backgroundColor = 'green';
             cell.style.color = 'white';
             break;
     }

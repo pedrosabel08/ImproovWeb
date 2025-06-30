@@ -1,5 +1,7 @@
 <?php
-header('Content-Type: application/json');
+// Permitir acesso de qualquer origem (inclusive de extensões)
+header("Access-Control-Allow-Origin: *");
+header("Content-Type: application/json");
 
 include 'conexao.php';
 

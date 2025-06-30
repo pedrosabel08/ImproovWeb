@@ -1,2 +1,3 @@
 RewriteEngine On
 RewriteRule ^Dashboard/obra$ Dashboard/obra.php [L]
+RewriteCond %{HTTPS} off

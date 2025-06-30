@@ -126,7 +126,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'text' => "A imagem $nome_imagem foi feita a pós.",
             ];
 
-            $sqlImagem = 'UPDATE imagens_cliente_obra SET status_id = ? WHERE idimagens_cliente_obra = ?';
+            $sqlImagem = 'UPDATE imagens_cliente_obra SET substatus_id = 8, status_id = ? WHERE idimagens_cliente_obra = ?';
 
             // Atualizar o status na tabela imagens_cliente_obra
             $stmtUpdate = $conn->prepare($sqlImagem);

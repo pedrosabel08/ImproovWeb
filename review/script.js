@@ -21,6 +21,8 @@ async function carregarImagens() {
             return;
         }
 
+        document.getElementById('nomenclatura').textContent = data.nomenclatura || 'Nomenclatura não disponível';
+
 
         // Agrupar imagens por imagem_id
         const agrupadas = data.imagens.reduce((acc, img) => {

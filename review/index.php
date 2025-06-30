@@ -58,6 +58,9 @@ $conn->close();
     ?>
 
     <div class="container">
+        <header>
+            <h2 id="nomenclatura"></h2>
+        </header>
 
         <section class="image-list" id="imageList">
             <!-- As imagens aparecerão aqui -->

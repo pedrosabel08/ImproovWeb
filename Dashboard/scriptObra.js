@@ -146,6 +146,7 @@ function addEventListenersToRows() {
 }
 
 function atualizarModal(idImagem) {
+    let nomePdf = '';
     // Limpar campos do formulário de edição
     limparCampos();
 
@@ -154,6 +155,7 @@ function atualizarModal(idImagem) {
         .then(response => response.json())
         .then(response => {
             document.getElementById('form-edicao').style.display = 'flex';
+
             if (response.funcoes && response.funcoes.length > 0) {
                 document.getElementById("campoNomeImagem").textContent = response.funcoes[0].imagem_nome;
                 document.getElementById("mood").textContent = `Mood da cena: ${response.funcoes[0].clima || ''}`;
@@ -163,6 +165,10 @@ function atualizarModal(idImagem) {
                 statusHoldSelect.value = '';
 
                 response.funcoes.forEach(function (funcao) {
+
+                    if (funcao.nome_pdf && funcao.nome_pdf.trim() !== '') {
+                        nomePdf = funcao.nome_pdf;
+                    }
                     let selectElement;
                     let checkboxElement;
                     let revisaoImagemElement;
@@ -232,6 +238,8 @@ function atualizarModal(idImagem) {
                             revisaoImagemElement = document.getElementById("revisao_imagem_pre");
                             break;
                     }
+
+
                     if (revisaoImagemElement) {
                         revisaoImagemElement.setAttribute('data-id-funcao', funcao.id);
                     }
@@ -298,6 +306,16 @@ function atualizarModal(idImagem) {
                     }
 
                 });
+            }
+            const btnVerPdf = document.getElementById('ver-pdf');
+            if (btnVerPdf) {
+                if (nomePdf) {
+                    btnVerPdf.setAttribute('data-nome-pdf', nomePdf);
+                    btnVerPdf.style.display = 'inline-block';
+                } else {
+                    btnVerPdf.removeAttribute('data-nome-pdf');
+                    btnVerPdf.style.display = 'none';
+                }
             }
 
             const statusSelect = document.getElementById("opcao_status");
@@ -404,6 +422,7 @@ function infosObra(obraId) {
                 console.warn('Nenhuma função encontrada para esta obra.');
                 data.imagens = [{ // Exemplo de dados padrão para evitar que a tabela fique vazia
                     imagem_nome: 'Sem imagem',
+                    substatus: '-',
                     status: '-',
                     prazo: '-',
                     tipo_imagem: 'N/A',
@@ -454,6 +473,11 @@ function infosObra(obraId) {
                 row.setAttribute('tipo-imagem', item.tipo_imagem)
                 row.setAttribute('status', item.imagem_status)
 
+                var cellStatus = document.createElement('td');
+                cellStatus.textContent = item.imagem_status;
+                row.appendChild(cellStatus);
+                applyStatusImagem(cellStatus, item.imagem_status, item.descricao);
+
                 var cellNomeImagem = document.createElement('td');
                 cellNomeImagem.textContent = item.imagem_nome;
                 cellNomeImagem.setAttribute('antecipada', item.antecipada);
@@ -482,10 +506,11 @@ function infosObra(obraId) {
                     antecipada++;
                 }
 
-                var cellStatus = document.createElement('td');
-                cellStatus.textContent = item.imagem_status;
-                row.appendChild(cellStatus);
-                applyStatusImagem(cellStatus, item.imagem_status, item.descricao);
+
+                var cellSubStatus = document.createElement('td');
+                cellSubStatus.textContent = item.imagem_sub_status;
+                row.appendChild(cellSubStatus);
+                applyStatusImagem(cellSubStatus, item.imagem_sub_status, item.descricao);
 
                 statusUnicos.add(item.imagem_status);
                 tipoImagemUnicos.add(item.tipo_imagem);

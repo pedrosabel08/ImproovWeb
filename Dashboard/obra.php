@@ -207,6 +207,7 @@ $conn->close();
                         <tr id="linha-porcentagem">
                         </tr>
                         <tr>
+                            <th>Etapa</th>
                             <th class="resizable">Imagem<div class="resize-handle"></div>
                             </th>
                             <th>Status</th>

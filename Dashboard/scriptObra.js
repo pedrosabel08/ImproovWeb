@@ -476,7 +476,12 @@ function infosObra(obraId) {
                 var cellStatus = document.createElement('td');
                 cellStatus.textContent = item.imagem_status;
                 row.appendChild(cellStatus);
-                applyStatusImagem(cellStatus, item.imagem_status, item.descricao);
+                if (!(item.imagem_status === 'EF' && item.imagem_sub_status === 'EF')) {
+                    applyStatusImagem(cellStatus, item.imagem_status, item.descricao);
+                } else {
+                    cellStatus.style.backgroundColor = '';
+                    cellStatus.style.color = '';
+                }
 
                 var cellNomeImagem = document.createElement('td');
                 cellNomeImagem.textContent = item.imagem_nome;
@@ -510,7 +515,12 @@ function infosObra(obraId) {
                 var cellSubStatus = document.createElement('td');
                 cellSubStatus.textContent = item.imagem_sub_status;
                 row.appendChild(cellSubStatus);
-                applyStatusImagem(cellSubStatus, item.imagem_sub_status, item.descricao);
+                if (!(item.imagem_status === 'EF' && item.imagem_sub_status === 'EF')) {
+                    applyStatusImagem(cellSubStatus, item.imagem_sub_status, item.descricao);
+                } else {
+                    cellSubStatus.style.backgroundColor = '';
+                    cellSubStatus.style.color = '';
+                }
 
                 statusUnicos.add(item.imagem_status);
                 tipoImagemUnicos.add(item.tipo_imagem);
@@ -547,7 +557,6 @@ function infosObra(obraId) {
                     row.appendChild(cellStatus);
 
                     applyStyleNone(cellColaborador, cellStatus, colaborador);
-                    applyStatusStyle(cellStatus, status, colaborador);
 
 
                     const statusNormalizado = status.trim().toLowerCase();
@@ -559,9 +568,20 @@ function infosObra(obraId) {
                             totaisPorFuncao[coluna.col].validos++;
                         }
                     }
+                    // ...dentro do forEach de colunas...
+                    if (!(item.imagem_status === 'EF' && item.imagem_sub_status === 'EF')) {
+                        applyStatusStyle(cellStatus, status, colaborador);
+                    } else {
+                        // Limpa o estilo se for EF/EF
+                        cellStatus.style.backgroundColor = '';
+                        cellStatus.style.color = '';
+                    }
 
                 });
 
+                if (item.imagem_status === 'EF' && item.imagem_sub_status === 'EF') {
+                    row.classList.add('linha-ef');
+                }
 
                 tabela.appendChild(row);
             });
@@ -1080,6 +1100,14 @@ function applyStatusImagem(cell, status, descricao = '') {
             break;
         case 'OK':
             cell.style.backgroundColor = 'cornflowerblue';
+            cell.style.color = 'white';
+            break;
+        case 'TO-DO':
+            cell.style.backgroundColor = 'cornflowerblue';
+            cell.style.color = 'white';
+            break;
+        case 'FIN':
+            cell.style.backgroundColor = 'green';
             cell.style.color = 'white';
             break;
     }
@@ -2285,7 +2313,7 @@ document.getElementById("copyColumn").addEventListener("click", function () {
     rows.forEach(row => {
         // Verifica se a linha está visível (não tem display: none)
         if (window.getComputedStyle(row).display !== "none") {
-            columnData.push(row.cells[0].innerText);
+            columnData.push(row.cells[1].innerText);
         }
     });
 

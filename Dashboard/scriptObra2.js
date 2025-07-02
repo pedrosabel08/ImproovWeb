@@ -3183,6 +3183,9 @@ function abrirModal(botao) {
 
     configurarDropzone("drop-area-previa", "fileElemPrevia", "fileListPrevia", imagensSelecionadas);
     configurarDropzone("drop-area-final", "fileElemFinal", "fileListFinal", arquivosFinais);
+
+    document.getElementById('modalUpload').style.display = 'block';
+    document.getElementById('form-edicao').style.display = 'none';
 }
 
 function fecharModal() {
@@ -3265,7 +3268,7 @@ function enviarImagens() {
     formData.append('numeroImagem', numeroImagem);
 
     // Extrai a nomenclatura (primeira palavra com "_", depois do número e ponto)
-    const nomenclatura = campoNomeImagem.match(/^\d+\.\s*([A-Z_]+)/)?.[1] || '';
+    const nomenclatura = document.getElementById('nomenclatura')?.textContent || '';
     formData.append('nomenclatura', nomenclatura);
 
     // Extrai a primeira palavra da descrição (depois da nomenclatura)
@@ -3327,6 +3330,7 @@ function enviarArquivo() {
         }).showToast();
         return;
     }
+
     const formData = new FormData();
     arquivosFinais.forEach(file => formData.append('arquivo_final[]', file));
     formData.append('dataIdFuncoes', JSON.stringify(dataIdFuncoes));
@@ -3335,48 +3339,101 @@ function enviarArquivo() {
     const campoNomeImagem = document.getElementById('campoNomeImagem')?.textContent || '';
     formData.append('nome_imagem', campoNomeImagem);
 
-    // Extrai o número inicial antes do ponto
     const numeroImagem = campoNomeImagem.match(/^\d+/)?.[0] || '';
     formData.append('numeroImagem', numeroImagem);
 
-    // Extrai a nomenclatura (primeira palavra com "_", depois do número e ponto)
-    const nomenclatura = campoNomeImagem.match(/^\d+\.\s*([A-Z_]+)/)?.[1] || '';
+    const nomenclatura = document.getElementById('nomenclatura')?.textContent || '';
     formData.append('nomenclatura', nomenclatura);
 
-    // Extrai a primeira palavra da descrição (depois da nomenclatura)
     const descricaoMatch = campoNomeImagem.match(/^\d+\.\s*[A-Z_]+\s+([^\s]+)/);
     const primeiraPalavra = descricaoMatch ? descricaoMatch[1] : '';
     formData.append('primeiraPalavra', primeiraPalavra);
 
-    fetch('https://192.168.0.203/ImproovWeb/uploadFinal.php', {
-        method: 'POST',
-        body: formData
-    })
-        .then(resp => resp.json())
-        .then(res => {
-            const destino = res[0]?.destino || 'Caminho não encontrado';
-            Swal.fire({
-                position: "center",
-                icon: "success",
-                title: "Arquivo final enviado com sucesso!",
-                text: `Salvo em: ${destino}, como: ${res[0]?.nome_arquivo || 'Nome não encontrado'}`,
-                showConfirmButton: false,
-                timer: 1500,
-                didOpen: () => {
-                    const title = Swal.getTitle();
-                    if (title) title.style.fontSize = "18px";
+    // Criar container de progresso
+    const progressContainer = document.createElement('div');
+    progressContainer.innerHTML = `
+        <progress id="uploadProgress" value="0" max="100" style="width: 100%; height: 20px;"></progress>
+        <div id="uploadStatus">Enviando... 0%</div>
+        <div id="uploadTempo">Tempo: 0s</div>
+        <div id="uploadVelocidade">Velocidade: 0 MB/s</div>
+        <div id="uploadEstimativa">Tempo restante: ...</div>
+        <button id="cancelarUpload" style="margin-top:10px;padding:5px 10px;">Cancelar</button>
+    `;
+
+    Swal.fire({
+        title: 'Enviando arquivo...',
+        html: progressContainer,
+        showConfirmButton: false,
+        allowOutsideClick: false,
+        didOpen: () => {
+            const xhr = new XMLHttpRequest();
+            const startTime = Date.now();
+            let uploadCancelado = false;
+
+            xhr.open('POST', 'https://improov/ImproovWeb/uploadFinal.php');
+
+            xhr.upload.addEventListener('progress', (e) => {
+                if (e.lengthComputable) {
+                    const now = Date.now();
+                    const elapsed = (now - startTime) / 1000; // em segundos
+                    const uploadedMB = e.loaded / (1024 * 1024);
+                    const totalMB = e.total / (1024 * 1024);
+                    const percent = (e.loaded / e.total) * 100;
+                    const speed = uploadedMB / elapsed; // MB/s
+                    const remainingMB = totalMB - uploadedMB;
+                    const estimatedTime = remainingMB / (speed || 1); // evita divisão por 0
+
+                    document.getElementById('uploadProgress').value = percent;
+                    document.getElementById('uploadStatus').innerText = `Enviando... ${percent.toFixed(2)}%`;
+                    document.getElementById('uploadTempo').innerText = `Tempo: ${elapsed.toFixed(1)}s`;
+                    document.getElementById('uploadVelocidade').innerText = `Velocidade: ${speed.toFixed(2)} MB/s`;
+                    document.getElementById('uploadEstimativa').innerText = `Tempo restante: ${estimatedTime.toFixed(1)}s`;
                 }
             });
-            fecharModal();
-        })
-        .catch(err => {
-            Toastify({
-                text: "Erro ao enviar arquivo final",
-                duration: 3000,
-                gravity: "top",
-                backgroundColor: "#f44336"
-            }).showToast();
-        });
+
+            xhr.onreadystatechange = () => {
+                if (xhr.readyState === 4 && xhr.status === 200 && !uploadCancelado) {
+                    const res = JSON.parse(xhr.responseText);
+                    const destino = res[0]?.destino || 'Caminho não encontrado';
+                    Swal.fire({
+                        position: "center",
+                        icon: "success",
+                        title: "Arquivo final enviado com sucesso!",
+                        text: `Salvo em: ${destino}, como: ${res[0]?.nome_arquivo || 'Nome não encontrado'}`,
+                        showConfirmButton: false,
+                        timer: 2000
+                    });
+                    fecharModal();
+                }
+            };
+
+            xhr.onerror = () => {
+                if (!uploadCancelado) {
+                    Swal.close();
+                    Toastify({
+                        text: "Erro ao enviar arquivo final",
+                        duration: 3000,
+                        gravity: "top",
+                        backgroundColor: "#f44336"
+                    }).showToast();
+                }
+            };
+
+            // Cancelar envio
+            document.getElementById('cancelarUpload').addEventListener('click', () => {
+                uploadCancelado = true;
+                xhr.abort();
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Upload cancelado',
+                    showConfirmButton: false,
+                    timer: 1500
+                });
+            });
+
+            xhr.send(formData);
+        }
+    });
 }
 
 

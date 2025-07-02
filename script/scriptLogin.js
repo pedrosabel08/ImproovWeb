@@ -42,3 +42,20 @@ document.querySelector('form').addEventListener('submit', function (e) {
             }).showToast();
         });
 });
+
+// Lista de vídeos disponíveis
+const videos = [
+    "assets/11 MSA_SQU_Psicina.mp4",
+    "assets/6. AYA_CAS_Piscina_Horizontal.mp4",
+    "assets/AYA_KAR_Rooftop.mp4"
+    // Adicione mais caminhos conforme necessário
+];
+
+// Sorteia um índice aleatório
+const sorteado = Math.floor(Math.random() * videos.length);
+
+// Seleciona o elemento video e altera o src
+const video = document.getElementById('video-bg');
+const source = video.querySelector('source');
+source.src = videos[sorteado];
+video.load(); // recarrega o vídeo sorteado

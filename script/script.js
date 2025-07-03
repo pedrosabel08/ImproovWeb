@@ -197,6 +197,7 @@ function atualizarModal(idImagem) {
                 });
             }
 
+
             const statusSelect = document.getElementById("opcao_status");
             if (response.status_id !== null) {
                 statusSelect.value = response.status_id;
@@ -753,7 +754,11 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
 });
-
+function formatarData(data) {
+    const partes = data.split("-");
+    const dataFormatada = `${partes[2]}/${partes[1]}/${partes[0]}`;
+    return dataFormatada;
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     const idusuario = localStorage.getItem('idusuario');
@@ -766,87 +771,161 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!colaboradorId) {
             if (idusuario != 1 && idusuario != 2 && idusuario != 9) {
                 colaboradorId = idcolaborador;
-
             } else {
                 colaboradorId = colaboradorSelect.value;
             }
         }
 
-        var mes = document.getElementById('mes').value;
-        var ano = document.getElementById('ano').value;
+        let mes = '';
+        let ano = '';
+        const mesAno = document.getElementById('mes').value;
+        if (mesAno) {
+            const partes = mesAno.split('-');
+            ano = partes[0];
+            mes = partes[1];
+        }
         var obraId = document.getElementById('obraSelect').value;
-        var funcaoId = document.getElementById('funcaoSelect').value;
-        var status = document.getElementById('statusSelect').value;
+        // Para pegar todos os valores selecionados de um select múltiplo
+        const funcoesSelecionadas = Array.from(document.getElementById('funcaoSelect').selectedOptions).map(opt => opt.value);
+        const statusSelecionados = Array.from(document.getElementById('statusSelect').selectedOptions).map(opt => opt.value);
         // var prioridade = document.getElementById('prioridadeSelect').value;
 
         var url = `getFuncoesPorColaborador.php?colaborador_id=${colaboradorId}`;
         if (mes) url += `&mes=${encodeURIComponent(mes)}`;
         if (ano) url += `&ano=${encodeURIComponent(ano)}`;
         if (obraId) url += `&obra_id=${encodeURIComponent(obraId)}`;
-        if (funcaoId) url += `&funcao_id=${encodeURIComponent(funcaoId)}`;
-        if (status) url += `&status=${encodeURIComponent(status)}`;
+        if (funcoesSelecionadas.length) url += `&funcao_id=${encodeURIComponent(funcoesSelecionadas.join(','))}`;
+        if (statusSelecionados.length) url += `&status=${encodeURIComponent(statusSelecionados.join(','))}`;
         // if (prioridade) url += `&prioridade=${encodeURIComponent(prioridade)}`;
 
         fetch(url)
             .then(response => response.json())
             .then(data => {
-                var tabela = document.querySelector('#tabela-colab tbody');
-                tabela.innerHTML = '';
+                document.getElementById('kanban-board').style.display = 'flex';
+                document.getElementById('image-count').style.display = 'block';
+                // Limpa o quadro Kanban antes de adicionar os cartões
+                const statusMap = {
+                    'Não iniciado': [],
+                    'Em andamento': [],
+                    'Em aprovação': [],
+                    'Finalizado': []
+                };
 
+                // Agrupa os itens por status
                 data.forEach(item => {
-                    var row = document.createElement('tr');
-                    row.classList.add('linha-tabela');
-                    row.setAttribute('data-id', item.imagem_id);
-                    row.setAttribute('liberada', item.liberada);
-                    row.setAttribute('obra-id', item.obra_id);
+                    let status = item.status || 'Não iniciado';
+                    if (!statusMap[status]) status = 'Não iniciado';
+                    statusMap[status].push(item);
+                });
+
+                // Renderiza os cartões em cada coluna do Kanban
+                Object.keys(statusMap).forEach(status => {
+                    const coluna = document.getElementById(`kanban-${status.replace(/\s/g, '').toLowerCase()}`);
+                    if (coluna) {
+                        const titulo = coluna.querySelector('.kanban-title');
+                        coluna.innerHTML = '';
+
+                        // Mostra o título com contador
+                        const totalCards = statusMap[status].length;
+                        const tituloNovo = document.createElement('div');
+                        tituloNovo.className = 'kanban-title';
+                        tituloNovo.innerHTML = `${status} <span class="kanban-count">(${totalCards})</span>`;
+                        coluna.appendChild(tituloNovo);
+
+                        const cards = statusMap[status];
+                        const mostrarLimite = 10;
+
+                        const cardsContainer = document.createElement('div');
+                        cardsContainer.className = 'kanban-cards-container';
+
+                        cards.slice(0, mostrarLimite).forEach(item => {
+                            const card = document.createElement('div');
+                            card.className = 'kanban-card';
+                            card.setAttribute('data-id', item.imagem_id);
+
+                            let statusDot = '';
+                            // Dot para "Não iniciado" indicando liberada ou não
+                            if (status === 'Não iniciado') {
+                                if (item.liberada === true || item.liberada === 'true' || item.liberada === 1 || item.liberada === '1') {
+                                    statusDot = `<span class="status-dot-liberada tool" data-tooltip='Função liberada'></span>`;
+                                } else {
+                                    statusDot = `<span class="status-dot-naoliberada tool" data-tooltip='Esperando concluir função anterior'></span>`;
+                                }
+                            }
+                            // Adiciona o ícone colorido apenas na coluna "Em aprovação"
+
+                            if (status === 'Em aprovação') {
+                                let dotClass = 'status-em-aprovacao';
+                                if (item.status === 'Aprovado') dotClass = 'status-aprovado';
+                                else if (item.status === 'Aprovado com ajustes') dotClass = 'status-aprovado-ajustes';
+                                else if (item.status === 'Ajuste') dotClass = 'status-ajuste';
+
+                                statusDot = `<span class="status-dot ${dotClass} tool" data-tooltip='${item.status}'></span>`;
+                            }
+
+                            card.innerHTML = `
+                                ${statusDot}<b>${item.imagem_nome}</b><br>
+                                Função: ${item.nome_funcao}<br>
+                                Prazo: ${item.prazo ? formatarData(item.prazo) : '-'}
+                            `;
+
+                            card.addEventListener('click', function () {
+                                const imagemId = this.getAttribute('data-id');
+                                if (imagemId) {
+                                    atualizarModal(imagemId); // Passa o ID da imagem para adicionar eventos
+                                }
+                            });
+                            cardsContainer.appendChild(card);
+                        });
+
+                        coluna.appendChild(cardsContainer);
+
+                        // Se houver mais de 10, adiciona o botão "Mostrar mais"
+                        if (cards.length > mostrarLimite) {
+                            const gaveta = document.createElement('div');
+                            gaveta.className = 'kanban-gaveta';
+
+                            const btn = document.createElement('button');
+                            btn.className = 'kanban-show-more';
+                            btn.innerHTML = '<i class="fa-solid fa-chevron-down"></i>';
+
+                            btn.addEventListener('click', function () {
+                                // Adiciona os demais cards
+                                cards.slice(mostrarLimite).forEach(item => {
+                                    const card = document.createElement('div');
+                                    card.className = 'kanban-card';
+                                    card.setAttribute('data-id', item.imagem_id);
+
+                                    card.innerHTML = `
+                        <b>${item.imagem_nome}</b><br>
+                        Função: ${item.nome_funcao}<br>
+                        Prazo: ${item.prazo || '-'}
+                    `;
+                                    card.addEventListener('click', function () {
+                                        const imagemId = this.getAttribute('data-id');
+                                        if (imagemId) {
+                                            atualizarModal(imagemId); // Passa o ID da imagem para adicionar eventos
+                                        }
+                                    });
+                                    cardsContainer.appendChild(card);
+                                });
+                                gaveta.style.display = 'none';
+                            });
+
+                            gaveta.appendChild(btn);
+                            coluna.appendChild(gaveta);
+                        }
+
+                    }
 
 
-                    var prioridadeTexto = item.prioridade == 3 ? 'Baixa' :
-                        item.prioridade == 2 ? 'Média' : 'Alta';
-                    var prioridadeCor = item.prioridade == 3 ? 'yellow' :
-                        item.prioridade == 2 ? 'orange' : 'red';
 
-                    // var cellPrioridade = document.createElement('td');
-                    // cellPrioridade.textContent = prioridadeTexto;
-                    // cellPrioridade.style.backgroundColor = prioridadeCor;
-
-                    var cellNomeImagem = document.createElement('td');
-                    cellNomeImagem.textContent = item.imagem_nome;
-
-                    // Cria o círculo
-                    var circle = document.createElement('span');
-                    circle.style.width = '10px';
-                    circle.style.height = '10px';
-                    circle.style.borderRadius = '50%';
-                    circle.style.display = 'inline-block';
-                    circle.style.marginLeft = '8px';
-                    circle.style.backgroundColor = item.liberada ? 'green' : 'red'; // Verde se true, vermelho se false
-
-                    // Adiciona o círculo e o nome da imagem na célula
-                    cellNomeImagem.appendChild(circle);
-
-                    var cellFuncao = document.createElement('td');
-                    cellFuncao.textContent = item.nome_funcao;
-
-                    var cellStatus = document.createElement('td');
-                    cellStatus.textContent = item.status;
-
-                    var cellPrazoImagem = document.createElement('td');
-                    cellPrazoImagem.textContent = item.prazo;
-
-                    // row.appendChild(cellPrioridade);
-                    row.appendChild(cellNomeImagem);
-                    row.appendChild(cellFuncao);
-                    row.appendChild(cellStatus);
-                    row.appendChild(cellPrazoImagem);
-                    tabela.appendChild(row);
                 });
 
                 document.getElementById('totalImagens').textContent = data.length;
-
-                addEventListenersToRows();
             })
             .catch(error => console.error('Erro ao carregar funções:', error));
+
     }
 
     // Se não for admin, esconde o select e já carrega os dados
@@ -861,7 +940,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Adiciona eventos nos filtros
     document.getElementById('mes').addEventListener('change', () => carregarDados());
-    document.getElementById('ano').addEventListener('change', () => carregarDados());
     document.getElementById('obraSelect').addEventListener('change', () => carregarDados());
     document.getElementById('funcaoSelect').addEventListener('change', () => carregarDados());
     document.getElementById('statusSelect').addEventListener('change', () => carregarDados());

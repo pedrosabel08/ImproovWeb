@@ -549,7 +549,7 @@ include 'sidebar.php';
 
     <div id="filtro-colab" class="modal">
         <h1>Filtro colaboradores</h1>
-        <button id="mostrarLogsBtn" disabled>Mostrar Logs</button>
+        <button id="mostrarLogsBtn" disabled style="display: none;">Mostrar Logs</button>
 
         <div class="filtro-container">
             <div class="filtro-item" id="div-colab">
@@ -565,31 +565,9 @@ include 'sidebar.php';
             </div>
 
             <div class="filtro-item">
-                <label for="mes">Mês:</label>
-                <select name="mes" id="mes">
-                    <option value="0">Todos</option>
-                    <option value="1">Janeiro</option>
-                    <option value="2">Fevereiro</option>
-                    <option value="3">Março</option>
-                    <option value="4">Abril</option>
-                    <option value="5">Maio</option>
-                    <option value="6">Junho</option>
-                    <option value="7">Julho</option>
-                    <option value="8">Agosto</option>
-                    <option value="9">Setembro</option>
-                    <option value="10">Outubro</option>
-                    <option value="11">Novembro</option>
-                    <option value="12">Dezembro</option>
-                </select>
-            </div>
+                <label for="mes">Data:</label>
+                <input type="month" id="mes" name="mes">
 
-            <div class="filtro-item">
-                <label for="ano">Ano:</label>
-                <select name="ano" id="ano">
-                    <option value="0">Todos</option>
-                    <option value="2025">2025</option>
-                    <option value="2024">2024</option>
-                </select>
             </div>
 
             <div class="filtro-item">
@@ -604,7 +582,7 @@ include 'sidebar.php';
 
             <div class="filtro-item">
                 <label for="funcaoSelect">Função:</label>
-                <select id="funcaoSelect">
+                <select id="funcaoSelect" multiple size="10" style="overflow: hidden;">
                     <option value="0">Selecione a Função:</option>
                     <?php foreach ($funcoes as $funcao): ?>
                         <option value="<?= htmlspecialchars($funcao['idfuncao']); ?>">
@@ -616,7 +594,7 @@ include 'sidebar.php';
 
             <div class="filtro-item">
                 <label for="statusSelect">Status:</label>
-                <select id="statusSelect">
+                <select id="statusSelect" multiple size="10" style="overflow: hidden;">
                     <option value="0">Selecione um status:</option>
                     <option value="Não iniciado">Não iniciado</option>
                     <option value="Em andamento">Em andamento</option>
@@ -629,27 +607,17 @@ include 'sidebar.php';
                     <option value="Aprovado com ajustes">Aprovado com ajustes</option>
                 </select>
             </div>
-
-            <!-- <div class="filtro-item">
-                <label for="prioridadeSelect">Prioridade:</label>
-                <select id="prioridadeSelect">
-                    <option value="0">Todas:</option>
-                    <option value="1">Alta</option>
-                    <option value="2">Média</option>
-                    <option value="3">Baixa</option>
-                </select>
-            </div> -->
         </div>
 
-        <div class="image-count">
+        <div class="image-count" id="image-count" style="display: none;">
             <strong>Total de Imagens:</strong> <span id="totalImagens">0</span>
         </div>
 
-        <button id="copyColumnColab">
+        <button id="copyColumnColab" style="display: none;">
             <i class="fas fa-copy"></i>
         </button>
 
-        <div id="legenda" class="legenda">
+        <div id="legenda" class="legenda" style="display: none;">
             <div class="legenda-item">
                 <div class="cor" style="background-color: red;"></div>
                 <span>Esperando concluir função anterior</span>
@@ -660,10 +628,25 @@ include 'sidebar.php';
             </div>
         </div>
 
-        <table id="tabela-colab">
+        <div class="kanban-board" id="kanban-board" style="display: none;">
+            <div class="kanban-column" id="kanban-nãoiniciado">
+                <div class="kanban-title">Não iniciado</div>
+            </div>
+            <div class="kanban-column" id="kanban-emandamento">
+                <div class="kanban-title">Em andamento</div>
+            </div>
+            <div class="kanban-column" id="kanban-emaprovação">
+                <div class="kanban-title">Em aprovação</div>
+            </div>
+            <div class="kanban-column" id="kanban-finalizado">
+                <div class="kanban-title">Finalizado</div>
+            </div>
+        </div>
+
+        <!-- <table id="tabela-colab">
             <thead>
                 <tr>
-                    <!-- <th>Prioridade</th> -->
+                    <th>Prioridade</th>
                     <th id="nome">Nome da Imagem</th>
                     <th>Função</th>
                     <th>Status</th>
@@ -672,7 +655,7 @@ include 'sidebar.php';
             </thead>
             <tbody>
             </tbody>
-        </table>
+        </table> -->
 
         <div id="modalLogs" class="modal">
             <div class="modal-content-log">

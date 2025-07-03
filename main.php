@@ -505,7 +505,7 @@ include 'sidebar.php';
                             </option>
                         <?php endforeach; ?>
                     </select>
-                    <select name="status_hold" id="status_hold" multiple style="width: 200px;">
+                    <select name="status_hold" id="status_hold" multiple style="width: 200px; display: none;">
                         <option value="Paisagismo">Paisagismo</option>
                         <option value="Mood">Mood</option>
                         <option value="Interiores">Interiores</option>
@@ -519,8 +519,8 @@ include 'sidebar.php';
                 <div class="funcao" id="status_funcao" style="width: 200px; margin-bottom: 15px;">
                     <div class="render">
                         <p id="render_alta">Render</p>
-                        <button id="addRender" class="buttons-form-add" style=" padding: 3px 10px; font-size: 13px; background-color: steelblue;">Adicionar render</button>
-                        <label class="switch">
+                        <button id="addRender" type="button" class="buttons-form-add" style=" padding: 3px 10px; font-size: 13px; background-color: steelblue;">Adicionar render</button>
+                        <label class="switch" style="display: none;">
                             <input type="checkbox" id="notificar">
                             <span class="slider"></span>
                         </label>

@@ -60,7 +60,8 @@ statusSelects.forEach(select => {
     });
 });
 
-
+let idImagem = null;
+let idObra = null;
 function atualizarModal(idImagem) {
     // Limpar campos do formulário de edição
     limparCampos();
@@ -322,8 +323,7 @@ document.addEventListener("DOMContentLoaded", function () {
     document.getElementById("salvar_funcoes").addEventListener("click", function (event) {
         event.preventDefault();
 
-        var linhaSelecionada = document.querySelector(".linha-tabela.selecionada");
-        if (!linhaSelecionada) {
+        if (!idImagem) {
             Toastify({
                 text: "Nenhuma imagem selecionada",
                 duration: 3000,
@@ -336,7 +336,7 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
-        var idImagemSelecionada = linhaSelecionada.getAttribute("data-id");
+        // var idImagemSelecionada = linhaSelecionada.getAttribute("data-id");
 
         // Verifica todos os campos de prazo que devem ser obrigatórios
         var form = document.getElementById("form-add");
@@ -373,7 +373,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
 
         var dados = {
-            imagem_id: idImagemSelecionada,
+            imagem_id: idImagem,
             caderno_id: document.getElementById("opcao_caderno").value || "",
             status_caderno: document.getElementById("status_caderno").value || "",
             prazo_caderno: document.getElementById("prazo_caderno").value || "",
@@ -814,7 +814,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Agrupa os itens por status
                 data.forEach(item => {
                     let status = item.status || 'Não iniciado';
-                    if (!statusMap[status]) status = 'Não iniciado';
+
+                    // Mapeamento dos status para as colunas do Kanban
+                    if (['Ajuste', 'Aprovado', 'Aprovado com ajustes', 'Em aprovação'].includes(status)) {
+                        status = 'Em aprovação';
+                    } else if (status === 'Em andamento') {
+                        status = 'Em andamento';
+                    } else if (status === 'Finalizado') {
+                        status = 'Finalizado';
+                    } else {
+                        status = 'Não iniciado';
+                    }
+
                     statusMap[status].push(item);
                 });
 
@@ -870,9 +881,13 @@ document.addEventListener('DOMContentLoaded', () => {
                             `;
 
                             card.addEventListener('click', function () {
-                                const imagemId = this.getAttribute('data-id');
-                                if (imagemId) {
-                                    atualizarModal(imagemId); // Passa o ID da imagem para adicionar eventos
+                                const imagemIdSelecionada = this.getAttribute('data-id');
+                                const obraIdSelecionada = this.getAttribute('data-obra-id');
+                                if (imagemIdSelecionada) {
+                                    atualizarModal(imagemIdSelecionada); // Passa o ID da imagem para adicionar eventos
+                                    idImagem = imagemIdSelecionada; // Atualiza a variável global imagemId
+                                    idObra = obraIdSelecionada; // Atualiza a variável global imagemId
+                                    console.log("ID da imagem selecionada:", idImagem);
                                 }
                             });
                             cardsContainer.appendChild(card);
@@ -902,9 +917,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         Prazo: ${item.prazo || '-'}
                     `;
                                     card.addEventListener('click', function () {
-                                        const imagemId = this.getAttribute('data-id');
-                                        if (imagemId) {
-                                            atualizarModal(imagemId); // Passa o ID da imagem para adicionar eventos
+                                        const imagemIdSelecionada = this.getAttribute('data-id');
+                                        const obraIdSelecionada = this.getAttribute('data-obra-id');
+                                        if (imagemIdSelecionada) {
+                                            atualizarModal(imagemIdSelecionada); // Passa o ID da imagem para adicionar eventos
+                                            idImagem = imagemIdSelecionada; // Atualiza a variável global imagemId
+                                            idObra = obraIdSelecionada; // Atualiza a variável global imagemId
+                                            console.log("ID da imagem selecionada:", idImagem);
                                         }
                                     });
                                     cardsContainer.appendChild(card);
@@ -1529,8 +1548,8 @@ window.ontouchstart = function (event) {
 document.getElementById("addRender").addEventListener("click", function (event) {
     event.preventDefault();
 
-    var linhaSelecionada = document.querySelector(".linha-tabela.selecionada");
-    if (!linhaSelecionada) {
+    // var linhaSelecionada = document.querySelector(".linha-tabela.selecionada");
+    if (!idImagem) {
         Toastify({
             text: "Nenhuma imagem selecionada",
             duration: 3000,
@@ -1543,8 +1562,8 @@ document.getElementById("addRender").addEventListener("click", function (event) 
         return;
     }
 
-    var idImagemSelecionada = linhaSelecionada.getAttribute("data-id");
-    var idObraSelecionada = linhaSelecionada.getAttribute("obra-id");
+    // var idImagemSelecionada = linhaSelecionada.getAttribute("data-id");
+    // var idObraSelecionada = linhaSelecionada.getAttribute("obra-id");
 
     const statusId = document.getElementById("opcao_status").value;
 
@@ -1593,12 +1612,12 @@ document.getElementById("addRender").addEventListener("click", function (event) 
                     document.getElementById("opcao_finalizador").value = finalizador;
                 }
 
-                const obra = idObraSelecionada;
+                const obra = idObra;
                 if (obra) {
                     document.getElementById("opcao_obra_pos").value = obra;
                 }
 
-                document.getElementById("imagem_id_pos").value = idImagemSelecionada;
+                document.getElementById("imagem_id_pos").value = idImagem;
                 const statusSelecionado = document.getElementById("opcao_status");
                 if (statusSelecionado) {
                     const statusValue = statusSelecionado.value;
@@ -1621,7 +1640,7 @@ document.getElementById("addRender").addEventListener("click", function (event) 
     };
 
     const data = {
-        imagem_id: idImagemSelecionada,
+        imagem_id: idImagem,
         status_id: statusId,
     };
 

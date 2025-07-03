@@ -15,8 +15,10 @@ $colaboradorId = intval($_GET['colaborador_id']);
 $mes = isset($_GET['mes']) ? $_GET['mes'] : '';
 $ano = isset($_GET['ano']) ? $_GET['ano'] : '';
 $obraId = isset($_GET['obra_id']) ? intval($_GET['obra_id']) : '';
-$funcaoId = isset($_GET['funcao_id']) ? intval($_GET['funcao_id']) : '';
+$funcaoId = isset($_GET['funcao_id']) ? $_GET['funcao_id'] : '';
 $status = isset($_GET['status']) ? $_GET['status'] : '';
+$funcaoIds = $funcaoId ? explode(',', $funcaoId) : [];
+$statusList = $status ? explode(',', $status) : [];
 $prioridade = isset($_GET['prioridade']) ? $_GET['prioridade'] : '';
 
 $sql = "SELECT
@@ -31,9 +33,10 @@ $sql = "SELECT
             ico.obra_id
         FROM funcao_imagem fi
         JOIN imagens_cliente_obra ico ON fi.imagem_id = ico.idimagens_cliente_obra
+        JOIN obra o ON o.idobra = ico.obra_id
         JOIN funcao f on fi.funcao_id = f.idfuncao
         JOIN prioridade_funcao pc ON fi.idfuncao_imagem = pc.funcao_imagem_id
-        WHERE fi.colaborador_id = ?";
+        WHERE fi.colaborador_id = ? AND o.status_obra = 0";
 
 if ($mes) {
     $sql .= " AND MONTH(fi.prazo) = ?";
@@ -44,17 +47,19 @@ if ($ano) {
 if ($obraId) {
     $sql .= " AND ico.obra_id = ?";
 }
-if ($funcaoId) {
-    $sql .= " AND f.idfuncao = ?";
+if ($funcaoId && count($funcaoIds) > 0) {
+    $in = implode(',', array_fill(0, count($funcaoIds), '?'));
+    $sql .= " AND f.idfuncao IN ($in)";
 }
-if ($status) {
-    $sql .= " AND fi.status = ?";
+if ($status && count($statusList) > 0) {
+    $inStatus = implode(',', array_fill(0, count($statusList), '?'));
+    $sql .= " AND fi.status IN ($inStatus)";
 }
 if ($prioridade) {
     $sql .= " AND pc.prioridade = ?";
 }
 
-$sql .= " ORDER BY obra_id, FIELD(fi.status,'Não iniciado', 'Em andamento', 'Ajuste', 'Em aprovação', 'Aprovado com ajustes', 'Aprovado', 'Finalizado'), imagem_id";
+$sql .= " ORDER BY prazo, obra_id, FIELD(fi.status,'Não iniciado', 'Em andamento', 'Ajuste', 'Em aprovação', 'Aprovado com ajustes', 'Aprovado', 'Finalizado'), imagem_id";
 
 $stmt = $conn->prepare($sql);
 
@@ -73,13 +78,17 @@ if ($obraId) {
     $types .= 'i';
     $bindParams[] = $obraId;
 }
-if ($funcaoId) {
-    $types .= 'i';
-    $bindParams[] = $funcaoId;
+if ($funcaoId && count($funcaoIds) > 0) {
+    foreach ($funcaoIds as $fid) {
+        $types .= 'i';
+        $bindParams[] = intval($fid);
+    }
 }
-if ($status) {
-    $types .= 's';
-    $bindParams[] = $status;
+if ($status && count($statusList) > 0) {
+    foreach ($statusList as $st) {
+        $types .= 's';
+        $bindParams[] = $st;
+    }
 }
 if ($prioridade) {
     $types .= 's';
@@ -126,34 +135,19 @@ foreach ($funcoes as $funcao) {
     $funcaoAnteriorId = null;
     $prazoAnterior = null;
 
-    if ($indiceAtual !== false && $indiceAtual > 0) {
-        // Percorrer em ordem decrescente até encontrar uma função anterior válida
+    if ($indiceAtual !== false && $indiceAtual > 0 && isset($todasFuncoes[$imagemId])) {
+        // Procura a função anterior na ordem
         for ($i = $indiceAtual - 1; $i >= 0; $i--) {
             $funcaoAnteriorId = $ordemIds[$i];
-
-            // Buscar a função anterior apenas da MESMA imagem
-            $sqlAnterior = "SELECT status, prazo 
-                        FROM funcao_imagem 
-                        WHERE imagem_id = ? AND funcao_id = ? LIMIT 1";
-
-            $stmtAnterior = $conn->prepare($sqlAnterior);
-            $stmtAnterior->bind_param('ii', $imagemId, $funcaoAnteriorId);
-            $stmtAnterior->execute();
-            $resultAnterior = $stmtAnterior->get_result();
-
-            if ($rowAnterior = $resultAnterior->fetch_assoc()) {
+            if (isset($todasFuncoes[$imagemId][$funcaoAnteriorId])) {
+                $rowAnterior = $todasFuncoes[$imagemId][$funcaoAnteriorId];
                 $statusAnterior = $rowAnterior['status'];
                 $prazoAnterior = $rowAnterior['prazo'];
-
                 if (in_array($statusAnterior, ['Finalizado', 'Aprovado', 'Aprovado com ajustes'])) {
                     $liberada = true;
                 }
-
-                $stmtAnterior->close();
                 break;
             }
-
-            $stmtAnterior->close();
         }
     }
 
@@ -173,6 +167,27 @@ foreach ($funcoes as $funcao) {
         'funcaoAnteriorId' => $funcaoAnteriorId,
         'obra_id' => $funcao['obra_id']
     ];
+}
+
+// Busca todas as funções de todas as imagens retornadas
+$imagemIds = array_column($funcoes, 'imagem_id');
+if (count($imagemIds) > 0) {
+    $inImagem = implode(',', array_fill(0, count($imagemIds), '?'));
+    $sqlTodasFuncoes = "SELECT imagem_id, funcao_id, status, prazo FROM funcao_imagem WHERE imagem_id IN ($inImagem)";
+    $stmtTodas = $conn->prepare($sqlTodasFuncoes);
+    $typesTodas = str_repeat('i', count($imagemIds));
+    $stmtTodas->bind_param($typesTodas, ...$imagemIds);
+    $stmtTodas->execute();
+    $resultTodas = $stmtTodas->get_result();
+
+    // Organiza por imagem_id e funcao_id
+    $todasFuncoes = [];
+    while ($row = $resultTodas->fetch_assoc()) {
+        $todasFuncoes[$row['imagem_id']][$row['funcao_id']] = $row;
+    }
+    $stmtTodas->close();
+} else {
+    $todasFuncoes = [];
 }
 
 echo json_encode($response);

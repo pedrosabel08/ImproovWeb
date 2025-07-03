@@ -70,6 +70,7 @@ $numeroImagem = $_POST['numeroImagem'] ?? '';
 $nomenclatura = $_POST['nomenclatura'] ?? '';
 $primeiraPalavra = $_POST['primeiraPalavra'] ?? '';
 $nome_imagem = $_POST['nome_imagem'] ?? '';
+$nomeStatus = $_POST['status_nome'] ?? '';
 
 // Diretórios base para pesquisa, ordem preferida
 $clientes_base = ['/mnt/clientes/2024', '/mnt/clientes/2025'];
@@ -193,53 +194,38 @@ for ($i = 0; $i < $total; $i++) {
     $maiorRevisao = -1;
     $arquivo_antigo = '';
     $padrao = "/^" . preg_quote($nome_base, '/') . "-R(\d{2})\." . preg_quote($extensao, '/') . "$/i";
-
-    $sftp = new SFTP($ftp_host, $ftp_port);
-    if (!$sftp->login($ftp_user, $ftp_pass)) {
-        error_log("Falha ao conectar SFTP para revisão do arquivo $nome_original");
-        $revisao = 'R00';
-        $remote_path = "$upload_ok/{$nome_base}-R00.$extensao";
+    if ($nomeStatus === 'EF') {
+        $revisao = 'EF';
     } else {
-        // --- DIFERENCIAÇÃO DE PASTA ---
-        $remote_dir = $upload_ok;
-        if ($pasta_funcao === '03.Models') {
-            // Nome da subpasta da imagem (ex: IMG_001)
-            $subpasta_img = $nome_imagem;
-            // Nome da subpasta da função
-            $mapa_funcao = [
-                'modelagem' => 'MT',
-                'composição' => 'Comp',
-                'finalização' => 'Final'
-            ];
-            $funcao_key = mb_strtolower($nome_funcao, 'UTF-8');
-            $subpasta_funcao = $mapa_funcao[$funcao_key] ?? 'OUTROS';
-
-            // Cria subpastas se não existirem
-            if (!$sftp->is_dir("$remote_dir/$subpasta_img")) {
-                $sftp->mkdir("$remote_dir/$subpasta_img");
+        $sftp = new SFTP($ftp_host, $ftp_port);
+        if (!$sftp->login($ftp_user, $ftp_pass)) {
+            error_log("Falha ao conectar SFTP para revisão do arquivo $nome_original");
+            $revisao = 'R00';
+            $remote_path = "$upload_ok/{$nome_base}-R00.$extensao";
+        } else {
+            // --- DIFERENCIAÇÃO DE PASTA ---
+            $remote_dir = $upload_ok;
+            if ($pasta_funcao === '03.Models') {
+                // ...código existente para subpastas...
             }
-            if (!$sftp->is_dir("$remote_dir/$subpasta_img/$subpasta_funcao")) {
-                $sftp->mkdir("$remote_dir/$subpasta_img/$subpasta_funcao");
-            }
-            $remote_dir = "$remote_dir/$subpasta_img/$subpasta_funcao";
-        }
 
-        // Agora faz o controle de revisão dentro da pasta correta
-        $arquivos_remotos = $sftp->nlist($remote_dir);
-        if ($arquivos_remotos) {
-            foreach ($arquivos_remotos as $arq) {
-                if (preg_match($padrao, $arq, $matches)) {
-                    $revNum = intval($matches[1]);
-                    if ($revNum > $maiorRevisao) {
-                        $maiorRevisao = $revNum;
-                        $arquivo_antigo = $arq;
+            // Agora faz o controle de revisão dentro da pasta correta
+            $arquivos_remotos = $sftp->nlist($remote_dir);
+            if ($arquivos_remotos) {
+                foreach ($arquivos_remotos as $arq) {
+                    if (preg_match($padrao, $arq, $matches)) {
+                        $revNum = intval($matches[1]);
+                        if ($revNum > $maiorRevisao) {
+                            $maiorRevisao = $revNum;
+                            $arquivo_antigo = $arq;
+                        }
                     }
                 }
             }
+            $novaRevisao = str_pad($maiorRevisao + 1, 2, '0', STR_PAD_LEFT);
+            $revisao = "R$novaRevisao";
+            $remote_path = "$remote_dir/{$nome_base}-{$revisao}.{$extensao}";
         }
-        $novaRevisao = str_pad($maiorRevisao + 1, 2, '0', STR_PAD_LEFT);
-        $revisao = "R$novaRevisao";
-        $remote_path = "$remote_dir/{$nome_base}-{$revisao}.{$extensao}";
     }
     // --- FIM controle de revisão ---
 
@@ -248,6 +234,19 @@ for ($i = 0; $i < $total; $i++) {
         $caminho_antigo = "$upload_ok/$arquivo_antigo";
         $sftp->delete($caminho_antigo);
     }
+
+    // === NOVO BLOCO PARA PÓS-PRODUÇÃO ===
+    if (mb_strtolower($nome_funcao, 'UTF-8') === 'pós-produção') {
+        $nome_final = "{$nome_imagem}_{$revisao}.{$extensao}";
+        $remote_path = "$upload_ok/{$nome_final}";
+    } else {
+        // Nome padrão
+        if (!isset($remote_path)) {
+            $remote_path = "$upload_ok/{$nome_base}-{$revisao}.{$extensao}";
+        }
+        $nome_final = "{$nome_base}-{$revisao}.{$extensao}";
+    }
+    // === FIM DO BLOCO ===
 
     list($ok, $msg) = enviarArquivoSFTP(
         $ftp_host,

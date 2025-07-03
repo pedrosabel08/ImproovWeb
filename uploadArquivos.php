@@ -7,8 +7,32 @@ $dataIdFuncoes   = json_decode($_POST['dataIdFuncoes'] ?? '[]', true);
 $numeroImagem    = preg_replace('/\D/', '', $_POST['numeroImagem'] ?? '');
 $nomenclatura    = preg_replace('/[^a-zA-Z0-9_\-]/', '', $_POST['nomenclatura'] ?? '');
 $nomeFuncao      = $_POST['nome_funcao'] ?? '';
-$processo        = strtoupper(substr($nomeFuncao, 0, 3)); // Ex: CAD, RES etc.
+function getProcesso($nomeFuncao)
+{
+    $nomeFuncao = trim($nomeFuncao);
+    $map = [
+        'Pré-Finalização' => 'PRE',
+        'Pós-Produção'    => 'POS',
+    ];
+    if (isset($map[$nomeFuncao])) {
+        return $map[$nomeFuncao];
+    }
+    // Remove acentos e pega os 3 primeiros caracteres
+    $semAcento = mb_strtoupper(normalizeAcentos($nomeFuncao), 'UTF-8');
+    return mb_substr($semAcento, 0, 3, 'UTF-8');
+}
 
+// Função para remover acentos
+function normalizeAcentos($str)
+{
+    return preg_replace(
+        ['/[áàãâä]/ui', '/[éèêë]/ui', '/[íìîï]/ui', '/[óòõôö]/ui', '/[úùûü]/ui', '/[ç]/ui'],
+        ['A', 'E', 'I', 'O', 'U', 'C'],
+        $str
+    );
+}
+
+$processo = getProcesso($nomeFuncao);
 if (empty($dataIdFuncoes) || !$numeroImagem || !$nomenclatura || !$nomeFuncao) {
     echo json_encode(["error" => "Parâmetros insuficientes"]);
     exit;

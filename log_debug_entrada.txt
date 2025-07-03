@@ -1,3 +1,37 @@
 Array
 (
+    [imagens] => Array
+        (
+            [name] => Array
+                (
+                    [0] => Imagem do WhatsApp de 2025-06-27 à(s) 17.21.41_edea292e.jpg
+                )
+
+            [full_path] => Array
+                (
+                    [0] => Imagem do WhatsApp de 2025-06-27 à(s) 17.21.41_edea292e.jpg
+                )
+
+            [type] => Array
+                (
+                    [0] => image/jpeg
+                )
+
+            [tmp_name] => Array
+                (
+                    [0] => C:\xampp\tmp\php7C6D.tmp
+                )
+
+            [error] => Array
+                (
+                    [0] => 0
+                )
+
+            [size] => Array
+                (
+                    [0] => 234816
+                )
+
+        )
+
 )

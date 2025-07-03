@@ -3200,38 +3200,72 @@ function configurarDropzone(areaId, inputId, listaId, arquivosArray) {
     const dropArea = document.getElementById(areaId);
     const fileInput = document.getElementById(inputId);
 
-    // Remove listeners antigos para evitar múltiplos disparos
-    dropArea.onclick = null;
-    dropArea.ondragover = null;
-    dropArea.ondragleave = null;
-    dropArea.ondrop = null;
-    fileInput.onchange = null;
-
-    dropArea.addEventListener('click', () => fileInput.click());
-
-    dropArea.ondragover = e => {
-        e.preventDefault();
-        dropArea.classList.add('highlight');
-    };
-    dropArea.ondragleave = () => dropArea.classList.remove('highlight');
-    dropArea.ondrop = e => {
+    // Funções nomeadas para poder remover depois
+    function handleDrop(e) {
         e.preventDefault();
         dropArea.classList.remove('highlight');
         for (let file of e.dataTransfer.files) arquivosArray.push(file);
         renderizarLista(arquivosArray, listaId);
-    };
-
-    fileInput.addEventListener('change', () => {
+    }
+    function handleChange() {
         for (let file of fileInput.files) arquivosArray.push(file);
         renderizarLista(arquivosArray, listaId);
-    });
+    }
+    function handleClick() {
+        fileInput.click();
+    }
+    function handleDragOver(e) {
+        e.preventDefault();
+        dropArea.classList.add('highlight');
+    }
+    function handleDragLeave() {
+        dropArea.classList.remove('highlight');
+    }
+
+    // Remove listeners antigos
+    dropArea.removeEventListener('click', dropArea._handleClick);
+    dropArea.removeEventListener('dragover', dropArea._handleDragOver);
+    dropArea.removeEventListener('dragleave', dropArea._handleDragLeave);
+    dropArea.removeEventListener('drop', dropArea._handleDrop);
+    fileInput.removeEventListener('change', fileInput._handleChange);
+
+    // Adiciona listeners e guarda referência para remover depois
+    dropArea.addEventListener('click', handleClick);
+    dropArea.addEventListener('dragover', handleDragOver);
+    dropArea.addEventListener('dragleave', handleDragLeave);
+    dropArea.addEventListener('drop', handleDrop);
+    fileInput.addEventListener('change', handleChange);
+
+    // Guarda referência
+    dropArea._handleClick = handleClick;
+    dropArea._handleDragOver = handleDragOver;
+    dropArea._handleDragLeave = handleDragLeave;
+    dropArea._handleDrop = handleDrop;
+    fileInput._handleChange = handleChange;
 }
+
 function renderizarLista(array, listaId) {
     const lista = document.getElementById(listaId);
     lista.innerHTML = '';
     array.forEach((file, i) => {
+        // Calcula o tamanho em B, KB, MB ou GB
+        let tamanho = file.size;
+        let tamanhoStr = '';
+        if (tamanho < 1024) {
+            tamanhoStr = `${tamanho} B`;
+        } else if (tamanho < 1024 * 1024) {
+            tamanhoStr = `${(tamanho / 1024).toFixed(1)} KB`;
+        } else if (tamanho < 1024 * 1024 * 1024) {
+            tamanhoStr = `${(tamanho / (1024 * 1024)).toFixed(2)} MB`;
+        } else {
+            tamanhoStr = `${(tamanho / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+        }
+
         const li = document.createElement('li');
-        li.innerHTML = `<div class="file-info"><span>${file.name}</span><span onclick="removerArquivo(${i}, '${listaId}')" style="cursor:pointer;">❌</span></div>`;
+        li.innerHTML = `<div class="file-info">
+            <span>${file.name} <small style="color:#888;">(${tamanhoStr})</small></span>
+            <span onclick="removerArquivo(${i}, '${listaId}')" style="cursor:pointer;color: #c00;font-weight: bold;font-size: 1.2em;">×</span>
+        </div>`;
         lista.appendChild(li);
     });
 }
@@ -3276,8 +3310,12 @@ function enviarImagens() {
     const primeiraPalavra = descricaoMatch ? descricaoMatch[1] : '';
     formData.append('primeiraPalavra', primeiraPalavra);
 
+    const statusSelect = document.getElementById('opcao_status');
+    const statusNome = statusSelect.options[statusSelect.selectedIndex].text.trim();
 
-    fetch('../uploadArquivos.php', {
+    formData.append('status_nome', statusNome);
+
+    fetch('https://improov/ImproovWeb/uploadArquivos.php', {
         method: 'POST',
         body: formData
     })
@@ -3348,6 +3386,11 @@ function enviarArquivo() {
     const descricaoMatch = campoNomeImagem.match(/^\d+\.\s*[A-Z_]+\s+([^\s]+)/);
     const primeiraPalavra = descricaoMatch ? descricaoMatch[1] : '';
     formData.append('primeiraPalavra', primeiraPalavra);
+
+    const statusSelect = document.getElementById('opcao_status');
+    const statusNome = statusSelect.options[statusSelect.selectedIndex].text.trim();
+
+    formData.append('status_nome', statusNome);
 
     // Criar container de progresso
     const progressContainer = document.createElement('div');

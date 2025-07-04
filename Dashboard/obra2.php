@@ -1101,7 +1101,7 @@ $conn->close();
             <div id="etapaFinal" style="display: none;">
                 <div id="drop-area-final" class="drop-area">
                     Arraste o arquivo final aqui ou clique para selecionar
-                    <input type="file" id="fileElemFinal" style="display:none;">
+                    <input type="file" id="fileElemFinal" multiple style="display:none;">
                 </div>
                 <ul class="file-list" id="fileListFinal"></ul>
                 <div class="buttons-upload">

@@ -89,9 +89,9 @@ if (isset($_FILES['imagens'])) {
         $imagem = uploadImagem($imagemAtual, $destino, $nomeFinalSemExt);
 
         if ($imagem) {
-            $stmt = $conn->prepare("INSERT INTO historico_aprovacoes_imagens (funcao_imagem_id, imagem, indice_envio) 
-                                    VALUES (?, ?, ?)");
-            $stmt->bind_param("isi", $idFuncaoImagem, $imagem, $indice_envio);
+            $stmt = $conn->prepare("INSERT INTO historico_aprovacoes_imagens (funcao_imagem_id, imagem, indice_envio, nome_arquivo) 
+                                    VALUES (?, ?, ?, ?)");
+            $stmt->bind_param("isis", $idFuncaoImagem, $imagem, $indice_envio, $nomeFinalSemExt);
             if ($stmt->execute()) {
                 $imagensEnviadas[] = $imagem;
             } else {

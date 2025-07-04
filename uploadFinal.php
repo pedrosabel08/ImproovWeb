@@ -83,6 +83,7 @@ $mapa_funcao_pasta = [
     'composição' => '03.Models',
     'finalização' => '03.Models',
     'Pós-Produção' => '04.Finalizacao',
+    'Planta Humanizada' => '04.Finalizacao',
 ];
 
 // Define pasta destino baseado no nome_funcao (case insensitive)
@@ -200,14 +201,45 @@ for ($i = 0; $i < $total; $i++) {
         $sftp = new SFTP($ftp_host, $ftp_port);
         if (!$sftp->login($ftp_user, $ftp_pass)) {
             error_log("Falha ao conectar SFTP para revisão do arquivo $nome_original");
-            $revisao = 'R00';
+            $revisao = $nomeStatus;
             $remote_path = "$upload_ok/{$nome_base}-R00.$extensao";
         } else {
             // --- DIFERENCIAÇÃO DE PASTA ---
             $remote_dir = $upload_ok;
             if ($pasta_funcao === '03.Models') {
-                // ...código existente para subpastas...
+                // Nome da subpasta da imagem (ex: IMG_001)
+                $subpasta_img = $nome_imagem;
+
+                // Nome da subpasta da função
+                $mapa_funcao = [
+                    'modelagem' => 'MT',
+                    'composição' => 'Comp',
+                    'finalização' => 'Final'
+                ];
+                $funcao_key = mb_strtolower($nome_funcao, 'UTF-8');
+                $subpasta_funcao = $mapa_funcao[$funcao_key] ?? 'OUTROS';
+
+                // Cria subpastas se não existirem
+                if (!$sftp->is_dir("$remote_dir/$subpasta_img")) {
+                    $sftp->mkdir("$remote_dir/$subpasta_img");
+                }
+                if (!$sftp->is_dir("$remote_dir/$subpasta_img/$subpasta_funcao")) {
+                    $sftp->mkdir("$remote_dir/$subpasta_img/$subpasta_funcao");
+                }
+
+                $remote_dir = "$remote_dir/$subpasta_img/$subpasta_funcao";
+
+                // 🔁 Verifica se arquivo com mesmo nome já existe para possível substituição
+                $arquivo_existente = $sftp->nlist($remote_dir);
+                $nome_arquivo_novo = "{$nome_base}-{$revisao}.{$extensao}";
+
+                if ($arquivo_existente && in_array($nome_arquivo_novo, $arquivo_existente)) {
+                    // Se o status não mudou, pode substituir
+                    // Ou seja, o nome do novo arquivo é igual ao antigo (mesma revisão)
+                    $sftp->delete("$remote_dir/$nome_arquivo_novo");
+                }
             }
+
 
             // Agora faz o controle de revisão dentro da pasta correta
             $arquivos_remotos = $sftp->nlist($remote_dir);
@@ -222,8 +254,8 @@ for ($i = 0; $i < $total; $i++) {
                     }
                 }
             }
-            $novaRevisao = str_pad($maiorRevisao + 1, 2, '0', STR_PAD_LEFT);
-            $revisao = "R$novaRevisao";
+            // $novaRevisao = str_pad($maiorRevisao + 1, 2, '0', STR_PAD_LEFT);
+            $revisao = $nomeStatus;
             $remote_path = "$remote_dir/{$nome_base}-{$revisao}.{$extensao}";
         }
     }
@@ -236,9 +268,26 @@ for ($i = 0; $i < $total; $i++) {
     }
 
     // === NOVO BLOCO PARA PÓS-PRODUÇÃO ===
-    if (mb_strtolower($nome_funcao, 'UTF-8') === 'pós-produção') {
+    $funcao_normalizada = mb_strtolower($nome_funcao, 'UTF-8');
+    if ($funcao_normalizada === 'pós-produção' || $funcao_normalizada === 'planta humanizada') {
         $nome_final = "{$nome_imagem}_{$revisao}.{$extensao}";
-        $remote_path = "$upload_ok/{$nome_final}";
+        $pasta_revisao = $revisao;
+
+        // Cria pasta de revisão, se não existir
+        if (!$sftp->is_dir("$upload_ok/$pasta_revisao")) {
+            $sftp->mkdir("$upload_ok/$pasta_revisao");
+        }
+
+        // Se for Planta Humanizada, cria também subpasta PH
+        if ($funcao_normalizada === 'planta humanizada') {
+            if (!$sftp->is_dir("$upload_ok/$pasta_revisao/PH")) {
+                $sftp->mkdir("$upload_ok/$pasta_revisao/PH");
+            }
+            $remote_path = "$upload_ok/$pasta_revisao/PH/{$nome_final}";
+        } else {
+            // Caso seja apenas Pós-Produção
+            $remote_path = "$upload_ok/$pasta_revisao/{$nome_final}";
+        }
     } else {
         // Nome padrão
         if (!isset($remote_path)) {

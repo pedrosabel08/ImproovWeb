@@ -3296,6 +3296,7 @@ function enviarImagens() {
     formData.append('dataIdFuncoes', JSON.stringify(dataIdFuncoes));
     formData.append('nome_funcao', document.getElementById('nome_funcao_upload').value);
     const campoNomeImagem = document.getElementById('campoNomeImagem')?.textContent || '';
+    formData.append('nome_imagem', campoNomeImagem);
 
     // Extrai o número inicial antes do ponto
     const numeroImagem = campoNomeImagem.match(/^\d+/)?.[0] || '';
@@ -3315,7 +3316,7 @@ function enviarImagens() {
 
     formData.append('status_nome', statusNome);
 
-    fetch('https://improov/ImproovWeb/uploadArquivos.php', {
+    fetch('../uploadArquivos.php', {
         method: 'POST',
         body: formData
     })

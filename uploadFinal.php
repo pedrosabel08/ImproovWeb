@@ -25,7 +25,7 @@ error_log('memory_limit: ' . ini_get('memory_limit'));
 error_log('max_file_uploads: ' . ini_get('max_file_uploads'));
 
 // Log do array $_FILES
-file_put_contents(__DIR__ . '/debug_files.txt', print_r($_FILES, true));
+// file_put_contents(__DIR__ . '/debug_files.txt', print_r($_FILES, true));
 
 file_put_contents(__DIR__ . '/log_debug_entrada.txt', print_r($_FILES, true));
 error_log('Tamanho do POST: ' . $_SERVER['CONTENT_LENGTH']);

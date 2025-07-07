@@ -4,22 +4,22 @@ Array
         (
             [name] => Array
                 (
-                    [0] => Logos.zip
+                    [0] => mulher1.png
                 )
 
             [full_path] => Array
                 (
-                    [0] => Logos.zip
+                    [0] => mulher1.png
                 )
 
             [type] => Array
                 (
-                    [0] => application/x-zip-compressed
+                    [0] => image/png
                 )
 
             [tmp_name] => Array
                 (
-                    [0] => C:\xampp\tmp\phpAEE6.tmp
+                    [0] => C:\xampp\tmp\php809B.tmp
                 )
 
             [error] => Array
@@ -29,7 +29,7 @@ Array
 
             [size] => Array
                 (
-                    [0] => 9698563
+                    [0] => 144391
                 )
 
         )

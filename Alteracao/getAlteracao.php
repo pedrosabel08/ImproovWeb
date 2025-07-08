@@ -1,67 +1,54 @@
 <?php
-include '../conexao.php';
-
+// kanban.php
 header('Content-Type: application/json');
+include '../conexao.php'; // conexao com mysqli
 
-// Recebe o ID da obra via GET
-$obraId = intval($_GET['obraId']);
+$sql = "SELECT 
+    a.idalt,
+    f.idfuncao_imagem,
+    f.imagem_id,
+    f.colaborador_id,
+    f.status AS status_funcao,
+    i.prazo,
+    i.status_id,
+    i.imagem_nome,
+    c.nome_colaborador AS colaborador_nome,
+    s.nome_status AS status_nome,
+    o.idobra,
+    o.nomenclatura
+FROM alteracoes a
+JOIN funcao_imagem f ON a.funcao_id = f.idfuncao_imagem
+JOIN imagens_cliente_obra i ON f.imagem_id = i.idimagens_cliente_obra
+JOIN colaborador c ON f.colaborador_id = c.idcolaborador
+JOIN status_imagem s ON a.status_id = s.idstatus
+JOIN obra o ON i.obra_id = o.idobra
+ORDER BY f.imagem_id, s.nome_status, o.idobra, f.prazo";
 
-// Verifica se o ID da obra foi passado corretamente
-if ($obraId === null) {
-    echo json_encode(["error" => "ID da obra não fornecido."]);
-    exit;
-}
+$result = $conn->query($sql);
 
-$response = [];
+$kanban = [];
 
-// Consulta para obter as imagens e suas revisões
-$sqlAlteracao = "SELECT a.id_alteracao, i.imagem_nome, a.descricao, a.data_envio, a.data_recebimento, a.status, c.nome_colaborador, a.numero_revisao, i.idimagens_cliente_obra
-FROM alteracoes a 
-LEFT JOIN imagens_cliente_obra i ON a.imagem_id = i.idimagens_cliente_obra 
-JOIN colaborador c ON c.idcolaborador = a.colaborador_id 
-WHERE i.obra_id = ?
-ORDER BY i.imagem_nome, a.numero_revisao DESC";
+while ($row = $result->fetch_assoc()) {
+    $status_funcao = strtolower(str_replace(' ', '', $row['status_funcao']));
+    $obra = $row['nomenclatura'];
 
-$stmtAlteracao = $conn->prepare($sqlAlteracao);
-if ($stmtAlteracao === false) {
-    die('Erro na preparação da consulta (imagens): ' . $conn->error);
-}
-
-$stmtAlteracao->bind_param("i", $obraId);
-$stmtAlteracao->execute();
-$resultAlteracao = $stmtAlteracao->get_result();
-
-// Processa os resultados e agrupa as revisões por imagem
-$imagens = [];
-
-while ($row = $resultAlteracao->fetch_assoc()) {
-    $imagemId = $row['idimagens_cliente_obra'];
-
-    // Se a imagem ainda não estiver no array, cria a estrutura
-    if (!isset($imagens[$imagemId])) {
-        $imagens[$imagemId] = [
-            'imagem_nome' => $row['imagem_nome'],
-            'revisoes' => []
+    if (!isset($kanban[$status_funcao])) {
+        $kanban[$status_funcao] = [];
+    }
+    if (!isset($kanban[$status_funcao][$obra])) {
+        $kanban[$status_funcao][$obra] = [
+            'prazo' => $row['prazo'],
+            'imagens' => []
         ];
     }
 
-    // Adiciona a revisão à imagem correspondente
-    $imagens[$imagemId]['revisoes'][] = [
-        'id_alteracao' => $row['id_alteracao'],
-        'descricao' => $row['descricao'],
-        'data_envio' => $row['data_envio'],
-        'data_recebimento' => $row['data_recebimento'],
-        'status' => $row['status'],
-        'numero_revisao' => $row['numero_revisao'],
-        'nome_colaborador' => $row['nome_colaborador']
+    $kanban[$status_funcao][$obra]['imagens'][] = [
+        'imagem' => $row['imagem_nome'],
+        'colaborador' => $row['colaborador_nome'],
+        'prazo' => date('d/m/Y', strtotime($row['prazo'])),
+        'status_alteracao' => $row['status_nome']
     ];
 }
 
-// Organiza as imagens e revisões
-$response['alt'] = array_values($imagens); // Converte o array associativo em um array numérico
-
-$stmtAlteracao->close();
-$conn->close();
-
-// Retorna o resultado como JSON
-echo json_encode($response);
+echo json_encode($kanban);
+exit;

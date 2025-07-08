@@ -1,90 +1,65 @@
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&family=Nunito:ital,wght@0,200..1000;1,200..1000&family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap');
-
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&family=Open+Sans:ital,wght@0,300..800;1,300..800&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap');
 
 * {
     padding: 0;
     margin: 0;
-    font-family: "Montserrat", sans-serif;
+    font-family: "Open Sans", sans-serif;
 }
 
 body {
+    transition: background-color 0.3s, color 0.3s;
     display: grid;
     grid-template-columns: 60px 1fr;
 }
 
-main {
+.container {
     grid-column: 2;
-    padding: 20px;
 }
 
-#imagens-container {
-    display: grid;
-    grid-template-columns: 1fr;
+.kanban-board {
+    display: flex;
     gap: 20px;
+    padding: 20px;
+    overflow-x: auto;
 }
 
-.card {
-    border-radius: 15px;
-    box-shadow: 0 2px 4px #c5c4c4;
-}
-
-.card-info {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-
-
-.card {
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    margin: 10px;
-    padding: 15px;
+.kanban-column {
+    background: #fff;
+    border-radius: 10px;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    padding: 10px;
+    min-width: 300px;
+    flex: 1;
 }
 
-.card-header h3 {
-    font-size: 20px;
-    margin: 0;
-    display: inline-block;
+.kanban-title {
+    font-size: 18px;
+    margin-bottom: 10px;
+    font-weight: bold;
+    border-bottom: 2px solid #ccc;
+    padding-bottom: 5px;
 }
 
-.card-body {
-    margin-top: 10px;
-}
-
-.toggle-btn {
-    background-color: #007BFF;
-    color: white;
-    padding: 8px 12px;
-    border: none;
+.obra-card {
+    border: 1px solid #ccc;
     border-radius: 5px;
+    padding: 10px;
+    margin-bottom: 10px;
+    background: #f9f9f9;
     cursor: pointer;
-    margin-top: 10px;
-    display: inline-block;
 }
 
-.toggle-btn:hover {
-    background-color: #0056b3;
+.obra-detalhes {
+    display: none;
 }
 
-.revisoes-container {
-    margin-top: 10px;
+.obra-detalhes.ativo {
+    display: block;
 }
 
-.card-info {
-    margin-bottom: 15px;
+.imagem-detalhe {
+    background: #e9ecef;
+    padding: 5px;
+    margin-bottom: 5px;
+    border-radius: 4px;
 }
-
-.card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-input {
-    border: none;
-    border-bottom: 1px solid black;
-    min-width: 20px
-}
-

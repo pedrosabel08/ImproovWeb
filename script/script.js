@@ -1624,6 +1624,12 @@ document.getElementById("addRender").addEventListener("click", function (event) 
                     document.getElementById("opcao_status_pos").value = statusValue;
                 }
 
+                const pos = document.getElementById("opcao_pos").value;
+                if (pos) {
+                    document.getElementById("responsavel_id").value = pos;
+
+                }
+
                 document.getElementById("render_id_pos").value = idRenderAdicionado;
 
                 const form_edicao = document.getElementById("form-edicao");

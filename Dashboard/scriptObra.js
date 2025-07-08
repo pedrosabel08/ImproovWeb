@@ -606,7 +606,7 @@ function infosObra(obraId) {
 
 
             const revisoes = document.getElementById('revisoes');
-            revisoes.textContent = `Total de alterações: ${data.alt}`
+            // revisoes.textContent = `Total de alterações: ${data.alt}`
 
             const alteracao = document.getElementById('altBtn')
             if (data.alt == 0) {

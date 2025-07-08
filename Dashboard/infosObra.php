@@ -306,26 +306,26 @@ $response['prazos'] = $prazos;
 
 $stmtPrazos->close();
 
-$sqlAlteracao = "SELECT COUNT(*) AS total_revisoes
-FROM alteracoes a
-JOIN imagens_cliente_obra i ON a.imagem_id = i.idimagens_cliente_obra
-WHERE i.obra_id = ?;";
+// $sqlAlteracao = "SELECT COUNT(*) AS total_revisoes
+// FROM alteracoes a
+// JOIN imagens_cliente_obra i ON a.imagem_id = i.idimagens_cliente_obra
+// WHERE i.obra_id = ?;";
 
-$stmtAlts = $conn->prepare($sqlAlteracao);
-if ($stmtAlts === false) {
-    die('Erro na preparação da consulta (imagens): ' . $conn->error);
-}
+// $stmtAlts = $conn->prepare($sqlAlteracao);
+// if ($stmtAlts === false) {
+//     die('Erro na preparação da consulta (imagens): ' . $conn->error);
+// }
 
-$stmtAlts->bind_param("i", $obraId);
-$stmtAlts->execute();
-$resultAlts = $stmtAlts->get_result();
+// $stmtAlts->bind_param("i", $obraId);
+// $stmtAlts->execute();
+// $resultAlts = $stmtAlts->get_result();
 
-// Processa os resultados do SELECT
-$row = $resultAlts->fetch_assoc();
-$response['alt'] = $row['total_revisoes'];  // Atribui o valor diretamente
+// // Processa os resultados do SELECT
+// $row = $resultAlts->fetch_assoc();
+// $response['alt'] = $row['total_revisoes'];  // Atribui o valor diretamente
 
 
-$stmtAlts->close();
+// $stmtAlts->close();
 
 
 

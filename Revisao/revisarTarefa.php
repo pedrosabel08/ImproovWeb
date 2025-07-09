@@ -160,7 +160,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $enviado = false;
 
             foreach ($bases as $base) {
-                $remote_path = "$base/$nomenclatura/04.Finalizacao/$nome_arquivo";
                 $sftp = new SFTP($ftp_host, $ftp_port);
                 if (!$sftp->login($ftp_user, $ftp_pass)) {
                     $resultadoFinal['logs'][] = "Falha ao conectar no host $ftp_host:$ftp_port para base $base.";
@@ -168,11 +167,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 $resultadoFinal['logs'][] = "Conectado ao host $ftp_host para base $base.";
 
-                if (!$sftp->is_dir("$base/$nomenclatura/04.Finalizacao")) {
-                    $resultadoFinal['logs'][] = "Diretório $base/$nomenclatura/04.Finalizacao não existe.";
+                // Extrai a revisão do nome do arquivo, ex: "_P00", "_P01", etc.
+                preg_match('/_P\d{2}/i', $nome_arquivo, $matchRevisao);
+                $revisao = isset($matchRevisao[0]) ? strtoupper($matchRevisao[0]) : '_P00'; // padrão se não encontrar
+                $revisao = str_replace('_', '', $revisao); // remove o "_", fica "P00"
+
+                $finalizacaoDir = "$base/$nomenclatura/04.Finalizacao";
+
+                if (!$sftp->is_dir($finalizacaoDir)) {
+                    $resultadoFinal['logs'][] = "Diretório $finalizacaoDir não existe.";
                     continue;
                 }
 
+                $revisaoDir = "$finalizacaoDir/$revisao";
+                if (!$sftp->is_dir($revisaoDir)) {
+                    if ($sftp->mkdir($revisaoDir, -1, true)) {
+                        $resultadoFinal['logs'][] = "Diretório $revisaoDir criado com sucesso.";
+                    } else {
+                        $resultadoFinal['logs'][] = "Falha ao criar diretório $revisaoDir.";
+                        continue;
+                    }
+                }
+
+                $remote_path = "$revisaoDir/$nome_arquivo";
                 if ($sftp->put($remote_path, $caminho_local, SFTP::SOURCE_LOCAL_FILE)) {
                     $resultadoFinal['logs'][] = "Arquivo enviado com sucesso para $remote_path.";
                     $enviado = true;

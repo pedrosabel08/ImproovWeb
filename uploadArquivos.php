@@ -7,6 +7,8 @@ $dataIdFuncoes   = json_decode($_POST['dataIdFuncoes'] ?? '[]', true);
 $numeroImagem    = preg_replace('/\D/', '', $_POST['numeroImagem'] ?? '');
 $nomenclatura    = preg_replace('/[^a-zA-Z0-9_\-]/', '', $_POST['nomenclatura'] ?? '');
 $nomeFuncao      = $_POST['nome_funcao'] ?? '';
+$nome_imagem      = $_POST['nome_imagem'] ?? '';
+$status_nome      = $_POST['status_nome'] ?? '';
 function getProcesso($nomeFuncao)
 {
     $nomeFuncao = trim($nomeFuncao);
@@ -85,7 +87,12 @@ if (isset($_FILES['imagens'])) {
             'size' => $imagens['size'][$i]
         ];
 
-        $nomeFinalSemExt = "{$numeroImagem}.{$nomenclatura}-{$processo}-{$indice_envio}-{$numeroPrevia}";
+        if ($nomeFuncao = 'Pós-Produção') {
+            $nomeFinalSemExt = "{$nome_imagem}_{$status_nome}";
+        } else {
+            $nomeFinalSemExt = "{$numeroImagem}.{$nomenclatura}-{$processo}-{$indice_envio}-{$numeroPrevia}";
+        }
+
         $imagem = uploadImagem($imagemAtual, $destino, $nomeFinalSemExt);
 
         if ($imagem) {

@@ -78,10 +78,11 @@ $clientes_base = ['/mnt/clientes/2024', '/mnt/clientes/2025'];
 // Define subdiretório conforme nome_funcao
 $mapa_funcao_pasta = [
     'Caderno' => '02.Projetos',
-    'Filtro' => '02.Projetos',
+    'Filtro de assets' => '02.Projetos',
     'modelagem' => '03.Models',
     'composição' => '03.Models',
     'finalização' => '03.Models',
+    'pré-finalização' => '03.Models',
     'alteração' => '03.Models',
     'Pós-Produção' => '04.Finalizacao',
     'Planta Humanizada' => '04.Finalizacao',
@@ -224,7 +225,8 @@ for ($i = 0; $i < $total; $i++) {
                 $mapa_funcao = [
                     'modelagem' => 'MT',
                     'composição' => 'Comp',
-                    'finalização' => 'Final'
+                    'finalização' => 'Final',
+                    'pré-finalização' => 'Final'
                 ];
                 $subpasta_funcao = $mapa_funcao[$funcao_key] ?? 'OUTROS';
 

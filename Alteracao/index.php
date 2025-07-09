@@ -65,6 +65,46 @@ $conn->close();
         </div>
     </div>
 
+    <div class="form-edicao" id="form-edicao">
+        <form id="form-add" method="post" action="insereFuncao.php">
+            <div class="titulo-funcoes">
+                <span id="campoNomeImagem"></span>
+            </div> <input type="hidden" id="imagem_id" name="imagem_id" value="">
+            <div class="modal-funcoes">
+                <div class="funcao_comp">
+                    <div class="funcao" style="margin: auto; padding: 10px 20px; flex: 0;">
+                        <div class="titulo" style="justify-content: center;">
+                            <p id="alteracao">Alteração</p>
+                        </div>
+                        <div class="opcoes" id="opcoes">
+                            <select name="alteracao_id" id="opcao_alteracao">
+                                <?php foreach ($colaboradores as $colab): ?>
+                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <select name="status_alteracao" id="status_alteracao">
+                                <option value="Não iniciado">Não iniciado</option>
+                                <option value="Em andamento">Em andamento</option>
+                                <option value="Finalizado">Finalizado</option>
+                                <option value="HOLD">HOLD</option>
+                                <option value="Não se aplica">Não se aplica</option>
+                                <option value="Em aprovação">Em aprovação</option>
+                                <option value="Aprovado">Aprovado</option>
+                                <option value="Ajuste">Ajuste</option>
+                                <option value="Aprovado com ajustes">Aprovado com ajustes</option>
+                            </select>
+                            <input type="date" name="prazo_alteracao" id="prazo_alteracao">
+                            <input type="text" name="obs_alteracao" id="obs_alteracao" placeholder="Caminho arquivo">
+                        </div>
+                        <button type="submit" id="salvar_funcoes" class="buttons-form-add" style="width: max-content; margin: 10px auto;">Salvar</button>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+
     <div id="notificacao-sino" class="notificacao-sino">
         <i class="fas fa-bell sino" id="icone-sino"></i>
         <span id="contador-tarefas" class="contador-tarefas">0</span>
@@ -106,6 +146,9 @@ $conn->close();
     <script src="../script/sidebar.js"></script>
     <script src="../script/notificacoes.js"></script>
     <script src="../script/controleSessao.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+
 </body>
 
 </html>

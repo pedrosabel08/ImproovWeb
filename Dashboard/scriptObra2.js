@@ -3395,6 +3395,7 @@ function enviarArquivo() {
 
     // Criar container de progresso
     const progressContainer = document.createElement('div');
+    progressContainer.style.fontSize = '16px';
     progressContainer.innerHTML = `
         <progress id="uploadProgress" value="0" max="100" style="width: 100%; height: 20px;"></progress>
         <div id="uploadStatus">Enviando... 0%</div>

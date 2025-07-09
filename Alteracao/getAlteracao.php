@@ -19,10 +19,10 @@ $sql = "SELECT
 FROM alteracoes a
 JOIN funcao_imagem f ON a.funcao_id = f.idfuncao_imagem
 JOIN imagens_cliente_obra i ON f.imagem_id = i.idimagens_cliente_obra
-JOIN colaborador c ON f.colaborador_id = c.idcolaborador
+LEFT JOIN colaborador c ON f.colaborador_id = c.idcolaborador
 JOIN status_imagem s ON a.status_id = s.idstatus
 JOIN obra o ON i.obra_id = o.idobra
-ORDER BY f.imagem_id, s.nome_status, o.idobra, f.prazo";
+ORDER BY f.prazo, f.imagem_id, s.nome_status, o.idobra";
 
 $result = $conn->query($sql);
 
@@ -38,6 +38,7 @@ while ($row = $result->fetch_assoc()) {
     if (!isset($kanban[$status_funcao][$obra])) {
         $kanban[$status_funcao][$obra] = [
             'prazo' => $row['prazo'],
+            'status_nome' => $row['status_nome'],
             'imagens' => []
         ];
     }
@@ -46,7 +47,8 @@ while ($row = $result->fetch_assoc()) {
         'imagem' => $row['imagem_nome'],
         'colaborador' => $row['colaborador_nome'],
         'prazo' => date('d/m/Y', strtotime($row['prazo'])),
-        'status_alteracao' => $row['status_nome']
+        'status_alteracao' => $row['status_nome'],
+        'imagem_id' => $row['imagem_id'],
     ];
 }
 

@@ -30,6 +30,7 @@ body {
     padding: 10px;
     min-width: 300px;
     flex: 1;
+    max-height: max-content;
 }
 
 .kanban-title {
@@ -45,12 +46,13 @@ body {
     border-radius: 5px;
     padding: 10px;
     margin-bottom: 10px;
-    background: #f9f9f9;
+    background: #d4d4d4;
     cursor: pointer;
 }
 
 .obra-detalhes {
     display: none;
+    margin-top: 15px;
 }
 
 .obra-detalhes.ativo {
@@ -58,8 +60,13 @@ body {
 }
 
 .imagem-detalhe {
-    background: #e9ecef;
-    padding: 5px;
+    background: #f9f9f9;
+    padding: 5px 8px;
     margin-bottom: 5px;
     border-radius: 4px;
+    font-size: 14px;
+}
+
+.imagem-nome {
+    margin-bottom: 5px;
 }

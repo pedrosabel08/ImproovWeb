@@ -2536,14 +2536,15 @@ document.getElementById("addRevisao").addEventListener("click", function (event)
 
     // Captura os valores
     const imagemId = document.getElementById("imagem_id").value;
+    const selectStatus = document.getElementById("opcao_status").value;
     const opcaoAlteracao = document.getElementById("opcao_alteracao").value;
     const obraId = localStorage.getItem("obraId");
 
-    // Verifica se opcao_alteracao está preenchido
-    if (!opcaoAlteracao.trim()) {
-        alert("Por favor, selecione uma opção antes de enviar.");
-        return; // Interrompe a execução se estiver vazio
-    }
+    // // Verifica se opcao_alteracao está preenchido
+    // if (!opcaoAlteracao.trim()) {
+    //     alert("Por favor, selecione uma opção antes de enviar.");
+    //     return; // Interrompe a execução se estiver vazio
+    // }
 
     // Configuração do AJAX
     const xhr = new XMLHttpRequest();
@@ -2577,7 +2578,8 @@ document.getElementById("addRevisao").addEventListener("click", function (event)
     const data = {
         imagem_id: imagemId,
         colaborador_id: opcaoAlteracao,
-        obra_id: obraId
+        obra_id: obraId,
+        status_id: selectStatus
     };
 
     console.log(data);

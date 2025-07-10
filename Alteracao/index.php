@@ -49,6 +49,9 @@ $conn->close();
 
     ?>
     <div class="container">
+        <div class="header">
+            <h2>Tela de alterações</h2>
+        </div>
         <div class="kanban-board" id="kanban-board">
             <div class="kanban-column" id="kanban-nãoiniciado">
                 <div class="kanban-title">Não iniciado</div>

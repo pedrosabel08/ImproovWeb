@@ -1129,7 +1129,7 @@ function filtrarTabela() {
     for (var i = 0; i < linhas.length; i++) {
         var tipoImagemColuna = linhas[i].getAttribute("tipo-imagem");
         var isAntecipada = linhas[i].querySelector('td[antecipada]').getAttribute("antecipada") === '1';
-        var statusColuna = linhas[i].querySelector("td:nth-child(2)").textContent.trim(); // Pegando o status da terceira coluna (ajuste conforme necessário)
+        var statusColuna = linhas[i].querySelector("td:nth-child(1)").textContent.trim(); // Pegando o status da terceira coluna (ajuste conforme necessário)
         var mostrarLinha = true;
 
         if (tipoImagemFiltro && tipoImagemFiltro !== "0" && tipoImagemColuna.toLowerCase() !== tipoImagemFiltro.toLowerCase()) {
@@ -3266,58 +3266,80 @@ function removerImagem(index) {
     renderizarLista();
 }
 
+// ENVIO DA PRÉVIA
 function enviarImagens() {
+    if (imagensSelecionadas.length === 0) {
+        Toastify({
+            text: "Selecione pelo menos uma imagem para enviar a prévia.",
+            duration: 3000,
+            gravity: "top",
+            backgroundColor: "#f44336"
+        }).showToast();
+        return;
+    }
     const formData = new FormData();
-
-    imagensSelecionadas.forEach(file => {
-        formData.append('imagens[]', file);
-    });
-
-    // Mantém a estrutura igual: envia JSON como string
+    imagensSelecionadas.forEach(file => formData.append('imagens[]', file));
     formData.append('dataIdFuncoes', JSON.stringify(dataIdFuncoes));
-
-    // Pega o valor de #nomenclatura
-    const nomenclatura = document.getElementById('nomenclatura')?.textContent || '';
-    formData.append('nomenclatura', nomenclatura);
-
-    // Pega o valor de #campoNomeImagem e extrai o número inicial (antes do ponto)
+    formData.append('nome_funcao', document.getElementById('nome_funcao_upload').value);
     const campoNomeImagem = document.getElementById('campoNomeImagem')?.textContent || '';
+    formData.append('nome_imagem', campoNomeImagem);
+
+    // Extrai o número inicial antes do ponto
     const numeroImagem = campoNomeImagem.match(/^\d+/)?.[0] || '';
     formData.append('numeroImagem', numeroImagem);
 
-    const nomeFuncaoUpload = document.getElementById('nome_funcao_upload').value;
-    formData.append('nome_funcao', nomeFuncaoUpload);
+    // Extrai a nomenclatura (primeira palavra com "_", depois do número e ponto)
+    const nomenclatura = document.getElementById('nomenclatura')?.textContent || '';
+    formData.append('nomenclatura', nomenclatura);
 
+    // Extrai a primeira palavra da descrição (depois da nomenclatura)
+    const descricaoMatch = campoNomeImagem.match(/^\d+\.\s*[A-Z_]+\s+([^\s]+)/);
+    const primeiraPalavra = descricaoMatch ? descricaoMatch[1] : '';
+    formData.append('primeiraPalavra', primeiraPalavra);
+
+    const statusSelect = document.getElementById('opcao_status');
+    const statusNome = statusSelect.options[statusSelect.selectedIndex].text.trim();
+
+    formData.append('status_nome', statusNome);
 
     fetch('../uploadArquivos.php', {
         method: 'POST',
-        body: formData,
-        headers: {
-            'Accept': 'application/json'
-        }
+        body: formData
     })
-        .then(resp => {
-            if (!resp.ok) throw new Error('Erro na requisição');
-            return resp.json(); // ou .text() se o PHP não retorna JSON
-        })
-        .then(msg => {
+        .then(resp => resp.json())
+        .then(res => {
             Toastify({
-                text: "Imagens prévias enviadas!",
+                text: "Prévia enviada com sucesso!",
                 duration: 3000,
                 gravity: "top",
-                position: "right",
-                backgroundColor: "#4caf50", // Cor de sucesso
+                backgroundColor: "#4caf50"
             }).showToast();
-            fecharModal();
-            infosObra(obraId)
+
+            // Avança para próxima etapa
+            document.getElementById('etapaPrevia').style.display = 'none';
+            document.getElementById('etapaFinal').style.display = 'block';
+            document.getElementById('etapaTitulo').textContent = "2. Envio do Arquivo Final";
+
+            Swal.fire({
+                position: "center",
+                icon: "success",
+                title: "Agora adicione o arquivo final",
+                showConfirmButton: false,
+                timer: 1500,
+                didOpen: () => {
+                    const title = Swal.getTitle();
+                    if (title) title.style.fontSize = "18px";
+                }
+            });
+
+
         })
-        .catch(erro => {
+        .catch(err => {
             Toastify({
-                text: "Erro no envio das imagens",
+                text: "Erro ao enviar prévia",
                 duration: 3000,
                 gravity: "top",
-                position: "right",
-                backgroundColor: "#", // Cor de sucesso
+                backgroundColor: "#f44336"
             }).showToast();
         });
 }

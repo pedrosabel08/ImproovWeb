@@ -87,7 +87,7 @@ if (isset($_FILES['imagens'])) {
             'size' => $imagens['size'][$i]
         ];
 
-        if ($nomeFuncao = 'Pós-Produção') {
+        if ($nomeFuncao === 'Pós-Produção') {
             $nomeFinalSemExt = "{$nome_imagem}_{$status_nome}";
         } else {
             $nomeFinalSemExt = "{$numeroImagem}.{$nomenclatura}-{$processo}-{$indice_envio}-{$numeroPrevia}";

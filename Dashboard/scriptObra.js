@@ -3211,6 +3211,8 @@ function fecharModal() {
     imagensSelecionadas = [];
     renderizarLista();
     document.getElementById('modalUpload').style.display = 'none';
+    document.querySelectorAll('.revisao_imagem').forEach(el => el.style.display = 'none');
+
 }
 
 // Drag and drop
@@ -3306,8 +3308,25 @@ function enviarImagens() {
         method: 'POST',
         body: formData
     })
-        .then(resp => resp.json())
-        .then(res => {
+        .then(async resp => {
+            console.log("Status da resposta:", resp.status);
+
+            const contentType = resp.headers.get("content-type");
+            if (!resp.ok) {
+                throw new Error("Erro de resposta HTTP: " + resp.status);
+            }
+            if (!contentType || !contentType.includes("application/json")) {
+                const text = await resp.text(); // pega texto cru da resposta
+                throw new Error("Resposta não é JSON: " + text);
+            }
+
+            const data = await resp.json();
+            console.log("Resposta JSON:", data);
+
+            if (data.error) {
+                throw new Error(data.error);
+            }
+
             Toastify({
                 text: "Prévia enviada com sucesso!",
                 duration: 3000,
@@ -3315,28 +3334,28 @@ function enviarImagens() {
                 backgroundColor: "#4caf50"
             }).showToast();
 
-            // Avança para próxima etapa
-            document.getElementById('etapaPrevia').style.display = 'none';
-            document.getElementById('etapaFinal').style.display = 'block';
-            document.getElementById('etapaTitulo').textContent = "2. Envio do Arquivo Final";
+            fecharModal();
 
-            Swal.fire({
-                position: "center",
-                icon: "success",
-                title: "Agora adicione o arquivo final",
-                showConfirmButton: false,
-                timer: 1500,
-                didOpen: () => {
-                    const title = Swal.getTitle();
-                    if (title) title.style.fontSize = "18px";
-                }
-            });
+            // document.getElementById('etapaPrevia').style.display = 'none';
+            // document.getElementById('etapaFinal').style.display = 'block';
+            // document.getElementById('etapaTitulo').textContent = "2. Envio do Arquivo Final";
 
-
+            // Swal.fire({
+            //     position: "center",
+            //     icon: "success",
+            //     title: "Agora adicione o arquivo final",
+            //     showConfirmButton: false,
+            //     timer: 1500,
+            //     didOpen: () => {
+            //         const title = Swal.getTitle();
+            //         if (title) title.style.fontSize = "18px";
+            //     }
+            // });
         })
         .catch(err => {
+            console.error("Erro ao enviar prévia:", err);
             Toastify({
-                text: "Erro ao enviar prévia",
+                text: "Erro ao enviar prévia: " + err.message,
                 duration: 3000,
                 gravity: "top",
                 backgroundColor: "#f44336"

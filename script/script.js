@@ -1919,21 +1919,30 @@ function enviarImagens() {
 
     // Mantém a estrutura igual: envia JSON como string
     formData.append('dataIdFuncoes', JSON.stringify(dataIdFuncoes));
-
-
-    // Pega o valor de #campoNomeImagem e extrai o número inicial (antes do ponto)
+    formData.append('nome_funcao', document.getElementById('nome_funcao_upload').value);
     const campoNomeImagem = document.getElementById('campoNomeImagem')?.textContent || '';
+    formData.append('nome_imagem', campoNomeImagem);
+
+    // Extrai o número inicial antes do ponto
     const numeroImagem = campoNomeImagem.match(/^\d+/)?.[0] || '';
     formData.append('numeroImagem', numeroImagem);
 
+    // Regex: procura por número + ponto, seguido de espaço (opcional), e depois a palavra com "_"
+    const match = campoNomeImagem.match(/\d+\.\s*([A-Z]+_[A-Z]+)/i);
+    const nomenclatura = match ? match[1] : '';
 
-    // Expressão para pegar o texto entre o número e o próximo espaço (ou seja, ARS_VIE)
-    const nomenclatura = campoNomeImagem.match(/^\d+\.\s*([^\s]+)/)?.[1] || '';
-
+    formData.append('nome_imagem', campoNomeImagem);
     formData.append('nomenclatura', nomenclatura);
 
-    const nomeFuncaoUpload = document.getElementById('nome_funcao_upload').value;
-    formData.append('nome_funcao', nomeFuncaoUpload);
+    // Extrai a primeira palavra da descrição (depois da nomenclatura)
+    const descricaoMatch = campoNomeImagem.match(/^\d+\.\s*[A-Z_]+\s+([^\s]+)/);
+    const primeiraPalavra = descricaoMatch ? descricaoMatch[1] : '';
+    formData.append('primeiraPalavra', primeiraPalavra);
+
+    const statusSelect = document.getElementById('opcao_status');
+    const statusNome = statusSelect.options[statusSelect.selectedIndex].text.trim();
+
+    formData.append('status_nome', statusNome);
 
 
     fetch('uploadArquivos.php', {

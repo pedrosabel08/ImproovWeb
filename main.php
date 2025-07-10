@@ -548,7 +548,9 @@ include 'sidebar.php';
     </div>
 
     <div id="filtro-colab" class="modal">
-        <h1>Filtro colaboradores</h1>
+        <div class="header">
+            <h1>Filtro colaboradores</h1>
+        </div>
         <button id="mostrarLogsBtn" disabled style="display: none;">Mostrar Logs</button>
 
         <div class="filtro-container">

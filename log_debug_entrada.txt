@@ -4,38 +4,32 @@ Array
         (
             [name] => Array
                 (
-                    [0] => 7. CP8_DIS Mini Mercado_P01_R00.psb
-                    [1] => 15. AYA_KAR Sala sem escada Ipe 306_P01_R00.zip
+                    [0] => 8. AYA_KAR Sauna_P01_R00.jpg
                 )
 
             [full_path] => Array
                 (
-                    [0] => 7. CP8_DIS Mini Mercado_P01_R00.psb
-                    [1] => 15. AYA_KAR Sala sem escada Ipe 306_P01_R00.zip
+                    [0] => 8. AYA_KAR Sauna_P01_R00.jpg
                 )
 
             [type] => Array
                 (
-                    [0] => application/octet-stream
-                    [1] => application/x-zip-compressed
+                    [0] => image/jpeg
                 )
 
             [tmp_name] => Array
                 (
-                    [0] => C:\xampp\tmp\phpB806.tmp
-                    [1] => C:\xampp\tmp\php6936.tmp
+                    [0] => C:\xampp\tmp\php8E10.tmp
                 )
 
             [error] => Array
                 (
                     [0] => 0
-                    [1] => 0
                 )
 
             [size] => Array
                 (
-                    [0] => 2952470822
-                    [1] => 1806321867
+                    [0] => 282317
                 )
 
         )

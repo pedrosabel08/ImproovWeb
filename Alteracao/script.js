@@ -1,59 +1,62 @@
 let idImagemSelecionada = null;
 
-fetch('getAlteracao.php')
-    .then(response => response.json())
-    .then(data => {
-        for (const [status, obras] of Object.entries(data)) {
-            const column = document.getElementById(`kanban-${status}`);
+alteracao();
 
-            if (!column) continue;
+function alteracao() {
+    fetch('getAlteracao.php')
+        .then(response => response.json())
+        .then(data => {
+            for (const [status, obras] of Object.entries(data)) {
+                const column = document.getElementById(`kanban-${status}`);
 
-            for (const [obra, dados] of Object.entries(obras)) {
-                const obraCard = document.createElement('div');
-                obraCard.className = 'obra-card';
-                const total = dados.imagens.length;
-                const prazo = dados.imagens[0]?.prazo || '';
-                const status_nome = dados.status_nome || 'Indefinido';
+                if (column) column.innerHTML = '';
 
-                obraCard.innerHTML = `<strong>${obra} - ${status_nome}</strong><br>Prazo: ${prazo}<br>Total de imagens: ${total}`;
+                for (const [obra, dados] of Object.entries(obras)) {
+                    const obraCard = document.createElement('div');
+                    obraCard.className = 'obra-card';
+                    const total = dados.imagens.length;
+                    const prazo = dados.imagens[0]?.prazo || '';
+                    const status_nome = dados.status_nome || 'Indefinido';
 
-                const detalhes = document.createElement('div');
-                detalhes.className = 'obra-detalhes';
+                    obraCard.innerHTML = `<strong>${obra} - ${status_nome}</strong><br>Prazo: ${prazo}<br>Total de imagens: ${total}`;
 
-                dados.imagens.forEach(img => {
-                    const item = document.createElement('div');
-                    item.className = 'imagem-detalhe';
-                    item.setAttribute('data-imagem-id', img.imagem_id);
+                    const detalhes = document.createElement('div');
+                    detalhes.className = 'obra-detalhes';
 
-                    item.innerHTML = `
+                    dados.imagens.forEach(img => {
+                        const item = document.createElement('div');
+                        item.className = 'imagem-detalhe';
+                        item.setAttribute('data-imagem-id', img.imagem_id);
+
+                        item.innerHTML = `
                             <div class="imagem-nome"><strong>${img.imagem}</strong></div>
                             <div class="imagem-colaborador">Colaborador: ${img.colaborador ? img.colaborador : '-'}</div>
                         `;
 
-                    if (!img.colaborador) {
-                        item.style.backgroundColor = '#f95757'; // cor de fundo para imagens sem colaborador
-                    }
+                        if (!img.colaborador) {
+                            item.style.backgroundColor = '#f95757'; // cor de fundo para imagens sem colaborador
+                        }
 
-                    item.addEventListener('click', (e) => {
-                        e.stopPropagation(); // impede que o clique também dispare o toggle da obra
-                        abrirModal(img.imagem_id);
+                        item.addEventListener('click', (e) => {
+                            e.stopPropagation(); // impede que o clique também dispare o toggle da obra
+                            abrirModal(img.imagem_id);
+                        });
+                        detalhes.appendChild(item);
                     });
-                    detalhes.appendChild(item);
-                });
-                obraCard.appendChild(detalhes);
+                    obraCard.appendChild(detalhes);
 
-                obraCard.addEventListener('click', () => {
-                    const isHidden = window.getComputedStyle(detalhes).display === 'none';
-                    detalhes.style.display = isHidden ? 'block' : 'none';
-                });
+                    obraCard.addEventListener('click', () => {
+                        const isHidden = window.getComputedStyle(detalhes).display === 'none';
+                        detalhes.style.display = isHidden ? 'block' : 'none';
+                    });
 
-                column.appendChild(obraCard);
+                    column.appendChild(obraCard);
+                }
             }
-        }
-    })
-    .catch(error => console.error('Erro ao carregar Kanban:', error));
+        })
+        .catch(error => console.error('Erro ao carregar Kanban:', error));
 
-
+}
 
 function abrirModal(idimagem) {
     document.getElementById('form-edicao').style.display = 'flex';
@@ -148,6 +151,7 @@ document.getElementById("salvar_funcoes").addEventListener("click", function (ev
                 stopOnFocus: true,
             }).showToast();
             document.getElementById('form-edicao').style.display = 'none';
+            alteracao(); // Atualiza o Kanban após salvar
         },
         error: function (jqXHR, textStatus, errorThrown) {
             console.error("Erro ao salvar dados: " + textStatus, errorThrown);

@@ -168,9 +168,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $resultadoFinal['logs'][] = "Conectado ao host $ftp_host para base $base.";
 
                 // Extrai a revisão do nome do arquivo, ex: "_P00", "_P01", etc.
-                preg_match('/_P\d{2}/i', $nome_arquivo, $matchRevisao);
-                $revisao = isset($matchRevisao[0]) ? strtoupper($matchRevisao[0]) : '_P00'; // padrão se não encontrar
-                $revisao = str_replace('_', '', $revisao); // remove o "_", fica "P00"
+                preg_match('/_[A-Z]\d{2}/i', $nome_arquivo, $matchRevisao);
+                $revisao = isset($matchRevisao[0]) ? strtoupper($matchRevisao[0]) : '_P00';
+                $revisao = str_replace('_', '', $revisao); // Resultado: "P00", "R01", etc.
 
                 $finalizacaoDir = "$base/$nomenclatura/04.Finalizacao";
 

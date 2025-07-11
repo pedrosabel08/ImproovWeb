@@ -188,8 +188,19 @@ for ($i = 0; $i < $total; $i++) {
 
     $extensao = pathinfo($nome_original, PATHINFO_EXTENSION);
     $tipo = detectarTipoArquivo($extensao);
-    $processo = strtoupper(mb_substr($nome_funcao, 0, 3, 'UTF-8'));
+    // Função para remover acentos
+    function removerAcentos($string)
+    {
+        return preg_replace(
+            array("/[áàãâä]/u", "/[éèêë]/u", "/[íìîï]/u", "/[óòõôö]/u", "/[úùûü]/u", "/[ç]/u"),
+            array("a", "e", "i", "o", "u", "c"),
+            $string
+        );
+    }
 
+    // Aplica a remoção de acentos e extrai os 3 primeiros caracteres
+    $semAcento = removerAcentos($nome_funcao);
+    $processo = strtoupper(mb_substr($semAcento, 0, 3, 'UTF-8'));
     // Base do nome do arquivo SEM revisão
     $nome_base = "{$numeroImagem}.{$nomenclatura}-{$primeiraPalavra}-{$tipo}-{$processo}";
 

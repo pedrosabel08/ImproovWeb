@@ -4,12 +4,12 @@ Array
         (
             [name] => Array
                 (
-                    [0] => 8. AYA_KAR Sauna_P01_R00.jpg
+                    [0] => 3.INO_TIM Fachada noturna.jpg
                 )
 
             [full_path] => Array
                 (
-                    [0] => 8. AYA_KAR Sauna_P01_R00.jpg
+                    [0] => 3.INO_TIM Fachada noturna.jpg
                 )
 
             [type] => Array
@@ -19,7 +19,7 @@ Array
 
             [tmp_name] => Array
                 (
-                    [0] => C:\xampp\tmp\php8E10.tmp
+                    [0] => C:\xampp\tmp\phpCE3C.tmp
                 )
 
             [error] => Array
@@ -29,7 +29,7 @@ Array
 
             [size] => Array
                 (
-                    [0] => 282317
+                    [0] => 444671
                 )
 
         )

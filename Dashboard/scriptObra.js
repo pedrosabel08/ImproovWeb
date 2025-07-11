@@ -237,6 +237,8 @@ function atualizarModal(idImagem) {
     let nomePdf = '';
     // Limpar campos do formulário de edição
     limparCampos();
+    document.getElementById("modal_status").style.display = 'none'; // Esconder modal de status
+
 
     // Fazer requisição AJAX para `buscaLinhaAJAX.php` usando Fetch
     fetch(`../buscaLinhaAJAX.php?ajid=${idImagem}`)
@@ -1781,7 +1783,7 @@ const modalOrcamento = document.getElementById('modalOrcamento')
 const modal = document.getElementById('modalAcompanhamento');
 const modalObs = document.getElementById('modalObservacao');
 const modalImages = document.getElementById('editImagesModal');
-const infosModal = document.getElementById('infosModal');
+// const infosModal = document.getElementById('infosModal');
 const form_edicao = document.getElementById('form-edicao');
 
 
@@ -1796,34 +1798,98 @@ if (idObra) {
 function abrirModalAcompanhamento(obraId) {
     fetch(`../Obras/getAcompanhamentoEmail.php?idobra=${obraId}`)
         .then(response => {
-            if (!response.ok) {
-                throw new Error(`Erro ao carregar dados: ${response.status}`);
-            }
-            return response.json(); // Converte a resposta para JSON
+            if (!response.ok) throw new Error(`Erro ao carregar dados: ${response.status}`);
+            return response.json();
         })
         .then(acompanhamentos => {
-            // Limpa o conteúdo anterior
             acompanhamentoConteudo.innerHTML = '';
 
             if (acompanhamentos.length > 0) {
                 acompanhamentos.forEach(acomp => {
+                    const container = document.createElement('div');
+                    container.className = 'acomp-conteudo';
 
-                    const item = document.createElement('p');
-                    item.innerHTML = `
-                        <div class="acomp-conteudo">
-                            <p class="acomp-assunto"><strong>Assunto:</strong> ${acomp.assunto}</p>
-                            <p class="acomp-data"><strong>Data:</strong> ${formatarData(acomp.data)}</p>
-                        </div>
-                    `;
-                    acompanhamentoConteudo.appendChild(item);
+                    const pData = document.createElement('p');
+                    pData.className = 'acomp-data';
+                    pData.innerHTML = `<strong>Data:</strong> ${formatarData(acomp.data)}`;
+
+                    const pAssunto = document.createElement('p');
+                    pAssunto.className = 'acomp-assunto';
+                    pAssunto.innerHTML = `<strong>Assunto:</strong> <span class="acomp-texto">${acomp.assunto}</span>`;
+
+                    // Evento de clique para editar somente o texto (sem "Assunto:")
+                    pAssunto.addEventListener('click', () => {
+                        const spanTexto = pAssunto.querySelector('.acomp-texto');
+                        const textoAtual = spanTexto.textContent;
+
+                        // Cria um input para edição
+                        const input = document.createElement('input');
+                        input.type = 'text';
+                        input.value = textoAtual;
+                        input.className = 'input-edicao';
+                        input.style.width = '100%';
+
+                        // Substitui o span pelo input
+                        spanTexto.replaceWith(input);
+                        input.focus();
+
+                        // Ao sair do campo (blur), volta para texto
+                        input.addEventListener('blur', () => {
+                            const novoTexto = input.value;
+
+                            // Aqui você pode fazer o fetch para salvar no banco
+                            salvarAcompanhamento(acomp.id, obraId, novoTexto);
+
+                            const novoSpan = document.createElement('span');
+                            novoSpan.className = 'acomp-texto';
+                            novoSpan.textContent = novoTexto;
+
+                            input.replaceWith(novoSpan);
+                        });
+                    });
+
+                    container.appendChild(pAssunto);
+                    container.appendChild(pData);
+                    acompanhamentoConteudo.appendChild(container);
                 });
             } else {
                 acompanhamentoConteudo.innerHTML = '<p>Nenhum acompanhamento encontrado.</p>';
             }
-
         })
         .catch(error => {
             console.error('Erro:', error);
+        });
+}
+
+function salvarAcompanhamento(id, obraId, novoAssunto) {
+    fetch('addAcompanhamento.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `id=${id}&idobra=${obraId}&assunto=${encodeURIComponent(novoAssunto)}`
+    })
+        .then(res => res.json())
+        .then(res => {
+            if (res.success) {
+                Toastify({
+                    text: 'Acompanhamento atualizado com sucesso!',
+                    duration: 3000,
+                    gravity: "top",
+                    position: "left",
+                    backgroundColor: "#4e95f1ff", // Cor de sucesso
+                }).showToast();
+
+            } else {
+                Toastify({
+                    text: 'Erro ao atualizar acompanhamento: ' + res.message,
+                    duration: 3000,
+                    gravity: "top",
+                    position: "left",
+                    backgroundColor: "#f44336", // Cor de erro
+                }).showToast();
+            }
+        })
+        .catch(err => {
+            console.error('Erro na requisição:', err);
         });
 }
 
@@ -2034,6 +2100,7 @@ const modalPos = document.getElementById("modal_pos");
 const eventModal = document.getElementById("eventModal");
 const calendarModal = document.getElementById("calendarModal");
 const editImagesModal = document.getElementById("editImagesModal");
+const statusModal = document.getElementById("modal_status");
 
 
 ['click', 'touchstart', 'keydown'].forEach(eventType => {
@@ -2060,9 +2127,9 @@ const editImagesModal = document.getElementById("editImagesModal");
         if (event.target == addImagemModal || (eventType === 'keydown' && event.key === 'Escape')) {
             addImagemModal.style.display = "none";
         }
-        if (event.target == infosModal || (eventType === 'keydown' && event.key === 'Escape')) {
-            infosModal.style.display = "none";
-        }
+        // if (event.target == infosModal || (eventType === 'keydown' && event.key === 'Escape')) {
+        //     infosModal.style.display = "none";
+        // }
         if (event.target == modalObs || (eventType === 'keydown' && event.key === 'Escape')) {
             modalObs.style.display = "none";
         }
@@ -2082,6 +2149,9 @@ const editImagesModal = document.getElementById("editImagesModal");
         }
         if (event.target == calendarModal || (eventType === 'keydown' && event.key === 'Escape')) {
             calendarModal.style.display = "none";
+        }
+        if (event.target == statusModal || (eventType === 'keydown' && event.key === 'Escape')) {
+            statusModal.style.display = "none";
         }
     });
 });

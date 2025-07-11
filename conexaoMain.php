@@ -118,3 +118,18 @@ function obterImagens($conn)
     return $imagens;
 }
 
+function obterStatus($conn)
+{
+    $sql = "SELECT id, nome_substatus FROM substatus_imagem";
+    $result = $conn->query($sql);
+    $status = array();
+
+    if ($result->num_rows > 0) {
+        while ($row = $result->fetch_assoc()) {
+            $status[] = $row;
+        }
+    }
+
+    return $status;
+}
+

@@ -139,6 +139,7 @@ $sqlImagens = "SELECT
         ico.imagem_nome,
         s.nome_status AS imagem_status,
 		su.nome_substatus AS imagem_sub_status,
+        su.nome_completo,
         ico.prazo,
         ico.tipo_imagem,
         ico.antecipada,

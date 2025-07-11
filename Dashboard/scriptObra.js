@@ -113,12 +113,12 @@ let indiceImagemAtual = 0; // Índice da imagem atualmente exibida no modal
 let linhasTabela = [];
 
 function addEventListenersToRows() {
-
     linhasTabela = document.querySelectorAll(".linha-tabela");
 
     linhasTabela.forEach(function (linha) {
-        linha.addEventListener("click", function () {
 
+        // Clique com o botão esquerdo
+        linha.addEventListener("click", function () {
             const statusImagem = linha.getAttribute("status");
 
             if (statusImagem === "STOP") {
@@ -142,8 +142,96 @@ function addEventListenersToRows() {
 
             atualizarModal(idImagemSelecionada);
         });
+
+        // Clique com o botão direito
+        linha.addEventListener("contextmenu", function (e) {
+            e.preventDefault();
+
+            const idImagemSelecionada = linha.getAttribute("data-id");
+            document.getElementById("imagem_id").value = idImagemSelecionada;
+
+            // Atualiza o atributo data-imagemid do botão
+            const botaoAlterar = document.getElementById("alterar_status");
+            botaoAlterar.setAttribute("data-imagemid", idImagemSelecionada);
+
+            // Resetar o negrito das células de imagem de todas as linhas
+            linhasTabela.forEach(function (outraLinha) {
+                if (outraLinha.cells && outraLinha.cells[1]) {
+                    outraLinha.cells[1].style.fontWeight = "normal";
+                }
+            });
+
+            // Obter a posição da linha
+            const rectLinha = linha.getBoundingClientRect();
+
+            // Obter as células
+            const celulaStatus = linha.cells[2]; // 3ª coluna
+            const celulaImagem = linha.cells[1]; // 2ª coluna (onde está a imagem)
+
+            // Aplicar negrito apenas à célula da linha clicada
+            if (celulaImagem) {
+                celulaImagem.style.fontWeight = "bold";
+            }
+
+            // Mostrar modal ao lado direito da coluna de status
+            const rectStatus = celulaStatus.getBoundingClientRect();
+            const modalStatus = document.getElementById("modal_status");
+
+            if (modalStatus) {
+                modalStatus.style.position = "absolute";
+                modalStatus.style.left = `${rectStatus.right + 10 + window.scrollX}px`;
+                modalStatus.style.top = `${rectLinha.top + window.scrollY}px`;
+                modalStatus.style.display = "block";
+            }
+        });
+
     });
 }
+
+function alterarStatus(imagemId) {
+    const statusSelect = document.getElementById("statusSelect");
+    const statusId = statusSelect.value;
+
+    if (!statusId) {
+        alert("Por favor, selecione um status.");
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append("imagem_id", imagemId);
+    formData.append("status_id", statusId);
+
+    fetch("../alterarStatus.php", {
+        method: "POST",
+        body: formData
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                Toastify({
+                    text: "Status alterado com sucesso!",
+                    duration: 3000,
+                    gravity: "top",
+                    position: "right",
+                    backgroundColor: "#4caf50", // Cor de sucesso
+                }).showToast();
+
+                const modalStatus = document.getElementById("modal_status");
+                modalStatus.style.display = "none";
+                infosObra(obraId);
+            } else {
+                Toastify({
+                    text: "Erro ao alterar status.",
+                    duration: 3000,
+                    gravity: "top",
+                    position: "right",
+                    backgroundColor: "#f44336", // Cor de erro
+                }).showToast();
+            }
+        })
+        .catch(error => console.error("Erro ao alterar o status:", error));
+}
+
 
 function atualizarModal(idImagem) {
     let nomePdf = '';
@@ -454,16 +542,18 @@ function infosObra(obraId) {
             let imagens = 0;
 
             // Seleciona o elemento select
+            const statusEtapaSelect = document.getElementById("imagem_status_etapa_filtro");
             const statusSelect = document.getElementById("imagem_status_filtro");
             const tipoImagemSelect = document.getElementById("tipo_imagem"); // Certifique-se de ter um <select> com id="tipo_imagem" no HTML
 
             tipoImagemSelect.innerHTML = '<option value="0">Todos</option>';
+            statusEtapaSelect.innerHTML = '<option value="">Selecione uma etapa</option>';
             statusSelect.innerHTML = '<option value="">Selecione um status</option>';
 
             // Objeto para armazenar os status únicos
             const statusUnicos = new Set();
+            const statusEtapaUnicos = new Set();
             const tipoImagemUnicos = new Set();
-
 
             data.imagens.forEach(function (item) {
                 idsImagensObra.push(parseInt(item.imagem_id));
@@ -522,9 +612,25 @@ function infosObra(obraId) {
                     cellSubStatus.style.color = '';
                 }
 
-                statusUnicos.add(item.imagem_status);
-                tipoImagemUnicos.add(item.tipo_imagem);
+                cellSubStatus.addEventListener('mouseenter', (event) => {
+                    tooltip.textContent = item.nome_completo;
+                    tooltip.style.display = 'block';
+                    tooltip.style.left = event.clientX + 'px';
+                    tooltip.style.top = event.clientY - 30 + 'px';
+                });
 
+                cellSubStatus.addEventListener('mouseleave', () => {
+                    tooltip.style.display = 'none';
+                });
+
+                cellSubStatus.addEventListener('mousemove', (event) => {
+                    tooltip.style.left = event.clientX + 'px';
+                    tooltip.style.top = event.clientY - 30 + 'px';
+                });
+
+                statusEtapaUnicos.add(item.imagem_status);
+                statusUnicos.add(item.imagem_sub_status);
+                tipoImagemUnicos.add(item.tipo_imagem);
 
                 var cellPrazo = document.createElement('td');
                 cellPrazo.textContent = formatarDataDiaMes(item.prazo);
@@ -584,6 +690,14 @@ function infosObra(obraId) {
                 }
 
                 tabela.appendChild(row);
+            });
+
+            // Adiciona os valores únicos de status ao statusSelect
+            statusEtapaUnicos.forEach(status => {
+                let option = document.createElement("option");
+                option.value = status;
+                option.textContent = status;
+                statusEtapaSelect.appendChild(option);
             });
 
             // Adiciona os valores únicos de status ao statusSelect
@@ -1118,6 +1232,7 @@ function applyStatusImagem(cell, status, descricao = '') {
 function filtrarTabela() {
     var tipoImagemFiltro = document.getElementById("tipo_imagem").value.toLowerCase();
     var antecipadaFiltro = document.getElementById("antecipada_obra").value;
+    var statusEtapaImagemFiltro = document.getElementById("imagem_status_etapa_filtro").value;
     var statusImagemFiltro = document.getElementById("imagem_status_filtro").value;
     var tabela = document.getElementById("tabela-obra");
     var tbody = tabela.getElementsByTagName("tbody")[0];
@@ -1129,7 +1244,8 @@ function filtrarTabela() {
     for (var i = 0; i < linhas.length; i++) {
         var tipoImagemColuna = linhas[i].getAttribute("tipo-imagem");
         var isAntecipada = linhas[i].querySelector('td[antecipada]').getAttribute("antecipada") === '1';
-        var statusColuna = linhas[i].querySelector("td:nth-child(1)").textContent.trim(); // Pegando o status da terceira coluna (ajuste conforme necessário)
+        var statusEtapaColuna = linhas[i].querySelector("td:nth-child(1)").textContent.trim(); // Pegando o status da terceira coluna (ajuste conforme necessário)
+        var statusColuna = linhas[i].querySelector("td:nth-child(3)").textContent.trim(); // Pegando o status da terceira coluna (ajuste conforme necessário)
         var mostrarLinha = true;
 
         if (tipoImagemFiltro && tipoImagemFiltro !== "0" && tipoImagemColuna.toLowerCase() !== tipoImagemFiltro.toLowerCase()) {
@@ -1143,6 +1259,11 @@ function filtrarTabela() {
 
         // Filtra pelo status da imagem
         if (statusImagemFiltro && statusImagemFiltro !== "0" && statusColuna !== statusImagemFiltro) {
+            mostrarLinha = false;
+        }
+
+        // Filtra pelo status da imagem
+        if (statusEtapaImagemFiltro && statusEtapaImagemFiltro !== "0" && statusEtapaColuna !== statusEtapaImagemFiltro) {
             mostrarLinha = false;
         }
 
@@ -1164,6 +1285,7 @@ function filtrarTabela() {
 document.getElementById("tipo_imagem").addEventListener("change", filtrarTabela);
 document.getElementById("antecipada_obra").addEventListener("change", filtrarTabela);
 document.getElementById("imagem_status_filtro").addEventListener("change", filtrarTabela);
+document.getElementById("imagem_status_etapa_filtro").addEventListener("change", filtrarTabela);
 
 function applyStatusStyle(cell, status, colaborador) {
     if (colaborador === 'Não se aplica') {

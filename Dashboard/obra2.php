@@ -34,6 +34,7 @@ $colaboradores = obterColaboradores($conn);
 $status_imagens = obterStatusImagens($conn);
 $funcoes = obterFuncoes($conn);
 $imagens = obterImagens($conn);
+$status_etapa = obterStatus($conn);
 
 $conn->close();
 ?>
@@ -108,9 +109,9 @@ $conn->close();
                         <option value="1">Antecipada</option>
                     </select>
 
-                    <select name="imagem_status_filtro" id="imagem_status_filtro">
-                        <option value="">Selecione um status</option>
-                    </select>
+                    <select name="imagem_status_etapa_filtro" id="imagem_status_etapa_filtro"></select>
+                    <select name="imagem_status_filtro" id="imagem_status_filtro"></select>
+
                 </div>
 
                 <div id="prazos-list"></div>
@@ -208,7 +209,8 @@ $conn->close();
                         </tr>
                         <tr>
                             <th>Etapa</th>
-                            <th class="resizable">Imagem<div class="resize-handle"></div></th>
+                            <th class="resizable">Imagem<div class="resize-handle"></div>
+                            </th>
                             <th>Status</th>
                             <th style="max-width: 15px;">Prazo</th>
                             <th onclick="mostrarPorcentagem('caderno')">Caderno</th>
@@ -1125,6 +1127,20 @@ $conn->close();
         </div>
     </div>
 
+    <div id="modal_status">
+        <div class="modal-content" style="margin: 0;">
+            <h2 style="font-size: 16px;">Alterar Status</h2>
+            <label for="statusSelect" style="font-size: 14px;">Selecione o novo status:</label>
+            <select id="statusSelect" name="statusSelect" style="width: max-content; text-align: center; margin: auto;" required>
+                <?php foreach ($status_etapa as $statusEtapa): ?>
+                    <option value="<?= htmlspecialchars($statusEtapa['id']); ?>">
+                        <?= htmlspecialchars($statusEtapa['nome_substatus']); ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+            <button type="button" id="alterar_status" onclick="alterarStatus(this.getAttribute('data-imagemid'))">✅</button>
+        </div>
+    </div>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>

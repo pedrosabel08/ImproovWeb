@@ -1,60 +1,66 @@
 <?php
-// Configuração do banco de dados
 include '../conexao.php';
-
-// Configura o cabeçalho para JSON
 header('Content-Type: application/json');
 
-// Obtém os dados enviados pelo cliente
+// Dados recebidos
 $obra_id = isset($_POST['idobra']) ? intval($_POST['idobra']) : null;
-$colaborador_id = 1; // ID fixo
+$colaborador_id = 1; // fixo
 $assunto = isset($_POST['assunto']) ? trim($_POST['assunto']) : null;
-$data = isset($_POST['data']) ? $_POST['data'] : null; // Data enviada pelo cliente
-$desc = isset($_POST['desc']) ? trim($_POST['desc']) : null; // Descrição (observação)
-$id = isset($_POST['id']) ? intval($_POST['id']) : null; // ID para update
+$data = isset($_POST['data']) ? $_POST['data'] : null;
+$desc = isset($_POST['desc']) ? trim($_POST['desc']) : null;
+$id = isset($_POST['id']) ? intval($_POST['id']) : null;
 
-// Validações básicas
+// Verificação mínima
 if (!$obra_id) {
     echo json_encode(["success" => false, "message" => "ID da obra não fornecido."]);
     exit;
 }
 
-// Verifica se a descrição foi fornecida
 if ($desc) {
+    // Observação
     if ($id) {
-        // Se o ID foi fornecido, faz o UPDATE na tabela observacao_obra
         $stmtObs = $conn->prepare("UPDATE observacao_obra SET descricao = ? WHERE id = ? AND obra_id = ?");
         $stmtObs->bind_param("sii", $desc, $id, $obra_id);
     } else {
-        // Caso contrário, faz o INSERT na tabela observacao_obra
         $stmtObs = $conn->prepare("INSERT INTO observacao_obra (obra_id, descricao) VALUES (?, ?)");
         $stmtObs->bind_param("is", $obra_id, $desc);
     }
 
-
     if ($stmtObs->execute()) {
-        echo json_encode(["success" => true, "message" => "Observação adicionada com sucesso."]);
+        echo json_encode(["success" => true, "message" => "Observação salva com sucesso."]);
     } else {
-        echo json_encode(["success" => false, "message" => "Erro ao adicionar observação: " . $conn->error]);
+        echo json_encode(["success" => false, "message" => "Erro ao salvar observação: " . $conn->error]);
     }
+
     $stmtObs->close();
 } else {
-    // Caso contrário, faz o INSERT na tabela acompanhamento_email
-    if (!$assunto || !$data) {
-        echo json_encode(["success" => false, "message" => "Dados incompletos."]);
+    // Acompanhamento
+    if (!$assunto) {
+        echo json_encode(["success" => false, "message" => "Assunto não fornecido."]);
         exit;
     }
 
-    $stmt = $conn->prepare("INSERT INTO acompanhamento_email (obra_id, colaborador_id, assunto, data) VALUES (?, ?, ?, ?)");
-    $stmt->bind_param("iiss", $obra_id, $colaborador_id, $assunto, $data);
+    if ($id) {
+        // UPDATE
+        $stmt = $conn->prepare("UPDATE acompanhamento_email SET assunto = ? WHERE idacompanhamento_email = ? AND obra_id = ?");
+        $stmt->bind_param("sii", $assunto, $id, $obra_id);
+    } else {
+        // INSERT
+        if (!$data) {
+            echo json_encode(["success" => false, "message" => "Data não fornecida para novo acompanhamento."]);
+            exit;
+        }
+        $stmt = $conn->prepare("INSERT INTO acompanhamento_email (obra_id, colaborador_id, assunto, data) VALUES (?, ?, ?, ?)");
+        $stmt->bind_param("iiss", $obra_id, $colaborador_id, $assunto, $data);
+    }
 
     if ($stmt->execute()) {
-        echo json_encode(["success" => true, "message" => "Acompanhamento adicionado com sucesso."]);
+        echo json_encode(["success" => true, "message" => $id ? "Acompanhamento atualizado." : "Acompanhamento adicionado."]);
     } else {
-        echo json_encode(["success" => false, "message" => "Erro ao inserir acompanhamento: " . $conn->error]);
+        echo json_encode(["success" => false, "message" => "Erro ao salvar acompanhamento: " . $conn->error]);
     }
+
     $stmt->close();
 }
 
-// Fecha a conexão
 $conn->close();

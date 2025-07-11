@@ -1912,7 +1912,8 @@ button#deleteButton {
 }
 
 
-#drop-area, .drop-area {
+#drop-area,
+.drop-area {
     border: 2px dashed #ccc;
     border-radius: 10px;
     padding: 30px;
@@ -1923,7 +1924,8 @@ button#deleteButton {
     transition: 0.3s;
 }
 
-#drop-area.highlight, .drop-area.highlight {
+#drop-area.highlight,
+.drop-area.highlight {
     background-color: #eef6ff;
     border-color: #007bff;
     color: #007bff;
@@ -1997,4 +1999,27 @@ ul.file-list {
 
 #pdf-controls {
     text-align: center;
+}
+
+#modal_status {
+    display: none;
+    position: absolute;
+    z-index: 1000;
+}
+
+#modal_status .modal-content {
+    width: 120px;
+    max-height: 80%;
+    overflow-y: auto;
+    background-color: #fff;
+    border: 1px solid #ccc;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    border-radius: 6px;
+    padding: 20px;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+    gap: 5px;
 }

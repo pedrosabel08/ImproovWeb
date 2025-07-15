@@ -16,9 +16,9 @@ $sql = 'SELECT
     FROM imagens_cliente_obra i
     JOIN obra o ON i.obra_id = o.idobra
     JOIN status_imagem s ON i.status_id = s.idstatus
-    JOIN substatus_imagem ss ON i.substatus_id = ss.id
-    WHERE ss.nome_substatus IN ("REN", "FIN", "RVW")
-    ORDER BY i.prazo, i.status_id, o.idobra
+    LEFT JOIN substatus_imagem ss ON i.substatus_id = ss.id
+    WHERE o.status_obra = 0
+    ORDER BY o.nomenclatura, i.prazo, i.status_id;
 ';
 
 // Executa a consulta
@@ -28,19 +28,51 @@ $result = $stmt->get_result();
 
 // Prepara os dados formatando datas
 $data = [];
+$indicadores = [
+    'REN' => 0,
+    'FIN' => 0,
+    'RVW' => 0,
+    'DRV' => 0,
+    'atrasadas' => 0,
+    'prazo_hoje' => 0
+];
 while ($row = $result->fetch_assoc()) {
     $data[] = [
-        'id'           => $row['idimagens_cliente_obra'],
-        'nome_imagem'  => $row['imagem_nome'],
-        'prazo'        => !empty($row['prazo']) ? date('d/m/Y', strtotime($row['prazo'])) : '',
-        'data_inicio'  => !empty($row['data_inicio']) ? date('d/m/Y', strtotime($row['data_inicio'])) : '',
-        'status'       => $row['nome_status_imagem'],
-        'situacao'     => $row['situacao'],
-        'obra'         => $row['nomenclatura']
+        'id'                  => $row['idimagens_cliente_obra'],
+        'nome_imagem'         => $row['imagem_nome'],
+        'prazo'               => $row['prazo'],
+        'data_inicio'         => $row['data_inicio'],
+        'nome_status_imagem'  => $row['nome_status_imagem'],
+        'situacao'            => $row['situacao'],
+        'obra'                => $row['nomenclatura']
     ];
+
+    $prazoRaw = $row['prazo'];
+    $substatus = $row['situacao'];
+    if (isset($indicadores[$substatus])) {
+        $indicadores[$substatus]++;
+    }
+
+
+    // Verifica se o prazo é válido e diferente de 0000-00-00
+    if (!empty($prazoRaw) && $prazoRaw !== '0000-00-00') {
+        $prazoTimestamp = strtotime($prazoRaw);
+        $hoje = strtotime(date('Y-m-d'));
+
+        if ($prazoTimestamp !== false) {
+            if ($prazoTimestamp < $hoje && $substatus !== 'FIN') {
+                $indicadores['atrasadas']++;
+            } elseif ($prazoTimestamp == $hoje) {
+                $indicadores['prazo_hoje']++;
+            }
+        }
+    }
 }
 
 // Retorna em JSON
 header('Content-Type: application/json');
-echo json_encode($data);
+echo json_encode([
+    'dados' => $data,
+    'indicadores' => $indicadores
+]);
 exit;

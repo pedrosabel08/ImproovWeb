@@ -1226,6 +1226,10 @@ function applyStatusImagem(cell, status, descricao = '') {
             cell.style.backgroundColor = 'green';
             cell.style.color = 'white';
             break;
+        case 'DRV':
+            cell.style.backgroundColor = '#00f3ff';
+            cell.style.color = 'black';
+            break;
     }
 };
 

@@ -46,7 +46,7 @@ $conn->close();
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
     <link href="https://unpkg.com/tabulator-tables@5.5.0/dist/css/tabulator.min.css" rel="stylesheet">
-
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.7/js/bootstrap.min.js" integrity="sha512-zKeerWHHuP3ar7kX2WKBSENzb+GJytFSBL6HrR2nPSR1kOX1qjm+oHooQtbDpDBSITgyl7QXZApvDfDWvKjkUw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <title>Gerenciamento de projetos</title>
 </head>
 
@@ -59,8 +59,17 @@ $conn->close();
     ?>
 
     <div class="container">
-        <div id="tabelaGestaoImagens"></div>
 
+        <div style="display: flex; flex-wrap: wrap; margin: 10px;">
+            <div class="total-box" id="totalREN" data-status="REN">Render: 0</div>
+            <div class="total-box" id="totalFIN" data-status="FIN">Finalizadas: 0</div>
+            <div class="total-box" id="totalRVW" data-status="RVW">Em Review: 0</div>
+            <div class="total-box" id="totalDRV" data-status="DRV">No Drive: 0</div>
+            <div class="total-box" id="totalAtrasadas" data-situacao_prazo="Atrasada">Atrasadas: 0</div>
+            <div class="total-box" id="totalPrazoHoje" data-prazo="hoje">Prazo Hoje: 0</div>
+        </div>
+
+        <div id="tabelaGestaoImagens" style="margin: 10px;"></div>
     </div>
     <script src="https://unpkg.com/tabulator-tables@5.5.0/dist/js/tabulator.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>

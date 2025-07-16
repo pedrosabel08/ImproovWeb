@@ -99,7 +99,7 @@ if ($data && isset($data['imagem_id'])) {
         $novoPrazo = adicionarDiasUteis($dataAtual, 7);
 
         // 5. Atualiza a imagem com o novo status e prazo
-        $stmtUpdate = $conn->prepare("UPDATE imagens_cliente_obra SET status_id = ?, prazo = ? WHERE idimagens_cliente_obra = ?");
+        $stmtUpdate = $conn->prepare("UPDATE imagens_cliente_obra SET status_id = ?, prazo = ?, recebimento_arquivos = NOW() WHERE idimagens_cliente_obra = ?");
         $stmtUpdate->bind_param("isi", $novo_status, $novoPrazo, $imagem_id);
         $stmtUpdate->execute();
         $stmtUpdate->close();

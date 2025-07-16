@@ -12,21 +12,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // This loop calculates 'situacao_prazo' before data is returned to Tabulator
             dados.forEach(item => {
+                if (!item.nome_status_imagem || item.nome_status_imagem.trim() === "") {
+                    item.nome_status_imagem = "Sem etapa";
+                }
+
                 if (item.prazo && item.prazo !== '0000-00-00') {
-                    const [dia, mes, ano] = item.prazo.split('/');
-                    const prazo = new Date(`${ano}-${mes}-${dia}`);
+                    const partes = item.prazo.split('/');
+                    if (partes.length === 3) {
+                        const [dia, mes, ano] = partes;
+                        item.prazo = `${ano}-${mes}-${dia}`;  // <-- ESSENCIAL
+                    }
+                    const prazo = new Date(item.prazo);
                     item.situacao_prazo = (prazo < hoje) ? "Atrasada" : "OK";
-                } else if (!item.prazo || item.prazo === '0000-00-00') {
-                    item.situacao_prazo = "N/A"; // Data ausente ou inválida
+                } else {
+                    item.situacao_prazo = "N/A";
                 }
             });
 
             // Update header filters after processing data
-            const etapasUnicas = [...new Set(dados.map(item => item.status))].sort();
+            const etapasUnicas = [...new Set(dados.map(item => item.nome_status_imagem || "Sem etapa"))].sort();
+            const etapasUnicasObj = Object.fromEntries(etapasUnicas.map(v => [v, v]));
             const statusUnicos = [...new Set(dados.map(item => item.situacao))].sort();
 
-            tabela.getColumn("status").updateDefinition({
-                headerFilterParams: { values: etapasUnicas }
+            tabela.getColumn("nome_status_imagem").updateDefinition({
+                headerFilterParams: { values: etapasUnicasObj }
             });
             tabela.getColumn("situacao").updateDefinition({
                 headerFilterParams: { values: statusUnicos }
@@ -42,28 +51,79 @@ document.addEventListener('DOMContentLoaded', () => {
         placeholder: "Nenhuma imagem encontrada",
 
         // 👇 Here's the key change for multi-level grouping
-        groupBy: ["obra", "nome_status_imagem", "prazo"], // Group by these three fields in order
+        groupBy: ["obra", "nome_status", "prazo"],
         groupToggleElement: "header",
         groupHeader: function (value, count, data, group) {
-
-            const field = group.getField();
+            const field = group.getField() || "custom";
             let headerText = `<strong>${value}</strong>`;
+            let bgColor = "#f1f3f5"; // Cor padrão
 
             if (field === "obra") {
-
-            } else if (field === "status") {
-
+                headerText = `<strong>${value}</strong>`;
+                bgColor = "#acacacff"; // azul claro
+            } else if (field === "nome_status") {
+                headerText = `<strong>${value}</strong>`;
+                bgColor = "#cececeff"; // amarelo claro
             } else if (field === "prazo") {
-
+                if (value && value !== '0000-00-00') {
+                    const dateObj = new Date(value);
+                    const dia = String(dateObj.getDate()).padStart(2, '0');
+                    const mes = String(dateObj.getMonth() + 1).padStart(2, '0');
+                    const ano = dateObj.getFullYear();
+                    headerText = `<strong>${dia}/${mes}/${ano}</strong>`;
+                    bgColor = "#ddddddff"; // cinza claro
+                } else {
+                    headerText = `<strong>N/A</strong>`;
+                }
             }
 
-            return `${headerText} <span style="color: #6c757d;">(${count} ${count > 1 ? 'imagens' : 'imagem'})</span>`;
+
+            // Aplica o fundo no elemento do grupo
+            setTimeout(() => {
+                const el = group.getElement();
+                if (el) {
+                    el.style.backgroundColor = bgColor;
+                }
+            }, 0);
+
+            return `${headerText} <span style="color: #000000ff;">(${count} ${count > 1 ? 'imagens' : 'imagem'})</span>`;
         },
+
         groupStartOpen: false, // Groups will start closed
 
         columns: [
-            { title: "Prazo", field: "prazo", sorter: "date", hozAlign: "center", headerFilter: true },
-            { title: "Data Recebimento", field: "data_inicio", sorter: "date", hozAlign: "center", headerFilter: true },
+            {
+                title: "Prazo",
+                field: "prazo",
+                sorter: "date",
+                hozAlign: "center",
+                headerFilter: true,
+                formatter: function (cell) {
+                    const valor = cell.getValue();
+                    if (!valor || valor === '0000-00-00') return "N/A";
+                    const data = new Date(valor);
+                    const dia = String(data.getDate()).padStart(2, '0');
+                    const mes = String(data.getMonth() + 1).padStart(2, '0');
+                    const ano = data.getFullYear();
+                    return `${dia}/${mes}/${ano}`;
+                }
+            },
+            {
+                title: "Data Recebimento",
+                field: "recebimento_arquivos",
+                sorter: "date",
+                hozAlign: "center",
+                headerFilter: true,
+                formatter: function (cell) {
+                    const valor = cell.getValue();
+                    if (!valor) return "N/A";
+                    const data = new Date(valor);
+                    const dia = String(data.getDate()).padStart(2, '0');
+                    const mes = String(data.getMonth() + 1).padStart(2, '0');
+                    const ano = data.getFullYear();
+                    return `${dia}/${mes}/${ano}`;
+                }
+            },
             {
                 title: "Nome da Imagem",
                 field: "nome_imagem",
@@ -75,7 +135,7 @@ document.addEventListener('DOMContentLoaded', () => {
             },
             {
                 title: "Etapa",
-                field: "status",
+                field: "nome_status_imagem",
                 hozAlign: "center",
                 headerFilter: "list"
             },

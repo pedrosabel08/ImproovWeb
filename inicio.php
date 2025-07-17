@@ -93,6 +93,7 @@ $conn->close();
 
     ?>
     <main>
+        <button id="btnAtualizacao" onclick="document.getElementById('modalIframeChangelog').style.display = 'flex'">💭</button>
         <header>
 
             <div class="right">
@@ -272,7 +273,7 @@ $conn->close();
                 </div>
             </form>
         </div>
-    </div>
+    </div>~
 
     <!-- Modal para o iframe do changelog -->
     <div id="modalIframeChangelog" class="modal" style="display:none;">

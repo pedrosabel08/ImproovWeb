@@ -276,7 +276,7 @@ $conn->close();
 
     <!-- Modal para o iframe do changelog -->
     <div id="modalIframeChangelog" class="modal" style="display:none;">
-        <div class="modal-content" style="width:90vw;max-width: 50vw;height: 40vh;position:relative;">
+        <div class="modal-content" style="width:90vw;max-width: 70vw;height: 90vh;position:relative;">
             <!-- <button onclick="fecharModalIframe()" style="position:absolute;top:10px;right:10px;z-index:2;">Fechar</button> -->
             <iframe id="iframeChangelog" src="CHANGELOG/Flow/uploadArquivos.html" frameborder="0" style="width:100%;height:100%;border:none;"></iframe>
         </div>
@@ -289,7 +289,7 @@ $conn->close();
 
         const modalIframeChangelog = document.getElementById('modalIframeChangelog');
 
-        const CHANGELOG_VERSION = "3.2.6"; // Altere este valor sempre que atualizar o changelog
+        const CHANGELOG_VERSION = "3.2.20"; // Altere este valor sempre que atualizar o changelog
 
         function mostrarChangelogSeNecessario() {
             const chave = "changelog_visto_" + CHANGELOG_VERSION;

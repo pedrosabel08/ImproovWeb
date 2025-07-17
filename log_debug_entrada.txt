@@ -4,22 +4,22 @@ Array
         (
             [name] => Array
                 (
-                    [0] => 3.INO_TIM Fachada noturna.jpg
+                    [0] => JVL0224-ARQ-LO-001-IMP-PLA-R06.dwg
                 )
 
             [full_path] => Array
                 (
-                    [0] => 3.INO_TIM Fachada noturna.jpg
+                    [0] => JVL0224-ARQ-LO-001-IMP-PLA-R06.dwg
                 )
 
             [type] => Array
                 (
-                    [0] => image/jpeg
+                    [0] => application/octet-stream
                 )
 
             [tmp_name] => Array
                 (
-                    [0] => C:\xampp\tmp\phpCE3C.tmp
+                    [0] => C:\xampp\tmp\php3958.tmp
                 )
 
             [error] => Array
@@ -29,7 +29,7 @@ Array
 
             [size] => Array
                 (
-                    [0] => 444671
+                    [0] => 28288125
                 )
 
         )

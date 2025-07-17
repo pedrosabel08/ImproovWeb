@@ -1434,6 +1434,22 @@ document.getElementById("salvar_funcoes").addEventListener("click", function (ev
 
     var idImagemSelecionada = linhaSelecionada.getAttribute("data-id");
 
+    // Verifica se há algum botão de revisão visível (display: block)
+    const revisoesVisiveis = Array.from(document.querySelectorAll('.revisao_imagem')).some(el => {
+        return window.getComputedStyle(el).display === 'block';
+    });
+
+    if (revisoesVisiveis) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Envie as prévias ou arquivos!',
+            text: 'Você precisa enviar as prévias e os arquivos antes de salvar.',
+            confirmButtonText: 'Ok',
+            confirmButtonColor: '#e74c3c',
+        });
+        return;
+    }
+
     var form = document.getElementById("form-add");
     var camposPrazo = form.querySelectorAll("input[type='date'][required]");
     var camposVazios = Array.from(camposPrazo).filter(input => !input.value);
@@ -2735,6 +2751,7 @@ document.getElementById("addRevisao").addEventListener("click", function (event)
     const selectStatus = document.getElementById("opcao_status").value;
     const opcaoAlteracao = document.getElementById("opcao_alteracao").value;
     const obraId = localStorage.getItem("obraId");
+    const nomenclatura = document.getElementById('nomenclatura').textContent;
 
     // // Verifica se opcao_alteracao está preenchido
     // if (!opcaoAlteracao.trim()) {
@@ -2775,7 +2792,8 @@ document.getElementById("addRevisao").addEventListener("click", function (event)
         imagem_id: imagemId,
         colaborador_id: opcaoAlteracao,
         obra_id: obraId,
-        status_id: selectStatus
+        status_id: selectStatus,
+        nomenclatura: nomenclatura
     };
 
     console.log(data);
@@ -3370,98 +3388,137 @@ const dropArea = document.getElementById('drop-area');
 const fileInput = document.getElementById('fileElem');
 const fileList = document.getElementById('fileList');
 let imagensSelecionadas = [];
-let botaoOrigemId = null;
+let arquivosFinais = [];
 let dataIdFuncoes = [];
 
 function abrirModal(botao) {
-    botaoOrigemId = botao.id;
+    imagensSelecionadas = [];
+    arquivosFinais = [];
 
     const dataIdFuncao = botao.getAttribute('data-id-funcao');
+    dataIdFuncoes = dataIdFuncao?.split(',').map(f => f.trim()) || [];
 
-    dataIdFuncoes = dataIdFuncao
-        ? dataIdFuncao.includes(',')
-            ? dataIdFuncao.split(',').map(f => f.trim())
-            : [dataIdFuncao.trim()]
-        : [];
-
-    console.log("Funções selecionadas:", dataIdFuncoes);
-    document.getElementById('funcao_id_revisao').value = dataIdFuncoes.join(',');
-
-    // Subir até a div .funcao ou .funcao_comp e buscar o nome da função
     let containerFuncao = botao.closest('.funcao') || botao.closest('.funcao_comp');
-    let nomeFuncao = '';
+    let nomeFuncao = containerFuncao?.querySelector('.titulo p')?.textContent.trim() || '';
 
-    if (containerFuncao) {
-        const titulo = containerFuncao.querySelector('.titulo p');
-        nomeFuncao = titulo?.textContent.trim() || '';
-    }
-
+    document.getElementById('funcao_id_revisao').value = dataIdFuncoes.join(',');
     document.getElementById('nome_funcao_upload').value = nomeFuncao;
 
-    console.log("Função clicada:", nomeFuncao);
+    // Exibir o modal
+    document.getElementById('modalUpload').style.display = 'block';
+
+    // Verificação do nome da função
+    const nomeNormalizado = nomeFuncao.toLowerCase();
+    if (nomeNormalizado === 'caderno' || nomeNormalizado === 'filtro de assets') {
+        // Pula direto para a etapa final
+        document.getElementById('etapaPrevia').style.display = 'none';
+        document.getElementById('etapaFinal').style.display = 'block';
+        document.getElementById('etapaTitulo').textContent = "1. Envio de arquivos";
+    } else {
+        // Etapa padrão
+        document.getElementById('etapaPrevia').style.display = 'block';
+        document.getElementById('etapaFinal').style.display = 'none';
+        document.getElementById('etapaTitulo').textContent = "1. Envio de Prévia";
+    }
+
+    configurarDropzone("drop-area-previa", "fileElemPrevia", "fileListPrevia", imagensSelecionadas);
+    configurarDropzone("drop-area-final", "fileElemFinal", "fileListFinal", arquivosFinais);
+
     document.getElementById('modalUpload').style.display = 'block';
     document.getElementById('form-edicao').style.display = 'none';
 }
 
 function fecharModal() {
     imagensSelecionadas = [];
-    renderizarLista();
+    arquivosFinais = [];
+    renderizarLista(imagensSelecionadas, 'fileListPrevia');
+    renderizarLista(arquivosFinais, 'fileListFinal');
     document.getElementById('modalUpload').style.display = 'none';
     document.querySelectorAll('.revisao_imagem').forEach(el => el.style.display = 'none');
-
 }
 
-// Drag and drop
-['dragenter', 'dragover'].forEach(event => {
-    dropArea.addEventListener(event, e => {
-        e.preventDefault();
-        dropArea.classList.add('highlight');
-    });
-});
+function configurarDropzone(areaId, inputId, listaId, arquivosArray) {
+    const dropArea = document.getElementById(areaId);
+    const fileInput = document.getElementById(inputId);
 
-['dragleave', 'drop'].forEach(event => {
-    dropArea.addEventListener(event, e => {
+    // Funções nomeadas para poder remover depois
+    function handleDrop(e) {
         e.preventDefault();
         dropArea.classList.remove('highlight');
-    });
-});
-
-dropArea.addEventListener('drop', e => {
-    const files = e.dataTransfer.files;
-    adicionarArquivos(files);
-});
-
-dropArea.addEventListener('click', () => fileInput.click());
-fileInput.addEventListener('change', () => {
-    adicionarArquivos(fileInput.files);
-});
-
-function adicionarArquivos(files) {
-    for (let file of files) {
-        imagensSelecionadas.push(file);
+        for (let file of e.dataTransfer.files) arquivosArray.push(file);
+        renderizarLista(arquivosArray, listaId);
     }
-    renderizarLista();
+    function handleChange() {
+        for (let file of fileInput.files) arquivosArray.push(file);
+        renderizarLista(arquivosArray, listaId);
+    }
+    function handleClick() {
+        fileInput.click();
+    }
+    function handleDragOver(e) {
+        e.preventDefault();
+        dropArea.classList.add('highlight');
+    }
+    function handleDragLeave() {
+        dropArea.classList.remove('highlight');
+    }
+
+    // Remove listeners antigos
+    dropArea.removeEventListener('click', dropArea._handleClick);
+    dropArea.removeEventListener('dragover', dropArea._handleDragOver);
+    dropArea.removeEventListener('dragleave', dropArea._handleDragLeave);
+    dropArea.removeEventListener('drop', dropArea._handleDrop);
+    fileInput.removeEventListener('change', fileInput._handleChange);
+
+    // Adiciona listeners e guarda referência para remover depois
+    dropArea.addEventListener('click', handleClick);
+    dropArea.addEventListener('dragover', handleDragOver);
+    dropArea.addEventListener('dragleave', handleDragLeave);
+    dropArea.addEventListener('drop', handleDrop);
+    fileInput.addEventListener('change', handleChange);
+
+    // Guarda referência
+    dropArea._handleClick = handleClick;
+    dropArea._handleDragOver = handleDragOver;
+    dropArea._handleDragLeave = handleDragLeave;
+    dropArea._handleDrop = handleDrop;
+    fileInput._handleChange = handleChange;
 }
 
-function renderizarLista() {
-    fileList.innerHTML = '';
-    imagensSelecionadas.forEach((file, index) => {
+function renderizarLista(array, listaId) {
+    const lista = document.getElementById(listaId);
+    lista.innerHTML = '';
+    array.forEach((file, i) => {
+        // Calcula o tamanho em B, KB, MB ou GB
+        let tamanho = file.size;
+        let tamanhoStr = '';
+        if (tamanho < 1024) {
+            tamanhoStr = `${tamanho} B`;
+        } else if (tamanho < 1024 * 1024) {
+            tamanhoStr = `${(tamanho / 1024).toFixed(1)} KB`;
+        } else if (tamanho < 1024 * 1024 * 1024) {
+            tamanhoStr = `${(tamanho / (1024 * 1024)).toFixed(2)} MB`;
+        } else {
+            tamanhoStr = `${(tamanho / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+        }
+
         const li = document.createElement('li');
-        li.className = 'file-item';
-        li.innerHTML = `
-          <div class="file-info">
-          <span class="remove-btn" onclick="removerImagem(${index})">×</span>
-        <span>${file.name}</span>
-        </div>
-        <span class="file-size">${(file.size / 1024 / 1024).toFixed(1)} MB</span>
-      `;
-        fileList.appendChild(li);
+        li.innerHTML = `<div class="file-info">
+            <span>${file.name} <small style="color:#888;">(${tamanhoStr})</small></span>
+            <span onclick="removerArquivo(${i}, '${listaId}')" style="cursor:pointer;color: #c00;font-weight: bold;font-size: 1.2em;">×</span>
+        </div>`;
+        lista.appendChild(li);
     });
 }
 
-function removerImagem(index) {
-    imagensSelecionadas.splice(index, 1);
-    renderizarLista();
+function removerArquivo(index, listaId) {
+    if (listaId === 'fileListPrevia') {
+        imagensSelecionadas.splice(index, 1);
+        renderizarLista(imagensSelecionadas, listaId);
+    } else {
+        arquivosFinais.splice(index, 1);
+        renderizarLista(arquivosFinais, listaId);
+    }
 }
 
 // ENVIO DA PRÉVIA
@@ -3504,25 +3561,8 @@ function enviarImagens() {
         method: 'POST',
         body: formData
     })
-        .then(async resp => {
-            console.log("Status da resposta:", resp.status);
-
-            const contentType = resp.headers.get("content-type");
-            if (!resp.ok) {
-                throw new Error("Erro de resposta HTTP: " + resp.status);
-            }
-            if (!contentType || !contentType.includes("application/json")) {
-                const text = await resp.text(); // pega texto cru da resposta
-                throw new Error("Resposta não é JSON: " + text);
-            }
-
-            const data = await resp.json();
-            console.log("Resposta JSON:", data);
-
-            if (data.error) {
-                throw new Error(data.error);
-            }
-
+        .then(resp => resp.json())
+        .then(res => {
             Toastify({
                 text: "Prévia enviada com sucesso!",
                 duration: 3000,
@@ -3530,31 +3570,241 @@ function enviarImagens() {
                 backgroundColor: "#4caf50"
             }).showToast();
 
-            fecharModal();
+            // Avança para próxima etapa
+            document.getElementById('etapaPrevia').style.display = 'none';
+            document.getElementById('etapaFinal').style.display = 'block';
+            document.getElementById('etapaTitulo').textContent = "2. Envio do Arquivo Final";
 
-            // document.getElementById('etapaPrevia').style.display = 'none';
-            // document.getElementById('etapaFinal').style.display = 'block';
-            // document.getElementById('etapaTitulo').textContent = "2. Envio do Arquivo Final";
+            Swal.fire({
+                position: "center",
+                icon: "success",
+                title: "Agora adicione o arquivo final",
+                showConfirmButton: false,
+                timer: 1500,
+                didOpen: () => {
+                    const title = Swal.getTitle();
+                    if (title) title.style.fontSize = "18px";
+                }
+            });
 
-            // Swal.fire({
-            //     position: "center",
-            //     icon: "success",
-            //     title: "Agora adicione o arquivo final",
-            //     showConfirmButton: false,
-            //     timer: 1500,
-            //     didOpen: () => {
-            //         const title = Swal.getTitle();
-            //         if (title) title.style.fontSize = "18px";
-            //     }
-            // });
+
         })
         .catch(err => {
-            console.error("Erro ao enviar prévia:", err);
             Toastify({
-                text: "Erro ao enviar prévia: " + err.message,
+                text: "Erro ao enviar prévia",
                 duration: 3000,
                 gravity: "top",
                 backgroundColor: "#f44336"
             }).showToast();
         });
+}
+
+// ENVIO DO ARQUIVO FINAL
+function enviarArquivo() {
+    if (arquivosFinais.length === 0) {
+        Toastify({
+            text: "Selecione pelo menos um arquivo para enviar a prévia.",
+            duration: 3000,
+            gravity: "top",
+            backgroundColor: "#f44336"
+        }).showToast();
+        return;
+    }
+
+    const formData = new FormData();
+    arquivosFinais.forEach(file => formData.append('arquivo_final[]', file));
+    formData.append('dataIdFuncoes', JSON.stringify(dataIdFuncoes));
+    formData.append('nome_funcao', document.getElementById('nome_funcao_upload').value);
+
+    const campoNomeImagem = document.getElementById('campoNomeImagem')?.textContent || '';
+    formData.append('nome_imagem', campoNomeImagem);
+
+    const numeroImagem = campoNomeImagem.match(/^\d+/)?.[0] || '';
+    formData.append('numeroImagem', numeroImagem);
+
+    const nomenclatura = document.getElementById('nomenclatura')?.textContent || '';
+    formData.append('nomenclatura', nomenclatura);
+
+    const descricaoMatch = campoNomeImagem.match(/^\d+\.\s*[A-Z_]+\s+([^\s]+)/);
+    const primeiraPalavra = descricaoMatch ? descricaoMatch[1] : '';
+    formData.append('primeiraPalavra', primeiraPalavra);
+
+    const statusSelect = document.getElementById('opcao_status');
+    const statusNome = statusSelect.options[statusSelect.selectedIndex].text.trim();
+
+    formData.append('status_nome', statusNome);
+
+    // Criar container de progresso
+    const progressContainer = document.createElement('div');
+    progressContainer.style.fontSize = '16px';
+    progressContainer.innerHTML = `
+        <progress id="uploadProgress" value="0" max="100" style="width: 100%; height: 20px;"></progress>
+        <div id="uploadStatus">Enviando... 0%</div>
+        <div id="uploadTempo">Tempo: 0s</div>
+        <div id="uploadVelocidade">Velocidade: 0 MB/s</div>
+        <div id="uploadEstimativa">Tempo restante: ...</div>
+        <button id="cancelarUpload" style="margin-top:10px;padding:5px 10px;">Cancelar</button>
+    `;
+
+    Swal.fire({
+        title: 'Enviando arquivo...',
+        html: progressContainer,
+        showConfirmButton: false,
+        allowOutsideClick: false,
+        didOpen: () => {
+            const xhr = new XMLHttpRequest();
+            const startTime = Date.now();
+            let uploadCancelado = false;
+
+            xhr.open('POST', 'https://improov/ImproovWeb/uploadFinal.php');
+
+            xhr.upload.addEventListener('progress', (e) => {
+                if (e.lengthComputable) {
+                    const now = Date.now();
+                    const elapsed = (now - startTime) / 1000; // em segundos
+                    const uploadedMB = e.loaded / (1024 * 1024);
+                    const totalMB = e.total / (1024 * 1024);
+                    const percent = (e.loaded / e.total) * 100;
+                    const speed = uploadedMB / elapsed; // MB/s
+                    const remainingMB = totalMB - uploadedMB;
+                    const estimatedTime = remainingMB / (speed || 1); // evita divisão por 0
+
+                    document.getElementById('uploadProgress').value = percent;
+                    document.getElementById('uploadStatus').innerText = `Enviando... ${percent.toFixed(2)}%`;
+                    document.getElementById('uploadTempo').innerText = `Tempo: ${elapsed.toFixed(1)}s`;
+                    document.getElementById('uploadVelocidade').innerText = `Velocidade: ${speed.toFixed(2)} MB/s`;
+                    document.getElementById('uploadEstimativa').innerText = `Tempo restante: ${estimatedTime.toFixed(1)}s`;
+                }
+            });
+
+            xhr.onreadystatechange = () => {
+                if (xhr.readyState === 4 && xhr.status === 200 && !uploadCancelado) {
+                    const res = JSON.parse(xhr.responseText);
+                    const destino = res[0]?.destino || 'Caminho não encontrado';
+                    Swal.fire({
+                        position: "center",
+                        icon: "success",
+                        title: "Arquivo final enviado com sucesso!",
+                        text: `Salvo em: ${destino}, como: ${res[0]?.nome_arquivo || 'Nome não encontrado'}`,
+                        showConfirmButton: false,
+                        timer: 2000
+                    });
+                    fecharModal();
+                }
+            };
+
+            xhr.onerror = () => {
+                if (!uploadCancelado) {
+                    Swal.close();
+                    Toastify({
+                        text: "Erro ao enviar arquivo final",
+                        duration: 3000,
+                        gravity: "top",
+                        backgroundColor: "#f44336"
+                    }).showToast();
+                }
+            };
+
+            // Cancelar envio
+            document.getElementById('cancelarUpload').addEventListener('click', () => {
+                uploadCancelado = true;
+                xhr.abort();
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Upload cancelado',
+                    showConfirmButton: false,
+                    timer: 1500
+                });
+            });
+
+            xhr.send(formData);
+        }
+    });
+}
+
+
+const btnVerPdf = document.getElementById('ver-pdf');
+btnVerPdf.addEventListener('click', function (event) {
+    event.preventDefault();
+
+    const nomePdf = this.getAttribute('data-nome-pdf');
+    if (nomePdf) {
+        carregarPdf(nomePdf);
+    } else {
+        console.error('Nenhum PDF disponível para visualização.');
+        Toastify({
+            text: "Nenhum PDF disponível para visualização.",
+            duration: 3000,
+            gravity: "top",
+            backgroundColor: "#f44336"
+        }).showToast();
+    }
+});
+
+function carregarPdf(nomeArquivo) {
+    const nomenclatura = document.getElementById('nomenclatura').textContent.trim();
+    const url = 'ver-pdf.php?arquivo=' + encodeURIComponent(nomeArquivo) +
+        '&nomenclatura=' + encodeURIComponent(nomenclatura);
+    pdfjsLib.getDocument(url).promise.then(function (pdfDoc_) {
+        pdfDoc = pdfDoc_;
+        pageNum = 1;
+        document.getElementById('page-count').textContent = pdfDoc.numPages;
+        renderPage(pageNum);
+        document.getElementById('modal_pdf').style.display = 'flex';
+    }).catch(function (error) {
+        alert('Erro ao carregar PDF: ' + error.message);
+    });
+}
+
+let pdfDoc = null,
+    pageNum = 1,
+    pageRendering = false,
+    pageNumPending = null,
+    scale = 1.2,
+    canvas = document.getElementById('pdf-canvas'),
+    ctx = canvas.getContext('2d');
+
+function renderPage(num) {
+    pageRendering = true;
+    pdfDoc.getPage(num).then(function (page) {
+        const viewport = page.getViewport({ scale: scale });
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+
+        const renderContext = {
+            canvasContext: ctx,
+            viewport: viewport
+        };
+        const renderTask = page.render(renderContext);
+
+        renderTask.promise.then(function () {
+            pageRendering = false;
+            if (pageNumPending !== null) {
+                renderPage(pageNumPending);
+                pageNumPending = null;
+            }
+        });
+    });
+
+    document.getElementById('page-num').textContent = num;
+}
+
+function queueRenderPage(num) {
+    if (pageRendering) {
+        pageNumPending = num;
+    } else {
+        renderPage(num);
+    }
+}
+
+function prevPage() {
+    if (pageNum <= 1) return;
+    pageNum--;
+    queueRenderPage(pageNum);
+}
+
+function nextPage() {
+    if (pageNum >= pdfDoc.numPages) return;
+    pageNum++;
+    queueRenderPage(pageNum);
 }

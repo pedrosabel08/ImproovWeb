@@ -9,6 +9,7 @@ if ($data && isset($data['imagem_id'])) {
     $colaborador_id = $data['colaborador_id'] ?? null;
     $responsavel_id = $_SESSION['idcolaborador'] ?? null;
     $obra_id = $data['obra_id'] ?? null;
+    $nomenclatura = $data['nomenclatura'] ?? null;
 
     $conn->begin_transaction();
 
@@ -113,7 +114,7 @@ if ($data && isset($data['imagem_id'])) {
             15 => 'R05'
         ];
         $nome_status = $mapa_status[$novo_status] ?? 'Desconhecido';
-        $descricao = "Entrega Alteração ($nome_status)";
+        $descricao = " $nomenclatura - Entrega Alteração ($nome_status)";
         $tipo_evento = "Entrega";
 
         $stmtEvento = $conn->prepare("INSERT INTO eventos_obra (descricao, data_evento, tipo_evento, obra_id, responsavel_id) VALUES (?, ?, ?, ?, ?)");

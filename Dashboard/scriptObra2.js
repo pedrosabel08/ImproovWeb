@@ -232,17 +232,13 @@ function alterarStatus(imagemId) {
         .catch(error => console.error("Erro ao alterar o status:", error));
 }
 
-document.addEventListener("click", function (e) {
-    const modal = document.getElementById("modal_status");
-    if (modal && !modal.contains(e.target)) {
-        modal.style.display = "none";
-    }
-});
 
 function atualizarModal(idImagem) {
     let nomePdf = '';
     // Limpar campos do formulário de edição
     limparCampos();
+    document.getElementById("modal_status").style.display = 'none'; // Esconder modal de status
+
 
     // Fazer requisição AJAX para `buscaLinhaAJAX.php` usando Fetch
     fetch(`../buscaLinhaAJAX.php?ajid=${idImagem}`)
@@ -553,14 +549,13 @@ function infosObra(obraId) {
             const tipoImagemSelect = document.getElementById("tipo_imagem"); // Certifique-se de ter um <select> com id="tipo_imagem" no HTML
 
             tipoImagemSelect.innerHTML = '<option value="0">Todos</option>';
-            statusEtapaSelect.innerHTML = '<option value="">Selecione uma Etapa</option>';
+            statusEtapaSelect.innerHTML = '<option value="">Selecione uma etapa</option>';
             statusSelect.innerHTML = '<option value="">Selecione um status</option>';
 
             // Objeto para armazenar os status únicos
             const statusUnicos = new Set();
             const statusEtapaUnicos = new Set();
             const tipoImagemUnicos = new Set();
-
 
             data.imagens.forEach(function (item) {
                 idsImagensObra.push(parseInt(item.imagem_id));
@@ -573,7 +568,12 @@ function infosObra(obraId) {
                 var cellStatus = document.createElement('td');
                 cellStatus.textContent = item.imagem_status;
                 row.appendChild(cellStatus);
-                applyStatusImagem(cellStatus, item.imagem_status, item.descricao);
+                if (!(item.imagem_status === 'EF' && item.imagem_sub_status === 'EF')) {
+                    applyStatusImagem(cellStatus, item.imagem_status, item.descricao);
+                } else {
+                    cellStatus.style.backgroundColor = '';
+                    cellStatus.style.color = '';
+                }
 
                 var cellNomeImagem = document.createElement('td');
                 cellNomeImagem.textContent = item.imagem_nome;
@@ -607,7 +607,12 @@ function infosObra(obraId) {
                 var cellSubStatus = document.createElement('td');
                 cellSubStatus.textContent = item.imagem_sub_status;
                 row.appendChild(cellSubStatus);
-                applyStatusImagem(cellSubStatus, item.imagem_sub_status, item.descricao);
+                if (!(item.imagem_status === 'EF' && item.imagem_sub_status === 'EF')) {
+                    applyStatusImagem(cellSubStatus, item.imagem_sub_status, item.descricao);
+                } else {
+                    cellSubStatus.style.backgroundColor = '';
+                    cellSubStatus.style.color = '';
+                }
 
                 cellSubStatus.addEventListener('mouseenter', (event) => {
                     tooltip.textContent = item.nome_completo;
@@ -628,7 +633,6 @@ function infosObra(obraId) {
                 statusEtapaUnicos.add(item.imagem_status);
                 statusUnicos.add(item.imagem_sub_status);
                 tipoImagemUnicos.add(item.tipo_imagem);
-
 
                 var cellPrazo = document.createElement('td');
                 cellPrazo.textContent = formatarDataDiaMes(item.prazo);
@@ -661,7 +665,6 @@ function infosObra(obraId) {
                     row.appendChild(cellStatus);
 
                     applyStyleNone(cellColaborador, cellStatus, colaborador);
-                    applyStatusStyle(cellStatus, status, colaborador);
 
 
                     const statusNormalizado = status.trim().toLowerCase();
@@ -673,9 +676,20 @@ function infosObra(obraId) {
                             totaisPorFuncao[coluna.col].validos++;
                         }
                     }
+                    // ...dentro do forEach de colunas...
+                    if (!(item.imagem_status === 'EF' && item.imagem_sub_status === 'EF')) {
+                        applyStatusStyle(cellStatus, status, colaborador);
+                    } else {
+                        // Limpa o estilo se for EF/EF
+                        cellStatus.style.backgroundColor = '';
+                        cellStatus.style.color = '';
+                    }
 
                 });
 
+                if (item.imagem_status === 'EF' && item.imagem_sub_status === 'EF') {
+                    row.classList.add('linha-ef');
+                }
 
                 tabela.appendChild(row);
             });
@@ -708,7 +722,7 @@ function infosObra(obraId) {
 
 
             const revisoes = document.getElementById('revisoes');
-            revisoes.textContent = `Total de alterações: ${data.alt}`
+            // revisoes.textContent = `Total de alterações: ${data.alt}`
 
             const alteracao = document.getElementById('altBtn')
             if (data.alt == 0) {
@@ -1204,9 +1218,17 @@ function applyStatusImagem(cell, status, descricao = '') {
             cell.style.backgroundColor = 'cornflowerblue';
             cell.style.color = 'white';
             break;
+        case 'TO-DO':
+            cell.style.backgroundColor = 'cornflowerblue';
+            cell.style.color = 'white';
+            break;
         case 'FIN':
             cell.style.backgroundColor = 'green';
             cell.style.color = 'white';
+            break;
+        case 'DRV':
+            cell.style.backgroundColor = '#00f3ff';
+            cell.style.color = 'black';
             break;
     }
 };
@@ -1765,7 +1787,7 @@ const modalOrcamento = document.getElementById('modalOrcamento')
 const modal = document.getElementById('modalAcompanhamento');
 const modalObs = document.getElementById('modalObservacao');
 const modalImages = document.getElementById('editImagesModal');
-const infosModal = document.getElementById('infosModal');
+// const infosModal = document.getElementById('infosModal');
 const form_edicao = document.getElementById('form-edicao');
 
 
@@ -1780,34 +1802,98 @@ if (idObra) {
 function abrirModalAcompanhamento(obraId) {
     fetch(`../Obras/getAcompanhamentoEmail.php?idobra=${obraId}`)
         .then(response => {
-            if (!response.ok) {
-                throw new Error(`Erro ao carregar dados: ${response.status}`);
-            }
-            return response.json(); // Converte a resposta para JSON
+            if (!response.ok) throw new Error(`Erro ao carregar dados: ${response.status}`);
+            return response.json();
         })
         .then(acompanhamentos => {
-            // Limpa o conteúdo anterior
             acompanhamentoConteudo.innerHTML = '';
 
             if (acompanhamentos.length > 0) {
                 acompanhamentos.forEach(acomp => {
+                    const container = document.createElement('div');
+                    container.className = 'acomp-conteudo';
 
-                    const item = document.createElement('p');
-                    item.innerHTML = `
-                        <div class="acomp-conteudo">
-                            <p class="acomp-assunto"><strong>Assunto:</strong> ${acomp.assunto}</p>
-                            <p class="acomp-data"><strong>Data:</strong> ${formatarData(acomp.data)}</p>
-                        </div>
-                    `;
-                    acompanhamentoConteudo.appendChild(item);
+                    const pData = document.createElement('p');
+                    pData.className = 'acomp-data';
+                    pData.innerHTML = `<strong>Data:</strong> ${formatarData(acomp.data)}`;
+
+                    const pAssunto = document.createElement('p');
+                    pAssunto.className = 'acomp-assunto';
+                    pAssunto.innerHTML = `<strong>Assunto:</strong> <span class="acomp-texto">${acomp.assunto}</span>`;
+
+                    // Evento de clique para editar somente o texto (sem "Assunto:")
+                    pAssunto.addEventListener('click', () => {
+                        const spanTexto = pAssunto.querySelector('.acomp-texto');
+                        const textoAtual = spanTexto.textContent;
+
+                        // Cria um input para edição
+                        const input = document.createElement('input');
+                        input.type = 'text';
+                        input.value = textoAtual;
+                        input.className = 'input-edicao';
+                        input.style.width = '100%';
+
+                        // Substitui o span pelo input
+                        spanTexto.replaceWith(input);
+                        input.focus();
+
+                        // Ao sair do campo (blur), volta para texto
+                        input.addEventListener('blur', () => {
+                            const novoTexto = input.value;
+
+                            // Aqui você pode fazer o fetch para salvar no banco
+                            salvarAcompanhamento(acomp.id, obraId, novoTexto);
+
+                            const novoSpan = document.createElement('span');
+                            novoSpan.className = 'acomp-texto';
+                            novoSpan.textContent = novoTexto;
+
+                            input.replaceWith(novoSpan);
+                        });
+                    });
+
+                    container.appendChild(pAssunto);
+                    container.appendChild(pData);
+                    acompanhamentoConteudo.appendChild(container);
                 });
             } else {
                 acompanhamentoConteudo.innerHTML = '<p>Nenhum acompanhamento encontrado.</p>';
             }
-
         })
         .catch(error => {
             console.error('Erro:', error);
+        });
+}
+
+function salvarAcompanhamento(id, obraId, novoAssunto) {
+    fetch('addAcompanhamento.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `id=${id}&idobra=${obraId}&assunto=${encodeURIComponent(novoAssunto)}`
+    })
+        .then(res => res.json())
+        .then(res => {
+            if (res.success) {
+                Toastify({
+                    text: 'Acompanhamento atualizado com sucesso!',
+                    duration: 3000,
+                    gravity: "top",
+                    position: "left",
+                    backgroundColor: "#4e95f1ff", // Cor de sucesso
+                }).showToast();
+
+            } else {
+                Toastify({
+                    text: 'Erro ao atualizar acompanhamento: ' + res.message,
+                    duration: 3000,
+                    gravity: "top",
+                    position: "left",
+                    backgroundColor: "#f44336", // Cor de erro
+                }).showToast();
+            }
+        })
+        .catch(err => {
+            console.error('Erro na requisição:', err);
         });
 }
 
@@ -2018,24 +2104,18 @@ const modalPos = document.getElementById("modal_pos");
 const eventModal = document.getElementById("eventModal");
 const calendarModal = document.getElementById("calendarModal");
 const editImagesModal = document.getElementById("editImagesModal");
-const modalPdf = document.getElementById("modal_pdf");
+const statusModal = document.getElementById("modal_status");
+
 
 ['click', 'touchstart', 'keydown'].forEach(eventType => {
     window.addEventListener(eventType, function (event) {
         // Fecha os modais ao clicar fora ou pressionar Esc
         if (eventType === 'keydown' && event.key !== 'Escape') return;
 
-        // PRIORIDADE: fecha modalPdf primeiro se estiver aberto
-        if (modalPdf && modalPdf.style.display === "flex") {
-            if (event.target == modalPdf || (eventType === 'keydown' && event.key === 'Escape')) {
-                modalPdf.style.display = "none";
-                return; // Sai da função, não fecha outros modais
-            }
-        }
-
         if (event.target == form_edicao || (eventType === 'keydown' && event.key === 'Escape')) {
             form_edicao.style.display = "none";
             infosObra(obraId);
+
         }
         if (event.target == modal || (eventType === 'keydown' && event.key === 'Escape')) {
             modal.style.display = "none";
@@ -2046,13 +2126,14 @@ const modalPdf = document.getElementById("modal_pdf");
         if (event.target == editImagesModal || (eventType === 'keydown' && event.key === 'Escape')) {
             editImagesModal.style.display = "none";
             infosObra(obraId);
+
         }
         if (event.target == addImagemModal || (eventType === 'keydown' && event.key === 'Escape')) {
             addImagemModal.style.display = "none";
         }
-        if (event.target == infosModal || (eventType === 'keydown' && event.key === 'Escape')) {
-            infosModal.style.display = "none";
-        }
+        // if (event.target == infosModal || (eventType === 'keydown' && event.key === 'Escape')) {
+        //     infosModal.style.display = "none";
+        // }
         if (event.target == modalObs || (eventType === 'keydown' && event.key === 'Escape')) {
             modalObs.style.display = "none";
         }
@@ -2062,12 +2143,19 @@ const modalPdf = document.getElementById("modal_pdf");
         if (event.target == modalArquivos || (eventType === 'keydown' && event.key === 'Escape')) {
             modalArquivos.style.display = "none";
             infosObra(obraId);
+
         }
+        // if (event.target == modalPos || (eventType === 'keydown' && event.key === 'Escape')) {
+        //     modalPos.classList.add("hidden");
+        // }
         if (event.target == eventModal || (eventType === 'keydown' && event.key === 'Escape')) {
             eventModal.style.display = "none";
         }
         if (event.target == calendarModal || (eventType === 'keydown' && event.key === 'Escape')) {
             calendarModal.style.display = "none";
+        }
+        if (event.target == statusModal || (eventType === 'keydown' && event.key === 'Escape')) {
+            statusModal.style.display = "none";
         }
     });
 });
@@ -2421,7 +2509,7 @@ document.getElementById("copyColumn").addEventListener("click", function () {
     rows.forEach(row => {
         // Verifica se a linha está visível (não tem display: none)
         if (window.getComputedStyle(row).display !== "none") {
-            columnData.push(row.cells[0].innerText);
+            columnData.push(row.cells[1].innerText);
         }
     });
 
@@ -2644,14 +2732,15 @@ document.getElementById("addRevisao").addEventListener("click", function (event)
 
     // Captura os valores
     const imagemId = document.getElementById("imagem_id").value;
+    const selectStatus = document.getElementById("opcao_status").value;
     const opcaoAlteracao = document.getElementById("opcao_alteracao").value;
     const obraId = localStorage.getItem("obraId");
 
-    // Verifica se opcao_alteracao está preenchido
-    if (!opcaoAlteracao.trim()) {
-        alert("Por favor, selecione uma opção antes de enviar.");
-        return; // Interrompe a execução se estiver vazio
-    }
+    // // Verifica se opcao_alteracao está preenchido
+    // if (!opcaoAlteracao.trim()) {
+    //     alert("Por favor, selecione uma opção antes de enviar.");
+    //     return; // Interrompe a execução se estiver vazio
+    // }
 
     // Configuração do AJAX
     const xhr = new XMLHttpRequest();
@@ -2685,7 +2774,8 @@ document.getElementById("addRevisao").addEventListener("click", function (event)
     const data = {
         imagem_id: imagemId,
         colaborador_id: opcaoAlteracao,
-        obra_id: obraId
+        obra_id: obraId,
+        status_id: selectStatus
     };
 
     console.log(data);
@@ -2819,29 +2909,13 @@ function notificarEventosDaSemana(eventos) {
 
 // Função para definir as cores com base no tipo_evento
 function getEventColors(event) {
-    const { id, descricao, tipo_evento } = event;
+    const { descricao, tipo_evento } = event;
     const normalizedTitle = (descricao || '').toUpperCase().trim();
 
-    if (normalizedTitle.includes('R00')) {
-        return { backgroundColor: '#1cf4ff', color: '#000000' };
-    }
-    if (normalizedTitle.includes('R01')) {
-        return { backgroundColor: '#ff6200', color: '#000000' };
-    }
-    if (normalizedTitle.includes('R02')) {
-        return { backgroundColor: '#ff3c00', color: '#000000' };
-    }
-    if (normalizedTitle.includes('R02')) {
-        return { backgroundColor: '#ff0000', color: '#000000' };
-    }
-    if (normalizedTitle.includes('EF')) {
-        return { backgroundColor: '#0dff00', color: '#000000' };
-    }
-
-    // Se não encontrou no título, usa o tipoEvento
+    // 1º: Prioriza o tipo_evento
     switch (tipo_evento) {
-        case 'Reunião':
-            return { backgroundColor: '#ffd700', color: '#000000' };
+        case 'Acompanhamento':
+            return { backgroundColor: '#87ceeb', color: '#000000' };
         case 'Entrega':
             return { backgroundColor: '#ff9f89', color: '#000000' };
         case 'Arquivos':
@@ -2884,9 +2958,27 @@ function getEventColors(event) {
             return { backgroundColor: '#fce4ec', color: '#000000' };
         case 'Composição':
             return { backgroundColor: '#f9ffc6', color: '#000000' };
-        default:
-            return { backgroundColor: '#d3d3d3', color: '#000000' };
     }
+
+    // 2º: Só verifica o texto se não bateu no tipo_evento
+    if (normalizedTitle.includes('R00')) {
+        return { backgroundColor: '#1cf4ff', color: '#000000' };
+    }
+    if (normalizedTitle.includes('R01')) {
+        return { backgroundColor: '#ff6200', color: '#000000' };
+    }
+    if (normalizedTitle.includes('R02')) {
+        return { backgroundColor: '#ff3c00', color: '#000000' };
+    }
+    if (normalizedTitle.includes('R03')) {
+        return { backgroundColor: '#ff0000', color: '#000000' };
+    }
+    if (normalizedTitle.includes('EF')) {
+        return { backgroundColor: '#0dff00', color: '#000000' };
+    }
+
+    // Default
+    return { backgroundColor: '#d3d3d3', color: '#000000' };
 }
 
 

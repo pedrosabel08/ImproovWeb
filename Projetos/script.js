@@ -102,7 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const valor = cell.getValue();
                     if (!valor || valor === '0000-00-00') return "N/A";
                     const data = new Date(valor);
-                    const dia = String(data.getDate()).padStart(2, '0');
+                    const dia = String(data.getDate() + 1).padStart(2, '0');
                     const mes = String(data.getMonth() + 1).padStart(2, '0');
                     const ano = data.getFullYear();
                     return `${dia}/${mes}/${ano}`;
@@ -116,9 +116,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 headerFilter: true,
                 formatter: function (cell) {
                     const valor = cell.getValue();
-                    if (!valor) return "N/A";
+                    if (!valor || valor === '0000-00-00') return "N/A";
                     const data = new Date(valor);
-                    const dia = String(data.getDate()).padStart(2, '0');
+                    const dia = String(data.getDate() + 1).padStart(2, '0');
                     const mes = String(data.getMonth() + 1).padStart(2, '0');
                     const ano = data.getFullYear();
                     return `${dia}/${mes}/${ano}`;
@@ -128,6 +128,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 title: "Nome da Imagem",
                 field: "nome_imagem",
                 headerFilter: true,
+                widthGrow: 3,
                 formatter: function (cell) {
                     const data = cell.getData();
                     return `<strong>${data.nome_imagem}</strong>`;
@@ -207,7 +208,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('[data-prazo]').forEach(el => {
         el.addEventListener('click', () => {
             const hoje = new Date();
-            const dia = String(hoje.getDate()).padStart(2, '0');
+            const dia = String(hoje.getDate() + 1).padStart(2, '0');
             const mes = String(hoje.getMonth() + 1).padStart(2, '0');
             const ano = hoje.getFullYear();
             const hojeFormatado = `${ano}-${mes}-${dia}`;

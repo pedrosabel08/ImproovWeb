@@ -734,3 +734,13 @@ h1 {
 .oculto {
     display: none;
 }
+
+#btnAtualizacao {
+    position: absolute;
+    right: 10px;
+    top: 90px;
+    background-color: #0dff15;
+    padding: 6px;
+    border-radius: 15px;
+    cursor: pointer;
+}

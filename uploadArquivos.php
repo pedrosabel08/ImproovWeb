@@ -69,6 +69,15 @@ function uploadImagem($imagem, $destino, $nomeFinalSemExtensao)
     return false;
 }
 
+function sanitizeFilename($str)
+{
+    $str = normalizeAcentos($str);
+    $str = mb_strtoupper($str, 'UTF-8');
+    $str = preg_replace('/[\/\\\:*?"<>|]/', '', $str); // remove caracteres perigosos
+    $str = preg_replace('/\s+/', '_', $str); // substitui espaços por "_"
+    return $str;
+}
+
 // Processar imagens
 if (isset($_FILES['imagens'])) {
     $imagens = $_FILES['imagens'];
@@ -87,8 +96,11 @@ if (isset($_FILES['imagens'])) {
             'size' => $imagens['size'][$i]
         ];
 
+        $nomeImagemSanitizado = sanitizeFilename($nome_imagem);
+
+
         if ($nomeFuncao === 'Pós-Produção') {
-            $nomeFinalSemExt = "{$nome_imagem}_{$status_nome}";
+            $nomeFinalSemExt = "{$nomeImagemSanitizado}_{$status_nome}";
         } else {
             $nomeFinalSemExt = "{$numeroImagem}.{$nomenclatura}-{$processo}-{$indice_envio}-{$numeroPrevia}";
         }

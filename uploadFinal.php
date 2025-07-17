@@ -177,7 +177,32 @@ if (isset($_POST['dataIdFuncoes'])) {
         $dataIdFuncoes = [$raw];
     }
 }
+function removerAcentos($string)
+{
+    return preg_replace(
+        array("/[áàãâä]/u", "/[éèêë]/u", "/[íìîï]/u", "/[óòõôö]/u", "/[úùûü]/u", "/[ç]/u"),
+        array("a", "e", "i", "o", "u", "c"),
+        $string
+    );
+}
 
+function normalizeAcentos($str)
+{
+    return preg_replace(
+        ['/[áàãâä]/ui', '/[éèêë]/ui', '/[íìîï]/ui', '/[óòõôö]/ui', '/[úùûü]/ui', '/[ç]/ui'],
+        ['A', 'E', 'I', 'O', 'U', 'C'],
+        $str
+    );
+}
+
+function sanitizeFilename($str)
+{
+    $str = normalizeAcentos($str);
+    $str = mb_strtoupper($str, 'UTF-8');
+    $str = preg_replace('/[\/\\\:*?"<>|]/', '', $str); // remove caracteres perigosos
+    $str = preg_replace('/\s+/', '_', $str); // substitui espaços por "_"
+    return $str;
+}
 
 // Agora faça o upload dos demais arquivos normalmente usando $upload_ok
 $total = is_array($arquivos['name']) ? count($arquivos['name']) : 1;
@@ -188,27 +213,18 @@ for ($i = 0; $i < $total; $i++) {
 
     $extensao = pathinfo($nome_original, PATHINFO_EXTENSION);
     $tipo = detectarTipoArquivo($extensao);
-    // Função para remover acentos
-    function removerAcentos($string)
-    {
-        return preg_replace(
-            array("/[áàãâä]/u", "/[éèêë]/u", "/[íìîï]/u", "/[óòõôö]/u", "/[úùûü]/u", "/[ç]/u"),
-            array("a", "e", "i", "o", "u", "c"),
-            $string
-        );
-    }
 
-    // Aplica a remoção de acentos e extrai os 3 primeiros caracteres
+    // Processo (3 primeiras letras sem acento e em maiúsculo)
     $semAcento = removerAcentos($nome_funcao);
     $processo = strtoupper(mb_substr($semAcento, 0, 3, 'UTF-8'));
-    // Base do nome do arquivo SEM revisão
+
     $nome_base = "{$numeroImagem}.{$nomenclatura}-{$primeiraPalavra}-{$tipo}-{$processo}";
 
-    // --- Controle de revisão: busca maior revisão existente ---
     $maiorRevisao = -1;
     $arquivo_antigo = '';
     $padrao = "/^" . preg_quote($nome_base, '/') . "-R(\d{2})\." . preg_quote($extensao, '/') . "$/i";
     $revisao = $nomeStatus;
+
     $sftp = new SFTP($ftp_host, $ftp_port);
     if (!$sftp->login($ftp_user, $ftp_pass)) {
         error_log("Falha ao conectar SFTP para revisão do arquivo $nome_original");
@@ -217,21 +233,30 @@ for ($i = 0; $i < $total; $i++) {
         $remote_dir = $upload_ok;
 
         if ($pasta_funcao === '03.Models') {
-            $subpasta_img = $nome_imagem;
+            $nomeImagemSanitizado = sanitizeFilename($nome_imagem);
+
+            $subpasta_img = $nomeImagemSanitizado;
             $funcao_key = mb_strtolower($nome_funcao, 'UTF-8');
 
             if ($funcao_key === 'alteração') {
-                if (!$sftp->is_dir("$remote_dir/$subpasta_img")) {
-                    $sftp->mkdir("$remote_dir/$subpasta_img");
-                }
-                if (!$sftp->is_dir("$remote_dir/$subpasta_img/Final")) {
-                    $sftp->mkdir("$remote_dir/$subpasta_img/Final");
-                }
-                if (!$sftp->is_dir("$remote_dir/$subpasta_img/Final/$revisao")) {
-                    $sftp->mkdir("$remote_dir/$subpasta_img/Final/$revisao");
+                $caminhoAtual = $remote_dir;
+
+                $caminhoAtual .= "/$subpasta_img";
+                if (!$sftp->is_dir($caminhoAtual)) {
+                    $sftp->mkdir($caminhoAtual);
                 }
 
-                $remote_dir = "$remote_dir/$subpasta_img/Final/$revisao";
+                $caminhoAtual .= "/Final";
+                if (!$sftp->is_dir($caminhoAtual)) {
+                    $sftp->mkdir($caminhoAtual);
+                }
+
+                $caminhoAtual .= "/$revisao";
+                if (!$sftp->is_dir($caminhoAtual)) {
+                    $sftp->mkdir($caminhoAtual);
+                }
+
+                $remote_dir = $caminhoAtual;
             } else {
                 $mapa_funcao = [
                     'modelagem' => 'MT',
@@ -244,6 +269,7 @@ for ($i = 0; $i < $total; $i++) {
                 if (!$sftp->is_dir("$remote_dir/$subpasta_img")) {
                     $sftp->mkdir("$remote_dir/$subpasta_img");
                 }
+
                 if (!$sftp->is_dir("$remote_dir/$subpasta_img/$subpasta_funcao")) {
                     $sftp->mkdir("$remote_dir/$subpasta_img/$subpasta_funcao");
                 }
@@ -256,43 +282,37 @@ for ($i = 0; $i < $total; $i++) {
             $remote_path = "$remote_dir/{$nome_base}-{$revisao}.{$extensao}";
         }
     }
-    // --- FIM controle de revisão ---
 
-    // Se já existe um arquivo anterior, exclua-o (só para 02.Projetos)
+    // Excluir arquivo antigo, se necessário
     if ($arquivo_antigo && $pasta_funcao === '02.Projetos') {
         $caminho_antigo = "$upload_ok/$arquivo_antigo";
         $sftp->delete($caminho_antigo);
     }
 
-    // === NOVO BLOCO PARA PÓS-PRODUÇÃO ===
+    // === BLOCO ESPECIAL PARA PÓS-PRODUÇÃO E PLANTA HUMANIZADA ===
     $funcao_normalizada = mb_strtolower($nome_funcao, 'UTF-8');
     if ($funcao_normalizada === 'pós-produção' || $funcao_normalizada === 'planta humanizada') {
         $nome_final = "{$nome_imagem}_{$revisao}.{$extensao}";
         $pasta_revisao = $revisao;
 
-        // Cria pasta de revisão, se não existir
         if (!$sftp->is_dir("$upload_ok/$pasta_revisao")) {
             $sftp->mkdir("$upload_ok/$pasta_revisao");
         }
 
-        // Se for Planta Humanizada, cria também subpasta PH
         if ($funcao_normalizada === 'planta humanizada') {
             if (!$sftp->is_dir("$upload_ok/$pasta_revisao/PH")) {
                 $sftp->mkdir("$upload_ok/$pasta_revisao/PH");
             }
             $remote_path = "$upload_ok/$pasta_revisao/PH/{$nome_final}";
         } else {
-            // Caso seja apenas Pós-Produção
             $remote_path = "$upload_ok/$pasta_revisao/{$nome_final}";
         }
     } else {
-        // Nome padrão
         if (!isset($remote_path)) {
             $remote_path = "$upload_ok/{$nome_base}-{$revisao}.{$extensao}";
         }
         $nome_final = "{$nome_base}-{$revisao}.{$extensao}";
     }
-    // === FIM DO BLOCO ===
 
     list($ok, $msg) = enviarArquivoSFTP(
         $ftp_host,
@@ -310,7 +330,6 @@ for ($i = 0; $i < $total; $i++) {
         'nome_arquivo' => "{$nome_base}-{$revisao}.{$extensao}"
     ];
 
-    // Se for PDF, faz o insert/update
     if ($ok && strtolower($extensao) === 'pdf' && !empty($dataIdFuncoes)) {
         error_log("Tentando inserir PDF: $nome_final para funções: " . implode(',', $dataIdFuncoes));
         if ($conn->connect_errno) {

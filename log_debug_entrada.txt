@@ -4,22 +4,22 @@ Array
         (
             [name] => Array
                 (
-                    [0] => JVL0224-ARQ-LO-001-IMP-PLA-R06.dwg
+                    [0] => 10. INO_MAR Quiosque_P01_R01.jpg
                 )
 
             [full_path] => Array
                 (
-                    [0] => JVL0224-ARQ-LO-001-IMP-PLA-R06.dwg
+                    [0] => 10. INO_MAR Quiosque_P01_R01.jpg
                 )
 
             [type] => Array
                 (
-                    [0] => application/octet-stream
+                    [0] => image/jpeg
                 )
 
             [tmp_name] => Array
                 (
-                    [0] => C:\xampp\tmp\php3958.tmp
+                    [0] => C:\xampp\tmp\php8D82.tmp
                 )
 
             [error] => Array
@@ -29,7 +29,7 @@ Array
 
             [size] => Array
                 (
-                    [0] => 28288125
+                    [0] => 1856433
                 )
 
         )

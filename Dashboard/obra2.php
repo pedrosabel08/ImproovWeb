@@ -111,7 +111,6 @@ $conn->close();
 
                     <select name="imagem_status_etapa_filtro" id="imagem_status_etapa_filtro"></select>
                     <select name="imagem_status_filtro" id="imagem_status_filtro"></select>
-
                 </div>
 
                 <div id="prazos-list"></div>

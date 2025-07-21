@@ -1060,3 +1060,47 @@ p.imagem_nome {
     font-size: 14px;
     color: white;
 }
+
+
+.drawer {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 400px;
+    height: 100vh;
+    background: #fff;
+    box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
+    transform: translateX(100%);
+    transition: transform 0.3s ease-in-out;
+    z-index: 9999;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.drawer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid #eee;
+}
+
+.drawer.visible {
+    transform: translateX(0%);
+}
+
+.drawer.hidden {
+    display: none;
+}
+
+.task-item {
+    padding: 12px;
+    margin-bottom: 10px;
+    background: #f7f7f7;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.task-item:hover {
+    background-color: #eee;
+}

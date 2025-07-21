@@ -35,6 +35,10 @@ a {
 
 #filtroFuncao {
     margin: 15px auto;
+    margin: 15px auto;
+    padding: 5px;
+    border: none;
+    border-bottom: 1px solid;
 }
 
 .main,
@@ -801,9 +805,11 @@ h2#dataEnvio {
 }
 
 .container-main {
-    height: 100vh;
     display: flex;
     flex-direction: column;
+    height: 100vh;
+    position: relative;
+    /* importante */
 }
 
 .containerObra {
@@ -1055,4 +1061,47 @@ p.imagem_nome {
     border-radius: 15px;
     font-size: 14px;
     color: white;
+}
+
+
+.drawer {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 400px;
+    height: 100vh;
+    background: #fff;
+    box-shadow: -4px 0 12px rgba(0, 0, 0, 0.1);
+    transform: translateX(100%);
+    transition: transform 0.3s ease-in-out;
+    z-index: 1000;
+    overflow-y: auto;
+}
+
+.drawer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid #eee;
+}
+
+.drawer.visible {
+    transform: translateX(0%);
+}
+
+.drawer.hidden {
+    transform: translateX(100%);
+}
+
+.task-item {
+    padding: 12px;
+    margin-bottom: 10px;
+    background: #f7f7f7;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.task-item:hover {
+    background-color: #eee;
 }

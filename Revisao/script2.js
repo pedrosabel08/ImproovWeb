@@ -100,6 +100,8 @@ function toggleTaskDetails(taskElement) {
 let dadosTarefas = [];
 let todasAsObras = new Set();
 let todosOsColaboradores = new Set();
+let todasAsFuncoes = new Set();
+let funcaoGlobalSelecionada = null;
 
 async function fetchObrasETarefas() {
     try {
@@ -110,9 +112,30 @@ async function fetchObrasETarefas() {
 
         todasAsObras = new Set(dadosTarefas.map(t => t.nome_obra));
         todosOsColaboradores = new Set(dadosTarefas.map(t => t.nome_colaborador));
+        todasAsFuncoes = new Set(dadosTarefas.map(t => t.nome_funcao)); // ou o nome do campo correspondente
 
         exibirCardsDeObra(dadosTarefas); // Mostra os cards
 
+        const filtroSelect = document.getElementById('filtroFuncao');
+        filtroSelect.style.display = 'block'; // Exibe o filtro de função
+        filtroSelect.innerHTML = '<option value="">Todas as funções</option>';
+
+        todasAsFuncoes.forEach(funcao => {
+            const option = document.createElement('option');
+            option.value = funcao;
+            option.textContent = funcao;
+            filtroSelect.appendChild(option);
+        });
+
+        document.getElementById('filtroFuncao').addEventListener('change', (event) => {
+            funcaoGlobalSelecionada = event.target.value || null;
+
+            const tarefasFiltradas = funcaoGlobalSelecionada
+                ? dadosTarefas.filter(t => t.nome_funcao === funcaoGlobalSelecionada)
+                : dadosTarefas;
+
+            exibirCardsDeObra(tarefasFiltradas);
+        });
 
     } catch (error) {
         console.error(error);
@@ -188,7 +211,18 @@ function filtrarTarefasPorObra(obraSelecionada) {
 
     // Captura os novos valores dos selects após atualização
     const colaboradorSelecionado = document.getElementById('filtro_colaborador').value;
-    const funcaoSelecionada = document.getElementById('nome_funcao').value;
+    let funcaoSelecionada = document.getElementById('nome_funcao').value;
+
+    // Se houver filtro global ativo, aplica e reflete visualmente
+    if (funcaoGlobalSelecionada) {
+        funcaoSelecionada = funcaoGlobalSelecionada;
+
+        const selectFuncao = document.getElementById('nome_funcao');
+        const opcoes = Array.from(selectFuncao.options).map(opt => opt.value);
+        if (opcoes.includes(funcaoGlobalSelecionada)) {
+            selectFuncao.value = funcaoGlobalSelecionada;
+        }
+    }
 
     // Aplica os filtros adicionais (colaborador e função)
     const tarefasFiltradas = tarefasDaObra.filter(t => {
@@ -308,17 +342,13 @@ document.getElementById('nome_funcao').addEventListener('change', () => {
 });
 
 // Função para exibir as tarefas e abastecer os filtros
-function exibirTarefas(tarefas) {
-    const container = document.querySelector('.containerObra');
-    const containerMain = document.querySelector('.container-main');
-    containerMain.classList.add('expanded');
+function exibirTarefas(tarefas, nomeObra = 'Obra Selecionada') {
+    const drawer = document.getElementById('drawerTarefas');
+    const tarefasImagensObra = drawer.querySelector('.tarefasImagensObra');
+    const titulo = document.getElementById('obraTitulo');
 
-    const tarefasObra = document.querySelector('.tarefasObra');
-    tarefasObra.classList.remove('hidden');
-
-    const tarefasImagensObra = document.querySelector('.tarefasImagensObra');
-
-    tarefasImagensObra.innerHTML = ''; // Limpa as tarefas anteriores
+    titulo.textContent = nomeObra;
+    tarefasImagensObra.innerHTML = '';
 
     if (tarefas.length > 0) {
         tarefas.forEach(tarefa => {
@@ -326,23 +356,37 @@ function exibirTarefas(tarefas) {
             taskItem.classList.add('task-item');
             taskItem.setAttribute('onclick', `historyAJAX(${tarefa.idfuncao_imagem}, '${tarefa.nome_funcao}', '${tarefa.imagem_nome}', '${tarefa.nome_colaborador}')`);
 
-            // Define a cor de fundo com base no status
-            const bgColor = tarefa.status_novo === 'Em aprovação' ? 'green' : tarefa.status_novo === 'Ajuste' ? 'red' : tarefa.status_novo === 'Aprovado com ajustes' ? 'blue' : 'transparent';
+            const bgColor = tarefa.status_novo === 'Em aprovação' ? 'green' :
+                tarefa.status_novo === 'Ajuste' ? 'red' :
+                    tarefa.status_novo === 'Aprovado com ajustes' ? 'blue' :
+                        'transparent';
+
             taskItem.innerHTML = `
                 <div class="task-info">
                     <h3 class="nome_funcao">${tarefa.nome_funcao}</h3><span class="colaborador">${tarefa.nome_colaborador}</span>
                     <p class="imagem_nome" data-obra="${tarefa.nome_obra}">${tarefa.imagem_nome}</p>
                     <p class="data_aprovacao">${formatarDataHora(tarefa.data_aprovacao)}</p>       
-                    <p id="status_funcao" style="background-color: ${bgColor};">${tarefa.status_novo}</p>
+                    <p id="status_funcao" style="background-color: ${bgColor}; color: white; padding: 4px 8px; border-radius: 4px;">${tarefa.status_novo}</p>
                 </div>
             `;
 
             tarefasImagensObra.appendChild(taskItem);
         });
     } else {
-        container.innerHTML = '<p style="text-align: center; color: #888;">Não há tarefas de revisão no momento.</p>';
+        tarefasImagensObra.innerHTML = '<p style="text-align: center; color: #888;">Não há tarefas de revisão no momento.</p>';
     }
+
+    // Exibe o drawer
+    drawer.classList.remove('hidden');
+    drawer.classList.add('visible');
 }
+
+// Fecha o drawer
+document.getElementById('fecharDrawer').addEventListener('click', () => {
+    const drawer = document.getElementById('drawerTarefas');
+    drawer.classList.remove('visible');
+    setTimeout(() => drawer.classList.add('hidden'), 300);
+});
 
 function formatarData(data) {
     const [ano, mes, dia] = data.split('-'); // Divide a string no formato 'YYYY-MM-DD'
@@ -367,6 +411,7 @@ const modalComment = document.getElementById('modalComment');
 
 const idusuario = parseInt(localStorage.getItem('idusuario')); // Obtém o idusuario do localStorage
 
+let funcaoImagemId = null; // armazenado globalmente
 
 function historyAJAX(idfuncao_imagem, funcao_nome, imagem_nome, colaborador_nome) {
     fetch(`historico.php?ajid=${idfuncao_imagem}`)
@@ -412,6 +457,7 @@ function historyAJAX(idfuncao_imagem, funcao_nome, imagem_nome, colaborador_nome
                 } else {
                     document.getElementById('buttons-task').innerHTML = ''; // Não exibe os botões para outros usuários
                 }
+
                 document.getElementById('add-imagem').addEventListener('click', () => {
                     funcaoImagemId = historico.funcao_imagem_id; // você já tem esse objeto
                     document.getElementById('imagem-modal').style.display = 'flex';
@@ -519,7 +565,6 @@ function historyAJAX(idfuncao_imagem, funcao_nome, imagem_nome, colaborador_nome
 
 
 
-
 document.querySelector('.close').addEventListener('click', () => {
     document.getElementById('imagem-modal').style.display = 'none';
     document.getElementById('input-imagens').value = '';
@@ -575,7 +620,6 @@ document.getElementById('btn-enviar-imagens').addEventListener('click', () => {
             alert('Erro na comunicação com o servidor.');
         });
 });
-
 
 function abrirMenuContexto(x, y, id, src) {
     const menu = document.getElementById('menuContexto');
@@ -709,7 +753,6 @@ function mostrarImagemCompleta(src, id) {
     });
 }
 
-
 // Capturar colagem de imagem no campo de texto
 document.getElementById('comentarioTexto').addEventListener('paste', function (event) {
     const items = (event.clipboardData || event.originalEvent.clipboardData).items;
@@ -740,20 +783,29 @@ document.getElementById('comentarioTexto').addEventListener('paste', function (e
     }
 });
 
-
-// Enviar comentário
+// Função para enviar o comentário
 document.getElementById('enviarComentario').onclick = async () => {
     const texto = document.getElementById('comentarioTexto').value.trim();
     const imagemFile = document.getElementById('imagemComentario').files[0];
 
-    if (!texto && !imagemFile) return;
+    if (!texto && !imagemFile) {
+        Toastify({
+            text: 'Escreva um comentário ou anexe uma imagem!',
+            duration: 3000,
+            backgroundColor: 'orange',
+            close: true,
+            gravity: "top",
+            position: "right"
+        }).showToast();
+        return;
+    }
 
     const formData = new FormData();
     formData.append('ap_imagem_id', ap_imagem_id);
     formData.append('x', relativeX);
     formData.append('y', relativeY);
     formData.append('texto', texto);
-    formData.append('mencionados', JSON.stringify(mencionadosIds)); // Envia os IDs mencionados
+    formData.append('mencionados', JSON.stringify(mencionadosIds));
 
     if (imagemFile) {
         formData.append('imagem', imagemFile);
@@ -766,6 +818,7 @@ document.getElementById('enviarComentario').onclick = async () => {
         });
 
         const result = await response.json();
+
         document.getElementById('comentarioModal').style.display = 'none';
 
         if (result.sucesso) {
@@ -778,10 +831,11 @@ document.getElementById('enviarComentario').onclick = async () => {
                 position: "left"
             }).showToast();
 
+            // Atualiza comentários
             renderComments(ap_imagem_id);
         } else {
             Toastify({
-                text: 'Erro ao salvar comentário!',
+                text: result.mensagem || 'Erro ao salvar comentário!',
                 duration: 3000,
                 backgroundColor: 'red',
                 close: true,
@@ -790,12 +844,19 @@ document.getElementById('enviarComentario').onclick = async () => {
             }).showToast();
         }
 
-        // Limpa os IDs após envio
+        // Limpa os mencionados depois do envio
         mencionadosIds = [];
 
     } catch (error) {
         console.error('Erro na requisição:', error);
-        alert('Ocorreu um erro ao tentar salvar o comentário.');
+        Toastify({
+            text: 'Erro de conexão! Tente novamente.',
+            duration: 3000,
+            backgroundColor: 'red',
+            close: true,
+            gravity: "top",
+            position: "left"
+        }).showToast();
     }
 };
 
@@ -860,7 +921,7 @@ async function renderComments(id) {
         const footer = document.createElement('div');
         footer.classList.add('comment-footer');
         footer.innerHTML = `
-            <div class="comment-date">${formatarDataHora(comentario.data)}</div>
+            <div class="comment-date">${comentario.data}</div>
             <div class="comment-actions">
                 <button class="comment-resp">&#8617</button>
                 <button class="comment-edit">✏️</button>
@@ -915,7 +976,6 @@ async function renderComments(id) {
             p.addEventListener('keydown', handleKeyDown);
         });
 
-
         const commentDiv = document.createElement('div');
         commentDiv.classList.add('comment');
         commentDiv.setAttribute('data-id', comentario.id);
@@ -931,6 +991,7 @@ async function renderComments(id) {
                 number.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
         });
+
         commentCard.addEventListener('click', () => {
             // Remove o highlight de todas as bolinhas
             document.querySelectorAll('.comment.highlight').forEach(n => n.classList.remove('highlight'));
@@ -942,6 +1003,7 @@ async function renderComments(id) {
                 number.classList.add('highlight');
             }
         });
+
 
         const respButton = commentCard.querySelector('.comment-resp');
 
@@ -1008,7 +1070,7 @@ function adicionarRespostaDOM(comentarioId, resposta) {
         <div class="resposta-nome"><span class="reply-icon">&#8617;</span>  ${resposta.nome_responsavel}</div>
         <div class="corpo-resposta">
             <div class="resposta-texto">${resposta.texto}</div>
-            <div class="resposta-data">${formatarDataHora(resposta.data)}</div>
+            <div class="resposta-data">${resposta.data}</div>
         </div>
     `;
     container.appendChild(respostaDiv);
@@ -1114,7 +1176,6 @@ btnBack.addEventListener('click', function () {
     comentariosDiv.innerHTML = '';
 });
 
-// Adiciona o evento para a tecla Esc
 document.addEventListener('keydown', function (event) {
     if (event.key === 'Escape') {
         const comentarioModal = document.getElementById("comentarioModal");
@@ -1135,12 +1196,9 @@ document.addEventListener('keydown', function (event) {
 
         const comentariosDiv = document.querySelector(".comentarios");
         comentariosDiv.innerHTML = '';
-
-        document.getElementById('imagem-modal').style.display = 'none';
-        document.getElementById('input-imagens').value = '';
-        document.getElementById('preview').innerHTML = '';
     }
 });
+
 
 const id_revisao = document.getElementById('id_revisao');
 
@@ -1256,5 +1314,6 @@ const id_revisao = document.getElementById('id_revisao');
 //             });
 //     } else {
 //         alert("Número de revisão é obrigatório!");
-//     }More actions
+//     }
 // });
+

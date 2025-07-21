@@ -342,17 +342,13 @@ document.getElementById('nome_funcao').addEventListener('change', () => {
 });
 
 // Função para exibir as tarefas e abastecer os filtros
-function exibirTarefas(tarefas) {
-    const container = document.querySelector('.containerObra');
-    const containerMain = document.querySelector('.container-main');
-    containerMain.classList.add('expanded');
+function exibirTarefas(tarefas, nomeObra = 'Obra Selecionada') {
+    const drawer = document.getElementById('drawerTarefas');
+    const tarefasImagensObra = drawer.querySelector('.tarefasImagensObra');
+    const titulo = document.getElementById('obraTitulo');
 
-    const tarefasObra = document.querySelector('.tarefasObra');
-    tarefasObra.classList.remove('hidden');
-
-    const tarefasImagensObra = document.querySelector('.tarefasImagensObra');
-
-    tarefasImagensObra.innerHTML = ''; // Limpa as tarefas anteriores
+    titulo.textContent = nomeObra;
+    tarefasImagensObra.innerHTML = '';
 
     if (tarefas.length > 0) {
         tarefas.forEach(tarefa => {
@@ -360,23 +356,37 @@ function exibirTarefas(tarefas) {
             taskItem.classList.add('task-item');
             taskItem.setAttribute('onclick', `historyAJAX(${tarefa.idfuncao_imagem}, '${tarefa.nome_funcao}', '${tarefa.imagem_nome}', '${tarefa.nome_colaborador}')`);
 
-            // Define a cor de fundo com base no status
-            const bgColor = tarefa.status_novo === 'Em aprovação' ? 'green' : tarefa.status_novo === 'Ajuste' ? 'red' : tarefa.status_novo === 'Aprovado com ajustes' ? 'blue' : 'transparent';
+            const bgColor = tarefa.status_novo === 'Em aprovação' ? 'green' :
+                tarefa.status_novo === 'Ajuste' ? 'red' :
+                    tarefa.status_novo === 'Aprovado com ajustes' ? 'blue' :
+                        'transparent';
+
             taskItem.innerHTML = `
                 <div class="task-info">
                     <h3 class="nome_funcao">${tarefa.nome_funcao}</h3><span class="colaborador">${tarefa.nome_colaborador}</span>
                     <p class="imagem_nome" data-obra="${tarefa.nome_obra}">${tarefa.imagem_nome}</p>
                     <p class="data_aprovacao">${formatarDataHora(tarefa.data_aprovacao)}</p>       
-                    <p id="status_funcao" style="background-color: ${bgColor};">${tarefa.status_novo}</p>
+                    <p id="status_funcao" style="background-color: ${bgColor}; color: white; padding: 4px 8px; border-radius: 4px;">${tarefa.status_novo}</p>
                 </div>
             `;
 
             tarefasImagensObra.appendChild(taskItem);
         });
     } else {
-        container.innerHTML = '<p style="text-align: center; color: #888;">Não há tarefas de revisão no momento.</p>';
+        tarefasImagensObra.innerHTML = '<p style="text-align: center; color: #888;">Não há tarefas de revisão no momento.</p>';
     }
+
+    // Exibe o drawer
+    drawer.classList.remove('hidden');
+    drawer.classList.add('visible');
 }
+
+// Fecha o drawer
+document.getElementById('fecharDrawer').addEventListener('click', () => {
+    const drawer = document.getElementById('drawerTarefas');
+    drawer.classList.remove('visible');
+    setTimeout(() => drawer.classList.add('hidden'), 300);
+});
 
 function formatarData(data) {
     const [ano, mes, dia] = data.split('-'); // Divide a string no formato 'YYYY-MM-DD'

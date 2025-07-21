@@ -4,22 +4,22 @@ Array
         (
             [name] => Array
                 (
-                    [0] => 27. LD_URB Living Apto Studio lateral unidade 4404B_P01_R00.psb
+                    [0] => 16. INO_TIM Dormitorio Apto tipo 1_016.zip
                 )
 
             [full_path] => Array
                 (
-                    [0] => 27. LD_URB Living Apto Studio lateral unidade 4404B_P01_R00.psb
+                    [0] => 16. INO_TIM Dormitorio Apto tipo 1_016.zip
                 )
 
             [type] => Array
                 (
-                    [0] => application/octet-stream
+                    [0] => application/x-zip-compressed
                 )
 
             [tmp_name] => Array
                 (
-                    [0] => C:\xampp\tmp\php1146.tmp
+                    [0] => C:\xampp\tmp\phpD3B1.tmp
                 )
 
             [error] => Array
@@ -29,7 +29,7 @@ Array
 
             [size] => Array
                 (
-                    [0] => 2503801210
+                    [0] => 344136355
                 )
 
         )

@@ -59,7 +59,15 @@ $conn->close();
     ?>
 
     <div class="container">
+        <button id="btnRelatorio">Relatório</button>
 
+        <!-- Modal simples para seleção de data -->
+        <div id="modalRelatorio" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%); background:#fff; padding:20px; border:1px solid #ccc; z-index:9999;">
+            <label>Data inicial: <input type="date" id="dataInicial"></label><br>
+            <label>Data final: <input type="date" id="dataFinal"></label><br>
+            <button id="gerarRelatorio">Gerar Relatório</button>
+            <button onclick="document.getElementById('modalRelatorio').style.display='none'">Fechar</button>
+        </div>
         <div style="display: flex; flex-wrap: wrap; margin: 10px;">
             <div class="total-box" id="totalREN" data-status="REN">Render: 0</div>
             <div class="total-box" id="totalFIN" data-status="FIN">Finalizadas: 0</div>
@@ -67,6 +75,7 @@ $conn->close();
             <div class="total-box" id="totalDRV" data-status="DRV">No Drive: 0</div>
             <div class="total-box" id="totalAtrasadas" data-situacao_prazo="Atrasada">Atrasadas: 0</div>
             <div class="total-box" id="totalPrazoHoje" data-prazo="hoje">Prazo Hoje: 0</div>
+            <div class="total-box" id="totalImagens" data-total="total">Total de imagens: 0</div>
         </div>
 
         <div id="tabelaGestaoImagens" style="margin: 10px;"></div>
@@ -83,6 +92,7 @@ $conn->close();
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="../script/sidebar.js"></script>
     <script src="../script/notificacoes.js"></script>
     <script src="../script/controleSessao.js"></script>

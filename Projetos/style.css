@@ -106,11 +106,54 @@ body {
     color: #664d03;
 }
 
+.tag.TEA {
+    background-color: #ffe283;
+    color: #443300;
+}
 .tag.DRV {
     background-color: #cfe2ff;
     color: #084298;
 }
-
+.tag.HOLD {
+    background-color: #ff9d9d;
+    color: #a30101;
+}
+.tag.OK, .tag.TO-DO {
+    background-color: #a4c9ff;
+    color: #002a69;
+}
+.tag.APR {
+    background-color: #ecafff;
+    color: #980898;
+}
+.tag.P00 {
+    background-color: #ffcd44;
+    color: #7e5d02;
+}
+.tag.R00 {
+    background-color: #c6fcff;
+    color: #07767c;
+}
+.tag.R01 {
+    background-color: #ffb384;
+    color: #923800;
+}
+.tag.R02 {
+    background-color: #ffa285;
+    color: #a02500;
+}
+.tag.R03 {
+    background-color: #ff9797;
+    color: #a71300;
+}
+.tag.R04 {
+    background-color: #ff8e8e;
+    color: #a10000;
+}
+.tag.EF {
+    background-color: #9eff91;
+    color: #1b7210;
+}
 /* Botão ações */
 .acao-btn {
     border: 1px solid #ced4da;

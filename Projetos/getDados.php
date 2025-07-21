@@ -18,7 +18,7 @@ $sql = 'SELECT
     JOIN status_imagem s ON i.status_id = s.idstatus
     LEFT JOIN substatus_imagem ss ON i.substatus_id = ss.id
     WHERE o.status_obra = 0
-    ORDER BY o.nomenclatura, i.prazo, i.status_id;
+    ORDER BY  o.nomenclatura, i.idimagens_cliente_obra, i.prazo, i.status_id;
 ';
 
 // Executa a consulta
@@ -34,7 +34,8 @@ $indicadores = [
     'RVW' => 0,
     'DRV' => 0,
     'atrasadas' => 0,
-    'prazo_hoje' => 0
+    'prazo_hoje' => 0,
+    'total' => 0
 ];
 while ($row = $result->fetch_assoc()) {
     $data[] = [
@@ -47,6 +48,8 @@ while ($row = $result->fetch_assoc()) {
         'situacao'            => $row['situacao'],
         'obra'                => $row['nomenclatura']
     ];
+
+    $indicadores['total']++;
 
     $prazoRaw = $row['prazo'];
     $substatus = $row['situacao'];

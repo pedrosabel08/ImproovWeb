@@ -4,22 +4,22 @@ Array
         (
             [name] => Array
                 (
-                    [0] => 10. INO_MAR Quiosque_P01_R01.jpg
+                    [0] => 27. LD_URB Living Apto Studio lateral unidade 4404B_P01_R00.psb
                 )
 
             [full_path] => Array
                 (
-                    [0] => 10. INO_MAR Quiosque_P01_R01.jpg
+                    [0] => 27. LD_URB Living Apto Studio lateral unidade 4404B_P01_R00.psb
                 )
 
             [type] => Array
                 (
-                    [0] => image/jpeg
+                    [0] => application/octet-stream
                 )
 
             [tmp_name] => Array
                 (
-                    [0] => C:\xampp\tmp\php8D82.tmp
+                    [0] => C:\xampp\tmp\php1146.tmp
                 )
 
             [error] => Array
@@ -29,7 +29,7 @@ Array
 
             [size] => Array
                 (
-                    [0] => 1856433
+                    [0] => 2503801210
                 )
 
         )

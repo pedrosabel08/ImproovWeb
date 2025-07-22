@@ -103,6 +103,149 @@ let todosOsColaboradores = new Set();
 let todasAsFuncoes = new Set();
 let funcaoGlobalSelecionada = null;
 
+function popularTabelaLateralComGrupos(dados) {
+    // Extrai funções e colaboradores únicos
+    const funcoes = [...new Set(dados.map(d => d.nome_funcao))];
+    const colaboradores = [...new Set(dados.map(d => d.nome_colaborador))];
+
+    // Popula o select de funções
+    const selectFuncao = document.getElementById('selectFuncao');
+    selectFuncao.innerHTML = '<option value="">Todas as funções</option>';
+    funcoes.forEach(funcao => {
+        const option = document.createElement('option');
+        option.value = funcao;
+        option.textContent = funcao;
+        selectFuncao.appendChild(option);
+    });
+
+    // Popula o select de colaboradores
+    const selectColaborador = document.getElementById('selectColaborador');
+    selectColaborador.innerHTML = '<option value="">Todos os colaboradores</option>';
+    colaboradores.forEach(colab => {
+        const option = document.createElement('option');
+        option.value = colab;
+        option.textContent = colab;
+        selectColaborador.appendChild(option);
+    });
+
+    // Dados para a tabela
+    let linhas = dados.map(d => ({
+        obra: d.nome_obra,
+        funcao: d.nome_funcao,
+        colaborador: d.nome_colaborador,
+        imagem: d.imagem_nome,
+        idfuncao_imagem: d.idfuncao_imagem
+    }));
+
+    // Função para filtrar e atualizar a tabela
+    function filtrarTabela() {
+        const funcaoSelecionada = selectFuncao.value;
+        const colaboradorSelecionado = selectColaborador.value;
+        const filtrados = linhas.filter(l =>
+            (funcaoSelecionada === "" || l.funcao === funcaoSelecionada) &&
+            (colaboradorSelecionado === "" || l.colaborador === colaboradorSelecionado)
+        );
+        tabela.setData(filtrados);
+    }
+
+    // Cria a tabela Tabulator
+    const tabela = new Tabulator("#tabelaLateral", {
+        data: linhas,
+        layout: "fitColumns",
+        height: "100%",
+        groupBy: ["obra", "funcao"],
+        groupToggleElement: "header",
+        groupHeader: function (value, count, data, group) {
+            const field = group.getField();
+            if (field === "obra") {
+                return `<b>Obra:</b> ${value} <span style="color:#888;">(${count} imagens)</span>`;
+            }
+            if (field === "funcao") {
+                return `<b>Função:</b> ${value} <span style="color:#888;">(${count} imagens)</span>`;
+            }
+            return value;
+        },
+        groupStartOpen: false,
+        columns: [
+            { title: "Obra", field: "obra", visible: false },
+            { title: "Função", field: "funcao", visible: false },
+            { title: "Colaborador", field: "colaborador", visible: false },
+            {
+                title: "Imagem",
+                field: "imagem",
+                headerSort: false,
+                formatter: function (cell) {
+                    const data = cell.getData();
+                    return `<span class="imagem-cell" data-id="${data.idfuncao_imagem}">${data.imagem}</span>`;
+                }
+            }
+        ],
+    });
+
+    // Eventos para filtrar ao mudar os selects
+    selectFuncao.addEventListener('change', filtrarTabela);
+    selectColaborador.addEventListener('change', filtrarTabela);
+}
+
+document.getElementById("tabelaLateral").addEventListener("click", function (e) {
+    const target = e.target.closest(".imagem-cell");
+    if (target) {
+        const id = target.dataset.id;
+        if (id) {
+            historyAJAX(id);
+        }
+    }
+});
+
+let previewInterval = null;
+let previewImagens = []; // Array com os caminhos das imagens mais novas
+let previewIndex = 0;
+
+// Função para iniciar o preview automático
+function iniciarPreviewAutomatico(imagens) {
+    // Ordena da mais nova para a mais antiga usando data_aprovacao
+    imagens.sort((a, b) => new Date(b.data_aprovacao) - new Date(a.data_aprovacao));
+    previewImagens = imagens;
+    previewIndex = 0;
+
+
+    if (previewInterval) clearInterval(previewInterval);
+
+    mostrarPreviewImagem();
+
+    previewInterval = setInterval(() => {
+        previewIndex = (previewIndex + 1) % previewImagens.length;
+        mostrarPreviewImagem();
+    }, 15000); // Troca a cada 3 segundos
+}
+
+
+// Função para mostrar a imagem atual no container
+function mostrarPreviewImagem() {
+    const imageWrapper = document.getElementById("image_wrapper");
+    imageWrapper.innerHTML = "";
+    if (previewImagens.length === 0) return;
+
+    const img = document.createElement("img");
+    img.src = "../" + previewImagens[previewIndex].imagem;
+    img.style.width = "100%";
+    img.style.borderRadius = "10px";
+    img.style.opacity = "0.7";
+    img.title = "Preview automático";
+
+    imageWrapper.appendChild(img);
+}
+
+// Função para parar o preview automático (chame quando o usuário selecionar uma imagem)
+function pararPreviewAutomatico() {
+    if (previewInterval) {
+        clearInterval(previewInterval);
+        previewInterval = null;
+    }
+    previewImagens = [];
+}
+
+
 async function fetchObrasETarefas() {
     try {
         const response = await fetch(`atualizar.php`);
@@ -114,279 +257,13 @@ async function fetchObrasETarefas() {
         todosOsColaboradores = new Set(dadosTarefas.map(t => t.nome_colaborador));
         todasAsFuncoes = new Set(dadosTarefas.map(t => t.nome_funcao)); // ou o nome do campo correspondente
 
-        exibirCardsDeObra(dadosTarefas); // Mostra os cards
-
-        const filtroSelect = document.getElementById('filtroFuncao');
-        filtroSelect.style.display = 'block'; // Exibe o filtro de função
-        filtroSelect.innerHTML = '<option value="">Todas as funções</option>';
-
-        todasAsFuncoes.forEach(funcao => {
-            const option = document.createElement('option');
-            option.value = funcao;
-            option.textContent = funcao;
-            filtroSelect.appendChild(option);
-        });
-
-        document.getElementById('filtroFuncao').addEventListener('change', (event) => {
-            funcaoGlobalSelecionada = event.target.value || null;
-
-            const tarefasFiltradas = funcaoGlobalSelecionada
-                ? dadosTarefas.filter(t => t.nome_funcao === funcaoGlobalSelecionada)
-                : dadosTarefas;
-
-            exibirCardsDeObra(tarefasFiltradas);
-        });
+        popularTabelaLateralComGrupos(dadosTarefas);
+        iniciarPreviewAutomatico(dadosTarefas.filter(d => d.imagem && d.data_aprovacao));
 
     } catch (error) {
         console.error(error);
     }
 }
-
-async function buscarMencoesDoUsuario() {
-    const response = await fetch('buscar_mencoes.php');
-    return await response.json();
-}
-
-async function exibirCardsDeObra(tarefas) {
-    const mencoes = await buscarMencoesDoUsuario();
-
-    if (mencoes.total_mencoes > 0) {
-        Swal.fire({
-            title: '📣 Você foi mencionado!',
-            text: `Há ${mencoes.total_mencoes} menção(ões) nas tarefas.`,
-            icon: 'info',
-            confirmButtonText: 'Ver cards'
-        });
-    }
-
-    const container = document.querySelector('.containerObra');
-    container.innerHTML = '';
-
-    const obrasMap = new Map();
-    tarefas.forEach(tarefa => {
-        if (!obrasMap.has(tarefa.nome_obra)) {
-            obrasMap.set(tarefa.nome_obra, []);
-        }
-        obrasMap.get(tarefa.nome_obra).push(tarefa);
-    });
-
-    obrasMap.forEach((tarefasDaObra, nome_obra) => {
-        tarefasDaObra.sort((a, b) => new Date(b.data_aprovacao) - new Date(a.data_aprovacao));
-        const tarefaComImagem = tarefasDaObra.find(t => t.imagem);
-        const imagemPreview = tarefaComImagem ? `../${tarefaComImagem.imagem}` : '../assets/logo.jpg';
-
-        const mencoesNaObra = mencoes.mencoes_por_obra[nome_obra] || 0;
-
-        const card = document.createElement('div');
-        card.classList.add('obra-card');
-
-        card.innerHTML = `
-        ${mencoesNaObra > 0 ? `<div class="mencao-badge">${mencoesNaObra}</div>` : ''}
-        <div class="obra-img-preview">
-            <img src="${imagemPreview}" alt="Imagem da obra ${nome_obra}">
-        </div>
-        <div class="obra-info">
-            <h3>${tarefasDaObra[0].nomenclatura}</h3>
-            <p>${tarefasDaObra.length} aprovações</p>
-        </div>
-    `;
-
-        card.addEventListener('click', () => {
-            filtrarTarefasPorObra(nome_obra);
-        });
-
-        container.appendChild(card);
-    });
-}
-
-function filtrarTarefasPorObra(obraSelecionada) {
-
-    document.getElementById('filtro_obra').value = obraSelecionada;
-
-    // Filtra todas as tarefas da obra
-    const tarefasDaObra = dadosTarefas.filter(t => t.nome_obra === obraSelecionada);
-
-    // Atualiza os filtros dinamicamente com base nessa obra
-    atualizarFiltrosDinamicos(tarefasDaObra);
-
-    // Captura os novos valores dos selects após atualização
-    const colaboradorSelecionado = document.getElementById('filtro_colaborador').value;
-    let funcaoSelecionada = document.getElementById('nome_funcao').value;
-
-    // Se houver filtro global ativo, aplica e reflete visualmente
-    if (funcaoGlobalSelecionada) {
-        funcaoSelecionada = funcaoGlobalSelecionada;
-
-        const selectFuncao = document.getElementById('nome_funcao');
-        const opcoes = Array.from(selectFuncao.options).map(opt => opt.value);
-        if (opcoes.includes(funcaoGlobalSelecionada)) {
-            selectFuncao.value = funcaoGlobalSelecionada;
-        }
-    }
-
-    // Aplica os filtros adicionais (colaborador e função)
-    const tarefasFiltradas = tarefasDaObra.filter(t => {
-        const matchColaborador = !colaboradorSelecionado || t.nome_colaborador === colaboradorSelecionado;
-        const matchFuncao = funcaoSelecionada === 'Todos' || t.nome_funcao === funcaoSelecionada;
-        return matchColaborador && matchFuncao;
-    });
-
-    // Exibe as tarefas filtradas
-    exibirTarefas(tarefasFiltradas);
-}
-
-function atualizarSelectColaborador(tarefas) {
-    const selectColaborador = document.getElementById('filtro_colaborador');
-    const valorAnterior = selectColaborador.value;
-
-    const colaboradores = [...new Set(tarefas.map(t => t.nome_colaborador))];
-
-    selectColaborador.innerHTML = '<option value="">Todos</option>';
-    colaboradores.forEach(colab => {
-        const option = document.createElement('option');
-        option.value = colab;
-        option.textContent = colab;
-        selectColaborador.appendChild(option);
-    });
-
-    if ([...selectColaborador.options].some(o => o.value === valorAnterior)) {
-        selectColaborador.value = valorAnterior;
-    }
-}
-
-function atualizarSelectFuncao(tarefas) {
-    const selectFuncao = document.getElementById('nome_funcao');
-    const valorAnterior = selectFuncao.value;
-
-    const funcoes = [...new Set(tarefas.map(t => t.nome_funcao))];
-
-    selectFuncao.innerHTML = '<option value="Todos">Todos</option>';
-    funcoes.forEach(funcao => {
-        const option = document.createElement('option');
-        option.value = funcao;
-        option.textContent = funcao;
-        selectFuncao.appendChild(option);
-    });
-
-    if ([...selectFuncao.options].some(o => o.value === valorAnterior)) {
-        selectFuncao.value = valorAnterior;
-    }
-}
-
-// Eventos para os filtros
-function atualizarFiltrosDinamicos(tarefas) {
-    const selectColaborador = document.getElementById('filtro_colaborador');
-    const selectFuncao = document.getElementById('nome_funcao');
-
-    // Salva os valores antes de atualizar
-    const valorAnteriorColaborador = selectColaborador.value;
-    const valorAnteriorFuncao = selectFuncao.value;
-
-    const colaboradores = [...new Set(tarefas.map(t => t.nome_colaborador))];
-    const funcoes = [...new Set(tarefas.map(t => t.nome_funcao))];
-
-    // Atualiza select de colaborador
-    selectColaborador.innerHTML = '<option value="">Todos</option>';
-    colaboradores.forEach(colaborador => {
-        const option = document.createElement('option');
-        option.value = colaborador;
-        option.textContent = colaborador;
-        selectColaborador.appendChild(option);
-    });
-
-    // Atualiza select de função
-    selectFuncao.innerHTML = '<option value="Todos">Todos</option>';
-    funcoes.forEach(funcao => {
-        const option = document.createElement('option');
-        option.value = funcao;
-        option.textContent = funcao;
-        selectFuncao.appendChild(option);
-    });
-
-    // Reatribui os valores anteriores (se ainda existirem nas opções)
-    if ([...selectColaborador.options].some(o => o.value === valorAnteriorColaborador)) {
-        selectColaborador.value = valorAnteriorColaborador;
-    }
-
-    if ([...selectFuncao.options].some(o => o.value === valorAnteriorFuncao)) {
-        selectFuncao.value = valorAnteriorFuncao;
-    }
-}
-
-document.getElementById('filtro_colaborador').addEventListener('change', () => {
-    const obraSelecionada = document.getElementById('filtro_obra').value;
-    const colaboradorSelecionado = document.getElementById('filtro_colaborador').value;
-
-    const tarefasDaObra = dadosTarefas.filter(t => t.nome_obra === obraSelecionada);
-    const tarefasFiltradas = tarefasDaObra.filter(t =>
-        !colaboradorSelecionado || t.nome_colaborador === colaboradorSelecionado
-    );
-
-    atualizarSelectFuncao(tarefasFiltradas); // atualiza o outro filtro com base nesse
-
-    filtrarTarefasPorObra(obraSelecionada);
-});
-
-document.getElementById('nome_funcao').addEventListener('change', () => {
-    const obraSelecionada = document.getElementById('filtro_obra').value;
-    const funcaoSelecionada = document.getElementById('nome_funcao').value;
-
-    const tarefasDaObra = dadosTarefas.filter(t => t.nome_obra === obraSelecionada);
-    const tarefasFiltradas = tarefasDaObra.filter(t =>
-        funcaoSelecionada === 'Todos' || t.nome_funcao === funcaoSelecionada
-    );
-
-    atualizarSelectColaborador(tarefasFiltradas); // atualiza o outro filtro com base nesse
-
-    filtrarTarefasPorObra(obraSelecionada);
-});
-
-// Função para exibir as tarefas e abastecer os filtros
-function exibirTarefas(tarefas, nomeObra = 'Obra Selecionada') {
-    const drawer = document.getElementById('drawerTarefas');
-    const tarefasImagensObra = drawer.querySelector('.tarefasImagensObra');
-    const titulo = document.getElementById('obraTitulo');
-
-    titulo.textContent = nomeObra;
-    tarefasImagensObra.innerHTML = '';
-
-    if (tarefas.length > 0) {
-        tarefas.forEach(tarefa => {
-            const taskItem = document.createElement('div');
-            taskItem.classList.add('task-item');
-            taskItem.setAttribute('onclick', `historyAJAX(${tarefa.idfuncao_imagem}, '${tarefa.nome_funcao}', '${tarefa.imagem_nome}', '${tarefa.nome_colaborador}')`);
-
-            const bgColor = tarefa.status_novo === 'Em aprovação' ? 'green' :
-                tarefa.status_novo === 'Ajuste' ? 'red' :
-                    tarefa.status_novo === 'Aprovado com ajustes' ? 'blue' :
-                        'transparent';
-
-            taskItem.innerHTML = `
-                <div class="task-info">
-                    <h3 class="nome_funcao">${tarefa.nome_funcao}</h3><span class="colaborador">${tarefa.nome_colaborador}</span>
-                    <p class="imagem_nome" data-obra="${tarefa.nome_obra}">${tarefa.imagem_nome}</p>
-                    <p class="data_aprovacao">${formatarDataHora(tarefa.data_aprovacao)}</p>       
-                    <p id="status_funcao" style="background-color: ${bgColor}; color: white; padding: 4px 8px; border-radius: 4px;">${tarefa.status_novo}</p>
-                </div>
-            `;
-
-            tarefasImagensObra.appendChild(taskItem);
-        });
-    } else {
-        tarefasImagensObra.innerHTML = '<p style="text-align: center; color: #888;">Não há tarefas de revisão no momento.</p>';
-    }
-
-    // Exibe o drawer
-    drawer.classList.remove('hidden');
-    drawer.classList.add('visible');
-}
-
-// Fecha o drawer
-document.getElementById('fecharDrawer').addEventListener('click', () => {
-    const drawer = document.getElementById('drawerTarefas');
-    drawer.classList.remove('visible');
-    setTimeout(() => drawer.classList.add('hidden'), 300);
-});
 
 function formatarData(data) {
     const [ano, mes, dia] = data.split('-'); // Divide a string no formato 'YYYY-MM-DD'
@@ -413,27 +290,10 @@ const idusuario = parseInt(localStorage.getItem('idusuario')); // Obtém o idusu
 
 let funcaoImagemId = null; // armazenado globalmente
 
-function historyAJAX(idfuncao_imagem, funcao_nome, imagem_nome, colaborador_nome) {
+function historyAJAX(idfuncao_imagem) {
     fetch(`historico.php?ajid=${idfuncao_imagem}`)
         .then(response => response.json())
         .then(response => {
-
-            const titulo = document.getElementById('funcao_nome');
-            titulo.textContent = `${colaborador_nome} - ${funcao_nome}`;
-            // document.getElementById("id_funcao").value = idfuncao_imagem;
-            document.getElementById("imagem_nome").textContent = imagem_nome;
-            // document.getElementById("funcao_nome").textContent = funcao_nome;
-            // document.getElementById("colaborador_nome").textContent = colaborador_nome;
-
-            // Exibir o modal
-            // const modal = document.getElementById('historico_modal');
-            // modal.style.display = 'grid';
-            const main = document.querySelector('.main');
-            main.classList.add('hidden');
-
-            const container_aprovacao = document.querySelector('.container-aprovacao');
-            container_aprovacao.classList.remove('hidden');
-
 
             const { historico, imagens } = response;
 
@@ -458,11 +318,26 @@ function historyAJAX(idfuncao_imagem, funcao_nome, imagem_nome, colaborador_nome
                     document.getElementById('buttons-task').innerHTML = ''; // Não exibe os botões para outros usuários
                 }
 
+                const titulo = document.getElementById('funcao_nome');
+                titulo.textContent = `${historico.colaborador_nome} - ${historico.nome_funcao}`;
+                // document.getElementById("id_funcao").value = idfuncao_imagem;
+                document.getElementById("imagem_nome").textContent = historico.imagem_nome;
+
                 document.getElementById('add-imagem').addEventListener('click', () => {
                     funcaoImagemId = historico.funcao_imagem_id; // você já tem esse objeto
                     document.getElementById('imagem-modal').style.display = 'flex';
                 });
             });
+
+            // Ordene por data_envio (ou outro campo que indique a ordem)
+            if (imagens && imagens.length > 0) {
+                // Supondo que data_envio seja crescente, a última é a mais recente
+                imagens.sort((a, b) => new Date(a.data_envio) - new Date(b.data_envio));
+                const ultimaImagem = imagens[imagens.length - 1];
+                if (ultimaImagem) {
+                    mostrarImagemCompleta(`../${ultimaImagem.imagem}`, ultimaImagem.id);
+                }
+            }
             // Renderizar as imagens
             const imageContainer = document.getElementById('imagens');
             imageContainer.innerHTML = ''; // Limpa as imagens anteriores
@@ -717,6 +592,8 @@ let ap_imagem_id = null; // Variável para armazenar o ID da imagem atual
 
 // Mostra imagem e abre modal
 function mostrarImagemCompleta(src, id) {
+    pararPreviewAutomatico();
+
     ap_imagem_id = id;
 
     const imageWrapper = document.getElementById("image_wrapper");
@@ -1161,43 +1038,43 @@ function fecharImagemModal() {
 
 
 
-const btnBack = document.getElementById('btnBack');
-btnBack.addEventListener('click', function () {
-    const main = document.querySelector('.main');
-    main.classList.remove('hidden');
+// const btnBack = document.getElementById('btnBack');
+// btnBack.addEventListener('click', function () {
+//     const main = document.querySelector('.main');
+//     main.classList.remove('hidden');
 
-    const container_aprovacao = document.querySelector('.container-aprovacao');
-    container_aprovacao.classList.add('hidden');
+//     const container_aprovacao = document.querySelector('.container-aprovacao');
+//     container_aprovacao.classList.add('hidden');
 
-    const imagemWrapperDiv = document.querySelector(".image_wrapper");
-    imagemWrapperDiv.innerHTML = '';
+//     const imagemWrapperDiv = document.querySelector(".image_wrapper");
+//     imagemWrapperDiv.innerHTML = '';
 
-    const comentariosDiv = document.querySelector(".comentarios");
-    comentariosDiv.innerHTML = '';
-});
+//     const comentariosDiv = document.querySelector(".comentarios");
+//     comentariosDiv.innerHTML = '';
+// });
 
-document.addEventListener('keydown', function (event) {
-    if (event.key === 'Escape') {
-        const comentarioModal = document.getElementById("comentarioModal");
+// document.addEventListener('keydown', function (event) {
+//     if (event.key === 'Escape') {
+//         const comentarioModal = document.getElementById("comentarioModal");
 
-        if (comentarioModal.style.display === 'flex') {
-            comentarioModal.style.display = 'none';
-            return; // Interrompe aqui se o modal estava visível
-        }
+//         if (comentarioModal.style.display === 'flex') {
+//             comentarioModal.style.display = 'none';
+//             return; // Interrompe aqui se o modal estava visível
+//         }
 
-        const main = document.querySelector('.main');
-        main.classList.remove('hidden');
+//         const main = document.querySelector('.main');
+//         main.classList.remove('hidden');
 
-        const container_aprovacao = document.querySelector('.container-aprovacao');
-        container_aprovacao.classList.add('hidden');
+//         const container_aprovacao = document.querySelector('.container-aprovacao');
+//         container_aprovacao.classList.add('hidden');
 
-        const imagemWrapperDiv = document.querySelector(".image_wrapper");
-        imagemWrapperDiv.innerHTML = '';
+//         const imagemWrapperDiv = document.querySelector(".image_wrapper");
+//         imagemWrapperDiv.innerHTML = '';
 
-        const comentariosDiv = document.querySelector(".comentarios");
-        comentariosDiv.innerHTML = '';
-    }
-});
+//         const comentariosDiv = document.querySelector(".comentarios");
+//         comentariosDiv.innerHTML = '';
+//     }
+// });
 
 
 const id_revisao = document.getElementById('id_revisao');

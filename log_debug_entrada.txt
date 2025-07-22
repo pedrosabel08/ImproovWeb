@@ -4,22 +4,22 @@ Array
         (
             [name] => Array
                 (
-                    [0] => 16. INO_TIM Dormitorio Apto tipo 1_016.zip
+                    [0] => 23. LD_URB Suíte 4301 B_R00.psb
                 )
 
             [full_path] => Array
                 (
-                    [0] => 16. INO_TIM Dormitorio Apto tipo 1_016.zip
+                    [0] => 23. LD_URB Suíte 4301 B_R00.psb
                 )
 
             [type] => Array
                 (
-                    [0] => application/x-zip-compressed
+                    [0] => application/octet-stream
                 )
 
             [tmp_name] => Array
                 (
-                    [0] => C:\xampp\tmp\phpD3B1.tmp
+                    [0] => C:\xampp\tmp\php1580.tmp
                 )
 
             [error] => Array
@@ -29,7 +29,7 @@ Array
 
             [size] => Array
                 (
-                    [0] => 344136355
+                    [0] => 6576157946
                 )
 
         )

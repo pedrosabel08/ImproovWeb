@@ -41,11 +41,14 @@ a {
     border-bottom: 1px solid;
 }
 
-.main {
+.main,
+.container-aprovacao {
+    display: flex;
+    flex-direction: column;
     grid-column: 2;
-    display: grid;
-    grid-template-columns: 0.2fr 1fr;
+    overflow-x: auto;
 }
+
 
 .contagem {
     text-align: center;
@@ -123,7 +126,7 @@ h2 {
     justify-content: space-between;
     transition: transform 0.2s ease, background-color 0.3s ease;
     position: relative;
-    width: 30%;
+    width: 20%;
     height: fit-content;
     cursor: pointer;
 }
@@ -773,7 +776,8 @@ h2#dataEnvio {
     justify-content: center;
 }
 
-.obra-img-preview img {
+.obra-img-preview img,
+.task-image {
     width: 90%;
     height: 200px;
     object-fit: cover;
@@ -1061,37 +1065,6 @@ p.imagem_nome {
     color: white;
 }
 
-
-.drawer {
-    position: fixed;
-    top: 0;
-    right: 0;
-    width: 400px;
-    height: 100vh;
-    background: #fff;
-    box-shadow: -4px 0 12px rgba(0, 0, 0, 0.1);
-    transform: translateX(100%);
-    transition: transform 0.3s ease-in-out;
-    z-index: 1000;
-    overflow-y: auto;
-}
-
-.drawer-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-    border-bottom: 1px solid #eee;
-}
-
-.drawer.visible {
-    transform: translateX(0%);
-}
-
-.drawer.hidden {
-    transform: translateX(100%);
-}
-
 .task-item {
     padding: 12px;
     margin-bottom: 10px;
@@ -1102,4 +1075,46 @@ p.imagem_nome {
 
 .task-item:hover {
     background-color: #eee;
+}
+
+.image-wrapper {
+    width: 100%;
+    height: 200px;
+    overflow: hidden;
+    border-radius: 8px;
+}
+
+.image-wrapper img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.image-wrapper:hover img {
+    transform: scale(1.07);
+}
+
+nav.breadcrumb-nav {
+    position: absolute;
+    top: 0;
+    font-size: 14px;
+}
+
+.breadcrumb-nav a {
+    text-decoration: none;
+    color: #333;
+    position: relative;
+    margin-right: 10px;
+}
+
+.breadcrumb-nav a::after {
+    content: '>';
+    margin-left: 10px;
+    color: #999;
+}
+
+.breadcrumb-nav a:last-child::after {
+    content: '';
+    /* Remove o > do último link */
 }

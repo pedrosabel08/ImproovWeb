@@ -27,6 +27,7 @@ try {
             u.id_slack,
             o.nome_obra,
             o.nomenclatura,
+            o.idobra,
             (SELECT MAX(h.data_aprovacao)
              FROM historico_aprovacoes h
              WHERE h.funcao_imagem_id = f.idfuncao_imagem) AS data_aprovacao,

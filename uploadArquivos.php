@@ -72,7 +72,6 @@ function uploadImagem($imagem, $destino, $nomeFinalSemExtensao)
 function sanitizeFilename($str)
 {
     $str = normalizeAcentos($str);
-    $str = mb_strtoupper($str, 'UTF-8');
     $str = preg_replace('/[\/\\\:*?"<>|]/', '', $str); // remove caracteres perigosos
     $str = preg_replace('/\s+/', '_', $str); // substitui espaços por "_"
     return $str;
@@ -100,7 +99,7 @@ if (isset($_FILES['imagens'])) {
 
 
         if ($nomeFuncao === 'Pós-Produção') {
-            $nomeFinalSemExt = "{$nomeImagemSanitizado}_{$status_nome}";
+            $nomeFinalSemExt = "{$nomeImagemSanitizado}_{$status_nome}_{$indice_envio}_{$numeroPrevia}";
         } else {
             $nomeFinalSemExt = "{$numeroImagem}.{$nomenclatura}-{$processo}-{$indice_envio}-{$numeroPrevia}";
         }

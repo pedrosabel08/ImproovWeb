@@ -41,12 +41,10 @@ a {
     border-bottom: 1px solid;
 }
 
-.main,
-.container-aprovacao {
-    display: flex;
-    flex-direction: column;
+.main {
     grid-column: 2;
-    overflow-x: auto;
+    display: grid;
+    grid-template-columns: 0.2fr 1fr;
 }
 
 .contagem {

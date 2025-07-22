@@ -31,7 +31,6 @@ $idusuario = $_SESSION['idusuario'];
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
     <link rel="stylesheet" href="https://unpkg.com/tributejs@5.1.3/dist/tribute.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
-    <link href="https://unpkg.com/tabulator-tables@5.4.3/dist/css/tabulator.min.css" rel="stylesheet">
 
     <title>Flow Review</title>
 </head>
@@ -68,59 +67,90 @@ $idusuario = $_SESSION['idusuario'];
 
     <div class="main">
 
-        <div style="display: flex; flex-direction: column; height: 100%;">
-            <div style="margin-bottom: 10px; display: flex; gap: 10px;">
-                <select id="selectFuncao">
-                    <option value="">Todas as funções</option>
-                </select>
-                <select id="selectColaborador">
-                    <option value="">Todos os colaboradores</option>
-                </select>
+
+
+        <div class="container-main">
+            <select id="filtroFuncao" style="display: none;">
+                <option value="">Todas as funções</option>
+            </select>
+            <div class="containerObra">
             </div>
-            <div id="tabelaLateral" style="flex: 1 1 0%;"></div>
-        </div>
-
-        <div class="container-aprovacao">
-            <header>
-                <div class="task-info" id="task-info">
-                    <h3 id="funcao_nome"></h3>
-                    <h3 id="colaborador_nome"></h3>
-                    <p id="imagem_nome"></p>
-                    <div id="buttons-task">
-
+            <div class="tarefasObra hidden">
+                <div class="header">
+                    <nav class="breadcrumb-nav">
+                        <a href="https://improov.com.br/sistema/Revisao/index2.php">Flow Review</a>
+                        <a id="obra_id_nav" href="https://improov.com.br/sistema/Revisao/index2.php?obra_id=''">Obra</a>
+                    </nav>
+                    <div class="filtros">
+                        <div>
+                            <label for="nome_funcao">Função:</label>
+                            <select name="nome_funcao" id="nome_funcao"></select>
+                        </div>
+                        <div>
+                            <label for="filtro_colaborador">Colaborador:</label>
+                            <select name="filtro_colaborador" id="filtro_colaborador"></select>
+                        </div>
+                        <input type="hidden" name="filtro_obra" id="filtro_obra">
                     </div>
-
+                    <!-- 
+                    <div class="alternar">
+                        <button onclick="fetchObrasETarefas('Todos', 'Em aprovação')">Em aprovação</button>
+                        <button onclick="fetchObrasETarefas('Todos', 'Ajuste')">Ajuste</button>
+                    </div> -->
                 </div>
-                <div>
-                    <button id="add-imagem" class="tooltip" data-tooltip="Adicionar imagem" style="transform: translateX(-90%);">+</button>
-                </div>
-            </header>
-
-            <div class="nav-select">
-
-                <select id="indiceSelect">
-                </select>
-                <div>
-                    <h2 id="dataEnvio"></h2>
-                </div>
-            </div>
-            <nav>
-                <div id="imagens"></div>
-            </nav>
-
-            <div class="imagens">
-                <div id="imagem_completa">
-                    <div id="image_wrapper" class="image_wrapper">
-                    </div>
-                </div>
-                <div class="sidebar-direita">
-                    <h3>Comentários</h3>
-                    <div class="comentarios"></div>
-                </div>
+                <div class="tarefasImagensObra"></div>
             </div>
         </div>
     </div>
 
+    <div class="container-aprovacao hidden">
+        <header>
+            <button id="btnBack"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon turn-left-arrow" viewBox="0 0 24 24">
+                    <path d="M9 14L4 9l5-5" />
+                    <path d="M20 20v-7a4 4 0 0 0-4-4H4" />
+                </svg>
+            </button>
+            <nav class="breadcrumb-nav">
+                <a href="https://improov.com.br/sistema/Revisao/index2.php">Flow Review</a>
+                <a id="obra_id_nav" href="https://improov.com.br/sistema/Revisao/index2.php?obra_id=''">Obra</a>
+            </nav>
+            <div class="task-info" id="task-info">
+                <h3 id="funcao_nome"></h3>
+                <h3 id="colaborador_nome"></h3>
+                <p id="imagem_nome"></p>
+                <div id="buttons-task">
+
+                </div>
+
+            </div>
+            <div>
+                <button id="add-imagem" class="tooltip" data-tooltip="Adicionar imagem" style="transform: translateX(-90%);">+</button>
+            </div>
+        </header>
+
+        <div class="nav-select">
+
+            <select id="indiceSelect">
+            </select>
+            <div>
+                <h2 id="dataEnvio"></h2>
+            </div>
+        </div>
+        <nav>
+            <div id="imagens"></div>
+        </nav>
+
+        <div class="imagens">
+            <div id="imagem_completa">
+                <div id="image_wrapper" class="image_wrapper">
+                </div>
+            </div>
+            <div class="sidebar-direita">
+                <h3>Comentários</h3>
+                <div class="comentarios"></div>
+            </div>
+        </div>
+    </div>
     <ul id="menuContexto">
         <li onclick="excluirImagem()">Excluir <span>🗑️</span></li>
     </ul>
@@ -159,7 +189,6 @@ $idusuario = $_SESSION['idusuario'];
     <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
     <script src="https://unpkg.com/tributejs@5.1.3/dist/tribute.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="https://unpkg.com/tabulator-tables@5.4.3/dist/js/tabulator.min.js"></script>
 
     <script src="script2.js"></script>
     <script src="../script/sidebar.js"></script>

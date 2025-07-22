@@ -95,14 +95,7 @@ $idusuario = $_SESSION['idusuario'];
                         <button onclick="fetchObrasETarefas('Todos', 'Ajuste')">Ajuste</button>
                     </div> -->
                 </div>
-                <!-- Drawer lateral -->
-                <div id="drawerTarefas" class="drawer hidden">
-                    <div class="drawer-header">
-                        <h2 id="obraTitulo">Tarefas da Obra</h2>
-                        <button id="fecharDrawer">✕</button>
-                    </div>
-                    <div class="tarefasImagensObra"></div>
-                </div>
+                <div class="tarefasImagensObra"></div>
             </div>
         </div>
     </div>

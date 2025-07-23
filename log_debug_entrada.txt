@@ -4,12 +4,12 @@ Array
         (
             [name] => Array
                 (
-                    [0] => 23. LD_URB Suíte 4301 B_R00.psb
+                    [0] => 32. RDO_VAL Living Torre 1 - unid. 1402_P01_R00.psb
                 )
 
             [full_path] => Array
                 (
-                    [0] => 23. LD_URB Suíte 4301 B_R00.psb
+                    [0] => 32. RDO_VAL Living Torre 1 - unid. 1402_P01_R00.psb
                 )
 
             [type] => Array
@@ -19,7 +19,7 @@ Array
 
             [tmp_name] => Array
                 (
-                    [0] => C:\xampp\tmp\php1580.tmp
+                    [0] => C:\xampp\tmp\php784.tmp
                 )
 
             [error] => Array
@@ -29,7 +29,7 @@ Array
 
             [size] => Array
                 (
-                    [0] => 6576157946
+                    [0] => 2315096510
                 )
 
         )

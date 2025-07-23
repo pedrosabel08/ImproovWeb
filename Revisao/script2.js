@@ -223,7 +223,6 @@ function filtrarTarefasPorObra(obraSelecionada) {
             selectFuncao.value = funcaoGlobalSelecionada;
         }
     }
-    console.log(`Exibindo tarefas da obra: ${tarefasDaObra}`);
 
     if (tarefasDaObra.length > 0) {
         const obraId = tarefasDaObra[0].idobra; // ajuste se o campo for diferente
@@ -365,6 +364,7 @@ function exibirTarefas(tarefas) {
 
     tarefasImagensObra.innerHTML = ''; // Limpa as tarefas anteriores
 
+    exibirSidebarTabulator(tarefas);
 
     if (tarefas.length > 0) {
         tarefas.forEach(tarefa => {
@@ -420,21 +420,12 @@ const idusuario = parseInt(localStorage.getItem('idusuario')); // Obtém o idusu
 
 let funcaoImagemId = null; // armazenado globalmente
 
-function historyAJAX(idfuncao_imagem, funcao_nome, imagem_nome, colaborador_nome) {
+
+function historyAJAX(idfuncao_imagem) {
     fetch(`historico.php?ajid=${idfuncao_imagem}`)
         .then(response => response.json())
         .then(response => {
 
-            const titulo = document.getElementById('funcao_nome');
-            titulo.textContent = `${colaborador_nome} - ${funcao_nome}`;
-            // document.getElementById("id_funcao").value = idfuncao_imagem;
-            document.getElementById("imagem_nome").textContent = imagem_nome;
-            // document.getElementById("funcao_nome").textContent = funcao_nome;
-            // document.getElementById("colaborador_nome").textContent = colaborador_nome;
-
-            // Exibir o modal
-            // const modal = document.getElementById('historico_modal');
-            // modal.style.display = 'grid';
             const main = document.querySelector('.main');
             main.classList.add('hidden');
 
@@ -469,6 +460,21 @@ function historyAJAX(idfuncao_imagem, funcao_nome, imagem_nome, colaborador_nome
                     funcaoImagemId = historico.funcao_imagem_id; // você já tem esse objeto
                     document.getElementById('imagem-modal').style.display = 'flex';
                 });
+
+                const titulo = document.getElementById('funcao_nome');
+                titulo.textContent = `${historico.colaborador_nome} - ${historico.nome_funcao}`;
+                // document.getElementById("id_funcao").value = idfuncao_imagem;
+                document.getElementById("imagem_nome").textContent = historico.imagem_nome;
+
+                // Chama mostrarImagemCompleta com a imagem mais recente
+                if (imagens && imagens.length > 0) {
+                    // Ordena por data_envio (ou outro campo de data, ajuste se necessário)
+                    imagens.sort((a, b) => new Date(b.data_envio) - new Date(a.data_envio));
+                    const maisRecente = imagens[0];
+                    if (maisRecente) {
+                        mostrarImagemCompleta(`../${maisRecente.imagem}`, maisRecente.id);
+                    }
+                }
             });
             // Renderizar as imagens
             const imageContainer = document.getElementById('imagens');
@@ -570,7 +576,91 @@ function historyAJAX(idfuncao_imagem, funcao_nome, imagem_nome, colaborador_nome
 }
 
 
+function exibirSidebarTabulator(tarefas) {
+    const container = document.querySelector('.container-aprovacao');
+    let sidebarDiv = document.getElementById('sidebarTabulator');
 
+    if (!sidebarDiv) {
+        sidebarDiv = document.createElement('div');
+        sidebarDiv.id = 'sidebarTabulator';
+        sidebarDiv.classList.add('sidebar-min');
+        sidebarDiv.style.height = '100vh';
+        sidebarDiv.style.overflowY = 'auto';
+        sidebarDiv.style.borderRight = '1px solid #eee';
+        sidebarDiv.style.background = '#fafafa';
+        sidebarDiv.style.position = 'absolute';
+        sidebarDiv.style.left = '60px';
+        sidebarDiv.style.top = '105px';
+        container.appendChild(sidebarDiv);
+    } else {
+        sidebarDiv.innerHTML = '';
+        sidebarDiv.classList.add('sidebar-min');
+    }
+
+    // Dados para a tabela
+    const linhas = tarefas.map(t => ({
+        funcao: t.nome_funcao,
+        colaborador: t.nome_colaborador,
+        imagem_nome: t.imagem_nome,
+        imagem: t.imagem,
+        idfuncao_imagem: t.idfuncao_imagem
+    }));
+
+    const tabela = new Tabulator(sidebarDiv, {
+        data: linhas,
+        layout: "fitColumns",
+        height: "100%",
+        groupBy: "funcao",
+        groupToggleElement: "header",
+        groupHeader: function (value, count) {
+            return `
+                <div class="group-header" data-grupo="${value}" style="cursor:pointer;">
+                    <span class="funcao-completa"><b>${value}</b> (${count} imagens)</span>
+                </div>`;
+        },
+        groupStartOpen: false,
+        columns: [
+            { title: "Função", field: "funcao", visible: false },
+            {
+                title: "Imagem",
+                field: "imagem_nome",
+                headerSort: false,
+                formatter: function (cell) {
+                    const data = cell.getData();
+                    const imgSrc = data.imagem ? `../${data.imagem}` : '../assets/logo.jpg';
+                    return `<img src="${imgSrc}" alt="${data.imagem_nome}" class="tab-img" data-id="${data.idfuncao_imagem}" title="${data.imagem_nome}"><br><span style="font-size:12px">${data.colaborador} - ${data.imagem_nome}</span>`;
+                },
+                cellClick: function (e, cell) {
+                    const img = cell.getElement().querySelector('.tab-img');
+                    if (img) {
+                        const id = img.dataset.id;
+                        console.log("Clicado via cellClick - ID:", id);
+                        historyAJAX(id);
+                    }
+                }
+            }
+        ]
+    });
+
+    // Observer para detectar quando os .group-header forem renderizados
+    const observer = new MutationObserver(() => {
+        sidebarDiv.querySelectorAll('.group-header').forEach(header => {
+            if (!header.dataset.listener) {
+                header.dataset.listener = 'true'; // Evita múltiplos binds
+                header.addEventListener('click', () => {
+                    sidebarDiv.classList.toggle('sidebar-min');
+                    sidebarDiv.classList.toggle('sidebar-expanded');
+                });
+            }
+        });
+    });
+
+    // Inicia o observer na sidebar
+    observer.observe(sidebarDiv, {
+        childList: true,
+        subtree: true
+    });
+}
 
 document.querySelector('.close').addEventListener('click', () => {
     document.getElementById('imagem-modal').style.display = 'none';

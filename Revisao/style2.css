@@ -1118,3 +1118,24 @@ nav.breadcrumb-nav {
     content: '';
     /* Remove o > do último link */
 }
+
+.tab-img {
+    width: 80%;
+    height: 60px;
+    border-radius: 6px;
+    object-fit: cover;
+    cursor: pointer;
+}
+
+#sidebarTabulator {
+    transition: width 0.3s ease;
+    overflow: hidden;
+}
+
+.sidebar-min {
+    width: 60px !important;
+}
+
+.sidebar-expanded {
+    width: 350px !important;
+}

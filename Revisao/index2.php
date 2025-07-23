@@ -31,6 +31,8 @@ $idusuario = $_SESSION['idusuario'];
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
     <link rel="stylesheet" href="https://unpkg.com/tributejs@5.1.3/dist/tribute.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <link href="https://unpkg.com/tabulator-tables@5.5.0/dist/css/tabulator.min.css" rel="stylesheet">
+
 
     <title>Flow Review</title>
 </head>
@@ -189,6 +191,8 @@ $idusuario = $_SESSION['idusuario'];
     <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
     <script src="https://unpkg.com/tributejs@5.1.3/dist/tribute.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://unpkg.com/tabulator-tables@5.5.0/dist/js/tabulator.min.js"></script>
+
 
     <script src="script2.js"></script>
     <script src="../script/sidebar.js"></script>

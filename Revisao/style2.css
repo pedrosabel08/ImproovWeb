@@ -14,6 +14,7 @@ header {
     top: 0;
     background-color: #f1f1f1;
     z-index: 100;
+    box-shadow: 0 4px 8px rgb(0, 0, 0);
 }
 
 body {
@@ -47,6 +48,8 @@ a {
     flex-direction: column;
     grid-column: 2;
     overflow-x: auto;
+    background-color: #333;
+    height: 100vh;
 }
 
 
@@ -375,16 +378,14 @@ h2 {
 }
 
 nav {
-    border-top: 1px solid;
-    border-bottom: 1px solid;
-    color: black;
-    max-height: 100px;
-    background: gainsboro;
+    margin: 0 auto;
 }
 
 .image {
-    height: 100px;
+    height: 100%;
+    width: 100%;
     transition: 0.3s;
+    object-fit: cover;
 }
 
 .image:hover {
@@ -393,7 +394,7 @@ nav {
 
 .imagens {
     display: grid;
-    grid-template-columns: 1fr 300px;
+    grid-template-columns: 60px 150px 1fr 250px;
     justify-content: center;
 }
 
@@ -406,12 +407,10 @@ nav {
 
 #imagens {
     display: flex;
-    flex-wrap: nowrap;
-    gap: 10px;
-    justify-content: center;
-    overflow-x: auto;
-    max-width: 90%;
     margin: auto;
+    grid-column: 2;
+    flex-direction: column;
+    gap: 10px;
 }
 
 
@@ -424,6 +423,7 @@ nav {
     display: flex;
     justify-content: center;
     margin: auto;
+    grid-column: 3;
 }
 
 @media (min-width: 3400px) {
@@ -434,9 +434,10 @@ nav {
 
 
 .sidebar-direita {
-    border-left: 1px solid black;
     overflow: auto;
     max-height: 80vh;
+    grid-column: 4;
+    margin: 0 auto;
 }
 
 .sidebar-direita h3 {
@@ -532,12 +533,13 @@ body::-webkit-scrollbar-track {
 
 
 .comment-card {
-    background-color: #333;
+    background-color: #3d3d3d;
     border-radius: 8px;
     padding: 15px;
     color: white;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
     position: relative;
+    font-size: 0.8rem;
 }
 
 .comment-header {
@@ -614,6 +616,11 @@ body::-webkit-scrollbar-track {
 
 .imageWrapper {
     position: relative;
+    padding: 6px;
+    background-color: #5b5b5b;
+    width: 100px;
+    height: 100px;
+    border-radius: 8px;
 }
 
 .notification-dot {
@@ -713,22 +720,17 @@ img {
 }
 
 .nav-select {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 20px;
+    padding-top: 5px;
 }
 
 #indiceSelect {
     border: none;
-    background: #676565;
-    color: white;
-    width: 100px;
-    border-radius: 15px;
+    border-radius: 6px;
     padding: 5px 10px;
     text-align: center;
     font-weight: bold;
     box-shadow: 0px 4px 4px rgba(0, 0, 0, 0.3);
+    margin: auto;
 }
 
 h2#dataEnvio {
@@ -1098,6 +1100,7 @@ p.imagem_nome {
 nav.breadcrumb-nav {
     position: absolute;
     top: 0;
+    left: 5px;
     font-size: 14px;
 }
 
@@ -1127,15 +1130,162 @@ nav.breadcrumb-nav {
     cursor: pointer;
 }
 
+.wrapper-sidebar {
+    display: grid;
+    margin-left: 10px;
+}
+
 #sidebarTabulator {
     transition: width 0.3s ease;
     overflow: hidden;
+    display: flex;
+    gap: 10px;
+    z-index: 100;
+}
+
+.tabulator-row.tabulator-group {
+    border-radius: 5px;
+    color: white;
 }
 
 .sidebar-min {
-    width: 60px !important;
+    width: 55px !important;
 }
 
 .sidebar-expanded {
     width: 350px !important;
+}
+
+.tabulator-row.tabulator-group .tabulator-group-toggle {
+    display: none !important;
+}
+
+/* Mostra apenas a sigla quando minimizada */
+.sidebar-min .funcao-completa {
+    display: none;
+}
+
+.sidebar-min .funcao-label {
+    display: inline;
+}
+
+/* Mostra o nome completo quando expandida */
+.sidebar-expanded .funcao-label {
+    display: none;
+}
+
+.sidebar-expanded .funcao-completa {
+    display: inline;
+}
+
+.tabulator-header {
+    display: none !important;
+}
+
+.tabulator .tabulator-tableholder .tabulator-table {
+    position: relative;
+    display: inline-block;
+    background-color: transparent !important;
+    white-space: nowrap;
+    overflow: visible;
+    color: #333;
+    display: flex !important;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.tabulator .tabulator-tableholder {
+    overflow: hidden !important;
+}
+
+.tabulator-row.tabulator-group span {
+    margin-left: 10px;
+    color: white !important;
+    text-transform: uppercase;
+}
+
+.tabulator-row.tabulator-group {
+    box-sizing: border-box;
+    font-weight: 700;
+    min-width: 100%;
+    border: none !important;
+    padding: 0;
+    background-color: #5b5b5b !important;
+}
+
+.tabulator {
+    border: none !important;
+    background-color: transparent !important;
+}
+
+
+.submit-btn {
+    background-color: #00aaff;
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 20px;
+    cursor: pointer;
+}
+
+.modal-decision {
+    position: fixed;
+    right: 20px;
+    z-index: 9999;
+    background-color: #2c2c2c;
+    color: white;
+    padding: 20px;
+    width: 200px;
+    border-radius: 8px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+    font-size: 0.8rem;
+}
+
+
+.modal-content-decision label {
+    display: block;
+}
+
+.modal-content-decision input[type="radio"] {
+    margin-right: 8px;
+}
+
+.close {
+    position: absolute;
+    right: 14px;
+    top: 8px;
+    font-size: 20px;
+    cursor: pointer;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+}
+
+.cancel-btn,
+.confirm-btn {
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1px solid white;
+    background: transparent;
+    color: white;
+    cursor: pointer;
+}
+
+.confirm-btn {
+    border-color: #00aaff;
+}
+
+
+#submit_decision {
+    display: block;
+    background-color: #ab1c1c;
+    font-size: 12px;
+    font-weight: bold;
+    padding: 6px;
+    border-radius: 6px;
+    color: white;
+    box-shadow: 0 4px 6px #370000;
 }

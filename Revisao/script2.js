@@ -431,62 +431,88 @@ function historyAJAX(idfuncao_imagem) {
 
             const container_aprovacao = document.querySelector('.container-aprovacao');
             container_aprovacao.classList.remove('hidden');
-
+            const btnOpen = document.getElementById("submit_decision");
+            const modal = document.getElementById("decisionModal");
+            const btnClose = document.querySelector(".close");
+            const cancelBtn = document.getElementById("cancelBtn");
+            const btnConfirm = document.getElementById("confirmBtn");
+            const radios = document.querySelectorAll('input[name="decision"]');
 
             const { historico, imagens } = response;
 
-            historico.forEach(historico => {
+            const item = historico[0];
 
-                if ([1, 2, 9, 20, 3].includes(idusuario)) { // Verifica se o idusuario é 1, 2 ou 9
-                    document.getElementById('buttons-task').innerHTML = `
-                    <button class="action-btn tooltip" id="check" data-tooltip="Aprovar"
-                        onclick="revisarTarefa(${historico.funcao_imagem_id}, '${historico.colaborador_nome}', '${historico.imagem_nome}', '${historico.nome_funcao}', '${historico.colaborador_id}', 'aprovado')">
-                        <i class="fa-solid fa-check"></i>
-                    </button>
-                    <button class="action-btn tooltip" id="xmark" data-tooltip="Rejeitar"
-                        onclick="revisarTarefa(${historico.funcao_imagem_id}, '${historico.colaborador_nome}', '${historico.imagem_nome}', '${historico.nome_funcao}', '${historico.colaborador_id}', 'ajuste')">
-                        <i class="fa-solid fa-xmark"></i>
-                    </button>
-                    <button class="action-btn tooltip" id="check_ajuste" data-tooltip="Aprovar com ajustes"
-                        onclick="revisarTarefa(${historico.funcao_imagem_id}, '${historico.colaborador_nome}', '${historico.imagem_nome}', '${historico.nome_funcao}', '${historico.colaborador_id}', 'aprovado_com_ajustes')">
-                        <i class="fa-solid fa-pen-ruler"></i>
-                    </button>
-                `;
-                } else {
-                    document.getElementById('buttons-task').innerHTML = ''; // Não exibe os botões para outros usuários
-                }
 
-                document.getElementById('add-imagem').addEventListener('click', () => {
-                    funcaoImagemId = historico.funcao_imagem_id; // você já tem esse objeto
-                    document.getElementById('imagem-modal').style.display = 'flex';
+            if ([1, 2, 9, 20, 3].includes(idusuario)) {
+                btnOpen.style.display = "block";
+
+                btnOpen.addEventListener("click", () => {
+                    modal.classList.remove("hidden");
                 });
 
-                const titulo = document.getElementById('funcao_nome');
-                titulo.textContent = `${historico.colaborador_nome} - ${historico.nome_funcao}`;
-                // document.getElementById("id_funcao").value = idfuncao_imagem;
-                document.getElementById("imagem_nome").textContent = historico.imagem_nome;
+                btnClose.addEventListener("click", () => {
+                    modal.classList.add("hidden");
+                    btnConfirm.classList.add("hidden");
+                });
 
-                // Chama mostrarImagemCompleta com a imagem mais recente
-                if (imagens && imagens.length > 0) {
-                    // Ordena por data_envio (ou outro campo de data, ajuste se necessário)
-                    imagens.sort((a, b) => new Date(b.data_envio) - new Date(a.data_envio));
-                    const maisRecente = imagens[0];
-                    if (maisRecente) {
-                        mostrarImagemCompleta(`../${maisRecente.imagem}`, maisRecente.id);
-                    }
+                cancelBtn.addEventListener("click", () => {
+                    modal.classList.add("hidden");
+                    confirmBtn.classList.add("hidden");
+                    radios.forEach(r => r.checked = false);
+                });
+
+                radios.forEach(radio => {
+                    radio.addEventListener("change", () => {
+                        btnConfirm.classList.remove("hidden");
+                    });
+                });
+
+                btnConfirm.addEventListener("click", () => {
+                    const selected = Array.from(radios).find(r => r.checked)?.value;
+                    if (!selected) return;
+
+                    revisarTarefa(
+                        item.funcao_imagem_id,
+                        item.colaborador_nome,
+                        item.imagem_nome,
+                        item.nome_funcao,
+                        item.colaborador_id,
+                        selected
+                    );
+
+                    modal.classList.add("hidden");
+                    btnConfirm.classList.add("hidden");
+                    radios.forEach(r => r.checked = false);
+                });
+
+            } else {
+                btnOpen.style.display = "none";
+            }
+
+            const titulo = document.getElementById('funcao_nome');
+            titulo.textContent = `${item.colaborador_nome} - ${item.nome_funcao}`;
+            // document.getElementById("id_funcao").value = idfuncao_imagem;
+            document.getElementById("imagem_nome").textContent = item.imagem_nome;
+
+            // Chama mostrarImagemCompleta com a imagem mais recente
+            if (imagens && imagens.length > 0) {
+                // Ordena por data_envio (ou outro campo de data, ajuste se necessário)
+                imagens.sort((a, b) => new Date(b.data_envio) - new Date(a.data_envio));
+                const maisRecente = imagens[0];
+                if (maisRecente) {
+                    mostrarImagemCompleta(`../${maisRecente.imagem}`, maisRecente.id);
                 }
-            });
+            }
+
             // Renderizar as imagens
             const imageContainer = document.getElementById('imagens');
             imageContainer.innerHTML = ''; // Limpa as imagens anteriores
             // const imagemWrapperDiv = document.getElementById("imagem_wrapper");
             // imagemWrapperDiv.innerHTML = '';
-            const commentDiv = document.querySelector('.sidebar-direita');
-            commentDiv.style.display = 'none';
 
             const indiceSelect = document.getElementById('indiceSelect');
             indiceSelect.innerHTML = ''; // Limpa o select anterior
-            const dataEnvio = document.getElementById('dataEnvio');
+            // const dataEnvio = document.getElementById('dataEnvio');
 
             // 1. Agrupar imagens por indice_envio
             const imagensAgrupadas = imagens.reduce((acc, img) => {
@@ -503,7 +529,7 @@ function historyAJAX(idfuncao_imagem) {
             // Verifica se há índices disponíveis
             if (indicesOrdenados.length === 0) {
                 indiceSelect.style.display = 'none'; // Oculta o select se não houver índices
-                dataEnvio.textContent = ''; // Limpa a data de envio
+                // dataEnvio.textContent = ''; // Limpa a data de envio
             } else {
                 indiceSelect.style.display = 'block'; // Exibe o select se houver índices
 
@@ -529,8 +555,8 @@ function historyAJAX(idfuncao_imagem) {
 
                 if (imagensDoIndice && imagensDoIndice.length > 0) {
                     // ⏰ Atualiza a data de envio
-                    const data = imagensDoIndice[0].data_envio;
-                    dataEnvio.textContent = `${formatarDataHora(data)}`;
+                    // const data = imagensDoIndice[0].data_envio;
+                    // dataEnvio.textContent = `${formatarDataHora(data)}`;
 
                     imagensDoIndice.forEach(img => {
                         const wrapper = document.createElement('div');
@@ -562,7 +588,7 @@ function historyAJAX(idfuncao_imagem) {
                         imageContainer.appendChild(wrapper);
                     });
                 } else {
-                    dataEnvio.textContent = ''; // caso não tenha imagens
+                    // dataEnvio.textContent = ''; // caso não tenha imagens
                 }
             });
             // Já seleciona o mais recente e mostra as imagens
@@ -577,25 +603,8 @@ function historyAJAX(idfuncao_imagem) {
 
 
 function exibirSidebarTabulator(tarefas) {
-    const container = document.querySelector('.container-aprovacao');
+    const container = document.querySelector('.wrapper-sidebar');
     let sidebarDiv = document.getElementById('sidebarTabulator');
-
-    if (!sidebarDiv) {
-        sidebarDiv = document.createElement('div');
-        sidebarDiv.id = 'sidebarTabulator';
-        sidebarDiv.classList.add('sidebar-min');
-        sidebarDiv.style.height = '100vh';
-        sidebarDiv.style.overflowY = 'auto';
-        sidebarDiv.style.borderRight = '1px solid #eee';
-        sidebarDiv.style.background = '#fafafa';
-        sidebarDiv.style.position = 'absolute';
-        sidebarDiv.style.left = '60px';
-        sidebarDiv.style.top = '105px';
-        container.appendChild(sidebarDiv);
-    } else {
-        sidebarDiv.innerHTML = '';
-        sidebarDiv.classList.add('sidebar-min');
-    }
 
     // Dados para a tabela
     const linhas = tarefas.map(t => ({
@@ -609,14 +618,15 @@ function exibirSidebarTabulator(tarefas) {
     const tabela = new Tabulator(sidebarDiv, {
         data: linhas,
         layout: "fitColumns",
-        height: "100%",
         groupBy: "funcao",
         groupToggleElement: "header",
         groupHeader: function (value, count) {
+            const sigla = value.slice(0, 3); // primeiras 3 letras
             return `
-                <div class="group-header" data-grupo="${value}" style="cursor:pointer;">
-                    <span class="funcao-completa"><b>${value}</b> (${count} imagens)</span>
-                </div>`;
+        <div class="group-header" data-grupo="${value}" style="cursor:pointer;">
+            <span class="funcao-label">${sigla}</span>
+            <span class="funcao-completa"><b>${value}</b> (${count} imagens)</span>
+        </div>`;
         },
         groupStartOpen: false,
         columns: [
@@ -828,7 +838,6 @@ function mostrarImagemCompleta(src, id) {
     imgElement.id = "imagem_atual";
     imgElement.src = src;
     imgElement.style.width = "100%";
-    imgElement.style.borderRadius = "10px";
 
     imageWrapper.appendChild(imgElement);
     document.querySelector('#imagem_atual').scrollIntoView({ behavior: 'smooth' });
@@ -984,6 +993,13 @@ async function renderComments(id) {
 
     comentariosDiv.innerHTML = '';
     imagemCompletaDiv.querySelectorAll('.comment').forEach(c => c.remove());
+
+    // Oculta a sidebar-direita se não houver comentários
+    if (comentarios.length === 0) {
+        comentariosDiv.style.display = 'none';
+    } else {
+        comentariosDiv.style.display = 'block';
+    }
 
     const users = await fetch('buscar_usuarios.php').then(res => res.json());
 

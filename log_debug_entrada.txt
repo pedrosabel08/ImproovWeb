@@ -4,32 +4,32 @@ Array
         (
             [name] => Array
                 (
-                    [0] => 32. RDO_VAL Living Torre 1 - unid. 1402_P01_R00.psb
+                    [0] => 5.AYA_KAR Passeio entre piscina e apto_EF.psb
                 )
 
             [full_path] => Array
                 (
-                    [0] => 32. RDO_VAL Living Torre 1 - unid. 1402_P01_R00.psb
+                    [0] => 5.AYA_KAR Passeio entre piscina e apto_EF.psb
                 )
 
             [type] => Array
                 (
-                    [0] => application/octet-stream
+                    [0] => 
                 )
 
             [tmp_name] => Array
                 (
-                    [0] => C:\xampp\tmp\php784.tmp
+                    [0] => 
                 )
 
             [error] => Array
                 (
-                    [0] => 0
+                    [0] => 7
                 )
 
             [size] => Array
                 (
-                    [0] => 2315096510
+                    [0] => 0
                 )
 
         )

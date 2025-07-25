@@ -13,7 +13,7 @@ header {
     position: sticky;
     top: 0;
     background-color: #f1f1f1;
-    z-index: 100;
+    z-index: 110;
     box-shadow: 0 4px 8px rgb(0, 0, 0);
 }
 
@@ -396,6 +396,7 @@ nav {
     display: grid;
     grid-template-columns: 60px 150px 1fr 250px;
     justify-content: center;
+    margin-top: 30px;
 }
 
 #imageContainer {
@@ -416,14 +417,15 @@ nav {
 
 #imagem_completa {
     position: relative;
-    max-width: 80%;
+    max-width: 90%;
     height: max-content;
     width: auto;
-    padding: 20px;
     display: flex;
     justify-content: center;
+    flex-direction: column;
     margin: auto;
     grid-column: 3;
+    overflow: hidden;
 }
 
 @media (min-width: 3400px) {
@@ -438,6 +440,7 @@ nav {
     max-height: 80vh;
     grid-column: 4;
     margin: 0 auto;
+    flex-direction: column;
 }
 
 .sidebar-direita h3 {
@@ -720,7 +723,11 @@ img {
 }
 
 .nav-select {
-    padding-top: 5px;
+    display: flex;
+    justify-content: space-between;
+    padding-bottom: 5px;
+    z-index: 1;
+    background-color: #333;
 }
 
 #indiceSelect {
@@ -730,7 +737,6 @@ img {
     text-align: center;
     font-weight: bold;
     box-shadow: 0px 4px 4px rgba(0, 0, 0, 0.3);
-    margin: auto;
 }
 
 h2#dataEnvio {
@@ -741,7 +747,7 @@ h2#dataEnvio {
 }
 
 .obra-card {
-    background: #f2f2f2;
+    background: #bbbbbb;
     padding: 12px;
     margin: 10px;
     border-radius: 8px;
@@ -751,6 +757,7 @@ h2#dataEnvio {
     transition: 0.3s all ease;
     position: relative;
     height: max-content;
+    font-size: 0.8rem;
 }
 
 .obra-card:hover {
@@ -793,7 +800,6 @@ h2#dataEnvio {
 
 .obra-info h3 {
     margin: 0;
-    font-size: 18px;
 }
 
 .obra-info p {
@@ -820,7 +826,6 @@ h2#dataEnvio {
     width: 90%;
     max-width: 1200px;
     padding: 20px;
-    background-color: #ffffff;
     border-radius: 8px;
     margin: 0 auto;
     display: grid;
@@ -836,7 +841,6 @@ h2#dataEnvio {
 .tarefasObra {
     max-height: 95%;
     overflow-y: auto;
-    border-left: 1px solid;
     padding: 40px 0;
     grid-column: 2;
     grid-row: 1 / -1;
@@ -855,21 +859,15 @@ p#data_aprovacao {
 }
 
 p#status_funcao {
-    position: absolute;
-    top: 5px;
-    right: 5px;
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    z-index: 10;
-    font-size: 10px;
-    text-align: center;
-    color: transparent;
+    font-weight: bold;
+    width: max-content;
+    padding: 2px 8px;
+    border-radius: 10px;
 }
 
 p.imagem_nome {
     display: -webkit-box;
-    -webkit-line-clamp: 2;
+    -webkit-line-clamp: 1;
     -webkit-box-orient: vertical;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -878,6 +876,7 @@ p.imagem_nome {
 .filtros label {
     font-weight: bold;
     font-size: 14px;
+    color: white;
 }
 
 
@@ -1123,7 +1122,7 @@ nav.breadcrumb-nav {
 }
 
 .tab-img {
-    width: 80%;
+    width: 100%;
     height: 60px;
     border-radius: 6px;
     object-fit: cover;
@@ -1141,6 +1140,10 @@ nav.breadcrumb-nav {
     display: flex;
     gap: 10px;
     z-index: 100;
+}
+
+.tabulator-row {
+    min-height: max-content !important;
 }
 
 .tabulator-row.tabulator-group {
@@ -1196,6 +1199,7 @@ nav.breadcrumb-nav {
 
 .tabulator .tabulator-tableholder {
     overflow: hidden !important;
+    height: max-content !important;
 }
 
 .tabulator-row.tabulator-group span {
@@ -1209,7 +1213,7 @@ nav.breadcrumb-nav {
     font-weight: 700;
     min-width: 100%;
     border: none !important;
-    padding: 0;
+    padding: 0 !important;
     background-color: #5b5b5b !important;
 }
 
@@ -1280,7 +1284,7 @@ nav.breadcrumb-nav {
 
 
 #submit_decision {
-    display: block;
+    display: flex;
     background-color: #ab1c1c;
     font-size: 12px;
     font-weight: bold;
@@ -1288,4 +1292,14 @@ nav.breadcrumb-nav {
     border-radius: 6px;
     color: white;
     box-shadow: 0 4px 6px #370000;
+    height: max-content;
+    margin: 0 auto;
+}
+
+.buttons button {
+    height: 30px;
+    width: 30px;
+    background-color: white;
+    text-align: center;
+    border-radius: 50%;
 }

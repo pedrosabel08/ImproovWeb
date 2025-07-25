@@ -853,6 +853,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             const card = document.createElement('div');
                             card.className = 'kanban-card';
                             card.setAttribute('data-id', item.imagem_id);
+                            card.setAttribute('data-obra-id', item.obra_id);
 
                             let statusDot = '';
                             // Dot para "Não iniciado" indicando liberada ou não
@@ -888,6 +889,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                     idImagem = imagemIdSelecionada; // Atualiza a variável global imagemId
                                     idObra = obraIdSelecionada; // Atualiza a variável global imagemId
                                     console.log("ID da imagem selecionada:", idImagem);
+                                    console.log("ID da imagem selecionada:", idObra);
                                 }
                             });
                             cardsContainer.appendChild(card);
@@ -910,6 +912,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                     const card = document.createElement('div');
                                     card.className = 'kanban-card';
                                     card.setAttribute('data-id', item.imagem_id);
+                                    card.setAttribute('data-obra-id', item.obra_id);
 
                                     card.innerHTML = `
                         <b>${item.imagem_nome}</b><br>
@@ -1812,6 +1815,21 @@ document.getElementById("copyColumnColab").addEventListener("click", function ()
         });
 });
 
+document.querySelectorAll('.close').forEach(closeButton => {
+    closeButton.addEventListener('click', function () {
+        const modal = this.closest('.modal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    });
+
+    closeButton.addEventListener('touchstart', function () {
+        const modal = this.closest('.modal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    });
+});
 
 
 

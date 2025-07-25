@@ -30,6 +30,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     item.situacao_prazo = "N/A";
                 }
+                // >>> Adicione este bloco <<<
+                if (item.situacao === "DRV" || item.situacao === "RVW") {
+                    item.situacao_prazo = "entregue";
+                }
             });
 
             // Update header filters after processing data
@@ -216,27 +220,35 @@ document.addEventListener('DOMContentLoaded', () => {
                 headerFilterParams: {
                     values: {
                         "OK": "OK",
-                        "Atrasada": "Atrasada"
+                        "Atrasada": "Atrasada",
+                        "Entregue": "Entregue",
                     }
                 },
                 formatter: function (cell) {
                     const data = cell.getData();
-                    // Ensure prazo exists before splitting
-                    if (!data.prazo) {
-                        return `<span class="tag" style="background:#e9ecef; font-weight:600;">N/A</span>`;
-                    }
-                    const prazoStr = data.prazo;
-                    const [dia, mes, ano] = prazoStr.split('/');
-                    const prazo = new Date(`${ano}-${mes}-${dia}`);
-                    const hoje = new Date();
-                    hoje.setHours(0, 0, 0, 0);
-
-                    let texto = "OK";
+                    // Se for DRV ou RVW, já está como "entregue" no ajaxResponse
+                    let texto = cell.getValue();
                     let cor = "#d1e7dd";
 
-                    if (prazo < hoje) {
-                        texto = "Atrasada";
-                        cor = "#f8d7da";
+                    if (texto === "entregue" || texto === "Entregue") {
+                        texto = "Entregue";
+                        cor = "#b9ffad";
+                    } else if (!data.prazo) {
+                        return `<span class="tag" style="background:#e9ecef; font-weight:600;">N/A</span>`;
+                    } else {
+                        const prazoStr = data.prazo;
+                        const [dia, mes, ano] = prazoStr.split('/');
+                        const prazo = new Date(`${ano}-${mes}-${dia}`);
+                        const hoje = new Date();
+                        hoje.setHours(0, 0, 0, 0);
+
+                        texto = "OK";
+                        cor = "#d1e7dd";
+
+                        if (prazo < hoje) {
+                            texto = "Atrasada";
+                            cor = "#f8d7da";
+                        }
                     }
 
                     return `<span class="tag" style="background:${cor}; font-weight:600;">${texto}</span>`;

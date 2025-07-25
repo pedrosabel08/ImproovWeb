@@ -81,7 +81,7 @@ $idusuario = $_SESSION['idusuario'];
                 <div class="header">
                     <nav class="breadcrumb-nav">
                         <a href="https://improov.com.br/sistema/Revisao/index2.php">Flow Review</a>
-                        <a id="obra_id_nav" href="https://improov.com.br/sistema/Revisao/index2.php?obra_id=''">Obra</a>
+                        <a id="obra_id_nav" class="obra_nav" href="https://improov.com.br/sistema/Revisao/index2.php?obra_id=''">Obra</a>
                     </nav>
                     <div class="filtros">
                         <div>
@@ -109,7 +109,7 @@ $idusuario = $_SESSION['idusuario'];
         <header>
             <nav class="breadcrumb-nav">
                 <a href="https://improov.com.br/sistema/Revisao/index2.php">Flow Review</a>
-                <a id="obra_id_nav" href="https://improov.com.br/sistema/Revisao/index2.php?obra_id=''">Obra</a>
+                <a id="obra_id_nav" class="obra_nav" href="https://improov.com.br/sistema/Revisao/index2.php?obra_id=''">Obra</a>
             </nav>
             <div class="task-info" id="task-info">
                 <h3 id="funcao_nome"></h3>
@@ -125,10 +125,7 @@ $idusuario = $_SESSION['idusuario'];
             </div> -->
         </header>
 
-        <div class="nav-select">
 
-            <select id="indiceSelect"></select>
-        </div>
 
         <div class="imagens">
             <div class="wrapper-sidebar">
@@ -138,6 +135,15 @@ $idusuario = $_SESSION['idusuario'];
                 <div id="imagens"></div>
             </nav>
             <div id="imagem_completa">
+                <div class="nav-select">
+                    <select id="indiceSelect"></select>
+                    <div class="buttons">
+                        <button id="reset-zoom"><i class="fa-solid fa-compress"></i></button>
+                        <button id="btn-menos-zoom"><i class="fa-solid fa-magnifying-glass-minus"></i></button>
+                        <button id="btn-mais-zoom"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
+                        <button id="btn-download-imagem"><i class="fa-solid fa-download"></i></button>
+                    </div>
+                </div>
                 <div id="image_wrapper" class="image_wrapper">
                 </div>
             </div>

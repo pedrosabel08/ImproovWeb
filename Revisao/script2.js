@@ -228,9 +228,13 @@ function filtrarTarefasPorObra(obraSelecionada) {
         const obraId = tarefasDaObra[0].idobra; // ajuste se o campo for diferente
         const nomeObra = tarefasDaObra[0].nomenclatura;
 
-        const obraNav = document.querySelectorAll('obra_nav');
-        obraNav.href = `https://improov.com.br/sistema/Revisao/index2.php?obra_id=${obraId}`;
-        obraNav.textContent = nomeObra;
+        const obraNavLinks = document.querySelectorAll('.obra_nav');
+
+        obraNavLinks.forEach(link => {
+            link.href = `https://improov.com.br/sistema/Revisao/index2.php?obra_id=${obraId}`;
+            link.textContent = nomeObra;
+        });
+
     }
 
     // Aplica os filtros adicionais (colaborador e função)
@@ -437,11 +441,19 @@ function historyAJAX(idfuncao_imagem) {
             const comentariosDiv = document.querySelector(".comentarios");
             comentariosDiv.innerHTML = '';
 
-            const sidebarDiv = document.getElementById('sidebarTabulator');
-            sidebarDiv.classList.add('sidebar-min');
-
             const container_aprovacao = document.querySelector('.container-aprovacao');
             container_aprovacao.classList.remove('hidden');
+
+            const sidebarDiv = document.getElementById('sidebarTabulator');
+            sidebarDiv.classList.remove('sidebar-expanded')
+            sidebarDiv.classList.add('sidebar-min')
+
+            const todasAsListas = sidebarDiv.querySelectorAll('.tarefas-lista');
+
+            // Fecha todos os grupos
+            todasAsListas.forEach(l => {
+                l.style.display = 'none';
+            });
 
             // Clona e substitui botões para evitar múltiplos event listeners
             const btnOpen = replaceElementById("submit_decision");
@@ -611,71 +623,72 @@ function replaceElementByClass(className) {
 }
 
 function exibirSidebarTabulator(tarefas) {
-    const container = document.querySelector('.wrapper-sidebar');
-    let sidebarDiv = document.getElementById('sidebarTabulator');
+    const sidebarDiv = document.getElementById('sidebarTabulator');
+    sidebarDiv.innerHTML = '';
 
-    // Dados para a tabela
-    const linhas = tarefas.map(t => ({
-        funcao: t.nome_funcao,
-        colaborador: t.nome_colaborador,
-        imagem_nome: t.imagem_nome,
-        imagem: t.imagem,
-        idfuncao_imagem: t.idfuncao_imagem
-    }));
+    const tarefasPorFuncao = {};
 
-    const tabela = new Tabulator(sidebarDiv, {
-        data: linhas,
-        layout: "fitColumns",
-        groupBy: "funcao",
-        groupToggleElement: "header",
-        groupHeader: function (value, count) {
-            const sigla = value.slice(0, 3); // primeiras 3 letras
-            return `
-        <div class="group-header" data-grupo="${value}" style="cursor:pointer;">
-            <span class="funcao-label">${sigla}</span>
-            <span class="funcao-completa"><b>${value}</b> (${count} imagens)</span>
-        </div>`;
-        },
-        groupStartOpen: false,
-        columns: [
-            { title: "Função", field: "funcao", visible: false },
-            {
-                title: "Imagem",
-                field: "imagem_nome",
-                headerSort: false,
-                formatter: function (cell) {
-                    const data = cell.getData();
-                    const imgSrc = data.imagem ? `../${data.imagem}` : '../assets/logo.jpg';
-                    return `<img src="${imgSrc}" alt="${data.imagem_nome}" class="tab-img" data-id="${data.idfuncao_imagem}" title="${data.imagem_nome}"><br><span style="font-size:12px">${data.colaborador} - ${data.imagem_nome}</span>`;
-                },
-                cellClick: function (e, cell) {
-                    const img = cell.getElement().querySelector('.tab-img');
-                    if (img) {
-                        const id = img.dataset.id;
-                        historyAJAX(id);
-                    }
-                }
-            }
-        ]
+    tarefas.forEach(t => {
+        if (!tarefasPorFuncao[t.nome_funcao]) {
+            tarefasPorFuncao[t.nome_funcao] = [];
+        }
+        tarefasPorFuncao[t.nome_funcao].push(t);
     });
 
-    // Observer para detectar quando os .group-header forem renderizados
-    const observer = new MutationObserver(() => {
-        sidebarDiv.querySelectorAll('.group-header').forEach(header => {
-            if (!header.dataset.listener) {
-                header.dataset.listener = 'true'; // Evita múltiplos binds
-                header.addEventListener('click', () => {
-                    sidebarDiv.classList.toggle('sidebar-min');
-                    sidebarDiv.classList.toggle('sidebar-expanded');
-                });
+    Object.entries(tarefasPorFuncao).forEach(([funcao, tarefas]) => {
+        const grupoDiv = document.createElement('div');
+        grupoDiv.classList.add('grupo-funcao');
+
+        const header = document.createElement('div');
+        header.classList.add('group-header');
+        header.dataset.grupo = funcao;
+        header.innerHTML = `
+      <span class="funcao-label">${funcao.slice(0, 3)}</span>
+      <span class="funcao-completa"><b>${funcao}</b> (${tarefas.length} imagens)</span>
+    `;
+
+        const lista = document.createElement('div');
+        lista.classList.add('tarefas-lista');
+        lista.style.display = 'none';
+
+        tarefas.forEach(t => {
+            const tarefa = document.createElement('div');
+            tarefa.classList.add('tarefa-item');
+            const imgSrc = t.imagem ? `../${t.imagem}` : '../assets/logo.jpg';
+            tarefa.innerHTML = `
+        <img src="${imgSrc}" class="tab-img" data-id="${t.idfuncao_imagem}" alt="${t.imagem_nome}">
+        <span>${t.nome_colaborador} - ${t.imagem_nome}</span>
+      `;
+            tarefa.addEventListener('click', () => historyAJAX(t.idfuncao_imagem));
+            lista.appendChild(tarefa);
+        });
+
+        // Comportamento inteligente ao clicar no header
+        header.addEventListener('click', () => {
+            const todasAsListas = sidebarDiv.querySelectorAll('.tarefas-lista');
+            const todasAsHeaders = sidebarDiv.querySelectorAll('.group-header');
+
+            const jaAberto = lista.style.display === 'block';
+
+            // Fecha todos os grupos
+            todasAsListas.forEach(l => {
+                l.style.display = 'none';
+            });
+            if (jaAberto) {
+                // Nenhum aberto: minimizar a sidebar
+                sidebarDiv.classList.add('sidebar-min');
+                sidebarDiv.classList.remove('sidebar-expanded');
+            } else {
+                // Abre o novo grupo e expande sidebar
+                lista.style.display = 'block';
+                sidebarDiv.classList.add('sidebar-expanded');
+                sidebarDiv.classList.remove('sidebar-min');
             }
         });
-    });
 
-    // Inicia o observer na sidebar
-    observer.observe(sidebarDiv, {
-        childList: true,
-        subtree: true
+        grupoDiv.appendChild(header);
+        grupoDiv.appendChild(lista);
+        sidebarDiv.appendChild(grupoDiv);
     });
 }
 

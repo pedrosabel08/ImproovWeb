@@ -1132,24 +1132,18 @@ nav.breadcrumb-nav {
 .wrapper-sidebar {
     display: grid;
     margin-left: 10px;
+    width: 100%;
 }
 
 #sidebarTabulator {
     transition: width 0.3s ease;
     overflow: hidden;
     display: flex;
+    flex-direction: column;
     gap: 10px;
     z-index: 100;
 }
 
-.tabulator-row {
-    min-height: max-content !important;
-}
-
-.tabulator-row.tabulator-group {
-    border-radius: 5px;
-    color: white;
-}
 
 .sidebar-min {
     width: 55px !important;
@@ -1159,20 +1153,26 @@ nav.breadcrumb-nav {
     width: 350px !important;
 }
 
-.tabulator-row.tabulator-group .tabulator-group-toggle {
-    display: none !important;
+.group-header {
+    cursor: pointer;
+    background: #f1f1f1;
+    border-bottom: 1px solid #ccc;
+    font-size: 0.9rem;
+    padding: 5px 0;
+    text-align: center;
 }
 
-/* Mostra apenas a sigla quando minimizada */
-.sidebar-min .funcao-completa {
-    display: none;
-}
-
-.sidebar-min .funcao-label {
+.funcao-label {
     display: inline;
+    text-transform: uppercase;
+    font-weight: bold;
 }
 
-/* Mostra o nome completo quando expandida */
+.funcao-completa {
+    display: none;
+    margin-left: 10px;
+}
+
 .sidebar-expanded .funcao-label {
     display: none;
 }
@@ -1181,47 +1181,33 @@ nav.breadcrumb-nav {
     display: inline;
 }
 
-.tabulator-header {
-    display: none !important;
+.tarefas-lista {
+    padding: 10px;
+    background: #f9f9f9;
 }
 
-.tabulator .tabulator-tableholder .tabulator-table {
-    position: relative;
-    display: inline-block;
-    background-color: transparent !important;
-    white-space: nowrap;
-    overflow: visible;
-    color: #333;
-    display: flex !important;
-    flex-direction: column;
+.tarefa-item {
+    cursor: pointer;
+    margin-bottom: 10px;
+    display: flex;
     gap: 10px;
+    flex-direction: column;
+    box-shadow: 0 2px 4px #d9d9d9;
 }
 
-.tabulator .tabulator-tableholder {
-    overflow: hidden !important;
-    height: max-content !important;
+.tarefa-item img.tab-img {
+    object-fit: cover;
+    border-radius: 4px;
 }
 
-.tabulator-row.tabulator-group span {
-    margin-left: 10px;
-    color: white !important;
-    text-transform: uppercase;
+.tarefa-item span {
+    font-size: 12px;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    padding: 0 5px;
 }
-
-.tabulator-row.tabulator-group {
-    box-sizing: border-box;
-    font-weight: 700;
-    min-width: 100%;
-    border: none !important;
-    padding: 0 !important;
-    background-color: #5b5b5b !important;
-}
-
-.tabulator {
-    border: none !important;
-    background-color: transparent !important;
-}
-
 
 .submit-btn {
     background-color: #00aaff;

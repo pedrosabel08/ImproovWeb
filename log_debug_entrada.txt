@@ -4,22 +4,22 @@ Array
         (
             [name] => Array
                 (
-                    [0] => MPE_SUN FOTOINSERCAO1_001.zip
+                    [0] => 4.AYA_KAR Rampa garagem_EF.psb
                 )
 
             [full_path] => Array
                 (
-                    [0] => MPE_SUN FOTOINSERCAO1_001.zip
+                    [0] => 4.AYA_KAR Rampa garagem_EF.psb
                 )
 
             [type] => Array
                 (
-                    [0] => application/x-zip-compressed
+                    [0] => application/octet-stream
                 )
 
             [tmp_name] => Array
                 (
-                    [0] => C:\xampp\tmp\phpB7FB.tmp
+                    [0] => C:\xampp\tmp\phpD641.tmp
                 )
 
             [error] => Array
@@ -29,7 +29,7 @@ Array
 
             [size] => Array
                 (
-                    [0] => 3448574232
+                    [0] => 7294504614
                 )
 
         )

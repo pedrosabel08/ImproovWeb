@@ -218,10 +218,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     curl_close($ch);
 
     $responseData = json_decode($response, true);
-    foreach ($responseData['members'] as $member) {
-        if (isset($member['real_name']) && strtolower($member['real_name']) === strtolower($nome_colaborador)) {
-            $userID = $member['id'];
-            break;
+    // Verifica se a resposta é válida
+    if (!isset($responseData['ok']) || !$responseData['ok']) {
+        $resultadoFinal['logs'][] = "Erro na API do Slack: " . ($responseData['error'] ?? 'Resposta inválida');
+    } elseif (!isset($responseData['members']) || !is_array($responseData['members'])) {
+        $resultadoFinal['logs'][] = "API do Slack não retornou 'members'. Resposta: " . json_encode($responseData);
+    } else {
+        foreach ($responseData['members'] as $member) {
+            if (isset($member['real_name']) && strtolower($member['real_name']) === strtolower($nome_colaborador)) {
+                $userID = $member['id'];
+                break;
+            }
         }
     }
 

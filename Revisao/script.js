@@ -114,7 +114,7 @@ let funcaoGlobalSelecionada = null;
 
 async function fetchObrasETarefas() {
     try {
-        const response = await fetch(`atualizar.php`);
+        const response = await fetch(`atualizar2.php`);
         if (!response.ok) throw new Error("Erro ao buscar tarefas");
 
         dadosTarefas = await response.json();
@@ -241,7 +241,7 @@ function filtrarTarefasPorObra(obraSelecionada) {
         const obraNavLinks = document.querySelectorAll('.obra_nav');
 
         obraNavLinks.forEach(link => {
-            link.href = `https://improov.com.br/sistema/Revisao/index.php?obra_nome=${nomeObra}`;
+            link.href = `https://improov.com.br/sistema/Revisao/index2.php?obra_nome=${nomeObra}`;
             link.textContent = nomenclatura;
         });
 
@@ -255,7 +255,7 @@ function filtrarTarefasPorObra(obraSelecionada) {
     });
 
     // Exibe as tarefas filtradas
-    exibirTarefas(tarefasFiltradas);
+    exibirTarefas(tarefasFiltradas, tarefasDaObra);
 }
 
 function atualizarSelectColaborador(tarefas) {
@@ -365,7 +365,7 @@ document.getElementById('nome_funcao').addEventListener('change', () => {
 });
 
 // Função para exibir as tarefas e abastecer os filtros
-function exibirTarefas(tarefas) {
+function exibirTarefas(tarefas, tarefasCompletas) {
     const container = document.querySelector('.containerObra');
     container.style.display = 'none'; // Esconde o container de obras
 
@@ -382,7 +382,7 @@ function exibirTarefas(tarefas) {
 
     tarefasImagensObra.innerHTML = ''; // Limpa as tarefas anteriores
 
-    exibirSidebarTabulator(tarefas);
+    exibirSidebarTabulator(tarefasCompletas);
 
     if (tarefas.length > 0) {
         tarefas.forEach(tarefa => {

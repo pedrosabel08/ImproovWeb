@@ -31,6 +31,8 @@ $idusuario = $_SESSION['idusuario'];
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
     <link rel="stylesheet" href="https://unpkg.com/tributejs@5.1.3/dist/tribute.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <link href="https://unpkg.com/tabulator-tables@5.5.0/dist/css/tabulator.min.css" rel="stylesheet">
+
 
     <title>Flow Review</title>
 </head>
@@ -77,7 +79,10 @@ $idusuario = $_SESSION['idusuario'];
             </div>
             <div class="tarefasObra hidden">
                 <div class="header">
-
+                    <nav class="breadcrumb-nav">
+                        <a href="https://improov.com.br/sistema/Revisao/index.php">Flow Review</a>
+                        <a id="obra_id_nav" class="obra_nav" href="https://improov.com.br/sistema/Revisao/index.php?obra_id=''">Obra</a>
+                    </nav>
                     <div class="filtros">
                         <div>
                             <label for="nome_funcao">Função:</label>
@@ -102,11 +107,10 @@ $idusuario = $_SESSION['idusuario'];
 
     <div class="container-aprovacao hidden">
         <header>
-            <button id="btnBack"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon turn-left-arrow" viewBox="0 0 24 24">
-                    <path d="M9 14L4 9l5-5" />
-                    <path d="M20 20v-7a4 4 0 0 0-4-4H4" />
-                </svg>
-            </button>
+            <nav class="breadcrumb-nav">
+                <a href="https://improov.com.br/sistema/Revisao/index.php">Flow Review</a>
+                <a id="obra_id_nav" class="obra_nav" href="https://improov.com.br/sistema/Revisao/index.php?obra_id=''">Obra</a>
+            </nav>
             <div class="task-info" id="task-info">
                 <h3 id="funcao_nome"></h3>
                 <h3 id="colaborador_nome"></h3>
@@ -116,30 +120,50 @@ $idusuario = $_SESSION['idusuario'];
                 </div>
 
             </div>
-            <div>
+            <!-- <div>
                 <button id="add-imagem" class="tooltip" data-tooltip="Adicionar imagem" style="transform: translateX(-90%);">+</button>
-            </div>
+            </div> -->
         </header>
 
-        <div class="nav-select">
 
-            <select id="indiceSelect">
-            </select>
-            <div>
-                <h2 id="dataEnvio"></h2>
-            </div>
-        </div>
-        <nav>
-            <div id="imagens"></div>
-        </nav>
 
         <div class="imagens">
+            <div class="wrapper-sidebar">
+                <div id="sidebarTabulator" class="sidebar-min"></div>
+            </div>
+            <nav>
+                <div id="imagens"></div>
+            </nav>
             <div id="imagem_completa">
+                <div class="nav-select">
+                    <select id="indiceSelect"></select>
+                    <div class="buttons">
+                        <button id="reset-zoom"><i class="fa-solid fa-compress"></i></button>
+                        <button id="btn-menos-zoom"><i class="fa-solid fa-magnifying-glass-minus"></i></button>
+                        <button id="btn-mais-zoom"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
+                        <button id="btn-download-imagem"><i class="fa-solid fa-download"></i></button>
+                    </div>
+                </div>
                 <div id="image_wrapper" class="image_wrapper">
                 </div>
             </div>
             <div class="sidebar-direita">
-                <h3>Comentários</h3>
+                <button id="submit_decision">Enviar aprovação</button>
+
+                <!-- Modal -->
+                <div id="decisionModal" class="modal-decision hidden">
+                    <div class="modal-content-decision">
+                        <span class="close">&times;</span>
+                        <label><input type="radio" name="decision" value="aprovado"> Aprovado</label><br>
+                        <label><input type="radio" name="decision" value="aprovado_com_ajustes"> Aprovado com ajustes</label><br>
+                        <label><input type="radio" name="decision" value="ajuste"> Ajuste</label><br>
+
+                        <div class="modal-footer">
+                            <button id="cancelBtn" class="cancel-btn">Cancel</button>
+                            <button id="confirmBtn" class="confirm-btn">Confirm</button>
+                        </div>
+                    </div>
+                </div>
                 <div class="comentarios"></div>
             </div>
         </div>
@@ -182,6 +206,8 @@ $idusuario = $_SESSION['idusuario'];
     <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
     <script src="https://unpkg.com/tributejs@5.1.3/dist/tribute.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://unpkg.com/tabulator-tables@5.5.0/dist/js/tabulator.min.js"></script>
+
 
     <script src="script.js"></script>
     <script src="../script/sidebar.js"></script>

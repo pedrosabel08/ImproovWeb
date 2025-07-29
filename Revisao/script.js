@@ -1,7 +1,16 @@
 document.addEventListener("DOMContentLoaded", function () {
+    const params = new URLSearchParams(window.location.search);
+    const obraNome = params.get("obra_nome");
 
-    fetchObrasETarefas();
-
+    if (obraNome) {
+        // Primeiro carrega as tarefas
+        fetchObrasETarefas().then(() => {
+            // Depois filtra pela obra
+            filtrarTarefasPorObra(obraNome);
+        });
+    } else {
+        fetchObrasETarefas();
+    }
 });
 
 function revisarTarefa(idfuncao_imagem, nome_colaborador, imagem_nome, nome_funcao, colaborador_id, tipoRevisao) {
@@ -224,6 +233,20 @@ function filtrarTarefasPorObra(obraSelecionada) {
         }
     }
 
+    if (tarefasDaObra.length > 0) {
+        const obraId = tarefasDaObra[0].idobra; // ajuste se o campo for diferente
+        const nomeObra = tarefasDaObra[0].nome_obra;
+        const nomenclatura = tarefasDaObra[0].nomenclatura;
+
+        const obraNavLinks = document.querySelectorAll('.obra_nav');
+
+        obraNavLinks.forEach(link => {
+            link.href = `https://improov.com.br/sistema/Revisao/index.php?obra_nome=${nomeObra}`;
+            link.textContent = nomenclatura;
+        });
+
+    }
+
     // Aplica os filtros adicionais (colaborador e função)
     const tarefasFiltradas = tarefasDaObra.filter(t => {
         const matchColaborador = !colaboradorSelecionado || t.nome_colaborador === colaboradorSelecionado;
@@ -344,8 +367,13 @@ document.getElementById('nome_funcao').addEventListener('change', () => {
 // Função para exibir as tarefas e abastecer os filtros
 function exibirTarefas(tarefas) {
     const container = document.querySelector('.containerObra');
+    container.style.display = 'none'; // Esconde o container de obras
+
     const containerMain = document.querySelector('.container-main');
-    containerMain.classList.add('expanded');
+    // containerMain.classList.add('expanded');
+
+    const filtroFuncao = document.getElementById('filtroFuncao');
+    filtroFuncao.style.display = 'none'; // Esconde o filtro de função
 
     const tarefasObra = document.querySelector('.tarefasObra');
     tarefasObra.classList.remove('hidden');
@@ -354,20 +382,28 @@ function exibirTarefas(tarefas) {
 
     tarefasImagensObra.innerHTML = ''; // Limpa as tarefas anteriores
 
+    exibirSidebarTabulator(tarefas);
+
     if (tarefas.length > 0) {
         tarefas.forEach(tarefa => {
             const taskItem = document.createElement('div');
             taskItem.classList.add('task-item');
             taskItem.setAttribute('onclick', `historyAJAX(${tarefa.idfuncao_imagem}, '${tarefa.nome_funcao}', '${tarefa.imagem_nome}', '${tarefa.nome_colaborador}')`);
 
+            const imagemPreview = tarefa.imagem ? `../${tarefa.imagem}` : '../assets/logo.jpg';
+
             // Define a cor de fundo com base no status
-            const bgColor = tarefa.status_novo === 'Em aprovação' ? 'green' : tarefa.status_novo === 'Ajuste' ? 'red' : tarefa.status_novo === 'Aprovado com ajustes' ? 'blue' : 'transparent';
+            const color = tarefa.status_novo === 'Em aprovação' ? '#000a59' : tarefa.status_novo === 'Ajuste' ? '#590000' : tarefa.status_novo === 'Aprovado com ajustes' ? '#2e0059ff' : 'transparent';
+            const bgColor = tarefa.status_novo === 'Em aprovação' ? '#90c2ff' : tarefa.status_novo === 'Ajuste' ? '#ff5050' : tarefa.status_novo === 'Aprovado com ajustes' ? '#ae90ffff' : 'transparent';
             taskItem.innerHTML = `
                 <div class="task-info">
+                  <div class="image-wrapper">
+                     <img src="${imagemPreview}" alt="Imagem da obra ${tarefa.nome_obra}" class="task-image" onerror="this.onerror=null;this.src='../assets/logo.jpg';">
+                </div>
                     <h3 class="nome_funcao">${tarefa.nome_funcao}</h3><span class="colaborador">${tarefa.nome_colaborador}</span>
                     <p class="imagem_nome" data-obra="${tarefa.nome_obra}">${tarefa.imagem_nome}</p>
                     <p class="data_aprovacao">${formatarDataHora(tarefa.data_aprovacao)}</p>       
-                    <p id="status_funcao" style="background-color: ${bgColor};">${tarefa.status_novo}</p>
+                    <p id="status_funcao" style="color: ${color}; background-color: ${bgColor}">${tarefa.status_novo}</p>
                 </div>
             `;
 
@@ -403,88 +439,118 @@ const idusuario = parseInt(localStorage.getItem('idusuario')); // Obtém o idusu
 
 let funcaoImagemId = null; // armazenado globalmente
 
-function historyAJAX(idfuncao_imagem, funcao_nome, imagem_nome, colaborador_nome) {
+
+function historyAJAX(idfuncao_imagem) {
     fetch(`historico.php?ajid=${idfuncao_imagem}`)
         .then(response => response.json())
         .then(response => {
-
-            const titulo = document.getElementById('funcao_nome');
-            titulo.textContent = `${colaborador_nome} - ${funcao_nome}`;
-            // document.getElementById("id_funcao").value = idfuncao_imagem;
-            document.getElementById("imagem_nome").textContent = imagem_nome;
-            // document.getElementById("funcao_nome").textContent = funcao_nome;
-            // document.getElementById("colaborador_nome").textContent = colaborador_nome;
-
-            // Exibir o modal
-            // const modal = document.getElementById('historico_modal');
-            // modal.style.display = 'grid';
+            console.log("Funcao Imagem:", idfuncao_imagem);
             const main = document.querySelector('.main');
             main.classList.add('hidden');
+
+            const comentariosDiv = document.querySelector(".comentarios");
+            comentariosDiv.innerHTML = '';
 
             const container_aprovacao = document.querySelector('.container-aprovacao');
             container_aprovacao.classList.remove('hidden');
 
+            const sidebarDiv = document.getElementById('sidebarTabulator');
+            sidebarDiv.classList.remove('sidebar-expanded')
+            sidebarDiv.classList.add('sidebar-min')
+
+            const todasAsListas = sidebarDiv.querySelectorAll('.tarefas-lista');
+
+            // Fecha todos os grupos
+            todasAsListas.forEach(l => {
+                l.style.display = 'none';
+            });
+
+            // Clona e substitui botões para evitar múltiplos event listeners
+            const btnOpen = replaceElementById("submit_decision");
+            const modal = document.getElementById("decisionModal");
+            const btnClose = replaceElementByClass("close");
+            const cancelBtn = replaceElementById("cancelBtn");
+            const btnConfirm = replaceElementById("confirmBtn");
+
+            // Clona e substitui radios
+            document.querySelectorAll('input[name="decision"]').forEach(radio => {
+                const clone = radio.cloneNode(true);
+                radio.replaceWith(clone);
+            });
+            const radios = document.querySelectorAll('input[name="decision"]');
 
             const { historico, imagens } = response;
+            const item = historico[0];
 
-            historico.forEach(historico => {
-
-                if ([1, 2, 9, 20, 3].includes(idusuario)) { // Verifica se o idusuario é 1, 2 ou 9
-                    document.getElementById('buttons-task').innerHTML = `
-                    <button class="action-btn tooltip" id="check" data-tooltip="Aprovar"
-                        onclick="revisarTarefa(${historico.funcao_imagem_id}, '${historico.colaborador_nome}', '${historico.imagem_nome}', '${historico.nome_funcao}', '${historico.colaborador_id}', 'aprovado')">
-                        <i class="fa-solid fa-check"></i>
-                    </button>
-                    <button class="action-btn tooltip" id="xmark" data-tooltip="Rejeitar"
-                        onclick="revisarTarefa(${historico.funcao_imagem_id}, '${historico.colaborador_nome}', '${historico.imagem_nome}', '${historico.nome_funcao}', '${historico.colaborador_id}', 'ajuste')">
-                        <i class="fa-solid fa-xmark"></i>
-                    </button>
-                    <button class="action-btn tooltip" id="check_ajuste" data-tooltip="Aprovar com ajustes"
-                        onclick="revisarTarefa(${historico.funcao_imagem_id}, '${historico.colaborador_nome}', '${historico.imagem_nome}', '${historico.nome_funcao}', '${historico.colaborador_id}', 'aprovado_com_ajustes')">
-                        <i class="fa-solid fa-pen-ruler"></i>
-                    </button>
-                `;
-                } else {
-                    document.getElementById('buttons-task').innerHTML = ''; // Não exibe os botões para outros usuários
-                }
-
-                document.getElementById('add-imagem').addEventListener('click', () => {
-                    funcaoImagemId = historico.funcao_imagem_id; // você já tem esse objeto
-                    document.getElementById('imagem-modal').style.display = 'flex';
+            if ([1, 2, 9, 20, 3].includes(idusuario)) {
+                btnOpen.addEventListener("click", () => {
+                    modal.classList.remove("hidden");
                 });
-            });
-            // Renderizar as imagens
+
+                btnClose.addEventListener("click", () => {
+                    modal.classList.add("hidden");
+                    btnConfirm.classList.add("hidden");
+                });
+
+                cancelBtn.addEventListener("click", () => {
+                    modal.classList.add("hidden");
+                    btnConfirm.classList.add("hidden");
+                    radios.forEach(r => r.checked = false);
+                });
+
+                radios.forEach(radio => {
+                    radio.addEventListener("change", () => {
+                        btnConfirm.classList.remove("hidden");
+                    });
+                });
+
+                btnConfirm.addEventListener("click", () => {
+                    const selected = Array.from(radios).find(r => r.checked)?.value;
+                    if (!selected) return;
+
+                    revisarTarefa(
+                        item.funcao_imagem_id,
+                        item.colaborador_nome,
+                        item.imagem_nome,
+                        item.nome_funcao,
+                        item.colaborador_id,
+                        selected
+                    );
+
+                    modal.classList.add("hidden");
+                    btnConfirm.classList.add("hidden");
+                    radios.forEach(r => r.checked = false);
+                });
+            } else {
+                btnOpen.style.display = "none";
+            }
+
+            const titulo = document.getElementById('funcao_nome');
+            titulo.textContent = `${item.colaborador_nome} - ${item.nome_funcao}`;
+            document.getElementById("imagem_nome").textContent = item.imagem_nome;
+
             const imageContainer = document.getElementById('imagens');
-            imageContainer.innerHTML = ''; // Limpa as imagens anteriores
-            // const imagemWrapperDiv = document.getElementById("imagem_wrapper");
-            // imagemWrapperDiv.innerHTML = '';
-            const commentDiv = document.querySelector('.sidebar-direita');
-            commentDiv.style.display = 'none';
+            imageContainer.innerHTML = '';
 
-            const indiceSelect = document.getElementById('indiceSelect');
-            indiceSelect.innerHTML = ''; // Limpa o select anterior
-            const dataEnvio = document.getElementById('dataEnvio');
+            // Clona e substitui select
+            let indiceSelect = document.getElementById('indiceSelect');
+            indiceSelect = indiceSelect.cloneNode(true);
+            document.getElementById('indiceSelect').replaceWith(indiceSelect);
+            indiceSelect.innerHTML = '';
 
-            // 1. Agrupar imagens por indice_envio
             const imagensAgrupadas = imagens.reduce((acc, img) => {
-                if (!acc[img.indice_envio]) {
-                    acc[img.indice_envio] = [];
-                }
+                if (!acc[img.indice_envio]) acc[img.indice_envio] = [];
                 acc[img.indice_envio].push(img);
                 return acc;
             }, {});
 
-            // 2. Popular o <select> com os índices de envio (ordenado desc)
             const indicesOrdenados = Object.keys(imagensAgrupadas).sort((a, b) => b - a);
 
-            // Verifica se há índices disponíveis
             if (indicesOrdenados.length === 0) {
-                indiceSelect.style.display = 'none'; // Oculta o select se não houver índices
-                dataEnvio.textContent = ''; // Limpa a data de envio
+                indiceSelect.style.display = 'none';
             } else {
-                indiceSelect.style.display = 'block'; // Exibe o select se houver índices
+                indiceSelect.style.display = 'block';
 
-                // Preenche o select
                 indicesOrdenados.forEach(indice => {
                     const option = document.createElement('option');
                     option.value = indice;
@@ -492,12 +558,10 @@ function historyAJAX(idfuncao_imagem, funcao_nome, imagem_nome, colaborador_nome
                     indiceSelect.appendChild(option);
                 });
 
-                // Já seleciona o mais recente e mostra as imagens
-                indiceSelect.value = indicesOrdenados[0]; // pega o mais recente
-                indiceSelect.dispatchEvent(new Event('change')); // já mostra as imagens
+                indiceSelect.value = indicesOrdenados[0];
+                indiceSelect.dispatchEvent(new Event('change'));
             }
 
-            // 3. Evento de mudança no select
             indiceSelect.addEventListener('change', () => {
                 const indiceSelecionado = indiceSelect.value;
                 imageContainer.innerHTML = '';
@@ -505,9 +569,11 @@ function historyAJAX(idfuncao_imagem, funcao_nome, imagem_nome, colaborador_nome
                 const imagensDoIndice = imagensAgrupadas[indiceSelecionado];
 
                 if (imagensDoIndice && imagensDoIndice.length > 0) {
-                    // ⏰ Atualiza a data de envio
-                    const data = imagensDoIndice[0].data_envio;
-                    dataEnvio.textContent = `${formatarDataHora(data)}`;
+                    imagensDoIndice.sort((a, b) => new Date(b.data_envio) - new Date(a.data_envio));
+                    const maisRecente = imagensDoIndice[0];
+                    if (maisRecente) {
+                        mostrarImagemCompleta(`../${maisRecente.imagem}`, maisRecente.id);
+                    }
 
                     imagensDoIndice.forEach(img => {
                         const wrapper = document.createElement('div');
@@ -538,22 +604,103 @@ function historyAJAX(idfuncao_imagem, funcao_nome, imagem_nome, colaborador_nome
                         wrapper.appendChild(imgElement);
                         imageContainer.appendChild(wrapper);
                     });
-                } else {
-                    dataEnvio.textContent = ''; // caso não tenha imagens
                 }
             });
-            // Já seleciona o mais recente e mostra as imagens
+
             if (indicesOrdenados.length > 0) {
-                indiceSelect.value = indicesOrdenados[0]; // pega o mais recente
-                indiceSelect.dispatchEvent(new Event('change')); // já mostra as imagens
+                indiceSelect.value = indicesOrdenados[0];
+                indiceSelect.dispatchEvent(new Event('change'));
             }
 
         })
         .catch(error => console.error("Erro ao buscar dados:", error));
 }
 
+// Função utilitária para substituir elementos por ID
+function replaceElementById(id) {
+    const oldEl = document.getElementById(id);
+    const newEl = oldEl.cloneNode(true);
+    oldEl.replaceWith(newEl);
+    return newEl;
+}
 
+// Função utilitária para substituir elementos por classe (única ocorrência)
+function replaceElementByClass(className) {
+    const oldEl = document.querySelector(`.${className}`);
+    const newEl = oldEl.cloneNode(true);
+    oldEl.replaceWith(newEl);
+    return newEl;
+}
 
+function exibirSidebarTabulator(tarefas) {
+    const sidebarDiv = document.getElementById('sidebarTabulator');
+    sidebarDiv.innerHTML = '';
+
+    const tarefasPorFuncao = {};
+
+    tarefas.forEach(t => {
+        if (!tarefasPorFuncao[t.nome_funcao]) {
+            tarefasPorFuncao[t.nome_funcao] = [];
+        }
+        tarefasPorFuncao[t.nome_funcao].push(t);
+    });
+
+    Object.entries(tarefasPorFuncao).forEach(([funcao, tarefas]) => {
+        const grupoDiv = document.createElement('div');
+        grupoDiv.classList.add('grupo-funcao');
+
+        const header = document.createElement('div');
+        header.classList.add('group-header');
+        header.dataset.grupo = funcao;
+        header.innerHTML = `
+      <span class="funcao-label">${funcao.slice(0, 3)}</span>
+      <span class="funcao-completa"><b>${funcao}</b> (${tarefas.length} imagens)</span>
+    `;
+
+        const lista = document.createElement('div');
+        lista.classList.add('tarefas-lista');
+        lista.style.display = 'none';
+
+        tarefas.forEach(t => {
+            const tarefa = document.createElement('div');
+            tarefa.classList.add('tarefa-item');
+            const imgSrc = t.imagem ? `../${t.imagem}` : '../assets/logo.jpg';
+            tarefa.innerHTML = `
+        <img src="${imgSrc}" class="tab-img" data-id="${t.idfuncao_imagem}" alt="${t.imagem_nome}">
+        <span>${t.nome_colaborador} - ${t.imagem_nome}</span>
+      `;
+            tarefa.addEventListener('click', () => historyAJAX(t.idfuncao_imagem));
+            lista.appendChild(tarefa);
+        });
+
+        // Comportamento inteligente ao clicar no header
+        header.addEventListener('click', () => {
+            const todasAsListas = sidebarDiv.querySelectorAll('.tarefas-lista');
+            const todasAsHeaders = sidebarDiv.querySelectorAll('.group-header');
+
+            const jaAberto = lista.style.display === 'block';
+
+            // Fecha todos os grupos
+            todasAsListas.forEach(l => {
+                l.style.display = 'none';
+            });
+            if (jaAberto) {
+                // Nenhum aberto: minimizar a sidebar
+                sidebarDiv.classList.add('sidebar-min');
+                sidebarDiv.classList.remove('sidebar-expanded');
+            } else {
+                // Abre o novo grupo e expande sidebar
+                lista.style.display = 'block';
+                sidebarDiv.classList.add('sidebar-expanded');
+                sidebarDiv.classList.remove('sidebar-min');
+            }
+        });
+
+        grupoDiv.appendChild(header);
+        grupoDiv.appendChild(lista);
+        sidebarDiv.appendChild(grupoDiv);
+    });
+}
 
 document.querySelector('.close').addEventListener('click', () => {
     document.getElementById('imagem-modal').style.display = 'none';
@@ -711,7 +858,7 @@ function mostrarImagemCompleta(src, id) {
 
     const imageWrapper = document.getElementById("image_wrapper");
     const sidebar = document.querySelector(".sidebar-direita");
-    sidebar.style.display = "block";
+    sidebar.style.display = "flex";
 
     while (imageWrapper.firstChild) {
         imageWrapper.removeChild(imageWrapper.firstChild);
@@ -721,13 +868,16 @@ function mostrarImagemCompleta(src, id) {
     imgElement.id = "imagem_atual";
     imgElement.src = src;
     imgElement.style.width = "100%";
-    imgElement.style.borderRadius = "10px";
 
     imageWrapper.appendChild(imgElement);
     document.querySelector('#imagem_atual').scrollIntoView({ behavior: 'smooth' });
     renderComments(id);
+    ajustarNavSelectAoTamanhoDaImagem();
 
     imgElement.addEventListener('click', function (event) {
+        if (dragMoved) {
+            return;
+        }
         if (![1, 2, 9, 20, 3].includes(idusuario)) return;
 
         const rect = imgElement.getBoundingClientRect();
@@ -740,6 +890,38 @@ function mostrarImagemCompleta(src, id) {
 
         // Limpa os mencionados quando abre um novo comentário
         mencionadosIds = [];
+    });
+
+}
+
+function ajustarNavSelectAoTamanhoDaImagem() {
+    const img = document.getElementById('imagem_atual');
+    const navSelect = document.querySelector('.nav-select');
+    if (img && navSelect) {
+        // Aguarda a imagem carregar para pegar o tamanho real
+        img.onload = function () {
+            navSelect.style.width = img.width + 'px';
+        };
+        // Se a imagem já estiver carregada (cache)
+        if (img.complete) {
+            navSelect.style.width = img.width + 'px';
+        }
+    }
+}
+
+
+const btnDownload = document.getElementById('btn-download-imagem');
+if (btnDownload) {
+    btnDownload.addEventListener('click', function () {
+        const img = document.getElementById('imagem_atual');
+        if (img && img.src) {
+            const link = document.createElement('a');
+            link.href = img.src;
+            link.download = img.src.split('/').pop(); // nome do arquivo
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
     });
 }
 
@@ -870,13 +1052,21 @@ const USERS_PERMITIDOS = [1, 2, 3, 9, 20];   // quem pode editar / excluir
 // --------------------------------------------------------------------------
 
 async function renderComments(id) {
+    console.log('renderComments', id); // debug
     const comentariosDiv = document.querySelector(".comentarios");
+    comentariosDiv.innerHTML = '';
     const imagemCompletaDiv = document.getElementById("image_wrapper");
     const response = await fetch(`buscar_comentarios.php?id=${id}`);
     const comentarios = await response.json();
 
-    comentariosDiv.innerHTML = '';
     imagemCompletaDiv.querySelectorAll('.comment').forEach(c => c.remove());
+
+    // Oculta a sidebar-direita se não houver comentários
+    if (comentarios.length === 0) {
+        comentariosDiv.style.display = 'none';
+    } else {
+        comentariosDiv.style.display = 'flex';
+    }
 
     const users = await fetch('buscar_usuarios.php').then(res => res.json());
 
@@ -1150,22 +1340,6 @@ function fecharImagemModal() {
 }
 
 
-
-const btnBack = document.getElementById('btnBack');
-btnBack.addEventListener('click', function () {
-    const main = document.querySelector('.main');
-    main.classList.remove('hidden');
-
-    const container_aprovacao = document.querySelector('.container-aprovacao');
-    container_aprovacao.classList.add('hidden');
-
-    const imagemWrapperDiv = document.querySelector(".image_wrapper");
-    imagemWrapperDiv.innerHTML = '';
-
-    const comentariosDiv = document.querySelector(".comentarios");
-    comentariosDiv.innerHTML = '';
-});
-
 document.addEventListener('keydown', function (event) {
     if (event.key === 'Escape') {
         const comentarioModal = document.getElementById("comentarioModal");
@@ -1189,6 +1363,113 @@ document.addEventListener('keydown', function (event) {
     }
 });
 
+const imageWrapper = document.getElementById('image_wrapper');
+const comments = document.querySelectorAll('.comment');
+let currentZoom = 1;
+const zoomStep = 0.1;
+const maxZoom = 3;
+const minZoom = 0.5;
+
+// Pan variables
+let isDragging = false;
+let startX;
+let startY;
+let currentTranslateX = 0;
+let currentTranslateY = 0;
+let dragMoved = false;
+
+// Function to apply transforms (zoom and pan)
+function applyTransforms() {
+    imageWrapper.style.transform = `scale(${currentZoom}) translate(${currentTranslateX}px, ${currentTranslateY}px)`;
+
+    // Adjust comment scaling based on the new currentZoom
+    comments.forEach(comment => {
+
+        comment.style.transform = `scale(${1 / currentZoom})`;
+    });
+}
+
+// --- Zoom functionality ---
+document.addEventListener('wheel', function (event) {
+    if (event.ctrlKey) {
+        event.preventDefault(); // Prevent default browser zoom/scroll
+
+        const oldZoom = currentZoom; // Store old zoom for potential pan adjustment (not used in your current code but good practice)
+
+        if (event.deltaY < 0) {
+            currentZoom += zoomStep;
+        } else {
+            currentZoom -= zoomStep;
+        }
+
+        currentZoom = Math.max(minZoom, Math.min(maxZoom, currentZoom));
+
+        if (currentZoom === minZoom) {
+            // When zoomed out completely, reset pan to origin
+            currentTranslateX = 0;
+            currentTranslateY = 0;
+        }
+
+        applyTransforms();
+    }
+}, { passive: false });
+
+document.getElementById('btn-mais-zoom').addEventListener('click', function () {
+    currentZoom = Math.min(currentZoom + zoomStep, maxZoom);
+    applyTransforms();
+});
+
+document.getElementById('btn-menos-zoom').addEventListener('click', function () {
+    currentZoom = Math.max(currentZoom - zoomStep, minZoom);
+    applyTransforms();
+});
+
+document.getElementById('reset-zoom').addEventListener('click', function () {
+    currentZoom = 1;
+    applyTransforms();
+});
+
+imageWrapper.addEventListener('mousedown', (e) => {
+    if (e.button === 0 && !e.ctrlKey) {
+        isDragging = true;
+        dragMoved = false; // reset
+
+        imageWrapper.classList.add('grabbing');
+        startX = e.clientX - currentTranslateX;
+        startY = e.clientY - currentTranslateY;
+        imageWrapper.style.transition = 'none';
+    }
+});
+
+document.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+
+    e.preventDefault();
+
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+
+    // Marcar que houve movimento significativo
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+        dragMoved = true;
+    }
+
+    currentTranslateX = dx;
+    currentTranslateY = dy;
+
+    applyTransforms();
+});
+
+document.addEventListener('mouseup', (e) => {
+    if (isDragging) {
+        isDragging = false;
+        imageWrapper.classList.remove('grabbing');
+        imageWrapper.style.transition = 'transform 0.1s ease-out';
+    }
+});
+
+// Initialize transforms
+applyTransforms();
 
 const id_revisao = document.getElementById('id_revisao');
 

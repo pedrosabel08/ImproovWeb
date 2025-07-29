@@ -113,7 +113,7 @@ a {
     border-radius: 8px;
 }
 
-h2 {
+#imagem-modal h2 {
     text-align: center;
     color: #555;
     margin-bottom: 20px;
@@ -1103,11 +1103,15 @@ nav.breadcrumb-nav {
     font-size: 14px;
 }
 
-.breadcrumb-nav a {
+nav.breadcrumb-nav a {
     text-decoration: none;
     color: #333;
     position: relative;
     margin-right: 10px;
+}
+
+.tarefasObra .header nav.breadcrumb-nav a {
+    color: white;
 }
 
 .breadcrumb-nav a::after {

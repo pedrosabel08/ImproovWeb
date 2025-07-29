@@ -1,7 +1,16 @@
 document.addEventListener("DOMContentLoaded", function () {
+    const params = new URLSearchParams(window.location.search);
+    const obraNome = params.get("obra_nome");
 
-    fetchObrasETarefas();
-
+    if (obraNome) {
+        // Primeiro carrega as tarefas
+        fetchObrasETarefas().then(() => {
+            // Depois filtra pela obra
+            filtrarTarefasPorObra(obraNome);
+        });
+    } else {
+        fetchObrasETarefas();
+    }
 });
 
 function revisarTarefa(idfuncao_imagem, nome_colaborador, imagem_nome, nome_funcao, colaborador_id, tipoRevisao) {
@@ -105,7 +114,7 @@ let funcaoGlobalSelecionada = null;
 
 async function fetchObrasETarefas() {
     try {
-        const response = await fetch(`atualizar.php`);
+        const response = await fetch(`atualizar2.php`);
         if (!response.ok) throw new Error("Erro ao buscar tarefas");
 
         dadosTarefas = await response.json();
@@ -226,13 +235,14 @@ function filtrarTarefasPorObra(obraSelecionada) {
 
     if (tarefasDaObra.length > 0) {
         const obraId = tarefasDaObra[0].idobra; // ajuste se o campo for diferente
-        const nomeObra = tarefasDaObra[0].nomenclatura;
+        const nomeObra = tarefasDaObra[0].nome_obra;
+        const nomenclatura = tarefasDaObra[0].nomenclatura;
 
         const obraNavLinks = document.querySelectorAll('.obra_nav');
 
         obraNavLinks.forEach(link => {
-            link.href = `https://improov.com.br/sistema/Revisao/index2.php?obra_id=${obraId}`;
-            link.textContent = nomeObra;
+            link.href = `https://improov.com.br/sistema/Revisao/index2.php?obra_nome=${nomeObra}`;
+            link.textContent = nomenclatura;
         });
 
     }
@@ -1055,7 +1065,7 @@ async function renderComments(id) {
     if (comentarios.length === 0) {
         comentariosDiv.style.display = 'none';
     } else {
-        comentariosDiv.style.display = 'block';
+        comentariosDiv.style.display = 'flex';
     }
 
     const users = await fetch('buscar_usuarios.php').then(res => res.json());

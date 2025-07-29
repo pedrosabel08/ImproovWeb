@@ -255,7 +255,7 @@ function filtrarTarefasPorObra(obraSelecionada) {
     });
 
     // Exibe as tarefas filtradas
-    exibirTarefas(tarefasFiltradas);
+    exibirTarefas(tarefasFiltradas, tarefasDaObra);
 }
 
 function atualizarSelectColaborador(tarefas) {
@@ -365,7 +365,7 @@ document.getElementById('nome_funcao').addEventListener('change', () => {
 });
 
 // Função para exibir as tarefas e abastecer os filtros
-function exibirTarefas(tarefas) {
+function exibirTarefas(tarefas, tarefasCompletas) {
     const container = document.querySelector('.containerObra');
     container.style.display = 'none'; // Esconde o container de obras
 
@@ -382,7 +382,7 @@ function exibirTarefas(tarefas) {
 
     tarefasImagensObra.innerHTML = ''; // Limpa as tarefas anteriores
 
-    exibirSidebarTabulator(tarefas);
+    exibirSidebarTabulator(tarefasCompletas);
 
     if (tarefas.length > 0) {
         tarefas.forEach(tarefa => {

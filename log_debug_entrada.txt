@@ -4,12 +4,12 @@ Array
         (
             [name] => Array
                 (
-                    [0] => 4.AYA_KAR Rampa garagem_EF.psb
+                    [0] => 39_ RDO_VAL_Sacada_Torre_2_Final_13_R00.psb
                 )
 
             [full_path] => Array
                 (
-                    [0] => 4.AYA_KAR Rampa garagem_EF.psb
+                    [0] => 39_ RDO_VAL_Sacada_Torre_2_Final_13_R00.psb
                 )
 
             [type] => Array
@@ -19,7 +19,7 @@ Array
 
             [tmp_name] => Array
                 (
-                    [0] => C:\xampp\tmp\phpD641.tmp
+                    [0] => C:\xampp\tmp\phpCA28.tmp
                 )
 
             [error] => Array
@@ -29,7 +29,7 @@ Array
 
             [size] => Array
                 (
-                    [0] => 7294504614
+                    [0] => 2612608362
                 )
 
         )

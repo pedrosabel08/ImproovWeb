@@ -7,7 +7,7 @@ if ($conn->connect_error) {
 
 $conn->set_charset('utf8mb4');
 
-$sql = "SELECT p.idpos_producao, col.nome_colaborador, o.nome_obra, p.data_pos, 
+$sql = "SELECT p.idpos_producao, col.nome_colaborador, o.nome_obra, p.data_pos, o.nomenclatura,
                         i.imagem_nome, p.caminho_pasta, p.numero_bg, p.refs, p.obs, p.status_pos, s.nome_status, resp.nome_colaborador AS nome_responsavel,
                         r.status AS status_render
                         FROM pos_producao p

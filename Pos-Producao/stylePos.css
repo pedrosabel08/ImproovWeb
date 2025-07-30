@@ -110,8 +110,9 @@ header button#openModalBtnRender {
 #filtro select,
 #filtro input {
     width: 300px;
-    font-size: 16px;
+    font-size: 12px;
     padding: 5px;
+    margin-top: 5px;
 }
 
 .dataTables_filter {
@@ -123,7 +124,13 @@ header button#openModalBtnRender {
 }
 
 .tabela-container {
-    margin: 0 20px;
+    width: 98%;
+    margin: auto;
+}
+
+.tabulator-cell {
+    padding: 8px 10px !important;
+    text-align: center !important;
 }
 
 table {
@@ -132,6 +139,39 @@ table {
     margin: 0 auto;
     font-size: 14px;
 }
+
+.tabulator {
+    overflow: auto !important;
+}
+
+.tabulator::-webkit-scrollbar {
+    width: 5px;
+}
+
+.tabulator::-webkit-scrollbar-thumb {
+    background-color: #747474;
+    border-radius: 10px;
+}
+
+.tabulator::-webkit-scrollbar-track {
+    background-color: #f1f1f1;
+}
+
+
+.tabulator .tabulator-header .tabulator-col {
+    background: #ffffff;
+    border-right: 1px solid #aaa;
+    box-sizing: border-box;
+    display: inline-flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    overflow: hidden;
+    position: relative;
+    text-align: center !important;
+    vertical-align: bottom;
+    color: black;
+}
+
 
 td,
 th {

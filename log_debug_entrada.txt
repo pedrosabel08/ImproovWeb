@@ -4,22 +4,22 @@ Array
         (
             [name] => Array
                 (
-                    [0] => 2. SAN_LAJ Fotomontagem aérea geral diurna com inserção do loteamento em terreno real ângulo 2_005.zip
+                    [0] => 12. MPE_SUN Living tipo 1 final 10_R00.psb
                 )
 
             [full_path] => Array
                 (
-                    [0] => 2. SAN_LAJ Fotomontagem aérea geral diurna com inserção do loteamento em terreno real ângulo 2_005.zip
+                    [0] => 12. MPE_SUN Living tipo 1 final 10_R00.psb
                 )
 
             [type] => Array
                 (
-                    [0] => application/x-zip-compressed
+                    [0] => application/octet-stream
                 )
 
             [tmp_name] => Array
                 (
-                    [0] => C:\xampp\tmp\php3ACD.tmp
+                    [0] => C:\xampp\tmp\php6CAE.tmp
                 )
 
             [error] => Array
@@ -29,7 +29,7 @@ Array
 
             [size] => Array
                 (
-                    [0] => 5101533608
+                    [0] => 524415522
                 )
 
         )

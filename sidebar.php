@@ -32,6 +32,7 @@
                     <li><a title="Pagamento" href="https://improov.com.br/sistema/Pagamento"><i class="fas fa-money-bill-wave"></i><span> Pagamento</span></a></li>
                     <!-- <li><a title="Obras" href="https://improov.com.br/sistema/Obras"><i class="fas fa-building"></i><span> Obras</span></a></li> -->
                     <li><a title="Dashboard" href="https://improov.com.br/sistema/Dashboard"><i class="fa-solid fa-chart-line"></i><span> Dashboard</span></a></li>
+                    <li><a title="Projetos" href="https://improov.com.br/sistema/Projetos"><i class="fa-solid fa-diagram-project"></i><span> Projetos</span></a></li>
                 <?php endif; ?>
             </ul>
 

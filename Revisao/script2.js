@@ -114,7 +114,7 @@ let funcaoGlobalSelecionada = null;
 
 async function fetchObrasETarefas() {
     try {
-        const response = await fetch(`atualizar2.php`);
+        const response = await fetch(`atualizar.php`);
         if (!response.ok) throw new Error("Erro ao buscar tarefas");
 
         dadosTarefas = await response.json();
@@ -1426,6 +1426,8 @@ document.getElementById('btn-menos-zoom').addEventListener('click', function () 
 
 document.getElementById('reset-zoom').addEventListener('click', function () {
     currentZoom = 1;
+    currentTranslateX = 0; // reseta deslocamento horizontal
+    currentTranslateY = 0; // reseta deslocamento vertical
     applyTransforms();
 });
 
@@ -1433,6 +1435,7 @@ imageWrapper.addEventListener('mousedown', (e) => {
     if (e.button === 0 && !e.ctrlKey) {
         isDragging = true;
         dragMoved = false; // reset
+        imageWrapper.style.cursor = 'grabbing'; // mão fechada
 
         imageWrapper.classList.add('grabbing');
         startX = e.clientX - currentTranslateX;
@@ -1443,6 +1446,7 @@ imageWrapper.addEventListener('mousedown', (e) => {
 
 document.addEventListener('mousemove', (e) => {
     if (!isDragging) return;
+    imageWrapper.style.cursor = 'grabbing'; // mão fechada
 
     e.preventDefault();
 
@@ -1463,6 +1467,7 @@ document.addEventListener('mousemove', (e) => {
 document.addEventListener('mouseup', (e) => {
     if (isDragging) {
         isDragging = false;
+        imageWrapper.style.cursor = 'grab'; // mão aberta
         imageWrapper.classList.remove('grabbing');
         imageWrapper.style.transition = 'transform 0.1s ease-out';
     }

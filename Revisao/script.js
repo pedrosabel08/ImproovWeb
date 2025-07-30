@@ -527,7 +527,7 @@ function historyAJAX(idfuncao_imagem) {
 
             const titulo = document.getElementById('funcao_nome');
             titulo.textContent = `${item.colaborador_nome} - ${item.nome_funcao}`;
-            document.getElementById("imagem_nome").textContent = item.imagem_nome;
+            document.getElementById("imagem_nome").textContent = `${item.imagem_nome} (${item.nome_status})`;
 
             const imageContainer = document.getElementById('imagens');
             imageContainer.innerHTML = '';

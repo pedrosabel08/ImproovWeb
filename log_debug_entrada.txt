@@ -4,22 +4,22 @@ Array
         (
             [name] => Array
                 (
-                    [0] => 39_ RDO_VAL_Sacada_Torre_2_Final_13_R00.psb
+                    [0] => 2. SAN_LAJ Fotomontagem aérea geral diurna com inserção do loteamento em terreno real ângulo 2_005.zip
                 )
 
             [full_path] => Array
                 (
-                    [0] => 39_ RDO_VAL_Sacada_Torre_2_Final_13_R00.psb
+                    [0] => 2. SAN_LAJ Fotomontagem aérea geral diurna com inserção do loteamento em terreno real ângulo 2_005.zip
                 )
 
             [type] => Array
                 (
-                    [0] => application/octet-stream
+                    [0] => application/x-zip-compressed
                 )
 
             [tmp_name] => Array
                 (
-                    [0] => C:\xampp\tmp\phpCA28.tmp
+                    [0] => C:\xampp\tmp\php3ACD.tmp
                 )
 
             [error] => Array
@@ -29,7 +29,7 @@ Array
 
             [size] => Array
                 (
-                    [0] => 2612608362
+                    [0] => 5101533608
                 )
 
         )

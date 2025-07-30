@@ -64,6 +64,7 @@ $sqlObra = "SELECT
     o.local,
     o.altura_drone,
     o.link_drive,
+    o.nome_obra,
     COUNT(*) AS total_imagens,
     COUNT(CASE WHEN i.antecipada = 1 THEN 1 ELSE NULL END) AS total_imagens_antecipadas,
     i.dias_trabalhados
@@ -89,6 +90,62 @@ $obra = $resultObra->fetch_assoc(); // Deve retornar uma única linha
 $response['obra'] = $obra;
 
 $stmtObra->close();
+
+// Segundo SELECT: Detalhes gerais da obra
+$sqlAprovacaoObra = "SELECT 
+            f.idfuncao_imagem,
+            f.funcao_id, 
+            fun.nome_funcao, 
+            f.status, 
+            f.imagem_id, 
+            i.imagem_nome, 
+            f.colaborador_id, 
+            c.nome_colaborador, 
+            c.telefone,
+            u.id_slack,
+            o.nome_obra,
+            o.nomenclatura,
+            o.idobra,
+            s.nome_status,
+            (SELECT MAX(h.data_aprovacao)
+             FROM historico_aprovacoes h
+             WHERE h.funcao_imagem_id = f.idfuncao_imagem) AS data_aprovacao,
+            (SELECT h.status_novo
+
+             FROM historico_aprovacoes h
+             WHERE h.funcao_imagem_id = f.idfuncao_imagem
+             ORDER BY h.data_aprovacao DESC 
+             LIMIT 1) AS status_novo,
+            (SELECT hi.imagem
+             FROM historico_aprovacoes_imagens hi 
+             WHERE hi.funcao_imagem_id = f.idfuncao_imagem
+             ORDER BY hi.data_envio DESC 
+             LIMIT 1) AS imagem
+        FROM funcao_imagem f
+        LEFT JOIN funcao fun ON fun.idfuncao = f.funcao_id
+        LEFT JOIN colaborador c ON c.idcolaborador = f.colaborador_id
+        LEFT JOIN usuario u ON u.idcolaborador = c.idcolaborador
+        LEFT JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
+        LEFT JOIN status_imagem s ON i.status_id = s.idstatus
+        LEFT JOIN obra o ON i.obra_id = o.idobra
+        WHERE f.funcao_id IN (1, 2, 3, 4, 5, 6, 7, 8, 9) 
+          AND (f.status = 'Em aprovação' OR f.status = 'Ajuste' OR f.status = 'Aprovado com ajustes') AND o.idobra = ?
+        ORDER BY data_aprovacao DESC";
+
+$stmtAprovacaoObra = $conn->prepare($sqlAprovacaoObra);
+if ($stmtAprovacaoObra === false) {
+    die('Erro na preparação da consulta (obra): ' . $conn->error);
+}
+
+$stmtAprovacaoObra->bind_param("i", $obraId);
+$stmtAprovacaoObra->execute();
+$resultAprovacaoObra = $stmtAprovacaoObra->get_result();
+
+// Processa os resultados do segundo SELECT
+$aprovacaoObra = $resultAprovacaoObra->fetch_assoc(); // Deve retornar uma única linha
+$response['aprovacaoObra'] = $aprovacaoObra;
+
+$stmtAprovacaoObra->close();
 
 // Segundo SELECT: Detalhes gerais da obra
 $sqlValores = "SELECT 

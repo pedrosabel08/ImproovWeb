@@ -543,6 +543,14 @@ function infosObra(obraId) {
             let antecipada = 0;
             let imagens = 0;
 
+            if (data?.obra?.nome_obra && data?.aprovacaoObra && Object.keys(data.aprovacaoObra).length > 0) {
+                document.getElementById('altBtn').classList.remove('hidden');
+                document.getElementById('altBtn').onclick = function () {
+                    window.location.href = `https://improov.com.br/sistema/Revisao/index.php?obra_nome=${data.obra.nome_obra}`;
+                };
+            } else {
+                document.getElementById('altBtn').classList.add('hidden');
+            }
             // Seleciona o elemento select
             const statusEtapaSelect = document.getElementById("imagem_status_etapa_filtro");
             const statusSelect = document.getElementById("imagem_status_filtro");

@@ -1289,6 +1289,10 @@ nav.breadcrumb-nav a {
     margin: 0 auto;
 }
 
+.buttons {
+    padding-right: 2px;
+}
+
 .buttons button {
     height: 30px;
     width: 30px;

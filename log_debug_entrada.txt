@@ -4,12 +4,12 @@ Array
         (
             [name] => Array
                 (
-                    [0] => 12. MPE_SUN Living tipo 1 final 10_R00.psb
+                    [0] => 37.LD1_RES_Suite_apto_tipo_3_005.max
                 )
 
             [full_path] => Array
                 (
-                    [0] => 12. MPE_SUN Living tipo 1 final 10_R00.psb
+                    [0] => 37.LD1_RES_Suite_apto_tipo_3_005.max
                 )
 
             [type] => Array
@@ -19,7 +19,7 @@ Array
 
             [tmp_name] => Array
                 (
-                    [0] => C:\xampp\tmp\php6CAE.tmp
+                    [0] => C:\xampp\tmp\php2EFF.tmp
                 )
 
             [error] => Array
@@ -29,7 +29,7 @@ Array
 
             [size] => Array
                 (
-                    [0] => 524415522
+                    [0] => 73424974
                 )
 
         )

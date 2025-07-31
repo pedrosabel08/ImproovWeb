@@ -1,4 +1,66 @@
-const idusuario = parseInt(localStorage.getItem('idusuario')); // Obtém o idusuario do localStorage
+const usuario_externo = parseInt(localStorage.getItem('usuario_externo')); // Obtém o idusuario do localStorage
+
+// Função para salvar com tempo de expiração
+function salvarUsuario(nome, email) {
+    const agora = new Date().getTime();
+    const expiraEm = agora + 2 * 60 * 60 * 1000; // 2 horas em milissegundos
+
+    const dados = {
+        nome: nome,
+        email: email,
+        expiracao: expiraEm
+    };
+
+    localStorage.setItem("usuario_externo", JSON.stringify(dados));
+}
+
+// Função para recuperar e validar expiração
+function obterUsuario() {
+    const item = localStorage.getItem("usuario_externo");
+
+    if (!item) return null;
+
+    const dados = JSON.parse(item);
+    const agora = new Date().getTime();
+
+    if (agora > dados.expiracao) {
+        localStorage.removeItem("usuario_externo");
+        return null;
+    }
+
+    return dados;
+}
+
+function mostrarModal() {
+    document.getElementById("modalLogin").style.display = "flex";
+}
+
+function fecharModal() {
+    document.getElementById("modalLogin").style.display = "none";
+}
+
+
+const usuario = obterUsuario();
+
+if (usuario) {
+    console.log("Usuário válido:", usuario.nome, usuario.email);
+    // Pode permitir acesso direto
+    fecharModal();
+} else {
+    console.log("Solicitar nome e email.");
+    // Exibir formulário para pedir nome/email
+    mostrarModal();
+}
+
+// Captura envio do formulário
+document.getElementById("formLogin").addEventListener("submit", function (e) {
+    e.preventDefault();
+    const nome = document.getElementById("nome").value;
+    const email = document.getElementById("email").value;
+    salvarUsuario(nome, email);
+    fecharModal();
+    console.log("Usuário salvo:", nome, email);
+});
 
 
 async function carregarImagensPublicas() {
@@ -98,7 +160,7 @@ function mostrarImagemCompleta(src, id) {
         if (dragMoved) {
             return;
         }
-        if (![1, 2, 9, 20, 3].includes(idusuario)) return;
+        if (![1, 2, 9, 20, 3].includes(usuario_externo)) return;
 
         const rect = imgElement.getBoundingClientRect();
         relativeX = ((event.clientX - rect.left) / rect.width) * 100;
@@ -429,7 +491,7 @@ async function renderComments(id) {
         commentCard.appendChild(respostas);
 
         // Permissões
-        if (!USERS_PERMITIDOS.includes(idusuario)) {
+        if (!USERS_PERMITIDOS.includes(usuario_externo)) {
             footer.querySelector('.comment-delete').style.display = 'none';
             footer.querySelector('.comment-edit').style.display = 'none';
         }

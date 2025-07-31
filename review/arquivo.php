@@ -73,6 +73,18 @@ $obraId = $_GET['obraId'] ?? 1; // ou pegue via query string
     </div>
 
     <!-- Modal -->
+    <div id="modalLogin" class="modal" style="background-color: black;">
+        <div class="modal-content">
+            <h2>Identifique-se</h2>
+            <form id="formLogin">
+                <input type="text" id="nome" placeholder="Nome" required>
+                <input type="email" id="email" placeholder="Email" required>
+                <button type="submit">Entrar</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal -->
     <div id="imagem-modal" class="modal" style="display:none;">
         <div class="modal-content">
             <span class="close">&times;</span>

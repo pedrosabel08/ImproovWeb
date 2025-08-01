@@ -256,6 +256,18 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         ]
     });
+
+    tabela.on("dataLoaded", function () {
+        setTimeout(() => {
+            tabela.getGroups().forEach(gObra => {
+                gObra.show();
+                gObra.getSubGroups().forEach(gStatus => {
+                    gStatus.show();
+                });
+            });
+        }, 200);
+    });
+
     document.querySelectorAll('[data-status]').forEach(el => {
         el.addEventListener('click', () => {
             const valor = el.getAttribute('data-status');

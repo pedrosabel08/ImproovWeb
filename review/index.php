@@ -29,7 +29,7 @@ $conn->close();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="../Revisao/style.css">
     <link rel="stylesheet" href="../css/styleSidebar.css">
     <link rel="stylesheet" href="../css/modalSessao.css">
 
@@ -39,15 +39,12 @@ $conn->close();
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
         integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <!-- Adicione os links para DataTables no seu HTML -->
-    <!-- ...existing code... -->
+        
     <link rel="stylesheet" href="https://unpkg.com/intro.js/minified/introjs.min.css">
     <script src="https://unpkg.com/intro.js/minified/intro.min.js"></script>
+    <link href="https://unpkg.com/tabulator-tables@5.5.0/dist/css/tabulator.min.css" rel="stylesheet">
 
-    <title>Dashboard da Obra - Flow Review</title>
-    <style>
-
-    </style>
+    <title>Flow Review</title>
 </head>
 
 <body>
@@ -62,9 +59,8 @@ $conn->close();
             <h2 id="nomenclatura"></h2>
         </header>
 
-        <section class="image-list" id="imageList">
-            <!-- As imagens aparecerão aqui -->
-        </section>
+        <div id="tabelaImagens"></div>
+
     </div>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -76,6 +72,7 @@ $conn->close();
     <script src="script.js"></script>
     <script src="../script/sidebar.js"></script>
     <script src="../script/controleSessao.js"></script>
+    <script src="https://unpkg.com/tabulator-tables@5.5.0/dist/js/tabulator.min.js"></script>
 </body>
 
 </html>

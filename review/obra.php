@@ -7,7 +7,7 @@ $obraId = $_GET['obraId'] ?? 1; // ou pegue via query string
 
 <head>
     <meta charset="UTF-8">
-    <title>Visualização Pública da Obra</title>
+    <title>Flow Review</title>
     <link rel="stylesheet" href="styleImagens.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -75,10 +75,18 @@ $obraId = $_GET['obraId'] ?? 1; // ou pegue via query string
     <!-- Modal -->
     <div id="modalLogin" class="modal" style="background-color: black;">
         <div class="modal-content">
-            <h2>Identifique-se</h2>
+            <h2 id="nomenclatura"></h2>
             <form id="formLogin">
-                <input type="text" id="nome" placeholder="Nome" required>
-                <input type="email" id="email" placeholder="Email" required>
+                <div class="floating-label">
+                    <input type="text" id="nome" placeholder=" " required>
+                    <label for="nome">Nome</label>
+                </div>
+
+                <div class="floating-label">
+                    <input type="email" id="email" placeholder=" " required>
+                    <label for="email">Email</label>
+                </div>
+
                 <button type="submit">Entrar</button>
             </form>
         </div>

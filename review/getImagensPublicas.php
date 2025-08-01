@@ -18,7 +18,7 @@ $sql = "SELECT ir.*, i.imagem_nome
         GROUP BY imagem_id
     ) ultimos ON i.idimagens_cliente_obra = ultimos.imagem_id
     INNER JOIN review_uploads ir ON ir.id = ultimos.max_id
-    WHERE i.obra_id = ?
+    WHERE i.obra_id = ? AND ir.status <> 'wait'
     ORDER BY i.imagem_nome ASC
 ";
 

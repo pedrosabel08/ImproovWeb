@@ -13,7 +13,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 });
 
-function revisarTarefa(idfuncao_imagem, nome_colaborador, imagem_nome, nome_funcao, colaborador_id, tipoRevisao) {
+function revisarTarefa(idfuncao_imagem, nome_colaborador, imagem_nome, nome_funcao, colaborador_id, imagem_id, tipoRevisao) {
     const idcolaborador = localStorage.getItem('idcolaborador');
 
     let actionText = "";
@@ -42,6 +42,7 @@ function revisarTarefa(idfuncao_imagem, nome_colaborador, imagem_nome, nome_func
                 nome_funcao,
                 colaborador_id,
                 responsavel: idcolaborador,
+                imagem_id,
                 tipoRevisao
             }),
         })
@@ -514,6 +515,7 @@ function historyAJAX(idfuncao_imagem) {
                         item.imagem_nome,
                         item.nome_funcao,
                         item.colaborador_id,
+                        item.imagem_id,
                         selected
                     );
 

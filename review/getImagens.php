@@ -19,16 +19,17 @@ $sqlImagens = "SELECT
         ico.imagem_nome,
         ru.id,
         ru.nome_arquivo,
-        ru.lock,
+        ru.block,
         ru.hide,
         ru.data_envio,
         ru.versao,
+        ru.status,
         o.nomenclatura
     FROM imagens_cliente_obra ico
     LEFT JOIN review_uploads ru ON ico.idimagens_cliente_obra = ru.imagem_id
     LEFT JOIN obra o ON ico.obra_id = o.idobra
     WHERE ico.obra_id = ?
-    ORDER BY FIELD(ico.tipo_imagem, 'Fachada', 'Imagem Interna', 'Unidade', 'Imagem Externa', 'Planta Humanizada'), ico.idimagens_cliente_obra;";
+    ORDER BY FIELD(ico.tipo_imagem, 'Fachada', 'Imagem Interna', 'Unidade', 'Imagem Externa', 'Planta Humanizada'), ru.versao DESC, ico.idimagens_cliente_obra;";
 
 
 $stmtImagens = $conn->prepare($sqlImagens);

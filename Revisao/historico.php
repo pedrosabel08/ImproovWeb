@@ -27,7 +27,8 @@ if ($_SERVER["REQUEST_METHOD"] == "GET") {
         c2.nome_colaborador AS responsavel_nome,
         i.imagem_nome, 
         fun.nome_funcao,
-        s.nome_status
+        s.nome_status,
+        i.idimagens_cliente_obra AS imagem_id
     FROM historico_aprovacoes h
     JOIN colaborador c ON h.colaborador_id = c.idcolaborador
     JOIN colaborador c2 ON h.responsavel = c2.idcolaborador

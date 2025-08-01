@@ -1,148 +1,88 @@
 // Função para buscar imagens da obra e renderizar
 
 const obraId = 1;
+
 async function carregarImagens() {
     try {
         const res = await fetch(`getImagens.php?obraId=${obraId}`);
         const data = await res.json();
 
-        const container = document.getElementById('imageList');
-        container.innerHTML = '';
-
-        // Verifica se houve erro na resposta do PHP
         if (data.error) {
-            container.innerHTML = `<p class="error-message">Erro: ${data.error}</p>`;
+            alert("Erro: " + data.error);
             return;
         }
-
-        // Verifica se existem imagens para exibir
         if (!data.imagens || data.imagens.length === 0) {
-            container.innerHTML = `<p>Nenhuma imagem encontrada para esta obra.</p>`;
+            alert("Nenhuma imagem encontrada.");
             return;
         }
 
-        document.getElementById('nomenclatura').textContent = data.nomenclatura || 'Nomenclatura não disponível';
+        // Formata para cada versão ser uma linha
+        const linhas = data.imagens.map(img => {
+            return {
+                nome_da_imagem: img.imagem_nome,
+                preview: `../uploads/imagens/${img.nome_arquivo}`,
+                versao: img.versao || 1,
+                data_envio: img.data_envio ? new Date(img.data_envio.replace(' ', 'T')).toLocaleDateString('pt-BR') : '',
+                selecionado: false,
+                imagem_id: img.imagem_id,
+                status: img.status
+            };
+        });
 
+        // Cria tabela com Tabulator
+        new Tabulator("#tabelaImagens", {
+            data: linhas,
+            layout: "fitColumns",
+            groupBy: "nome_da_imagem",
+            groupStartOpen: true, // Começa fechado
+            placeholder: "Nenhuma imagem encontrada",
+            columns: [
+                { formatter: "rowSelection", titleFormatter: "rowSelection", hozAlign: "center", headerSort: false, width: 50 },
 
-        // Agrupar imagens por imagem_id
-        const agrupadas = data.imagens.reduce((acc, img) => {
-            if (!acc[img.imagem_id]) {
-                acc[img.imagem_id] = {
-                    // Pega o nome da imagem da primeira ocorrência encontrada para aquele ID
-                    nome_da_imagem: img.imagem_nome,
-                    arquivos: []
-                };
-            }
-            acc[img.imagem_id].arquivos.push({
-                nome_arquivo: img.nome_arquivo,
-                idreview: img.id,
-                lock: img.lock,
-                hide: img.hide,
-                data_envio: img.data_envio,
-                versao: img.versao
-            }); return acc;
-        }, {});
-
-        for (const imagemId in agrupadas) {
-            const group = agrupadas[imagemId];
-            const div = document.createElement('div');
-            div.className = 'image-card';
-
-
-            // Ordena por versão (do maior para o menor)
-            const arquivosOrdenados = group.arquivos
-                .filter(imagem => imagem.nome_arquivo)
-                .sort((a, b) => (b.versao || 0) - (a.versao || 0));
-
-            if (arquivosOrdenados.length === 0) continue;
-
-
-            const ultima = arquivosOrdenados[0];
-            const anteriores = arquivosOrdenados.slice(1);
-
-            let imagensHTML = `
-    <div class="imagem-row">
-        <img src="../uploads/imagens/${ultima.nome_arquivo}" 
-            alt="Preview de ${group.nome_da_imagem}" 
-            class="imagem-preview"
-            style="cursor:pointer"
-            onclick="selecionarImagem(${ultima.idreview}, '../uploads/imagens/${ultima.nome_arquivo}')"
-        />
-        <span class="image-versao">
-            Versão ${ultima.versao || 1}
-            ${anteriores.length > 0 ? `<button class="toggle-versoes-btn" onclick="toggleVersoes(this)" title="Ver versões anteriores" style="background:none;border:none;cursor:pointer;font-size:16px;">&#9660;</button>` : ''}
-        </span>
-        <span class="image-label">
-            ${ultima.data_envio
-                    ? new Date(ultima.data_envio.replace(' ', 'T')).toLocaleDateString('pt-BR')
-                    : 'Data não disponível'
-                }
-        </span>
-        <div class="imagem-menu-col">
-            <button onclick="toggleMenu(this)" class="menu-btn">⋮</button>
-            <div class="menu-popup hidden">
-                <button onclick="bloquearImagem(${ultima.idreview})">${ultima.lock ? '🔒' : '🔓'} Bloquear</button>
-                <button onclick="ocultarImagem(${ultima.idreview})">${ultima.hide ? '🙈' : '👁️'} Ocultar</button>
-                <button onclick="deletarImagem(${ultima.idreview}, '${ultima.nome_arquivo}')">🗑️ Excluir</button>
-            </div>
-        </div>
-    </div>
-`;
-
-            if (anteriores.length > 0) {
-                imagensHTML += `
-        <div class="versoes-anteriores hidden">
-            ${anteriores.map(imagem => `
-                <div class="imagem-row">
-                    <img src="../uploads/imagens/${imagem.nome_arquivo}" 
-                        alt="Preview de ${group.nome_da_imagem}" 
-                        class="imagem-preview"
-                        style="cursor:pointer"
-                        onclick="selecionarImagem(${imagem.idreview}, '../uploads/imagens/${imagem.nome_arquivo}')"
-                    />
-                    <span class="image-versao">Versão ${imagem.versao || ''}</span>
-                    <span class="image-label">
-                        ${imagem.data_envio
-                        ? new Date(imagem.data_envio.replace(' ', 'T')).toLocaleDateString('pt-BR')
-                        : 'Data não disponível'
+                {
+                    title: "Preview",
+                    field: "preview",
+                    formatter: function (cell) {
+                        const url = cell.getValue();
+                        const rowData = cell.getData();
+                        return `<img src="${url}" style="max-height:80px;cursor:pointer" onclick="selecionarImagem('${rowData.imagem_id}','${url}','${rowData.status}')">`;
                     }
-                    </span>
-                    <div class="imagem-menu-col">
-                        <button onclick="toggleMenu(this)" class="menu-btn">⋮</button>
-                        <div class="menu-popup hidden">
-                            <button onclick="bloquearImagem(${imagem.idreview})">${imagem.lock ? '🔒' : '🔓'} Bloquear</button>
-                            <button onclick="ocultarImagem(${imagem.idreview})">${imagem.hide ? '🙈' : '👁️'} Ocultar</button>
-                            <button onclick="deletarImagem(${imagem.idreview}, '${imagem.nome_arquivo}')">🗑️ Excluir</button>
-                        </div>
-                    </div>
-                </div>
-            `).join('')}
-        </div>
-    `;
-            }
-
-            div.innerHTML = `
-        <div class="image-card-header">
-            <p class="titulo">${group.nome_da_imagem}</p>
-            <button onclick="adicionarImagem(${imagemId})">+</button>
-        </div>
-        <div>${imagensHTML}</div>
-    `;
-            container.appendChild(div);
-        }
-
-
+                },
+                { title: "Versão", field: "versao", hozAlign: "center" },
+                { title: "Status", field: "status", hozAlign: "center" },
+                { title: "Data de Envio", field: "data_envio", hozAlign: "center" }
+            ]
+        });
 
     } catch (error) {
         console.error('Erro ao carregar imagens:', error);
-        container.innerHTML = `<p class="error-message">Não foi possível carregar as imagens. Tente novamente mais tarde.</p>`;
     }
 }
 
-function selecionarImagem(id, src) {
-    localStorage.setItem('imagem_id_selecionada', id);
-    localStorage.setItem('imagem_src_selecionada', src);
-    window.location.href = 'arquivo.php';
+// document.getElementById("batchActionBtn").addEventListener("click", () => {
+//     const selecionadas = tabela.getSelectedData();
+//     if (selecionadas.length === 0) {
+//         alert("Nenhuma imagem selecionada.");
+//         return;
+//     }
+
+//     console.log("Selecionadas para batch:", selecionadas);
+
+//     // Aqui você pode mandar via fetch/AJAX para fazer bloqueio, exclusão etc.
+//     // fetch('batchAction.php', { method: 'POST', body: JSON.stringify(selecionadas) })
+// });
+
+function selecionarImagem(id, src, status) {
+    console.log("Selecionando imagem:", id, src, status);
+    if (status.toLowerCase() === 'wait') {
+        alert("Esta imagem ainda está em processamento. Por favor, aguarde.");
+        return;
+    } else {
+        localStorage.setItem('imagem_id_selecionada', id);
+        localStorage.setItem('imagem_src_selecionada', src);
+        window.location.href = 'arquivo.php';
+    }
+
 }
 
 
@@ -173,7 +113,7 @@ async function bloquearImagem(id) {
     await fetch(`atualizarImagem.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, acao: 'lock' })
+        body: JSON.stringify({ id, acao: 'block' })
     });
     carregarImagens(); // recarrega
 }

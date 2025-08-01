@@ -63,6 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $nome_funcao = $data['nome_funcao'] ?? null;
     $colaborador_id = $data['colaborador_id'] ?? null;
     $responsavel = $data['responsavel'] ?? null;
+    $imagem_id = $data['imagem_id'] ?? null;
     $nome_colaborador = 'Pedro Sabel';
 
     if (!$idfuncao_imagem || !$tipoRevisao) {
@@ -151,6 +152,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!empty($arquivosPossiveis)) {
             $caminho_local = $arquivosPossiveis[0];
             $nome_arquivo = basename($caminho_local); // nome final com extensão
+
+            $reviewDir = $uploadDir . "review/";
+            if (!is_dir($reviewDir)) {
+                mkdir($reviewDir, 0777, true);
+            }
+            $destinoReview = $reviewDir . $nome_arquivo;
+            if (!copy($caminho_local, $destinoReview)) {
+                $resultadoFinal['logs'][] = "Falha ao copiar arquivo para pasta review.";
+            } else {
+                $resultadoFinal['logs'][] = "Arquivo copiado para pasta review: $destinoReview";
+            }
+
+            // Busca a maior versão já existente para o imagem_id
+            $versao = 1;
+            $stmtVer = $conn->prepare("SELECT MAX(versao) as max_versao FROM review_uploads WHERE imagem_id = ?");
+            $stmtVer->bind_param("i", $imagem_id);
+            $stmtVer->execute();
+            $stmtVer->bind_result($max_versao);
+            if ($stmtVer->fetch() && $max_versao !== null) {
+                $versao = $max_versao + 1;
+            }
+            $stmtVer->close();
+
+            $stmt = $conn->prepare("INSERT INTO review_uploads (imagem_id, nome_arquivo, versao) VALUES (?, ?, ?)");
+            $stmt->bind_param("isi", $imagem_id, $nome_arquivo, $versao);
+
+            if ($stmt->execute()) {
+                $resultadoFinal['logs'][] = "Arquivo inserido no banco de dados: $nome_arquivo";
+            } else {
+                $resultadoFinal['logs'][] = "Falha ao inserir a imagem no banco.";
+            }
 
             $ftp_host = 'imp-nas.ddns.net';
             $ftp_user = 'flow';

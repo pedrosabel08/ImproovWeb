@@ -862,3 +862,64 @@ p.imagem_nome {
     min-width: 0;
     max-width: 100%;
 }
+
+#formLogin {
+    width: max-content;
+    margin: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Container de cada campo */
+.floating-label {
+    position: relative;
+    margin-bottom: 15px;
+}
+
+/* Campo de entrada */
+.floating-label input {
+    padding: 8px;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    outline: none;
+    background: none;
+}
+
+/* Label sobreposto */
+.floating-label label {
+    position: absolute;
+    top: 8px;
+    left: 10px;
+    color: #777;
+    font-size: 14px;
+    pointer-events: none;
+    transition: 0.2s ease all;
+    background: white;
+    padding: 0 4px;
+}
+
+/* Quando focado ou preenchido */
+.floating-label input:focus+label,
+.floating-label input:not(:placeholder-shown)+label {
+    top: -8px;
+    left: 8px;
+    font-size: 13px;
+    color: #007bff;
+}
+
+#formLogin button {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 4px 6px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: background-color 0.3s ease;
+}
+
+#formLogin button:hover {
+    background-color: #0056b3;
+}

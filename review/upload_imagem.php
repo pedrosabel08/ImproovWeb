@@ -37,9 +37,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['imagem']) && isset($
     }
     $stmtVer->close();
 
-    $stmt = $conn->prepare("INSERT INTO review_uploads (imagem_id, nome_arquivo, tipo_arquivo, versao) VALUES (?, ?, ?, ?, ?)");
+    $stmt = $conn->prepare("INSERT INTO review_uploads (imagem_id, nome_arquivo, versao) VALUES (?, ?, ?, ?)");
     $null = NULL; // Para o bind_param de blob
-    $stmt->bind_param("ibssi", $imagem_id, $null, $novoNome, $tipoArquivo, $versao);
+    $stmt->bind_param("ibsi", $imagem_id, $null, $novoNome, $versao);
     $stmt->send_long_data(1, $conteudo);
 
     if ($stmt->execute()) {

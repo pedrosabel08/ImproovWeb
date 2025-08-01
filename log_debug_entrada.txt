@@ -4,12 +4,12 @@ Array
         (
             [name] => Array
                 (
-                    [0] => 37.LD1_RES_Suite_apto_tipo_3_005.max
+                    [0] => 28.LD1_RES_Living_Apto_Tipo_1_006.max
                 )
 
             [full_path] => Array
                 (
-                    [0] => 37.LD1_RES_Suite_apto_tipo_3_005.max
+                    [0] => 28.LD1_RES_Living_Apto_Tipo_1_006.max
                 )
 
             [type] => Array
@@ -19,7 +19,7 @@ Array
 
             [tmp_name] => Array
                 (
-                    [0] => C:\xampp\tmp\php2EFF.tmp
+                    [0] => C:\xampp\tmp\phpE37C.tmp
                 )
 
             [error] => Array
@@ -29,7 +29,7 @@ Array
 
             [size] => Array
                 (
-                    [0] => 73424974
+                    [0] => 145545784
                 )
 
         )

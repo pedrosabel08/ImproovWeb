@@ -443,7 +443,7 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
 
     // Parte 2: Lista de tarefas/tabela
     const table = document.getElementById('tabela-faturamento');
-    const selectedColumnIndexes = [0, 2, 3];
+    const selectedColumnIndexes = [0, 2];
     const dataPagamentoColumnIndex = 5;
     const headers = [];
     const rows = [];
@@ -464,8 +464,8 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
     table.querySelectorAll('tbody tr').forEach(row => {
         const cells = row.querySelectorAll('td');
         const dataPagamento = cells[dataPagamentoColumnIndex]?.innerText.trim(); // Data de pagamento
-        if (dataPagamento === '0000-00-00' && row.style.display !== 'none') {
-            // if (row.style.display !== 'none') {
+        // if (dataPagamento === '0000-00-00' && row.style.display !== 'none') {
+            if (row.style.display !== 'none') {
 
             const rowData = [];
 
@@ -509,28 +509,29 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
 
     }
 
-    // // Dados da nova tabela
-    // // const novaTabelaHeaders = ['Extra', 'Valor'];
-    // const novaTabelaHeaders = ['Categoria', 'Valor'];
-    // const novaTabelaBody = [
-    //     // ['Atendimento', '3000,00'],
-    //     ['Reembolso almoço', '114,00'],
-    //     ['Gasolina', '88,00'],
-    //     ['Diaria Drone', '525,00'],
-    //     // ['Outros', '490,00']
-    // ];
+    // Dados da nova tabela
+    // const novaTabelaHeaders = ['Extra', 'Valor'];
+    const novaTabelaHeaders = ['Categoria', 'Valor'];
+    const novaTabelaBody = [
+        // ['Atendimento', '3000,00'],
+        ['Fixo', '4600,00'],
+        // ['Reembolso almoço', '114,00'],
+        // ['Gasolina', '88,00'],
+        // ['Diaria Drone', '525,00'],
+        // ['Outros', '490,00']
+    ];
 
-    // // Adiciona nova tabela ao PDF
-    // doc.autoTable({
-    //     head: [novaTabelaHeaders],
-    //     body: novaTabelaBody,
-    //     startY: y, // Posiciona abaixo da tabela anterior
-    //     theme: 'grid',
-    //     headStyles: { fillColor: [0, 0, 0], textColor: [255, 255, 255] },
-    //     bodyStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0] },
-    //     margin: { top: 10, left: 20, right: 20 },
-    //     styles: { fontSize: 10, cellPadding: 2 }
-    // });
+    // Adiciona nova tabela ao PDF
+    doc.autoTable({
+        head: [novaTabelaHeaders],
+        body: novaTabelaBody,
+        startY: y, // Posiciona abaixo da tabela anterior
+        theme: 'grid',
+        headStyles: { fillColor: [0, 0, 0], textColor: [255, 255, 255] },
+        bodyStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0] },
+        margin: { top: 10, left: 20, right: 20 },
+        styles: { fontSize: 10, cellPadding: 2 }
+    });
 
     // Atualiza a posição Y para futuras adições no PDF (caso necessário)
     y = doc.lastAutoTable.finalY + 20;
@@ -633,20 +634,11 @@ document.getElementById('generate-lista').addEventListener('click', function () 
     });
 
     const colaborador = document.getElementById('colaborador').options[document.getElementById('colaborador').selectedIndex].text;
-    const mesNome = document.getElementById('mes').options[document.getElementById('mes').selectedIndex].text; // Nome do mês
-    const ano = new Date().getFullYear(); // Ano atual
+    const mesNome = document.getElementById('mes').options[document.getElementById('mes').selectedIndex].text;
+    const ano = new Date().getFullYear();
     let currentY = 20;
 
     const title = `Relatório completo de ${colaborador}, ${mesNome} de ${ano}`;
-    // const valorTotal = "Valor total: ";
-    // const quantidadeTarefas = "Quantidade de tarefas: ";
-
-    // const totalValorElement = document.getElementById('totalValor');
-    // const totalValor = totalValorElement ? parseFloat(totalValorElement.innerText.replace('R$ ', '').replace('.', '').replace(',', '.')) : 0; // Converter para float
-    // const totalValorExtenso = `${numeroPorExtenso(totalValor)} reais`; // Adiciona "reais" ao final
-
-    const quantidadeTarefasValue = Array.from(document.querySelectorAll('#tabela-faturamento tbody tr'))
-        .filter(row => row.style.display !== 'none').length;
 
     const imgPath = '../assets/logo.jpg';
 
@@ -664,44 +656,57 @@ document.getElementById('generate-lista').addEventListener('click', function () 
                 doc.text(title, 14, currentY);
                 currentY += 10;
 
-                // doc.setFontSize(12);
-                // doc.text(`${valorTotal} R$ ${totalValor.toFixed(2).replace('.', ',')} (${totalValorExtenso})`, 14, currentY);
-                // currentY += 10;
-
-                // doc.text(`${quantidadeTarefas} ${quantidadeTarefasValue}`, 14, currentY);
-                currentY += 20;
-
+                // ==== Agrupamento por função ====
                 const table = document.getElementById('tabela-faturamento');
-                const selectedColumnIndexes = [0, 1, 2]; // Colunas específicas que deseja incluir (incluindo a coluna data_pagamento)
-                const headers = [];
-                const rows = [];
+                const selectedColumnIndexes = [0, 1, 2]; // colunas que vão para o PDF
+                const funcaoColumnIndex = 2; // Ajuste para o índice da coluna "função"
                 const dataPagamentoColumnIndex = 5;
 
-                // Adiciona apenas os cabeçalhos das colunas selecionadas
+                const headers = [];
+                const rows = [];
+                const agrupamentoFuncoes = {};
+
                 table.querySelectorAll('thead tr th').forEach((header, index) => {
                     if (selectedColumnIndexes.includes(index)) {
                         headers.push(header.innerText);
                     }
                 });
 
-                // Adiciona todos os dados das colunas selecionadas, sem a verificação de data_pagamento
                 table.querySelectorAll('tbody tr').forEach(row => {
                     const cells = row.querySelectorAll('td');
-                    const dataPagamento = cells[dataPagamentoColumnIndex]?.innerText.trim(); // Data de pagamento
+                    const dataPagamento = cells[dataPagamentoColumnIndex]?.innerText.trim();
+
+                    // Filtra conforme solicitado
                     if (dataPagamento === '0000-00-00' && row.style.display !== 'none') {
-                        // if (row.style.display !== 'none') {
+
+                        // === Conta por função ===
+                        const funcao = cells[funcaoColumnIndex]?.innerText.trim() || "Sem função";
+                        agrupamentoFuncoes[funcao] = (agrupamentoFuncoes[funcao] || 0) + 1;
+
+                        // === Monta linhas para o PDF ===
                         const rowData = [];
-                        row.querySelectorAll('td').forEach((cell, index) => {
+                        cells.forEach((cell, index) => {
                             if (selectedColumnIndexes.includes(index)) {
                                 rowData.push(cell.innerText);
                             }
                         });
-                        rows.push(rowData); // Adiciona apenas as linhas visíveis
+                        rows.push(rowData);
                     }
                 });
 
+                // ==== Adiciona resumo das funções no PDF ====
+                doc.setFontSize(12);
+                doc.text("Quantidade de tarefas por função:", 14, currentY + 10);
+
+                let yResumo = currentY + 16;
+                for (let funcao in agrupamentoFuncoes) {
+                    doc.text(`${funcao}: ${agrupamentoFuncoes[funcao]}`, 14, yResumo);
+                    yResumo += 6;
+                }
+
+                currentY = yResumo + 10; // avança Y para tabela
+
                 if (rows.length > 0) {
-                    // Gera a tabela no PDF
                     doc.autoTable({
                         head: [headers],
                         body: rows,

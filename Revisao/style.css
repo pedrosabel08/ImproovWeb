@@ -861,7 +861,7 @@ p#data_aprovacao {
     font-weight: bold;
 }
 
-p#status_funcao {
+p#status_funcao, #status_tarefa {
     font-weight: bold;
     width: max-content;
     padding: 2px 8px;
@@ -1299,4 +1299,9 @@ nav.breadcrumb-nav a {
     background-color: white;
     text-align: center;
     border-radius: 50%;
+}
+
+#status_tarefa {
+    padding: 2px 6px;
+    font-size: 0.65rem;
 }

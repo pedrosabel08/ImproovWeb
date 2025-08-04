@@ -1,10 +1,10 @@
 let tabela;
 
 document.addEventListener('DOMContentLoaded', () => {
+
     tabela = new Tabulator("#tabelaGestaoImagens", {
         ajaxURL: "getDados.php",
         ajaxResponse: function (url, params, response) {
-            // Your existing logic for updating indicators
             atualizarIndicadores(response.indicadores);
 
             const dados = response.dados;
@@ -12,7 +12,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const hoje = new Date();
             hoje.setHours(0, 0, 0, 0);
 
-            // This loop calculates 'situacao_prazo' before data is returned to Tabulator
             dados.forEach(item => {
                 if (!item.nome_status_imagem || item.nome_status_imagem.trim() === "") {
                     item.nome_status_imagem = "Sem etapa";
@@ -22,7 +21,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     const partes = item.prazo.split('/');
                     if (partes.length === 3) {
                         const [dia, mes, ano] = partes;
-                        // Use YYYY/MM/DD para evitar problemas de fuso
                         item.prazo = `${ano}/${mes.padStart(2, '0')}/${dia.padStart(2, '0')}`;
                     }
                     const prazo = new Date(item.prazo);
@@ -30,13 +28,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     item.situacao_prazo = "N/A";
                 }
-                // >>> Adicione este bloco <<<
                 if (item.situacao === "DRV" || item.situacao === "RVW") {
                     item.situacao_prazo = "entregue";
                 }
             });
 
-            // Update header filters after processing data
             const etapasUnicas = [...new Set(dados.map(item => item.nome_status_imagem || "Sem etapa"))].sort();
             const etapasUnicasObj = Object.fromEntries(etapasUnicas.map(v => [v, v]));
             const statusUnicos = [...new Set(dados.map(item => item.situacao))].sort();
@@ -49,7 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 headerFilterParams: { values: statusUnicosObj }
             });
 
-            return dados; // Return the processed data
+            return dados;
         },
 
         layout: "fitColumns",
@@ -59,49 +55,82 @@ document.addEventListener('DOMContentLoaded', () => {
         placeholder: "Nenhuma imagem encontrada",
         pagination: false,
 
-        // 👇 Here's the key change for multi-level grouping
         groupBy: ["obra", "nome_status", "prazo"],
         groupToggleElement: "header",
         groupHeader: function (value, count, data, group) {
             const field = group.getField() || "custom";
             let headerText = `<strong>${value}</strong>`;
-            let bgColor = "#f1f3f5"; // Cor padrão
+            let bgColor = "#f1f3f5";
 
             if (field === "obra") {
                 headerText = `<strong>${value}</strong>`;
-                bgColor = "#acacacff"; // azul claro
-            } else if (field === "nome_status") {
+                bgColor = "#acacacff";
+            }
+            else if (field === "nome_status") {
                 headerText = `<strong>${value}</strong>`;
-                bgColor = "#cececeff"; // amarelo claro
-            } else if (field === "prazo") {
+                bgColor = "#cececeff";
+            }
+            else if (field === "prazo") {
+                let dia, mes, ano;
                 if (value && value !== '0000-00-00') {
-                    let dia, mes, ano;
+
+                    const todasEntregues = data.every(item =>
+                        item.situacao === "RVW" || item.situacao === "DRV"
+                    );
+
                     if (value.includes('/')) {
                         [ano, mes, dia] = value.split('/');
                     } else if (value.includes('-')) {
                         [ano, mes, dia] = value.split('-');
                     }
-                    headerText = `<strong>${dia.padStart(2, '0')}/${mes.padStart(2, '0')}/${ano}</strong>`;
-                    bgColor = "#ddddddff"; // cinza claro
+
+                    const prazo = new Date(`${ano}-${mes}-${dia}`);
+                    const hoje = new Date();
+                    hoje.setHours(0, 0, 0, 0);
+
+                    let textoPrazo = "";
+
+                    if (todasEntregues) {
+                        textoPrazo = "Entregue";
+                    } else {
+                        if (prazo >= hoje) {
+                            let dias = 0;
+                            let dt = new Date(hoje);
+                            while (dt < prazo) {
+                                const diaSemana = dt.getDay();
+                                if (diaSemana !== 0 && diaSemana !== 6) dias++;
+                                dt.setDate(dt.getDate() + 1);
+                            }
+                            textoPrazo = `${dias} dia${dias !== 1 ? 's' : ''} para entrega`;
+                        } else {
+                            let diasUteis = 0;
+                            let dt = new Date(prazo);
+                            dt.setDate(dt.getDate() + 1);
+                            while (dt <= hoje) {
+                                const diaSemana = dt.getDay();
+                                if (diaSemana !== 0 && diaSemana !== 6) diasUteis++;
+                                dt.setDate(dt.getDate() + 1);
+                            }
+                            textoPrazo = `${diasUteis} dia${diasUteis !== 1 ? 's' : ''} de atraso`;
+                        }
+                    }
+
+                    headerText = `<strong>${dia.padStart(2, '0')}/${mes.padStart(2, '0')}/${ano}</strong> - ${textoPrazo}`;
+                    bgColor = "#ddddddff";
                 } else {
                     headerText = `<strong>N/A</strong>`;
                 }
             }
 
-
-            // Aplica o fundo no elemento do grupo
             setTimeout(() => {
                 const el = group.getElement();
-                if (el) {
-                    el.style.backgroundColor = bgColor;
-                }
+                if (el) el.style.backgroundColor = bgColor;
             }, 0);
 
             return `${headerText} <span style="color: #000000ff;">(${count} ${count > 1 ? 'imagens' : 'imagem'})</span>`;
         },
 
-        groupStartOpen: false, // Groups will start closed
-
+        groupStartOpen: [true, true, false],
         columns: [
             {
                 title: "Prazo Contratado",
@@ -135,11 +164,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 headerSort: false,
                 formatter: function (cell) {
                     const data = cell.getData();
-                    // Só calcula se não for RVW ou DRV
                     if (data.situacao === "RVW" || data.situacao === "DRV" || !data.prazo || data.prazo === '0000-00-00') {
                         return "-";
                     }
-                    // Prazo pode estar em formato YYYY-MM-DD ou DD/MM/YYYY
                     let prazo;
                     if (data.prazo.includes('/')) {
                         const [dia, mes, ano] = data.prazo.split('/');
@@ -155,7 +182,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     let diasUteis = 0;
                     let dt = new Date(prazo);
                     dt.setHours(0, 0, 0, 0);
-                    dt.setDate(dt.getDate() + 1); // Começa a contar do dia seguinte ao prazo
+                    dt.setDate(dt.getDate() + 1);
 
                     while (dt < hoje) {
                         const diaSemana = dt.getDay();
@@ -196,6 +223,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 field: "nome_status_imagem",
                 hozAlign: "center",
                 headerFilter: "list",
+                headerFilterParams: { values: {} },
                 formatter: function (cell) {
                     const valor = cell.getValue();
                     return `<span class="tag ${valor}">${valor}</span>`;
@@ -206,6 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 field: "situacao",
                 hozAlign: "center",
                 headerFilter: "list",
+                headerFilterParams: { values: {} },
                 formatter: function (cell) {
                     const valor = cell.getValue();
                     return `<span class="tag ${valor}">${valor}</span>`;
@@ -226,7 +255,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 },
                 formatter: function (cell) {
                     const data = cell.getData();
-                    // Se for DRV ou RVW, já está como "entregue" no ajaxResponse
                     let texto = cell.getValue();
                     let cor = "#d1e7dd";
 
@@ -250,39 +278,42 @@ document.addEventListener('DOMContentLoaded', () => {
                             cor = "#f8d7da";
                         }
                     }
-
                     return `<span class="tag" style="background:${cor}; font-weight:600;">${texto}</span>`;
                 }
             }
         ]
     });
 
-    tabela.on("dataLoaded", function () {
+    // Funções auxiliares para evitar duplicação de código
+    function applyFilterAndPreventScroll(filterField, filterValue, callback = null) {
+        // Salva a posição de rolagem e desabilita a rolagem do body
+        const scrollPos = window.scrollY;
+        document.body.style.overflow = 'hidden';
+
+        tabela.clearFilter();
+        tabela.setFilter(filterField, "=", filterValue);
+
+        // Aguarda a renderização e restaura a rolagem
         setTimeout(() => {
-            tabela.getGroups().forEach(gObra => {
-                gObra.show();
-                gObra.getSubGroups().forEach(gStatus => {
-                    gStatus.show();
-                });
-            });
-        }, 200);
-    });
+            if (callback) {
+                callback();
+            }
+            window.scrollTo(0, scrollPos);
+            document.body.style.overflow = '';
+        }, 100);
+    }
 
     document.querySelectorAll('[data-status]').forEach(el => {
         el.addEventListener('click', () => {
             const valor = el.getAttribute('data-status');
-            tabela.clearFilter();
-            tabela.setFilter("situacao", "=", valor);
-            tabela.groupStartOpen = true;
+            applyFilterAndPreventScroll("situacao", valor);
         });
     });
 
     document.querySelectorAll('[data-situacao_prazo]').forEach(el => {
         el.addEventListener('click', () => {
             const valor = el.getAttribute('data-situacao_prazo');
-            tabela.clearFilter();
-            tabela.setFilter("situacao_prazo", "=", valor);
-            tabela.groupStartOpen = true;
+            applyFilterAndPreventScroll("situacao_prazo", valor);
         });
     });
 
@@ -294,22 +325,26 @@ document.addEventListener('DOMContentLoaded', () => {
             const ano = hoje.getFullYear();
             const hojeFormatado = `${ano}-${mes}-${dia}`;
 
-            tabela.clearFilter();
-            tabela.setFilter("prazo", "=", hojeFormatado);
-            setTimeout(() => {
+            applyFilterAndPreventScroll("prazo", hojeFormatado, () => {
                 tabela.getGroups().forEach(group => group.show());
-            }, 100);
+            });
         });
     });
+
     document.querySelectorAll('[data-total]').forEach(el => {
         el.addEventListener('click', () => {
+            const scrollPos = window.scrollY;
+            document.body.style.overflow = 'hidden';
 
             tabela.clearFilter();
             tabela.groupStartOpen = true;
 
+            setTimeout(() => {
+                window.scrollTo(0, scrollPos);
+                document.body.style.overflow = '';
+            }, 100);
         });
     });
-
 });
 
 document.getElementById('btnRelatorio').addEventListener('click', function () {

@@ -663,12 +663,17 @@ function exibirSidebarTabulator(tarefas) {
         lista.classList.add('tarefas-lista');
         lista.style.display = 'none';
 
+        console.log("Tarefas:", tarefas);
         tarefas.forEach(t => {
+            const color = t.status_novo === 'Em aprovação' ? '#000a59' : t.status_novo === 'Ajuste' ? '#590000' : t.status_novo === 'Aprovado com ajustes' ? '#2e0059ff' : 'transparent';
+            const bgColor = t.status_novo === 'Em aprovação' ? '#90c2ff' : t.status_novo === 'Ajuste' ? '#ff5050' : t.status_novo === 'Aprovado com ajustes' ? '#ae90ffff' : 'transparent';
+
             const tarefa = document.createElement('div');
             tarefa.classList.add('tarefa-item');
             const imgSrc = t.imagem ? `../${t.imagem}` : '../assets/logo.jpg';
             tarefa.innerHTML = `
         <img src="${imgSrc}" class="tab-img" data-id="${t.idfuncao_imagem}" alt="${t.imagem_nome}">
+        <span id="status_tarefa" style="background-color: ${bgColor}; color: ${color}">${t.status_novo}</span>
         <span>${t.nome_colaborador} - ${t.imagem_nome}</span>
       `;
             tarefa.addEventListener('click', () => historyAJAX(t.idfuncao_imagem));

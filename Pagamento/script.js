@@ -443,7 +443,7 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
 
     // Parte 2: Lista de tarefas/tabela
     const table = document.getElementById('tabela-faturamento');
-    const selectedColumnIndexes = [0, 2];
+    const selectedColumnIndexes = [0, 2, 3];
     const dataPagamentoColumnIndex = 5;
     const headers = [];
     const rows = [];
@@ -464,8 +464,8 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
     table.querySelectorAll('tbody tr').forEach(row => {
         const cells = row.querySelectorAll('td');
         const dataPagamento = cells[dataPagamentoColumnIndex]?.innerText.trim(); // Data de pagamento
-        // if (dataPagamento === '0000-00-00' && row.style.display !== 'none') {
-            if (row.style.display !== 'none') {
+        if (dataPagamento === '0000-00-00' && row.style.display !== 'none') {
+            // if (row.style.display !== 'none') {
 
             const rowData = [];
 
@@ -509,29 +509,29 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
 
     }
 
-    // Dados da nova tabela
-    // const novaTabelaHeaders = ['Extra', 'Valor'];
-    const novaTabelaHeaders = ['Categoria', 'Valor'];
-    const novaTabelaBody = [
-        // ['Atendimento', '3000,00'],
-        ['Fixo', '4600,00'],
-        // ['Reembolso almoço', '114,00'],
-        // ['Gasolina', '88,00'],
-        // ['Diaria Drone', '525,00'],
-        // ['Outros', '490,00']
-    ];
+    // // Dados da nova tabela
+    // // const novaTabelaHeaders = ['Extra', 'Valor'];
+    // const novaTabelaHeaders = ['Categoria', 'Valor'];
+    // const novaTabelaBody = [
+    //     // ['Atendimento', '3000,00'],
+    //     ['Fixo', '1600,00'],
+    //     // ['Reembolso almoço', '114,00'],
+    //     // ['Gasolina', '88,00'],
+    //     // ['Diaria Drone', '525,00'],
+    //     // ['Outros', '490,00']
+    // ];
 
-    // Adiciona nova tabela ao PDF
-    doc.autoTable({
-        head: [novaTabelaHeaders],
-        body: novaTabelaBody,
-        startY: y, // Posiciona abaixo da tabela anterior
-        theme: 'grid',
-        headStyles: { fillColor: [0, 0, 0], textColor: [255, 255, 255] },
-        bodyStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0] },
-        margin: { top: 10, left: 20, right: 20 },
-        styles: { fontSize: 10, cellPadding: 2 }
-    });
+    // // Adiciona nova tabela ao PDF
+    // doc.autoTable({
+    //     head: [novaTabelaHeaders],
+    //     body: novaTabelaBody,
+    //     startY: y, // Posiciona abaixo da tabela anterior
+    //     theme: 'grid',
+    //     headStyles: { fillColor: [0, 0, 0], textColor: [255, 255, 255] },
+    //     bodyStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0] },
+    //     margin: { top: 10, left: 20, right: 20 },
+    //     styles: { fontSize: 10, cellPadding: 2 }
+    // });
 
     // Atualiza a posição Y para futuras adições no PDF (caso necessário)
     y = doc.lastAutoTable.finalY + 20;

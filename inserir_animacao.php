@@ -2,38 +2,42 @@
 include 'conexao.php';
 
 $imagens = [
-    // IDE_LAU
-    ['nome' => 'IDE_LAU_Piscina Geral', 'obra_id' => 48, 'cliente_id' => 35],
-    ['nome' => 'IDE_LAU_Piscina Detalhe', 'obra_id' => 48, 'cliente_id' => 35],
+    // GES_ELI
+    ['nome' => 'GES_ELI_Embasamento', 'obra_id' => 48, 'cliente_id' => 36],
+    ['nome' => 'GES_ELI_Tracking_Horizonte', 'obra_id' => 48, 'cliente_id' => 36],
+    ['nome' => 'GES_ELI_Tracking_Fachada Sul', 'obra_id' => 48, 'cliente_id' => 36],
+    ['nome' => 'GES_ELI_Tracking_Aerea Norte', 'obra_id' => 48, 'cliente_id' => 36],
 
-    // STR_SPA
-    ['nome' => 'STR_SPA_Intro', 'obra_id' => 26, 'cliente_id' => 22],
-    ['nome' => 'STR_SPA_Cena interna Alto', 'obra_id' => 26, 'cliente_id' => 22],
-    ['nome' => 'STR_SPA Quadras Interna Baixo', 'obra_id' => 26, 'cliente_id' => 22],
-    ['nome' => 'STR_SPA_Quadra_Rede', 'obra_id' => 26, 'cliente_id' => 22],
-    ['nome' => 'STR_SPA Cena Saque 1', 'obra_id' => 26, 'cliente_id' => 22],
-    ['nome' => 'STR_SPA Cena Saque 2', 'obra_id' => 26, 'cliente_id' => 22],
-    ['nome' => 'STR_SPA_Quadra_Spadel_Geral', 'obra_id' => 26, 'cliente_id' => 22],
-    ['nome' => 'STR_SPA_Quadra_Beach_1', 'obra_id' => 26, 'cliente_id' => 22],
-    ['nome' => 'STR_SPA_Quadra_Beach_2', 'obra_id' => 26, 'cliente_id' => 22],
-    ['nome' => 'STR_SPA_Bar Interno', 'obra_id' => 26, 'cliente_id' => 22],
-    ['nome' => 'STR_SPA_Corredor', 'obra_id' => 26, 'cliente_id' => 22],
-    ['nome' => 'STR_SPA_Mulher Beach', 'obra_id' => 26, 'cliente_id' => 22],
-    ['nome' => 'STR_SPA_Mulher_Entrada', 'obra_id' => 26, 'cliente_id' => 22],
-    ['nome' => 'STR_SPA_Tracking_0051', 'obra_id' => 26, 'cliente_id' => 22],
-    ['nome' => 'STR_SPA_Tracking_0050', 'obra_id' => 26, 'cliente_id' => 22],
-    ['nome' => 'STR_SPA_Tracking_0116', 'obra_id' => 26, 'cliente_id' => 22],
+    // TER_ALT
+    ['nome' => 'Tracking', 'obra_id' => 61, 'cliente_id' => 33],
 
     // OTT_EKO
-    ['nome' => 'OTT_EKO_Piscina', 'obra_id' => 17, 'cliente_id' => 13],
-    ['nome' => 'OTT_EKO Vista Living Tipo Final 2 ou 3', 'obra_id' => 17, 'cliente_id' => 13],
-    ['nome' => 'OTT_EKO Vista da Tipo final 1', 'obra_id' => 17, 'cliente_id' => 13],
-    ['nome' => 'OTT_EKO Living_Apto 2 ou 3 vista mar', 'obra_id' => 17, 'cliente_id' => 13],
+    ['nome' => '2. OTT_EKO_Fachada Fora', 'obra_id' => 17, 'cliente_id' => 13],
+    ['nome' => '3. OTT_EKO Fachada diurna no angulo do observador', 'obra_id' => 17, 'cliente_id' => 13],
+    ['nome' => '9. OTT_EKO Academia_Vista', 'obra_id' => 17, 'cliente_id' => 13],
+    ['nome' => '13. OTT_EKO Living apto tipo 01_Geral', 'obra_id' => 17, 'cliente_id' => 13],
+    ['nome' => '13. OTT_EKO Living apto tipo 01_Vista', 'obra_id' => 17, 'cliente_id' => 13],
+    ['nome' => '17. OTT_EKO_Festas_Apto_Cobertura_Geral', 'obra_id' => 17, 'cliente_id' => 13],
+    ['nome' => '17. OTT_EKO_Festas_Apto_Cobertura_Vista', 'obra_id' => 17, 'cliente_id' => 13],
+    ['nome' => 'OTT_EKO_tracking_0055', 'obra_id' => 17, 'cliente_id' => 13],
+    ['nome' => 'OTT_EKO_tracking_0058', 'obra_id' => 17, 'cliente_id' => 13],
+    ['nome' => 'OTT_EKO_tracking_0063', 'obra_id' => 17, 'cliente_id' => 13],
+
+    // AYA_KAR
+    ['nome' => '2.AYA_KAR Fotomontagem aérea Drone', 'obra_id' => 45, 'cliente_id' => 5],
+    ['nome' => '4.AYA_KAR_Rampa_da_garagem_com_rasgo_e_Arvore_EF_2_1', 'obra_id' => 45, 'cliente_id' => 5],
+    ['nome' => '6._AYA_KAR_Piscina_maior_EF_1_1', 'obra_id' => 45, 'cliente_id' => 5],
+    ['nome' => '8. AYA_KAR Sauna_EF', 'obra_id' => 45, 'cliente_id' => 5],
+    ['nome' => '7.AYA_KAR Piscina infantil', 'obra_id' => 45, 'cliente_id' => 5],
+    ['nome' => '11_AYA_KAR Living Manaca 301 Geral', 'obra_id' => 45, 'cliente_id' => 5],
+    ['nome' => '24.AYA_KAR Playground com teto verde', 'obra_id' => 45, 'cliente_id' => 5],
+    ['nome' => '30. AYA_KAR Gourmet 2_EF_002', 'obra_id' => 45, 'cliente_id' => 5],
+
 ];
 
 $colaborador_id = 13;
 $status = 'Finalizado';
-$data = '2025-06-30';
+$data = '2025-07-31';
 
 foreach ($imagens as $img) {
     // Inserir na tabela imagem_animacao
@@ -52,4 +56,3 @@ foreach ($imagens as $img) {
 }
 
 echo "Processo concluído.";
-?>

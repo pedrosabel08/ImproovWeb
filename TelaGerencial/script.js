@@ -43,7 +43,7 @@ const valoresPorFuncao = {
     "composição": 50,
     "modelagem": 50,
     "finalização": 350,
-    "pré-finalização": 140,
+    "pré-finalização": 180,
     "pós-produção": 60
 };
 

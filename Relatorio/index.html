@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Relatório Diário</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        h2 {
+            margin-top: 30px;
+        }
+
+        .bloco {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+        }
+
+        ul {
+            padding-left: 20px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Relatório Diário</h1>
+    <button onclick="exportarPDF()">Exportar para PDF</button>
+
+    <div class="bloco">
+        <h2>🔴 Imagens HOLD</h2>
+        <ul id="listaHold"></ul>
+    </div>
+
+    <div class="bloco">
+        <h2>🟡 Funções TO-DO</h2>
+        <ul id="listaTodo"></ul>
+    </div>
+
+    <div class="bloco">
+        <h2>📝 Últimos Acompanhamentos</h2>
+        <ul id="listaAcomp"></ul>
+    </div>
+
+    <script>
+        async function carregarDados() {
+            const res = await fetch('relatorio.php');
+            const dados = await res.json();
+
+            // HOLD
+            const listaHold = document.getElementById('listaHold');
+            dados.hold.forEach(item => {
+                const li = document.createElement('li');
+                li.textContent = `${item.nome_obra} (Obra ID: ${item.obra_id})`;
+                listaHold.appendChild(li);
+            });
+
+            // TO-DO
+            const listaTodo = document.getElementById('listaTodo');
+            dados.todo.forEach(item => {
+                const li = document.createElement('li');
+                li.textContent = `${item.imagem_nome} - Função ID: ${item.funcao_id}`;
+                listaTodo.appendChild(li);
+            });
+
+            // Acompanhamentos
+            const listaAcomp = document.getElementById('listaAcomp');
+            dados.acompanhamentos.forEach(item => {
+                const li = document.createElement('li');
+                li.textContent = `${item.nome_obra} - ${item.assunto} (${item.data})`;
+                listaAcomp.appendChild(li);
+            });
+        }
+
+        function exportarPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            doc.text("Relatório Diário", 10, 10);
+
+            let y = 20;
+            document.querySelectorAll(".bloco").forEach(bloco => {
+                doc.text(bloco.querySelector("h2").textContent, 10, y);
+                y += 6;
+                bloco.querySelectorAll("li").forEach(li => {
+                    doc.text("- " + li.textContent, 10, y);
+                    y += 6;
+                });
+                y += 4;
+            });
+
+            doc.save("relatorio.pdf");
+        }
+
+        carregarDados();
+    </script>
+</body>
+
+</html>

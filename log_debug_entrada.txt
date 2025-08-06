@@ -4,12 +4,12 @@ Array
         (
             [name] => Array
                 (
-                    [0] => 34. LD1_RES_Living_apto_tipo_2_ 006_Final02.max
+                    [0] => 1. INO_TIM Fotomontagem_EF_01.psb
                 )
 
             [full_path] => Array
                 (
-                    [0] => 34. LD1_RES_Living_apto_tipo_2_ 006_Final02.max
+                    [0] => 1. INO_TIM Fotomontagem_EF_01.psb
                 )
 
             [type] => Array
@@ -19,7 +19,7 @@ Array
 
             [tmp_name] => Array
                 (
-                    [0] => C:\xampp\tmp\php32E3.tmp
+                    [0] => C:\xampp\tmp\phpD91A.tmp
                 )
 
             [error] => Array
@@ -29,7 +29,7 @@ Array
 
             [size] => Array
                 (
-                    [0] => 251955106
+                    [0] => 715515724
                 )
 
         )

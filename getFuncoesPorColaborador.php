@@ -106,8 +106,27 @@ while ($row = $result->fetch_assoc()) {
     $funcoes[] = $row;
 }
 
-$response = [];
+// 1️⃣ Busca todas as funções de todas as imagens retornadas
+$imagemIds = array_column($funcoes, 'imagem_id');
+$todasFuncoes = [];
 
+if (count($imagemIds) > 0) {
+    $inImagem = implode(',', array_fill(0, count($imagemIds), '?'));
+    $sqlTodasFuncoes = "SELECT imagem_id, funcao_id, status, prazo FROM funcao_imagem WHERE imagem_id IN ($inImagem)";
+    $stmtTodas = $conn->prepare($sqlTodasFuncoes);
+    $typesTodas = str_repeat('i', count($imagemIds));
+    $stmtTodas->bind_param($typesTodas, ...$imagemIds);
+    $stmtTodas->execute();
+    $resultTodas = $stmtTodas->get_result();
+
+    while ($row = $resultTodas->fetch_assoc()) {
+        $todasFuncoes[$row['imagem_id']][$row['funcao_id']] = $row;
+    }
+    $stmtTodas->close();
+}
+
+// 2️⃣ Agora sim faz o loop para montar o response
+$response = [];
 $ordemFuncoes = [
     1 => 'Caderno',
     8 => 'Filtro de assets',
@@ -121,12 +140,9 @@ $ordemFuncoes = [
 ];
 
 foreach ($funcoes as $funcao) {
-    // Obtendo o ID da função atual
     $funcaoAtualId = $funcao['funcao_id'];
-    $imagemId = $funcao['imagem_id']; // Adicionando o ID da imagem para a consulta
+    $imagemId = $funcao['imagem_id'];
 
-    // Verificando a função anterior com base no array $ordemFuncoes
-    // Verifica a função anterior com base na ordem definida
     $ordemIds = array_keys($ordemFuncoes);
     $indiceAtual = array_search($funcaoAtualId, $ordemIds);
 
@@ -136,7 +152,6 @@ foreach ($funcoes as $funcao) {
     $prazoAnterior = null;
 
     if ($indiceAtual !== false && $indiceAtual > 0 && isset($todasFuncoes[$imagemId])) {
-        // Procura a função anterior na ordem
         for ($i = $indiceAtual - 1; $i >= 0; $i--) {
             $funcaoAnteriorId = $ordemIds[$i];
             if (isset($todasFuncoes[$imagemId][$funcaoAnteriorId])) {
@@ -151,8 +166,6 @@ foreach ($funcoes as $funcao) {
         }
     }
 
-
-    // Adicionando a função ao response com o status de "liberação" da imagem e status anterior
     $response[] = [
         'imagem_id' => $funcao['imagem_id'],
         'imagem_nome' => $funcao['imagem_nome'],
@@ -167,27 +180,6 @@ foreach ($funcoes as $funcao) {
         'funcaoAnteriorId' => $funcaoAnteriorId,
         'obra_id' => $funcao['obra_id']
     ];
-}
-
-// Busca todas as funções de todas as imagens retornadas
-$imagemIds = array_column($funcoes, 'imagem_id');
-if (count($imagemIds) > 0) {
-    $inImagem = implode(',', array_fill(0, count($imagemIds), '?'));
-    $sqlTodasFuncoes = "SELECT imagem_id, funcao_id, status, prazo FROM funcao_imagem WHERE imagem_id IN ($inImagem)";
-    $stmtTodas = $conn->prepare($sqlTodasFuncoes);
-    $typesTodas = str_repeat('i', count($imagemIds));
-    $stmtTodas->bind_param($typesTodas, ...$imagemIds);
-    $stmtTodas->execute();
-    $resultTodas = $stmtTodas->get_result();
-
-    // Organiza por imagem_id e funcao_id
-    $todasFuncoes = [];
-    while ($row = $resultTodas->fetch_assoc()) {
-        $todasFuncoes[$row['imagem_id']][$row['funcao_id']] = $row;
-    }
-    $stmtTodas->close();
-} else {
-    $todasFuncoes = [];
 }
 
 echo json_encode($response);

@@ -91,9 +91,9 @@ $conn->close();
             <h1 id="nomenclatura"></h1>
         </header>
         <div class="buttons-nav">
-            <button id="altBtn" onclick="window.location.href='https://improov.com.br/sistema/Alteracao/'"><i class="fa-solid fa-pen-to-square"></i></button>
-            <button onclick="document.querySelector('.acompanhamentos').scrollIntoView({behavior: 'smooth'})"><i class="fa-solid fa-circle-info"></i></button>
-            <button onclick="document.querySelector('.filtro-tabela').scrollIntoView({behavior: 'smooth'})"><i class="fa-solid fa-info"></i></button>
+            <button id="altBtn" class="hidden">Flow Review</button>
+            <!-- <button onclick="document.querySelector('.acompanhamentos').scrollIntoView({behavior: 'smooth'})"><i class="fa-solid fa-circle-info"></i></button>
+            <button onclick="document.querySelector('.filtro-tabela').scrollIntoView({behavior: 'smooth'})"><i class="fa-solid fa-info"></i></button> -->
         </div>
 
         <!-- Tabela para exibir as funções da obra -->
@@ -524,7 +524,6 @@ $conn->close();
             </div> <input type="hidden" id="imagem_id" name="imagem_id" value="">
             <div class="modal-funcoes">
                 <span id="mood"></span>
-                <button id="ver-pdf" type="button" style="display:none;">Ver Caderno</button>
                 <div class="funcao_comp">
                     <div class="funcao">
                         <div class="titulo">
@@ -1140,6 +1139,7 @@ $conn->close();
             <button type="button" id="alterar_status" onclick="alterarStatus(this.getAttribute('data-imagemid'))">✅</button>
         </div>
     </div>
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
@@ -1151,7 +1151,6 @@ $conn->close();
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="scriptObra2.js"></script>
     <script src="../script/sidebar.js"></script>
     <script src="../script/notificacoes.js"></script>

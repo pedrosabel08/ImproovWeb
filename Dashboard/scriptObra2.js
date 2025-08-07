@@ -543,6 +543,14 @@ function infosObra(obraId) {
             let antecipada = 0;
             let imagens = 0;
 
+            if (data?.obra?.nome_obra && data?.aprovacaoObra && Object.keys(data.aprovacaoObra).length > 0) {
+                document.getElementById('altBtn').classList.remove('hidden');
+                document.getElementById('altBtn').onclick = function () {
+                    window.location.href = `https://improov.com.br/sistema/Revisao/index.php?obra_nome=${data.obra.nome_obra}`;
+                };
+            } else {
+                document.getElementById('altBtn').classList.add('hidden');
+            }
             // Seleciona o elemento select
             const statusEtapaSelect = document.getElementById("imagem_status_etapa_filtro");
             const statusSelect = document.getElementById("imagem_status_filtro");
@@ -1434,6 +1442,22 @@ document.getElementById("salvar_funcoes").addEventListener("click", function (ev
 
     var idImagemSelecionada = linhaSelecionada.getAttribute("data-id");
 
+    // Verifica se há algum botão de revisão visível (display: block)
+    const revisoesVisiveis = Array.from(document.querySelectorAll('.revisao_imagem')).some(el => {
+        return window.getComputedStyle(el).display === 'block';
+    });
+
+    if (revisoesVisiveis) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Envie as prévias ou arquivos!',
+            text: 'Você precisa enviar as prévias e os arquivos antes de salvar.',
+            confirmButtonText: 'Ok',
+            confirmButtonColor: '#e74c3c',
+        });
+        return;
+    }
+
     var form = document.getElementById("form-add");
     var camposPrazo = form.querySelectorAll("input[type='date'][required]");
     var camposVazios = Array.from(camposPrazo).filter(input => !input.value);
@@ -1510,7 +1534,7 @@ document.getElementById("salvar_funcoes").addEventListener("click", function (ev
     function enviarFormulario() {
         $.ajax({
             type: "POST",
-            url: "https://www.improov.com.br/sistema/insereFuncao.php",
+            url: "https://www.improov.com.br/sistema/insereFuncao2.php",
             data: dados,
             success: function (response) {
                 Toastify({
@@ -2735,6 +2759,7 @@ document.getElementById("addRevisao").addEventListener("click", function (event)
     const selectStatus = document.getElementById("opcao_status").value;
     const opcaoAlteracao = document.getElementById("opcao_alteracao").value;
     const obraId = localStorage.getItem("obraId");
+    const nomenclatura = document.getElementById('nomenclatura').textContent;
 
     // // Verifica se opcao_alteracao está preenchido
     // if (!opcaoAlteracao.trim()) {
@@ -2775,7 +2800,8 @@ document.getElementById("addRevisao").addEventListener("click", function (event)
         imagem_id: imagemId,
         colaborador_id: opcaoAlteracao,
         obra_id: obraId,
-        status_id: selectStatus
+        status_id: selectStatus,
+        nomenclatura: nomenclatura
     };
 
     console.log(data);

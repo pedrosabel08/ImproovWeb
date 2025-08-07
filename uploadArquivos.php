@@ -20,20 +20,19 @@ function getProcesso($nomeFuncao)
         return $map[$nomeFuncao];
     }
     // Remove acentos e pega os 3 primeiros caracteres
-    $semAcento = mb_strtoupper(normalizeAcentos($nomeFuncao), 'UTF-8');
+    $semAcento = mb_strtoupper(removerTodosAcentos($nomeFuncao), 'UTF-8');
     return mb_substr($semAcento, 0, 3, 'UTF-8');
 }
 
 // Função para remover acentos
-function normalizeAcentos($str)
+function removerTodosAcentos($str)
 {
     return preg_replace(
         ['/[áàãâä]/ui', '/[éèêë]/ui', '/[íìîï]/ui', '/[óòõôö]/ui', '/[úùûü]/ui', '/[ç]/ui'],
-        ['A', 'E', 'I', 'O', 'U', 'C'],
+        ['a', 'e', 'i', 'o', 'u', 'c'],
         $str
     );
 }
-
 $processo = getProcesso($nomeFuncao);
 if (empty($dataIdFuncoes) || !$numeroImagem || !$nomenclatura || !$nomeFuncao) {
     echo json_encode(["error" => "Parâmetros insuficientes"]);
@@ -71,7 +70,7 @@ function uploadImagem($imagem, $destino, $nomeFinalSemExtensao)
 
 function sanitizeFilename($str)
 {
-    $str = normalizeAcentos($str);
+    $str = removerTodosAcentos($str);
     $str = preg_replace('/[\/\\\:*?"<>|]/', '', $str); // remove caracteres perigosos
     $str = preg_replace('/\s+/', '_', $str); // substitui espaços por "_"
     return $str;

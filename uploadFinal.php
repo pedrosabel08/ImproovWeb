@@ -177,27 +177,17 @@ if (isset($_POST['dataIdFuncoes'])) {
         $dataIdFuncoes = [$raw];
     }
 }
-function removerAcentos($string)
-{
-    return preg_replace(
-        array("/[áàãâä]/u", "/[éèêë]/u", "/[íìîï]/u", "/[óòõôö]/u", "/[úùûü]/u", "/[ç]/u"),
-        array("a", "e", "i", "o", "u", "c"),
-        $string
-    );
-}
-
-function normalizeAcentos($str)
+function removerTodosAcentos($str)
 {
     return preg_replace(
         ['/[áàãâä]/ui', '/[éèêë]/ui', '/[íìîï]/ui', '/[óòõôö]/ui', '/[úùûü]/ui', '/[ç]/ui'],
-        ['A', 'E', 'I', 'O', 'U', 'C'],
+        ['a', 'e', 'i', 'o', 'u', 'c'],
         $str
     );
 }
-
 function sanitizeFilename($str)
 {
-    $str = normalizeAcentos($str);
+    $str = removerTodosAcentos($str);
     $str = preg_replace('/[\/\\\:*?"<>|]/', '', $str); // remove caracteres perigosos
     $str = preg_replace('/\s+/', '_', $str); // substitui espaços por "_"
     return $str;
@@ -214,7 +204,7 @@ for ($i = 0; $i < $total; $i++) {
     $tipo = detectarTipoArquivo($extensao);
 
     // Processo (3 primeiras letras sem acento e em maiúsculo)
-    $semAcento = removerAcentos($nome_funcao);
+    $semAcento = removerTodosAcentos($nome_funcao);
     $processo = strtoupper(mb_substr($semAcento, 0, 3, 'UTF-8'));
 
     $nome_base = "{$numeroImagem}.{$nomenclatura}-{$primeiraPalavra}-{$tipo}-{$processo}";

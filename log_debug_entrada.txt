@@ -4,12 +4,12 @@ Array
         (
             [name] => Array
                 (
-                    [0] => 1. INO_TIM Fotomontagem_EF_01.psb
+                    [0] => TIPO_2.max
                 )
 
             [full_path] => Array
                 (
-                    [0] => 1. INO_TIM Fotomontagem_EF_01.psb
+                    [0] => TIPO_2.max
                 )
 
             [type] => Array
@@ -19,7 +19,7 @@ Array
 
             [tmp_name] => Array
                 (
-                    [0] => C:\xampp\tmp\phpD91A.tmp
+                    [0] => C:\xampp\tmp\php623D.tmp
                 )
 
             [error] => Array
@@ -29,7 +29,7 @@ Array
 
             [size] => Array
                 (
-                    [0] => 715515724
+                    [0] => 307232768
                 )
 
         )

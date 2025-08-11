@@ -5,17 +5,60 @@ require '../conexao.php'; // arquivo com conexão $conn
 // --- Ordem de execução padrão
 $ordemFuncoes = [1, 8, 2, 3, 9, 4, 5, 6, 7];
 
-// --- 1. Imagens com HOLD (substatus_id = 7)
-$sqlHold = "
-SELECT 
-    i.idimagens_cliente_obra,
+// --- 1. Imagens com HOLD agrupadas
+$sqlHold = "SELECT 
+    i.idimagens_cliente_obra AS id,
     i.obra_id,
-    o.nome_obra
+    o.nome_obra,
+    i.tipo_imagem,
+    i.imagem_nome,
+    sh.justificativa,
+    sh.prazo AS prazo_hold
 FROM imagens_cliente_obra i
 JOIN obra o ON o.idobra = i.obra_id
+JOIN status_hold sh ON sh.imagem_id = i.idimagens_cliente_obra
 WHERE i.substatus_id = 7
+ORDER BY o.nome_obra, i.tipo_imagem, i.idimagens_cliente_obra
 ";
-$dadosHold = $conn->query($sqlHold)->fetch_all(MYSQLI_ASSOC);
+$resHold = $conn->query($sqlHold)->fetch_all(MYSQLI_ASSOC);
+
+// --- Agrupar em [obra -> tipos -> imagens]
+$dadosHold = [];
+foreach ($resHold as $row) {
+    $obraId = $row['obra_id'];
+    $tipoId = $row['tipo_imagem'];
+
+    if (!isset($dadosHold[$obraId])) {
+        $dadosHold[$obraId] = [
+            'obra_id' => $obraId,
+            'nome_obra' => $row['nome_obra'],
+            'tipos' => []
+        ];
+    }
+
+    if (!isset($dadosHold[$obraId]['tipos'][$tipoId])) {
+        $dadosHold[$obraId]['tipos'][$tipoId] = [
+            'id_tipo' => $tipoId,
+            'tipo_imagem' => $row['tipo_imagem'],
+            'count' => 0,
+            'imagens' => []
+        ];
+    }
+
+    $dadosHold[$obraId]['tipos'][$tipoId]['count']++;
+    $dadosHold[$obraId]['tipos'][$tipoId]['imagens'][] = [
+        'id' => $row['id'],
+        'nome' => $row['imagem_nome'],
+        'justificativa' => $row['justificativa'],
+        'prazo_hold' => $row['prazo_hold']
+    ];
+}
+
+// Transformar para índice sequencial
+$dadosHold = array_values(array_map(function ($obra) {
+    $obra['tipos'] = array_values($obra['tipos']);
+    return $obra;
+}, $dadosHold));
 
 // --- 2. Primeira função pendente por imagem com substatus_id = 2
 $sqlTodo = "SELECT t.*
@@ -47,8 +90,7 @@ WHERE t.rn = 1
 $dadosTodo = $conn->query($sqlTodo)->fetch_all(MYSQLI_ASSOC);
 
 // --- 3. Últimos 3 acompanhamentos por obra
-$sqlAcomp = "
-WITH ultimos AS (
+$sqlAcomp = "WITH ultimos AS (
     SELECT 
         a.idacompanhamento_email,
         a.obra_id,
@@ -58,7 +100,7 @@ WITH ultimos AS (
         a.data,
         ROW_NUMBER() OVER (PARTITION BY a.obra_id ORDER BY a.data DESC) AS rn
     FROM acompanhamento_email a
-    JOIN obra o ON o.idobra = a.obra_id
+    JOIN obra o ON o.idobra = a.obra_id AND o.status_obra = 0
 )
 SELECT *
 FROM ultimos

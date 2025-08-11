@@ -4,12 +4,12 @@ Array
         (
             [name] => Array
                 (
-                    [0] => TIPO_2.max
+                    [0] => 17.MSA_HYD Quiosque_P01_R00.psb
                 )
 
             [full_path] => Array
                 (
-                    [0] => TIPO_2.max
+                    [0] => 17.MSA_HYD Quiosque_P01_R00.psb
                 )
 
             [type] => Array
@@ -19,7 +19,7 @@ Array
 
             [tmp_name] => Array
                 (
-                    [0] => C:\xampp\tmp\php623D.tmp
+                    [0] => C:\xampp\tmp\php619D.tmp
                 )
 
             [error] => Array
@@ -29,7 +29,7 @@ Array
 
             [size] => Array
                 (
-                    [0] => 307232768
+                    [0] => 697296706
                 )
 
         )

@@ -218,7 +218,7 @@ $sqlImagens = "SELECT
         MAX(CASE WHEN fi.funcao_id = 6 THEN fi.status END) AS alteracao_status,
         MAX(CASE WHEN fi.funcao_id = 7 THEN c.nome_colaborador END) AS planta_colaborador,
         MAX(CASE WHEN fi.funcao_id = 7 THEN fi.status END) AS planta_status,
-    GROUP_CONCAT(DISTINCT sh.descricao ORDER BY sh.descricao SEPARATOR ', ') AS descricao
+    GROUP_CONCAT(DISTINCT sh.justificativa ORDER BY sh.justificativa SEPARATOR ', ') AS descricao
     FROM imagens_cliente_obra ico
     LEFT JOIN funcao_imagem fi ON fi.imagem_id = ico.idimagens_cliente_obra
     LEFT JOIN colaborador c ON fi.colaborador_id = c.idcolaborador

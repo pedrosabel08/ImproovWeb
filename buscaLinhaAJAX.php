@@ -34,7 +34,7 @@ if ($_SERVER["REQUEST_METHOD"] == "GET") {
      WHERE h.funcao_imagem_id = fi.idfuncao_imagem 
      ORDER BY h.id DESC 
      LIMIT 1) AS responsavel_aprovacao,
-    (SELECT DISTINCT GROUP_CONCAT(sh.descricao SEPARATOR ',') FROM status_hold sh JOIN imagens_cliente_obra img ON sh.imagem_id = img.idimagens_cliente_obra WHERE sh.imagem_id = $idImagemSelecionada) AS descricao  
+    (SELECT DISTINCT GROUP_CONCAT(sh.justificativa SEPARATOR ',') FROM status_hold sh JOIN imagens_cliente_obra img ON sh.imagem_id = img.idimagens_cliente_obra WHERE sh.imagem_id = $idImagemSelecionada) AS justificativa  
 FROM imagens_cliente_obra img
 LEFT JOIN funcao_imagem fi ON img.idimagens_cliente_obra = fi.imagem_id
 LEFT JOIN colaborador col ON fi.colaborador_id = col.idcolaborador

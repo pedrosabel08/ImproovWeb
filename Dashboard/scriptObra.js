@@ -376,20 +376,6 @@ function atualizarModal(idImagem) {
                     if (checkboxElement) {
                         checkboxElement.title = funcao.responsavel_aprovacao || '';
                     }
-                    // Suponha que 'response.descricao' contenha os valores concatenados do GROUP_CONCAT
-                    if (funcao.descricao) {
-                        const statusHoldValues = funcao.descricao.split(','); // Converte a string em um array
-                        const statusHoldSelect = document.getElementById('status_hold'); // Seleciona o elemento <select>
-
-                        statusHoldSelect.value = '';
-                        statusHoldSelect.style.display = 'block';
-
-                        // Itera sobre os valores e marca os <option>s correspondentes
-                        Array.from(statusHoldSelect.options).forEach(option => {
-                            option.selected = statusHoldValues.includes(option.value);
-                        });
-                    }
-
                     if (!funcao.descricao || response.status_id != 9) {
                         const statusHoldSelect = document.getElementById('status_hold'); // Seleciona o elemento <select>
                         statusHoldSelect.style.display = 'none';
@@ -397,16 +383,16 @@ function atualizarModal(idImagem) {
 
                 });
             }
-            const btnVerPdf = document.getElementById('ver-pdf');
-            if (btnVerPdf) {
-                if (nomePdf) {
-                    btnVerPdf.setAttribute('data-nome-pdf', nomePdf);
-                    btnVerPdf.style.display = 'inline-block';
-                } else {
-                    btnVerPdf.removeAttribute('data-nome-pdf');
-                    btnVerPdf.style.display = 'none';
-                }
-            }
+            // const btnVerPdf = document.getElementById('ver-pdf');
+            // if (btnVerPdf) {
+            //     if (nomePdf) {
+            //         btnVerPdf.setAttribute('data-nome-pdf', nomePdf);
+            //         btnVerPdf.style.display = 'inline-block';
+            //     } else {
+            //         btnVerPdf.removeAttribute('data-nome-pdf');
+            //         btnVerPdf.style.display = 'none';
+            //     }
+            // }
 
             const statusSelect = document.getElementById("opcao_status");
             if (response.status_id !== null) {
@@ -3731,38 +3717,38 @@ function enviarArquivo() {
 }
 
 
-const btnVerPdf = document.getElementById('ver-pdf');
-btnVerPdf.addEventListener('click', function (event) {
-    event.preventDefault();
+// const btnVerPdf = document.getElementById('ver-pdf');
+// btnVerPdf.addEventListener('click', function (event) {
+//     event.preventDefault();
 
-    const nomePdf = this.getAttribute('data-nome-pdf');
-    if (nomePdf) {
-        carregarPdf(nomePdf);
-    } else {
-        console.error('Nenhum PDF disponível para visualização.');
-        Toastify({
-            text: "Nenhum PDF disponível para visualização.",
-            duration: 3000,
-            gravity: "top",
-            backgroundColor: "#f44336"
-        }).showToast();
-    }
-});
+//     const nomePdf = this.getAttribute('data-nome-pdf');
+//     if (nomePdf) {
+//         carregarPdf(nomePdf);
+//     } else {
+//         console.error('Nenhum PDF disponível para visualização.');
+//         Toastify({
+//             text: "Nenhum PDF disponível para visualização.",
+//             duration: 3000,
+//             gravity: "top",
+//             backgroundColor: "#f44336"
+//         }).showToast();
+//     }
+// });
 
-function carregarPdf(nomeArquivo) {
-    const nomenclatura = document.getElementById('nomenclatura').textContent.trim();
-    const url = 'ver-pdf.php?arquivo=' + encodeURIComponent(nomeArquivo) +
-        '&nomenclatura=' + encodeURIComponent(nomenclatura);
-    pdfjsLib.getDocument(url).promise.then(function (pdfDoc_) {
-        pdfDoc = pdfDoc_;
-        pageNum = 1;
-        document.getElementById('page-count').textContent = pdfDoc.numPages;
-        renderPage(pageNum);
-        document.getElementById('modal_pdf').style.display = 'flex';
-    }).catch(function (error) {
-        alert('Erro ao carregar PDF: ' + error.message);
-    });
-}
+// function carregarPdf(nomeArquivo) {
+//     const nomenclatura = document.getElementById('nomenclatura').textContent.trim();
+//     const url = 'ver-pdf.php?arquivo=' + encodeURIComponent(nomeArquivo) +
+//         '&nomenclatura=' + encodeURIComponent(nomenclatura);
+//     pdfjsLib.getDocument(url).promise.then(function (pdfDoc_) {
+//         pdfDoc = pdfDoc_;
+//         pageNum = 1;
+//         document.getElementById('page-count').textContent = pdfDoc.numPages;
+//         renderPage(pageNum);
+//         document.getElementById('modal_pdf').style.display = 'flex';
+//     }).catch(function (error) {
+//         alert('Erro ao carregar PDF: ' + error.message);
+//     });
+// }
 
 let pdfDoc = null,
     pageNum = 1,

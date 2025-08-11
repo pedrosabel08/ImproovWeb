@@ -30,7 +30,7 @@ $stmt->close();
 $novosValores = array_diff($statusHold, $valoresExistentes);
 
 if (!empty($novosValores)) {
-    $sqlInsert = "INSERT INTO status_hold (descricao, obra_id, imagem_id) VALUES (?, ?, ?)";
+    $sqlInsert = "INSERT INTO status_hold (justificativa, obra_id, imagem_id) VALUES (?, ?, ?)";
     $stmtInsert = $conn->prepare($sqlInsert);
 
     if (!$stmtInsert) {

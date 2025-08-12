@@ -4,12 +4,12 @@ Array
         (
             [name] => Array
                 (
-                    [0] => 17.MSA_HYD Quiosque_P01_R00.psb
+                    [0] => LD_RES  Living do apartamento cobertura duplex 1_018.max
                 )
 
             [full_path] => Array
                 (
-                    [0] => 17.MSA_HYD Quiosque_P01_R00.psb
+                    [0] => LD_RES  Living do apartamento cobertura duplex 1_018.max
                 )
 
             [type] => Array
@@ -19,7 +19,7 @@ Array
 
             [tmp_name] => Array
                 (
-                    [0] => C:\xampp\tmp\php619D.tmp
+                    [0] => C:\xampp\tmp\phpED7B.tmp
                 )
 
             [error] => Array
@@ -29,7 +29,7 @@ Array
 
             [size] => Array
                 (
-                    [0] => 697296706
+                    [0] => 337160282
                 )
 
         )

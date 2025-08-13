@@ -97,7 +97,7 @@ if (isset($_FILES['imagens'])) {
         $nomeImagemSanitizado = sanitizeFilename($nome_imagem);
 
 
-        if ($nomeFuncao === 'Pós-Produção') {
+        if ($nomeFuncao === 'Pós-Produção' || $nomeFuncao === 'Alteração') {
             $nomeFinalSemExt = "{$nomeImagemSanitizado}_{$status_nome}_{$indice_envio}_{$numeroPrevia}";
         } else {
             $nomeFinalSemExt = "{$numeroImagem}.{$nomenclatura}-{$processo}-{$indice_envio}-{$numeroPrevia}";

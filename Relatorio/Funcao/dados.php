@@ -72,7 +72,7 @@ JOIN obra o ON o.idobra = i.obra_id
 JOIN colaborador c ON c.idcolaborador = fi.colaborador_id
 WHERE o.status_obra = 0 
   AND o.idobra NOT IN (16, 27)
-  AND fi.funcao_id = 2
+  AND fi.funcao_id = 4
 GROUP BY fi.colaborador_id
 ORDER BY fi.colaborador_id;
 ";

@@ -131,7 +131,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // SFTP envio final
-    if (mb_strtolower($nome_funcao, 'UTF-8') === 'pós-produção' && in_array($status, ['Aprovado', 'Aprovado com ajustes'])) {
+    if (
+        in_array(mb_strtolower($nome_funcao, 'UTF-8'), ['pós-produção', 'alteração']) &&
+        in_array($status, ['Aprovado', 'Aprovado com ajustes'])
+    ) {
         $stmtArquivo = $conn->prepare("SELECT nome_arquivo FROM historico_aprovacoes_imagens WHERE funcao_imagem_id = ? ORDER BY id DESC LIMIT 1");
         $stmtArquivo->bind_param("i", $idfuncao_imagem);
         $stmtArquivo->execute();

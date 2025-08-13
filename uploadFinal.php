@@ -233,16 +233,19 @@ for ($i = 0; $i < $total; $i++) {
                 $caminhoAtual .= "/$subpasta_img";
                 if (!$sftp->is_dir($caminhoAtual)) {
                     $sftp->mkdir($caminhoAtual);
+                    $sftp->chmod(0777, $caminhoAtual); // define permissão completa
                 }
 
                 $caminhoAtual .= "/Final";
                 if (!$sftp->is_dir($caminhoAtual)) {
                     $sftp->mkdir($caminhoAtual);
+                    $sftp->chmod(0777, $caminhoAtual); // define permissão completa
                 }
 
                 $caminhoAtual .= "/$revisao";
                 if (!$sftp->is_dir($caminhoAtual)) {
                     $sftp->mkdir($caminhoAtual);
+                    $sftp->chmod(0777, $caminhoAtual); // define permissão completa
                 }
 
                 $remote_dir = $caminhoAtual;
@@ -257,10 +260,12 @@ for ($i = 0; $i < $total; $i++) {
 
                 if (!$sftp->is_dir("$remote_dir/$subpasta_img")) {
                     $sftp->mkdir("$remote_dir/$subpasta_img");
+                    $sftp->chmod(0777, $caminhoAtual); // define permissão completa
                 }
 
                 if (!$sftp->is_dir("$remote_dir/$subpasta_img/$subpasta_funcao")) {
                     $sftp->mkdir("$remote_dir/$subpasta_img/$subpasta_funcao");
+                    $sftp->chmod(0777, $caminhoAtual); // define permissão completa
                 }
 
                 $remote_dir = "$remote_dir/$subpasta_img/$subpasta_funcao";
@@ -286,11 +291,13 @@ for ($i = 0; $i < $total; $i++) {
 
         if (!$sftp->is_dir("$upload_ok/$pasta_revisao")) {
             $sftp->mkdir("$upload_ok/$pasta_revisao");
+            $sftp->chmod(0777, $caminhoAtual); // define permissão completa
         }
 
         if ($funcao_normalizada === 'planta humanizada') {
             if (!$sftp->is_dir("$upload_ok/$pasta_revisao/PH")) {
                 $sftp->mkdir("$upload_ok/$pasta_revisao/PH");
+                $sftp->chmod(0777, $caminhoAtual); // define permissão completa
             }
             $remote_path = "$upload_ok/$pasta_revisao/PH/{$nome_final}";
         } else {

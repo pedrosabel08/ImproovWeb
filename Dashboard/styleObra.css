@@ -688,20 +688,6 @@ table#tabela-obra tbody tr:hover {
     background-color: #FF5833;
 }
 
-table#tabela-obra th:nth-child(2) {
-    max-width: max-content;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    text-align: center;
-    resize: horizontal;
-    min-width: 120px;
-}
-
-table#tabela-obra tbody td:nth-child(3) {
-    font-size: 13px;
-}
-
 
 #tabela-obra td {
     overflow: hidden;
@@ -720,7 +706,7 @@ table#tabela-obra tbody td:nth-child(3) {
 #tabela-obra tbody td,
 #tabela-obra th {
     border: 1px solid black;
-    font-size: 14px;
+    font-size: 13px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -741,7 +727,8 @@ tr#linha-porcentagem td {
 header {
     display: flex;
     justify-content: center;
-    padding: 20px;
+    height: 80px;
+    align-items: center;
 }
 
 header h1 {
@@ -1158,14 +1145,15 @@ form#form-add::-webkit-scrollbar-track,
 #editImagesBtn,
 #addImagem,
 #editArquivos,
-#addFollowup {
+#addFollowup,
+#acoesBtn {
     background-color: red;
     width: max-content;
     text-align: center;
     padding: 0.2rem 0.6rem;
     border-radius: 10px;
     color: white;
-    font-size: 14px;
+    font-size: 0.8rem;
     transition: 0.3s all ease;
     cursor: pointer;
 }
@@ -1183,12 +1171,26 @@ form#form-add::-webkit-scrollbar-track,
     background-color: #ff9100;
 }
 
+#acoesBtn {
+    background-color: #ffe000;
+    color: black;
+    font-weight: bold;
+    display: none;
+}
+
 .buttons button:hover {
     font-weight: 600;
 }
 
 
 th.resizable {
+    max-width: max-content;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: center;
+    resize: horizontal;
+    min-width: 120px;
     position: relative;
 }
 
@@ -2020,4 +2022,41 @@ ul.file-list {
     justify-content: center;
     text-align: center;
     gap: 5px;
+}
+
+#acoesModal {
+    display: none;
+    position: absolute;
+    background: white;
+    border: 1px solid #ccc;
+    padding: 8px;
+    width: 220px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+    font-size: 0.9rem;
+}
+
+#acoesModal input,
+#acoesModal select {
+    border: none;
+    border-bottom: 1px solid;
+}
+
+.modal-row {
+    cursor: pointer;
+    padding: 5px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+}
+
+.modal-row:hover {
+    background: #f8f8f8;
+}
+
+#batch_actions:hover {
+    animation-name: rotateIn;
+    animation-duration: 1s;
+    animation-fill-mode: both;
+    opacity: 1 !important;
 }

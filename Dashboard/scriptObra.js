@@ -7,6 +7,8 @@ usuarioId = Number(usuarioId);
 if (usuarioId !== 1 && usuarioId !== 2 && usuarioId !== 9) {
     document.getElementById('acomp').classList.add('hidden')
     document.getElementById('obsAdd').classList.add('hidden')
+    document.getElementById('obsAdd').style.display = 'none';
+    document.getElementById('batch_actions').style.display = 'none';
 
     document.querySelectorAll(".campo input[type='text']").forEach(input => {
         input.readOnly = true;
@@ -493,6 +495,26 @@ function infosObra(obraId) {
     fetch(`infosObra.php?obraId=${obraId}`)
         .then(response => response.json())
         .then(data => {
+
+            if (batchMode) {
+
+                // Remove a coluna de checkboxes do header
+                const headerRow = document.querySelector("#tabela-obra thead tr:nth-child(2)");
+                if (headerRow && headerRow.firstChild) {
+                    headerRow.removeChild(headerRow.firstChild);
+                }
+
+                // Remove a primeira coluna de cada linha do tbody
+                document.querySelectorAll("#tabela-obra tbody tr").forEach(row => {
+                    if (row.firstChild) row.removeChild(row.firstChild);
+                });
+
+                // Esconde o botão Ações
+                document.getElementById("acoesBtn").style.display = "none";
+
+                // Reset batchMode
+                batchMode = false;
+            }
             // Verifica se os dados são válidos e não vazios
             if (!Array.isArray(data.imagens) || data.imagens.length === 0) {
                 console.warn('Nenhuma função encontrada para esta obra.');
@@ -651,10 +673,39 @@ function infosObra(obraId) {
 
                     const cellColaborador = document.createElement('td');
                     cellColaborador.textContent = colaborador;
+                    cellColaborador.addEventListener('mouseenter', (event) => {
+                        tooltip.textContent = colaborador;
+                        tooltip.style.display = 'block';
+                        tooltip.style.left = event.clientX + 'px';
+                        tooltip.style.top = event.clientY - 30 + 'px';
+                    });
+
+                    cellColaborador.addEventListener('mouseleave', () => {
+                        tooltip.style.display = 'none';
+                    });
+
+                    cellColaborador.addEventListener('mousemove', (event) => {
+                        tooltip.style.left = event.clientX + 'px';
+                        tooltip.style.top = event.clientY - 30 + 'px';
+                    });
 
                     const cellStatus = document.createElement('td');
                     cellStatus.textContent = status;
+                    cellStatus.addEventListener('mouseenter', (event) => {
+                        tooltip.textContent = status;
+                        tooltip.style.display = 'block';
+                        tooltip.style.left = event.clientX + 'px';
+                        tooltip.style.top = event.clientY - 30 + 'px';
+                    });
 
+                    cellStatus.addEventListener('mouseleave', () => {
+                        tooltip.style.display = 'none';
+                    });
+
+                    cellStatus.addEventListener('mousemove', (event) => {
+                        tooltip.style.left = event.clientX + 'px';
+                        tooltip.style.top = event.clientY - 30 + 'px';
+                    });
                     row.appendChild(cellColaborador);
                     row.appendChild(cellStatus);
 
@@ -687,6 +738,7 @@ function infosObra(obraId) {
 
                 tabela.appendChild(row);
             });
+
 
             // Adiciona os valores únicos de status ao statusSelect
             statusEtapaUnicos.forEach(status => {
@@ -1032,6 +1084,7 @@ function infosObra(obraId) {
             //         });
             //     }
             // });
+
 
         })
         .catch(error => console.error('Erro ao carregar funções:', error));
@@ -1696,6 +1749,7 @@ addImagem.addEventListener('click', function () {
 
 const editArquivos = document.getElementById('editArquivos');
 const editImagesBtn = document.getElementById('editImagesBtn');
+const addFollowup = document.getElementById('addFollowup');
 const labelSwitch = document.querySelectorAll('.switch');
 const iduser = parseInt(localStorage.getItem('idusuario'));
 
@@ -1703,6 +1757,7 @@ if (![1, 2, 9].includes(iduser)) {
     editArquivos.style.display = 'none';
     editImagesBtn.style.display = 'none';
     addImagem.style.display = 'none';
+    addFollowup.style.display = 'none';
 
     labelSwitch.forEach(label => {
         label.style.display = 'none';
@@ -3749,6 +3804,198 @@ function enviarArquivo() {
 //         alert('Erro ao carregar PDF: ' + error.message);
 //     });
 // }
+
+let batchMode = false;
+
+
+
+document.getElementById("batch_actions").addEventListener("click", function () {
+    const table = document.getElementById("tabela-obra");
+    const headerRow = table.querySelector("thead tr:nth-child(2)");
+    const bodyRows = table.querySelectorAll("tbody tr");
+
+    if (!batchMode) {
+        // Adiciona coluna no início do cabeçalho
+        const th = document.createElement("th");
+        const selectAllCheckbox = document.createElement("input");
+        selectAllCheckbox.type = "checkbox";
+        selectAllCheckbox.id = "select-all";
+        th.appendChild(selectAllCheckbox);
+        headerRow.insertBefore(th, headerRow.firstChild);
+
+        // Evento para selecionar/deselecionar todos
+        // Quando clicar no checkbox do cabeçalho
+        selectAllCheckbox.addEventListener("change", function () {
+            const isChecked = this.checked;
+            // Pega todas as linhas visíveis (display != 'none')
+            document.querySelectorAll("tbody tr").forEach(row => {
+                if (row.offsetParent !== null) { // significa que está visível
+                    const cb = row.querySelector("input[type='checkbox']");
+                    if (cb) cb.checked = isChecked;
+                }
+            });
+            verificarSelecao();
+
+        });
+
+        bodyRows.forEach(row => {
+            const td = document.createElement("td");
+            const checkbox = document.createElement("input");
+            checkbox.type = "checkbox";
+            checkbox.addEventListener("change", verificarSelecao);
+            checkbox.classList.add("row-select");
+            td.appendChild(checkbox);
+            row.insertBefore(td, row.firstChild);
+
+            checkbox.addEventListener("click", function (e) {
+                e.stopPropagation();
+            });
+        });
+        batchMode = true;
+    } else {
+        // Remove primeira coluna
+        headerRow.removeChild(headerRow.firstChild);
+        bodyRows.forEach(row => {
+            row.removeChild(row.firstChild);
+        });
+        document.getElementById("acoesBtn").style.display = "none";
+
+        batchMode = false;
+    }
+});
+
+function verificarSelecao() {
+    const selecionados = document.querySelectorAll('#tabela-obra tbody input[type="checkbox"]:checked');
+    document.getElementById("acoesBtn").style.display = selecionados.length > 0 ? "inline-block" : "none";
+}
+
+document.getElementById("acoesBtn").addEventListener("click", function (e) {
+    const modal = document.getElementById("acoesModal");
+    const rect = e.target.getBoundingClientRect();
+    modal.style.top = (rect.bottom + window.scrollY) + "px";
+    modal.style.left = (rect.left + 50) + "px";
+    modal.style.display = modal.style.display === "block" ? "none" : "block";
+});
+
+document.querySelectorAll(".modal-row").forEach(row => {
+    row.addEventListener("click", function () {
+        const targetId = this.getAttribute("data-target");
+        const field = document.getElementById(targetId);
+        field.style.display = field.style.display === "block" ? "none" : "block";
+    });
+
+
+    // Impede que clique nos inputs ou selects dispare o toggle
+    row.querySelectorAll("input, select").forEach(el => {
+        el.addEventListener("click", e => e.stopPropagation());
+    });
+});
+
+document.getElementById("btnAtualizar").addEventListener("click", function () {
+    let dadosAtualizar = {};
+
+    // Pega apenas os campos visíveis do modal e mapeia os IDs para nomes de coluna
+    document.querySelectorAll(".modal-field").forEach(field => {
+        if (field.style.display === "block") {
+            let input = field.querySelector("input, select");
+            if (input) {
+                // Mapeia o ID do input para o nome da coluna
+                let coluna;
+                switch (input.id) {
+                    case "statusSelectModal":
+                        coluna = "substatus_id";
+                        break;
+                    case "opcao_status_modal":
+                        coluna = "status_id";
+                        break;
+                    case "prazo_modal":
+                        coluna = "prazo";
+                        break;
+                    default:
+                        coluna = input.id || 'campo';
+                }
+                dadosAtualizar[coluna] = input.value;
+            }
+        }
+    });
+
+    // Pega os IDs das linhas selecionadas (checkbox ativo)
+    let idsSelecionados = [];
+    document.querySelectorAll("#tabela-obra tbody tr").forEach(row => {
+        const cb = row.querySelector("input[type='checkbox']");
+        if (cb && cb.checked) {
+            idsSelecionados.push(row.getAttribute("data-id")); // certifique-se de ter o atributo data-id
+        }
+    });
+
+    if (idsSelecionados.length === 0) {
+        alert("Nenhuma linha selecionada!");
+        return;
+    }
+
+    // Mostra os dados que serão atualizados
+    let preview = `IDs selecionados:\n${idsSelecionados.join(', ')}\n\nCampos a atualizar:\n`;
+    for (const [col, val] of Object.entries(dadosAtualizar)) {
+        preview += `${col}: ${val}\n`;
+    }
+
+    // Confirmação
+    if (!confirm(preview + "\nDeseja continuar com a atualização?")) {
+        return; // Para se o usuário cancelar
+    }
+
+
+    // Envia via AJAX para PHP
+    fetch("batch_actions.php", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ ids: idsSelecionados, campos: dadosAtualizar })
+    })
+        .then(res => res.json())
+        .then(res => {
+            if (res.sucesso) {
+                Toastify({
+                    text: "Imagens atualizadas com sucesso!",
+                    duration: 3000,
+                    gravity: "top",
+                    position: "right",
+                    backgroundColor: 'linear-gradient(to right, #00b09b, #96c93d)', // sucesso padrão
+                }).showToast();
+
+                const headerRow = document.querySelector("#tabela-obra thead tr:nth-child(2)");
+                if (headerRow && headerRow.firstChild) {
+                    headerRow.removeChild(headerRow.firstChild);
+                }
+
+                // Remove a primeira coluna de cada linha do tbody
+                document.querySelectorAll("#tabela-obra tbody tr").forEach(row => {
+                    if (row.firstChild) row.removeChild(row.firstChild);
+                });
+
+                // Esconde o botão Ações
+                document.getElementById("acoesBtn").style.display = "none";
+                document.getElementById("acoesModal").style.display = "none";
+
+                // Reset batchMode
+                batchMode = false;
+
+                infosObra(obraId); // Recarrega a tabela
+
+            } else {
+                Toastify({
+                    text: "Erro ao atualizar as imagens." + res.mensagem,
+                    duration: 3000,
+                    gravity: "top",
+                    position: "right",
+                    backgroundColor: 'linear-gradient(to right, #b00000ff, #e97171ff)' // sucesso padrão
+                }).showToast();                // Remove a coluna de checkboxes do header            }
+                document.getElementById("acoesModal").style.display = "none";
+            }
+        })
+        .catch(err => console.error(err));
+});
 
 let pdfDoc = null,
     pageNum = 1,

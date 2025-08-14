@@ -60,6 +60,7 @@ $conn->close();
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/airbnb.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
 </head>
 
 <body>
@@ -86,9 +87,9 @@ $conn->close();
     include '../sidebar.php';
 
     ?>
-    <div class="container">
+    <div class="container animate__animated animate__fadeIn">
         <header>
-            <h1 id="nomenclatura"></h1>
+            <h1 id="nomenclatura" class="animate__animated animate__fadeInDown"></h1>
         </header>
         <div class="buttons-nav">
             <button id="altBtn" class="hidden">Flow Review</button>
@@ -114,15 +115,15 @@ $conn->close();
                 </div>
 
                 <div id="prazos-list"></div>
-                <div id="calendarMini"></div>
+                <div id="calendarMini" class="animate__animated"></div>
 
             </div>
 
-            <div class="buttons">
-                <button id="editImagesBtn">Editar Imagens</button>
-                <button id="addImagem">Adicionar Imagem</button>
-                <button id="editArquivos">Editar Arquivos</button>
-                <button id="addFollowup" onclick="gerarFollowUpPDF()">Follow Up</button>
+            <div class="buttons animate__animated">
+                <button id="editImagesBtn" class="animate__animated">Editar Imagens</button>
+                <button id="addImagem" class="animate__animated">Adicionar Imagem</button>
+                <button id="editArquivos" class="animate__animated">Editar Arquivos</button>
+                <button id="addFollowup" onclick="gerarFollowUpPDF()" class="animate__animated">Follow Up</button>
                 <!-- <button id="flowReviewBtn">Flow Review</button> -->
             </div>
 
@@ -140,12 +141,51 @@ $conn->close();
                 <span class="estrela" id="estrela5">★</span>
             </div>
 
+            <div class="buttons-actions">
+                <button id="copyColumn" class="tooltip" data-tooltip="Copiar coluna" style="width: max-content;"><i class="fas fa-copy"></i></button>
+                <button id="batch_actions" class="tooltip animate__animated" data-tooltip="Batch actions" style="width: max-content;"><i class="fa-solid fa-gear"></i></button>
+                <button id="acoesBtn">Ações</button>
+            </div>
 
-
-            <button id="copyColumn" class="tooltip" data-tooltip="Copiar coluna" style="width: max-content;">
-                <i class="fas fa-copy"></i>
-            </button>
-
+            <div id="acoesModal">
+                <div class="modal-row" data-target="prazoField">Prazo
+                    <div id="prazoField" class="modal-field" style="display: none;">
+                        <input type="date" id="prazo_modal">
+                    </div>
+                </div>
+                <div class="modal-row" data-target="etapaField">Etapa
+                    <div id="etapaField" class="modal-field" style="display: none;">
+                        <select name="opcao_status_modal" id="opcao_status_modal">
+                            <?php foreach ($status_imagens as $status): ?>
+                                <option value="<?= htmlspecialchars($status['idstatus']); ?>">
+                                    <?= htmlspecialchars($status['nome_status']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-row" data-target="statusField">Status
+                    <div id="statusField" class="modal-field" style="display: none;">
+                        <select id="statusSelectModal" name="statusSelectModal">
+                            <?php foreach ($status_etapa as $statusEtapa): ?>
+                                <option value="<?= htmlspecialchars($statusEtapa['id']); ?>">
+                                    <?= htmlspecialchars($statusEtapa['nome_substatus']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+                <div style="text-align: center; padding-top: 5px;">
+                    <button id="btnAtualizar">✓ Atualizar</button>
+                </div>
+            </div>
+            <div id="previewModal" class="modal" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%); background:#fff; border:1px solid #ccc; padding:20px; z-index:1000; width:300px; box-shadow:0 0 10px rgba(0,0,0,0.3);">
+                <h3>Confirmação de Atualização</h3>
+                <div id="previewContent" style="max-height:200px; overflow-y:auto; margin:10px 0;"></div>
+                <button id="confirmUpdateBtn" style="margin-right:10px;">Confirmar</button>
+                <button id="cancelUpdateBtn">Cancelar</button>
+            </div>
+            <div id="previewOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.3); z-index:999;"></div>
 
             <div id="editImagesModal" style="display: none;">
                 <div class="modal-content-images" style="overflow-y: auto; max-height: 600px; width: 50%;">

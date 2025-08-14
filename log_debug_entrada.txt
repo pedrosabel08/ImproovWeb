@@ -4,32 +4,32 @@ Array
         (
             [name] => Array
                 (
-                    [0] => 10.RDO_VAL Bicicletário_R00.psb
+                    [0] => 14. RDO_VAL Fitness_R00.psb
                 )
 
             [full_path] => Array
                 (
-                    [0] => 10.RDO_VAL Bicicletário_R00.psb
+                    [0] => 14. RDO_VAL Fitness_R00.psb
                 )
 
             [type] => Array
                 (
-                    [0] => application/octet-stream
+                    [0] => 
                 )
 
             [tmp_name] => Array
                 (
-                    [0] => C:\xampp\tmp\phpACC.tmp
+                    [0] => 
                 )
 
             [error] => Array
                 (
-                    [0] => 0
+                    [0] => 7
                 )
 
             [size] => Array
                 (
-                    [0] => 419031806
+                    [0] => 0
                 )
 
         )

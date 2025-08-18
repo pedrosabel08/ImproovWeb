@@ -1184,7 +1184,7 @@ form#form-add::-webkit-scrollbar-track,
 
 
 th.resizable {
-    max-width: max-content;
+    max-width: max-content !important;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

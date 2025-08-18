@@ -844,11 +844,11 @@ function infosObra(obraId) {
             const obra = data.obra;
             document.getElementById('nomenclatura').textContent = obra.nomenclatura || "Nome não disponível";
             document.title = obra.nomenclatura || "Nome não disponível";
-            document.getElementById('data_inicio_obra').textContent = `Data de Início: ${formatarData(obra.data_inicio)}`;
-            document.getElementById('prazo_obra').textContent = `Prazo: ${formatarData(obra.prazo)}`;
-            document.getElementById('dias_trabalhados').innerHTML = obra.dias_trabalhados ? `<strong>${obra.dias_trabalhados}</strong> dias` : '';
-            document.getElementById('total_imagens').textContent = `Total de Imagens: ${obra.total_imagens}`;
-            document.getElementById('total_imagens_antecipadas').textContent = `Imagens Antecipadas: ${obra.total_imagens_antecipadas}`;
+            // document.getElementById('data_inicio_obra').textContent = `Data de Início: ${formatarData(obra.data_inicio)}`;
+            // document.getElementById('prazo_obra').textContent = `Prazo: ${formatarData(obra.prazo)}`;
+            // document.getElementById('dias_trabalhados').innerHTML = obra.dias_trabalhados ? `<strong>${obra.dias_trabalhados}</strong> dias` : '';
+            // document.getElementById('total_imagens').textContent = `Total de Imagens: ${obra.total_imagens}`;
+            // document.getElementById('total_imagens_antecipadas').textContent = `Imagens Antecipadas: ${obra.total_imagens_antecipadas}`;
             document.getElementById('local').value = `${obra.local}`;
             document.getElementById('altura_drone').value = `${obra.altura_drone}`;
             document.getElementById('link_drive').value = `${obra.link_drive}`;
@@ -1220,6 +1220,12 @@ function applyStatusImagem(cell, status, descricao = '') {
             break;
         case 'R03':
             cell.style.backgroundColor = '#ff0000'
+            break;
+        case 'R04':
+            cell.style.backgroundColor = '#6449ffff'
+            break;
+        case 'R05':
+            cell.style.backgroundColor = '#7d36f7'
             break;
         case 'EF':
             cell.style.backgroundColor = '#0dff00'
@@ -2227,31 +2233,31 @@ const statusModal = document.getElementById("modal_status");
 
 
 
-document.getElementById('formOrcamento').addEventListener('submit', function (e) {
-    e.preventDefault();
+// document.getElementById('formOrcamento').addEventListener('submit', function (e) {
+//     e.preventDefault();
 
-    const idObra = document.getElementById('idObraOrcamento').value;
-    const tipo = document.getElementById('tipo').value;
-    const valor = document.getElementById('valor').value;
-    const data = document.getElementById('data').value;
+//     const idObra = document.getElementById('idObraOrcamento').value;
+//     const tipo = document.getElementById('tipo').value;
+//     const valor = document.getElementById('valor').value;
+//     const data = document.getElementById('data').value;
 
-    // Enviar os dados para o backend
-    fetch('salvarOrcamento.php', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ idObra, tipo, valor, data }),
-    })
-        .then(response => response.json())
-        .then(data => {
-            alert('Orçamento salvo com sucesso!');
-            document.getElementById('modalOrcamento').style.display = 'none'; // Fecha o modal
-        })
-        .catch(error => {
-            console.error('Erro ao salvar orçamento:', error);
-        });
-});
+//     // Enviar os dados para o backend
+//     fetch('salvarOrcamento.php', {
+//         method: 'POST',
+//         headers: {
+//             'Content-Type': 'application/json',
+//         },
+//         body: JSON.stringify({ idObra, tipo, valor, data }),
+//     })
+//         .then(response => response.json())
+//         .then(data => {
+//             alert('Orçamento salvo com sucesso!');
+//             document.getElementById('modalOrcamento').style.display = 'none'; // Fecha o modal
+//         })
+//         .catch(error => {
+//             console.error('Erro ao salvar orçamento:', error);
+//         });
+// });
 
 
 
@@ -2323,7 +2329,7 @@ document.getElementById("editImagesBtn").addEventListener("click", () => {
                             <i class="fas fa-chevron-down toggle-options"></i>
                         </div>
 
-                        <div class="conteudo_imagens" id="conteudo_imagens">
+                        <div class="conteudo_imagens" id="conteudo_imagens" style="display: none;">
                             <label>Imagem: <input type="text" data-id="${image.idimagem}" name="imagem_nome" value="${image.imagem_nome}"></label><br>
                             <label>Recebimento Arquivos: <input type="date" data-id="${image.idimagem}" name="recebimento_arquivos" value="${image.recebimento_arquivos}"></label><br>
                             <label>Data de Início: <input type="date" data-id="${image.idimagem}" name="data_inicio" value="${image.data_inicio}"></label><br>
@@ -2999,6 +3005,10 @@ function getEventColors(event) {
             return { backgroundColor: '#ff3c00', color: '#ffffff' };
         case 'R03':
             return { backgroundColor: '#ff0000', color: '#ffffff' };
+        case 'R04':
+            return { backgroundColor: '#3683f7ff', color: '#ffffff' };
+        case 'R05':
+            return { backgroundColor: '#7d36f7', color: '#ffffff' };
         case 'EF':
             return { backgroundColor: '#0dff00', color: '#000000' };
         case 'HOLD':

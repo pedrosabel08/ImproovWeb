@@ -438,65 +438,6 @@ $conn->close();
         </div>
 
 
-
-        <div id="infos-obra" style="width: 95%; margin: 30px auto; box-shadow: 0 1px 10px rgba(0, 0, 0, 0.7);">
-            <!-- <button id="follow-up">Follow-up</button> -->
-
-            <div class="obra-identificacao">
-                <h4 id="data_inicio_obra"></h4>
-                <h4 id="prazo_obra"></h4>
-                <h4 id="dias_trabalhados"></h4>
-            </div>
-
-            <div class="obra-acompanhamento">
-
-                <!-- <?php
-                        // Exibir somente se o usuário tiver nível de acesso 1
-                        if (isset($_SESSION['logado']) && $_SESSION['logado'] === true && $_SESSION['nivel_acesso'] == 1) {
-                        ?>
-                    <button id="orcamento" style="display: block;">Orçamento</button>
-                <?php
-                        }
-                ?>
-                <button id="orcamento" style="display: none;">Orçamento</button> -->
-            </div>
-
-            <div class="modalOrcamento" id="modalOrcamento">
-                <div class="orcamento-form">
-                    <h2>Fazer Orçamento</h2>
-                    <form id="formOrcamento">
-                        <input type="hidden" id="idObraOrcamento">
-                        <div class="linha">
-                            <label for="tipo">Tipo:</label>
-                            <input type="text" id="tipo" required>
-                        </div>
-                        <div class="linha">
-                            <label for="valor">Valor:</label>
-                            <input type="number" id="valor" required>
-                        </div>
-                        <div class="linha">
-                            <label for="data">Data:</label>
-                            <input type="date" id="data" required>
-                        </div>
-                        <div class="buttons">
-                            <button type="submit" id="salvar_orcamento">Salvar Orçamento</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-
-            <div class="obra-imagens">
-                <h4 id="total_imagens"></h4>
-                <h4 id="total_imagens_antecipadas"></h4>
-                <!-- <div id="funcoes" style="display: flex;flex-wrap: wrap; gap: 50px; justify-content: space-around;">
-                </div>
-                <div id="grafico">
-                    <canvas id="graficoPorcentagem" width="400" height="200"></canvas>
-                </div> -->
-            </div>
-
-        </div>
-
         <div id="modalAcompanhamento" class="modal">
             <div class="modal-content" style="width: 500px;">
                 <h2 style="margin-bottom: 30px;">Acompanhamento por Email</h2>

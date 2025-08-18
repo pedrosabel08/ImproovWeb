@@ -4,12 +4,12 @@ Array
         (
             [name] => Array
                 (
-                    [0] => 14. RDO_VAL Fitness_R00.psb
+                    [0] => 2. CP8_DIS Fachada Noturna_EF.psb
                 )
 
             [full_path] => Array
                 (
-                    [0] => 14. RDO_VAL Fitness_R00.psb
+                    [0] => 2. CP8_DIS Fachada Noturna_EF.psb
                 )
 
             [type] => Array

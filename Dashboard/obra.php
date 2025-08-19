@@ -1121,6 +1121,27 @@ $conn->close();
         </div>
     </div>
 
+    <!-- Adicione este botão onde quiser -->
+    <button id="btnUploadAcompanhamento">Upload Acompanhamento Obra</button>
+
+    <!-- Modal para upload -->
+    <div id="modalUploadAcompanhamento" class="modal" style="display:none;">
+        <div class="modal-content" style="width:400px;">
+            <h3>Upload Acompanhamento da Obra</h3>
+            <form id="formUploadAcompanhamento">
+                <label>Nome da pasta:</label>
+                <input type="text" id="nome_pasta_acomp" required>
+                <label>Arquivo:</label>
+                <input type="file" id="arquivo_acomp" required>
+                <div style="margin-top:15px;">
+                    <button type="submit">Enviar</button>
+                    <button type="button" onclick="fecharModalUploadAcompanhamento()">Cancelar</button>
+                </div>
+            </form>
+            <div id="uploadAcompStatus"></div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>

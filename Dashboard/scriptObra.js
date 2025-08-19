@@ -4059,3 +4059,48 @@ function nextPage() {
     pageNum++;
     queueRenderPage(pageNum);
 }
+
+document.getElementById('btnUploadAcompanhamento').addEventListener('click', function () {
+    document.getElementById('modalUploadAcompanhamento').style.display = 'block';
+});
+
+function fecharModalUploadAcompanhamento() {
+    document.getElementById('modalUploadAcompanhamento').style.display = 'none';
+    document.getElementById('uploadAcompStatus').textContent = '';
+}
+
+document.getElementById('formUploadAcompanhamento').addEventListener('submit', function (e) {
+    e.preventDefault();
+
+    const nomenclatura = document.getElementById('nomenclatura').textContent.trim();
+    const nome_pasta = document.getElementById('nome_pasta_acomp').value.trim();
+    const arquivoInput = document.getElementById('arquivo_acomp');
+    const arquivo = arquivoInput.files[0];
+
+    if (!nomenclatura || !nome_pasta || !arquivo) {
+        document.getElementById('uploadAcompStatus').textContent = 'Preencha todos os campos!';
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('nomenclatura', nomenclatura);
+    formData.append('nome_pasta', nome_pasta);
+    formData.append('arquivo_acomp', arquivo);
+
+    fetch('../uploadAcompanhamento.php', {
+        method: 'POST',
+        body: formData
+    })
+        .then(resp => resp.json())
+        .then(res => {
+            if (res.success) {
+                document.getElementById('uploadAcompStatus').textContent = 'Arquivo enviado com sucesso!';
+                fecharModalUploadAcompanhamento();
+            } else {
+                document.getElementById('uploadAcompStatus').textContent = res.error || 'Erro ao enviar!';
+            }
+        })
+        .catch(() => {
+            document.getElementById('uploadAcompStatus').textContent = 'Erro ao enviar!';
+        });
+});

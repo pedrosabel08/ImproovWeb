@@ -4,32 +4,32 @@ Array
         (
             [name] => Array
                 (
-                    [0] => 2. CP8_DIS Fachada Noturna_EF.psb
+                    [0] => 40.LD_RES Sacada do apartamento cobertura duplex 1_001.max
                 )
 
             [full_path] => Array
                 (
-                    [0] => 2. CP8_DIS Fachada Noturna_EF.psb
+                    [0] => 40.LD_RES Sacada do apartamento cobertura duplex 1_001.max
                 )
 
             [type] => Array
                 (
-                    [0] => 
+                    [0] => application/octet-stream
                 )
 
             [tmp_name] => Array
                 (
-                    [0] => 
+                    [0] => C:\xampp\tmp\php6E7D.tmp
                 )
 
             [error] => Array
                 (
-                    [0] => 7
+                    [0] => 0
                 )
 
             [size] => Array
                 (
-                    [0] => 0
+                    [0] => 885394100
                 )
 
         )

@@ -4073,18 +4073,22 @@ document.getElementById('formUploadAcompanhamento').addEventListener('submit', f
     e.preventDefault();
 
     const nomenclatura = document.getElementById('nomenclatura').textContent.trim();
-    const nome_pasta = document.getElementById('nome_pasta_acomp').value.trim();
+    const tipoImagem = document.getElementById('tipo_imagem_acomp').value;
+    const tipoArquivo = document.getElementById('tipo_arquivo_acomp').value;
+    const descricao = document.getElementById('descricao_acomp').value.trim();
     const arquivoInput = document.getElementById('arquivo_acomp');
     const arquivo = arquivoInput.files[0];
 
-    if (!nomenclatura || !nome_pasta || !arquivo) {
-        document.getElementById('uploadAcompStatus').textContent = 'Preencha todos os campos!';
+    if (!nomenclatura || !tipoImagem || !tipoArquivo || !descricao || !arquivo) {
+        document.getElementById('uploadAcompStatus').textContent = 'Preencha todos os campos obrigatórios!';
         return;
     }
 
     const formData = new FormData();
-    formData.append('nomenclatura', nomenclatura);
-    formData.append('nome_pasta', nome_pasta);
+    // formData.append('nomenclatura', nomenclatura);
+    formData.append('tipo_imagem', tipoImagem);
+    formData.append('tipo_arquivo', tipoArquivo);
+    formData.append('descricao', descricao);
     formData.append('arquivo_acomp', arquivo);
 
     fetch('../uploadAcompanhamento.php', {
@@ -4093,7 +4097,21 @@ document.getElementById('formUploadAcompanhamento').addEventListener('submit', f
     })
         .then(resp => resp.json())
         .then(res => {
-            if (res.success) {
+            if (res.confirm_replace) {
+                // Se já existe, pede confirmação ao usuário
+                if (confirm(res.message)) {
+                    formData.append('replace', '1');
+                    fetch('../uploadAcompanhamento.php', {
+                        method: 'POST',
+                        body: formData
+                    })
+                        .then(r => r.json())
+                        .then(r => {
+                            document.getElementById('uploadAcompStatus').textContent = r.success ? 'Arquivo substituído com sucesso!' : r.error;
+                            fecharModalUploadAcompanhamento();
+                        });
+                }
+            } else if (res.success) {
                 document.getElementById('uploadAcompStatus').textContent = 'Arquivo enviado com sucesso!';
                 fecharModalUploadAcompanhamento();
             } else {

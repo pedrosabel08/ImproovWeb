@@ -1129,8 +1129,23 @@ $conn->close();
         <div class="modal-content" style="width:400px;">
             <h3>Upload Acompanhamento da Obra</h3>
             <form id="formUploadAcompanhamento">
-                <label>Nome da pasta:</label>
-                <input type="text" id="nome_pasta_acomp" required>
+                <label>Tipo de Imagem:</label>
+                <select id="tipo_imagem_acomp" required>
+                    <option value="">Selecione</option>
+                    <option value="Fachada">Fachada</option>
+                    <option value="Interna">Interna</option>
+                    <option value="Externa">Externa</option>
+                    <option value="Unidade">Unidade</option>
+                </select>
+                <label>Tipo de Arquivo:</label>
+                <select id="tipo_arquivo_acomp" required>
+                    <option value="">Selecione</option>
+                    <option value="DWG">DWG</option>
+                    <option value="PDF">PDF</option>
+                    <option value="Imagem">Imagem</option>
+                </select>
+                <label>Descrição:</label>
+                <input type="text" id="descricao_acomp" required>
                 <label>Arquivo:</label>
                 <input type="file" id="arquivo_acomp" required>
                 <div style="margin-top:15px;">

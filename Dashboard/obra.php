@@ -1126,34 +1126,46 @@ $conn->close();
 
     <!-- Modal para upload -->
     <div id="modalUploadAcompanhamento" class="modal" style="display:none;">
-        <div class="modal-content" style="width:400px;">
-            <h3>Upload Acompanhamento da Obra</h3>
-            <form id="formUploadAcompanhamento">
-                <label>Tipo de Imagem:</label>
-                <select id="tipo_imagem_acomp" required>
-                    <option value="">Selecione</option>
-                    <option value="Fachada">Fachada</option>
-                    <option value="Interna">Interna</option>
-                    <option value="Externa">Externa</option>
-                    <option value="Unidade">Unidade</option>
-                </select>
-                <label>Tipo de Arquivo:</label>
-                <select id="tipo_arquivo_acomp" required>
-                    <option value="">Selecione</option>
-                    <option value="DWG">DWG</option>
-                    <option value="PDF">PDF</option>
-                    <option value="Imagem">Imagem</option>
-                </select>
-                <label>Descrição:</label>
-                <input type="text" id="descricao_acomp" required>
-                <label>Arquivo:</label>
+        <div class="modal-content" style="width:600px; max-height:80vh; overflow-y:auto;">
+            <h3>Upload de Arquivo - Acompanhamento da Obra</h3>
+
+            <!-- Etapa 1: Escolher arquivo -->
+            <div style="margin-bottom:15px;">
+                <label>Escolher arquivo:</label>
                 <input type="file" id="arquivo_acomp" required>
-                <div style="margin-top:15px;">
-                    <button type="submit">Enviar</button>
-                    <button type="button" onclick="fecharModalUploadAcompanhamento()">Cancelar</button>
-                </div>
-            </form>
-            <div id="uploadAcompStatus"></div>
+            </div>
+
+            <!-- Etapa 2: Mostrar tipos de imagem pendentes -->
+            <div id="checklistContainer" style="margin-top:15px;">
+                <!-- Botões de tipos de imagem serão inseridos via JS -->
+            </div>
+
+            <!-- Etapa 3 e 4: Seleção de tipo, descrição e status -->
+            <div id="uploadFormContainer" style="margin-top:20px; display:none;">
+                <form id="formUploadAcompanhamento">
+                    <input type="hidden" id="obra_id_acomp" value="">
+
+                    <div style="margin-bottom:10px;">
+                        <label>Descrição:</label>
+                        <input type="text" id="descricao_acomp" required style="width:100%;">
+                    </div>
+
+                    <div style="margin-bottom:10px;">
+                        <label>Status:</label>
+                        <select id="status_acomp">
+                            <option value="Incompleto">Incompleto</option>
+                            <option value="Completo">Completo</option>
+                        </select>
+                    </div>
+
+                    <div style="margin-top:15px;">
+                        <button type="submit">Enviar</button>
+                        <button type="button" onclick="fecharModalUploadAcompanhamento()">Cancelar</button>
+                    </div>
+                </form>
+            </div>
+
+            <div id="uploadAcompStatus" style="margin-top:10px; color:green;"></div>
         </div>
     </div>
 

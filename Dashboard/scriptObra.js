@@ -4064,61 +4064,101 @@ document.getElementById('btnUploadAcompanhamento').addEventListener('click', fun
     document.getElementById('modalUploadAcompanhamento').style.display = 'block';
 });
 
-function fecharModalUploadAcompanhamento() {
-    document.getElementById('modalUploadAcompanhamento').style.display = 'none';
-    document.getElementById('uploadAcompStatus').textContent = '';
-}
+let arquivoSelecionado = null;
+let tiposPendentes = [];
+let tipoSelecionado = null;
 
-document.getElementById('formUploadAcompanhamento').addEventListener('submit', function (e) {
+const arquivoInput = document.getElementById("arquivo_acomp");
+const checklistContainer = document.getElementById("checklistContainer");
+const uploadFormContainer = document.getElementById("uploadFormContainer");
+
+// Etapa 1 -> 2
+arquivoInput.addEventListener("change", function () {
+    arquivoSelecionado = this.files[0];
+    if (!arquivoSelecionado) return;
+
+    const formData = new FormData();
+    formData.append("nome_arquivo", arquivoSelecionado.name);
+    formData.append("obra_id", obraId);
+
+    fetch("verifica_tipo_arquivo.php", {
+        method: "POST",
+        body: formData
+    })
+        .then(res => res.json())
+        .then(data => {
+            tiposPendentes = data.tipos_pendentes;
+            checklistContainer.innerHTML = "";
+
+            tiposPendentes.forEach(tipo => {
+                const btn = document.createElement("button");
+                btn.type = "button";
+                btn.className = "tipo-imagem-btn";
+                btn.textContent = tipo.nome;
+                btn.dataset.id = tipo.id_tipo_imagem;
+
+                btn.addEventListener("click", function () {
+                    document.querySelectorAll(".tipo-imagem-btn").forEach(b => b.classList.remove("selected"));
+                    this.classList.add("selected");
+                    tipoSelecionado = this.dataset.id;
+                });
+
+                checklistContainer.appendChild(btn);
+            });
+
+            if (tiposPendentes.length > 0) {
+                uploadFormContainer.style.display = "block";
+            } else {
+                uploadFormContainer.style.display = "none";
+                alert("Nenhum tipo de imagem pendente para este arquivo.");
+            }
+        });
+});
+
+// Etapa 5: enviar arquivo
+document.getElementById("formUploadAcompanhamento").addEventListener("submit", function (e) {
     e.preventDefault();
 
-    const nomenclatura = document.getElementById('nomenclatura').textContent.trim();
-    const tipoImagem = document.getElementById('tipo_imagem_acomp').value;
-    const tipoArquivo = document.getElementById('tipo_arquivo_acomp').value;
-    const descricao = document.getElementById('descricao_acomp').value.trim();
-    const arquivoInput = document.getElementById('arquivo_acomp');
-    const arquivo = arquivoInput.files[0];
-
-    if (!nomenclatura || !tipoImagem || !tipoArquivo || !descricao || !arquivo) {
-        document.getElementById('uploadAcompStatus').textContent = 'Preencha todos os campos obrigatórios!';
+    if (!tipoSelecionado) {
+        alert("Selecione um tipo de imagem.");
+        return;
+    }
+    if (!arquivoSelecionado) {
+        alert("Escolha um arquivo.");
         return;
     }
 
-    const formData = new FormData();
-    // formData.append('nomenclatura', nomenclatura);
-    formData.append('tipo_imagem', tipoImagem);
-    formData.append('tipo_arquivo', tipoArquivo);
-    formData.append('descricao', descricao);
-    formData.append('arquivo_acomp', arquivo);
+    const descricao = document.getElementById("descricao_acomp").value;
+    const status = document.getElementById("status_acomp").value;
+    const obra_id = obraId;
 
-    fetch('../uploadAcompanhamento.php', {
-        method: 'POST',
+    const formData = new FormData();
+    formData.append("arquivo", arquivoSelecionado);
+    formData.append("tipo_imagem", tipoSelecionado);
+    formData.append("descricao", descricao);
+    formData.append("status", status);
+    formData.append("obra_id", obra_id);
+
+    fetch("upload_arquivo_acomp.php", {
+        method: "POST",
         body: formData
     })
-        .then(resp => resp.json())
-        .then(res => {
-            if (res.confirm_replace) {
-                // Se já existe, pede confirmação ao usuário
-                if (confirm(res.message)) {
-                    formData.append('replace', '1');
-                    fetch('../uploadAcompanhamento.php', {
-                        method: 'POST',
-                        body: formData
-                    })
-                        .then(r => r.json())
-                        .then(r => {
-                            document.getElementById('uploadAcompStatus').textContent = r.success ? 'Arquivo substituído com sucesso!' : r.error;
-                            fecharModalUploadAcompanhamento();
-                        });
-                }
-            } else if (res.success) {
-                document.getElementById('uploadAcompStatus').textContent = 'Arquivo enviado com sucesso!';
-                fecharModalUploadAcompanhamento();
+        .then(res => res.json())
+        .then(data => {
+            if (data.sucesso) {
+                document.getElementById("uploadAcompStatus").textContent = data.mensagem;
+                // Reset modal
+                arquivoInput.value = "";
+                document.getElementById("descricao_acomp").value = "";
+                document.getElementById("status_acomp").value = "Incompleto";
+                checklistContainer.innerHTML = "";
+                uploadFormContainer.style.display = "none";
             } else {
-                document.getElementById('uploadAcompStatus').textContent = res.error || 'Erro ao enviar!';
+                alert(data.mensagem);
             }
-        })
-        .catch(() => {
-            document.getElementById('uploadAcompStatus').textContent = 'Erro ao enviar!';
         });
 });
+
+function fecharModalUploadAcompanhamento() {
+    document.getElementById("modalUploadAcompanhamento").style.display = "none";
+}

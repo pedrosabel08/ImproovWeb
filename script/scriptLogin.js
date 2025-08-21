@@ -1,3 +1,16 @@
+// Detecta se estamos no Electron
+let ToastifyLib;
+
+try {
+    // Se estiver no Electron com nodeIntegration
+    ToastifyLib = require('toastify-js');
+} catch (e) {
+    // Se não estiver, assume que o Toastify está no window (CDN)
+    ToastifyLib = window.Toastify;
+}
+
+
+
 document.querySelector('form').addEventListener('submit', function (e) {
     e.preventDefault();
     const login = document.getElementById('login').value;
@@ -14,7 +27,7 @@ document.querySelector('form').addEventListener('submit', function (e) {
         .then(data => {
             if (data.status === "success") {
 
-                Toastify({
+                ToastifyLib({
                     text: data.message,
                     backgroundColor: "green",
                     duration: 3000
@@ -26,7 +39,7 @@ document.querySelector('form').addEventListener('submit', function (e) {
                 localStorage.setItem('tocarSomAoEntrar', 'true');
 
             } else {
-                Toastify({
+                ToastifyLib({
                     text: data.message,
                     backgroundColor: "red",
                     duration: 3000

@@ -58,6 +58,8 @@ function applyStatusStyle(status) {
             return 'background-color: green; color: white;';
         case 'Em andamento':
             return 'background-color: orange; color: black;';
+        case 'Não iniciado':
+            return 'background-color: #58aaff; color: black;';
         default:
             return '';
     }

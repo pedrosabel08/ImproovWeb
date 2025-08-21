@@ -60,16 +60,23 @@ if ($notificar && $finalizador_id) {
     $stmt_notif->execute();
     $stmt_notif->close();
 
+    // Adiciona em render_alta com status 'Não iniciado'
+    $stmt_render = $conn->prepare("INSERT INTO render_alta (status, imagem_id, responsavel_id, status_id) VALUES ('Não iniciado',?, ?, ?)");
+    $stmt_render->bind_param("iii", $imagem_id, $finalizador_id, $status_id);
+    $stmt_render->execute();
+    $idRenderAdicionado = $conn->insert_id;
+    $stmt_render->close();
+
     $response = [
         'status' => 'sucesso',
         'notificado' => true,
-        'mensagem_notificacao' => $mensagem
+        'mensagem_notificacao' => $mensagem,
+        'idrender' => $idRenderAdicionado
     ];
 
     echo json_encode($response);
     exit;
 }
-
 // Se não for apenas notificação, continua com o fluxo normal:
 $conn->begin_transaction();
 

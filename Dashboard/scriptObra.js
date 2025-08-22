@@ -187,6 +187,46 @@ function addEventListenersToRows() {
             }
         });
 
+        // Adiciona suporte a long press para dispositivos touch
+        let pressTimer;
+        linha.addEventListener("touchstart", function (e) {
+            pressTimer = setTimeout(() => {
+                // Simula o clique com botão direito
+                const idImagemSelecionada = linha.getAttribute("data-id");
+                document.getElementById("imagem_id").value = idImagemSelecionada;
+
+                const botaoAlterar = document.getElementById("alterar_status");
+                botaoAlterar.setAttribute("data-imagemid", idImagemSelecionada);
+
+                linhasTabela.forEach(function (outraLinha) {
+                    if (outraLinha.cells && outraLinha.cells[1]) {
+                        outraLinha.cells[1].style.fontWeight = "normal";
+                    }
+                });
+
+                const rectLinha = linha.getBoundingClientRect();
+                const celulaStatus = linha.cells[2];
+                const celulaImagem = linha.cells[1];
+
+                if (celulaImagem) {
+                    celulaImagem.style.fontWeight = "bold";
+                }
+
+                const rectStatus = celulaStatus.getBoundingClientRect();
+                const modalStatus = document.getElementById("modal_status");
+
+                if (modalStatus) {
+                    modalStatus.style.position = "absolute";
+                    modalStatus.style.left = `${rectStatus.right + 10 + window.scrollX}px`;
+                    modalStatus.style.top = `${rectLinha.top + window.scrollY}px`;
+                    modalStatus.style.display = "block";
+                }
+            }, 500); // 500ms para considerar como long press
+        });
+
+        linha.addEventListener("touchend", function (e) {
+            clearTimeout(pressTimer);
+        });
     });
 }
 
@@ -2176,6 +2216,7 @@ const eventModal = document.getElementById("eventModal");
 const calendarModal = document.getElementById("calendarModal");
 const editImagesModal = document.getElementById("editImagesModal");
 const statusModal = document.getElementById("modal_status");
+const modalStatus = document.getElementById("modal_status");
 
 
 ['click', 'touchstart', 'keydown'].forEach(eventType => {
@@ -2191,9 +2232,9 @@ const statusModal = document.getElementById("modal_status");
         if (event.target == modal || (eventType === 'keydown' && event.key === 'Escape')) {
             modal.style.display = "none";
         }
-        if (event.target == modalOrcamento || (eventType === 'keydown' && event.key === 'Escape')) {
-            modalOrcamento.style.display = "none";
-        }
+        // if (event.target == modalOrcamento || (eventType === 'keydown' && event.key === 'Escape')) {
+        //     modalOrcamento.style.display = "none";
+        // }
         if (event.target == editImagesModal || (eventType === 'keydown' && event.key === 'Escape')) {
             editImagesModal.style.display = "none";
             infosObra(obraId);
@@ -2227,6 +2268,9 @@ const statusModal = document.getElementById("modal_status");
         }
         if (event.target == statusModal || (eventType === 'keydown' && event.key === 'Escape')) {
             statusModal.style.display = "none";
+        }
+        if (event.target == modalStatus || (eventType === 'keydown' && event.key === 'Escape')) {
+            modalStatus.style.display = "none";
         }
     });
 });
@@ -4069,62 +4113,86 @@ let tiposPendentes = [];
 let tipoSelecionado = null;
 
 const arquivoInput = document.getElementById("arquivo_acomp");
+const statusArquivo = document.getElementById("status_arquivo");
 const checklistContainer = document.getElementById("checklistContainer");
 const uploadFormContainer = document.getElementById("uploadFormContainer");
 
-// Etapa 1 -> 2
+// Etapa 1: Escolher arquivo
 arquivoInput.addEventListener("change", function () {
     arquivoSelecionado = this.files[0];
-    if (!arquivoSelecionado) return;
-
-    const formData = new FormData();
-    formData.append("nome_arquivo", arquivoSelecionado.name);
-    formData.append("obra_id", obraId);
-
-    fetch("verifica_tipo_arquivo.php", {
-        method: "POST",
-        body: formData
-    })
-        .then(res => res.json())
-        .then(data => {
-            tiposPendentes = data.tipos_pendentes;
-            checklistContainer.innerHTML = "";
-
-            tiposPendentes.forEach(tipo => {
-                const btn = document.createElement("button");
-                btn.type = "button";
-                btn.className = "tipo-imagem-btn";
-                btn.textContent = tipo.nome;
-                btn.dataset.id = tipo.id_tipo_imagem;
-
-                btn.addEventListener("click", function () {
-                    document.querySelectorAll(".tipo-imagem-btn").forEach(b => b.classList.remove("selected"));
-                    this.classList.add("selected");
-                    tipoSelecionado = this.dataset.id;
-                });
-
-                checklistContainer.appendChild(btn);
-            });
-
-            if (tiposPendentes.length > 0) {
-                uploadFormContainer.style.display = "block";
-            } else {
-                uploadFormContainer.style.display = "none";
-                alert("Nenhum tipo de imagem pendente para este arquivo.");
-            }
-        });
 });
 
-// Etapa 5: enviar arquivo
+// Etapa 2: Escolher status (Completo/Incompleto)
+statusArquivo.addEventListener("change", function () {
+    if (!arquivoSelecionado) {
+        alert("Escolha um arquivo primeiro.");
+        statusArquivo.value = "";
+        return;
+    }
+
+    if (this.value === "Completo") {
+        // Vai direto para formulário
+        checklistContainer.style.display = "none";
+        uploadFormContainer.style.display = "block";
+        tipoSelecionado = null; // não precisa escolher tipo
+    } else if (this.value === "Incompleto") {
+        // Buscar pendências
+        const formData = new FormData();
+        formData.append("nome_arquivo", arquivoSelecionado.name);
+        formData.append("obra_id", obraId);
+
+        fetch("verifica_tipo_arquivo.php", {
+            method: "POST",
+            body: formData
+        })
+            .then(res => res.json())
+            .then(data => {
+                tiposPendentes = data.tipos_pendentes;
+                checklistContainer.innerHTML = "<h4>Selecione o tipo de imagem:</h4>";
+
+                if (tiposPendentes.length > 0) {
+                    tiposPendentes.forEach(tipo => {
+                        const btn = document.createElement("button");
+                        btn.type = "button";
+                        btn.className = "tipo-imagem-btn";
+                        btn.textContent = tipo.nome;
+                        btn.dataset.id = tipo.id_tipo_imagem;
+
+                        btn.addEventListener("click", function () {
+                            document.querySelectorAll(".tipo-imagem-btn").forEach(b => b.classList.remove("selected"));
+                            this.classList.add("selected");
+                            tipoSelecionado = this.dataset.id;
+                        });
+
+                        checklistContainer.appendChild(btn);
+                    });
+
+                    checklistContainer.style.display = "block";
+                    uploadFormContainer.style.display = "block";
+                } else {
+                    checklistContainer.style.display = "none";
+                    uploadFormContainer.style.display = "none";
+                    alert("Nenhum tipo de imagem pendente para este arquivo.");
+                }
+            });
+    } else {
+        checklistContainer.style.display = "none";
+        uploadFormContainer.style.display = "none";
+    }
+});
+
+// Etapa 5: Enviar
 document.getElementById("formUploadAcompanhamento").addEventListener("submit", function (e) {
     e.preventDefault();
 
-    if (!tipoSelecionado) {
-        alert("Selecione um tipo de imagem.");
-        return;
-    }
     if (!arquivoSelecionado) {
         alert("Escolha um arquivo.");
+        return;
+    }
+
+    // Se estiver incompleto, precisa escolher tipo
+    if (statusArquivo.value === "Incompleto" && !tipoSelecionado) {
+        alert("Selecione um tipo de imagem.");
         return;
     }
 
@@ -4134,10 +4202,13 @@ document.getElementById("formUploadAcompanhamento").addEventListener("submit", f
 
     const formData = new FormData();
     formData.append("arquivo", arquivoSelecionado);
-    formData.append("tipo_imagem", tipoSelecionado);
     formData.append("descricao", descricao);
     formData.append("status", status);
     formData.append("obra_id", obra_id);
+
+    if (tipoSelecionado) {
+        formData.append("tipo_imagem", tipoSelecionado);
+    }
 
     fetch("upload_arquivo_acomp.php", {
         method: "POST",
@@ -4149,10 +4220,13 @@ document.getElementById("formUploadAcompanhamento").addEventListener("submit", f
                 document.getElementById("uploadAcompStatus").textContent = data.mensagem;
                 // Reset modal
                 arquivoInput.value = "";
+                statusArquivo.value = "";
                 document.getElementById("descricao_acomp").value = "";
                 document.getElementById("status_acomp").value = "Incompleto";
                 checklistContainer.innerHTML = "";
+                checklistContainer.style.display = "none";
                 uploadFormContainer.style.display = "none";
+                tipoSelecionado = null;
             } else {
                 alert(data.mensagem);
             }

@@ -117,15 +117,15 @@ try {
     $response['idrender'] = $idRenderAdicionado;
 
     // Verifica e atualiza status da imagem
-    $stmt_check_status = $conn->prepare("SELECT status_id FROM imagens_cliente_obra WHERE idimagens_cliente_obra = ?");
+    $stmt_check_status = $conn->prepare("SELECT substatus_id FROM imagens_cliente_obra WHERE idimagens_cliente_obra = ?");
     $stmt_check_status->bind_param("i", $imagem_id);
     $stmt_check_status->execute();
     $stmt_check_status->bind_result($current_status);
     $stmt_check_status->fetch();
     $stmt_check_status->close();
 
-    if ($current_status != 13) {
-        $stmt2 = $conn->prepare("UPDATE imagens_cliente_obra SET status_id = 13 WHERE idimagens_cliente_obra = ?");
+    if ($current_status != 5) {
+        $stmt2 = $conn->prepare("UPDATE imagens_cliente_obra SET substatus_id = 5 WHERE idimagens_cliente_obra = ?");
         $stmt2->bind_param("i", $imagem_id);
         $stmt2->execute();
         $stmt2->close();

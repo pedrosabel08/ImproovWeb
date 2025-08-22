@@ -1135,12 +1135,22 @@ $conn->close();
                 <input type="file" id="arquivo_acomp" required>
             </div>
 
-            <!-- Etapa 2: Mostrar tipos de imagem pendentes -->
-            <div id="checklistContainer" style="margin-top:15px;">
-                <!-- Botões de tipos de imagem serão inseridos via JS -->
+            <!-- Etapa 2: Completo ou Incompleto -->
+            <div style="margin-bottom:15px;">
+                <label>Status do arquivo:</label>
+                <select id="status_arquivo">
+                    <option value="">-- Selecione --</option>
+                    <option value="Completo">Completo</option>
+                    <option value="Incompleto">Incompleto</option>
+                </select>
             </div>
 
-            <!-- Etapa 3 e 4: Seleção de tipo, descrição e status -->
+            <!-- Etapa 3: Tipos pendentes (se Incompleto) -->
+            <div id="checklistContainer" style="margin-top:15px; display:none;">
+                <h4>Selecione o tipo de imagem:</h4>
+            </div>
+
+            <!-- Etapa 4: Formulário final -->
             <div id="uploadFormContainer" style="margin-top:20px; display:none;">
                 <form id="formUploadAcompanhamento">
                     <input type="hidden" id="obra_id_acomp" value="">

@@ -4,12 +4,12 @@ Array
         (
             [name] => Array
                 (
-                    [0] => 15.RDO_VAL Funcional_R00.psb
+                    [0] => 4. CP8_DIS Fotomontagem aerea_EF.psb
                 )
 
             [full_path] => Array
                 (
-                    [0] => 15.RDO_VAL Funcional_R00.psb
+                    [0] => 4. CP8_DIS Fotomontagem aerea_EF.psb
                 )
 
             [type] => Array
@@ -19,7 +19,7 @@ Array
 
             [tmp_name] => Array
                 (
-                    [0] => C:\xampp\tmp\php15F0.tmp
+                    [0] => C:\xampp\tmp\php758D.tmp
                 )
 
             [error] => Array
@@ -29,7 +29,7 @@ Array
 
             [size] => Array
                 (
-                    [0] => 2518428138
+                    [0] => 4522593634
                 )
 
         )

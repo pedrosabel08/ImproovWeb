@@ -401,6 +401,12 @@ form {
 }
 
 .modal-item {
-    display: flex;
+    display: grid;
     gap: 10px;
+    grid-template-columns: 1fr 1fr;
+}
+
+#modal_job_folder {
+    overflow: hidden;
+    text-overflow: ellipsis
 }

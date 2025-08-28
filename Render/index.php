@@ -147,7 +147,7 @@ $conn->close();
 
                         <div class="buttons">
                             <button type="button" id="aprovarRender">Aprovar</button>
-                            <button type="button" id="reprovarRender">Reprovar</button>
+                            <button type="button" id="reprovarRender" style="background-color: orange;">Reprovar</button>
                             <button id="deleteRender">Excluir</button>
                         </div>
                     </div>

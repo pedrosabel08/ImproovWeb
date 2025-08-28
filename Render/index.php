@@ -32,6 +32,7 @@ $conn->close();
     <link rel="stylesheet" href="../css/styleSidebar.css">
     <link rel="stylesheet" href="../css/modalSessao.css">
 
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
 
     <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
         type="image/x-icon">
@@ -190,6 +191,7 @@ $conn->close();
     <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css">
 
     <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
 
     <script src="script.js"></script>
     <script src="../script/sidebar.js"></script>

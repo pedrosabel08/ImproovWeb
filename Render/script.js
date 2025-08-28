@@ -65,6 +65,7 @@ function renderCards(renders) {
                     <p class="render-card-title">${render.imagem_nome}</p>
                     <p class="render-card-responsavel">Responsável: ${render.nome_colaborador}</p>
                     <p class="render-card-prazo">Prazo: ${formatarData(render.data)}</p>
+                    <p class="render-card-status">Status: ${render.nome_status}</p>
                     <p class="render-status-badge ${statusBadgeClass}">${render.status}</p>
                 </div>
             </div>

@@ -220,7 +220,25 @@ document.addEventListener("DOMContentLoaded", function () {
                         },
 
                         columns: [
-                            { title: "Status Render", field: "status_render", headerFilter: "list", headerFilterParams: { values: listaValores("status_render") }, formatter: cell => { let val = cell.getValue(); let cor = val === "Finalizado" ? "green" : (val === "Em andamento" ? "orange" : "red"); return `<span style="background:${cor};color:white;padding:4px 6px;border-radius:4px;font-size:12px">${val || ''}</span>`; } },
+                            {
+                                title: "Status Render",
+                                field: "status_render",
+                                headerFilter: "list",
+                                headerFilterParams: { values: listaValores("status_render") },
+                                formatter: cell => {
+                                    let val = cell.getValue() || '';
+                                    let cores = {
+                                        "Finalizado": "green",
+                                        "Aprovado": "green",
+                                        "Em andamento": "orange",
+                                        "Erro": "red",
+                                        "Reprovado": "red",
+                                        "Em aprovação": "blue"
+                                    };
+                                    let cor = cores[val] || "gray"; // fallback caso venha um status inesperado
+                                    return `<span style="background:${cor};color:white;padding:4px 6px;border-radius:4px;font-size:12px">${val}</span>`;
+                                }
+                            },
                             { title: "Nome Finalizador", field: "nome_colaborador", headerFilter: "list", headerFilterParams: { values: listaValores("nome_colaborador") } },
                             { title: "Nome Obra", field: "nomenclatura", headerFilter: "list", headerFilterParams: { values: listaValores("nomenclatura") } }, // Alterei para input, list para nome_obra pode ser muito grande
                             {

@@ -1,6 +1,6 @@
 <?php
 include '../conexao.php';
-header('Content-Type: application/json');
+// header('Content-Type: application/json');
 
 // Lidar com as ações de AJAX
 if (isset($_GET['action'])) {
@@ -9,12 +9,9 @@ if (isset($_GET['action'])) {
             // Buscar todos os renders
             $sql = "SELECT 
     c.nome_colaborador, 
-    idrender_alta, 
-    imagem_id, 
-    status, 
-    data, 
     s.nome_status, 
-    i.imagem_nome 
+    i.imagem_nome,
+    r.*
 FROM 
     render_alta r
 LEFT JOIN 
@@ -27,8 +24,8 @@ WHERE
     (
         r.status != 'Arquivado'
         AND (
-            r.status != 'Finalizado' 
-            OR (r.status = 'Finalizado' AND r.data >= CURDATE() - INTERVAL 5 DAY)
+            r.status NOT IN ('Finalizado', 'Aprovado') 
+            OR (r.status IN ('Finalizado', 'Aprovado') AND r.data >= CURDATE() - INTERVAL 5 DAY)
         )
     )
 ORDER BY 
@@ -47,7 +44,11 @@ ORDER BY
             // Buscar um render específico
             if (isset($_GET['idrender_alta'])) {
                 $idrender_alta = $_GET['idrender_alta'];
-                $sql = "SELECT idrender_alta, imagem_id, status, data, i.imagem_nome FROM render_alta r join imagens_cliente_obra i on r.imagem_id = i.idimagens_cliente_obra WHERE idrender_alta = $idrender_alta";
+                $sql = "SELECT r.*, i.imagem_nome, c.nome_colaborador, s.nome_status  FROM render_alta r
+                 join imagens_cliente_obra i on r.imagem_id = i.idimagens_cliente_obra 
+                 join colaborador c on r.responsavel_id = c.idcolaborador
+                 join status_imagem s on r.status_id = s.idstatus
+                 WHERE idrender_alta = $idrender_alta";
                 $result = $conn->query($sql);
                 $render = $result->fetch_assoc();
 
@@ -69,6 +70,23 @@ if (isset($_POST['action'])) {
                     echo json_encode(['status' => 'sucesso', 'message' => 'Render atualizado com sucesso']);
                 } else {
                     echo json_encode(['status' => 'erro', 'message' => 'Erro ao atualizar o render']);
+                }
+            }
+            break;
+
+        case 'updatePOS':
+            // Aprovar o render
+            if (isset($_POST['render_id'])) {
+                $render_id = $_POST['render_id'];
+                $refs = $_POST['refs'];
+                $obs = $_POST['obs'];
+
+                // Atualiza a tabela pos
+                $sql = "UPDATE pos_producao SET refs = '$refs', obs = '$obs' WHERE render_id = $render_id;";
+                if ($conn->query($sql) === TRUE) {
+                    echo json_encode(['status' => 'sucesso']);
+                } else {
+                    echo json_encode(['status' => 'erro', 'message' => $conn->error]);
                 }
             }
             break;

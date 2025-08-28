@@ -861,7 +861,8 @@ p#data_aprovacao {
     font-weight: bold;
 }
 
-p#status_funcao, #status_tarefa {
+p#status_funcao,
+#status_tarefa {
     font-weight: bold;
     width: max-content;
     padding: 2px 8px;
@@ -1140,6 +1141,7 @@ nav.breadcrumb-nav a {
     display: grid;
     margin-left: 10px;
     width: 100%;
+    max-height: 50vh;
 }
 
 #sidebarTabulator {
@@ -1149,6 +1151,8 @@ nav.breadcrumb-nav a {
     flex-direction: column;
     gap: 10px;
     z-index: 100;
+    max-height: 50vh;
+    overflow: auto;
 }
 
 

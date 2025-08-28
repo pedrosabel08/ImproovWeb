@@ -66,23 +66,14 @@ $conn->close();
             style="display:none;position:fixed;top:3.5rem;right:1rem;background:#222;color:#fff;padding:6px 12px;border-radius:4px;font-size:14px;z-index:100;">
             Suporte
         </span>
-        <table id="renderTable" data-step="1" data-intro="Esta tabela exibe todos os renders. Você pode clicar em um render para editar ou excluir.">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Nome colaborador</th>
-                    <th>Nome imagem</th>
-                    <th>Revisão</th>
-                    <th>Status</th>
-                    <th>Data</th>
-                </tr>
-            </thead>
-            <tbody id="renderList">
-                <!-- Os renders serão carregados aqui via AJAX -->
-            </tbody>
-        </table>
+        <div id="filters">
+            <select id="filterStatus"></select>
+            <select id="filterColaborador"></select>
+        </div>
+        <div id="renderGrid" class="render-grid">
+            <!-- Os cards serão carregados aqui via AJAX -->
+        </div>
     </div>
-
 
 
     <!-- Modal -->
@@ -90,23 +81,99 @@ $conn->close();
         <div class="modal-content">
             <span class="close">&times;</span>
             <form id="editForm">
-                <input type="hidden" id="render_id">
-                <p id="imagem_nome"></p>
-                <div style="padding: 1rem 0;">
-                    <label for="render_status">Status:</label>
-                    <select id="render_status" name="render_status" data-step="2" data-intro="Selecione o status do render.">
-                        <option value="Não iniciado">Não iniciado</option>
-                        <option value="Em andamento">Em andamento</option>
-                        <option value="Finalizado">Finalizado</option>
-                    </select>
+                <!-- Coluna da esquerda: imagem -->
+                <div class="imagem-preview">
+                    <img id="modalPreviewImg" src="" alt="Preview">
                 </div>
-                <div class="buttons">
-                    <button type="submit" id="salvar" data-step="3" data-intro="Clique em salvar.">Salvar</button>
-                    <button id="deleteRender" data-step="4" data-intro="Pode excluir o render.">Excluir Render</button>
-                </div>
+
+                <!-- Coluna da direita: detalhes -->
+                <div id="job-details">
+                    <h3>Job Details</h3>
+
+                    <div class="infos-render">
+                        <div class="modal-item">
+                            <strong>ID:</strong> <span id="modal_idrender"></span>
+                        </div>
+
+                        <div class="modal-item">
+                            <strong>Imagem:</strong> <span id="modal_imagem_id"></span>
+                        </div>
+
+                        <div class="modal-item">
+                            <strong>Status:</strong> <span id="modal_status"></span>
+                        </div>
+
+                        <div class="modal-item">
+                            <strong>Responsável:</strong> <span id="modal_responsavel_id"></span>
+                        </div>
+
+                        <div class="modal-item">
+                            <strong>Status:</strong> <span id="modal_status_id"></span>
+                        </div>
+
+                        <div class="modal-item">
+                            <strong>Computador:</strong> <span id="modal_computer"></span>
+                        </div>
+
+                        <div class="modal-item">
+                            <strong>Enviado:</strong> <span id="modal_submitted"></span>
+                        </div>
+
+                        <div class="modal-item">
+                            <strong>Última atualização:</strong> <span id="modal_last_updated"></span>
+                        </div>
+
+                        <div class="modal-item">
+                            <strong>Tem erro?</strong> <span id="modal_has_error"></span>
+                        </div>
+
+                        <div class="modal-item" id="errorsContainer" style="display: none;">
+                            <button id="toggleErrors">Mostrar erros ▼</button>
+                            <div id="modal_errors" style="display: none; border: 1px solid #ccc; padding: 10px; margin-top: 5px; max-height: 200px; overflow-y: auto;"></div>
+                        </div>
+
+                        <div class="modal-item">
+                            <strong>Pasta Render:</strong> <span id="modal_job_folder"></span>
+                        </div>
+
+                        <div class="modal-item">
+                            <strong>Prévia JPG:</strong> <span id="modal_previa_jpg"></span>
+                        </div>
+
+                        <div class="modal-item">
+                            <strong>Número BG:</strong> <span id="modal_numero_bg"></span>
+                        </div>
+
+                        <div class="buttons">
+                            <button type="button" id="aprovarRender">Aprovar</button>
+                            <button type="button" id="reprovarRender">Reprovar</button>
+                            <button id="deleteRender">Excluir</button>
+                        </div>
+                    </div>
             </form>
         </div>
     </div>
+
+    <!-- Modal POS -->
+    <div id="modalPOS" class="modal">
+        <div style="background:#fff; padding:20px; border-radius:8px; width:90%; max-width:500px;">
+            <h2>Referências de Pós-Produção</h2>
+            <input type="hidden" id="pos_render_id">
+            <div style="margin-bottom:10px;">
+                <label for="pos_caminho"><strong>Caminho/Referências:</strong></label>
+                <textarea id="pos_caminho" rows="3" style="width:100%;"></textarea>
+            </div>
+            <div style="margin-bottom:10px;">
+                <label for="pos_referencias"><strong>Observações:</strong></label>
+                <textarea id="pos_referencias" rows="3" style="width:100%;"></textarea>
+            </div>
+            <div class="buttons">
+                <button id="enviarPOS">Enviar</button>
+                <button id="fecharPOS" style="background-color: red;">Fechar</button>
+            </div>
+        </div>
+    </div>
+
 
     <div id="modalSessao" class="modal-sessao">
         <div class="modal-conteudo">

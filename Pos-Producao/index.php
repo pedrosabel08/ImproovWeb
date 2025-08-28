@@ -102,17 +102,15 @@ $conn->close();
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css">
     <link href="https://unpkg.com/tabulator-tables@6.2.0/dist/css/tabulator.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
 
     <title>Lista Pós-Produção</title>
 </head>
 
 <body>
 
-    <?php
-
-    include '../sidebar.php';
-
-    ?>
+    <?php include '../sidebar.php';   ?>
+    
     <div id="filtro">
         <header>
             <h1>Lista Pós-Produção</h1>

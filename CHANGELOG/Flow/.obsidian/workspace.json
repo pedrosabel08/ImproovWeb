@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "uploadArquivos.md",
+                "file": "render.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "uploadArquivos"
+              "title": "render"
             }
           }
         ]
@@ -167,9 +167,11 @@
   },
   "active": "a981b79b18021101",
   "lastOpenFiles": [
+    "render.html",
+    "uploadArquivos.md",
+    "render.md",
     "uploadArquivos.html",
     "Flow Review.md",
-    "uploadArquivos.md",
     "Sem título",
     "changelog.md",
     "GANTT.md",

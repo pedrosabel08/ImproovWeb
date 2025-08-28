@@ -54,7 +54,7 @@
             <!-- Cards métricas -->
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div class="bg-white p-4 rounded-xl shadow hover:scale-105 transition animate__animated animate__fadeInUp"
-                    style="animation-delay: 1s;">
+                    style="animation-delay:1s!important; animation-duration:1s!important;">
                     <p class="text-gray-500">Tempo Médio de Aprovação</p>
                     <h2 id="tempoAprovacao" class="text-2xl font-bold">--</h2>
                 </div>

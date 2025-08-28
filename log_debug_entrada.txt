@@ -4,12 +4,12 @@ Array
         (
             [name] => Array
                 (
-                    [0] => 14. ARS_VIE Salao de festas 1_028.max
+                    [0] => 8. MPE_SUN_Sala_de_reunioes_R00.psb
                 )
 
             [full_path] => Array
                 (
-                    [0] => 14. ARS_VIE Salao de festas 1_028.max
+                    [0] => 8. MPE_SUN_Sala_de_reunioes_R00.psb
                 )
 
             [type] => Array
@@ -19,7 +19,7 @@ Array
 
             [tmp_name] => Array
                 (
-                    [0] => C:\xampp\tmp\php28E7.tmp
+                    [0] => C:\xampp\tmp\phpC883.tmp
                 )
 
             [error] => Array
@@ -29,7 +29,7 @@ Array
 
             [size] => Array
                 (
-                    [0] => 1599273484
+                    [0] => 431353822
                 )
 
         )

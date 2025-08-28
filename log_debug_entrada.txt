@@ -4,12 +4,12 @@ Array
         (
             [name] => Array
                 (
-                    [0] => 4. CP8_DIS Fotomontagem aerea_EF.psb
+                    [0] => 14. ARS_VIE Salao de festas 1_028.max
                 )
 
             [full_path] => Array
                 (
-                    [0] => 4. CP8_DIS Fotomontagem aerea_EF.psb
+                    [0] => 14. ARS_VIE Salao de festas 1_028.max
                 )
 
             [type] => Array
@@ -19,7 +19,7 @@ Array
 
             [tmp_name] => Array
                 (
-                    [0] => C:\xampp\tmp\php758D.tmp
+                    [0] => C:\xampp\tmp\php28E7.tmp
                 )
 
             [error] => Array
@@ -29,7 +29,7 @@ Array
 
             [size] => Array
                 (
-                    [0] => 4522593634
+                    [0] => 1599273484
                 )
 
         )

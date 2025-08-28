@@ -13,7 +13,7 @@
 </head>
 
 <body>
-    <div class="sidebar mini animate__animated animate__fadeInLeft">
+    <div class="sidebar mini">
         <button id="menuButton">
             <i class="fa-solid fa-bars"></i>
         </button>

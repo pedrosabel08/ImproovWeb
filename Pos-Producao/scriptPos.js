@@ -35,6 +35,20 @@ closeModalRender.onclick = function () {
     limparCampos();
 };
 
+// Fechar modais ao pressionar ESC
+document.addEventListener('keydown', function (event) {
+    if (event.key === "Escape") { // ou event.keyCode === 27
+        if (modal.style.display === "flex") {
+            modal.style.display = "none";
+            limparCampos();
+        }
+        if (modalRender.style.display === "flex") {
+            modalRender.style.display = "none";
+            limparCampos();
+        }
+    }
+});
+
 window.onclick = function (event) {
     if (event.target == modalRender) {
         modalRender.style.display = "none";
@@ -291,7 +305,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                         return;
                                     }
 
-                                    if (statusRender !== 'Finalizado') {
+                                    if (statusRender !== 'Finalizado' && statusRender !== 'Aprovado') {
                                         Swal.fire({
                                             icon: 'warning',
                                             title: 'Atenção',

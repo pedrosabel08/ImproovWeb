@@ -349,8 +349,8 @@ form {
 
 #modalPreviewImg {
     width: auto;
-    max-width: 100%;
-    max-height: 90vh;
+    max-width: 90vh;
+    max-height: 80vh;
     cursor: pointer;
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
@@ -378,8 +378,9 @@ form {
 }
 
 .infos-render {
-    display: grid;
-    gap: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
     margin-bottom: 10px;
     height: 100%;
 }
@@ -406,7 +407,38 @@ form {
     grid-template-columns: 1fr 1fr;
 }
 
-#modal_job_folder {
+.modal-item span {
     overflow: hidden;
-    text-overflow: ellipsis
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#fullscreenImgDiv {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.95);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    overflow: hidden;
+    cursor: grab;
+}
+
+#image_wrapper {
+    position: relative;
+    display: inline-block;
+    cursor: grab;
+}
+
+#fullscreenImg {
+    max-width: 90vw;
+    max-height: 90vh;
+    border-radius: 12px;
+    transition: transform 0.1s;
+    -webkit-user-drag: none;
+    user-select: none;
 }

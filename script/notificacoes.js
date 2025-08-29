@@ -1,4 +1,5 @@
 const idusuario = localStorage.getItem('idusuario');
+const idColaborador = parseInt(localStorage.getItem('idcolaborador'));
 
 
 function ativarSino() {
@@ -112,19 +113,24 @@ function filtrarFuncoesPorColaborador(id) {
     }
 }
 
-function agendarProximaExecucao() {
+async function agendarProximaExecucao() {
     const now = new Date();
     const minutos = now.getMinutes();
     const segundos = now.getSeconds();
 
-    // Calcular próximo intervalo (00, 15, 30, 45)
-    const proximosMinutos = [0, 30].find(min => min > minutos) || 60;
-    const minutosRestantes = proximosMinutos === 60 ? 60 - minutos : proximosMinutos - minutos;
+    // Próximo intervalo 0 ou 30 minutos
+    let proximosMinutos = minutos < 30 ? 30 : 60;
+    const minutosRestantes = proximosMinutos - minutos;
     const milissegundosRestantes = (minutosRestantes * 60 - segundos) * 1000;
 
-    setTimeout(() => {
+    setTimeout(async () => {
         buscarTarefas();
-        agendarProximaExecucao(); // Reagendar para o próximo intervalo
+        try {
+            await checkRenderItems(idColaborador);
+        } catch (e) {
+            console.error('Erro ao verificar itens de render', e);
+        }
+        agendarProximaExecucao(); // Reagendar
     }, milissegundosRestantes);
 }
 
@@ -435,4 +441,44 @@ function enviarRevisaoMes() {
             alert("Erro ao enviar revisão.");
             console.error(err);
         });
+}
+
+
+
+// checkRenderItems também retorna uma Promise
+function checkRenderItems(idColaborador) {
+    return new Promise((resolve, reject) => {
+        fetch('../verifica_render.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `idcolaborador=${idColaborador}`
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.total > 0) {
+                    Swal.fire({
+                        title: `Você tem ${data.total} item(ns) na sua lista de render!`,
+                        text: "Deseja ver agora ou depois?",
+                        icon: "info",
+                        showCancelButton: true,
+                        confirmButtonText: "Ver agora",
+                        cancelButtonText: "Ver depois",
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            window.location.href = "./Render/";
+                        } else {
+                            resolve(); // segue o fluxo
+                        }
+                    });
+                } else {
+                    resolve(); // segue o fluxo mesmo sem render
+                }
+            })
+            .catch(error => {
+                console.error('Erro ao verificar itens de render:', error);
+                reject();
+            });
+    });
 }

@@ -142,8 +142,9 @@ function editRender(idrender_alta) {
                     $('#modal_errors').hide();
                 }
 
-                // Toggle da gaveta
-                $('#toggleErrors').off('click').on('click', function () {
+                // Toggle da gaveta de erros
+                $('#toggleErrors').off('click').on('click', function (event) {
+                    event.preventDefault(); // evita recarregar a página
                     $('#modal_errors').slideToggle();
                     const btn = $(this);
                     btn.text(btn.text().includes('▼') ? 'Ocultar erros ▲' : 'Mostrar erros ▼');
@@ -157,7 +158,7 @@ function editRender(idrender_alta) {
                 $('#myModal').css('display', 'flex');
 
                 // Aqui escondemos os botões se o status for Aprovado, Reprovado ou Erro
-                if (['Aprovado', 'Reprovado', 'Erro'].includes(r.status)) {
+                if (['Aprovado', 'Reprovado'].includes(r.status)) {
                     $('#aprovarRender').hide();
                     $('#reprovarRender').hide();
                 } else {
@@ -171,15 +172,98 @@ function editRender(idrender_alta) {
 
 $('#modalPreviewImg').off('click').on('click', function () {
     const src = $(this).attr('src');
+
+    // Criar modal fullscreen
     const fullScreenDiv = $(`
-        <div id="fullscreenImgDiv" style="
-            position:fixed;top:0;left:0;width:100vw;height:100vh;
-            background:rgba(0,0,0,0.95);display:flex;align-items:center;justify-content:center;z-index:9999;">
-            <img src="${src}" style="max-width:90vw;max-height:90vh;border-radius:12px;">
+        <div id="fullscreenImgDiv">
+            <div id="image_wrapper">
+                <img id="fullscreenImg" src="${src}">
+            </div>
         </div>
     `);
+
     $('body').append(fullScreenDiv);
-    fullScreenDiv.click(function () { $(this).remove(); });
+
+    const $imageWrapper = $('#image_wrapper');
+    const $img = $('#fullscreenImg');
+
+    // Zoom & Pan variables
+    let currentZoom = 1;
+    const zoomStep = 0.1;
+    const maxZoom = 5;
+    const minZoom = 0.1;
+
+    let isDragging = false;
+    let startX, startY;
+    let currentTranslateX = 0;
+    let currentTranslateY = 0;
+    let dragMoved = false;
+
+    // Função para aplicar transformações
+    function applyTransforms() {
+        $imageWrapper.css('transform', `scale(${currentZoom}) translate(${currentTranslateX}px, ${currentTranslateY}px)`);
+    }
+
+    // Zoom com Ctrl + scroll
+    fullScreenDiv.on('wheel', function (event) {
+        if (event.ctrlKey) {
+            event.preventDefault();
+            if (event.originalEvent.deltaY < 0) {
+                currentZoom = Math.min(currentZoom + zoomStep, maxZoom);
+            } else {
+                currentZoom = Math.max(currentZoom - zoomStep, minZoom);
+            }
+
+            if (currentZoom === minZoom) {
+                currentTranslateX = 0;
+                currentTranslateY = 0;
+            }
+
+            applyTransforms();
+        }
+    });
+
+    // Iniciar drag
+    $imageWrapper.on('mousedown', function (e) {
+        if (e.button === 0 && !e.ctrlKey) {
+            isDragging = true;
+            dragMoved = false;
+            startX = e.clientX - currentTranslateX;
+            startY = e.clientY - currentTranslateY;
+            $imageWrapper.css('cursor', 'grabbing').css('transition', 'none');
+        }
+    });
+
+    // Arrastar
+    $(document).on('mousemove', function (e) {
+        if (!isDragging) return;
+        e.preventDefault();
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+
+        if (Math.abs(dx) > 3 || Math.abs(dy) > 3) dragMoved = true;
+
+        currentTranslateX = dx;
+        currentTranslateY = dy;
+        applyTransforms();
+    });
+
+    // Finalizar drag
+    $(document).on('mouseup', function () {
+        if (isDragging) {
+            isDragging = false;
+            $imageWrapper.css('cursor', 'grab').css('transition', 'transform 0.1s ease-out');
+        }
+    });
+
+    // Fechar modal clicando no fundo
+    fullScreenDiv.on('click', function (e) {
+        if (e.target.id === 'fullscreenImgDiv') {
+            $(this).remove();
+        }
+    });
+
+    applyTransforms();
 });
 
 

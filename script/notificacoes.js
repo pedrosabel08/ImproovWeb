@@ -1,5 +1,5 @@
-const idusuario = localStorage.getItem('idusuario');
-const idColaborador = parseInt(localStorage.getItem('idcolaborador'));
+var idusuario = localStorage.getItem('idusuario');
+var colaborador_id = parseInt(localStorage.getItem('colaborador_id'));
 
 
 function ativarSino() {
@@ -29,7 +29,9 @@ function atualizarContadorTarefas() {
             } else {
                 contadorTarefas.textContent = '';
                 contadorTarefas.style.display = 'none';
-                sino.style.display = 'none';
+
+                const sino = document.getElementById('icone-sino');
+                if (sino) sino.style.display = 'none';
             }
         })
         .catch(error => console.error('Erro ao buscar tarefas:', error));
@@ -47,15 +49,14 @@ function buscarTarefas(mostrarAlerta = true) {
             const tarefas = data.tarefas || [];
             const notificacoes = data.notificacoes || [];
             const contadorTarefas = document.getElementById('contador-tarefas');
-            const idColaborador = parseInt(localStorage.getItem('idcolaborador'));
 
             if (tarefas.length > 0 || notificacoes.length > 0) {
                 contadorTarefas.textContent = tarefas.length + notificacoes.length;
                 ativarSino();
 
-                // Contagem por função (considerando filtro por idcolaborador)
+                // Contagem por função (considerando filtro por colaborador_id)
                 const contagemPorFuncao = {};
-                const funcoesPermitidas = filtrarFuncoesPorColaborador(idColaborador);
+                const funcoesPermitidas = filtrarFuncoesPorColaborador(colaborador_id);
 
                 tarefas.forEach(tarefa => {
                     const funcao = tarefa.nome_funcao || 'Desconhecida';
@@ -69,7 +70,7 @@ function buscarTarefas(mostrarAlerta = true) {
 
                 const idsPermitidos = [1, 9, 19, 21];
 
-                if (idsPermitidos.includes(idColaborador) && mostrarAlerta) {
+                if (idsPermitidos.includes(colaborador_id) && mostrarAlerta) {
                     let mensagem = '';
                     for (const funcao in contagemPorFuncao) {
                         mensagem += `<p><strong>${funcao}</strong>: ${contagemPorFuncao[funcao]} tarefas</p>`;
@@ -126,7 +127,7 @@ async function agendarProximaExecucao() {
     setTimeout(async () => {
         buscarTarefas();
         try {
-            await checkRenderItems(idColaborador);
+            await checkRenderItems(colaborador_id);
         } catch (e) {
             console.error('Erro ao verificar itens de render', e);
         }
@@ -157,8 +158,7 @@ const badgeTarefas = document.getElementById('badge-tarefas');
 const badgeNotificacoes = document.getElementById('badge-notificacoes');
 
 sino.addEventListener('click', function () {
-    const idColaborador = parseInt(localStorage.getItem('idcolaborador'));
-    const funcoes = filtrarFuncoesPorColaborador(idColaborador);
+    const funcoes = filtrarFuncoesPorColaborador(colaborador_id);
 
     // 🔊 Som ao clicar
     const audio = new Audio('https://improov.com.br/sistema/sons/not.mp3');
@@ -302,10 +302,9 @@ function exibirAvisoUltimoDiaUtil() {
     modal.style.display = "flex";
 
     // Buscar e exibir a lista de produção
-    const idColaborador = parseInt(localStorage.getItem('idcolaborador'));
     const mesFormatado = String(mes).padStart(2, '0');
 
-    fetch(`getFuncoesPorColaborador.php?colaborador_id=${idColaborador}&ano=${ano}&mes=${mesFormatado}`)
+    fetch(`getFuncoesPorColaborador.php?colaborador_id=${colaborador_id}&ano=${ano}&mes=${mesFormatado}`)
         .then(response => response.json())
         .then(data => {
             if (data.length === 0) {
@@ -368,7 +367,6 @@ function exibirModalPrimeiroDiaUtil() {
 
     // Buscar e exibir a lista de produção
     const hoje = new Date();
-    const idColaborador = parseInt(localStorage.getItem('idcolaborador'));
     const mes = hoje.getMonth() + 1; // <- Certifique-se de definir o mês
     const mesFormatado = String(mes).padStart(2, '0');
     const ano = hoje.getFullYear();
@@ -380,7 +378,7 @@ function exibirModalPrimeiroDiaUtil() {
 
     modal.style.display = "flex";
 
-    fetch(`getFuncoesPorColaborador.php?colaborador_id=${idColaborador}&ano=${ano}&mes=${mesFormatado}`)
+    fetch(`getFuncoesPorColaborador.php?colaborador_id=${colaborador_id}&ano=${ano}&mes=${mesFormatado}`)
         .then(response => response.json())
         .then(data => {
             if (data.length === 0) {
@@ -410,7 +408,6 @@ function exibirModalPrimeiroDiaUtil() {
 }
 
 function enviarRevisaoMes() {
-    const idColaborador = parseInt(localStorage.getItem('idcolaborador'));
     const situacao = document.querySelector('input[name="situacao"]:checked');
     const observacao = document.getElementById("observacaoTexto").value;
     const data = new Date().toISOString().slice(0, 10);
@@ -421,7 +418,7 @@ function enviarRevisaoMes() {
     }
 
     const dados = {
-        idcolaborador: idColaborador,
+        colaborador_id: colaborador_id,
         situacao: situacao.value,
         observacao: observacao,
         data: data
@@ -446,14 +443,14 @@ function enviarRevisaoMes() {
 
 
 // checkRenderItems também retorna uma Promise
-function checkRenderItems(idColaborador) {
+function checkRenderItems(colaborador_id) {
     return new Promise((resolve, reject) => {
-        fetch('../verifica_render.php', {
+        fetch('https://improov.com.br/sistema/verifica_render.php', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
             },
-            body: `idcolaborador=${idColaborador}`
+            body: `colaborador_id=${colaborador_id}`
         })
             .then(response => response.json())
             .then(data => {

@@ -4,22 +4,22 @@ Array
         (
             [name] => Array
                 (
-                    [0] => 8. MPE_SUN_Sala_de_reunioes_R00.psb
+                    [0] => 7.JON_LIN-Docas-PDF-FIL-R00.pdf
                 )
 
             [full_path] => Array
                 (
-                    [0] => 8. MPE_SUN_Sala_de_reunioes_R00.psb
+                    [0] => 7.JON_LIN-Docas-PDF-FIL-R00.pdf
                 )
 
             [type] => Array
                 (
-                    [0] => application/octet-stream
+                    [0] => application/pdf
                 )
 
             [tmp_name] => Array
                 (
-                    [0] => C:\xampp\tmp\phpC883.tmp
+                    [0] => C:\xampp\tmp\phpD1AF.tmp
                 )
 
             [error] => Array
@@ -29,7 +29,7 @@ Array
 
             [size] => Array
                 (
-                    [0] => 431353822
+                    [0] => 1305232
                 )
 
         )

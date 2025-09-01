@@ -2096,3 +2096,53 @@ ul.file-list {
 .selected {
     background-color: #0056b3;
 }
+
+.timeline {
+    position: relative;
+    margin-left: 0;
+}
+
+.timeline::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 6px;
+    /* posição da linha vertical */
+    width: 2px;
+    height: 100%;
+    background: #ccc;
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.timeline-item .dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    position: absolute;
+    left: 0;
+    /* agora colado à borda */
+    top: 0;
+    transform: translateX(0);
+    /* remove deslocamento */
+    border: 2px solid #fff;
+    /* opcional, deixa o dot mais destacado */
+}
+
+.timeline-item .content {
+    margin-left: 30px;
+    font-size: 0.9rem;
+}
+
+#modal_hist_status {
+    display: none;
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    padding: 10px;
+    z-index: 9999;
+    overflow: auto;
+}

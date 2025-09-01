@@ -120,7 +120,110 @@ function addEventListenersToRows() {
     linhasTabela.forEach(function (linha) {
 
         // Clique com o botão esquerdo
-        linha.addEventListener("click", function () {
+        linha.addEventListener("click", function (event) {
+            // Se clicou na primeira coluna → abrir histórico
+            if (event.target.cellIndex === 0) {
+                const idImagemSelecionada = linha.getAttribute("data-id");
+
+                fetch("buscar_historico.php", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                    body: "imagem_id=" + encodeURIComponent(idImagemSelecionada)
+                })
+                    .then(response => {
+                        if (!response.ok) throw new Error("Erro na requisição");
+                        return response.json();
+                    })
+                    .then(data => {
+                        const modalHist = document.getElementById("modal_hist_status");
+
+                        if (data.length === 0) {
+                            Toastify({
+                                text: "Nenhum histórico encontrado",
+                                duration: 3000,
+                                gravity: "top",
+                                position: "right",
+                                backgroundColor: "#ff6b6b"
+                            }).showToast();
+                            return;
+                        } else {
+                            let html = "<div class='timeline'>";
+
+                            for (let i = 0; i < data.length; i++) {
+                                const item = data[i];
+                                const inicio = new Date(item.data_inicio);
+                                const inicioFormat = `${inicio.getDate().toString().padStart(2, '0')}/${(inicio.getMonth() + 1).toString().padStart(2, '0')}/${inicio.getFullYear()}`;
+
+                                let frase = `A etapa <strong>${item.status_nome}</strong> iniciou em <strong>${inicioFormat}</strong> no status <strong>${item.substatus_nome || '-'}</strong>`;
+
+                                // Pega o próximo item para o status final
+                                const proximo = data[i + 1];
+                                if (proximo && proximo.status_id === item.status_id) {
+                                    const fim = new Date(proximo.data_inicio);
+                                    const fimFormat = `${fim.getDate().toString().padStart(2, '0')}/${(fim.getMonth() + 1).toString().padStart(2, '0')}/${fim.getFullYear()}`;
+                                    frase += ` e foi alterada para <strong>${proximo.substatus_nome || '-'}</strong> em <strong>${fimFormat}</strong>.`;
+                                } else {
+                                    frase += ".";
+                                }
+
+                                // Cor do dot conforme substatus
+                                let cor = '#ccc';
+                                switch (item.substatus_nome) {
+                                    case 'TO-DO': cor = 'gray'; break;
+                                    case 'HOLD': cor = 'orange'; break;
+                                    case 'FIN': cor = 'green'; break;
+                                    case 'RVW': cor = 'blue'; break;
+                                    case 'APR': cor = 'purple'; break;
+                                }
+
+                                html += `
+                                    <div class='timeline-item'>
+                                        <div class='dot' style='background:${cor}'></div>
+                                        <div class='content'>${frase}</div>
+                                    </div>`;
+                            }
+
+                            html += "</div>";
+
+
+
+                            modalHist.querySelector("#historico_container").innerHTML = html;
+
+                            Toastify({
+                                text: "Histórico carregado com sucesso",
+                                duration: 3000,
+                                gravity: "top",
+                                position: "right",
+                                backgroundColor: "#4caf50"
+                            }).showToast();
+                        }
+
+                        const celulaStatus = linha.cells[0]; // 3ª coluna
+
+                        // Posicionar modal ao lado da linha
+                        const rectLinha = linha.getBoundingClientRect();
+                        const rectStatus = celulaStatus.getBoundingClientRect();
+
+                        modalHist.style.position = "absolute";
+                        modalHist.style.left = `${rectStatus.right + 10 + window.scrollX}px`;
+                        modalHist.style.top = `${rectLinha.top + window.scrollY}px`;
+                        modalHist.style.display = "block";
+
+                    })
+                    .catch(error => {
+                        console.error(error);
+                        Toastify({
+                            text: "Erro ao carregar histórico",
+                            duration: 3000,
+                            gravity: "top",
+                            position: "right",
+                            backgroundColor: "#ff6b6b"
+                        }).showToast();
+                    });
+
+                return; // não executa o restante do clique na linha
+            }
+
             const statusImagem = linha.getAttribute("status");
 
             if (statusImagem === "STOP") {
@@ -2219,6 +2322,7 @@ const calendarModal = document.getElementById("calendarModal");
 const editImagesModal = document.getElementById("editImagesModal");
 const statusModal = document.getElementById("modal_status");
 const modalStatus = document.getElementById("modal_status");
+const modalHist = document.getElementById("modal_hist_status");
 
 
 ['click', 'touchstart', 'keydown'].forEach(eventType => {
@@ -2271,7 +2375,10 @@ const modalStatus = document.getElementById("modal_status");
         if (event.target == statusModal || (eventType === 'keydown' && event.key === 'Escape')) {
             statusModal.style.display = "none";
         }
-        if (event.target == modalStatus || (eventType === 'keydown' && event.key === 'Escape')) {
+        if (!modalHist.querySelector('.modal-content').contains(event.target)) {
+            modalHist.style.display = "none";
+        }
+        if (!modalStatus.querySelector('.modal-content').contains(event.target)) {
             modalStatus.style.display = "none";
         }
     });

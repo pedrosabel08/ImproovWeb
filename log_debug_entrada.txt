@@ -4,32 +4,32 @@ Array
         (
             [name] => Array
                 (
-                    [0] => 15. JON_LIN_Coworking_022.max
+                    [0] => 20.ARS_VIE Piscinas angulo  02_EF.psb
                 )
 
             [full_path] => Array
                 (
-                    [0] => 15. JON_LIN_Coworking_022.max
+                    [0] => 20.ARS_VIE Piscinas angulo  02_EF.psb
                 )
 
             [type] => Array
                 (
-                    [0] => 
+                    [0] => application/octet-stream
                 )
 
             [tmp_name] => Array
                 (
-                    [0] => 
+                    [0] => C:\xampp\tmp\php46F7.tmp
                 )
 
             [error] => Array
                 (
-                    [0] => 7
+                    [0] => 0
                 )
 
             [size] => Array
                 (
-                    [0] => 0
+                    [0] => 2456635286
                 )
 
         )

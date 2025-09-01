@@ -4,32 +4,32 @@ Array
         (
             [name] => Array
                 (
-                    [0] => 7.JON_LIN-Docas-PDF-FIL-R00.pdf
+                    [0] => 15. JON_LIN_Coworking_022.max
                 )
 
             [full_path] => Array
                 (
-                    [0] => 7.JON_LIN-Docas-PDF-FIL-R00.pdf
+                    [0] => 15. JON_LIN_Coworking_022.max
                 )
 
             [type] => Array
                 (
-                    [0] => application/pdf
+                    [0] => 
                 )
 
             [tmp_name] => Array
                 (
-                    [0] => C:\xampp\tmp\phpD1AF.tmp
+                    [0] => 
                 )
 
             [error] => Array
                 (
-                    [0] => 0
+                    [0] => 7
                 )
 
             [size] => Array
                 (
-                    [0] => 1305232
+                    [0] => 0
                 )
 
         )

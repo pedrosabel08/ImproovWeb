@@ -63,7 +63,7 @@ try {
             f.colaborador_id, 
             c.nome_colaborador, 
             c.telefone,
-            u.id_slack,
+            u.nome_slack,
             o.nome_obra,
             o.nomenclatura,
             (SELECT MAX(h.data_aprovacao)
@@ -99,7 +99,7 @@ try {
             f.colaborador_id, 
             c.nome_colaborador, 
             c.telefone,
-            u.id_slack,
+            u.nome_slack,
             o.nome_obra,
             o.nomenclatura,
             (SELECT MAX(h.data_aprovacao)

@@ -336,7 +336,15 @@ $conn->close();
                     </div>
                     <div class="campo">
                         <label for="">Link do Fotográfico:</label>
+                        <input type="text" name="fotografico" id="fotografico" style="color: blue; font-size: 14px; border: none; width: 100ch;">
+                    </div>
+                    <div class="campo">
+                        <label for="">Link do Drive:</label>
                         <input type="text" name="link_drive" id="link_drive" style="color: blue; font-size: 14px; border: none; width: 100ch;">
+                    </div>
+                    <div class="campo">
+                        <label for="">Link do Review Studio:</label>
+                        <input type="text" name="link_review" id="link_review" style="color: blue; font-size: 14px; border: none; width: 100ch;">
                     </div>
                     <div class="campo">
                         <label for="">Local da obra:</label>

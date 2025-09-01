@@ -1129,6 +1129,13 @@ $conn->close();
         </div>
     </div>
 
+    <div id="modal_hist_status" style="">
+        <div class="modal-content" style="margin: 0;">
+            <h2 style="font-size: 16px;">Histórico Status</h2>
+            <div id="historico_container"></div>
+        </div>
+    </div>
+
     <!-- Adicione este botão onde quiser -->
     <button id="btnUploadAcompanhamento">Upload Acompanhamento Obra</button>
 

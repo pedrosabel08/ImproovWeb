@@ -15,43 +15,43 @@ try {
   // Construção da query com base no usuário
   if ($idusuario == 1 || $idusuario == 2) {
     $sql = "SELECT 
-    f.idfuncao_imagem,
-    f.funcao_id, 
-    fun.nome_funcao, 
-    f.status, 
-    f.imagem_id, 
-    i.imagem_nome, 
-    f.colaborador_id, 
-    c.nome_colaborador, 
-    c.telefone,
-    u.nome_slack,
-    o.nome_obra,
-    o.nomenclatura,
-    o.idobra,
-    (SELECT MAX(h.data_aprovacao)
-     FROM historico_aprovacoes h
-     WHERE h.funcao_imagem_id = f.idfuncao_imagem) AS data_aprovacao,
-    (SELECT h.status_novo
-     FROM historico_aprovacoes h
-     WHERE h.funcao_imagem_id = f.idfuncao_imagem
-     ORDER BY h.data_aprovacao DESC 
-     LIMIT 1) AS status_novo,
-    hi.imagem
-FROM funcao_imagem f
-LEFT JOIN funcao fun ON fun.idfuncao = f.funcao_id
-LEFT JOIN colaborador c ON c.idcolaborador = f.colaborador_id
-LEFT JOIN usuario u ON u.idcolaborador = c.idcolaborador
-LEFT JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
-LEFT JOIN obra o ON i.obra_id = o.idobra
-INNER JOIN (
-    SELECT funcao_imagem_id, imagem
-    FROM historico_aprovacoes_imagens
-    WHERE imagem IS NOT NULL AND imagem <> ''
-    GROUP BY funcao_imagem_id
-) hi ON hi.funcao_imagem_id = f.idfuncao_imagem
-WHERE f.funcao_id IN (1, 2, 3, 4, 5, 6, 7, 8, 9) 
-  AND f.status IN ('Em aprovação', 'Ajuste', 'Aprovado com ajustes')
-ORDER BY data_aprovacao DESC;";
+            f.idfuncao_imagem,
+            f.funcao_id, 
+            fun.nome_funcao, 
+            f.status, 
+            f.imagem_id, 
+            i.imagem_nome, 
+            f.colaborador_id, 
+            c.nome_colaborador, 
+            c.telefone,
+            u.nome_slack,
+            o.nome_obra,
+            o.nomenclatura,
+            o.idobra,
+            s.nome_status,
+            (SELECT MAX(hi.data_envio)
+             FROM historico_aprovacoes_imagens hi
+             WHERE hi.funcao_imagem_id = f.idfuncao_imagem) AS data_aprovacao,
+            (SELECT h.status_novo
+             FROM historico_aprovacoes h
+             WHERE h.funcao_imagem_id = f.idfuncao_imagem
+             ORDER BY h.data_aprovacao DESC 
+             LIMIT 1) AS status_novo,
+            (SELECT hi.imagem
+             FROM historico_aprovacoes_imagens hi 
+             WHERE hi.funcao_imagem_id = f.idfuncao_imagem
+             ORDER BY hi.data_envio DESC 
+             LIMIT 1) AS imagem
+        FROM funcao_imagem f
+        LEFT JOIN funcao fun ON fun.idfuncao = f.funcao_id
+        LEFT JOIN colaborador c ON c.idcolaborador = f.colaborador_id
+        LEFT JOIN usuario u ON u.idcolaborador = c.idcolaborador
+        LEFT JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
+        LEFT JOIN status_imagem s ON i.status_id = s.idstatus
+        LEFT JOIN obra o ON i.obra_id = o.idobra
+        WHERE f.funcao_id IN (1, 2, 3, 4, 5, 6, 7, 8, 9) 
+          AND (f.status = 'Em aprovação' OR f.status = 'Ajuste' OR f.status = 'Aprovado com ajustes')
+        ORDER BY data_aprovacao DESC";
   } elseif ($idusuario == 9 || $idusuario == 20 || $idusuario == 3) {
     $sql = "SELECT 
             f.idfuncao_imagem,
@@ -63,7 +63,7 @@ ORDER BY data_aprovacao DESC;";
             f.colaborador_id, 
             c.nome_colaborador, 
             c.telefone,
-            u.id_slack,
+            u.nome_slack,
             o.nome_obra,
             o.nomenclatura,
             (SELECT MAX(h.data_aprovacao)
@@ -99,7 +99,7 @@ ORDER BY data_aprovacao DESC;";
             f.colaborador_id, 
             c.nome_colaborador, 
             c.telefone,
-            u.id_slack,
+            u.nome_slack,
             o.nome_obra,
             o.nomenclatura,
             (SELECT MAX(h.data_aprovacao)

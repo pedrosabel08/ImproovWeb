@@ -9,7 +9,7 @@ if (isset($_POST["campo"], $_POST["valor"], $_POST["obraId"])) {
 
     // Lista de campos que pertencem a cada tabela
     $camposBriefing = ["assets", "comp_planta", "nivel", "conceito", "valor_media", "outro_padrao", "vidro", "esquadria", "soleira", "acab_calcadas"];
-    $camposObra = ["link_drive", "local", "altura_drone"];
+    $camposObra = ["link_drive", "local", "altura_drone", "fotografico", "link_review"]; ;
 
     // Determinar a tabela e a chave correta
     if (in_array($campo, $camposBriefing)) {

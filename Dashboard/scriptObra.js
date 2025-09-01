@@ -891,7 +891,9 @@ function infosObra(obraId) {
             // document.getElementById('total_imagens_antecipadas').textContent = `Imagens Antecipadas: ${obra.total_imagens_antecipadas}`;
             document.getElementById('local').value = `${obra.local}`;
             document.getElementById('altura_drone').value = `${obra.altura_drone}`;
+            document.getElementById('fotografico').value = `${obra.fotografico}`;
             document.getElementById('link_drive').value = `${obra.link_drive}`;
+            document.getElementById('link_review').value = `${obra.link_review}`;
 
             // const infosDiv = document.getElementById('infos');
 

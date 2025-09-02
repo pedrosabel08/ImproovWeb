@@ -160,14 +160,14 @@ async function buscarMencoesDoUsuario() {
 async function exibirCardsDeObra(tarefas) {
     const mencoes = await buscarMencoesDoUsuario();
 
-    if (mencoes.total_mencoes > 0) {
-        Swal.fire({
-            title: '📣 Você foi mencionado!',
-            text: `Há ${mencoes.total_mencoes} menção(ões) nas tarefas.`,
-            icon: 'info',
-            confirmButtonText: 'Ver cards'
-        });
-    }
+    // if (mencoes.total_mencoes > 0) {
+    //     Swal.fire({
+    //         title: '📣 Você foi mencionado!',
+    //         text: `Há ${mencoes.total_mencoes} menção(ões) nas tarefas.`,
+    //         icon: 'info',
+    //         confirmButtonText: 'Ver cards'
+    //     });
+    // }
 
     const container = document.querySelector('.containerObra');
     container.innerHTML = '';

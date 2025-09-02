@@ -514,7 +514,8 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
     const novaTabelaHeaders = ['Categoria', 'Valor'];
     const novaTabelaBody = [
         // ['Atendimento', '3000,00'],
-        // ['Fixo', '1600,00'],
+        // ['Fixo', '4600,00'],
+        ['Bônus', '350,00'],
         // ['Reembolso almoço', '114,00'],
         // ['Gasolina', '88,00'],
         // ['Diaria Drone', '525,00'],

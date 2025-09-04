@@ -69,25 +69,41 @@ if (isset($data['section'])) {
 // Buscar dados existentes das seções
 $response = [];
 
+$response['obra_id'] = $obra_id;
+
 // Tarefas
-$sqlTarefas = "SELECT descricao, status, data_criacao FROM tarefas WHERE obra_id='$obra_id' ORDER BY data_criacao DESC";
+$sqlTarefas = "SELECT descricao, status, data_criacao 
+    FROM tarefas 
+    WHERE obra_id='$obra_id' 
+    ORDER BY data_criacao DESC
+";
 $res = $conn->query($sqlTarefas);
 $tarefas = [];
 if ($res) while ($r = $res->fetch_assoc()) $tarefas[] = $r;
 $response['tarefas'] = $tarefas;
 
 // Acompanhamentos
-$sqlAcomp = "SELECT assunto, data FROM acompanhamento_email WHERE obra_id='$obra_id' ORDER BY data DESC";
+$sqlAcomp = "SELECT assunto, data 
+    FROM acompanhamento_email 
+    WHERE obra_id='$obra_id' 
+    ORDER BY data DESC
+";
 $res = $conn->query($sqlAcomp);
 $acomp = [];
 if ($res) while ($r = $res->fetch_assoc()) $acomp[] = $r;
 $response['acompanhamentos'] = $acomp;
 
-// Seções fictícias
-$response['arquivos'] = [
-    ['nome' => 'Arquivo exemplo 1.pdf', 'data' => '2025-09-01'],
-    ['nome' => 'Arquivo exemplo 2.docx', 'data' => '2025-09-02']
-];
+// Arquivos
+$sqlArquivos = "SELECT nome_arquivo, status, data_upload 
+    FROM recebimento_arquivos 
+    WHERE obra_id='$obra_id' 
+    ORDER BY data_upload DESC
+";
+$res = $conn->query($sqlArquivos);
+$arquivos = [];
+if ($res) while ($r = $res->fetch_assoc()) $arquivos[] = $r;
+$response['arquivos'] = $arquivos;
+
 $response['eventos'] = [
     ['evento' => 'Reunião de obra', 'data' => '2025-09-05'],
     ['evento' => 'Entrega de material', 'data' => '2025-09-06']

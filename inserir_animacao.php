@@ -3,41 +3,41 @@ include 'conexao.php';
 
 $imagens = [
     // GES_ELI
-    ['nome' => 'GES_ELI_Embasamento', 'obra_id' => 48, 'cliente_id' => 36],
-    ['nome' => 'GES_ELI_Tracking_Horizonte', 'obra_id' => 48, 'cliente_id' => 36],
-    ['nome' => 'GES_ELI_Tracking_Fachada Sul', 'obra_id' => 48, 'cliente_id' => 36],
-    ['nome' => 'GES_ELI_Tracking_Aerea Norte', 'obra_id' => 48, 'cliente_id' => 36],
+    ['nome' => '7. IDE_LAU Living do apto tipo', 'obra_id' => 48, 'cliente_id' => 35],
+    ['nome' => '8. IDE_LAU Living do apto tipo 03 a definir angulo 2', 'obra_id' => 48, 'cliente_id' => 35],
+    ['nome' => '9. IDE_LAU Suite tipo', 'obra_id' => 48, 'cliente_id' => 35],
+    ['nome' => '10. IDE_LAU Living Apto Cobertura', 'obra_id' => 48, 'cliente_id' => 35],
+    ['nome' => '11. IDE_LAU Varanda Apto Cobertura', 'obra_id' => 48, 'cliente_id' => 35],
 
-    // TER_ALT
-    ['nome' => 'Tracking', 'obra_id' => 61, 'cliente_id' => 33],
-
-    // OTT_EKO
-    ['nome' => '2. OTT_EKO_Fachada Fora', 'obra_id' => 17, 'cliente_id' => 13],
-    ['nome' => '3. OTT_EKO Fachada diurna no angulo do observador', 'obra_id' => 17, 'cliente_id' => 13],
-    ['nome' => '9. OTT_EKO Academia_Vista', 'obra_id' => 17, 'cliente_id' => 13],
-    ['nome' => '13. OTT_EKO Living apto tipo 01_Geral', 'obra_id' => 17, 'cliente_id' => 13],
-    ['nome' => '13. OTT_EKO Living apto tipo 01_Vista', 'obra_id' => 17, 'cliente_id' => 13],
-    ['nome' => '17. OTT_EKO_Festas_Apto_Cobertura_Geral', 'obra_id' => 17, 'cliente_id' => 13],
-    ['nome' => '17. OTT_EKO_Festas_Apto_Cobertura_Vista', 'obra_id' => 17, 'cliente_id' => 13],
-    ['nome' => 'OTT_EKO_tracking_0055', 'obra_id' => 17, 'cliente_id' => 13],
-    ['nome' => 'OTT_EKO_tracking_0058', 'obra_id' => 17, 'cliente_id' => 13],
-    ['nome' => 'OTT_EKO_tracking_0063', 'obra_id' => 17, 'cliente_id' => 13],
+    // HAA_HOR
+    ['nome' => '4. HAA_HOR Fachada Baixo', 'obra_id' => 53, 'cliente_id' => 37],
+    ['nome' => '5. HAA_HOR Fachada Fora', 'obra_id' => 53, 'cliente_id' => 37],
+    ['nome' => '6. HAA_HOR Beach Point_Geral', 'obra_id' => 53, 'cliente_id' => 37],
+    ['nome' => '6. HAA_HOR Beach Point_Detalhe', 'obra_id' => 53, 'cliente_id' => 37],
+    ['nome' => '7. HAA_HOR Piscinas com vista fotografica real_Angulo 1', 'obra_id' => 53, 'cliente_id' => 37],
+    ['nome' => '8. HAA_HOR Piscinas com vista fotografica real - Geral', 'obra_id' => 53, 'cliente_id' => 37],
+    ['nome' => '8. HAA_HOR Piscinas com vista fotografica real - Detalhe Topo', 'obra_id' => 53, 'cliente_id' => 37],
+    ['nome' => '12. HAA_HOR Living com quatro suites Corte', 'obra_id' => 53, 'cliente_id' => 37],
+    ['nome' => '13. HAA_HOR Living_Apato_frente_tres_suites_EF', 'obra_id' => 53, 'cliente_id' => 37],
+    ['nome' => '14. HAA_HOR Sacada_Apto_Frente_mar', 'obra_id' => 53, 'cliente_id' => 37],
+    ['nome' => '15. HAA_HOR Suite Apto tipo frente Geral', 'obra_id' => 53, 'cliente_id' => 37],
+    ['nome' => '15. HAA_HOR Suite Apto tipo frente Detalhe', 'obra_id' => 53, 'cliente_id' => 37],
+    ['nome' => 'HAA_MOR_Tracking_001', 'obra_id' => 53, 'cliente_id' => 37],
+    ['nome' => 'HAA_MOR_Tracking_002', 'obra_id' => 53, 'cliente_id' => 37],
+    ['nome' => 'HAA_MOR_Tracking_003', 'obra_id' => 53, 'cliente_id' => 37],
+    ['nome' => 'HAA_MOR_Tracking_004', 'obra_id' => 53, 'cliente_id' => 37],
 
     // AYA_KAR
-    ['nome' => '2.AYA_KAR Fotomontagem aérea Drone', 'obra_id' => 45, 'cliente_id' => 5],
-    ['nome' => '4.AYA_KAR_Rampa_da_garagem_com_rasgo_e_Arvore_EF_2_1', 'obra_id' => 45, 'cliente_id' => 5],
-    ['nome' => '6._AYA_KAR_Piscina_maior_EF_1_1', 'obra_id' => 45, 'cliente_id' => 5],
-    ['nome' => '8. AYA_KAR Sauna_EF', 'obra_id' => 45, 'cliente_id' => 5],
-    ['nome' => '7.AYA_KAR Piscina infantil', 'obra_id' => 45, 'cliente_id' => 5],
-    ['nome' => '11_AYA_KAR Living Manaca 301 Geral', 'obra_id' => 45, 'cliente_id' => 5],
-    ['nome' => '24.AYA_KAR Playground com teto verde', 'obra_id' => 45, 'cliente_id' => 5],
-    ['nome' => '30. AYA_KAR Gourmet 2_EF_002', 'obra_id' => 45, 'cliente_id' => 5],
+    ['nome' => 'AYA_KAR_Tracking_001', 'obra_id' => 45, 'cliente_id' => 5],
+    ['nome' => 'AYA_KAR_Tracking_007', 'obra_id' => 45, 'cliente_id' => 5],
+    ['nome' => 'AYA_KAR_Tracking_011', 'obra_id' => 45, 'cliente_id' => 5],
 
 ];
 
+
 $colaborador_id = 13;
 $status = 'Finalizado';
-$data = '2025-07-31';
+$data = '2025-08-31';
 
 foreach ($imagens as $img) {
     // Inserir na tabela imagem_animacao

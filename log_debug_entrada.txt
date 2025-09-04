@@ -4,12 +4,12 @@ Array
         (
             [name] => Array
                 (
-                    [0] => LD9_URB_Suite_APTO_Duplex_4301B_012.max
+                    [0] => 3. MSA_HYD Fachada Obs_EF.psb
                 )
 
             [full_path] => Array
                 (
-                    [0] => LD9_URB_Suite_APTO_Duplex_4301B_012.max
+                    [0] => 3. MSA_HYD Fachada Obs_EF.psb
                 )
 
             [type] => Array
@@ -19,7 +19,7 @@ Array
 
             [tmp_name] => Array
                 (
-                    [0] => C:\xampp\tmp\php6801.tmp
+                    [0] => C:\xampp\tmp\php242A.tmp
                 )
 
             [error] => Array
@@ -29,7 +29,7 @@ Array
 
             [size] => Array
                 (
-                    [0] => 348226326
+                    [0] => 6834968314
                 )
 
         )

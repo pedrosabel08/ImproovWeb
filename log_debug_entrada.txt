@@ -4,12 +4,12 @@ Array
         (
             [name] => Array
                 (
-                    [0] => 3. MSA_HYD Fachada Obs_EF.psb
+                    [0] => 9.MPE_SUN Piscina com vista real fotografica_P01_R00.psb
                 )
 
             [full_path] => Array
                 (
-                    [0] => 3. MSA_HYD Fachada Obs_EF.psb
+                    [0] => 9.MPE_SUN Piscina com vista real fotografica_P01_R00.psb
                 )
 
             [type] => Array
@@ -19,7 +19,7 @@ Array
 
             [tmp_name] => Array
                 (
-                    [0] => C:\xampp\tmp\php242A.tmp
+                    [0] => C:\xampp\tmp\php9D22.tmp
                 )
 
             [error] => Array
@@ -29,7 +29,7 @@ Array
 
             [size] => Array
                 (
-                    [0] => 6834968314
+                    [0] => 989815824
                 )
 
         )

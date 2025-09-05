@@ -1137,7 +1137,7 @@ $conn->close();
     </div>
 
     <!-- Adicione este botão onde quiser -->
-    <button id="btnUploadAcompanhamento">Upload Acompanhamento Obra</button>
+    <!-- <button id="btnUploadAcompanhamento">Upload Acompanhamento Obra</button> -->
 
     <!-- Modal para upload -->
     <div id="modalUploadAcompanhamento" class="modal" style="display:none;">

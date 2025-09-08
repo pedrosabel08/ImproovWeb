@@ -1129,7 +1129,7 @@ $conn->close();
         </div>
     </div>
 
-    <div id="modal_hist_status" style="">
+    <div id="modal_hist_status">
         <div class="modal-content" style="margin: 0;">
             <h2 style="font-size: 16px;">Histórico Status</h2>
             <div id="historico_container"></div>

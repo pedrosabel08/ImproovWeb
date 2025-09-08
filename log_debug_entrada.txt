@@ -4,12 +4,12 @@ Array
         (
             [name] => Array
                 (
-                    [0] => 9.MPE_SUN Piscina com vista real fotografica_P01_R00.psb
+                    [0] => 35.LD_RES  Living do apartamento tipo 3_018.max
                 )
 
             [full_path] => Array
                 (
-                    [0] => 9.MPE_SUN Piscina com vista real fotografica_P01_R00.psb
+                    [0] => 35.LD_RES  Living do apartamento tipo 3_018.max
                 )
 
             [type] => Array
@@ -19,7 +19,7 @@ Array
 
             [tmp_name] => Array
                 (
-                    [0] => C:\xampp\tmp\php9D22.tmp
+                    [0] => C:\xampp\tmp\php409A.tmp
                 )
 
             [error] => Array
@@ -29,7 +29,7 @@ Array
 
             [size] => Array
                 (
-                    [0] => 989815824
+                    [0] => 543667074
                 )
 
         )

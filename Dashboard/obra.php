@@ -814,7 +814,7 @@ $conn->close();
                         </div>
                     </div>
                 </div>
-                <div class="funcao" id="status_funcao" style="margin-bottom: 15px;width: max-content;">
+                <div class="funcao status_select" id="status_funcao" style="margin-bottom: 15px;width: max-content;">
                     <p id="status">Status</p>
                     <select name="status_id" id="opcao_status">
                         <?php foreach ($status_imagens as $status): ?>
@@ -834,7 +834,7 @@ $conn->close();
                         <option value="Aguardando arquivos">Aguardando arquivos</option>
                     </select>
                 </div>
-                <div class="funcao" id="status_funcao" style="width: 200px; margin-bottom: 15px;">
+                <div class="funcao render_add" id="status_funcao" style="width: 200px; margin-bottom: 15px;">
                     <div class="render">
                         <p id="render_alta">Render</p>
                         <button id="addRender" class="buttons-form-add" style=" padding: 3px 10px; font-size: 13px; background-color: steelblue;">Adicionar render</button>
@@ -844,7 +844,7 @@ $conn->close();
                         </label>
                     </div>
                 </div>
-                <div class="funcao" id="status_funcao" style="width: 200px; margin-bottom: 15px;">
+                <div class="funcao revisao_add" id="status_funcao" style="width: 200px; margin-bottom: 15px;">
                     <div class="revisao">
                         <p id="revisao">Revisao</p>
                         <button id="addRevisao" class="buttons-form-add" style=" padding: 3px 10px; font-size: 13px; background-color: steelgreen;">Adicionar revisão</button>

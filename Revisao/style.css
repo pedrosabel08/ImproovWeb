@@ -905,6 +905,9 @@ p.imagem_nome {
     height: auto;
     display: block;
 }
+.image_wrapper img:hover {
+    cursor: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAYAAABWzo5XAAAAyElEQVR4AcSSgQ3CMAwELSZhE2ATmAQ2gU1gFEbBh/rBiZrWRZVa2bLj+q9x0p2t9GwKuvoQuIefLd3R06W3wSvYEtDeAdEAnlXIgu6D4OLx5S47KMmAGIcvE9EJBpCcms2BEB+/nWaMxtr8AXDyWGwKhEgQCYBxyG8VFHugMQiaahwK8jHQFKQaRxBiC/oL0oK44vZM6GGc7k5owOOOOEhq0VMQBBHEOnoagiiCuFLE+MNfzo7jPcUiSD8ZAPLSlEkiKNPf7fkAAAD//wBi2FMAAAAGSURBVAMA84weJVXb21sAAAAASUVORK5CYII=), auto !important;
+}
 
 
 .modal {

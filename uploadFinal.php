@@ -27,8 +27,8 @@ error_log('max_file_uploads: ' . ini_get('max_file_uploads'));
 // Log do array $_FILES
 // file_put_contents(__DIR__ . '/debug_files.txt', print_r($_FILES, true));
 
-file_put_contents(__DIR__ . '/log_debug_entrada.txt', print_r($_FILES, true));
-error_log('Tamanho do POST: ' . $_SERVER['CONTENT_LENGTH']);
+// file_put_contents(__DIR__ . '/log_debug_entrada.txt', print_r($_FILES, true));
+// error_log('Tamanho do POST: ' . $_SERVER['CONTENT_LENGTH']);
 
 // Checa arquivos enviados
 if (
@@ -52,10 +52,10 @@ for ($i = 0; $i < $total; $i++) {
     // Loga informações do arquivo
     error_log("Arquivo $i: nome=$nome_original, tmp_name=$tmp_name, erro=$erro, tamanho=$tamanho");
 
-    // Só copia se for PDF e não houver erro
-    if ($erro === 0 && $tamanho > 0 && strtolower(pathinfo($nome_original, PATHINFO_EXTENSION)) === 'pdf') {
-        copy($tmp_name, __DIR__ . "/debug_upload_{$i}.pdf");
-    }
+    // // Só copia se for PDF e não houver erro
+    // if ($erro === 0 && $tamanho > 0 && strtolower(pathinfo($nome_original, PATHINFO_EXTENSION)) === 'pdf') {
+    //     copy($tmp_name, __DIR__ . "/debug_upload_{$i}.pdf");
+    // }
 }
 
 // Dados SFTP

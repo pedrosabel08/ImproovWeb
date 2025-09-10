@@ -92,6 +92,7 @@ try {
     for ($i = 0; $i < count($arquivos['name']); $i++) {
         $nome_original = $arquivos['name'][$i];
         $tmp_name = $arquivos['tmp_name'][$i];
+        $tipo = $arquivos['type'][$i];
 
         $nome_sanitizado = sanitizeFilename($nome_original);
         $remote_path = "$pendentesDir/$nome_sanitizado"; // envia para a nova pasta
@@ -100,10 +101,10 @@ try {
             $enviados[] = $remote_path;
 
             // Insere registro no banco
-            $stmtIns = $conn->prepare("INSERT INTO recebimento_arquivos 
-                (obra_id, nome_arquivo, caminho, data_upload, status) 
-                VALUES (?, ?, ?, NOW(), 'pendente')");
-            $stmtIns->bind_param("iss", $obra_id, $nome_sanitizado, $remote_path);
+            $stmtIns = $conn->prepare("INSERT INTO arquivos 
+                (obra_id, nome_original, caminho, tipo, status, origem, recebido_por, recebido_em, revisado_em, revisado_por) 
+                VALUES (?, ?, ?, ?, 'pendente', 'WhatsApp', 1, NOW(), NULL, NULL)");
+            $stmtIns->bind_param("isss", $obra_id, $nome_sanitizado, $remote_path, $tipo);
             $stmtIns->execute();
             $stmtIns->close();
         }

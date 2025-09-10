@@ -1,0 +1,118 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&family=Open+Sans:ital,wght@0,300..800;1,300..800&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap');
+
+* {
+    padding: 0;
+    margin: 0;
+    font-family: "Open Sans", sans-serif;
+}
+
+body {
+    transition: background-color 0.3s, color 0.3s;
+    display: grid;
+    grid-template-columns: 60px 1fr;
+}
+
+.container {
+    grid-column: 2;
+    padding: 0 40px;
+    min-height: 100vh;
+}
+
+#tabela-arquivos {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+#tabela-arquivos th,
+#tabela-arquivos td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+}
+
+.text-warning {
+    color: #856404;
+    background-color: #fff3cd;
+    border-color: #ffeeba;
+    padding: 5px 10px;
+    border-radius: 5px;
+    display: inline-block;
+}
+
+.text-success {
+    color: #155724;
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+    padding: 5px 10px;
+    border-radius: 5px;
+    display: inline-block;
+}
+
+.text-muted {
+    color: #6c757d;
+    background-color: #e2e3e5;
+    border-color: #d6d8db;
+    padding: 5px 10px;
+    border-radius: 5px;
+    display: inline-block;
+}
+
+.text-danger {
+    color: #721c24;
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+    padding: 5px 10px;
+    border-radius: 5px;
+    display: inline-block;
+}
+
+#tabela-arquivos td:nth-child(3) {
+    text-transform: capitalize;
+}
+
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    max-width: 90%;
+}
+
+#formRevisaoArquivo {
+    display: flex;
+    flex-direction: column;
+}
+
+#imagensTipo {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+#imagensTipo div {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+/* Para os <p> dentro de #imagensTipo */
+#imagensTipo p {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 90%;
+}

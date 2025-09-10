@@ -10,7 +10,7 @@ if (usuarioId !== 1 && usuarioId !== 2 && usuarioId !== 9) {
     document.getElementById('obsAdd').style.display = 'none';
     document.getElementById('batch_actions').style.display = 'none';
     document.querySelector('.status_select').style.display = 'none';
-    document.querySelector('.render_add').style.display = 'none';
+    // document.querySelector('.render_add').style.display = 'none';
     document.querySelector('.revisao_add').style.display = 'none';
 
     document.querySelectorAll(".campo input[type='text']").forEach(input => {

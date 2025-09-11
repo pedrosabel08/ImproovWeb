@@ -81,9 +81,10 @@ tipoArquivo.addEventListener('change', function () {
 // Função que busca arquivos da obra via fetch/PHP
 function carregarArquivosDaObra() {
     const obraId = document.getElementById('obraId').value; // ou outro input que contenha a obra
+    const categoria = document.getElementById('categoria').value; // ou outro input que contenha a obra
     if (!obraId) return;
 
-    fetch(`buscar_arquivos_obra.php?obra_id=${obraId}`)
+    fetch(`buscar_arquivos_obra.php?obra_id=${obraId}&categoria=${categoria}`)
         .then(response => response.json())
         .then(data => {
             selectSubstitui.innerHTML = '';

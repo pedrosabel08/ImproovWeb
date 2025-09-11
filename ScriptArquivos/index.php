@@ -81,6 +81,16 @@ $conn->close();
                     <option value="material_complementar">Material complementar</option>
                 </select>
 
+                <label for="categoria">Categoria:</label>
+                <select name="categoria" id="categoria" required>
+                    <option value="Arquitetonico">Arquitetônico</option>
+                    <option value="Luminotecnico">Luminotécnico</option>
+                    <option value="Paisagistico">Paisagístico</option>
+                    <option value="Interiores">Interiores</option>
+                    <option value="Complementar">Complementar</option>
+                </select>
+
+
                 <!-- Campo que será mostrado apenas para revisão -->
                 <div id="divSubstitui" style="display: none;">
                     <label>O arquivo substitui outro existente? Qual?</label>

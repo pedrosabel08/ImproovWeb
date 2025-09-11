@@ -122,6 +122,15 @@ if (!empty($substitui_arquivo)) {
         $nomeAntigoNorm = normalizar_nome(basename($arquivoAntigo['nome_original']));
         $pastaAntigos = $inputBase . "/Arquivos_Antigos/";
 
+        $log[] = "Caminho do arquivo antigo (banco): $caminhoAntigo";
+
+        $statOld = @$sftp->stat($caminhoAntigo);
+        if ($statOld === false) {
+            $log[] = "Arquivo antigo não existe no SFTP nesse caminho: $caminhoAntigo";
+        } else {
+            $log[] = "Arquivo antigo encontrado no SFTP.";
+        }
+
         if (!$sftp->is_dir($pastaAntigos)) {
             $sftp->mkdir($pastaAntigos, 0777, true);
             $log[] = "Criada pasta de arquivos antigos: $pastaAntigos";
@@ -228,6 +237,22 @@ if (!$stmtRev->bind_param("iisss", $idArquivo,  $substitui_arquivo, $tipo_arquiv
 if (!$stmtRev->execute()) resposta(false, $log, "Erro ao inserir revisao.");
 $stmtRev->close();
 $log[] = "Registro de revisão inserido com sucesso.";
+
+if (!empty($_POST['batch_imagens'])) {
+    $batchImagens = $_POST['batch_imagens']; // array dos checkboxes
+    $stmtAI = $conn->prepare("INSERT INTO arquivos_imagem (arquivo_id, imagem_id, criado_por) VALUES (?, ?, ?)");
+    if (!$stmtAI) resposta(false, $log, "Erro ao preparar query arquivos_imagem.");
+
+    foreach ($batchImagens as $imgId) {
+        $stmtAI->bind_param("iis", $idArquivo, $imgId, $responsavel);
+        if (!$stmtAI->execute()) {
+            resposta(false, $log, "Erro ao inserir relação com imagem ID $imgId.");
+        }
+    }
+    $stmtAI->close();
+    $log[] = "Relacionamentos em arquivos_imagem inseridos com sucesso.";
+}
+
 
 // Retorno final
 $log[] = "✅ Processo concluído com sucesso. Método usado: $method.";

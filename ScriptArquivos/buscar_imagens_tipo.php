@@ -1,27 +1,32 @@
 <?php
-header('Content-Type: application/json');
-include 'conexao.php';
+require 'conexao.php';
 
-$obra_id = $_GET['obra_id'] ?? null;
-$tipo_imagem = $_GET['tipo_imagem'] ?? null;
+$obra_id = isset($_GET['obra_id']) ? (int)$_GET['obra_id'] : 0;
+$tipos = isset($_GET['tipos']) ? json_decode($_GET['tipos'], true) : [];
 
-if (!$obra_id || !$tipo_imagem) {
+if (!$obra_id || empty($tipos)) {
     echo json_encode([]);
     exit;
 }
 
-// Busca imagens da obra do tipo selecionado
-$stmt = $conn->prepare("SELECT idimagens_cliente_obra as idimagem, imagem_nome FROM imagens_cliente_obra WHERE obra_id = ? AND tipo_imagem = ?");
-$stmt->bind_param("is", $obra_id, $tipo_imagem);
+// Monta placeholders dinâmicos
+$placeholders = implode(',', array_fill(0, count($tipos), '?'));
+$types = str_repeat('s', count($tipos));
+
+$sql = "SELECT idimagens_cliente_obra as idimagem, imagem_nome 
+        FROM imagens_cliente_obra 
+        WHERE obra_id = ? AND tipo_imagem IN ($placeholders)";
+$stmt = $conn->prepare($sql);
+
+$params = array_merge([$obra_id], $tipos);
+$stmt->bind_param('i' . $types, ...$params);
+
 $stmt->execute();
-$result = $stmt->get_result();
+$res = $stmt->get_result();
 
 $imagens = [];
-while ($row = $result->fetch_assoc()) {
-    $imagens[] = [
-        'idimagem' => $row['idimagem'],
-        'imagem_nome' => $row['imagem_nome'] 
-    ];
+while ($row = $res->fetch_assoc()) {
+    $imagens[] = $row;
 }
 
 echo json_encode($imagens);

@@ -62,6 +62,8 @@ $conn->close();
             <form id="formRevisaoArquivo">
                 <input type="hidden" name="arquivoId" id="arquivoId" value="">
                 <input type="hidden" name="obraId" id="obraId" value="">
+                <!-- <input type="checkbox" name="batch_imagens[]" value="ID"> -->
+
                 <!-- Arquivo completo ou incompleto -->
                 <label>O arquivo está completo ou incompleto?</label>
                 <select name="status_arquivo" required>
@@ -89,8 +91,8 @@ $conn->close();
 
                 <!-- Relacionamento com tipo_imagem -->
                 <label>A que tipo_imagem se relaciona?</label>
-                <select name="tipo_imagem" id="tipo_imagem" required>
-                    <option value="">Selecione</option>
+                <select name="tipo_imagem[]" id="tipo_imagem" multiple required>
+                    <option value="todas">Todas</option>
                     <option value="Fachada">Fachada</option>
                     <option value="Imagem Interna">Imagem Interna</option>
                     <option value="Imagem Externa">Imagem Externa</option>

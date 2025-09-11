@@ -109,16 +109,30 @@ const tipoImagemSelect = document.getElementById('tipo_imagem');
 const imagensTipoDiv = document.getElementById('imagensTipo');
 
 tipoImagemSelect.addEventListener('change', function () {
-    const tipo = this.value;
-    const obraId = document.getElementById('obraId').value; // obra selecionada
-
-    if (!tipo || !obraId) {
+    const obraId = document.getElementById('obraId').value;
+    if (!obraId) {
         imagensTipoDiv.innerHTML = '';
         return;
     }
 
-    // Faz requisição ao backend para pegar as imagens desse tipo
-    fetch(`buscar_imagens_tipo.php?obra_id=${obraId}&tipo_imagem=${tipo}`)
+    let selecionados = Array.from(this.selectedOptions).map(opt => opt.value);
+
+    // Se "todas" foi selecionado → substitui por todos os valores (menos "todas")
+    if (selecionados.includes('todas')) {
+        selecionados = Array.from(this.options)
+            .map(opt => opt.value)
+            .filter(v => v && v !== 'todas');
+    }
+
+    if (selecionados.length === 0) {
+        imagensTipoDiv.innerHTML = '';
+        return;
+    }
+
+    imagensTipoDiv.innerHTML = '<p>Carregando imagens...</p>';
+
+    // Busca imagens de todos os tipos selecionados
+    fetch(`buscar_imagens_tipo.php?obra_id=${obraId}&tipos=${encodeURIComponent(JSON.stringify(selecionados))}`)
         .then(res => res.json())
         .then(data => {
             imagensTipoDiv.innerHTML = '';
@@ -128,13 +142,13 @@ tipoImagemSelect.addEventListener('change', function () {
                 return;
             }
 
-            // Cria checkboxes com miniaturas
             data.forEach(img => {
                 const wrapper = document.createElement('div');
                 wrapper.style.textAlign = 'center';
 
                 const checkbox = document.createElement('input');
                 checkbox.type = 'checkbox';
+                checkbox.checked = true;
                 checkbox.name = 'batch_imagens[]';
                 checkbox.value = img.idimagem;
 
@@ -143,7 +157,6 @@ tipoImagemSelect.addEventListener('change', function () {
 
                 wrapper.appendChild(checkbox);
                 wrapper.appendChild(imagem_nome);
-
                 imagensTipoDiv.appendChild(wrapper);
             });
         })
@@ -152,6 +165,7 @@ tipoImagemSelect.addEventListener('change', function () {
             imagensTipoDiv.innerHTML = '<p>Erro ao carregar imagens.</p>';
         });
 });
+
 
 document.getElementById('formRevisaoArquivo').addEventListener('submit', function (e) {
     e.preventDefault();

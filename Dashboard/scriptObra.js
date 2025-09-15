@@ -1250,60 +1250,74 @@ var colunas = [
     { col: 'planta', label: 'Planta' }
 ];
 
-function inicializarLinhaPorcentagem() {
+function mostrarFiltroColaborador(funcaoSelecionada) {
     const linhaPorcentagem = document.getElementById('linha-porcentagem');
-    linhaPorcentagem.innerHTML = '';
-
-    // 3 colunas fixas (imagem, status geral, prazo)
-    for (let i = 0; i < 3; i++) {
-        linhaPorcentagem.appendChild(document.createElement('td'));
-    }
-
-    // Duas <td> para cada função (colaborador e status)
-    colunas.forEach(() => {
-        linhaPorcentagem.appendChild(document.createElement('td')); // colaborador
-        linhaPorcentagem.appendChild(document.createElement('td')); // status
-    });
-
-    // linhaPorcentagem.style.display = 'table-row';
-}
-inicializarLinhaPorcentagem();
-
-
-function mostrarPorcentagem(funcaoSelecionada) {
-    const linhaPorcentagem = document.getElementById('linha-porcentagem');
-    if (!linhaPorcentagem) {
-        console.error('Elemento linha-porcentagem não encontrado.');
-        return;
-    }
-
-    const totais = totaisPorFuncao[funcaoSelecionada];
-    if (!totais) {
-        console.error(`totaisPorFuncao[${funcaoSelecionada}] indefinido`);
-        return;
-    }
-    const { total, validos } = totais;
-    const porcentagem = total > 0 ? Math.round((validos / total) * 100) : 0;
+    if (!linhaPorcentagem) return;
 
     const indexFuncao = colunas.findIndex(c => c.col === funcaoSelecionada);
-    if (indexFuncao === -1) {
-        console.error(`Função '${funcaoSelecionada}' não encontrada no array colunas.`);
-        return;
-    }
-    const indexTd = 3 + (indexFuncao * 2) + 1;
+    if (indexFuncao === -1) return;
 
+    // índice da célula do colaborador (não do status)
+    const indexTd = 3 + (indexFuncao * 2);
+
+    // limpa tudo da linha primeiro
     linhaPorcentagem.querySelectorAll('td').forEach(td => td.textContent = '');
 
     const tdAlvo = linhaPorcentagem.children[indexTd];
-    if (!tdAlvo) {
-        console.error(`tdAlvo undefined no índice ${indexTd}`);
-        return;
-    }
+    if (!tdAlvo) return;
 
-    tdAlvo.textContent = porcentagem + '%';
-    tdAlvo.style.fontWeight = 'bold';
-    tdAlvo.style.color = '#007bff';
+    // 🔽 cria o select
+    const select = document.createElement('select');
+    const colaboradoresSet = new Set();
+
+    // percorre todos os itens carregados no tbody
+    dados.forEach(item => {
+        const colaborador = item[`${funcaoSelecionada}_colaborador`];
+        if (colaborador && colaborador !== '-' && colaborador !== 'Não se aplica') {
+            colaboradoresSet.add(colaborador);
+        }
+    });
+
+    // opção "todos"
+    const optionTodos = document.createElement('option');
+    optionTodos.value = '';
+    optionTodos.textContent = 'Todos';
+    select.appendChild(optionTodos);
+
+    // adiciona cada colaborador
+    colaboradoresSet.forEach(colab => {
+        const option = document.createElement('option');
+        option.value = colab;
+        option.textContent = colab;
+        select.appendChild(option);
+    });
+
+    // evento de filtro
+    select.addEventListener('change', () => {
+        filtrarPorColaborador(funcaoSelecionada, select.value);
+    });
+
+    tdAlvo.appendChild(select);
 }
+
+
+function filtrarPorColaborador(funcao, colaborador) {
+    const linhas = document.querySelectorAll('#tabela-obra tbody tr');
+
+    linhas.forEach(linha => {
+        const cellIndex = 3 + (colunas.findIndex(c => c.col === funcao) * 2);
+        const cell = linha.children[cellIndex];
+        if (!cell) return;
+
+        const nome = cell.textContent.trim();
+        if (!colaborador || nome === colaborador) {
+            linha.style.display = '';
+        } else {
+            linha.style.display = 'none';
+        }
+    });
+}
+
 
 
 // Criar funções separadas para evitar problemas de referência
@@ -1639,6 +1653,18 @@ document.getElementById("salvar_funcoes").addEventListener("click", function (ev
     const revisoesVisiveis = Array.from(document.querySelectorAll('.revisao_imagem')).some(el => {
         return window.getComputedStyle(el).display === 'block';
     });
+
+    var funcoesTEA = localStorage.getItem("funcoesTEA");
+    if (funcoesTEA >= 4) {
+        Swal.fire({
+            icon: 'warning', // Ícone de aviso
+            title: 'Atenção!',
+            text: 'Termine as tarefas que estão em andamento primeiro!',
+            confirmButtonText: 'Ok',
+            confirmButtonColor: '#f39c12', // Cor do botão
+        });
+        return;
+    }
 
     if (revisoesVisiveis) {
         Swal.fire({

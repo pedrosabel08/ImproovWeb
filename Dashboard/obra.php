@@ -244,31 +244,30 @@ $conn->close();
             <div class="tabela">
                 <table id="tabela-obra">
                     <thead>
-                        <tr id="linha-porcentagem">
-                        </tr>
+                        <tr id="linha-porcentagem"></tr>
                         <tr>
                             <th>Etapa</th>
                             <th class="resizable">Imagem<div class="resize-handle"></div>
                             </th>
                             <th>Status</th>
                             <th style="max-width: 15px;">Prazo</th>
-                            <th onclick="mostrarPorcentagem('caderno')">Caderno</th>
+                            <th onclick="mostrarFiltroColaborador('caderno')">Caderno</th>
                             <th>Status</th>
-                            <th onclick="mostrarPorcentagem('filtro')">Filtro de assets</th>
+                            <th onclick="mostrarFiltroColaborador('filtro')">Filtro de assets</th>
                             <th>Status</th>
-                            <th onclick="mostrarPorcentagem('modelagem')">Modelagem</th>
+                            <th onclick="mostrarFiltroColaborador('modelagem')">Modelagem</th>
                             <th>Status</th>
-                            <th onclick="mostrarPorcentagem('composicao')">Composição</th>
+                            <th onclick="mostrarFiltroColaborador('composicao')">Composição</th>
                             <th>Status</th>
-                            <th onclick="mostrarPorcentagem('pre')">Pré-Finalização</th>
+                            <th onclick="mostrarFiltroColaborador('pre')">Pré-Finalização</th>
                             <th>Status</th>
-                            <th onclick="mostrarPorcentagem('finalizacao')">Finalização</th>
+                            <th onclick="mostrarFiltroColaborador('finalizacao')">Finalização</th>
                             <th>Status</th>
-                            <th onclick="mostrarPorcentagem('pos_producao')">Pós-Produção</th>
+                            <th onclick="mostrarFiltroColaborador('pos_producao')">Pós-Produção</th>
                             <th>Status</th>
-                            <th onclick="mostrarPorcentagem('alteracao')">Alteração</th>
+                            <th onclick="mostrarFiltroColaborador('alteracao')">Alteração</th>
                             <th>Status</th>
-                            <th onclick="mostrarPorcentagem('planta')">Planta</th>
+                            <th onclick="mostrarFiltroColaborador('planta')">Planta</th>
                             <th>Status</th>
                         </tr>
                     </thead>

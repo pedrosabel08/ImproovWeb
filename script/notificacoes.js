@@ -1,5 +1,11 @@
 var idusuario = localStorage.getItem('idusuario');
-var colaborador_id = parseInt(localStorage.getItem('colaborador_id'));
+var colaborador_id = parseInt(localStorage.getItem('idcolaborador'));
+
+function getUrlBuscarTarefas() {
+    const idusuario = localStorage.getItem('idusuario');
+    const colaborador_id = parseInt(localStorage.getItem('idcolaborador'));
+    return `https://improov.com.br/sistema/buscar_tarefas.php?idusuario=${idusuario}&colaborador_id=${colaborador_id}`;
+}
 
 
 function ativarSino() {
@@ -14,7 +20,7 @@ function ativarSino() {
 }
 
 function atualizarContadorTarefas() {
-    fetch('https://improov.com.br/sistema/buscar_tarefas.php', {
+    fetch(getUrlBuscarTarefas(), {
         method: 'GET'
     })
         .then(response => response.json())
@@ -41,7 +47,7 @@ let contagemTarefasGlobal = {};
 
 
 function buscarTarefas(mostrarAlerta = true) {
-    return fetch('https://improov.com.br/sistema/buscar_tarefas.php', {
+    return fetch(getUrlBuscarTarefas(), {
         method: 'GET'
     })
         .then(response => response.json())

@@ -3,24 +3,24 @@ header('Content-Type: application/json');
 
 // Conectar ao banco de dados
 $conn = new mysqli('mysql.improov.com.br', 'improov', 'Impr00v', 'improov');
-
-// Verificar a conexão
 if ($conn->connect_error) {
     die(json_encode(["error" => "Falha na conexão: " . $conn->connect_error]));
 }
-
 $conn->set_charset('utf8mb4');
 
 $colaboradorId = intval($_GET['colaborador_id']);
-$mes = isset($_GET['mes']) ? $_GET['mes'] : '';
-$ano = isset($_GET['ano']) ? $_GET['ano'] : '';
+$mes = $_GET['mes'] ?? '';
+$ano = $_GET['ano'] ?? '';
 $obraId = isset($_GET['obra_id']) ? intval($_GET['obra_id']) : '';
-$funcaoId = isset($_GET['funcao_id']) ? $_GET['funcao_id'] : '';
-$status = isset($_GET['status']) ? $_GET['status'] : '';
+$funcaoId = $_GET['funcao_id'] ?? '';
+$status = $_GET['status'] ?? '';
 $funcaoIds = $funcaoId ? explode(',', $funcaoId) : [];
 $statusList = $status ? explode(',', $status) : [];
-$prioridade = isset($_GET['prioridade']) ? $_GET['prioridade'] : '';
+$prioridade = $_GET['prioridade'] ?? '';
 
+// ====================
+// FUNÇÕES
+// ====================
 $sql = "SELECT
             ico.idimagens_cliente_obra AS imagem_id,
             ico.imagem_nome,
@@ -30,7 +30,8 @@ $sql = "SELECT
             pc.prioridade,
             fi.idfuncao_imagem,
             fi.funcao_id,
-            ico.obra_id
+            ico.obra_id,
+            o.nomenclatura
         FROM funcao_imagem fi
         JOIN imagens_cliente_obra ico ON fi.imagem_id = ico.idimagens_cliente_obra
         JOIN obra o ON o.idobra = ico.obra_id
@@ -38,15 +39,9 @@ $sql = "SELECT
         JOIN prioridade_funcao pc ON fi.idfuncao_imagem = pc.funcao_imagem_id
         WHERE fi.colaborador_id = ? AND o.status_obra = 0";
 
-if ($mes) {
-    $sql .= " AND MONTH(fi.prazo) = ?";
-}
-if ($ano) {
-    $sql .= " AND YEAR(fi.prazo) = ?";
-}
-if ($obraId) {
-    $sql .= " AND ico.obra_id = ?";
-}
+if ($mes) $sql .= " AND MONTH(fi.prazo) = ?";
+if ($ano) $sql .= " AND YEAR(fi.prazo) = ?";
+if ($obraId) $sql .= " AND ico.obra_id = ?";
 if ($funcaoId && count($funcaoIds) > 0) {
     $in = implode(',', array_fill(0, count($funcaoIds), '?'));
     $sql .= " AND f.idfuncao IN ($in)";
@@ -55,17 +50,14 @@ if ($status && count($statusList) > 0) {
     $inStatus = implode(',', array_fill(0, count($statusList), '?'));
     $sql .= " AND fi.status IN ($inStatus)";
 }
-if ($prioridade) {
-    $sql .= " AND pc.prioridade = ?";
-}
+if ($prioridade) $sql .= " AND pc.prioridade = ?";
 
-$sql .= " ORDER BY prazo, obra_id, FIELD(fi.status,'Não iniciado', 'Em andamento', 'Ajuste', 'Em aprovação', 'Aprovado com ajustes', 'Aprovado', 'Finalizado'), imagem_id";
+$sql .= " ORDER BY prazo DESC, obra_id, FIELD(fi.status,'Não iniciado', 'Em andamento', 'Ajuste', 'Em aprovação', 'Aprovado com ajustes', 'Aprovado', 'Finalizado'), imagem_id";
 
 $stmt = $conn->prepare($sql);
 
 $bindParams = [$colaboradorId];
 $types = 'i';
-
 if ($mes) {
     $types .= 's';
     $bindParams[] = $mes;
@@ -78,17 +70,13 @@ if ($obraId) {
     $types .= 'i';
     $bindParams[] = $obraId;
 }
-if ($funcaoId && count($funcaoIds) > 0) {
-    foreach ($funcaoIds as $fid) {
-        $types .= 'i';
-        $bindParams[] = intval($fid);
-    }
+foreach ($funcaoIds as $fid) {
+    $types .= 'i';
+    $bindParams[] = intval($fid);
 }
-if ($status && count($statusList) > 0) {
-    foreach ($statusList as $st) {
-        $types .= 's';
-        $bindParams[] = $st;
-    }
+foreach ($statusList as $st) {
+    $types .= 's';
+    $bindParams[] = $st;
 }
 if ($prioridade) {
     $types .= 's';
@@ -96,17 +84,33 @@ if ($prioridade) {
 }
 
 $stmt->bind_param($types, ...$bindParams);
-
 $stmt->execute();
 $result = $stmt->get_result();
-
 
 $funcoes = [];
 while ($row = $result->fetch_assoc()) {
     $funcoes[] = $row;
 }
 
-// 1️⃣ Busca todas as funções de todas as imagens retornadas
+// ====================
+// TAREFAS
+// ====================
+$sqlTarefas = "SELECT id, titulo, descricao, prazo, status, prioridade 
+               FROM tarefas 
+               WHERE colaborador_id = ? ORDER BY prazo DESC";
+$stmtTarefas = $conn->prepare($sqlTarefas);
+$stmtTarefas->bind_param("i", $colaboradorId);
+$stmtTarefas->execute();
+$resultTarefas = $stmtTarefas->get_result();
+
+$tarefas = [];
+while ($row = $resultTarefas->fetch_assoc()) {
+    $tarefas[] = $row;
+}
+
+// ====================
+// Ajusta Funções (liberação, ordem, etc.)
+// ====================
 $imagemIds = array_column($funcoes, 'imagem_id');
 $todasFuncoes = [];
 
@@ -125,8 +129,6 @@ if (count($imagemIds) > 0) {
     $stmtTodas->close();
 }
 
-// 2️⃣ Agora sim faz o loop para montar o response
-$response = [];
 $ordemFuncoes = [
     1 => 'Caderno',
     8 => 'Filtro de assets',
@@ -139,6 +141,7 @@ $ordemFuncoes = [
     7 => 'Planta Humanizada'
 ];
 
+$funcoesFinal = [];
 foreach ($funcoes as $funcao) {
     $funcaoAtualId = $funcao['funcao_id'];
     $imagemId = $funcao['imagem_id'];
@@ -166,7 +169,7 @@ foreach ($funcoes as $funcao) {
         }
     }
 
-    $response[] = [
+    $funcoesFinal[] = [
         'imagem_id' => $funcao['imagem_id'],
         'imagem_nome' => $funcao['imagem_nome'],
         'status' => $funcao['status'],
@@ -178,11 +181,22 @@ foreach ($funcoes as $funcao) {
         'prazo_funcao_anterior' => $prazoAnterior,
         'liberada' => $liberada,
         'funcaoAnteriorId' => $funcaoAnteriorId,
-        'obra_id' => $funcao['obra_id']
+        'obra_id' => $funcao['obra_id'],
+        'nomenclatura' => $funcao['nomenclatura'],
+        'idfuncao_imagem' => $funcao['idfuncao_imagem']
     ];
 }
+
+// ====================
+// RESPONSE FINAL ÚNICO
+// ====================
+$response = [
+    "funcoes" => $funcoesFinal,
+    "tarefas" => $tarefas
+];
 
 echo json_encode($response);
 
 $stmt->close();
+$stmtTarefas->close();
 $conn->close();

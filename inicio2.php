@@ -76,6 +76,9 @@ $conn->close();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="css/styleIndex.css">
     <link rel="stylesheet" href="css/styleSidebar.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.6.0/remixicon.css"
+        integrity="sha512-kJlvECunwXftkPwyvHbclArO8wszgBGisiLeuDFwNM8ws+wKIw0sv1os3ClWZOcrEB2eRXULYUsm8OVRGJKwGA=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s" type="image/x-icon">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
@@ -92,112 +95,170 @@ $conn->close();
     include 'sidebar.php';
 
     ?>
-    <main>
-        <header>
-
-            <div class="right">
-                <img src="gif/assinatura_branco.gif" alt="" style="width: 200px;">
-                <button id="showMenu"><i class="fa-solid fa-user"></i></button>
-                <div id="menu2" class="hidden">
-                    <a href="infos.php" id="editProfile"><i class="fa-regular fa-user"></i>Editar Informações</a>
-                    <hr>
-                    <a href="index.html" id="logout"><i class="fa-solid fa-right-from-bracket"></i>Sair</a>
+    <div class="container">
+        <main>
+            <header>
+                <div class="top">
+                    <div class="header-left">
+                        <h3 id="saudacao">Flow</h3>
+                        <h4>Pedro - Teste</h4>
+                    </div>
+                    <div class="header-right">
+                        <img src="gif/assinatura_preto.gif" alt="" style="width: 200px;">
+                    </div>
                 </div>
-            </div>
-        </header>
-
-        <div class="infos-pessoais">
-            <div id="data"></div>
-            <div>
-                <p id="saudacao"></p>
-                <span id="nome-user"></span>
-            </div>
-            <div class="tasks">
-                <div class="tasks-check">
-                    <p><i class="fa-solid fa-check"></i>&nbsp;&nbsp;Tarefas concluídas</p>
-                    <p id="count-check"><?php echo $count_finalizadas; ?></p>
+                <nav>
+                    <div class="nav-left">
+                        <button id="overview"><span>Overview</span></button>
+                        <button id="kanban" class="active"><i class="ri-kanban-view"></i><span>Kanban</span></button>
+                        <button id="activities"><i class="fa-solid fa-chart-line"><span></i>Activity</span></button>
+                        <button id="timeline"><span>Timeline</span></button>
+                    </div>
+                    <div class="nav-right">
+                        <button id="date"><i class="ri-calendar-todo-fill"></i><span>Mar 11, 2025</span></button>
+                        <button id="filter"><i class="ri-equalizer-fill"></i><span>Filtros</span></button>
+                        <button id="add-task"><i class="ri-add-line"></i></i><span>Adicionar tarefa</span></button>
+                    </div>
+                </nav>
+            </header>
+            <div class="kanban">
+                <div class="kanban-box" id="to-do">
+                    <div class="header">
+                        <div class="title"><i class="fa-solid fa-play"></i><span>Não iniciado</span></div>
+                        <span class="task-count">3</span>
+                        <i class="fa fa-ellipsis-v"></i>
+                    </div>
+                    <div class="content">
+                    </div>
                 </div>
-                <div class="tasks-to-do">
-                    <p><i class="fa-solid fa-xmark"></i>&nbsp;&nbsp;Tarefas para fazer</p>
-                    <p id="count-to-do"><?php echo $count_pendentes; ?></p>
+                <div class="kanban-box" id="in-progress">
+                    <div class="header">
+                        <div class="title"><i class="fa-solid fa-hourglass-start"></i><span>Em andamento</span></div>
+                        <span class="task-count">4</span>
+                        <i class="fa fa-ellipsis-v"></i>
+                    </div>
+                    <div class="content">
+                    </div>
+                </div>
+                <div class="kanban-box" id="in-review">
+                    <div class="header">
+                        <div class="title"><i class="fa-solid fa-magnifying-glass"></i><span>Em review</span></div>
+                        <span class="task-count">4</span>
+                        <i class="fa fa-ellipsis-v"></i>
+                    </div>
+                    <div class="content">
+                    </div>
+                </div>
+                <div class="kanban-box" id="done">
+                    <div class="header">
+                        <div class="title"><i class="fa-solid fa-check"></i><span>Finalizado</span></div>
+                        <span class="task-count">3</span>
+                        <i class="fa fa-ellipsis-v"></i>
+                    </div>
+                    <div class="content">
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <div class="modal" id="task-modal">
+        <div class="modal-content">
+            <span class="close-button" id="close-modal">&times;</span>
+            <h2>Adicionar tarefa</h2>
+            <form id="task-form">
+                <div class="task-type">
+                    <label for="task-title">Título:</label>
+                    <input type="text" id="task-title" name="task-title" required>
+                </div>
+
+                <div class="task-type">
+                    <label for="task-desc">Descrição:</label>
+                    <textarea id="task-desc" name="task-desc" required></textarea>
+                </div>
+
+                <div class="task-type">
+                    <label for="task-prioridade">Prioridade:</label>
+                    <select id="task-prioridade" name="task-prioridade" required>
+                        <option value="alta">Alta</option>
+                        <option value="media">Média</option>
+                        <option value="baixa">Baixa</option>
+                    </select>
+                </div>
+
+                <div class="task-type">
+                    <label for="task-prazo-date">Prazo:</label>
+                    <input type="date" id="task-prazo-date" name="task-prazo-date" required>
+                </div>
+
+                <button type="submit">Adicionar Tarefa</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="cardModal" class="card-modal">
+        <div class="modal-content">
+            <h3>Editar Card</h3>
+            <label for="modalPrazo">Prazo:</label>
+            <input type="date" id="modalPrazo">
+
+            <label for="modalObs">Observação:</label>
+            <textarea id="modalObs" rows="4"></textarea>
+
+            <div class="buttons">
+                <button id="salvarModal">Salvar</button>
+                <button id="fecharModal">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modalFilter" class="card-modal" style="width: 300px !important;">
+        <div class="modal-content">
+            <h3>Filtros</h3>
+            <!-- Filtros -->
+            <div id="filtros">
+                <div class="dropdown">
+                    <button class="dropbtn">🏢 Obras</button>
+                    <div class="dropdown-content" id="filtroObra"></div>
+                </div>
+
+                <div class="dropdown">
+                    <button class="dropbtn">💼 Funções</button>
+                    <div class="dropdown-content" id="filtroFuncao"></div>
+                </div>
+
+                <div class="dropdown">
+                    <button class="dropbtn">✅ Status</button>
+                    <div class="dropdown-content" id="filtroStatus">
+                        <label><input type="checkbox" value=""> Todos os status</label>
+                        <label><input type="checkbox" value="Não iniciado"> Não iniciado</label>
+                        <label><input type="checkbox" value="Em andamento"> Em andamento</label>
+                        <label><input type="checkbox" value="Em aprovação"> Em aprovação</label>
+                        <label><input type="checkbox" value="Finalizado"> Finalizado</label>
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="main-container">
+    </div>
 
-            <div id="container-calendario" class="container active">
-                <div>
-                    <div class="calendario">
-                        <div id="calendarFull"></div>
-                    </div>
-                </div>
+    <div class="modal" id="modal">
+        <div class="modal-content" style="width: 500px;">
+            <h1>Daily meet Assíncrono</h1>
+            <form id="dailyForm">
+                <label for="finalizado">✅ O que finalizei ontem?</label>
+                <textarea id="finalizado" name="finalizado" required></textarea>
 
-            </div>
+                <label for="hoje">⏳ O que vou fazer hoje?</label>
+                <textarea id="hoje" name="hoje" required></textarea>
 
-            <div id="container-andamento" class="container">
-                <select id="colaboradorSelectAndamento">
-                    <?php foreach ($colaboradores as $colab): ?>
-                        <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                            <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
+                <label for="bloqueio">🚧 Algum bloqueio ou dúvida?</label>
+                <textarea id="bloqueio" name="bloqueio" required></textarea>
 
-                <div id="imagensColaboradorAndamento">
-
-                </div>
-            </div>
-
-            <div id="priority-container" class="container">
-                <h2>Gerenciar Prioridades</h2>
-                <select id="colaboradorSelectPrioridade">
-                    <?php foreach ($colaboradores as $colab): ?>
-                        <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                            <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-
-                <!-- Áreas de prioridade -->
-                <div id="priority-zones">
-                    <div class="priority-group" id="alta-prioridade">
-                        <h3>Alta Prioridade</h3>
-                        <div class="drop-zone" data-priority="1"></div>
-                    </div>
-                    <div class="priority-group" id="media-prioridade">
-                        <h3>Média Prioridade</h3>
-                        <div class="drop-zone" data-priority="2"></div>
-                    </div>
-                    <div class="priority-group" id="baixa-prioridade">
-                        <h3>Baixa Prioridade</h3>
-                        <div class="drop-zone" data-priority="3"></div>
-                    </div>
-                </div>
-
-                <div id="priorityDropZones">
-                    <!-- As imagens serão exibidas aqui -->
-                </div>
-            </div>
+                <button type="submit">Enviar respostas</button>
+            </form>
         </div>
-        <div class="modal" id="modal">
-            <div class="modal-content" style="width: 500px;">
-                <h1>Daily meet Assíncrono</h1>
-                <form id="dailyForm">
-                    <label for="finalizado">✅ O que finalizei ontem?</label>
-                    <textarea id="finalizado" name="finalizado" required></textarea>
-
-                    <label for="hoje">⏳ O que vou fazer hoje?</label>
-                    <textarea id="hoje" name="hoje" required></textarea>
-
-                    <label for="bloqueio">🚧 Algum bloqueio ou dúvida?</label>
-                    <textarea id="bloqueio" name="bloqueio" required></textarea>
-
-                    <button type="submit">Enviar respostas</button>
-                </form>
-            </div>
-        </div>
-
-    </main>
+    </div>
 
     <div id="notificacao-sino" class="notificacao-sino">
         <i class="fas fa-bell sino" id="icone-sino"></i>
@@ -269,32 +330,6 @@ $conn->close();
         </div>
     </div>
 
-    <!-- Modal para o iframe do changelog -->
-    <div id="modalLastDay" class="modal" style="display:none;">
-        <div class="modal-content" style="width:90vw;max-width: 50vw;height: 40vh;position:relative;">
-            <div id="textoAlerta"></div>
-            <div id="imagens-list"></div>
-        </div>
-    </div>
-
-    <div id="modalPrimeiroDia" class="modal" style="display:none;">
-        <div class="modal-content" style="width:90vw; max-width: 50vw; position:relative;">
-            <h2>Revisão do mês anterior</h2>
-            <div id="imagens_list_primeiro_dia"></div>
-
-            <div class="situacaoDiv">
-                <label><input type="radio" name="situacao" value="check"> Sim, está tudo certo (Check)</label>
-                <label><input type="radio" name="situacao" value="alteracao"> Não, fiz alterações</label>
-            </div>
-                
-            <div id="observacaoDiv" style="display:none;">
-                <label>Observações:</label>
-                <textarea id="observacaoTexto" rows="4" style="width:100%"></textarea>
-            </div>
-
-            <button onclick="enviarRevisaoMes()">Enviar</button>
-        </div>
-    </div>
 
 
     <script>
@@ -460,19 +495,20 @@ $conn->close();
             .then(() => {
                 buscarTarefas();
                 mostrarChangelogSeNecessario(); // Só mostra se não viu esta versão
-                exibirModalPrimeiroDiaUtil()
             })
             .catch(() => {
                 console.log('Fluxo interrompido devido a erro ou resposta incompleta.');
             });
     </script>
 
-    <script src="script/notificacoes.js"></script>
-    <script src="script/scriptIndex.js"></script>
-    <script src="./script/sidebar.js"></script>
+
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <script src="script/notificacoes.js"></script>
+    <script src="script/scriptIndex.js"></script>
+    <script src="./script/sidebar.js"></script>
 
 </body>
 

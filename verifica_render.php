@@ -1,4 +1,9 @@
 <?php
+header("Access-Control-Allow-Origin: *"); // ou especificar o domínio
+header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type, Authorization");
+
+
 include("conexao.php");
 
 $id = $_POST['idcolaborador'] ?? 0;

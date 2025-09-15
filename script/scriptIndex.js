@@ -1,16 +1,17 @@
-document.getElementById('showMenu').addEventListener('click', function () {
-    const menu2 = document.getElementById('menu2');
-    menu2.classList.toggle('hidden');
-});
+// document.getElementById('showMenu').addEventListener('click', function () {
+//     const menu2 = document.getElementById('menu2');
+//     menu2.classList.toggle('hidden');
+// });
 
-window.addEventListener('click', function (event) {
-    const menu2 = document.getElementById('menu2');
-    const button = document.getElementById('showMenu');
+// window.addEventListener('click', function (event) {
+//     const menu2 = document.getElementById('menu2');
+//     const button = document.getElementById('showMenu');
 
-    if (!button.contains(event.target) && !menu2.contains(event.target)) {
-        menu2.classList.add('hidden');
-    }
-});
+//     if (!button.contains(event.target) && !menu2.contains(event.target)) {
+//         menu2.classList.add('hidden');
+//     }
+// });
+carregarDados();
 
 carregarEventosEntrega();
 
@@ -336,4 +337,353 @@ function updateEvent(event) {
             eventModal.style.display = "none";
         }
     });
+});
+
+
+
+// const idusuario = 1;
+// const idcolaborador = 1;
+function carregarDados(colaboradorId = 8) {
+
+    // Extrai mês e ano
+    const mes = '08'; // exemplo
+    const ano = '2025';
+    const obraId = ''; // valor padrão
+    const funcoesSelecionadas = []; // nenhuma função selecionada
+    const statusSelecionados = []; // nenhum status selecionado
+
+    let url = `getFuncoesPorColaborador.php?colaborador_id=${colaboradorId}`;
+    if (mes) url += `&mes=${encodeURIComponent(mes)}`;
+    if (ano) url += `&ano=${encodeURIComponent(ano)}`;
+    if (obraId) url += `&obra_id=${encodeURIComponent(obraId)}`;
+    if (funcoesSelecionadas.length) url += `&funcao_id=${encodeURIComponent(funcoesSelecionadas.join(','))}`;
+    if (statusSelecionados.length) url += `&status=${encodeURIComponent(statusSelecionados.join(','))}`;
+
+    fetch(url)
+        .then(res => res.json())
+        .then(data => {
+            // Mapeia status para IDs das colunas
+            const statusMap = {
+                'Não iniciado': 'to-do',
+                'Em andamento': 'in-progress',
+                'Em aprovação': 'in-review',
+                'Finalizado': 'done'
+            };
+
+            // Limpa conteúdo de todas as colunas
+            Object.values(statusMap).forEach(colId => {
+                const col = document.getElementById(colId);
+                if (col) col.querySelector('.content').innerHTML = '';
+            });
+
+            // Função auxiliar para criar cards
+            function criarCard(item, tipo) {
+                // Define status real
+                let status = item.status || 'Não iniciado';
+                if (['Ajuste', 'Aprovado', 'Aprovado com ajustes', 'Em aprovação'].includes(status)) status = 'Em aprovação';
+                else if (status === 'Em andamento') status = 'Em andamento';
+                else if (status === 'Finalizado') status = 'Finalizado';
+                else status = 'Não iniciado';
+
+                const colunaId = statusMap[status];
+                const coluna = document.getElementById(colunaId)?.querySelector('.content');
+                if (!coluna) return;
+
+                // Define a classe da tarefa (criada ou imagem)
+                const tipoClasse = tipo === 'imagem' ? 'tarefa-imagem' : 'tarefa-criada';
+
+                // Normaliza prioridade (número ou string)
+                if (item.prioridade == 3 || item.prioridade === 'baixa') {
+                    item.prioridade = 'baixa';
+                } else if (item.prioridade == 2 || item.prioridade === 'media' || item.prioridade === 'média') {
+                    item.prioridade = 'media';
+                } else {
+                    item.prioridade = 'alta';
+                }
+
+
+                // Nome a exibir
+                const titulo = tipo === 'imagem' ? item.imagem_nome : item.titulo;
+                const subtitulo = tipo === 'imagem' ? item.nome_funcao : item.descricao;
+
+                // Cria card
+                const card = document.createElement('div');
+                card.className = `kanban-card ${tipoClasse}`;
+                card.setAttribute('data-id', `${item.idfuncao_imagem}`)
+                card.innerHTML = `
+                    <span class="priority ${item.prioridade || 'medium'}">${item.prioridade || 'Medium'}</span>
+                    <h5>${titulo || '-'}</h5>
+                    <p>${subtitulo || '-'}</p>
+                    <div class="card-footer">
+                        <span class="date"><i class="fa-regular fa-calendar"></i> ${item.prazo ? formatarData(item.prazo) : '-'}</span>
+                    </div>
+                `;
+
+                // Evento de clique
+                card.addEventListener('click', () => {
+
+                    if (tipo === 'imagem') {
+                        atualizarModal(item.imagem_id);
+                        console.log("Imagem selecionada:", item.imagem_id);
+                    } else {
+                        console.log("Tarefa selecionada:", item.id);
+                        // aqui pode abrir outro modal para editar tarefa
+                    }
+                });
+
+                // Atributos para filtros
+                card.dataset.obra_nome = item.nomenclatura || '';      // nome da obra
+                card.dataset.funcao_nome = item.nome_funcao || '';  // nome da função
+                card.dataset.status = status;                       // status normalizado
+
+
+                coluna.appendChild(card);
+            }
+
+            // Adiciona funções (tarefas de imagem)
+            if (data.funcoes) {
+                data.funcoes.forEach(item => criarCard(item, 'imagem'));
+            }
+
+            // Adiciona tarefas criadas
+            if (data.tarefas) {
+                data.tarefas.forEach(item => criarCard(item, 'criada'));
+            }
+
+            // Atualiza contagem de tarefas
+            Object.keys(statusMap).forEach(status => {
+                const col = document.getElementById(statusMap[status]);
+                const count = col.querySelectorAll('.kanban-card').length;
+                col.querySelector('.task-count').textContent = count;
+            });
+
+            preencherFiltros()
+
+
+        })
+        .catch(err => console.error('Erro ao carregar funções/tarefas:', err));
+}
+
+
+
+// Preenche os filtros dinâmicos
+function preencherFiltros() {
+    const obras = new Set();
+    const funcoes = new Set();
+
+    document.querySelectorAll('.kanban-card').forEach(card => {
+        if (card.dataset.obra_nome) obras.add(card.dataset.obra_nome);
+        if (card.dataset.funcao_nome) funcoes.add(card.dataset.funcao_nome);
+    });
+
+    const filtroObra = document.getElementById('filtroObra');
+    const filtroFuncao = document.getElementById('filtroFuncao');
+
+    filtroObra.innerHTML = '<label><input type="checkbox" value=""> Todas as obras</label>';
+    filtroFuncao.innerHTML = '<label><input type="checkbox" value=""> Todas as funções</label>';
+
+    obras.forEach(o => {
+        filtroObra.innerHTML += `<label><input type="checkbox" value="${o}"> ${o}</label>`;
+    });
+
+    funcoes.forEach(f => {
+        filtroFuncao.innerHTML += `<label><input type="checkbox" value="${f}"> ${f}</label>`;
+    });
+
+    // Reaplica os eventos de filtro
+    document.querySelectorAll('#filtroObra input, #filtroFuncao input, #filtroStatus input')
+        .forEach(chk => chk.addEventListener('change', aplicarFiltros));
+}
+
+const statusMapInvertido = {
+    'to-do': 'Não iniciado',
+    'in-progress': 'Em andamento',
+    'in-review': 'Em aprovação',
+    'done': 'Finalizado'
+};
+
+// Aplica os filtros selecionados
+function aplicarFiltros() {
+    const obrasSelecionadas = Array.from(document.querySelectorAll('#filtroObra input:checked')).map(el => el.value).filter(v => v);
+    const funcoesSelecionadas = Array.from(document.querySelectorAll('#filtroFuncao input:checked')).map(el => el.value).filter(v => v);
+    const statusSelecionados = Array.from(document.querySelectorAll('#filtroStatus input:checked')).map(el => el.value).filter(v => v);
+
+    document.querySelectorAll('.kanban-card').forEach(card => {
+        let mostrar = true;
+
+        if (obrasSelecionadas.length && !obrasSelecionadas.includes(card.dataset.obra_nome)) mostrar = false;
+        if (funcoesSelecionadas.length && !funcoesSelecionadas.includes(card.dataset.funcao_nome)) mostrar = false;
+        if (statusSelecionados.length && !statusSelecionados.includes(card.dataset.status)) mostrar = false;
+
+        card.style.display = mostrar ? 'block' : 'none';
+    });
+}
+
+// Vincula eventos de mudança dos selects
+['filtroObra', 'filtroFuncao', 'filtroStatus'].forEach(id => {
+    document.getElementById(id)?.addEventListener('change', aplicarFiltros);
+});
+
+function formatarData(data) {
+    const partes = data.split("-");
+    const dataFormatada = `${partes[2]}/${partes[1]}/${partes[0]}`;
+    return dataFormatada;
+}
+
+
+
+const buttons = document.querySelectorAll('.nav-left button');
+
+buttons.forEach(btn => {
+    btn.addEventListener('click', () => {
+        // Remove active de todos
+        buttons.forEach(b => b.classList.remove('active'));
+        // Adiciona active no botão clicado
+        btn.classList.add('active');
+    });
+});
+
+const add_task = document.getElementById('add-task');
+add_task.addEventListener('click', () => {
+    const modal = document.getElementById('task-modal');
+    modal.style.display = 'block';
+});
+
+
+const form = document.getElementById('task-form');
+const modal = document.getElementById('task-modal');
+const closeBtn = document.getElementById('close-modal');
+
+// Fecha o modal
+closeBtn.addEventListener('click', () => {
+    modal.style.display = 'none';
+});
+
+// Submit AJAX
+form.addEventListener('submit', (e) => {
+    e.preventDefault();
+
+    const formData = new FormData(form);
+
+    fetch('addTask.php', {
+        method: 'POST',
+        body: formData
+    })
+        .then(res => res.json())
+        .then(response => {
+            if (response.success) {
+                alert("✅ Tarefa adicionada com sucesso!");
+                form.reset();
+                modal.style.display = 'none';
+                // aqui você pode recarregar o Kanban
+                carregarDados();
+            } else {
+                alert("❌ Erro: " + response.message);
+            }
+        })
+        .catch(err => {
+            console.error("Erro no fetch:", err);
+            alert("Erro ao enviar tarefa.");
+        });
+});
+
+const cardModal = document.getElementById('cardModal');
+const modalPrazo = document.getElementById('modalPrazo');
+const modalObs = document.getElementById('modalObs');
+let cardSelecionado = null;
+
+// Fechar modal
+document.getElementById('fecharModal').addEventListener('click', () => {
+    cardModal.classList.remove('active');
+    cardSelecionado = null;
+});
+
+// Salvar alterações
+document.getElementById('salvarModal').addEventListener('click', () => {
+    if (!cardSelecionado) return;
+
+    cardSelecionado.dataset.prazo = modalPrazo.value;
+    cardSelecionado.dataset.observacao = modalObs.value;
+
+    console.log('Salvo:', {
+        prazo: modalPrazo.value,
+        observacao: modalObs.value,
+        cardId: cardSelecionado.dataset.id,
+        novaColuna: cardSelecionado.closest('.kanban-box').id
+    });
+
+    // Aqui você pode enviar via fetch/AJAX para atualizar no banco
+    cardModal.classList.remove('active');
+    cardSelecionado = null;
+});
+
+// Inicializa Sortable nas colunas
+const colunas = document.querySelectorAll('.kanban-box .content');
+colunas.forEach(col => {
+    new Sortable(col, {
+        group: 'kanban',
+        animation: 150,
+        ghostClass: 'sortable-ghost',
+        onEnd: (evt) => {
+            const card = evt.item;                                // Card movido
+            const deColuna = evt.from.closest('.kanban-box');     // coluna origem
+            const novaColuna = evt.to.closest('.kanban-box');     // coluna destino
+            const novoIndex = evt.newIndex;
+
+            console.log(`Card movido de ${deColuna.id} para ${novaColuna.id}, índice: ${novoIndex}`);
+
+            // Só abre modal se mudou de coluna
+            if (deColuna.id !== novaColuna.id) {
+                cardSelecionado = card;
+
+                // Preencher campos com dados existentes do card
+                modalPrazo.value = card.dataset.prazo || '';
+                modalObs.value = card.dataset.observacao || '';
+
+                // Ativar modal
+                cardModal.classList.add('active');
+
+                // Posicionar modal ao lado da coluna de destino
+                const rect = novaColuna.getBoundingClientRect();
+                cardModal.style.left = `${rect.right + 10}px`;
+                cardModal.style.top = `${rect.top + 10}px`;
+            }
+        }
+    });
+});
+
+
+const btnFilter = document.getElementById('filter');
+const modalFilter = document.getElementById('modalFilter');
+
+btnFilter.addEventListener('click', function () {
+
+    modalFilter.classList.add('active');
+
+    const rect = btnFilter.getBoundingClientRect();
+    modalFilter.style.left = `${rect.left + (rect.width / 2) - (modalFilter.offsetWidth / 2)}px`;
+    modalFilter.style.top = `${rect.bottom + 5}px`; // 5px de espaçamento
+
+})
+
+
+document.querySelectorAll('.dropbtn').forEach(btn => {
+    btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+
+        // Fecha todos antes
+        document.querySelectorAll('.dropdown-content').forEach(dc => dc.classList.remove('show'));
+
+        // Pega o dropdown-content mais próximo do botão clicado
+        const dropdown = this.closest('.dropdown').querySelector('.dropdown-content');
+        dropdown.classList.toggle('show');
+    });
+});
+
+// Fecha ao clicar fora
+document.addEventListener('click', (e) => {
+    // Se o clique NÃO for dentro de um .dropdown, fecha todos
+    if (!e.target.closest('.dropdown')) {
+        document.querySelectorAll('.dropdown-content').forEach(dc => dc.classList.remove('show'));
+    }
 });

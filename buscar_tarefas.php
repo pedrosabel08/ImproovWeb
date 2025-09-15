@@ -1,9 +1,13 @@
 <?php
+header("Access-Control-Allow-Origin: *"); // ou especificar o domínio
+header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type, Authorization");
+
 session_start();
 include 'conexao.php'; // Inclua a conexão com o banco de dados.
 
-$idusuario = $_SESSION['idusuario']; // ID do usuário logado.
-$idcolaborador = $_SESSION['idcolaborador'];
+$idusuario = $_GET['idusuario']; // ID do usuário logado.
+$idcolaborador = $_GET['colaborador_id'];
 
 if (!$idusuario) {
     echo json_encode(['error' => 'Usuário não autenticado']);

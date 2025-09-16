@@ -15,6 +15,19 @@ carregarDados();
 
 carregarEventosEntrega();
 
+const data = new Date();
+
+// Pega o mês abreviado em pt-BR (ex: set, out, nov...)
+let mes = data.toLocaleDateString('pt-BR', { month: 'short' });
+mes = mes.charAt(0).toUpperCase() + mes.slice(1).replace('.', ''); // Capitaliza e remove ponto
+
+const dia = data.getDate();
+const ano = data.getFullYear();
+
+const formatted = `${mes} ${dia}, ${ano}`;
+
+document.querySelector('#date span').textContent = formatted;
+
 let events = [];
 
 function carregarEventosEntrega() {
@@ -343,10 +356,10 @@ function updateEvent(event) {
 
 // const idusuario = 1;
 // const idcolaborador = 1;
-function carregarDados(colaboradorId = 8) {
+function carregarDados(colaboradorId = 27) {
 
     // Extrai mês e ano
-    const mes = '08'; // exemplo
+    const mes = ''; // exemplo
     const ano = '2025';
     const obraId = ''; // valor padrão
     const funcoesSelecionadas = []; // nenhuma função selecionada
@@ -411,11 +424,17 @@ function carregarDados(colaboradorId = 8) {
                 card.className = `kanban-card ${tipoClasse}`;
                 card.setAttribute('data-id', `${item.idfuncao_imagem}`)
                 card.innerHTML = `
-                    <span class="priority ${item.prioridade || 'medium'}">${item.prioridade || 'Medium'}</span>
+                    <div class="header-kanban">
+                        <span class="priority ${item.prioridade || 'medium'}">${item.prioridade || 'Medium'}</span>
+                    </div>
                     <h5>${titulo || '-'}</h5>
                     <p>${subtitulo || '-'}</p>
                     <div class="card-footer">
                         <span class="date"><i class="fa-regular fa-calendar"></i> ${item.prazo ? formatarData(item.prazo) : '-'}</span>
+                    </div>
+                    <div class="card-log">
+                        <span class="date"><i class="ri-time-line"></i> ${item.tempo_em_andamento ? formatarDuracao(item.tempo_em_andamento) : '-'}</span>
+                        <span class="comments"><i class="ri-chat-3-line"></i> ${item.comentarios_ultima_versao ? item.comentarios_ultima_versao : '-'}</span>
                     </div>
                 `;
 
@@ -462,6 +481,21 @@ function carregarDados(colaboradorId = 8) {
 
         })
         .catch(err => console.error('Erro ao carregar funções/tarefas:', err));
+}
+
+function formatarDuracao(minutos) {
+    if (!minutos || minutos < 0) return "-";
+
+    const dias = Math.floor(minutos / 1440); // 1440 = 60*24
+    const horas = Math.floor((minutos % 1440) / 60);
+    const mins = minutos % 60;
+
+    let partes = [];
+    if (dias > 0) partes.push(`${dias}d`);
+    if (horas > 0) partes.push(`${horas}h`);
+    if (mins > 0) partes.push(`${mins}min`);
+
+    return partes.join(" ");
 }
 
 

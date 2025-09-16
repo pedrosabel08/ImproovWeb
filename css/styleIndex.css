@@ -9,7 +9,7 @@
 
 :root {
     --cor-principal: #3f3f3f;
-    --cor-secundaria: #0084ff;
+    --cor-secundaria: #0050ab;
 }
 
 body {
@@ -36,6 +36,11 @@ button {
 main header {
     border: 1px solid #dcdcdc;
     padding: 20px;
+}
+
+main header .top {
+    display: flex;
+    justify-content: space-between;
 }
 
 main header h3 {
@@ -83,7 +88,7 @@ main nav .nav-left button.active {
     right: 10%;
     bottom: 4px;
     height: 2px;
-    background-color: #007bff;
+    background-color: var(--cor-secundaria);
     border-radius: 2px;
 }
 
@@ -103,7 +108,7 @@ main nav .nav-right button {
 }
 
 main nav .nav-right button:last-child {
-    background-color: #1983fc;
+    background-color: var(--cor-secundaria);
     color: white;
     border: none;
 }
@@ -191,8 +196,12 @@ main .kanban div .header .task-count {
     background-color: #fff0f0;
 } */
 
+.kanban .header-kanban {
+    display: flex;
+    justify-content: space-between;
+}
 
-.kanban-card .priority {
+.kanban-card .header-kanban .priority {
     display: inline-block;
     padding: 2px 6px;
     border-radius: 6px;
@@ -202,19 +211,24 @@ main .kanban div .header .task-count {
     margin-bottom: 5px;
 }
 
-.kanban-card .priority.alta {
+.kanban-card .header-kanban .priority.alta {
     background-color: #ff6b6b;
     color: white;
 }
 
-.kanban-card .priority.media {
+.kanban-card .header-kanban .priority.media {
     background-color: #ffa94d;
     color: white;
 }
 
-.kanban-card .priority.baixa {
+.kanban-card .header-kanban .priority.baixa {
     background-color: #74c0fc;
     color: white;
+}
+
+.kanban-card .header-kanban .imagem_prazo {
+    font-size: 0.6rem;
+    color: var(--cor-principal);
 }
 
 .kanban-card h5 {

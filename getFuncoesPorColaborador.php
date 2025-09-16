@@ -22,22 +22,54 @@ $prioridade = $_GET['prioridade'] ?? '';
 // FUNÇÕES
 // ====================
 $sql = "SELECT
-            ico.idimagens_cliente_obra AS imagem_id,
-            ico.imagem_nome,
-            fi.status,
-            fi.prazo,
-            f.nome_funcao,
-            pc.prioridade,
-            fi.idfuncao_imagem,
-            fi.funcao_id,
-            ico.obra_id,
-            o.nomenclatura
-        FROM funcao_imagem fi
-        JOIN imagens_cliente_obra ico ON fi.imagem_id = ico.idimagens_cliente_obra
-        JOIN obra o ON o.idobra = ico.obra_id
-        JOIN funcao f on fi.funcao_id = f.idfuncao
-        JOIN prioridade_funcao pc ON fi.idfuncao_imagem = pc.funcao_imagem_id
-        WHERE fi.colaborador_id = ? AND o.status_obra = 0";
+    ico.idimagens_cliente_obra AS imagem_id,
+    ico.imagem_nome,
+    fi.status,
+    fi.prazo,
+    f.nome_funcao,
+    pc.prioridade,
+    fi.idfuncao_imagem,
+    fi.funcao_id,
+    ico.obra_id,
+    o.nomenclatura,
+    ico.prazo AS imagem_prazo,
+
+    -- Tempo entre Em andamento e Em aprovação
+    TIMESTAMPDIFF(
+        MINUTE,
+        (SELECT la.data
+         FROM log_alteracoes la
+         WHERE la.funcao_imagem_id = fi.idfuncao_imagem
+           AND la.status_novo = 'Em andamento'
+         ORDER BY la.data ASC LIMIT 1),
+        (SELECT la.data
+         FROM log_alteracoes la
+         WHERE la.funcao_imagem_id = fi.idfuncao_imagem
+           AND la.status_novo = 'Em aprovação'
+         ORDER BY la.data ASC LIMIT 1)
+    ) AS tempo_em_andamento,
+
+    -- Contagem de comentários da última versão
+    (
+        SELECT COUNT(*)
+        FROM comentarios_imagem ci
+        JOIN historico_aprovacoes_imagens hi2 
+            ON ci.ap_imagem_id = hi2.id
+        WHERE hi2.funcao_imagem_id = fi.idfuncao_imagem
+          AND hi2.indice_envio = (
+              SELECT MAX(hi3.indice_envio)
+              FROM historico_aprovacoes_imagens hi3
+              WHERE hi3.funcao_imagem_id = fi.idfuncao_imagem
+          )
+    ) AS comentarios_ultima_versao
+
+FROM funcao_imagem fi
+JOIN imagens_cliente_obra ico ON fi.imagem_id = ico.idimagens_cliente_obra
+JOIN obra o ON o.idobra = ico.obra_id
+JOIN funcao f ON fi.funcao_id = f.idfuncao
+JOIN prioridade_funcao pc ON fi.idfuncao_imagem = pc.funcao_imagem_id
+WHERE fi.colaborador_id = ?
+  AND o.status_obra = 0";
 
 if ($mes) $sql .= " AND MONTH(fi.prazo) = ?";
 if ($ano) $sql .= " AND YEAR(fi.prazo) = ?";
@@ -183,7 +215,10 @@ foreach ($funcoes as $funcao) {
         'funcaoAnteriorId' => $funcaoAnteriorId,
         'obra_id' => $funcao['obra_id'],
         'nomenclatura' => $funcao['nomenclatura'],
-        'idfuncao_imagem' => $funcao['idfuncao_imagem']
+        'idfuncao_imagem' => $funcao['idfuncao_imagem'],
+        'tempo_em_andamento' => $funcao['tempo_em_andamento'],
+        'imagem_prazo' => $funcao['imagem_prazo'],
+        'comentarios_ultima_versao' => $funcao['comentarios_ultima_versao']
     ];
 }
 

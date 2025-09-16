@@ -99,13 +99,8 @@ $conn->close();
         <main>
             <header>
                 <div class="top">
-                    <div class="header-left">
-                        <h3 id="saudacao">Flow</h3>
-                        <h4>Pedro - Teste</h4>
-                    </div>
-                    <div class="header-right">
-                        <img src="gif/assinatura_preto.gif" alt="" style="width: 200px;">
-                    </div>
+                    <h3 id="saudacao"></h3>
+                    <img src="gif/assinatura_preto.gif" alt="" style="width: 200px;">
                 </div>
                 <nav>
                     <div class="nav-left">
@@ -115,7 +110,7 @@ $conn->close();
                         <button id="timeline"><span>Timeline</span></button>
                     </div>
                     <div class="nav-right">
-                        <button id="date"><i class="ri-calendar-todo-fill"></i><span>Mar 11, 2025</span></button>
+                        <button id="date"><i class="ri-calendar-todo-fill"></i><span></span></button>
                         <button id="filter"><i class="ri-equalizer-fill"></i><span>Filtros</span></button>
                         <button id="add-task"><i class="ri-add-line"></i></i><span>Adicionar tarefa</span></button>
                     </div>

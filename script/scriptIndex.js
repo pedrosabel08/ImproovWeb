@@ -380,6 +380,7 @@ function carregarDados(colaboradorId = 27) {
                 'Não iniciado': 'to-do',
                 'Em andamento': 'in-progress',
                 'Em aprovação': 'in-review',
+                'Ajuste': 'ajuste',
                 'Finalizado': 'done'
             };
 
@@ -390,13 +391,18 @@ function carregarDados(colaboradorId = 27) {
             });
 
             // Função auxiliar para criar cards
-            function criarCard(item, tipo) {
+            function criarCard(item, tipo, media) {
                 // Define status real
                 let status = item.status || 'Não iniciado';
-                if (['Ajuste', 'Aprovado', 'Aprovado com ajustes', 'Em aprovação'].includes(status)) status = 'Em aprovação';
-                else if (status === 'Em andamento') status = 'Em andamento';
-                else if (status === 'Finalizado') status = 'Finalizado';
-                else status = 'Não iniciado';
+                if (status === 'Ajuste') status = 'Ajuste';
+                else if (['Aprovado', 'Aprovado com ajustes', 'Em aprovação'].includes(status))
+                    status = 'Em aprovação';
+                else if (status === 'Em andamento')
+                    status = 'Em andamento';
+                else if (status === 'Finalizado')
+                    status = 'Finalizado';
+                else
+                    status = 'Não iniciado';
 
                 const colunaId = statusMap[status];
                 const coluna = document.getElementById(colunaId)?.querySelector('.content');
@@ -418,25 +424,50 @@ function carregarDados(colaboradorId = 27) {
                 // Nome a exibir
                 const titulo = tipo === 'imagem' ? item.imagem_nome : item.titulo;
                 const subtitulo = tipo === 'imagem' ? item.nome_funcao : item.descricao;
+                const obra = tipo === 'imagem' ? item.nomencltura : '';
+
+
+                function getTempoClass(tempo, media) {
+                    if (!tempo || tempo === 0) return ""; // sem tempo registrado
+
+                    if (tempo <= media) {
+                        return "tempo-bom"; // verde
+                    } else if (tempo <= media * 1.3) {
+                        return "tempo-atenção"; // amarelo
+                    } else {
+                        return "tempo-ruim"; // vermelho
+                    }
+                }
+
 
                 // Cria card
                 const card = document.createElement('div');
                 card.className = `kanban-card ${tipoClasse}`;
                 card.setAttribute('data-id', `${item.idfuncao_imagem}`)
+                card.setAttribute('data-id-imagem', `${item.idimagem}`)
                 card.innerHTML = `
                     <div class="header-kanban">
                         <span class="priority ${item.prioridade || 'medium'}">${item.prioridade || 'Medium'}</span>
                     </div>
                     <h5>${titulo || '-'}</h5>
+                    <h4 style="display: none">${obra || ''}</h5>
                     <p>${subtitulo || '-'}</p>
                     <div class="card-footer">
                         <span class="date"><i class="fa-regular fa-calendar"></i> ${item.prazo ? formatarData(item.prazo) : '-'}</span>
                     </div>
                     <div class="card-log">
-                        <span class="date"><i class="ri-time-line"></i> ${item.tempo_em_andamento ? formatarDuracao(item.tempo_em_andamento) : '-'}</span>
-                        <span class="comments"><i class="ri-chat-3-line"></i> ${item.comentarios_ultima_versao ? item.comentarios_ultima_versao : '-'}</span>
+                        <span class="date tooltip ${getTempoClass(item.tempo_em_andamento, media)}" data-tooltip="${formatarDuracao(media)}">
+                        <i class="ri-time-line"></i> 
+                        ${item.tempo_em_andamento ? formatarDuracao(item.tempo_em_andamento) : '-'}
+                        </span>
+                        <div class="comments">
+                            <span class="indice_envio"><i class="ri-file-line"></i> ${item.indice_envio_atual ? item.indice_envio_atual : '-'} |</span>
+                            <span class="numero_comments"><i class="ri-chat-3-line"></i> ${item.comentarios_ultima_versao ? item.comentarios_ultima_versao : '-'}</span>
+                        </div>
                     </div>
                 `;
+
+
 
                 // Evento de clique
                 card.addEventListener('click', () => {
@@ -461,7 +492,7 @@ function carregarDados(colaboradorId = 27) {
 
             // Adiciona funções (tarefas de imagem)
             if (data.funcoes) {
-                data.funcoes.forEach(item => criarCard(item, 'imagem'));
+                data.funcoes.forEach(item => criarCard(item, 'imagem', data.media_tempo_em_andamento));
             }
 
             // Adiciona tarefas criadas
@@ -651,6 +682,13 @@ document.getElementById('salvarModal').addEventListener('click', () => {
     cardSelecionado = null;
 });
 
+
+var idfuncao_imagem = null;
+var titulo = null;
+var subtitulo = null;
+var obra = null;
+var idimagem = null;
+
 // Inicializa Sortable nas colunas
 const colunas = document.querySelectorAll('.kanban-box .content');
 colunas.forEach(col => {
@@ -670,6 +708,14 @@ colunas.forEach(col => {
             if (deColuna.id !== novaColuna.id) {
                 cardSelecionado = card;
 
+                idfuncao_imagem = card.getAttribute("data-id");
+                idimagem = card.getAttribute("data-id-imagem");
+                titulo = card.querySelector("h5")?.innerText || "";
+                subtitulo = card.getAttribute("data-funcao_nome");
+                obra = card.getAttribute("data-obra_nome");
+
+                console.log(idfuncao_imagem, idimagem, titulo, subtitulo, obra)
+
                 // Preencher campos com dados existentes do card
                 modalPrazo.value = card.dataset.prazo || '';
                 modalObs.value = card.dataset.observacao || '';
@@ -679,12 +725,119 @@ colunas.forEach(col => {
 
                 // Posicionar modal ao lado da coluna de destino
                 const rect = novaColuna.getBoundingClientRect();
-                cardModal.style.left = `${rect.right + 10}px`;
-                cardModal.style.top = `${rect.top + 10}px`;
+                const modalWidth = cardModal.offsetWidth;
+                const modalHeight = cardModal.offsetHeight;
+
+                // Posição inicial: à direita
+                let left = rect.right + 10;
+                let top = rect.top + 10;
+
+                // Se estourar a largura da tela, joga para a esquerda
+                if (left + modalWidth > window.innerWidth) {
+                    left = rect.left - modalWidth - 10;
+                }
+
+                // Se estourar a parte de baixo da tela, ajusta para cima
+                if (top + modalHeight > window.innerHeight) {
+                    top = window.innerHeight - modalHeight - 10;
+                    if (top < 10) top = 10; // limite mínimo
+                }
+
+                cardModal.style.left = `${left}px`;
+                cardModal.style.top = `${top}px`;
+
             }
         }
     });
 });
+
+let imagensSelecionadas = [];
+
+
+// ENVIO DA PRÉVIA
+function enviarImagens() {
+    if (imagensSelecionadas.length === 0) {
+        Toastify({
+            text: "Selecione pelo menos uma imagem para enviar a prévia.",
+            duration: 3000,
+            gravity: "top",
+            backgroundColor: "#f44336"
+        }).showToast();
+        return;
+    }
+    const formData = new FormData();
+    imagensSelecionadas.forEach(file => formData.append('imagens[]', file));
+    formData.append('dataIdFuncoes', idfuncao_imagem);
+    formData.append('idimagem', idimagem);
+    formData.append('nome_funcao', subtitulo);
+    const campoNomeImagem = titulo;
+    formData.append('nome_imagem', campoNomeImagem);
+
+    // Extrai o número inicial antes do ponto
+    const numeroImagem = campoNomeImagem.match(/^\d+/)?.[0] || '';
+    formData.append('numeroImagem', numeroImagem);
+
+    // Extrai a nomenclatura (primeira palavra com "_", depois do número e ponto)
+    const nomenclatura = obra;
+    formData.append('nomenclatura', nomenclatura);
+
+    // Extrai a primeira palavra da descrição (depois da nomenclatura)
+    const descricaoMatch = campoNomeImagem.match(/^\d+\.\s*[A-Z_]+\s+([^\s]+)/);
+    const primeiraPalavra = descricaoMatch ? descricaoMatch[1] : '';
+    formData.append('primeiraPalavra', primeiraPalavra);
+
+
+    for (let [key, value] of formData.entries()) {
+        console.log(key, value);
+    }
+
+    // const statusSelect = document.getElementById('opcao_status');
+    // const statusNome = statusSelect.options[statusSelect.selectedIndex].text.trim();
+
+    // formData.append('status_nome', statusNome);
+
+    // fetch('../uploadArquivos.php', {
+    //     method: 'POST',
+    //     body: formData
+    // })
+    //     .then(resp => resp.json())
+    //     .then(res => {
+    //         Toastify({
+    //             text: "Prévia enviada com sucesso!",
+    //             duration: 3000,
+    //             gravity: "top",
+    //             backgroundColor: "#4caf50"
+    //         }).showToast();
+
+    //         // Avança para próxima etapa
+    //         document.getElementById('etapaPrevia').style.display = 'none';
+    //         document.getElementById('etapaFinal').style.display = 'block';
+    //         document.getElementById('etapaTitulo').textContent = "2. Envio do Arquivo Final";
+
+    //         Swal.fire({
+    //             position: "center",
+    //             icon: "success",
+    //             title: "Agora adicione o arquivo final",
+    //             showConfirmButton: false,
+    //             timer: 1500,
+    //             didOpen: () => {
+    //                 const title = Swal.getTitle();
+    //                 if (title) title.style.fontSize = "18px";
+    //             }
+    //         });
+
+
+    //     })
+    //     .catch(err => {
+    //         Toastify({
+    //             text: "Erro ao enviar prévia",
+    //             duration: 3000,
+    //             gravity: "top",
+    //             backgroundColor: "#f44336"
+    //         }).showToast();
+    //     });
+}
+
 
 
 const btnFilter = document.getElementById('filter');

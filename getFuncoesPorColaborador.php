@@ -33,7 +33,7 @@ $sql = "SELECT
     ico.obra_id,
     o.nomenclatura,
     ico.prazo AS imagem_prazo,
-
+    ico.idimagens_cliente_obra AS idimagem,
     -- Tempo entre Em andamento e Em aprovação
     TIMESTAMPDIFF(
         MINUTE,
@@ -61,7 +61,14 @@ $sql = "SELECT
               FROM historico_aprovacoes_imagens hi3
               WHERE hi3.funcao_imagem_id = fi.idfuncao_imagem
           )
-    ) AS comentarios_ultima_versao
+    ) AS comentarios_ultima_versao,
+        -- Índice de envio atual
+    (
+        SELECT MAX(hi.indice_envio)
+        FROM historico_aprovacoes_imagens hi
+        WHERE hi.funcao_imagem_id = fi.idfuncao_imagem
+    ) AS indice_envio_atual
+
 
 FROM funcao_imagem fi
 JOIN imagens_cliente_obra ico ON fi.imagem_id = ico.idimagens_cliente_obra
@@ -84,7 +91,7 @@ if ($status && count($statusList) > 0) {
 }
 if ($prioridade) $sql .= " AND pc.prioridade = ?";
 
-$sql .= " ORDER BY prazo DESC, obra_id, FIELD(fi.status,'Não iniciado', 'Em andamento', 'Ajuste', 'Em aprovação', 'Aprovado com ajustes', 'Aprovado', 'Finalizado'), imagem_id";
+$sql .= " ORDER BY prazo DESC, imagem_id, obra_id, FIELD(fi.status,'Não iniciado', 'Em andamento', 'Ajuste', 'Em aprovação', 'Aprovado com ajustes', 'Aprovado', 'Finalizado')";
 
 $stmt = $conn->prepare($sql);
 
@@ -139,6 +146,39 @@ $tarefas = [];
 while ($row = $resultTarefas->fetch_assoc()) {
     $tarefas[] = $row;
 }
+
+// ====================
+// MÉDIA TEMPO EM ANDAMENTO
+// ====================
+$sqlMedia = "SELECT 
+    ROUND(AVG(TIMESTAMPDIFF(
+        MINUTE,
+        (SELECT la1.data
+         FROM log_alteracoes la1
+         WHERE la1.funcao_imagem_id = fi.idfuncao_imagem
+           AND la1.status_novo = 'Em andamento'
+         ORDER BY la1.data ASC
+         LIMIT 1),
+        (SELECT la2.data
+         FROM log_alteracoes la2
+         WHERE la2.funcao_imagem_id = fi.idfuncao_imagem
+           AND la2.status_novo = 'Em aprovação'
+         ORDER BY la2.data ASC
+         LIMIT 1)
+    ))) AS media_tempo
+FROM funcao_imagem fi
+JOIN imagens_cliente_obra ico ON fi.imagem_id = ico.idimagens_cliente_obra
+JOIN obra o ON o.idobra = ico.obra_id
+WHERE fi.colaborador_id = ? 
+  AND o.status_obra = 0";
+$stmtMedia = $conn->prepare($sqlMedia);
+$stmtMedia->bind_param("i", $colaboradorId);
+$stmtMedia->execute();
+$resultMedia = $stmtMedia->get_result();
+$mediaRow = $resultMedia->fetch_assoc();
+$mediaTempo = $mediaRow['media_tempo'] ?? null;
+$stmtMedia->close();
+
 
 // ====================
 // Ajusta Funções (liberação, ordem, etc.)
@@ -218,7 +258,10 @@ foreach ($funcoes as $funcao) {
         'idfuncao_imagem' => $funcao['idfuncao_imagem'],
         'tempo_em_andamento' => $funcao['tempo_em_andamento'],
         'imagem_prazo' => $funcao['imagem_prazo'],
-        'comentarios_ultima_versao' => $funcao['comentarios_ultima_versao']
+        'comentarios_ultima_versao' => $funcao['comentarios_ultima_versao'],
+        'indice_envio_atual' => $funcao['indice_envio_atual'],
+        'idimagem' => $funcao['idimagem']
+        
     ];
 }
 
@@ -227,7 +270,8 @@ foreach ($funcoes as $funcao) {
 // ====================
 $response = [
     "funcoes" => $funcoesFinal,
-    "tarefas" => $tarefas
+    "tarefas" => $tarefas,
+    "media_tempo_em_andamento" => $mediaTempo
 ];
 
 echo json_encode($response);

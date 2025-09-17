@@ -49,6 +49,14 @@ $result = $stmt->get_result()->fetch_assoc();
 $indice_envio = ($result['max_indice'] ?? 0) + 1;
 $stmt->close();
 
+// Buscar índice de envio
+$stmt2 = $conn->prepare("SELECT MAX(indice_envio) AS max_indice FROM historico_aprovacoes_imagens WHERE funcao_imagem_id = ?");
+$stmt2->bind_param("i", $idFuncaoImagem);
+$stmt2->execute();
+$result2 = $stmt2->get_result()->fetch_assoc();
+$status_nome = $result2;
+$stmt2->close();
+
 // Função para upload com nome customizado
 function uploadImagem($imagem, $destino, $nomeFinalSemExtensao)
 {

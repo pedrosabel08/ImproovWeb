@@ -262,6 +262,8 @@ main .kanban div .header .task-count {
     border: 1px solid #fff;
 }
 
+
+
 .add-card {
     width: 100%;
     padding: 6px 0;
@@ -357,22 +359,22 @@ form#task-form button {
 
 .card-modal {
     position: fixed;
-    top: 0;
-    right: -400px;
     width: 400px;
-    height: max-content;
+    max-height: 90vh;
     background: #fff;
-    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.4), -2px 0 10px rgba(0, 0, 0, 0.4);
-    transition: right 0.3s ease;
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.4);
+    border-radius: 8px;
     z-index: 1000;
     overflow-y: auto;
     font-size: 0.8rem;
-    border-radius: 8px;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease;
 }
 
 .card-modal.active {
-    right: 0;
-    /* aparece */
+    opacity: 1;
+    visibility: visible;
 }
 
 .card-modal .modal-content h3 {
@@ -414,6 +416,7 @@ form#task-form button {
 .card-modal .buttons button#fecharModal {
     background-color: red;
 }
+
 
 #filtros {
     display: flex;
@@ -463,4 +466,96 @@ form#task-form button {
 
 .dropdown-content label:hover {
     background: #f0f0f0;
+}
+
+.card-log {
+    display: flex;
+    justify-content: space-evenly;
+    margin-top: 10px;
+    font-size: 0.7rem;
+    color: var(--cor-principal);
+}
+
+.card-log .date {
+    padding: 2px 8px;
+    font-weight: 600;
+    border-radius: 15px;
+}
+
+.tempo-bom {
+    color: green !important;
+    background-color: #acffac;
+}
+
+.tempo-atenção {
+    color: orange !important;
+    background-color: #fff7ac;
+}
+
+.tempo-ruim {
+    color: red !important;
+    background-color: #ffacac;
+}
+
+.tooltip {
+    position: relative;
+    cursor: pointer;
+}
+
+.tooltip::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 125%;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #333;
+    color: #fff;
+    padding: 4px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+    font-size: 12px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    z-index: 10;
+}
+
+.tooltip:hover::after {
+    opacity: 1;
+}
+
+
+.upload-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.file-input {
+    display: none;
+    /* esconde o input padrão */
+}
+
+.file-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #4f46e5;
+    color: #fff;
+    padding: 8px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background 0.3s ease;
+}
+
+.file-label:hover {
+    background: #4338ca;
+}
+
+.file-name {
+    font-size: 0.85rem;
+    color: #555;
+    font-style: italic;
 }

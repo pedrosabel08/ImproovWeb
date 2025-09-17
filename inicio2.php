@@ -120,8 +120,8 @@ $conn->close();
                 <div class="kanban-box" id="to-do">
                     <div class="header">
                         <div class="title"><i class="fa-solid fa-play"></i><span>Não iniciado</span></div>
-                        <span class="task-count">3</span>
-                        <i class="fa fa-ellipsis-v"></i>
+                        <span class="task-count"></span>
+                        <!-- <i class="fa fa-ellipsis-v"></i> -->
                     </div>
                     <div class="content">
                     </div>
@@ -129,17 +129,26 @@ $conn->close();
                 <div class="kanban-box" id="in-progress">
                     <div class="header">
                         <div class="title"><i class="fa-solid fa-hourglass-start"></i><span>Em andamento</span></div>
-                        <span class="task-count">4</span>
-                        <i class="fa fa-ellipsis-v"></i>
+                        <span class="task-count"></span>
+                        <!-- <i class="fa fa-ellipsis-v"></i> -->
                     </div>
                     <div class="content">
                     </div>
                 </div>
                 <div class="kanban-box" id="in-review">
                     <div class="header">
-                        <div class="title"><i class="fa-solid fa-magnifying-glass"></i><span>Em review</span></div>
-                        <span class="task-count">4</span>
-                        <i class="fa fa-ellipsis-v"></i>
+                        <div class="title"><i class="fa-solid fa-magnifying-glass"></i><span>Em aprovação</span></div>
+                        <span class="task-count"></span>
+                        <!-- <i class="fa fa-ellipsis-v"></i> -->
+                    </div>
+                    <div class="content">
+                    </div>
+                </div>
+                <div class="kanban-box" id="ajuste">
+                    <div class="header">
+                        <div class="title"><i class="ri-error-warning-line"></i><span>Em ajuste</span></div>
+                        <span class="task-count"></span>
+                        <!-- <i class="fa fa-ellipsis-v"></i> -->
                     </div>
                     <div class="content">
                     </div>
@@ -147,8 +156,8 @@ $conn->close();
                 <div class="kanban-box" id="done">
                     <div class="header">
                         <div class="title"><i class="fa-solid fa-check"></i><span>Finalizado</span></div>
-                        <span class="task-count">3</span>
-                        <i class="fa fa-ellipsis-v"></i>
+                        <span class="task-count"></span>
+                        <!-- <i class="fa fa-ellipsis-v"></i> -->
                     </div>
                     <div class="content">
                     </div>
@@ -194,12 +203,22 @@ $conn->close();
 
     <div id="cardModal" class="card-modal">
         <div class="modal-content">
+
             <h3>Editar Card</h3>
             <label for="modalPrazo">Prazo:</label>
             <input type="date" id="modalPrazo">
 
             <label for="modalObs">Observação:</label>
             <textarea id="modalObs" rows="4"></textarea>
+
+            <div class="upload-wrapper">
+                <input type="file" id="modalFile" class="file-input" />
+                <label for="modalFile" class="file-label">
+                    <i class="fa-solid fa-upload"></i> Escolher arquivo
+                </label>
+                <span id="fileName" class="file-name">Nenhum arquivo selecionado</span>
+                <button onclick="enviarImagens()">Enviar Prévia</button>
+            </div>
 
             <div class="buttons">
                 <button id="salvarModal">Salvar</button>

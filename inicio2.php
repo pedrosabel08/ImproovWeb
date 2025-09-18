@@ -76,9 +76,7 @@ $conn->close();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="css/styleIndex.css">
     <link rel="stylesheet" href="css/styleSidebar.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.6.0/remixicon.css"
-        integrity="sha512-kJlvECunwXftkPwyvHbclArO8wszgBGisiLeuDFwNM8ws+wKIw0sv1os3ClWZOcrEB2eRXULYUsm8OVRGJKwGA=="
-        crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link href="https://cdn.jsdelivr.net/npm/remixicon/fonts/remixicon.css" rel="stylesheet">
     <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s" type="image/x-icon">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
@@ -104,10 +102,10 @@ $conn->close();
                 </div>
                 <nav>
                     <div class="nav-left">
-                        <button id="overview"><span>Overview</span></button>
+                        <!-- <button id="overview"><span>Overview</span></button> -->
                         <button id="kanban" class="active"><i class="ri-kanban-view"></i><span>Kanban</span></button>
-                        <button id="activities"><i class="fa-solid fa-chart-line"><span></i>Activity</span></button>
-                        <button id="timeline"><span>Timeline</span></button>
+                        <!-- <button id="activities"><i class="fa-solid fa-chart-line"><span></i>Activity</span></button> -->
+                        <!-- <button id="timeline"><span>Timeline</span></button> -->
                     </div>
                     <div class="nav-right">
                         <button id="date"><i class="ri-calendar-todo-fill"></i><span></span></button>
@@ -120,6 +118,15 @@ $conn->close();
                 <div class="kanban-box" id="to-do">
                     <div class="header">
                         <div class="title"><i class="fa-solid fa-play"></i><span>Não iniciado</span></div>
+                        <span class="task-count"></span>
+                        <!-- <i class="fa fa-ellipsis-v"></i> -->
+                    </div>
+                    <div class="content">
+                    </div>
+                </div>
+                <div class="kanban-box" id="hold">
+                    <div class="header">
+                        <div class="title"><i class="fa-solid fa-play"></i><span>Hold</span></div>
                         <span class="task-count"></span>
                         <!-- <i class="fa fa-ellipsis-v"></i> -->
                     </div>
@@ -344,6 +351,10 @@ $conn->close();
         </div>
     </div>
 
+    <div id="loading" style="display:none; position:fixed; top:50%; left:50%;
+ transform:translate(-50%,-50%); background:#fff; padding:20px; border-radius:8px; box-shadow:0 0 10px rgba(0,0,0,.3);">
+        <i class="ri-loader-4-line ri-spin"></i> Carregando...
+    </div>
 
 
     <script>
@@ -502,9 +513,84 @@ $conn->close();
             });
         }
 
+        function checkFuncoesEmAndamento(idColaborador) {
+            return new Promise((resolve, reject) => {
+                fetch('getFuncoesEmAndamento.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded'
+                        },
+                        body: `idcolaborador=${idColaborador}`
+                    })
+                    .then(res => res.json())
+                    .then(funcoes => {
+                        if (!funcoes || funcoes.length === 0) {
+                            resolve(); // nada em andamento, segue fluxo
+                            return;
+                        }
+
+                        // Processa em sequência cada função
+                        let index = 0;
+
+                        function perguntarProximo() {
+                            if (index >= funcoes.length) {
+                                resolve(); // terminou todas
+                                return;
+                            }
+
+                            const funcao = funcoes[index];
+                            Swal.fire({
+                                title: `Você ainda está trabalhando em ${funcao.nome_funcao}?`,
+                                text: `Imagem: ${funcao.imagem_nome} (${funcao.nomenclatura})`,
+                                icon: "question",
+                                showCancelButton: true,
+                                confirmButtonText: "Sim, estou fazendo",
+                                cancelButtonText: "Não, colocar em HOLD"
+                            }).then((result) => {
+                                if (result.isConfirmed) {
+                                    // continua sem alterar
+                                    index++;
+                                    perguntarProximo();
+                                } else {
+                                    // pede observação
+                                    Swal.fire({
+                                        title: "Observação",
+                                        input: "text",
+                                        inputPlaceholder: "Por que não está fazendo?",
+                                        showCancelButton: false,
+                                        confirmButtonText: "Salvar"
+                                    }).then((obsResult) => {
+                                        const obs = obsResult.value || "";
+
+                                        fetch('atualizarFuncao.php', {
+                                            method: 'POST',
+                                            headers: {
+                                                'Content-Type': 'application/x-www-form-urlencoded'
+                                            },
+                                            body: `idfuncao_imagem=${funcao.idfuncao_imagem}&observacao=${encodeURIComponent(obs)}`
+                                        }).finally(() => {
+                                            index++;
+                                            perguntarProximo();
+                                        });
+                                    });
+                                }
+                            });
+                        }
+
+                        perguntarProximo();
+                    })
+                    .catch(err => {
+                        console.error("Erro ao verificar funções em andamento:", err);
+                        reject();
+                    });
+            });
+        }
+
+
 
         // 🚀 Dispara tudo ao carregar a página
         checkDailyAccess()
+            .then(() => checkFuncoesEmAndamento(idColaborador))
             .then(() => checkRenderItems(idColaborador))
             .then(() => {
                 buscarTarefas();

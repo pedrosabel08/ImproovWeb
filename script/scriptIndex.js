@@ -356,109 +356,134 @@ function updateEvent(event) {
 
 // const idusuario = 1;
 // const idcolaborador = 1;
-function carregarDados(colaboradorId = 27) {
-
-    // Extrai mês e ano
-    const mes = ''; // exemplo
-    const ano = '2025';
-    const obraId = ''; // valor padrão
-    const funcoesSelecionadas = []; // nenhuma função selecionada
-    const statusSelecionados = []; // nenhum status selecionado
+function carregarDados(colaboradorId = 21) {
 
     let url = `getFuncoesPorColaborador.php?colaborador_id=${colaboradorId}`;
-    if (mes) url += `&mes=${encodeURIComponent(mes)}`;
-    if (ano) url += `&ano=${encodeURIComponent(ano)}`;
-    if (obraId) url += `&obra_id=${encodeURIComponent(obraId)}`;
-    if (funcoesSelecionadas.length) url += `&funcao_id=${encodeURIComponent(funcoesSelecionadas.join(','))}`;
-    if (statusSelecionados.length) url += `&status=${encodeURIComponent(statusSelecionados.join(','))}`;
 
-    fetch(url)
-        .then(res => res.json())
-        .then(data => {
-            // Mapeia status para IDs das colunas
-            const statusMap = {
-                'Não iniciado': 'to-do',
-                'Em andamento': 'in-progress',
-                'Em aprovação': 'in-review',
-                'Ajuste': 'ajuste',
-                'Finalizado': 'done'
-            };
+    const xhr = new XMLHttpRequest();
 
-            // Limpa conteúdo de todas as colunas
-            Object.values(statusMap).forEach(colId => {
-                const col = document.getElementById(colId);
-                if (col) col.querySelector('.content').innerHTML = '';
-            });
+    // Mostra loading quando iniciar a requisição
+    xhr.addEventListener("loadstart", () => {
+        document.getElementById("loading").style.display = "block";
+    });
 
-            // Função auxiliar para criar cards
-            function criarCard(item, tipo, media) {
-                // Define status real
-                let status = item.status || 'Não iniciado';
-                if (status === 'Ajuste') status = 'Ajuste';
-                else if (['Aprovado', 'Aprovado com ajustes', 'Em aprovação'].includes(status))
-                    status = 'Em aprovação';
-                else if (status === 'Em andamento')
-                    status = 'Em andamento';
-                else if (status === 'Finalizado')
-                    status = 'Finalizado';
-                else
-                    status = 'Não iniciado';
+    // Esconde loading quando terminar
+    xhr.addEventListener("loadend", () => {
+        document.getElementById("loading").style.display = "none";
+    });
 
-                const colunaId = statusMap[status];
-                const coluna = document.getElementById(colunaId)?.querySelector('.content');
-                if (!coluna) return;
+    xhr.onreadystatechange = function () {
+        if (xhr.readyState === 4) {
+            if (xhr.status === 200) {
+                try {
+                    const data = JSON.parse(xhr.responseText);
 
-                // Define a classe da tarefa (criada ou imagem)
-                const tipoClasse = tipo === 'imagem' ? 'tarefa-imagem' : 'tarefa-criada';
+                    // Chama o tratamento
+                    processarDados(data);
 
-                // Normaliza prioridade (número ou string)
-                if (item.prioridade == 3 || item.prioridade === 'baixa') {
-                    item.prioridade = 'baixa';
-                } else if (item.prioridade == 2 || item.prioridade === 'media' || item.prioridade === 'média') {
-                    item.prioridade = 'media';
-                } else {
-                    item.prioridade = 'alta';
+                } catch (err) {
+                    console.error("Erro ao parsear JSON:", err);
                 }
+            } else {
+                console.error("Erro na requisição:", xhr.status);
+            }
+        }
+    };
+
+    xhr.open("GET", url, true);
+    xhr.send();
+}
+// extrai a lógica do fetch para uma função reutilizável
+function processarDados(data) {
+    const statusMap = {
+        'Não iniciado': 'to-do',
+        'Em andamento': 'in-progress',
+        'Em aprovação': 'in-review',
+        'Ajuste': 'ajuste',
+        'Finalizado': 'done',
+        'HOLD': 'hold'
+    };
+
+    Object.values(statusMap).forEach(colId => {
+        const col = document.getElementById(colId);
+        if (col) col.querySelector('.content').innerHTML = '';
+    });
+    // Função auxiliar para criar cards
+    function criarCard(item, tipo, media) {
+        // Define status real
+        let status = item.status || 'Não iniciado';
+        if (status === 'Ajuste') status = 'Ajuste';
+        else if (status === 'Em aprovação')
+            status = 'Em aprovação';
+        else if (status === 'Em andamento')
+            status = 'Em andamento';
+        else if (['Aprovado', 'Aprovado com ajustes', 'Finalizado'].includes(status))
+            status = 'Finalizado';
+        else if (status === 'Não iniciado')
+            status = 'Não iniciado';
+        else if (status === 'HOLD')
+            status = 'HOLD';
+        else
+            status = 'Não iniciado';
+
+        const colunaId = statusMap[status];
+        const coluna = document.getElementById(colunaId)?.querySelector('.content');
+        if (!coluna) return;
+
+        // Define a classe da tarefa (criada ou imagem)
+        const tipoClasse = tipo === 'imagem' ? 'tarefa-imagem' : 'tarefa-criada';
+
+        // Normaliza prioridade (número ou string)
+        if (item.prioridade == 3 || item.prioridade === 'baixa') {
+            item.prioridade = 'baixa';
+        } else if (item.prioridade == 2 || item.prioridade === 'media' || item.prioridade === 'média') {
+            item.prioridade = 'media';
+        } else {
+            item.prioridade = 'alta';
+        }
 
 
-                // Nome a exibir
-                const titulo = tipo === 'imagem' ? item.imagem_nome : item.titulo;
-                const subtitulo = tipo === 'imagem' ? item.nome_funcao : item.descricao;
-                const obra = tipo === 'imagem' ? item.nomencltura : '';
+        // Nome a exibir
+        const titulo = tipo === 'imagem' ? item.imagem_nome : item.titulo;
+        const subtitulo = tipo === 'imagem' ? item.nome_funcao : item.descricao;
+        const obra = tipo === 'imagem' ? item.nomencltura : '';
 
 
-                function getTempoClass(tempo, media) {
-                    if (!tempo || tempo === 0) return ""; // sem tempo registrado
+        function getTempoClass(tempo, media) {
+            if (!tempo || tempo === 0) return ""; // sem tempo registrado
 
-                    if (tempo <= media) {
-                        return "tempo-bom"; // verde
-                    } else if (tempo <= media * 1.3) {
-                        return "tempo-atenção"; // amarelo
-                    } else {
-                        return "tempo-ruim"; // vermelho
-                    }
-                }
+            if (tempo <= media) {
+                return "tempo-bom"; // verde
+            } else if (tempo <= media * 1.3) {
+                return "tempo-atenção"; // amarelo
+            } else {
+                return "tempo-ruim"; // vermelho
+            }
+        }
 
 
-                // Cria card
-                const card = document.createElement('div');
-                card.className = `kanban-card ${tipoClasse}`;
-                card.setAttribute('data-id', `${item.idfuncao_imagem}`)
-                card.setAttribute('data-id-imagem', `${item.idimagem}`)
-                card.innerHTML = `
+        // Pega a média da função específica
+        const mediaFuncao = media[item.funcao_id] || 0;
+
+        // Cria card
+        const card = document.createElement('div');
+        card.className = `kanban-card ${tipoClasse}`;
+        card.setAttribute('data-id', `${item.idfuncao_imagem}`);
+        card.setAttribute('data-id-imagem', `${item.idimagem}`);
+        card.innerHTML = `
                     <div class="header-kanban">
                         <span class="priority ${item.prioridade || 'medium'}">${item.prioridade || 'Medium'}</span>
                     </div>
                     <h5>${titulo || '-'}</h5>
-                    <h4 style="display: none">${obra || ''}</h5>
+                    <h4 style="display: none">${obra || ''}</h4>
                     <p>${subtitulo || '-'}</p>
                     <div class="card-footer">
                         <span class="date"><i class="fa-regular fa-calendar"></i> ${item.prazo ? formatarData(item.prazo) : '-'}</span>
                     </div>
                     <div class="card-log">
-                        <span class="date tooltip ${getTempoClass(item.tempo_em_andamento, media)}" data-tooltip="${formatarDuracao(media)}">
+                        <span class="date tooltip ${getTempoClass(item.tempo_calculado, mediaFuncao)}" data-tooltip="${formatarDuracao(mediaFuncao)}">
                         <i class="ri-time-line"></i> 
-                        ${item.tempo_em_andamento ? formatarDuracao(item.tempo_em_andamento) : '-'}
+                        ${item.tempo_calculado ? formatarDuracao(item.tempo_calculado) : '-'}
                         </span>
                         <div class="comments">
                             <span class="indice_envio"><i class="ri-file-line"></i> ${item.indice_envio_atual ? item.indice_envio_atual : '-'} |</span>
@@ -468,50 +493,46 @@ function carregarDados(colaboradorId = 27) {
                 `;
 
 
+        // Evento de clique
+        card.addEventListener('click', () => {
 
-                // Evento de clique
-                card.addEventListener('click', () => {
-
-                    if (tipo === 'imagem') {
-                        atualizarModal(item.imagem_id);
-                        console.log("Imagem selecionada:", item.imagem_id);
-                    } else {
-                        console.log("Tarefa selecionada:", item.id);
-                        // aqui pode abrir outro modal para editar tarefa
-                    }
-                });
-
-                // Atributos para filtros
-                card.dataset.obra_nome = item.nomenclatura || '';      // nome da obra
-                card.dataset.funcao_nome = item.nome_funcao || '';  // nome da função
-                card.dataset.status = status;                       // status normalizado
-
-
-                coluna.appendChild(card);
+            if (tipo === 'imagem') {
+                atualizarModal(item.imagem_id);
+                console.log("Imagem selecionada:", item.imagem_id);
+            } else {
+                console.log("Tarefa selecionada:", item.id);
+                // aqui pode abrir outro modal para editar tarefa
             }
+        });
 
-            // Adiciona funções (tarefas de imagem)
-            if (data.funcoes) {
-                data.funcoes.forEach(item => criarCard(item, 'imagem', data.media_tempo_em_andamento));
-            }
-
-            // Adiciona tarefas criadas
-            if (data.tarefas) {
-                data.tarefas.forEach(item => criarCard(item, 'criada'));
-            }
-
-            // Atualiza contagem de tarefas
-            Object.keys(statusMap).forEach(status => {
-                const col = document.getElementById(statusMap[status]);
-                const count = col.querySelectorAll('.kanban-card').length;
-                col.querySelector('.task-count').textContent = count;
-            });
-
-            preencherFiltros()
+        // Atributos para filtros
+        card.dataset.obra_nome = item.nomenclatura || '';      // nome da obra
+        card.dataset.funcao_nome = item.nome_funcao || '';  // nome da função
+        card.dataset.status = status;                       // status normalizado
 
 
-        })
-        .catch(err => console.error('Erro ao carregar funções/tarefas:', err));
+        coluna.appendChild(card);
+    }
+
+    // Adiciona funções (tarefas de imagem)
+    if (data.funcoes) {
+        data.funcoes.forEach(item => criarCard(item, 'imagem', data.media_tempo_em_andamento));
+    }
+
+    // Adiciona tarefas criadas
+    if (data.tarefas) {
+        data.tarefas.forEach(item => criarCard(item, 'criada'));
+    }
+
+    // Atualiza contagem de tarefas
+    Object.keys(statusMap).forEach(status => {
+        const col = document.getElementById(statusMap[status]);
+        const count = col.querySelectorAll('.kanban-card').length;
+        col.querySelector('.task-count').textContent = count;
+    });
+
+    preencherFiltros()
+
 }
 
 function formatarDuracao(minutos) {

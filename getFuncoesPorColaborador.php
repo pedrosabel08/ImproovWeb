@@ -9,17 +9,9 @@ if ($conn->connect_error) {
 $conn->set_charset('utf8mb4');
 
 $colaboradorId = intval($_GET['colaborador_id']);
-$mes = $_GET['mes'] ?? '';
-$ano = $_GET['ano'] ?? '';
-$obraId = isset($_GET['obra_id']) ? intval($_GET['obra_id']) : '';
-$funcaoId = $_GET['funcao_id'] ?? '';
-$status = $_GET['status'] ?? '';
-$funcaoIds = $funcaoId ? explode(',', $funcaoId) : [];
-$statusList = $status ? explode(',', $status) : [];
-$prioridade = $_GET['prioridade'] ?? '';
 
 // ====================
-// FUNÇÕES
+// FUNÇÕES (SEM FILTROS)
 // ====================
 $sql = "SELECT
     ico.idimagens_cliente_obra AS imagem_id,
@@ -48,7 +40,6 @@ $sql = "SELECT
            AND la.status_novo = 'Em aprovação'
          ORDER BY la.data ASC LIMIT 1)
     ) AS tempo_em_andamento,
-
     -- Contagem de comentários da última versão
     (
         SELECT COUNT(*)
@@ -62,67 +53,24 @@ $sql = "SELECT
               WHERE hi3.funcao_imagem_id = fi.idfuncao_imagem
           )
     ) AS comentarios_ultima_versao,
-        -- Índice de envio atual
+    -- Índice de envio atual
     (
         SELECT MAX(hi.indice_envio)
         FROM historico_aprovacoes_imagens hi
         WHERE hi.funcao_imagem_id = fi.idfuncao_imagem
     ) AS indice_envio_atual
-
-
 FROM funcao_imagem fi
 JOIN imagens_cliente_obra ico ON fi.imagem_id = ico.idimagens_cliente_obra
 JOIN obra o ON o.idobra = ico.obra_id
 JOIN funcao f ON fi.funcao_id = f.idfuncao
 JOIN prioridade_funcao pc ON fi.idfuncao_imagem = pc.funcao_imagem_id
 WHERE fi.colaborador_id = ?
-  AND o.status_obra = 0";
-
-if ($mes) $sql .= " AND MONTH(fi.prazo) = ?";
-if ($ano) $sql .= " AND YEAR(fi.prazo) = ?";
-if ($obraId) $sql .= " AND ico.obra_id = ?";
-if ($funcaoId && count($funcaoIds) > 0) {
-    $in = implode(',', array_fill(0, count($funcaoIds), '?'));
-    $sql .= " AND f.idfuncao IN ($in)";
-}
-if ($status && count($statusList) > 0) {
-    $inStatus = implode(',', array_fill(0, count($statusList), '?'));
-    $sql .= " AND fi.status IN ($inStatus)";
-}
-if ($prioridade) $sql .= " AND pc.prioridade = ?";
-
-$sql .= " ORDER BY prazo DESC, imagem_id, obra_id, FIELD(fi.status,'Não iniciado', 'Em andamento', 'Ajuste', 'Em aprovação', 'Aprovado com ajustes', 'Aprovado', 'Finalizado')";
+  AND o.status_obra = 0
+ORDER BY prazo DESC, imagem_id, obra_id, 
+    FIELD(fi.status,'Não iniciado','HOLD','Em andamento','Ajuste','Em aprovação','Aprovado com ajustes','Aprovado','Finalizado')";
 
 $stmt = $conn->prepare($sql);
-
-$bindParams = [$colaboradorId];
-$types = 'i';
-if ($mes) {
-    $types .= 's';
-    $bindParams[] = $mes;
-}
-if ($ano) {
-    $types .= 's';
-    $bindParams[] = $ano;
-}
-if ($obraId) {
-    $types .= 'i';
-    $bindParams[] = $obraId;
-}
-foreach ($funcaoIds as $fid) {
-    $types .= 'i';
-    $bindParams[] = intval($fid);
-}
-foreach ($statusList as $st) {
-    $types .= 's';
-    $bindParams[] = $st;
-}
-if ($prioridade) {
-    $types .= 's';
-    $bindParams[] = $prioridade;
-}
-
-$stmt->bind_param($types, ...$bindParams);
+$stmt->bind_param("i", $colaboradorId);
 $stmt->execute();
 $result = $stmt->get_result();
 
@@ -151,6 +99,8 @@ while ($row = $resultTarefas->fetch_assoc()) {
 // MÉDIA TEMPO EM ANDAMENTO
 // ====================
 $sqlMedia = "SELECT 
+    f.nome_funcao,
+    fi.funcao_id,
     ROUND(AVG(TIMESTAMPDIFF(
         MINUTE,
         (SELECT la1.data
@@ -169,15 +119,18 @@ $sqlMedia = "SELECT
 FROM funcao_imagem fi
 JOIN imagens_cliente_obra ico ON fi.imagem_id = ico.idimagens_cliente_obra
 JOIN obra o ON o.idobra = ico.obra_id
+JOIN funcao f ON f.idfuncao = fi.funcao_id
 WHERE fi.colaborador_id = ? 
-  AND o.status_obra = 0";
+  AND o.status_obra = 0
+GROUP BY fi.funcao_id";
 $stmtMedia = $conn->prepare($sqlMedia);
 $stmtMedia->bind_param("i", $colaboradorId);
 $stmtMedia->execute();
 $resultMedia = $stmtMedia->get_result();
-$mediaRow = $resultMedia->fetch_assoc();
-$mediaTempo = $mediaRow['media_tempo'] ?? null;
-$stmtMedia->close();
+$mediaTemposPorFuncao = [];
+while ($row = $resultMedia->fetch_assoc()) {
+    $mediaTemposPorFuncao[$row['funcao_id']] = intval($row['media_tempo']);
+}
 
 
 // ====================
@@ -241,6 +194,90 @@ foreach ($funcoes as $funcao) {
         }
     }
 
+    // ====================
+    // Calcular tempo por status
+    // ====================
+    $funcaoId = $funcao['idfuncao_imagem'];
+    $sqlLogs = "SELECT status_novo, data 
+                FROM log_alteracoes 
+                WHERE funcao_imagem_id = ? 
+                ORDER BY data ASC";
+    $stmtLogs = $conn->prepare($sqlLogs);
+    $stmtLogs->bind_param("i", $funcaoId);
+    $stmtLogs->execute();
+    $resultLogs = $stmtLogs->get_result();
+    $logs = $resultLogs->fetch_all(MYSQLI_ASSOC);
+    $stmtLogs->close();
+
+    $tempoCalculado = null;
+    $indiceAprovacao = null;
+    $statusAtual = $funcao['status'];
+
+    switch ($statusAtual) {
+        case 'Em aprovação':
+            $dataAndamento = null;
+            $dataAprovacao = null;
+            foreach ($logs as $log) {
+                if ($log['status_novo'] === 'Em andamento' && !$dataAndamento) {
+                    $dataAndamento = new DateTime($log['data']);
+                }
+                if ($log['status_novo'] === 'Em aprovação' && !$dataAprovacao) {
+                    $dataAprovacao = new DateTime($log['data']);
+                }
+            }
+            if ($dataAndamento && $dataAprovacao) {
+                $diff = $dataAndamento->diff($dataAprovacao);
+                $tempoCalculado = $diff->days * 1440 + $diff->h * 60 + $diff->i;
+            }
+            $indiceAprovacao = $funcao['indice_envio_atual'];
+            break;
+
+        case 'Em andamento':
+            $dataInicio = null;
+            foreach ($logs as $log) {
+                if ($log['status_novo'] === 'Não iniciado') {
+                    $dataInicio = new DateTime($log['data']);
+                    break;
+                }
+            }
+            if ($dataInicio) {
+                $diff = $dataInicio->diff(new DateTime());
+                $tempoCalculado = $diff->days * 1440 + $diff->h * 60 + $diff->i;
+            }
+            break;
+
+        case 'Ajuste':
+            $dataAjuste = null;
+            foreach ($logs as $log) {
+                if ($log['status_novo'] === 'Ajuste') {
+                    $dataAjuste = new DateTime($log['data']);
+                }
+            }
+            if ($dataAjuste) {
+                $diff = $dataAjuste->diff(new DateTime());
+                $tempoCalculado = $diff->days * 1440 + $diff->h * 60 + $diff->i;
+            }
+            break;
+
+        case 'Finalizado':
+        case 'Aprovado':
+        case 'Aprovado com ajustes':
+            if (count($logs) > 1) {
+                $primeira = new DateTime($logs[0]['data']);
+                $ultima   = new DateTime(end($logs)['data']);
+                $diff = $primeira->diff($ultima);
+                $tempoCalculado = $diff->days * 1440 + $diff->h * 60 + $diff->i;
+            }
+            break;
+
+        default:
+            // Para todos os outros status
+            $tempoCalculado = null;
+            $indiceAprovacao = null;
+            break;
+    }
+
+
     $funcoesFinal[] = [
         'imagem_id' => $funcao['imagem_id'],
         'imagem_nome' => $funcao['imagem_nome'],
@@ -260,8 +297,11 @@ foreach ($funcoes as $funcao) {
         'imagem_prazo' => $funcao['imagem_prazo'],
         'comentarios_ultima_versao' => $funcao['comentarios_ultima_versao'],
         'indice_envio_atual' => $funcao['indice_envio_atual'],
-        'idimagem' => $funcao['idimagem']
-        
+        'idimagem' => $funcao['idimagem'],
+
+        // novos campos calculados
+        'tempo_calculado' => $tempoCalculado,
+        'indice_aprovacao' => $indiceAprovacao
     ];
 }
 
@@ -271,7 +311,7 @@ foreach ($funcoes as $funcao) {
 $response = [
     "funcoes" => $funcoesFinal,
     "tarefas" => $tarefas,
-    "media_tempo_em_andamento" => $mediaTempo
+    "media_tempo_em_andamento" => $mediaTemposPorFuncao
 ];
 
 echo json_encode($response);

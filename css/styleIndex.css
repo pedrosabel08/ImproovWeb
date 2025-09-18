@@ -559,3 +559,56 @@ form#task-form button {
     color: #555;
     font-style: italic;
 }
+
+.ri-spin {
+    display: inline-block;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.title span, .title i {
+    padding: 4px 6px;
+    border-radius: 6px;
+    font-weight: bold;
+}
+
+/* #to-do .title span,
+#to-do .title i {
+    color: #007bff;
+    background-color: #b0d6ff;
+}
+
+#hold .title span,
+#hold .title i {
+    color: #ffc107;
+    background-color: #ffeebb;
+}
+
+#in-progress .title span,
+#in-progress .title i {
+    color: #17a2b8;
+    background-color: #a7f3ff;
+}
+
+#in-review .title span,
+#in-review .title i {
+    color: #6f42c1;
+    background-color: #d5beff;
+}
+
+#ajuste .title span,
+#ajuste .title i {
+    color: #dc3545;
+    background-color: #ffb3ba;
+}
+
+#done .title span,
+#done .title i {
+    color: #28a745;
+    background-color: #a9fcbd;
+} */

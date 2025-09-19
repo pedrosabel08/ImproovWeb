@@ -31,6 +31,8 @@ function atualizarContadorTarefas() {
 
             if (tarefas.length > 0 || data.notificacoes.length > 0) {
                 contadorTarefas.textContent = tarefas.length + data.notificacoes.length;
+                document.title += ` (${tarefas.length + data.notificacoes.length})`;
+
 
             } else {
                 contadorTarefas.textContent = '';

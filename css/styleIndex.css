@@ -3,6 +3,7 @@
 * {
     padding: 0;
     margin: 0;
+    box-sizing: border-box;
     font-family: "Inter", sans-serif;
     /* font-family: "Open Sans", sans-serif; */
 }
@@ -122,45 +123,63 @@ main .kanban {
 }
 
 main .kanban .kanban-box {
-    border: 1px solid #dcdcdc;
     border-radius: 8px;
     width: 23%;
     height: max-content;
-    max-height: 75vh;
-    overflow: auto;
     padding-right: 6px;
 }
 
 /* Scrollbar estilizado para Webkit (Chrome, Edge, Safari) */
-.kanban-box::-webkit-scrollbar {
+.kanban-box .content::-webkit-scrollbar {
     width: 4px;
 }
 
-.kanban-box::-webkit-scrollbar-track {
+.kanban-box .content::-webkit-scrollbar-track {
     background: #f1f1f1;
     border-radius: 8px;
 }
 
-.kanban-box::-webkit-scrollbar-thumb {
+.kanban-box .content::-webkit-scrollbar-thumb {
     background: #c1c1c1;
     border-radius: 8px;
     transition: background 0.3s;
 }
 
-.kanban-box::-webkit-scrollbar-thumb:hover {
+.kanban-box .content::-webkit-scrollbar-thumb:hover {
     background: #888;
 }
 
+main .kanban .kanban-box .content {
+    max-height: 70vh;
+    overflow: auto;
+    position: relative;
+    transition: background 0.3s;
+    border-top: none;
+}
+
+/* Quando está vazio, mostra invisível (só espaço) */
+main .kanban-box .content:empty::before {
+    content: "";
+    display: block;
+    min-height: 70vh;
+    background: transparent;
+}
+
+/* Quando tiver card dentro, o espaço se ajusta normal */
+main .kanban-box .content:not(:empty) {
+    min-height: auto;
+    border: 1px solid #dcdcdc;
+    border-top: none;
+}
 
 main .kanban div .header {
     font-weight: 700;
-    margin-bottom: 10px;
     font-size: 0.7rem;
     color: var(--cor-principal);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    border-bottom: 1px solid #dcdcdc;
+    border: 1px solid #dcdcdc;
     padding: 10px;
 }
 
@@ -192,9 +211,10 @@ main .kanban div .header .task-count {
     /* azul claro */
 }
 
-/* .kanban-card.tarefa-imagem {
-    background-color: #fff0f0;
-} */
+.kanban-card.bloqueado {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
 
 .kanban .header-kanban {
     display: flex;
@@ -280,22 +300,17 @@ main .kanban div .header .task-count {
     margin-right: 3px;
 }
 
-.modal {
-    display: none;
+#task-modal {
     position: fixed;
     z-index: 1000;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
     overflow: auto;
     background-color: rgba(0, 0, 0, 0.5);
 }
 
-.modal-content {
+#task-modal .modal-content {
     background-color: #fefefe;
     padding: 20px;
-    height: 100%;
+    height: max-content;
     display: flex;
     flex-direction: column;
 }
@@ -357,6 +372,98 @@ form#task-form button {
     background-color: #e0f0ff;
 }
 
+/* ====== BASE PARA TODOS OS MODALS ====== */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+.modal.active {
+    display: flex;
+}
+
+/* ====== CONTEÚDO PADRÃO ====== */
+.modal-content {
+    background: #fff;
+    border-radius: 12px;
+    padding: 20px;
+    width: 100%;
+    max-width: 500px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    position: relative;
+    animation: fadeIn 0.2s ease-in-out;
+}
+
+
+/* ====== MODAL FILTER ====== */
+#modalFilter {
+    position: absolute;
+    top: 70px;
+    right: 20px;
+    width: 300px !important;
+    height: auto;
+    background: transparent;
+    box-shadow: none;
+    padding: 0;
+    display: none;
+}
+
+#modalFilter.active {
+    display: block;
+}
+
+#modalFilter .modal-content {
+    max-width: 100%;
+    width: 100%;
+    border: 1px solid #ddd;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Estilo dos dropdowns no filtro */
+#modalFilter .dropdown {
+    margin-bottom: 10px;
+}
+
+#modalFilter .dropbtn {
+    width: 100%;
+    padding: 8px 12px;
+    background: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    text-align: left;
+    cursor: pointer;
+}
+
+
+.modal {
+    display: none;
+    /* escondido por padrão */
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.4);
+    /* overlay escuro */
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+.modal.active {
+    display: flex;
+}
+
 .card-modal {
     position: fixed;
     width: 400px;
@@ -382,11 +489,6 @@ form#task-form button {
     text-align: center;
 }
 
-.card-modal input,
-.card-modal textarea {
-    margin-bottom: 15px;
-    padding: 5px;
-}
 
 .card-modal button {
     margin-right: 10px;
@@ -571,7 +673,8 @@ form#task-form button {
     }
 }
 
-.title span, .title i {
+.title span,
+.title i {
     padding: 4px 6px;
     border-radius: 6px;
     font-weight: bold;
@@ -612,3 +715,511 @@ form#task-form button {
     color: #28a745;
     background-color: #a9fcbd;
 } */
+
+.bolinha {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    margin-left: 6px;
+    border-radius: 50%;
+}
+
+.bolinha.verde {
+    background-color: #4caf50;
+}
+
+.bolinha.vermelho {
+    background-color: #f44336;
+}
+
+.notificacao-sino {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+}
+
+
+#icone-sino {
+    font-size: 50px;
+    color: #f39c12;
+    background-color: white;
+    border-radius: 50%;
+    padding: 15px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+#icone-sino:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+}
+
+.contador-tarefas {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background-color: red;
+    color: white;
+    font-size: 16px;
+    font-weight: bold;
+    padding: 6px 8px;
+    border-radius: 50%;
+    border: 2px solid white;
+    min-width: 24px;
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: transform 0.3s ease;
+}
+
+@keyframes balanco {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    25% {
+        transform: rotate(10deg);
+    }
+
+    50% {
+        transform: rotate(-10deg);
+    }
+
+    75% {
+        transform: rotate(5deg);
+    }
+
+    100% {
+        transform: rotate(0deg);
+    }
+}
+
+/* Estilo do sino quando há uma notificação */
+.sino.ativado {
+    animation: balanco 0.5s ease infinite;
+    color: red;
+    /* Cor do sino quando ativado */
+}
+
+@keyframes fadeIn {
+    0% {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeIn2 {
+    0% {
+        opacity: 0;
+        transform: translateX(30px);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+
+@keyframes fadeInNav {
+    0% {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+
+.close {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    font-size: 20px;
+    cursor: pointer;
+}
+
+.hidden {
+    display: none;
+}
+
+.modal-content ul li {
+    list-style: none;
+}
+
+li {
+    padding: 15px;
+}
+
+.modal-content button {
+    padding: 6px;
+    border-radius: 10px;
+    cursor: pointer;
+    box-shadow: 4px 0 6px rgba(0, 0, 0, 0.2);
+}
+
+.modal-content button:hover {
+    filter: brightness(0.9);
+}
+
+textarea {
+    width: 100%;
+    resize: none;
+    border-radius: 10px;
+}
+
+textarea:focus {
+    outline: none;
+}
+
+h1 {
+    margin-bottom: 15px;
+}
+
+
+/* Animação de boom (explosão) */
+@keyframes boomAnimation {
+    0% {
+        transform: scale(0);
+        opacity: 0;
+    }
+
+    50% {
+        transform: scale(1.2);
+        opacity: 1;
+    }
+
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+#calendarFull {
+    background: white;
+    color: black;
+    border-radius: 10px;
+    padding: 10px;
+    width: 1200px;
+    height: 650px;
+}
+
+
+.fc .fc-toolbar.fc-header-toolbar {
+    margin-bottom: 1.5em;
+}
+
+#eventForm {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.close-btn {
+    position: absolute;
+    top: 20px;
+    right: 40px;
+    font-size: 24px;
+    color: white;
+    cursor: pointer;
+}
+
+
+#eventModal {
+    display: none;
+    position: fixed;
+    background-color: rgba(0, 0, 0, 0.7);
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.eventos {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    width: 20%;
+    color: #000;
+}
+
+.fc th {
+    text-align: center;
+    background: #333;
+    color: white;
+    font-size: 14px;
+}
+
+.fc-event-title {
+    color: #000;
+}
+
+#eventForm .buttons {
+    display: flex;
+    justify-content: space-between;
+}
+
+#eventForm .buttons button {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    padding: 5px 8px;
+    font-size: 14px;
+    transition: background-color 0.3s ease;
+}
+
+.fc-scroller .fc-scroller-liquid-absolute {
+    overflow: hidden;
+}
+
+.fc .fc-daygrid-body-unbalanced .fc-daygrid-day-events {
+    min-height: 2em;
+    position: relative;
+    font-size: 14px;
+}
+
+
+#btn-ir-revisao {
+    padding: 3px 5px;
+    background-color: #2e468b;
+    border-radius: 10px;
+    font-size: 12px;
+    color: white;
+}
+
+.popover {
+    position: fixed;
+    background: white;
+    border: 1px solid #ccc;
+    padding: 10px;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+    width: 300px;
+    font-size: 14px;
+}
+
+.popover::before {
+    content: "";
+    position: absolute;
+    bottom: -10px;
+    left: 20px;
+    border-width: 10px;
+    border-style: solid;
+    border-color: white transparent transparent transparent;
+}
+
+.secao {
+    margin-bottom: 15px;
+}
+
+.secao-titulo {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #f5f5f5;
+    padding: 6px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    color: black;
+}
+
+.secao-conteudo {
+    padding: 6px 10px;
+    margin-top: 5px;
+    color: black;
+}
+
+.secao-conteudo hr {
+    margin: 10px 0;
+}
+
+
+.badge,
+.badge-interna {
+    background-color: red;
+    color: white;
+    font-size: 12px;
+    padding: 2px 6px;
+    border-radius: 50%;
+    margin-left: 6px;
+}
+
+.oculto {
+    display: none;
+}
+
+#modalDaily {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+}
+
+#modalDaily .modal-content {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    width: 50%;
+    max-width: max-content;
+    text-align: center;
+    position: relative;
+    color: #000;
+    animation: boomAnimation 0.8s forwards;
+}
+
+/* Conteúdo do modal */
+.card-modal .modal-content {
+    background: #fff;
+    padding: 20px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    animation: fadeIn 0.3s ease;
+}
+
+/* Títulos */
+.card-modal .modal-content h3 {
+    margin: 0;
+    font-weight: 600;
+    color: var(--cor-principal);
+    border-bottom: 2px solid #eee;
+    padding-bottom: 10px;
+}
+
+.card-modal .modal-content h4,
+.card-modal .modal-content label {
+    margin-bottom: 10px;
+    color: var(--cor-principal);
+}
+
+/* Inputs e textarea */
+.card-modal .modal-content input[type="date"],
+.card-modal .modal-content textarea {
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    transition: border 0.2s;
+}
+
+.card-modal .modal-content input[type="date"]:focus,
+.card-modal .modal-content textarea:focus {
+    border-color: #4CAF50;
+    outline: none;
+}
+
+/* Área de upload */
+.drop-area {
+    border: 2px dashed #bbb;
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    color: #666;
+    font-size: 0.9rem;
+    background: #fafafa;
+    cursor: pointer;
+    transition: border-color 0.3s, background 0.3s;
+}
+
+.drop-area:hover,
+.drop-area.highlight {
+    border-color: #81b983;
+    background: #f6fff6;
+}
+
+/* Lista de arquivos */
+.file-list {
+    list-style: none;
+    padding: 0;
+    margin: 8px 0;
+    color: #444;
+}
+
+.file-list li {
+    margin: 4px 0;
+    padding: 6px 10px;
+    border-radius: 6px;
+    background: #f7f7f7;
+}
+
+/* Botões de upload */
+.buttons-upload button {
+    padding: 4px 8px;
+    border: none;
+    border-radius: 8px;
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.buttons-upload button:hover {
+    background-color: #2e7d32;
+}
+
+/* Botões de ação */
+.card-modal .modal-content .buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.card-modal .modal-content .buttons button {
+    padding: 4px 8px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.card-modal .modal-content .modal-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.card-modal .modal-content .modalUploads {
+    gap: 20px;
+}
+
+/* Animação */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

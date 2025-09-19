@@ -119,7 +119,6 @@ $conn->close();
                     <div class="header">
                         <div class="title"><i class="fa-solid fa-play"></i><span>Não iniciado</span></div>
                         <span class="task-count"></span>
-                        <!-- <i class="fa fa-ellipsis-v"></i> -->
                     </div>
                     <div class="content">
                     </div>
@@ -128,7 +127,6 @@ $conn->close();
                     <div class="header">
                         <div class="title"><i class="fa-solid fa-play"></i><span>Hold</span></div>
                         <span class="task-count"></span>
-                        <!-- <i class="fa fa-ellipsis-v"></i> -->
                     </div>
                     <div class="content">
                     </div>
@@ -137,7 +135,6 @@ $conn->close();
                     <div class="header">
                         <div class="title"><i class="fa-solid fa-hourglass-start"></i><span>Em andamento</span></div>
                         <span class="task-count"></span>
-                        <!-- <i class="fa fa-ellipsis-v"></i> -->
                     </div>
                     <div class="content">
                     </div>
@@ -146,7 +143,6 @@ $conn->close();
                     <div class="header">
                         <div class="title"><i class="fa-solid fa-magnifying-glass"></i><span>Em aprovação</span></div>
                         <span class="task-count"></span>
-                        <!-- <i class="fa fa-ellipsis-v"></i> -->
                     </div>
                     <div class="content">
                     </div>
@@ -155,7 +151,6 @@ $conn->close();
                     <div class="header">
                         <div class="title"><i class="ri-error-warning-line"></i><span>Em ajuste</span></div>
                         <span class="task-count"></span>
-                        <!-- <i class="fa fa-ellipsis-v"></i> -->
                     </div>
                     <div class="content">
                     </div>
@@ -164,7 +159,6 @@ $conn->close();
                     <div class="header">
                         <div class="title"><i class="fa-solid fa-check"></i><span>Finalizado</span></div>
                         <span class="task-count"></span>
-                        <!-- <i class="fa fa-ellipsis-v"></i> -->
                     </div>
                     <div class="content">
                     </div>
@@ -179,6 +173,16 @@ $conn->close();
             <span class="close-button" id="close-modal">&times;</span>
             <h2>Adicionar tarefa</h2>
             <form id="task-form">
+                <div class="task-type">
+                    <label for="task-colab">Colaborador:</label>
+                    <select name="task-colab" id="task-colab">
+                        <?php foreach ($colaboradores as $colab): ?>
+                            <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
                 <div class="task-type">
                     <label for="task-title">Título:</label>
                     <input type="text" id="task-title" name="task-title" required>
@@ -212,20 +216,44 @@ $conn->close();
         <div class="modal-content">
 
             <h3>Editar Card</h3>
-            <label for="modalPrazo">Prazo:</label>
-            <input type="date" id="modalPrazo">
-
-            <label for="modalObs">Observação:</label>
-            <textarea id="modalObs" rows="4"></textarea>
-
-            <div class="upload-wrapper">
-                <input type="file" id="modalFile" class="file-input" />
-                <label for="modalFile" class="file-label">
-                    <i class="fa-solid fa-upload"></i> Escolher arquivo
-                </label>
-                <span id="fileName" class="file-name">Nenhum arquivo selecionado</span>
-                <button onclick="enviarImagens()">Enviar Prévia</button>
+            <div class="modal-item modalPrazo">
+                <h4>Prazo:</h4>
+                <input type="date" id="modalPrazo">
             </div>
+
+            <div class="modal-item modalObs">
+                <h4>Observação:</h4>
+                <textarea id="modalObs" rows="4"></textarea>
+            </div>
+
+            <div class="modal-item modalUploads">
+
+                <div id="etapaPrevia">
+                    <h4>Prévias</h4>
+                    <div id="drop-area-previa" class="drop-area">
+                        Arraste suas imagens aqui ou clique para selecionar
+                        <input type="file" id="fileElemPrevia" accept="image/*" multiple style="display:none;">
+                    </div>
+                    <ul class="file-list" id="fileListPrevia"></ul>
+                    <div class="buttons-upload" id="addEnviarPrevia">
+                        <button onclick="enviarImagens()" style="background-color: green;">Enviar Prévia</button>
+                    </div>
+                </div>
+
+                <!-- Conteúdo da etapa 2 -->
+                <div id="etapaFinal">
+                    <h4>Arquivo</h4>
+                    <div id="drop-area-final" class="drop-area">
+                        Arraste o arquivo final aqui ou clique para selecionar
+                        <input type="file" id="fileElemFinal" multiple style="display:none;">
+                    </div>
+                    <ul class="file-list" id="fileListFinal"></ul>
+                    <div class="buttons-upload" id="addEnviarArquivo">
+                        <button onclick="enviarArquivo()" style="background-color: green;">Enviar Arquivo Final</button>
+                    </div>
+                </div>
+            </div>
+
 
             <div class="buttons">
                 <button id="salvarModal">Salvar</button>
@@ -263,7 +291,7 @@ $conn->close();
         </div>
     </div>
 
-    <div class="modal" id="modal">
+    <div class="modal" id="modalDaily">
         <div class="modal-content" style="width: 500px;">
             <h1>Daily meet Assíncrono</h1>
             <form id="dailyForm">
@@ -410,7 +438,7 @@ $conn->close();
         localStorage.setItem('idcolaborador', idColaborador);
 
 
-        document.getElementById('modal').style.display = 'none';
+        document.getElementById('modalDaily').style.display = 'none';
 
         // checkDailyAccess agora retorna uma Promise
         function checkDailyAccess() {
@@ -540,8 +568,8 @@ $conn->close();
 
                             const funcao = funcoes[index];
                             Swal.fire({
-                                title: `Você ainda está trabalhando em ${funcao.nome_funcao}?`,
-                                text: `Imagem: ${funcao.imagem_nome} (${funcao.nomenclatura})`,
+                                title: `Você ainda está trabalhando em ${funcao.imagem_nome}?`,
+                                text: `Função: ${funcao.nome_funcao}`,
                                 icon: "question",
                                 showCancelButton: true,
                                 confirmButtonText: "Sim, estou fazendo",
@@ -586,19 +614,22 @@ $conn->close();
             });
         }
 
+        const MODO_TESTE = true;
 
-
-        // 🚀 Dispara tudo ao carregar a página
-        checkDailyAccess()
-            .then(() => checkFuncoesEmAndamento(idColaborador))
-            .then(() => checkRenderItems(idColaborador))
-            .then(() => {
-                buscarTarefas();
-                mostrarChangelogSeNecessario(); // Só mostra se não viu esta versão
-            })
-            .catch(() => {
-                console.log('Fluxo interrompido devido a erro ou resposta incompleta.');
-            });
+        if (MODO_TESTE) {
+            checkFuncoesEmAndamento(idColaborador);
+        } else {
+            checkDailyAccess()
+                .then(() => checkFuncoesEmAndamento(idColaborador))
+                .then(() => checkRenderItems(idColaborador))
+                .then(() => {
+                    buscarTarefas();
+                    mostrarChangelogSeNecessario();
+                })
+                .catch(() => {
+                    console.log('Fluxo interrompido devido a erro ou resposta incompleta.');
+                });
+        }
     </script>
 
 

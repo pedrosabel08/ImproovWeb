@@ -10,6 +10,9 @@ $conn->set_charset('utf8mb4');
 
 $colaboradorId = intval($_GET['colaborador_id']);
 
+date_default_timezone_set('America/Sao_Paulo');
+
+
 // ====================
 // FUNÇÕES (SEM FILTROS)
 // ====================
@@ -19,6 +22,7 @@ $sql = "SELECT
     fi.status,
     fi.prazo,
     f.nome_funcao,
+    fi.observacao,
     pc.prioridade,
     fi.idfuncao_imagem,
     fi.funcao_id,
@@ -259,6 +263,19 @@ foreach ($funcoes as $funcao) {
             }
             break;
 
+        case 'HOLD':
+            $dataHOLD = null;
+            foreach ($logs as $log) {
+                if ($log['status_novo'] === 'HOLD') {
+                    $dataHOLD = new DateTime($log['data']);
+                }
+            }
+            if ($dataHOLD) {
+                $diff = $dataHOLD->diff(new DateTime());
+                $tempoCalculado = $diff->days * 1440 + $diff->h * 60 + $diff->i;
+            }
+            break;
+
         case 'Finalizado':
         case 'Aprovado':
         case 'Aprovado com ajustes':
@@ -297,7 +314,7 @@ foreach ($funcoes as $funcao) {
         'imagem_prazo' => $funcao['imagem_prazo'],
         'comentarios_ultima_versao' => $funcao['comentarios_ultima_versao'],
         'indice_envio_atual' => $funcao['indice_envio_atual'],
-        'idimagem' => $funcao['idimagem'],
+        'observacao' => $funcao['observacao'],
 
         // novos campos calculados
         'tempo_calculado' => $tempoCalculado,

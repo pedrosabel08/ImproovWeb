@@ -356,7 +356,7 @@ function updateEvent(event) {
 
 // const idusuario = 1;
 // const idcolaborador = 1;
-function carregarDados(colaboradorId = 21) {
+function carregarDados(colaboradorId = 9) {
 
     let url = `getFuncoesPorColaborador.php?colaborador_id=${colaboradorId}`;
 
@@ -446,8 +446,6 @@ function processarDados(data) {
         // Nome a exibir
         const titulo = tipo === 'imagem' ? item.imagem_nome : item.titulo;
         const subtitulo = tipo === 'imagem' ? item.nome_funcao : item.descricao;
-        const obra = tipo === 'imagem' ? item.nomencltura : '';
-
 
         function getTempoClass(tempo, media) {
             if (!tempo || tempo === 0) return ""; // sem tempo registrado
@@ -465,18 +463,50 @@ function processarDados(data) {
         // Pega a média da função específica
         const mediaFuncao = media[item.funcao_id] || 0;
 
+        // Bolinha só no "Não iniciado"
+        let bolinhaHTML = "";
+        let liberado = "1"; // padrão liberado
+
+        if (tipo === 'imagem') {
+            // lógica específica para imagem
+            if (status === "Não iniciado") {
+                const statusAnterior = item.status_funcao_anterior || "";
+                if (["Aprovado", "Finalizado", "Aprovado com ajustes"].includes(statusAnterior)) {
+                    bolinhaHTML = `<span class="bolinha verde"></span>`;
+                    liberado = "1";
+                } else {
+                    bolinhaHTML = `<span class="bolinha vermelho"></span>`;
+                    liberado = "0";
+                }
+            }
+        } else {
+            // lógica para tarefas criadas
+            bolinhaHTML = '';
+            liberado = '1'; // sempre liberado
+        }
+
         // Cria card
         const card = document.createElement('div');
-        card.className = `kanban-card ${tipoClasse}`;
+        card.className = `kanban-card ${tipoClasse}`; // só a classe base
+
         card.setAttribute('data-id', `${item.idfuncao_imagem}`);
-        card.setAttribute('data-id-imagem', `${item.idimagem}`);
+        card.setAttribute('data-id-imagem', `${item.imagem_id}`);
+        card.setAttribute('liberado', liberado);
+
+        // adiciona bloqueado se necessário
+        if (liberado === "0") {
+            card.classList.add("bloqueado");
+        }
+
         card.innerHTML = `
                     <div class="header-kanban">
-                        <span class="priority ${item.prioridade || 'medium'}">${item.prioridade || 'Medium'}</span>
+                        <span class="priority ${item.prioridade || 'medium'}">
+                            ${item.prioridade || 'Medium'}
+                        </span>
+                        ${bolinhaHTML}
                     </div>
-                    <h5>${titulo || '-'}</h5>
-                    <h4 style="display: none">${obra || ''}</h4>
-                    <p>${subtitulo || '-'}</p>
+                        <h5>${titulo || '-'}</h5>
+                        <p>${subtitulo || '-'}</p>
                     <div class="card-footer">
                         <span class="date"><i class="fa-regular fa-calendar"></i> ${item.prazo ? formatarData(item.prazo) : '-'}</span>
                     </div>
@@ -485,10 +515,16 @@ function processarDados(data) {
                         <i class="ri-time-line"></i> 
                         ${item.tempo_calculado ? formatarDuracao(item.tempo_calculado) : '-'}
                         </span>
-                        <div class="comments">
-                            <span class="indice_envio"><i class="ri-file-line"></i> ${item.indice_envio_atual ? item.indice_envio_atual : '-'} |</span>
-                            <span class="numero_comments"><i class="ri-chat-3-line"></i> ${item.comentarios_ultima_versao ? item.comentarios_ultima_versao : '-'}</span>
-                        </div>
+                    <div class="comments">
+                        ${item.indice_envio_atual ? `<span class="indice_envio"><i class="ri-file-line"></i> ${item.indice_envio_atual} |</span>` : ''}
+                        ${item.indice_envio_atual ?
+                (item.comentarios_ultima_versao > 0 ?
+                    `<span class="numero_comments"><i class="ri-chat-3-line"></i> ${item.comentarios_ultima_versao}</span>`
+                    : `<span class="numero_comments">0</span>`)
+                : ''
+            }
+                    </div>
+
                     </div>
                 `;
 
@@ -497,8 +533,13 @@ function processarDados(data) {
         card.addEventListener('click', () => {
 
             if (tipo === 'imagem') {
-                atualizarModal(item.imagem_id);
-                console.log("Imagem selecionada:", item.imagem_id);
+                // remove seleção dos outros
+                document.querySelectorAll('.kanban-card.selected').forEach(c => {
+                    c.classList.remove('selected');
+                });
+
+                // adiciona ao clicado
+                card.classList.add('selected');
             } else {
                 console.log("Tarefa selecionada:", item.id);
                 // aqui pode abrir outro modal para editar tarefa
@@ -514,14 +555,15 @@ function processarDados(data) {
         coluna.appendChild(card);
     }
 
-    // Adiciona funções (tarefas de imagem)
-    if (data.funcoes) {
-        data.funcoes.forEach(item => criarCard(item, 'imagem', data.media_tempo_em_andamento));
-    }
 
     // Adiciona tarefas criadas
     if (data.tarefas) {
-        data.tarefas.forEach(item => criarCard(item, 'criada'));
+        data.tarefas.forEach(item => criarCard(item, 'criada', {}));
+    }
+
+    // Adiciona funções (tarefas de imagem)
+    if (data.funcoes) {
+        data.funcoes.forEach(item => criarCard(item, 'imagem', data.media_tempo_em_andamento));
     }
 
     // Atualiza contagem de tarefas
@@ -632,8 +674,20 @@ buttons.forEach(btn => {
 const add_task = document.getElementById('add-task');
 add_task.addEventListener('click', () => {
     const modal = document.getElementById('task-modal');
-    modal.style.display = 'block';
+    modal.style.display = 'flex';
+    modal.classList.add('active');
+
+    // pega id do colaborador no localStorage
+    const selectColab = document.getElementById("task-colab");
+    console.log("colab id:", colaborador_id);
+    if (Number(colaborador_id) === 9 || Number(colaborador_id) === 21) {
+        selectColab.disabled = false; // libera
+    } else {
+        selectColab.disabled = true;  // bloqueia
+        selectColab.classList.add('hidden');
+    }
 });
+
 
 
 const form = document.getElementById('task-form');
@@ -703,12 +757,103 @@ document.getElementById('salvarModal').addEventListener('click', () => {
     cardSelecionado = null;
 });
 
+function configurarDropzone(areaId, inputId, listaId, arquivosArray) {
+    const dropArea = document.getElementById(areaId);
+    const fileInput = document.getElementById(inputId);
+
+    // Funções nomeadas para poder remover depois
+    function handleDrop(e) {
+        e.preventDefault();
+        dropArea.classList.remove('highlight');
+        for (let file of e.dataTransfer.files) arquivosArray.push(file);
+        renderizarLista(arquivosArray, listaId);
+    }
+    function handleChange() {
+        for (let file of fileInput.files) arquivosArray.push(file);
+        renderizarLista(arquivosArray, listaId);
+    }
+    function handleClick() {
+        fileInput.click();
+    }
+    function handleDragOver(e) {
+        e.preventDefault();
+        dropArea.classList.add('highlight');
+    }
+    function handleDragLeave() {
+        dropArea.classList.remove('highlight');
+    }
+
+    // Remove listeners antigos
+    dropArea.removeEventListener('click', dropArea._handleClick);
+    dropArea.removeEventListener('dragover', dropArea._handleDragOver);
+    dropArea.removeEventListener('dragleave', dropArea._handleDragLeave);
+    dropArea.removeEventListener('drop', dropArea._handleDrop);
+    fileInput.removeEventListener('change', fileInput._handleChange);
+
+    // Adiciona listeners e guarda referência para remover depois
+    dropArea.addEventListener('click', handleClick);
+    dropArea.addEventListener('dragover', handleDragOver);
+    dropArea.addEventListener('dragleave', handleDragLeave);
+    dropArea.addEventListener('drop', handleDrop);
+    fileInput.addEventListener('change', handleChange);
+
+    // Guarda referência
+    dropArea._handleClick = handleClick;
+    dropArea._handleDragOver = handleDragOver;
+    dropArea._handleDragLeave = handleDragLeave;
+    dropArea._handleDrop = handleDrop;
+    fileInput._handleChange = handleChange;
+}
+
+function renderizarLista(array, listaId) {
+    const lista = document.getElementById(listaId);
+    lista.innerHTML = '';
+    array.forEach((file, i) => {
+        // Calcula o tamanho em B, KB, MB ou GB
+        let tamanho = file.size;
+        let tamanhoStr = '';
+        if (tamanho < 1024) {
+            tamanhoStr = `${tamanho} B`;
+        } else if (tamanho < 1024 * 1024) {
+            tamanhoStr = `${(tamanho / 1024).toFixed(1)} KB`;
+        } else if (tamanho < 1024 * 1024 * 1024) {
+            tamanhoStr = `${(tamanho / (1024 * 1024)).toFixed(2)} MB`;
+        } else {
+            tamanhoStr = `${(tamanho / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+        }
+
+        const li = document.createElement('li');
+        li.innerHTML = `<div class="file-info">
+            <span>${file.name} <small style="color:#888;">(${tamanhoStr})</small></span>
+            <span onclick="removerArquivo(${i}, '${listaId}')" style="cursor:pointer;color: #c00;font-weight: bold;font-size: 1.2em;">×</span>
+        </div>`;
+        lista.appendChild(li);
+    });
+}
+
+function removerArquivo(index, listaId) {
+    if (listaId === 'fileListPrevia') {
+        imagensSelecionadas.splice(index, 1);
+        renderizarLista(imagensSelecionadas, listaId);
+    } else {
+        arquivosFinais.splice(index, 1);
+        renderizarLista(arquivosFinais, listaId);
+    }
+}
+
+
 
 var idfuncao_imagem = null;
 var titulo = null;
 var subtitulo = null;
 var obra = null;
 var idimagem = null;
+const dropArea = document.getElementById('drop-area');
+const fileInput = document.getElementById('fileElem');
+const fileList = document.getElementById('fileList');
+let arquivosFinais = [];
+let dataIdFuncoes = [];
+
 
 // Inicializa Sortable nas colunas
 const colunas = document.querySelectorAll('.kanban-box .content');
@@ -717,11 +862,30 @@ colunas.forEach(col => {
         group: 'kanban',
         animation: 150,
         ghostClass: 'sortable-ghost',
+        filter: ".bloqueado",      // não deixa arrastar cards bloqueados
+        onMove: function (evt) {
+            // Impede mover bloqueados
+            if (evt.related && evt.dragged.classList.contains("bloqueado")) {
+                return false;
+            }
+
+            // Impede soltar dentro da coluna #ajuste
+            if (evt.to.closest('.kanban-box')?.id === "ajuste" || evt.from.closest('.kanban-box')?.id === "to-do") {
+                return false;
+            }
+        },
         onEnd: (evt) => {
             const card = evt.item;                                // Card movido
             const deColuna = evt.from.closest('.kanban-box');     // coluna origem
             const novaColuna = evt.to.closest('.kanban-box');     // coluna destino
             const novoIndex = evt.newIndex;
+
+            if (card.dataset.liberado === "0") {
+                // Se por algum motivo tentou, não deixa abrir modal
+                evt.from.appendChild(card); // devolve pra origem
+                alert("Esta função ainda não foi liberada.");
+                return;
+            }
 
             console.log(`Card movido de ${deColuna.id} para ${novaColuna.id}, índice: ${novoIndex}`);
 
@@ -735,39 +899,71 @@ colunas.forEach(col => {
                 subtitulo = card.getAttribute("data-funcao_nome");
                 obra = card.getAttribute("data-obra_nome");
 
-                console.log(idfuncao_imagem, idimagem, titulo, subtitulo, obra)
-
-                // Preencher campos com dados existentes do card
+                // Preenche os campos comuns
                 modalPrazo.value = card.dataset.prazo || '';
                 modalObs.value = card.dataset.observacao || '';
 
+                // Reset modal: mostra tudo inicialmente
+                document.querySelector('.modalPrazo').style.display = 'flex';
+                document.querySelector('.modalObs').style.display = 'flex';
+                document.querySelector('.modalUploads').style.display = 'flex';
+
                 // Ativar modal
                 cardModal.classList.add('active');
+                cardSelecionado.classList.add('selected');
+                configurarDropzone("drop-area-previa", "fileElemPrevia", "fileListPrevia", imagensSelecionadas);
+                configurarDropzone("drop-area-final", "fileElemFinal", "fileListFinal", arquivosFinais);
+
+                // Ajusta modal de acordo com a coluna de destino
+                switch (novaColuna.id) {
+                    case 'hold':
+                        // Apenas observação e botões
+                        document.querySelector('.modalPrazo').style.display = 'none';
+                        document.querySelector('.modalUploads').style.display = 'none';
+                        break;
+                    case 'in-progress':
+                        // Apenas observação e botões
+                        document.querySelector('.modalUploads').style.display = 'none';
+                        break;
+                    case 'in-review': // "Em aprovação"
+                        // Mostra ambos inputs de arquivo (prévia e arquivo final)
+                        document.querySelector('.modalPrazo').style.display = 'none';
+                        document.querySelector('.modalObs').style.display = 'none';
+                        document.querySelector('.modalUploads').style.display = 'flex';
+                        break;
+                    case 'done': // "Finalizado"
+                        // Mostra prazo, observação e botões
+                        document.querySelector('.modalPrazo').style.display = 'flex';
+                        document.querySelector('.modalObs').style.display = 'flex';
+                        document.querySelector('.modalUploads').style.display = 'flex';
+                        break;
+                    default:
+                        // padrão: tudo visível
+                        break;
+                }
+
+
 
                 // Posicionar modal ao lado da coluna de destino
                 const rect = novaColuna.getBoundingClientRect();
                 const modalWidth = cardModal.offsetWidth;
                 const modalHeight = cardModal.offsetHeight;
 
-                // Posição inicial: à direita
                 let left = rect.right + 10;
                 let top = rect.top + 10;
 
-                // Se estourar a largura da tela, joga para a esquerda
                 if (left + modalWidth > window.innerWidth) {
                     left = rect.left - modalWidth - 10;
                 }
-
-                // Se estourar a parte de baixo da tela, ajusta para cima
                 if (top + modalHeight > window.innerHeight) {
                     top = window.innerHeight - modalHeight - 10;
-                    if (top < 10) top = 10; // limite mínimo
+                    if (top < 10) top = 10;
                 }
 
                 cardModal.style.left = `${left}px`;
                 cardModal.style.top = `${top}px`;
-
             }
+
         }
     });
 });
@@ -864,8 +1060,9 @@ function enviarImagens() {
 const btnFilter = document.getElementById('filter');
 const modalFilter = document.getElementById('modalFilter');
 
-btnFilter.addEventListener('click', function () {
 
+btnFilter.addEventListener('click', function (e) {
+    e.stopPropagation(); // impede que o clique no botão feche o modal
     modalFilter.classList.add('active');
 
     const rect = btnFilter.getBoundingClientRect();
@@ -874,6 +1071,12 @@ btnFilter.addEventListener('click', function () {
 
 })
 
+// Fecha o filtro ao clicar fora
+document.addEventListener('click', function (e) {
+    if (modalFilter.classList.contains('active') && !modalFilter.contains(e.target) && e.target !== btnFilter) {
+        modalFilter.classList.remove('active');
+    }
+});
 
 document.querySelectorAll('.dropbtn').forEach(btn => {
     btn.addEventListener('click', function (e) {

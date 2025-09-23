@@ -356,7 +356,7 @@ function updateEvent(event) {
 
 // const idusuario = 1;
 // const idcolaborador = 1;
-function carregarDados(colaboradorId = 9) {
+function carregarDados(colaboradorId = 14) {
 
     let url = `getFuncoesPorColaborador.php?colaborador_id=${colaboradorId}`;
 

@@ -509,6 +509,42 @@ function historyAJAX(idfuncao_imagem) {
                     const selected = Array.from(radios).find(r => r.checked)?.value;
                     if (!selected) return;
 
+                    // Supondo que status_imagem está disponível no escopo
+                    if (item.nome_status === "P00" && selected === "aprovado") {
+                        if (confirm("Você deseja liberar esse ângulo?")) {
+                            let sugerida = false;
+                            let motivo = "";
+
+                            if (confirm("Essa imagem é a sugerida?")) {
+                                sugerida = true;
+                                motivo = prompt("Descreva o porquê essa imagem é a sugerida:");
+                            }
+
+                            // Envia para o backend (exemplo)
+                            fetch('liberar_angulo.php', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    imagem_id: item.imagem_id,
+                                    historico_id: ap_imagem_id,
+                                    liberada: true,
+                                    sugerida: sugerida,
+                                    motivo_sugerida: motivo
+                                })
+                            })
+                                .then(r => r.json())
+                                .then(res => {
+                                    if (res.success) {
+                                        alert("Imagem atualizada com sucesso!");
+                                    } else {
+                                        alert("Erro ao atualizar imagem: " + res.message);
+                                    }
+                                });
+                        } else {
+                            return; // Não continua se não liberar
+                        }
+                    }
+
                     revisarTarefa(
                         item.funcao_imagem_id,
                         item.colaborador_nome,

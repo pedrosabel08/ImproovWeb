@@ -356,7 +356,7 @@ function updateEvent(event) {
 
 // const idusuario = 1;
 // const idcolaborador = 1;
-function carregarDados(colaboradorId = 14) {
+function carregarDados(colaboradorId = 21) {
 
     let url = `getFuncoesPorColaborador.php?colaborador_id=${colaboradorId}`;
 
@@ -421,7 +421,7 @@ function processarDados(data) {
             status = 'Finalizado';
         else if (status === 'Não iniciado')
             status = 'Não iniciado';
-        else if (status === 'HOLD')
+        else if (status === 'HOLD' || status === 'Hold')
             status = 'HOLD';
         else
             status = 'Não iniciado';
@@ -467,6 +467,10 @@ function processarDados(data) {
         let bolinhaHTML = "";
         let liberado = "1"; // padrão liberado
 
+        // Cria card
+        const card = document.createElement('div');
+        card.className = `kanban-card ${tipoClasse}`; // só a classe base
+
         if (tipo === 'imagem') {
             // lógica específica para imagem
             if (status === "Não iniciado") {
@@ -479,19 +483,27 @@ function processarDados(data) {
                     liberado = "0";
                 }
             }
+
+
+            card.setAttribute('data-id', `${item.idfuncao_imagem}`);
+            card.setAttribute('data-id-imagem', `${item.imagem_id}`);
+            card.setAttribute('data-id-funcao', `${item.funcao_id}`);
+            card.setAttribute('liberado', liberado);
+            card.setAttribute('data-nome_status', `${item.nome_status}`); // para filtro
+
         } else {
             // lógica para tarefas criadas
             bolinhaHTML = '';
-            liberado = '1'; // sempre liberado
+            // 🟢 Lógica para tarefas criadas
+            card.dataset.id = item.id;                   // apenas id simples
+            card.dataset.titulo = item.titulo;   // se precisar para modal
+            card.dataset.descricao = item.descricao;
+            card.dataset.prazo = item.prazo;
+            card.dataset.status = item.status;
+            card.dataset.prioridade = item.prioridade;
+            card.setAttribute('liberado', '1');  // sempre liberado
         }
 
-        // Cria card
-        const card = document.createElement('div');
-        card.className = `kanban-card ${tipoClasse}`; // só a classe base
-
-        card.setAttribute('data-id', `${item.idfuncao_imagem}`);
-        card.setAttribute('data-id-imagem', `${item.imagem_id}`);
-        card.setAttribute('liberado', liberado);
 
         // adiciona bloqueado se necessário
         if (liberado === "0") {
@@ -552,7 +564,18 @@ function processarDados(data) {
         card.dataset.status = status;                       // status normalizado
 
 
-        coluna.appendChild(card);
+        if (liberado === "1") {
+            // Inserir no topo da coluna, antes dos bloqueados
+            const primeiroBloqueado = coluna.querySelector('.kanban-card.bloqueado');
+            if (primeiroBloqueado) {
+                coluna.insertBefore(card, primeiroBloqueado);
+            } else {
+                coluna.appendChild(card);
+            }
+        } else {
+            // Bloqueados vão no final
+            coluna.appendChild(card);
+        }
     }
 
 
@@ -745,16 +768,98 @@ document.getElementById('salvarModal').addEventListener('click', () => {
     cardSelecionado.dataset.prazo = modalPrazo.value;
     cardSelecionado.dataset.observacao = modalObs.value;
 
-    console.log('Salvo:', {
-        prazo: modalPrazo.value,
-        observacao: modalObs.value,
-        cardId: cardSelecionado.dataset.id,
-        novaColuna: cardSelecionado.closest('.kanban-box').id
-    });
+    // Mapeamento de IDs de coluna para status
+    const statusMap = {
+        'to-do': 'Não iniciado',
+        'hold': 'Hold',
+        'in-progress': 'Em andamento',
+        'in-review': 'Em aprovação',
+        'ajuste': 'Ajuste',
+        'done': 'Finalizado'
+    };
 
-    // Aqui você pode enviar via fetch/AJAX para atualizar no banco
-    cardModal.classList.remove('active');
-    cardSelecionado = null;
+    if (cardSelecionado.classList.contains('tarefa-criada')) {
+        // Se for tarefa criada, atualiza via outro script
+        const dadosTarefa = {
+            tarefa_id: cardSelecionado.dataset.id, // ou outro atributo se necessário
+            prazo: modalPrazo.value,
+            observacao: modalObs.value,
+            status: statusMap[cardSelecionado.closest('.kanban-box').id] || null
+        };
+
+        $.ajax({
+            type: "POST",
+            url: "atualizaTarefa.php",
+            data: dadosTarefa,
+            success: function (response) {
+                Toastify({
+                    text: "Tarefa atualizada com sucesso!",
+                    duration: 3000,
+                    close: true,
+                    gravity: "top",
+                    position: "left",
+                    backgroundColor: "green",
+                    stopOnFocus: true,
+                }).showToast();
+                cardModal.classList.remove('active');
+                cardSelecionado = null;
+                carregarDados(); // Recarrega o Kanban para refletir mudanças
+            },
+            error: function (jqXHR, textStatus, errorThrown) {
+                console.error("Erro ao atualizar tarefa: " + textStatus, errorThrown);
+                Toastify({
+                    text: "Erro ao atualizar tarefa.",
+                    duration: 3000,
+                    close: true,
+                    gravity: "top",
+                    position: "left",
+                    backgroundColor: "red",
+                    stopOnFocus: true,
+                }).showToast();
+            },
+        });
+    } else {
+        const dados = {
+            imagem_id: cardSelecionado.dataset.idImagem,
+            funcao_id: cardSelecionado.dataset.idFuncao,
+            cardId: cardSelecionado.dataset.id,
+            status: statusMap[cardSelecionado.closest('.kanban-box').id] || null,
+            prazo: modalPrazo.value,
+            observacao: modalObs.value,
+        };
+
+        $.ajax({
+            type: "POST",
+            url: "insereFuncao.php",
+            data: dados,
+            success: function (response) {
+                Toastify({
+                    text: "Dados salvos com sucesso!",
+                    duration: 3000,
+                    close: true,
+                    gravity: "top",
+                    position: "left",
+                    backgroundColor: "green",
+                    stopOnFocus: true,
+                }).showToast();
+                cardModal.classList.remove('active');
+                cardSelecionado = null;
+                carregarDados(); // Recarrega o Kanban para refletir mudanças
+            },
+            error: function (jqXHR, textStatus, errorThrown) {
+                console.error("Erro ao salvar dados: " + textStatus, errorThrown);
+                Toastify({
+                    text: "Erro ao salvar dados.",
+                    duration: 3000,
+                    close: true,
+                    gravity: "top",
+                    position: "left",
+                    backgroundColor: "red",
+                    stopOnFocus: true,
+                }).showToast();
+            },
+        });
+    }
 });
 
 function configurarDropzone(areaId, inputId, listaId, arquivosArray) {
@@ -848,6 +953,7 @@ var titulo = null;
 var subtitulo = null;
 var obra = null;
 var idimagem = null;
+var nome_status = null;
 const dropArea = document.getElementById('drop-area');
 const fileInput = document.getElementById('fileElem');
 const fileList = document.getElementById('fileList');
@@ -864,16 +970,21 @@ colunas.forEach(col => {
         ghostClass: 'sortable-ghost',
         filter: ".bloqueado",      // não deixa arrastar cards bloqueados
         onMove: function (evt) {
-            // Impede mover bloqueados
-            if (evt.related && evt.dragged.classList.contains("bloqueado")) {
-                return false;
-            }
+            const fromId = evt.from.closest('.kanban-box')?.id;
+            const toId = evt.to.closest('.kanban-box')?.id;
+            const dragged = evt.dragged;
 
-            // Impede soltar dentro da coluna #ajuste
-            if (evt.to.closest('.kanban-box')?.id === "ajuste" || evt.from.closest('.kanban-box')?.id === "to-do") {
-                return false;
-            }
-        },
+            if (dragged.classList.contains("bloqueado")) return false;
+
+            if (toId === "ajuste") return false;
+
+            if (toId === "to-do" && fromId !== "to-do") return false;
+
+            if (fromId === "em-andamento" && toId === "to-do") return false;
+
+            return true; // caso contrário, libera o movimento
+        }
+        ,
         onEnd: (evt) => {
             const card = evt.item;                                // Card movido
             const deColuna = evt.from.closest('.kanban-box');     // coluna origem
@@ -898,6 +1009,7 @@ colunas.forEach(col => {
                 titulo = card.querySelector("h5")?.innerText || "";
                 subtitulo = card.getAttribute("data-funcao_nome");
                 obra = card.getAttribute("data-obra_nome");
+                nome_status = card.getAttribute("data-nome_status");
 
                 // Preenche os campos comuns
                 modalPrazo.value = card.dataset.prazo || '';
@@ -907,12 +1019,26 @@ colunas.forEach(col => {
                 document.querySelector('.modalPrazo').style.display = 'flex';
                 document.querySelector('.modalObs').style.display = 'flex';
                 document.querySelector('.modalUploads').style.display = 'flex';
+                document.querySelector('.buttons').style.display = 'flex';
 
                 // Ativar modal
                 cardModal.classList.add('active');
+
+                // Seleciona o input de data dentro do modal
+                const inputData = document.getElementById('modalPrazo');
+
+                // Define a data atual no formato YYYY-MM-DD
+                const hoje = new Date();
+                const ano = hoje.getFullYear();
+                const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+                const dia = String(hoje.getDate()).padStart(2, '0');
+
+                inputData.value = `${ano}-${mes}-${dia}`;
+
                 cardSelecionado.classList.add('selected');
                 configurarDropzone("drop-area-previa", "fileElemPrevia", "fileListPrevia", imagensSelecionadas);
                 configurarDropzone("drop-area-final", "fileElemFinal", "fileListFinal", arquivosFinais);
+
 
                 // Ajusta modal de acordo com a coluna de destino
                 switch (novaColuna.id) {
@@ -930,6 +1056,7 @@ colunas.forEach(col => {
                         document.querySelector('.modalPrazo').style.display = 'none';
                         document.querySelector('.modalObs').style.display = 'none';
                         document.querySelector('.modalUploads').style.display = 'flex';
+                        document.querySelector('.buttons').style.display = 'none';
                         break;
                     case 'done': // "Finalizado"
                         // Mostra prazo, observação e botões
@@ -942,7 +1069,13 @@ colunas.forEach(col => {
                         break;
                 }
 
-
+                // ✅ Sobrescreve se for tarefa-criada (regra final)
+                if (card.classList.contains('tarefa-criada')) {
+                    document.querySelector('.modalPrazo').style.display = 'flex';
+                    document.querySelector('.modalObs').style.display = 'flex';
+                    document.querySelector('.buttons').style.display = 'flex';
+                    document.querySelector('.modalUploads').style.display = 'none'; // nunca mostra uploads
+                }
 
                 // Posicionar modal ao lado da coluna de destino
                 const rect = novaColuna.getBoundingClientRect();
@@ -971,7 +1104,6 @@ colunas.forEach(col => {
 let imagensSelecionadas = [];
 
 
-// ENVIO DA PRÉVIA
 function enviarImagens() {
     if (imagensSelecionadas.length === 0) {
         Toastify({
@@ -982,8 +1114,141 @@ function enviarImagens() {
         }).showToast();
         return;
     }
+
     const formData = new FormData();
     imagensSelecionadas.forEach(file => formData.append('imagens[]', file));
+    formData.append('dataIdFuncoes', idfuncao_imagem);
+    formData.append('idimagem', idimagem);
+    formData.append('nome_funcao', subtitulo);
+    formData.append('nome_imagem', titulo);
+
+    const numeroImagem = titulo.match(/^\d+/)?.[0] || '';
+    formData.append('numeroImagem', numeroImagem);
+    formData.append('nomenclatura', obra);
+
+    const descricaoMatch = titulo.match(/^\d+\.\s*[A-Z_]+\s+([^\s]+)/);
+    const primeiraPalavra = descricaoMatch ? descricaoMatch[1] : '';
+    formData.append('primeiraPalavra', primeiraPalavra);
+
+    // Container de progresso
+    const progressContainer = document.createElement('div');
+    progressContainer.style.fontSize = '16px';
+    progressContainer.innerHTML = `
+        <progress id="uploadProgress" value="0" max="100" style="width:100%;height:20px;"></progress>
+        <div id="uploadStatus">Enviando... 0%</div>
+        <div id="uploadTempo">Tempo: 0s</div>
+        <div id="uploadVelocidade">Velocidade: 0 MB/s</div>
+        <div id="uploadEstimativa">Tempo restante: ...</div>
+        <button id="cancelarUpload" style="margin-top:10px;padding:5px 10px;">Cancelar</button>
+    `;
+
+    Swal.fire({
+        title: 'Enviando prévia...',
+        html: progressContainer,
+        showConfirmButton: false,
+        allowOutsideClick: false,
+        didOpen: () => {
+            const xhr = new XMLHttpRequest();
+            const startTime = Date.now();
+            let uploadCancelado = false;
+
+            xhr.open('POST', 'uploadArquivos.php');
+
+            xhr.upload.addEventListener('progress', (e) => {
+                if (e.lengthComputable) {
+                    const now = Date.now();
+                    const elapsed = (now - startTime) / 1000;
+                    const uploadedMB = e.loaded / (1024 * 1024);
+                    const totalMB = e.total / (1024 * 1024);
+                    const percent = (e.loaded / e.total) * 100;
+                    const speed = uploadedMB / elapsed;
+                    const remainingMB = totalMB - uploadedMB;
+                    const estimatedTime = remainingMB / (speed || 1);
+
+                    document.getElementById('uploadProgress').value = percent;
+                    document.getElementById('uploadStatus').innerText = `Enviando... ${percent.toFixed(2)}%`;
+                    document.getElementById('uploadTempo').innerText = `Tempo: ${elapsed.toFixed(1)}s`;
+                    document.getElementById('uploadVelocidade').innerText = `Velocidade: ${speed.toFixed(2)} MB/s`;
+                    document.getElementById('uploadEstimativa').innerText = `Tempo restante: ${estimatedTime.toFixed(1)}s`;
+                }
+            });
+
+            xhr.onreadystatechange = () => {
+                if (xhr.readyState === 4 && !uploadCancelado) {
+                    try {
+                        const res = JSON.parse(xhr.responseText);
+
+                        if (res.error) {
+                            Toastify({
+                                text: "Erro: " + res.error,
+                                duration: 3000,
+                                gravity: "top",
+                                backgroundColor: "#f44336"
+                            }).showToast();
+                        } else {
+                            Swal.fire({
+                                position: "center",
+                                icon: "success",
+                                title: "Prévia enviada com sucesso!",
+                                html: `Arquivos: ${res.imagens ? res.imagens.join(', ') : 'Nenhum arquivo encontrado'}`,
+                                showConfirmButton: false,
+                                timer: 2000
+                            });
+                        }
+                    } catch (err) {
+                        Toastify({
+                            text: "Erro ao processar resposta do servidor",
+                            duration: 3000,
+                            gravity: "top",
+                            backgroundColor: "#f44336"
+                        }).showToast();
+                        console.error(err);
+                    }
+                }
+            };
+
+            xhr.onerror = () => {
+                if (!uploadCancelado) {
+                    Toastify({
+                        text: "Erro ao enviar prévia",
+                        duration: 3000,
+                        gravity: "top",
+                        backgroundColor: "#f44336"
+                    }).showToast();
+                }
+            };
+
+            document.getElementById('cancelarUpload').addEventListener('click', () => {
+                uploadCancelado = true;
+                xhr.abort();
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Upload cancelado',
+                    showConfirmButton: false,
+                    timer: 1500
+                });
+            });
+
+            xhr.send(formData);
+        }
+    });
+}
+
+
+// ENVIO DO ARQUIVO FINAL
+function enviarArquivo() {
+    if (arquivosFinais.length === 0) {
+        Toastify({
+            text: "Selecione pelo menos um arquivo para enviar a prévia.",
+            duration: 3000,
+            gravity: "top",
+            backgroundColor: "#f44336"
+        }).showToast();
+        return;
+    }
+
+    const formData = new FormData();
+    arquivosFinais.forEach(file => formData.append('arquivo_final[]', file));
     formData.append('dataIdFuncoes', idfuncao_imagem);
     formData.append('idimagem', idimagem);
     formData.append('nome_funcao', subtitulo);
@@ -1004,57 +1269,96 @@ function enviarImagens() {
     formData.append('primeiraPalavra', primeiraPalavra);
 
 
-    for (let [key, value] of formData.entries()) {
-        console.log(key, value);
-    }
+    const statusNome = nome_status;
 
-    // const statusSelect = document.getElementById('opcao_status');
-    // const statusNome = statusSelect.options[statusSelect.selectedIndex].text.trim();
+    formData.append('status_nome', statusNome);
 
-    // formData.append('status_nome', statusNome);
+    // Criar container de progresso
+    const progressContainer = document.createElement('div');
+    progressContainer.style.fontSize = '16px';
+    progressContainer.innerHTML = `
+        <progress id="uploadProgress" value="0" max="100" style="width: 100%; height: 20px;"></progress>
+        <div id="uploadStatus">Enviando... 0%</div>
+        <div id="uploadTempo">Tempo: 0s</div>
+        <div id="uploadVelocidade">Velocidade: 0 MB/s</div>
+        <div id="uploadEstimativa">Tempo restante: ...</div>
+        <button id="cancelarUpload" style="margin-top:10px;padding:5px 10px;">Cancelar</button>
+    `;
 
-    // fetch('../uploadArquivos.php', {
-    //     method: 'POST',
-    //     body: formData
-    // })
-    //     .then(resp => resp.json())
-    //     .then(res => {
-    //         Toastify({
-    //             text: "Prévia enviada com sucesso!",
-    //             duration: 3000,
-    //             gravity: "top",
-    //             backgroundColor: "#4caf50"
-    //         }).showToast();
+    Swal.fire({
+        title: 'Enviando arquivo...',
+        html: progressContainer,
+        showConfirmButton: false,
+        allowOutsideClick: false,
+        didOpen: () => {
+            const xhr = new XMLHttpRequest();
+            const startTime = Date.now();
+            let uploadCancelado = false;
 
-    //         // Avança para próxima etapa
-    //         document.getElementById('etapaPrevia').style.display = 'none';
-    //         document.getElementById('etapaFinal').style.display = 'block';
-    //         document.getElementById('etapaTitulo').textContent = "2. Envio do Arquivo Final";
+            xhr.open('POST', 'https://improov/ImproovWeb/uploadFinal.php');
 
-    //         Swal.fire({
-    //             position: "center",
-    //             icon: "success",
-    //             title: "Agora adicione o arquivo final",
-    //             showConfirmButton: false,
-    //             timer: 1500,
-    //             didOpen: () => {
-    //                 const title = Swal.getTitle();
-    //                 if (title) title.style.fontSize = "18px";
-    //             }
-    //         });
+            xhr.upload.addEventListener('progress', (e) => {
+                if (e.lengthComputable) {
+                    const now = Date.now();
+                    const elapsed = (now - startTime) / 1000; // em segundos
+                    const uploadedMB = e.loaded / (1024 * 1024);
+                    const totalMB = e.total / (1024 * 1024);
+                    const percent = (e.loaded / e.total) * 100;
+                    const speed = uploadedMB / elapsed; // MB/s
+                    const remainingMB = totalMB - uploadedMB;
+                    const estimatedTime = remainingMB / (speed || 1); // evita divisão por 0
 
+                    document.getElementById('uploadProgress').value = percent;
+                    document.getElementById('uploadStatus').innerText = `Enviando... ${percent.toFixed(2)}%`;
+                    document.getElementById('uploadTempo').innerText = `Tempo: ${elapsed.toFixed(1)}s`;
+                    document.getElementById('uploadVelocidade').innerText = `Velocidade: ${speed.toFixed(2)} MB/s`;
+                    document.getElementById('uploadEstimativa').innerText = `Tempo restante: ${estimatedTime.toFixed(1)}s`;
+                }
+            });
 
-    //     })
-    //     .catch(err => {
-    //         Toastify({
-    //             text: "Erro ao enviar prévia",
-    //             duration: 3000,
-    //             gravity: "top",
-    //             backgroundColor: "#f44336"
-    //         }).showToast();
-    //     });
+            xhr.onreadystatechange = () => {
+                if (xhr.readyState === 4 && xhr.status === 200 && !uploadCancelado) {
+                    const res = JSON.parse(xhr.responseText);
+                    const destino = res[0]?.destino || 'Caminho não encontrado';
+                    Swal.fire({
+                        position: "center",
+                        icon: "success",
+                        title: "Arquivo final enviado com sucesso!",
+                        showConfirmButton: false,
+                        timer: 2000
+                    });
+                    fecharModal();
+                }
+            };
+
+            xhr.onerror = () => {
+                if (!uploadCancelado) {
+                    Swal.close();
+                    Toastify({
+                        text: "Erro ao enviar arquivo final",
+                        duration: 3000,
+                        gravity: "top",
+                        backgroundColor: "#f44336"
+                    }).showToast();
+                }
+            };
+
+            // Cancelar envio
+            document.getElementById('cancelarUpload').addEventListener('click', () => {
+                uploadCancelado = true;
+                xhr.abort();
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Upload cancelado',
+                    showConfirmButton: false,
+                    timer: 1500
+                });
+            });
+
+            xhr.send(formData);
+        }
+    });
 }
-
 
 
 const btnFilter = document.getElementById('filter');
@@ -1071,10 +1375,28 @@ btnFilter.addEventListener('click', function (e) {
 
 })
 
-// Fecha o filtro ao clicar fora
+// Fecha modal ao clicar fora ou pressionar Esc
 document.addEventListener('click', function (e) {
     if (modalFilter.classList.contains('active') && !modalFilter.contains(e.target) && e.target !== btnFilter) {
         modalFilter.classList.remove('active');
+        // remove seleção dos outros
+        document.querySelectorAll('.dropdown-content.show').forEach(c => {
+            c.classList.remove('show');
+        });
+    }
+    if (cardModal.classList.contains('active') && !cardModal.contains(e.target)) {
+        cardModal.classList.remove('active');
+    }
+});
+
+document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+        if (modalFilter.classList.contains('active')) {
+            modalFilter.classList.remove('active');
+        }
+        if (cardModal.classList.contains('active')) {
+            cardModal.classList.remove('active');
+        }
     }
 });
 
@@ -1089,12 +1411,4 @@ document.querySelectorAll('.dropbtn').forEach(btn => {
         const dropdown = this.closest('.dropdown').querySelector('.dropdown-content');
         dropdown.classList.toggle('show');
     });
-});
-
-// Fecha ao clicar fora
-document.addEventListener('click', (e) => {
-    // Se o clique NÃO for dentro de um .dropdown, fecha todos
-    if (!e.target.closest('.dropdown')) {
-        document.querySelectorAll('.dropdown-content').forEach(dc => dc.classList.remove('show'));
-    }
 });

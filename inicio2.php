@@ -98,7 +98,7 @@ $conn->close();
             <header>
                 <div class="top">
                     <h3 id="saudacao"></h3>
-                    <img src="gif/assinatura_preto.gif" alt="" style="width: 200px;">
+                    <img id="gif" src="gif/assinatura_preto.gif" alt="Assinatura" style="width: 200px;">
                 </div>
                 <nav>
                     <div class="nav-left">
@@ -217,7 +217,7 @@ $conn->close();
 
             <h3>Editar Card</h3>
             <div class="modal-item modalPrazo">
-                <h4>Prazo:</h4>
+                <h4>Prazo de entrega:</h4>
                 <input type="date" id="modalPrazo">
             </div>
 
@@ -232,7 +232,7 @@ $conn->close();
                     <h4>Prévias</h4>
                     <div id="drop-area-previa" class="drop-area">
                         Arraste suas imagens aqui ou clique para selecionar
-                        <input type="file" id="fileElemPrevia" accept="image/*" multiple style="display:none;">
+                        <input type="file" id="fileElemPrevia" accept="image/*" multiple style="display:none;" required>
                     </div>
                     <ul class="file-list" id="fileListPrevia"></ul>
                     <div class="buttons-upload" id="addEnviarPrevia">
@@ -262,7 +262,7 @@ $conn->close();
         </div>
     </div>
 
-    <div id="modalFilter" class="card-modal" style="width: 300px !important;">
+    <div id="modalFilter" class="" style="width: 300px !important;">
         <div class="modal-content">
             <h3>Filtros</h3>
             <!-- Filtros -->
@@ -632,9 +632,9 @@ $conn->close();
         }
     </script>
 
-
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+    <!-- <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script> -->
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <script src="script/notificacoes.js"></script>

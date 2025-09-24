@@ -1,47 +1,37 @@
 <?php
-require 'vendor/autoload.php';
+// Dados FTP
+$ftp_host = "ftp.improov.com.br";
+$ftp_port = 21; // FTP padrão
+$ftp_user = "improov";
+$ftp_pass = "Impr00v";
+$ftp_dir  = "/www/sistema/uploads/"; // pasta remota
 
-use phpseclib\Net\SFTP;
-use phpseclib\Exception\UnableToConnectException;
+// Conectar ao servidor FTP
+$conn_id = ftp_connect($ftp_host, $ftp_port, 10); // timeout 10s
 
-function enviarArquivoSFTP($host, $usuario, $senha, $arquivoLocal, $arquivoRemoto)
-{
-    $porta = 2222; // Porta SFTP personalizada
-
-    if (!file_exists($arquivoLocal)) {
-        return "❌ Arquivo local não encontrado: $arquivoLocal";
-    }
-
-    try {
-        $sftp = new SFTP($host, $porta);
-        if (!$sftp->login($usuario, $senha)) {
-            return "❌ Falha na autenticação SFTP.";
-        }
-
-        // Garante que o diretório remoto exista
-        $diretorio = dirname($arquivoRemoto);
-        if (!$sftp->is_dir($diretorio)) {
-            $sftp->mkdir($diretorio, -1, true); // Recursivo
-        }
-
-        // Envia o arquivo
-        if ($sftp->put($arquivoRemoto, file_get_contents($arquivoLocal))) {
-            return "✅ Arquivo enviado com sucesso via SFTP!";
-        } else {
-            return "⚠ Erro ao enviar o arquivo via SFTP.";
-        }
-    } catch (UnableToConnectException $e) {
-        return "❌ Erro ao conectar ao servidor SFTP: " . $e->getMessage();
-    } catch (Exception $e) {
-        return "⚠ Ocorreu um erro inesperado: " . $e->getMessage();
-    }
+if (!$conn_id) {
+    die("❌ Não foi possível conectar ao servidor FTP.");
 }
 
-// Exemplo de uso:
-echo enviarArquivoSFTP(
-    "imp-nas.ddns.net",
-    "flow",
-    "flow@2025",
-    "./assets/teste.pdf",
-    "/mnt/clientes/2025/ROM_MAE/02.Projetos/teste.pdf"
-);
+// Autenticar
+if (!ftp_login($conn_id, $ftp_user, $ftp_pass)) {
+    ftp_close($conn_id);
+    die("❌ Falha na autenticação FTP.");
+}
+
+// Ativar modo passivo (muito útil em redes com firewall/NAT)
+ftp_pasv($conn_id, true);
+
+// Listar arquivos da pasta (apenas para teste)
+$files = ftp_nlist($conn_id, $ftp_dir);
+
+if ($files !== false) {
+    echo "✅ Conexão FTP bem-sucedida!\n";
+    echo "Arquivos na pasta remota '$ftp_dir':\n";
+    print_r($files);
+} else {
+    echo "⚠ Não foi possível listar arquivos na pasta '$ftp_dir'.";
+}
+
+// Fechar conexão
+ftp_close($conn_id);

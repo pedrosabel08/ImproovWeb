@@ -9,9 +9,7 @@ if ($conn->connect_error) {
 $conn->set_charset('utf8mb4');
 
 $colaboradorId = intval($_GET['colaborador_id']);
-
 date_default_timezone_set('America/Sao_Paulo');
-
 
 // ====================
 // FUNÇÕES (SEM FILTROS)
@@ -30,26 +28,23 @@ $sql = "SELECT
     o.nomenclatura,
     ico.prazo AS imagem_prazo,
     ico.idimagens_cliente_obra AS idimagem,
-    -- Tempo entre Em andamento e Em aprovação
+    si.nome_status,
     TIMESTAMPDIFF(
         MINUTE,
-        (SELECT la.data
-         FROM log_alteracoes la
+        (SELECT la.data FROM log_alteracoes la
          WHERE la.funcao_imagem_id = fi.idfuncao_imagem
            AND la.status_novo = 'Em andamento'
          ORDER BY la.data ASC LIMIT 1),
-        (SELECT la.data
-         FROM log_alteracoes la
+        (SELECT la.data FROM log_alteracoes la
          WHERE la.funcao_imagem_id = fi.idfuncao_imagem
            AND la.status_novo = 'Em aprovação'
          ORDER BY la.data ASC LIMIT 1)
     ) AS tempo_em_andamento,
-    -- Contagem de comentários da última versão
     (
         SELECT COUNT(*)
         FROM comentarios_imagem ci
-        JOIN historico_aprovacoes_imagens hi2 
-            ON ci.ap_imagem_id = hi2.id
+        JOIN historico_aprovacoes_imagens hi2
+          ON ci.ap_imagem_id = hi2.id
         WHERE hi2.funcao_imagem_id = fi.idfuncao_imagem
           AND hi2.indice_envio = (
               SELECT MAX(hi3.indice_envio)
@@ -57,7 +52,6 @@ $sql = "SELECT
               WHERE hi3.funcao_imagem_id = fi.idfuncao_imagem
           )
     ) AS comentarios_ultima_versao,
-    -- Índice de envio atual
     (
         SELECT MAX(hi.indice_envio)
         FROM historico_aprovacoes_imagens hi
@@ -65,39 +59,37 @@ $sql = "SELECT
     ) AS indice_envio_atual
 FROM funcao_imagem fi
 JOIN imagens_cliente_obra ico ON fi.imagem_id = ico.idimagens_cliente_obra
+JOIN status_imagem si ON ico.status_id = si.idstatus
 JOIN obra o ON o.idobra = ico.obra_id
 JOIN funcao f ON fi.funcao_id = f.idfuncao
 JOIN prioridade_funcao pc ON fi.idfuncao_imagem = pc.funcao_imagem_id
 WHERE fi.colaborador_id = ?
   AND o.status_obra = 0
-ORDER BY prazo DESC, imagem_id, obra_id, 
-    FIELD(fi.status,'Não iniciado','HOLD','Em andamento','Ajuste','Em aprovação','Aprovado com ajustes','Aprovado','Finalizado')";
+ORDER BY prazo DESC, imagem_id, obra_id,
+    FIELD(fi.status,
+          'Não iniciado','HOLD','Em andamento','Ajuste',
+          'Em aprovação','Aprovado com ajustes','Aprovado','Finalizado')";
 
 $stmt = $conn->prepare($sql);
 $stmt->bind_param("i", $colaboradorId);
 $stmt->execute();
 $result = $stmt->get_result();
-
-$funcoes = [];
-while ($row = $result->fetch_assoc()) {
-    $funcoes[] = $row;
-}
+$funcoes = $result->fetch_all(MYSQLI_ASSOC);
+$stmt->close();
 
 // ====================
 // TAREFAS
 // ====================
 $sqlTarefas = "SELECT id, titulo, descricao, prazo, status, prioridade 
                FROM tarefas 
-               WHERE colaborador_id = ? ORDER BY prazo DESC";
+               WHERE colaborador_id = ? 
+               ORDER BY prazo DESC";
 $stmtTarefas = $conn->prepare($sqlTarefas);
 $stmtTarefas->bind_param("i", $colaboradorId);
 $stmtTarefas->execute();
 $resultTarefas = $stmtTarefas->get_result();
-
-$tarefas = [];
-while ($row = $resultTarefas->fetch_assoc()) {
-    $tarefas[] = $row;
-}
+$tarefas = $resultTarefas->fetch_all(MYSQLI_ASSOC);
+$stmtTarefas->close();
 
 // ====================
 // MÉDIA TEMPO EM ANDAMENTO
@@ -107,18 +99,14 @@ $sqlMedia = "SELECT
     fi.funcao_id,
     ROUND(AVG(TIMESTAMPDIFF(
         MINUTE,
-        (SELECT la1.data
-         FROM log_alteracoes la1
+        (SELECT la1.data FROM log_alteracoes la1
          WHERE la1.funcao_imagem_id = fi.idfuncao_imagem
            AND la1.status_novo = 'Em andamento'
-         ORDER BY la1.data ASC
-         LIMIT 1),
-        (SELECT la2.data
-         FROM log_alteracoes la2
+         ORDER BY la1.data ASC LIMIT 1),
+        (SELECT la2.data FROM log_alteracoes la2
          WHERE la2.funcao_imagem_id = fi.idfuncao_imagem
            AND la2.status_novo = 'Em aprovação'
-         ORDER BY la2.data ASC
-         LIMIT 1)
+         ORDER BY la2.data ASC LIMIT 1)
     ))) AS media_tempo
 FROM funcao_imagem fi
 JOIN imagens_cliente_obra ico ON fi.imagem_id = ico.idimagens_cliente_obra
@@ -127,6 +115,7 @@ JOIN funcao f ON f.idfuncao = fi.funcao_id
 WHERE fi.colaborador_id = ? 
   AND o.status_obra = 0
 GROUP BY fi.funcao_id";
+
 $stmtMedia = $conn->prepare($sqlMedia);
 $stmtMedia->bind_param("i", $colaboradorId);
 $stmtMedia->execute();
@@ -135,7 +124,100 @@ $mediaTemposPorFuncao = [];
 while ($row = $resultMedia->fetch_assoc()) {
     $mediaTemposPorFuncao[$row['funcao_id']] = intval($row['media_tempo']);
 }
+$stmtMedia->close();
 
+// ====================
+// Função para calcular tempo por status
+// ====================
+function calcularTempo($logs, $statusAtual)
+{
+    $tempoCalculado = null;
+    switch ($statusAtual) {
+        case 'Em aprovação':
+            $dataAprovacao = null;
+
+            // Ordena os logs por data decrescente (mais recente primeiro)
+            usort($logs, function ($a, $b) {
+                return strtotime($b['data']) <=> strtotime($a['data']);
+            });
+
+            // Busca a primeira ocorrência de "Em aprovação" mais recente
+            foreach ($logs as $log) {
+                if ($log['status_novo'] === 'Em aprovação') {
+                    $dataAprovacao = new DateTime($log['data']);
+                    break;
+                }
+            }
+
+            if ($dataAprovacao) {
+                $diff = $dataAprovacao->diff(new DateTime()); // tempo até agora
+                $tempoCalculado = $diff->days * 1440 + $diff->h * 60 + $diff->i;
+            }
+            break;
+
+        case 'Em andamento':
+            foreach ($logs as $log) {
+                if ($log['status_novo'] === 'Não iniciado') {
+                    $dataInicio = new DateTime($log['data']);
+                    $diff = $dataInicio->diff(new DateTime());
+                    $tempoCalculado = $diff->days * 1440 + $diff->h * 60 + $diff->i;
+                    break;
+                }
+            }
+            break;
+
+        case 'Ajuste':
+        case 'HOLD':
+            foreach ($logs as $log) {
+                if ($log['status_novo'] === $statusAtual) {
+                    $dataStatus = new DateTime($log['data']);
+                    $diff = $dataStatus->diff(new DateTime());
+                    $tempoCalculado = $diff->days * 1440 + $diff->h * 60 + $diff->i;
+                }
+            }
+            break;
+
+        case 'Finalizado':
+        case 'Aprovado':
+        case 'Aprovado com ajustes':
+            if (count($logs) > 1) {
+                $primeira = new DateTime($logs[0]['data']);
+                $ultima   = new DateTime(end($logs)['data']);
+                $diff = $primeira->diff($ultima);
+                $tempoCalculado = $diff->days * 1440 + $diff->h * 60 + $diff->i;
+            }
+            break;
+
+        default:
+            $tempoCalculado = null;
+            break;
+    }
+
+    return $tempoCalculado;
+}
+
+// ====================
+// Consulta única para logs de todas funções
+// ====================
+$funcaoImagemIds = array_column($funcoes, 'idfuncao_imagem');
+$logsPorFuncao = [];
+
+if (count($funcaoImagemIds) > 0) {
+    $inIds = implode(',', array_fill(0, count($funcaoImagemIds), '?'));
+    $sqlLogsAll = "SELECT funcao_imagem_id, status_novo, data 
+                   FROM log_alteracoes 
+                   WHERE funcao_imagem_id IN ($inIds) 
+                   ORDER BY data ASC";
+    $stmtLogsAll = $conn->prepare($sqlLogsAll);
+    $types = str_repeat('i', count($funcaoImagemIds));
+    $stmtLogsAll->bind_param($types, ...$funcaoImagemIds);
+    $stmtLogsAll->execute();
+    $resultLogsAll = $stmtLogsAll->get_result();
+    while ($row = $resultLogsAll->fetch_assoc()) {
+        $logsPorFuncao[$row['funcao_imagem_id']][] = $row;
+    }
+    $stmtLogsAll->close();
+}
 
 // ====================
 // Ajusta Funções (liberação, ordem, etc.)
@@ -145,13 +227,14 @@ $todasFuncoes = [];
 
 if (count($imagemIds) > 0) {
     $inImagem = implode(',', array_fill(0, count($imagemIds), '?'));
-    $sqlTodasFuncoes = "SELECT imagem_id, funcao_id, status, prazo FROM funcao_imagem WHERE imagem_id IN ($inImagem)";
+    $sqlTodasFuncoes = "SELECT imagem_id, funcao_id, status, prazo
+                        FROM funcao_imagem
+                        WHERE imagem_id IN ($inImagem)";
     $stmtTodas = $conn->prepare($sqlTodasFuncoes);
     $typesTodas = str_repeat('i', count($imagemIds));
     $stmtTodas->bind_param($typesTodas, ...$imagemIds);
     $stmtTodas->execute();
     $resultTodas = $stmtTodas->get_result();
-
     while ($row = $resultTodas->fetch_assoc()) {
         $todasFuncoes[$row['imagem_id']][$row['funcao_id']] = $row;
     }
@@ -171,25 +254,25 @@ $ordemFuncoes = [
 ];
 
 $funcoesFinal = [];
+
 foreach ($funcoes as $funcao) {
     $funcaoAtualId = $funcao['funcao_id'];
-    $imagemId = $funcao['imagem_id'];
+    $imagemId      = $funcao['imagem_id'];
+    $ordemIds      = array_keys($ordemFuncoes);
+    $indiceAtual   = array_search($funcaoAtualId, $ordemIds);
 
-    $ordemIds = array_keys($ordemFuncoes);
-    $indiceAtual = array_search($funcaoAtualId, $ordemIds);
-
-    $statusAnterior = null;
-    $liberada = false;
+    $statusAnterior   = null;
+    $liberada         = false;
     $funcaoAnteriorId = null;
-    $prazoAnterior = null;
+    $prazoAnterior    = null;
 
     if ($indiceAtual !== false && $indiceAtual > 0 && isset($todasFuncoes[$imagemId])) {
         for ($i = $indiceAtual - 1; $i >= 0; $i--) {
             $funcaoAnteriorId = $ordemIds[$i];
             if (isset($todasFuncoes[$imagemId][$funcaoAnteriorId])) {
-                $rowAnterior = $todasFuncoes[$imagemId][$funcaoAnteriorId];
+                $rowAnterior   = $todasFuncoes[$imagemId][$funcaoAnteriorId];
                 $statusAnterior = $rowAnterior['status'];
-                $prazoAnterior = $rowAnterior['prazo'];
+                $prazoAnterior  = $rowAnterior['prazo'];
                 if (in_array($statusAnterior, ['Finalizado', 'Aprovado', 'Aprovado com ajustes'])) {
                     $liberada = true;
                 }
@@ -198,127 +281,33 @@ foreach ($funcoes as $funcao) {
         }
     }
 
-    // ====================
-    // Calcular tempo por status
-    // ====================
-    $funcaoId = $funcao['idfuncao_imagem'];
-    $sqlLogs = "SELECT status_novo, data 
-                FROM log_alteracoes 
-                WHERE funcao_imagem_id = ? 
-                ORDER BY data ASC";
-    $stmtLogs = $conn->prepare($sqlLogs);
-    $stmtLogs->bind_param("i", $funcaoId);
-    $stmtLogs->execute();
-    $resultLogs = $stmtLogs->get_result();
-    $logs = $resultLogs->fetch_all(MYSQLI_ASSOC);
-    $stmtLogs->close();
-
-    $tempoCalculado = null;
-    $indiceAprovacao = null;
-    $statusAtual = $funcao['status'];
-
-    switch ($statusAtual) {
-        case 'Em aprovação':
-            $dataAndamento = null;
-            $dataAprovacao = null;
-            foreach ($logs as $log) {
-                if ($log['status_novo'] === 'Em andamento' && !$dataAndamento) {
-                    $dataAndamento = new DateTime($log['data']);
-                }
-                if ($log['status_novo'] === 'Em aprovação' && !$dataAprovacao) {
-                    $dataAprovacao = new DateTime($log['data']);
-                }
-            }
-            if ($dataAndamento && $dataAprovacao) {
-                $diff = $dataAndamento->diff($dataAprovacao);
-                $tempoCalculado = $diff->days * 1440 + $diff->h * 60 + $diff->i;
-            }
-            $indiceAprovacao = $funcao['indice_envio_atual'];
-            break;
-
-        case 'Em andamento':
-            $dataInicio = null;
-            foreach ($logs as $log) {
-                if ($log['status_novo'] === 'Não iniciado') {
-                    $dataInicio = new DateTime($log['data']);
-                    break;
-                }
-            }
-            if ($dataInicio) {
-                $diff = $dataInicio->diff(new DateTime());
-                $tempoCalculado = $diff->days * 1440 + $diff->h * 60 + $diff->i;
-            }
-            break;
-
-        case 'Ajuste':
-            $dataAjuste = null;
-            foreach ($logs as $log) {
-                if ($log['status_novo'] === 'Ajuste') {
-                    $dataAjuste = new DateTime($log['data']);
-                }
-            }
-            if ($dataAjuste) {
-                $diff = $dataAjuste->diff(new DateTime());
-                $tempoCalculado = $diff->days * 1440 + $diff->h * 60 + $diff->i;
-            }
-            break;
-
-        case 'HOLD':
-            $dataHOLD = null;
-            foreach ($logs as $log) {
-                if ($log['status_novo'] === 'HOLD') {
-                    $dataHOLD = new DateTime($log['data']);
-                }
-            }
-            if ($dataHOLD) {
-                $diff = $dataHOLD->diff(new DateTime());
-                $tempoCalculado = $diff->days * 1440 + $diff->h * 60 + $diff->i;
-            }
-            break;
-
-        case 'Finalizado':
-        case 'Aprovado':
-        case 'Aprovado com ajustes':
-            if (count($logs) > 1) {
-                $primeira = new DateTime($logs[0]['data']);
-                $ultima   = new DateTime(end($logs)['data']);
-                $diff = $primeira->diff($ultima);
-                $tempoCalculado = $diff->days * 1440 + $diff->h * 60 + $diff->i;
-            }
-            break;
-
-        default:
-            // Para todos os outros status
-            $tempoCalculado = null;
-            $indiceAprovacao = null;
-            break;
-    }
-
+    // Calcular tempo por status usando logs já consultados
+    $funcaoId       = $funcao['idfuncao_imagem'];
+    $logs           = isset($logsPorFuncao[$funcaoId]) ? $logsPorFuncao[$funcaoId] : [];
+    $tempoCalculado = calcularTempo($logs, $funcao['status']);
 
     $funcoesFinal[] = [
-        'imagem_id' => $funcao['imagem_id'],
-        'imagem_nome' => $funcao['imagem_nome'],
-        'status' => $funcao['status'],
-        'prazo' => $funcao['prazo'],
-        'nome_funcao' => $funcao['nome_funcao'],
-        'prioridade' => $funcao['prioridade'],
-        'funcao_id' => $funcao['funcao_id'],
-        'status_funcao_anterior' => $statusAnterior,
-        'prazo_funcao_anterior' => $prazoAnterior,
-        'liberada' => $liberada,
-        'funcaoAnteriorId' => $funcaoAnteriorId,
-        'obra_id' => $funcao['obra_id'],
-        'nomenclatura' => $funcao['nomenclatura'],
-        'idfuncao_imagem' => $funcao['idfuncao_imagem'],
-        'tempo_em_andamento' => $funcao['tempo_em_andamento'],
-        'imagem_prazo' => $funcao['imagem_prazo'],
-        'comentarios_ultima_versao' => $funcao['comentarios_ultima_versao'],
-        'indice_envio_atual' => $funcao['indice_envio_atual'],
-        'observacao' => $funcao['observacao'],
-
-        // novos campos calculados
-        'tempo_calculado' => $tempoCalculado,
-        'indice_aprovacao' => $indiceAprovacao
+        'imagem_id'                  => $funcao['imagem_id'],
+        'imagem_nome'                => $funcao['imagem_nome'],
+        'status'                     => $funcao['status'],
+        'prazo'                      => $funcao['prazo'],
+        'nome_funcao'                => $funcao['nome_funcao'],
+        'prioridade'                 => $funcao['prioridade'],
+        'funcao_id'                  => $funcao['funcao_id'],
+        'nome_status'                  => $funcao['nome_status'],
+        'status_funcao_anterior'     => $statusAnterior,
+        'prazo_funcao_anterior'      => $prazoAnterior,
+        'liberada'                   => $liberada,
+        'funcaoAnteriorId'           => $funcaoAnteriorId,
+        'obra_id'                    => $funcao['obra_id'],
+        'nomenclatura'               => $funcao['nomenclatura'],
+        'idfuncao_imagem'            => $funcao['idfuncao_imagem'],
+        'tempo_em_andamento'         => $funcao['tempo_em_andamento'],
+        'imagem_prazo'               => $funcao['imagem_prazo'],
+        'comentarios_ultima_versao'  => $funcao['comentarios_ultima_versao'],
+        'indice_envio_atual'         => $funcao['indice_envio_atual'],
+        'observacao'                 => $funcao['observacao'],
+        'tempo_calculado'            => $tempoCalculado
     ];
 }
 
@@ -326,13 +315,11 @@ foreach ($funcoes as $funcao) {
 // RESPONSE FINAL ÚNICO
 // ====================
 $response = [
-    "funcoes" => $funcoesFinal,
-    "tarefas" => $tarefas,
+    "funcoes"                 => $funcoesFinal,
+    "tarefas"                 => $tarefas,
     "media_tempo_em_andamento" => $mediaTemposPorFuncao
 ];
 
 echo json_encode($response);
 
-$stmt->close();
-$stmtTarefas->close();
 $conn->close();

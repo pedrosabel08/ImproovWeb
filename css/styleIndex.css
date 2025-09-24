@@ -119,6 +119,32 @@ main .kanban {
     justify-content: space-evenly;
     margin-top: 20px;
     padding: 0 20px;
+    scroll-behavior: smooth;
+}
+
+/* Esconde barra de rolagem no Safari/Chrome */
+.kanban::-webkit-scrollbar {
+    display: none;
+}
+
+/* Responsividade: tablets e menores */
+@media (max-width: 1024px) {
+    main .kanban {
+        justify-content: flex-start;
+        overflow-x: auto;
+    }
+
+    main .kanban .kanban-box {
+        min-width: 23%;
+        flex-shrink: 0;
+    }
+}
+
+/* Para celular (ex: 2 colunas visíveis) */
+@media (max-width: 600px) {
+    main .kanban .kanban-box {
+        min-width: 45%;
+    }
 }
 
 main .kanban .kanban-box {
@@ -129,22 +155,26 @@ main .kanban .kanban-box {
 }
 
 /* Scrollbar estilizado para Webkit (Chrome, Edge, Safari) */
-.kanban-box .content::-webkit-scrollbar {
+.kanban-box .content::-webkit-scrollbar,
+.dropdown-content::-webkit-scrollbar {
     width: 4px;
 }
 
-.kanban-box .content::-webkit-scrollbar-track {
+.kanban-box .content::-webkit-scrollbar-track,
+.dropdown-content::-webkit-scrollbar-track {
     background: #f1f1f1;
     border-radius: 8px;
 }
 
-.kanban-box .content::-webkit-scrollbar-thumb {
+.kanban-box .content::-webkit-scrollbar-thumb,
+.dropdown-content::-webkit-scrollbar-thumb {
     background: #c1c1c1;
     border-radius: 8px;
     transition: background 0.3s;
 }
 
-.kanban-box .content::-webkit-scrollbar-thumb:hover {
+.kanban-box .content::-webkit-scrollbar-thumb:hover,
+.dropdown-content::-webkit-scrollbar-thumb:hover {
     background: #888;
 }
 
@@ -189,7 +219,7 @@ main .kanban div .header .title {
 }
 
 main .kanban div .header .task-count {
-    background-color: var(--cor-principal);
+    background-color: #3f3f3f;
     color: white;
     padding: 2px 5px;
     border-radius: 50%;
@@ -433,13 +463,14 @@ form#task-form button {
 }
 
 #modalFilter .dropbtn {
-    width: 100%;
-    padding: 8px 12px;
-    background: #f5f5f5;
-    border: 1px solid #ddd;
+    background: #fff;
     border-radius: 8px;
-    text-align: left;
+    padding: 6px 10px;
     cursor: pointer;
+    font-size: 14px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    width: max-content;
+    margin: auto;
 }
 
 
@@ -528,30 +559,29 @@ form#task-form button {
 
 .dropdown {
     position: relative;
-    display: inline-block;
+    display: flex;
+    flex-direction: column;
     min-width: 100px;
 }
 
-.dropbtn {
-    background: #fff;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    padding: 6px 12px;
-    cursor: pointer;
-    font-size: 14px;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-    width: 100%;
-}
 
 .dropdown-content {
     display: none;
     background: #fff;
-    min-width: 200px;
-    border-radius: 8px;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
     padding: 8px;
     z-index: 10;
     min-width: 100%;
+    display: none;
+    position: relative;
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    margin-top: 6px;
+    max-height: 180px;
+    overflow-y: auto;
+    padding: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
 }
 
 .dropdown-content.show {
@@ -1220,5 +1250,156 @@ h1 {
     to {
         opacity: 1;
         transform: translateY(0);
+    }
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --cor-principal: #e0e0e0;
+        --cor-secundaria: #3399ff;
+    }
+
+    body {
+        background-color: #181818;
+        color: #e0e0e0;
+    }
+
+    #gif {
+        content: url("../gif/assinatura_branco.gif") !important;
+    }
+
+    main header,
+    main nav,
+    main .kanban div .header,
+    main .kanban-box .content:not(:empty),
+    .modal-content,
+    .card-modal,
+    #calendarFull,
+    .eventos,
+    .popover,
+    .secao-titulo,
+    .secao-conteudo {
+        background-color: #232323;
+        color: #e0e0e0;
+        border-color: #333 !important;
+    }
+
+    .kanban-card {
+        background-color: #222;
+        color: #e0e0e0;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+    }
+
+    .kanban-card.tarefa-criada {
+        background-color: #1a2633;
+    }
+
+    .kanban-card .header-kanban .priority.alta {
+        background-color: #ff4c4c;
+        color: #fff;
+    }
+
+    .kanban-card .header-kanban .priority.media {
+        background-color: #ffb84d;
+        color: #222;
+    }
+
+    .kanban-card .header-kanban .priority.baixa {
+        background-color: #4da6ff;
+        color: #222;
+    }
+
+    .add-card {
+        background-color: #3399ff;
+        color: #fff;
+    }
+
+    .modal-content,
+    .card-modal .modal-content,
+    #modalDaily .modal-content {
+        background-color: #232323;
+        color: #e0e0e0;
+    }
+
+    .drop-area {
+        background: #222;
+        color: #bbb;
+        border-color: #444;
+    }
+
+    .file-label {
+        background: #3399ff;
+        color: #fff;
+    }
+
+    .file-label:hover {
+        background: #2674b8;
+    }
+
+    .file-list li {
+        background: #232323;
+        color: #e0e0e0;
+    }
+
+    .badge,
+    .badge-interna {
+        background-color: #ff4c4c;
+        color: #fff;
+    }
+
+    .bolinha.verde {
+        background-color: #81b983;
+    }
+
+    .bolinha.vermelho {
+        background-color: #ff4c4c;
+    }
+
+    .notificacao-sino #icone-sino {
+        background-color: #232323;
+        color: #ffd700;
+    }
+
+    .contador-tarefas {
+        background-color: #ff4c4c;
+        color: #fff;
+        border-color: #232323;
+    }
+
+    .secao-titulo {
+        background-color: #232323;
+        color: #e0e0e0;
+    }
+
+    .secao-conteudo {
+        background-color: #232323;
+        color: #e0e0e0;
+    }
+
+    .popover {
+        background: #232323;
+        color: #e0e0e0;
+        border-color: #444;
+    }
+
+    .tooltip::after {
+        background-color: #222;
+        color: #fff;
+    }
+
+    /* Scrollbar dark */
+    .kanban-box .content::-webkit-scrollbar,
+    .dropdown-content::-webkit-scrollbar {
+        background: #232323;
+    }
+
+    .kanban-box .content::-webkit-scrollbar-thumb,
+    .dropdown-content::-webkit-scrollbar-thumb {
+        background: #444;
+    }
+
+    .kanban-box .content::-webkit-scrollbar-thumb:hover,
+    .dropdown-content::-webkit-scrollbar-thumb:hover {
+        background: #666;
     }
 }

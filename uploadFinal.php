@@ -58,6 +58,9 @@ for ($i = 0; $i < $total; $i++) {
     // }
 }
 
+$caminhoAtual = ''; // garante que existe
+
+
 // Dados SFTP
 $ftp_user = "flow";
 $ftp_pass = "flow@2025";

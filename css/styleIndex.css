@@ -342,6 +342,13 @@ main .kanban div .header .task-count {
     height: max-content;
     display: flex;
     flex-direction: column;
+    color: #000;
+}
+
+.close-modal {
+    position: absolute;
+    right: 15px;
+    top: 15px;
 }
 
 form#task-form {
@@ -358,7 +365,6 @@ form#task-form {
 form#task-form label {
     font-size: 0.8rem;
     margin-bottom: 4px;
-    color: var(--cor-principal);
 }
 
 form#task-form input,
@@ -464,6 +470,7 @@ form#task-form button {
 
 #modalFilter .dropbtn {
     background: #fff;
+    color: black;
     border-radius: 8px;
     padding: 6px 10px;
     cursor: pointer;
@@ -593,6 +600,7 @@ form#task-form button {
     padding: 4px 8px;
     font-size: 14px;
     cursor: pointer;
+    color: #545454;
 }
 
 .dropdown-content label:hover {
@@ -1046,7 +1054,7 @@ h1 {
     font-size: 14px;
 }
 
-.popover::before {
+/* .popover::before {
     content: "";
     position: absolute;
     bottom: -10px;
@@ -1054,7 +1062,7 @@ h1 {
     border-width: 10px;
     border-style: solid;
     border-color: white transparent transparent transparent;
-}
+} */
 
 .secao {
     margin-bottom: 15px;
@@ -1116,11 +1124,29 @@ h1 {
     padding: 20px;
     border-radius: 8px;
     width: 50%;
-    max-width: max-content;
     text-align: center;
     position: relative;
-    color: #000;
+    color: #000 !important;
     animation: boomAnimation 0.8s forwards;
+    background-color: white !important;
+}
+
+form#dailyForm {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+form#dailyForm button {
+    padding: 6px;
+    border-radius: 10px;
+    cursor: pointer;
+    box-shadow: 4px 0 6px rgba(0, 0, 0, 0.2);
+    background: green;
+    color: white;
+    width: max-content;
+    margin: auto;
 }
 
 /* Conteúdo do modal */
@@ -1285,6 +1311,12 @@ h1 {
     }
 
     .kanban-card {
+        background-color: #222;
+        color: #e0e0e0;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+    }
+
+    .kanban-card.selected {
         background-color: #222;
         color: #e0e0e0;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);

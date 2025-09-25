@@ -71,6 +71,7 @@ body {
 .sidebar ul li {
     padding: 15px;
     text-align: left;
+    cursor: pointer;
 }
 
 .sidebar ul li a {

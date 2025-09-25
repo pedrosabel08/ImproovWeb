@@ -614,22 +614,22 @@ $conn->close();
             });
         }
 
-        const MODO_TESTE = true;
+        // const MODO_TESTE = true;
 
-        if (MODO_TESTE) {
-            checkFuncoesEmAndamento(idColaborador);
-        } else {
-            checkDailyAccess()
-                .then(() => checkFuncoesEmAndamento(idColaborador))
-                .then(() => checkRenderItems(idColaborador))
-                .then(() => {
-                    buscarTarefas();
-                    mostrarChangelogSeNecessario();
-                })
-                .catch(() => {
-                    console.log('Fluxo interrompido devido a erro ou resposta incompleta.');
-                });
-        }
+        // if (MODO_TESTE) {
+        //     checkFuncoesEmAndamento(idColaborador);
+        // } else {
+        checkDailyAccess()
+            .then(() => checkFuncoesEmAndamento(idColaborador))
+            .then(() => checkRenderItems(idColaborador))
+            .then(() => {
+                buscarTarefas();
+                mostrarChangelogSeNecessario();
+            })
+            .catch(() => {
+                console.log('Fluxo interrompido devido a erro ou resposta incompleta.');
+            });
+        // }
     </script>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>

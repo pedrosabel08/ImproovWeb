@@ -1,92 +1,76 @@
 let obraId = new URLSearchParams(window.location.search).get('obra_id');
-document.getElementById('obra-id').textContent = obraId || '';
-
-let imagens = []; // [{id, url, sugerida, motivo_sugerida, comentarios: []}]
-let swiper; // Swiper instance
+let imagens = []; // [{id, imagem, sugerida, motivo_sugerida, comentarios: []}]
+let swiper;       // Swiper principal
+let thumbsSwiper; // Thumbs Swiper
 
 async function carregarImagens() {
-    // Substitua por sua API real
     const res = await fetch('api_get_imagens.php?obra_id=' + obraId);
     imagens = await res.json();
 
     const wrapper = document.getElementById('swiper-wrapper');
+    const thumbs = document.getElementById('thumbs-wrapper');
     wrapper.innerHTML = '';
+    thumbs.innerHTML = '';
+
     imagens.forEach((img, i) => {
+        // Slide principal
         const slide = document.createElement('div');
         slide.className = 'swiper-slide';
-        slide.innerHTML = `<img src="../../${img.imagem}" alt="Imagem da obra" id="imagem-${i}" class="${img.sugerida ? 'sugerida' : ''}" style="max-width:100%;max-height:100%;">`;
+        slide.innerHTML = `<img src="../../${img.imagem}" alt="Imagem da obra">`;
         wrapper.appendChild(slide);
+
+        // Thumb
+        const thumb = document.createElement('div');
+        thumb.className = 'swiper-slide';
+        thumb.innerHTML = `<img src="../../${img.imagem}" alt=""><span>${img.nome || ''}</span>`;
+        thumbs.appendChild(thumb);
+    });
+
+    if (thumbsSwiper) thumbsSwiper.destroy(true, true);
+    thumbsSwiper = new Swiper('.myThumbs', {
+        spaceBetween: 10,
+        slidesPerView: 4,
+        freeMode: true,
+        watchSlidesProgress: true,
     });
 
     if (swiper) swiper.destroy(true, true);
-    swiper = new Swiper('.main-swiper', {
-        initialSlide: 0,
-        slidesPerView: 1.2,
-        centeredSlides: true,
-        spaceBetween: 32,
-        navigation: {
-            nextEl: '#next',
-            prevEl: '#prev',
-        },
+    swiper = new Swiper('.mySwiper', {
+        loop: false,
+        centeredSlides: false,
+        slidesPerView: 1,
+        spaceBetween: 0,
+        effect: 'slide',
+        pagination: { el: '.swiper-pagination', clickable: true },
+        keyboard: { enabled: true },
+        mousewheel: { forceToAxis: true },
+        thumbs: { swiper: thumbsSwiper },
         on: {
-            slideChange: function () {
-                mostrarImagem(swiper.realIndex);
-            }
+            slideChange: () => mostrarImagem(swiper.realIndex)
         }
     });
 
     mostrarImagem(0);
 }
 
-// Thumbs
-const thumbsSwiper = new Swiper('.myThumbs', {
-    spaceBetween: 10,
-    slidesPerView: 4,
-    freeMode: true,
-    watchSlidesProgress: true,
-});
-
-const mainSwiper = new Swiper('.mySwiper', {
-    loop: false, // se não precisa repetir infinitamente
-    centeredSlides: false, // mantém alinhado à esquerda
-    slidesPerView: 1, // apenas uma imagem por vez
-    spaceBetween: 0,
-
-    // Retire o efeito coverflow se a ideia for preencher:
-    effect: 'slide',
-
-    pagination: {
-        el: '.swiper-pagination',
-        clickable: true,
-    },
-
-    keyboard: { enabled: true },
-    mousewheel: { forceToAxis: true },
-
-    thumbs: { swiper: thumbsSwiper }
-});
-
-// Toast feedback
-const btnAprovar = document.getElementById("btnAprovar");
-const toast = document.getElementById("toast");
-btnAprovar.addEventListener("click", () => {
-    toast.classList.add("show");
-    setTimeout(() => toast.classList.remove("show"), 3000);
-});
-
 function mostrarImagem(i) {
     if (!imagens.length) return;
-    if (swiper && swiper.realIndex !== i) swiper.slideTo(i);
-
     const img = imagens[i];
+    document.getElementById('imagem_nome').textContent = img.nome || 'Imagem';
 
-    // motivo sugerida
-    document.getElementById('motivo-sugerida').style.display = img.sugerida ? 'block' : 'none';
-    document.getElementById('motivo-sugerida').textContent = img.sugerida
-        ? 'Imagem sugerida: ' + (img.motivo_sugerida || 'Sem motivo informado')
-        : '';
+    // Prepara lista de comentários, incluindo o motivo sugerido
+    const todosComentarios = [];
 
-    carregarComentarios(img.comentarios || []);
+    if (img.sugerida && img.motivo_sugerida) {
+        todosComentarios.push({
+            texto: img.motivo_sugerida,
+            autor: 'Improov',
+            logo: true
+        });
+    }
+
+    (img.comentarios || []).forEach(c => todosComentarios.push(c));
+    carregarComentarios(todosComentarios);
 }
 
 function carregarComentarios(comentarios) {
@@ -95,47 +79,84 @@ function carregarComentarios(comentarios) {
     comentarios.forEach(c => {
         const div = document.createElement('div');
         div.className = 'comentario';
-        div.textContent = c.texto + (c.autor ? ` — ${c.autor}` : '');
+
+        if (c.autor === 'Improov' && c.logo) {
+            div.innerHTML = `
+                <div class="comentario-header">
+                    <img src="../../assets/logo.jpg" alt="Improov" class="comentario-icone">
+                    <span class="comentario-nome">Improov</span>
+                </div>
+                <div class="comentario-texto">${c.texto}</div>
+            `;
+        } else {
+            div.textContent = c.texto + (c.autor ? ` — ${c.autor}` : '');
+        }
+
         lista.appendChild(div);
     });
 }
 
-document.getElementById('enviar-comentario').onclick = async () => {
-    const texto = document.getElementById('novo-comentario').value.trim();
-    if (!texto) return;
-    // Substitua por sua API real
-    const idx = swiper.realIndex;
-    await fetch('api_comentar.php', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            imagem_id: imagens[idx].id,
-            texto
-        })
-    });
-    imagens[idx].comentarios.push({
-        texto,
-        autor: 'Você'
-    });
-    carregarComentarios(imagens[idx].comentarios);
-    document.getElementById('novo-comentario').value = '';
-};
-
 document.getElementById('aprovar-btn').onclick = async () => {
     const idx = swiper.realIndex;
-    // Substitua por sua API real
     await fetch('api_aprovar_angulo.php', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            imagem_id: imagens[idx].id
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imagem_id: imagens[idx].id })
     });
-    alert('Ângulo aprovado!');
+
+    // Abre modal para comentário
+    document.getElementById('modal-comentario').classList.add('show');
 };
+
+// Enviar comentário
+document.getElementById('enviar-comentario').onclick = async () => {
+    const texto = document.getElementById('comentario-texto').value.trim();
+    const idx = swiper.realIndex;
+
+    if (texto) {
+        await fetch('api_comentar.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ imagem_id: imagens[idx].id, texto })
+        });
+    }
+
+    fecharModalComentario();
+    mostrarMoodSelector();
+};
+
+// Pular comentário
+document.getElementById('pular-comentario').onclick = () => {
+    fecharModalComentario();
+    mostrarMoodSelector();
+};
+
+function fecharModalComentario() {
+    document.getElementById('modal-comentario').classList.remove('show');
+}
+
+function mostrarMoodSelector() {
+    document.getElementById('mood-container').classList.remove('hidden');
+}
+
+// Enviar mood
+document.getElementById('enviar-mood').onclick = async () => {
+    const mood = document.getElementById('mood-select').value;
+    if (!mood) return alert('Escolha um mood');
+    const idx = swiper.realIndex;
+
+    await fetch('api_mood.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imagem_id: imagens[idx].id, mood })
+    });
+
+    document.getElementById('toast').classList.add('show');
+    setTimeout(() => document.getElementById('toast').classList.remove('show'), 3000);
+
+    // Opcional: desabilitar botão aprovar para evitar reenvio
+    document.getElementById('aprovar-btn').disabled = true;
+};
+
 
 carregarImagens();

@@ -48,12 +48,11 @@ try {
     $update_image_status->execute();
     $update_image_status->close();
 
-    $statuses_disparam_proxima = ['Aprovado', 'Aprovado com ajustes', 'Finalizado'];
-
+    // Prepara statement de insert/update
     $stmt = $conn->prepare("INSERT INTO funcao_imagem (imagem_id, colaborador_id, funcao_id, prazo, status, observacao)
-                        VALUES (?, ?, ?, ?, ?, ?)
-                        ON DUPLICATE KEY UPDATE colaborador_id = VALUES(colaborador_id), prazo = VALUES(prazo), 
-                        status = VALUES(status), observacao = VALUES(observacao)");
+                            VALUES (?, ?, ?, ?, ?, ?)
+                            ON DUPLICATE KEY UPDATE colaborador_id = VALUES(colaborador_id), prazo = VALUES(prazo), 
+                            status = VALUES(status), observacao = VALUES(observacao)");
 
     foreach ($funcao_ids as $funcao => $funcao_id) {
         $parametro = $funcao_parametros[$funcao];
@@ -76,17 +75,8 @@ try {
                 throw new Exception("Colaborador ID $colaborador_id não encontrado na tabela colaborador. parametro_id = {$parametro}_id");
             }
 
-            // 1. Atualiza ou insere a função atual com todos os dados
             $stmt->bind_param("iiisss", $imagem_id, $colaborador_id, $funcao_id, $prazo, $status, $obs);
             $stmt->execute();
-
-            // 2. Se for um status que dispara a próxima função, chama a procedure
-            if (in_array($status, $statuses_disparam_proxima)) {
-                $call = $conn->prepare("CALL atualizar_proxima_funcao(?, ?)");
-                $call->bind_param("ii", $imagem_id, $funcao_id);
-                $call->execute();
-                $call->close();
-            }
         }
     }
 

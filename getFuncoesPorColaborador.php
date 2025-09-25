@@ -266,7 +266,20 @@ foreach ($funcoes as $funcao) {
     $funcaoAnteriorId = null;
     $prazoAnterior    = null;
 
-    if ($indiceAtual !== false && $indiceAtual > 0 && isset($todasFuncoes[$imagemId])) {
+    // Verifica se é a primeira função da imagem (menor índice da ordem para esta imagem)
+    $funcoesImagem = isset($todasFuncoes[$imagemId]) ? array_keys($todasFuncoes[$imagemId]) : [];
+    $menorIndiceImagem = null;
+    foreach ($ordemIds as $idx => $fid) {
+        if (in_array($fid, $funcoesImagem)) {
+            $menorIndiceImagem = $idx;
+            break;
+        }
+    }
+
+    if ($indiceAtual === $menorIndiceImagem) {
+        $liberada = true;
+    } elseif ($indiceAtual !== false && $indiceAtual > 0 && isset($todasFuncoes[$imagemId])) {
+        // Verifica status da função anterior
         for ($i = $indiceAtual - 1; $i >= 0; $i--) {
             $funcaoAnteriorId = $ordemIds[$i];
             if (isset($todasFuncoes[$imagemId][$funcaoAnteriorId])) {

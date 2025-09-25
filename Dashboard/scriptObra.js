@@ -503,23 +503,6 @@ function atualizarModal(idImagem) {
                             }
                         }
 
-                        // // Adiciona o botão de log se o selectElement tiver um valor
-                        // if (!selectElement.parentElement.querySelector('.log-button')) {
-                        //     if (selectElement.value) {
-                        //         const logButton = document.createElement('button');
-                        //         logButton.type = 'button'; // Define o tipo do botão como "button"
-                        //         logButton.innerHTML = '<i class="fas fa-file-alt"></i>';
-                        //         logButton.classList.add('log-button', 'tooltip');
-                        //         logButton.setAttribute('data-id', funcao.id); // Adiciona o ID da função ao botão
-                        //         logButton.setAttribute('data-tooltip', 'Exibir log'); // Adiciona o tooltip
-                        //         logButton.addEventListener('click', function (event) {
-                        //             event.preventDefault(); // Previne o comportamento padrão do botão
-                        //             const funcaoId = this.getAttribute('data-id');
-                        //             exibirLog(funcaoId);
-                        //         });
-                        //         selectElement.parentElement.appendChild(logButton);
-                        //     }
-                        // }
                     }
                     if (checkboxElement) {
                         checkboxElement.title = funcao.responsavel_aprovacao || '';
@@ -531,16 +514,6 @@ function atualizarModal(idImagem) {
 
                 });
             }
-            // const btnVerPdf = document.getElementById('ver-pdf');
-            // if (btnVerPdf) {
-            //     if (nomePdf) {
-            //         btnVerPdf.setAttribute('data-nome-pdf', nomePdf);
-            //         btnVerPdf.style.display = 'inline-block';
-            //     } else {
-            //         btnVerPdf.removeAttribute('data-nome-pdf');
-            //         btnVerPdf.style.display = 'none';
-            //     }
-            // }
 
             const statusSelect = document.getElementById("opcao_status");
             if (response.status_id !== null) {
@@ -1753,7 +1726,7 @@ document.getElementById("salvar_funcoes").addEventListener("click", function (ev
     function enviarFormulario() {
         $.ajax({
             type: "POST",
-            url: "https://www.improov.com.br/sistema/insereFuncao.php",
+            url: "https://www.improov.com.br/sistema/insereFuncao2.php",
             data: dados,
             success: function (response) {
                 Toastify({

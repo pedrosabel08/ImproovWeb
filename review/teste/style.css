@@ -197,6 +197,44 @@ body {
     transform: translateY(0);
 }
 
+#lista-comentarios {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.comentario {
+    background: #f8f8f8;
+    border-radius: 8px;
+    padding: 10px 14px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+.comentario-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.comentario-icone {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    margin-right: 8px;
+}
+
+.comentario-nome {
+    font-weight: bold;
+    color: #333;
+}
+
+.comentario-texto {
+    color: #555;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+
 /* Responsividade */
 @media (max-width: 900px) {
     body {

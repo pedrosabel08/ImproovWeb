@@ -355,7 +355,7 @@ function updateEvent(event) {
 
 // const idusuario = 1;
 function carregarDados(colaborador_id) {
-    
+
     let url = `getFuncoesPorColaborador.php?colaborador_id=${colaborador_id}`;
 
     const xhr = new XMLHttpRequest();
@@ -1177,7 +1177,6 @@ function enviarImagens() {
                                 position: "center",
                                 icon: "success",
                                 title: "Prévia enviada com sucesso!",
-                                html: `Arquivos: ${res.imagens ? res.imagens.join(', ') : 'Nenhum arquivo encontrado'}`,
                                 showConfirmButton: false,
                                 timer: 2000
                             });
@@ -1310,7 +1309,7 @@ function enviarArquivo() {
                     Swal.fire({
                         position: "center",
                         icon: "success",
-                        title: "Arquivo final enviado com sucesso!",
+                        text: `Salvo em: ${destino}, como: ${res[0]?.nome_arquivo || 'Nome não encontrado'}`,
                         showConfirmButton: false,
                         timer: 2000
                     });

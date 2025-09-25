@@ -76,6 +76,7 @@ $conn->close();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="css/styleIndex.css">
     <link rel="stylesheet" href="css/styleSidebar.css">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon/fonts/remixicon.css" rel="stylesheet">
     <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s" type="image/x-icon">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
@@ -92,126 +93,221 @@ $conn->close();
     include 'sidebar.php';
 
     ?>
-    <main>
-        <button id="btnAtualizacao" onclick="document.getElementById('modalIframeChangelog').style.display = 'flex'">💭</button>
-        <header>
+    <div class="container">
+        <main>
+            <header>
+                <div class="top">
+                    <h3 id="saudacao"></h3>
+                    <img id="gif" src="gif/assinatura_preto.gif" alt="Assinatura" style="width: 200px;">
+                </div>
+                <nav>
+                    <div class="nav-left">
+                        <!-- <button id="overview"><span>Overview</span></button> -->
+                        <button id="kanban" class="active"><i class="ri-kanban-view"></i><span>Kanban</span></button>
+                        <!-- <button id="activities"><i class="fa-solid fa-chart-line"><span></i>Activity</span></button> -->
+                        <!-- <button id="timeline"><span>Timeline</span></button> -->
+                    </div>
+                    <div class="nav-right">
+                        <button id="date"><i class="ri-calendar-todo-fill"></i><span></span></button>
+                        <button id="filter"><i class="ri-equalizer-fill"></i><span>Filtros</span></button>
+                        <button id="add-task"><i class="ri-add-line"></i></i><span>Adicionar tarefa</span></button>
+                    </div>
+                </nav>
+            </header>
+            <div class="kanban">
+                <div class="kanban-box" id="to-do">
+                    <div class="header">
+                        <div class="title"><i class="fa-solid fa-play"></i><span>Não iniciado</span></div>
+                        <span class="task-count"></span>
+                    </div>
+                    <div class="content">
+                    </div>
+                </div>
+                <div class="kanban-box" id="hold">
+                    <div class="header">
+                        <div class="title"><i class="fa-solid fa-play"></i><span>Hold</span></div>
+                        <span class="task-count"></span>
+                    </div>
+                    <div class="content">
+                    </div>
+                </div>
+                <div class="kanban-box" id="in-progress">
+                    <div class="header">
+                        <div class="title"><i class="fa-solid fa-hourglass-start"></i><span>Em andamento</span></div>
+                        <span class="task-count"></span>
+                    </div>
+                    <div class="content">
+                    </div>
+                </div>
+                <div class="kanban-box" id="in-review">
+                    <div class="header">
+                        <div class="title"><i class="fa-solid fa-magnifying-glass"></i><span>Em aprovação</span></div>
+                        <span class="task-count"></span>
+                    </div>
+                    <div class="content">
+                    </div>
+                </div>
+                <div class="kanban-box" id="ajuste">
+                    <div class="header">
+                        <div class="title"><i class="ri-error-warning-line"></i><span>Em ajuste</span></div>
+                        <span class="task-count"></span>
+                    </div>
+                    <div class="content">
+                    </div>
+                </div>
+                <div class="kanban-box" id="done">
+                    <div class="header">
+                        <div class="title"><i class="fa-solid fa-check"></i><span>Finalizado</span></div>
+                        <span class="task-count"></span>
+                    </div>
+                    <div class="content">
+                    </div>
+                </div>
 
-            <div class="right">
-                <img src="gif/assinatura_branco.gif" alt="" style="width: 200px;">
-                <button id="showMenu"><i class="fa-solid fa-user"></i></button>
-                <div id="menu2" class="hidden">
-                    <a href="infos.php" id="editProfile"><i class="fa-regular fa-user"></i>Editar Informações</a>
-                    <hr>
-                    <a href="index.html" id="logout"><i class="fa-solid fa-right-from-bracket"></i>Sair</a>
+            </div>
+        </main>
+    </div>
+
+    <div class="modal" id="task-modal">
+        <div class="modal-content">
+            <span class="close-button" id="close-modal">&times;</span>
+            <h2>Adicionar tarefa</h2>
+            <form id="task-form">
+                <div class="task-type">
+                    <label for="task-colab">Colaborador:</label>
+                    <select name="task-colab" id="task-colab">
+                        <?php foreach ($colaboradores as $colab): ?>
+                            <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="task-type">
+                    <label for="task-title">Título:</label>
+                    <input type="text" id="task-title" name="task-title" required>
+                </div>
+
+                <div class="task-type">
+                    <label for="task-desc">Descrição:</label>
+                    <textarea id="task-desc" name="task-desc" required></textarea>
+                </div>
+
+                <div class="task-type">
+                    <label for="task-prioridade">Prioridade:</label>
+                    <select id="task-prioridade" name="task-prioridade" required>
+                        <option value="alta">Alta</option>
+                        <option value="media">Média</option>
+                        <option value="baixa">Baixa</option>
+                    </select>
+                </div>
+
+                <div class="task-type">
+                    <label for="task-prazo-date">Prazo:</label>
+                    <input type="date" id="task-prazo-date" name="task-prazo-date" required>
+                </div>
+
+                <button type="submit">Adicionar Tarefa</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="cardModal" class="card-modal">
+        <div class="modal-content">
+
+            <h3>Editar Card</h3>
+            <div class="modal-item modalPrazo">
+                <h4>Prazo de entrega:</h4>
+                <input type="date" id="modalPrazo">
+            </div>
+
+            <div class="modal-item modalObs">
+                <h4>Observação:</h4>
+                <textarea id="modalObs" rows="4"></textarea>
+            </div>
+
+            <div class="modal-item modalUploads">
+
+                <div id="etapaPrevia">
+                    <h4>Prévias</h4>
+                    <div id="drop-area-previa" class="drop-area">
+                        Arraste suas imagens aqui ou clique para selecionar
+                        <input type="file" id="fileElemPrevia" accept="image/*" multiple style="display:none;" required>
+                    </div>
+                    <ul class="file-list" id="fileListPrevia"></ul>
+                    <div class="buttons-upload" id="addEnviarPrevia">
+                        <button onclick="enviarImagens()" style="background-color: green;">Enviar Prévia</button>
+                    </div>
+                </div>
+
+                <!-- Conteúdo da etapa 2 -->
+                <div id="etapaFinal">
+                    <h4>Arquivo</h4>
+                    <div id="drop-area-final" class="drop-area">
+                        Arraste o arquivo final aqui ou clique para selecionar
+                        <input type="file" id="fileElemFinal" multiple style="display:none;">
+                    </div>
+                    <ul class="file-list" id="fileListFinal"></ul>
+                    <div class="buttons-upload" id="addEnviarArquivo">
+                        <button onclick="enviarArquivo()" style="background-color: green;">Enviar Arquivo Final</button>
+                    </div>
                 </div>
             </div>
-        </header>
 
-        <div class="infos-pessoais">
-            <div id="data"></div>
-            <div>
-                <p id="saudacao"></p>
-                <span id="nome-user"></span>
+
+            <div class="buttons">
+                <button id="salvarModal">Salvar</button>
+                <button id="fecharModal">Fechar</button>
             </div>
-            <div class="tasks">
-                <div class="tasks-check">
-                    <p><i class="fa-solid fa-check"></i>&nbsp;&nbsp;Tarefas concluídas</p>
-                    <p id="count-check"><?php echo $count_finalizadas; ?></p>
+        </div>
+    </div>
+
+    <div id="modalFilter" class="" style="width: 300px !important;">
+        <div class="modal-content">
+            <h3>Filtros</h3>
+            <!-- Filtros -->
+            <div id="filtros">
+                <div class="dropdown">
+                    <button class="dropbtn">🏢 Obras</button>
+                    <div class="dropdown-content" id="filtroObra"></div>
                 </div>
-                <div class="tasks-to-do">
-                    <p><i class="fa-solid fa-xmark"></i>&nbsp;&nbsp;Tarefas para fazer</p>
-                    <p id="count-to-do"><?php echo $count_pendentes; ?></p>
+
+                <div class="dropdown">
+                    <button class="dropbtn">💼 Funções</button>
+                    <div class="dropdown-content" id="filtroFuncao"></div>
+                </div>
+
+                <div class="dropdown">
+                    <button class="dropbtn">✅ Status</button>
+                    <div class="dropdown-content" id="filtroStatus">
+                        <label><input type="checkbox" value=""> Todos os status</label>
+                        <label><input type="checkbox" value="Não iniciado"> Não iniciado</label>
+                        <label><input type="checkbox" value="Em andamento"> Em andamento</label>
+                        <label><input type="checkbox" value="Em aprovação"> Em aprovação</label>
+                        <label><input type="checkbox" value="Finalizado"> Finalizado</label>
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="main-container">
+    </div>
 
-            <div id="container-calendario" class="container active">
-                <div>
-                    <div class="calendario">
-                        <div id="calendarFull"></div>
-                    </div>
-                </div>
-                <!-- <div class="last-tasks">
-                    <h2>Notificações</h2>
-                    <ul>
-                        <?php if ($resultNotificacoes->num_rows > 0): ?>
-                            <?php while ($row = $resultNotificacoes->fetch_assoc()): ?>
-                                <li>
-                                    <span class="notification-message"><?php echo htmlspecialchars($row['mensagem']); ?></span>
-                                </li>
-                            <?php endwhile; ?>
-                        <?php else: ?>
-                            <li>Não há notificações recentes.</li>
-                        <?php endif; ?>
-                    </ul>
-                </div> -->
-            </div>
+    <div class="modal" id="modalDaily">
+        <div class="modal-content" style="width: 500px;">
+            <h1>Daily meet Assíncrono</h1>
+            <form id="dailyForm">
+                <label for="finalizado">✅ O que finalizei ontem?</label>
+                <textarea id="finalizado" name="finalizado" required></textarea>
 
-            <div id="container-andamento" class="container">
-                <select id="colaboradorSelectAndamento">
-                    <?php foreach ($colaboradores as $colab): ?>
-                        <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                            <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
+                <label for="hoje">⏳ O que vou fazer hoje?</label>
+                <textarea id="hoje" name="hoje" required></textarea>
 
-                <div id="imagensColaboradorAndamento">
+                <label for="bloqueio">🚧 Algum bloqueio ou dúvida?</label>
+                <textarea id="bloqueio" name="bloqueio" required></textarea>
 
-                </div>
-            </div>
-
-            <div id="priority-container" class="container">
-                <h2>Gerenciar Prioridades</h2>
-                <select id="colaboradorSelectPrioridade">
-                    <?php foreach ($colaboradores as $colab): ?>
-                        <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                            <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-
-                <!-- Áreas de prioridade -->
-                <div id="priority-zones">
-                    <div class="priority-group" id="alta-prioridade">
-                        <h3>Alta Prioridade</h3>
-                        <div class="drop-zone" data-priority="1"></div>
-                    </div>
-                    <div class="priority-group" id="media-prioridade">
-                        <h3>Média Prioridade</h3>
-                        <div class="drop-zone" data-priority="2"></div>
-                    </div>
-                    <div class="priority-group" id="baixa-prioridade">
-                        <h3>Baixa Prioridade</h3>
-                        <div class="drop-zone" data-priority="3"></div>
-                    </div>
-                </div>
-
-                <div id="priorityDropZones">
-                    <!-- As imagens serão exibidas aqui -->
-                </div>
-            </div>
+                <button type="submit">Enviar respostas</button>
+            </form>
         </div>
-        <div class="modal" id="modal">
-            <div class="modal-content" style="width: 500px;">
-                <h1>Daily meet Assíncrono</h1>
-                <form id="dailyForm">
-                    <label for="finalizado">✅ O que finalizei ontem?</label>
-                    <textarea id="finalizado" name="finalizado" required></textarea>
-
-                    <label for="hoje">⏳ O que vou fazer hoje?</label>
-                    <textarea id="hoje" name="hoje" required></textarea>
-
-                    <label for="bloqueio">🚧 Algum bloqueio ou dúvida?</label>
-                    <textarea id="bloqueio" name="bloqueio" required></textarea>
-
-                    <button type="submit">Enviar respostas</button>
-                </form>
-            </div>
-        </div>
-
-    </main>
+    </div>
 
     <div id="notificacao-sino" class="notificacao-sino">
         <i class="fas fa-bell sino" id="icone-sino"></i>
@@ -273,15 +369,21 @@ $conn->close();
                 </div>
             </form>
         </div>
-    </div>~
+    </div>
 
     <!-- Modal para o iframe do changelog -->
     <div id="modalIframeChangelog" class="modal" style="display:none;">
-        <div class="modal-content" style="width:90vw;max-width: 70vw;height: 90vh;position:relative;">
+        <div class="modal-content" style="width:90vw;max-width: 50vw;height: 40vh;position:relative;">
             <!-- <button onclick="fecharModalIframe()" style="position:absolute;top:10px;right:10px;z-index:2;">Fechar</button> -->
-            <iframe id="iframeChangelog" src="CHANGELOG/Flow/uploadArquivos.html" frameborder="0" style="width:100%;height:100%;border:none;"></iframe>
+            <iframe id="iframeChangelog" src="CHANGELOG/Flow/suporte.html" frameborder="0" style="width:100%;height:100%;border:none;"></iframe>
         </div>
     </div>
+
+    <div id="loading" style="display:none; position:fixed; top:50%; left:50%;
+ transform:translate(-50%,-50%); background:#fff; padding:20px; border-radius:8px; box-shadow:0 0 10px rgba(0,0,0,.3);">
+        <i class="ri-loader-4-line ri-spin"></i> Carregando...
+    </div>
+
 
     <script>
         function abrirModalIframe() {
@@ -290,7 +392,7 @@ $conn->close();
 
         const modalIframeChangelog = document.getElementById('modalIframeChangelog');
 
-        const CHANGELOG_VERSION = "3.2.20"; // Altere este valor sempre que atualizar o changelog
+        const CHANGELOG_VERSION = "3.2.3"; // Altere este valor sempre que atualizar o changelog
 
         function mostrarChangelogSeNecessario() {
             const chave = "changelog_visto_" + CHANGELOG_VERSION;
@@ -313,9 +415,6 @@ $conn->close();
 
         const nome_user = <?php echo json_encode($nome_usuario); ?>;
 
-        const primeiro_nome = nome_user.split(" ")[0];
-
-
         function obterSaudacao() {
             const agora = new Date();
             const hora = agora.getHours();
@@ -330,7 +429,7 @@ $conn->close();
         }
 
         const saudacao = document.getElementById('saudacao');
-        saudacao.textContent = obterSaudacao() + ", " + primeiro_nome + "!";
+        saudacao.textContent = obterSaudacao() + ", " + nome_user + "!";
 
         const idUsuario = <?php echo json_encode($idusuario); ?>;
         localStorage.setItem('idusuario', idUsuario);
@@ -339,7 +438,7 @@ $conn->close();
         localStorage.setItem('idcolaborador', idColaborador);
 
 
-        document.getElementById('modal').style.display = 'none';
+        document.getElementById('modalDaily').style.display = 'none';
 
         // checkDailyAccess agora retorna uma Promise
         function checkDailyAccess() {
@@ -358,7 +457,7 @@ $conn->close();
                             resolve();
                         } else {
                             // Se não respondeu, exibe modal e interrompe fluxo (não resolve ainda)
-                            document.getElementById('modal').style.display = 'flex';
+                            document.getElementById('modalDaily').style.display = 'flex';
                             // Resolve apenas após o envio do formulário
                             document.getElementById('dailyForm').addEventListener('submit', function onSubmit(e) {
                                 e.preventDefault();
@@ -404,6 +503,21 @@ $conn->close();
             });
         }
 
+        function checkFuncoesSomentePrimeiroAcesso() {
+            const hoje = new Date().toISOString().split('T')[0]; // ex: 2025-09-25
+            const chave = "funcoes_visto_" + hoje;
+
+            if (!localStorage.getItem(chave)) {
+                // Primeira vez no dia → salva e chama a verificação
+                localStorage.setItem(chave, "1");
+                return checkFuncoesEmAndamento(idColaborador);
+            } else {
+                // Já viu hoje → não faz nada
+                return Promise.resolve();
+            }
+        }
+
+
         // checkRenderItems também retorna uma Promise
         function checkRenderItems(idColaborador) {
             return new Promise((resolve, reject) => {
@@ -442,25 +556,104 @@ $conn->close();
             });
         }
 
+        function checkFuncoesEmAndamento(idColaborador) {
+            return new Promise((resolve, reject) => {
+                fetch('getFuncoesEmAndamento.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded'
+                        },
+                        body: `idcolaborador=${idColaborador}`
+                    })
+                    .then(res => res.json())
+                    .then(funcoes => {
+                        if (!funcoes || funcoes.length === 0) {
+                            resolve(); // nada em andamento, segue fluxo
+                            return;
+                        }
 
-        // 🚀 Dispara tudo ao carregar a página
+                        // Processa em sequência cada função
+                        let index = 0;
+
+                        function perguntarProximo() {
+                            if (index >= funcoes.length) {
+                                resolve(); // terminou todas
+                                return;
+                            }
+
+                            const funcao = funcoes[index];
+                            Swal.fire({
+                                title: `Você ainda está trabalhando em ${funcao.imagem_nome}?`,
+                                text: `Função: ${funcao.nome_funcao}`,
+                                icon: "question",
+                                showCancelButton: true,
+                                confirmButtonText: "Sim, estou fazendo",
+                                cancelButtonText: "Não, colocar em HOLD"
+                            }).then((result) => {
+                                if (result.isConfirmed) {
+                                    // continua sem alterar
+                                    index++;
+                                    perguntarProximo();
+                                } else {
+                                    // pede observação
+                                    Swal.fire({
+                                        title: "Observação",
+                                        input: "text",
+                                        inputPlaceholder: "Por que não está fazendo?",
+                                        showCancelButton: false,
+                                        confirmButtonText: "Salvar"
+                                    }).then((obsResult) => {
+                                        const obs = obsResult.value || "";
+
+                                        fetch('atualizarFuncao.php', {
+                                            method: 'POST',
+                                            headers: {
+                                                'Content-Type': 'application/x-www-form-urlencoded'
+                                            },
+                                            body: `idfuncao_imagem=${funcao.idfuncao_imagem}&observacao=${encodeURIComponent(obs)}`
+                                        }).finally(() => {
+                                            index++;
+                                            perguntarProximo();
+                                        });
+                                    });
+                                }
+                            });
+                        }
+
+                        perguntarProximo();
+                    })
+                    .catch(err => {
+                        console.error("Erro ao verificar funções em andamento:", err);
+                        reject();
+                    });
+            });
+        }
+
+        // const MODO_TESTE = true;
+
+        // if (MODO_TESTE) {
+        //     checkFuncoesEmAndamento(idColaborador);
+        // } else {
         checkDailyAccess()
             .then(() => checkRenderItems(idColaborador))
+            .then(() => checkFuncoesSomentePrimeiroAcesso()) // ✅ só na 1ª vez do dia
             .then(() => {
                 buscarTarefas();
-                mostrarChangelogSeNecessario(); // Só mostra se não viu esta versão
+                mostrarChangelogSeNecessario();
             })
-            .catch(() => {
-                console.log('Fluxo interrompido devido a erro ou resposta incompleta.');
-            });
+            .catch(() => console.log('Fluxo interrompido'));
+
+        // }
     </script>
 
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script> -->
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <script src="script/notificacoes.js"></script>
     <script src="script/scriptIndex.js"></script>
     <script src="./script/sidebar.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
 
 </body>
 

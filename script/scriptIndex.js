@@ -11,7 +11,7 @@
 //         menu2.classList.add('hidden');
 //     }
 // });
-carregarDados();
+carregarDados(colaborador_id);
 
 carregarEventosEntrega();
 
@@ -59,8 +59,7 @@ function carregarEventosEntrega() {
                 fullCalendar.addEventSource(events);
             }
 
-            const colaboradorId = localStorage.getItem("idcolaborador");
-            if (colaboradorId === '1' || colaboradorId === '9' || colaboradorId === '21') {
+            if (colaborador_id === 1 || colaborador_id === 9 || colaborador_id === 21) {
                 notificarEventosDaSemana(events);
             }
         });
@@ -355,10 +354,9 @@ function updateEvent(event) {
 
 
 // const idusuario = 1;
-// const idcolaborador = 1;
-function carregarDados(colaboradorId = 21) {
-
-    let url = `getFuncoesPorColaborador.php?colaborador_id=${colaboradorId}`;
+function carregarDados(colaborador_id) {
+    
+    let url = `getFuncoesPorColaborador.php?colaborador_id=${colaborador_id}`;
 
     const xhr = new XMLHttpRequest();
 
@@ -739,7 +737,7 @@ form.addEventListener('submit', (e) => {
                 form.reset();
                 modal.style.display = 'none';
                 // aqui você pode recarregar o Kanban
-                carregarDados();
+                carregarDados(colaborador_id);
             } else {
                 alert("❌ Erro: " + response.message);
             }
@@ -803,7 +801,7 @@ document.getElementById('salvarModal').addEventListener('click', () => {
                 }).showToast();
                 cardModal.classList.remove('active');
                 cardSelecionado = null;
-                carregarDados(); // Recarrega o Kanban para refletir mudanças
+                carregarDados(colaborador_id); // Recarrega o Kanban para refletir mudanças
             },
             error: function (jqXHR, textStatus, errorThrown) {
                 console.error("Erro ao atualizar tarefa: " + textStatus, errorThrown);
@@ -844,7 +842,7 @@ document.getElementById('salvarModal').addEventListener('click', () => {
                 }).showToast();
                 cardModal.classList.remove('active');
                 cardSelecionado = null;
-                carregarDados(); // Recarrega o Kanban para refletir mudanças
+                carregarDados(colaborador_id); // Recarrega o Kanban para refletir mudanças
             },
             error: function (jqXHR, textStatus, errorThrown) {
                 console.error("Erro ao salvar dados: " + textStatus, errorThrown);
@@ -1023,17 +1021,6 @@ colunas.forEach(col => {
 
                 // Ativar modal
                 cardModal.classList.add('active');
-
-                // Seleciona o input de data dentro do modal
-                const inputData = document.getElementById('modalPrazo');
-
-                // Define a data atual no formato YYYY-MM-DD
-                const hoje = new Date();
-                const ano = hoje.getFullYear();
-                const mes = String(hoje.getMonth() + 1).padStart(2, '0');
-                const dia = String(hoje.getDate()).padStart(2, '0');
-
-                inputData.value = `${ano}-${mes}-${dia}`;
 
                 cardSelecionado.classList.add('selected');
                 configurarDropzone("drop-area-previa", "fileElemPrevia", "fileListPrevia", imagensSelecionadas);

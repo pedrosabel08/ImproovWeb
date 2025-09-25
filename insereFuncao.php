@@ -31,12 +31,14 @@ $conn->begin_transaction();
 try {
     // Atualiza o status da imagem se enviado
     if ($status_id !== null) {
-        $stmtStatus = $conn->prepare("UPDATE imagens_cliente_obra SET status_id = ? WHERE idimagens_cliente_obra = ?");
-        $status_id_int = (int)$status; // caso status seja um ID
-        $stmtStatus->bind_param("ii", $status_id_int, $imagem_id);
+        $stmtStatus = $conn->prepare(
+            "UPDATE imagens_cliente_obra SET status_id = ? WHERE idimagens_cliente_obra = ?"
+        );
+        $stmtStatus->bind_param("ii", $status_id, $imagem_id);
         $stmtStatus->execute();
         $stmtStatus->close();
     }
+
 
     // Monta campos e valores dinâmicos para funcao_imagem
     $campos = ['imagem_id'];

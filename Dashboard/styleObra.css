@@ -4,7 +4,7 @@
 * {
     padding: 0;
     margin: 0;
-    font-family: "Poppins", sans-serif;
+    font-family: "Open Sans", sans-serif;
 }
 
 body {
@@ -2146,4 +2146,31 @@ ul.file-list {
     padding: 10px;
     z-index: 9999;
     overflow: auto;
+}
+
+
+/* CSS */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.4);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 1010;
+}
+
+.modal-card {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    width: 500px;
+    cursor: grab;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    position: absolute;
+    display: flex;
+    flex-direction: column;
 }

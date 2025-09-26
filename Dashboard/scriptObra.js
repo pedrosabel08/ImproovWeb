@@ -3606,49 +3606,55 @@ let arquivosFinais = [];
 let dataIdFuncoes = [];
 
 function abrirModal(botao) {
-    imagensSelecionadas = [];
-    arquivosFinais = [];
+    // imagensSelecionadas = [];
+    // arquivosFinais = [];
 
-    const dataIdFuncao = botao.getAttribute('data-id-funcao');
-    dataIdFuncoes = dataIdFuncao?.split(',').map(f => f.trim()) || [];
+    // const dataIdFuncao = botao.getAttribute('data-id-funcao');
+    // dataIdFuncoes = dataIdFuncao?.split(',').map(f => f.trim()) || [];
 
-    let containerFuncao = botao.closest('.funcao') || botao.closest('.funcao_comp');
-    let nomeFuncao = containerFuncao?.querySelector('.titulo p')?.textContent.trim() || '';
+    // let containerFuncao = botao.closest('.funcao') || botao.closest('.funcao_comp');
+    // let nomeFuncao = containerFuncao?.querySelector('.titulo p')?.textContent.trim() || '';
 
-    document.getElementById('funcao_id_revisao').value = dataIdFuncoes.join(',');
-    document.getElementById('nome_funcao_upload').value = nomeFuncao;
+    // document.getElementById('funcao_id_revisao').value = dataIdFuncoes.join(',');
+    // document.getElementById('nome_funcao_upload').value = nomeFuncao;
 
-    // Exibir o modal
-    document.getElementById('modalUpload').style.display = 'block';
+    // // Exibir o modal
+    // document.getElementById('modalUpload').style.display = 'block';
 
-    // Verificação do nome da função
-    const nomeNormalizado = nomeFuncao.toLowerCase();
-    if (nomeNormalizado === 'caderno' || nomeNormalizado === 'filtro de assets') {
-        // Pula direto para a etapa final
-        document.getElementById('etapaPrevia').style.display = 'none';
-        document.getElementById('etapaFinal').style.display = 'block';
-        document.getElementById('etapaTitulo').textContent = "1. Envio de arquivos";
-    } else {
-        // Etapa padrão
-        document.getElementById('etapaPrevia').style.display = 'block';
-        document.getElementById('etapaFinal').style.display = 'none';
-        document.getElementById('etapaTitulo').textContent = "1. Envio de Prévia";
-    }
+    // // Verificação do nome da função
+    // const nomeNormalizado = nomeFuncao.toLowerCase();
+    // if (nomeNormalizado === 'caderno' || nomeNormalizado === 'filtro de assets') {
+    //     // Pula direto para a etapa final
+    //     document.getElementById('etapaPrevia').style.display = 'none';
+    //     document.getElementById('etapaFinal').style.display = 'block';
+    //     document.getElementById('etapaTitulo').textContent = "1. Envio de arquivos";
+    // } else {
+    //     // Etapa padrão
+    //     document.getElementById('etapaPrevia').style.display = 'block';
+    //     document.getElementById('etapaFinal').style.display = 'none';
+    //     document.getElementById('etapaTitulo').textContent = "1. Envio de Prévia";
+    // }
 
-    configurarDropzone("drop-area-previa", "fileElemPrevia", "fileListPrevia", imagensSelecionadas);
-    configurarDropzone("drop-area-final", "fileElemFinal", "fileListFinal", arquivosFinais);
+    // configurarDropzone("drop-area-previa", "fileElemPrevia", "fileListPrevia", imagensSelecionadas);
+    // configurarDropzone("drop-area-final", "fileElemFinal", "fileListFinal", arquivosFinais);
 
-    document.getElementById('modalUpload').style.display = 'block';
-    document.getElementById('form-edicao').style.display = 'none';
+    // document.getElementById('modalUpload').style.display = 'block';
+    // document.getElementById('form-edicao').style.display = 'none';
+
+
+    document.getElementById('modalOverlay').style.display = 'flex';
 }
 
+document.getElementById('closeModal').addEventListener('click', fecharModal);
+
 function fecharModal() {
-    imagensSelecionadas = [];
-    arquivosFinais = [];
-    renderizarLista(imagensSelecionadas, 'fileListPrevia');
-    renderizarLista(arquivosFinais, 'fileListFinal');
-    document.getElementById('modalUpload').style.display = 'none';
-    document.querySelectorAll('.revisao_imagem').forEach(el => el.style.display = 'none');
+    // imagensSelecionadas = [];
+    // arquivosFinais = [];
+    // renderizarLista(imagensSelecionadas, 'fileListPrevia');
+    // renderizarLista(arquivosFinais, 'fileListFinal');
+    // document.getElementById('modalUpload').style.display = 'none';
+    // document.querySelectorAll('.revisao_imagem').forEach(el => el.style.display = 'none');
+    document.getElementById('modalOverlay').style.display = 'none';
 }
 
 function configurarDropzone(areaId, inputId, listaId, arquivosArray) {

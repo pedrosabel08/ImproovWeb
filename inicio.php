@@ -108,6 +108,13 @@ $conn->close();
                         <!-- <button id="timeline"><span>Timeline</span></button> -->
                     </div>
                     <div class="nav-right">
+                        <select name="idcolab" id="idcolab" style="display: none;">
+                            <?php foreach ($colaboradores as $colab): ?>
+                                <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                    <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
                         <button id="date"><i class="ri-calendar-todo-fill"></i><span></span></button>
                         <button id="filter"><i class="ri-equalizer-fill"></i><span>Filtros</span></button>
                         <button id="add-task"><i class="ri-add-line"></i></i><span>Adicionar tarefa</span></button>

@@ -354,6 +354,19 @@ function updateEvent(event) {
 
 
 // const idusuario = 1;
+
+document.getElementById('idcolab').addEventListener('change', function () {
+    // ✅ Se for um dos dois colaboradores
+    if (colaborador_id === 9 || colaborador_id === 21) {
+        document.getElementById('idcolab').style.display = 'flex !important'; // libera
+        const idcolab = parseInt(this.value, 10);
+        carregarDados(idcolab);
+    } else {
+        document.getElementById('idcolab').style.display = 'none'; // esconde
+    }
+
+});
+
 function carregarDados(colaborador_id) {
 
     let url = `getFuncoesPorColaborador.php?colaborador_id=${colaborador_id}`;
@@ -474,6 +487,9 @@ function processarDados(data) {
             if (status === "Não iniciado") {
                 const statusAnterior = item.status_funcao_anterior || "";
                 if (["Aprovado", "Finalizado", "Aprovado com ajustes"].includes(statusAnterior)) {
+                    bolinhaHTML = `<span class="bolinha verde"></span>`;
+                    liberado = "1";
+                } else if (item.liberada) {
                     bolinhaHTML = `<span class="bolinha verde"></span>`;
                     liberado = "1";
                 } else {
@@ -957,6 +973,8 @@ const fileInput = document.getElementById('fileElem');
 const fileList = document.getElementById('fileList');
 let arquivosFinais = [];
 let dataIdFuncoes = [];
+let imagensSelecionadas = [];
+
 
 
 // Inicializa Sortable nas colunas
@@ -984,14 +1002,13 @@ colunas.forEach(col => {
         }
         ,
         onEnd: (evt) => {
-            const card = evt.item;                                // Card movido
-            const deColuna = evt.from.closest('.kanban-box');     // coluna origem
-            const novaColuna = evt.to.closest('.kanban-box');     // coluna destino
+            const card = evt.item;
+            const deColuna = evt.from.closest('.kanban-box');
+            const novaColuna = evt.to.closest('.kanban-box');
             const novoIndex = evt.newIndex;
 
             if (card.dataset.liberado === "0") {
-                // Se por algum motivo tentou, não deixa abrir modal
-                evt.from.appendChild(card); // devolve pra origem
+                evt.from.appendChild(card);
                 alert("Esta função ainda não foi liberada.");
                 return;
             }
@@ -1018,6 +1035,12 @@ colunas.forEach(col => {
                 document.querySelector('.modalObs').style.display = 'flex';
                 document.querySelector('.modalUploads').style.display = 'flex';
                 document.querySelector('.buttons').style.display = 'flex';
+
+                // Limpa listas de arquivos ao abrir o modal
+                imagensSelecionadas = [];
+                arquivosFinais = [];
+                renderizarLista(imagensSelecionadas, 'fileListPrevia');
+                renderizarLista(arquivosFinais, 'fileListFinal');
 
                 // Ativar modal
                 cardModal.classList.add('active');
@@ -1087,8 +1110,6 @@ colunas.forEach(col => {
         }
     });
 });
-
-let imagensSelecionadas = [];
 
 
 function enviarImagens() {

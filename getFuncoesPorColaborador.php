@@ -222,7 +222,7 @@ if (count($funcaoImagemIds) > 0) {
 // ====================
 // Ajusta Funções (liberação, ordem, etc.)
 // ====================
-$imagemIds = array_column($funcoes, 'imagem_id');
+$imagemIds = array_unique(array_column($funcoes, 'imagem_id')); // <- unique para evitar placeholders duplicados
 $todasFuncoes = [];
 
 if (count($imagemIds) > 0) {
@@ -254,11 +254,33 @@ $ordemFuncoes = [
 ];
 
 $funcoesFinal = [];
+$ordemIds = array_keys($ordemFuncoes);
 
+// ====================
+// Descobre a primeira função REAL de cada imagem (USANDO todasFuncoes)
+// ====================
+$primeiraFuncaoImagem = [];
+foreach ($todasFuncoes as $img => $listaFuncoes) {
+    $menorPos = PHP_INT_MAX;
+    $primeira = null;
+    foreach ($listaFuncoes as $funcaoId => $dados) {
+        $pos = array_search($funcaoId, $ordemIds);
+        if ($pos !== false && $pos < $menorPos) {
+            $menorPos = $pos;
+            $primeira = $funcaoId;
+        }
+    }
+    if ($primeira !== null) {
+        $primeiraFuncaoImagem[$img] = $primeira;
+    }
+}
+
+// ====================
+// Agora processa as funções (usando primeiraFuncaoImagem calculada corretamente)
+// ====================
 foreach ($funcoes as $funcao) {
     $funcaoAtualId = $funcao['funcao_id'];
     $imagemId      = $funcao['imagem_id'];
-    $ordemIds      = array_keys($ordemFuncoes);
     $indiceAtual   = array_search($funcaoAtualId, $ordemIds);
 
     $statusAnterior   = null;
@@ -266,24 +288,20 @@ foreach ($funcoes as $funcao) {
     $funcaoAnteriorId = null;
     $prazoAnterior    = null;
 
-    // Verifica se é a primeira função da imagem (menor índice da ordem para esta imagem)
-    $funcoesImagem = isset($todasFuncoes[$imagemId]) ? array_keys($todasFuncoes[$imagemId]) : [];
-    $menorIndiceImagem = null;
-    foreach ($ordemIds as $idx => $fid) {
-        if (in_array($fid, $funcoesImagem)) {
-            $menorIndiceImagem = $idx;
-            break;
-        }
-    }
-
-    if ($indiceAtual === $menorIndiceImagem) {
+    // Se for Alteração (funcao_id == 6), sempre libera
+    if ($funcaoAtualId == 6) {
         $liberada = true;
-    } elseif ($indiceAtual !== false && $indiceAtual > 0 && isset($todasFuncoes[$imagemId])) {
-        // Verifica status da função anterior
+    }
+    // Se esta é a primeira função REAL da imagem, libera sempre
+    elseif (isset($primeiraFuncaoImagem[$imagemId]) && $primeiraFuncaoImagem[$imagemId] == $funcaoAtualId) {
+        $liberada = true;
+    }
+    // Caso contrário, aplica a regra normal (procura anterior EXISTENTE na ordem oficial)
+    elseif ($indiceAtual !== false && $indiceAtual > 0 && isset($todasFuncoes[$imagemId])) {
         for ($i = $indiceAtual - 1; $i >= 0; $i--) {
             $funcaoAnteriorId = $ordemIds[$i];
             if (isset($todasFuncoes[$imagemId][$funcaoAnteriorId])) {
-                $rowAnterior   = $todasFuncoes[$imagemId][$funcaoAnteriorId];
+                $rowAnterior    = $todasFuncoes[$imagemId][$funcaoAnteriorId];
                 $statusAnterior = $rowAnterior['status'];
                 $prazoAnterior  = $rowAnterior['prazo'];
                 if (in_array($statusAnterior, ['Finalizado', 'Aprovado', 'Aprovado com ajustes'])) {

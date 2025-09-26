@@ -1193,6 +1193,17 @@ $conn->close();
         </div>
     </div>
 
+    <!-- HTML -->
+    <div id="modalOverlay" class="modal-overlay">
+        <div id="modalCard" class="modal-card">
+            <h2 style="margin-bottom: 10px;">Envio de Prévias</h2>
+            <p style="font-weight: bold;">O processo de envio de prévias está disponível na página principal.</p>
+            <span style="font-size: 0.9rem; margin-top: 10px;">Você pode arrastar o card para movê-lo para Em aprovação e fazer o envio das imagens.</span>
+            <button id="closeModal" style="background: red;color: white;font-size: 0.8rem;padding: 4px 8px;border-radius: 15px;width: max-content; margin: auto; margin-top: 15px;">Fechar</button>
+        </div>
+    </div>
+
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>

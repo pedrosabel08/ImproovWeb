@@ -74,7 +74,7 @@ $conn->close();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="css/styleIndex.css">
+    <link rel="stylesheet" href="PaginaPrincipal/styleIndex.css">
     <link rel="stylesheet" href="css/styleSidebar.css">
     <link href="https://cdn.jsdelivr.net/npm/remixicon/fonts/remixicon.css" rel="stylesheet">
     <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s" type="image/x-icon">
@@ -108,7 +108,7 @@ $conn->close();
                         <!-- <button id="timeline"><span>Timeline</span></button> -->
                     </div>
                     <div class="nav-right">
-                        <select name="idcolab" id="idcolab" style="display: none;">
+                        <select name="idcolab" id="idcolab">
                             <?php foreach ($colaboradores as $colab): ?>
                                 <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
                                     <?= htmlspecialchars($colab['nome_colaborador']); ?>
@@ -391,6 +391,16 @@ $conn->close();
         <i class="ri-loader-4-line ri-spin"></i> Carregando...
     </div>
 
+    <div class="sidebar-right" id="sidebar-right">
+        <div class="sidebar-header">
+            <h2>Detalhes da Tarefa</h2>
+            <span class="close-button" id="close-sidebar">&times;</span>
+        </div>
+        <div class="sidebar-content" id="sidebar-content">
+            <!-- Conteúdo dinâmico será carregado aqui -->
+        </div>
+    </div>
+
 
     <script>
         function abrirModalIframe() {
@@ -659,7 +669,7 @@ $conn->close();
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <script src="script/notificacoes.js"></script>
-    <script src="script/scriptIndex.js"></script>
+    <script src="PaginaPrincipal/scriptIndex.js"></script>
     <script src="./script/sidebar.js"></script>
 
 </body>

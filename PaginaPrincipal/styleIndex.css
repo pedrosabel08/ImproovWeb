@@ -157,25 +157,29 @@ main .kanban .kanban-box {
 
 /* Scrollbar estilizado para Webkit (Chrome, Edge, Safari) */
 .kanban-box .content::-webkit-scrollbar,
-.dropdown-content::-webkit-scrollbar {
+.dropdown-content::-webkit-scrollbar,
+.log-alteracoes::-webkit-scrollbar {
     width: 4px;
 }
 
 .kanban-box .content::-webkit-scrollbar-track,
-.dropdown-content::-webkit-scrollbar-track {
+.dropdown-content::-webkit-scrollbar-track,
+.log-alteracoes::-webkit-scrollbar-track {
     background: #f1f1f1;
     border-radius: 8px;
 }
 
 .kanban-box .content::-webkit-scrollbar-thumb,
-.dropdown-content::-webkit-scrollbar-thumb {
+.dropdown-content::-webkit-scrollbar-thumb,
+.log-alteracoes::-webkit-scrollbar-thumb {
     background: #c1c1c1;
     border-radius: 8px;
     transition: background 0.3s;
 }
 
 .kanban-box .content::-webkit-scrollbar-thumb:hover,
-.dropdown-content::-webkit-scrollbar-thumb:hover {
+.dropdown-content::-webkit-scrollbar-thumb:hover,
+.log-alteracoes::-webkit-scrollbar-thumb:hover {
     background: #888;
 }
 
@@ -774,7 +778,7 @@ form#task-form button {
     position: fixed;
     bottom: 20px;
     right: 20px;
-    z-index: 9999;
+    z-index: 100;
     display: flex;
     align-items: center;
     cursor: pointer;
@@ -1267,36 +1271,138 @@ form#dailyForm button {
     gap: 20px;
 }
 
-
+/* ================= Sidebar geral ================= */
 .sidebar-right {
     position: fixed;
     top: 0;
-    right: -400px;
-    /* inicialmente escondida */
-    width: 400px;
+    right: -420px;
+    /* um pouco mais largo */
+    width: 420px;
     height: 100vh;
-    background: #fff;
-    box-shadow: -2px 0 10px rgba(0, 0, 0, 0.3);
-    transition: right 0.3s ease;
+    background-color: var(--bg-sidebar, #fff);
+    color: var(--text-sidebar, #333);
+    box-shadow: -3px 0 15px rgba(0, 0, 0, 0.3);
+    transition: right 0.3s ease, background-color 0.3s ease, color 0.3s ease;
     z-index: 1000;
     overflow-y: auto;
-    padding: 20px;
+    padding: 20px 25px;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.95rem;
 }
 
+/* Sidebar ativa */
 .sidebar-right.active {
     right: 0;
 }
 
+/* Header */
 .sidebar-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--border-sidebar, #ddd);
+    padding-bottom: 10px;
+}
+
+.sidebar-header h2 {
+    font-size: 1.3rem;
+    font-weight: 600;
 }
 
 .close-button {
     cursor: pointer;
-    font-size: 1.5rem;
+    font-size: 1.6rem;
+    transition: transform 0.2s;
 }
+
+.close-button:hover {
+    transform: rotate(90deg);
+}
+
+/* ================= Seções internas ================= */
+.sidebar-content>div {
+    margin-bottom: 25px;
+}
+
+.sidebar-content .status-imagem {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.sidebar-content .status-imagem strong {
+    margin-bottom: 0;
+}
+
+/* Títulos das seções */
+.sidebar-content strong {
+    display: block;
+    font-size: 1.05rem;
+    margin-bottom: 8px;
+    color: var(--text-title, #222);
+}
+
+/* ================= Lista de colaboradores ================= */
+.sidebar-content ul {
+    list-style: none;
+    padding-left: 0;
+    margin: 0;
+}
+
+.sidebar-content li {
+    background-color: var(--card-bg, #f7f7f7);
+    border-radius: 8px;
+    padding: 10px 15px;
+    margin-bottom: 10px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    transition: background 0.2s, transform 0.2s;
+}
+
+.sidebar-content li:hover {
+    background-color: var(--card-hover, #eaeaea);
+    transform: translateY(-2px);
+}
+
+/* ================= Funções da imagem ================= */
+.funcao-card {
+    border: 1px solid var(--border-card, #eee);
+    border-radius: 8px;
+    padding: 12px 15px;
+    margin-bottom: 12px;
+    background-color: var(--card-bg, #fafafa);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    transition: box-shadow 0.2s, transform 0.2s;
+}
+
+.funcao-card:hover {
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+}
+
+.funcao-card p {
+    margin: 5px 0;
+}
+
+/* ================= Log de alterações ================= */
+.log-alteracoes {
+    max-height: 40vh;
+    overflow-y: auto;
+}
+
+.log-entry {
+    font-size: 0.9rem;
+    color: var(--text-log, #555);
+}
+
+.log-entry em {
+    color: var(--text-em, #333);
+    font-style: normal;
+    font-weight: 500;
+}
+
+
 
 /* Animação */
 @keyframes fadeIn {
@@ -1315,6 +1421,16 @@ form#dailyForm button {
     :root {
         --cor-principal: #e0e0e0;
         --cor-secundaria: #3399ff;
+        --bg-sidebar: #060606;
+        --text-sidebar: #f0f0f5;
+        --text-title: #fff;
+        --border-sidebar: #444;
+        --card-bg: #1b1b1b;
+        --card-hover: #181818;
+        --border-card: #444;
+        --primary: #4a90e2;
+        --text-log: #ccc;
+        --text-em: #fff;
     }
 
     body {
@@ -1453,17 +1569,20 @@ form#dailyForm button {
 
     /* Scrollbar dark */
     .kanban-box .content::-webkit-scrollbar,
-    .dropdown-content::-webkit-scrollbar {
+    .dropdown-content::-webkit-scrollbar,
+    .log-alteracoes::-webkit-scrollbar {
         background: #232323;
     }
 
     .kanban-box .content::-webkit-scrollbar-thumb,
-    .dropdown-content::-webkit-scrollbar-thumb {
+    .dropdown-content::-webkit-scrollbar-thumb,
+    .log-alteracoes::-webkit-scrollbar-thumb {
         background: #444;
     }
 
     .kanban-box .content::-webkit-scrollbar-thumb:hover,
-    .dropdown-content::-webkit-scrollbar-thumb:hover {
+    .dropdown-content::-webkit-scrollbar-thumb:hover,
+    .log-alteracoes::-webkit-scrollbar-thumb:hover {
         background: #666;
     }
 }

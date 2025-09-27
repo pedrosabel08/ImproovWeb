@@ -57,6 +57,7 @@ $numeroImagem  = preg_replace('/\D/', '', $_POST['numeroImagem'] ?? '');
 $nomenclatura  = preg_replace('/[^a-zA-Z0-9_\-]/', '', $_POST['nomenclatura'] ?? '');
 $nomeFuncao    = $_POST['nome_funcao'] ?? '';
 $nome_imagem   = $_POST['nome_imagem'] ?? '';
+$idimagem   = $_POST['idimagem'] ?? '';
 
 if (!$dataIdFuncoes || !$numeroImagem || !$nomenclatura || !$nomeFuncao) {
     echo json_encode(["error" => "Parâmetros insuficientes"]);
@@ -73,6 +74,16 @@ $stmt->execute();
 $result = $stmt->get_result()->fetch_assoc();
 $indice_envio = ($result['max_indice'] ?? 0) + 1;
 $stmt->close();
+
+// ---------- Status nome ----------
+$stmt2 = $conn->prepare("SELECT s.nome_status FROM status_imagem s
+                         JOIN imagens_cliente_obra i ON s.idstatus = i.status_id
+                         WHERE i.idimagens_cliente_obra = ?");
+$stmt2->bind_param("i", $idimagem);
+$stmt2->execute();
+$result2 = $stmt2->get_result()->fetch_assoc();
+$status_nome = $result2 ? $result2['nome_status'] : null; // evita erro se não encontrar
+$stmt2->close();
 
 // ---------- Conexão FTP ----------
 $conn_ftp = ftp_connect($ftp_host, $ftp_port, 10); // timeout 10s
@@ -112,8 +123,8 @@ for ($i = 0; $i < $totalImagens; $i++) {
     }
 
     // Nome final do arquivo (sem extensão)
-    if ($nomeFuncao === 'Pós-Produção' || $nomeFuncao === 'Alteração') {
-        $nomeFinalSemExt = "{$nomeImagemSanitizado}_{$indice_envio}_{$numeroPrevia}";
+    if ($nomeFuncao === 'Pós-produção' || $nomeFuncao === 'Alteração') {
+        $nomeFinalSemExt = "{$nomeImagemSanitizado}_{$status_nome}_{$indice_envio}_{$numeroPrevia}";
     } else {
         $nomeFinalSemExt = "{$numeroImagem}.{$nomenclatura}-{$processo}-{$indice_envio}-{$numeroPrevia}";
     }

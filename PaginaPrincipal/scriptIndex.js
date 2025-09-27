@@ -552,113 +552,21 @@ function processarDados(data) {
                     </div>
                 `;
 
-
-        // Evento de clique
-        card.addEventListener('click', () => {
-
-            if (tipo === 'imagem') {
-                // remove seleção dos outros
-                const sidebar = document.getElementById('sidebar-right');
-                const sidebarContent = document.getElementById('sidebar-content');
-                const closeSidebar = document.getElementById('close-sidebar');
-
-                document.querySelectorAll('.kanban-card').forEach(card => {
-                    card.addEventListener('click', () => {
-                        // Remove seleção dos outros
-                        document.querySelectorAll('.kanban-card.selected').forEach(c => c.classList.remove('selected'));
-
-                        // Adiciona seleção ao clicado
-                        card.classList.add('selected');
-
-                        const idFuncao = card.dataset.id;
-                        const idImagem = card.dataset.idImagem;
-
-                        fetch(`PaginaPrincipal/getInfosCard.php?idfuncao=${idFuncao}&imagem_id=${idImagem}`)
-                            .then(res => res.json())
-                            .then(data => {
-                                // Limpa conteúdo antigo
-                                sidebarContent.innerHTML = '';
-
-                                // Exibe status da imagem
-                                if (data.status_imagem) {
-                                    const statusDiv = document.createElement('p');
-                                    statusDiv.innerHTML = `<strong>Status da Imagem:</strong> ${data.status_imagem.nome_status}`;
-                                    sidebarContent.appendChild(statusDiv);
-                                }
-
-                                // Exibe colaboradores e suas funções
-                                if (data.colaboradores && data.colaboradores.length > 0) {
-                                    const colabDiv = document.createElement('div');
-                                    colabDiv.innerHTML = `<strong>Colaboradores:</strong>`;
-                                    const ul = document.createElement('ul');
-
-                                    data.colaboradores.forEach(col => {
-                                        const li = document.createElement('li');
-                                        li.textContent = `${col.nome_colaborador} - ${col.funcoes || ''}`;
-                                        ul.appendChild(li);
-                                    });
-
-                                    colabDiv.appendChild(ul);
-                                    sidebarContent.appendChild(colabDiv);
-                                }
-
-                                // Exibe funções da imagem
-                                if (data.funcoes && data.funcoes.length > 0) {
-                                    const funcoesDiv = document.createElement('div');
-                                    funcoesDiv.innerHTML = `<strong>Funções:</strong>`;
-                                    data.funcoes.forEach(f => {
-                                        const fDiv = document.createElement('div');
-                                        fDiv.style.marginBottom = '10px';
-                                        fDiv.innerHTML = `
-                            <p><strong>Função:</strong> ${f.nome_funcao}</p>
-                            <p><strong>Colaborador:</strong> ${f.nome_colaborador || '—'}</p>
-                            <p><strong>Prazo:</strong> ${f.prazo || '—'}</p>
-                            <p><strong>Status:</strong> ${f.status || '—'}</p>
-                            <p><strong>Observação:</strong> ${f.observacao || '—'}</p>
-                            <p><strong>Responsável Aprovação:</strong> ${f.responsavel_aprovacao || '—'}</p>
-                        `;
-                                        funcoesDiv.appendChild(fDiv);
-                                    });
-                                    sidebarContent.appendChild(funcoesDiv);
-                                }
-
-                                // Exibe log de alterações
-                                if (data.log_alteracoes && data.log_alteracoes.length > 0) {
-                                    const logDiv = document.createElement('div');
-                                    logDiv.innerHTML = `<strong>Log de Alterações:</strong>`;
-                                    const ulLog = document.createElement('ul');
-
-                                    data.log_alteracoes.forEach(log => {
-                                        const li = document.createElement('li');
-                                        li.innerHTML = `<strong>${log.data_alteracao}</strong>: ${log.descricao} - <em>${log.responsavel}</em>`;
-                                        ulLog.appendChild(li);
-                                    });
-
-                                    logDiv.appendChild(ulLog);
-                                    sidebarContent.appendChild(logDiv);
-                                }
-
-                                // Abre a sidebar
-                                sidebar.classList.add('active');
-                            });
-                    });
-                });
-
-                // Fechar sidebar
-                closeSidebar.addEventListener('click', () => {
-                    sidebar.classList.remove('active');
-                });
-
-            } else {
-                console.log("Tarefa selecionada:", item.id);
-                // aqui pode abrir outro modal para editar tarefa
-            }
-        });
-
         // Atributos para filtros
         card.dataset.obra_nome = item.nomenclatura || '';      // nome da obra
         card.dataset.funcao_nome = item.nome_funcao || '';  // nome da função
         card.dataset.status = status;                       // status normalizado
+
+        card.addEventListener('click', () => {
+            if (card.classList.contains('tarefa-criada')) return;
+
+            document.querySelectorAll('.kanban-card.selected').forEach(c => c.classList.remove('selected'));
+            card.classList.add('selected');
+
+            const idFuncao = card.dataset.id;
+            const idImagem = card.dataset.idImagem;
+            abrirSidebar(idFuncao, idImagem);
+        });
 
 
         if (liberado === "1") {
@@ -701,7 +609,172 @@ function processarDados(data) {
 
     preencherFiltros()
 
+
+
 }
+
+// remove seleção dos outros
+const sidebarRight = document.getElementById('sidebar-right');
+const sidebarContent = document.getElementById('sidebar-content');
+const closeSidebar = document.getElementById('close-sidebar');
+
+function abrirSidebar(idFuncao, idImagem) {
+
+    fetch(`PaginaPrincipal/getInfosCard.php?idfuncao=${idFuncao}&imagem_id=${idImagem}`)
+        .then(res => res.json())
+        .then(data => {
+            // Limpa conteúdo antigo
+            sidebarContent.innerHTML = '';
+
+            // Exibe status da imagem
+            if (data.status_imagem) {
+                const statusDiv = document.createElement('p');
+                statusDiv.classList.add('status-imagem');
+                statusDiv.innerHTML = `<strong>Status da Imagem:</strong> `;
+
+                const nomestatusSpan = document.createElement('span');
+                nomestatusSpan.textContent = data.status_imagem.nome_status;
+
+                // Define a cor conforme o status
+                let corStatus;
+                switch (data.status_imagem.nome_status.toLowerCase()) {
+                    case 'p00':
+                        corStatus = '#c2ff1cff';
+                        break;
+                    case 'r00':
+                        corStatus = '#1cf4ff';
+                        break;
+                    case 'r01':
+                        corStatus = '#ff9800';
+                        break;
+                    case 'r02':
+                        corStatus = '#ff3c00';
+                        break;
+                    case 'r03':
+                    case 'r04':
+                    case 'r05':
+                        corStatus = '#dc3545';
+                        break;
+                    case 'ef':
+                        corStatus = '#0dff00';
+                        break;
+                    default:
+                        corStatus = '#777';
+                }
+
+                // Aplica estilo no span
+                nomestatusSpan.style.backgroundColor = corStatus;
+                nomestatusSpan.style.color = '#000';
+                nomestatusSpan.style.padding = '2px 6px';
+                nomestatusSpan.style.borderRadius = '5px';
+                nomestatusSpan.style.marginLeft = '8px';
+                nomestatusSpan.style.fontWeight = '500';
+
+                // Adiciona o span ao p e depois o p à sidebar
+                statusDiv.appendChild(nomestatusSpan);
+                sidebarContent.appendChild(statusDiv);
+            }
+
+
+            // Exibe colaboradores e suas funções
+            if (data.colaboradores && data.colaboradores.length > 0) {
+                const colabDiv = document.createElement('div');
+                colabDiv.innerHTML = `<strong>Colaboradores:</strong>`;
+                const ul = document.createElement('ul');
+
+                data.colaboradores.forEach(col => {
+                    let funcoes = col.funcoes || '';
+                    if (funcoes) {
+                        const arr = funcoes.split(',').map(f => f.trim());
+                        if (arr.length > 1) {
+                            const last = arr.pop();
+                            funcoes = arr.join(', ') + ' e ' + last;
+                        }
+                    }
+                    const li = document.createElement('li');
+                    li.textContent = `${col.nome_colaborador} - ${funcoes}`;
+                    ul.appendChild(li);
+                });
+
+                colabDiv.appendChild(ul);
+                sidebarContent.appendChild(colabDiv);
+            }
+
+            // Exibe funções da imagem
+            if (data.funcoes && data.funcoes.length > 0) {
+                const funcoesDiv = document.createElement('div');
+                data.funcoes.forEach(f => {
+                    const fDiv = document.createElement('div');
+                    fDiv.classList.add('funcao-card');
+                    fDiv.innerHTML = `
+                                        <p><strong>Função:</strong> ${f.nome_funcao}</p>
+                                        <p><strong>Prazo:</strong> ${f.prazo || '—'}</p>
+                                        <p><strong>Status:</strong> ${f.status || '—'}</p>
+                                        <p><strong>Observação:</strong> ${f.observacao || '—'}</p>
+                                    `;
+                    funcoesDiv.appendChild(fDiv);
+                });
+                sidebarContent.appendChild(funcoesDiv);
+            }
+
+            // Exibe log de alterações
+            if (data.log_alteracoes && data.log_alteracoes.length > 0) {
+                const logDiv = document.createElement('div');
+                logDiv.classList.add('log-alteracoes');
+                logDiv.innerHTML = `<strong>Log de Alterações:</strong>`;
+
+                data.log_alteracoes.forEach(log => {
+                    const li = document.createElement('div');
+                    li.classList.add('log-entry');
+
+                    // Define a cor da borda conforme o status_novo
+                    let corBorda;
+                    switch (log.status_novo.toLowerCase()) {
+                        case 'em aprovação':
+                            corBorda = '#4a90e2'; // azul
+                            break;
+                        case 'finalizado':
+                        case 'aprovado':
+                            corBorda = '#28a745'; // verde
+                            break;
+                        case 'aprovado com ajustes':
+                            corBorda = '#5e07ffff';
+                            break;
+                        case 'não iniciado':
+                            corBorda = '#6c757d';
+                            break;
+                        case 'em andamento':
+                            corBorda = '#ff9800'; // laranja
+                            break;
+                        case 'ajuste':
+                        case 'hold':
+                            corBorda = '#dc3545'; // vermelho
+                            break;
+                        default:
+                            corBorda = '#777'; // cinza padrão
+                    }
+
+                    li.style.borderLeft = `3px solid ${corBorda}`;
+                    li.style.paddingLeft = '10px';
+                    li.style.marginBottom = '10px';
+
+                    li.innerHTML = `<strong>${log.data}</strong> ${log.status_anterior} → <em>${log.status_novo}</em> (${log.responsavel})`;
+                    logDiv.appendChild(li);
+                });
+
+                sidebarContent.appendChild(logDiv);
+            }
+
+            // Abre a sidebar
+            sidebarRight.classList.add('active');
+        });
+};
+
+// Fechar sidebar
+closeSidebar.addEventListener('click', () => {
+    sidebarRight.classList.remove('active');
+});
+
 
 function formatarDuracao(minutos) {
     if (!minutos || minutos < 0) return "-";

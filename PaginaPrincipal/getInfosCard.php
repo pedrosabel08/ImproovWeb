@@ -9,6 +9,7 @@ include '../conexao.php';
 if ($_SERVER["REQUEST_METHOD"] === "GET") {
     // --- Parâmetro ---
     $idImagemSelecionada = (int) $_GET['imagem_id']; // segurança
+    $idFuncaoImagem = isset($_GET['idfuncao']) ? (int) $_GET['idfuncao'] : 0;
 
     // ==========================================================
     // 1) Funções da imagem (mantém sua lógica atual)
@@ -22,23 +23,12 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
             fi.prazo, 
             fi.status,
             fi.observacao,
-            fi.idfuncao_imagem AS id,
-            fp.nome_pdf,
-            (SELECT c.nome_colaborador 
-             FROM historico_aprovacoes h 
-             JOIN colaborador c ON h.responsavel = c.idcolaborador 
-             WHERE h.funcao_imagem_id = fi.idfuncao_imagem 
-             ORDER BY h.id DESC 
-             LIMIT 1) AS responsavel_aprovacao,
-            (SELECT DISTINCT GROUP_CONCAT(sh.justificativa SEPARATOR ',') 
-             FROM status_hold sh 
-             WHERE sh.imagem_id = $idImagemSelecionada) AS justificativa
+            fi.idfuncao_imagem AS id
         FROM imagens_cliente_obra img
         LEFT JOIN funcao_imagem fi ON img.idimagens_cliente_obra = fi.imagem_id
         LEFT JOIN colaborador col ON fi.colaborador_id = col.idcolaborador
         LEFT JOIN funcao f ON fi.funcao_id = f.idfuncao
-        LEFT JOIN funcao_imagem_pdf fp ON fi.idfuncao_imagem = fp.funcao_imagem_id
-        WHERE img.idimagens_cliente_obra = $idImagemSelecionada
+        WHERE fi.idfuncao_imagem = $idFuncaoImagem
     ";
     $resultFuncoes = $conn->query($sqlFuncoes);
     $funcoes = [];
@@ -64,7 +54,7 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
     // ==========================================================
     // 3) Colaboradores envolvidos em QUALQUER função da imagem
     // ==========================================================
-$sqlColaboradores = "SELECT 
+    $sqlColaboradores = "SELECT 
         c.idcolaborador, 
         c.nome_colaborador,
     GROUP_CONCAT(f.nome_funcao SEPARATOR ', ') AS funcoes
@@ -86,7 +76,6 @@ $sqlColaboradores = "SELECT
     // 4) Log de alterações da função selecionada
     // ==========================================================
 
-    $idFuncaoImagem = isset($_GET['idfuncao']) ? (int) $_GET['idfuncao'] : 0;
     $logAlteracoes = [];
     if ($idFuncaoImagem > 0) {
         $sqlLog = "SELECT la.idlog, la.funcao_imagem_id, la.status_anterior, la.status_novo, la.data,

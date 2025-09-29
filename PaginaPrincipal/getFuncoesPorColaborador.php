@@ -80,10 +80,20 @@ $stmt->close();
 // ====================
 // TAREFAS
 // ====================
-$sqlTarefas = "SELECT id, titulo, descricao, prazo, status, prioridade 
-               FROM tarefas 
-               WHERE colaborador_id = ? 
-               ORDER BY prazo DESC";
+$sqlTarefas = "SELECT 
+    id,
+    titulo,
+    descricao,
+    prazo,
+    status,
+    prioridade,
+    CASE 
+        WHEN prazo < CURDATE() AND status <> 'Finalizado' THEN 'Atrasada'
+        ELSE 'Dentro do prazo'
+    END AS situacao
+FROM tarefas
+WHERE colaborador_id = ?
+ORDER BY prazo ASC;";
 $stmtTarefas = $conn->prepare($sqlTarefas);
 $stmtTarefas->bind_param("i", $colaboradorId);
 $stmtTarefas->execute();

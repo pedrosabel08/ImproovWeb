@@ -232,7 +232,10 @@ $conn->close();
                 <h4>Observação:</h4>
                 <textarea id="modalObs" rows="4"></textarea>
             </div>
-
+            
+            <div class="modal-item statusAnterior">
+                <h4>A função anterior está <span class="aprovadaComAjustes">Aprovada com ajustes</span>, verifique no Flow Review!</h4>
+            </div>
             <div class="modal-item modalUploads">
 
                 <div id="etapaPrevia">

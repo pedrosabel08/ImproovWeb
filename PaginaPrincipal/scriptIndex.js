@@ -485,15 +485,19 @@ function processarDados(data) {
             if (status === "Não iniciado") {
                 const statusAnterior = item.status_funcao_anterior || "";
                 if (["Aprovado", "Finalizado", "Aprovado com ajustes"].includes(statusAnterior)) {
-                    bolinhaHTML = `<span class="bolinha verde"></span>`;
+                    bolinhaHTML = `<span class="bolinha verde" data-status-anterior="${statusAnterior}"></span>`;
                     liberado = "1";
                 } else if (item.liberada) {
-                    bolinhaHTML = `<span class="bolinha verde"></span>`;
+                    bolinhaHTML = `<span class="bolinha verde" data-status-anterior="${statusAnterior || ''}"></span>`;
+                    liberado = "1";
+                } else if (item.nome_funcao === "Filtro de assets") {
+                    bolinhaHTML = `<span class="bolinha verde" data-status-anterior="${statusAnterior || ''}"></span>`;
                     liberado = "1";
                 } else {
-                    bolinhaHTML = `<span class="bolinha vermelho"></span>`;
+                    bolinhaHTML = `<span class="bolinha vermelho" data-status-anterior="${statusAnterior || ''}"></span>`;
                     liberado = "0";
                 }
+
             }
 
 
@@ -522,6 +526,19 @@ function processarDados(data) {
             card.classList.add("bloqueado");
         }
 
+        function isAtrasada(prazoStr) {
+            // Divide a string 'YYYY-MM-DD'
+            const [ano, mes, dia] = prazoStr.split('-').map(Number);
+            const prazo = new Date(ano, mes - 1, dia);
+
+            const hoje = new Date();
+            const hojeLimpo = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+
+            return prazo < hojeLimpo;
+        }
+
+        const atrasada = item.prazo ? isAtrasada(item.prazo) : false;
+
         card.innerHTML = `
                     <div class="header-kanban">
                         <span class="priority ${item.prioridade || 'medium'}">
@@ -532,7 +549,10 @@ function processarDados(data) {
                         <h5>${titulo || '-'}</h5>
                         <p>${subtitulo || '-'}</p>
                     <div class="card-footer">
-                        <span class="date"><i class="fa-regular fa-calendar"></i> ${item.prazo ? formatarData(item.prazo) : '-'}</span>
+                        <span class="date ${atrasada ? 'atrasada' : ''}">
+                            <i class="fa-regular fa-calendar"></i>
+                            ${item.prazo ? formatarData(item.prazo) : '-'}
+                        </span>
                     </div>
                     <div class="card-log">
                         <span class="date tooltip ${getTempoClass(item.tempo_calculado, mediaFuncao)}" data-tooltip="${formatarDuracao(mediaFuncao)}">
@@ -558,14 +578,19 @@ function processarDados(data) {
         card.dataset.status = status;                       // status normalizado
 
         card.addEventListener('click', () => {
-            if (card.classList.contains('tarefa-criada')) return;
-
             document.querySelectorAll('.kanban-card.selected').forEach(c => c.classList.remove('selected'));
             card.classList.add('selected');
+            if (card.classList.contains('tarefa-criada')) {
+                const idTarefa = card.dataset.id;
+                abrirSidebarTarefaCriada(idTarefa);
 
-            const idFuncao = card.dataset.id;
-            const idImagem = card.dataset.idImagem;
-            abrirSidebar(idFuncao, idImagem);
+            } else if (card.classList.contains('tarefa-imagem')) {
+                const idFuncao = card.dataset.id;
+                const idImagem = card.dataset.idImagem;
+                abrirSidebar(idFuncao, idImagem);
+
+            }
+
         });
 
 
@@ -617,6 +642,31 @@ function processarDados(data) {
 const sidebarRight = document.getElementById('sidebar-right');
 const sidebarContent = document.getElementById('sidebar-content');
 const closeSidebar = document.getElementById('close-sidebar');
+
+function abrirSidebarTarefaCriada(idTarefa) {
+    fetch(`PaginaPrincipal/getInfosTarefaCriada.php?idtarefa=${idTarefa}`)
+        .then(res => res.json())
+        .then(data => {
+            sidebarContent.innerHTML = '';
+
+            // Acessa o primeiro item do array dentro de "tarefa"
+            const t = data.tarefa && data.tarefa[0] ? data.tarefa[0] : {};
+
+            const tarefaDiv = document.createElement('div');
+            tarefaDiv.innerHTML = `
+                <h3>${t.titulo || '-'}</h3>
+                <p><strong>Descrição:</strong> ${t.descricao || '-'}</p>
+                <p><strong>Prazo:</strong> ${t.prazo || '-'}</p>
+                <p><strong>Status:</strong> ${t.status || '-'}</p>
+                <p><strong>Prioridade:</strong> ${t.prioridade || '-'}</p>
+                <p><strong>Data de Criação:</strong> ${t.data_criacao || '-'}</p>
+            `;
+
+            sidebarContent.appendChild(tarefaDiv);
+        });
+
+    sidebarRight.classList.add('active');
+}
 
 function abrirSidebar(idFuncao, idImagem) {
 
@@ -941,6 +991,21 @@ document.getElementById('fecharModal').addEventListener('click', () => {
 document.getElementById('salvarModal').addEventListener('click', () => {
     if (!cardSelecionado) return;
 
+    // Verifica se o prazo está vazio
+    if (modalPrazo.offsetParent !== null && !modalPrazo.value) {
+
+        Toastify({
+            text: "Por favor, preencha o prazo antes de salvar.",
+            duration: 3000,
+            close: true,
+            gravity: "top",
+            position: "left",
+            backgroundColor: "red",
+        }).showToast();
+
+        return; // interrompe o envio
+    }
+
     cardSelecionado.dataset.prazo = modalPrazo.value;
     cardSelecionado.dataset.observacao = modalObs.value;
 
@@ -1147,6 +1212,7 @@ colunas.forEach(col => {
         animation: 150,
         ghostClass: 'sortable-ghost',
         filter: ".bloqueado",      // não deixa arrastar cards bloqueados
+        touchStartThreshold: 10, // move 10px antes de iniciar o drag
         onMove: function (evt) {
             const fromId = evt.from.closest('.kanban-box')?.id;
             const toId = evt.to.closest('.kanban-box')?.id;
@@ -1218,10 +1284,12 @@ colunas.forEach(col => {
                         // Apenas observação e botões
                         document.querySelector('.modalPrazo').style.display = 'none';
                         document.querySelector('.modalUploads').style.display = 'none';
+                        document.querySelector('.statusAnterior').style.display = 'none';
                         break;
                     case 'in-progress':
                         // Apenas observação e botões
                         document.querySelector('.modalUploads').style.display = 'none';
+                        document.querySelector('.statusAnterior').style.display = 'flex';
                         break;
                     case 'in-review': // "Em aprovação"
                         // Mostra ambos inputs de arquivo (prévia e arquivo final)
@@ -1229,12 +1297,14 @@ colunas.forEach(col => {
                         document.querySelector('.modalObs').style.display = 'none';
                         document.querySelector('.modalUploads').style.display = 'flex';
                         document.querySelector('.buttons').style.display = 'none';
+                        document.querySelector('.statusAnterior').style.display = 'none';
                         break;
                     case 'done': // "Finalizado"
                         // Mostra prazo, observação e botões
                         document.querySelector('.modalPrazo').style.display = 'flex';
                         document.querySelector('.modalObs').style.display = 'flex';
                         document.querySelector('.modalUploads').style.display = 'flex';
+                        document.querySelector('.statusAnterior').style.display = 'flex';
                         break;
                     default:
                         // padrão: tudo visível
@@ -1246,7 +1316,8 @@ colunas.forEach(col => {
                     document.querySelector('.modalPrazo').style.display = 'flex';
                     document.querySelector('.modalObs').style.display = 'flex';
                     document.querySelector('.buttons').style.display = 'flex';
-                    document.querySelector('.modalUploads').style.display = 'none'; // nunca mostra uploads
+                    document.querySelector('.modalUploads').style.display = 'none';
+                    document.querySelector('.statusAnterior').style.display = 'none';
                 }
 
                 // Posicionar modal ao lado da coluna de destino

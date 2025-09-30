@@ -492,7 +492,7 @@ $conn->close();
                                     .then(response => response.json())
                                     .then(data => {
                                         if (data.success) {
-                                            document.getElementById('modal').style.display = 'none';
+                                            document.getElementById('modalDaily').style.display = 'none';
                                             Swal.fire({
                                                 icon: 'success',
                                                 text: 'Respostas enviadas com sucesso!',

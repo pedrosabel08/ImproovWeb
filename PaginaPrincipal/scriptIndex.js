@@ -506,6 +506,7 @@ function processarDados(data) {
             card.setAttribute('data-id-funcao', `${item.funcao_id}`);
             card.setAttribute('liberado', liberado);
             card.setAttribute('data-nome_status', `${item.nome_status}`); // para filtro
+            card.setAttribute('data-prazo', `${item.prazo}`); // para filtro
 
         } else {
             // lógica para tarefas criadas
@@ -879,11 +880,40 @@ const statusMapInvertido = {
     'done': 'Finalizado'
 };
 
+flatpickr("#prazoRange", {
+    mode: "range",
+    dateFormat: "Y-m-d",
+    onChange: aplicarFiltros // Chama a função de filtro sempre que mudar
+});
+
+const prazoInput = document.getElementById('prazoRange');
+const resetBtn = document.getElementById('resetPrazo');
+
+// Inicialmente esconde o botão
+resetBtn.style.display = 'none';
+
+// Mostra/esconde o botão conforme o valor do input
+prazoInput.addEventListener('input', () => {
+    resetBtn.style.display = prazoInput.value ? 'inline-block' : 'none';
+});
+
+// Também mantém o botão escondido quando clicamos para resetar
+resetBtn.addEventListener('click', () => {
+    prazoInput.value = '';
+    resetBtn.style.display = 'none';
+    aplicarFiltros(); // reaplica os filtros sem considerar o prazo
+});
+
+
 // Aplica os filtros selecionados
 function aplicarFiltros() {
     const obrasSelecionadas = Array.from(document.querySelectorAll('#filtroObra input:checked')).map(el => el.value).filter(v => v);
     const funcoesSelecionadas = Array.from(document.querySelectorAll('#filtroFuncao input:checked')).map(el => el.value).filter(v => v);
     const statusSelecionados = Array.from(document.querySelectorAll('#filtroStatus input:checked')).map(el => el.value).filter(v => v);
+
+    const prazoRange = document.getElementById('prazoRange').value.split(" to "); // Flatpickr usa "to" para range
+    const prazoInicio = prazoRange[0] ? new Date(prazoRange[0]) : null;
+    const prazoFim = prazoRange[1] ? new Date(prazoRange[1]) : prazoInicio;
 
     document.querySelectorAll('.kanban-card').forEach(card => {
         let mostrar = true;
@@ -891,6 +921,11 @@ function aplicarFiltros() {
         if (obrasSelecionadas.length && !obrasSelecionadas.includes(card.dataset.obra_nome)) mostrar = false;
         if (funcoesSelecionadas.length && !funcoesSelecionadas.includes(card.dataset.funcao_nome)) mostrar = false;
         if (statusSelecionados.length && !statusSelecionados.includes(card.dataset.status)) mostrar = false;
+
+        if (prazoInicio) {
+            const cardPrazo = new Date(card.dataset.prazo);
+            if (cardPrazo < prazoInicio || cardPrazo > prazoFim) mostrar = false;
+        }
 
         card.style.display = mostrar ? 'block' : 'none';
     });

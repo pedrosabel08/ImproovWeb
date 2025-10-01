@@ -485,6 +485,19 @@ form#task-form button {
     margin: auto;
 }
 
+#resetPrazo {
+    margin-top: 6px;
+    background: #ff4d4d;
+    color: white;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 12px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    width: max-content;
+    margin-left: auto;
+}
 
 .modal {
     display: none;

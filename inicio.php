@@ -82,6 +82,7 @@ $conn->close();
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 
     <title>Improov+Flow</title>
 </head>
@@ -232,7 +233,7 @@ $conn->close();
                 <h4>Observação:</h4>
                 <textarea id="modalObs" rows="4"></textarea>
             </div>
-            
+
             <div class="modal-item statusAnterior">
                 <h4>A função anterior está <span class="aprovadaComAjustes">Aprovada com ajustes</span>, verifique no Flow Review!</h4>
             </div>
@@ -297,6 +298,15 @@ $conn->close();
                         <label><input type="checkbox" value="Finalizado"> Finalizado</label>
                     </div>
                 </div>
+
+                <div class="dropdown">
+                    <button class="dropbtn">📅 Prazo</button>
+                    <div class="dropdown-content" id="filtroPrazo">
+                        <input id="prazoRange" type="text" placeholder="Selecione o intervalo de datas" readonly>
+                        <button type="button" id="resetPrazo">❌</button>
+                    </div>
+                </div>
+
             </div>
         </div>
     </div>
@@ -671,6 +681,7 @@ $conn->close();
     <!-- <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script> -->
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="script/notificacoes.js"></script>
     <script src="PaginaPrincipal/scriptIndex.js"></script>
     <script src="./script/sidebar.js"></script>

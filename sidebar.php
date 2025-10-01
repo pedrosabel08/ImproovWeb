@@ -78,6 +78,11 @@
                     </li>
                 <?php endforeach; ?>
             </ul>
+
+            <ul id="obras-list" class="division">
+                <label for="">Usuário</label>
+                <li><a title="Informações do Usuário" href="https://improov.com.br/sistema/infos.php"><i class="fa-solid fa-user"></i><span>Informações</span></a></li>
+            </ul>
         </ul>
     </div>
 </body>

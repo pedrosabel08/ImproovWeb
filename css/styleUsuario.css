@@ -1,26 +1,89 @@
-@import url('https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,200..1000;1,200..1000&display=swap');
-
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Open+Sans:ital,wght@0,300..800;1,300..800&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap');
 
 * {
     padding: 0;
     margin: 0;
     box-sizing: border-box;
-    font-family: "Nunito", sans-serif;
+    font-family: "Inter", sans-serif;
 }
 
+body {
+    background-color: #f3f3f3;
+}
 
-button#voltar {
-    border-radius: 50%;
+.container {
+    max-width: 1000px;
+    margin: 40px auto;
+    padding: 20px;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+h1 {
     text-align: center;
-    transition: 0.3s all ease;
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    padding: 2px 4px;
+    font-size: 2rem;
+    margin-bottom: 20px;
 }
 
-button#voltar:hover {
-    background-color: #ff0000;
+fieldset {
+    border: 1px solid #ccc;
+    padding: 15px 20px;
+    margin-bottom: 20px;
+    border-radius: 5px;
+}
+
+legend {
+    font-size: 1.2rem;
     font-weight: bold;
+    padding: 0 10px;
 }
 
+.form-group {
+    margin-bottom: 15px;
+    display: flex;
+    flex-direction: column;
+}
+
+label {
+    margin-bottom: 5px;
+    font-weight: 500;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="number"],
+input[type="date"],
+select,
+textarea {
+    padding: 8px 10px;
+    border: 1px solid #000;
+    border-radius: 4px;
+    font-size: 1rem;
+}
+
+textarea {
+    resize: vertical;
+}
+
+.btn-submit {
+    width: max-content;
+    background-color: #1d4ed8;
+    color: #fff;
+    padding: 10px;
+    border: none;
+    border-radius: 5px;
+    font-size: 1.1rem;
+    cursor: pointer;
+    margin: auto;
+}
+
+.btn-submit:hover {
+    background-color: #2563eb;
+}
+
+@media (max-width: 768px) {
+    .container {
+        padding: 15px;
+    }
+}

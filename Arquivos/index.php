@@ -114,6 +114,15 @@ $conn->close();
                     <?php endforeach; ?>
                 </select>
 
+                <label>Categoria</label>
+                <select name="tipo_categoria" required>
+                    <option value="1">Arquitetônico</option>
+                    <option value="2">Referências</option>
+                    <option value="3">Paisagismo</option>
+                    <option value="4">Luminotécnico</option>
+                    <option value="5">Estrutural</option>
+                </select>
+
                 <label>Tipo de Imagem</label>
                 <select name="tipo_imagem[]" multiple size="5" required>
                     <option value="Fachada">Fachada</option>
@@ -126,11 +135,10 @@ $conn->close();
                 <label>Tipo de Arquivo</label>
                 <select name="tipo_arquivo" required>
                     <option value="">-- Selecione --</option>
-                    <option value="dwg">DWG</option>
-                    <option value="pdf">PDF</option>
-                    <option value="skp">SKP</option>
-                    <option value="img">IMG</option>
-                    <option value="refs">Referências</option>
+                    <option value="DWG">DWG</option>
+                    <option value="PDF">PDF</option>
+                    <option value="SKP">SKP</option>
+                    <option value="IMG">IMG</option>
                     <option value="Outros">Outros</option>
                 </select>
 
@@ -143,8 +151,7 @@ $conn->close();
                 <textarea name="descricao" rows="4"></textarea>
 
                 <div class="checkbox-group">
-                    <label><input type="checkbox" name="flag_master"> Arquivo master</label>
-                    <label><input type="checkbox" name="flag_substituicao"> Substituir existente</label>
+                    <label><input type="checkbox" name="flag_substituicao" value="1"> Substituir existente</label>
                 </div>
 
                 <div class="buttons">

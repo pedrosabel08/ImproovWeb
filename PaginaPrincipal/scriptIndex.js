@@ -620,10 +620,29 @@ function processarDados(data) {
         data.funcoes.forEach(item => criarCard(item, 'imagem', data.media_tempo_em_andamento));
     }
 
-    // Atualiza contagem de tarefas
+    atualizarTaskCount();
+
+    preencherFiltros()
+
+
+
+}
+
+const statusMap = {
+    'Não iniciado': 'to-do',
+    'Em andamento': 'in-progress',
+    'Em aprovação': 'in-review',
+    'Ajuste': 'ajuste',
+    'Finalizado': 'done',
+    'HOLD': 'hold'
+};
+
+
+// Atualiza contagem de tarefas
+function atualizarTaskCount() {
     Object.keys(statusMap).forEach(status => {
         const col = document.getElementById(statusMap[status]);
-        const count = col.querySelectorAll('.kanban-card').length;
+        const count = col.querySelectorAll('.kanban-card:not([style*="display: none"])').length;
 
         col.querySelector('.task-count').textContent = count;
 
@@ -632,12 +651,8 @@ function processarDados(data) {
             col.style.display = count === 0 ? 'none' : '';
         }
     });
-
-    preencherFiltros()
-
-
-
 }
+
 
 // remove seleção dos outros
 const sidebarRight = document.getElementById('sidebar-right');
@@ -929,6 +944,9 @@ function aplicarFiltros() {
 
         card.style.display = mostrar ? 'block' : 'none';
     });
+
+    atualizarTaskCount();
+
 }
 
 // Vincula eventos de mudança dos selects

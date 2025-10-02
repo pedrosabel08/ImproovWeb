@@ -95,7 +95,7 @@ $conn->close();
     <title>Informações do Usuário</title>
     <link rel="stylesheet" href="./css/styleUsuario.css">
     <link rel="stylesheet" href="./css/styleSidebar.css">
-    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 
@@ -261,6 +261,7 @@ $conn->close();
         </form>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="./script/scriptUsuario.js"></script>
     <script src="./script/sidebar.js"></script>
 </body>

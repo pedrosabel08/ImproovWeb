@@ -107,7 +107,7 @@ if ($colaboradorId == 1) {
     if ($mesNumero && $ano) {
         $sql .= " AND YEAR(ac.data) = ? AND MONTH(ac.data) = ?";
     }
-} elseif ($colaboradorId == 13) {
+} elseif (in_array($colaboradorId, [13, 20, 23])) {
     // Consulta para colaborador 13 usando tabela animacao e acompanhamento
     $sql = "SELECT 
         fi.colaborador_id,
@@ -116,7 +116,21 @@ if ($colaboradorId == 1) {
         fi.imagem_id,
         ico.imagem_nome,
         fi.funcao_id,
-        f.nome_funcao,
+                CASE 
+            WHEN fi.funcao_id = 4 THEN 
+                CASE 
+                    WHEN EXISTS (
+                        SELECT 1 
+                        FROM funcao_imagem fi_sub
+                        JOIN funcao f_sub ON fi_sub.funcao_id = f_sub.idfuncao
+                        WHERE fi_sub.imagem_id = fi.imagem_id 
+                        AND f_sub.nome_funcao = 'Pré-Finalização'
+                    ) 
+                    THEN 'Finalização Parcial'
+                    ELSE 'Finalização Completa'
+                END 
+            ELSE f.nome_funcao 
+        END AS nome_funcao,
         fi.status,
         fi.prazo,
         fi.pagamento,
@@ -204,7 +218,7 @@ if ($colaboradorId == 1) {
         AND (fi.status = 'Finalizado' OR fi.status = 'Em aprovação' OR fi.status = 'Ajuste' OR fi.status = 'Aprovado com ajustes' OR fi.status = 'Aprovado')";
 
     if ($mesNumero && $ano) {
-        $sql .= " AND YEAR(fi.prazo) = ? AND MONTH(fi.prazo) = ? ORDER BY fi.funcao_id, ico.obra_id";
+        $sql .= " AND YEAR(fi.prazo) = ? AND MONTH(fi.prazo) = ? ORDER BY ico.obra_id, fi.funcao_id";
     }
 }
 
@@ -221,7 +235,7 @@ error_log("SQL Gerado: " . $sql);
 error_log("Parâmetros: " . json_encode([$colaboradorId, $ano, $mesNumero]));
 
 // Bind de parâmetros conforme necessário
-if ($colaboradorId == 1 || $colaboradorId == 13) {
+if (in_array($colaboradorId, [1, 13, 20, 23])) {
     if ($mesNumero && $ano) {
         $stmt->bind_param('iiiiii',   $colaboradorId, $ano, $mesNumero, $colaboradorId, $ano, $mesNumero);
     } else {

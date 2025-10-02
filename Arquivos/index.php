@@ -41,7 +41,7 @@ $conn->close();
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
 
-    <title>Improov+Flow</title>
+    <title>Recebimento de arquivos</title>
 </head>
 
 <body>

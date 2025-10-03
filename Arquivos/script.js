@@ -56,7 +56,7 @@ tipoArquivoSelect.addEventListener('change', async () => {
     const tipoArquivo = tipoArquivoSelect.value;
     referenciasContainer.innerHTML = '';
 
-    if (tipoArquivo === 'img' || tipoArquivo === 'skp') {
+    if (tipoArquivo === 'IMG' || tipoArquivo === 'SKP') {
         const obraId = document.querySelector('select[name="obra_id"]').value;
         const tipoImagemIds = Array.from(tipoImagemSelect.selectedOptions).map(o => o.value);
 
@@ -84,6 +84,29 @@ tipoArquivoSelect.addEventListener('change', async () => {
     }
 });
 
+function buildFormData(form) {
+    const formData = new FormData();
+
+    // Adiciona campos normais
+    const inputs = form.querySelectorAll('input, select, textarea');
+    inputs.forEach(input => {
+        if (input.type !== 'file') {
+            formData.append(input.name, input.value);
+        }
+    });
+
+    // Adiciona apenas arquivos válidos (size > 0)
+    const fileInputs = form.querySelectorAll('input[type="file"]');
+    fileInputs.forEach(input => {
+        Array.from(input.files).forEach(file => {
+            if (file.size > 0) {
+                formData.append(input.name, file);
+            }
+        });
+    });
+
+    return formData;
+}
 
 document.getElementById("uploadForm").addEventListener("submit", async function (e) {
     e.preventDefault();
@@ -94,13 +117,19 @@ document.getElementById("uploadForm").addEventListener("submit", async function 
     const tipo_imagem = Array.from(form['tipo_imagem[]'].selectedOptions).map(o => o.value);
 
     // Se for refs/skp, checa por imagem
-    if (tipo_arquivo === 'refs' || tipo_arquivo === 'skp') {
+    if (tipo_arquivo === 'IMG' || tipo_arquivo === 'SKP') {
         let imagensInputs = referenciasContainer.querySelectorAll('input[type="file"]');
         let existeAlgum = false;
 
         for (let input of imagensInputs) {
-            let imagemId = input.name.match(/\[(\d+)\]/)[1];
-            // Checa se existe para cada imagem
+            // 🔎 Pula inputs sem arquivos
+            if (!input.files || input.files.length === 0) continue;
+
+            let imagemIdMatch = input.name.match(/\[(\d+)\]/);
+            if (!imagemIdMatch) continue; // segurança caso não bata o regex
+            let imagemId = imagemIdMatch[1];
+
+            // Checa se existe para cada imagem que realmente tem arquivo
             const checkRes = await fetch('checkArquivoExistente.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -120,11 +149,7 @@ document.getElementById("uploadForm").addEventListener("submit", async function 
                 cancelButtonText: 'Não, continuar'
             });
 
-            if (confirm.isConfirmed) {
-                form.querySelector('[name="flag_substituicao"]').checked = true;
-            } else {
-                form.querySelector('[name="flag_substituicao"]').checked = false;
-            }
+            form.querySelector('[name="flag_substituicao"]').checked = confirm.isConfirmed;
         }
 
     } else {
@@ -157,16 +182,21 @@ document.getElementById("uploadForm").addEventListener("submit", async function 
     }
 
     // Agora sim monta o FormData
-    const formData = new FormData(form);
+    const formData = buildFormData(form);
 
-
-    // Debug para verificar
+    // Remover arquivos vazios
     for (let [key, value] of formData.entries()) {
-        console.log(key, value);
+        if (value instanceof File && value.size === 0) {
+            formData.delete(key);
+        }
     }
 
+    // Debug
+    for (let [key, value] of formData.entries()) {
+        console.log("Final:", key, value);
+    }
     try {
-        const response = await fetch('upload.php', {
+        const response = await fetch('https://improov/ImproovWeb/Arquivos/upload.php', {
             method: 'POST',
             body: formData
         });

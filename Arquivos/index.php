@@ -121,6 +121,7 @@ $conn->close();
                     <option value="3">Paisagismo</option>
                     <option value="4">Luminotécnico</option>
                     <option value="5">Estrutural</option>
+                    <option value="6">Alterações</option>
                 </select>
 
                 <label>Tipo de Imagem</label>
@@ -139,10 +140,11 @@ $conn->close();
                     <option value="PDF">PDF</option>
                     <option value="SKP">SKP</option>
                     <option value="IMG">IMG</option>
+                    <option value="IFC">IFC</option>
                     <option value="Outros">Outros</option>
                 </select>
 
-                <div id="referenciasContainer"></div>
+                <div id="referenciasContainer" style="max-height: 50vh; overflow-y: auto;"></div>
 
                 <label>Arquivo</label>
                 <input id="arquivoFile" type="file" name="arquivos[]" multiple required>

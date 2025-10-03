@@ -5,6 +5,9 @@ use phpseclib3\Net\SFTP;
 
 include '../conexao.php';
 header('Content-Type: application/json');
+header("Access-Control-Allow-Origin: https://improov.com.br");
+header("Access-Control-Allow-Methods: POST, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type");
 
 $host = "imp-nas.ddns.net";
 $port = 2222;
@@ -62,7 +65,8 @@ function buscarNomeCategoria($categoriaId)
         2 => 'Referencias',
         3 => 'Paisagismo',
         4 => 'Luminotecnico',
-        5 => 'Estrutural'
+        5 => 'Estrutural',
+        6 => 'Alteracoes'
     ];
     return $categorias[$categoriaId] ?? 'Outros';
 }
@@ -119,23 +123,48 @@ if (!$pastaBase) {
 }
 
 
-function gerarNomeInterno($conn, $obra_id, $tipo_id, $categoria, $nomeTipo, $tipo_arquivo, $ext, &$log)
+function gerarNomeInterno($conn, $obra_id, $tipo_id, $categoria, $nomeTipo, $tipo_arquivo, $ext, &$log, $imagem_id = null)
 {
-    $res = $conn->query("SELECT nome_interno FROM arquivos 
-        WHERE obra_id=$obra_id AND tipo_imagem_id=$tipo_id AND tipo='$tipo_arquivo'
-        ORDER BY idarquivo DESC LIMIT 1");
+    // Busca nomenclatura da obra
+    $obraRes = $conn->query("SELECT nomenclatura FROM obra WHERE idobra = $obra_id");
+    $nomenclatura = ($obraRes && $obraRes->num_rows > 0) ? $obraRes->fetch_assoc()['nomenclatura'] : "OBRA{$obra_id}";
+
+    $nomeTipoLimpo = preg_replace('/[^A-Za-z0-9]/', '', $nomeTipo);
+    $categoriaNome = buscarNomeCategoria($categoria);
+
+    // Define a query base
+    $sql = "SELECT nome_interno FROM arquivos 
+            WHERE obra_id = ? 
+              AND tipo_imagem_id = ? 
+              AND categoria_id = ? 
+              AND tipo = ?";
+
+    $params = [$obra_id, $tipo_id, $categoria, $tipo_arquivo];
+    $types = "iiis";
+
+    // Se for SKP/REFS por imagem, filtra por imagem_id também
+    if ($imagem_id && ($tipo_arquivo === 'SKP' || $tipo_arquivo === 'REFS')) {
+        $sql .= " AND imagem_id = ?";
+        $params[] = $imagem_id;
+        $types .= "i";
+    }
+
+    $sql .= " ORDER BY idarquivo DESC LIMIT 1";
+
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param($types, ...$params);
+    $stmt->execute();
+    $res = $stmt->get_result();
+
+    // Descobre versão
     $versao = 1;
-    if ($res && $res->num_rows > 0) {
-        $row = $res->fetch_assoc();
-        if (preg_match('/_v(\d+)\./', $row['nome_interno'], $matches)) {
-            $versao = intval($matches[1]) + 1;
+    if ($row = $res->fetch_assoc()) {
+        if (preg_match('/_v(\d+)/', $row['nome_interno'], $m)) {
+            $versao = intval($m[1]) + 1;
         }
     }
-    $obraRow = $conn->query("SELECT nomenclatura FROM obra WHERE idobra=$obra_id")->fetch_assoc();
-    $nomenclatura = preg_replace('/\s+/', '', $obraRow['nomenclatura']);
-    $nomeTipoLimpo = strtoupper(substr(preg_replace('/\s+/', '', $nomeTipo), 0, 3));
-    $categoriaNome = strtoupper(substr(buscarNomeCategoria($categoria), 0, 3));
 
+    // Monta nome final
     $nomeInterno = "{$nomenclatura}_{$categoriaNome}_{$nomeTipoLimpo}_{$tipo_arquivo}_v{$versao}.{$ext}";
     $log[] = "Gerado nome interno: $nomeInterno";
 
@@ -212,9 +241,31 @@ if (!empty($arquivosTmp) && count($arquivosTmp) > 0) {
 // =======================
 // Upload refs/skp por imagem
 // =======================
-if ((!empty($arquivosPorImagem)) && ($categoria == 2 || $tipo_arquivo === 'skp')) {
+if ((!empty($arquivosPorImagem)) && ($categoria == 2 || $tipo_arquivo === 'SKP')) {
     $log[] = "Iniciando upload refs/skp por imagem...";
     foreach ($arquivosPorImagem['name'] as $imagem_id => $arquivosArray) {
+        // Substituição apenas uma vez por imagem
+        $check = $conn->query("SELECT * FROM arquivos 
+        WHERE obra_id=$obra_id AND tipo='$tipo_arquivo' AND imagem_id=$imagem_id 
+        AND status='atualizado'");
+        $log[] = "Encontrados {$check->num_rows} arquivos refs/skp antigos para imagem $imagem_id.";
+        if ($check->num_rows > 0 && $substituicao) {
+            while ($old = $check->fetch_assoc()) {
+                $oldPath = $old['caminho'];
+                $newPath = dirname($oldPath) . "/OLD/" . basename($oldPath);
+                $log[] = "Movendo $oldPath => $newPath";
+                if ($sftp->file_exists($oldPath)) {
+                    if (!$sftp->rename($oldPath, $newPath)) {
+                        $errors[] = "Falha ao mover {$old['nome_interno']} para OLD.";
+                    }
+                } else {
+                    $errors[] = "Arquivo antigo {$old['nome_interno']} não encontrado.";
+                }
+                $conn->query("UPDATE arquivos SET status='antigo' WHERE idarquivo=" . $old['idarquivo']);
+            }
+        }
+
+        // Agora envia todos os arquivos novos para essa imagem
         foreach ($arquivosArray as $index => $nomeOriginal) {
             $tmpFile = $arquivosPorImagem['tmp_name'][$imagem_id][$index];
             if (empty($tmpFile) || !file_exists($tmpFile)) {
@@ -229,7 +280,6 @@ if ((!empty($arquivosPorImagem)) && ($categoria == 2 || $tipo_arquivo === 'skp')
                 $errors[] = "Tipo de imagem '$nomeTipo' não encontrado.";
                 continue;
             }
-            $nomeTipoLimpo = preg_replace('/\s+/', '', $nomeTipo);
 
             $queryImagem = $conn->query("SELECT imagem_nome FROM imagens_cliente_obra WHERE idimagens_cliente_obra=$imagem_id");
             if ($queryImagem->num_rows == 0) {
@@ -251,37 +301,14 @@ if ((!empty($arquivosPorImagem)) && ($categoria == 2 || $tipo_arquivo === 'skp')
                 $log[] = "Criado diretório: $destDir/OLD";
             }
 
-            $fileNomeInterno = gerarNomeInterno($conn, $obra_id, $tipo_id, $categoria, $nomeTipo, $tipo_arquivo, $ext, $log);
+            $fileNomeInterno = gerarNomeInterno($conn, $obra_id, $tipo_id, $categoria, $nomeTipo, $tipo_arquivo, $ext, $log, $imagem_id);
             $destFile = "$destDir/$fileNomeInterno";
             $log[] = "Destino final: $destFile";
 
-            // Substituição
-            $check = $conn->query("SELECT * FROM arquivos 
-                WHERE obra_id=$obra_id AND tipo='$tipo_arquivo' AND imagem_id=$imagem_id 
-                AND status='atualizado'");
-            $log[] = "Encontrados {$check->num_rows} arquivos refs/skp antigos para imagem $imagem_id.";
-            $log[] = "Query substituicao: SELECT * FROM arquivos WHERE obra_id=$obra_id AND tipo='$tipo_arquivo' AND imagem_id=$imagem_id AND status='atualizado'";
-            $log[] = "Obra ID: $obra_id, Tipo arquivo: $tipo_arquivo, Imagem ID: $imagem_id";
-            if ($check->num_rows > 0 && $substituicao) {
-                while ($old = $check->fetch_assoc()) {
-                    $oldPath = $old['caminho'];
-                    $newPath = dirname($oldPath) . "/OLD/" . basename($oldPath);
-                    $log[] = "Movendo $oldPath => $newPath";
-                    if ($sftp->file_exists($oldPath)) {
-                        if (!$sftp->rename($oldPath, $newPath)) {
-                            $errors[] = "Falha ao mover {$old['nome_interno']} para OLD.";
-                        }
-                    } else {
-                        $errors[] = "Arquivo antigo {$old['nome_interno']} não encontrado.";
-                    }
-                    $conn->query("UPDATE arquivos SET status='antigo' WHERE idarquivo=" . $old['idarquivo']);
-                }
-            }
-
             if ($sftp->put($destFile, $tmpFile, SFTP::SOURCE_LOCAL_FILE)) {
                 $stmt = $conn->prepare("INSERT INTO arquivos 
-                    (obra_id, tipo_imagem_id, imagem_id, nome_original, nome_interno, caminho, tipo, status, origem, recebido_por, categoria_id) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, 'atualizado', 'upload_web', 'sistema', ?)");
+                (obra_id, tipo_imagem_id, imagem_id, nome_original, nome_interno, caminho, tipo, status, origem, recebido_por, categoria_id) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, 'atualizado', 'upload_web', 'sistema', ?)");
                 $stmt->bind_param("iiissssi", $obra_id, $tipo_id, $imagem_id, $nomeOriginal, $fileNomeInterno, $destFile, $tipo_arquivo, $categoria);
                 $stmt->execute();
                 $success[] = "Arquivo '$nomeOriginal' enviado para Imagem $imagem_id";

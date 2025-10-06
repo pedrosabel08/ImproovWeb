@@ -10,6 +10,14 @@ if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
 
 $idusuario = $_SESSION['idusuario'];
 
+include '../conexaoMain.php';
+$conn = conectarBanco();
+
+$clientes = obterClientes($conn);
+$obras = obterObras($conn);
+$colaboradores = obterColaboradores($conn);
+
+$conn->close();
 ?>
 
 <!DOCTYPE html>
@@ -38,27 +46,6 @@ $idusuario = $_SESSION['idusuario'];
 </head>
 
 <body>
-
-    <?php
-    include '../conexao.php';
-
-    session_start();
-    // Verificar se o usuário está logado
-    if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
-        // Se não estiver logado, redirecionar para a página de login
-        header("Location: ../index.html");
-        exit();
-    }
-
-    include '../conexaoMain.php';
-    $conn = conectarBanco();
-
-    $clientes = obterClientes($conn);
-    $obras = obterObras($conn);
-    $colaboradores = obterColaboradores($conn);
-
-    $conn->close();
-    ?>
 
     <?php
 

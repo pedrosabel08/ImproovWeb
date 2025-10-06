@@ -420,7 +420,7 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
 
     // Parte 1: Texto do contrato
     // Definição das variáveis de texto
-    let text1 = "De um lado IMPROOV LTDA., CNPJ: 37.066.879/0001-84, com endereço/sede na RUA BAHIA, 988, SALA 503, BAIRRO DO SALTO, BLUMENAU, SC, CEP 89.031-001;Se seguir denominado simplesmente parte CONTRATANTE, neste ato representado por DIOGO JOSÉ POFFO, nacionalidade: brasileira, estado civil: divorciado, inscrito no CPF sob o nº. 036.698.519-17, residente e domiciliado na Avenida Senador Atílio Fontana, nº 2101 apt. 308 Edifício Caravelas, bairro Balneário Pereque – Porto Belo/SC – CEP 88210-000, doravante denominada parte CONTRATANTE.";
+    let text1 = "De um lado STELLAR ANIMA LTDA., CNPJ: 45.284.934/0001-30, com endereço/sede na RUA BAHIA, 988, SALA 503, BAIRRO DO SALTO, BLUMENAU, SC, CEP 89.031-001;Se seguir denominado simplesmente parte CONTRATANTE, neste ato representado por DIOGO JOSÉ POFFO, nacionalidade: brasileira, estado civil: divorciado, inscrito no CPF sob o nº. 036.698.519-17, residente e domiciliado na Avenida Senador Atílio Fontana, nº 2101 apt. 308 Edifício Caravelas, bairro Balneário Pereque – Porto Belo/SC – CEP 88210-000, doravante denominada parte CONTRATANTE.";
 
     let text2 = `De outro, ${nomeEmpresarial} ,CNPJ: ${cnpjColaborador}, com endereço/sede na ${enderecoColaborador}, CEP: ${cep} ; se seguir denominado simplesmente parte CONTRATADA; neste ato representado por ${nomeColaborador}, brasileiro(a), ${estadoCivil}, inscrito(a) no CPF sob  o nº. ${cpfColaborador}, residente e domiciliado na ${enderecoCNPJ} e CEP: ${cepCNPJ} doravante denominada parte CONTRATADA.`;
 
@@ -434,7 +434,7 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
 
 
     // Adicionando os textos ao PDF
-    addTextWithPageCheck(text1, 10, ["IMPROOV", "LTDA", "DIOGO", "JOSÉ", "POFFO", "37.066.879/0001-84", "036.698.519-17", "CONTRATANTE", "CONTRATADO"]);
+    addTextWithPageCheck(text1, 10, ["STELLAR", "ANIMA", "LTDA", "DIOGO", "JOSÉ", "POFFO", "45.284.934/0001-30", "036.698.519-17", "CONTRATANTE", "CONTRATADO"]);
     addTextWithPageCheck(text2, 10, ["CONTRATADA", "CONTRATATO", ...nomeEmpresarialWords, cnpjColaborador, ...nomeColaboradorWords, cpfColaborador]);
     addTextWithPageCheck(text3, 10, ["TERMO", "ADITIVO"]);
     addTextWithPageCheck(text4, 0, ["DO OBJETO"]);
@@ -443,7 +443,7 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
 
     // Parte 2: Lista de tarefas/tabela
     const table = document.getElementById('tabela-faturamento');
-    const selectedColumnIndexes = [0, 2];
+    const selectedColumnIndexes = [0, 2, 3];
     const dataPagamentoColumnIndex = 5;
     const headers = [];
     const rows = [];
@@ -509,30 +509,31 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
 
     }
 
-    // // Dados da nova tabela
-    // // const novaTabelaHeaders = ['Extra', 'Valor'];
-    // const novaTabelaHeaders = ['Categoria', 'Valor'];
-    // const novaTabelaBody = [
-    //     ['Atendimento', '3000,00'],
-    //     // ['Fixo', '1600,00'],
-    //     // ['Bônus', '350,00'],
-    //     // ['Reembolso almoço', '114,00'],
-    //     // ['Gasolina', '88,00'],
-    //     // ['Diaria Drone', '525,00'],
-    //     // ['Outros', '490,00']
-    // ];
+    // Dados da nova tabela
+    // const novaTabelaHeaders = ['Extra', 'Valor'];
+    const novaTabelaHeaders = ['Categoria', 'Valor'];
+    const novaTabelaBody = [
+        // ['Atendimento', '3000,00'],
+        // ['Fixo', '1600,00'],
+        // ['Bônus', '350,00'],
+        ['Reembolso almoço', '266,00'],
+        ['Desconto de imagem: 5. HAA_HOR Fachada Fora', '-350,00'],
+        // ['Gasolina', '88,00'],
+        // ['Diaria Drone', '525,00'],
+        // ['Outros', '490,00']
+    ];
 
-    // // Adiciona nova tabela ao PDF
-    // doc.autoTable({
-    //     head: [novaTabelaHeaders],
-    //     body: novaTabelaBody,
-    //     startY: y, // Posiciona abaixo da tabela anterior
-    //     theme: 'grid',
-    //     headStyles: { fillColor: [0, 0, 0], textColor: [255, 255, 255] },
-    //     bodyStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0] },
-    //     margin: { top: 10, left: 20, right: 20 },
-    //     styles: { fontSize: 10, cellPadding: 2 }
-    // });
+    // Adiciona nova tabela ao PDF
+    doc.autoTable({
+        head: [novaTabelaHeaders],
+        body: novaTabelaBody,
+        startY: y, // Posiciona abaixo da tabela anterior
+        theme: 'grid',
+        headStyles: { fillColor: [0, 0, 0], textColor: [255, 255, 255] },
+        bodyStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0] },
+        margin: { top: 10, left: 20, right: 20 },
+        styles: { fontSize: 10, cellPadding: 2 }
+    });
 
     // Atualiza a posição Y para futuras adições no PDF (caso necessário)
     y = doc.lastAutoTable.finalY + 20;
@@ -578,8 +579,8 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
 
     // Primeira assinatura: IMPROOV LTDA.
     doc.text("_________________________", xEmpresa, y);  // Linha para assinatura
-    doc.text("IMPROOV LTDA.", xEmpresa, y + 8); // Nome da empresa
-    doc.text("CNPJ: 37.066.879/0001-84", xEmpresa, y + 18); // CNPJ da empresa
+    doc.text("STELLAR ANIMA     LTDA.", xEmpresa, y + 8); // Nome da empresa
+    doc.text("CNPJ: 45.284.934/0001-30", xEmpresa, y + 18); // CNPJ da empresa
     doc.text("DIOGO JOSÉ POFFO", xEmpresa, y + 28); // Nome do responsável
     doc.text("CPF: 036.698.519-17", xEmpresa, y + 38); // CPF do responsável
 

@@ -108,74 +108,79 @@ if ($colaboradorId == 1) {
         $sql .= " AND YEAR(ac.data) = ? AND MONTH(ac.data) = ?";
     }
 } elseif (in_array($colaboradorId, [13, 20, 23])) {
-    // Consulta para colaborador 13 usando tabela animacao e acompanhamento
     $sql = "SELECT 
-        fi.colaborador_id,
-        'funcao_imagem' AS origem,
-        fi.idfuncao_imagem AS identificador,
-        fi.imagem_id,
-        ico.imagem_nome,
-        fi.funcao_id,
-                CASE 
-            WHEN fi.funcao_id = 4 THEN 
-                CASE 
-                    WHEN EXISTS (
-                        SELECT 1 
-                        FROM funcao_imagem fi_sub
-                        JOIN funcao f_sub ON fi_sub.funcao_id = f_sub.idfuncao
-                        WHERE fi_sub.imagem_id = fi.imagem_id 
-                        AND f_sub.nome_funcao = 'Pré-Finalização'
-                    ) 
-                    THEN 'Finalização Parcial'
-                    ELSE 'Finalização Completa'
-                END 
-            ELSE f.nome_funcao 
-        END AS nome_funcao,
-        fi.status,
-        fi.prazo,
-        fi.pagamento,
-        fi.valor,
-        fi.data_pagamento
-    FROM 
-        funcao_imagem fi
-    JOIN 
-        imagens_cliente_obra ico ON fi.imagem_id = ico.idimagens_cliente_obra
-    JOIN 
-        obra o ON ico.obra_id = o.idobra
-    JOIN 
-        funcao f ON fi.funcao_id = f.idfuncao
-    WHERE 
-        fi.colaborador_id = ?
-        AND fi.status <> 'Não iniciado'";
+    fi.colaborador_id,
+    'funcao_imagem' AS origem,
+    fi.idfuncao_imagem AS identificador,
+    fi.imagem_id,
+    ico.imagem_nome,
+    fi.funcao_id,
+    CASE 
+        WHEN fi.funcao_id = 4 THEN 
+            CASE 
+                WHEN EXISTS (
+                    SELECT 1 
+                    FROM funcao_imagem fi_sub
+                    JOIN funcao f_sub ON fi_sub.funcao_id = f_sub.idfuncao
+                    WHERE fi_sub.imagem_id = fi.imagem_id 
+                    AND f_sub.nome_funcao = 'Pré-Finalização'
+                ) 
+                THEN 'Finalização Parcial'
+                ELSE 'Finalização Completa'
+            END 
+        ELSE f.nome_funcao 
+    END AS nome_funcao,
+    fi.status,
+    fi.prazo,
+    fi.pagamento,
+    fi.valor,
+    fi.data_pagamento,
+    o.idobra AS obra_id   -- 👈 adiciona aqui
+FROM 
+    funcao_imagem fi
+JOIN 
+    imagens_cliente_obra ico ON fi.imagem_id = ico.idimagens_cliente_obra
+JOIN 
+    obra o ON ico.obra_id = o.idobra
+JOIN 
+    funcao f ON fi.funcao_id = f.idfuncao
+WHERE 
+    fi.colaborador_id = ?
+    AND fi.status <> 'Não iniciado'";
 
     if ($mesNumero && $ano) {
         $sql .= " AND YEAR(fi.prazo) = ? AND MONTH(fi.prazo) = ?";
     }
 
-    $sql .= " UNION ALL
-    SELECT 
-        an.colaborador_id,
-        'animacao' AS origem,
-        an.idanimacao AS identificador,
-        an.imagem_id,
-        ico.imagem_nome,
-        NULL AS funcao_id,
-        'Animação' AS nome_funcao,
-        an.status_anima as status,
-        an.data_anima as prazo,
-        an.pagamento,
-        an.valor,
-        an.data_pagamento
-    FROM 
-        animacao an
-    JOIN 
-        imagem_animacao ico ON an.imagem_id = ico.idimagem_animacao
-    WHERE 
-        an.colaborador_id = ?";
+    $sql .= " 
+UNION ALL
+SELECT 
+    an.colaborador_id,
+    'animacao' AS origem,
+    an.idanimacao AS identificador,
+    an.imagem_id,
+    ico.imagem_nome,
+    NULL AS funcao_id,
+    'Animação' AS nome_funcao,
+    an.status_anima as status,
+    an.data_anima as prazo,
+    an.pagamento,
+    an.valor,
+    an.data_pagamento,
+    an.obra_id   -- 👈 adiciona aqui também
+FROM 
+    animacao an
+JOIN 
+    imagem_animacao ico ON an.imagem_id = ico.idimagem_animacao
+WHERE 
+    an.colaborador_id = ?";
 
     if ($mesNumero && $ano) {
         $sql .= " AND YEAR(an.data_anima) = ? AND MONTH(an.data_anima) = ?";
     }
+
+    // 👇 agora o ORDER BY usa o alias de coluna, não de tabela
+    $sql .= " ORDER BY obra_id, imagem_nome";
 } else {
     // Consulta padrão para outros colaboradores
     $sql = "SELECT 

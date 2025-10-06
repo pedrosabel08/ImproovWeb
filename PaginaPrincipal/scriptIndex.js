@@ -692,8 +692,14 @@ function abrirSidebar(idFuncao, idImagem) {
             // Limpa conteúdo antigo
             sidebarContent.innerHTML = '';
 
+            const funcao = data.funcoes[0]; // pega o primeiro elemento do array
+
+            const imagemDiv = document.createElement('p');
+            imagemDiv.innerHTML = `<strong>Imagem: ${funcao.imagem_nome || '-'}</strong>`;
+            sidebarContent.appendChild(imagemDiv);
             // Exibe status da imagem
             if (data.status_imagem) {
+
                 const statusDiv = document.createElement('p');
                 statusDiv.classList.add('status-imagem');
                 statusDiv.innerHTML = `<strong>Status da Imagem:</strong> `;

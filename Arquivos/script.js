@@ -51,12 +51,18 @@ const tipoArquivoSelect = document.querySelector('select[name="tipo_arquivo"]');
 const tipoImagemSelect = document.querySelector('select[name="tipo_imagem[]"]');
 const referenciasContainer = document.getElementById('referenciasContainer');
 const arquivoFile = document.getElementById('arquivoFile');
+const tipoCategoria = document.getElementById('tipo_categoria');
 
 tipoArquivoSelect.addEventListener('change', async () => {
     const tipoArquivo = tipoArquivoSelect.value;
     referenciasContainer.innerHTML = '';
+    // Mostra o modo para SKP ou REFS
+    document.getElementById('refsSkpModo').style.display = (tipoArquivo === 'SKP' || tipoArquivo === 'IMG') ? 'block' : 'none';
 
-    if (tipoArquivo === 'IMG' || tipoArquivo === 'SKP') {
+    const modo = document.querySelector('input[name="refsSkpModo"]:checked')?.value || 'geral';
+
+    // Se for SKP ou REFS e modo porImagem, mostra inputs por imagem
+    if ((tipoArquivo === 'SKP' || tipoArquivo === 'IMG') && modo === 'porImagem') {
         const obraId = document.querySelector('select[name="obra_id"]').value;
         const tipoImagemIds = Array.from(tipoImagemSelect.selectedOptions).map(o => o.value);
 
@@ -81,27 +87,38 @@ tipoArquivoSelect.addEventListener('change', async () => {
             `;
             referenciasContainer.appendChild(div);
         });
+    } else {
+        // Upload geral
+        arquivoFile.style.display = 'block';
+        arquivoFile.required = true;
+        arquivoFile.disabled = false;
     }
+});
+document.getElementById('refsSkpModo').addEventListener('change', () => {
+    tipoArquivoSelect.dispatchEvent(new Event('change'));
 });
 
 function buildFormData(form) {
     const formData = new FormData();
 
-    // Adiciona campos normais
     const inputs = form.querySelectorAll('input, select, textarea');
     inputs.forEach(input => {
-        if (input.type !== 'file') {
+        if (input.type === 'file') return; // trata separadamente
+
+        if (input.multiple && input.tagName === 'SELECT') {
+            Array.from(input.selectedOptions).forEach(option => {
+                formData.append(input.name, option.value);
+            });
+        } else {
             formData.append(input.name, input.value);
         }
     });
 
-    // Adiciona apenas arquivos válidos (size > 0)
+    // arquivos
     const fileInputs = form.querySelectorAll('input[type="file"]');
     fileInputs.forEach(input => {
         Array.from(input.files).forEach(file => {
-            if (file.size > 0) {
-                formData.append(input.name, file);
-            }
+            if (file.size > 0) formData.append(input.name, file);
         });
     });
 
@@ -183,6 +200,9 @@ document.getElementById("uploadForm").addEventListener("submit", async function 
 
     // Agora sim monta o FormData
     const formData = buildFormData(form);
+
+    const modo = document.querySelector('input[name="refsSkpModo"]:checked')?.value || 'geral';
+    formData.append('refsSkpModo', modo);
 
     // Remover arquivos vazios
     for (let [key, value] of formData.entries()) {

@@ -144,6 +144,16 @@ $conn->close();
                     <option value="Outros">Outros</option>
                 </select>
 
+                <!-- Adicione dentro do form do modal -->
+                <div id="refsSkpModo" style="display:none;">
+                    <label>
+                        <input type="radio" name="refsSkpModo" value="geral" checked> Enviar geral
+                    </label>
+                    <label>
+                        <input type="radio" name="refsSkpModo" value="porImagem"> Enviar por imagem
+                    </label>
+                </div>
+
                 <div id="referenciasContainer" style="max-height: 50vh; overflow-y: auto;"></div>
 
                 <label>Arquivo</label>

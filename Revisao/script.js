@@ -183,7 +183,7 @@ async function exibirCardsDeObra(tarefas) {
     obrasMap.forEach((tarefasDaObra, nome_obra) => {
         tarefasDaObra.sort((a, b) => new Date(b.data_aprovacao) - new Date(a.data_aprovacao));
         const tarefaComImagem = tarefasDaObra.find(t => t.imagem);
-        const imagemPreview = tarefaComImagem ? `../${tarefaComImagem.imagem}` : '../assets/logo.jpg';
+        const imagemPreview = tarefaComImagem ? `https://improov.com.br/sistema/${tarefaComImagem.imagem}` : '../assets/logo.jpg';
 
         const mencoesNaObra = mencoes.mencoes_por_obra[nome_obra] || 0;
 
@@ -391,7 +391,7 @@ function exibirTarefas(tarefas, tarefasCompletas) {
             taskItem.classList.add('task-item');
             taskItem.setAttribute('onclick', `historyAJAX(${tarefa.idfuncao_imagem}, '${tarefa.nome_funcao}', '${tarefa.imagem_nome}', '${tarefa.nome_colaborador}')`);
 
-            const imagemPreview = tarefa.imagem ? `../${tarefa.imagem}` : '../assets/logo.jpg';
+            const imagemPreview = tarefa.imagem ? `https://improov.com.br/sistema/${tarefa.imagem}` : '../assets/logo.jpg';
 
             // Define a cor de fundo com base no status
             const color = tarefa.status_novo === 'Em aprovação' ? '#000a59' : tarefa.status_novo === 'Ajuste' ? '#590000' : tarefa.status_novo === 'Aprovado com ajustes' ? '#2e0059ff' : 'transparent';
@@ -610,7 +610,7 @@ function historyAJAX(idfuncao_imagem) {
                     imagensDoIndice.sort((a, b) => new Date(b.data_envio) - new Date(a.data_envio));
                     const maisRecente = imagensDoIndice[0];
                     if (maisRecente) {
-                        mostrarImagemCompleta(`../${maisRecente.imagem}`, maisRecente.id);
+                        mostrarImagemCompleta(`https://improov.com.br/sistema/${maisRecente.imagem}`, maisRecente.id);
                     }
 
                     imagensDoIndice.forEach(img => {
@@ -618,7 +618,7 @@ function historyAJAX(idfuncao_imagem) {
                         wrapper.className = 'imageWrapper';
 
                         const imgElement = document.createElement('img');
-                        imgElement.src = `../${img.imagem}`;
+                        imgElement.src = `https://improov.com.br/sistema/${img.imagem}`;
                         imgElement.alt = img.imagem;
                         imgElement.className = 'image';
                         imgElement.setAttribute('data-id', img.id);
@@ -706,7 +706,7 @@ function exibirSidebarTabulator(tarefas) {
 
             const tarefa = document.createElement('div');
             tarefa.classList.add('tarefa-item');
-            const imgSrc = t.imagem ? `../${t.imagem}` : '../assets/logo.jpg';
+            const imgSrc = t.imagem ? `https://improov.com.br/sistema/${t.imagem}` : '../assets/logo.jpg';
             tarefa.innerHTML = `
         <img src="${imgSrc}" class="tab-img" data-id="${t.idfuncao_imagem}" alt="${t.imagem_nome}">
         <span id="status_tarefa" style="background-color: ${bgColor}; color: ${color}">${t.status_novo}</span>

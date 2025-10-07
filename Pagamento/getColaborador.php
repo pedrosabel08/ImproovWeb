@@ -75,7 +75,7 @@ if ($colaboradorId == 1) {
         funcao f ON fi.funcao_id = f.idfuncao
     WHERE 
         fi.colaborador_id = ?
-        AND fi.status <> 'Não iniciado'";
+        AND (fi.status = 'Finalizado' OR fi.status = 'Em aprovação' OR fi.status = 'Ajuste' OR fi.status = 'Aprovado com ajustes' OR fi.status = 'Aprovado')";
 
     if ($mesNumero && $ano) {
         $sql .= "AND YEAR(fi.prazo) = ? AND MONTH(fi.prazo) = ?";
@@ -135,7 +135,7 @@ if ($colaboradorId == 1) {
     fi.pagamento,
     fi.valor,
     fi.data_pagamento,
-    o.idobra AS obra_id   -- 👈 adiciona aqui
+    o.idobra AS obra_id   
 FROM 
     funcao_imagem fi
 JOIN 
@@ -146,7 +146,7 @@ JOIN
     funcao f ON fi.funcao_id = f.idfuncao
 WHERE 
     fi.colaborador_id = ?
-    AND fi.status <> 'Não iniciado'";
+    AND (fi.status = 'Finalizado' OR fi.status = 'Em aprovação' OR fi.status = 'Ajuste' OR fi.status = 'Aprovado com ajustes' OR fi.status = 'Aprovado')";
 
     if ($mesNumero && $ano) {
         $sql .= " AND YEAR(fi.prazo) = ? AND MONTH(fi.prazo) = ?";
@@ -167,7 +167,7 @@ SELECT
     an.pagamento,
     an.valor,
     an.data_pagamento,
-    an.obra_id   -- 👈 adiciona aqui também
+    an.obra_id  
 FROM 
     animacao an
 JOIN 

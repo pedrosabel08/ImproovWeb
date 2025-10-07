@@ -1,0 +1,101 @@
+body {
+    background: #f6f8fa;
+    font-family: Inter, system-ui, Arial;
+    padding: 20px;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.kanban {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+}
+
+.coluna {
+    background: #fff;
+    border-radius: 12px;
+    padding: 12px;
+    width: 320px;
+    min-height: 300px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+}
+
+.coluna h5 {
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+.card-entrega {
+    background: #f8fafc;
+    border-radius: 10px;
+    padding: 10px;
+    margin-bottom: 10px;
+    cursor: grab;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.card-entrega:hover {
+    background: #f1f5f9;
+}
+
+.status-Pendente {
+    border-left: 4px solid #ff6b6b;
+}
+
+.status-Parcial {
+    border-left: 4px solid #ffb74d;
+}
+
+.status-Concluída {
+    border-left: 4px solid #4caf50;
+}
+
+
+.meta {
+    font-size: 13px;
+    color: #666;
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.badge-small {
+    font-size: 12px;
+    padding: 4px 8px;
+    border-radius: 999px;
+}
+
+.status-pendente {
+    border-left: 4px solid #ff6b6b;
+}
+
+.status-parcial {
+    border-left: 4px solid #ffb74d;
+}
+
+.status-concluida {
+    border-left: 4px solid #4caf50;
+}
+
+.modal-lg {
+    max-width: 900px;
+}
+
+.card-imagem {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px;
+    border-radius: 8px;
+    background: #fff;
+    margin-bottom: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    cursor: grab;
+}

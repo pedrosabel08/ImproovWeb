@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taskora Dashboard - Clone</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+
+<body>
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <div class="logo">
+                <i class="fas fa-tasks"></i>
+                <span>Taskora</span>
+            </div>
+
+            <nav class="main-menu">
+                <h3 class="menu-title">Main Menu</h3>
+                <ul>
+                    <li class="active"><a href="#"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+                    <li><a href="#"><i class="fas fa-folder"></i> Projects</a></li>
+                    <li><a href="#"><i class="fas fa-file-alt"></i> Files</a></li>
+                    <li><a href="#"><i class="fas fa-calendar-alt"></i> Calendar</a></li>
+                    <li><a href="#"><i class="fas fa-users"></i> Member</a></li>
+                    <li><a href="#"><i class="fas fa-chart-line"></i> Reports</a></li>
+                </ul>
+
+                <h3 class="menu-title">Projects</h3>
+                <ul>
+                    <li><a href="#">Nova UI Revamp</a></li>
+                    <li><a href="#">Orion SaaS Platform</a></li>
+                    <li><a href="#">PixelFrame Website</a></li>
+                    <li><a href="#">Zenna Landing Page</a></li>
+                </ul>
+
+                <h3 class="menu-title">Settings</h3>
+                <ul>
+                    <li><a href="#"><i class="fas fa-cog"></i> Account Settings</a></li>
+                    <li><a href="#"><i class="fas fa-user-friends"></i> Team & Permissions</a></li>
+                    <li><a href="#"><i class="fas fa-question-circle"></i> Support</a></li>
+                </ul>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="header">
+                <div class="welcome-message">
+                    Welcome back, **Anniah**! Here's your latest snapshot.
+                </div>
+                <div class="user-profile">
+                    <img src="placeholder.jpg" alt="Anniah Anizah" class="avatar">
+                    <div class="user-info">
+                        <strong>Anniah Anizah</strong>
+                        <span>Manager</span>
+                    </div>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+            </header>
+
+            <section class="dashboard-grid">
+                <div class="card total-card">
+                    <div class="card-title">Total Projects</div>
+                    <div class="card-value">12</div>
+                    <div class="card-subtitle">active projects</div>
+                </div>
+                <div class="card total-card">
+                    <div class="card-title">Total Task</div>
+                    <div class="card-value">108</div>
+                    <div class="card-subtitle">tasks created</div>
+                </div>
+                <div class="card total-card">
+                    <div class="card-title">In Progress</div>
+                    <div class="card-value">11</div>
+                    <div class="card-subtitle">task</div>
+                </div>
+                <div class="card total-card">
+                    <div class="card-title">Completed</div>
+                    <div class="card-value">88</div>
+                    <div class="card-subtitle">Task</div>
+                </div>
+
+                <div class="card recent-projects-card">
+                    <div class="card-header">
+                        <div class="card-title">Recent Project</div>
+                    </div>
+                    <div class="project-item">
+                        <span class="tag high">High</span>
+                        <strong>Setup CI/CD Pipeline</strong>
+                        <p>Automating deployment process for development team</p>
+                        <div class="progress-bar-container">
+                            Progress 80%
+                            <div class="progress-bar">
+                                <div class="progress" style="width: 80%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="project-item">
+                        <span class="tag medium">Medium</span>
+                        <strong>Update Brand Logo Guidelines</strong>
+                        <p>Minor revision on logo usage guide for design team</p>
+                        <div class="progress-bar-container">
+                            Progress 60%
+                            <div class="progress-bar">
+                                <div class="progress" style="width: 60%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card task-distribution-card">
+                    <div class="card-header">
+                        <div class="card-title">Task Distribution</div>
+                    </div>
+                    <div class="distribution-chart">
+                        <div class="bar-legend">
+                            <span class="high">High</span>
+                            <span class="medium">Medium</span>
+                            <span class="low">Low</span>
+                        </div>
+                        <div class="distribution-data">
+                            <div>
+                                <span class="priority high">• High</span>
+                                <span class="value">32</span>
+                            </div>
+                            <div>
+                                <span class="priority medium">• Medium</span>
+                                <span class="value">54</span>
+                            </div>
+                            <div>
+                                <span class="priority low">• Low</span>
+                                <span class="value">22</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card taskout-card">
+                    <div class="card-header">
+                        <div class="card-title">Today Taskout</div>
+                    </div>
+                    <ul class="task-list">
+                        <li>
+                            <i class="fas fa-circle-notch"></i>
+                            <strong>Fix API Timeout Issue</strong>
+                            <p>Investigate and resolve server delay problem</p>
+                        </li>
+                        <li>
+                            <i class="fas fa-circle-notch"></i>
+                            <strong>Finalize Product Catalog</strong>
+                            <p>Upload & organize product data and images</p>
+                        </li>
+                        <li>
+                            <i class="fas fa-circle-notch"></i>
+                            <strong>Create Dashboard Analytics</strong>
+                            <p>Visualize key metrics using charts</p>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="card upcoming-meeting-card">
+                    <div class="card-header">
+                        <div class="card-title">Upcoming Meeting</div>
+                    </div>
+                    <ul class="meeting-list">
+                        <li>
+                            <i class="fas fa-calendar-alt"></i>
+                            <strong>Dev Sync Meeting</strong>
+                            <p>Monday, July 8, 2025 - 10:00 AM</p>
+                        </li>
+                        <li>
+                            <i class="fas fa-calendar-alt"></i>
+                            <strong>Retrospective Meeting</strong>
+                            <p>Tuesday, July 9, 2025 - 02:00 PM</p>
+                        </li>
+                        <li>
+                            <i class="fas fa-calendar-alt"></i>
+                            <strong>QA Alignment Call</strong>
+                            <p>Thursday, July 4, 2025 - 09:00 AM</p>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="card activity-map-card">
+                    <div class="card-header">
+                        <div class="card-title">Time-Based Activity Map</div>
+                    </div>
+                    <div class="activity-map">
+                        <div class="map-labels">
+                            <span>Mon</span>
+                            <span>Tue</span>
+                            <span>Wed</span>
+                            <span>Thu</span>
+                            <span>Fri</span>
+                        </div>
+                        <div class="map-grid">
+                            <div class="activity-block low"></div>
+                            <div class="activity-block medium"></div>
+                            <div class="activity-block high"></div>
+                            <div class="activity-block low"></div>
+                            <div class="activity-block medium"></div>
+
+                            <div class="activity-block medium"></div>
+                            <div class="activity-block high"></div>
+                            <div class="activity-block low"></div>
+                            <div class="activity-block medium"></div>
+                            <div class="activity-block high"></div>
+
+                            <div class="activity-block high"></div>
+                            <div class="activity-block medium"></div>
+                            <div class="activity-block low"></div>
+                            <div class="activity-block high"></div>
+                            <div class="activity-block medium"></div>
+
+                            <div class="activity-block low"></div>
+                            <div class="activity-block high"></div>
+                            <div class="activity-block medium"></div>
+                            <div class="activity-block low"></div>
+                            <div class="activity-block high"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+</body>
+
+</html>

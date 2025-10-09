@@ -1,0 +1,500 @@
+/* Reset Básico */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --color-primary: #126cb1;
+    /* Azul da Taskora */
+    --color-sidebar-bg: #fff;
+    --color-main-bg: #f4f7f9;
+    /* Fundo cinza claro */
+    --color-text-dark: #333;
+    --color-text-light: #666;
+    --color-border: #ddd;
+    --color-card-bg: #fff;
+
+    /* Cores de Prioridade/Status */
+    --color-high: #e74c3c;
+    /* Vermelho */
+    --color-medium: #f39c12;
+    /* Laranja/Amarelo */
+    --color-low: #2ecc71;
+    /* Verde */
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: var(--color-main-bg);
+    color: var(--color-text-dark);
+    line-height: 1.6;
+}
+
+/* ---------------------------------- */
+/* Layout Principal (Container)       */
+/* ---------------------------------- */
+.dashboard-container {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* ---------------------------------- */
+/* Sidebar (Menu Lateral)             */
+/* ---------------------------------- */
+.sidebar {
+    width: 250px;
+    /* Largura da barra lateral */
+    background-color: var(--color-sidebar-bg);
+    padding: 20px;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    font-size: 20px;
+    font-weight: bold;
+    color: var(--color-primary);
+    margin-bottom: 30px;
+}
+
+.logo i {
+    margin-right: 10px;
+    font-size: 24px;
+}
+
+.main-menu {
+    flex-grow: 1;
+}
+
+.menu-title {
+    font-size: 11px;
+    color: var(--color-text-light);
+    text-transform: uppercase;
+    margin: 20px 0 10px 0;
+    padding-left: 10px;
+}
+
+.main-menu ul {
+    list-style: none;
+}
+
+.main-menu li {
+    margin-bottom: 5px;
+}
+
+.main-menu a {
+    display: block;
+    padding: 10px 10px;
+    text-decoration: none;
+    color: var(--color-text-light);
+    font-size: 14px;
+    border-radius: 6px;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.main-menu a i {
+    margin-right: 10px;
+    width: 20px;
+    /* Ajuda a alinhar os textos */
+    text-align: center;
+}
+
+.main-menu li.active a {
+    background-color: var(--color-primary);
+    color: #fff;
+    font-weight: bold;
+}
+
+.main-menu a:not(.active):hover {
+    background-color: #f0f0f0;
+    color: var(--color-text-dark);
+}
+
+/* ---------------------------------- */
+/* Main Content (Cabeçalho e Grid)    */
+/* ---------------------------------- */
+.main-content {
+    flex-grow: 1;
+    padding: 30px;
+    overflow-y: auto;
+}
+
+/* Header */
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 0;
+    margin-bottom: 25px;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.welcome-message {
+    font-size: 14px;
+    color: var(--color-text-light);
+}
+
+.welcome-message strong {
+    color: var(--color-text-dark);
+}
+
+.user-profile {
+    display: flex;
+    align-items: center;
+    padding: 5px 15px;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    margin-right: 10px;
+    /* Imagem placeholder - substitua por uma real */
+    background-color: #ccc;
+    content: '';
+}
+
+.user-info {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+    margin-right: 15px;
+}
+
+.user-info strong {
+    font-size: 14px;
+    color: var(--color-text-dark);
+}
+
+.user-info span {
+    font-size: 12px;
+    color: var(--color-text-light);
+}
+
+/* Grid do Dashboard */
+.dashboard-grid {
+    display: grid;
+    /* 4 colunas para a primeira linha, e 2 ou 3 para as outras. Usarei 3 colunas para o resto */
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+}
+
+/* Faz a segunda e terceira linha terem 3 colunas */
+.dashboard-grid>.card:nth-child(5) {
+    grid-column: span 2;
+}
+
+.dashboard-grid>.card:nth-child(6) {
+    grid-column: span 2;
+}
+
+.dashboard-grid>.card:nth-child(7) {
+    grid-column: span 1;
+}
+
+.dashboard-grid>.card:nth-child(8) {
+    grid-column: span 1;
+}
+
+.dashboard-grid>.card:nth-child(9) {
+    grid-column: span 2;
+}
+
+
+/* Estilo base do Card */
+.card {
+    background-color: var(--color-card-bg);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.card-title {
+    font-weight: 600;
+    font-size: 16px;
+    color: var(--color-text-dark);
+}
+
+/* Cards de Totais (Primeira Linha) */
+.total-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+}
+
+.total-card .card-title {
+    font-size: 14px;
+    color: var(--color-text-light);
+    margin-bottom: 5px;
+}
+
+.total-card .card-value {
+    font-size: 32px;
+    font-weight: bold;
+    color: var(--color-primary);
+    margin-bottom: 5px;
+}
+
+.total-card .card-subtitle {
+    font-size: 12px;
+    color: var(--color-text-light);
+}
+
+/* Tags de Prioridade/Status */
+.tag {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.tag.high {
+    background-color: #fdeaea;
+    color: var(--color-high);
+}
+
+.tag.medium {
+    background-color: #fff8e6;
+    color: var(--color-medium);
+}
+
+.tag.low {
+    background-color: #e6f9ed;
+    color: var(--color-low);
+}
+
+/* Card de Projetos Recentes */
+.project-item {
+    padding: 15px 0;
+    border-bottom: 1px dashed #eee;
+}
+
+.project-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.project-item strong {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 14px;
+}
+
+.project-item p {
+    font-size: 12px;
+    color: var(--color-text-light);
+    margin-bottom: 10px;
+}
+
+.progress-bar-container {
+    font-size: 12px;
+    color: var(--color-text-light);
+}
+
+.progress-bar {
+    height: 6px;
+    background-color: #f0f0f0;
+    border-radius: 3px;
+    margin-top: 5px;
+    overflow: hidden;
+}
+
+.progress {
+    height: 100%;
+    background-color: var(--color-low);
+    /* Cor verde para progresso */
+}
+
+/* Card de Distribuição de Tarefas */
+.task-distribution-card {
+    display: flex;
+    flex-direction: column;
+}
+
+.distribution-chart {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.bar-legend {
+    display: flex;
+    justify-content: space-around;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #eee;
+    margin-bottom: 15px;
+}
+
+.bar-legend span {
+    font-size: 12px;
+    font-weight: bold;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.bar-legend .high {
+    background-color: var(--color-high);
+    color: white;
+}
+
+.bar-legend .medium {
+    background-color: var(--color-medium);
+    color: white;
+}
+
+.bar-legend .low {
+    background-color: var(--color-low);
+    color: white;
+}
+
+.distribution-data>div {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    padding: 5px 0;
+}
+
+.distribution-data .priority {
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.distribution-data .high {
+    color: var(--color-high);
+}
+
+.distribution-data .medium {
+    color: var(--color-medium);
+}
+
+.distribution-data .low {
+    color: var(--color-low);
+}
+
+.distribution-data .value {
+    font-size: 20px;
+    font-weight: bold;
+}
+
+/* Listas de Tarefas/Reuniões */
+.task-list,
+.meeting-list {
+    list-style: none;
+}
+
+.task-list li,
+.meeting-list li {
+    display: flex;
+    flex-direction: column;
+    padding: 10px 0;
+    border-bottom: 1px dashed #eee;
+}
+
+.task-list li:last-child,
+.meeting-list li:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.task-list li strong,
+.meeting-list li strong {
+    font-size: 14px;
+    margin-bottom: 3px;
+}
+
+.task-list li p,
+.meeting-list li p {
+    font-size: 12px;
+    color: var(--color-text-light);
+}
+
+.task-list li i {
+    color: var(--color-primary);
+    position: absolute;
+    /* Para simular a lista de seleção */
+    left: 0;
+}
+
+.task-list li {
+    position: relative;
+    padding-left: 20px;
+}
+
+/* Card Activity Map */
+.activity-map {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.map-labels {
+    display: flex;
+    justify-content: space-around;
+    width: 100%;
+    margin-bottom: 10px;
+    font-size: 12px;
+    color: var(--color-text-light);
+}
+
+.map-labels span {
+    flex: 1;
+    text-align: center;
+}
+
+.map-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 5px;
+    width: 100%;
+}
+
+.activity-block {
+    height: 30px;
+    border-radius: 4px;
+    opacity: 0.7;
+}
+
+/* Cores do mapa de calor (simuladas) */
+.activity-block.low {
+    background-color: #d1e8ff;
+    /* Azul claro */
+}
+
+.activity-block.medium {
+    background-color: #6da2e2;
+    /* Azul médio */
+}
+
+.activity-block.high {
+    background-color: var(--color-primary);
+    /* Azul escuro */
+    opacity: 1;
+}
+
+/* Oculta blocos que não estão preenchidos para simular a imagem */
+.activity-map-card .map-grid .activity-block:nth-child(4),
+.activity-map-card .map-grid .activity-block:nth-child(5) {
+    background-color: #eee;
+}
+
+/* Você precisará de mais CSS de responsividade (media queries) para telas menores. */

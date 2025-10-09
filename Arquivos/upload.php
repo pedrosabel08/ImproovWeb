@@ -124,57 +124,92 @@ if (!$pastaBase) {
 }
 
 
-function gerarNomeInterno($conn, $obra_id, $tipo_id, $categoria, $nomeTipo, $tipo_arquivo, $ext, &$log, $imagem_id = null, $fileOriginalName = null)
+function gerarNomeInterno($conn, $obra_id, $tipo_id, $categoria, $nomeTipo, $tipo_arquivo, $ext, &$log, $imagem_id = null, $fileOriginalName = null, $indiceEnvio = 1)
 {
+    // 🔹 Busca nomenclatura da obra
     $obraRes = $conn->query("SELECT nomenclatura FROM obra WHERE idobra = $obra_id");
-    $nomenclatura = ($obraRes && $obraRes->num_rows > 0) ? $obraRes->fetch_assoc()['nomenclatura'] : "OBRA{$obra_id}";
+    $nomenclatura = ($obraRes && $obraRes->num_rows > 0)
+        ? $obraRes->fetch_assoc()['nomenclatura']
+        : "OBRA{$obra_id}";
 
-    $nomeTipoLimpo = preg_replace('/[^A-Za-z0-9]/', '', $nomeTipo);
-    $categoriaNome = buscarNomeCategoria($categoria);
+    // 🔹 Limpeza e redução dos nomes
+    $nomeTipoLimpo = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $nomeTipo), 0, 3));
+    $categoriaNome = strtoupper(substr(buscarNomeCategoria($categoria), 0, 3));
+    $tipoArquivoAbrev = strtoupper(substr($tipo_arquivo, 0, 3));
 
-    // Adiciona parte do nome original para garantir unicidade
-    $fileOriginalBase = $fileOriginalName ? preg_replace('/[^A-Za-z0-9]/', '', pathinfo($fileOriginalName, PATHINFO_FILENAME)) : '';
+    // 🔹 Parte base do nome original (sem extensão)
+    $fileOriginalBase = $fileOriginalName
+        ? preg_replace('/[^A-Za-z0-9]/', '', pathinfo($fileOriginalName, PATHINFO_FILENAME))
+        : '';
 
-    $sql = "SELECT nome_interno FROM arquivos 
-        WHERE obra_id = ? 
-          AND tipo_imagem_id = ? 
-          AND categoria_id = ? 
-          AND tipo = ?
-          AND nome_original = ?";
-    $params = [$obra_id, $tipo_id, $categoria, $tipo_arquivo, $fileOriginalName];
-    $types = "iiiss";
+    // 🔹 Se for SKP ou IMG → buscar versão pelo campo versao
+    if ($tipo_arquivo === 'SKP' || $tipo_arquivo === 'IMG') {
+        $sql = "SELECT versao FROM arquivos 
+                WHERE obra_id = ? 
+                  AND tipo_imagem_id = ? 
+                  AND categoria_id = ? 
+                  AND tipo = ? 
+                  AND nome_original = ?";
+        $params = [$obra_id, $tipo_id, $categoria, $tipo_arquivo, $fileOriginalName];
+        $types = "iiiss";
 
-    if ($imagem_id && ($tipo_arquivo === 'SKP' || $tipo_arquivo === 'IMG')) {
-        $sql .= " AND imagem_id = ?";
-        $params[] = $imagem_id;
-        $types .= "i";
+        if ($imagem_id) {
+            $sql .= " AND imagem_id = ?";
+            $params[] = $imagem_id;
+            $types .= "i";
+        }
+
+        $sql .= " ORDER BY versao DESC LIMIT 1";
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param($types, ...$params);
+        $stmt->execute();
+        $res = $stmt->get_result();
+
+        $versao = 1;
+        if ($row = $res->fetch_assoc()) {
+            $versao = intval($row['versao']) + 1;
+        }
     }
+    // 🔹 Demais tipos → busca pela convenção antiga
+    else {
+        $sql = "SELECT nome_interno FROM arquivos 
+                WHERE obra_id = ? 
+                  AND tipo_imagem_id = ? 
+                  AND categoria_id = ? 
+                  AND tipo = ? 
+                  AND nome_original = ?";
+        $params = [$obra_id, $tipo_id, $categoria, $tipo_arquivo, $fileOriginalName];
+        $types = "iiiss";
 
-    $sql .= " ORDER BY idarquivo DESC LIMIT 1";
+        $sql .= " ORDER BY idarquivo DESC LIMIT 1";
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param($types, ...$params);
+        $stmt->execute();
+        $res = $stmt->get_result();
 
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param($types, ...$params);
-    $stmt->execute();
-    $res = $stmt->get_result();
-
-    $versao = 1;
-    if ($row = $res->fetch_assoc()) {
-        if (preg_match('/_v(\d+)/', $row['nome_interno'], $m)) {
-            $versao = intval($m[1]) + 1;
+        $versao = 1;
+        if ($row = $res->fetch_assoc()) {
+            if (preg_match('/_v(\d+)/', $row['nome_interno'], $m)) {
+                $versao = intval($m[1]) + 1;
+            }
         }
     }
 
-    // Inclui parte do nome original para diferenciar
-    $nomeInterno = "{$nomenclatura}_{$categoriaNome}_{$nomeTipoLimpo}_{$fileOriginalBase}_{$tipo_arquivo}_v{$versao}.{$ext}";
-    $log[] = "Gerado nome interno: $nomeInterno";
+    // 🔹 Montagem final do nome interno
+    $envioStr = sprintf("env%02d", $indiceEnvio);
+    $nomeInterno = "{$nomenclatura}_{$categoriaNome}_{$tipoArquivoAbrev}_{$envioStr}_v{$versao}.{$ext}";
 
-    return $nomeInterno;
+    $log[] = "Gerado nome interno: $nomeInterno (versão $versao, envio $indiceEnvio)";
+
+    return [$nomeInterno, $versao];
 }
+
 
 // =======================
 // Upload principal
 // =======================
 if (!empty($arquivosTmp) && count($arquivosTmp) > 0 && ($refsSkpModo === 'geral' || $tipo_arquivo !== 'SKP')) {
+    $indice = 1;
 
     foreach ($arquivosTmp as $index => $fileTmp) {
         $fileOriginalName = basename($arquivosName[$index]);
@@ -200,9 +235,10 @@ if (!empty($arquivosTmp) && count($arquivosTmp) > 0 && ($refsSkpModo === 'geral'
                 $log[] = "Criado diretório: $destDir/OLD";
             }
 
-            $fileNomeInterno = gerarNomeInterno($conn, $obra_id, $tipo_id, $categoria, $nomeTipo, $tipo_arquivo, $ext, $log, null, $fileOriginalName);
+            list($fileNomeInterno, $versao) = gerarNomeInterno($conn, $obra_id, $tipo_id, $categoria, $nomeTipo, $tipo_arquivo, $ext, $log, null, $fileOriginalName, $indice);
             $destFile = $destDir . "/" . $fileNomeInterno;
             $log[] = "Destino final: $destFile";
+            $indice++;
 
             // Substituição
             $check = $conn->prepare("SELECT * FROM arquivos 
@@ -230,9 +266,10 @@ if (!empty($arquivosTmp) && count($arquivosTmp) > 0 && ($refsSkpModo === 'geral'
             if (!empty($fileTmp) && file_exists($fileTmp)) {
                 if ($sftp->put($destFile, $fileTmp, SFTP::SOURCE_LOCAL_FILE)) {
                     $stmt = $conn->prepare("INSERT INTO arquivos 
-                    (obra_id, tipo_imagem_id, nome_original, nome_interno, caminho, tipo, status, origem, recebido_por, categoria_id) 
-                    VALUES (?, ?, ?, ?, ?, ?, 'atualizado', 'upload_web', 'sistema', ?)");
-                    $stmt->bind_param("iissssi", $obra_id, $tipo_id, $fileOriginalName, $fileNomeInterno, $destFile, $tipo_arquivo, $categoria);
+                    (obra_id, tipo_imagem_id, imagem_id, nome_original, nome_interno, caminho, tipo, versao, status, origem, recebido_por, categoria_id) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'atualizado', 'upload_web', 'sistema', ?)");
+                    $stmt->bind_param("iiissssii", $obra_id, $tipo_id, $imagem_id, $fileOriginalName, $fileNomeInterno, $destFile, $tipo_arquivo, $versao, $categoria);
+
                     $stmt->execute();
                     $success[] = "Arquivo '$fileOriginalName' enviado para $nomeTipo como '$fileNomeInterno'";
                     $log[] = "Arquivo enviado com sucesso: $destFile";
@@ -249,6 +286,8 @@ if (!empty($arquivosTmp) && count($arquivosTmp) > 0 && ($refsSkpModo === 'geral'
 // Upload refs/skp por imagem
 // =======================
 if ((!empty($arquivosPorImagem)) && ($categoria == 2 || $tipo_arquivo === 'SKP') && $refsSkpModo === 'porImagem') {
+
+
     $log[] = "Iniciando upload refs/skp por imagem...";
     foreach ($arquivosPorImagem['name'] as $imagem_id => $arquivosArray) {
         // Substituição apenas uma vez por imagem
@@ -271,6 +310,7 @@ if ((!empty($arquivosPorImagem)) && ($categoria == 2 || $tipo_arquivo === 'SKP')
                 $conn->query("UPDATE arquivos SET status='antigo' WHERE idarquivo=" . $old['idarquivo']);
             }
         }
+        $indice = 1;
 
         // Agora envia todos os arquivos novos para essa imagem
         foreach ($arquivosArray as $index => $nomeOriginal) {
@@ -308,15 +348,18 @@ if ((!empty($arquivosPorImagem)) && ($categoria == 2 || $tipo_arquivo === 'SKP')
                 $log[] = "Criado diretório: $destDir/OLD";
             }
 
-            $fileNomeInterno = gerarNomeInterno($conn, $obra_id, $tipo_id, $categoria, $nomeTipo, $tipo_arquivo, $ext, $log, $imagem_id);
+            list($fileNomeInterno, $versao) = gerarNomeInterno($conn, $obra_id, $tipo_id, $categoria, $nomeTipo, $tipo_arquivo, $ext, $log, $imagem_id, $nomeOriginal, $indice);
             $destFile = "$destDir/$fileNomeInterno";
             $log[] = "Destino final: $destFile";
 
+            $indice++;
+
             if ($sftp->put($destFile, $tmpFile, SFTP::SOURCE_LOCAL_FILE)) {
                 $stmt = $conn->prepare("INSERT INTO arquivos 
-                (obra_id, tipo_imagem_id, imagem_id, nome_original, nome_interno, caminho, tipo, status, origem, recebido_por, categoria_id) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, 'atualizado', 'upload_web', 'sistema', ?)");
-                $stmt->bind_param("iiissssi", $obra_id, $tipo_id, $imagem_id, $nomeOriginal, $fileNomeInterno, $destFile, $tipo_arquivo, $categoria);
+                (obra_id, tipo_imagem_id, imagem_id, nome_original, nome_interno, caminho, tipo, versao, status, origem, recebido_por, categoria_id) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'atualizado', 'upload_web', 'sistema', ?)");
+                $stmt->bind_param("iiissssii", $obra_id, $tipo_id, $imagem_id, $nomeOriginal, $fileNomeInterno, $destFile, $tipo_arquivo, $versao, $categoria);
+
                 $stmt->execute();
                 $success[] = "Arquivo '$nomeOriginal' enviado para Imagem $imagem_id";
                 $log[] = "Arquivo enviado com sucesso: $destFile";

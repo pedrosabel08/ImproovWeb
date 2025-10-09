@@ -25,7 +25,7 @@ WHERE
         r.status != 'Arquivado'
         AND (
             r.status NOT IN ('Finalizado', 'Aprovado') 
-            OR (r.status IN ('Finalizado', 'Aprovado') AND r.data >= CURDATE() - INTERVAL 5 DAY)
+            OR (r.status IN ('Finalizado', 'Aprovado') AND r.data >= CURDATE())
         )
     )
 ORDER BY 

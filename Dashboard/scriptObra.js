@@ -5,8 +5,8 @@ var usuarioId = localStorage.getItem('idusuario');
 usuarioId = Number(usuarioId);
 
 if (usuarioId !== 1 && usuarioId !== 2 && usuarioId !== 9) {
-    document.getElementById('acomp').classList.add('hidden')
-    document.getElementById('obsAdd').classList.add('hidden')
+    document.getElementById('acomp').classList.add('hidden');
+    document.getElementById('obsAdd').classList.add('hidden');
     document.getElementById('obsAdd').style.display = 'none';
     document.getElementById('batch_actions').style.display = 'none';
     document.querySelector('.status_select').style.display = 'none';
@@ -19,7 +19,9 @@ if (usuarioId !== 1 && usuarioId !== 2 && usuarioId !== 9) {
     document.querySelectorAll(".campo input[type='checkbox']").forEach(checkbox => {
         checkbox.disabled = true;
     });
+
 } else {
+    // Libera os campos normais
     document.getElementById('acomp').style.display = 'block';
     document.getElementById('obsAdd').style.display = 'block';
     document.querySelectorAll(".campo input[type='text']").forEach(input => {
@@ -28,6 +30,35 @@ if (usuarioId !== 1 && usuarioId !== 2 && usuarioId !== 9) {
     document.querySelectorAll(".campo input[type='checkbox']").forEach(checkbox => {
         checkbox.disabled = false;
     });
+}
+
+// 🔒 Apenas usuários 1 e 2 podem editar selects e inputs dentro de .modal-funcoes
+if (usuarioId === 1 || usuarioId === 2) {
+    // ✅ Permite edição
+    document.querySelectorAll(".modal-funcoes select, .modal-funcoes input").forEach(el => {
+        el.disabled = false;
+        el.readOnly = false;
+    });
+
+    const btnSalvarFuncoes = document.getElementById('salvar_funcoes');
+    if (btnSalvarFuncoes) {
+        btnSalvarFuncoes.disabled = false;
+        btnSalvarFuncoes.style.cursor = 'pointer';
+        btnSalvarFuncoes.style.opacity = 1;
+    }
+} else {
+    // ❌ Bloqueia para todos os outros
+    document.querySelectorAll(".modal-funcoes select, .modal-funcoes input").forEach(el => {
+        el.disabled = true;
+        el.readOnly = true;
+    });
+
+    const btnSalvarFuncoes = document.getElementById('salvar_funcoes');
+    if (btnSalvarFuncoes) {
+        btnSalvarFuncoes.disabled = true;
+        btnSalvarFuncoes.style.cursor = 'not-allowed';
+        btnSalvarFuncoes.style.opacity = 0.5;
+    }
 }
 
 
@@ -1911,6 +1942,7 @@ if (![1, 2, 9].includes(iduser)) {
     editImagesBtn.style.display = 'none';
     addImagem.style.display = 'none';
     addFollowup.style.display = 'none';
+
 
     labelSwitch.forEach(label => {
         label.style.display = 'none';

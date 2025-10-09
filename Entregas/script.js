@@ -1,182 +1,165 @@
 document.addEventListener('DOMContentLoaded', () => {
+    const columns = document.querySelectorAll('.column');
+    const modal = document.getElementById('entregaModal');
+    const modalTitle = document.getElementById('modalTitulo');
+    const modalEtapa = document.getElementById('modalEtapa');
+    const modalPrazo = document.getElementById('modalPrazo');
+    const modalProgresso = document.getElementById('modalProgresso');
+    const modalImagens = document.getElementById('modalImagens');
+    const fecharModalBtn = document.getElementById('fecharModal');
 
-    const listaImagensEl = document.getElementById('listaImagens');
-    let sortableInstance = null;
-    const colunas = document.querySelectorAll('.coluna .col-cards');
+    // botão de registrar entrega
+    const btnRegistrarEntrega = document.createElement('button');
+    btnRegistrarEntrega.textContent = 'Registrar Entrega';
+    btnRegistrarEntrega.style.marginTop = '1rem';
+    modal.querySelector('.modal-content').appendChild(btnRegistrarEntrega);
 
-    // Função para carregar cards via AJAX
+    let entregaAtualId = null;
+
+    function formatarData(data) {
+        const partes = data.split("-");
+        const dataFormatada = `${partes[2]}/${partes[1]}/${partes[0]}`;
+        return dataFormatada;
+    }
+
+    // fechar modal
+    fecharModalBtn.addEventListener('click', () => {
+        modal.style.display = 'none';
+        entregaAtualId = null;
+    });
+
+    // --- FUNÇÃO PRINCIPAL PARA CARREGAR O KANBAN ---
     async function carregarKanban() {
         try {
             const res = await fetch('listar_entregas.php');
-            const data = await res.json();
+            const entregas = await res.json();
 
-            colunas.forEach(col => col.innerHTML = ''); // limpar colunas
+            // Limpa colunas antes de preencher
+            columns.forEach(col => col.querySelectorAll('.card-entrega').forEach(card => card.remove()));
 
-            data.forEach(item => {
-                const colId = 'col-' + item.kanban_status.replace(' ', '-');
+            entregas.forEach(entrega => {
+                const col = document.querySelector(`.column[data-status="${entrega.kanban_status}"]`);
+                if (!col) return;
+
                 const card = document.createElement('div');
-                card.classList.add('card-entrega', 'status-' + item.kanban_status.replace(' ', '-'));
-                card.dataset.id = item.id;
+                card.classList.add('card-entrega');
+                card.dataset.id = entrega.id;
                 card.innerHTML = `
-                    <p><strong>Entrega ${item.id}</strong></p>
-                    <div class="meta">
-                        <span>${item.status}</span>
-                        <span>${item.data_prevista}</span>
+                    <h4>${entrega.nomenclatura} - ${entrega.nome_etapa}</h4>
+                    <p><strong>Status:</strong> ${entrega.status}</p>
+                    <p><strong>Prazo:</strong> ${formatarData(entrega.data_prevista)}</p>
+                    <div class="progress">
+                        <div class="progress-bar" style="width:${entrega.pct_entregue}%"></div>
                     </div>
-                    <div class="progress mt-1" style="height:6px;">
-                        <div class="progress-bar" role="progressbar" style="width:${item.pct_entregue}%"></div>
-                    </div>
-                    <small>${item.entregues}/${item.total_itens} itens entregues</small>
+                    <small>${entrega.entregues}/${entrega.total_itens} imagens entregues</small>
                 `;
-                document.getElementById(colId)?.appendChild(card);
+                col.appendChild(card);
             });
-
         } catch (err) {
-            console.error('Erro ao carregar Kanban:', err);
+            console.error('Erro ao carregar o Kanban:', err);
         }
     }
 
     carregarKanban();
 
-    // Modal de detalhes
-    document.addEventListener('click', e => {
+    // --- ABRIR MODAL AO CLICAR EM UM CARD ---
+    document.addEventListener('click', async e => {
         const card = e.target.closest('.card-entrega');
         if (!card) return;
 
-        const id = card.dataset.id;
-        fetch(`get_entrega_item.php?id=${id}`)
-            .then(res => res.json())
-            .then(data => {
-                document.getElementById('detalhesTitulo').innerText = `Entrega ${data.id}`;
-                document.getElementById('detalhesStatus').innerText = data.status;
-                document.getElementById('detalhesPrevista').innerText = data.data_prevista;
-                document.getElementById('detalhesObs').innerText = data.observacoes || '-';
-                document.getElementById('detalhesNomeEtapa').innerText = data.nome_etapa || '-';
-
-                // Lista de imagens
-                const detalhesImagens = document.getElementById('detalhesImagens');
-                detalhesImagens.innerHTML = '';
-                data.itens.forEach(img => {
-                    const div = document.createElement('div');
-                    div.textContent = `${img.nome} - ${img.status}`;
-                    detalhesImagens.appendChild(div);
-                });
-
-                new bootstrap.Modal(document.getElementById('modalDetalhes')).show();
-            });
-    });
-
-    // Drag-and-drop para atualizar status
-    colunas.forEach(col => {
-        new Sortable(col, {
-            group: 'kanban',
-            animation: 150,
-            onEnd: evt => {
-                const itemId = evt.item.dataset.id;
-                const newStatus = evt.to.closest('.coluna').querySelector('h5').innerText.toLowerCase();
-                // atualizar visual imediatamente
-                evt.item.querySelector('.meta span:first-child').innerText = evt.to.closest('.coluna').querySelector('h5').innerText;
-
-                fetch('update_entrega_status.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id: itemId, status: newStatus })
-                })
-                .then(res => res.json())
-                .then(data => {
-                    if (!data.success) alert('Erro ao atualizar status');
-                });
-            }
-        });
-    });
-
-    // Modal de nova entrega
-    const modal = document.getElementById('modalEntrega');
-
-    modal.addEventListener('show.bs.modal', async () => {
-        await carregarImagensParaObra();
-    });
-
-    document.getElementById('obraSelect').addEventListener('change', () => carregarImagensParaObra());
-
-    async function carregarImagensParaObra() {
-        listaImagensEl.innerHTML = '<div class="text-center text-muted py-3">Carregando imagens...</div>';
-        const obraId = document.getElementById('obraSelect').value;
-        const url = obraId ? `get_imagens.php?obra_id=${encodeURIComponent(obraId)}` : `get_imagens.php`;
+        entregaAtualId = card.dataset.id;
 
         try {
-            const res = await fetch(url);
-            const imagens = await res.json();
+            const res = await fetch(`get_entrega_item.php?id=${entregaAtualId}`);
+            const data = await res.json();
 
-            if (!Array.isArray(imagens) || imagens.length === 0) {
-                listaImagensEl.innerHTML = '<div class="text-center text-muted py-3">Nenhuma imagem encontrada para esta obra.</div>';
-                return;
-            }
+            modalTitle.textContent = `${data.nomenclatura || 'Entrega'} - ${data.nome_etapa || data.id}`;
+            modalEtapa.textContent = data.nome_etapa || '-';
+            modalPrazo.textContent = formatarData(data.data_prevista) || '-';
+            modalProgresso.textContent = `${data.itens.filter(i => i.nome_substatus === 'RVW' || i.nome_substatus === 'DRV').length} / ${data.itens.length} finalizadas`;
 
-            listaImagensEl.innerHTML = '';
-            imagens.forEach(img => {
+            modalImagens.innerHTML = '';
+            data.itens.forEach(img => {
                 const div = document.createElement('div');
-                div.className = 'card-imagem';
-                div.setAttribute('data-id', img.id);
+                div.classList.add('modal-imagem-item');
+                const finalizada = (img.nome_substatus === 'RVW' || img.nome_substatus === 'DRV');
                 div.innerHTML = `
-                    <div>
-                        <input type="checkbox" name="imagens[]" value="${img.id}" id="img-${img.id}">
-                        <label for="img-${img.id}" style="margin-left:8px">${img.nome}</label>
-                    </div>
-                    <small class="text-muted">⇅</small>
+                    <input type="checkbox" id="img-${img.id}" value="${img.id}">
+                    <label for="img-${img.id}">${img.nome} - ${finalizada ? '✅ Finalizada' : '⏳ Em andamento'}</label>
                 `;
-                listaImagensEl.appendChild(div);
+                modalImagens.appendChild(div);
             });
 
-            // inicializar Sortable (uma única vez)
-            if (sortableInstance) sortableInstance.destroy();
-            sortableInstance = new Sortable(listaImagensEl, { animation: 150, ghostClass: 'sortable-ghost' });
-
+            modal.style.display = 'flex';
         } catch (err) {
-            console.error(err);
-            listaImagensEl.innerHTML = '<div class="text-danger">Erro ao carregar imagens</div>';
+            console.error('Erro ao carregar detalhes da entrega:', err);
         }
-    }
+    });
 
-    // Submit do formulário de nova entrega
-    document.getElementById('formEntrega').addEventListener('submit', async (ev) => {
-        ev.preventDefault();
-        const form = ev.target;
+    // --- REGISTRAR ENTREGA ---
+    btnRegistrarEntrega.addEventListener('click', async () => {
+        if (!entregaAtualId) return;
 
-        const formData = new FormData();
-        formData.append('obra_id', form.obra_id.value);
-        formData.append('data_prevista', form.data_prevista.value);
-        formData.append('tipo', form.tipo.value);
-        formData.append('observacoes', form.observacoes.value);
+        const checkboxes = modalImagens.querySelectorAll('input[type="checkbox"]:checked:not([disabled])');
+        if (checkboxes.length === 0) {
+            alert('Nenhuma imagem selecionada para entrega.');
+            return;
+        }
 
-        const selectedIds = [];
-        const nodes = Array.from(listaImagensEl.querySelectorAll('.card-imagem'));
-        nodes.forEach(n => {
-            const checkbox = n.querySelector('input[type="checkbox"]');
-            if (checkbox && checkbox.checked && !selectedIds.includes(checkbox.value)) {
-                formData.append('imagens[]', checkbox.value);
-                selectedIds.push(checkbox.value);
-            }
-        });
+        const imagens = Array.from(checkboxes).map(cb => cb.value);
 
         try {
-            const res = await fetch('save_entrega.php', { method: 'POST', body: formData });
+            const res = await fetch('registrar_entrega.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ entrega_id: entregaAtualId, imagens_entregues: imagens })
+            });
             const json = await res.json();
 
             if (json.success) {
-                const bsModal = bootstrap.Modal.getInstance(modal);
-                bsModal.hide();
-                form.reset();
-                listaImagensEl.innerHTML = '<div class="text-center text-muted py-3">Nenhuma imagem selecionada</div>';
-                await carregarKanban();
-                alert('Entrega salva com sucesso! ID: ' + json.entrega_id);
+                alert(`Entrega registrada! Status: ${json.novo_status}`);
+                modal.style.display = 'none';
+                entregaAtualId = null;
+                carregarKanban();
             } else {
-                alert('Erro ao salvar: ' + (json.error || 'Erro desconhecido'));
+                alert('Erro ao registrar entrega: ' + (json.error || 'desconhecido'));
             }
-
         } catch (err) {
-            console.error(err);
-            alert('Erro ao salvar entrega (ver console).');
+            console.error('Erro ao registrar entrega:', err);
+            alert('Erro ao registrar entrega (ver console)');
+        }
+    });
+
+    // --- DRAG AND DROP ---
+    columns.forEach(col => {
+        col.addEventListener('dragover', e => e.preventDefault());
+        col.addEventListener('drop', async e => {
+            e.preventDefault();
+            const cardId = e.dataTransfer.getData('text/plain');
+            const card = document.querySelector(`.card-entrega[data-id="${cardId}"]`);
+            if (!card) return;
+            col.appendChild(card);
+
+            const newStatus = col.dataset.status;
+
+            try {
+                const res = await fetch('update_entrega_status.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: cardId, status: newStatus })
+                });
+                const result = await res.json();
+                if (!result.success) alert('Erro ao atualizar status!');
+            } catch (err) {
+                console.error('Erro ao mover card:', err);
+            }
+        });
+    });
+
+    // --- Habilitar drag nos cards ---
+    document.addEventListener('dragstart', e => {
+        if (e.target.classList.contains('card-entrega')) {
+            e.dataTransfer.setData('text/plain', e.target.dataset.id);
         }
     });
 });

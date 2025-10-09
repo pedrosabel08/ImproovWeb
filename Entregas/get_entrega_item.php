@@ -13,8 +13,10 @@ $entrega_id = intval($_GET['id']);
 
 try {
     // buscar informações da entrega
-    $sql = "SELECT e.id, e.obra_id, e.data_prevista, e.status, e.data_conclusao, e.observacoes, s.nome_status as nome_etapa
-            FROM entregas e JOIN status_imagem s ON e.status_id = s.idstatus
+    $sql = "SELECT e.id, e.obra_id, e.data_prevista, e.status, e.data_conclusao, e.observacoes, s.nome_status as nome_etapa, o.nomenclatura
+            FROM entregas e 
+            JOIN status_imagem s ON e.status_id = s.idstatus
+            JOIN obra o ON e.obra_id = o.idobra
             WHERE e.id = ?";
     $stmt = $conn->prepare($sql);
     $stmt->bind_param("i", $entrega_id);
@@ -27,9 +29,10 @@ try {
     $entrega = $res->fetch_assoc();
 
     // buscar itens da entrega
-    $sql2 = "SELECT ei.id, ei.imagem_id, i.imagem_nome AS nome, ei.status
+    $sql2 = "SELECT ei.id, ei.imagem_id, i.imagem_nome AS nome, ei.status, ss.nome_substatus
              FROM entregas_itens ei
              INNER JOIN imagens_cliente_obra i ON ei.imagem_id = i.idimagens_cliente_obra
+             INNER JOIN substatus_imagem ss ON ss.id = i.substatus_id
              WHERE ei.entrega_id = ?
              ORDER BY ei.id ASC";
     $stmt2 = $conn->prepare($sql2);

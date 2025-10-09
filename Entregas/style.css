@@ -1,101 +1,208 @@
+:root {
+    --bg-color: #121212;
+    --card-bg: #1e1e1e;
+    --column-bg: #181818;
+    --text-color: #f5f5f5;
+    --accent-color: #00adb5;
+    --border-color: #2a2a2a;
+    --hover-bg: #222;
+    --modal-bg: #1a1a1a;
+    --progress-bg: #2a2a2a;
+    --progress-fill: #00adb5;
+}
+
+/* ===== GLOBAL ===== */
 body {
-    background: #f6f8fa;
-    font-family: Inter, system-ui, Arial;
-    padding: 20px;
-}
-
-.header {
+    margin: 0;
+    font-family: "Inter", sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 16px;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
 }
 
-.kanban {
+header {
+    padding: 1rem 2rem;
+    background: var(--column-bg);
+    border-bottom: 1px solid var(--border-color);
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: var(--accent-color);
+}
+
+main {
     display: flex;
-    gap: 16px;
-    align-items: flex-start;
+    flex: 1;
+    overflow-x: auto;
+    padding: 1rem;
+    gap: 1rem;
 }
 
-.coluna {
-    background: #fff;
+/* ===== COLUMNS ===== */
+.column {
+    background: var(--column-bg);
+    flex: 1;
+    min-width: 260px;
     border-radius: 12px;
-    padding: 12px;
-    width: 320px;
-    min-height: 300px;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+    padding: 0.8rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    border: 1px solid var(--border-color);
 }
 
-.coluna h5 {
+.column h2 {
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: var(--accent-color);
+    margin: 0 0 0.4rem 0;
     text-align: center;
-    margin-bottom: 10px;
 }
 
+/* ===== CARDS ===== */
 .card-entrega {
-    background: #f8fafc;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
     border-radius: 10px;
-    padding: 10px;
-    margin-bottom: 10px;
+    padding: 0.8rem;
     cursor: grab;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+    transition: all 0.2s ease;
 }
 
 .card-entrega:hover {
-    background: #f1f5f9;
+    background: var(--hover-bg);
+    transform: scale(1.02);
 }
 
-.status-Pendente {
-    border-left: 4px solid #ff6b6b;
+.card-entrega h4 {
+    margin: 0 0 0.2rem 0;
+    font-weight: 600;
+    color: var(--accent-color);
 }
 
-.status-Parcial {
-    border-left: 4px solid #ffb74d;
+.card-entrega p {
+    margin: 0.2rem 0;
+    font-size: 0.9rem;
 }
 
-.status-Concluída {
-    border-left: 4px solid #4caf50;
+.card-entrega small {
+    font-size: 0.8rem;
+    opacity: 0.7;
 }
 
+/* ===== PROGRESS ===== */
+.progress {
+    background: var(--progress-bg);
+    border-radius: 6px;
+    overflow: hidden;
+    height: 8px;
+    margin-top: 6px;
+}
 
-.meta {
-    font-size: 13px;
-    color: #666;
+.progress-bar {
+    background: var(--progress-fill);
+    height: 100%;
+    transition: width 0.3s ease;
+}
+
+/* ===== DRAG OVER ===== */
+.column.drag-over {
+    background: #202020;
+    border: 1px dashed var(--accent-color);
+}
+
+/* ===== SCROLLBAR ===== */
+::-webkit-scrollbar {
+    height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--accent-color);
+    border-radius: 4px;
+}
+
+/* ===== MODAL ===== */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: var(--modal-bg);
+    padding: 1.5rem;
+    border-radius: 12px;
+    width: 450px;
+    max-width: 90%;
+    box-shadow: 0 0 10px #000;
+    animation: fadeIn 0.2s ease;
+}
+
+.modal-content h3 {
+    margin-top: 0;
+    color: var(--accent-color);
+}
+
+.modal-content p {
+    margin: 0.5rem 0;
+}
+
+.modal button {
+    margin-top: 1rem;
+    background: var(--accent-color);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 0.6rem 1.2rem;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.modal button:hover {
+    background: #00c1c9;
+}
+
+/* ===== IMAGENS NO MODAL ===== */
+.modal-imagem-item {
+    background: var(--card-bg);
+    padding: 0.5rem 0.8rem;
+    border-radius: 8px;
+    margin-top: 6px;
     display: flex;
     justify-content: space-between;
-    gap: 8px;
+    align-items: center;
+    font-size: 0.9rem;
+    border: 1px solid var(--border-color);
 }
 
-.badge-small {
-    font-size: 12px;
-    padding: 4px 8px;
-    border-radius: 999px;
+.status-ok {
+    color: #00ffb0;
+    font-weight: 600;
 }
 
 .status-pendente {
-    border-left: 4px solid #ff6b6b;
+    color: #ffbf00;
+    font-weight: 600;
 }
 
-.status-parcial {
-    border-left: 4px solid #ffb74d;
-}
+/* ===== ANIMAÇÃO ===== */
+@keyframes fadeIn {
+    from {
+        transform: scale(0.95);
+        opacity: 0;
+    }
 
-.status-concluida {
-    border-left: 4px solid #4caf50;
-}
-
-.modal-lg {
-    max-width: 900px;
-}
-
-.card-imagem {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 10px;
-    border-radius: 8px;
-    background: #fff;
-    margin-bottom: 8px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-    cursor: grab;
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
 }

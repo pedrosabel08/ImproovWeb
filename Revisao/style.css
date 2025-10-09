@@ -501,25 +501,16 @@ nav {
     padding: 10px;
 }
 
-#sidebarTabulator::-webkit-scrollbar,
-.tarefasObra::-webkit-scrollbar,
-.tarefasObra::-webkit-scrollbar,
-.containerObra::-webkit-scrollbar {
+::-webkit-scrollbar {
     width: 5px;
 }
 
-#sidebarTabulator::-webkit-scrollbar-thumb,
-.comentarios::-webkit-scrollbar-thumb,
-.tarefasObra::-webkit-scrollbar-thumb,
-.containerObra::-webkit-scrollbar-thumb {
+::-webkit-scrollbar-thumb {
     background-color: #747474;
     border-radius: 10px;
 }
 
-#sidebarTabulator::-webkit-scrollbar-track,
-.comentarios::-webkit-scrollbar-track,
-.tarefasObra::-webkit-scrollbar-track,
-.containerObra::-webkit-scrollbar-track {
+::-webkit-scrollbar-track {
     background-color: #f1f1f1;
 }
 

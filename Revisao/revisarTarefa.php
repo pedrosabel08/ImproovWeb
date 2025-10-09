@@ -130,10 +130,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
+    $tipo_imagem_nome = null;
+
+    if ($imagem_id) {
+        $stmtTipo = $conn->prepare(query: "SELECT tipo_imagem
+        FROM imagens_cliente_obra 
+        WHERE idimagens_cliente_obra = ?
+    ");
+        $stmtTipo->bind_param("i", $imagem_id);
+        $stmtTipo->execute();
+        $stmtTipo->bind_result($tipo_imagem_nome);
+        $stmtTipo->fetch();
+        $stmtTipo->close();
+    }
+
+
     // SFTP envio final
     if (
-        in_array(mb_strtolower($nome_funcao, 'UTF-8'), ['pós-produção', 'alteração']) &&
-        in_array($status, ['Aprovado', 'Aprovado com ajustes'])
+        (
+            in_array(mb_strtolower($nome_funcao, 'UTF-8'), ['pós-produção', 'alteração']) &&
+            in_array($status, ['Aprovado', 'Aprovado com ajustes'])
+        )
+        ||
+        (
+            // 🔸 Nova condição: finalização de planta humanizada
+            mb_strtolower($nome_funcao, 'UTF-8') === 'finalização' &&
+            stripos($tipo_imagem_nome, 'humanizada') !== false &&
+            in_array($status, ['Aprovado', 'Aprovado com ajustes'])
+        )
     ) {
         $stmtArquivo = $conn->prepare("SELECT nome_arquivo FROM historico_aprovacoes_imagens WHERE funcao_imagem_id = ? ORDER BY id DESC LIMIT 1");
         $stmtArquivo->bind_param("i", $idfuncao_imagem);

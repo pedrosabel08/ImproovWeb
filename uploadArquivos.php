@@ -108,6 +108,12 @@ $totalImagens = count($imagens['name']);
 $imagensEnviadas = [];
 $nomeImagemSanitizado = sanitizeFilename($nome_imagem);
 
+
+$sqlTipoImagem = "SELECT tipo_imagem FROM imagens_cliente_obra WHERE idimagens_cliente_obra = $idimagem";
+$resultTipo = $conn->query($sqlTipoImagem);
+$tipoImagem = $resultTipo->fetch_assoc()['tipo_imagem'] ?? '';
+
+
 for ($i = 0; $i < $totalImagens; $i++) {
     $numeroPrevia = $i + 1;
 
@@ -123,7 +129,7 @@ for ($i = 0; $i < $totalImagens; $i++) {
     }
 
     // Nome final do arquivo (sem extensão)
-    if ($nomeFuncao === 'Pós-produção' || $nomeFuncao === 'Alteração') {
+    if ($nomeFuncao === 'Pós-produção' || $nomeFuncao === 'Alteração' || $tipoImagem === 'Planta Humanizada') {
         $nomeFinalSemExt = "{$nomeImagemSanitizado}_{$status_nome}_{$indice_envio}_{$numeroPrevia}";
     } else {
         $nomeFinalSemExt = "{$numeroImagem}.{$nomenclatura}-{$processo}-{$indice_envio}-{$numeroPrevia}";

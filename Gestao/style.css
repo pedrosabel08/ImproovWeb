@@ -3,6 +3,7 @@
     --bg: #ffffff;
     --card-bg: #ffffff;
     --card-entrega-bg: #f7f7f7;
+    --hover-bg: #e7e7e7;
     --accent: #3b82f6;
     --text: #333;
     --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
@@ -13,6 +14,21 @@
     --cell-h: 80px;
     --gap: 0;
 }
+
+
+::-webkit-scrollbar {
+    width: 5px;
+}
+
+::-webkit-scrollbar-thumb {
+    background-color: #747474;
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background-color: #f1f1f1;
+}
+
 
 body {
     font-family: "Inter", system-ui, sans-serif;
@@ -54,8 +70,9 @@ main>div,
 /* ====== MÉTRICAS ====== */
 .section-metrics {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: 15% 15% 70%;
     gap: 1.5rem;
+    font-size: 1rem;
 }
 
 /* Estilo base dos cards principais */
@@ -66,6 +83,14 @@ main>div,
     border: 1px solid #ccc;
     background: #fff;
     box-shadow: 0 3px 8px rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.card-metric .card-title {
+    font-weight: 500;
+    font-size: 1.1rem;
 }
 
 /* Subgrid das tarefas */
@@ -84,6 +109,10 @@ main>div,
     padding: 10px;
     border: 1px solid #e0e0e0;
     transition: 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
 }
 
 .subcard:hover {
@@ -92,9 +121,7 @@ main>div,
 }
 
 .sub-title {
-    font-size: 0.9rem;
     color: #555;
-    margin-bottom: 5px;
 }
 
 .sub-count strong {
@@ -105,17 +132,10 @@ main>div,
 .second-row {
     grid-row: 2;
     display: grid;
-    grid-template-columns: 80% 20%;
+    grid-template-columns: 70% 29%;
+    gap: 20px;
     height: max-content;
-}
-
-.section-calendar {
-    width: max-content;
-}
-
-.section-calendar img {
-    object-fit: cover;
-    width: 200px;
+    overflow-x: hidden;
 }
 
 /* ====== KANBAN ====== */
@@ -138,7 +158,6 @@ main>div,
     border: 1px solid #ccc;
     display: flex;
     flex-direction: column;
-    padding: 10px;
     max-height: clamp(300px, 40vh, 500px);
 }
 
@@ -147,6 +166,8 @@ main>div,
     color: #444;
     margin-bottom: 0.8rem;
     text-align: center;
+    border-bottom: 1px solid #ccc;
+    padding: 6px 0;
 }
 
 .kanban .content {
@@ -159,9 +180,8 @@ main>div,
     flex-direction: column;
     gap: 1rem;
     overflow-y: auto;
-    scrollbar-width: thin;
-    scrollbar-color: #ccc transparent;
     max-height: calc(100% - 2.5rem);
+    padding: 0 10px;
 }
 
 /* ===== CARDS ===== */
@@ -176,7 +196,6 @@ main>div,
 
 .card-entrega:hover {
     background: var(--hover-bg);
-    transform: scale(1.02);
 }
 
 .card-entrega .title {
@@ -202,6 +221,10 @@ main>div,
     overflow: hidden;
     height: 8px;
     margin-top: 6px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+
 }
 
 .progress-bar {
@@ -213,10 +236,23 @@ main>div,
 
 /* ====== CALENDÁRIO ====== */
 .section-calendar {
-    background: var(--card-bg);
-    border-radius: var(--radius);
-    padding: 1.5rem;
-    box-shadow: var(--shadow);
+    background: #f9fafb;
+    border-radius: 1rem;
+    border: 1px solid #ccc;
+    width: 100%;
+}
+
+#calendar {
+    background: white;
+    border-radius: 1rem;
+    padding: 1rem;
+    width: 100%;
+}
+
+.fc-dayGridMonth-view.fc-view.fc-daygrid {
+    height: 300px;
+    overflow: auto;
+    padding-right: 6px;
 }
 
 /* ====== TAREFAS ====== */
@@ -233,6 +269,7 @@ main>div,
     display: flex;
     justify-content: space-between;
     flex-direction: column;
+    gap: 20px;
     padding: 20px;
 }
 
@@ -245,6 +282,7 @@ main>div,
     display: flex;
     gap: 5px;
     margin-bottom: 5px;
+    padding: 20px 0;
 }
 
 .colab-circle {

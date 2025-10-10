@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/frappe-gantt/dist/frappe-gantt.css">
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
 
     <title>Tela Gestao</title>
 </head>
@@ -33,24 +34,24 @@
                     <!-- <p class="card-title">Tarefas</p> -->
                     <div class="tarefas-grid">
                         <div class="subcard">
-                            <p class="sub-title">TO-DO</p>
                             <p class="sub-count"><strong>133</strong></p>
+                            <p class="sub-title">TO-DO</p>
                         </div>
                         <div class="subcard">
-                            <p class="sub-title">TEA</p>
                             <p class="sub-count"><strong>55</strong></p>
+                            <p class="sub-title">TEA</p>
                         </div>
                         <div class="subcard">
-                            <p class="sub-title">Concluídas</p>
                             <p class="sub-count"><strong>1788</strong></p>
+                            <p class="sub-title">Concluídas</p>
                         </div>
                         <div class="subcard">
-                            <p class="sub-title">HOLD</p>
                             <p class="sub-count"><strong>9</strong></p>
+                            <p class="sub-title">HOLD</p>
                         </div>
                         <div class="subcard">
-                            <p class="sub-title">Em aprovação</p>
                             <p class="sub-count"><strong>80</strong></p>
+                            <p class="sub-title">Em aprovação</p>
                         </div>
                     </div>
                 </div>
@@ -127,9 +128,7 @@
                     </div>
                 </div>
                 <div class="section-calendar">
-                    <div class="calendar">
-                        <img src="https://www.shutterstock.com/image-vector/september-2025-calendar-leaf-flat-600nw-2658562949.jpg"
-                            alt="">
+                    <div id="calendar">
                     </div>
                 </div>
             </div>
@@ -143,6 +142,7 @@
                     <div class="colabs"></div>
                     <div class="progress">
                         <div class="progress-bar" style="width:72%"></div>
+                        <small class="progress-count">0/0 tarefas</small>
                     </div>
                 </div>
                 <div class="card-group" data-funcao="Modelagem">
@@ -154,6 +154,7 @@
                     <div class="colabs"></div>
                     <div class="progress">
                         <div class="progress-bar" style="width:45%"></div>
+                        <small class="progress-count">0/0 tarefas</small>
                     </div>
                 </div>
 
@@ -166,6 +167,7 @@
                     <div class="colabs"></div>
                     <div class="progress">
                         <div class="progress-bar" style="width:80%"></div>
+                        <small class="progress-count">0/0 tarefas</small>
                     </div>
                 </div>
 
@@ -178,6 +180,7 @@
                     <div class="colabs"></div>
                     <div class="progress">
                         <div class="progress-bar" style="width:92%"></div>
+                        <small class="progress-count">0/0 tarefas</small>
                     </div>
                 </div>
 
@@ -190,6 +193,7 @@
                     <div class="colabs"></div>
                     <div class="progress">
                         <div class="progress-bar" style="width:60%"></div>
+                        <small class="progress-count">0/0 tarefas</small>
                     </div>
                 </div>
 
@@ -202,6 +206,7 @@
                     <div class="colabs"></div>
                     <div class="progress">
                         <div class="progress-bar" style="width:20%"></div>
+                        <small class="progress-count">0/0 tarefas</small>
                     </div>
                 </div>
             </div>
@@ -214,8 +219,10 @@
 
     </main>
 
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/frappe-gantt@0.5.0/dist/frappe-gantt.min.js"></script>
     <script src="script.js"></script>
+
 </body>
 
 </html>

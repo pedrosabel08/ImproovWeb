@@ -410,5 +410,116 @@ document.querySelectorAll('.card-group').forEach(card => {
     });
 });
 
+async function carregarKanban() {
+    try {
+        const res = await fetch('../Entregas/listar_entregas.php');
+        const entregas = await res.json();
+
+        // Referências das colunas
+        const colProximas = document.querySelector('.kanban-columns:nth-child(1) .content');
+        const colAtrasadas = document.querySelector('.kanban-columns:nth-child(2) .content');
+        const colEntregues = document.querySelector('.kanban-columns:nth-child(3) .content');
+
+        // Limpa conteúdo anterior
+        colProximas.innerHTML = '';
+        colAtrasadas.innerHTML = '';
+        colEntregues.innerHTML = '';
+
+        const hoje = new Date().toISOString().split('T')[0]; // formato YYYY-MM-DD
+
+        entregas.forEach(e => {
+            const dataPrevista = e.data_prevista;
+            const pct = e.pct_entregue || 0;
+            const total = e.total_itens || 0;
+            const entregues = e.entregues || 0;
+            const nome = `${e.nomenclatura} - ${e.nome_etapa}`;
+            const dataFormatada = formatarData(dataPrevista);
+
+            // Cria o card
+            const card = document.createElement('div');
+            card.classList.add('card-entrega');
+            card.dataset.id = e.id;
+            card.innerHTML = `
+        <div class="title">
+          <h4>${nome}</h4>
+          <p>${dataFormatada}</p>
+        </div>
+        <div class="progress">
+          <div class="progress-bar" style="width:${pct}%"></div>
+        </div>
+        <small>${entregues}/${total} imagens entregues</small>
+      `;
+
+            // Determinar coluna
+            const entregaConcluida = e.kanban_status === 'concluida' || pct === 100;
+            const atrasada = !entregaConcluida && dataPrevista < hoje;
+            const proxima = !entregaConcluida && dataPrevista >= hoje;
+
+            if (entregaConcluida) {
+                colEntregues.appendChild(card);
+            } else if (atrasada) {
+                colAtrasadas.appendChild(card);
+            } else if (proxima) {
+                colProximas.appendChild(card);
+            }
+        });
+
+    } catch (err) {
+        console.error('Erro ao carregar entregas:', err);
+    }
+}
+
+// função auxiliar para formatar datas no padrão brasileiro
+function formatarData(isoDate) {
+    if (!isoDate) return '';
+    const [ano, mes, dia] = isoDate.split('-');
+    return `${dia}/${mes}/${ano}`;
+}
+
+
+async function carregarCalendar() {
+    const calendarEl = document.getElementById('calendar');
+
+    // 🔹 Buscar entregas do backend (mesmo endpoint do kanban)
+    const res = await fetch('../Entregas/listar_entregas.php');
+    const entregas = await res.json();
+
+    // 🔹 Converter entregas para eventos do calendário
+    const eventos = entregas.map(e => ({
+        id: e.id,
+        title: `${e.nomenclatura} - ${e.nome_etapa}`,
+        start: e.data_prevista,
+        end: e.data_prevista,
+        backgroundColor: e.kanban_status === 'parcial' ? '#facc15' :
+            e.kanban_status === 'concluida' ? '#22c55e' :
+                '#3b82f6', // cor azul para pendente
+        borderColor: '#1e293b',
+        textColor: '#000',
+    }));
+
+    // 🔹 Inicializar o calendário
+    const calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        locale: 'pt-br',
+        height: 'auto',
+        weekends: false,
+        headerToolbar: {
+            left: '',
+            center: 'title',
+            right: ''
+        },
+        events: eventos,
+        eventClick: function (info) {
+            const entregaId = info.event.id;
+            alert(`Entrega selecionada: ${info.event.title}\nID: ${entregaId}`);
+            // aqui você pode abrir um modal com detalhes, por exemplo
+        }
+    });
+
+    calendar.render();
+}
+
+carregarCalendar();
+carregarKanban();
 gerarMetricas();
 atualizarProgressoFuncoes();

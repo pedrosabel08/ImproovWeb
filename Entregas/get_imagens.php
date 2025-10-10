@@ -1,29 +1,26 @@
 <?php
-// get_imagens.php
-header('Content-Type: application/json; charset=utf-8');
 require_once '../conexao.php';
 
-$obra_id = isset($_GET['obra_id']) ? intval($_GET['obra_id']) : null;
+$obra_id = $_GET['obra_id'] ?? null;
+$status_id = $_GET['status_id'] ?? null;
 
-if ($obra_id) {
-    $sql = "SELECT idimagens_cliente_obra AS id, imagem_nome AS nome FROM imagens_cliente_obra WHERE obra_id = ? ORDER BY imagem_nome";
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("i", $obra_id);
-} else {
-    $sql = "SELECT idimagens_cliente_obra AS id, imagem_nome AS nome FROM imagens_cliente_obra ORDER BY imagem_nome LIMIT 200";
-    $stmt = $conn->prepare($sql);
-}
-
-if (!$stmt->execute()) {
-    http_response_code(500);
-    echo json_encode(['error' => 'Erro ao buscar imagens.']);
+if (!$obra_id || !$status_id) {
+    echo json_encode([]);
     exit;
 }
 
-$res = $stmt->get_result();
-$itens = [];
-while ($row = $res->fetch_assoc()) {
-    $itens[] = $row;
+// Ajuste conforme sua estrutura real de imagens
+$stmt = $conn->prepare("SELECT idimagens_cliente_obra AS id, imagem_nome AS nome
+    FROM imagens_cliente_obra
+    WHERE obra_id = ? AND status_id = ? AND substatus_id NOT IN (6, 9)
+");
+$stmt->bind_param("ii", $obra_id, $status_id);
+$stmt->execute();
+$result = $stmt->get_result();
+
+$imagens = [];
+while ($row = $result->fetch_assoc()) {
+    $imagens[] = $row;
 }
 
-echo json_encode($itens);
+echo json_encode($imagens);

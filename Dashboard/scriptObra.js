@@ -33,7 +33,7 @@ if (usuarioId !== 1 && usuarioId !== 2 && usuarioId !== 9) {
 }
 
 // 🔒 Apenas usuários 1 e 2 podem editar selects e inputs dentro de .modal-funcoes
-if (usuarioId === 1 || usuarioId === 2) {
+if (usuarioId === 1 || usuarioId === 2 || usuarioId === 9) {
     // ✅ Permite edição
     document.querySelectorAll(".modal-funcoes select, .modal-funcoes input").forEach(el => {
         el.disabled = false;

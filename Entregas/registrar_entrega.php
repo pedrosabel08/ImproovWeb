@@ -55,14 +55,19 @@ try {
 
     // Determinar novo status da entrega
     if ($entregues === 0) {
-        $novo_status = 'pendente';
+        $novo_status = 'Pendente';
     } elseif ($entregues < $total) {
-        $novo_status = 'parcial';
+        $novo_status = 'Parcial';
+    } elseif ($entregues === $total && $hoje < $data_prevista) {
+        $novo_status = 'Entrega antecipada';
     } elseif ($entregues === $total && $hoje > $data_prevista) {
-        $novo_status = 'concluida_com_atraso';
+        $novo_status = 'Entregue com atraso';
+    } elseif ($entregues === $total && $hoje == $data_prevista) {
+        $novo_status = 'Entrega no prazo';
     } else {
-        $novo_status = 'concluida';
+        $novo_status = 'Concluída';
     }
+
 
     // Atualizar status da entrega
     $stmt = $conn->prepare("UPDATE entregas SET status=?, data_conclusao=NOW() WHERE id=?");

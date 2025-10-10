@@ -163,3 +163,70 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
+
+document.getElementById('adicionar_entrega').addEventListener('click', function () {
+    document.getElementById('modalAdicionarEntrega').style.display = 'flex';
+})
+
+document.getElementById('obra_id').addEventListener('change', carregarImagens);
+document.getElementById('status_id').addEventListener('change', carregarImagens);
+
+function carregarImagens() {
+    const obraId = document.getElementById('obra_id').value;
+    const statusId = document.getElementById('status_id').value;
+
+    if (!obraId || !statusId) {
+        document.getElementById('imagens_container').innerHTML = '<p>Selecione uma obra e um status.</p>';
+        return;
+    }
+
+    fetch(`get_imagens.php?obra_id=${obraId}&status_id=${statusId}`)
+        .then(res => res.json())
+        .then(imagens => {
+            const container = document.getElementById('imagens_container');
+            container.innerHTML = '';
+
+            if (!imagens.length) {
+                container.innerHTML = '<p>Nenhuma imagem encontrada para esses critérios.</p>';
+                return;
+            }
+
+            imagens.forEach(img => {
+                const div = document.createElement('div');
+                div.classList.add('checkbox-item');
+                div.innerHTML = `
+          <label>
+            <input type="checkbox" name="imagem_ids[]" value="${img.id}">
+            ${img.nome}
+          </label>
+        `;
+                container.appendChild(div);
+            });
+        })
+        .catch(err => {
+            console.error('Erro ao carregar imagens:', err);
+        });
+}
+
+// enviar form via AJAX
+document.getElementById('formAdicionarEntrega').addEventListener('submit', function (e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+
+    fetch('save_entrega.php', {
+        method: 'POST',
+        body: formData
+    })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                alert('Entrega adicionada com sucesso!');
+                // Aqui você pode atualizar a tabela, fechar modal, etc.
+                document.getElementById('formAdicionarEntrega').reset();
+                document.getElementById('imagens_container').innerHTML = '<p>Selecione uma obra e status.</p>';
+            } else {
+                alert('Erro: ' + data.msg);
+            }
+        })
+        .catch(err => console.error('Erro:', err));
+});

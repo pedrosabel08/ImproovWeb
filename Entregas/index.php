@@ -55,7 +55,7 @@ $conn->close();
     </header>
 
     <main id="kanban">
-        <div class="column" data-status="pendente">
+        <div class="column" data-status="pendente,parcial">
             <h2>A entregar</h2>
         </div>
         <div class="column" data-status="concluida">
@@ -118,10 +118,8 @@ $conn->close();
     <div class="modal" id="entregaModal">
         <div class="modal-content">
             <h3 id="modalTitulo"></h3>
-            <p><strong>Etapa:</strong> <span id="modalEtapa"></span></p>
             <p><strong>Prazo:</strong> <span id="modalPrazo"></span></p>
             <p><strong>Conclusão geral:</strong> <span id="modalProgresso"></span></p>
-            <h4 style="margin-top:1rem; color: var(--accent-color);">📸 Imagens</h4>
             <div id="modalImagens"></div>
             <button id="fecharModal">Fechar</button>
         </div>

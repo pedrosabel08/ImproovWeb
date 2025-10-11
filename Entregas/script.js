@@ -38,27 +38,33 @@ document.addEventListener('DOMContentLoaded', () => {
             columns.forEach(col => col.querySelectorAll('.card-entrega').forEach(card => card.remove()));
 
             entregas.forEach(entrega => {
-                const col = document.querySelector(`.column[data-status="${entrega.kanban_status}"]`);
+                // Busca a coluna cujo data-status contém o status da entrega
+                const col = Array.from(document.querySelectorAll('.column')).find(c => {
+                    const statuses = c.dataset.status.split(',').map(s => s.trim());
+                    return statuses.includes(entrega.kanban_status);
+                });
+
                 if (!col) return;
 
                 const card = document.createElement('div');
                 card.classList.add('card-entrega');
                 card.dataset.id = entrega.id;
                 card.innerHTML = `
-                    <h4>${entrega.nomenclatura} - ${entrega.nome_etapa}</h4>
-                    <p><strong>Status:</strong> ${entrega.status}</p>
-                    <p><strong>Prazo:</strong> ${formatarData(entrega.data_prevista)}</p>
-                    <div class="progress">
-                        <div class="progress-bar" style="width:${entrega.pct_entregue}%"></div>
-                    </div>
-                    <small>${entrega.entregues}/${entrega.total_itens} imagens entregues</small>
-                `;
+                <h4>${entrega.nomenclatura} - ${entrega.nome_etapa}</h4>
+                <p><strong>Status:</strong> ${entrega.status}</p>
+                <p><strong>Prazo:</strong> ${formatarData(entrega.data_prevista)}</p>
+                <div class="progress">
+                    <div class="progress-bar" style="width:${entrega.pct_entregue}%"></div>
+                </div>
+                <small>${entrega.entregues}/${entrega.total_itens} imagens entregues</small>
+            `;
                 col.appendChild(card);
             });
         } catch (err) {
             console.error('Erro ao carregar o Kanban:', err);
         }
     }
+
 
     carregarKanban();
 
@@ -74,7 +80,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await res.json();
 
             modalTitle.textContent = `${data.nomenclatura || 'Entrega'} - ${data.nome_etapa || data.id}`;
-            modalEtapa.textContent = data.nome_etapa || '-';
             modalPrazo.textContent = formatarData(data.data_prevista) || '-';
             modalProgresso.textContent = `${data.itens.filter(i => i.nome_substatus === 'RVW' || i.nome_substatus === 'DRV').length} / ${data.itens.length} finalizadas`;
 
@@ -82,11 +87,21 @@ document.addEventListener('DOMContentLoaded', () => {
             data.itens.forEach(img => {
                 const div = document.createElement('div');
                 div.classList.add('modal-imagem-item');
+
                 const finalizada = (img.nome_substatus === 'RVW' || img.nome_substatus === 'DRV');
+                const entregue = /^entrega/i.test(img.status) || /^entregue/i.test(img.status);
+                // regex para pegar status que começam com "Entrega" ou "Entregue" (sem case sensitive)
+
+                // Se estiver entregue, checkbox vem marcado e desabilitado
+                const checked = entregue ? 'checked' : '';
+                const disabled = entregue ? 'disabled' : '';
+
                 div.innerHTML = `
-                    <input type="checkbox" id="img-${img.id}" value="${img.id}">
-                    <label for="img-${img.id}">${img.nome} - ${finalizada ? '✅ Finalizada' : '⏳ Em andamento'}</label>
-                `;
+                <input type="checkbox" id="img-${img.id}" value="${img.id}" ${checked} ${disabled}>
+                <label for="img-${img.id}">
+                    ${img.nome} - ${entregue ? '📦 Entregue' : finalizada ? '✅ Finalizada' : '⏳ Em andamento'}
+                </label>
+            `;
                 modalImagens.appendChild(div);
             });
 
@@ -95,6 +110,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Erro ao carregar detalhes da entrega:', err);
         }
     });
+
 
     // --- REGISTRAR ENTREGA ---
     btnRegistrarEntrega.addEventListener('click', async () => {

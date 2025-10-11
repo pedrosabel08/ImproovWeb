@@ -123,6 +123,11 @@ main {
     border-radius: 4px;
 }
 
+#modalImagens {
+    height: 50vh;
+    overflow-y: auto;
+}
+
 /* ===== MODAL ===== */
 .modal {
     position: fixed;

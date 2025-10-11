@@ -38,11 +38,11 @@ $response['metricas_funcoes'] = $metricasFuncoes;
 $stmt->close();
 
 // 2️⃣ Colaboradores por função
-$sqlColabs = "
-SELECT f.nome_funcao, c.nome_colaborador
+$sqlColabs = "SELECT f.nome_funcao, c.nome_colaborador, c.imagem
 FROM funcao_colaborador fc
 JOIN funcao f ON f.idfuncao = fc.funcao_id
 JOIN colaborador c ON c.idcolaborador = fc.colaborador_id
+WHERE c.ativo = 1 AND c.idcolaborador NOT IN (15, 30)
 GROUP BY c.idcolaborador, f.idfuncao
 ORDER BY f.nome_funcao
 ";
@@ -59,7 +59,10 @@ while ($row = $result->fetch_assoc()) {
     if (!isset($colaboradores[$funcao])) {
         $colaboradores[$funcao] = [];
     }
-    $colaboradores[$funcao][] = $colaborador;
+    $colaboradores[$funcao][] = [
+        'nome' => $row['nome_colaborador'],
+        'imagem' => $row['imagem']
+    ];
 }
 
 $response['colaboradores_funcoes'] = $colaboradores;

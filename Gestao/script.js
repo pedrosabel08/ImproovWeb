@@ -96,16 +96,30 @@ async function atualizarProgressoFuncoes() {
             // Preenche a div colabs com os colaboradores
             const colabsDiv = card.querySelector('.colabs');
             colabsDiv.innerHTML = ''; // limpa antes
+
             funcoes.forEach(funcao => {
                 const listaColabs = colaboradores[funcao] || [];
-                listaColabs.forEach(nome => {
+
+                listaColabs.forEach(colab => {
                     const circle = document.createElement('div');
                     circle.classList.add('colab-circle', 'tooltip');
-                    circle.setAttribute('data-tooltip', nome)
-                    circle.textContent = nome.charAt(0).toUpperCase();
+                    circle.setAttribute('data-tooltip', colab.nome);
+
+                    if (colab.imagem) {
+                        // cria um <img> dentro do circle
+                        const img = document.createElement('img');
+                        img.src = `https://improov.com.br/sistema/${colab.imagem}`; // se precisar, coloque a URL completa
+                        img.alt = colab.nome;
+                        circle.appendChild(img);
+                    } else {
+                        // mostra a inicial se não tiver imagem
+                        circle.textContent = colab.nome.charAt(0).toUpperCase();
+                    }
+
                     colabsDiv.appendChild(circle);
                 });
             });
+
         });
 
     } catch (error) {

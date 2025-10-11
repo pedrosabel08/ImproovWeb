@@ -12,7 +12,7 @@ if (!$obra_id || !$status_id) {
 // Ajuste conforme sua estrutura real de imagens
 $stmt = $conn->prepare("SELECT idimagens_cliente_obra AS id, imagem_nome AS nome
     FROM imagens_cliente_obra
-    WHERE obra_id = ? AND status_id = ? AND substatus_id NOT IN (6, 9)
+    WHERE obra_id = ? AND status_id = ?
 ");
 $stmt->bind_param("ii", $obra_id, $status_id);
 $stmt->execute();

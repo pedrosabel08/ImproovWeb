@@ -556,10 +556,13 @@ function processarDados(data) {
                         </span>
                     </div>
                     <div class="card-log">
-                        <span class="date tooltip ${getTempoClass(item.tempo_calculado, mediaFuncao)}" data-tooltip="${formatarDuracao(mediaFuncao)}">
-                        <i class="ri-time-line"></i> 
-                        ${item.tempo_calculado ? formatarDuracao(item.tempo_calculado) : '-'}
-                        </span>
+                            <span 
+                                class="date tooltip ${getTempoClass(item.tempo_calculado, mediaFuncao)}" 
+                                data-tooltip="${formatarDuracao(mediaFuncao)}"
+                                data-inicio="${item.tempo_calculado || ''}">
+                                <i class="ri-time-line"></i> 
+                                ${item.tempo_calculado ? formatarDuracao(item.tempo_calculado) : '-'}
+                                </span>
                     <div class="comments">
                         ${item.indice_envio_atual ? `<span class="indice_envio"><i class="ri-file-line"></i> ${item.indice_envio_atual} |</span>` : ''}
                         ${item.indice_envio_atual ?
@@ -627,6 +630,55 @@ function processarDados(data) {
 
 
 }
+
+function atualizarTemposEmAndamento() {
+    const spans = document.querySelectorAll('.card-log .date[data-inicio]');
+
+    spans.forEach(span => {
+        // pega o card correto
+        const card = span.closest('.kanban-card');
+        if (!card || card.dataset.status !== 'Em andamento') return;
+
+        // pega o valor de data-inicio (em minutos)
+        let minutosIniciais = parseInt(span.dataset.inicio, 10);
+        if (isNaN(minutosIniciais)) minutosIniciais = 0;
+
+        // salva timestamp do carregamento da página
+        if (!span.dataset.startTimestamp) {
+            span.dataset.startTimestamp = Date.now();
+        }
+
+        const agora = Date.now();
+        const diffMs = agora - span.dataset.startTimestamp; // ms desde que abriu
+        const diffSeg = Math.floor(diffMs / 1000); // segundos decorridos desde que abriu
+
+        // converte minutos iniciais em segundos e soma
+        const totalSegundos = minutosIniciais * 60 + diffSeg;
+
+        // calcula dias, horas, minutos e segundos
+        const dias = Math.floor(totalSegundos / 86400); // 86400 = 24*60*60
+        const horas = Math.floor((totalSegundos % 86400) / 3600);
+        const minutos = Math.floor((totalSegundos % 3600) / 60);
+        const segundos = totalSegundos % 60;
+
+        // monta a string formatada
+        let partes = [];
+        if (dias > 0) partes.push(`${dias}d`);
+        if (horas > 0) partes.push(`${horas}h`);
+        if (minutos > 0) partes.push(`${minutos}min`);
+        partes.push(`${segundos}s`);
+
+        span.innerHTML = `<i class="ri-time-line"></i> ${partes.join(' ')}`;
+    });
+}
+
+// Atualiza a cada segundo
+setInterval(atualizarTemposEmAndamento, 1000);
+
+// Atualiza imediatamente ao carregar
+atualizarTemposEmAndamento();
+
+
 
 const statusMap = {
     'Não iniciado': 'to-do',

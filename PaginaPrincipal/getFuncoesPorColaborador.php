@@ -167,7 +167,7 @@ function calcularTempo($logs, $statusAtual)
 
         case 'Em andamento':
             foreach ($logs as $log) {
-                if ($log['status_novo'] === 'Não iniciado') {
+                if ($log['status_novo'] === 'Em andamento') {
                     $dataInicio = new DateTime($log['data']);
                     $diff = $dataInicio->diff(new DateTime());
                     $tempoCalculado = $diff->days * 1440 + $diff->h * 60 + $diff->i;

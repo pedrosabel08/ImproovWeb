@@ -13,40 +13,36 @@ function gerarMetricas() {
             let tarefasHold = 0;
             let tarefasApr = 0;
 
-            // Percorre todos os status retornados
+            // Conta as tarefas por status
             Object.entries(metricas).forEach(([status, qtd]) => {
                 const q = Number(qtd) || 0;
 
-                // TO-DO → tarefas ainda não iniciadas ou em andamento
                 if (["Não iniciado"].includes(status)) tarefasTodo += q;
-
-                // TEA → tarefas em aprovação, com ajustes, ou em hold
-                if (["Em aprovação", "Aprovado com ajustes", "Ajuste"].includes(status)) tarefasApr += q;
-
-                // TEA → tarefas em aprovação, com ajustes, ou em hold
                 if (["Em andamento"].includes(status)) tarefasTea += q;
-                // HOLD
-                if (["HOLD"].includes(status)) tarefasHold += q;
-
-                // Concluídas
                 if (["Finalizado"].includes(status)) tarefasConcluidas += q;
+                if (["HOLD"].includes(status)) tarefasHold += q;
+                if (["Em aprovação", "Aprovado com ajustes", "Ajuste"].includes(status)) tarefasApr += q;
             });
 
-            // Atualiza os cards no HTML (seguindo a ordem original)
+            // Atualiza os cards principais
             const cards = document.querySelectorAll('.section-metrics .card-metric');
-            if (cards.length >= 7) {
-                cards[0].querySelector('strong').textContent = obrasAtivas;      // Projetos ativos
-                cards[1].querySelector('strong').textContent = imagensAtivas;    // Total de imagens
-                cards[2].querySelector('strong').textContent = tarefasTodo;      // Tarefas TO-DO
-                cards[3].querySelector('strong').textContent = tarefasTea;       // Tarefas TEA
-                cards[4].querySelector('strong').textContent = tarefasConcluidas;// Tarefas concluídas
-                cards[5].querySelector('strong').textContent = tarefasHold;// Tarefas concluídas
-                cards[6].querySelector('strong').textContent = tarefasApr;// Tarefas concluídas
+            if (cards.length >= 3) {
+                cards[0].querySelector('strong').textContent = obrasAtivas;
+                cards[1].querySelector('strong').textContent = imagensAtivas;
+            }
+
+            // Atualiza os subcards de tarefas
+            const subcards = document.querySelectorAll('.card-tarefas .subcard');
+            if (subcards.length >= 5) {
+                subcards[0].querySelector('strong').textContent = tarefasTodo;
+                subcards[1].querySelector('strong').textContent = tarefasTea;
+                subcards[2].querySelector('strong').textContent = tarefasConcluidas;
+                subcards[3].querySelector('strong').textContent = tarefasHold;
+                subcards[4].querySelector('strong').textContent = tarefasApr;
             }
         })
         .catch(error => console.error('Erro ao buscar métricas:', error));
 }
-
 
 
 async function atualizarProgressoFuncoes() {
@@ -537,3 +533,95 @@ carregarCalendar();
 carregarKanban();
 gerarMetricas();
 atualizarProgressoFuncoes();
+
+
+
+const menuBtn = document.getElementById('menuBtn');
+const menuPopup = document.getElementById('menuPopup');
+const modalOverlay = document.getElementById('modalAdicionarEntrega');
+const addEntrega = document.getElementById('addEntrega');
+const fecharModal = document.getElementById('fecharModal');
+
+// Alternar menu
+menuBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const rectPopUp = menuBtn.getBoundingClientRect();
+    menuPopup.style.display = "block";
+    const left = rectPopUp.left + window.scrollX + (rectPopUp.width / 2) - (menuPopup.offsetWidth / 2);
+    const top = rectPopUp.bottom + window.scrollY + 6; // ligeiro espaçamento
+
+    menuPopup.style.top = `${top}px`;
+    menuPopup.style.left = `${left}px`;
+});
+
+// Fechar menu ao clicar fora
+document.addEventListener('click', () => {
+    menuPopup.style.display = 'none';
+});
+
+// Abrir modal
+addEntrega.addEventListener('click', () => {
+    menuPopup.style.display = 'none';
+    modalOverlay.style.display = 'flex';
+});
+
+document.getElementById('obra_id').addEventListener('change', carregarImagens);
+document.getElementById('status_id').addEventListener('change', carregarImagens);
+
+function carregarImagens() {
+    const obraId = document.getElementById('obra_id').value;
+    const statusId = document.getElementById('status_id').value;
+
+    if (!obraId || !statusId) {
+        document.getElementById('imagens_container').innerHTML = '<p>Selecione uma obra e um status.</p>';
+        return;
+    }
+
+    fetch(`../Entregas/get_imagens.php?obra_id=${obraId}&status_id=${statusId}`)
+        .then(res => res.json())
+        .then(imagens => {
+            const container = document.getElementById('imagens_container');
+            container.innerHTML = '';
+
+            if (!imagens.length) {
+                container.innerHTML = '<p>Nenhuma imagem encontrada para esses critérios.</p>';
+                return;
+            }
+
+            imagens.forEach(img => {
+                const div = document.createElement('div');
+                div.classList.add('checkbox-item');
+                div.innerHTML = `
+            <input type="checkbox" name="imagem_ids[]" value="${img.id}">
+            <p>${img.nome}</p>
+        `;
+                container.appendChild(div);
+            });
+        })
+        .catch(err => {
+            console.error('Erro ao carregar imagens:', err);
+        });
+}
+
+// enviar form via AJAX
+document.getElementById('formAdicionarEntrega').addEventListener('submit', function (e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+
+    fetch('../Entregas/save_entrega.php', {
+        method: 'POST',
+        body: formData
+    })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                alert('Entrega adicionada com sucesso!');
+                // Aqui você pode atualizar a tabela, fechar modal, etc.
+                document.getElementById('formAdicionarEntrega').reset();
+                document.getElementById('imagens_container').innerHTML = '<p>Selecione uma obra e status.</p>';
+            } else {
+                alert('Erro: ' + data.msg);
+            }
+        })
+        .catch(err => console.error('Erro:', err));
+});

@@ -36,6 +36,8 @@
                     <!-- <li><a title="Obras" href="https://improov.com.br/sistema/Obras"><i class="fas fa-building"></i><span> Obras</span></a></li> -->
                     <li><a title="Dashboard" href="https://improov.com.br/sistema/Dashboard"><i class="fa-solid fa-chart-line"></i><span> Dashboard</span></a></li>
                     <li><a title="Projetos" href="https://improov.com.br/sistema/Projetos"><i class="fa-solid fa-diagram-project"></i><span> Projetos</span></a></li>
+                    <li><a title="Entregas" href="https://improov.com.br/sistema/Entregas"><i class="fa-solid fa-diagram-project"></i><span> Entregas</span></a></li>
+                    <li><a title="Gestão" href="https://improov.com.br/sistema/Gestao"><i class="fa-solid fa-diagram-project"></i><span> Gestão</span></a></li>
                 <?php endif; ?>
             </ul>
 

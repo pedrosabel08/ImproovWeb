@@ -359,6 +359,37 @@ for ($i = 0; $i < $total; $i++) {
         }
     }
 
+    if ($ok && in_array(strtolower($nome_funcao), ['caderno', 'filtro de assets']) && !empty($dataIdFuncoes)) {
+        error_log("Atualizando funcao_imagem para funções Caderno/Filtro de assets.");
+
+        if ($conn->connect_errno) {
+            $respostaArquivo['erro_db_funcao'] = "Erro MySQL: " . $conn->connect_error;
+            error_log("Erro MySQL: " . $conn->connect_error);
+        } else {
+            foreach ($dataIdFuncoes as $id_funcao) {
+                $stmt = $conn->prepare("UPDATE funcao_imagem SET status = 'Em aprovação' WHERE idfuncao_imagem = ?");
+                if (!$stmt) {
+                    $respostaArquivo['erro_db_funcao'] = "Prepare failed: " . $conn->error;
+                    error_log("Prepare failed: " . $conn->error);
+                    break;
+                }
+                if (!$stmt->bind_param("i",  $id_funcao)) {
+                    $respostaArquivo['erro_db_funcao'] = "Bind failed: " . $stmt->error;
+                    error_log("Bind failed: " . $stmt->error);
+                    $stmt->close();
+                    break;
+                }
+                if (!$stmt->execute()) {
+                    $respostaArquivo['erro_db_funcao'] = "Execute failed: " . $stmt->error;
+                    error_log("Execute failed: " . $stmt->error);
+                    $stmt->close();
+                    break;
+                }
+                $stmt->close();
+            }
+        }
+    }
+
     $respostas[] = $respostaArquivo;
 }
 $conn->close();

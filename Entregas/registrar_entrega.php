@@ -63,7 +63,7 @@ try {
     } elseif ($entregues === $total && $hoje > $data_prevista) {
         $novo_status = 'Entregue com atraso';
     } elseif ($entregues === $total && $hoje == $data_prevista) {
-        $novo_status = 'Entrega no prazo';
+        $novo_status = 'Entregue no prazo';
     } else {
         $novo_status = 'Concluída';
     }

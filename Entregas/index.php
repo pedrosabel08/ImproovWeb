@@ -61,10 +61,10 @@ $conn->close();
         <div class="column" data-status="concluida">
             <h2>Enviado / Aguardando feedback</h2>
         </div>
-        <div class="column" data-status="atrasadas">
+        <div class="column" data-status="atrasada">
             <h2>Atrasadas</h2>
         </div>
-        <div class="column" data-status="aprovadas">
+        <div class="column" data-status="aprovada">
             <h2>Aprovadas</h2>
         </div>
     </main>

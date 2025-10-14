@@ -129,6 +129,9 @@ async function atualizarGantt(funcao = '') {
     container.style.position = 'relative';
     container.innerHTML = '<div style="padding:12px">Carregando...</div>';
 
+    const sectGantt = document.querySelector('.section-gantt');
+    sectGantt.style.display = 'block'
+
     // fetch
     let res;
     try {
@@ -455,7 +458,7 @@ async function carregarKanban() {
           <p>${dataFormatada}</p>
         </div>
         <div class="progress">
-          <div class="progress-bar" style="width:${pct}%"></div>
+          <div class="progress-bar tooltip" data-tooltip="${pct}%" style="width:${pct}%"></div>
         </div>
         <small>${entregues}/${total} imagens entregues</small>
       `;

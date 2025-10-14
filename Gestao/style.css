@@ -58,13 +58,17 @@ main {
     grid-column: 2;
 }
 
-main>div,
+main .header {
+    padding: 10px;
+    height: 5vh;
+}
+
 .main-content>div {
     padding: 20px;
 }
 
 .main-content {
-    min-height: 100vh;
+    min-height: 95vh;
 }
 
 /* ====== HEADER ====== */
@@ -226,7 +230,7 @@ main>div,
 .progress {
     background: var(--progress-bg);
     border-radius: 6px;
-    overflow: hidden;
+    /* overflow: hidden; */
     height: 8px;
     margin-top: 6px;
     position: relative;
@@ -342,6 +346,7 @@ main>div,
 
 
 .section-gantt {
+    display: none;
     background: #fff;
     border-radius: 12px;
     padding: 18px;

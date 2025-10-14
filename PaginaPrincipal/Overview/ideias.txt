@@ -1,0 +1,57 @@
+Métricas
+
+// Taxa de aprovação
+
+WITH funcoes_finalizadas AS (
+    SELECT idfuncao_imagem
+    FROM funcao_imagem
+    WHERE colaborador_id = 23
+      AND funcao_id = 3
+      AND status = 'Finalizado'
+),
+aprovadas AS (
+    SELECT f.idfuncao_imagem
+    FROM funcoes_finalizadas f
+    JOIN historico_aprovacoes_imagem h
+      ON f.idfuncao_imagem = h.funcao_imagem_id
+    WHERE h.status_novo IN ('Aprovado', 'Aprovado com ajustes')
+)
+SELECT
+    COUNT(*) AS total_funcoes_finalizadas,
+    (SELECT COUNT(*) FROM aprovadas) AS total_aprovadas,
+    ROUND(
+        (SELECT COUNT(*) FROM aprovadas) * 100.0 / COUNT(*),
+        2
+    ) AS taxa_aprovacao
+FROM funcoes_finalizadas;
+
+
+
+// Média de tempo de conclusão de tarefas
+
+WITH eventos_trabalho AS (
+    SELECT 
+        l.funcao_imagem_id,
+        l.data AS inicio,
+        LEAD(l.data) OVER (PARTITION BY l.funcao_imagem_id ORDER BY l.data) AS termino,
+        l.status_anterior,
+        l.status_novo
+    FROM log_alteracoes l
+    JOIN funcao_imagem fi ON fi.idfuncao_imagem = l.funcao_imagem_id
+    JOIN imagens_cliente_obra ico ON fi.imagem_id = ico.idimagens_cliente_obra
+    JOIN obra o ON o.idobra = ico.obra_id
+    WHERE l.colaborador_id = 8
+      AND fi.funcao_id = 4
+      AND o.status_obra = 0
+)
+SELECT 
+    ROUND(AVG(TIMESTAMPDIFF(HOUR, inicio, termino)), 2) AS tempo_medio_horas
+FROM eventos_trabalho
+WHERE termino IS NOT NULL
+  AND (
+      (status_anterior = 'Não iniciado' AND status_novo = 'Em andamento') OR
+      (status_anterior = 'Em aprovação' AND status_novo = 'Ajuste')
+  );
+
+
+

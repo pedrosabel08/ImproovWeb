@@ -133,7 +133,7 @@ $conn->close();
                 </div>
                 <div class="kanban-box" id="hold">
                     <div class="header">
-                        <div class="title"><i class="fa-solid fa-play"></i><span>Hold</span></div>
+                        <div class="title"><i class="fa-solid fa-play"></i><span>HOLD</span></div>
                         <span class="task-count"></span>
                     </div>
                     <div class="content">

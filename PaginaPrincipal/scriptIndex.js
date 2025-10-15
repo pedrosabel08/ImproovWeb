@@ -1123,7 +1123,7 @@ document.getElementById('salvarModal').addEventListener('click', () => {
     // Mapeamento de IDs de coluna para status
     const statusMap = {
         'to-do': 'Não iniciado',
-        'hold': 'Hold',
+        'hold': 'HOLD',
         'in-progress': 'Em andamento',
         'in-review': 'Em aprovação',
         'ajuste': 'Ajuste',

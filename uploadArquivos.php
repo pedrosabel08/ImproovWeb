@@ -129,7 +129,11 @@ for ($i = 0; $i < $totalImagens; $i++) {
     }
 
     // Nome final do arquivo (sem extensão)
-    if ($nomeFuncao === 'Pós-produção' || $nomeFuncao === 'Alteração' || $tipoImagem === 'Planta Humanizada') {
+    $nomeFuncao = strtolower($nomeFuncao);
+    $tipoImagem = strtolower($tipoImagem);
+
+    if ($nomeFuncao === 'pós-produção' || $nomeFuncao === 'alteração' || $tipoImagem === 'planta humanizada') {
+
         $nomeFinalSemExt = "{$nomeImagemSanitizado}_{$status_nome}_{$indice_envio}_{$numeroPrevia}";
     } else {
         $nomeFinalSemExt = "{$numeroImagem}.{$nomenclatura}-{$processo}-{$indice_envio}-{$numeroPrevia}";

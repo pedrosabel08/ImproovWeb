@@ -1,0 +1,335 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Open+Sans:ital,wght@0,300..800;1,300..800&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap');
+
+* {
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+    font-family: "Inter", sans-serif;
+}
+
+:root {
+    --cor-principal: #3f3f3f
+}
+
+::-webkit-scrollbar {
+    width: 5px;
+}
+
+::-webkit-scrollbar-thumb {
+    background-color: #747474;
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background-color: #f1f1f1;
+}
+
+body {
+    transition: background-color 0.3s, color 0.3s;
+    display: grid;
+    grid-template-columns: 60px 1fr;
+}
+
+.container {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    grid-column: 2;
+}
+
+.container header {
+    height: 5vh;
+    display: flex;
+    align-items: center;
+    padding-left: 20px;
+    border-bottom: 1px solid #ccc;
+}
+
+/* layout dos cards: responsivo, cards side-by-side quando couber */
+.container main {
+    padding: 20px;
+    display: grid;
+    grid-template-rows: repeat(auto-fit, minmax(500px, 1fr));
+    gap: 16px;
+    align-items: start;
+}
+
+/* card */
+.container main section.card {
+    border-radius: 10px;
+    border: 1px solid #dcdcdc;
+    padding: 0;
+    /* título já terá borda inferior */
+    display: flex;
+    flex-direction: column;
+    min-height: 160px;
+}
+
+/* título do card */
+.container main section.card .title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-bottom: 1px solid #e6e6e6;
+    background: #fafafa;
+}
+
+.container main section.card .title .nome_tipo {
+    font-weight: 700;
+    color: var(--cor-principal);
+}
+
+.container main section.card .title .pessoas {
+    font-size: 13px;
+    color: #666;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    max-width: 60%;
+}
+
+/* content: tabela com cabeçalho fixo e área com scroll */
+.container main section.card .content {
+    padding: 8px 12px;
+    overflow: hidden;
+}
+
+/* Table styling */
+.card-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+/* cabeçalho fixo: colocamos a tabela dentro de um wrapper com overflow */
+.table-wrapper {
+    max-height: 400px;
+    /* ajusta conforme necessidade */
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* sticky header */
+.card-table thead th {
+    position: sticky;
+    top: 0;
+    background: #fff;
+    z-index: 2;
+    border-bottom: 1px solid #e6e6e6;
+    padding: 8px;
+    text-align: left;
+    font-weight: 700;
+}
+
+/* linhas e células */
+.card-table td {
+    padding: 8px;
+    border-bottom: 1px solid #f0f0f0;
+    vertical-align: top;
+}
+
+/* coluna do colaborador destacada */
+.card-table .col-colaborador {
+    width: 160px;
+    font-weight: 600;
+    color: #333;
+    background: #fafafa;
+    position: sticky;
+    left: 0;
+    /* se quiser que fique fixo ao rolar horizontalmente */
+    z-index: 1;
+}
+
+/* imagens: como badges para melhor leitura */
+.col-imagem-badge {
+    display: inline-block;
+    margin: 2px 6px 2px 0;
+    padding: 4px 8px;
+    border-radius: 12px;
+    background: #f3f3f3;
+    font-size: 12px;
+    color: #333;
+}
+
+.disponivel-badge {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 2px 6px;
+    border-radius: 6px;
+    background: rgba(34, 197, 94, 0.12);
+    color: #16a34a;
+    font-size: 11px;
+    vertical-align: middle;
+}
+
+/* collaborator badges in the card header (.pessoas) */
+.colaborador-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: #f6f8fa;
+    color: #2d2d2d;
+    font-size: 13px;
+    margin-right: 6px;
+    margin-bottom: 6px;
+    cursor: pointer;
+    border: 1px solid rgba(63, 63, 63, 0.06);
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.03);
+    transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
+}
+
+.colaborador-badge:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(17, 24, 39, 0.06);
+}
+
+.colaborador-badge.selected {
+    background: linear-gradient(90deg, #6366f1 0%, #06b6d4 100%);
+    color: #fff;
+    border: none;
+    box-shadow: 0 10px 30px rgba(99, 102, 241, 0.12);
+}
+
+.colaborador-badge .remove-x {
+    margin-left: 6px;
+    font-style: normal;
+    font-weight: 700;
+    opacity: 0.95;
+}
+
+.limpar-filtro {
+    margin-left: 6px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    background: #fff;
+    border: 1px solid #e6e6e6;
+    cursor: pointer;
+    font-size: 13px;
+    color: #333;
+    transition: transform .12s ease, box-shadow .12s ease;
+}
+
+.limpar-filtro:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(16, 24, 40, 0.06);
+}
+
+@media (max-width: 520px) {
+    .container main section.card .title .pessoas {
+        max-width: 100%;
+    }
+
+    .colaborador-badge {
+        font-size: 12px;
+        padding: 5px 8px;
+    }
+}
+
+/* Modal assign styles */
+.assign-modal {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 9999;
+}
+
+.assign-modal.open {
+    display: flex;
+}
+
+.assign-modal-content {
+    background: #fff;
+    padding: 18px;
+    border-radius: 10px;
+    width: 540px;
+    max-width: 95%;
+    box-shadow: 0 20px 60px rgba(2, 6, 23, 0.2);
+}
+
+.assign-close {
+    float: right;
+    border: none;
+    background: transparent;
+    font-size: 20px;
+    cursor: pointer;
+}
+
+.assign-title {
+    margin: 0 0 12px 0;
+}
+
+.assign-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.assign-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 8px;
+    border-radius: 8px;
+    background: #fbfbff;
+    border: 1px solid #f0f0ff;
+}
+
+.assign-nome {
+    font-weight: 600;
+}
+
+.assign-meta {
+    color: #666;
+    font-size: 13px;
+}
+
+.assign-btn {
+    padding: 6px 10px;
+    border-radius: 8px;
+    background: linear-gradient(90deg, #6366f1, #06b6d4);
+    color: #fff;
+    border: none;
+    cursor: pointer;
+}
+
+
+/* células de prazo */
+.col-prazo {
+    width: 100px;
+    text-align: left;
+    color: #444;
+}
+
+/* quando não houver imagens */
+.empty-msg {
+    padding: 12px;
+    color: #888;
+    font-style: italic;
+}
+
+/* responsividade: em telas pequenas, reduzimos paddings */
+@media (max-width: 520px) {
+
+    .card-table thead th,
+    .card-table td {
+        padding: 6px;
+        font-size: 12px;
+    }
+
+    .card-table .col-colaborador {
+        width: 120px;
+    }
+
+    .table-wrapper {
+        max-height: 220px;
+    }
+}

@@ -76,6 +76,13 @@ body {
     background: #fafafa;
 }
 
+/* collapsed card -- esconde o content e mostra apenas title */
+.container main section.card.collapsed .content,
+.container main section.card.collapsed .pessoas {
+    display: none;
+}
+.container main section.card .title { cursor: pointer; }
+
 .container main section.card .title .nome_tipo {
     font-weight: 700;
     color: var(--cor-principal);
@@ -333,3 +340,16 @@ body {
         max-height: 220px;
     }
 }
+
+/* metrics bar above the main */
+.metrics-bar {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    padding: 12px 20px;
+    border-bottom: 1px solid #eee;
+    background: linear-gradient(90deg,#ffffff,#fbfbff);
+}
+.metrics-summary { font-size: 14px; color: #333; margin-right: 12px; }
+.metrics-types { display:flex; gap:10px; flex-wrap:wrap; }
+.metrics-type { background:#fff; border:1px solid #f0f0ff; padding:8px 10px; border-radius:8px; font-size:13px; color:#333; }

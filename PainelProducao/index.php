@@ -3,10 +3,10 @@ session_start();
 
 include '../conexao.php';
 
-if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
-    header("Location: ../index.html");
-    exit();
-}
+// if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
+//     header("Location: ../index.html");
+//     exit();
+// }
 
 include '../conexaoMain.php';
 
@@ -38,7 +38,7 @@ $conn->close();
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 
-    <title>Improov+Flow</title>
+    <title>Painel de Produção</title>
 </head>
 
 <body>
@@ -54,6 +54,15 @@ $conn->close();
         </header>
 
         <main>
+            <div class="global-filters">
+                <label for="global-funcao">Filtrar por função:</label>
+                <select id="global-funcao">
+                    <option value="all">Todas as funções</option>
+                    <?php foreach ($funcoes as $f): ?>
+                        <option value="<?= $f['idfuncao'] ?>"><?= htmlspecialchars($f['nome_funcao']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
             <section class="card" id="fachada">
                 <div class="title">
                     <p class="nome_tipo">Fachada</p>

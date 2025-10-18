@@ -1,0 +1,60 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,200..1000;1,200..1000&display=swap');
+
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: "Nunito", sans-serif; }
+button, a { all: unset; }
+
+header {
+  background: linear-gradient(90deg, #1a1a2e 0%, #3e4a70 50%, #2b2b3b 100%);
+  color: #fff; padding: 15px; display: flex; align-items: flex-start; justify-content: space-between;
+}
+
+#menu { background-color: #f1f1f1; border-radius: 10px; position: absolute; left: 10px; z-index: 1; margin-top: 30px; min-width: 12rem; padding: .5rem 0; }
+#menu a { display: block; padding: .25rem 1rem; color: #000; text-decoration: none; text-align: center; cursor: pointer; border-radius: 6px; }
+#menu a:hover { background: #e6e6e6; }
+.hidden { display: none; }
+
+main { padding: 20px; display: flex; flex-direction: column; gap: 20px; background: #f7f8fb; min-height: calc(100vh - 120px);
+}
+
+.kpis { display: grid; grid-template-columns: repeat(3, minmax(220px, 1fr)); gap: 16px; }
+.card { background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,.08); padding: 16px; }
+.card-title { font-weight: 800; color: #25314f; margin-bottom: 8px; }
+
+.kpi .kpi-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; }
+.kpi .kpi-header h3 { font-size: 1.05rem; font-weight: 800; color: #25314f; }
+.kpi .meta { font-size: .9rem; color: #64748b; }
+.kpi .kpi-value { display: flex; align-items: baseline; gap: 6px; margin: 6px 0; }
+.kpi .value { font-size: 2rem; font-weight: 900; color: #0f172a; }
+.kpi .sep { color: #94a3b8; }
+.kpi .target { color: #475569; font-weight: 700; }
+.kpi .progress { background: #e2e8f0; height: 10px; border-radius: 999px; overflow: hidden; margin: 8px 0; }
+.kpi .progress-bar { height: 100%; background: linear-gradient(90deg, #38bdf8, #0ea5e9); width: 0%; transition: width .5s ease; }
+.kpi .kpi-foot { display: flex; align-items: center; justify-content: space-between; font-size: .9rem; color: #64748b; }
+.kpi .hint { margin-top: 8px; font-size: .85rem; color: #64748b; }
+.kpi.secondary .progress-bar { background: linear-gradient(90deg, #a78bfa, #7c3aed); }
+.kpi.warning .progress-bar { background: linear-gradient(90deg, #fbbf24, #f59e0b); }
+
+.grid-2 { display: grid; grid-template-columns: repeat(2, minmax(280px, 1fr)); gap: 16px; }
+
+.legend-inline { margin-top: 8px; display: flex; gap: 16px; color: #334155; font-size: .9rem; }
+.legend-inline .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+.legend-inline .delivered { background: #0ea5e9; }
+.legend-inline .done { background: #22c55e; }
+.legend-inline .goal { background: #f97316; }
+
+.table-wrap { overflow-x: auto; }
+.tabela { width: 100%; border-collapse: collapse; }
+.tabela th, .tabela td { border: 1px solid #e2e8f0; padding: 10px 12px; text-align: left; }
+.tabela th { background: #e6eef7; color: #25314f; }
+
+.chip { padding: 4px 8px; border-radius: 999px; font-size: .8rem; display: inline-flex; align-items: center; gap: 6px; font-weight: 700; }
+.chip.ok { background: #dcfce7; color: #166534; }
+.chip.warn { background: #fef3c7; color: #92400e; }
+.chip.late { background: #fee2e2; color: #991b1b; }
+
+footer { padding: 10px 20px; color: #64748b; }
+
+@media (max-width: 1024px) {
+  .kpis { grid-template-columns: 1fr; }
+  .grid-2 { grid-template-columns: 1fr; }
+}

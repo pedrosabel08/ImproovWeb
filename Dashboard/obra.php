@@ -60,6 +60,8 @@ $conn->close();
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/airbnb.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
+    <!-- Select2 for improved multi-select UI -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
 </head>
 
@@ -101,22 +103,21 @@ $conn->close();
         <div class="filtro-tabela">
             <div class="filtro">
                 <div class="filtros-select">
-                    <select name="tipo_imagem" id="tipo_imagem">
+                    <select name="tipo_imagem" id="tipo_imagem" multiple>
                         <option value="0">Todos</option>
                     </select>
 
-                    <select id="antecipada_obra">
+                    <select id="antecipada_obra" multiple size="2">
                         <option value="">Todos as imagens</option>
                         <option value="1">Antecipada</option>
                     </select>
 
-                    <select name="imagem_status_etapa_filtro" id="imagem_status_etapa_filtro"></select>
-                    <select name="imagem_status_filtro" id="imagem_status_filtro"></select>
+                    <select name="imagem_status_etapa_filtro" id="imagem_status_etapa_filtro" multiple></select>
+                    <select name="imagem_status_filtro" id="imagem_status_filtro" multiple></select>
                 </div>
 
                 <div id="prazos-list"></div>
                 <div id="calendarMini" class="animate__animated"></div>
-
             </div>
 
             <div class="buttons animate__animated">
@@ -124,6 +125,7 @@ $conn->close();
                 <button id="addImagem" class="animate__animated">Adicionar Imagem</button>
                 <button id="editArquivos" class="animate__animated">Editar Arquivos</button>
                 <button id="addFollowup" onclick="gerarFollowUpPDF()" class="animate__animated">Follow Up</button>
+                <button id="clearFilters" class="animate__animated">Limpar filtros</button>
                 <!-- <button id="flowReviewBtn">Flow Review</button> -->
             </div>
 
@@ -1206,6 +1208,8 @@ $conn->close();
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- Select2 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.14.0/Sortable.min.js"></script>

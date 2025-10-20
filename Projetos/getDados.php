@@ -12,7 +12,8 @@ $sql = 'SELECT
         o.nomenclatura,
         s.nome_status AS nome_status_imagem,
         ss.nome_substatus AS situacao,
-        i.recebimento_arquivos
+        i.recebimento_arquivos,
+        i.tipo_imagem
     FROM imagens_cliente_obra i
     JOIN obra o ON i.obra_id = o.idobra
     JOIN status_imagem s ON i.status_id = s.idstatus
@@ -43,6 +44,7 @@ while ($row = $result->fetch_assoc()) {
         'nome_imagem'         => $row['imagem_nome'],
         'prazo'               => $row['prazo'],
         'recebimento_arquivos'         => $row['recebimento_arquivos'],
+        'tipo_imagem'         => $row['tipo_imagem'],
         'nome_status_imagem'  => $row['nome_status_imagem'],
         'nome_status'  => $row['nome_status_imagem'],
         'situacao'            => $row['situacao'],

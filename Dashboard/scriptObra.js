@@ -709,11 +709,65 @@ function infosObra(obraId) {
             } else {
                 document.getElementById('altBtn').classList.add('hidden');
             }
-            // Seleciona o elemento select
+            // Seleciona os elementos de filtro
             const statusEtapaSelect = document.getElementById("imagem_status_etapa_filtro");
             const statusSelect = document.getElementById("imagem_status_filtro");
             const tipoImagemSelect = document.getElementById("tipo_imagem"); // Certifique-se de ter um <select> com id="tipo_imagem" no HTML
+            const antecipadaSelect = document.getElementById("antecipada_obra");
 
+            // Salva os valores/seleções atuais para restaurar após repopular os selects
+            const readSelectValue = (el) => {
+                if (!el) return null;
+                try {
+                    // Select2 retorna via jQuery .val()
+                    if (window.jQuery && jQuery().select2 && $(el).data('select2')) {
+                        return $(el).val();
+                    }
+                } catch (e) {
+                    // fallthrough
+                }
+
+                if (el.multiple) {
+                    return Array.from(el.selectedOptions).map(o => o.value);
+                }
+                return el.value;
+            };
+
+            const restoreSelectValue = (el, prev) => {
+                if (!el || prev == null) return;
+                try {
+                    if (window.jQuery && jQuery().select2 && $(el).data('select2')) {
+                        // prev can be array or string
+                        $(el).val(prev).trigger('change');
+                        return;
+                    }
+                } catch (e) {
+                    // fallthrough
+                }
+
+                if (el.multiple && Array.isArray(prev)) {
+                    Array.from(el.options).forEach(opt => {
+                        opt.selected = prev.includes(opt.value);
+                    });
+                } else if (!el.multiple) {
+                    // se o valor anterior não existir entre as options, adiciona para manter a seleção
+                    const exists = Array.from(el.options).some(o => o.value === prev);
+                    if (!exists && prev !== '') {
+                        const opt = document.createElement('option');
+                        opt.value = prev;
+                        opt.text = prev;
+                        el.appendChild(opt);
+                    }
+                    el.value = prev;
+                }
+            };
+
+            const prevTipo = readSelectValue(tipoImagemSelect);
+            const prevStatusEtapa = readSelectValue(statusEtapaSelect);
+            const prevStatus = readSelectValue(statusSelect);
+            const prevAntecipada = readSelectValue(antecipadaSelect);
+
+            // Limpa e recria as options (começa com defaults)
             tipoImagemSelect.innerHTML = '<option value="0">Todos</option>';
             statusEtapaSelect.innerHTML = '<option value="">Selecione uma etapa</option>';
             statusSelect.innerHTML = '<option value="">Selecione um status</option>';
@@ -914,6 +968,38 @@ function infosObra(obraId) {
                 tipoImagemSelect.appendChild(tipoOption);
             });
 
+            // Restaura as seleções anteriores (inclui suporte Select2)
+            try {
+                // Se Select2 estiver ativo, usamos sua API para restaurar
+                if (window.jQuery && jQuery().select2) {
+                    if (prevTipo !== null) {
+                        $(tipoImagemSelect).val(prevTipo).trigger('change');
+                    }
+                    if (prevStatusEtapa !== null) {
+                        $(statusEtapaSelect).val(prevStatusEtapa).trigger('change');
+                    }
+                    if (prevStatus !== null) {
+                        $(statusSelect).val(prevStatus).trigger('change');
+                    }
+                    if (antecipadaSelect) {
+                        if (prevAntecipada !== null) $(antecipadaSelect).val(prevAntecipada).trigger('change');
+                    }
+                } else {
+                    // Fallback para selects nativos
+                    restoreSelectValue(tipoImagemSelect, prevTipo);
+                    restoreSelectValue(statusEtapaSelect, prevStatusEtapa);
+                    restoreSelectValue(statusSelect, prevStatus);
+                    restoreSelectValue(antecipadaSelect, prevAntecipada);
+                }
+            } catch (e) {
+                // Em caso de erro, aplica fallback simples
+                restoreSelectValue(tipoImagemSelect, prevTipo);
+                restoreSelectValue(statusEtapaSelect, prevStatusEtapa);
+                restoreSelectValue(statusSelect, prevStatus);
+                restoreSelectValue(anticipadaSelect, prevAntecipada);
+            }
+
+            // Reaplica o filtro agora que as opções e seleções foram restauradas
             filtrarTabela();
 
 

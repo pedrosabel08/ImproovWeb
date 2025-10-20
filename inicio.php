@@ -103,7 +103,7 @@ $conn->close();
                 </div>
                 <nav>
                     <div class="nav-left">
-                        <!-- <button id="overview"><span>Overview</span></button> -->
+                        <button id="overview"><i class="ri-dashboard-line"></i><span>Overview</span></button>
                         <button id="kanban" class="active"><i class="ri-kanban-view"></i><span>Kanban</span></button>
                         <!-- <button id="activities"><i class="fa-solid fa-chart-line"><span></i>Activity</span></button> -->
                         <!-- <button id="timeline"><span>Timeline</span></button> -->
@@ -122,7 +122,12 @@ $conn->close();
                     </div>
                 </nav>
             </header>
-            <div class="kanban">
+            <!-- Overview section (loaded in iframe) -->
+            <div id="overview-section" style="display:none;">
+                <iframe src="PaginaPrincipal/Overview/index.php" style="width:100%;height:80vh;border:0;" title="Overview"></iframe>
+            </div>
+
+            <div class="kanban" id="kanban-section">
                 <div class="kanban-box" id="to-do">
                     <div class="header">
                         <div class="title"><i class="fa-solid fa-play"></i><span>Não iniciado</span></div>
@@ -329,6 +334,22 @@ $conn->close();
         </div>
     </div>
 
+    <!-- Resumo inteligente modal (após Daily) -->
+    <div class="modal" id="resumoModal" style="display:none;">
+        <div class="modal-content" style="width:600px;">
+            <h2>Resumo inteligente</h2>
+            <div id="resumo-content">
+                <!-- Conteúdo preenchido dinamicamente -->
+                <p>Carregando resumo...</p>
+            </div>
+            <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+                <button id="resumo-overview" class="btn">Ir para Overview</button>
+                <button id="resumo-kanban" class="btn">Ir para Kanban</button>
+                <button id="resumo-close" class="btn">Fechar</button>
+            </div>
+        </div>
+    </div>
+
     <div id="notificacao-sino" class="notificacao-sino">
         <i class="fas fa-bell sino" id="icone-sino"></i>
         <span id="contador-tarefas" class="contador-tarefas">0</span>
@@ -507,8 +528,11 @@ $conn->close();
                                                 icon: 'success',
                                                 text: 'Respostas enviadas com sucesso!',
                                                 showConfirmButton: false,
-                                                timer: 2000
-                                            }).then(() => resolve()); // continua depois de enviar
+                                                timer: 1200
+                                            }).then(() => {
+                                                // Após fechar o toast, exibir o resumo inteligente
+                                                mostrarResumoInteligente().then(() => resolve()).catch(() => resolve());
+                                            });
                                         } else {
                                             Swal.fire({
                                                 icon: 'error',
@@ -585,6 +609,125 @@ $conn->close();
                     });
             });
         }
+
+        // --- Resumo inteligente & nav toggles ---
+        function mostrarResumoInteligente() {
+            return new Promise((resolve, reject) => {
+                const resumoModal = document.getElementById('resumoModal');
+                const resumoContent = document.getElementById('resumo-content');
+
+                resumoContent.innerHTML = '<p>Carregando resumo...</p>';
+
+                fetch('PaginaPrincipal/Overview/getResumo.php')
+                    .then(r => r.ok ? r.json() : Promise.reject('Erro na resposta'))
+                    .then(data => {
+                        if (data.error) {
+                            resumoContent.innerHTML = `<p style="color:red">${data.error}</p>`;
+                            resumoModal.style.display = 'flex';
+                            resolve();
+                            return;
+                        }
+
+                        const parts = [];
+
+                        // Tarefas do dia
+                        parts.push('<h3>Tarefas do dia</h3>');
+                        if (data.tarefasHoje && data.tarefasHoje.length) {
+                            parts.push('<ul>');
+                            data.tarefasHoje.forEach(t => {
+                                parts.push(`<li><strong>${t.nome_funcao || 'Função'}</strong> — ${t.imagem_nome || ''} <small style="color:#64748b">(${t.prazo ? t.prazo.split(' ')[0] : ''})</small></li>`);
+                            });
+                            parts.push('</ul>');
+                        } else {
+                            parts.push('<p>Nenhuma tarefa com prazo para hoje.</p>');
+                        }
+
+                        // Tarefas atrasadas
+                        parts.push('<h3>Tarefas atrasadas</h3>');
+                        if (data.tarefasAtrasadas && data.tarefasAtrasadas.length) {
+                            parts.push('<ul>');
+                            data.tarefasAtrasadas.forEach(t => {
+                                parts.push(`<li><strong>${t.nome_funcao || 'Função'}</strong> — ${t.imagem_nome || ''} <span style="color:#ef4444">(${t.prazo ? t.prazo.split(' ')[0] : ''})</span></li>`);
+                            });
+                            parts.push('</ul>');
+                        } else {
+                            parts.push('<p>Sem tarefas atrasadas.</p>');
+                        }
+
+                        // Tarefas próximas
+                        parts.push('<h3>Tarefas próximas (7 dias)</h3>');
+                        if (data.tarefasProximas && data.tarefasProximas.length) {
+                            parts.push('<ul>');
+                            data.tarefasProximas.forEach(t => {
+                                parts.push(`<li><strong>${t.nome_funcao || 'Função'}</strong> — ${t.imagem_nome || ''} <small style="color:#64748b">(${t.prazo ? t.prazo.split(' ')[0] : ''})</small></li>`);
+                            });
+                            parts.push('</ul>');
+                        } else {
+                            parts.push('<p>Sem tarefas próximas nos próximos 7 dias.</p>');
+                        }
+
+                        // Últimos ajustes
+                        parts.push('<h3>Últimos ajustes</h3>');
+                        if (data.ultimosAjustes && data.ultimosAjustes.length) {
+                            parts.push('<ul>');
+                            data.ultimosAjustes.forEach(t => {
+                                parts.push(`<li><strong>${t.nome_funcao || 'Função'}</strong> — ${t.imagem_nome || ''} <small style="color:#64748b">${t.status || ''} ${t.updated_at ? '• ' + t.updated_at.split(' ')[0] : ''}</small></li>`);
+                            });
+                            parts.push('</ul>');
+                        } else {
+                            parts.push('<p>Sem ajustes recentes.</p>');
+                        }
+
+                        resumoContent.innerHTML = parts.join('');
+                        resumoModal.style.display = 'flex';
+                        resolve();
+                    })
+                    .catch(err => {
+                        console.error('Erro ao obter resumo:', err);
+                        resumoContent.innerHTML = '<p>Erro ao carregar resumo.</p>';
+                        resumoModal.style.display = 'flex';
+                        resolve();
+                    });
+            });
+        }
+
+        // Nav button handlers
+        const btnOverview = document.getElementById('overview');
+        const btnKanban = document.getElementById('kanban');
+        const overviewSection = document.getElementById('overview-section');
+        const kanbanSection = document.getElementById('kanban-section');
+
+        function setActive(button) {
+            [btnOverview, btnKanban].forEach(b => b.classList.remove('active'));
+            if (button) button.classList.add('active');
+        }
+
+        if (btnOverview) btnOverview.addEventListener('click', () => {
+            overviewSection.style.display = 'block';
+            kanbanSection.style.display = 'none';
+            setActive(btnOverview);
+        });
+
+        if (btnKanban) btnKanban.addEventListener('click', () => {
+            overviewSection.style.display = 'none';
+            kanbanSection.style.display = 'block';
+            setActive(btnKanban);
+        });
+
+        // Resumo modal button handlers
+        document.getElementById('resumo-overview').addEventListener('click', () => {
+            document.getElementById('resumoModal').style.display = 'none';
+            btnOverview.click();
+        });
+
+        document.getElementById('resumo-kanban').addEventListener('click', () => {
+            document.getElementById('resumoModal').style.display = 'none';
+            btnKanban.click();
+        });
+
+        document.getElementById('resumo-close').addEventListener('click', () => {
+            document.getElementById('resumoModal').style.display = 'none';
+        });
 
         function checkFuncoesEmAndamento(idColaborador) {
             return new Promise((resolve, reject) => {
@@ -670,6 +813,7 @@ $conn->close();
             .then(() => {
                 buscarTarefas();
                 mostrarChangelogSeNecessario();
+                mostrarResumoInteligente();
             })
             .catch(() => console.log('Fluxo interrompido'));
 

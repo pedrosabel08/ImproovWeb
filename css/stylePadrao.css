@@ -1,0 +1,60 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Open+Sans:ital,wght@0,300..800;1,300..800&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap');
+
+* {
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+    font-family: "Inter", sans-serif;
+}
+
+:root {
+    --cor-principal: #3f3f3f;
+    --cor-secundaria: #0050ab;
+}
+
+body {
+    transition: background-color 0.3s, color 0.3s;
+    display: grid;
+    grid-template-columns: 60px 1fr;
+}
+
+.container {
+    min-height: 100vh;
+    width: 100%;
+    grid-column: 2;
+}
+
+.hidden {
+    display: none;
+}
+
+a,
+button {
+    all: unset;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --cor-principal: #e0e0e0;
+        --cor-secundaria: #3399ff;
+        --bg-sidebar: #060606;
+        --text-sidebar: #f0f0f5;
+        --text-title: #fff;
+        --border-sidebar: #444;
+        --card-bg: #1b1b1b;
+        --card-hover: #181818;
+        --border-card: #444;
+        --primary: #4a90e2;
+        --text-log: #ccc;
+        --text-em: #fff;
+    }
+
+    body {
+        background-color: #181818;
+        color: #e0e0e0;
+    }
+
+    #gif {
+        content: url("../gif/assinatura_branco.gif") !important;
+    }
+}

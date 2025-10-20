@@ -2174,3 +2174,110 @@ ul.file-list {
     display: flex;
     flex-direction: column;
 }
+
+/* Select2 overrides to avoid being broken by global resets (button { all: unset } etc.) */
+.select2-container {
+    font-family: inherit;
+    box-sizing: border-box;
+}
+
+.select2-container .select2-selection--multiple {
+    min-height: 34px;
+    padding: 2px 6px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.select2-container .select2-selection__choice {
+    background: #f1f1f1 !important;
+    border: 1px solid #d0d0d0 !important;
+    color: #333 !important;
+    padding: 0 !important;
+    margin: 2px !important;
+    border-radius: 6px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+}
+
+.select2-container .select2-selection__choice__remove {
+    margin-right: 6px !important;
+    color: #666 !important;
+    font-weight: bold !important;
+}
+
+.select2-container .select2-selection--single {
+    min-height: 34px;
+    padding: 4px 8px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background: #fff;
+}
+
+/* Ensure the generated search input fits */
+.select2-container .select2-search--inline .select2-search__field {
+    min-width: 100px;
+}
+
+/* Make sure Select2 dropdown options are readable */
+.select2-container--default .select2-results__option--highlighted[aria-selected],
+.select2-container--default .select2-results__option--highlighted {
+    background-color: #f0f0f0;
+    color: #111;
+}
+
+.select2-container--default .select2-selection--multiple .select2-selection__choice__remove {
+    position: relative !important;
+}
+
+/* Small responsive tweak for the filters area so Select2 doesn't collapse */
+.filtros-select .select2-container {
+    width: auto !important;
+    min-width: 120px;
+    height: 30px;
+    max-height: 30px;
+    font-size: 0.9rem;
+}
+
+/* Melhorias adicionais para o botão de remoção (x) das tags do Select2 */
+.select2-container .select2-selection--multiple .select2-selection__rendered {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+}
+
+/* Estiliza explicitamente o botão de remoção para sobrescrever resets globais */
+.select2-container .select2-selection__choice__remove,
+.select2-container button.select2-selection__choice__remove {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 12px !important;
+    height: 12px !important;
+    min-width: 12px !important;
+    border-radius: 50% !important;
+    background: #e6e6e6 !important;
+    color: #333 !important;
+    border: 1px solid #d0d0d0 !important;
+    margin-left: 6px !important;
+    margin-right: 4px !important;
+    padding: 0 !important;
+    font-size: 12px !important;
+    line-height: 1 !important;
+    cursor: pointer !important;
+}
+
+/* Garante que o X não sobreponha o texto e fique à direita da tag */
+.select2-container .select2-selection__choice {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+}
+
+.select2-dropdown {
+    font-size: 0.9rem;
+}

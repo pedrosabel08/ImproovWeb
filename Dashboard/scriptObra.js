@@ -1455,10 +1455,46 @@ function applyStatusImagem(cell, status, descricao = '') {
 
 
 function filtrarTabela() {
-    var tipoImagemFiltro = document.getElementById("tipo_imagem").value.toLowerCase();
-    var antecipadaFiltro = document.getElementById("antecipada_obra").value;
-    var statusEtapaImagemFiltro = document.getElementById("imagem_status_etapa_filtro").value;
-    var statusImagemFiltro = document.getElementById("imagem_status_filtro").value;
+    // Read multi-select values (if single select, fall back to value)
+    const tipoImagemEl = document.getElementById("tipo_imagem");
+    let tipoImagemFiltro = [];
+    if (tipoImagemEl) {
+        if (tipoImagemEl.multiple) {
+            tipoImagemFiltro = Array.from(tipoImagemEl.selectedOptions).map(o => o.value.toLowerCase()).filter(v => v !== "");
+        } else if (tipoImagemEl.value) {
+            tipoImagemFiltro = [tipoImagemEl.value.toLowerCase()];
+        }
+    }
+
+    const antecipadaEl = document.getElementById("antecipada_obra");
+    let antecipadaFiltro = [];
+    if (antecipadaEl) {
+        if (antecipadaEl.multiple) {
+            antecipadaFiltro = Array.from(antecipadaEl.selectedOptions).map(o => o.value).filter(v => v !== "");
+        } else if (antecipadaEl.value) {
+            antecipadaFiltro = [antecipadaEl.value];
+        }
+    }
+
+    const statusEtapaEl = document.getElementById("imagem_status_etapa_filtro");
+    let statusEtapaImagemFiltro = [];
+    if (statusEtapaEl) {
+        if (statusEtapaEl.multiple) {
+            statusEtapaImagemFiltro = Array.from(statusEtapaEl.selectedOptions).map(o => o.value).filter(v => v !== "");
+        } else if (statusEtapaEl.value) {
+            statusEtapaImagemFiltro = [statusEtapaEl.value];
+        }
+    }
+
+    const statusEl = document.getElementById("imagem_status_filtro");
+    let statusImagemFiltro = [];
+    if (statusEl) {
+        if (statusEl.multiple) {
+            statusImagemFiltro = Array.from(statusEl.selectedOptions).map(o => o.value).filter(v => v !== "");
+        } else if (statusEl.value) {
+            statusImagemFiltro = [statusEl.value];
+        }
+    }
     var tabela = document.getElementById("tabela-obra");
     var tbody = tabela.getElementsByTagName("tbody")[0];
     var linhas = tbody.getElementsByTagName("tr");
@@ -1467,29 +1503,41 @@ function filtrarTabela() {
     let antecipadasFiltradas = 0;
 
     for (var i = 0; i < linhas.length; i++) {
-        var tipoImagemColuna = linhas[i].getAttribute("tipo-imagem");
-        var isAntecipada = linhas[i].querySelector('td[antecipada]').getAttribute("antecipada") === '1';
-        var statusEtapaColuna = linhas[i].querySelector("td:nth-child(1)").textContent.trim(); // Pegando o status da terceira coluna (ajuste conforme necessário)
-        var statusColuna = linhas[i].querySelector("td:nth-child(3)").textContent.trim(); // Pegando o status da terceira coluna (ajuste conforme necessário)
+    var tipoImagemColuna = (linhas[i].getAttribute("tipo-imagem") || "").toLowerCase();
+    var antecipadaTd = linhas[i].querySelector('td[antecipada]');
+    var isAntecipada = antecipadaTd ? antecipadaTd.getAttribute("antecipada") === '1' : false;
+    var statusEtapaColuna = linhas[i].querySelector("td:nth-child(1)") ? linhas[i].querySelector("td:nth-child(1)").textContent.trim() : ""; // ajuste se necessário
+    var statusColuna = linhas[i].querySelector("td:nth-child(3)") ? linhas[i].querySelector("td:nth-child(3)").textContent.trim() : ""; // ajuste se necessário
         var mostrarLinha = true;
 
-        if (tipoImagemFiltro && tipoImagemFiltro !== "0" && tipoImagemColuna.toLowerCase() !== tipoImagemFiltro.toLowerCase()) {
-            mostrarLinha = false;
+        // tipo_imagem: if tipoImagemFiltro is empty or contains '0' treat as no filter
+        if (tipoImagemFiltro.length > 0 && !tipoImagemFiltro.includes('0')) {
+            // row passes if any selected tipo matches
+            if (!tipoImagemColuna || !tipoImagemFiltro.some(v => v === tipoImagemColuna)) {
+                mostrarLinha = false;
+            }
         }
 
-        if (antecipadaFiltro === "1" && !isAntecipada) {
-            mostrarLinha = false;
+        // antecipada: if any antecipada option selected, row must match at least one
+        if (antecipadaFiltro.length > 0 && !antecipadaFiltro.includes('')) {
+            // antecipadaFiltro contains strings like '1'
+            if (!antecipadaFiltro.some(v => (v === '1' && isAntecipada) || (v !== '1' && !isAntecipada))) {
+                mostrarLinha = false;
+            }
         }
 
-
-        // Filtra pelo status da imagem
-        if (statusImagemFiltro && statusImagemFiltro !== "0" && statusColuna !== statusImagemFiltro) {
-            mostrarLinha = false;
+        // Filtra pelo status da imagem (imagem_status_filtro)
+        if (statusImagemFiltro.length > 0 && !statusImagemFiltro.includes('0')) {
+            if (!statusImagemFiltro.some(v => v === statusColuna)) {
+                mostrarLinha = false;
+            }
         }
 
-        // Filtra pelo status da imagem
-        if (statusEtapaImagemFiltro && statusEtapaImagemFiltro !== "0" && statusEtapaColuna !== statusEtapaImagemFiltro) {
-            mostrarLinha = false;
+        // Filtra pelo status da etapa (imagem_status_etapa_filtro)
+        if (statusEtapaImagemFiltro.length > 0 && !statusEtapaImagemFiltro.includes('0')) {
+            if (!statusEtapaImagemFiltro.some(v => v === statusEtapaColuna)) {
+                mostrarLinha = false;
+            }
         }
 
         if (mostrarLinha) {
@@ -1511,6 +1559,66 @@ document.getElementById("tipo_imagem").addEventListener("change", filtrarTabela)
 document.getElementById("antecipada_obra").addEventListener("change", filtrarTabela);
 document.getElementById("imagem_status_filtro").addEventListener("change", filtrarTabela);
 document.getElementById("imagem_status_etapa_filtro").addEventListener("change", filtrarTabela);
+
+// Inicializa Select2 para uma melhor UX com múltiplas seleções (aguarda jQuery + Select2 carregados)
+function initSelect2Filters() {
+    try {
+        if (window.jQuery && jQuery().select2) {
+            // inicializa com placeholders e allowClear
+            $('#tipo_imagem').select2({ placeholder: 'Tipo de imagem', allowClear: true, width: 'resolve' });
+            $('#antecipada_obra').select2({ placeholder: 'Antecipada', allowClear: true, width: 'resolve' });
+            $('#imagem_status_etapa_filtro').select2({ placeholder: 'Status etapa', allowClear: true, width: 'resolve' });
+            $('#imagem_status_filtro').select2({ placeholder: 'Status imagem', allowClear: true, width: 'resolve' });
+
+            // quando Select2 muda, dispara filtrarTabela
+            $('#tipo_imagem').on('change', filtrarTabela);
+            $('#antecipada_obra').on('change', filtrarTabela);
+            $('#imagem_status_etapa_filtro').on('change', filtrarTabela);
+            $('#imagem_status_filtro').on('change', filtrarTabela);
+        }
+    } catch (e) {
+        console.warn('Select2 init failed or not available', e);
+    }
+}
+
+// Função para limpar todos os filtros
+function clearFilters() {
+    // Se Select2 estiver ativo, usar sua API para limpar
+    try {
+        if (window.jQuery && jQuery().select2) {
+            $('#tipo_imagem').val(null).trigger('change');
+            $('#antecipada_obra').val(null).trigger('change');
+            $('#imagem_status_etapa_filtro').val(null).trigger('change');
+            $('#imagem_status_filtro').val(null).trigger('change');
+        } else {
+            // fallback para selects nativos
+            const els = ['tipo_imagem','antecipada_obra','imagem_status_etapa_filtro','imagem_status_filtro'];
+            els.forEach(id => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                if (el.multiple) {
+                    Array.from(el.options).forEach(opt => opt.selected = false);
+                } else {
+                    el.value = '';
+                }
+                // dispara change
+                el.dispatchEvent(new Event('change'));
+            });
+        }
+
+        // Reaplica o filtro para refletir limpeza
+        filtrarTabela();
+    } catch (e) {
+        console.error('Erro ao limpar filtros', e);
+    }
+}
+
+// Ligando o botão Limpar filtros
+document.addEventListener('DOMContentLoaded', function () {
+    initSelect2Filters();
+    const clearBtn = document.getElementById('clearFilters');
+    if (clearBtn) clearBtn.addEventListener('click', clearFilters);
+});
 
 function applyStatusStyle(cell, status, colaborador) {
     if (colaborador === 'Não se aplica') {

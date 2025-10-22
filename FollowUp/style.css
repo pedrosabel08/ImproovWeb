@@ -1,0 +1,228 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Open+Sans:ital,wght@0,300..800;1,300..800&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@100;200;300;400;500;600;700;800;900&display=swap');
+
+* {
+    padding: 0;
+    margin: 0;
+    font-family: "Open Sans", sans-serif;
+}
+
+body {
+    background: #f0f2f5;
+    display: grid;
+    grid-template-columns: 60px 1fr;
+    height: 100vh;
+}
+
+.container {
+    grid-column: 2;
+}
+
+/* Dashboard header */
+.followup-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 16px;
+}
+
+.followup-header .greeting h2 {
+    font-size: 18px;
+    color: #666;
+}
+
+.followup-header .greeting h3 {
+    font-size: 22px;
+    margin-top: 6px;
+}
+
+.metrics {
+    display: flex;
+    gap: 12px;
+}
+
+.metric-card {
+    background: #fff;
+    padding: 10px 14px;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    text-align: center;
+}
+
+.metric-value {
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.metric-label {
+    font-size: 12px;
+    color: #666;
+}
+
+/* Quando visualizador aberto, esconder main/table original (lista) */
+.visualizer-open #lista {
+    display: none;
+}
+
+.visualizer-open #visualizador {
+    display: flex;
+}
+
+#tabela-imagens {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 16px;
+}
+
+#tabela-imagens th,
+#tabela-imagens td {
+    border: 1px solid #ddd;
+    padding: 8px;
+}
+
+#tabela-imagens tr:hover {
+    background: #f9f9f9;
+    cursor: pointer;
+}
+
+#visualizador {
+    display: flex;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.hidden {
+    display: none !important;
+}
+
+.col-left {
+    width: 80%;
+    border: 1px solid #ccc;
+    padding: 12px;
+}
+
+.col-right {
+    width: 20%;
+    border: 1px solid #ccc;
+    padding: 12px;
+}
+
+.carrossel {
+    position: relative;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: center;
+}
+
+.carrossel-item {
+    width: 180px;
+    height: 120px;
+    object-fit: cover;
+    border: 1px solid #ddd;
+    opacity: 0.5;
+    transition: opacity .2s, transform .2s;
+}
+
+.carrossel-item.active {
+    opacity: 1;
+    transform: scale(1.02);
+}
+
+#voltar {
+    margin-bottom: 8px;
+}
+
+.obs {
+    width: 100%;
+}
+
+/* carousel controls */
+.carousel-control {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(0, 0, 0, 0.4);
+    color: #fff;
+    padding: 6px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.carousel-control.prev {
+    left: 6px;
+}
+
+.carousel-control.next {
+    right: 6px;
+}
+
+/* Card styles for dashboard look */
+.card {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    padding: 12px;
+    margin-bottom: 16px;
+}
+
+.card-title {
+    font-size: 16px;
+    margin-bottom: 8px;
+}
+
+.card-body {
+    background: transparent;
+}
+
+.list-card table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.list-card th,
+.list-card td {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+    text-align: left;
+}
+
+.list-card tr:hover {
+    background: #fafafa;
+}
+
+.selected {
+    background: #e8f3ff !important;
+}
+
+/* Visualizer card layout */
+.visualizer-card {
+    display: flex;
+    gap: 12px;
+}
+
+.visualizer-card .col-left,
+.visualizer-card .col-right {
+    background: white;
+    border-radius: 8px;
+    padding: 12px;
+    box-shadow: none;
+}
+
+/* Small responsive tweak */
+@media (max-width: 800px) {
+    .followup-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .visualizer-card {
+        flex-direction: column;
+    }
+
+    .col-left,
+    .col-right {
+        width: 100% !important;
+    }
+}

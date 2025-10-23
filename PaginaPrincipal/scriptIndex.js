@@ -949,56 +949,55 @@ function abrirSidebar(idFuncao, idImagem) {
 
             function renderGroupedArquivos(title, arr, isTipoLevel = false) {
                 if (!arr || arr.length === 0) return;
+
                 const section = document.createElement('div');
                 section.classList.add('arquivos-section');
-                const header = document.createElement('strong');
-                header.textContent = title;
+
+                const header = document.createElement('h3');
+                header.innerHTML = `📁 ${title}`;
                 section.appendChild(header);
 
                 const grouped = groupArquivos(arr);
 
-                // For each category
                 Object.keys(grouped).forEach(cat => {
                     const catDiv = document.createElement('div');
                     catDiv.classList.add('arquivos-categoria');
-                    const catHeader = document.createElement('h4');
-                    // Count total files in category
+
+                    // total por categoria
                     const totalCat = Object.values(grouped[cat]).reduce((s, arr) => s + arr.length, 0);
-                    catHeader.innerHTML = `${cat} <small style="color:#666">(${totalCat})</small>`;
+
+                    const catHeader = document.createElement('div');
+                    catHeader.classList.add('cat-header');
+                    catHeader.innerHTML = `🏗️ ${cat} <span class="count">(${totalCat})</span>`;
                     catDiv.appendChild(catHeader);
 
-                    // For each tipo inside category
+                    // tipos dentro da categoria
                     Object.keys(grouped[cat]).forEach(tipo => {
                         const tipoArr = grouped[cat][tipo];
                         const tipoDiv = document.createElement('div');
                         tipoDiv.classList.add('arquivos-tipo');
-                        const tipoHeader = document.createElement('div');
-                        tipoHeader.classList.add('tipo-header');
-                        tipoHeader.innerHTML = `<strong>${tipo}</strong> <small style="color:#666">(${tipoArr.length})</small>`;
-                        tipoDiv.appendChild(tipoHeader);
 
-                        // Instead of listing every file, show count and unique path(s)
+                        tipoDiv.innerHTML = `
+                <div class="tipo-header">↳ ${tipo} <span class="count">(${tipoArr.length})</span></div>
+            `;
+
                         const rawPaths = Array.from(new Set(tipoArr.map(it => it.caminho).filter(Boolean)));
                         const paths = rawPaths.map(p => normalizePath(p, isTipoLevel));
-                        // keep unique normalized paths
                         const uniquePaths = Array.from(new Set(paths));
 
                         const infoDiv = document.createElement('div');
                         infoDiv.classList.add('tipo-info');
-                        infoDiv.style.marginLeft = '8px';
 
-                        // Paths: show unique caminhos only (clickable). If none, show 'Sem caminho'
                         if (uniquePaths.length > 0) {
                             uniquePaths.forEach(p => {
                                 const pDiv = document.createElement('div');
                                 pDiv.classList.add('path');
-                                pDiv.innerHTML = `<a href="${p}" target="_blank" rel="noopener noreferrer" style="color:#007bff;">${p}</a>`;
+                                pDiv.innerHTML = `📂 ${p}`;
                                 infoDiv.appendChild(pDiv);
                             });
                         } else {
                             const noneDiv = document.createElement('div');
                             noneDiv.classList.add('path');
-                            noneDiv.style.color = '#666';
                             noneDiv.textContent = 'Sem caminho';
                             infoDiv.appendChild(noneDiv);
                         }

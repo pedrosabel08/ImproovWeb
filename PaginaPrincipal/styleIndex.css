@@ -10,6 +10,7 @@
 :root {
     --cor-principal: #3f3f3f;
     --cor-secundaria: #0050ab;
+    --cor-referencias: #ff9b00;
 }
 
 body {
@@ -158,20 +159,23 @@ main .kanban .kanban-box {
 /* Scrollbar estilizado para Webkit (Chrome, Edge, Safari) */
 .kanban-box .content::-webkit-scrollbar,
 .dropdown-content::-webkit-scrollbar,
-.log-alteracoes::-webkit-scrollbar {
+.log-alteracoes::-webkit-scrollbar,
+.sidebar-right::-webkit-scrollbar {
     width: 4px;
 }
 
 .kanban-box .content::-webkit-scrollbar-track,
 .dropdown-content::-webkit-scrollbar-track,
-.log-alteracoes::-webkit-scrollbar-track {
+.log-alteracoes::-webkit-scrollbar-track,
+.sidebar-right::-webkit-scrollbar-track {
     background: #f1f1f1;
     border-radius: 8px;
 }
 
 .kanban-box .content::-webkit-scrollbar-thumb,
 .dropdown-content::-webkit-scrollbar-thumb,
-.log-alteracoes::-webkit-scrollbar-thumb {
+.log-alteracoes::-webkit-scrollbar-thumb,   
+.sidebar-right::-webkit-scrollbar-thumb {
     background: #c1c1c1;
     border-radius: 8px;
     transition: background 0.3s;
@@ -1297,10 +1301,10 @@ span.aprovadaComAjustes {
 .sidebar-right {
     position: fixed;
     top: 0;
-    right: -420px;
-    /* um pouco mais largo */
-    width: 420px;
-    height: 100vh;
+    right: -600px;
+    width: 600px;
+    min-height: 100vh;
+    max-height: 100vh;
     background-color: var(--bg-sidebar, #fff);
     color: var(--text-sidebar, #333);
     box-shadow: -3px 0 15px rgba(0, 0, 0, 0.3);
@@ -1310,6 +1314,7 @@ span.aprovadaComAjustes {
     padding: 20px 25px;
     font-family: 'Inter', sans-serif;
     font-size: 0.95rem;
+    padding-right: 6px;
 }
 
 /* Sidebar ativa */
@@ -1420,6 +1425,52 @@ span.aprovadaComAjustes {
     font-weight: 500;
 }
 
+.arquivos-section {
+    line-height: 1.5;
+}
+
+.arquivos-section h3 {
+    font-size: 1.1rem;
+    margin-bottom: 10px;
+    color: var(--cor-principal);
+}
+
+.arquivos-categoria {
+    margin-left: 10px;
+    margin-top: 8px;
+}
+
+.cat-header {
+    font-weight: 600;
+    margin-bottom: 5px;
+    color: var(--cor-referencias);
+}
+
+.count {
+    color: var(--text-log);
+    font-weight: 400;
+}
+
+.arquivos-tipo {
+    margin-left: 20px;
+}
+
+.tipo-header {
+    margin-bottom: 3px;
+    color: var(--text-title);
+}
+
+.tipo-info {
+    margin-left: 25px;
+    color: var(--text-log);
+}
+
+.path {
+    font-size: 0.9rem;
+    color: var(--cor-principal);
+    margin-top: 2px;
+}
+
 
 
 /* Animação */
@@ -1449,6 +1500,7 @@ span.aprovadaComAjustes {
         --primary: #4a90e2;
         --text-log: #ccc;
         --text-em: #fff;
+        --cor-referencias: #ffd700;
     }
 
     body {
@@ -1588,19 +1640,22 @@ span.aprovadaComAjustes {
     /* Scrollbar dark */
     .kanban-box .content::-webkit-scrollbar,
     .dropdown-content::-webkit-scrollbar,
-    .log-alteracoes::-webkit-scrollbar {
+    .log-alteracoes::-webkit-scrollbar,
+    .sidebar-right::-webkit-scrollbar {
         background: #232323;
     }
 
     .kanban-box .content::-webkit-scrollbar-thumb,
     .dropdown-content::-webkit-scrollbar-thumb,
-    .log-alteracoes::-webkit-scrollbar-thumb {
+    .log-alteracoes::-webkit-scrollbar-thumb,
+    .sidebar-right::-webkit-scrollbar-thumb {
         background: #444;
     }
 
     .kanban-box .content::-webkit-scrollbar-thumb:hover,
     .dropdown-content::-webkit-scrollbar-thumb:hover,
-    .log-alteracoes::-webkit-scrollbar-thumb:hover {
+    .log-alteracoes::-webkit-scrollbar-thumb:hover,
+    .sidebar-right::-webkit-scrollbar-thumb:hover {
         background: #666;
     }
 }

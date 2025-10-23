@@ -999,6 +999,31 @@ function infosObra(obraId) {
                 restoreSelectValue(anticipadaSelect, prevAntecipada);
             }
 
+            // If there was no previous selection (first load), select all non-empty options so clicking an item will deselect it
+            try {
+                if (window.jQuery && jQuery().select2) {
+                    // tipo_imagem: skip the '0' value which means Todos
+                    if (prevTipo === null) {
+                        const vals = $("#tipo_imagem option").map(function () { return this.value; }).get().filter(v => v !== '0');
+                        if (vals.length) $("#tipo_imagem").val(vals).trigger('change');
+                    }
+                    if (prevStatusEtapa === null) {
+                        const vals = $("#imagem_status_etapa_filtro option").map(function () { return this.value; }).get().filter(v => v !== '');
+                        if (vals.length) $("#imagem_status_etapa_filtro").val(vals).trigger('change');
+                    }
+                    if (prevStatus === null) {
+                        const vals = $("#imagem_status_filtro option").map(function () { return this.value; }).get().filter(v => v !== '');
+                        if (vals.length) $("#imagem_status_filtro").val(vals).trigger('change');
+                    }
+                    if (prevAntecipada === null && antecipadaSelect) {
+                        const vals = $("#antecipada_obra option").map(function () { return this.value; }).get().filter(v => v !== '');
+                        if (vals.length) $("#antecipada_obra").val(vals).trigger('change');
+                    }
+                }
+            } catch (e) {
+                // ignore
+            }
+
             // Reaplica o filtro agora que as opções e seleções foram restauradas
             filtrarTabela();
 
@@ -1651,10 +1676,33 @@ function initSelect2Filters() {
     try {
         if (window.jQuery && jQuery().select2) {
             // inicializa com placeholders e allowClear
-            $('#tipo_imagem').select2({ placeholder: 'Tipo de imagem', allowClear: true, width: 'resolve' });
-            $('#antecipada_obra').select2({ placeholder: 'Antecipada', allowClear: true, width: 'resolve' });
-            $('#imagem_status_etapa_filtro').select2({ placeholder: 'Status etapa', allowClear: true, width: 'resolve' });
-            $('#imagem_status_filtro').select2({ placeholder: 'Status imagem', allowClear: true, width: 'resolve' });
+            // Init Select2 with closeOnSelect:false so clicks toggle selection without closing dropdown
+            $('#tipo_imagem').select2({ placeholder: 'Tipo de imagem', allowClear: true, width: 'resolve', closeOnSelect: false });
+            $('#antecipada_obra').select2({ placeholder: 'Antecipada', allowClear: true, width: 'resolve', closeOnSelect: false });
+            $('#imagem_status_etapa_filtro').select2({ placeholder: 'Status etapa', allowClear: true, width: 'resolve', closeOnSelect: false });
+            $('#imagem_status_filtro').select2({ placeholder: 'Status imagem', allowClear: true, width: 'resolve', closeOnSelect: false });
+
+            // If nothing was previously selected, select all available options by default
+            const selectAllIfEmpty = (selector, skipValues = ['', '0']) => {
+                const $sel = $(selector);
+                try {
+                    const current = $sel.val();
+                    if (!current || (Array.isArray(current) && current.length === 0)) {
+                        const vals = $sel.find('option').map(function () { return this.value; }).get().filter(v => skipValues.indexOf(v) === -1);
+                        if (vals.length > 0) {
+                            $sel.val(vals).trigger('change');
+                        }
+                    }
+                } catch (e) {
+                    // ignore
+                }
+            };
+
+            // apply to our filters
+            selectAllIfEmpty('#tipo_imagem', ['0']);
+            selectAllIfEmpty('#antecipada_obra', ['']);
+            selectAllIfEmpty('#imagem_status_etapa_filtro', ['']);
+            selectAllIfEmpty('#imagem_status_filtro', ['']);
 
             // quando Select2 muda, dispara filtrarTabela
             $('#tipo_imagem').on('change', filtrarTabela);

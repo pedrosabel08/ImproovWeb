@@ -87,9 +87,58 @@ $conn->close();
         crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="../css/styleSidebar.css">
+    <link rel="stylesheet" href="../PaginaPrincipal/styleIndex.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper/swiper-bundle.min.css" />
     <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
         type="image/x-icon">
+    <style>
+        /* small progress UI for dashboard kanban cards */
+        .progress-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 4px;
+            margin-left: 8px
+        }
+
+        .progress-text {
+            font-size: 0.75rem;
+            color: #666
+        }
+
+        .progress-bar {
+            width: 80px;
+            height: 8px;
+            background: #e6e6e6;
+            border-radius: 6px;
+            overflow: hidden
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #3399ff;
+            border-radius: 6px 0 0 6px
+        }
+
+        .kanban-card .header-kanban {
+            display: flex;
+            justify-content: space-between;
+            align-items: center
+        }
+
+        .main-content {
+            min-height: calc(100vh - 10vh);
+            padding: 0 !important;
+        }
+
+        .main-content>div {
+            padding: 0 20px;
+        }
+
+        main .kanban .kanban-box .content {
+            max-height: 65vh;
+        }
+    </style>
 </head>
 
 
@@ -104,7 +153,7 @@ $conn->close();
     <div class="main-content">
         <!-- Cabeçalho do Dashboard -->
         <div class="dashboard-header">
-            <img src="../gif/assinatura_preto.gif" alt="" style="width: 150px;">
+            <img id="gif" src="../gif/assinatura_preto.gif" alt="" style="width: 150px;">
         </div>
 
         <!-- Seção de Estatísticas -->
@@ -142,23 +191,33 @@ $conn->close();
             <?php endif; ?>
         </div>
 
-        <div class="kanban-board">
-            <div class="kanban-column hold">
-                <h3>Obras Paradas (<span id="count-hold">0</span>)</h3>
-                <div class="kanban-cards" id="hold-cards"></div>
-            </div>
+        <main>
+            <div class="kanban">
+                <div class="kanban-box" id="hold-box">
+                    <div class="header">
+                        <div class="title"><i class="fa-solid fa-pause"></i><span>HOLD</span></div>
+                        <span class="task-count" id="count-hold">0</span>
+                    </div>
+                    <div class="content" id="hold-cards"></div>
+                </div>
 
-            <div class="kanban-column andamento">
-                <h3>Obras em Andamento (<span id="count-andamento">0</span>)</h3>
-                <div class="kanban-cards" id="andamento-cards"></div>
-            </div>
+                <div class="kanban-box" id="esperando-box">
+                    <div class="header">
+                        <div class="title"><i class="fa-solid fa-clock"></i><span>Esperando iniciar</span></div>
+                        <span class="task-count" id="count-andamento">0</span>
+                    </div>
+                    <div class="content" id="andamento-cards"></div>
+                </div>
 
-            <div class="kanban-column finalizadas">
-                <h3>Obras Finalizadas (<span id="count-finalizadas">0</span>)</h3>
-                <div class="kanban-cards" id="finalizadas-cards"></div>
+                <div class="kanban-box" id="producao-box">
+                    <div class="header">
+                        <div class="title"><i class="fa-solid fa-play"></i><span>Em produção</span></div>
+                        <span class="task-count" id="count-finalizadas">0</span>
+                    </div>
+                    <div class="content" id="finalizadas-cards"></div>
+                </div>
             </div>
-        </div>
-
+        </main>
         <div class="modalInfos" id="modalInfos">
             <div id="infos-obra">
                 <!-- <button id="follow-up">Follow-up</button> -->
@@ -174,7 +233,9 @@ $conn->close();
                 <div class="obra-acompanhamento">
                     <!-- <button id="acompanhamento">Acompanhamento</button> -->
                     <button id="orcamento">Orçamento</button>
-                    <button id="obra" style="background-color: darkcyan;" onclick="window.location.href='https://improov.com.br/sistema/Dashboard/obra.php'">Ir para a tela da obra</button>
+                    <button id="obra" style="background-color: darkcyan;"
+                        onclick="window.location.href='https://improov.com.br/sistema/Dashboard/obra.php'">Ir para a
+                        tela da obra</button>
                 </div>
 
                 <div class="modalOrcamento" id="modalOrcamento">

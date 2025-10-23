@@ -1,0 +1,12 @@
+# Format 1: header with cliente_id,obra_id on first line then image names
+# Example:
+# 5,123
+# 1. Fachada
+# 2. Planta baixa
+
+54,83
+1. Planta humanizada do 7º Pavimento - Lazer
+2. Planta humanizada do apartamento Tipo 1
+3. Planta humanizada do apartamento Tipo 2
+4. Planta humanizada do apartamento Tipo 3
+5. Planta humanizada do apartamento Tipo 4

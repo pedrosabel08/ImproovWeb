@@ -59,7 +59,7 @@ if ($_SERVER["REQUEST_METHOD"] == "GET") {
 FROM historico_aprovacoes_imagens hi
 LEFT JOIN comentarios_imagem ci ON ci.ap_imagem_id = hi.id
 WHERE hi.funcao_imagem_id = $idFuncaoSelecionada
-GROUP BY hi.id";
+GROUP BY hi.id ORDER BY has_comments DESC, comment_count DESC";
 
     $resultImagens = $conn->query($sqlImagens);
     $imagens = array();

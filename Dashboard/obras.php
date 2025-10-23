@@ -40,6 +40,7 @@ $query = "SELECT
 FROM imagens_cliente_obra i
 JOIN obra o ON o.idobra = i.obra_id
 WHERE o.status_obra = 0
+    AND i.substatus_id NOT IN (8,9,6)
 GROUP BY o.idobra, categoria";
 
 $result = $conn->query($query);

@@ -2281,3 +2281,20 @@ ul.file-list {
 .select2-dropdown {
     font-size: 0.9rem;
 }
+
+.link_campo {
+    align-items: center;
+    flex-direction: row !important;
+}
+
+.link_campo .open-link-btn {
+    margin-left: 6px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.link_campo .open-link-btn:hover {
+    background: #eee;
+}

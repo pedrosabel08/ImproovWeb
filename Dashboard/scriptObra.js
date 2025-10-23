@@ -1085,11 +1085,49 @@ function infosObra(obraId) {
             // document.getElementById('dias_trabalhados').innerHTML = obra.dias_trabalhados ? `<strong>${obra.dias_trabalhados}</strong> dias` : '';
             // document.getElementById('total_imagens').textContent = `Total de Imagens: ${obra.total_imagens}`;
             // document.getElementById('total_imagens_antecipadas').textContent = `Imagens Antecipadas: ${obra.total_imagens_antecipadas}`;
-            document.getElementById('local').value = `${obra.local}`;
-            document.getElementById('altura_drone').value = `${obra.altura_drone}`;
-            document.getElementById('fotografico').value = `${obra.fotografico}`;
-            document.getElementById('link_drive').value = `${obra.link_drive}`;
-            document.getElementById('link_review').value = `${obra.link_review}`;
+            // Populate basic fields
+            document.getElementById('local').value = obra.local || '';
+            document.getElementById('altura_drone').value = obra.altura_drone || '';
+
+            // Populate link fields and ensure placeholders when empty
+            const fotograficoEl = document.getElementById('fotografico');
+            const driveEl = document.getElementById('link_drive');
+            const reviewEl = document.getElementById('link_review');
+
+            if (fotograficoEl) {
+                // set both property and attribute so the value is visible in DOM inspector
+                const val = obra.fotografico || '';
+                fotograficoEl.value = val;
+                try { fotograficoEl.setAttribute('value', val); } catch (e) {}
+                fotograficoEl.style.display = '';
+                fotograficoEl.placeholder = val ? '' : '--';
+            }
+            if (driveEl) {
+                const val = obra.link_drive || '';
+                driveEl.value = val;
+                try { driveEl.setAttribute('value', val); } catch (e) {}
+                driveEl.style.display = '';
+                driveEl.placeholder = val ? '' : '--';
+            }
+            if (reviewEl) {
+                const val = obra.link_review || '';
+                reviewEl.value = val;
+                try { reviewEl.setAttribute('value', val); } catch (e) {}
+                reviewEl.style.display = '';
+                reviewEl.placeholder = val ? '' : '--';
+            }
+
+            // Ensure open buttons reflect current values
+            // Ensure open buttons reflect current values (created only when inputs have meaningful content)
+            try {
+                if (typeof addOpenButton === 'function') {
+                    addOpenButton('fotografico');
+                    addOpenButton('link_drive');
+                    addOpenButton('link_review');
+                }
+            } catch (err) {
+                console.warn('addOpenButton error', err);
+            }
 
             // const infosDiv = document.getElementById('infos');
 
@@ -2201,16 +2239,17 @@ document.getElementById("salvarArquivo").addEventListener("click", function () {
         .then(data => {
             Swal.fire({
                 icon: 'success',
-                text: 'Prazo atualizado com sucesso!',
+                title: 'Prazo atualizado com sucesso!',
                 showConfirmButton: false,
-                timer: 1000
+                timer: 1500
             });
-            modalArquivos.style.display = 'none';
+            modalArquivos.style.display = 'none'; // Fecha o modal
+            infosObra(obraId); // Atualiza as informações da obra
         })
         .catch(error => {
             Swal.fire({
                 icon: 'error',
-                text: 'Erro ao atualizar o prazo. Tente novamente!',
+                title: 'Erro ao atualizar o prazo. Tente novamente!',
                 showConfirmButton: true
             });
             console.error("Erro:", error);
@@ -3203,23 +3242,35 @@ document.getElementById("addRevisao").addEventListener("click", function (event)
     // Define o que fazer após a resposta
     xhr.onload = function () {
         if (xhr.status === 200) {
-            Toastify({
-                text: 'Alteração enviada com sucesso!',
-                duration: 3000,
-                backgroundColor: "green",
-                close: true,
-                gravity: "top",
-                position: "right"
-            }).showToast();
-        } else {
-            Toastify({
-                text: 'Erro ao enviar alteração.',
-                duration: 3000,
-                backgroundColor: "red",
-                close: true,
-                gravity: "top",
-                position: "right"
-            }).showToast();
+            const response = JSON.parse(xhr.responseText);
+            const idRenderAdicionado = response.idrender;
+
+            if (response.status === "erro") {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Erro ao adicionar render',
+                    text: response.message
+                }).then(() => {
+                    if (response.message.includes("Sessão expirada")) {
+                        window.location.href = "../index.html"; // redireciona imediatamente ao clicar em OK
+                    }
+                });
+                return;
+
+            } else if (response.status === "sucesso") {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Alteração enviada!',
+                    text: 'Sua solicitação de alteração foi enviada com sucesso.',
+                    confirmButtonText: 'OK'
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Erro ao enviar',
+                    text: 'Tente novamente ou avise a NASA.'
+                });
+            }
         }
     };
 
@@ -3667,7 +3718,7 @@ function updateEvent(event) {
             if (res.error) throw new Error(res.message);
             showToast(res.message);
         })
-        .catch(err => showToast(err.message, false));
+        .catch(err => showToast(err.message, 'error'));
 }
 
 
@@ -4579,3 +4630,88 @@ document.getElementById("formUploadAcompanhamento").addEventListener("submit", f
 function fecharModalUploadAcompanhamento() {
     document.getElementById("modalUploadAcompanhamento").style.display = "none";
 }
+
+// Função auxiliar: normaliza URL (adiciona https:// se necessário)
+function normalizeUrl(url) {
+    if (!url) return null;
+    url = url.trim();
+    if (url === '') return null;
+    // se já tem protocolo
+    if (/^[a-zA-Z]+:\/\//.test(url)) return url;
+    // se é um e-mail, usar mailto:
+    if (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(url)) return 'mailto:' + url;
+    return 'https://' + url;
+}
+
+// Cria botão ao lado do input com id inputId
+function addOpenButton(inputId, containerSelector) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    // helper to decide if value is meaningful
+    const hasMeaningfulValue = (v) => {
+        if (!v) return false;
+        const trimmed = v.trim();
+        if (!trimmed) return false;
+        if (trimmed === '--') return false;
+        return true;
+    };
+
+    const existing = document.getElementById(inputId + '_openbtn');
+    // remove existing if no longer needed
+    if (existing && !hasMeaningfulValue(input.value)) {
+        existing.remove();
+    }
+
+    // create or ensure button exists only when input has content
+    const ensureButton = () => {
+        const val = input.value || '';
+        const should = hasMeaningfulValue(val);
+        let btnEl = document.getElementById(inputId + '_openbtn');
+
+        if (!should) {
+            if (btnEl) btnEl.remove();
+            return;
+        }
+
+        if (!btnEl) {
+            btnEl = document.createElement('button');
+            btnEl.type = 'button';
+            btnEl.id = inputId + '_openbtn';
+            btnEl.className = 'open-link-btn';
+            btnEl.title = 'Abrir link';
+            btnEl.innerHTML = '<i class="fa-solid fa-arrow-up-right-from-square"></i>';
+
+            btnEl.addEventListener('click', function () {
+                const raw = input.value || '';
+                const url = normalizeUrl(raw);
+                if (!url) {
+                    Toastify({ text: "URL inválida ou vazia", duration: 2000, gravity: "top", position: "right", backgroundColor: "#f44336" }).showToast();
+                    return;
+                }
+                window.open(url, '_blank', 'noopener,noreferrer');
+            });
+
+            if (containerSelector) {
+                const cont = document.querySelector(containerSelector);
+                if (cont) cont.appendChild(btnEl);
+                else input.parentNode.insertBefore(btnEl, input.nextSibling);
+            } else {
+                input.parentNode.insertBefore(btnEl, input.nextSibling);
+            }
+        }
+    };
+
+    // initial ensure
+    ensureButton();
+
+    // toggle on user input changes
+    input.removeEventListener('__openbtn_input_listener__', ensureButton);
+    // store the listener function reference via property so removeEventListener works
+    input.__openbtn_input_listener__ = ensureButton;
+    input.addEventListener('input', ensureButton);
+}
+
+// Chamadas (colocar depois de preencher os valores do form)
+addOpenButton('fotografico');
+addOpenButton('link_drive');
+addOpenButton('link_review');

@@ -37,6 +37,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const etapasUnicasObj = Object.fromEntries(etapasUnicas.map(v => [v, v]));
             const statusUnicos = [...new Set(dados.map(item => item.situacao))].sort();
             const statusUnicosObj = Object.fromEntries(statusUnicos.map(v => [v, v]));
+            const tiposUnicos = [...new Set(dados.map(item => item.tipo_imagem || "Não definido"))].sort();
+            const tiposUnicosObj = Object.fromEntries(tiposUnicos.map(v => [v, v]));
 
             tabela.getColumn("nome_status_imagem").updateDefinition({
                 headerFilterParams: { values: etapasUnicasObj }
@@ -44,6 +46,12 @@ document.addEventListener('DOMContentLoaded', () => {
             tabela.getColumn("situacao").updateDefinition({
                 headerFilterParams: { values: statusUnicosObj }
             });
+            // Atualiza opções de filtro para tipo_imagem
+            if (tabela.getColumn("tipo_imagem")) {
+                tabela.getColumn("tipo_imagem").updateDefinition({
+                    headerFilterParams: { values: tiposUnicosObj }
+                });
+            }
 
             return dados;
         },
@@ -219,6 +227,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             },
             {
+                title: "Tipo de Imagem",
+                field: "tipo_imagem",
+                hozAlign: "center",
+                headerFilter: "list",
+                headerFilterParams: { values: {} },
+                formatter: function (cell) {
+                    const valor = cell.getValue();
+                    return `<span class="tag tipo">${valor || 'Não definido'}</span>`;
+                }
+            },
+            {
                 title: "Etapa",
                 field: "nome_status_imagem",
                 hozAlign: "center",
@@ -284,6 +303,128 @@ document.addEventListener('DOMContentLoaded', () => {
         ]
     });
 
+    // Atualiza os indicadores com base nas linhas visíveis/filtradas
+    function atualizarIndicadoresFiltrados() {
+        try {
+            const rows = tabela.getRows(); // RowComponent[]
+            const visiveis = rows.filter(r => {
+                const el = r.getElement();
+                return el && el.style.display !== 'none';
+            }).map(r => r.getData());
+
+            const ind = {
+                REN: 0,
+                FIN: 0,
+                RVW: 0,
+                DRV: 0,
+                atrasadas: 0,
+                prazo_hoje: 0,
+                total: 0
+            };
+
+            const hoje = new Date();
+            hoje.setHours(0,0,0,0);
+
+            visiveis.forEach(item => {
+                const situacao = item.situacao;
+                if (situacao && ind.hasOwnProperty(situacao)) ind[situacao]++;
+
+                ind.total++;
+
+                const prazoRaw = item.prazo;
+                if (prazoRaw && prazoRaw !== '0000-00-00') {
+                    // suportar formatos YYYY/MM/DD ou YYYY-MM-DD ou DD/MM/YYYY
+                    let ano, mes, dia;
+                    if (prazoRaw.includes('/')) {
+                        const parts = prazoRaw.split('/');
+                        if (parts.length === 3) {
+                            // se estiver no formato DD/MM/YYYY
+                            if (parts[0].length === 2) {
+                                dia = parts[0]; mes = parts[1]; ano = parts[2];
+                            } else {
+                                ano = parts[0]; mes = parts[1]; dia = parts[2];
+                            }
+                        }
+                    } else if (prazoRaw.includes('-')) {
+                        const parts = prazoRaw.split('-');
+                        if (parts.length === 3) {
+                            ano = parts[0]; mes = parts[1]; dia = parts[2];
+                        }
+                    }
+
+                    if (ano && mes && dia) {
+                        const prazoDate = new Date(`${ano}-${mes}-${dia}`);
+                        const prazoTime = prazoDate.getTime();
+                        if (!isNaN(prazoTime)) {
+                            if (prazoTime < hoje.getTime() && situacao !== 'FIN') {
+                                ind.atrasadas++;
+                            } else if (prazoTime === hoje.getTime()) {
+                                ind.prazo_hoje++;
+                            }
+                        }
+                    }
+                }
+            });
+
+            atualizarIndicadores(ind);
+        } catch (e) {
+            console.error('Erro ao atualizar indicadores filtrados:', e);
+        }
+    }
+
+    // Hook nos eventos do Tabulator para recalcular quando os dados mudarem ou filtros forem aplicados
+    tabela.on('dataLoaded', function(data) {
+        atualizarIndicadoresFiltrados();
+    });
+
+    tabela.on('dataFiltered', function(filters, rows) {
+        // rows é array de RowComponent já filtrados; contamos diretamente
+        try {
+            const ind = {
+                REN: 0,
+                FIN: 0,
+                RVW: 0,
+                DRV: 0,
+                atrasadas: 0,
+                prazo_hoje: 0,
+                total: 0
+            };
+            const hoje = new Date(); hoje.setHours(0,0,0,0);
+            rows.forEach(r => {
+                const item = r.getData();
+                const situacao = item.situacao;
+                if (situacao && ind.hasOwnProperty(situacao)) ind[situacao]++;
+                ind.total++;
+
+                const prazoRaw = item.prazo;
+                if (prazoRaw && prazoRaw !== '0000-00-00') {
+                    let ano, mes, dia;
+                    if (prazoRaw.includes('/')) {
+                        const parts = prazoRaw.split('/');
+                        if (parts.length === 3) {
+                            if (parts[0].length === 2) { dia = parts[0]; mes = parts[1]; ano = parts[2]; }
+                            else { ano = parts[0]; mes = parts[1]; dia = parts[2]; }
+                        }
+                    } else if (prazoRaw.includes('-')) {
+                        const parts = prazoRaw.split('-');
+                        if (parts.length === 3) { ano = parts[0]; mes = parts[1]; dia = parts[2]; }
+                    }
+                    if (ano && mes && dia) {
+                        const prazoDate = new Date(`${ano}-${mes}-${dia}`);
+                        if (!isNaN(prazoDate.getTime())) {
+                            if (prazoDate.getTime() < hoje.getTime() && item.situacao !== 'FIN') ind.atrasadas++;
+                            else if (prazoDate.getTime() === hoje.getTime()) ind.prazo_hoje++;
+                        }
+                    }
+                }
+            });
+            atualizarIndicadores(ind);
+        } catch (e) {
+            console.error('dataFiltered handler error', e);
+            atualizarIndicadoresFiltrados();
+        }
+    });
+
     // Funções auxiliares para evitar duplicação de código
     function applyFilterAndPreventScroll(filterField, filterValue, callback = null) {
         // Salva a posição de rolagem e desabilita a rolagem do body
@@ -300,6 +441,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             window.scrollTo(0, scrollPos);
             document.body.style.overflow = '';
+            // Atualiza indicadores baseados no filtro aplicado
+            atualizarIndicadoresFiltrados();
         }, 100);
     }
 
@@ -328,6 +471,7 @@ document.addEventListener('DOMContentLoaded', () => {
             applyFilterAndPreventScroll("prazo", hojeFormatado, () => {
                 tabela.getGroups().forEach(group => group.show());
             });
+            // atualizar indicadores será chamado dentro da função
         });
     });
 
@@ -342,6 +486,7 @@ document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => {
                 window.scrollTo(0, scrollPos);
                 document.body.style.overflow = '';
+                atualizarIndicadoresFiltrados();
             }, 100);
         });
     });
@@ -389,8 +534,9 @@ function gerarPDFRelatorio(dados) {
         doc.setFontSize(10);
         doc.text(`Imagem: ${item.nome_imagem}`, 10, y);
         doc.text(`Prazo: ${item.prazo}`, 80, y);
-        doc.text(`Etapa: ${item.nome_status_imagem}`, 120, y);
-        doc.text(`Status: ${item.situacao}`, 160, y);
+        doc.text(`Tipo: ${item.tipo_imagem || 'Não definido'}`, 120, y);
+        doc.text(`Etapa: ${item.nome_status_imagem}`, 160, y);
+        doc.text(`Status: ${item.situacao}`, 200, y);
         y += 7;
         if (y > 280) {
             doc.addPage();

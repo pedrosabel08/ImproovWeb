@@ -150,10 +150,59 @@ function editRender(idrender_alta) {
                     btn.text(btn.text().includes('▼') ? 'Ocultar erros ▲' : 'Mostrar erros ▼');
                 });
 
-                const imgUrl = r.previa_jpg
-                    ? `https://improov.com.br/sistema/uploads/renders/${r.previa_jpg}`
-                    : '../assets/logo.jpg';
-                $('#modalPreviewImg').attr('src', imgUrl);
+                // Prefer previews array if available. If previews exist, show gallery and
+                // set the main image to the first preview. Do NOT show render.previa_jpg
+                // when previews are present.
+                const previews = response.previews || [];
+                const $imgPreviewContainer = $('.imagem-preview');
+
+                // Remove any existing gallery to avoid duplicates
+                $imgPreviewContainer.find('#modalGallery').remove();
+
+                if (previews.length > 0) {
+                    const first = previews[0];
+                    const mainUrl = first.filename
+                        ? `https://improov.com.br/sistema/uploads/renders/${first.filename}`
+                        : '../assets/logo.jpg';
+
+                    // Set main image src to first preview
+                    $('#modalPreviewImg').attr('src', mainUrl);
+
+                    // Build gallery node
+                    const $gallery = $('<div id="modalGallery" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"></div>');
+                    previews.forEach(function (p, idx) {
+                        const thumbUrl = p.filename
+                            ? `https://improov.com.br/sistema/uploads/renders/${p.filename}`
+                            : '../assets/logo.jpg';
+                        const $thumb = $(`<img class="modal-thumb" data-filename="${p.filename}" data-idx="${idx}" src="${thumbUrl}" alt="Preview ${idx + 1}">`);
+                        // style the thumbnail a bit (you can move to CSS file)
+                        $thumb.css({ width: '60px', height: '60px', objectFit: 'cover', cursor: 'pointer', borderRadius: '4px', border: '2px solid transparent' });
+                        if (idx === 0) $thumb.css('border-color', '#4caf50');
+                        $gallery.append($thumb);
+                    });
+
+                    // Insert gallery after the main image inside .imagem-preview
+                    if ($imgPreviewContainer.length) {
+                        $imgPreviewContainer.append($gallery);
+                    } else {
+                        // Fallback: append to body
+                        $('body').append($gallery);
+                    }
+
+                    // Thumbnail click handler: set main image and active state
+                    $gallery.find('.modal-thumb').off('click').on('click', function () {
+                        const src = $(this).attr('src');
+                        $('#modalPreviewImg').attr('src', src);
+                        $gallery.find('.modal-thumb').css('border-color', 'transparent');
+                        $(this).css('border-color', '#4caf50');
+                    });
+                } else {
+                    // No previews: fallback to previsa_jpg if available
+                    const imgUrl = r.previa_jpg
+                        ? `https://improov.com.br/sistema/uploads/renders/${r.previa_jpg}`
+                        : '../assets/logo.jpg';
+                    $('#modalPreviewImg').attr('src', imgUrl);
+                }
 
                 $('#myModal').css('display', 'flex');
 

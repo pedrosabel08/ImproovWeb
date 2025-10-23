@@ -93,13 +93,79 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
     }
 
     // ==========================================================
+    // 5) Arquivos relacionados
+    // - arquivos_imagem: arquivos vinculados diretamente à imagem (imagem_id)
+    // - arquivos_tipo: arquivos vinculados ao tipo de imagem (tipo_imagem_id)
+    // Retornamos as colunas: obra_id, imagem_id, tipo_imagem_id, nome_interno, caminho, tipo, categoria_id, recebido_em
+    // ==========================================================
+    $arquivos_imagem = [];
+    $arquivos_tipo = [];
+
+    // fetch tipo_imagem (name) from imagens_cliente_obra
+    $tipoImagemName = null;
+    $sqlTipo = "SELECT tipo_imagem, obra_id FROM imagens_cliente_obra WHERE idimagens_cliente_obra = " . $idImagemSelecionada . " LIMIT 1";
+    if ($resTipo = $conn->query($sqlTipo)) {
+        if ($rowTipo = $resTipo->fetch_assoc()) {
+            // tipo_imagem in imagens_cliente_obra is a varchar (name). Keep as string.
+            $tipoImagemName = isset($rowTipo['tipo_imagem']) ? $rowTipo['tipo_imagem'] : null;
+            $obraIdFromImage = isset($rowTipo['obra_id']) ? (int)$rowTipo['obra_id'] : null;
+        }
+    }
+
+    // Query arquivos directly linked to the image
+    $sqlArquivosImg = "SELECT a.obra_id, a.imagem_id, a.tipo_imagem_id, a.nome_interno, a.caminho, a.tipo, a.categoria_id, a.recebido_em, a.status,
+        c.nome_categoria AS categoria_nome
+        FROM arquivos a
+        LEFT JOIN categorias c ON c.idcategoria = a.categoria_id
+        WHERE a.status = 'atualizado' AND a.imagem_id = " . $idImagemSelecionada . " ORDER BY a.recebido_em DESC";
+    if ($resArquivosImg = $conn->query($sqlArquivosImg)) {
+        while ($row = $resArquivosImg->fetch_assoc()) {
+            $arquivos_imagem[] = $row;
+        }
+    }
+
+    // Query arquivos linked to the tipo_imagem (if available)
+    if ($tipoImagemName) {
+        // escape the string for SQL
+        $tipoEscaped = $conn->real_escape_string($tipoImagemName);
+
+        // The schema can store tipo_imagem as a name (varchar) or as an id referencing table tipo_imagem.
+        // To be robust, left-join tipo_imagem and accept rows where either:
+        //  - arquivos.tipo_imagem_id equals the name, or
+        //  - arquivos.tipo_imagem_id equals the id of a tipo_imagem row whose nome matches the name.
+
+                // Restrict to the same obra (if we have it) so we don't pull files from other obras
+                $obraFilter = '';
+                if (!empty($obraIdFromImage)) {
+                        $obraFilter = ' AND a.obra_id = ' . (int)$obraIdFromImage;
+                }
+
+                $sqlArquivosTipo = "SELECT a.obra_id, a.imagem_id, a.tipo_imagem_id, a.nome_interno, a.caminho, a.tipo, a.categoria_id, a.recebido_em, a.status,
+                                c.nome_categoria AS categoria_nome
+                        FROM arquivos a
+                        LEFT JOIN tipo_imagem t ON (t.id_tipo_imagem = a.tipo_imagem_id OR t.nome = a.tipo_imagem_id)
+                        LEFT JOIN categorias c ON c.idcategoria = a.categoria_id
+                        WHERE (a.tipo_imagem_id = '" . $tipoEscaped . "' OR t.nome = '" . $tipoEscaped . "')
+                            AND (a.imagem_id IS NULL OR a.imagem_id = 0)" . $obraFilter . " AND a.status = 'atualizado'
+                        ORDER BY a.recebido_em DESC";
+
+        if ($resArquivosTipo = $conn->query($sqlArquivosTipo)) {
+            while ($row = $resArquivosTipo->fetch_assoc()) {
+                $arquivos_tipo[] = $row;
+            }
+        }
+    }
+
+    // ==========================================================
     // Resposta final
     // ==========================================================
     echo json_encode([
         "funcoes"       => $funcoes,
         "status_imagem" => $statusImagem,
         "colaboradores" => $colaboradores,
-        "log_alteracoes" => $logAlteracoes
+        "log_alteracoes" => $logAlteracoes,
+        "arquivos_imagem" => $arquivos_imagem,
+        "arquivos_tipo" => $arquivos_tipo
     ], JSON_UNESCAPED_UNICODE);
 } else {
     echo json_encode(["error" => "Método de requisição inválido."]);

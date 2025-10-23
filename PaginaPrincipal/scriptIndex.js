@@ -889,6 +889,136 @@ function abrirSidebar(idFuncao, idImagem) {
                 sidebarContent.appendChild(logDiv);
             }
 
+            // Helper: group array of arquivos by categoria_nome -> tipo
+            function groupArquivos(arr) {
+                const grouped = {}; // { categoria: { tipo: [items] } }
+                arr.forEach(a => {
+                    const cat = a.categoria_nome || 'Sem categoria';
+                    const tipo = a.tipo || a.nome_interno?.split('.').pop()?.toUpperCase() || 'Outros';
+                    if (!grouped[cat]) grouped[cat] = {};
+                    if (!grouped[cat][tipo]) grouped[cat][tipo] = [];
+                    grouped[cat][tipo].push(a);
+                });
+                return grouped;
+            }
+
+            // normalize path: replace /mnt/clientes -> Z:, use backslashes, and trim
+            function normalizePath(rawPath, isTipoLevel = false) {
+                if (!rawPath) return '';
+                let p = rawPath;
+                // replace linux mount prefix with drive letter
+                p = p.replace(/^\/\/*mnt\/clientes/i, 'Z:');
+                // normalize slashes to backslashes
+                p = p.replace(/\//g, '\\');
+                // remove trailing backslashes
+                p = p.replace(/\\+$/g, '');
+
+                const parts = p.split('\\').filter(Boolean);
+                if (parts.length === 0) return p;
+
+                const TYPES = ['IMG', 'DWG', 'PDF', 'Outros', 'SKP'];
+                let idx = -1;
+                for (let i = 0; i < parts.length; i++) {
+                    if (TYPES.includes(parts[i].toUpperCase())) {
+                        idx = i;
+                        break;
+                    }
+                }
+
+                if (idx >= 0) {
+                    // for type-level files, stop at the type folder
+                    if (isTipoLevel) {
+                        return parts.slice(0, idx + 1).join('\\');
+                    }
+                    // for image-specific files, keep the folder after the type as well (if present)
+                    if (idx + 1 < parts.length) {
+                        return parts.slice(0, idx + 2).join('\\');
+                    }
+                    return parts.slice(0, idx + 1).join('\\');
+                }
+
+                // fallback: if last segment looks like a filename (has an extension), drop it
+                const last = parts[parts.length - 1];
+                if (/\.[A-Za-z0-9]{1,6}$/.test(last)) {
+                    return parts.slice(0, -1).join('\\');
+                }
+
+                // otherwise return full normalized path
+                return parts.join('\\');
+            }
+
+            function renderGroupedArquivos(title, arr, isTipoLevel = false) {
+                if (!arr || arr.length === 0) return;
+                const section = document.createElement('div');
+                section.classList.add('arquivos-section');
+                const header = document.createElement('strong');
+                header.textContent = title;
+                section.appendChild(header);
+
+                const grouped = groupArquivos(arr);
+
+                // For each category
+                Object.keys(grouped).forEach(cat => {
+                    const catDiv = document.createElement('div');
+                    catDiv.classList.add('arquivos-categoria');
+                    const catHeader = document.createElement('h4');
+                    // Count total files in category
+                    const totalCat = Object.values(grouped[cat]).reduce((s, arr) => s + arr.length, 0);
+                    catHeader.innerHTML = `${cat} <small style="color:#666">(${totalCat})</small>`;
+                    catDiv.appendChild(catHeader);
+
+                    // For each tipo inside category
+                    Object.keys(grouped[cat]).forEach(tipo => {
+                        const tipoArr = grouped[cat][tipo];
+                        const tipoDiv = document.createElement('div');
+                        tipoDiv.classList.add('arquivos-tipo');
+                        const tipoHeader = document.createElement('div');
+                        tipoHeader.classList.add('tipo-header');
+                        tipoHeader.innerHTML = `<strong>${tipo}</strong> <small style="color:#666">(${tipoArr.length})</small>`;
+                        tipoDiv.appendChild(tipoHeader);
+
+                        // Instead of listing every file, show count and unique path(s)
+                        const rawPaths = Array.from(new Set(tipoArr.map(it => it.caminho).filter(Boolean)));
+                        const paths = rawPaths.map(p => normalizePath(p, isTipoLevel));
+                        // keep unique normalized paths
+                        const uniquePaths = Array.from(new Set(paths));
+
+                        const infoDiv = document.createElement('div');
+                        infoDiv.classList.add('tipo-info');
+                        infoDiv.style.marginLeft = '8px';
+
+                        // Paths: show unique caminhos only (clickable). If none, show 'Sem caminho'
+                        if (uniquePaths.length > 0) {
+                            uniquePaths.forEach(p => {
+                                const pDiv = document.createElement('div');
+                                pDiv.classList.add('path');
+                                pDiv.innerHTML = `<a href="${p}" target="_blank" rel="noopener noreferrer" style="color:#007bff;">${p}</a>`;
+                                infoDiv.appendChild(pDiv);
+                            });
+                        } else {
+                            const noneDiv = document.createElement('div');
+                            noneDiv.classList.add('path');
+                            noneDiv.style.color = '#666';
+                            noneDiv.textContent = 'Sem caminho';
+                            infoDiv.appendChild(noneDiv);
+                        }
+
+                        tipoDiv.appendChild(infoDiv);
+                        catDiv.appendChild(tipoDiv);
+                    });
+
+                    section.appendChild(catDiv);
+                });
+
+                sidebarContent.appendChild(section);
+            }
+
+            // Render image-specific arquivos grouped (show one folder after type)
+            renderGroupedArquivos('Arquivos da imagem', data.arquivos_imagem, false);
+
+            // Render type-level arquivos grouped (trim to the type folder)
+            renderGroupedArquivos('Arquivos do tipo', data.arquivos_tipo, true);
+
             // Abre a sidebar
             sidebarRight.classList.add('active');
         });

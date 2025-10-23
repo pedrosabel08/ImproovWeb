@@ -237,9 +237,11 @@ $todasFuncoes = [];
 
 if (count($imagemIds) > 0) {
     $inImagem = implode(',', array_fill(0, count($imagemIds), '?'));
-    $sqlTodasFuncoes = "SELECT imagem_id, funcao_id, status, prazo
-                        FROM funcao_imagem
-                        WHERE imagem_id IN ($inImagem)";
+    $sqlTodasFuncoes = "SELECT fi.imagem_id, fi.funcao_id, fi.status, fi.prazo, fi.colaborador_id,
+                        COALESCE(c.nome_colaborador, '') AS nome_colaborador
+                        FROM funcao_imagem fi
+                        LEFT JOIN colaborador c ON fi.colaborador_id = c.idcolaborador
+                        WHERE fi.imagem_id IN ($inImagem)";
     $stmtTodas = $conn->prepare($sqlTodasFuncoes);
     $typesTodas = str_repeat('i', count($imagemIds));
     $stmtTodas->bind_param($typesTodas, ...$imagemIds);
@@ -310,11 +312,21 @@ foreach ($funcoes as $funcao) {
     elseif ($indiceAtual !== false && $indiceAtual > 0 && isset($todasFuncoes[$imagemId])) {
         for ($i = $indiceAtual - 1; $i >= 0; $i--) {
             $funcaoAnteriorId = $ordemIds[$i];
-            if (isset($todasFuncoes[$imagemId][$funcaoAnteriorId])) {
+                if (isset($todasFuncoes[$imagemId][$funcaoAnteriorId])) {
                 $rowAnterior    = $todasFuncoes[$imagemId][$funcaoAnteriorId];
                 $statusAnterior = $rowAnterior['status'];
                 $prazoAnterior  = $rowAnterior['prazo'];
-                if (in_array($statusAnterior, ['Finalizado', 'Aprovado', 'Aprovado com ajustes'])) {
+
+                // Additionally liberate if the previous function's collaborator is 'Não se aplica'
+                // or its colaborador_id equals 15
+                $prevCollabId = isset($rowAnterior['colaborador_id']) ? intval($rowAnterior['colaborador_id']) : null;
+                $prevCollabName = isset($rowAnterior['nome_colaborador']) ? $rowAnterior['nome_colaborador'] : '';
+                $prevCollabNameLower = (function($s){ return function_exists('mb_strtolower') ? mb_strtolower($s) : strtolower($s); })($prevCollabName);
+
+                if (in_array($statusAnterior, ['Finalizado', 'Aprovado', 'Aprovado com ajustes'])
+                    || $prevCollabId === 15
+                    || $prevCollabNameLower === mb_strtolower('Não se aplica')
+                ) {
                     $liberada = true;
                 }
                 break;

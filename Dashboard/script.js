@@ -79,33 +79,94 @@ let chartInstance = null;
 fetch('obras.php')
     .then(res => res.json())
     .then(data => {
-        // Obras Paradas
+        // Render HOLD column (uses #hold-cards and #count-hold)
         const holdCards = document.getElementById('hold-cards');
         holdCards.innerHTML = '';
-        data.hold.forEach(obra => {
+        let totalHoldImages = 0;
+        (data.hold || []).forEach(obra => {
+            totalHoldImages += obra.total_imagens || 0;
+            const title = escapeHtml(obra.nome_obra || '');
+            const count = obra.total_imagens || 0;
+            const totalObra = obra.total_obra || count;
+            const pct = totalObra > 0 ? Math.round((count / totalObra) * 100) : 0;
             holdCards.innerHTML += `
-                <div class="kanban-card" id="${obra.idobra}">${obra.nomenclatura} - (${obra.idobra})</div>`;
+                <div class="kanban-card" data-id="${obra.idobra}" id="obra-hold-${obra.idobra}">
+                    <div class="header-kanban">
+                        <span class="priority baixa">Obra</span>
+                        <div class="progress-wrapper">
+                            <div class="progress-text">${count}/${totalObra}</div>
+                            <div class="progress-bar"><div class="progress-fill" style="width: ${pct}%;"></div></div>
+                        </div>
+                    </div>
+                    <h5>${title} (${pct}%)</h5>
+                    <p>Total imagens: ${count}</p>
+                </div>`;
         });
-        document.getElementById('count-hold').textContent = data.hold.length;
+        document.getElementById('count-hold').textContent = totalHoldImages;
 
-        // Obras em Andamento
-        const andamentoCards = document.getElementById('andamento-cards');
-        andamentoCards.innerHTML = '';
-        data.andamento.forEach(obra => {
-            andamentoCards.innerHTML += `
-                <div class="kanban-card" id="${obra.idobra}">${obra.nomenclatura} - (${obra.idobra})</div>`;
+        // Render Esperando iniciar column (uses #andamento-cards and #count-andamento)
+        const esperandoCards = document.getElementById('andamento-cards');
+        esperandoCards.innerHTML = '';
+        let totalEsperandoImages = 0;
+        (data.esperando || []).forEach(obra => {
+            totalEsperandoImages += obra.total_imagens || 0;
+            const title = escapeHtml(obra.nome_obra || '');
+            const count = obra.total_imagens || 0;
+            const totalObraE = obra.total_obra || count;
+            const pctE = totalObraE > 0 ? Math.round((count / totalObraE) * 100) : 0;
+            esperandoCards.innerHTML += `
+                <div class="kanban-card" data-id="${obra.idobra}" id="obra-esperando-${obra.idobra}">
+                    <div class="header-kanban">
+                        <span class="priority media">Obra</span>
+                        <div class="progress-wrapper">
+                            <div class="progress-text">${count}/${totalObraE}</div>
+                            <div class="progress-bar"><div class="progress-fill" style="width: ${pctE}%;"></div></div>
+                        </div>
+                    </div>
+                    <h5>${title} (${pctE}%)</h5>
+                    <p>Total imagens: ${count}</p>
+                </div>`;
         });
-        document.getElementById('count-andamento').textContent = data.andamento.length;
+        document.getElementById('count-andamento').textContent = totalEsperandoImages;
 
-        // Obras Finalizadas
-        const finalizadasCards = document.getElementById('finalizadas-cards');
-        finalizadasCards.innerHTML = '';
-        data.finalizadas.forEach(obra => {
-            finalizadasCards.innerHTML += `
-                <div class="kanban-card" id="${obra.idobra}">${obra.nomenclatura} - (${obra.idobra})</div>`;
+        // Render Em produção column (uses #finalizadas-cards and #count-finalizadas)
+        const producaoCards = document.getElementById('finalizadas-cards');
+        producaoCards.innerHTML = '';
+        let totalProducaoImages = 0;
+        (data.producao || []).forEach(obra => {
+            totalProducaoImages += obra.total_imagens || 0;
+            const title = escapeHtml(obra.nome_obra || '');
+            const count = obra.total_imagens || 0;
+            const totalObraP = obra.total_obra || count;
+            const pctP = totalObraP > 0 ? Math.round((count / totalObraP) * 100) : 0;
+            producaoCards.innerHTML += `
+                <div class="kanban-card" data-id="${obra.idobra}" id="obra-producao-${obra.idobra}">
+                    <div class="header-kanban">
+                        <span class="priority alta">Obra</span>
+                        <div class="progress-wrapper">
+                            <div class="progress-text">${count}/${totalObraP}</div>
+                            <div class="progress-bar"><div class="progress-fill" style="width: ${pctP}%;"></div></div>
+                        </div>
+                    </div>
+                    <h5>${title} (${pctP}%)</h5>
+                    <p>Total imagens: ${count}</p>
+                </div>`;
         });
-        document.getElementById('count-finalizadas').textContent = data.finalizadas.length;
+        document.getElementById('count-finalizadas').textContent = totalProducaoImages;
+    })
+    .catch(err => {
+        console.error('Erro ao carregar obras:', err);
     });
+
+// Simple HTML escaper to avoid XSS when inserting obra names
+function escapeHtml(str) {
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
 
 
 function applyStatusImagem(cell, status) {

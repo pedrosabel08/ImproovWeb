@@ -1,36 +1,67 @@
 <?php
 include '../conexao.php'; // conexão com o banco
 
+// Prepare response arrays for categories
 $response = [
     'hold' => [],
-    'andamento' => [],
-    'finalizadas' => []
+    'esperando' => [],
+    'producao' => []
 ];
 
-// Query para obras paradas (HOLD)
-$queryHold = "SELECT o.idobra, o.nomenclatura
-FROM obra o
-JOIN imagens_cliente_obra ico ON o.idobra = ico.obra_id
+// First: get total images per obra (all images for active obras)
+$totalsQuery = "SELECT o.idobra, o.nomenclatura AS nome_obra, COUNT(*) AS total_obra_imagens
+FROM imagens_cliente_obra i
+JOIN obra o ON o.idobra = i.obra_id
 WHERE o.status_obra = 0
-GROUP BY o.idobra, o.nomenclatura
-HAVING COUNT(*) = SUM(ico.status_id IN (7, 9))";
-$resultHold = $conn->query($queryHold);
-while ($row = $resultHold->fetch_assoc()) {
-    $response['hold'][] = $row;
+GROUP BY o.idobra";
+$totalsResult = $conn->query($totalsQuery);
+$totals = [];
+if ($totalsResult) {
+    while ($r = $totalsResult->fetch_assoc()) {
+        $totals[$r['idobra']] = (int)$r['total_obra_imagens'];
+    }
 }
 
-// Query para obras em andamento
-$queryAndamento = "SELECT idobra, nomenclatura FROM obra WHERE status_obra = 0";
-$resultAndamento = $conn->query($queryAndamento);
-while ($row = $resultAndamento->fetch_assoc()) {
-    $response['andamento'][] = $row;
-}
+// Query: count images per obra grouped by category
+$query = "SELECT 
+    o.idobra,
+    o.nomenclatura AS nome_obra,
+    CASE
+        WHEN i.substatus_id = 7 THEN 'HOLD'
+        WHEN i.substatus_id = 2
+             AND NOT EXISTS (
+                  SELECT 1 FROM funcao_imagem fi 
+                  WHERE fi.imagem_id = i.idimagens_cliente_obra 
+                    AND fi.status <> 'Não iniciado'
+              ) THEN 'Esperando iniciar'
+        ELSE 'Em produção'
+    END AS categoria,
+    COUNT(*) AS total_imagens
+FROM imagens_cliente_obra i
+JOIN obra o ON o.idobra = i.obra_id
+WHERE o.status_obra = 0
+GROUP BY o.idobra, categoria";
 
-// Query para obras finalizadas
-$queryFinalizadas = "SELECT idobra, nomenclatura FROM obra WHERE status_obra = 1";
-$resultFinalizadas = $conn->query($queryFinalizadas);
-while ($row = $resultFinalizadas->fetch_assoc()) {
-    $response['finalizadas'][] = $row;
+$result = $conn->query($query);
+if ($result) {
+    while ($row = $result->fetch_assoc()) {
+        $categoria = $row['categoria'];
+        $idobra = $row['idobra'];
+        $item = [
+            'idobra' => $idobra,
+            'nome_obra' => $row['nome_obra'],
+            'total_imagens' => (int)$row['total_imagens'],
+            'total_obra' => isset($totals[$idobra]) ? $totals[$idobra] : (int)$row['total_imagens']
+        ];
+
+        if ($categoria === 'HOLD') {
+            $response['hold'][] = $item;
+        } elseif ($categoria === 'Esperando iniciar') {
+            $response['esperando'][] = $item;
+        } else {
+            $response['producao'][] = $item;
+        }
+    }
 }
 
 header('Content-Type: application/json');

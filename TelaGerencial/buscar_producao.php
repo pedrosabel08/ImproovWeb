@@ -9,14 +9,15 @@ $mesAnterior = ($mes == 1) ? 12 : $mes - 1;
 $sql = "SELECT 
     c.nome_colaborador, 
     f.nome_funcao, 
-    SUM(fi.valor) AS total_valor, 
-    fi.data_pagamento,
-    COUNT(*) AS quantidade
+    -- SUM(fi.valor) AS total_valor, 
+    -- fi.data_pagamento,
+    COUNT(*) AS quantidade,
+    SUM(CASE WHEN fi.pagamento = 1 THEN 1 ELSE 0 END) AS pagas,
+    SUM(CASE WHEN fi.pagamento <> 1 OR fi.pagamento IS NULL THEN 1 ELSE 0 END) AS nao_pagas
   FROM funcao_imagem fi 
   JOIN colaborador c ON c.idcolaborador = fi.colaborador_id 
   JOIN funcao f ON f.idfuncao = fi.funcao_id
-  WHERE MONTH(fi.data_pagamento) = ? AND YEAR(fi.data_pagamento) = YEAR(CURDATE()) 
-    AND fi.data_pagamento <> '0000-00-00' AND fi.valor > 1
+  WHERE MONTH(fi.prazo) = ? AND YEAR(fi.prazo) = YEAR(CURDATE()) AND fi.colaborador_id <> 21
   GROUP BY c.nome_colaborador, f.nome_funcao";
 $stmt = $conn->prepare($sql); // Usa a conexão do arquivo conexao.php
 $stmt->bind_param("i", $mes);

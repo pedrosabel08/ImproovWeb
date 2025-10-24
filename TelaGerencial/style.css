@@ -14,14 +14,13 @@ body {
 
 .container {
     grid-column: 2;
-    padding: 0 40px;
+    padding: 40px;
 }
 
 header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 20px 0;
 }
 
 h2 {
@@ -50,7 +49,11 @@ table {
 }
 
 .select {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     text-align: center;
+    margin-top: 40px;
 }
 
 th,

@@ -1,16 +1,647 @@
-// document.getElementById('showMenu').addEventListener('click', function () {
-//     const menu2 = document.getElementById('menu2');
-//     menu2.classList.toggle('hidden');
-// });
 
-// window.addEventListener('click', function (event) {
-//     const menu2 = document.getElementById('menu2');
-//     const button = document.getElementById('showMenu');
+if (colaborador_id === 9 || colaborador_id === 21) {
+    document.getElementById('idcolab').style.display = 'flex'; // libera
+} else {
+    document.getElementById('idcolab').style.display = 'none'; // esconde
+}
+// const idusuario = 1;
 
-//     if (!button.contains(event.target) && !menu2.contains(event.target)) {
-//         menu2.classList.add('hidden');
-//     }
-// });
+document.getElementById('idcolab').addEventListener('change', function () {
+
+    const idcolab = parseInt(this.value, 10);
+    carregarDados(idcolab);
+
+});
+
+function carregarDados(colaborador_id) {
+
+    let url = `PaginaPrincipal/getFuncoesPorColaborador.php?colaborador_id=${colaborador_id}`;
+
+    const xhr = new XMLHttpRequest();
+
+    // Mostra loading quando iniciar a requisição
+    xhr.addEventListener("loadstart", () => {
+        document.getElementById("loading").style.display = "block";
+    });
+
+    // Esconde loading quando terminar
+    xhr.addEventListener("loadend", () => {
+        document.getElementById("loading").style.display = "none";
+    });
+
+    xhr.onreadystatechange = function () {
+        if (xhr.readyState === 4) {
+            if (xhr.status === 200) {
+                try {
+                    const data = JSON.parse(xhr.responseText);
+
+                    // Chama o tratamento
+                    processarDados(data);
+
+                } catch (err) {
+                    console.error("Erro ao parsear JSON:", err);
+                }
+            } else {
+                console.error("Erro na requisição:", xhr.status);
+            }
+        }
+    };
+
+    xhr.open("GET", url, true);
+    xhr.send();
+}
+// extrai a lógica do fetch para uma função reutilizável
+function processarDados(data) {
+    const statusMap = {
+        'Não iniciado': 'to-do',
+        'Em andamento': 'in-progress',
+        'Em aprovação': 'in-review',
+        'Ajuste': 'ajuste',
+        'Finalizado': 'done',
+        'HOLD': 'hold'
+    };
+
+    Object.values(statusMap).forEach(colId => {
+        const col = document.getElementById(colId);
+        if (col) col.querySelector('.content').innerHTML = '';
+    });
+    // Função auxiliar para criar cards
+    function criarCard(item, tipo, media) {
+        // Define status real
+        let status = item.status || 'Não iniciado';
+        if (status === 'Ajuste') status = 'Ajuste';
+        else if (status === 'Em aprovação')
+            status = 'Em aprovação';
+        else if (status === 'Em andamento')
+            status = 'Em andamento';
+        else if (['Aprovado', 'Aprovado com ajustes', 'Finalizado'].includes(status))
+            status = 'Finalizado';
+        else if (status === 'Não iniciado')
+            status = 'Não iniciado';
+        else if (status === 'HOLD' || status === 'Hold')
+            status = 'HOLD';
+        else
+            status = 'Não iniciado';
+
+        const colunaId = statusMap[status];
+        const coluna = document.getElementById(colunaId)?.querySelector('.content');
+        if (!coluna) return;
+
+        // Define a classe da tarefa (criada ou imagem)
+        const tipoClasse = tipo === 'imagem' ? 'tarefa-imagem' : 'tarefa-criada';
+
+        // Normaliza prioridade (número ou string)
+        if (item.prioridade == 3 || item.prioridade === 'baixa') {
+            item.prioridade = 'baixa';
+        } else if (item.prioridade == 2 || item.prioridade === 'media' || item.prioridade === 'média') {
+            item.prioridade = 'media';
+        } else {
+            item.prioridade = 'alta';
+        }
+
+
+        // Nome a exibir
+        const titulo = tipo === 'imagem' ? item.imagem_nome : item.titulo;
+        const subtitulo = tipo === 'imagem' ? item.nome_funcao : item.descricao;
+
+        function getTempoClass(tempo, media) {
+            if (!tempo || tempo === 0) return ""; // sem tempo registrado
+
+            if (tempo <= media) {
+                return "tempo-bom"; // verde
+            } else if (tempo <= media * 1.3) {
+                return "tempo-atenção"; // amarelo
+            } else {
+                return "tempo-ruim"; // vermelho
+            }
+        }
+
+
+        // Pega a média da função específica
+        const mediaFuncao = media[item.funcao_id] || 0;
+
+        // Bolinha só no "Não iniciado"
+        let bolinhaHTML = "";
+        let liberado = "1"; // padrão liberado
+
+        // Cria card
+        const card = document.createElement('div');
+        card.className = `kanban-card ${tipoClasse}`; // só a classe base
+
+        if (tipo === 'imagem') {
+            // lógica específica para imagem
+            if (status === "Não iniciado") {
+                const statusAnterior = item.status_funcao_anterior || "";
+                if (["Aprovado", "Finalizado", "Aprovado com ajustes"].includes(statusAnterior)) {
+                    bolinhaHTML = `<span class="bolinha verde" data-status-anterior="${statusAnterior}"></span>`;
+                    liberado = "1";
+                } else if (item.liberada) {
+                    bolinhaHTML = `<span class="bolinha verde" data-status-anterior="${statusAnterior || ''}"></span>`;
+                    liberado = "1";
+                } else if (item.nome_funcao === "Filtro de assets") {
+                    bolinhaHTML = `<span class="bolinha verde" data-status-anterior="${statusAnterior || ''}"></span>`;
+                    liberado = "1";
+                } else {
+                    bolinhaHTML = `<span class="bolinha vermelho" data-status-anterior="${statusAnterior || ''}"></span>`;
+                    liberado = "0";
+                }
+
+            }
+
+
+            card.setAttribute('data-id', `${item.idfuncao_imagem}`);
+            card.setAttribute('data-id-imagem', `${item.imagem_id}`);
+            card.setAttribute('data-id-funcao', `${item.funcao_id}`);
+            card.setAttribute('liberado', liberado);
+            card.setAttribute('data-nome_status', `${item.nome_status}`); // para filtro
+            card.setAttribute('data-prazo', `${item.prazo}`); // para filtro
+
+        } else {
+            // lógica para tarefas criadas
+            bolinhaHTML = '';
+            // 🟢 Lógica para tarefas criadas
+            card.dataset.id = item.id;                   // apenas id simples
+            card.dataset.titulo = item.titulo;   // se precisar para modal
+            card.dataset.descricao = item.descricao;
+            card.dataset.prazo = item.prazo;
+            card.dataset.status = item.status;
+            card.dataset.prioridade = item.prioridade;
+            card.setAttribute('liberado', '1');  // sempre liberado
+        }
+
+
+        // adiciona bloqueado se necessário
+        if (liberado === "0") {
+            card.classList.add("bloqueado");
+        }
+
+        function isAtrasada(prazoStr) {
+            // Divide a string 'YYYY-MM-DD'
+            const [ano, mes, dia] = prazoStr.split('-').map(Number);
+            const prazo = new Date(ano, mes - 1, dia);
+
+            const hoje = new Date();
+            const hojeLimpo = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+
+            return prazo < hojeLimpo;
+        }
+
+        const atrasada = item.prazo ? isAtrasada(item.prazo) : false;
+
+        card.innerHTML = `
+                    <div class="header-kanban">
+                        <span class="priority ${item.prioridade || 'medium'}">
+                            ${item.prioridade || 'Medium'}
+                        </span>
+                        ${bolinhaHTML}
+                    </div>
+                        <h5>${titulo || '-'}</h5>
+                        <p>${subtitulo || '-'}</p>
+                    <div class="card-footer">
+                        <span class="date ${atrasada ? 'atrasada' : ''}">
+                            <i class="fa-regular fa-calendar"></i>
+                            ${item.prazo ? formatarData(item.prazo) : '-'}
+                        </span>
+                    </div>
+                    <div class="card-log">
+                            <span 
+                                class="date tooltip ${getTempoClass(item.tempo_calculado, mediaFuncao)}" 
+                                data-tooltip="${formatarDuracao(mediaFuncao)}"
+                                data-inicio="${item.tempo_calculado || ''}">
+                                <i class="ri-time-line"></i> 
+                                ${item.tempo_calculado ? formatarDuracao(item.tempo_calculado) : '-'}
+                                </span>
+                    <div class="comments">
+                        ${item.indice_envio_atual ? `<span class="indice_envio"><i class="ri-file-line"></i> ${item.indice_envio_atual} |</span>` : ''}
+                        ${item.indice_envio_atual ?
+                (item.comentarios_ultima_versao > 0 ?
+                    `<span class="numero_comments"><i class="ri-chat-3-line"></i> ${item.comentarios_ultima_versao}</span>`
+                    : `<span class="numero_comments">0</span>`)
+                : ''
+            }
+                    </div>
+
+                    </div>
+                `;
+
+        // Atributos para filtros
+        card.dataset.obra_nome = item.nomenclatura || '';      // nome da obra
+        card.dataset.funcao_nome = item.nome_funcao || '';  // nome da função
+        card.dataset.status = status;                       // status normalizado
+
+        card.addEventListener('click', () => {
+            document.querySelectorAll('.kanban-card.selected').forEach(c => c.classList.remove('selected'));
+            card.classList.add('selected');
+            if (card.classList.contains('tarefa-criada')) {
+                const idTarefa = card.dataset.id;
+                abrirSidebarTarefaCriada(idTarefa);
+
+            } else if (card.classList.contains('tarefa-imagem')) {
+                const idFuncao = card.dataset.id;
+                const idImagem = card.dataset.idImagem;
+                abrirSidebar(idFuncao, idImagem);
+
+            }
+
+        });
+
+
+        if (liberado === "1") {
+            // Inserir no topo da coluna, antes dos bloqueados
+            const primeiroBloqueado = coluna.querySelector('.kanban-card.bloqueado');
+            if (primeiroBloqueado) {
+                coluna.insertBefore(card, primeiroBloqueado);
+            } else {
+                coluna.appendChild(card);
+            }
+        } else {
+            // Bloqueados vão no final
+            coluna.appendChild(card);
+        }
+    }
+
+
+    // Adiciona tarefas criadas
+    if (data.tarefas) {
+        data.tarefas.forEach(item => criarCard(item, 'criada', {}));
+    }
+
+    // Adiciona funções (tarefas de imagem)
+    if (data.funcoes) {
+        data.funcoes.forEach(item => criarCard(item, 'imagem', data.media_tempo_em_andamento));
+    }
+
+    atualizarTaskCount();
+
+    preencherFiltros()
+
+
+
+}
+
+
+
+
+document.getElementById('modalDaily').style.display = 'none';
+
+// checkDailyAccess agora retorna uma Promise
+function checkDailyAccess() {
+    return new Promise((resolve, reject) => {
+        fetch('verifica_respostas.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `idcolaborador=${idColaborador}`
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.hasResponses) {
+                    // Se já respondeu, segue para checkRender
+                    resolve();
+                } else {
+                    // Se não respondeu, exibe modal e interrompe fluxo (não resolve ainda)
+                    document.getElementById('modalDaily').style.display = 'flex';
+                    // Resolve apenas após o envio do formulário
+                    document.getElementById('dailyForm').addEventListener('submit', function onSubmit(e) {
+                        e.preventDefault();
+                        this.removeEventListener('submit', onSubmit); // evita múltiplas submissões
+
+                        const formData = new FormData(this);
+
+                        fetch('submit_respostas.php', {
+                            method: 'POST',
+                            body: formData
+                        })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success) {
+                                    document.getElementById('modalDaily').style.display = 'none';
+                                    Swal.fire({
+                                        icon: 'success',
+                                        text: 'Respostas enviadas com sucesso!',
+                                        showConfirmButton: false,
+                                        timer: 1200
+                                    }).then(() => {
+                                        // Após fechar o toast, primeiro verifica funções em andamento
+                                        // para garantir que o prompt de HOLD seja exibido imediatamente
+                                        // mesmo que o resumo abra em seguida.
+                                        if (typeof checkFuncoesEmAndamento === 'function') {
+                                            checkFuncoesEmAndamento(idColaborador)
+                                                .catch(err => console.error('Erro ao checar funções em andamento após Daily:', err))
+                                            // .finally(() => {
+                                            //     mostrarResumoInteligente().then(() => resolve()).catch(() => resolve());
+                                            // });
+                                        } else {
+                                            // fallback se a função não existir por algum motivo
+                                            // mostrarResumoInteligente().then(() => resolve()).catch(() => resolve());
+                                        }
+                                    });
+                                } else {
+                                    Swal.fire({
+                                        icon: 'error',
+                                        text: 'Erro ao enviar as tarefas, tente novamente!',
+                                        showConfirmButton: false,
+                                        timer: 2000
+                                    });
+                                    reject(); // interrompe a sequência
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Erro:', error);
+                                reject();
+                            });
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Erro ao verificar respostas:', error);
+                reject();
+            });
+    });
+}
+
+function checkFuncoesSomentePrimeiroAcesso() {
+    const hoje = new Date().toISOString().split('T')[0]; // ex: 2025-09-25
+    const chave = "funcoes_visto_" + hoje;
+
+    if (!localStorage.getItem(chave)) {
+        // Primeira vez no dia → chama a verificação primeiro.
+        // Só marca como visto após a verificação completar, assim falhas não impedem
+        // novas tentativas durante o dia.
+        if (typeof checkFuncoesEmAndamento === 'function') {
+            return checkFuncoesEmAndamento(idColaborador)
+                .then(() => {
+                    try {
+                        localStorage.setItem(chave, "1");
+                    } catch (e) {
+                        console.error('Não foi possível salvar funcoes_visto no localStorage:', e);
+                    }
+                })
+                .catch(err => {
+                    console.error('Erro ao checar funções em andamento:', err);
+                    // resolvemos para não travar a sequência principal
+                });
+        }
+
+        // Se a função não existir, apenas resolve para seguir o fluxo
+        return Promise.resolve();
+    } else {
+        // Já viu hoje → não faz nada
+        return Promise.resolve();
+    }
+}
+
+
+// checkRenderItems também retorna uma Promise
+function checkRenderItems(idColaborador) {
+    return new Promise((resolve, reject) => {
+        fetch('verifica_render.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `idcolaborador=${idColaborador}`
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.total > 0) {
+                    Swal.fire({
+                        title: `Você tem ${data.total} item(ns) na sua lista de render!`,
+                        text: "Deseja ver agora ou depois?",
+                        icon: "info",
+                        showCancelButton: true,
+                        confirmButtonText: "Ver agora",
+                        cancelButtonText: "Ver depois",
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            window.location.href = "./Render/";
+                        } else {
+                            resolve(); // segue o fluxo
+                        }
+                    });
+                } else {
+                    resolve(); // segue o fluxo mesmo sem render
+                }
+            })
+            .catch(error => {
+                console.error('Erro ao verificar itens de render:', error);
+                reject();
+            });
+    });
+}
+
+// --- Resumo inteligente & nav toggles ---
+function mostrarResumoInteligente() {
+    return new Promise((resolve, reject) => {
+        const resumoModal = document.getElementById('resumoModal');
+        const resumoContent = document.getElementById('resumo-content');
+
+        resumoContent.innerHTML = '<p>Carregando resumo...</p>';
+
+        fetch('PaginaPrincipal/Overview/getResumo.php')
+            .then(r => r.ok ? r.json() : Promise.reject('Erro na resposta'))
+            .then(data => {
+                if (data.error) {
+                    resumoContent.innerHTML = `<p style="color:red">${data.error}</p>`;
+                    resumoModal.style.display = 'flex';
+                    resolve();
+                    return;
+                }
+
+                const parts = [];
+
+                // Tarefas do dia
+                parts.push('<h3>Tarefas do dia</h3>');
+                if (data.tarefasHoje && data.tarefasHoje.length) {
+                    parts.push('<ul>');
+                    data.tarefasHoje.forEach(t => {
+                        parts.push(`<li><strong>${t.nome_funcao || 'Função'}</strong> — ${t.imagem_nome || ''} <small style="color:#64748b">(${t.prazo ? t.prazo.split(' ')[0] : ''})</small></li>`);
+                    });
+                    parts.push('</ul>');
+                } else {
+                    parts.push('<p>Nenhuma tarefa com prazo para hoje.</p>');
+                }
+
+                // Tarefas atrasadas
+                parts.push('<h3>Tarefas atrasadas</h3>');
+                if (data.tarefasAtrasadas && data.tarefasAtrasadas.length) {
+                    parts.push('<ul>');
+                    data.tarefasAtrasadas.forEach(t => {
+                        parts.push(`<li><strong>${t.nome_funcao || 'Função'}</strong> — ${t.imagem_nome || ''} <span style="color:#ef4444">(${t.prazo ? t.prazo.split(' ')[0] : ''})</span></li>`);
+                    });
+                    parts.push('</ul>');
+                } else {
+                    parts.push('<p>Sem tarefas atrasadas.</p>');
+                }
+
+                // Tarefas próximas
+                parts.push('<h3>Tarefas próximas (7 dias)</h3>');
+                if (data.tarefasProximas && data.tarefasProximas.length) {
+                    parts.push('<ul>');
+                    data.tarefasProximas.forEach(t => {
+                        parts.push(`<li><strong>${t.nome_funcao || 'Função'}</strong> — ${t.imagem_nome || ''} <small style="color:#64748b">(${t.prazo ? t.prazo.split(' ')[0] : ''})</small></li>`);
+                    });
+                    parts.push('</ul>');
+                } else {
+                    parts.push('<p>Sem tarefas próximas nos próximos 7 dias.</p>');
+                }
+
+                // Últimos ajustes
+                parts.push('<h3>Últimos ajustes</h3>');
+                if (data.ultimosAjustes && data.ultimosAjustes.length) {
+                    parts.push('<ul>');
+                    data.ultimosAjustes.forEach(t => {
+                        parts.push(`<li><strong>${t.nome_funcao || 'Função'}</strong> — ${t.imagem_nome || ''} <small style="color:#64748b">${t.status || ''} ${t.updated_at ? '• ' + t.updated_at.split(' ')[0] : ''}</small></li>`);
+                    });
+                    parts.push('</ul>');
+                } else {
+                    parts.push('<p>Sem ajustes recentes.</p>');
+                }
+
+                resumoContent.innerHTML = parts.join('');
+                resumoModal.style.display = 'flex';
+                resolve();
+            })
+            .catch(err => {
+                console.error('Erro ao obter resumo:', err);
+                resumoContent.innerHTML = '<p>Erro ao carregar resumo.</p>';
+                resumoModal.style.display = 'flex';
+                resolve();
+            });
+    });
+}
+
+// Nav button handlers
+const btnOverview = document.getElementById('overview');
+const btnKanban = document.getElementById('kanban');
+const overviewSection = document.getElementById('overview-section');
+const kanbanSection = document.getElementById('kanban-section');
+
+function setActive(button) {
+    [btnOverview, btnKanban].forEach(b => b.classList.remove('active'));
+    if (button) button.classList.add('active');
+}
+
+if (btnOverview) btnOverview.addEventListener('click', () => {
+    overviewSection.style.display = 'block';
+    kanbanSection.style.display = 'none';
+    setActive(btnOverview);
+});
+
+if (btnKanban) btnKanban.addEventListener('click', () => {
+    overviewSection.style.display = 'none';
+    kanbanSection.style.display = 'block';
+    setActive(btnKanban);
+});
+
+// Resumo modal button handlers
+document.getElementById('resumo-overview').addEventListener('click', () => {
+    document.getElementById('resumoModal').style.display = 'none';
+    btnOverview.click();
+});
+
+document.getElementById('resumo-kanban').addEventListener('click', () => {
+    document.getElementById('resumoModal').style.display = 'none';
+    btnKanban.click();
+});
+
+document.getElementById('resumo-close').addEventListener('click', () => {
+    document.getElementById('resumoModal').style.display = 'none';
+});
+
+function checkFuncoesEmAndamento(idColaborador) {
+    return new Promise((resolve, reject) => {
+        fetch('getFuncoesEmAndamento.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: `idcolaborador=${idColaborador}`
+        })
+            .then(res => res.json())
+            .then(funcoes => {
+                if (!funcoes || funcoes.length === 0) {
+                    resolve(); // nada em andamento, segue fluxo
+                    return;
+                }
+
+                // Processa em sequência cada função
+                let index = 0;
+
+                function perguntarProximo() {
+                    if (index >= funcoes.length) {
+                        resolve(); // terminou todas
+                        return;
+                    }
+
+                    const funcao = funcoes[index];
+                    Swal.fire({
+                        title: `Você ainda está trabalhando em ${funcao.imagem_nome}?`,
+                        text: `Função: ${funcao.nome_funcao}`,
+                        icon: "question",
+                        showCancelButton: true,
+                        confirmButtonText: "Sim, estou fazendo",
+                        cancelButtonText: "Não, colocar em HOLD"
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            // continua sem alterar
+                            index++;
+                            perguntarProximo();
+                        } else {
+                            // pede observação
+                            Swal.fire({
+                                title: "Observação",
+                                input: "text",
+                                inputPlaceholder: "Por que não está fazendo?",
+                                showCancelButton: false,
+                                confirmButtonText: "Salvar"
+                            }).then((obsResult) => {
+                                const obs = obsResult.value || "";
+
+                                fetch('atualizarFuncao.php', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/x-www-form-urlencoded'
+                                    },
+                                    body: `idfuncao_imagem=${funcao.idfuncao_imagem}&observacao=${encodeURIComponent(obs)}`
+                                }).finally(() => {
+                                    index++;
+                                    perguntarProximo();
+                                    carregarDados(idColaborador); // atualiza o kanban
+                                });
+                            });
+                        }
+                    });
+                }
+
+                perguntarProximo();
+            })
+            .catch(err => {
+                console.error("Erro ao verificar funções em andamento:", err);
+                reject();
+            });
+    });
+}
+
+// const MODO_TESTE = true;
+
+// if (MODO_TESTE) {
+//     checkFuncoesEmAndamento(idColaborador);
+// } else {
+checkDailyAccess()
+    .then(() => checkRenderItems(idColaborador))
+    .then(() => checkFuncoesSomentePrimeiroAcesso()) // ✅ só na 1ª vez do dia
+    .then(() => {
+        buscarTarefas();
+        mostrarChangelogSeNecessario();
+        // mostrarResumoInteligente();
+    })
+    .catch(() => console.log('Fluxo interrompido'));
+
+// }
+
+
 carregarDados(colaborador_id);
 
 carregarEventosEntrega();
@@ -350,286 +981,6 @@ function updateEvent(event) {
         }
     });
 });
-
-if (colaborador_id === 9 || colaborador_id === 21) {
-    document.getElementById('idcolab').style.display = 'flex'; // libera
-} else {
-    document.getElementById('idcolab').style.display = 'none'; // esconde
-}
-// const idusuario = 1;
-
-document.getElementById('idcolab').addEventListener('change', function () {
-
-    const idcolab = parseInt(this.value, 10);
-    carregarDados(idcolab);
-
-});
-
-function carregarDados(colaborador_id) {
-
-    let url = `PaginaPrincipal/getFuncoesPorColaborador.php?colaborador_id=${colaborador_id}`;
-
-    const xhr = new XMLHttpRequest();
-
-    // Mostra loading quando iniciar a requisição
-    xhr.addEventListener("loadstart", () => {
-        document.getElementById("loading").style.display = "block";
-    });
-
-    // Esconde loading quando terminar
-    xhr.addEventListener("loadend", () => {
-        document.getElementById("loading").style.display = "none";
-    });
-
-    xhr.onreadystatechange = function () {
-        if (xhr.readyState === 4) {
-            if (xhr.status === 200) {
-                try {
-                    const data = JSON.parse(xhr.responseText);
-
-                    // Chama o tratamento
-                    processarDados(data);
-
-                } catch (err) {
-                    console.error("Erro ao parsear JSON:", err);
-                }
-            } else {
-                console.error("Erro na requisição:", xhr.status);
-            }
-        }
-    };
-
-    xhr.open("GET", url, true);
-    xhr.send();
-}
-// extrai a lógica do fetch para uma função reutilizável
-function processarDados(data) {
-    const statusMap = {
-        'Não iniciado': 'to-do',
-        'Em andamento': 'in-progress',
-        'Em aprovação': 'in-review',
-        'Ajuste': 'ajuste',
-        'Finalizado': 'done',
-        'HOLD': 'hold'
-    };
-
-    Object.values(statusMap).forEach(colId => {
-        const col = document.getElementById(colId);
-        if (col) col.querySelector('.content').innerHTML = '';
-    });
-    // Função auxiliar para criar cards
-    function criarCard(item, tipo, media) {
-        // Define status real
-        let status = item.status || 'Não iniciado';
-        if (status === 'Ajuste') status = 'Ajuste';
-        else if (status === 'Em aprovação')
-            status = 'Em aprovação';
-        else if (status === 'Em andamento')
-            status = 'Em andamento';
-        else if (['Aprovado', 'Aprovado com ajustes', 'Finalizado'].includes(status))
-            status = 'Finalizado';
-        else if (status === 'Não iniciado')
-            status = 'Não iniciado';
-        else if (status === 'HOLD' || status === 'Hold')
-            status = 'HOLD';
-        else
-            status = 'Não iniciado';
-
-        const colunaId = statusMap[status];
-        const coluna = document.getElementById(colunaId)?.querySelector('.content');
-        if (!coluna) return;
-
-        // Define a classe da tarefa (criada ou imagem)
-        const tipoClasse = tipo === 'imagem' ? 'tarefa-imagem' : 'tarefa-criada';
-
-        // Normaliza prioridade (número ou string)
-        if (item.prioridade == 3 || item.prioridade === 'baixa') {
-            item.prioridade = 'baixa';
-        } else if (item.prioridade == 2 || item.prioridade === 'media' || item.prioridade === 'média') {
-            item.prioridade = 'media';
-        } else {
-            item.prioridade = 'alta';
-        }
-
-
-        // Nome a exibir
-        const titulo = tipo === 'imagem' ? item.imagem_nome : item.titulo;
-        const subtitulo = tipo === 'imagem' ? item.nome_funcao : item.descricao;
-
-        function getTempoClass(tempo, media) {
-            if (!tempo || tempo === 0) return ""; // sem tempo registrado
-
-            if (tempo <= media) {
-                return "tempo-bom"; // verde
-            } else if (tempo <= media * 1.3) {
-                return "tempo-atenção"; // amarelo
-            } else {
-                return "tempo-ruim"; // vermelho
-            }
-        }
-
-
-        // Pega a média da função específica
-        const mediaFuncao = media[item.funcao_id] || 0;
-
-        // Bolinha só no "Não iniciado"
-        let bolinhaHTML = "";
-        let liberado = "1"; // padrão liberado
-
-        // Cria card
-        const card = document.createElement('div');
-        card.className = `kanban-card ${tipoClasse}`; // só a classe base
-
-        if (tipo === 'imagem') {
-            // lógica específica para imagem
-            if (status === "Não iniciado") {
-                const statusAnterior = item.status_funcao_anterior || "";
-                if (["Aprovado", "Finalizado", "Aprovado com ajustes"].includes(statusAnterior)) {
-                    bolinhaHTML = `<span class="bolinha verde" data-status-anterior="${statusAnterior}"></span>`;
-                    liberado = "1";
-                } else if (item.liberada) {
-                    bolinhaHTML = `<span class="bolinha verde" data-status-anterior="${statusAnterior || ''}"></span>`;
-                    liberado = "1";
-                } else if (item.nome_funcao === "Filtro de assets") {
-                    bolinhaHTML = `<span class="bolinha verde" data-status-anterior="${statusAnterior || ''}"></span>`;
-                    liberado = "1";
-                } else {
-                    bolinhaHTML = `<span class="bolinha vermelho" data-status-anterior="${statusAnterior || ''}"></span>`;
-                    liberado = "0";
-                }
-
-            }
-
-
-            card.setAttribute('data-id', `${item.idfuncao_imagem}`);
-            card.setAttribute('data-id-imagem', `${item.imagem_id}`);
-            card.setAttribute('data-id-funcao', `${item.funcao_id}`);
-            card.setAttribute('liberado', liberado);
-            card.setAttribute('data-nome_status', `${item.nome_status}`); // para filtro
-            card.setAttribute('data-prazo', `${item.prazo}`); // para filtro
-
-        } else {
-            // lógica para tarefas criadas
-            bolinhaHTML = '';
-            // 🟢 Lógica para tarefas criadas
-            card.dataset.id = item.id;                   // apenas id simples
-            card.dataset.titulo = item.titulo;   // se precisar para modal
-            card.dataset.descricao = item.descricao;
-            card.dataset.prazo = item.prazo;
-            card.dataset.status = item.status;
-            card.dataset.prioridade = item.prioridade;
-            card.setAttribute('liberado', '1');  // sempre liberado
-        }
-
-
-        // adiciona bloqueado se necessário
-        if (liberado === "0") {
-            card.classList.add("bloqueado");
-        }
-
-        function isAtrasada(prazoStr) {
-            // Divide a string 'YYYY-MM-DD'
-            const [ano, mes, dia] = prazoStr.split('-').map(Number);
-            const prazo = new Date(ano, mes - 1, dia);
-
-            const hoje = new Date();
-            const hojeLimpo = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
-
-            return prazo < hojeLimpo;
-        }
-
-        const atrasada = item.prazo ? isAtrasada(item.prazo) : false;
-
-        card.innerHTML = `
-                    <div class="header-kanban">
-                        <span class="priority ${item.prioridade || 'medium'}">
-                            ${item.prioridade || 'Medium'}
-                        </span>
-                        ${bolinhaHTML}
-                    </div>
-                        <h5>${titulo || '-'}</h5>
-                        <p>${subtitulo || '-'}</p>
-                    <div class="card-footer">
-                        <span class="date ${atrasada ? 'atrasada' : ''}">
-                            <i class="fa-regular fa-calendar"></i>
-                            ${item.prazo ? formatarData(item.prazo) : '-'}
-                        </span>
-                    </div>
-                    <div class="card-log">
-                            <span 
-                                class="date tooltip ${getTempoClass(item.tempo_calculado, mediaFuncao)}" 
-                                data-tooltip="${formatarDuracao(mediaFuncao)}"
-                                data-inicio="${item.tempo_calculado || ''}">
-                                <i class="ri-time-line"></i> 
-                                ${item.tempo_calculado ? formatarDuracao(item.tempo_calculado) : '-'}
-                                </span>
-                    <div class="comments">
-                        ${item.indice_envio_atual ? `<span class="indice_envio"><i class="ri-file-line"></i> ${item.indice_envio_atual} |</span>` : ''}
-                        ${item.indice_envio_atual ?
-                (item.comentarios_ultima_versao > 0 ?
-                    `<span class="numero_comments"><i class="ri-chat-3-line"></i> ${item.comentarios_ultima_versao}</span>`
-                    : `<span class="numero_comments">0</span>`)
-                : ''
-            }
-                    </div>
-
-                    </div>
-                `;
-
-        // Atributos para filtros
-        card.dataset.obra_nome = item.nomenclatura || '';      // nome da obra
-        card.dataset.funcao_nome = item.nome_funcao || '';  // nome da função
-        card.dataset.status = status;                       // status normalizado
-
-        card.addEventListener('click', () => {
-            document.querySelectorAll('.kanban-card.selected').forEach(c => c.classList.remove('selected'));
-            card.classList.add('selected');
-            if (card.classList.contains('tarefa-criada')) {
-                const idTarefa = card.dataset.id;
-                abrirSidebarTarefaCriada(idTarefa);
-
-            } else if (card.classList.contains('tarefa-imagem')) {
-                const idFuncao = card.dataset.id;
-                const idImagem = card.dataset.idImagem;
-                abrirSidebar(idFuncao, idImagem);
-
-            }
-
-        });
-
-
-        if (liberado === "1") {
-            // Inserir no topo da coluna, antes dos bloqueados
-            const primeiroBloqueado = coluna.querySelector('.kanban-card.bloqueado');
-            if (primeiroBloqueado) {
-                coluna.insertBefore(card, primeiroBloqueado);
-            } else {
-                coluna.appendChild(card);
-            }
-        } else {
-            // Bloqueados vão no final
-            coluna.appendChild(card);
-        }
-    }
-
-
-    // Adiciona tarefas criadas
-    if (data.tarefas) {
-        data.tarefas.forEach(item => criarCard(item, 'criada', {}));
-    }
-
-    // Adiciona funções (tarefas de imagem)
-    if (data.funcoes) {
-        data.funcoes.forEach(item => criarCard(item, 'imagem', data.media_tempo_em_andamento));
-    }
-
-    atualizarTaskCount();
-
-    preencherFiltros()
-
-
-
-}
 
 function atualizarTemposEmAndamento() {
     const spans = document.querySelectorAll('.card-log .date[data-inicio]');

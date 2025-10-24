@@ -62,6 +62,8 @@ $conn->close();
             <select id="filtroFuncao" style="display: none;">
                 <option value="">Todas as funções</option>
             </select>
+            <div id="metrics-panel" style="margin-bottom:8px;">
+            </div>
             <div class="containerObra">
             </div>
             <div class="tarefasObra hidden">

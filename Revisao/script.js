@@ -11,6 +11,8 @@ document.addEventListener("DOMContentLoaded", function () {
     } else {
         fetchObrasETarefas();
     }
+    // carrega painel de métricas (acima do select de funções)
+    if (typeof loadMetrics === 'function') loadMetrics();
 });
 
 function revisarTarefa(idfuncao_imagem, nome_colaborador, imagem_nome, nome_funcao, colaborador_id, imagem_id, tipoRevisao) {
@@ -149,6 +151,59 @@ async function fetchObrasETarefas() {
 
     } catch (error) {
         console.error(error);
+    }
+}
+
+// Carrega métricas agregadas por função e renderiza no painel
+async function loadMetrics() {
+    try {
+        const res = await fetch('getMetrics.php');
+        if (!res.ok) throw new Error('Erro ao buscar métricas');
+        const data = await res.json();
+
+        const panel = document.getElementById('metrics-panel');
+        if (!panel) return;
+        panel.innerHTML = '';
+
+        const grid = document.createElement('div');
+        grid.style.display = 'flex';
+        grid.style.gap = '8px';
+        grid.style.flexWrap = 'wrap';
+
+        data.forEach(row => {
+            const card = document.createElement('div');
+            card.className = 'metrics-card';
+            card.style.padding = '8px 10px';
+            card.style.background = '#f5f7fa';
+            card.style.border = '1px solid #e0e6ef';
+            card.style.borderRadius = '6px';
+            card.style.minWidth = '160px';
+            card.style.boxSizing = 'border-box';
+
+            const title = document.createElement('div');
+            title.textContent = row.nome_funcao || '-';
+            title.style.fontWeight = '600';
+            title.style.marginBottom = '6px';
+
+            const avg = document.createElement('div');
+            avg.textContent = `Média (h): ${row.media_horas_em_aprovacao !== null ? row.media_horas_em_aprovacao : '-'} `;
+            avg.style.color = '#333';
+
+            const total = document.createElement('div');
+            total.textContent = `Total: ${row.total_tarefas}`;
+            total.style.color = '#666';
+
+            card.appendChild(title);
+            card.appendChild(avg);
+            card.appendChild(total);
+
+            grid.appendChild(card);
+        });
+
+        panel.appendChild(grid);
+
+    } catch (err) {
+        console.error('Erro ao carregar métricas:', err);
     }
 }
 

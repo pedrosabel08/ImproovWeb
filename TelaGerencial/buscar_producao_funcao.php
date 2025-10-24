@@ -10,14 +10,17 @@ $fim = $_GET['fim'] ?? null;
 if ($mes) {
   // Filtro por mês
   $sql = "SELECT 
-                f.nome_funcao, 
-                COUNT(*) AS quantidade
-            FROM funcao_imagem fi 
-            JOIN funcao f ON f.idfuncao = fi.funcao_id
-            WHERE MONTH(fi.prazo) = ? AND YEAR(fi.prazo) = YEAR(CURDATE()) 
-                AND (status <> 'Não iniciado' OR status IS NULL)
-            GROUP BY f.nome_funcao
-            ORDER BY FILED(funcao_id, 1, 8, 2, 3, 9, 4, 5, 6, 7)";
+    f.nome_funcao,
+    COUNT(*) AS quantidade,
+    SUM(CASE WHEN fi.pagamento = 1 THEN 1 ELSE 0 END) AS pagas,
+    SUM(CASE WHEN fi.pagamento <> 1 OR fi.pagamento IS NULL THEN 1 ELSE 0 END) AS nao_pagas
+FROM funcao_imagem fi
+JOIN funcao f ON f.idfuncao = fi.funcao_id
+WHERE MONTH(fi.prazo) = ? 
+  AND YEAR(fi.prazo) = YEAR(CURDATE())
+  AND (fi.status <> 'Não iniciado' OR fi.status IS NULL)
+GROUP BY f.nome_funcao
+ORDER BY FIELD(fi.funcao_id, 1, 8, 2, 3, 9, 4, 5, 6, 7)";
   $stmt = $conn->prepare($sql);
   $stmt->bind_param("i", $mes);
 } elseif ($data) {
@@ -30,7 +33,7 @@ if ($mes) {
             WHERE DATE(fi.prazo) = ? 
                 AND (status <> 'Não iniciado' OR status IS NULL)
             GROUP BY f.nome_funcao,
-           ORDER BY FILED(funcao_id, 1, 8, 2, 3, 9, 4, 5, 6, 7)";
+           ORDER BY FIELD(funcao_id, 1, 8, 2, 3, 9, 4, 5, 6, 7)";
 
   $stmt = $conn->prepare($sql);
   $stmt->bind_param("s", $data);
@@ -44,7 +47,7 @@ if ($mes) {
             WHERE DATE(fi.prazo) BETWEEN ? AND ? 
                 AND (status <> 'Não iniciado' OR status IS NULL)
             GROUP BY f.nome_funcao,
-            ORDER BY FILED(funcao_id, 1, 8, 2, 3, 9, 4, 5, 6, 7)";
+            ORDER BY FIELD(funcao_id, 1, 8, 2, 3, 9, 4, 5, 6, 7)";
   $stmt = $conn->prepare($sql);
   $stmt->bind_param("ss", $inicio, $fim);
 } else {

@@ -1,3 +1,21 @@
+window.addEventListener('DOMContentLoaded', () => {
+    const dataAtual = new Date();
+    const mesAtual = dataAtual.getMonth() + 1; // Janeiro = 0, então soma 1
+
+    // Para o primeiro select (valores "01", "02", ...)
+    const selectMes = document.getElementById('mes');
+    if (selectMes) {
+        const valorMes = mesAtual.toString().padStart(2, '0'); // Ex: 03
+        selectMes.value = valorMes;
+    }
+
+    // Para o segundo select (valores 1, 2, ...)
+    const selectMesFuncao = document.getElementById('mesFuncao');
+    if (selectMesFuncao) {
+        selectMesFuncao.value = mesAtual.toString(); // Ex: 3
+    }
+});
+
 function formatarData(data) {
     const partes = data.split("-");
     const dataFormatada = `${partes[2]}/${partes[1]}/${partes[0]}`;
@@ -8,7 +26,6 @@ function formatarData(data) {
 function buscarDados() {
     const mes = document.getElementById('mes').value;
     const nomeMeses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
-    document.getElementById("mesSelecionado").innerText = nomeMeses[parseInt(mes) - 1];
 
     fetch('buscar_producao.php?mes=' + mes)
         .then(res => res.json())
@@ -21,11 +38,7 @@ function buscarDados() {
                 tr.innerHTML = `
             <td>${linha.nome_colaborador}</td>
             <td>${linha.nome_funcao}</td>
-            <td>R$ ${parseFloat(linha.total_valor).toFixed(2).replace('.', ',')}</td>
-            <td>${formatarData(linha.data_pagamento)}</td>
-            <td>${linha.quantidade}</td>
-            <td>${linha.mes_anterior}</td>
-            <td>${linha.recorde_producao}</td>
+            <td>${linha.quantidade} (Pagas: ${linha.pagas})</td>
           `;
                 tabela.appendChild(tr);
             });
@@ -72,7 +85,7 @@ function buscarDadosPorDiaAnterior() {
     document.getElementById("mesSelecionadoFuncao").innerText = `do dia ${dia}/${mes}/${ano}`; // Atualiza o mês selecionado
     document.getElementById("labelMesFuncao").style.display = "none";
     document.getElementById("mesFuncao").style.display = "none";
-    
+
     fetch(`buscar_producao_funcao.php?data=${ano}-${mes}-${dia}`)
         .then(res => res.json())
         .then(data => {
@@ -173,15 +186,14 @@ function buscarDadosFuncao() {
                 const tr = document.createElement("tr");
                 tr.innerHTML = `
             <td>${linha.nome_funcao}</td>
-            <td>${linha.quantidade}</td>
-            <td>R$ ${estimativa.toFixed(2).replace('.', ',')}</td>
+            <td>${linha.quantidade} (Pagas: ${linha.pagas})</td>
           `;
                 tabela.appendChild(tr);
 
                 estimativaTotal += estimativa;
             });
 
-            document.getElementById("valorTotal").innerHTML = `<strong>R$ ${estimativaTotal.toFixed(2).replace('.', ',')}</strong>`;
+            // document.getElementById("valorTotal").innerHTML = `<strong>R$ ${estimativaTotal.toFixed(2).replace('.', ',')}</strong>`;
         })
         .catch(error => {
             console.error("Erro ao buscar dados:", error);
@@ -190,4 +202,43 @@ function buscarDadosFuncao() {
 window.onload = function () {
     buscarDados();
     buscarDadosFuncao();
+    buscarEntregasMes();
 };
+
+/**
+ * Busca entregas agrupadas por status para o mês selecionado.
+ * Se nenhum mês for selecionado, usa o mês atual.
+ */
+function buscarEntregasMes(ano) {
+    const selectMes = document.getElementById('mes');
+    const mes = selectMes ? selectMes.value : (new Date().getMonth() + 1).toString().padStart(2, '0');
+    ano = ano || new Date().getFullYear();
+
+    fetch(`buscar_entregas_mes.php?mes=${mes}&ano=${ano}`)
+        .then(res => res.json())
+        .then(data => {
+            const tabela = document.querySelector('#tabelaEntregas tbody');
+            tabela.innerHTML = '';
+
+            // Atualiza cabeçalho da tabela para refletir o breakdown por status
+            const thead = document.querySelector('#tabelaEntregas thead tr');
+            if (thead) {
+                thead.innerHTML = `
+                    <th>Status</th>
+                    <th>Quantidade de imagens entregues</th>
+                `;
+            }
+
+            if (!Array.isArray(data)) return;
+
+            data.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${row.nome_status}</td>
+                    <td>${row.quantidade}</td>
+                `;
+                tabela.appendChild(tr);
+            });
+        })
+        .catch(err => console.error('Erro ao buscar entregas por mês:', err));
+}

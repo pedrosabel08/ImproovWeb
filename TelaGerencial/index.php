@@ -38,14 +38,14 @@ $conn->close();
 
         <div class="select">
 
-            <h2>Total Produção - Mês: <span id="mesSelecionado">Abril</span></h2>
+            <h2>Total Produção por colaborador</h2>
 
             <label for="mes">Selecione o mês:</label>
             <select id="mes" onchange="buscarDados()">
                 <option value="01">Janeiro</option>
                 <option value="02">Fevereiro</option>
                 <option value="03">Março</option>
-                <option value="04" selected>Abril</option>
+                <option value="04">Abril</option>
                 <option value="05">Maio</option>
                 <option value="06">Junho</option>
                 <option value="07">Julho</option>
@@ -62,11 +62,7 @@ $conn->close();
                 <tr>
                     <th>Colaborador</th>
                     <th>Função</th>
-                    <th>Valor Total</th>
-                    <th>Data Pagamento</th>
                     <th>Quantidade</th>
-                    <th>Mês Anterior</th>
-                    <th>Recorde de Produção</th>
                 </tr>
             </thead>
             <tbody>
@@ -76,20 +72,33 @@ $conn->close();
 
         <div class="select">
 
-            <select name="tipo" id="tipo" onchange="filtrarPorTipo()">
+            <!-- <select name="tipo" id="tipo" onchange="filtrarPorTipo()">
                 <option value="mes_tipo" selected>Mês</option>
+            
+            <!-- Tabela de entregas por mês -->
+            <h3 style="margin-top:18px;">Imagens entregues por mês (ano atual)</h3>
+            <table id="tabelaEntregas">
+                <thead>
+                    <tr>
+                        <th>Mês</th>
+                        <th>Quantidade de imagens entregues</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
                 <option value="semana_tipo">Semana</option>
                 <option value="dia_tipo">Dia Anterior</option>
-            </select>
+            </select> -->
 
-            <h2 id="total_producao">Total de produção <span id="mesSelecionadoFuncao">---</span></h2>
+            <h2 id="total_producao">Total de produção por função <span id="mesSelecionadoFuncao">---</span></h2>
 
             <label id="labelMesFuncao" for="mesFuncao">Selecione o mês:</label>
             <select id="mesFuncao" onchange="buscarDadosFuncao()">
                 <option value="1">Janeiro</option>
                 <option value="2">Fevereiro</option>
                 <option value="3">Março</option>
-                <option value="4" selected>Abril</option>
+                <option value="4">Abril</option>
                 <option value="5">Maio</option>
                 <option value="6">Junho</option>
                 <option value="7">Julho</option>
@@ -105,17 +114,10 @@ $conn->close();
                     <tr>
                         <th>Processo</th>
                         <th>Quantidade</th>
-                        <th>Valor</th>
                     </tr>
                 </thead>
                 <tbody>
                 </tbody>
-                <tfoot>
-                    <tr>
-                        <td colspan="2"><strong>Valor total:</strong></td>
-                        <td id="valorTotal"><strong>R$ 0,00</strong></td>
-                    </tr>
-                </tfoot>
             </table>
         </div>
     </div>

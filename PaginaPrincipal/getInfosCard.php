@@ -154,6 +154,25 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
                 $arquivos_tipo[] = $row;
             }
         }
+
+        // ==========================================================
+        // 6) Arquivos de tarefas anteriores (arquivo_log)
+        // Recupera registros de arquivo_log associados a funções desta imagem
+        // ==========================================================
+        $arquivos_anteriores = [];
+        $sqlArquivosAnteriores = "SELECT al.id, al.funcao_imagem_id, al.caminho, al.nome_arquivo, al.tamanho, al.tipo, al.colaborador_id, al.status, al.criado_em,
+                fi.funcao_id, f.nome_funcao
+            FROM arquivo_log al
+            LEFT JOIN funcao_imagem fi ON al.funcao_imagem_id = fi.idfuncao_imagem
+            LEFT JOIN funcao f ON fi.funcao_id = f.idfuncao
+            WHERE fi.imagem_id = " . $idImagemSelecionada . " AND al.status = 'atualizado'
+            ORDER BY al.criado_em DESC";
+
+        if ($resAnteriores = $conn->query($sqlArquivosAnteriores)) {
+            while ($row = $resAnteriores->fetch_assoc()) {
+                $arquivos_anteriores[] = $row;
+            }
+        }
     }
 
     // ==========================================================
@@ -165,7 +184,9 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
         "colaboradores" => $colaboradores,
         "log_alteracoes" => $logAlteracoes,
         "arquivos_imagem" => $arquivos_imagem,
-        "arquivos_tipo" => $arquivos_tipo
+        "arquivos_tipo" => $arquivos_tipo,
+        "arquivos_anteriores" => $arquivos_anteriores,
+
     ], JSON_UNESCAPED_UNICODE);
 } else {
     echo json_encode(["error" => "Método de requisição inválido."]);

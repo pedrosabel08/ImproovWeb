@@ -1369,6 +1369,82 @@ function abrirSidebar(idFuncao, idImagem) {
             // Render type-level arquivos grouped (trim to the type folder)
             renderGroupedArquivos('Arquivos do tipo', data.arquivos_tipo, true);
 
+            // Render previous-task arquivos (logs) with custom layout:
+            // - .cat-header = nome_funcao
+            // - .arquivos-tipo will contain only .tipo-info with caminhos
+            function renderArquivosAnteriores(title, arr) {
+                if (!arr || arr.length === 0) return;
+
+                const section = document.createElement('div');
+                section.classList.add('arquivos-section');
+
+                const header = document.createElement('h3');
+                header.innerHTML = `📁 ${title}`;
+                section.appendChild(header);
+
+                // group by nome_funcao -> tipo -> items
+                const groupedByFunc = {};
+                arr.forEach(a => {
+                    const func = a.nome_funcao || 'Sem função';
+                    const tipo = a.tipo || a.nome_arquivo?.split('.').pop()?.toUpperCase() || 'Outros';
+                    if (!groupedByFunc[func]) groupedByFunc[func] = {};
+                    if (!groupedByFunc[func][tipo]) groupedByFunc[func][tipo] = [];
+                    groupedByFunc[func][tipo].push(a);
+                });
+
+                Object.keys(groupedByFunc).forEach(funcName => {
+                    const catDiv = document.createElement('div');
+                    catDiv.classList.add('arquivos-categoria');
+
+                    // total por função
+                    const totalFunc = Object.values(groupedByFunc[funcName]).reduce((s, arr) => s + arr.length, 0);
+
+                    const catHeader = document.createElement('div');
+                    catHeader.classList.add('cat-header');
+                    catHeader.innerHTML = `🏗️ ${funcName} <span class="count">(${totalFunc})</span>`;
+                    catDiv.appendChild(catHeader);
+
+                    // for each tipo, only show tipo-info (paths)
+                    Object.keys(groupedByFunc[funcName]).forEach(tipo => {
+                        const tipoArr = groupedByFunc[funcName][tipo];
+                        const tipoDiv = document.createElement('div');
+                        tipoDiv.classList.add('arquivos-tipo');
+
+                        const rawPaths = Array.from(new Set(tipoArr.map(it => it.caminho).filter(Boolean)));
+                        const paths = rawPaths.map(p => normalizePath(p, false));
+                        const uniquePaths = Array.from(new Set(paths));
+
+                        const infoDiv = document.createElement('div');
+                        infoDiv.classList.add('tipo-info');
+
+                        if (uniquePaths.length > 0) {
+                            uniquePaths.forEach(p => {
+                                const pDiv = document.createElement('div');
+                                pDiv.classList.add('path');
+                                pDiv.innerHTML = `📂 ${p}`;
+                                infoDiv.appendChild(pDiv);
+                            });
+                        } else {
+                            const noneDiv = document.createElement('div');
+                            noneDiv.classList.add('path');
+                            noneDiv.textContent = 'Sem caminho';
+                            infoDiv.appendChild(noneDiv);
+                        }
+
+                        tipoDiv.appendChild(infoDiv);
+                        catDiv.appendChild(tipoDiv);
+                    });
+
+                    section.appendChild(catDiv);
+                });
+
+                sidebarContent.appendChild(section);
+            }
+
+            if (data.arquivos_anteriores && data.arquivos_anteriores.length) {
+                renderArquivosAnteriores('Arquivos anteriores', data.arquivos_anteriores);
+            }
+
             // Abre a sidebar
             sidebarRight.classList.add('active');
         });

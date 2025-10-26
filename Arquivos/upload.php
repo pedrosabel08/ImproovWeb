@@ -26,7 +26,7 @@ $descricao    = $_POST['descricao'] ?? "";
 $flag_master  = !empty($_POST['flag_master']) ? 1 : 0;
 $substituicao = !empty($_POST['flag_substituicao']);
 $tiposImagem  = $_POST['tipo_imagem'] ?? [];
-$categoria  = $_POST['tipo_categoria'] ?? "";
+$categoria  = intval($_POST['tipo_categoria'] ?? 0);
 $refsSkpModo = $_POST['refsSkpModo'] ?? 'geral';
 
 $log[] = "Recebido: obra_id=$obra_id, tipo_arquivo=$tipo_arquivo, substituicao=" . ($substituicao ? 'SIM' : 'NAO');
@@ -71,6 +71,54 @@ function buscarNomeCategoria($categoriaId)
         7 => 'Angulo definido'
     ];
     return $categorias[$categoriaId] ?? 'Outros';
+}
+
+// Normaliza um nome para uso em pasta: remove acentos, caracteres perigosos e substitui espaços por '_'
+function sanitizeDirName($str)
+{
+    $map = [
+        '/[áàãâä]/ui' => 'a',
+        '/[éèêë]/ui' => 'e',
+        '/[íìîï]/ui' => 'i',
+        '/[óòõôö]/ui' => 'o',
+        '/[úùûü]/ui' => 'u',
+        '/[ç]/ui' => 'c'
+    ];
+    $str = preg_replace(array_keys($map), array_values($map), $str);
+    // remove caracteres não alfanuméricos exceto espaço e underscore
+    $str = preg_replace('/[^A-Za-z0-9 _-]/', '', $str);
+    $str = preg_replace('/\s+/', '_', trim($str));
+    return $str;
+}
+
+// Tenta resolver a pasta de categoria existente no SFTP; se não encontrar, cria uma pasta sanitizada
+function resolveCategoriaDir($sftp, $pastaBase, $categoriaNome, &$log)
+{
+    $candidates = [];
+    $candidates[] = $categoriaNome;
+    $candidates[] = str_replace(' ', '', $categoriaNome);
+    $candidates[] = str_replace(' ', '_', $categoriaNome);
+    $candidates[] = sanitizeDirName($categoriaNome);
+
+    foreach ($candidates as $cand) {
+        $path = rtrim($pastaBase, '/') . '/' . $cand;
+        if ($sftp->is_dir($path)) {
+            $log[] = "Categoria encontrada: $path (usando candidato '$cand')";
+            return $cand;
+        }
+    }
+
+    // Não encontrou — cria com versão sanitizada
+    $safe = sanitizeDirName($categoriaNome);
+    $pathSafe = rtrim($pastaBase, '/') . '/' . $safe;
+    if (!$sftp->is_dir($pathSafe)) {
+        if ($sftp->mkdir($pathSafe, 0777, true)) {
+            $log[] = "Criada pasta de categoria sanitizada: $pathSafe";
+        } else {
+            $log[] = "Falha ao criar pasta de categoria: $pathSafe";
+        }
+    }
+    return $safe;
 }
 
 function buscarNomenclatura($conn, $obra_id)
@@ -145,6 +193,7 @@ function gerarNomeInterno($conn, $obra_id, $tipo_id, $categoria, $nomeTipo, $tip
 
     // 🔹 Se for SKP ou IMG → buscar versão pelo campo versao
     if ($tipo_arquivo === 'SKP' || $tipo_arquivo === 'IMG') {
+        // Primeiro tenta encontrar por nome_original (comportamento antigo)
         $sql = "SELECT versao FROM arquivos 
                 WHERE obra_id = ? 
                   AND tipo_imagem_id = ? 
@@ -169,6 +218,31 @@ function gerarNomeInterno($conn, $obra_id, $tipo_id, $categoria, $nomeTipo, $tip
         $versao = 1;
         if ($row = $res->fetch_assoc()) {
             $versao = intval($row['versao']) + 1;
+        } else {
+            // Fallback: procurar última versão por obra/tipo_imagem/categoria/(imagem_id) independente do nome_original
+            $sql2 = "SELECT versao FROM arquivos 
+                     WHERE obra_id = ? 
+                       AND tipo_imagem_id = ? 
+                       AND categoria_id = ? 
+                       AND tipo = ?";
+            $params2 = [$obra_id, $tipo_id, $categoria, $tipo_arquivo];
+            $types2 = "iiii";
+            if ($imagem_id) {
+                $sql2 .= " AND imagem_id = ?";
+                $params2[] = $imagem_id;
+                $types2 .= "i";
+            }
+            $sql2 .= " ORDER BY versao DESC LIMIT 1";
+            $stmt2 = $conn->prepare($sql2);
+            if ($stmt2) {
+                $stmt2->bind_param($types2, ...$params2);
+                $stmt2->execute();
+                $res2 = $stmt2->get_result();
+                if ($row2 = $res2->fetch_assoc()) {
+                    $versao = intval($row2['versao']) + 1;
+                }
+                $stmt2->close();
+            }
         }
     }
     // 🔹 Demais tipos → busca pela convenção antiga
@@ -225,13 +299,15 @@ if (!empty($arquivosTmp) && count($arquivosTmp) > 0 && ($refsSkpModo === 'geral'
             }
 
             $categoriaNome = buscarNomeCategoria($categoria);
+            // resolve candidate folder name no SFTP (tenta variações e cria uma pasta sanitizada caso necessário)
+            $categoriaDir = resolveCategoriaDir($sftp, $pastaBase, $categoriaNome, $log);
 
-            $destDir = $pastaBase . $categoriaNome . "/" . $nomeTipo . "/" . $tipo_arquivo;
-            if (!$sftp->mkdir($destDir)) {
+            $destDir = rtrim($pastaBase, '/') . '/' . $categoriaDir . '/' . $nomeTipo . '/' . $tipo_arquivo;
+            if (!$sftp->is_dir($destDir)) {
                 $sftp->mkdir($destDir, 0777, true);
                 $log[] = "Criado diretório: $destDir";
             }
-            if (!$sftp->mkdir($destDir . "/OLD")) {
+            if (!$sftp->is_dir($destDir . "/OLD")) {
                 $sftp->mkdir($destDir . "/OLD", 0777, true);
                 $log[] = "Criado diretório: $destDir/OLD";
             }
@@ -286,30 +362,39 @@ if (!empty($arquivosTmp) && count($arquivosTmp) > 0 && ($refsSkpModo === 'geral'
 // =======================
 // Upload refs/skp por imagem
 // =======================
-if ((!empty($arquivosPorImagem)) && ($categoria == 2 || $tipo_arquivo === 'SKP') && $refsSkpModo === 'porImagem') {
+// Permitir upload por-imagem também para categoria 7 (Ângulo definido) além da categoria 2 ou SKP
+if ((!empty($arquivosPorImagem)) && ($categoria == 2 || $tipo_arquivo === 'SKP' || $categoria == 7) && $refsSkpModo === 'porImagem') {
 
 
     $log[] = "Iniciando upload refs/skp por imagem...";
     foreach ($arquivosPorImagem['name'] as $imagem_id => $arquivosArray) {
         // Substituição apenas uma vez por imagem
-        $check = $conn->query("SELECT * FROM arquivos 
-        WHERE obra_id=$obra_id AND tipo='$tipo_arquivo' AND imagem_id=$imagem_id 
-        AND status='atualizado'");
-        $log[] = "Encontrados {$check->num_rows} arquivos refs/skp antigos para imagem $imagem_id.";
-        if ($check->num_rows > 0 && $substituicao) {
-            while ($old = $check->fetch_assoc()) {
-                $oldPath = $old['caminho'];
-                $newPath = dirname($oldPath) . "/OLD/" . basename($oldPath);
-                $log[] = "Movendo $oldPath => $newPath";
-                if ($sftp->file_exists($oldPath)) {
-                    if (!$sftp->rename($oldPath, $newPath)) {
-                        $errors[] = "Falha ao mover {$old['nome_interno']} para OLD.";
+        // Filtra por obra_id, tipo, imagem_id e categoria_id para evitar mover arquivos de outras categorias
+        $stmtCheck = $conn->prepare("SELECT * FROM arquivos 
+        WHERE obra_id = ? AND tipo = ? AND imagem_id = ? AND categoria_id = ? AND status = 'atualizado'");
+        if ($stmtCheck) {
+            $stmtCheck->bind_param("isii", $obra_id, $tipo_arquivo, $imagem_id, $categoria);
+            $stmtCheck->execute();
+            $check = $stmtCheck->get_result();
+            $log[] = "Encontrados {$check->num_rows} arquivos refs/skp antigos para imagem $imagem_id (categoria $categoria).";
+            if ($check->num_rows > 0 && $substituicao) {
+                while ($old = $check->fetch_assoc()) {
+                    $oldPath = $old['caminho'];
+                    $newPath = dirname($oldPath) . "/OLD/" . basename($oldPath);
+                    $log[] = "Movendo $oldPath => $newPath";
+                    if ($sftp->file_exists($oldPath)) {
+                        if (!$sftp->rename($oldPath, $newPath)) {
+                            $errors[] = "Falha ao mover {$old['nome_interno']} para OLD.";
+                        }
+                    } else {
+                        $errors[] = "Arquivo antigo {$old['nome_interno']} não encontrado.";
                     }
-                } else {
-                    $errors[] = "Arquivo antigo {$old['nome_interno']} não encontrado.";
+                    $conn->query("UPDATE arquivos SET status='antigo' WHERE idarquivo=" . $old['idarquivo']);
                 }
-                $conn->query("UPDATE arquivos SET status='antigo' WHERE idarquivo=" . $old['idarquivo']);
             }
+            $stmtCheck->close();
+        } else {
+            $log[] = "Falha ao preparar consulta de verificação de arquivos antigos: " . $conn->error;
         }
         $indice = 1;
 
@@ -338,8 +423,9 @@ if ((!empty($arquivosPorImagem)) && ($categoria == 2 || $tipo_arquivo === 'SKP')
             $nome_imagem = $queryImagem->fetch_assoc()['imagem_nome'];
 
             $categoriaNome = buscarNomeCategoria($categoria);
+            $categoriaDir = resolveCategoriaDir($sftp, $pastaBase, $categoriaNome, $log);
 
-            $destDir = $pastaBase . $categoriaNome . "/" . $nomeTipo . "/" . $tipo_arquivo . "/" . $nome_imagem;
+            $destDir = rtrim($pastaBase, '/') . '/' . $categoriaDir . '/' . $nomeTipo . '/' . $tipo_arquivo . '/' . $nome_imagem;
             if (!$sftp->is_dir($destDir)) {
                 $sftp->mkdir($destDir, 0777, true);
                 $log[] = "Criado diretório: $destDir";

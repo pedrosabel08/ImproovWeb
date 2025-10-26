@@ -131,6 +131,7 @@ document.getElementById("uploadForm").addEventListener("submit", async function 
     const form = e.target;
     const obra_id = form.obra_id.value;
     const tipo_arquivo = form.tipo_arquivo.value;
+    const tipo_categoria = form.tipo_categoria.value;
     const tipo_imagem = Array.from(form['tipo_imagem[]'].selectedOptions).map(o => o.value);
 
     // Se for refs/skp, checa por imagem
@@ -150,7 +151,7 @@ document.getElementById("uploadForm").addEventListener("submit", async function 
             const checkRes = await fetch('checkArquivoExistente.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ obra_id, tipo_arquivo, tipo_imagem, imagem_id: imagemId })
+                body: JSON.stringify({ obra_id, tipo_arquivo, tipo_categoria, tipo_imagem, imagem_id: imagemId })
             });
             const checkData = await checkRes.json();
             if (checkData.existe) existeAlgum = true;

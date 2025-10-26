@@ -7,6 +7,7 @@ $obra_id = intval($data['obra_id']);
 $tipo_arquivo = $data['tipo_arquivo'];
 $tiposImagem = $data['tipo_imagem'];
 $imagem_id = isset($data['imagem_id']) ? intval($data['imagem_id']) : null;
+$tipo_categoria = $data['tipo_categoria'];
 
 $existe = false;
 
@@ -16,7 +17,7 @@ foreach ($tiposImagem as $nomeTipo) {
     if ($res && $res->num_rows > 0) {
         $row = $res->fetch_assoc();
         $tipo_id = $row['id_tipo_imagem'];
-        $sql = "SELECT idarquivo FROM arquivos WHERE obra_id=$obra_id AND tipo_imagem_id=$tipo_id AND tipo='$tipo_arquivo' AND status='atualizado'";
+        $sql = "SELECT idarquivo FROM arquivos WHERE obra_id=$obra_id AND tipo_imagem_id=$tipo_id AND tipo='$tipo_arquivo' AND categoria_id='$tipo_categoria' AND status='atualizado'";
         if ($imagem_id !== null) {
             $sql .= " AND imagem_id=$imagem_id";
         }

@@ -398,7 +398,7 @@ for ($i = 0; $i < $total; $i++) {
     $tipo_para_log = isset($tipo) ? $tipo : '';
     $colaborador_id = $_POST['idcolaborador'] ?? null;
 
-    // Cria tabela de log se não existir
+    // Cria tabela de log se não existir (adiciona coluna `status` para controlar atualizado/historico)
     $createTableSql = "CREATE TABLE IF NOT EXISTS arquivo_log (
         id INT AUTO_INCREMENT PRIMARY KEY,
         funcao_imagem_id INT NULL,
@@ -407,6 +407,7 @@ for ($i = 0; $i < $total; $i++) {
         tamanho BIGINT NULL,
         tipo VARCHAR(50) NULL,
         colaborador_id INT NULL,
+        status VARCHAR(50) DEFAULT 'atualizado',
         criado_em DATETIME DEFAULT CURRENT_TIMESTAMP,
         INDEX(funcao_imagem_id),
         FOREIGN KEY (funcao_imagem_id) REFERENCES funcao_imagem(idfuncao_imagem) ON DELETE CASCADE,
@@ -415,20 +416,41 @@ for ($i = 0; $i < $total; $i++) {
     // Tentar criar a tabela (silencioso em caso de falha)
     @$conn->query($createTableSql);
 
+    // Antes de inserir novo log, marcar como 'historico' qualquer registro 'atualizado' existente
+    $status_to_set = 'historico';
+    $status_current = 'atualizado';
+    if (!empty($caminho_para_log)) {
+        $upd = $conn->prepare("UPDATE arquivo_log SET status = ? WHERE caminho = ? AND status = ? AND funcao_imagem_id = ?");
+        if ($upd) {
+            $upd->bind_param('sssi', $status_to_set, $caminho_para_log, $status_current, $fidInt);
+            @$upd->execute();
+            $upd->close();
+        }
+    } else {
+        // Fallback: atualiza por nome_arquivo
+        $upd = $conn->prepare("UPDATE arquivo_log SET status = ? WHERE nome_arquivo = ? AND status = ? AND funcao_imagem_id = ?");
+        if ($upd) {
+            $upd->bind_param('sssi', $status_to_set, $nome_para_log, $status_current, $fidInt);
+            @$upd->execute();
+            $upd->close();
+        }
+    }
+
     // Insere logs: se houver dataIdFuncoes, insere uma linha por funcao_imagem_id
-    $insertSql = "INSERT INTO arquivo_log (funcao_imagem_id, caminho, nome_arquivo, tamanho, tipo, colaborador_id) VALUES (?, ?, ?, ?, ?, ?)";
+    $insertSql = "INSERT INTO arquivo_log (funcao_imagem_id, caminho, nome_arquivo, tamanho, tipo, colaborador_id, status) VALUES (?, ?, ?, ?, ?, ?, ?)";
     $stmtLog = $conn->prepare($insertSql);
     if ($stmtLog) {
+        $status_atual = $status_current; // 'atualizado'
         if (!empty($dataIdFuncoes)) {
             foreach ($dataIdFuncoes as $fid) {
                 $fidInt = (int)$fid;
-                // tipos: i s s i s s -> "ississ"
-                $stmtLog->bind_param('ississ', $fidInt, $caminho_para_log, $nome_para_log, $tamanho, $tipo_para_log, $colaborador_id);
+                // tipos: i s s i s i s -> 'issisis'
+                $stmtLog->bind_param('issisis', $fidInt, $caminho_para_log, $nome_para_log, $tamanho, $tipo_para_log, $colaborador_id, $status_atual);
                 @$stmtLog->execute();
             }
         } else {
             $nullInt = null;
-            $stmtLog->bind_param('ississ', $nullInt, $caminho_para_log, $nome_para_log, $tamanho, $tipo_para_log, $colaborador_id);
+            $stmtLog->bind_param('issisis', $nullInt, $caminho_para_log, $nome_para_log, $tamanho, $tipo_para_log, $colaborador_id, $status_atual);
             @$stmtLog->execute();
         }
         $stmtLog->close();

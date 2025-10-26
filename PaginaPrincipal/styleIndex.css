@@ -1471,6 +1471,15 @@ span.aprovadaComAjustes {
     margin-top: 2px;
 }
 
+/* Permite que caminhos longos quebrem em múltiplas linhas sem estourar o contêiner */
+.path {
+    display: block;
+    max-width: 100%;
+    white-space: normal; /* permite quebra de linha */
+    overflow-wrap: anywhere; /* quebra onde for necessário */
+    word-break: break-all; /* fallback para navegadores antigos */
+}
+
 
 
 /* Animação */

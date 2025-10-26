@@ -1192,54 +1192,6 @@ function abrirSidebar(idFuncao, idImagem) {
                 sidebarContent.appendChild(funcoesDiv);
             }
 
-            // Exibe log de alterações
-            if (data.log_alteracoes && data.log_alteracoes.length > 0) {
-                const logDiv = document.createElement('div');
-                logDiv.classList.add('log-alteracoes');
-                logDiv.innerHTML = `<strong>Log de Alterações:</strong>`;
-
-                data.log_alteracoes.forEach(log => {
-                    const li = document.createElement('div');
-                    li.classList.add('log-entry');
-
-                    // Define a cor da borda conforme o status_novo
-                    let corBorda;
-                    switch (log.status_novo.toLowerCase()) {
-                        case 'em aprovação':
-                            corBorda = '#4a90e2'; // azul
-                            break;
-                        case 'finalizado':
-                        case 'aprovado':
-                            corBorda = '#28a745'; // verde
-                            break;
-                        case 'aprovado com ajustes':
-                            corBorda = '#5e07ffff';
-                            break;
-                        case 'não iniciado':
-                            corBorda = '#6c757d';
-                            break;
-                        case 'em andamento':
-                            corBorda = '#ff9800'; // laranja
-                            break;
-                        case 'ajuste':
-                        case 'hold':
-                            corBorda = '#dc3545'; // vermelho
-                            break;
-                        default:
-                            corBorda = '#777'; // cinza padrão
-                    }
-
-                    li.style.borderLeft = `3px solid ${corBorda}`;
-                    li.style.paddingLeft = '10px';
-                    li.style.marginBottom = '10px';
-
-                    li.innerHTML = `<strong>${log.data}</strong> ${log.status_anterior} → <em>${log.status_novo}</em> (${log.responsavel})`;
-                    logDiv.appendChild(li);
-                });
-
-                sidebarContent.appendChild(logDiv);
-            }
-
             // Helper: group array of arquivos by categoria_nome -> tipo
             function groupArquivos(arr) {
                 const grouped = {}; // { categoria: { tipo: [items] } }
@@ -1367,7 +1319,7 @@ function abrirSidebar(idFuncao, idImagem) {
             renderGroupedArquivos('Arquivos da imagem', data.arquivos_imagem, false);
 
             // Render type-level arquivos grouped (trim to the type folder)
-            renderGroupedArquivos('Arquivos do tipo', data.arquivos_tipo, true);
+            renderGroupedArquivos('Arquivos do tipo de imagem', data.arquivos_tipo, true);
 
             // Render previous-task arquivos (logs) with custom layout:
             // - .cat-header = nome_funcao
@@ -1442,7 +1394,55 @@ function abrirSidebar(idFuncao, idImagem) {
             }
 
             if (data.arquivos_anteriores && data.arquivos_anteriores.length) {
-                renderArquivosAnteriores('Arquivos anteriores', data.arquivos_anteriores);
+                renderArquivosAnteriores('Processos anteriores', data.arquivos_anteriores);
+            }
+
+            // Exibe log de alterações
+            if (data.log_alteracoes && data.log_alteracoes.length > 0) {
+                const logDiv = document.createElement('div');
+                logDiv.classList.add('log-alteracoes');
+                logDiv.innerHTML = `<strong>Log de Alterações:</strong>`;
+
+                data.log_alteracoes.forEach(log => {
+                    const li = document.createElement('div');
+                    li.classList.add('log-entry');
+
+                    // Define a cor da borda conforme o status_novo
+                    let corBorda;
+                    switch (log.status_novo.toLowerCase()) {
+                        case 'em aprovação':
+                            corBorda = '#4a90e2'; // azul
+                            break;
+                        case 'finalizado':
+                        case 'aprovado':
+                            corBorda = '#28a745'; // verde
+                            break;
+                        case 'aprovado com ajustes':
+                            corBorda = '#5e07ffff';
+                            break;
+                        case 'não iniciado':
+                            corBorda = '#6c757d';
+                            break;
+                        case 'em andamento':
+                            corBorda = '#ff9800'; // laranja
+                            break;
+                        case 'ajuste':
+                        case 'hold':
+                            corBorda = '#dc3545'; // vermelho
+                            break;
+                        default:
+                            corBorda = '#777'; // cinza padrão
+                    }
+
+                    li.style.borderLeft = `3px solid ${corBorda}`;
+                    li.style.paddingLeft = '10px';
+                    li.style.marginBottom = '10px';
+
+                    li.innerHTML = `<strong>${log.data}</strong> ${log.status_anterior} → <em>${log.status_novo}</em> (${log.responsavel})`;
+                    logDiv.appendChild(li);
+                });
+
+                sidebarContent.appendChild(logDiv);
             }
 
             // Abre a sidebar

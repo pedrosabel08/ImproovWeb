@@ -524,14 +524,14 @@ function setActive(button) {
 }
 
 if (btnOverview) btnOverview.addEventListener('click', () => {
-    overviewSection.style.display = 'block';
+    overviewSection.style.display = 'flex';
     kanbanSection.style.display = 'none';
     setActive(btnOverview);
 });
 
 if (btnKanban) btnKanban.addEventListener('click', () => {
     overviewSection.style.display = 'none';
-    kanbanSection.style.display = 'block';
+    kanbanSection.style.display = 'flex';
     setActive(btnKanban);
 });
 
@@ -2223,12 +2223,12 @@ document.addEventListener('click', function (e) {
         // Fecha os modais ao clicar fora ou pressionar Esc
         if (eventType === 'keydown' && event.key !== 'Escape') return;
 
-        if (event.target == cardModal || (eventType === 'keydown' && event.key === 'Escape')) {
-            cardModal.classList.remove('active');
-        }
-        if (!cardModal.querySelector('.modal-content').contains(event.target)) {
-            cardModal.classList.remove('active');
-        }
+        // if (event.target == cardModal || (eventType === 'keydown' && event.key === 'Escape')) {
+        //     cardModal.classList.remove('active');
+        // }
+        // if (!cardModal.querySelector('.modal-content').contains(event.target)) {
+        //     cardModal.classList.remove('active');
+        // }
     });
 });
 

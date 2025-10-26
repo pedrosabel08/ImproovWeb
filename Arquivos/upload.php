@@ -67,7 +67,8 @@ function buscarNomeCategoria($categoriaId)
         3 => 'Paisagismo',
         4 => 'Luminotecnico',
         5 => 'Estrutural',
-        6 => 'Alteracoes'
+        6 => 'Alteracoes',
+        7 => 'Angulo definido'
     ];
     return $categorias[$categoriaId] ?? 'Outros';
 }

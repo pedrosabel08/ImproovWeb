@@ -122,6 +122,7 @@ $conn->close();
                     <option value="4">Luminotécnico</option>
                     <option value="5">Estrutural</option>
                     <option value="6">Alterações</option>
+                    <option value="7">Ângulo definido</option>
                 </select>
 
                 <label>Tipo de Imagem</label>

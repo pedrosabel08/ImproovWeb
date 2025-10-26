@@ -1,5 +1,7 @@
 <?php
 
+session_start();
+
 header("Access-Control-Allow-Origin: https://improov.com.br");
 header("Access-Control-Allow-Methods: POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type");
@@ -417,22 +419,40 @@ for ($i = 0; $i < $total; $i++) {
     @$conn->query($createTableSql);
 
     // Antes de inserir novo log, marcar como 'historico' qualquer registro 'atualizado' existente
+    // Ao inserir para uma ou mais funções (dataIdFuncoes) devemos atualizar cada funcao_imagem_id.
+    // O código anterior referenciava $fidInt antes de ser definido, por isso não marcava histórico.
     $status_to_set = 'historico';
     $status_current = 'atualizado';
-    if (!empty($caminho_para_log)) {
-        $upd = $conn->prepare("UPDATE arquivo_log SET status = ? WHERE caminho = ? AND status = ? AND funcao_imagem_id = ?");
-        if ($upd) {
-            $upd->bind_param('sssi', $status_to_set, $caminho_para_log, $status_current, $fidInt);
-            @$upd->execute();
-            $upd->close();
+
+    if (!empty($dataIdFuncoes)) {
+        // Atualiza por funcao_imagem_id: marca todos registros 'atualizado' como 'historico' para cada id
+        foreach ($dataIdFuncoes as $fid) {
+            $fidInt = (int)$fid;
+            $upd = $conn->prepare("UPDATE arquivo_log SET status = ? WHERE funcao_imagem_id = ? AND status = ?");
+            if ($upd) {
+                // tipos: s i s
+                $upd->bind_param('sis', $status_to_set, $fidInt, $status_current);
+                @$upd->execute();
+                $upd->close();
+            }
         }
     } else {
-        // Fallback: atualiza por nome_arquivo
-        $upd = $conn->prepare("UPDATE arquivo_log SET status = ? WHERE nome_arquivo = ? AND status = ? AND funcao_imagem_id = ?");
-        if ($upd) {
-            $upd->bind_param('sssi', $status_to_set, $nome_para_log, $status_current, $fidInt);
-            @$upd->execute();
-            $upd->close();
+        // Sem funcao_imagem_id, tentar atualizar por caminho ou nome_arquivo
+        if (!empty($caminho_para_log)) {
+            $upd = $conn->prepare("UPDATE arquivo_log SET status = ? WHERE caminho = ? AND status = ?");
+            if ($upd) {
+                $upd->bind_param('sss', $status_to_set, $caminho_para_log, $status_current);
+                @$upd->execute();
+                $upd->close();
+            }
+        } else {
+            // Fallback: atualiza por nome_arquivo
+            $upd = $conn->prepare("UPDATE arquivo_log SET status = ? WHERE nome_arquivo = ? AND status = ?");
+            if ($upd) {
+                $upd->bind_param('sss', $status_to_set, $nome_para_log, $status_current);
+                @$upd->execute();
+                $upd->close();
+            }
         }
     }
 

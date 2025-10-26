@@ -524,14 +524,14 @@ function setActive(button) {
 }
 
 if (btnOverview) btnOverview.addEventListener('click', () => {
-    overviewSection.style.display = 'block';
+    overviewSection.style.display = 'flex';
     kanbanSection.style.display = 'none';
     setActive(btnOverview);
 });
 
 if (btnKanban) btnKanban.addEventListener('click', () => {
     overviewSection.style.display = 'none';
-    kanbanSection.style.display = 'block';
+    kanbanSection.style.display = 'flex';
     setActive(btnKanban);
 });
 

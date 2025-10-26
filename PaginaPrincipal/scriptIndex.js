@@ -2223,12 +2223,12 @@ document.addEventListener('click', function (e) {
         // Fecha os modais ao clicar fora ou pressionar Esc
         if (eventType === 'keydown' && event.key !== 'Escape') return;
 
-        if (event.target == cardModal || (eventType === 'keydown' && event.key === 'Escape')) {
-            cardModal.classList.remove('active');
-        }
-        if (!cardModal.querySelector('.modal-content').contains(event.target)) {
-            cardModal.classList.remove('active');
-        }
+        // if (event.target == cardModal || (eventType === 'keydown' && event.key === 'Escape')) {
+        //     cardModal.classList.remove('active');
+        // }
+        // if (!cardModal.querySelector('.modal-content').contains(event.target)) {
+        //     cardModal.classList.remove('active');
+        // }
     });
 });
 

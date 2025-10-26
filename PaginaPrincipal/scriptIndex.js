@@ -1284,12 +1284,17 @@ function abrirSidebar(idFuncao, idImagem) {
                 <div class="tipo-header">↳ ${tipo} <span class="count">(${tipoArr.length})</span></div>
             `;
 
-                        const rawPaths = Array.from(new Set(tipoArr.map(it => it.caminho).filter(Boolean)));
-                        const paths = rawPaths.map(p => normalizePath(p, isTipoLevel));
-                        const uniquePaths = Array.from(new Set(paths));
-
                         const infoDiv = document.createElement('div');
                         infoDiv.classList.add('tipo-info');
+
+                        // separate items where categoria_id == 7 (special: show JPG filename + observação)
+                        const jpgItems = tipoArr.filter(it => parseInt(it.categoria_id, 10) === 7);
+                        const otherItems = tipoArr.filter(it => parseInt(it.categoria_id, 10) !== 7);
+
+                        // First render other items as folder paths (existing behavior)
+                        const rawPaths = Array.from(new Set(otherItems.map(it => it.caminho).filter(Boolean)));
+                        const paths = rawPaths.map(p => normalizePath(p, isTipoLevel));
+                        const uniquePaths = Array.from(new Set(paths));
 
                         if (uniquePaths.length > 0) {
                             uniquePaths.forEach(p => {
@@ -1298,11 +1303,32 @@ function abrirSidebar(idFuncao, idImagem) {
                                 pDiv.innerHTML = `📂 ${p}`;
                                 infoDiv.appendChild(pDiv);
                             });
-                        } else {
+                        } else if (otherItems.length === 0 && jpgItems.length === 0) {
                             const noneDiv = document.createElement('div');
                             noneDiv.classList.add('path');
                             noneDiv.textContent = 'Sem caminho';
                             infoDiv.appendChild(noneDiv);
+                        }
+
+                        // Then render jpg items: show filename (from nome_interno or from caminho) and observação if present
+                        if (jpgItems.length > 0) {
+                            jpgItems.forEach(it => {
+                                const pDiv = document.createElement('div');
+                                pDiv.classList.add('path', 'jpg-entry');
+                                // extract filename
+                                let filename = it.nome_interno || '';
+                                if (!filename && it.caminho) {
+                                    const parts = it.caminho.split(/[\\/]/).filter(Boolean);
+                                    filename = parts.length ? parts[parts.length - 1] : it.caminho;
+                                }
+                                // show filename and if exists, observation
+                                let inner = `🖼️ ${filename}`;
+                                if (it.observacao) {
+                                    inner += ` <div class="arquivo-observacao">${it.observacao}</div>`;
+                                }
+                                pDiv.innerHTML = inner;
+                                infoDiv.appendChild(pDiv);
+                            });
                         }
 
                         tipoDiv.appendChild(infoDiv);
@@ -1391,6 +1417,7 @@ function abrirSidebar(idFuncao, idImagem) {
                 });
 
                 sidebarContent.appendChild(section);
+
             }
 
             if (data.arquivos_anteriores && data.arquivos_anteriores.length) {
@@ -1444,7 +1471,10 @@ function abrirSidebar(idFuncao, idImagem) {
 
                 sidebarContent.appendChild(logDiv);
             }
-
+            const pathEl = document.querySelectorAll('.path');
+            pathEl.forEach(el => {
+                el.innerHTML = el.textContent.replace(/[\\/]/g, '$&<wbr>');
+            });
             // Abre a sidebar
             sidebarRight.classList.add('active');
         });

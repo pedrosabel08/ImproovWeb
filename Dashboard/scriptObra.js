@@ -4356,6 +4356,12 @@ document.getElementById("btnAtualizar").addEventListener("click", function () {
                     case "opcao_status_modal":
                         coluna = "status_id";
                         break;
+                    case "modal_funcao":
+                        coluna = "funcao_id";
+                        break;
+                    case "modal_colaborador":
+                        coluna = "colaborador_id";
+                        break;
                     case "prazo_modal":
                         coluna = "prazo";
                         break;
@@ -4394,6 +4400,60 @@ document.getElementById("btnAtualizar").addEventListener("click", function () {
 
 
     // Envia via AJAX para PHP
+    // If the user selected função/colaborador or other funcao-imagem fields, use insereFuncao.php per image
+    const funcaoFields = ["funcao_id", "colaborador_id", "prazo", "status", "observacao", "status_id"];
+    const hasFuncaoFields = Object.keys(dadosAtualizar).some(k => funcaoFields.includes(k));
+
+    if (hasFuncaoFields) {
+        // Build the data to send to insereFuncao.php
+        const toSend = {};
+        funcaoFields.forEach(f => {
+            if (dadosAtualizar[f] !== undefined) toSend[f] = dadosAtualizar[f];
+        });
+
+        // Perform one request per selected image
+        const promises = idsSelecionados.map(id => {
+            const fd = new FormData();
+            fd.append('imagem_id', id);
+            for (const [k, v] of Object.entries(toSend)) {
+                fd.append(k, v);
+            }
+
+            return fetch('../insereFuncao.php', {
+                method: 'POST',
+                body: fd
+            }).then(r => r.json());
+        });
+
+        Promise.all(promises).then(results => {
+            const failed = results.filter(r => r.error);
+            if (failed.length === 0) {
+                Toastify({ text: "Funções atribuídas com sucesso!", duration: 3000, gravity: "top", position: "right", backgroundColor: 'linear-gradient(to right, #00b09b, #96c93d)' }).showToast();
+
+                // Cleanup UI similar to previous flow
+                const headerRow = document.querySelector("#tabela-obra thead tr:nth-child(2)");
+                if (headerRow && headerRow.firstChild) {
+                    headerRow.removeChild(headerRow.firstChild);
+                }
+                document.querySelectorAll("#tabela-obra tbody tr").forEach(row => {
+                    if (row.firstChild) row.removeChild(row.firstChild);
+                });
+                document.getElementById("acoesBtn").style.display = "none";
+                document.getElementById("acoesModal").style.display = "none";
+                batchMode = false;
+                infosObra(obraId);
+            } else {
+                Toastify({ text: "Algumas atualizações falharam.", duration: 4000, gravity: "top", position: "right", backgroundColor: 'linear-gradient(to right, #b00000ff, #e97171ff)' }).showToast();
+            }
+        }).catch(err => {
+            console.error(err);
+            Toastify({ text: "Erro interno ao executar atualizações.", duration: 3000, gravity: "top", position: "right", backgroundColor: 'linear-gradient(to right, #b00000ff, #e97171ff)' }).showToast();
+        });
+
+        return; // already handled via insereFuncao.php
+    }
+
+    // Fallback: previous batch_actions behavior
     fetch("batch_actions.php", {
         method: "POST",
         headers: {

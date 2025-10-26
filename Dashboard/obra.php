@@ -177,6 +177,27 @@ $conn->close();
                         </select>
                     </div>
                 </div>
+                <div class="modal-row" data-target="funcaoField">Função
+                    <div id="funcaoField" class="modal-field" style="display: none;">
+                        <select id="modal_funcao">
+                            <option value="">-- Selecionar função --</option>
+                            <?php foreach ($funcoes as $f): ?>
+                                <option value="<?= htmlspecialchars($f['idfuncao']); ?>"><?= htmlspecialchars($f['nome_funcao']); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="modal-row" data-target="colabField">Colaborador
+                    <div id="colabField" class="modal-field" style="display: none;">
+                        <select id="modal_colaborador">
+                            <option value="">-- Selecionar colaborador --</option>
+                            <?php foreach ($colaboradores as $colab): ?>
+                                <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>"><?= htmlspecialchars($colab['nome_colaborador']); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
                 <div style="text-align: center; padding-top: 5px;">
                     <button id="btnAtualizar">✓ Atualizar</button>
                 </div>

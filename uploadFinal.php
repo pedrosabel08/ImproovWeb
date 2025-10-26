@@ -396,7 +396,7 @@ for ($i = 0; $i < $total; $i++) {
     $nome_para_log = isset($nome_final) ? $nome_final : (isset($nome_base) ? ($nome_base . "-{$revisao}.{$extensao}") : $nome_original);
     $caminho_para_log = isset($remote_path) ? $remote_path : '';
     $tipo_para_log = isset($tipo) ? $tipo : '';
-    $usuario_log = $_POST['usuario'] ?? null;
+    $colaborador_id = $_POST['idcolaborador'] ?? null;
 
     // Cria tabela de log se não existir
     $createTableSql = "CREATE TABLE IF NOT EXISTS arquivo_log (
@@ -416,19 +416,19 @@ for ($i = 0; $i < $total; $i++) {
     @$conn->query($createTableSql);
 
     // Insere logs: se houver dataIdFuncoes, insere uma linha por funcao_imagem_id
-    $insertSql = "INSERT INTO arquivo_log (funcao_imagem_id, caminho, nome_arquivo, tamanho, tipo, usuario) VALUES (?, ?, ?, ?, ?, ?)";
+    $insertSql = "INSERT INTO arquivo_log (funcao_imagem_id, caminho, nome_arquivo, tamanho, tipo, colaborador_id) VALUES (?, ?, ?, ?, ?, ?)";
     $stmtLog = $conn->prepare($insertSql);
     if ($stmtLog) {
         if (!empty($dataIdFuncoes)) {
             foreach ($dataIdFuncoes as $fid) {
                 $fidInt = (int)$fid;
                 // tipos: i s s i s s -> "ississ"
-                $stmtLog->bind_param('ississ', $fidInt, $caminho_para_log, $nome_para_log, $tamanho, $tipo_para_log, $usuario_log);
+                $stmtLog->bind_param('ississ', $fidInt, $caminho_para_log, $nome_para_log, $tamanho, $tipo_para_log, $colaborador_id);
                 @$stmtLog->execute();
             }
         } else {
             $nullInt = null;
-            $stmtLog->bind_param('ississ', $nullInt, $caminho_para_log, $nome_para_log, $tamanho, $tipo_para_log, $usuario_log);
+            $stmtLog->bind_param('ississ', $nullInt, $caminho_para_log, $nome_para_log, $tamanho, $tipo_para_log, $colaborador_id);
             @$stmtLog->execute();
         }
         $stmtLog->close();

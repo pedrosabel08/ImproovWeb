@@ -14,6 +14,13 @@ $port = 2222;
 $username = "flow";
 $password = "flow@2025";
 
+// ---------- Dados FTP ----------
+$ftp_host = "ftp.improov.com.br";
+$ftp_port = 21; // porta padrão FTP
+$ftp_user = "improov";
+$ftp_pass = "Impr00v";
+$ftp_base = "/www/sistema/uploads/angulo_definido";
+
 // Variáveis do log
 $log = [];
 $success = [];
@@ -135,6 +142,34 @@ function buscarNomenclatura($conn, $obra_id)
     return null;
 }
 
+// Garante que um caminho exista no FTP (cria recursivamente). Retorna true/false e adiciona logs.
+function ensureFtpDir($ftp, $path, &$log)
+{
+    // Remove barras duplicadas e mantém caminho absoluto
+    $parts = array_filter(explode('/', $path), 'strlen');
+    $cur = '/';
+    // Salva diretório atual
+    $orig = @ftp_pwd($ftp);
+    foreach ($parts as $p) {
+        $cur = rtrim($cur, '/') . '/' . $p;
+        // tenta mudar para o diretório
+        if (@ftp_chdir($ftp, $cur) === false) {
+            // tenta criar
+            if (@ftp_mkdir($ftp, $cur) === false) {
+                $log[] = "Falha ao criar pasta FTP: $cur";
+                // tenta voltar
+                if ($orig) @ftp_chdir($ftp, $orig);
+                return false;
+            } else {
+                $log[] = "Criada pasta FTP: $cur";
+            }
+        }
+    }
+    // volta para o original, se possível
+    if ($orig) @ftp_chdir($ftp, $orig);
+    return true;
+}
+
 function buscarPastaBaseSFTP($sftp, $conn, $obra_id)
 {
     // Bases de clientes (anos possíveis)
@@ -171,6 +206,9 @@ if (!$pastaBase) {
     echo json_encode(['success' => $success, 'errors' => $errors, 'log' => $log]);
     exit;
 }
+
+// Variável de conexão FTP (inicializada apenas se necessária)
+$ftp_conn = null;
 
 
 function gerarNomeInterno($conn, $obra_id, $tipo_id, $categoria, $nomeTipo, $tipo_arquivo, $ext, &$log, $imagem_id = null, $fileOriginalName = null, $indiceEnvio = 1)
@@ -350,6 +388,35 @@ if (!empty($arquivosTmp) && count($arquivosTmp) > 0 && ($refsSkpModo === 'geral'
                     $stmt->execute();
                     $success[] = "Arquivo '$fileOriginalName' enviado para $nomeTipo como '$fileNomeInterno'";
                     $log[] = "Arquivo enviado com sucesso: $destFile";
+
+                    // Se for categoria 7, também envia ao FTP secundário
+                    if ($categoria == 7) {
+                        if ($ftp_conn === null) {
+                            $ftp_conn = @ftp_connect($ftp_host, $ftp_port, 10);
+                            if ($ftp_conn && @ftp_login($ftp_conn, $ftp_user, $ftp_pass)) {
+                                @ftp_pasv($ftp_conn, true);
+                                $log[] = "Conectado no FTP secundário: $ftp_host";
+                            } else {
+                                $log[] = "Falha ao conectar no FTP secundário: $ftp_host";
+                                $errors[] = "Falha ao conectar no FTP secundário.";
+                                $ftp_conn = null;
+                            }
+                        }
+
+                        if ($ftp_conn) {
+                            $nomen = buscarNomenclatura($conn, $obra_id);
+                            $ftpTargetDir = rtrim($ftp_base, '/') . '/' . ($nomen ? $nomen : 'OBRA' . $obra_id) . '/' . $categoriaDir . '/' . $nomeTipo . '/' . $tipo_arquivo;
+                            if (ensureFtpDir($ftp_conn, $ftpTargetDir, $log)) {
+                                $ftpDest = $ftpTargetDir . '/' . $fileNomeInterno;
+                                if (@ftp_put($ftp_conn, $ftpDest, $fileTmp, FTP_BINARY)) {
+                                    $log[] = "Arquivo enviado para FTP: $ftpDest";
+                                } else {
+                                    $errors[] = "Erro ao enviar para FTP: $ftpDest";
+                                    $log[] = "Falha FTP put: $ftpDest";
+                                }
+                            }
+                        }
+                    }
                 } else {
                     $errors[] = "Erro ao enviar '$fileOriginalName' para $nomeTipo";
                     $log[] = "Falha ao enviar: $destFile";
@@ -450,6 +517,35 @@ if ((!empty($arquivosPorImagem)) && ($categoria == 2 || $tipo_arquivo === 'SKP' 
                 $stmt->execute();
                 $success[] = "Arquivo '$nomeOriginal' enviado para Imagem $imagem_id";
                 $log[] = "Arquivo enviado com sucesso: $destFile";
+
+                // Se for categoria 7, envia também ao FTP secundário
+                if ($categoria == 7) {
+                    if ($ftp_conn === null) {
+                        $ftp_conn = @ftp_connect($ftp_host, $ftp_port, 10);
+                        if ($ftp_conn && @ftp_login($ftp_conn, $ftp_user, $ftp_pass)) {
+                            @ftp_pasv($ftp_conn, true);
+                            $log[] = "Conectado no FTP secundário: $ftp_host";
+                        } else {
+                            $log[] = "Falha ao conectar no FTP secundário: $ftp_host";
+                            $errors[] = "Falha ao conectar no FTP secundário.";
+                            $ftp_conn = null;
+                        }
+                    }
+
+                    if ($ftp_conn) {
+                        $nomen = buscarNomenclatura($conn, $obra_id);
+                        $ftpTargetDir = rtrim($ftp_base, '/') . '/' . ($nomen ? $nomen : 'OBRA' . $obra_id) . '/' . $categoriaDir . '/' . $nomeTipo . '/' . $tipo_arquivo . '/' . $nome_imagem;
+                        if (ensureFtpDir($ftp_conn, $ftpTargetDir, $log)) {
+                            $ftpDest = $ftpTargetDir . '/' . $fileNomeInterno;
+                            if (@ftp_put($ftp_conn, $ftpDest, $tmpFile, FTP_BINARY)) {
+                                $log[] = "Arquivo enviado para FTP: $ftpDest";
+                            } else {
+                                $errors[] = "Erro ao enviar para FTP: $ftpDest";
+                                $log[] = "Falha FTP put: $ftpDest";
+                            }
+                        }
+                    }
+                }
             } else {
                 $errors[] = "Erro ao enviar '$nomeOriginal' para Imagem $imagem_id";
                 $log[] = "Falha ao enviar: $destFile";
@@ -459,4 +555,8 @@ if ((!empty($arquivosPorImagem)) && ($categoria == 2 || $tipo_arquivo === 'SKP' 
 }
 
 $conn->close();
+if ($ftp_conn) {
+    @ftp_close($ftp_conn);
+    $log[] = "Conexão FTP fechada.";
+}
 echo json_encode(['success' => $success, 'errors' => $errors, 'log' => $log]);

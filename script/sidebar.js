@@ -116,7 +116,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             // Redireciona para a URL com o hash desejado
-            window.location.href = 'https://improov.com.br/sistema/Dashboard/obra';
+            window.location.href = '../Dashboard/obra';
         });
     });
 });

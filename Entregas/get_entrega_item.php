@@ -29,12 +29,15 @@ try {
     $entrega = $res->fetch_assoc();
 
     // buscar itens da entrega
+    // Prioriza itens com substatus RVW ou DRV que ainda não foram entregues (assumindo status 'Entregue')
     $sql2 = "SELECT ei.id, ei.imagem_id, i.imagem_nome AS nome, ei.status, ss.nome_substatus
              FROM entregas_itens ei
              INNER JOIN imagens_cliente_obra i ON ei.imagem_id = i.idimagens_cliente_obra
              INNER JOIN substatus_imagem ss ON ss.id = i.substatus_id
              WHERE ei.entrega_id = ?
-             ORDER BY FIELD(ei.status, 'Pendente', 'Parcial') DESC, ei.id ASC";
+             ORDER BY (CASE WHEN ss.nome_substatus IN ('RVW','DRV') AND ei.status <> 'Entregue' THEN 1 ELSE 0 END) DESC,
+                      FIELD(ei.status, 'Pendente', 'Parcial') DESC,
+                      ei.id ASC";
     $stmt2 = $conn->prepare($sql2);
     $stmt2->bind_param("i", $entrega_id);
     $stmt2->execute();

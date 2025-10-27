@@ -382,7 +382,7 @@ if (!empty($arquivosTmp) && count($arquivosTmp) > 0 && ($refsSkpModo === 'geral'
             if (!empty($fileTmp) && file_exists($fileTmp)) {
                 if ($sftp->put($destFile, $fileTmp, SFTP::SOURCE_LOCAL_FILE)) {
                     $stmt = $conn->prepare("INSERT INTO arquivos 
-                    (obra_id, tipo_imagem_id, imagem_id, nome_original, nome_interno, caminho, tipo, versao, status, origem, recebido_por, categoria_id) 
+                    (obra_id, tipo_imagem_id, imagem_id, nome_original, nome_interno, caminho, tipo, versao, status, origem, recebido_por, categoria_id, descricao) 
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'atualizado', 'upload_web', 'sistema', ?, ?)");
                     $stmt->bind_param("iiissssiii", $obra_id, $tipo_id, $imagem_id, $fileOriginalName, $fileNomeInterno, $destFile, $tipo_arquivo, $versao, $categoria, $descricao);
 

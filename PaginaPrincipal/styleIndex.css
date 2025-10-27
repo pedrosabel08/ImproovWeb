@@ -39,6 +39,45 @@ main header {
     padding: 20px;
 }
 
+/* Header layout for pages that place actions inside the header (e.g., Entregas/index.php) */
+.container > header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+/* Botão "Adicionar Entrega" */
+#adicionar_entrega {
+    background-color: var(--primary);
+    color: #fff;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+    transition: transform 0.08s ease, filter 0.12s ease;
+}
+
+#adicionar_entrega:hover {
+    filter: brightness(0.92);
+    transform: translateY(-1px);
+}
+
+#adicionar_entrega:active {
+    transform: translateY(0);
+}
+
+/* Small responsive tweak: shrink padding on small screens */
+@media (max-width: 600px) {
+    #adicionar_entrega {
+        padding: 6px 10px;
+        font-size: 0.9rem;
+    }
+}
+
 main header .top {
     display: flex;
     justify-content: space-between;

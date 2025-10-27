@@ -5,26 +5,12 @@ session_start();
 include '../conexaoMain.php';
 include '../conexao.php';
 
-// if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
-//     // Se não estiver logado, redirecionar para a página de login
-//     header("Location: ../index.html");
-//     exit();
-// }
+if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
+    // Se não estiver logado, redirecionar para a página de login
+    header("Location: ../index.html");
+    exit();
+}
 
-// Buscar a quantidade de funções do colaborador com status "Em andamento"
-// $colaboradorId = $_SESSION['idcolaborador'];
-// $funcoesCountSql = "SELECT COUNT(*) AS total_funcoes_em_andamento
-//                     FROM funcao_imagem
-//                     WHERE colaborador_id = ? AND status = 'Em andamento'";
-// $funcoesCountStmt = $conn->prepare($funcoesCountSql);
-// $funcoesCountStmt->bind_param("i", $colaboradorId);
-// $funcoesCountStmt->execute();
-// $funcoesCountResult = $funcoesCountStmt->get_result();
-
-// Armazenar a quantidade na sessão
-// $funcoesCount = $funcoesCountResult->fetch_assoc();
-
-// $funcoesCountStmt->close();
 
 $conn = conectarBanco();
 

@@ -82,9 +82,9 @@ $conn->close();
             <div class="column" data-status="atrasada">
                 <h2>Atrasadas</h2>
             </div>
-            <div class="column" data-status="aprovada">
+            <!-- <div class="column" data-status="aprovada">
                 <h2>Aprovadas</h2>
-            </div>
+            </div> -->
         </main>
     </div>
     <!-- Modal Adicionar Entrega -->

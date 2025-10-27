@@ -35,6 +35,7 @@ $substituicao = !empty($_POST['flag_substituicao']);
 $tiposImagem  = $_POST['tipo_imagem'] ?? [];
 $categoria  = intval($_POST['tipo_categoria'] ?? 0);
 $refsSkpModo = $_POST['refsSkpModo'] ?? 'geral';
+$descricao    = $_POST['descricao'] ?? "";
 
 $log[] = "Recebido: obra_id=$obra_id, tipo_arquivo=$tipo_arquivo, substituicao=" . ($substituicao ? 'SIM' : 'NAO');
 $log[] = "Tipos imagem: " . json_encode($tiposImagem);
@@ -382,8 +383,8 @@ if (!empty($arquivosTmp) && count($arquivosTmp) > 0 && ($refsSkpModo === 'geral'
                 if ($sftp->put($destFile, $fileTmp, SFTP::SOURCE_LOCAL_FILE)) {
                     $stmt = $conn->prepare("INSERT INTO arquivos 
                     (obra_id, tipo_imagem_id, imagem_id, nome_original, nome_interno, caminho, tipo, versao, status, origem, recebido_por, categoria_id) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'atualizado', 'upload_web', 'sistema', ?)");
-                    $stmt->bind_param("iiissssii", $obra_id, $tipo_id, $imagem_id, $fileOriginalName, $fileNomeInterno, $destFile, $tipo_arquivo, $versao, $categoria);
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'atualizado', 'upload_web', 'sistema', ?, ?)");
+                    $stmt->bind_param("iiissssiii", $obra_id, $tipo_id, $imagem_id, $fileOriginalName, $fileNomeInterno, $destFile, $tipo_arquivo, $versao, $categoria, $descricao);
 
                     $stmt->execute();
                     $success[] = "Arquivo '$fileOriginalName' enviado para $nomeTipo como '$fileNomeInterno'";
@@ -510,9 +511,9 @@ if ((!empty($arquivosPorImagem)) && ($categoria == 2 || $tipo_arquivo === 'SKP' 
 
             if ($sftp->put($destFile, $tmpFile, SFTP::SOURCE_LOCAL_FILE)) {
                 $stmt = $conn->prepare("INSERT INTO arquivos 
-                (obra_id, tipo_imagem_id, imagem_id, nome_original, nome_interno, caminho, tipo, versao, status, origem, recebido_por, categoria_id) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'atualizado', 'upload_web', 'sistema', ?)");
-                $stmt->bind_param("iiissssii", $obra_id, $tipo_id, $imagem_id, $nomeOriginal, $fileNomeInterno, $destFile, $tipo_arquivo, $versao, $categoria);
+                (obra_id, tipo_imagem_id, imagem_id, nome_original, nome_interno, caminho, tipo, versao, status, origem, recebido_por, categoria_id, descricao) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'atualizado', 'upload_web', 'sistema', ?, ?)");
+                $stmt->bind_param("iiissssiii", $obra_id, $tipo_id, $imagem_id, $nomeOriginal, $fileNomeInterno, $destFile, $tipo_arquivo, $versao, $categoria, $descricao);
 
                 $stmt->execute();
                 $success[] = "Arquivo '$nomeOriginal' enviado para Imagem $imagem_id";

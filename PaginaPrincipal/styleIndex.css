@@ -174,7 +174,7 @@ main .kanban .kanban-box {
 
 .kanban-box .content::-webkit-scrollbar-thumb,
 .dropdown-content::-webkit-scrollbar-thumb,
-.log-alteracoes::-webkit-scrollbar-thumb,   
+.log-alteracoes::-webkit-scrollbar-thumb,
 .sidebar-right::-webkit-scrollbar-thumb {
     background: #c1c1c1;
     border-radius: 8px;
@@ -1330,6 +1330,7 @@ span.aprovadaComAjustes {
     margin-bottom: 20px;
     border-bottom: 1px solid var(--border-sidebar, #ddd);
     padding-bottom: 10px;
+    padding-right: 20px;
 }
 
 .sidebar-header h2 {
@@ -1456,6 +1457,10 @@ span.aprovadaComAjustes {
     margin-left: 20px;
 }
 
+.arquivos-tipo.no-tipo-header {
+    margin-left: 0;
+}
+
 .tipo-header {
     margin-bottom: 3px;
     color: var(--text-title);
@@ -1470,6 +1475,17 @@ span.aprovadaComAjustes {
     font-size: 0.9rem;
     color: var(--cor-principal);
     margin-top: 2px;
+    display: flex;
+    flex-direction: column;
+}
+
+img.thumb {
+    width: 100%;
+}
+
+.path.jpg-entry {
+    font-size: 0.7rem;
+    text-align: left;
 }
 
 

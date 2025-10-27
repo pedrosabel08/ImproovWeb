@@ -1098,7 +1098,7 @@ function abrirSidebar(idFuncao, idImagem) {
             const funcao = data.funcoes[0]; // pega o primeiro elemento do array
 
             const imagemDiv = document.createElement('p');
-            imagemDiv.innerHTML = `<strong>Imagem: ${funcao.imagem_nome || '-'}</strong>`;
+            imagemDiv.innerHTML = `<strong>Imagem: ${funcao.imagem_nome || '-'} (${funcao.idimagem || '-'})</strong>`;
             sidebarContent.appendChild(imagemDiv);
             // Exibe status da imagem
             if (data.status_imagem) {
@@ -1250,6 +1250,39 @@ function abrirSidebar(idFuncao, idImagem) {
                 return parts.join('\\');
             }
 
+            // Converte um caminho SFTP/servidor para a URL pública onde os JPGs ficam acessíveis
+            // Ex: /mnt/clientes/2025/TES_TES/05.Exchange/01.Input/Angulo_definido/Fachada/IMG/teste2/file.jpg
+            // => https://improov.com.br/uploads/angulo_definido/Fachada/IMG/teste2/file.jpg
+            function sftpToPublicUrl(rawPath) {
+                if (!rawPath) return null;
+                // normaliza barras
+                const p = rawPath.replace(/\\/g, '/');
+                // Primeira tentativa: detectar caminho completo com nomenclatura
+                // /mnt/clientes/<ano>/<nomenclatura>/05.Exchange/01.Input/<rest>
+                const mFull = p.match(/\/mnt\/clientes\/\d+\/([^\/]+)\/05\.Exchange\/01\.Input\/(.*)/i);
+                if (mFull && mFull[1] && mFull[2]) {
+                    const nomen = mFull[1];
+                    const rest = mFull[2];
+                    // Monta com a nomenclatura logo após angulo_definido conforme solicitado
+                    return 'https://improov.com.br/sistema/uploads/angulo_definido/' + nomen + '/' + rest;
+                }
+
+                // Segunda tentativa: localizar Angulo_definido no caminho e usar o que vem depois
+                const m = p.match(/\/Angulo_definido\/(.*)/i);
+                if (m && m[1]) {
+                    return 'https://improov.com.br/sistema/uploads/angulo_definido/' + m[1];
+                }
+
+                // Terceira tentativa: pega tudo depois de /05.Exchange/01.Input/
+                const idx = p.indexOf('/05.Exchange/01.Input/');
+                if (idx >= 0) {
+                    const after = p.substring(idx + '/05.Exchange/01.Input/'.length);
+                    return 'https://improov.com.br/sistema/uploads/' + after;
+                }
+
+                return null;
+            }
+
             function renderGroupedArquivos(title, arr, isTipoLevel = false) {
                 if (!arr || arr.length === 0) return;
 
@@ -1280,9 +1313,16 @@ function abrirSidebar(idFuncao, idImagem) {
                         const tipoDiv = document.createElement('div');
                         tipoDiv.classList.add('arquivos-tipo');
 
-                        tipoDiv.innerHTML = `
-                <div class="tipo-header">↳ ${tipo} <span class="count">(${tipoArr.length})</span></div>
-            `;
+                        // Se a categoria contém itens com categoria_id === 7 (ex: JPGs),
+                        // não adicionamos o cabeçalho de tipo. Isso evita repetir o tipo
+                        // para entradas de imagem que têm apresentação especial abaixo.
+                        const containsCategoria7 = tipoArr.some(it => parseInt(it.categoria_id, 10) === 7);
+                        if (!containsCategoria7) {
+                            tipoDiv.innerHTML = `\n                <div class="tipo-header">↳ ${tipo} <span class="count">(${tipoArr.length})</span></div>\n            `;
+                        } else {
+                            // Marca o elemento para estilos alternativos, se necessário
+                            tipoDiv.classList.add('no-tipo-header');
+                        }
 
                         const infoDiv = document.createElement('div');
                         infoDiv.classList.add('tipo-info');
@@ -1315,21 +1355,53 @@ function abrirSidebar(idFuncao, idImagem) {
                             jpgItems.forEach(it => {
                                 const pDiv = document.createElement('div');
                                 pDiv.classList.add('path', 'jpg-entry');
-                                // extract filename
+
+                                // extrai nome do arquivo
                                 let filename = it.nome_interno || '';
                                 if (!filename && it.caminho) {
-                                    const parts = it.caminho.split(/[\\/]/).filter(Boolean);
+                                    const parts = it.caminho.split(/[\\\/]/).filter(Boolean);
                                     filename = parts.length ? parts[parts.length - 1] : it.caminho;
                                 }
-                                // show filename and if exists, observation
-                                let inner = `🖼️ ${filename}`;
-                                if (it.observacao) {
-                                    inner += ` <div class="arquivo-observacao">${it.observacao}</div>`;
+
+                                // tenta construir URL pública
+                                let url = null;
+                                if (it.caminho) {
+                                    url = sftpToPublicUrl(it.caminho);
                                 }
-                                pDiv.innerHTML = inner;
+
+                                console.log('URL pública para', filename, ':', url);
+
+                                if (url) {
+                                    const img = document.createElement('img');
+                                    img.src = encodeURI(url);
+                                    img.alt = filename;
+                                    img.title = filename;
+                                    img.classList.add('thumb');
+
+                                    const filenameSpan = document.createElement('span');
+                                    filenameSpan.textContent = filename;
+
+                                    // adiciona o nome primeiro
+                                    pDiv.appendChild(filenameSpan);
+                                    // e depois a imagem
+                                    pDiv.appendChild(img);
+                                } else {
+                                    pDiv.textContent = `🖼️ ${filename}`;
+                                }
+
+
+                                // adiciona observação
+                                if (it.descricao) {
+                                    const descDiv = document.createElement('div');
+                                    descDiv.classList.add('arquivo-descricao');
+                                    descDiv.textContent = `⚠️ ${it.descricao}`;
+                                    pDiv.appendChild(descDiv);
+                                }
+
                                 infoDiv.appendChild(pDiv);
                             });
                         }
+
 
                         tipoDiv.appendChild(infoDiv);
                         catDiv.appendChild(tipoDiv);
@@ -1473,7 +1545,12 @@ function abrirSidebar(idFuncao, idImagem) {
             }
             const pathEl = document.querySelectorAll('.path');
             pathEl.forEach(el => {
-                el.innerHTML = el.textContent.replace(/[\\/]/g, '$&<wbr>');
+                // Não sobrescrever elementos que já contêm conteúdo HTML (ex: imagens)
+                // ou que são entradas JPG específicas — isso removia o <img> criado acima.
+                if (el.classList.contains('jpg-entry') || el.querySelector('img')) return;
+
+                // Só aplica o word-break em paths que são texto puro
+                el.innerHTML = el.textContent.replace(/[\\\/]/g, '$&<wbr>');
             });
             // Abre a sidebar
             sidebarRight.classList.add('active');

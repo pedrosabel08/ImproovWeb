@@ -17,6 +17,7 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
     $sqlFuncoes = "SELECT 
             img.clima, 
             img.imagem_nome,
+            img.idimagens_cliente_obra AS idimagem,
             f.nome_funcao, 
             col.idcolaborador AS colaborador_id, 
             col.nome_colaborador, 
@@ -114,7 +115,7 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
 
     // Query arquivos directly linked to the image
     $sqlArquivosImg = "SELECT a.obra_id, a.imagem_id, a.tipo_imagem_id, a.nome_interno, a.caminho, a.tipo, a.categoria_id, a.recebido_em, a.status,
-        c.nome_categoria AS categoria_nome
+        c.nome_categoria AS categoria_nome, a.descricao
         FROM arquivos a
         LEFT JOIN categorias c ON c.idcategoria = a.categoria_id
         WHERE a.status = 'atualizado' AND a.imagem_id = " . $idImagemSelecionada . " ORDER BY a.recebido_em DESC";
@@ -141,7 +142,7 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
                 }
 
                 $sqlArquivosTipo = "SELECT a.obra_id, a.imagem_id, a.tipo_imagem_id, a.nome_interno, a.caminho, a.tipo, a.categoria_id, a.recebido_em, a.status,
-                                c.nome_categoria AS categoria_nome
+                                c.nome_categoria AS categoria_nome, a.descricao
                         FROM arquivos a
                         LEFT JOIN tipo_imagem t ON (t.id_tipo_imagem = a.tipo_imagem_id OR t.nome = a.tipo_imagem_id)
                         LEFT JOIN categorias c ON c.idcategoria = a.categoria_id

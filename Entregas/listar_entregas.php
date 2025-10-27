@@ -3,19 +3,23 @@ header('Content-Type: application/json; charset=utf-8');
 require_once '../conexao.php';
 
 $sql = "SELECT 
-  e.id,
-  e.obra_id,
-  e.data_prevista,
-  e.data_conclusao,
-  e.status,
-  e.observacoes,
-  s.nome_status as nome_etapa,
-  o.nomenclatura,
-  COUNT(ei.id) AS total_itens,
-  SUM(CASE WHEN ei.status <> 'Pendente' THEN 1 ELSE 0 END) AS entregues_count,
-  (SUM(CASE WHEN ei.status <> 'Pendente' THEN 1 ELSE 0 END) / GREATEST(COUNT(ei.id),1)) * 100 AS pct_entregue
+    e.id,
+    e.obra_id,
+    e.data_prevista,
+    e.data_conclusao,
+    e.status,
+    e.observacoes,
+    s.nome_status as nome_etapa,
+    o.nomenclatura,
+    COUNT(ei.id) AS total_itens,
+    SUM(CASE WHEN ei.status <> 'Pendente' THEN 1 ELSE 0 END) AS entregues_count,
+    (SUM(CASE WHEN ei.status <> 'Pendente' THEN 1 ELSE 0 END) / GREATEST(COUNT(ei.id),1)) * 100 AS pct_entregue,
+    -- Conta imagens que estão finalizadas (substatus RVW/DRV) e ainda não marcadas como entregues
+    SUM(CASE WHEN ss.nome_substatus IN ('RVW','DRV') AND ei.status NOT LIKE 'Entregue%' AND ei.status NOT LIKE 'Entrega%' THEN 1 ELSE 0 END) AS ready_count
 FROM entregas e
 LEFT JOIN entregas_itens ei ON ei.entrega_id = e.id
+LEFT JOIN imagens_cliente_obra i ON ei.imagem_id = i.idimagens_cliente_obra
+LEFT JOIN substatus_imagem ss ON ss.id = i.substatus_id
 JOIN obra o ON e.obra_id = o.idobra
 JOIN status_imagem s ON e.status_id = s.idstatus
 GROUP BY e.id
@@ -59,6 +63,7 @@ while ($row = $res->fetch_assoc()) {
         'total_itens' => $total,
         'entregues' => $entregues,
         'pct_entregue' => round(floatval($row['pct_entregue']), 1),
+        'ready_count' => intval($row['ready_count'] ?? 0),
         'kanban_status' => $statusCol
     ];
 }

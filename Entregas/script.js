@@ -6,13 +6,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const modalPrazo = document.getElementById('modalPrazo');
     const modalProgresso = document.getElementById('modalProgresso');
     const modalImagens = document.getElementById('modalImagens');
-    const fecharModalBtn = document.getElementById('fecharModal');
 
     // botão de registrar entrega
     const btnRegistrarEntrega = document.createElement('button');
     btnRegistrarEntrega.textContent = 'Registrar Entrega';
-    btnRegistrarEntrega.style.marginTop = '1rem';
-    modal.querySelector('.modal-content').appendChild(btnRegistrarEntrega);
+    btnRegistrarEntrega.classList.add('btn-salvar');
+    modal.querySelector('#entregaModal .buttons').appendChild(btnRegistrarEntrega);
 
     let entregaAtualId = null;
 
@@ -22,10 +21,20 @@ document.addEventListener('DOMContentLoaded', () => {
         return dataFormatada;
     }
 
-    // fechar modal
-    fecharModalBtn.addEventListener('click', () => {
-        modal.style.display = 'none';
-        entregaAtualId = null;
+    // fechar modal: single handler for all buttons with class .fecharModal
+    document.querySelectorAll('.fecharModal').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            // prevent accidental form submission or default button behaviour
+            e.preventDefault();
+
+            const addModal = document.getElementById('modalAdicionarEntrega');
+            const entregaModal = document.getElementById('entregaModal');
+
+            if (addModal) addModal.style.display = 'none';
+            if (entregaModal) entregaModal.style.display = 'none';
+
+            entregaAtualId = null;
+        });
     });
 
     // --- FUNÇÃO PRINCIPAL PARA CARREGAR O KANBAN ---
@@ -49,8 +58,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 const card = document.createElement('div');
                 card.classList.add('card-entrega');
                 card.dataset.id = entrega.id;
+                // Badge de imagens prontas para entrega (somente exibida no Kanban)
+                const readyCount = parseInt(entrega.ready_count || 0, 10);
+
                 card.innerHTML = `
-                <h4>${entrega.nomenclatura} - ${entrega.nome_etapa}</h4>
+                <div class="card-header">
+                    <h4>${entrega.nomenclatura} - ${entrega.nome_etapa}</h4>
+                    ${readyCount > 0 ? `<div class="entrega-badge" title="Imagens prontas para entrega">${readyCount}</div>` : ''}
+                </div>
                 <p><strong>Status:</strong> ${entrega.status}</p>
                 <p><strong>Prazo:</strong> ${formatarData(entrega.data_prevista)}</p>
                 <div class="progress">
@@ -98,9 +113,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 div.innerHTML = `
                 <input type="checkbox" id="img-${img.id}" value="${img.id}" ${checked} ${disabled}>
-                <label for="img-${img.id}">
-                    ${img.nome} - ${entregue ? '📦 Entregue' : finalizada ? '✅ Finalizada' : '⏳ Em andamento'}
+                <label for="img-${img.id}" class="imagem_nome">
+                    ${img.nome}
                 </label>
+                <span class="entregue">${entregue ? '📦 Entregue' : finalizada ? '✅ Finalizada' : '⏳ Em andamento'}</span>
             `;
                 modalImagens.appendChild(div);
             });
@@ -211,10 +227,8 @@ function carregarImagens() {
                 const div = document.createElement('div');
                 div.classList.add('checkbox-item');
                 div.innerHTML = `
-          <label>
             <input type="checkbox" name="imagem_ids[]" value="${img.id}">
-            ${img.nome}
-          </label>
+            <span>${img.nome}</span>
         `;
                 container.appendChild(div);
             });

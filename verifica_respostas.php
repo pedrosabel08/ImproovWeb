@@ -2,6 +2,12 @@
 include 'conexao.php';
 session_start(); // Certifique-se de iniciar a sessão
 
+// Retorna JSON
+header('Content-Type: application/json');
+
+// Define timezone para garantir data/hora corretos (Brasil - São Paulo)
+date_default_timezone_set('America/Sao_Paulo');
+
 if (!isset($_POST['idcolaborador'])) {
     echo json_encode(['error' => 'ID do colaborador não fornecido.']);
     exit;
@@ -14,7 +20,8 @@ if (isset($_SESSION['idusuario']) && $_SESSION['idusuario'] == 3) {
 }
 
 $idcolaborador = (int)$_POST['idcolaborador'];
-$dataAtual = date('Y-m-d'); // Obtém a data atual no formato YYYY-MM-DD
+$dt = new DateTimeImmutable('now', new DateTimeZone('America/Sao_Paulo'));
+$dataAtual = $dt->format('Y-m-d'); // Obtém a data atual no formato YYYY-MM-DD
 
 // Consulta para verificar se há respostas do colaborador para o dia atual
 $sql = "SELECT COUNT(*) as total FROM respostas_diarias WHERE colaborador_id = ? AND DATE(data) = ?";
@@ -26,7 +33,7 @@ $stmt->fetch();
 $stmt->close();
 $conn->close();
 
-// Retorna se há ou não respostas
+// Retorna se há ou não respostas (único JSON)
 if ($total > 0) {
     echo json_encode(['hasResponses' => true]);
 } else {

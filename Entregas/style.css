@@ -82,6 +82,32 @@ main {
     color: var(--accent-color);
 }
 
+/* header wrapper to position badge */
+.card-header {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.entrega-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: #ff4b2b;
+    color: #fff;
+    min-width: 26px;
+    height: 26px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-weight: 700;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+    font-size: 0.85rem;
+}
+
 .card-entrega p {
     margin: 0.2rem 0;
     font-size: 0.9rem;
@@ -116,10 +142,11 @@ main {
 /* ===== SCROLLBAR ===== */
 ::-webkit-scrollbar {
     height: 8px;
+    width: 6px;
 }
 
 ::-webkit-scrollbar-thumb {
-    background: var(--accent-color);
+    background: var(--text-color);
     border-radius: 4px;
 }
 
@@ -152,6 +179,96 @@ main {
     animation: fadeIn 0.2s ease;
 }
 
+/* Improved form layout inside modalAdicionarEntrega */
+form#formAdicionarEntrega {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.modal-content label {
+    font-size: 0.85rem;
+    margin-bottom: 6px;
+    color: #ddd;
+}
+
+.modal-content select,
+.modal-content input[type="date"],
+.modal-content textarea {
+    border: 1px solid var(--border-color);
+    padding: 4px 8px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    outline: none;
+}
+
+.modal-content textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+.imagens-container {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px dashed var(--border-color);
+    padding: 10px;
+    border-radius: 8px;
+    color: #ccc;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+
+.checkbox-item {
+    display: flex;
+    gap: 10px;
+}
+
+.buttons {
+    text-align: center;
+    font-size: 0.9rem;
+}
+
+.buttons .fecharModal {
+    margin-right: 10px;
+    background: linear-gradient(90deg, #b00000, #eb3131);
+
+}
+
+.btn-salvar {
+    background: linear-gradient(90deg, #00b09b, #96c93d);
+    color: #fff;
+    border: none;
+    padding: 10px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 700;
+    justify-self: end;
+}
+
+.btn-salvar:hover {
+    filter: brightness(0.95);
+}
+
+/* Make modal content narrower on small screens */
+@media (max-width: 600px) {
+    .modal-content {
+        width: 92%;
+        padding: 1rem;
+    }
+
+    .modal-content form {
+        grid-template-columns: 1fr;
+    }
+
+    .btn-salvar {
+        width: 100%;
+    }
+}
+
 .modal-content h3 {
     margin-top: 0;
     color: var(--accent-color);
@@ -161,7 +278,7 @@ main {
     margin: 0.5rem 0;
 }
 
-.modal button {
+/* .modal button {
     margin-top: 1rem;
     background: var(--accent-color);
     color: white;
@@ -170,11 +287,14 @@ main {
     padding: 0.6rem 1.2rem;
     cursor: pointer;
     transition: 0.2s;
+    width: max-content;
+    margin: 0 auto;
+    font-size: 0.8rem;
 }
 
 .modal button:hover {
     background: #00c1c9;
-}
+} */
 
 /* ===== IMAGENS NO MODAL ===== */
 .modal-imagem-item {
@@ -182,11 +302,19 @@ main {
     padding: 0.5rem 0.8rem;
     border-radius: 8px;
     margin-top: 6px;
-    display: flex;
+    display: grid;
     justify-content: space-between;
     align-items: center;
     font-size: 0.9rem;
     border: 1px solid var(--border-color);
+    grid-template-columns: 10% 1fr 15%;
+    gap: 10px;
+}
+
+.imagem_nome {
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
 }
 
 .status-ok {

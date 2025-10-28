@@ -36,9 +36,11 @@ $tiposImagem  = $_POST['tipo_imagem'] ?? [];
 $categoria  = intval($_POST['tipo_categoria'] ?? 0);
 $refsSkpModo = $_POST['refsSkpModo'] ?? 'geral';
 $descricao    = $_POST['descricao'] ?? "";
+$sufixo       = $_POST['sufixo'] ?? "";
 
 $log[] = "Recebido: obra_id=$obra_id, tipo_arquivo=$tipo_arquivo, substituicao=" . ($substituicao ? 'SIM' : 'NAO');
 $log[] = "Tipos imagem: " . json_encode($tiposImagem);
+$log[] = "Sufixo: " . ($sufixo ?: '(vazio)');
 
 // Arquivos principais
 $arquivosTmp  = $_FILES['arquivos']['tmp_name'] ?? [];
@@ -212,7 +214,7 @@ if (!$pastaBase) {
 $ftp_conn = null;
 
 
-function gerarNomeInterno($conn, $obra_id, $tipo_id, $categoria, $nomeTipo, $tipo_arquivo, $ext, &$log, $imagem_id = null, $fileOriginalName = null, $indiceEnvio = 1)
+function gerarNomeInterno($conn, $obra_id, $tipo_id, $categoria, $nomeTipo, $tipo_arquivo, $ext, &$log, $sufixo = '', $imagem_id = null, $fileOriginalName = null, $indiceEnvio = 1)
 {
     // 🔹 Busca nomenclatura da obra
     $obraRes = $conn->query("SELECT nomenclatura FROM obra WHERE idobra = $obra_id");
@@ -309,9 +311,16 @@ function gerarNomeInterno($conn, $obra_id, $tipo_id, $categoria, $nomeTipo, $tip
         }
     }
 
-    // 🔹 Montagem final do nome interno
+    // sanitize sufixo for filename
+    $sufixoSafe = $sufixo ? preg_replace('/[^A-Za-z0-9_-]/', '', strtoupper(str_replace(' ', '_', $sufixo))) : '';
+
+    // 🔹 Montagem final do nome interno (inclui sufixo quando presente)
     $envioStr = sprintf("env%02d", $indiceEnvio);
-    $nomeInterno = "{$nomenclatura}_{$categoriaNome}_{$tipoArquivoAbrev}_{$envioStr}_v{$versao}.{$ext}";
+    if ($sufixoSafe) {
+        $nomeInterno = "{$nomenclatura}-{$categoriaNome}-{$tipoArquivoAbrev}-{$sufixoSafe}-{$envioStr}-v{$versao}.{$ext}";
+    } else {
+        $nomeInterno = "{$nomenclatura}-{$categoriaNome}-{$tipoArquivoAbrev}-{$envioStr}-v{$versao}.{$ext}";
+    }
 
     $log[] = "Gerado nome interno: $nomeInterno (versão $versao, envio $indiceEnvio)";
 
@@ -351,7 +360,7 @@ if (!empty($arquivosTmp) && count($arquivosTmp) > 0 && ($refsSkpModo === 'geral'
                 $log[] = "Criado diretório: $destDir/OLD";
             }
 
-            list($fileNomeInterno, $versao) = gerarNomeInterno($conn, $obra_id, $tipo_id, $categoria, $nomeTipo, $tipo_arquivo, $ext, $log, null, $fileOriginalName, $indice);
+            list($fileNomeInterno, $versao) = gerarNomeInterno($conn, $obra_id, $tipo_id, $categoria, $nomeTipo, $tipo_arquivo, $ext, $log, $sufixo, null, $fileOriginalName, $indice);
             $destFile = $destDir . "/" . $fileNomeInterno;
             $log[] = "Destino final: $destFile";
             $indice++;
@@ -382,9 +391,10 @@ if (!empty($arquivosTmp) && count($arquivosTmp) > 0 && ($refsSkpModo === 'geral'
             if (!empty($fileTmp) && file_exists($fileTmp)) {
                 if ($sftp->put($destFile, $fileTmp, SFTP::SOURCE_LOCAL_FILE)) {
                     $stmt = $conn->prepare("INSERT INTO arquivos 
-                    (obra_id, tipo_imagem_id, imagem_id, nome_original, nome_interno, caminho, tipo, versao, status, origem, recebido_por, categoria_id, descricao) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'atualizado', 'upload_web', 'sistema', ?, ?)");
-                    $stmt->bind_param("iiissssiii", $obra_id, $tipo_id, $imagem_id, $fileOriginalName, $fileNomeInterno, $destFile, $tipo_arquivo, $versao, $categoria, $descricao);
+                    (obra_id, tipo_imagem_id, imagem_id, nome_original, nome_interno, caminho, tipo, versao, status, origem, recebido_por, categoria_id, sufixo, descricao) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'atualizado', 'upload_web', 'sistema', ?, ?, ?)");
+                    // types: obra_id(i), tipo_imagem_id(i), imagem_id(i), nome_original(s), nome_interno(s), caminho(s), tipo(s), versao(i), categoria(i), sufixo(s), descricao(s)
+                    $stmt->bind_param("iiissssiiss", $obra_id, $tipo_id, $imagem_id, $fileOriginalName, $fileNomeInterno, $destFile, $tipo_arquivo, $versao, $categoria, $sufixo, $descricao);
 
                     $stmt->execute();
                     $success[] = "Arquivo '$fileOriginalName' enviado para $nomeTipo como '$fileNomeInterno'";
@@ -503,17 +513,18 @@ if ((!empty($arquivosPorImagem)) && ($categoria == 2 || $tipo_arquivo === 'SKP' 
                 $log[] = "Criado diretório: $destDir/OLD";
             }
 
-            list($fileNomeInterno, $versao) = gerarNomeInterno($conn, $obra_id, $tipo_id, $categoria, $nomeTipo, $tipo_arquivo, $ext, $log, $imagem_id, $nomeOriginal, $indice);
+            list($fileNomeInterno, $versao) = gerarNomeInterno($conn, $obra_id, $tipo_id, $categoria, $nomeTipo, $tipo_arquivo, $ext, $log, $sufixo, $imagem_id, $nomeOriginal, $indice);
             $destFile = "$destDir/$fileNomeInterno";
             $log[] = "Destino final: $destFile";
 
             $indice++;
 
-            if ($sftp->put($destFile, $tmpFile, SFTP::SOURCE_LOCAL_FILE)) {
+                if ($sftp->put($destFile, $tmpFile, SFTP::SOURCE_LOCAL_FILE)) {
                 $stmt = $conn->prepare("INSERT INTO arquivos 
-                (obra_id, tipo_imagem_id, imagem_id, nome_original, nome_interno, caminho, tipo, versao, status, origem, recebido_por, categoria_id, descricao) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'atualizado', 'upload_web', 'sistema', ?, ?)");
-                $stmt->bind_param("iiissssiii", $obra_id, $tipo_id, $imagem_id, $nomeOriginal, $fileNomeInterno, $destFile, $tipo_arquivo, $versao, $categoria, $descricao);
+                (obra_id, tipo_imagem_id, imagem_id, nome_original, nome_interno, caminho, tipo, versao, status, origem, recebido_por, categoria_id, sufixo, descricao) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'atualizado', 'upload_web', 'sistema', ?, ?, ?)");
+                // types: obra_id(i), tipo_imagem_id(i), imagem_id(i), nome_original(s), nome_interno(s), caminho(s), tipo(s), versao(i), categoria(i), sufixo(s), descricao(s)
+                $stmt->bind_param("iiissssiiss", $obra_id, $tipo_id, $imagem_id, $nomeOriginal, $fileNomeInterno, $destFile, $tipo_arquivo, $versao, $categoria, $sufixo, $descricao);
 
                 $stmt->execute();
                 $success[] = "Arquivo '$nomeOriginal' enviado para Imagem $imagem_id";
@@ -546,6 +557,38 @@ if ((!empty($arquivosPorImagem)) && ($categoria == 2 || $tipo_arquivo === 'SKP' 
                             }
                         }
                     }
+                }
+                // Notificar colaborador(es) associados à funcao_id = 4 para esta imagem
+                try {
+                    $notifMsg = "Arquivo de Ângulo Definido adicionado na imagem '{$nome_imagem}': {$fileNomeInterno}";
+                    $sel = $conn->prepare("SELECT colaborador_id, idfuncao_imagem FROM funcao_imagem WHERE imagem_id = ? AND funcao_id = 4");
+                    if ($sel) {
+                        $sel->bind_param("i", $imagem_id);
+                        $sel->execute();
+                        $resSel = $sel->get_result();
+                        if ($resSel && $resSel->num_rows > 0) {
+                            $ins = $conn->prepare("INSERT INTO notificacoes (colaborador_id, mensagem, data, lida, funcao_imagem_id) VALUES (?, ?, NOW(), 0, ?)");
+                            while ($rowNotif = $resSel->fetch_assoc()) {
+                                $colabId = $rowNotif['colaborador_id'];
+                                $funcaoImagemId = $rowNotif['idfuncao_imagem'];
+                                if ($ins) {
+                                    $ins->bind_param("isi", $colabId, $notifMsg, $funcaoImagemId);
+                                    $ins->execute();
+                                    $log[] = "Notificação criada para colaborador $colabId";
+                                } else {
+                                    $log[] = "Falha ao preparar insert notificacoes: " . $conn->error;
+                                }
+                            }
+                            if ($ins) $ins->close();
+                        } else {
+                            $log[] = "Nenhum colaborador (funcao_id=4) encontrado para imagem $imagem_id";
+                        }
+                        $sel->close();
+                    } else {
+                        $log[] = "Falha ao preparar select funcao_imagem: " . $conn->error;
+                    }
+                } catch (Exception $e) {
+                    $log[] = "Erro ao criar notificacoes: " . $e->getMessage();
                 }
             } else {
                 $errors[] = "Erro ao enviar '$nomeOriginal' para Imagem $imagem_id";

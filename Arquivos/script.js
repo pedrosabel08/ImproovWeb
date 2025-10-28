@@ -52,6 +52,18 @@ const tipoImagemSelect = document.querySelector('select[name="tipo_imagem[]"]');
 const referenciasContainer = document.getElementById('referenciasContainer');
 const arquivoFile = document.getElementById('arquivoFile');
 const tipoCategoria = document.getElementById('tipo_categoria');
+const sufixoSelect = document.getElementById('sufixoSelect');
+const labelSufixo = document.getElementById('labelSufixo');
+
+// Mapping of suffix options per file type
+const SUFIXOS = {
+    'DWG': ['TERREO', 'LAZER', 'COBERTURA', 'MEZANINO', 'CORTES', 'GERAL'],
+    'PDF': ['DOCUMENTACAO', 'RELATORIO', 'LOGO'],
+    'SKP': ['MODELAGEM', 'REFERENCIA'],
+    'IMG': ['FACHADA', 'INTERNA', 'EXTERNA'],
+    'IFC': ['BIM'],
+    'Outros': ['Geral']
+};
 
 tipoArquivoSelect.addEventListener('change', async () => {
     const tipoArquivo = tipoArquivoSelect.value;
@@ -92,6 +104,24 @@ tipoArquivoSelect.addEventListener('change', async () => {
         arquivoFile.style.display = 'block';
         arquivoFile.required = true;
         arquivoFile.disabled = false;
+    }
+
+    // Populate suffix select based on type
+    const options = SUFIXOS[tipoArquivo] || [];
+    if (options.length) {
+        sufixoSelect.innerHTML = '';
+        options.forEach(opt => {
+            const o = document.createElement('option');
+            o.value = opt;
+            o.textContent = opt;
+            sufixoSelect.appendChild(o);
+        });
+        sufixoSelect.style.display = '';
+        labelSufixo.style.display = '';
+    } else {
+        sufixoSelect.innerHTML = '';
+        sufixoSelect.style.display = 'none';
+        labelSufixo.style.display = 'none';
     }
 });
 document.getElementById('refsSkpModo').addEventListener('change', () => {
@@ -151,7 +181,7 @@ document.getElementById("uploadForm").addEventListener("submit", async function 
             const checkRes = await fetch('checkArquivoExistente.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ obra_id, tipo_arquivo, tipo_categoria, tipo_imagem, imagem_id: imagemId })
+                body: JSON.stringify({ obra_id, tipo_arquivo, tipo_categoria, tipo_imagem, imagem_id: imagemId, tipo_categoria: tipo_categoria })
             });
             const checkData = await checkRes.json();
             if (checkData.existe) existeAlgum = true;
@@ -175,7 +205,7 @@ document.getElementById("uploadForm").addEventListener("submit", async function 
         const checkRes = await fetch('checkArquivoExistente.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ obra_id, tipo_arquivo, tipo_imagem })
+            body: JSON.stringify({ obra_id, tipo_arquivo, tipo_imagem, tipo_categoria })
         });
         const checkData = await checkRes.json();
 

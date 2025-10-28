@@ -145,6 +145,11 @@ $conn->close();
                     <option value="Outros">Outros</option>
                 </select>
 
+                <label id="labelSufixo" style="display:none;">Sufixo</label>
+                <select name="sufixo" id="sufixoSelect" style="display:none;">
+                    <!-- options populated by script.js based on tipo_arquivo -->
+                </select>
+
                 <!-- Adicione dentro do form do modal -->
                 <div id="refsSkpModo" style="display:none;">
                     <label>

@@ -285,6 +285,15 @@ main .kanban div .header .task-count {
 .kanban .header-kanban {
     display: flex;
     justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+    gap: 10px;
+}
+
+span.notif-icon {
+    background-color: red;
+    padding: 2px;
+    border-radius: 6px;
 }
 
 .kanban-card .header-kanban .priority {
@@ -294,7 +303,6 @@ main .kanban div .header .task-count {
     font-size: 0.6rem;
     font-weight: 700;
     text-transform: uppercase;
-    margin-bottom: 5px;
 }
 
 .kanban-card .header-kanban .priority.alta {
@@ -815,7 +823,7 @@ form#task-form button {
     display: inline-block;
     width: 10px;
     height: 10px;
-    margin-left: 6px;
+    margin-left: auto;
     border-radius: 50%;
 }
 

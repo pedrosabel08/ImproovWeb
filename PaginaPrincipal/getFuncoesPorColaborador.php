@@ -57,6 +57,13 @@ $sql = "SELECT
         FROM historico_aprovacoes_imagens hi
         WHERE hi.funcao_imagem_id = fi.idfuncao_imagem
     ) AS indice_envio_atual
+    ,(
+        SELECT COALESCE(COUNT(*),0)
+        FROM notificacoes n
+        WHERE n.funcao_imagem_id = fi.idfuncao_imagem
+          AND n.lida = 0
+          AND n.colaborador_id = ?
+    ) AS notificacoes_nao_lidas
 FROM funcao_imagem fi
 JOIN imagens_cliente_obra ico ON fi.imagem_id = ico.idimagens_cliente_obra
 JOIN status_imagem si ON ico.status_id = si.idstatus
@@ -65,13 +72,14 @@ JOIN funcao f ON fi.funcao_id = f.idfuncao
 JOIN prioridade_funcao pc ON fi.idfuncao_imagem = pc.funcao_imagem_id
 WHERE fi.colaborador_id = ?
   AND o.status_obra = 0
-ORDER BY prioridade ASC, prazo DESC, imagem_id, obra_id,
+ORDER BY prioridade ASC, notificacoes_nao_lidas DESC, prazo DESC, imagem_id, obra_id,
     FIELD(fi.status,
           'Não iniciado','HOLD','Em andamento','Ajuste',
           'Em aprovação','Aprovado com ajustes','Aprovado','Finalizado')";
 
 $stmt = $conn->prepare($sql);
-$stmt->bind_param("i", $colaboradorId);
+// há dois placeholders: um no subquery (colaborador_id) e outro no WHERE fi.colaborador_id
+$stmt->bind_param("ii", $colaboradorId, $colaboradorId);
 $stmt->execute();
 $result = $stmt->get_result();
 $funcoes = $result->fetch_all(MYSQLI_ASSOC);
@@ -360,7 +368,8 @@ foreach ($funcoes as $funcao) {
         'comentarios_ultima_versao'  => $funcao['comentarios_ultima_versao'],
         'indice_envio_atual'         => $funcao['indice_envio_atual'],
         'observacao'                 => $funcao['observacao'],
-        'tempo_calculado'            => $tempoCalculado
+        'tempo_calculado'            => $tempoCalculado,
+        'notificacoes_nao_lidas'     => isset($funcao['notificacoes_nao_lidas']) ? intval($funcao['notificacoes_nao_lidas']) : 0
     ];
 }
 

@@ -35,7 +35,12 @@ function carregarDados(colaborador_id) {
                 try {
                     const data = JSON.parse(xhr.responseText);
 
-                    // Chama o tratamento
+                    // Atualiza mini-calendar (se implementado)
+                    if (window.updateMiniCalendarWithData) {
+                        try { window.updateMiniCalendarWithData(data); } catch (e) { console.error('mini-calendar update error', e); }
+                    }
+
+                    // Chama o tratamento do kanban
                     processarDados(data);
 
                 } catch (err) {
@@ -186,7 +191,8 @@ function processarDados(data) {
             return prazo < hojeLimpo;
         }
 
-        const atrasada = item.prazo ? isAtrasada(item.prazo) : false;
+        // Marca como atrasada apenas se estiver 'Em andamento' e o prazo já passou
+        const atrasada = (status === 'Em andamento' && item.prazo) ? isAtrasada(item.prazo) : false;
 
         card.innerHTML = `
                     <div class="header-kanban">
@@ -194,6 +200,12 @@ function processarDados(data) {
                             ${item.prioridade || 'Medium'}
                         </span>
                         ${bolinhaHTML}
+                        ${(item.notificacoes_nao_lidas && Number(item.notificacoes_nao_lidas) > 0) ? `
+                            <span class="notif-icon" title="${item.notificacoes_nao_lidas} notificação(s)">
+                                <i class="ri-notification-3-line"></i>
+                                <small class="notif-count">${item.notificacoes_nao_lidas}</small>
+                            </span>
+                        ` : ''}
                     </div>
                         <h5>${titulo || '-'}</h5>
                         <p>${subtitulo || '-'}</p>
@@ -659,6 +671,107 @@ const formatted = `${mes} ${dia}, ${ano}`;
 
 document.querySelector('#date span').textContent = formatted;
 
+// Inicializa mini FullCalendar (visão semanal) e integra com o calendário full (modal)
+(function initMiniCalendar() {
+    const miniEl = document.getElementById('mini-calendar');
+    if (!miniEl || typeof FullCalendar === 'undefined') return;
+
+    const miniCalendar = new FullCalendar.Calendar(miniEl, {
+        initialView: 'dayGridWeek',
+        headerToolbar: false,
+        height: 110,
+        locale: 'pt-br',
+        displayEventTime: false,
+        selectable: false,
+        events: [],
+        dateClick: function (info) {
+            // abre modal do calendário expandido e vai para o dia
+            document.getElementById('calendarFullModal').style.display = 'flex';
+            openFullCalendar();
+            setTimeout(() => {
+                if (fullCalendar) {
+                    fullCalendar.gotoDate(info.date);
+                    fullCalendar.changeView('dayGridMonth');
+                }
+            }, 250);
+        },
+        eventClick: function (info) {
+            // prevent the native click from bubbling to the global window handler
+            // which would immediately hide the modal we open on this click
+            try { info.jsEvent?.stopPropagation(); } catch (e) { /* ignore */ }
+
+            const ev = info.event;
+            if (ev.id && ev.id.startsWith('t_')) {
+                abrirSidebarTarefaCriada(ev.id.replace('t_', ''));
+            } else if (ev.id && ev.id.startsWith('f_')) {
+                abrirSidebar(ev.id.replace('f_', ''), ev.extendedProps?.imagem_id || '');
+            }
+        }
+    });
+
+    miniCalendar.render();
+    window.miniCalendar = miniCalendar;
+
+    // Atualizador a ser chamado por carregarDados (passando o JSON já parseado)
+    window.updateMiniCalendarWithData = function (data) {
+        try {
+            const evs = [];
+            if (data && data.funcoes) {
+                data.funcoes.forEach(f => {
+                    const date = f.prazo || f.imagem_prazo;
+                    if (date) {
+                        evs.push({
+                            id: `f_${f.idfuncao_imagem}`,
+                            title: `${f.nome_funcao} — ${f.imagem_nome}`,
+                            start: date,
+                            allDay: true,
+                            extendedProps: { tipo: 'funcao', status: f.status, imagem_id: f.imagem_id }
+                        });
+                    }
+                });
+            }
+            if (data && data.tarefas) {
+                data.tarefas.forEach(t => {
+                    if (t.prazo) {
+                        evs.push({
+                            id: `t_${t.id}`,
+                            title: t.titulo,
+                            start: t.prazo,
+                            allDay: true,
+                            extendedProps: { tipo: 'tarefa', status: t.status }
+                        });
+                    }
+                });
+            }
+
+            // keep latest mini events available globally so fullCalendar can reuse them
+            window.miniCalendarEvents = evs;
+
+            miniCalendar.removeAllEvents();
+            if (evs.length) miniCalendar.addEventSource(evs);
+
+            // if the full calendar modal is open, refresh its events to include these
+            if (typeof fullCalendar !== 'undefined' && fullCalendar) {
+                try {
+                    fullCalendar.removeAllEvents();
+                    if (Array.isArray(events) && events.length) fullCalendar.addEventSource(events);
+                    if (Array.isArray(window.miniCalendarEvents) && window.miniCalendarEvents.length) fullCalendar.addEventSource(window.miniCalendarEvents);
+                } catch (err) {
+                    console.error('Erro ao atualizar fullCalendar com eventos do mini:', err);
+                }
+            }
+        } catch (e) {
+            console.error('updateMiniCalendarWithData error', e);
+        }
+    };
+
+    // Fechar modal do calendário full
+    document.getElementById('closeFullCalendar')?.addEventListener('click', function () {
+        document.getElementById('calendarFullModal').style.display = 'none';
+    });
+
+})();
+
 let events = [];
 
 function carregarEventosEntrega() {
@@ -724,74 +837,20 @@ function notificarEventosDaSemana(eventos) {
 
 // Função para definir as cores com base no tipo_evento
 function getEventColors(event) {
-    const { id, descricao, tipo_evento } = event;
-    const normalizedTitle = (descricao || '').toUpperCase().trim();
+    // Only differentiate colors when the event is a 'funcao' or 'tarefa'
+    // prefer extendedProps.tipo, fall back to tipo or tipo_evento if present
+    const tipo = event?.extendedProps?.tipo || event?.tipo || event?.tipo_evento || '';
 
-    if (normalizedTitle.includes('R00')) {
-        return { backgroundColor: '#1cf4ff', color: '#000000' };
-    }
-    if (normalizedTitle.includes('R01')) {
-        return { backgroundColor: '#ff6200', color: '#000000' };
-    }
-    if (normalizedTitle.includes('R02')) {
-        return { backgroundColor: '#ff3c00', color: '#000000' };
-    }
-    if (normalizedTitle.includes('R02')) {
-        return { backgroundColor: '#ff0000', color: '#000000' };
-    }
-    if (normalizedTitle.includes('EF')) {
-        return { backgroundColor: '#0dff00', color: '#000000' };
+    if (String(tipo).toLowerCase() === 'funcao') {
+        return { backgroundColor: '#ff9f89', color: '#000000' };
     }
 
-    // Se não encontrou no título, usa o tipoEvento
-    switch (tipo_evento) {
-        case 'Reunião':
-            return { backgroundColor: '#ffd700', color: '#000000' };
-        case 'Entrega':
-            return { backgroundColor: '#ff9f89', color: '#000000' };
-        case 'Arquivos':
-            return { backgroundColor: '#90ee90', color: '#000000' };
-        case 'Outro':
-            return { backgroundColor: '#87ceeb', color: '#000000' };
-        case 'P00':
-            return { backgroundColor: '#ffc21c', color: '#000000' };
-        case 'R00':
-            return { backgroundColor: '#1cf4ff', color: '#000000' };
-        case 'R01':
-            return { backgroundColor: '#ff6200', color: '#ffffff' };
-        case 'R02':
-            return { backgroundColor: '#ff3c00', color: '#ffffff' };
-        case 'R03':
-            return { backgroundColor: '#ff0000', color: '#ffffff' };
-        case 'EF':
-            return { backgroundColor: '#0dff00', color: '#000000' };
-        case 'HOLD':
-            return { backgroundColor: '#ff0000', color: '#ffffff' };
-        case 'TEA':
-            return { backgroundColor: '#f7eb07', color: '#000000' };
-        case 'REN':
-            return { backgroundColor: '#0c9ef2', color: '#ffffff' };
-        case 'APR':
-            return { backgroundColor: '#0c45f2', color: '#ffffff' };
-        case 'APP':
-            return { backgroundColor: '#7d36f7', color: '#ffffff' };
-        case 'RVW':
-            return { backgroundColor: 'green', color: '#ffffff' };
-        case 'OK':
-            return { backgroundColor: 'cornflowerblue', color: '#ffffff' };
-        case 'Pós-Produção':
-            return { backgroundColor: '#e3f2fd', color: '#000000' };
-        case 'Finalização':
-            return { backgroundColor: '#e8f5e9', color: '#000000' };
-        case 'Modelagem':
-            return { backgroundColor: '#fff3e0', color: '#000000' };
-        case 'Caderno':
-            return { backgroundColor: '#fce4ec', color: '#000000' };
-        case 'Composição':
-            return { backgroundColor: '#f9ffc6', color: '#000000' };
-        default:
-            return { backgroundColor: '#d3d3d3', color: '#000000' };
+    if (String(tipo).toLowerCase() === 'tarefa') {
+        return { backgroundColor: '#90ee90', color: '#000000' };
     }
+
+    // default: no special color
+    return { backgroundColor: '#d3d3d3', color: '#000000' };
 }
 
 
@@ -806,19 +865,17 @@ function openFullCalendar() {
             selectable: true,
             locale: 'pt-br',
             displayEventTime: false,
-            events: events, // Usa os eventos já formatados corretamente
+            events: [], // we'll add event sources after render (delivery events + mini events)
             eventDidMount: function (info) {
-                const eventProps = {
-                    id: info.event.id,
-                    descricao: info.event.title || '', // título do evento (pode ser usado como descrição)
-                    tipo_evento: info.event.extendedProps.tipo_evento || ''
-                };
-
-                const colors = getEventColors(eventProps);
-
-                info.el.style.backgroundColor = colors.backgroundColor;
-                info.el.style.color = colors.color;
-                info.el.style.borderColor = colors.backgroundColor;
+                // Pass the real event object so getEventColors can read extendedProps.tipo
+                try {
+                    const colors = getEventColors(info.event);
+                    if (colors && colors.backgroundColor) info.el.style.backgroundColor = colors.backgroundColor;
+                    if (colors && colors.color) info.el.style.color = colors.color;
+                    info.el.style.borderColor = colors.backgroundColor || '';
+                } catch (e) {
+                    console.error('eventDidMount color error', e);
+                }
             },
             datesSet: function (info) {
                 const tituloOriginal = info.view.title;
@@ -833,22 +890,24 @@ function openFullCalendar() {
                 const clickedDate = new Date(info.date);
                 const formattedDate = clickedDate.toISOString().split('T')[0];
 
-                document.getElementById('eventId').value = '';
-                document.getElementById('eventTitle').value = '';
-                document.getElementById('eventDate').value = formattedDate;
-                document.getElementById('eventModal').style.display = 'flex';
+                // document.getElementById('eventId').value = '';
+                // document.getElementById('eventTitle').value = '';
+                // document.getElementById('eventDate').value = formattedDate;
+                // document.getElementById('eventModal').style.display = 'flex';
 
             },
 
             eventClick: function (info) {
-                const clickedDate = new Date(info.event.start);
-                const formattedDate = clickedDate.toISOString().split('T')[0];
+                // prevent the native click from bubbling to the global window handler
+                // which would immediately hide the modal we open on this click
+                try { info.jsEvent?.stopPropagation(); } catch (e) { /* ignore */ }
 
-
-                document.getElementById('eventId').value = info.event.id;
-                document.getElementById('eventTitle').value = info.event.title;
-                document.getElementById('eventDate').value = formattedDate;
-                document.getElementById('eventModal').style.display = 'flex';
+                // Show a simple detail modal on event click (Nome da função, Nome da imagem, Status, Prazo)
+                try {
+                    showEventDetails(info.event, info.el);
+                } catch (e) {
+                    console.error('Erro ao mostrar detalhes do evento:', e);
+                }
             },
 
             eventDrop: function (info) {
@@ -858,8 +917,24 @@ function openFullCalendar() {
         });
 
         fullCalendar.render();
+
+        // add both delivery events and mini-calendar events (if any)
+        try {
+            if (Array.isArray(events) && events.length) fullCalendar.addEventSource(events);
+            if (Array.isArray(window.miniCalendarEvents) && window.miniCalendarEvents.length) fullCalendar.addEventSource(window.miniCalendarEvents);
+        } catch (err) {
+            console.error('Erro ao adicionar fontes de evento ao fullCalendar:', err);
+        }
     } else {
-        fullCalendar.refetchEvents();
+        // refresh event lists so both delivery events and mini events are present
+        try {
+            fullCalendar.removeAllEvents();
+            if (Array.isArray(events) && events.length) fullCalendar.addEventSource(events);
+            if (Array.isArray(window.miniCalendarEvents) && window.miniCalendarEvents.length) fullCalendar.addEventSource(window.miniCalendarEvents);
+        } catch (err) {
+            console.error('Erro ao atualizar eventos do fullCalendar existente:', err);
+            fullCalendar.refetchEvents();
+        }
     }
 }
 
@@ -898,42 +973,42 @@ function showToast(message, type = 'success') {
     }).showToast();
 }
 
-document.getElementById('eventForm').addEventListener('submit', function (e) {
-    e.preventDefault();
-    const id = document.getElementById('eventId').value;
-    const title = document.getElementById('eventTitle').value;
-    const start = document.getElementById('eventDate').value;
-    const type = document.getElementById('eventType').value;
-    const obraId = document.getElementById('obra_calendar').value;
+// document.getElementById('eventForm').addEventListener('submit', function (e) {
+//     e.preventDefault();
+//     const id = document.getElementById('eventId').value;
+//     const title = document.getElementById('eventTitle').value;
+//     const start = document.getElementById('eventDate').value;
+//     const type = document.getElementById('eventType').value;
+//     const obraId = document.getElementById('obra_calendar').value;
 
-    if (id) {
-        fetch('./Dashboard/Calendario/eventoController.php', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id, title, start, type })
-        })
-            .then(res => res.json())
-            .then(res => {
-                if (res.error) throw new Error(res.message);
-                closeEventModal(); // ✅ fecha o modal após excluir
-                showToast(res.message, 'update'); // para PUT
-            })
-            .catch(err => showToast(err.message, 'error'));
-    } else {
-        fetch('./Dashboard/Calendario/eventoController.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ title, start, type, obra_id: obraId })
-        })
-            .then(res => res.json())
-            .then(res => {
-                if (res.error) throw new Error(res.message);
-                closeEventModal(); // ✅ fecha o modal após excluir
-                showToast(res.message, 'create'); // para POST
-            })
-            .catch(err => showToast(err.message, 'error'));
-    }
-});
+//     if (id) {
+//         fetch('./Dashboard/Calendario/eventoController.php', {
+//             method: 'PUT',
+//             headers: { 'Content-Type': 'application/json' },
+//             body: JSON.stringify({ id, title, start, type })
+//         })
+//             .then(res => res.json())
+//             .then(res => {
+//                 if (res.error) throw new Error(res.message);
+//                 closeEventModal(); // ✅ fecha o modal após excluir
+//                 showToast(res.message, 'update'); // para PUT
+//             })
+//             .catch(err => showToast(err.message, 'error'));
+//     } else {
+//         fetch('./Dashboard/Calendario/eventoController.php', {
+//             method: 'POST',
+//             headers: { 'Content-Type': 'application/json' },
+//             body: JSON.stringify({ title, start, type, obra_id: obraId })
+//         })
+//             .then(res => res.json())
+//             .then(res => {
+//                 if (res.error) throw new Error(res.message);
+//                 closeEventModal(); // ✅ fecha o modal após excluir
+//                 showToast(res.message, 'create'); // para POST
+//             })
+//             .catch(err => showToast(err.message, 'error'));
+//     }
+// });
 
 function deleteEvent() {
     const id = document.getElementById('eventId').value;
@@ -953,6 +1028,104 @@ function deleteEvent() {
         })
         .catch(err => showToast(err.message, 'error'));
 }
+
+// Show a simple read-only detail view for a clicked event inside #eventModal
+function showEventDetails(ev, el) {
+    const modal = document.getElementById('eventModal');
+    const detail = document.getElementById('eventDetail');
+    const form = document.getElementById('eventForm');
+
+    if (form) form.style.display = 'none';
+    if (detail) detail.style.display = 'flex';
+
+    const nomeFuncaoEl = document.getElementById('detailNomeFuncao');
+    const nomeImagemEl = document.getElementById('detailNomeImagem');
+    const statusEl = document.getElementById('detailStatus');
+    const prazoEl = document.getElementById('detailPrazo');
+
+    let nomeFuncao = '-';
+    let nomeImagem = '-';
+    let status = ev.extendedProps?.status || ev.extendedProps?.tipo || ev.tipo_evento || ev.extendedProps?.tipo_evento || '-';
+    let prazo = ev.start ? (new Date(ev.start)).toISOString().split('T')[0] : (ev.startStr || '-');
+
+    if (ev.id && ev.id.startsWith('f_')) {
+        if (ev.title && ev.title.includes('—')) {
+            const parts = ev.title.split('—').map(s => s.trim());
+            nomeFuncao = parts[0] || '-';
+            nomeImagem = parts[1] || '-';
+        } else {
+            nomeFuncao = ev.title || '-';
+            nomeImagem = ev.extendedProps?.imagem_id ? String(ev.extendedProps.imagem_id) : '-';
+        }
+    } else if (ev.id && ev.id.startsWith('t_')) {
+        nomeFuncao = ev.title || '-';
+        nomeImagem = '-';
+    } else {
+        nomeFuncao = ev.title || '-';
+        nomeImagem = ev.extendedProps?.obra_nome || '-';
+    }
+
+    nomeFuncaoEl.textContent = nomeFuncao;
+    nomeImagemEl.textContent = nomeImagem;
+    statusEl.textContent = status;
+    prazoEl.textContent = prazo;
+
+    // === posição dinâmica ===
+    const rect = el.getBoundingClientRect();
+    const offsetX = 10; // espaço entre evento e modal
+    const offsetY = 0;
+
+    // Ajusta posição (para ficar à direita do evento)
+    modal.style.top = `${window.scrollY + rect.top + offsetY}px`;
+    modal.style.left = `${window.scrollX + rect.right + offsetX}px`;
+
+    modal.style.display = 'block';
+    modal.classList.add('show');
+
+    // Fecha ao clicar no botão
+    document.getElementById('closeEventDetail')?.addEventListener('click', () => {
+        modal.style.display = 'none';
+    }, { once: true });
+}
+
+
+const eventModal = document.getElementById('eventModal');
+
+// Safe global handler: only attach if the modal exists and protect against missing children
+if (eventModal) {
+    ['click', 'touchstart', 'keydown'].forEach(eventType => {
+        window.addEventListener(eventType, function (event) {
+            try {
+                // If modal is not visible, ignore
+                if (!eventModal.style || !eventModal.style.display || eventModal.style.display === 'none') return;
+
+                const eventosDiv = eventModal.querySelector('.eventos');
+
+                // Close on click/touch when clicking on overlay background (the modal element itself)
+                // or when clicking outside the inner '.eventos' container (if it exists)
+                if ((eventType === 'click' || eventType === 'touchstart')) {
+                    if (event.target === eventModal) {
+                        eventModal.style.display = 'none';
+                        return;
+                    }
+
+                    if (eventosDiv && !eventosDiv.contains(event.target)) {
+                        eventModal.style.display = 'none';
+                        return;
+                    }
+                }
+
+                // Close on Escape key
+                if (eventType === 'keydown' && event.key === 'Escape') {
+                    eventModal.style.display = 'none';
+                }
+            } catch (e) {
+                console.error('modal global handler error', e);
+            }
+        });
+    });
+}
+
 
 function updateEvent(event) {
     fetch('./Dashboard/Calendario/eventoController.php', {
@@ -974,13 +1147,7 @@ function updateEvent(event) {
         .catch(err => showToast(err.message, false));
 }
 
-['click', 'touchstart', 'keydown'].forEach(eventType => {
-    window.addEventListener(eventType, function (event) {
-        if (event.target == eventModal || (eventType === 'keydown' && event.key === 'Escape')) {
-            eventModal.style.display = "none";
-        }
-    });
-});
+
 
 function atualizarTemposEmAndamento() {
     const spans = document.querySelectorAll('.card-log .date[data-inicio]');
@@ -1096,6 +1263,133 @@ function abrirSidebar(idFuncao, idImagem) {
             sidebarContent.innerHTML = '';
 
             const funcao = data.funcoes[0]; // pega o primeiro elemento do array
+
+            if (data.notificacoes && data.notificacoes.length > 0) {
+                // ensure styles for notification UI exist
+                if (!document.getElementById('func-notif-styles')) {
+                    const s = document.createElement('style');
+                    s.id = 'func-notif-styles';
+                    s.textContent = `
+                        /* notifications panel styles */
+                        .notificacoes-container { border:1px solid #e6e6e6; background:#fff9f9; padding:8px; border-radius:6px; margin-bottom:10px; z-index: 2; }
+                        .notificacoes-container h3 { margin:0 0 8px 0; font-size:14px; color:#b33; }
+                        .func-notif { display:flex; justify-content:space-between; gap:8px; align-items:center; padding:6px 8px; border-radius:4px; background:#fff; margin-bottom:6px; cursor:pointer; border:1px solid transparent; }
+                        .func-notif:hover { background:#fff7f7; border-color:#ffd6d6; }
+                        .func-notif .msg { flex:1; color:#333; font-size:13px; }
+                        .func-notif .data { color:#888; font-size:12px; margin-left:8px; white-space:nowrap; }
+                        .func-notif .mark-btn { margin-left:12px; background:#ff3b30; color:#fff; border:none; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer; }
+
+                        /* when sidebar has notifications, blur all children except the notifications container */
+                        #sidebar-content.sidebar-blurred-mode > *:not(.notificacoes-container) {
+                            filter: blur(3px);
+                            pointer-events: none;
+                            user-select: none;
+                            opacity: 0.95;
+                        }
+                    `;
+                    document.head.appendChild(s);
+                }
+
+                const notificacoesDiv = document.createElement('div');
+                notificacoesDiv.className = 'notificacoes-container';
+                notificacoesDiv.innerHTML = `<h3>Notificações</h3>`;
+
+                // mark sidebar as blurred except the notifications container
+                sidebarContent.classList.add('sidebar-blurred-mode');
+
+                data.notificacoes.forEach(notif => {
+                    const notifEl = document.createElement('div');
+                    notifEl.className = 'func-notif';
+                    notifEl.dataset.notId = notif.id;
+
+                    const msgSpan = document.createElement('div');
+                    msgSpan.className = 'msg';
+                    msgSpan.textContent = notif.mensagem;
+
+                    const rightDiv = document.createElement('div');
+                    rightDiv.style.display = 'flex';
+                    rightDiv.style.alignItems = 'center';
+
+                    const dataSpan = document.createElement('div');
+                    dataSpan.className = 'data';
+                    dataSpan.textContent = notif.data ? notif.data.split(' ')[0] : '';
+
+                    const markBtn = document.createElement('button');
+                    markBtn.className = 'mark-btn';
+                    markBtn.textContent = 'Marcar lida';
+
+                    // Click handler: mark as read via backend then remove element
+                    function marcarLida() {
+                        const id = notifEl.dataset.notId;
+                        fetch('PaginaPrincipal/markNotificacao.php', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                            body: `id=${encodeURIComponent(id)}`
+                        })
+                        .then(r => r.json())
+                        .then(res => {
+                            if (res && res.success) {
+                                // remove from DOM
+                                notifEl.remove();
+
+                                // if there are no more notifications, remove sidebar blur
+                                try {
+                                    if (!notificacoesDiv.querySelector('.func-notif')) {
+                                        sidebarContent.classList.remove('sidebar-blurred-mode');
+                                    }
+                                } catch (e) {
+                                    console.error('Erro ao atualizar blur da sidebar:', e);
+                                }
+                                // update any card icon counts if present
+                                const card = document.querySelector(`.kanban-card[data-id="${notif.funcao_imagem_id || notif.funcao_imagem || ''}"]`);
+                                if (card) {
+                                    const countEl = card.querySelector('.notif-count');
+                                    if (countEl) {
+                                        let n = Number(countEl.textContent || 0);
+                                        n = Math.max(0, n - 1);
+                                        if (n === 0) {
+                                            const icon = card.querySelector('.notif-icon');
+                                            if (icon) icon.remove();
+                                            notificacoesDiv.remove();
+                                        } else {
+                                            countEl.textContent = n;
+                                        }
+                                    }
+                                }
+                                showToast('Notificação marcada como lida', 'update');
+                            } else {
+                                showToast('Não foi possível marcar como lida', 'error');
+                            }
+                        })
+                        .catch(err => {
+                            console.error('Erro markNotificacao:', err);
+                            showToast('Erro ao conectar com o servidor', 'error');
+                        });
+                    }
+
+                    // clicking the whole element marks as read (manual reading)
+                    notifEl.addEventListener('click', function (e) {
+                        // avoid double-trigger when clicking the button
+                        if (e.target === markBtn) return;
+                        marcarLida();
+                    });
+
+                    markBtn.addEventListener('click', function (e) {
+                        e.stopPropagation();
+                        marcarLida();
+                    });
+
+                    rightDiv.appendChild(dataSpan);
+                    rightDiv.appendChild(markBtn);
+
+                    notifEl.appendChild(msgSpan);
+                    notifEl.appendChild(rightDiv);
+
+                    notificacoesDiv.appendChild(notifEl);
+                });
+
+                sidebarContent.appendChild(notificacoesDiv);
+            }
 
             const imagemDiv = document.createElement('p');
             imagemDiv.innerHTML = `<strong>Imagem: ${funcao.imagem_nome || '-'} (${funcao.idimagem || '-'})</strong>`;
@@ -1338,10 +1632,66 @@ function abrirSidebar(idFuncao, idImagem) {
 
                         if (uniquePaths.length > 0) {
                             uniquePaths.forEach(p => {
+                                // Linha do caminho da pasta
                                 const pDiv = document.createElement('div');
                                 pDiv.classList.add('path');
                                 pDiv.innerHTML = `📂 ${p}`;
                                 infoDiv.appendChild(pDiv);
+
+                                // Arquivos que compõem este caminho
+                                const filesForPath = otherItems.filter(it => {
+                                    const np = normalizePath(it.caminho, isTipoLevel);
+                                    return np === p;
+                                });
+
+                                if (filesForPath.length > 0) {
+                                    const listDiv = document.createElement('div');
+                                    listDiv.classList.add('path-files');
+
+                                    filesForPath.forEach(it => {
+                                        const fileEntry = document.createElement('div');
+                                        fileEntry.classList.add('file-entry');
+
+                                        // Nome do arquivo
+                                        const nome = it.nome_interno || (it.nome_arquivo || '—');
+                                        const titleDiv = document.createElement('div');
+                                        titleDiv.classList.add('file-title');
+                                        titleDiv.textContent = `↳ ${nome}`;
+                                        listDiv.appendChild(titleDiv);
+
+                                        // Metadados: data (recebido_em), sufixo, descricao
+                                        const metaDiv = document.createElement('div');
+                                        metaDiv.classList.add('file-meta');
+
+                                        // Data recebido_em formatada dd/mm/aaaa
+                                        let dataStr = '';
+                                        const rawDate = it.recebido_em || it.data || it.data_recebimento || '';
+                                        if (rawDate) {
+                                            const d = new Date(rawDate);
+                                            if (!isNaN(d.getTime())) {
+                                                const dd = String(d.getDate()).padStart(2, '0');
+                                                const mm = String(d.getMonth() + 1).padStart(2, '0');
+                                                const yyyy = d.getFullYear();
+                                                dataStr = `${dd}/${mm}/${yyyy}`;
+                                            } else {
+                                                // se não for parseável, mostra como veio
+                                                dataStr = String(rawDate);
+                                            }
+                                        }
+
+                                        const partes = [];
+                                        if (dataStr) partes.push(`📅 ${dataStr}`);
+                                        if (it.sufixo) partes.push(`📝 ${it.sufixo}`);
+                                        if (it.descricao) partes.push(`⚠️ ${it.descricao}`);
+
+                                        if (partes.length > 0) {
+                                            metaDiv.textContent = partes.join(' | ');
+                                            listDiv.appendChild(metaDiv);
+                                        }
+                                    });
+
+                                    infoDiv.appendChild(listDiv);
+                                }
                             });
                         } else if (otherItems.length === 0 && jpgItems.length === 0) {
                             const noneDiv = document.createElement('div');

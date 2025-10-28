@@ -115,7 +115,7 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
 
     // Query arquivos directly linked to the image
     $sqlArquivosImg = "SELECT a.obra_id, a.imagem_id, a.tipo_imagem_id, a.nome_interno, a.caminho, a.tipo, a.categoria_id, a.recebido_em, a.status,
-        c.nome_categoria AS categoria_nome, a.descricao
+        c.nome_categoria AS categoria_nome, a.descricao, a.sufixo
         FROM arquivos a
         LEFT JOIN categorias c ON c.idcategoria = a.categoria_id
         WHERE a.status = 'atualizado' AND a.imagem_id = " . $idImagemSelecionada . " ORDER BY a.recebido_em DESC";
@@ -135,14 +135,14 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
         //  - arquivos.tipo_imagem_id equals the name, or
         //  - arquivos.tipo_imagem_id equals the id of a tipo_imagem row whose nome matches the name.
 
-                // Restrict to the same obra (if we have it) so we don't pull files from other obras
-                $obraFilter = '';
-                if (!empty($obraIdFromImage)) {
-                        $obraFilter = ' AND a.obra_id = ' . (int)$obraIdFromImage;
-                }
+        // Restrict to the same obra (if we have it) so we don't pull files from other obras
+        $obraFilter = '';
+        if (!empty($obraIdFromImage)) {
+            $obraFilter = ' AND a.obra_id = ' . (int)$obraIdFromImage;
+        }
 
-                $sqlArquivosTipo = "SELECT a.obra_id, a.imagem_id, a.tipo_imagem_id, a.nome_interno, a.caminho, a.tipo, a.categoria_id, a.recebido_em, a.status,
-                                c.nome_categoria AS categoria_nome, a.descricao
+        $sqlArquivosTipo = "SELECT a.obra_id, a.imagem_id, a.tipo_imagem_id, a.nome_interno, a.caminho, a.tipo, a.categoria_id, a.recebido_em, a.status,
+                                c.nome_categoria AS categoria_nome, a.descricao, a.sufixo
                         FROM arquivos a
                         LEFT JOIN tipo_imagem t ON (t.id_tipo_imagem = a.tipo_imagem_id OR t.nome = a.tipo_imagem_id)
                         LEFT JOIN categorias c ON c.idcategoria = a.categoria_id
@@ -174,9 +174,25 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
                 $arquivos_anteriores[] = $row;
             }
         }
+
+        // ==========================================================
+        // 7) Notificações da funcao_imagem
+        // ==========================================================
+        $notificacoes = [];
+        $sqlNotificacoes = "SELECT n.id, n.funcao_imagem_id, n.mensagem, n.data
+            FROM notificacoes n
+            LEFT JOIN funcao_imagem fi ON n.funcao_imagem_id = fi.idfuncao_imagem
+            WHERE fi.idfuncao_imagem = " . $idFuncaoImagem . " AND n.lida = 0
+            ORDER BY n.data DESC";
+
+        if ($resNotificacoes = $conn->query($sqlNotificacoes)) {
+            while ($row = $resNotificacoes->fetch_assoc()) {
+                $notificacoes[] = $row;
+            }
+        }
     }
 
-    // ==========================================================
+    // ====================================
     // Resposta final
     // ==========================================================
     echo json_encode([
@@ -187,6 +203,7 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
         "arquivos_imagem" => $arquivos_imagem,
         "arquivos_tipo" => $arquivos_tipo,
         "arquivos_anteriores" => $arquivos_anteriores,
+        "notificacoes"  => $notificacoes
 
     ], JSON_UNESCAPED_UNICODE);
 } else {

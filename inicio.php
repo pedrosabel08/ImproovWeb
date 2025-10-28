@@ -109,7 +109,13 @@ $conn->close();
                         <!-- <button id="timeline"><span>Timeline</span></button> -->
                     </div>
                     <div class="nav-right">
+                        <!-- Mini calendar (semana) -->
+
+                        <div id="mini-calendar-container" style="display:inline-block; vertical-align: middle; margin-right:8px;">
+                            <div id="mini-calendar" style="width:350px; height:80px;"></div>
+                        </div>
                         <select name="idcolab" id="idcolab">
+
                             <?php foreach ($colaboradores as $colab): ?>
                                 <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
                                     <?= htmlspecialchars($colab['nome_colaborador']); ?>
@@ -355,6 +361,16 @@ $conn->close();
         <span id="contador-tarefas" class="contador-tarefas">0</span>
     </div>
 
+    <!-- Modal para calendário full (expand) -->
+    <div id="calendarFullModal" class="modal" style="display:none;">
+        <div class="modal-content" style="width:90vw; max-width:1100px; height:80vh; padding:12px;">
+            <div id="calendarFull" style="width:100%; height:100%;"></div>
+            <div style="display:flex;justify-content:flex-end;margin-top:8px;">
+                <button id="closeFullCalendar" class="btn" style="background:#ef4444;color:#fff;border:none;padding:6px 12px;border-radius:6px;">Fechar</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Popover unificado -->
     <div id="popover-tarefas" class="popover oculto">
         <!-- Tarefas -->
@@ -382,33 +398,14 @@ $conn->close();
     <!-- Modal simples para adicionar evento -->
     <div id="eventModal">
         <div class="eventos">
-            <h3>Evento</h3>
-            <form id="eventForm">
-                <input type="hidden" name="id" id="eventId">
-                <label for="opcao">Obra:</label>
-                <select name="opcao" id="obra_calendar">
-                    <?php foreach ($obras as $obra): ?>
-                        <option value="<?= $obra['idobra']; ?>"><?= htmlspecialchars($obra['nomenclatura']); ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-                <label>Título:</label>
-                <input type="text" name="title" id="eventTitle" required>
-                <label>Tipo de Evento:</label>
-                <select name="eventType" id="eventType" required>
-                    <option value="">Selecione</option>
-                    <option value="Entrega">Entrega</option>
-                    <option value="Arquivos">Arquivos</option>
-                    <option value="Reunião">Reunião</option>
-                    <option value="Outro">Outro</option>
-                </select>
-                <label>Data:</label>
-                <input type="date" name="date" id="eventDate" required>
-                <div class="buttons">
-                    <button type="submit" style="background-color: green;">Salvar</button>
-                    <button type="button" style="background-color: red;" onclick="deleteEvent()">Excluir</button>
-                </div>
-            </form>
+
+            <!-- Detail view: shown when clicking an existing event -->
+            <div id="eventDetail">
+                <p><strong>Nome da função:</strong> <span id="detailNomeFuncao">-</span></p>
+                <p><strong>Nome da imagem:</strong> <span id="detailNomeImagem">-</span></p>
+                <p><strong>Status:</strong> <span id="detailStatus">-</span></p>
+                <p><strong>Prazo:</strong> <span id="detailPrazo">-</span></p>
+            </div>
         </div>
     </div>
 
@@ -487,13 +484,11 @@ $conn->close();
 
         const idColaborador = <?php echo json_encode($idcolaborador); ?>;
         localStorage.setItem('idcolaborador', idColaborador);
-
-
     </script>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <!-- <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script> -->
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>

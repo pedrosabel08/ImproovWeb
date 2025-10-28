@@ -40,7 +40,7 @@ main header {
 }
 
 /* Header layout for pages that place actions inside the header (e.g., Entregas/index.php) */
-.container > header {
+.container>header {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -57,7 +57,7 @@ main header {
     font-weight: 700;
     font-size: 0.9rem;
     cursor: pointer;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
     transition: transform 0.08s ease, filter 0.12s ease;
 }
 
@@ -196,33 +196,22 @@ main .kanban .kanban-box {
 }
 
 /* Scrollbar estilizado para Webkit (Chrome, Edge, Safari) */
-.kanban-box .content::-webkit-scrollbar,
-.dropdown-content::-webkit-scrollbar,
-.log-alteracoes::-webkit-scrollbar,
-.sidebar-right::-webkit-scrollbar {
+::-webkit-scrollbar {
     width: 4px;
 }
 
-.kanban-box .content::-webkit-scrollbar-track,
-.dropdown-content::-webkit-scrollbar-track,
-.log-alteracoes::-webkit-scrollbar-track,
-.sidebar-right::-webkit-scrollbar-track {
+::-webkit-scrollbar-track {
     background: #f1f1f1;
     border-radius: 8px;
 }
 
-.kanban-box .content::-webkit-scrollbar-thumb,
-.dropdown-content::-webkit-scrollbar-thumb,
-.log-alteracoes::-webkit-scrollbar-thumb,
-.sidebar-right::-webkit-scrollbar-thumb {
+::-webkit-scrollbar-thumb {
     background: #c1c1c1;
     border-radius: 8px;
     transition: background 0.3s;
 }
 
-.kanban-box .content::-webkit-scrollbar-thumb:hover,
-.dropdown-content::-webkit-scrollbar-thumb:hover,
-.log-alteracoes::-webkit-scrollbar-thumb:hover {
+::-webkit-scrollbar-thumb:hover {
     background: #888;
 }
 
@@ -349,6 +338,14 @@ main .kanban div .header .task-count {
     align-items: center;
     font-size: 0.6rem;
     color: #8a8a8a;
+}
+
+.kanban-card .card-footer span.date.atrasada {
+    background: red;
+    color: white;
+    padding: 4px 6px;
+    border-radius: 10px;
+
 }
 
 .kanban-card .card-footer .avatars img {
@@ -1038,31 +1035,46 @@ h1 {
 
 
 #eventModal {
+    position: absolute;
     display: none;
-    position: fixed;
-    background-color: rgba(0, 0, 0, 0.7);
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
+    background: #fff;
+    border: 1px solid #ddd;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    z-index: 9999;
+    max-width: 500px;
+    transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
+#eventModal.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+#eventModal {
+    opacity: 0;
+    transform: translateY(-10px);
+}
+
+
 .eventos {
-    background: white;
-    padding: 20px;
-    border-radius: 8px;
-    width: 20%;
-    color: #000;
+    background: white !important;
+    color: #000 !important;
+    font-size: 0.9rem !important;
+    padding: 20px !important;
+}
+
+#eventDetail {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
 }
 
 .fc th {
     text-align: center;
     background: #333;
     color: white;
-    font-size: 14px;
+    font-size: 0.7rem !important;
 }
 
 .fc-event-title {
@@ -1083,6 +1095,28 @@ h1 {
     padding: 5px 8px;
     font-size: 14px;
     transition: background-color 0.3s ease;
+}
+
+/* Mini calendar small styling */
+#mini-calendar {
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+    border-radius: 6px;
+    overflow: hidden;
+    background: #fff;
+}
+
+/* Calendar modal tweaks */
+#calendarFullModal .modal-content {
+    max-width: 1100px;
+}
+
+/* Make the small calendar toolbar unobtrusive */
+#mini-calendar .fc-toolbar {
+    display: none;
+}
+
+#mini-calendar .fc-scrollgrid {
+    font-size: 12px;
 }
 
 .fc-scroller .fc-scroller-liquid-absolute {
@@ -1518,6 +1552,20 @@ span.aprovadaComAjustes {
     flex-direction: column;
 }
 
+.path-files {
+    font-size: 0.7rem;
+    margin-top: 10px;
+}
+
+.file-title {
+    font-weight: bold;
+}
+
+.file-meta {
+    margin-bottom: 10px;
+}
+
+
 img.thumb {
     width: 100%;
 }
@@ -1693,24 +1741,15 @@ img.thumb {
     }
 
     /* Scrollbar dark */
-    .kanban-box .content::-webkit-scrollbar,
-    .dropdown-content::-webkit-scrollbar,
-    .log-alteracoes::-webkit-scrollbar,
-    .sidebar-right::-webkit-scrollbar {
+    ::-webkit-scrollbar {
         background: #232323;
     }
 
-    .kanban-box .content::-webkit-scrollbar-thumb,
-    .dropdown-content::-webkit-scrollbar-thumb,
-    .log-alteracoes::-webkit-scrollbar-thumb,
-    .sidebar-right::-webkit-scrollbar-thumb {
+    ::-webkit-scrollbar-thumb {
         background: #444;
     }
 
-    .kanban-box .content::-webkit-scrollbar-thumb:hover,
-    .dropdown-content::-webkit-scrollbar-thumb:hover,
-    .log-alteracoes::-webkit-scrollbar-thumb:hover,
-    .sidebar-right::-webkit-scrollbar-thumb:hover {
+    ::-webkit-scrollbar-thumb:hover {
         background: #666;
     }
 }

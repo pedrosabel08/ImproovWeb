@@ -53,6 +53,22 @@ function enviarNotificacaoSlack($slackUserId, $mensagem, &$log)
     return true;
 }
 
+/**
+ * Normaliza nomes para comparação: remove acentos, pontuação e deixa em minúsculas.
+ */
+function normalize_name($s)
+{
+    if (!$s) return '';
+    // tenta transliterar acentos
+    $s = iconv('UTF-8', 'ASCII//TRANSLIT', $s);
+    $s = strtolower($s);
+    // remove caracteres que não são letras, números ou espaços
+    $s = preg_replace('/[^a-z0-9\s]/', '', $s);
+    // normaliza espaços
+    $s = preg_replace('/\s+/', ' ', trim($s));
+    return $s;
+}
+
 $resultadoFinal = ['logs' => []];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -64,7 +80,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $colaborador_id = $data['colaborador_id'] ?? null;
     $responsavel = $data['responsavel'] ?? null;
     $imagem_id = $data['imagem_id'] ?? null;
-    $nome_colaborador = 'Pedro Sabel';
+    // Pode conter múltiplos nomes que serão aceitos ao buscar o usuário no Slack
+    $nome_colaboradores = ['Pedro Sabel', 'Andre L. de Souza'];
 
     if (!$idfuncao_imagem || !$tipoRevisao) {
         echo json_encode(['success' => false, 'message' => 'Dados incompletos.']);
@@ -283,18 +300,99 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif (!isset($responseData['members']) || !is_array($responseData['members'])) {
         $resultadoFinal['logs'][] = "API do Slack não retornou 'members'. Resposta: " . json_encode($responseData);
     } else {
+        // Normalize target names for comparison
+        $normalizedTargets = array_map('normalize_name', (array) $nome_colaboradores);
+        $userIDs = [];
         foreach ($responseData['members'] as $member) {
-            if (isset($member['real_name']) && strtolower($member['real_name']) === strtolower($nome_colaborador)) {
-                $userID = $member['id'];
-                break;
+            // collect candidate name fields from Slack member object
+            $candidates = [];
+            if (isset($member['real_name'])) $candidates[] = $member['real_name'];
+            if (isset($member['profile']['real_name_normalized'])) $candidates[] = $member['profile']['real_name_normalized'];
+            if (isset($member['profile']['display_name'])) $candidates[] = $member['profile']['display_name'];
+            if (isset($member['profile']['display_name_normalized'])) $candidates[] = $member['profile']['display_name_normalized'];
+            if (isset($member['profile']['email'])) $candidates[] = $member['profile']['email'];
+
+            // normalize candidate values
+            $normalizedCandidates = array_map('normalize_name', $candidates);
+
+            // add debug log of what we're comparing (only a few entries to avoid huge logs)
+            $resultadoFinal['logs'][] = 'Checando membro Slack: id=' . ($member['id'] ?? 'n/a') . ' nomes=[' . implode(',', array_slice($candidates,0,3)) . ']';
+
+            // compare normalized versions and collect matches (do not stop at first)
+            foreach ($normalizedTargets as $t) {
+                if ($t === '') continue;
+                if (in_array($t, $normalizedCandidates, true)) {
+                    $userIDs[] = $member['id'];
+                    $resultadoFinal['logs'][] = 'Match encontrado: ' . $member['id'] . ' para alvo: ' . $t;
+                    // don't break outer loop; allow other members to be matched too
+                    break;
+                }
             }
+        }
+        // remove duplicates
+        $userIDs = array_values(array_unique($userIDs));
+
+        // Fallback: if some target names did not match exactly, try token-subset matching
+        $matchedTargets = [];
+        foreach ($userIDs as $uid) {
+            // try to find which target(s) matched this uid by checking logged matches
+            // (we logged 'Match encontrado: <id> para alvo: <t>')
+            foreach ($resultadoFinal['logs'] as $logLine) {
+                if (strpos($logLine, 'Match encontrado: ' . $uid . ' para alvo:') !== false) {
+                    // extract alvo value
+                    $parts = explode('para alvo: ', $logLine);
+                    if (isset($parts[1])) {
+                        $matchedTargets[] = trim($parts[1]);
+                    }
+                }
+            }
+        }
+        $matchedTargets = array_values(array_unique($matchedTargets));
+
+        $unmatchedTargets = array_filter($normalizedTargets, function($t) use ($matchedTargets) {
+            return $t !== '' && !in_array($t, $matchedTargets, true);
+        });
+
+        if (!empty($unmatchedTargets)) {
+            $resultadoFinal['logs'][] = 'Tentando fallback de correspondência (token match) para: ' . implode(', ', $unmatchedTargets);
+            foreach ($unmatchedTargets as $t) {
+                $tokens = array_filter(explode(' ', $t));
+                foreach ($responseData['members'] as $member) {
+                    $candidates = [];
+                    if (isset($member['real_name'])) $candidates[] = $member['real_name'];
+                    if (isset($member['profile']['real_name_normalized'])) $candidates[] = $member['profile']['real_name_normalized'];
+                    if (isset($member['profile']['display_name'])) $candidates[] = $member['profile']['display_name'];
+                    if (isset($member['profile']['display_name_normalized'])) $candidates[] = $member['profile']['display_name_normalized'];
+                    if (isset($member['profile']['email'])) $candidates[] = $member['profile']['email'];
+                    $normalizedCandidates = array_map('normalize_name', $candidates);
+                    $candidateStr = implode(' ', $normalizedCandidates);
+                    $allTokensPresent = true;
+                    foreach ($tokens as $tok) {
+                        if ($tok === '') continue;
+                        if (strpos($candidateStr, $tok) === false) {
+                            $allTokensPresent = false;
+                            break;
+                        }
+                    }
+                    if ($allTokensPresent) {
+                        $userIDs[] = $member['id'];
+                        $resultadoFinal['logs'][] = 'Fallback match encontrado: ' . $member['id'] . ' para alvo tokenizado: ' . $t;
+                        // found this target, move to next target
+                        break;
+                    }
+                }
+            }
+            // dedupe again
+            $userIDs = array_values(array_unique($userIDs));
         }
     }
 
-    if ($userID) {
-        enviarNotificacaoSlack($userID, $mensagemSlack, $resultadoFinal['logs']);
+    if (!empty($userIDs)) {
+        foreach ($userIDs as $uid) {
+            enviarNotificacaoSlack($uid, $mensagemSlack, $resultadoFinal['logs']);
+        }
     } else {
-        $resultadoFinal['logs'][] = "Usuário {$nome_colaborador} não encontrado no Slack.";
+        $resultadoFinal['logs'][] = "Usuário(s) " . implode(', ', $nome_colaboradores) . " não encontrado(s) no Slack.";
     }
 } else {
     echo json_encode(['success' => false, 'message' => 'Método inválido.']);

@@ -8,7 +8,18 @@ btnClose.addEventListener('click', () => modal.style.display = 'none');
 async function carregarArquivos(filtros = {}) {
     try {
         // Monta query string se houver filtros
-        let query = new URLSearchParams(filtros).toString();
+        // Usando URLSearchParams e set/append para suportar arrays corretamente
+        const params = new URLSearchParams();
+        Object.entries(filtros).forEach(([key, value]) => {
+            if (value === null || value === undefined || value === '') return;
+            if (Array.isArray(value)) {
+                value.forEach(v => params.append(key, v));
+            } else {
+                params.set(key, value);
+            }
+        });
+
+        let query = params.toString();
         let response = await fetch('getArquivos.php?' + query);
         let dados = await response.json();
 
@@ -46,6 +57,27 @@ async function carregarArquivos(filtros = {}) {
 
 // Carrega na inicialização
 carregarArquivos();
+
+// Wire filters to call carregarArquivos with selected values
+document.addEventListener('DOMContentLoaded', () => {
+    const obraFilter = document.getElementById('filter_obra');
+    const tipoFilter = document.getElementById('filter_tipo');
+    const tipoArquivoFilter = document.getElementById('filter_tipo_arquivo');
+
+    function aplicarFiltros() {
+        const filtros = {};
+        if (obraFilter && obraFilter.value) filtros.obra_id = obraFilter.value;
+        if (tipoFilter && tipoFilter.value) filtros.tipo = tipoFilter.value;
+        if (tipoArquivoFilter && tipoArquivoFilter.value) filtros.tipo_arquivo = tipoArquivoFilter.value;
+
+        carregarArquivos(filtros);
+    }
+
+    [obraFilter, tipoFilter, tipoArquivoFilter].forEach(el => {
+        if (!el) return;
+        el.addEventListener('change', aplicarFiltros);
+    });
+});
 
 const tipoArquivoSelect = document.querySelector('select[name="tipo_arquivo"]');
 const tipoImagemSelect = document.querySelector('select[name="tipo_imagem[]"]');

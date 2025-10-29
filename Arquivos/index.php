@@ -59,26 +59,42 @@ $conn->close();
 
         <!-- Filtros -->
         <div class="filters">
-            <select>
-                <option>Projeto</option>
-                <option>Obra 1</option>
-                <option>Obra 2</option>
+            <!-- Projeto / Obra -->
+            <select id="filter_obra">
+                <option value="">Todos os projetos</option>
+                <?php foreach ($obras as $obra): ?>
+                    <option value="<?= $obra['idobra']; ?>"><?= htmlspecialchars($obra['nomenclatura']); ?></option>
+                <?php endforeach; ?>
             </select>
-            <select>
-                <option>Tipo de Imagem</option>
-                <option>Fachada</option>
-                <option>Interna</option>
+
+            <!-- Tipo de Imagem (populado a partir da tabela tipo_imagem) -->
+            <select id="filter_tipo">
+                <option value="">Todos os tipos</option>
+                <?php
+                // Busca tipos de imagem diretamente do banco (tabela tipo_imagem)
+                $conn2 = conectarBanco();
+                $tipos = [];
+                $res = $conn2->query("SELECT id_tipo_imagem, nome FROM tipo_imagem ORDER BY nome ASC");
+                if ($res) {
+                    while ($r = $res->fetch_assoc()) {
+                        $tipos[] = $r;
+                    }
+                }
+                $conn2->close();
+                foreach ($tipos as $t): ?>
+                    <option value="<?= htmlspecialchars($t['nome']); ?>"><?= htmlspecialchars($t['nome']); ?></option>
+                <?php endforeach; ?>
             </select>
-            <select>
-                <option>Tipo de Arquivo</option>
-                <option>DWG</option>
-                <option>PDF</option>
-            </select>
-            <select>
-                <option>Status</option>
-                <option>Atualizado</option>
-                <option>Antigo</option>
-                <option>Pendente</option>
+
+            <!-- Tipo de Arquivo (client-side mapping exists when uploading; keep helpful options) -->
+            <select id="filter_tipo_arquivo">
+                <option value="">Todos os arquivos</option>
+                <option value="DWG">DWG</option>
+                <option value="PDF">PDF</option>
+                <option value="SKP">SKP</option>
+                <option value="IMG">IMG</option>
+                <option value="IFC">IFC</option>
+                <option value="Outros">Outros</option>
             </select>
         </div>
 

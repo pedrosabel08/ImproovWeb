@@ -560,7 +560,7 @@ if ((!empty($arquivosPorImagem)) && ($categoria == 2 || $tipo_arquivo === 'SKP' 
                 }
                 // Notificar colaborador(es) associados à funcao_id = 4 para esta imagem
                 try {
-                    $notifMsg = "Arquivo de Ângulo Definido adicionado na imagem '{$nome_imagem}': {$fileNomeInterno}";
+                    $notifMsg = "Ângulo definido para a imagem, confira abaixo:";
                     $sel = $conn->prepare("SELECT colaborador_id, idfuncao_imagem FROM funcao_imagem WHERE imagem_id = ? AND funcao_id = 4");
                     if ($sel) {
                         $sel->bind_param("i", $imagem_id);

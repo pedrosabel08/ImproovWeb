@@ -1279,6 +1279,7 @@ async function renderComments(id) {
 
             if (number) {
                 number.classList.add('highlight');
+                number.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
         });
 

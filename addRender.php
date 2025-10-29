@@ -21,6 +21,7 @@ $imagem_id = $data['imagem_id'];
 $status_id = $data['status_id'];
 $notificar = isset($data['notificar']) && $data['notificar'] == "1";
 $finalizador_id = isset($data['finalizador']) ? intval($data['finalizador']) : null;
+$data_id_funcao = isset($data['data_id_funcao']) ? intval($data['data_id_funcao']) : null;
 
 // Se notificar for verdadeiro, apenas envia a notificação e encerra
 if ($notificar && $finalizador_id) {
@@ -51,12 +52,12 @@ if ($notificar && $finalizador_id) {
     $mensagem = "Imagem {$imagem_nome} pode ser feito o render {$nome_status}";
 
     // Corrigido: não envia data, deixa o banco preencher
-    $stmt_notif = $conn->prepare("INSERT INTO notificacoes (colaborador_id, mensagem, lida) VALUES (?, ?, 0)");
+    $stmt_notif = $conn->prepare("INSERT INTO notificacoes (colaborador_id, mensagem, lida, funcao_imagem_id) VALUES (?, ?, 0, ?)");
     if (!$stmt_notif) {
         echo json_encode(['status' => 'erro', 'message' => 'Erro no prepare: ' . $conn->error]);
         exit;
     }
-    $stmt_notif->bind_param("is", $finalizador_id, $mensagem);
+    $stmt_notif->bind_param("isi", $finalizador_id, $mensagem, $data_id_funcao);
     $stmt_notif->execute();
     $stmt_notif->close();
 

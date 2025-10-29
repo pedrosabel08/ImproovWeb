@@ -448,6 +448,7 @@ function atualizarModal(idImagem) {
                             document.getElementById("prazo_caderno").value = funcao.prazo;
                             document.getElementById("obs_caderno").value = funcao.observacao;
                             revisaoImagemElement = document.getElementById("revisao_imagem_caderno");
+                            document.getElementById("caderno").setAttribute('data-id-funcao', funcao.id);
                             break;
                         case "Modelagem":
                             selectElement = document.getElementById("opcao_model");
@@ -455,6 +456,7 @@ function atualizarModal(idImagem) {
                             document.getElementById("prazo_modelagem").value = funcao.prazo;
                             document.getElementById("obs_modelagem").value = funcao.observacao;
                             revisaoImagemElement = document.getElementById("revisao_imagem_model");
+                            document.getElementById("modelagem").setAttribute('data-id-funcao', funcao.id);
                             break;
                         case "Composição":
                             selectElement = document.getElementById("opcao_comp");
@@ -462,6 +464,7 @@ function atualizarModal(idImagem) {
                             document.getElementById("prazo_comp").value = funcao.prazo;
                             document.getElementById("obs_comp").value = funcao.observacao;
                             revisaoImagemElement = document.getElementById("revisao_imagem_comp");
+                            document.getElementById("comp").setAttribute('data-id-funcao', funcao.id);
 
                             break;
                         case "Finalização":
@@ -470,6 +473,7 @@ function atualizarModal(idImagem) {
                             document.getElementById("prazo_finalizacao").value = funcao.prazo;
                             document.getElementById("obs_finalizacao").value = funcao.observacao;
                             revisaoImagemElement = document.getElementById("revisao_imagem_final");
+                            document.getElementById("final").setAttribute('data-id-funcao', funcao.id);
                             break;
                         case "Pós-produção":
                             selectElement = document.getElementById("opcao_pos");
@@ -477,6 +481,7 @@ function atualizarModal(idImagem) {
                             document.getElementById("prazo_pos").value = funcao.prazo;
                             document.getElementById("obs_pos").value = funcao.observacao;
                             revisaoImagemElement = document.getElementById("revisao_imagem_pos");
+                            document.getElementById("pos").setAttribute('data-id-funcao', funcao.id);
                             break;
                         case "Alteração":
                             selectElement = document.getElementById("opcao_alteracao");
@@ -484,6 +489,7 @@ function atualizarModal(idImagem) {
                             document.getElementById("prazo_alteracao").value = funcao.prazo;
                             document.getElementById("obs_alteracao").value = funcao.observacao;
                             revisaoImagemElement = document.getElementById("revisao_imagem_alt");
+                            document.getElementById("alteracao").setAttribute('data-id-funcao', funcao.id);
                             break;
                         case "Planta Humanizada":
                             selectElement = document.getElementById("opcao_planta");
@@ -491,6 +497,7 @@ function atualizarModal(idImagem) {
                             document.getElementById("prazo_planta").value = funcao.prazo;
                             document.getElementById("obs_planta").value = funcao.observacao;
                             revisaoImagemElement = document.getElementById("revisao_imagem_ph");
+                            document.getElementById("planta").setAttribute('data-id-funcao', funcao.id);
                             break;
                         case "Filtro de assets":
                             selectElement = document.getElementById("opcao_filtro");
@@ -498,6 +505,7 @@ function atualizarModal(idImagem) {
                             document.getElementById("prazo_filtro").value = funcao.prazo;
                             document.getElementById("obs_filtro").value = funcao.observacao;
                             revisaoImagemElement = document.getElementById("revisao_imagem_filtro");
+                            document.getElementById("filtro").setAttribute('data-id-funcao', funcao.id);
                             break;
                         case "Pré-Finalização":
                             selectElement = document.getElementById("opcao_pre");
@@ -505,6 +513,7 @@ function atualizarModal(idImagem) {
                             document.getElementById("prazo_pre").value = funcao.prazo;
                             document.getElementById("obs_pre").value = funcao.observacao;
                             revisaoImagemElement = document.getElementById("revisao_imagem_pre");
+                            document.getElementById("pre").setAttribute('data-id-funcao', funcao.id);
                             break;
                     }
 
@@ -3136,15 +3145,33 @@ document.getElementById("addRender").addEventListener("click", function (event) 
         }
     };
 
+    // Decide qual finalizador usar (prefere alteração se preenchido)
     const opcaoAlt = document.getElementById("opcao_alteracao").value;
     const opcaoFinal = opcaoAlt.trim() !== "" ? opcaoAlt : document.getElementById("opcao_final").value;
 
+    // Monta o payload básico
     const data = {
         imagem_id: idImagemSelecionada,
         status_id: statusId,
         notificar: notificar ? "1" : "0",
         finalizador: opcaoFinal,
     };
+
+    // Se for para notificar, recuperar o atributo data-id-funcao de #alteracao ou #final (priorizando alteracao)
+    if (notificar) {
+        const alteracaoEl = document.getElementById('alteracao');
+        const finalEl = document.getElementById('final');
+
+        const alteracaoFunc = alteracaoEl ? alteracaoEl.getAttribute('data-id-funcao') : null;
+        const finalFunc = finalEl ? finalEl.getAttribute('data-id-funcao') : null;
+
+        const dataIdFuncao = alteracaoFunc || finalFunc || null;
+
+        if (dataIdFuncao) {
+            // inclui no payload apenas se existir
+            data.data_id_funcao = dataIdFuncao;
+        }
+    }
 
     xhr.send(JSON.stringify(data));
 

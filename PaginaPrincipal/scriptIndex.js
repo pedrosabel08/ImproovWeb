@@ -154,7 +154,11 @@ function processarDados(data) {
             }
 
 
+            // store original previous status (comes from getFuncoesPorColaborador -> status_funcao_anterior)
+            const statusAnteriorFull = item.status_funcao_anterior || '';
+
             card.setAttribute('data-id', `${item.idfuncao_imagem}`);
+            card.setAttribute('data-status-anterior', statusAnteriorFull);
             card.setAttribute('data-id-imagem', `${item.imagem_id}`);
             card.setAttribute('data-id-funcao', `${item.funcao_id}`);
             card.setAttribute('liberado', liberado);
@@ -1256,9 +1260,12 @@ function abrirSidebarTarefaCriada(idTarefa) {
 
 function abrirSidebar(idFuncao, idImagem) {
 
-    fetch(`PaginaPrincipal/getInfosCard.php?idfuncao=${idFuncao}&imagem_id=${idImagem}`)
-        .then(res => res.json())
-        .then(data => {
+    return fetch(`PaginaPrincipal/getInfosCard.php?idfuncao=${idFuncao}&imagem_id=${idImagem}`)
+            .then(res => {
+                if (!res.ok) throw new Error('Network response was not ok');
+                return res.json();
+            })
+            .then(data => {
             // Limpa conteúdo antigo
             sidebarContent.innerHTML = '';
 
@@ -1271,21 +1278,7 @@ function abrirSidebar(idFuncao, idImagem) {
                     s.id = 'func-notif-styles';
                     s.textContent = `
                         /* notifications panel styles */
-                        .notificacoes-container { border:1px solid #e6e6e6; background:#fff9f9; padding:8px; border-radius:6px; margin-bottom:10px; z-index: 2; }
-                        .notificacoes-container h3 { margin:0 0 8px 0; font-size:14px; color:#b33; }
-                        .func-notif { display:flex; justify-content:space-between; gap:8px; align-items:center; padding:6px 8px; border-radius:4px; background:#fff; margin-bottom:6px; cursor:pointer; border:1px solid transparent; }
-                        .func-notif:hover { background:#fff7f7; border-color:#ffd6d6; }
-                        .func-notif .msg { flex:1; color:#333; font-size:13px; }
-                        .func-notif .data { color:#888; font-size:12px; margin-left:8px; white-space:nowrap; }
-                        .func-notif .mark-btn { margin-left:12px; background:#ff3b30; color:#fff; border:none; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer; }
-
-                        /* when sidebar has notifications, blur all children except the notifications container */
-                        #sidebar-content.sidebar-blurred-mode > *:not(.notificacoes-container) {
-                            filter: blur(3px);
-                            pointer-events: none;
-                            user-select: none;
-                            opacity: 0.95;
-                        }
+                        
                     `;
                     document.head.appendChild(s);
                 }
@@ -1904,6 +1897,7 @@ function abrirSidebar(idFuncao, idImagem) {
             });
             // Abre a sidebar
             sidebarRight.classList.add('active');
+            return data; // expose fetched data to caller
         });
 };
 
@@ -2184,6 +2178,9 @@ document.getElementById('salvarModal').addEventListener('click', () => {
             },
         });
     } else {
+        // capture the original previous status from the card (provided by server as status_funcao_anterior)
+        const previousStatus = (cardSelecionado.getAttribute('data-status-anterior') || cardSelecionado.getAttribute('data-nome_status') || cardSelecionado.dataset.status || '').toString();
+
         const dados = {
             imagem_id: cardSelecionado.dataset.idImagem,
             funcao_id: cardSelecionado.dataset.idFuncao,
@@ -2210,6 +2207,94 @@ document.getElementById('salvarModal').addEventListener('click', () => {
                 cardModal.classList.remove('active');
                 cardSelecionado = null;
                 carregarDados(colaborador_id); // Recarrega o Kanban para refletir mudanças
+
+                try {
+                    const novo = (dados.status || '').toString().toLowerCase();
+                    const prev = (previousStatus || '').toString().toLowerCase();
+                    if (novo === 'em andamento' && prev === 'aprovado com ajustes') {
+                        // open sidebar and get data so we can show the previous function name
+                        abrirSidebar(dados.cardId, dados.imagem_id)
+                            .then((data) => {
+                                // ensure notifications container exists
+                                let notificacoesDiv = sidebarContent.querySelector('.notificacoes-container');
+                                if (!notificacoesDiv) {
+                                    notificacoesDiv = document.createElement('div');
+                                    notificacoesDiv.className = 'notificacoes-container';
+                                    notificacoesDiv.innerHTML = `<h3>Notificações</h3>`;
+                                    sidebarContent.insertBefore(notificacoesDiv, sidebarContent.firstChild);
+                                }
+
+                                // enable blur mode so the notification stands out
+                                sidebarContent.classList.add('sidebar-blurred-mode');
+
+                                // build reminder message using function name from fetched data if available
+                                const funcName = (data && data.funcoes && data.funcoes[0] && data.funcoes[0].nome_funcao) ? data.funcoes[0].nome_funcao : '';
+                                const prevReadable = previousStatus || 'Aprovado com Ajustes';
+                                const mensagem = funcName ? `Lembrete: Função "${funcName}" veio de \"${prevReadable}\". Verifique comentários/ajustes anteriores.` : `Lembrete: Função veio de \"${prevReadable}\". Verifique comentários/ajustes anteriores.`;
+
+                                const reminder = document.createElement('div');
+                                reminder.className = 'func-notif reminder';
+                                reminder.dataset.notId = 'client-reminder-' + Date.now();
+
+                                const msgSpan = document.createElement('div');
+                                msgSpan.className = 'msg';
+                                msgSpan.textContent = mensagem;
+
+                                const rightDiv = document.createElement('div');
+                                rightDiv.style.display = 'flex';
+                                rightDiv.style.alignItems = 'center';
+
+                                const dataSpan = document.createElement('div');
+                                dataSpan.className = 'data';
+                                dataSpan.textContent = (new Date()).toISOString().split('T')[0];
+
+                                const markBtn = document.createElement('button');
+                                markBtn.className = 'mark-btn';
+                                markBtn.textContent = 'Fechar';
+
+                                function dismissReminder() {
+                                    try {
+                                        reminder.remove();
+                                        if (!notificacoesDiv.querySelector('.func-notif')) {
+                                            sidebarContent.classList.remove('sidebar-blurred-mode');
+                                            notificacoesDiv.remove();
+                                        }
+                                    } catch (e) { console.error('Erro ao remover lembrete:', e); }
+                                }
+
+                                reminder.addEventListener('click', function (e) { if (e.target === markBtn) return; dismissReminder(); });
+                                markBtn.addEventListener('click', function (e) { e.stopPropagation(); dismissReminder(); });
+
+                                rightDiv.appendChild(dataSpan);
+                                rightDiv.appendChild(markBtn);
+                                reminder.appendChild(msgSpan);
+                                reminder.appendChild(rightDiv);
+
+                                notificacoesDiv.insertBefore(reminder, notificacoesDiv.querySelector('.func-notif') || null);
+
+                                // update card UI counter if present
+                                try {
+                                    const card = document.querySelector(`.kanban-card[data-id="${dados.cardId}"]`);
+                                    if (card) {
+                                        let countEl = card.querySelector('.notif-count');
+                                        if (!countEl) {
+                                            const icon = document.createElement('span');
+                                            icon.className = 'notif-icon';
+                                            icon.innerHTML = `<i class="ri-notification-3-line"></i><small class="notif-count">1</small>`;
+                                            card.querySelector('.header-kanban')?.appendChild(icon);
+                                        } else {
+                                            let n = Number(countEl.textContent || 0);
+                                            countEl.textContent = String(n + 1);
+                                        }
+                                    }
+                                } catch (e) { console.error('Erro ao atualizar contador de notificação no card:', e); }
+
+                            })
+                            .catch(err => console.error('Erro ao abrir sidebar para mostrar lembrete:', err));
+                    }
+                } catch (e) {
+                    console.error('Erro na lógica pós-salvar:', e);
+                }
             },
             error: function (jqXHR, textStatus, errorThrown) {
                 console.error("Erro ao salvar dados: " + textStatus, errorThrown);

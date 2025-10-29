@@ -193,6 +193,9 @@ main .kanban .kanban-box {
     width: 23%;
     height: max-content;
     padding-right: 6px;
+    max-height: 70vh;
+    display: grid;
+    grid-template-rows: 5vh 1fr;
 }
 
 /* Scrollbar estilizado para Webkit (Chrome, Edge, Safari) */
@@ -202,12 +205,12 @@ main .kanban .kanban-box {
 
 ::-webkit-scrollbar-track {
     background: #f1f1f1;
-    border-radius: 8px;
+    /* border-radius: 8px; */
 }
 
 ::-webkit-scrollbar-thumb {
     background: #c1c1c1;
-    border-radius: 8px;
+    /* border-radius: 8px; */
     transition: background 0.3s;
 }
 
@@ -227,7 +230,7 @@ main .kanban .kanban-box .content {
 main .kanban-box .content:empty::before {
     content: "";
     display: block;
-    min-height: 70vh;
+    /* min-height: 70vh; */
     background: transparent;
 }
 
@@ -1425,6 +1428,71 @@ span.aprovadaComAjustes {
     transition: transform 0.2s;
 }
 
+.notificacoes-container {
+    border: 1px solid #e6e6e6;
+    background: #fff9f9;
+    padding: 8px;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    z-index: 2;
+}
+
+.notificacoes-container h3 {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    color: #b33;
+}
+
+.func-notif {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    align-items: center;
+    padding: 6px 8px;
+    border-radius: 4px;
+    background: #fff;
+    margin-bottom: 6px;
+    cursor: pointer;
+    border: 1px solid transparent;
+}
+
+.func-notif:hover {
+    background: #fff7f7;
+    border-color: #ffd6d6;
+}
+
+.func-notif .msg {
+    flex: 1;
+    color: #333;
+    font-size: 13px;
+}
+
+.func-notif .data {
+    color: #888;
+    font-size: 12px;
+    margin-left: 8px;
+    white-space: nowrap;
+}
+
+.func-notif .mark-btn {
+    margin-left: 12px;
+    background: #ff3b30;
+    color: #fff;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+/* when sidebar has notifications, blur all children except the notifications container */
+#sidebar-content.sidebar-blurred-mode>*:not(.notificacoes-container) {
+    filter: blur(3px);
+    pointer-events: none;
+    user-select: none;
+    opacity: 0.95;
+}
+
 /* ================= Seções internas ================= */
 .sidebar-content>div {
     margin-bottom: 25px;
@@ -1563,6 +1631,8 @@ span.aprovadaComAjustes {
 .path-files {
     font-size: 0.7rem;
     margin-top: 10px;
+    max-height: 15vh;
+    overflow-y: auto;
 }
 
 .file-title {

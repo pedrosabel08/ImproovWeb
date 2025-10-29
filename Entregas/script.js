@@ -226,6 +226,11 @@ function carregarImagens() {
             imagens.forEach(img => {
                 const div = document.createElement('div');
                 div.classList.add('checkbox-item');
+
+                if (img.antecipada) {
+                    div.classList.add('antecipada');
+                }
+
                 div.innerHTML = `
             <input type="checkbox" name="imagem_ids[]" value="${img.id}">
             <span>${img.nome}</span>

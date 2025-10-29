@@ -83,7 +83,7 @@ $conn->close();
                     <select name="obra_id" id="obra_id" required>
                         <option value="">Selecione a obra</option>
                         <?php foreach ($obras as $obra): ?>
-                            <option value="<?= $obra['idobra']; ?>"><?= htmlspecialchars($obra['nome_obra']); ?>
+                            <option value="<?= $obra['idobra']; ?>"><?= htmlspecialchars($obra['nomenclatura']); ?>
                             </option>
                         <?php endforeach; ?>
                     </select>

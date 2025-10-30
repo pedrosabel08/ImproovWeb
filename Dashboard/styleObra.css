@@ -52,7 +52,7 @@ body.dark {
 }
 
 /* If the user OS prefers dark mode, apply dark variables by default */
-@media (prefers-color-scheme: dark) {
+/* @media (prefers-color-scheme: dark) {
     :root {
         --bg: #1e1e1e;
         --text: #ffffff;
@@ -60,7 +60,7 @@ body.dark {
         --muted: #bdbdbd;
         --border: #2b2b2b;
     }
-}
+} */
 
 /* Theme-aware components use these defaults so colors follow the active variables */
 .popover,

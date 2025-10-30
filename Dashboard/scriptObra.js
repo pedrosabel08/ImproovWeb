@@ -1071,16 +1071,27 @@ function infosObra(obraId) {
             if (data.briefing && data.briefing.length > 0) {
                 const br = data.briefing[0];
 
-                document.getElementById('nivel').value = br.nivel;
-                document.getElementById('conceito').value = br.conceito;
-                document.getElementById('valor_media').value = br.valor_media;
-                document.getElementById('outro_padrao').value = br.outro_padrao;
-                document.getElementById('vidro').value = br.vidro;
-                document.getElementById('esquadria').value = br.esquadria;
-                document.getElementById('soleira').value = br.soleira;
-                document.getElementById('assets').value = br.assets;
-                document.getElementById('comp_planta').value = br.comp_planta;
-                document.getElementById('acab_calcadas').value = br.acab_calcadas;
+                // utilitário: seta o valor do input e adiciona um marcador ↳ quando existe
+                function setWithArrow(id, value) {
+                    const el = document.getElementById(id);
+                    if (!el) return;
+                    if (value !== null && value !== undefined && String(value).trim() !== '') {
+                        el.value = String(value);
+                    } else {
+                        el.value = '';
+                    }
+                }
+
+                setWithArrow('nivel', br.nivel);
+                setWithArrow('conceito', br.conceito);
+                setWithArrow('valor_media', br.valor_media);
+                setWithArrow('outro_padrao', br.outro_padrao);
+                setWithArrow('vidro', br.vidro);
+                setWithArrow('esquadria', br.esquadria);
+                setWithArrow('soleira', br.soleira);
+                setWithArrow('assets', br.assets);
+                setWithArrow('comp_planta', br.comp_planta);
+                setWithArrow('acab_calcadas', br.acab_calcadas);
             }
             else {
                 console.warn("Briefing não encontrado ou vazio."); // Apenas um aviso, sem erro no console
@@ -1107,21 +1118,21 @@ function infosObra(obraId) {
                 // set both property and attribute so the value is visible in DOM inspector
                 const val = obra.fotografico || '';
                 fotograficoEl.value = val;
-                try { fotograficoEl.setAttribute('value', val); } catch (e) {}
+                try { fotograficoEl.setAttribute('value', val); } catch (e) { }
                 fotograficoEl.style.display = '';
                 fotograficoEl.placeholder = val ? '' : '--';
             }
             if (driveEl) {
                 const val = obra.link_drive || '';
                 driveEl.value = val;
-                try { driveEl.setAttribute('value', val); } catch (e) {}
+                try { driveEl.setAttribute('value', val); } catch (e) { }
                 driveEl.style.display = '';
                 driveEl.placeholder = val ? '' : '--';
             }
             if (reviewEl) {
                 const val = obra.link_review || '';
                 reviewEl.value = val;
-                try { reviewEl.setAttribute('value', val); } catch (e) {}
+                try { reviewEl.setAttribute('value', val); } catch (e) { }
                 reviewEl.style.display = '';
                 reviewEl.placeholder = val ? '' : '--';
             }
@@ -1636,11 +1647,11 @@ function filtrarTabela() {
     let antecipadasFiltradas = 0;
 
     for (var i = 0; i < linhas.length; i++) {
-    var tipoImagemColuna = (linhas[i].getAttribute("tipo-imagem") || "").toLowerCase();
-    var antecipadaTd = linhas[i].querySelector('td[antecipada]');
-    var isAntecipada = antecipadaTd ? antecipadaTd.getAttribute("antecipada") === '1' : false;
-    var statusEtapaColuna = linhas[i].querySelector("td:nth-child(1)") ? linhas[i].querySelector("td:nth-child(1)").textContent.trim() : ""; // ajuste se necessário
-    var statusColuna = linhas[i].querySelector("td:nth-child(3)") ? linhas[i].querySelector("td:nth-child(3)").textContent.trim() : ""; // ajuste se necessário
+        var tipoImagemColuna = (linhas[i].getAttribute("tipo-imagem") || "").toLowerCase();
+        var antecipadaTd = linhas[i].querySelector('td[antecipada]');
+        var isAntecipada = antecipadaTd ? antecipadaTd.getAttribute("antecipada") === '1' : false;
+        var statusEtapaColuna = linhas[i].querySelector("td:nth-child(1)") ? linhas[i].querySelector("td:nth-child(1)").textContent.trim() : ""; // ajuste se necessário
+        var statusColuna = linhas[i].querySelector("td:nth-child(3)") ? linhas[i].querySelector("td:nth-child(3)").textContent.trim() : ""; // ajuste se necessário
         var mostrarLinha = true;
 
         // tipo_imagem: if tipoImagemFiltro is empty or contains '0' treat as no filter
@@ -1725,7 +1736,7 @@ function clearFilters() {
             $('#imagem_status_filtro').val(null).trigger('change');
         } else {
             // fallback para selects nativos
-            const els = ['tipo_imagem','antecipada_obra','imagem_status_etapa_filtro','imagem_status_filtro'];
+            const els = ['tipo_imagem', 'antecipada_obra', 'imagem_status_etapa_filtro', 'imagem_status_filtro'];
             els.forEach(id => {
                 const el = document.getElementById(id);
                 if (!el) return;
@@ -2305,13 +2316,13 @@ function abrirModalAcompanhamento(obraId) {
                     const container = document.createElement('div');
                     container.className = 'acomp-conteudo';
 
-                    const pData = document.createElement('p');
-                    pData.className = 'acomp-data';
-                    pData.innerHTML = `<strong>Data:</strong> ${formatarData(acomp.data)}`;
-
                     const pAssunto = document.createElement('p');
                     pAssunto.className = 'acomp-assunto';
-                    pAssunto.innerHTML = `<strong>Assunto:</strong> <span class="acomp-texto">${acomp.assunto}</span>`;
+                    pAssunto.innerHTML = `<strong>📝</strong> <span class="acomp-texto">${acomp.assunto}</span>`;
+
+                    const pData = document.createElement('p');
+                    pData.className = 'acomp-data';
+                    pData.innerHTML = `<strong>↳ 📅</strong> ${formatarData(acomp.data)}`;
 
                     // Evento de clique para editar somente o texto (sem "Assunto:")
                     pAssunto.addEventListener('click', () => {
@@ -4428,7 +4439,9 @@ document.getElementById("btnAtualizar").addEventListener("click", function () {
 
     // Envia via AJAX para PHP
     // If the user selected função/colaborador or other funcao-imagem fields, use insereFuncao.php per image
-    const funcaoFields = ["funcao_id", "colaborador_id", "prazo", "status", "observacao", "status_id"];
+    // NOTE: removed 'status' and 'status_id' from this list so that updating only the etapa/status
+    // does not trigger insereFuncao.php. Etapa/status updates should go through the batch_actions flow.
+    const funcaoFields = ["funcao_id", "colaborador_id"];
     const hasFuncaoFields = Object.keys(dadosAtualizar).some(k => funcaoFields.includes(k));
 
     if (hasFuncaoFields) {

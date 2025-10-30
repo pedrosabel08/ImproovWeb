@@ -438,13 +438,11 @@ if (!empty($arquivosTmp) && count($arquivosTmp) > 0 && ($refsSkpModo === 'geral'
 }
 
 // =======================
-// Upload refs/skp por imagem
+// Upload por imagem (permitir para todos os tipos quando modo = 'porImagem')
 // =======================
-// Permitir upload por-imagem também para categoria 7 (Ângulo definido) além da categoria 2 ou SKP
-if ((!empty($arquivosPorImagem)) && ($categoria == 2 || $tipo_arquivo === 'SKP' || $categoria == 7) && $refsSkpModo === 'porImagem') {
+if (!empty($arquivosPorImagem) && $refsSkpModo === 'porImagem') {
 
-
-    $log[] = "Iniciando upload refs/skp por imagem...";
+    $log[] = "Iniciando upload por imagem (modo porImagem)...";
     foreach ($arquivosPorImagem['name'] as $imagem_id => $arquivosArray) {
         // Substituição apenas uma vez por imagem
         // Filtra por obra_id, tipo, imagem_id e categoria_id para evitar mover arquivos de outras categorias

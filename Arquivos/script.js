@@ -89,7 +89,7 @@ const labelSufixo = document.getElementById('labelSufixo');
 
 // Mapping of suffix options per file type
 const SUFIXOS = {
-    'DWG': ['TERREO', 'LAZER', 'COBERTURA', 'MEZANINO', 'CORTES', 'GERAL'],
+    'DWG': ['TERREO', 'LAZER', 'COBERTURA', 'MEZANINO', 'CORTES', 'GERAL', 'TIPO', 'GARAGEM', 'FACHADA', 'DUPLEX', 'ROOFTOP'],
     'PDF': ['DOCUMENTACAO', 'RELATORIO', 'LOGO'],
     'SKP': ['MODELAGEM', 'REFERENCIA'],
     'IMG': ['FACHADA', 'INTERNA', 'EXTERNA', 'UNIDADE'],
@@ -101,12 +101,13 @@ tipoArquivoSelect.addEventListener('change', async () => {
     const tipoArquivo = tipoArquivoSelect.value;
     referenciasContainer.innerHTML = '';
     // Mostra o modo para SKP ou REFS
-    document.getElementById('refsSkpModo').style.display = (tipoArquivo === 'SKP' || tipoArquivo === 'IMG') ? 'block' : 'none';
+    // Mostrar a opção de modo (geral / porImagem) para todos os tipos — permitir envio por imagem universal
+    document.getElementById('refsSkpModo').style.display = 'block';
 
     const modo = document.querySelector('input[name="refsSkpModo"]:checked')?.value || 'geral';
 
-    // Se for SKP ou REFS e modo porImagem, mostra inputs por imagem
-    if ((tipoArquivo === 'SKP' || tipoArquivo === 'IMG') && modo === 'porImagem') {
+    // Se modo porImagem, mostrar inputs por imagem para TODOS os tipos configurados
+    if (modo === 'porImagem') {
         const obraId = document.querySelector('select[name="obra_id"]').value;
         const tipoImagemIds = Array.from(tipoImagemSelect.selectedOptions).map(o => o.value);
 
@@ -118,9 +119,10 @@ tipoArquivoSelect.addEventListener('change', async () => {
             body: JSON.stringify({ obra_id: obraId, tipo_imagem: tipoImagemIds })
         });
 
-        arquivoFile.style.display = 'none';
-        arquivoFile.required = false;
-        arquivoFile.disabled = true;
+
+    arquivoFile.style.display = 'none';
+    arquivoFile.required = false;
+    arquivoFile.disabled = true;
 
         const imagens = await res.json();
         imagens.forEach(img => {
@@ -196,8 +198,9 @@ document.getElementById("uploadForm").addEventListener("submit", async function 
     const tipo_categoria = form.tipo_categoria.value;
     const tipo_imagem = Array.from(form['tipo_imagem[]'].selectedOptions).map(o => o.value);
 
-    // Se for refs/skp, checa por imagem
-    if (tipo_arquivo === 'IMG' || tipo_arquivo === 'SKP') {
+    // Se modo porImagem, checar por imagem; caso contrário checagem padrão para outros tipos
+    const modoSubmit = document.querySelector('input[name="refsSkpModo"]:checked')?.value || 'geral';
+    if (modoSubmit === 'porImagem') {
         let imagensInputs = referenciasContainer.querySelectorAll('input[type="file"]');
         let existeAlgum = false;
 

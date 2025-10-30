@@ -92,7 +92,7 @@ const SUFIXOS = {
     'DWG': ['TERREO', 'LAZER', 'COBERTURA', 'MEZANINO', 'CORTES', 'GERAL'],
     'PDF': ['DOCUMENTACAO', 'RELATORIO', 'LOGO'],
     'SKP': ['MODELAGEM', 'REFERENCIA'],
-    'IMG': ['FACHADA', 'INTERNA', 'EXTERNA'],
+    'IMG': ['FACHADA', 'INTERNA', 'EXTERNA', 'UNIDADE'],
     'IFC': ['BIM'],
     'Outros': ['Geral']
 };

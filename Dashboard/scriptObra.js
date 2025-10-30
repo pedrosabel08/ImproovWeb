@@ -4083,7 +4083,8 @@ function enviarImagens() {
     formData.append('nomenclatura', nomenclatura);
 
     // Extrai a primeira palavra da descrição (depois da nomenclatura)
-    const descricaoMatch = campoNomeImagem.match(/^\d+\.\s*[A-Z_]+\s+([^\s]+)/);
+    // aceita letras maiúsculas, underscores e dígitos na nomenclatura (ex: MEN_991)
+    const descricaoMatch = campoNomeImagem.match(/^\d+\.\s*[A-Z0-9_]+\s+([^\s]+)/i);
     const primeiraPalavra = descricaoMatch ? descricaoMatch[1] : '';
     formData.append('primeiraPalavra', primeiraPalavra);
 

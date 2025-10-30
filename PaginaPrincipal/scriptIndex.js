@@ -1261,11 +1261,11 @@ function abrirSidebarTarefaCriada(idTarefa) {
 function abrirSidebar(idFuncao, idImagem) {
 
     return fetch(`PaginaPrincipal/getInfosCard.php?idfuncao=${idFuncao}&imagem_id=${idImagem}`)
-            .then(res => {
-                if (!res.ok) throw new Error('Network response was not ok');
-                return res.json();
-            })
-            .then(data => {
+        .then(res => {
+            if (!res.ok) throw new Error('Network response was not ok');
+            return res.json();
+        })
+        .then(data => {
             // Limpa conteúdo antigo
             sidebarContent.innerHTML = '';
 
@@ -1319,45 +1319,45 @@ function abrirSidebar(idFuncao, idImagem) {
                             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                             body: `id=${encodeURIComponent(id)}`
                         })
-                        .then(r => r.json())
-                        .then(res => {
-                            if (res && res.success) {
-                                // remove from DOM
-                                notifEl.remove();
+                            .then(r => r.json())
+                            .then(res => {
+                                if (res && res.success) {
+                                    // remove from DOM
+                                    notifEl.remove();
 
-                                // if there are no more notifications, remove sidebar blur
-                                try {
-                                    if (!notificacoesDiv.querySelector('.func-notif')) {
-                                        sidebarContent.classList.remove('sidebar-blurred-mode');
+                                    // if there are no more notifications, remove sidebar blur
+                                    try {
+                                        if (!notificacoesDiv.querySelector('.func-notif')) {
+                                            sidebarContent.classList.remove('sidebar-blurred-mode');
+                                        }
+                                    } catch (e) {
+                                        console.error('Erro ao atualizar blur da sidebar:', e);
                                     }
-                                } catch (e) {
-                                    console.error('Erro ao atualizar blur da sidebar:', e);
-                                }
-                                // update any card icon counts if present
-                                const card = document.querySelector(`.kanban-card[data-id="${notif.funcao_imagem_id || notif.funcao_imagem || ''}"]`);
-                                if (card) {
-                                    const countEl = card.querySelector('.notif-count');
-                                    if (countEl) {
-                                        let n = Number(countEl.textContent || 0);
-                                        n = Math.max(0, n - 1);
-                                        if (n === 0) {
-                                            const icon = card.querySelector('.notif-icon');
-                                            if (icon) icon.remove();
-                                            notificacoesDiv.remove();
-                                        } else {
-                                            countEl.textContent = n;
+                                    // update any card icon counts if present
+                                    const card = document.querySelector(`.kanban-card[data-id="${notif.funcao_imagem_id || notif.funcao_imagem || ''}"]`);
+                                    if (card) {
+                                        const countEl = card.querySelector('.notif-count');
+                                        if (countEl) {
+                                            let n = Number(countEl.textContent || 0);
+                                            n = Math.max(0, n - 1);
+                                            if (n === 0) {
+                                                const icon = card.querySelector('.notif-icon');
+                                                if (icon) icon.remove();
+                                                notificacoesDiv.remove();
+                                            } else {
+                                                countEl.textContent = n;
+                                            }
                                         }
                                     }
+                                    showToast('Notificação marcada como lida', 'update');
+                                } else {
+                                    showToast('Não foi possível marcar como lida', 'error');
                                 }
-                                showToast('Notificação marcada como lida', 'update');
-                            } else {
-                                showToast('Não foi possível marcar como lida', 'error');
-                            }
-                        })
-                        .catch(err => {
-                            console.error('Erro markNotificacao:', err);
-                            showToast('Erro ao conectar com o servidor', 'error');
-                        });
+                            })
+                            .catch(err => {
+                                console.error('Erro markNotificacao:', err);
+                                showToast('Erro ao conectar com o servidor', 'error');
+                            });
                     }
 
                     // clicking the whole element marks as read (manual reading)
@@ -2576,7 +2576,9 @@ function enviarImagens() {
     formData.append('numeroImagem', numeroImagem);
     formData.append('nomenclatura', obra);
 
-    const descricaoMatch = titulo.match(/^\d+\.\s*[A-Z_]+\s+([^\s]+)/);
+    // Extrai a primeira palavra da descrição (depois da nomenclatura)
+    // aceita letras maiúsculas, underscores e dígitos na nomenclatura (ex: MEN_991)
+    const descricaoMatch = campoNomeImagem.match(/^\d+\.\s*[A-Z0-9_]+\s+([^\s]+)/i);
     const primeiraPalavra = descricaoMatch ? descricaoMatch[1] : '';
     formData.append('primeiraPalavra', primeiraPalavra);
 
@@ -2713,7 +2715,8 @@ function enviarArquivo() {
     formData.append('nomenclatura', nomenclatura);
 
     // Extrai a primeira palavra da descrição (depois da nomenclatura)
-    const descricaoMatch = campoNomeImagem.match(/^\d+\.\s*[A-Z_]+\s+([^\s]+)/);
+    // aceita letras maiúsculas, underscores e dígitos na nomenclatura (ex: MEN_991)
+    const descricaoMatch = campoNomeImagem.match(/^\d+\.\s*[A-Z0-9_]+\s+([^\s]+)/i);
     const primeiraPalavra = descricaoMatch ? descricaoMatch[1] : '';
     formData.append('primeiraPalavra', primeiraPalavra);
 

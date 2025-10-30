@@ -72,7 +72,7 @@ JOIN funcao f ON fi.funcao_id = f.idfuncao
 JOIN prioridade_funcao pc ON fi.idfuncao_imagem = pc.funcao_imagem_id
 WHERE fi.colaborador_id = ?
   AND o.status_obra = 0
-ORDER BY prioridade ASC, notificacoes_nao_lidas DESC, prazo DESC, imagem_id, obra_id,
+ORDER BY  notificacoes_nao_lidas DESC, prioridade ASC, prazo DESC, imagem_id, obra_id,
     FIELD(fi.status,
           'Não iniciado','HOLD','Em andamento','Ajuste',
           'Em aprovação','Aprovado com ajustes','Aprovado','Finalizado')";

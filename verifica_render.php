@@ -8,7 +8,7 @@ include("conexao.php");
 
 $id = $_POST['idcolaborador'] ?? 0;
 
-$sql = "SELECT COUNT(*) AS total FROM render_alta WHERE responsavel_id = ? AND status NOT IN ('Finalizado', 'Aprovado')";
+$sql = "SELECT COUNT(*) AS total FROM render_alta WHERE responsavel_id = ? AND status IN ('Em aprovação')";
 $stmt = $conn->prepare($sql);
 $stmt->bind_param("i", $id);
 $stmt->execute();

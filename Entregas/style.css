@@ -38,6 +38,8 @@ main {
     overflow-x: auto;
     padding: 1rem;
     gap: 1rem;
+    max-height: 90vh;
+    overflow-y: auto;
 }
 
 /* ===== COLUMNS ===== */
@@ -51,6 +53,7 @@ main {
     flex-direction: column;
     gap: 0.8rem;
     border: 1px solid var(--border-color);
+    overflow-y: auto;
 }
 
 .column h2 {
@@ -147,7 +150,6 @@ main {
 
 ::-webkit-scrollbar-thumb {
     background: var(--text-color);
-    border-radius: 4px;
 }
 
 #modalImagens {

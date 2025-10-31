@@ -1,7 +1,7 @@
 // controleSessao.js
 
-let tempoSessao = 3600 * 1000; 
-let avisoAntes = 0; 
+let tempoSessao = 3600 * 1000; // 1 hora em ms
+let avisoAntes = 0; // exibir exatamente quando expirar
 let timeoutSessao;
 
 iniciarContadorSessao();
@@ -19,7 +19,8 @@ function mostrarModalSessaoExpirada() {
 }
 
 function renovarSessao() {
-    fetch("https://improov.com.br/sistema/renova_sessao.php")
+    // Usa caminho relativo para garantir mesma origem e envio de cookies
+    fetch("/renova_sessao.php", { credentials: "same-origin" })
         .then(response => response.text())
         .then(() => {
             const modal = document.getElementById("modalSessao");
@@ -29,5 +30,6 @@ function renovarSessao() {
 }
 
 function sair() {
-    window.location.href = "https://improov.com.br/sistema/logout.php";
+    // Usa caminho relativo para finalizar sessão na mesma origem
+    window.location.href = "/logout.php";
 }

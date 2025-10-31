@@ -128,11 +128,6 @@ $conn->close();
                     </div>
                 </nav>
             </header>
-            <!-- Overview section (loaded in iframe) -->
-            <div id="overview-section" style="display:none;">
-                <iframe src="PaginaPrincipal/Overview/index.php" style="width:100%;height:80vh;border:0;" title="Overview"></iframe>
-            </div>
-
             <div class="kanban" id="kanban-section">
                 <div class="kanban-box" id="to-do">
                     <div class="header">

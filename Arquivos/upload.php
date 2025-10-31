@@ -56,6 +56,54 @@ if (!$sftp->login($username, $password)) {
 }
 $log[] = "Conectado no servidor SFTP.";
 
+// Helper: tenta enviar via SFTP e registra erros detalhados; faz fallback para enviar o conteúdo do arquivo
+function sftpPutWithFallback($sftp, $remotePath, $localFile, &$log, &$errors) {
+    // tentativa 1: enviar como arquivo local
+    try {
+        if ($sftp->put($remotePath, $localFile, SFTP::SOURCE_LOCAL_FILE)) {
+            return true;
+        }
+    } catch (Exception $e) {
+        $log[] = "Exception during sftp->put(local): " . $e->getMessage();
+    }
+
+    // registrar info diagnóstica
+    if (method_exists($sftp, 'getSFTPErrors')) {
+        $errs = $sftp->getSFTPErrors();
+        $log[] = "SFTP errors: " . json_encode($errs);
+    } elseif (method_exists($sftp, 'getLastSFTPError')) {
+        $log[] = "SFTP last error: " . $sftp->getLastSFTPError();
+    } elseif (method_exists($sftp, 'getErrors')) {
+        $log[] = "SFTP errors (generic): " . json_encode($sftp->getErrors());
+    } else {
+        $log[] = "SFTP put failed but no error retrieval method available on phpseclib instance.";
+    }
+
+    // tentativa 2: enviar o conteúdo do arquivo (fallback)
+    if (file_exists($localFile) && is_readable($localFile)) {
+        $data = @file_get_contents($localFile);
+        if ($data !== false) {
+            try {
+                if ($sftp->put($remotePath, $data)) {
+                    $log[] = "Fallback: enviado via conteúdo para $remotePath";
+                    return true;
+                } else {
+                    $log[] = "Fallback put retornou false para $remotePath";
+                }
+            } catch (Exception $e) {
+                $log[] = "Exception during sftp->put(content): " . $e->getMessage();
+            }
+        } else {
+            $log[] = "Falha ao ler o arquivo local para fallback: $localFile";
+        }
+    } else {
+        $log[] = "Arquivo local não existe ou não legível para fallback: $localFile";
+    }
+
+    $errors[] = "Falha ao enviar: $remotePath";
+    return false;
+}
+
 // Funções auxiliares
 function buscarTipoImagemId($conn, $nomeTipo, &$log)
 {
@@ -389,7 +437,7 @@ if (!empty($arquivosTmp) && count($arquivosTmp) > 0 && ($refsSkpModo === 'geral'
             }
 
             if (!empty($fileTmp) && file_exists($fileTmp)) {
-                if ($sftp->put($destFile, $fileTmp, SFTP::SOURCE_LOCAL_FILE)) {
+                if (sftpPutWithFallback($sftp, $destFile, $fileTmp, $log, $errors)) {
                     $stmt = $conn->prepare("INSERT INTO arquivos 
                     (obra_id, tipo_imagem_id, imagem_id, nome_original, nome_interno, caminho, tipo, versao, status, origem, recebido_por, categoria_id, sufixo, descricao) 
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'atualizado', 'upload_web', 'sistema', ?, ?, ?)");
@@ -517,7 +565,7 @@ if (!empty($arquivosPorImagem) && $refsSkpModo === 'porImagem') {
 
             $indice++;
 
-                if ($sftp->put($destFile, $tmpFile, SFTP::SOURCE_LOCAL_FILE)) {
+                if (sftpPutWithFallback($sftp, $destFile, $tmpFile, $log, $errors)) {
                 $stmt = $conn->prepare("INSERT INTO arquivos 
                 (obra_id, tipo_imagem_id, imagem_id, nome_original, nome_interno, caminho, tipo, versao, status, origem, recebido_por, categoria_id, sufixo, descricao) 
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'atualizado', 'upload_web', 'sistema', ?, ?, ?)");

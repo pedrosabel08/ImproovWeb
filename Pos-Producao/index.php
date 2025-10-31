@@ -105,12 +105,15 @@ $conn->close();
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
 
     <title>Lista Pós-Produção</title>
+    <style>
+
+    </style>
 </head>
 
 <body>
 
     <?php include '../sidebar.php';   ?>
-    
+
     <div id="filtro">
         <header>
             <h1>Lista Pós-Produção</h1>
@@ -120,7 +123,13 @@ $conn->close();
             <button id="openModalBtnRender">Ver Render Elements</button>
         </header>
         <div class="tabela-container">
-            <p style="margin: 15px 0; text-align: right;">Total de pós: <span id="total-pos"></span></p>
+            <nav>
+                <div id="widget-prazos">
+                    <h3>Próximos Prazos</h3>
+                    <div id="widget-prazos-content">Carregando...</div>
+                </div>
+                <p style="margin: 15px 0; text-align: right;">Total de pós: <span id="total-pos"></span></p>
+            </nav>
             <div id="tabela-imagens"></div>
         </div>
     </div>

@@ -4,7 +4,7 @@
 * {
     padding: 0;
     margin: 0;
-    font-family: "Open Sans", sans-serif;
+    font-family: "Inter", sans-serif;
 }
 
 body {
@@ -439,4 +439,86 @@ span#total-pos {
 
 .selects {
     margin-top: 15px;
+}
+
+/* Badges de prazo */
+.deadline-badge {
+    font-size: .75rem;
+    padding: 4px 8px;
+    border-radius: 12px;
+    color: #fff;
+    margin-left: 8px;
+    display: inline-block;
+    cursor: default;
+}
+
+.badge-overdue {
+    background: #d9534f;
+}
+
+/* vermelho */
+.badge-urgent {
+    background: #f0ad4e;
+}
+
+/* laranja */
+.badge-soon {
+    background: #5bc0de;
+}
+
+/* azul claro */
+.badge-normal {
+    background: #5cb85c;
+}
+
+/* verde */
+.badge-none {
+    background: #777;
+    opacity: .95;
+}
+
+nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+/* Widget de próximos prazos */
+#widget-prazos {
+    border: 1px solid #e0e0e0;
+    padding: 10px;
+    border-radius: 6px;
+    background: #fafafa;
+    margin: 12px 0;
+    width: max-content;
+}
+
+#widget-prazos h3 {
+    margin: 0 0 8px 0;
+    font-size: 1rem;
+}
+
+.widget-obra {
+    margin-bottom: 8px;
+}
+
+.widget-item {
+    padding: 4px 6px;
+    border-radius: 4px;
+    margin: 2px 0;
+    background: #fff;
+    border: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.widget-item .meta {
+    font-size: 0.85rem;
+    color: #444;
+}
+
+.widget-item .prazo {
+    font-size: 0.85rem;
+    margin-left: 8px;
 }

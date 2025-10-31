@@ -270,7 +270,31 @@ document.addEventListener("DOMContentLoaded", function () {
                                     return lowerFormattedRowDate.includes(lowerHeaderValue);
                                 },
                                 formatter: cell => formatarDataHora(cell.getValue())
-                            }, { title: "Nome imagem", field: "imagem_nome", headerFilter: "input", widthGrow: 3 },
+                            }, {
+                                title: "Prazo",
+                                field: "prazo",
+                                headerFilter: "list",
+                                headerFilterParams: { values: listaValores("prazo") },
+                                hozAlign: "center",
+                                width: 120,
+                                formatter: function (cell) {
+                                    var row = cell.getRow().getData();
+                                    // Não mostrar badge quando status_pos == 0
+                                    if (String(row.status_pos) === '0' || row.status_pos === 0) return '';
+                                    // Usa o valor da célula (prazo) ou fallback para row.prazo
+                                    var val = cell.getValue() || row.prazo;
+                                    return formatDeadlineBadge(val);
+                                }
+                            }, {
+                                title: "Nome imagem",
+                                field: "imagem_nome",
+                                headerFilter: "input",
+                                widthGrow: 3,
+                                formatter: function (cell) {
+                                    var nome = cell.getValue() || '';
+                                    return nome;
+                                }
+                            },
                             { title: "Status", field: "status_pos", headerFilter: "list", headerFilterParams: { values: { 1: "Não começou", 0: "Finalizado" } }, formatter: cell => { let val = cell.getValue(); let txt = val == 1 ? "Não começou" : "Finalizado"; let cor = val == 1 ? "red" : "green"; return `<span style="background:${cor};color:white;padding:4px 6px;border-radius:4px;font-size:12px">${txt}</span>`; } },
                             { title: "Revisão", field: "nome_status", headerFilter: "list", headerFilterParams: { values: listaValores("nome_status") } },
                             { title: "Responsável", field: "nome_responsavel", headerFilter: "list", headerFilterParams: { values: listaValores("nome_responsavel") } },
@@ -281,6 +305,8 @@ document.addEventListener("DOMContentLoaded", function () {
                     tabelaGlobal.on("dataFiltered", function (filters, rows) {
                         document.getElementById('total-pos').innerText = rows.length;
                     });
+                    // Renderiza o widget de prazos com os dados iniciais
+                    try { renderWidgetPrazos(data); } catch(e){ console.warn('Erro ao renderizar widget de prazos:', e); }
                     // *** Adiciona o listener de clique no container da tabela APÓS a criação da tabela ***
                     document.getElementById('tabela-imagens').addEventListener('click', function (event) {
                         // Verifica se o clique foi em uma linha da tabela (ou em um filho de uma linha)
@@ -336,6 +362,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 } else { // Se a tabela já existe, apenas atualiza os dados
                     tabelaGlobal.setData(data); // ou .replaceData(data)
+                    // Atualiza widget de prazos quando os dados mudam
+                    try { renderWidgetPrazos(data); } catch(e){ console.warn('Erro ao renderizar widget de prazos:', e); }
                 }
 
                 document.getElementById('total-pos').innerText = tabelaGlobal.getDataCount("active");
@@ -457,6 +485,135 @@ function formatarDataHora(data) {
     const minutos = String(date.getMinutes()).padStart(2, '0'); // Pega os minutos e formata com 2 dígitos
 
     return `${dia}/${mes}/${ano} ${horas}:${minutos}`; // Retorna o formato desejado
+}
+
+
+// Converte string de prazo em objeto Date.
+// Suporta formatos: "YYYY-MM-DD" (interpreta como fim do dia local) e strings com hora como "YYYY-MM-DD HH:MM:SS".
+function parsePrazoToDate(deadlineIso) {
+    if (!deadlineIso) return null;
+    var s = String(deadlineIso).trim();
+    // Match apenas data YYYY-MM-DD
+    var dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(s);
+    if (dateOnly) {
+        var parts = s.split('-');
+        var y = parseInt(parts[0], 10);
+        var m = parseInt(parts[1], 10) - 1;
+        var d = parseInt(parts[2], 10);
+        // Usa fim do dia local para que a data inteira seja considerada durante o dia
+        return new Date(y, m, d, 23, 59, 59);
+    }
+
+    // Tenta normalizar espaço entre data e hora para 'T' e criar Date
+    var normalized = s.replace(' ', 'T');
+    var dt = new Date(normalized);
+    if (!isNaN(dt.getTime())) return dt;
+
+    // Fallback: tenta criar Date diretamente
+    dt = new Date(s);
+    if (!isNaN(dt.getTime())) return dt;
+
+    return null;
+}
+
+// Formata e retorna um badge HTML para o prazo
+function formatDeadlineBadge(deadlineIso) {
+    var dl = parsePrazoToDate(deadlineIso);
+    if (!dl) return '<span class="deadline-badge badge-none" title="Sem prazo">—</span>';
+    var now = new Date();
+    // Zeramos horas/minutos/segundos de 'now' para comparar dias inteiros corretamente
+    var diffMs = dl.getTime() - now.getTime();
+    var diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    // Quando o prazo é para o mesmo dia (diffDays === 0), já será tratado como Hoje
+    var text, cls;
+    if (diffDays < 0) { text = 'Atraso'; cls = 'badge-overdue'; }
+    else if (diffDays === 0) { text = 'Hoje'; cls = 'badge-overdue'; }
+    else if (diffDays <= 2) { text = 'Em ' + diffDays + 'd'; cls = 'badge-urgent'; }
+    else if (diffDays <= 7) { text = 'Em ' + diffDays + 'd'; cls = 'badge-soon'; }
+    else { text = 'Em ' + diffDays + 'd'; cls = 'badge-normal'; }
+    // Formata data para tooltip (se o objeto Date não tiver hora, parsePrazoToDate define 23:59)
+    var fullDate = dl.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+    var title = 'Entrega: ' + fullDate + ' — faltam ' + (diffDays < 0 ? (Math.abs(diffDays) + ' dias (atrasado)') : (diffDays + ' dias'));
+    return '<span class="deadline-badge ' + cls + '" title="' + title + '">' + text + '</span>';
+}
+
+// Renderiza o widget de próximos prazos: agrupa por obra e por data (mostra uma linha por combinação obra+data)
+function renderWidgetPrazos(data) {
+    var container = document.getElementById('widget-prazos-content');
+    if (!container) return;
+    if (!Array.isArray(data) || data.length === 0) {
+        container.innerHTML = '<div>Nenhuma informação disponível</div>';
+        return;
+    }
+
+    // Filtra por status_pos = 1 (itens pendentes conforme sua configuração)
+    var items = data.filter(function (d) { return String(d.status_pos) === '1' || d.status_pos === 1; });
+    if (items.length === 0) {
+        container.innerHTML = '<div>Nenhuma pós com status_pos = 1</div>';
+        return;
+    }
+
+    // Agrupa por obra+data (data normalizada YYYY-MM-DD). Se sem prazo, usa chave 'sem_prazo'.
+    var combos = {}; // combos[obra][dateKey] = array
+    items.forEach(function (it) {
+        var obra = it.nomenclatura || it.nome_obra || 'Sem obra';
+        var dl = parsePrazoToDate(it.prazo);
+        // Use data local (YYYY-MM-DD) como chave para evitar mudanças de dia por conversão para UTC
+        var dateKey = 'sem_prazo';
+        if (dl) {
+            var y = dl.getFullYear();
+            var m = String(dl.getMonth() + 1).padStart(2, '0');
+            var d = String(dl.getDate()).padStart(2, '0');
+            dateKey = y + '-' + m + '-' + d;
+        }
+        if (!combos[obra]) combos[obra] = {};
+        if (!combos[obra][dateKey]) combos[obra][dateKey] = [];
+        combos[obra][dateKey].push(it);
+    });
+
+    // Construir lista de entradas (obra, dateKey, count, dl)
+    var entries = [];
+    Object.keys(combos).forEach(function (obra) {
+        Object.keys(combos[obra]).forEach(function (dateKey) {
+            var arr = combos[obra][dateKey];
+            var dl = dateKey === 'sem_prazo' ? null : parsePrazoToDate(dateKey);
+            entries.push({ obra: obra, dateKey: dateKey, count: arr.length, dl: dl });
+        });
+    });
+
+    // Ordena por obra (alfabética) e por data asc (sem_prazo por último)
+    entries.sort(function (a, b) {
+        if (a.obra < b.obra) return -1;
+        if (a.obra > b.obra) return 1;
+        var ta = a.dl ? a.dl.getTime() : Infinity;
+        var tb = b.dl ? b.dl.getTime() : Infinity;
+        return ta - tb;
+    });
+
+    // Monta HTML — uma linha por combinação: OBRA - dd/mm - label (ex: HOJE ou 'Em Nd')
+    var html = '';
+    entries.forEach(function (e) {
+        var dateText = '';
+        var label = '';
+        if (!e.dl) {
+            dateText = 'Sem prazo';
+            label = '';
+        } else {
+            var dia = String(e.dl.getDate()).padStart(2,'0');
+            var mes = String(e.dl.getMonth()+1).padStart(2,'0');
+            dateText = dia + '/' + mes;
+            var now = new Date();
+            var diffDays = Math.floor((e.dl.getTime() - now.getTime()) / (1000*60*60*24));
+            if (diffDays < 0) label = 'Atrasado';
+            else if (diffDays === 0) label = 'HOJE';
+            else label = 'Em ' + diffDays + ' dias';
+        }
+
+        var countSuffix = e.count > 1 ? ' (' + e.count + ' itens)' : '';
+        html += '<div class="widget-item"><div class="meta">' + e.obra + ' - ' + dateText + ' ' + (label ? '— ' + label : '') + countSuffix + '</div></div>';
+    });
+
+    container.innerHTML = html;
 }
 
 

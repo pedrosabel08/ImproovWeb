@@ -5,36 +5,109 @@ $nome_usuario = $_SESSION['nome_usuario'];
 include '../conexaoMain.php';
 include '../conexao.php';
 
+// conectar ao banco (função em conexaoMain.php)
+$conn = conectarBanco();
+
 if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
     // Se não estiver logado, redirecionar para a página de login
     header("Location: ../index.html");
     exit();
 }
 
-// Buscar a quantidade de funções do colaborador com status "Em andamento"
-$colaboradorId = $_SESSION['idcolaborador'];
-$funcoesCountSql = "SELECT COUNT(*) AS total_funcoes_em_andamento
-                    FROM funcao_imagem
-                    WHERE colaborador_id = ? AND status = 'Em andamento'";
-$funcoesCountStmt = $conn->prepare($funcoesCountSql);
-$funcoesCountStmt->bind_param("i", $colaboradorId);
-$funcoesCountStmt->execute();
-$funcoesCountResult = $funcoesCountStmt->get_result();
-
-// Armazenar a quantidade na sessão
-$funcoesCount = $funcoesCountResult->fetch_assoc();
-
-$funcoesCountStmt->close();
-
-$conn = conectarBanco();
-
-$clientes = obterClientes($conn);
-$obras = obterObras($conn);
 $colaboradores = obterColaboradores($conn);
 $status_imagens = obterStatusImagens($conn);
 $funcoes = obterFuncoes($conn);
 $imagens = obterImagens($conn);
 $status_etapa = obterStatus($conn);
+
+
+// Monta um array de colaboradores por função (usando a tabela funcao_colaborador)
+$colaboradores_por_funcao = [];
+$sqlFc = "SELECT fc.funcao_id, c.idcolaborador, c.nome_colaborador
+           FROM funcao_colaborador fc
+           JOIN colaborador c ON c.idcolaborador = fc.colaborador_id
+           WHERE c.ativo = 1";
+if ($resFc = $conn->query($sqlFc)) {
+    while ($r = $resFc->fetch_assoc()) {
+        $fid = $r['funcao_id'];
+        if (!isset($colaboradores_por_funcao[$fid])) {
+            $colaboradores_por_funcao[$fid] = [];
+        }
+        $colaboradores_por_funcao[$fid][] = $r;
+    }
+    $resFc->free();
+}
+
+// Garantir que colaboradores específicos (sempre presentes) estejam disponíveis
+// (IDs solicitados pelo usuário). Buscamos explicitamente e mesclamos em $colaboradores
+// caso não estejam presentes na lista padrão (ex.: inativos).
+$always_present_ids = [9, 21];
+$ids_to_fetch = implode(',', array_map('intval', $always_present_ids));
+$sqlAlways = "SELECT idcolaborador, nome_colaborador FROM colaborador WHERE idcolaborador IN ($ids_to_fetch)";
+if ($resAlways = $conn->query($sqlAlways)) {
+    $existing = array_column($colaboradores, 'idcolaborador');
+    while ($r = $resAlways->fetch_assoc()) {
+        if (!in_array($r['idcolaborador'], $existing)) {
+            $colaboradores[] = $r;
+        }
+    }
+    $resAlways->free();
+}
+
+// Helper para renderizar <option> de colaboradores: encontra a função por nome (parcial),
+// mostra primeiro os colaboradores atribuídos a essa função e, em seguida, um optgroup
+// "Outros colaboradores" com o restante (permite escolher alguém não alocado).
+function renderColabOptions($funcoes, $colaboradores_por_funcao, $colaboradores, $nomeBusca)
+{
+    $fid = null;
+    foreach ($funcoes as $f) {
+        if (isset($f['nome_funcao'])) {
+            // comparação insensível (usa parcial para maior robustez)
+            if (mb_strtolower($f['nome_funcao']) === mb_strtolower($nomeBusca) || mb_stripos(mb_strtolower($f['nome_funcao']), mb_strtolower($nomeBusca)) !== false) {
+                $fid = $f['idfuncao'];
+                break;
+            }
+        }
+    }
+
+    $assigned = [];
+    if ($fid && isset($colaboradores_por_funcao[$fid])) {
+        $assigned = $colaboradores_por_funcao[$fid];
+    }
+
+    // IDs dos atribuídos para filtrar
+    $assigned_ids = array();
+    foreach ($assigned as $a) {
+        $assigned_ids[] = $a['idcolaborador'];
+    }
+
+    // Mapar colaboradores gerais por id para acesso rápido
+    $all_map = [];
+    foreach ($colaboradores as $c) {
+        $all_map[$c['idcolaborador']] = $c;
+    }
+
+    // Exibir atribuídos primeiro
+    foreach ($assigned as $colab) {
+        echo '<option value="' . htmlspecialchars($colab['idcolaborador']) . '">' . htmlspecialchars($colab['nome_colaborador']) . '</option>';
+    }
+
+    // Construir lista de 'outros' (aqueles que não estão em assigned)
+    $others = [];
+    foreach ($all_map as $id => $colab) {
+        if (!in_array($id, $assigned_ids)) {
+            $others[$id] = $colab;
+        }
+    }
+
+    if (!empty($others)) {
+        echo '<optgroup label="Outros colaboradores">';
+        foreach ($others as $colab) {
+            echo '<option value="' . htmlspecialchars($colab['idcolaborador']) . '">' . htmlspecialchars($colab['nome_colaborador']) . '</option>';
+        }
+        echo '</optgroup>';
+    }
+}
 
 $conn->close();
 ?>
@@ -145,8 +218,10 @@ $conn->close();
             </div>
 
             <div class="buttons-actions">
-                <button id="copyColumn" class="tooltip" data-tooltip="Copiar coluna" style="width: max-content;"><i class="fas fa-copy"></i></button>
-                <button id="batch_actions" class="tooltip animate__animated" data-tooltip="Batch actions" style="width: max-content;"><i class="fa-solid fa-gear"></i></button>
+                <button id="copyColumn" class="tooltip" data-tooltip="Copiar coluna" style="width: max-content;"><i
+                        class="fas fa-copy"></i></button>
+                <button id="batch_actions" class="tooltip animate__animated" data-tooltip="Batch actions"
+                    style="width: max-content;"><i class="fa-solid fa-gear"></i></button>
                 <button id="acoesBtn">Ações</button>
             </div>
 
@@ -183,7 +258,9 @@ $conn->close();
                         <select id="modal_funcao">
                             <option value="">-- Selecionar função --</option>
                             <?php foreach ($funcoes as $f): ?>
-                                <option value="<?= htmlspecialchars($f['idfuncao']); ?>"><?= htmlspecialchars($f['nome_funcao']); ?></option>
+                                <option value="<?= htmlspecialchars($f['idfuncao']); ?>">
+                                    <?= htmlspecialchars($f['nome_funcao']); ?>
+                                </option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -193,9 +270,7 @@ $conn->close();
                     <div id="colabField" class="modal-field" style="display: none;">
                         <select id="modal_colaborador">
                             <option value="">-- Selecionar colaborador --</option>
-                            <?php foreach ($colaboradores as $colab): ?>
-                                <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>"><?= htmlspecialchars($colab['nome_colaborador']); ?></option>
-                            <?php endforeach; ?>
+                            <?php renderColabOptions($funcoes, $colaboradores_por_funcao, $colaboradores, ''); ?>
                         </select>
                     </div>
                 </div>
@@ -203,13 +278,16 @@ $conn->close();
                     <button id="btnAtualizar">✓ Atualizar</button>
                 </div>
             </div>
-            <div id="previewModal" class="modal" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%); background:#fff; border:1px solid #ccc; padding:20px; z-index:1000; width:300px; box-shadow:0 0 10px rgba(0,0,0,0.3);">
+            <div id="previewModal" class="modal"
+                style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%); background:#fff; border:1px solid #ccc; padding:20px; z-index:1000; width:300px; box-shadow:0 0 10px rgba(0,0,0,0.3);">
                 <h3>Confirmação de Atualização</h3>
                 <div id="previewContent" style="max-height:200px; overflow-y:auto; margin:10px 0;"></div>
                 <button id="confirmUpdateBtn" style="margin-right:10px;">Confirmar</button>
                 <button id="cancelUpdateBtn">Cancelar</button>
             </div>
-            <div id="previewOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.3); z-index:999;"></div>
+            <div id="previewOverlay"
+                style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.3); z-index:999;">
+            </div>
 
             <div id="editImagesModal" style="display: none;">
                 <div class="modal-content-images" style="overflow-y: auto; max-height: 600px; width: 50%;">
@@ -310,7 +388,8 @@ $conn->close();
                 <button id="btnMostrarAcomps"><i class="fas fa-chevron-down"></i></button>
             </div>
         </div>
-        <div id="infos-obra" class="infos-obra" style="width: 95%; margin: 30px auto; box-shadow: 0 1px 10px rgba(0, 0, 0, 0.7);">
+        <div id="infos-obra" class="infos-obra"
+            style="width: 95%; margin: 30px auto; box-shadow: 0 1px 10px rgba(0, 0, 0, 0.7);">
 
             <div class="obs">
                 <h1>Informações da Obra</h1>
@@ -334,11 +413,13 @@ $conn->close();
                         <input type="text" name="outro_padrao" id="outro_padrao">
                     </div>
                     <div class="campo">
-                        <label for="assets">Haverá necessidade de escolha de assets (modelos de mobiliário) especifico?</label>
+                        <label for="assets">Haverá necessidade de escolha de assets (modelos de mobiliário)
+                            especifico?</label>
                         <input type="text" name="assets" id="assets">
                     </div>
                     <div class="campo">
-                        <label for="comp_planta">Existe a necessidade das plantas humanizadas estarem compatibilizadas com as imagens finais?</label>
+                        <label for="comp_planta">Existe a necessidade das plantas humanizadas estarem compatibilizadas
+                            com as imagens finais?</label>
                         <input type="text" name="comp_planta" id="comp_planta">
                     </div>
                     <div class="campo">
@@ -359,15 +440,18 @@ $conn->close();
                     </div>
                     <div class="campo link_campo">
                         <label for="">Link do Fotográfico:</label>
-                        <input type="text" name="fotografico" id="fotografico" style="font-size: 14px; border: none; width: 80ch;">
+                        <input type="text" name="fotografico" id="fotografico"
+                            style="font-size: 14px; border: none; width: 80ch;">
                     </div>
                     <div class="campo link_campo">
                         <label for="">Link do Drive:</label>
-                        <input type="text" name="link_drive" id="link_drive" style="font-size: 14px; border: none; width: 80ch;">
+                        <input type="text" name="link_drive" id="link_drive"
+                            style="font-size: 14px; border: none; width: 80ch;">
                     </div>
                     <div class="campo link_campo">
                         <label for="">Link do Review Studio:</label>
-                        <input type="text" name="link_review" id="link_review" style="font-size: 14px; border: none; width: 80ch;">
+                        <input type="text" name="link_review" id="link_review"
+                            style="font-size: 14px; border: none; width: 80ch;">
                     </div>
                     <div class="campo">
                         <label for="">Local da obra:</label>
@@ -475,20 +559,29 @@ $conn->close();
                 <div id="acompanhamentoConteudo">
                     <form id="adicionar_acomp">
                         <div class="radioButtons" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                            <label><input type="radio" name="acompanhamento" value="Start do Projeto"> Start do Projeto</label>
-                            <label><input type="radio" name="acompanhamento" value="Prazo de dias úteis (45 dias)"> Prazo de dias úteis (45 dias)</label>
-                            <label><input type="radio" name="acompanhamento" value="Recebimento de arquivos"> Recebimento de arquivos</label>
-                            <label><input type="radio" name="acompanhamento" value="Prazo com a entrega (30/01)"> Prazo com a entrega (30/01)</label>
-                            <label><input type="radio" name="acompanhamento" value="Projeto pausado aguardando aprovação do cliente.">Projeto pausado aguardando aprovação do cliente.</label>
-                            <label><input type="radio" name="acompanhamento" value="Enviado os toons da fachada">Enviado os toons da fachada</label>
-                            <label><input type="radio" name="acompanhamento" value="Enviado imagens prévias"> Enviado imagens prévias</label>
+                            <label><input type="radio" name="acompanhamento" value="Start do Projeto"> Start do
+                                Projeto</label>
+                            <label><input type="radio" name="acompanhamento" value="Prazo de dias úteis (45 dias)">
+                                Prazo de dias úteis (45 dias)</label>
+                            <label><input type="radio" name="acompanhamento" value="Recebimento de arquivos">
+                                Recebimento de arquivos</label>
+                            <label><input type="radio" name="acompanhamento" value="Prazo com a entrega (30/01)"> Prazo
+                                com a entrega (30/01)</label>
+                            <label><input type="radio" name="acompanhamento"
+                                    value="Projeto pausado aguardando aprovação do cliente.">Projeto pausado aguardando
+                                aprovação do cliente.</label>
+                            <label><input type="radio" name="acompanhamento" value="Enviado os toons da fachada">Enviado
+                                os toons da fachada</label>
+                            <label><input type="radio" name="acompanhamento" value="Enviado imagens prévias"> Enviado
+                                imagens prévias</label>
                         </div>
 
 
                         <!-- Campo de assunto -->
                         <div id="campo">
                             <label for="assunto">Assunto:</label>
-                            <textarea name="assunto" id="assunto" name="assunto" style="width: 50%;" required></textarea>
+                            <textarea name="assunto" id="assunto" name="assunto" style="width: 50%;"
+                                required></textarea>
                         </div>
 
                         <!-- Campo de data -->
@@ -498,7 +591,8 @@ $conn->close();
                         </div>
 
                         <!-- Botão para enviar -->
-                        <button type="submit" id="add-acomp" style="width: max-content;margin: auto;">Adicionar Acompanhamento</button>
+                        <button type="submit" id="add-acomp" style="width: max-content;margin: auto;">Adicionar
+                            Acompanhamento</button>
                     </form>
                 </div>
             </div>
@@ -544,11 +638,7 @@ $conn->close();
                         </div>
                         <div class="opcoes" style="display: none;">
                             <select name="caderno_id" id="opcao_caderno">
-                                <?php foreach ($colaboradores as $colab): ?>
-                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                                    </option>
-                                <?php endforeach; ?>
+                                <?php renderColabOptions($funcoes, $colaboradores_por_funcao, $colaboradores, 'caderno'); ?>
                             </select>
                             <select name="status_caderno" id="status_caderno">
                                 <option value="Não iniciado">Não iniciado</option>
@@ -564,7 +654,8 @@ $conn->close();
                             <input type="date" name="prazo_caderno" id="prazo_caderno">
                             <input type="text" name="obs_caderno" id="obs_caderno" placeholder="Caminho arquivo">
                             <div class="revisao_imagem" style="display: none;">
-                                <button type="button" onclick="abrirModal(this)" id="revisao_imagem_caderno">Adicionar Imagens</button>
+                                <button type="button" onclick="abrirModal(this)" id="revisao_imagem_caderno">Adicionar
+                                    Imagens</button>
                             </div>
                         </div>
                     </div>
@@ -577,11 +668,7 @@ $conn->close();
                         </div>
                         <div class="opcoes" id="opcoes" style="display: none;">
                             <select name="filtro_id" id="opcao_filtro">
-                                <?php foreach ($colaboradores as $colab): ?>
-                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                                    </option>
-                                <?php endforeach; ?>
+                                <?php renderColabOptions($funcoes, $colaboradores_por_funcao, $colaboradores, 'filtro'); ?>
                             </select>
                             <select name="status_filtro" id="status_filtro">
                                 <option value="Não iniciado">Não iniciado</option>
@@ -597,7 +684,8 @@ $conn->close();
                             <input type="date" name="prazo_filtro" id="prazo_filtro" placeholder="Data">
                             <input type="text" name="obs_filtro" id="obs_filtro" placeholder="Caminho arquivo">
                             <div class="revisao_imagem" style="display: none;">
-                                <button type="button" onclick="abrirModal(this)" id="revisao_imagem_filtro">Adicionar Imagens</button>
+                                <button type="button" onclick="abrirModal(this)" id="revisao_imagem_filtro">Adicionar
+                                    Imagens</button>
                             </div>
                         </div>
                     </div>
@@ -610,11 +698,7 @@ $conn->close();
                         </div>
                         <div class="opcoes" style="display: none;">
                             <select name="model_id" id="opcao_model">
-                                <?php foreach ($colaboradores as $colab): ?>
-                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                                    </option>
-                                <?php endforeach; ?>
+                                <?php renderColabOptions($funcoes, $colaboradores_por_funcao, $colaboradores, 'modelagem'); ?>
                             </select>
                             <select name="status_modelagem" id="status_modelagem">
                                 <option value="Não iniciado">Não iniciado</option>
@@ -630,7 +714,8 @@ $conn->close();
                             <input type="date" name="prazo_modelagem" id="prazo_modelagem">
                             <input type="text" name="obs_modelagem" id="obs_modelagem" placeholder="Caminho arquivo">
                             <div class="revisao_imagem" style="display: none;">
-                                <button type="button" onclick="abrirModal(this)" id="revisao_imagem_model">Adicionar Imagens</button>
+                                <button type="button" onclick="abrirModal(this)" id="revisao_imagem_model">Adicionar
+                                    Imagens</button>
                             </div>
                         </div>
                     </div>
@@ -643,11 +728,7 @@ $conn->close();
                         </div>
                         <div class="opcoes" id="opcoes" style="display: none;">
                             <select name="comp_id" id="opcao_comp">
-                                <?php foreach ($colaboradores as $colab): ?>
-                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                                    </option>
-                                <?php endforeach; ?>
+                                <?php renderColabOptions($funcoes, $colaboradores_por_funcao, $colaboradores, 'comp'); ?>
                             </select>
                             <select name="status_comp" id="status_comp">
                                 <option value="Não iniciado">Não iniciado</option>
@@ -663,7 +744,8 @@ $conn->close();
                             <input type="date" name="prazo_comp" id="prazo_comp">
                             <input type="text" name="obs_comp" id="obs_comp" placeholder="Caminho arquivo">
                             <div class="revisao_imagem" style="display: none;">
-                                <button type="button" onclick="abrirModal(this)" id="revisao_imagem_comp">Adicionar Imagens</button>
+                                <button type="button" onclick="abrirModal(this)" id="revisao_imagem_comp">Adicionar
+                                    Imagens</button>
                             </div>
                         </div>
                     </div>
@@ -676,11 +758,7 @@ $conn->close();
                         </div>
                         <div class="opcoes" style="display: none;">
                             <select name="opcao_pre" id="opcao_pre">
-                                <?php foreach ($colaboradores as $colab): ?>
-                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                                    </option>
-                                <?php endforeach; ?>
+                                <?php renderColabOptions($funcoes, $colaboradores_por_funcao, $colaboradores, 'pre'); ?>
                             </select>
                             <select name="status_pre" id="status_pre">
                                 <option value="Não iniciado">Não iniciado</option>
@@ -696,7 +774,8 @@ $conn->close();
                             <input type="date" name="prazo_pre" id="prazo_pre">
                             <input type="text" name="obs_pre" id="obs_pre" placeholder="Caminho arquivo">
                             <div class="revisao_imagem" style="display: none;">
-                                <button type="button" onclick="abrirModal(this)" id="revisao_imagem_pre">Adicionar Imagens</button>
+                                <button type="button" onclick="abrirModal(this)" id="revisao_imagem_pre">Adicionar
+                                    Imagens</button>
                             </div>
                         </div>
                     </div>
@@ -709,11 +788,7 @@ $conn->close();
                         </div>
                         <div class="opcoes" id="opcoes" style="display: none;">
                             <select name="final_id" id="opcao_final">
-                                <?php foreach ($colaboradores as $colab): ?>
-                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                                    </option>
-                                <?php endforeach; ?>
+                                <?php renderColabOptions($funcoes, $colaboradores_por_funcao, $colaboradores, 'final'); ?>
                             </select>
                             <select name="status_finalizacao" id="status_finalizacao">
                                 <option value="Não iniciado">Não iniciado</option>
@@ -727,9 +802,11 @@ $conn->close();
                                 <option value="Aprovado com ajustes">Aprovado com ajustes</option>
                             </select>
                             <input type="date" name="prazo_finalizacao" id="prazo_finalizacao">
-                            <input type="text" name="obs_finalizacao" id="obs_finalizacao" placeholder="Caminho arquivo">
+                            <input type="text" name="obs_finalizacao" id="obs_finalizacao"
+                                placeholder="Caminho arquivo">
                             <div class="revisao_imagem" style="display: none;">
-                                <button type="button" onclick="abrirModal(this)" id="revisao_imagem_final">Adicionar Imagens</button>
+                                <button type="button" onclick="abrirModal(this)" id="revisao_imagem_final">Adicionar
+                                    Imagens</button>
                             </div>
                         </div>
                     </div>
@@ -743,11 +820,7 @@ $conn->close();
                         </div>
                         <div class="opcoes" id="opcoes" style="display: none;">
                             <select name="pos_id" id="opcao_pos">
-                                <?php foreach ($colaboradores as $colab): ?>
-                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                                    </option>
-                                <?php endforeach; ?>
+                                <?php renderColabOptions($funcoes, $colaboradores_por_funcao, $colaboradores, 'pos'); ?>
                             </select>
 
                             <select name="status_pos" id="status_pos">
@@ -764,7 +837,8 @@ $conn->close();
                             <input type="date" name="prazo_pos" id="prazo_pos">
                             <input type="text" name="obs_pos" id="obs_pos" placeholder="Caminho arquivo">
                             <div class="revisao_imagem" style="display: none;">
-                                <button type="button" onclick="abrirModal(this)" id="revisao_imagem_pos">Adicionar Imagens</button>
+                                <button type="button" onclick="abrirModal(this)" id="revisao_imagem_pos">Adicionar
+                                    Imagens</button>
                             </div>
                         </div>
                     </div>
@@ -777,11 +851,7 @@ $conn->close();
                         </div>
                         <div class="opcoes" id="opcoes" style="display: none;">
                             <select name="alteracao_id" id="opcao_alteracao">
-                                <?php foreach ($colaboradores as $colab): ?>
-                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                                    </option>
-                                <?php endforeach; ?>
+                                <?php renderColabOptions($funcoes, $colaboradores_por_funcao, $colaboradores, 'alteracao'); ?>
                             </select>
 
                             <select name="status_alteracao" id="status_alteracao">
@@ -798,7 +868,8 @@ $conn->close();
                             <input type="date" name="prazo_alteracao" id="prazo_alteracao">
                             <input type="text" name="obs_alteracao" id="obs_alteracao" placeholder="Caminho arquivo">
                             <div class="revisao_imagem" style="display: none;">
-                                <button type="button" onclick="abrirModal(this)" id="revisao_imagem_alt">Adicionar Imagens</button>
+                                <button type="button" onclick="abrirModal(this)" id="revisao_imagem_alt">Adicionar
+                                    Imagens</button>
                             </div>
                         </div>
                     </div>
@@ -811,11 +882,7 @@ $conn->close();
                         </div>
                         <div class="opcoes" id="opcoes" style="display: none;">
                             <select name="planta_id" id="opcao_planta">
-                                <?php foreach ($colaboradores as $colab): ?>
-                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                                    </option>
-                                <?php endforeach; ?>
+                                <?php renderColabOptions($funcoes, $colaboradores_por_funcao, $colaboradores, 'planta'); ?>
                             </select>
 
                             <select name="status_planta" id="status_planta">
@@ -832,7 +899,8 @@ $conn->close();
                             <input type="date" name="prazo_planta" id="prazo_planta">
                             <input type="text" name="obs_planta" id="obs_planta" placeholder="Caminho arquivo">
                             <div class="revisao_imagem" style="display: none;">
-                                <button type="button" onclick="abrirModal(this)" id="revisao_imagem_ph">Adicionar Imagens</button>
+                                <button type="button" onclick="abrirModal(this)" id="revisao_imagem_ph">Adicionar
+                                    Imagens</button>
                             </div>
                         </div>
                     </div>
@@ -860,7 +928,9 @@ $conn->close();
                 <div class="funcao render_add" id="status_funcao" style="width: 200px; margin-bottom: 15px;">
                     <div class="render">
                         <p id="render_alta">Render</p>
-                        <button id="addRender" class="buttons-form-add" style=" padding: 3px 10px; font-size: 13px; background-color: steelblue;">Adicionar render</button>
+                        <button id="addRender" class="buttons-form-add"
+                            style=" padding: 3px 10px; font-size: 13px; background-color: steelblue;">Adicionar
+                            render</button>
                         <label class="switch">
                             <input type="checkbox" id="notificar">
                             <span class="slider"></span>
@@ -870,18 +940,22 @@ $conn->close();
                 <div class="funcao revisao_add" id="status_funcao" style="width: 200px; margin-bottom: 15px;">
                     <div class="revisao">
                         <p id="revisao">Revisao</p>
-                        <button id="addRevisao" class="buttons-form-add" style=" padding: 3px 10px; font-size: 13px; background-color: steelgreen;">Adicionar revisão</button>
+                        <button id="addRevisao" class="buttons-form-add"
+                            style=" padding: 3px 10px; font-size: 13px; background-color: steelgreen;">Adicionar
+                            revisão</button>
                     </div>
                 </div>
                 <div class="buttons">
-                    <button type="button" id="btnAnterior" style="background: white; color: black"><i class="fa-solid fa-angle-left"></i></button>
+                    <button type="button" id="btnAnterior" style="background: white; color: black"><i
+                            class="fa-solid fa-angle-left"></i></button>
                     <div>
                         <button type="submit" id="salvar_funcoes" class="buttons-form-add">Salvar</button>
                         <div id="loadingBar" style="display: none;">
                             <div class="progress"></div>
                         </div>
                     </div>
-                    <button type="button" id="btnProximo" style="background: white; color: black"><i class="fa-solid fa-angle-right"></i></button>
+                    <button type="button" id="btnProximo" style="background: white; color: black"><i
+                            class="fa-solid fa-angle-right"></i></button>
                 </div>
             </div>
 
@@ -901,11 +975,7 @@ $conn->close();
                         <label for="nomeFinalizador">Nome Finalizador</label>
                         <select name="final_id" id="opcao_finalizador" required>
                             <option value="0">Selecione um colaborador:</option>
-                            <?php foreach ($colaboradores as $colab): ?>
-                                <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                                    <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                                </option>
-                            <?php endforeach; ?>
+                            <?php renderColabOptions($funcoes, $colaboradores_por_funcao, $colaboradores, 'final'); ?>
                         </select>
                     </div>
 
@@ -914,7 +984,8 @@ $conn->close();
                         <select name="obra_id" id="opcao_obra_pos" required>
                             <option value="0">Selecione uma obra:</option>
                             <?php foreach ($obras as $obra): ?>
-                                <option value="<?= $obra['idobra']; ?>"><?= htmlspecialchars($obra['nome_obra']); ?></option>
+                                <option value="<?= $obra['idobra']; ?>"><?= htmlspecialchars($obra['nome_obra']); ?>
+                                </option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -925,7 +996,8 @@ $conn->close();
                             <option value="">Selecione uma imagem:</option>
                             <?php foreach ($imagens as $imagem): ?>
                                 <option value="<?= $imagem['idimagens_cliente_obra']; ?>">
-                                    <?= htmlspecialchars($imagem['imagem_nome']); ?></option>
+                                    <?= htmlspecialchars($imagem['imagem_nome']); ?>
+                                </option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -1089,11 +1161,13 @@ $conn->close();
 
     <!-- MODAL ÚNICO -->
     <div id="modalUpload" style="display: none;">
-        <div id="overlay" onclick="fecharModal()" style="position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9;"></div>
+        <div id="overlay" onclick="fecharModal()"
+            style="position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9;"></div>
         <input type="hidden" id="funcao_id_revisao">
         <input type="hidden" id="nome_funcao_upload">
 
-        <div style="position: fixed; top: 50%; left: 50%; width: 600px; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 10px; z-index: 10;">
+        <div
+            style="position: fixed; top: 50%; left: 50%; width: 600px; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 10px; z-index: 10;">
             <h2 id="etapaTitulo">1. Envio de Prévia</h2>
 
             <!-- Conteúdo da etapa 1 -->
@@ -1141,14 +1215,16 @@ $conn->close();
         <div class="modal-content" style="margin: 0;">
             <h2 style="font-size: 16px;">Alterar Status</h2>
             <label for="statusSelect" style="font-size: 14px;">Selecione o novo status:</label>
-            <select id="statusSelect" name="statusSelect" style="width: max-content; text-align: center; margin: auto;" required>
+            <select id="statusSelect" name="statusSelect" style="width: max-content; text-align: center; margin: auto;"
+                required>
                 <?php foreach ($status_etapa as $statusEtapa): ?>
                     <option value="<?= htmlspecialchars($statusEtapa['id']); ?>">
                         <?= htmlspecialchars($statusEtapa['nome_substatus']); ?>
                     </option>
                 <?php endforeach; ?>
             </select>
-            <button type="button" id="alterar_status" onclick="alterarStatus(this.getAttribute('data-imagemid'))">✅</button>
+            <button type="button" id="alterar_status"
+                onclick="alterarStatus(this.getAttribute('data-imagemid'))">✅</button>
         </div>
     </div>
 
@@ -1222,8 +1298,10 @@ $conn->close();
         <div id="modalCard" class="modal-card">
             <h2 style="margin-bottom: 10px;">Envio de Prévias</h2>
             <p style="font-weight: bold;">O processo de envio de prévias está disponível na página principal.</p>
-            <span style="font-size: 0.9rem; margin-top: 10px;">Você pode arrastar o card para movê-lo para Em aprovação e fazer o envio das imagens.</span>
-            <button id="closeModal" style="background: red;color: white;font-size: 0.8rem;padding: 4px 8px;border-radius: 15px;width: max-content; margin: auto; margin-top: 15px;">Fechar</button>
+            <span style="font-size: 0.9rem; margin-top: 10px;">Você pode arrastar o card para movê-lo para Em aprovação
+                e fazer o envio das imagens.</span>
+            <button id="closeModal"
+                style="background: red;color: white;font-size: 0.8rem;padding: 4px 8px;border-radius: 15px;width: max-content; margin: auto; margin-top: 15px;">Fechar</button>
         </div>
     </div>
 

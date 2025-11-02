@@ -1,0 +1,112 @@
+/* Styles for the global entrega popover and controls created by scriptObra.js */
+:root {
+    --popover-width: min(460px, 44vw);
+}
+
+.popover-acomp {
+    position: absolute;
+    display: block;
+    /* visibility handled by .hidden */
+    background-color: var(--card-bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    box-shadow: 0 10px 30px rgba(10, 20, 40, 0.12);
+    border-radius: 10px;
+    padding: 10px 12px;
+    width: var(--popover-width);
+    max-width: 520px;
+    z-index: 3000;
+    transform-origin: top left;
+    transition: opacity .14s ease, transform .14s ease;
+}
+
+.popover-acomp.hidden {
+    opacity: 0;
+    transform: scale(.98);
+    pointer-events: none;
+    visibility: hidden;
+}
+
+.popover-acomp .popover-title {
+    font-weight: 600;
+    margin-bottom: 8px;
+    font-size: 0.96rem;
+    color: var(--text);
+}
+
+.popover-acomp .itens {
+    max-height: calc(60vh - 64px);
+    overflow-y: auto;
+    padding-right: 6px;
+}
+
+.pop-itens-list {
+    list-style: disc;
+    padding-left: 18px;
+    margin: 0;
+    font-size: 0.95rem;
+    color: var(--text);
+}
+
+.pop-itens-list li {
+    margin: 6px 0;
+    line-height: 1.28;
+    word-break: break-word;
+}
+
+.btn-ver-entrega {
+    margin-left: 8px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 16px;
+    padding: 4px 6px;
+    border-radius: 6px;
+    color: var(--muted);
+    transition: background .12s ease, color .12s ease;
+}
+
+.btn-ver-entrega:hover {
+    background: rgba(0, 0, 0, 0.04);
+    color: var(--cor-secundaria);
+}
+
+.input-edicao {
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    background: var(--card-bg);
+    color: var(--text);
+    border-radius: 6px;
+    box-sizing: border-box;
+    font-size: 0.95rem;
+}
+
+.pop-message {
+    color: var(--muted);
+    font-size: 0.92rem;
+}
+
+.pop-message.error {
+    color: var(--danger);
+    font-weight: 600;
+}
+
+.popover-acomp::after {
+    content: '';
+    position: absolute;
+    left: 18px;
+    width: 12px;
+    height: 12px;
+    transform: rotate(45deg);
+    background: var(--card-bg);
+    border-left: 1px solid var(--border);
+    border-top: 1px solid var(--border);
+}
+
+.popover-acomp[data-position="top"]::after {
+    bottom: -6px;
+}
+
+.popover-acomp[data-position="bottom"]::after {
+    top: -6px;
+}

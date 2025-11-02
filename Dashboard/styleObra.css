@@ -1189,24 +1189,19 @@ table#tabela-logs tbody tr:hover {
     margin-bottom: 20px;
 }
 
-.modal-content-images::-webkit-scrollbar,
-form#form-add::-webkit-scrollbar,
-.container::-webkit-scrollbar {
-    width: 8px;
+::-webkit-scrollbar {
+    width: 6px;
 }
 
-.modal-content-images::-webkit-scrollbar-thumb,
-form#form-add::-webkit-scrollbar-thumb,
-.container::-webkit-scrollbar-thumb {
-    background-color: #d3d1d1;
-    border-radius: 10px;
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
 }
 
-.modal-content-images::-webkit-scrollbar-track,
-form#form-add::-webkit-scrollbar-track,
-.container::-webkit-scrollbar-thumb {
-    background-color: white;
+::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    transition: background 0.3s;
 }
+
 
 
 #imageList {

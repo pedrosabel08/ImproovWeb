@@ -2311,30 +2311,119 @@ function abrirModalAcompanhamento(obraId) {
         .then(acompanhamentos => {
             acompanhamentoConteudo.innerHTML = '';
 
+            // Create a single global popover appended to body (so it's not clipped by parent overflow)
+            if (!window.__acompPopover) {
+                const pop = document.createElement('div');
+                pop.id = 'global-popover-entrega';
+                // prefer styling through CSS (styleObra.css). JS will only toggle visibility/position and set data-position.
+                pop.className = 'popover-acomp hidden';
+                pop.setAttribute('aria-hidden', 'true');
+                pop.innerHTML = '<div class="popover-title">Imagens entregues</div><div class="itens"></div>';
+                document.body.appendChild(pop);
+
+                // Single document listener to close when clicking outside
+                const onDocClick = function (ev) {
+                    if (pop.classList.contains('hidden')) return;
+                    if (!pop.contains(ev.target) && !(ev.target.closest && ev.target.closest('.btn-ver-entrega'))) {
+                        pop.classList.add('hidden');
+                        pop.setAttribute('aria-hidden', 'true');
+                        window.__acompPopover.openAcomp = null;
+                    }
+                };
+                document.addEventListener('click', onDocClick);
+
+                // reposition on scroll/resize while open
+                const onReposition = function () {
+                    if (pop.classList.contains('hidden') || !window.__acompPopover.anchor) return;
+                    positionPopover(pop, window.__acompPopover.anchor);
+                };
+                window.addEventListener('scroll', onReposition, true);
+                window.addEventListener('resize', onReposition);
+
+                window.__acompPopover = { el: pop, cache: {}, openAcomp: null, anchor: null };
+            }
+
             if (acompanhamentos.length > 0) {
                 acompanhamentos.forEach(acomp => {
                     const container = document.createElement('div');
                     container.className = 'acomp-conteudo';
+                    container.style.position = 'relative'; // para posicionar popover
 
                     const pAssunto = document.createElement('p');
                     pAssunto.className = 'acomp-assunto';
                     pAssunto.innerHTML = `<strong>📝</strong> <span class="acomp-texto">${acomp.assunto}</span>`;
+
+                    if (acomp.tipo === 'entrega') {
+                        // Botão para ver imagens entregues (lazy-load). Uses global popover appended to body so it's not clipped.
+                        const btnVer = document.createElement('button');
+                        btnVer.type = 'button';
+                        btnVer.title = 'Ver imagens desta entrega';
+                        btnVer.textContent = '📷';
+                        btnVer.className = 'btn-ver-entrega';
+                        // visual handled by CSS in styleObra.css
+                        pAssunto.appendChild(btnVer);
+
+                        btnVer.addEventListener('click', (ev) => {
+                            ev.stopPropagation();
+                            const popState = window.__acompPopover;
+                            const popEl = popState.el;
+                            // toggle same acomp
+                            if (popState.openAcomp === acomp.id) {
+                                popEl.classList.add('hidden');
+                                popEl.setAttribute('aria-hidden', 'true');
+                                popState.openAcomp = null;
+                                popState.anchor = null;
+                                return;
+                            }
+                            popState.openAcomp = acomp.id;
+                            popState.anchor = btnVer; // used for positioning
+                            const itensDiv = popEl.querySelector('.itens');
+                            // show loading
+                            itensDiv.innerHTML = '<div class="pop-message">Carregando...</div>';
+                            popEl.classList.remove('hidden');
+                            popEl.setAttribute('aria-hidden', 'false');
+                            positionPopover(popEl, btnVer);
+
+                            // cached?
+                            if (popState.cache[acomp.id]) {
+                                renderItensList(popEl, popState.cache[acomp.id]);
+                                return;
+                            }
+
+                            fetch(`../Obras/getItensEntregaPorAcompanhamento.php?acomp_id=${encodeURIComponent(acomp.id)}`)
+                                .then(r => r.json())
+                                .then(data => {
+                                    if (!data.success) {
+                                        itensDiv.innerHTML = `<div class="pop-message error">Erro: ${data.message || 'Falha ao carregar.'}</div>`;
+                                        return;
+                                    }
+                                    popState.cache[acomp.id] = data.itens || [];
+                                    renderItensList(popEl, popState.cache[acomp.id]);
+                                })
+                                .catch(err => {
+                                    console.error('Erro ao buscar itens da entrega:', err);
+                                    itensDiv.innerHTML = '<div class="pop-message error">Erro ao carregar itens.</div>';
+                                });
+                        });
+                    }
 
                     const pData = document.createElement('p');
                     pData.className = 'acomp-data';
                     pData.innerHTML = `<strong>↳ 📅</strong> ${formatarData(acomp.data)}`;
 
                     // Evento de clique para editar somente o texto (sem "Assunto:")
-                    pAssunto.addEventListener('click', () => {
+                    // Ignora cliques no botão de ver imagens (ou em outros controles dentro do parágrafo)
+                    pAssunto.addEventListener('click', (ev) => {
+                        // Se clicou no botão de ver entrega, não iniciar edição
+                        if (ev.target.closest && ev.target.closest('.btn-ver-entrega')) return;
                         const spanTexto = pAssunto.querySelector('.acomp-texto');
-                        const textoAtual = spanTexto.textContent;
+                        const textoAtual = spanTexto ? spanTexto.textContent : '';
 
                         // Cria um input para edição
                         const input = document.createElement('input');
                         input.type = 'text';
                         input.value = textoAtual;
                         input.className = 'input-edicao';
-                        input.style.width = '100%';
 
                         // Substitui o span pelo input
                         spanTexto.replaceWith(input);
@@ -2355,6 +2444,7 @@ function abrirModalAcompanhamento(obraId) {
                         });
                     });
 
+                    // popover is global; append only the button and content to container
                     container.appendChild(pAssunto);
                     container.appendChild(pData);
                     acompanhamentoConteudo.appendChild(container);
@@ -2366,6 +2456,48 @@ function abrirModalAcompanhamento(obraId) {
         .catch(error => {
             console.error('Erro:', error);
         });
+}
+
+// Posiciona o popover relativo a um elemento anchor (btn). Ajusta para ficar dentro da viewport.
+function positionPopover(popEl, anchorEl) {
+    if (!popEl || !anchorEl) return;
+    const rect = anchorEl.getBoundingClientRect();
+    const popRect = popEl.getBoundingClientRect();
+    const scrollY = window.scrollY || window.pageYOffset;
+    const scrollX = window.scrollX || window.pageXOffset;
+
+    // Sempre posicionar abaixo do elemento (gap de 8px). Isso evita o comportamento
+    // de 'pular' para cima/baixo quando o usuário der scroll.
+    const top = rect.bottom + scrollY + 8;
+
+    // Alinha à esquerda do anchor, ajustando se ultrapassar a viewport
+    let left = rect.left + scrollX;
+    const maxRight = scrollX + document.documentElement.clientWidth - 8;
+    if (left + popRect.width > maxRight) {
+        left = Math.max(scrollX + 8, maxRight - popRect.width);
+    }
+
+    popEl.style.top = `${top}px`;
+    popEl.style.left = `${left}px`;
+    // força o CSS a usar a seta para baixo
+    popEl.setAttribute('data-position', 'bottom');
+}
+
+function renderItensList(popEl, itens) {
+    const itensDiv = popEl.querySelector('.itens');
+    if (!itens || itens.length === 0) {
+        itensDiv.innerHTML = '<div class="pop-message">Nenhuma imagem vinculada a esta entrega.</div>';
+        return;
+    }
+    const ul = document.createElement('ul');
+    ul.className = 'pop-itens-list';
+    itens.forEach(nome => {
+        const li = document.createElement('li');
+        li.textContent = nome;
+        ul.appendChild(li);
+    });
+    itensDiv.innerHTML = '';
+    itensDiv.appendChild(ul);
 }
 
 function salvarAcompanhamento(id, obraId, novoAssunto) {
@@ -2991,6 +3123,11 @@ btnMostrarAcomps.addEventListener('click', () => {
     btnMostrarAcomps.innerHTML = isExpanded ?
         '<i class="fas fa-chevron-up"></i>' :
         '<i class="fas fa-chevron-down"></i>';
+
+    if (!isExpanded) {
+        // Rola para o topo da seção de acompanhamentos ao recolher
+        acompanhamentoConteudo.scrollIntoView({ behavior: 'smooth' });
+    }
 });
 
 

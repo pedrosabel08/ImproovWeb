@@ -61,6 +61,10 @@ function sftpPutWithFallback($sftp, $remotePath, $localFile, &$log, &$errors) {
     // tentativa 1: enviar como arquivo local
     try {
         if ($sftp->put($remotePath, $localFile, SFTP::SOURCE_LOCAL_FILE)) {
+            // aplicar permissões 0777 no arquivo enviado, se possível
+            if (method_exists($sftp, 'chmod')) {
+                try { $sftp->chmod(0777, $remotePath); $log[] = "Permissões 0777 aplicadas em $remotePath"; } catch (Exception $e) { $log[] = "Falha chmod após put(local): " . $e->getMessage(); }
+            }
             return true;
         }
     } catch (Exception $e) {
@@ -86,6 +90,10 @@ function sftpPutWithFallback($sftp, $remotePath, $localFile, &$log, &$errors) {
             try {
                 if ($sftp->put($remotePath, $data)) {
                     $log[] = "Fallback: enviado via conteúdo para $remotePath";
+                    // aplicar permissões 0777 no arquivo enviado, se possível
+                    if (method_exists($sftp, 'chmod')) {
+                        try { $sftp->chmod(0777, $remotePath); $log[] = "Permissões 0777 aplicadas em $remotePath"; } catch (Exception $e) { $log[] = "Falha chmod após put(content): " . $e->getMessage(); }
+                    }
                     return true;
                 } else {
                     $log[] = "Fallback put retornou false para $remotePath";
@@ -172,11 +180,53 @@ function resolveCategoriaDir($sftp, $pastaBase, $categoriaNome, &$log)
     if (!$sftp->is_dir($pathSafe)) {
         if ($sftp->mkdir($pathSafe, 0777, true)) {
             $log[] = "Criada pasta de categoria sanitizada: $pathSafe";
+            // tentar ajustar permissões da pasta para 0777
+            if (method_exists($sftp, 'chmod')) {
+                try {
+                    $sftp->chmod(0777, $pathSafe);
+                    $log[] = "Permissões 0777 aplicadas em: $pathSafe";
+                } catch (Exception $e) {
+                    $log[] = "Falha ao aplicar chmod SFTP em $pathSafe: " . $e->getMessage();
+                }
+            }
         } else {
             $log[] = "Falha ao criar pasta de categoria: $pathSafe";
         }
     }
     return $safe;
+}
+
+// Aplica chmod 0777 via SFTP quando suportado (retorna true se aplicado)
+function setSftpPermissions($sftp, $remotePath, &$log)
+{
+    if (!is_object($sftp)) return false;
+    if (!method_exists($sftp, 'chmod')) {
+        $log[] = "SFTP chmod não disponível para $remotePath";
+        return false;
+    }
+    try {
+        $ok = $sftp->chmod(0777, $remotePath);
+        $log[] = $ok ? "SFTP chmod 0777 aplicado: $remotePath" : "SFTP chmod retornou false: $remotePath";
+        return (bool)$ok;
+    } catch (Exception $e) {
+        $log[] = "Exception ao aplicar chmod SFTP em $remotePath: " . $e->getMessage();
+        return false;
+    }
+}
+
+// Tenta aplicar CHMOD 0777 via FTP (usa ftp_chmod se disponível, senão ftp_site)
+function ensureFtpPermissions($ftpConn, $path, &$log)
+{
+    if (!$ftpConn) return false;
+    if (function_exists('ftp_chmod')) {
+        $res = @ftp_chmod($ftpConn, 0777, $path);
+        $log[] = $res !== false ? "FTP chmod 0777 aplicado: $path" : "FTP chmod falhou: $path";
+        return $res !== false;
+    }
+    // fallback: usar SITE CHMOD
+    $res = @ftp_site($ftpConn, "CHMOD 0777 $path");
+    $log[] = $res !== false ? "FTP SITE CHMOD aplicado: $path" : "FTP SITE CHMOD falhou: $path";
+    return $res !== false;
 }
 
 function buscarNomenclatura($conn, $obra_id)
@@ -402,10 +452,17 @@ if (!empty($arquivosTmp) && count($arquivosTmp) > 0 && ($refsSkpModo === 'geral'
             if (!$sftp->is_dir($destDir)) {
                 $sftp->mkdir($destDir, 0777, true);
                 $log[] = "Criado diretório: $destDir";
+                // tentar definir permissões da pasta
+                if (method_exists($sftp, 'chmod')) {
+                    try { $sftp->chmod(0777, $destDir); $log[] = "Permissões 0777 aplicadas em $destDir"; } catch (Exception $e) { $log[] = "Falha chmod dir $destDir: " . $e->getMessage(); }
+                }
             }
             if (!$sftp->is_dir($destDir . "/OLD")) {
                 $sftp->mkdir($destDir . "/OLD", 0777, true);
                 $log[] = "Criado diretório: $destDir/OLD";
+                if (method_exists($sftp, 'chmod')) {
+                    try { $sftp->chmod(0777, $destDir . "/OLD"); $log[] = "Permissões 0777 aplicadas em $destDir/OLD"; } catch (Exception $e) { $log[] = "Falha chmod dir $destDir/OLD: " . $e->getMessage(); }
+                }
             }
 
             list($fileNomeInterno, $versao) = gerarNomeInterno($conn, $obra_id, $tipo_id, $categoria, $nomeTipo, $tipo_arquivo, $ext, $log, $sufixo, null, $fileOriginalName, $indice);
@@ -469,6 +526,8 @@ if (!empty($arquivosTmp) && count($arquivosTmp) > 0 && ($refsSkpModo === 'geral'
                                 $ftpDest = $ftpTargetDir . '/' . $fileNomeInterno;
                                 if (@ftp_put($ftp_conn, $ftpDest, $fileTmp, FTP_BINARY)) {
                                     $log[] = "Arquivo enviado para FTP: $ftpDest";
+                                    // tentar ajustar permissões no FTP
+                                    ensureFtpPermissions($ftp_conn, $ftpDest, $log);
                                 } else {
                                     $errors[] = "Erro ao enviar para FTP: $ftpDest";
                                     $log[] = "Falha FTP put: $ftpDest";
@@ -597,6 +656,8 @@ if (!empty($arquivosPorImagem) && $refsSkpModo === 'porImagem') {
                             $ftpDest = $ftpTargetDir . '/' . $fileNomeInterno;
                             if (@ftp_put($ftp_conn, $ftpDest, $tmpFile, FTP_BINARY)) {
                                 $log[] = "Arquivo enviado para FTP: $ftpDest";
+                                // tentar ajustar permissões no FTP
+                                ensureFtpPermissions($ftp_conn, $ftpDest, $log);
                             } else {
                                 $errors[] = "Erro ao enviar para FTP: $ftpDest";
                                 $log[] = "Falha FTP put: $ftpDest";

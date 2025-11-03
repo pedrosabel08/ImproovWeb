@@ -19,7 +19,7 @@ $status_imagens = obterStatusImagens($conn);
 $funcoes = obterFuncoes($conn);
 $imagens = obterImagens($conn);
 $status_etapa = obterStatus($conn);
-
+$obras = obterObras($conn);
 
 // Monta um array de colaboradores por função (usando a tabela funcao_colaborador)
 $colaboradores_por_funcao = [];
@@ -1323,12 +1323,6 @@ $conn->close();
     <script src="../script/sidebar.js"></script>
     <script src="../script/notificacoes.js"></script>
     <script src="../script/controleSessao.js"></script>
-
-    <script>
-        // Converte o valor do COUNT para JSON e armazena no localStorage
-        const funcoesTEA = <?php echo json_encode($funcoesCount['total_funcoes_em_andamento']); ?>;
-        localStorage.setItem('funcoesTEA', funcoesTEA);
-    </script>
 
 </body>
 

@@ -13,7 +13,7 @@ $entrega_id = intval($_GET['id']);
 
 try {
     // buscar informações da entrega
-    $sql = "SELECT e.id, e.obra_id, e.data_prevista, e.status, e.data_conclusao, e.observacoes, s.nome_status as nome_etapa, o.nomenclatura
+    $sql = "SELECT e.id, e.obra_id, e.status_id, e.data_prevista, e.status, e.data_conclusao, e.observacoes, s.nome_status as nome_etapa, o.nomenclatura
             FROM entregas e 
             JOIN status_imagem s ON e.status_id = s.idstatus
             JOIN obra o ON e.obra_id = o.idobra

@@ -126,6 +126,7 @@ $conn->close();
     <div class="modal" id="entregaModal">
         <div class="modal-content" style="max-width: 75vh;">
             <h3 id="modalTitulo"></h3>
+            <button id="btnAdicionarImagem">Adicionar Imagem</button>
             <p><strong>Prazo:</strong> <span id="modalPrazo"></span></p>
             <p><strong>Conclusão geral:</strong> <span id="modalProgresso"></span></p>
             <div id="modalImagens"></div>
@@ -140,3 +141,17 @@ $conn->close();
 </body>
 
 </html>
+
+    <!-- Modal Selecionar Imagens para Entrega (usado ao clicar em "Adicionar Imagem") -->
+    <div id="modalSelecionarImagens" class="modal">
+        <div class="modal-content" style="max-width: 75vh;">
+            <h2>Selecionar imagens para adicionar à entrega</h2>
+            <div id="selecionar_imagens_container" class="imagens-container">
+                <p>Selecione uma entrega para carregar imagens.</p>
+            </div>
+            <div class="buttons">
+                <button type="button" class="fecharModal">Fechar</button>
+                <button type="button" id="btnAdicionarSelecionadas" class="btn-salvar">Adicionar Selecionadas</button>
+            </div>
+        </div>
+    </div>

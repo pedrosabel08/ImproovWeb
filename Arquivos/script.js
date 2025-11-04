@@ -33,8 +33,11 @@ async function carregarArquivos(filtros = {}) {
             else if (item.status === 'antigo') statusClass = 'status-antigo';
 
             let tr = document.createElement('tr');
+            // add data attributes so we can act on click
+            tr.dataset.idarquivo = item.idarquivo || '';
+            tr.dataset.caminho = item.caminho || '';
             tr.innerHTML = `
-                <td>${item.nome_original}</td>
+                <td>${item.nome_interno}</td>
                 <td>${item.projeto}</td>
                 <td>${item.tipo_imagem}</td>
                     <td class="arquivoTd">
@@ -47,6 +50,65 @@ async function carregarArquivos(filtros = {}) {
                 <td class="statusTd"><span class="${statusClass}">${item.status}</span></td>
                 <td>${new Date(item.recebido_em).toLocaleDateString()}</td>
             `;
+
+            // click handler: toggle between antigo <-> atualizado
+            tr.addEventListener('click', async (ev) => {
+                // ignore clicks on inputs or buttons if any
+                if (ev.target && (ev.target.tagName === 'BUTTON' || ev.target.tagName === 'A' || ev.target.closest('button'))) return;
+                const idarquivo = tr.dataset.idarquivo;
+                const caminho = tr.dataset.caminho;
+                const statusText = (item.status || '').toLowerCase();
+                try {
+                    if (statusText === 'atualizado') {
+                        const ok = confirm('Marcar arquivo como ANTIGO? Isto moverá o arquivo para a pasta OLD no servidor.');
+                        if (!ok) return;
+                        const resp = await fetch('moveArquivoStatus.php', {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ idarquivo: idarquivo, action: 'antigo' })
+                        });
+                        const j = await resp.json();
+                        if (j.success) {
+                            alert('Arquivo movido para OLD com sucesso.');
+                            carregarArquivos();
+                        } else {
+                            alert('Erro: ' + (j.error || 'erro desconhecido'));
+                            console.error(j);
+                        }
+                    } else if (statusText === 'antigo') {
+                        const ok = confirm('Marcar arquivo como ATUALIZADO? Isto moverá o arquivo de OLD para a pasta principal.');
+                        if (!ok) return;
+                        const resp = await fetch('moveArquivoStatus.php', {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ idarquivo: idarquivo, action: 'atualizado' })
+                        });
+                        const j = await resp.json();
+                        if (j.success) {
+                            alert('Arquivo movido para pasta principal com sucesso.');
+                            carregarArquivos();
+                        } else {
+                            alert('Erro: ' + (j.error || 'erro desconhecido'));
+                            console.error(j);
+                        }
+                    } else {
+                        // neutral/pending: offer both options
+                        const sel = prompt('Status atual: ' + (item.status || 'N/A') + "\nDigite 'A' para marcar ANTIGO ou 'U' para ATUALIZADO", 'A');
+                        if (!sel) return;
+                        if (sel.toUpperCase() === 'A') {
+                            const resp = await fetch('moveArquivoStatus.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idarquivo: idarquivo, action: 'antigo' }) });
+                            const j = await resp.json();
+                            if (j.success) { alert('Arquivo movido para OLD.'); carregarArquivos(); } else { alert('Erro: ' + (j.error || 'erro desconhecido')); }
+                        } else if (sel.toUpperCase() === 'U') {
+                            const resp = await fetch('moveArquivoStatus.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idarquivo: idarquivo, action: 'atualizado' }) });
+                            const j = await resp.json();
+                            if (j.success) { alert('Arquivo movido para principal.'); carregarArquivos(); } else { alert('Erro: ' + (j.error || 'erro desconhecido')); }
+                        }
+                    }
+                } catch (err) {
+                    console.error('Erro ao mudar status do arquivo', err);
+                    alert('Erro ao alterar status do arquivo');
+                }
+            });
+
             tbody.appendChild(tr);
         });
 
@@ -90,7 +152,7 @@ const labelSufixo = document.getElementById('labelSufixo');
 // Mapping of suffix options per file type
 const SUFIXOS = {
     'DWG': ['TERREO', 'LAZER', 'COBERTURA', 'MEZANINO', 'CORTES', 'GERAL', 'TIPO', 'GARAGEM', 'FACHADA', 'DUPLEX', 'ROOFTOP'],
-    'PDF': ['DOCUMENTACAO', 'RELATORIO', 'LOGO', 'ARQUITETONICO'],
+    'PDF': ['DOCUMENTACAO', 'RELATORIO', 'LOGO', 'ARQUITETONICO', 'REFERENCIA'],
     'SKP': ['MODELAGEM', 'REFERENCIA'],
     'IMG': ['FACHADA', 'INTERNA', 'EXTERNA', 'UNIDADE'],
     'IFC': ['BIM'],

@@ -1,14 +1,75 @@
 @import url('https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,200..1000;1,200..1000&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&family=Open+Sans:ital,wght@0,300..800;1,300..800&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap');
 
-* {
-    padding: 0;
-    margin: 0;
-    font-family: "Open Sans", sans-serif;
+:root {
+	--bg: #0f1115;
+	--panel: #1b1d22;
+	--card: #141519;
+	--text: #e6eef2;
+	--muted: #9aa3a8;
+	--accent: #00adb5;
+	--danger: #ff4b2b;
+	--border: #26282c;
+	--hover: #212325;
+	--table-head: #28363a;
+	--table-cell-border: #2c003e;
+	--webkit-scrollbar-thumb: #686767;
+
 }
 
+/* Light theme (apply via <body class="theme-light">) */
+body.theme-light {
+	--bg: #f8fafc;
+	--panel: #ffffff;
+	--card: #ffffff;
+	--text: #0f1720;
+	--muted: #4b5563;
+	--accent: #0b7285;
+	--danger: #c53030;
+	--border: #e6e9ee;
+	--hover: #f1f5f9;
+	--table-head: #f3f6f9;
+	--table-cell-border: #d1d5db;
+}
+
+/* Respect user's OS/browser preference for light theme */
+@media (prefers-color-scheme: light) {
+	:root {
+		--bg: #f8fafc;
+		--panel: #ffffff;
+		--card: #ffffff;
+		--text: #0f1720;
+		--muted: #4b5563;
+		--accent: #0b7285;
+		--danger: #c53030;
+		--border: #e6e9ee;
+		--hover: #f1f5f9;
+		--table-head: #f3f6f9;
+		--table-cell-border: #d1d5db;
+		--webkit-scrollbar-thumb: #686767;
+	}
+}
+
+* {
+	padding: 0;
+	margin: 0;
+	font-family: "Inter", sans-serif;
+	box-sizing: border-box;
+}
+
+/* ===== SCROLLBAR ===== */
+::-webkit-scrollbar {
+	width: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+	background: var(--webkit-scrollbar-thumb);
+}
+
+
 body {
-	background-color: #fff;
+	background-color: var(--bg);
+	color: var(--text);
 	display: grid;
 	grid-template-columns: 60px 1fr;
 	text-align: justify;
@@ -43,43 +104,131 @@ main {
 }
 
 .filtro {
-	display: flex;
-	justify-content: flex-start;
-	flex-direction: column;
-	gap: 20px;
+	/* grid layout for filters: responsive columns */
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+	gap: 18px;
+	align-items: start;
 }
 
 .filtro h2 {
-	font-size: 18px;
+	font-size: 0.8rem;
+	color: var(--text);
+	margin-bottom: 6px;
 }
 
 .filtro select {
-	padding: 3px 10px;
-	font-size: 14px;
-	border-radius: 20px;
+	padding: 4px 6px;
+	font-size: 0.8rem;
+	border-radius: 8px;
+	background: var(--panel);
+	border: 1px solid var(--border);
+	color: var(--text);
+}
+
+/* Checkbox label (custom) */
+.checkbox-label {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	cursor: pointer;
+	color: var(--text);
+	user-select: none;
+}
+
+.checkbox-label input[type="checkbox"] {
+	width: 12px;
+	height: 12px;
+	border: 1px solid var(--border);
+	border-radius: 4px;
+	display: inline-block;
+	position: relative;
+	background: transparent;
+}
+
+/* .checkbox-label input[type="checkbox"]:checked {
+	background: var(--accent);
+	border-color: var(--accent);
+} */
+
+.checkbox-label input[type="checkbox"]:focus {
+	outline: 2px solid rgba(0, 0, 0, 0.12);
+}
+
+.checkbox-label span {
+	font-size: 0.95rem;
+}
+
+/* Buttons standardization */
+.btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	padding: 8px 12px;
+	background: var(--panel);
+	color: var(--text);
+	border: 1px solid var(--border);
+	border-radius: 18px;
+	cursor: pointer;
+	transition: all 0.15s ease;
+}
+
+.btn:hover {
+	transform: translateY(-1px);
+}
+
+.btn-primary {
+	background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 60%, black));
+	color: #fff;
+	border-color: transparent;
+}
+
+.btn-ghost {
+	background: transparent;
+	border: 1px solid var(--border);
+}
+
+.btn[disabled] {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+/* make small inputs consistent */
+.buttons input[type="text"],
+#valor {
+	background: var(--panel);
+	border: 1px solid var(--border);
+	color: var(--text);
+	padding: 6px 8px;
+	border-radius: 8px;
 }
 
 .tabela {
 	max-height: 100vh;
 	overflow-y: auto;
-	width: 80%;
-	margin: auto;
+	width: 100%;
+	margin: 0;
+	padding: 0;
+	/* remove padding so sticky header aligns to top of scroll container */
 }
 
 .menu-buttons {
 	margin: 15px 0;
 }
 
-button, a {
+button,
+a {
 	cursor: pointer;
 }
 
 .buttons button {
 	background-color: #000000;
-	color: rgb(255, 255, 255);
+	color: white;
 	padding: 3px 6px;
 	transition: 0.3s all ease;
-	border-radius: 15px;
+	border-radius: 10px;
+	font-size: 0.9rem;
+
 }
 
 .buttons input {
@@ -115,27 +264,75 @@ button, a {
 	border-collapse: collapse;
 }
 
+/* Table visual improvements */
 #table-list table thead {
-	background-color: #3E6470;
+	background: var(--panel);
+	/* solid background for sticky header */
 }
 
 #table-list table th {
-	color: #fff;
-	padding: 3px;
-	font-weight: 400;
-	border: 1px solid #2C003E;
+	color: var(--text);
+	padding: 10px 8px;
+	font-weight: 600;
+	border-bottom: 1px solid var(--border);
 	text-align: center;
+	position: sticky;
+	top: 0;
+	/* sticks to top of the .tabela scroll container */
+	z-index: 8;
+	background: var(--panel);
+	box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06);
 }
 
 #table-list table td {
-	border: 1px solid #2C003E;
 	text-align: center;
-	padding: 3px;
-	color: #000000;
+	padding: 10px 8px;
+	color: var(--text);
+	vertical-align: middle;
 }
 
 #table-list tbody {
 	font-size: 14px;
+}
+
+/* zebra rows */
+#table-list tbody tr:nth-child(even) td {
+	background: rgba(255, 255, 255, 0.02);
+}
+
+/* hover and selection */
+#table-list tbody tr:hover td {
+	background: var(--hover);
+	color: var(--text);
+}
+
+.row-selected td {
+	background: linear-gradient(90deg, rgba(0, 173, 181, 0.12), rgba(0, 173, 181, 0.06));
+	color: var(--text);
+}
+
+/* compact and responsive table container */
+.tabela {
+	max-height: calc(100vh - 220px);
+	overflow: auto;
+	width: 100%;
+	margin: 0;
+	background: transparent;
+	border-radius: 8px;
+	padding: 0;
+	/* keep padding 0 so sticky header aligns */
+}
+
+/* checkbox column narrower */
+.tabela td.checkbox,
+.tabela th.checkbox {
+	width: 48px;
+}
+
+/* make important numeric columns stand out */
+.tabela td.numeric {
+	font-weight: 700;
+	color: var(--text);
 }
 
 #graficos-tarefas {
@@ -153,7 +350,7 @@ button, a {
 }
 
 .checked {
-	background-color: #62e480;
+	background-color: #3f734b;
 }
 
 #valores button {
@@ -161,8 +358,8 @@ button, a {
 	color: rgb(255, 255, 255);
 	padding: 3px 6px;
 	transition: 0.3s all ease;
-	border-radius: 15px;
-	height: 25px;
+	border-radius: 10px;
+	font-size: 0.9rem;
 }
 
 #valores button:hover {

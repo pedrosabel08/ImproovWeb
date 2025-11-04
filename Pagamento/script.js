@@ -4,7 +4,6 @@ function formatarDataAtual() {
     return dataAtual.toLocaleDateString('pt-BR', opcoes);
 }
 
-document.getElementById('data').textContent = formatarDataAtual();
 
 document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('colaborador').addEventListener('change', function () {
@@ -81,11 +80,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
                         checkbox.addEventListener('change', function () {
                             if (checkbox.checked) {
-                                row.classList.add('checked');
+                                row.classList.add('row-selected');
+                                row.classList.remove('checked');
                             } else {
+                                row.classList.remove('row-selected');
                                 row.classList.remove('checked');
                             }
-
+                            // Atualiza contagens quando o usuário altera seleção
+                            contarLinhasTabela();
                         });
                         cellCheckbox.appendChild(checkbox);
 
@@ -162,9 +164,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 checkbox.checked = !allChecked; // Marca/desmarca todos os checkboxes
                 var row = checkbox.closest('tr');
                 if (checkbox.checked) {
-                    row.classList.add('checked');
+                    row.classList.add('row-selected');
                 } else {
-                    row.classList.remove('checked');
+                    row.classList.remove('row-selected');
                 }
             });
         } else {
@@ -173,12 +175,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 checkbox.checked = !checkbox.checked; // Inverte o estado do checkbox
                 var row = checkbox.closest('tr');
                 if (checkbox.checked) {
-                    row.classList.add('checked');
+                    row.classList.add('row-selected');
                 } else {
-                    row.classList.remove('checked');
+                    row.classList.remove('row-selected');
                 }
             });
         }
+        contarLinhasTabela();
     });
 
     document.getElementById('confirmar-pagamento').addEventListener('click', function () {

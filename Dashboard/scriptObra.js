@@ -876,7 +876,7 @@ function infosObra(obraId) {
                     { col: 'finalizacao', label: 'Finalização' },
                     { col: 'pos_producao', label: 'Pós Produção' },
                     { col: 'alteracao', label: 'Alteração' },
-                    { col: 'planta', label: 'Planta' }
+                    // { col: 'planta', label: 'Planta' }
                 ];
 
 

@@ -369,8 +369,8 @@ $conn->close();
                             <th>Status</th>
                             <th onclick="mostrarFiltroColaborador('alteracao')">Alteração</th>
                             <th>Status</th>
-                            <th onclick="mostrarFiltroColaborador('planta')">Planta</th>
-                            <th>Status</th>
+                            <!-- <th onclick="mostrarFiltroColaborador('planta')">Planta</th>
+                            <th>Status</th> -->
                         </tr>
                     </thead>
                     <tbody>

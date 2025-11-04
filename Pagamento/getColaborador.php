@@ -223,7 +223,7 @@ WHERE
         AND (fi.status = 'Finalizado' OR fi.status = 'Em aprovação' OR fi.status = 'Ajuste' OR fi.status = 'Aprovado com ajustes' OR fi.status = 'Aprovado')";
 
     if ($mesNumero && $ano) {
-        $sql .= " AND YEAR(fi.prazo) = ? AND MONTH(fi.prazo) = ? ORDER BY ico.obra_id, fi.funcao_id";
+        $sql .= " AND YEAR(fi.prazo) = ? AND MONTH(fi.prazo) = ? ORDER BY ico.obra_id, ico.idimagens_cliente_obra, fi.funcao_id";
     }
 }
 

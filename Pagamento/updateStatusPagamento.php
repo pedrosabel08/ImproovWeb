@@ -12,12 +12,33 @@ if (!$input) {
 $colaborador_id = isset($input['colaborador_id']) ? intval($input['colaborador_id']) : 0;
 $ano = isset($input['ano']) ? intval($input['ano']) : 0;
 $mes = isset($input['mes']) ? intval($input['mes']) : 0;
-$status = isset($input['status']) ? strtoupper(trim($input['status'])) : '';
+$status = isset($input['status']) ? trim($input['status']) : '';
 $usuario_id = isset($input['usuario_id']) ? intval($input['usuario_id']) : null;
 
-if (!$colaborador_id || !$ano || !$mes || !in_array($status, ['PENDENTE','ENVIADO','CONFIRMANDO','PAGO'])) {
+if (!$colaborador_id || !$ano || !$mes) {
     http_response_code(400);
     echo json_encode(['success' => false, 'error' => 'Parâmetros obrigatórios ausentes ou inválidos']);
+    exit;
+}
+
+// Normalize status to lowercase to support new workflow values while keeping backwards compatibility
+$status_map = [
+    'PENDENTE' => 'pendente_envio',
+    'ENVIADO' => 'aguardando_retorno',
+    'CONFIRMANDO' => 'aguardando_retorno',
+    'PAGO' => 'pago'
+];
+if (isset($status_map[strtoupper($status)])) {
+    $status = $status_map[strtoupper($status)];
+} else {
+    $status = strtolower($status);
+}
+
+// Allowed statuses for the new flow
+$allowed = ['pendente_envio','aguardando_retorno','validado','adendo_gerado','pago'];
+if (!in_array($status, $allowed)) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'error' => 'Status inválido']);
     exit;
 }
 
@@ -34,7 +55,8 @@ try {
     $stmt->close();
 
     if (!$pagamento) {
-        $ins = $conn->prepare("INSERT INTO pagamentos (colaborador_id, mes_ref, status, criado_por) VALUES (?,?, 'PENDENTE', ?)");
+        // create pagamentos row with new initial status name
+        $ins = $conn->prepare("INSERT INTO pagamentos (colaborador_id, mes_ref, status, criado_por) VALUES (?,?, 'pendente_envio', ?)");
         $ins->bind_param('isi', $colaborador_id, $mes_ref, $usuario_id);
         $ins->execute();
         $pagamento_id = $ins->insert_id;
@@ -50,38 +72,44 @@ try {
     }
 
     // Status handling
-    if ($status === 'ENVIADO') {
-        $upd = $conn->prepare("UPDATE pagamentos SET status='ENVIADO', enviado_em = NOW() WHERE idpagamento = ?");
+    // handle new workflow statuses (normalized to lowercase earlier)
+    if ($status === 'aguardando_retorno' || $status === 'pendente_envio') {
+        // When sending the list for validation -> aguardando_retorno
+        $upd = $conn->prepare("UPDATE pagamentos SET status = ?, data_envio_validacao = NOW() WHERE idpagamento = ?");
+        $upd->bind_param('si', $status, $pagamento_id);
+        $upd->execute();
+        $upd->close();
+
+        $ev = $conn->prepare("INSERT INTO pagamento_eventos (pagamento_id, tipo, descricao, usuario_id) VALUES (?,?,?,?)");
+        $t = 'lista_enviada'; $d = 'Lista enviada para validação / status: ' . $status;
+        $ev->bind_param('issi', $pagamento_id, $t, $d, $usuario_id);
+        $ev->execute();
+        $ev->close();
+    } elseif ($status === 'validado') {
+        // mark that a valid response was received
+        $upd = $conn->prepare("UPDATE pagamentos SET status = 'validado', data_resposta = NOW() WHERE idpagamento = ?");
         $upd->bind_param('i', $pagamento_id);
         $upd->execute();
         $upd->close();
 
         $ev = $conn->prepare("INSERT INTO pagamento_eventos (pagamento_id, tipo, descricao, usuario_id) VALUES (?,?,?,?)");
-        $t = 'enviado'; $d = 'Pagamento marcado como ENVIADO';
+        $t = 'lista_respondida'; $d = 'Lista respondida e validada';
         $ev->bind_param('issi', $pagamento_id, $t, $d, $usuario_id);
         $ev->execute();
         $ev->close();
-    } elseif ($status === 'CONFIRMANDO') {
-        $upd = $conn->prepare("UPDATE pagamentos SET status='CONFIRMANDO' WHERE idpagamento = ?");
+    } elseif ($status === 'adendo_gerado') {
+        // adendo generation
+        $upd = $conn->prepare("UPDATE pagamentos SET status = 'adendo_gerado', data_geracao_adendo = NOW() WHERE idpagamento = ?");
         $upd->bind_param('i', $pagamento_id);
         $upd->execute();
         $upd->close();
+
         $ev = $conn->prepare("INSERT INTO pagamento_eventos (pagamento_id, tipo, descricao, usuario_id) VALUES (?,?,?,?)");
-        $t = 'status_change'; $d = 'Pagamento marcado como CONFIRMANDO';
+        $t = 'adendo_gerado'; $d = 'Adendo gerado para este pagamento';
         $ev->bind_param('issi', $pagamento_id, $t, $d, $usuario_id);
         $ev->execute();
         $ev->close();
-    } elseif ($status === 'PENDENTE') {
-        $upd = $conn->prepare("UPDATE pagamentos SET status='PENDENTE' WHERE idpagamento = ?");
-        $upd->bind_param('i', $pagamento_id);
-        $upd->execute();
-        $upd->close();
-        $ev = $conn->prepare("INSERT INTO pagamento_eventos (pagamento_id, tipo, descricao, usuario_id) VALUES (?,?,?,?)");
-        $t = 'status_change'; $d = 'Pagamento marcado como PENDENTE';
-        $ev->bind_param('issi', $pagamento_id, $t, $d, $usuario_id);
-        $ev->execute();
-        $ev->close();
-    } elseif ($status === 'PAGO') {
+    } elseif ($status === 'pago') {
         // Collect all unpaid items for the month
         $idsFI = [];$idsAC = [];$idsAN = [];$valor_total = 0.0;
         // funcao_imagem by prazo
@@ -124,9 +152,9 @@ try {
         foreach ($idsAN as $id) { $o='animacao'; $v=null; $insItem->bind_param('isid', $pagamento_id, $o, $id, $v); $insItem->execute(); }
         $insItem->close();
 
-        // Update aggregate pagamento
-        $upd = $conn->prepare("UPDATE pagamentos SET status='PAGO', valor_total = ?, pago_em = NOW() WHERE idpagamento = ?");
-        $upd->bind_param('di', $valor_total, $pagamento_id);
+    // Update aggregate pagamento (use new lowercase status and set data_pagamento)
+    $upd = $conn->prepare("UPDATE pagamentos SET status='pago', valor_total = ?, data_pagamento = NOW(), pago_em = NOW() WHERE idpagamento = ?");
+    $upd->bind_param('di', $valor_total, $pagamento_id);
         $upd->execute();
         $upd->close();
 

@@ -79,7 +79,7 @@ $conn->close();
 	<main>
 		<section id="resumo-pagamentos" style="margin-bottom: 20px;">
 			<h2 style="margin: 10px 0;">Resumo por colaborador (MVP)</h2>
-			<div style="display:flex; gap:10px; align-items: center; flex-wrap: wrap;">
+			<div class="resumo-filtro">
 				<label>Referência:</label>
 				<select id="mes-resumo">
 					<option value="1">Janeiro</option>

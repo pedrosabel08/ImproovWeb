@@ -117,7 +117,7 @@ main {
 	margin-bottom: 6px;
 }
 
-.filtro select {
+.filtro select, .resumo-filtro select {
 	padding: 4px 6px;
 	font-size: 0.8rem;
 	border-radius: 8px;
@@ -295,10 +295,6 @@ tbody {
 	font-size: 14px;
 }
 
-/* zebra rows */
-tbody tr:nth-child(even) td {
-	background: rgba(255, 255, 255, 0.02);
-}
 
 /* hover and selection */
 tbody tr:hover td {
@@ -431,5 +427,128 @@ button#generate-pdf:hover {
 	100% {
 		opacity: 1;
 		transform: translateX(0);
+	}
+}
+
+/* --- Pagamentos: status badges and action buttons --- */
+.badge {
+	display: inline-block;
+	padding: 4px 8px;
+	border-radius: 12px;
+	color: white;
+	font-weight: 700;
+	font-size: 0.8rem;
+	min-width: 86px;
+	text-align: center;
+}
+
+/* gray */
+.status-pendente_envio {
+	background: #6b7280;
+}
+
+/* amber */
+.status-aguardando_retorno {
+	background: #f59e0b;
+	color: #111827;
+}
+
+/* blue */
+.status-validado {
+	background: #3b82f6;
+}
+
+/* purple */
+.status-adendo_gerado {
+	background: #7c3aed;
+}
+
+/* green */
+.status-pago {
+	background: #16a34a;
+}
+
+/* gray */
+.status-desconhecido {
+	background: #9ca3af;
+}
+
+
+
+.action-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 6px 10px;
+	border-radius: 12px;
+	font-size: 0.85rem;
+	cursor: pointer;
+	border: 1px solid rgba(0, 0, 0, 0.08);
+	background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0));
+	color: var(--text);
+	width: max-content;
+	margin: auto;
+}
+
+.action-btn.send {
+	background-color: #ffb300;
+	color: #111;
+}
+
+.action-btn.validate {
+	background-color: #3b82f6;
+	color: #fff;
+}
+
+.action-btn.adendo {
+	background-color: #7c3aed;
+	color: #fff;
+}
+
+.action-btn.pay {
+	background-color: #10b981;
+	color: #fff;
+}
+
+.action-btn.small {
+	padding: 4px 8px;
+	font-size: 0.75rem;
+	border-radius: 10px;
+}
+
+.action-btn[disabled] {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+/* tipo count appended to labels */
+.checkbox-label .tipo-count {
+	display: inline-block;
+	margin-left: 8px;
+	background: rgba(255, 255, 255, 0.04);
+	padding: 2px 6px;
+	border-radius: 10px;
+	font-weight: 600;
+	color: var(--muted);
+	font-size: 0.85rem;
+}
+
+/* compact resumo actions layout */
+#tabela-resumo td.action-group {
+	display: grid;
+	justify-content: center;
+	align-items: center;
+	grid-template-columns: 2fr 1fr;
+}
+
+/* responsive tweaks */
+@media (max-width: 900px) {
+	.tipo-imagem {
+		grid-template-columns: repeat(2, 1fr);
+	}
+
+	.status-badge {
+		min-width: 70px;
+		font-size: 0.75rem;
 	}
 }

@@ -9,14 +9,20 @@ document.addEventListener('DOMContentLoaded', function () {
     // ====== Resumo (dashboard) ======
     const mesResumo = document.getElementById('mes-resumo');
     const anoResumo = document.getElementById('ano-resumo');
+    const mesTarefas = document.getElementById('mes');
+    const anoTarefas = document.getElementById('ano');
     const btnResumo = document.getElementById('btn-carregar-resumo');
-
+    // statusNovo is defined per item inside carregarResumo's loop
     function setDefaultMesAnoResumo() {
         if (!mesResumo || !anoResumo) return;
         const today = new Date();
         const prev = new Date(today.getFullYear(), today.getMonth() - 1, 1);
         mesResumo.value = (prev.getMonth() + 1).toString();
         anoResumo.value = prev.getFullYear().toString();
+        if (mesTarefas && anoTarefas) {
+            mesTarefas.value = (prev.getMonth() + 1).toString();
+            anoTarefas.value = prev.getFullYear().toString();
+        }
     }
 
     function currencyBRL(n) {
@@ -39,35 +45,71 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
             json.items.forEach(item => {
+                // determine canonical key and next action
+                const normalize = s => (s || '').toString().trim().toLowerCase().replace(/\s+/g, '_');
+                const key = normalize(item.status);
+
+                let displayLabel = 'Desconhecido';
+                if (key === 'adendo_gerado' || key === 'adendo') displayLabel = 'Adendo gerado';
+                else if (key === 'pago') displayLabel = 'Pago';
+                else if (key === 'aguardando_retorno' || key === 'enviado' || key === 'confirmando') displayLabel = 'Aguardando retorno';
+                else if (key === 'pendente_envio' || key === 'pendente') displayLabel = 'Pendente envio';
+                else if (key === 'validado' || key === 'confirmado') displayLabel = 'Validado';
+
+                // next action mapping: returns { label, nextStatus, btnClass }
+                function nextActionFor(key) {
+                    switch (key) {
+                        case 'pendente_envio':
+                        case 'pendente':
+                            return { label: 'Enviar lista', nextStatus: 'aguardando_retorno', btnClass: 'send' };
+                        case 'aguardando_retorno':
+                        case 'enviado':
+                        case 'confirmando':
+                            return { label: 'Marcar lista respondida', nextStatus: 'validado', btnClass: 'validate' };
+                        case 'validado':
+                        case 'confirmado':
+                            return { label: 'Gerar adendo', nextStatus: 'adendo_gerado', btnClass: 'adendo' };
+                        case 'adendo_gerado':
+                        case 'adendo':
+                            return { label: 'Marcar pago', nextStatus: 'pago', btnClass: 'pay' };
+                        case 'pago':
+                            return { label: null, nextStatus: null, btnClass: 'pay' };
+                        default:
+                            return { label: 'Enviar lista', nextStatus: 'aguardando_retorno', btnClass: 'send' };
+                    }
+                }
+
+                const action = nextActionFor(key);
+
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${item.nome}</td>
                     <td>${item.mes_ref}</td>
                     <td data-valor="${item.valor}">${currencyBRL(item.valor)}</td>
-                    <td><span class="badge status-${(item.status||'').toLowerCase()}">${item.status}</span></td>
+                    <td><span class="badge status-${(key || '').toLowerCase()}">${displayLabel}</span></td>
                     <td>${item.ultima_atualizacao ? item.ultima_atualizacao : '-'}</td>
-                    <td>
-                        <button class="btn-enviar" data-colab="${item.colaborador_id}">Enviar</button>
-                        <button class="btn-pagar" data-colab="${item.colaborador_id}">Marcar Pago</button>
-                        <button class="btn-detalhes" data-colab="${item.colaborador_id}">Detalhes</button>
+                    <td class="action-group">
+                        ${action.nextStatus ? `<button class="action-btn ${action.btnClass} btn-acao" data-colab="${item.colaborador_id}" data-next="${action.nextStatus}">${action.label}</button>` : `<span class="badge status-pago">Pago</span>`}
+                        <button class="action-btn small btn-detalhes" data-colab="${item.colaborador_id}">Detalhes</button>
                     </td>
                 `;
                 tbody.appendChild(tr);
             });
 
-            // Wire actions
-            tbody.querySelectorAll('.btn-enviar').forEach(btn => {
-                btn.addEventListener('click', () => atualizarStatusResumo(parseInt(btn.dataset.colab,10), 'ENVIADO'));
-            });
-            tbody.querySelectorAll('.btn-pagar').forEach(btn => {
+            // Wire actions: primary next-action buttons and detalhes
+            tbody.querySelectorAll('.btn-acao').forEach(btn => {
                 btn.addEventListener('click', async () => {
-                    const ok = confirm('Confirmar pagamento para todas as tarefas do mês selecionado deste colaborador?');
+                    const colab = parseInt(btn.dataset.colab, 10);
+                    const next = btn.dataset.next;
+                    let confirmMsg = `Executar ação "${btn.textContent.trim()}" para este colaborador?`;
+                    if (next === 'pago') confirmMsg = 'Confirmar pagamento para todas as tarefas do mês selecionado deste colaborador?';
+                    const ok = confirm(confirmMsg);
                     if (!ok) return;
-                    await atualizarStatusResumo(parseInt(btn.dataset.colab,10), 'PAGO');
+                    await atualizarStatusResumo(colab, next);
                 });
             });
             tbody.querySelectorAll('.btn-detalhes').forEach(btn => {
-                btn.addEventListener('click', () => abrirDetalhesColaborador(parseInt(btn.dataset.colab,10)));
+                btn.addEventListener('click', () => abrirDetalhesColaborador(parseInt(btn.dataset.colab, 10)));
             });
         } catch (e) {
             console.error('Erro ao carregar resumo', e);
@@ -189,9 +231,10 @@ document.addEventListener('DOMContentLoaded', function () {
                         checkbox.type = 'checkbox';
                         checkbox.classList.add('pagamento-checkbox');
                         checkbox.checked = item.pagamento === 1;
+                        checkbox.setAttribute('pagamento', item.pagamento);
                         checkbox.setAttribute('data-id', item.identificador);
                         checkbox.setAttribute('data-origem', item.origem);
-                        checkbox.setAttribute('funcao', item.funcao_id)
+                        checkbox.setAttribute('funcao', item.funcao_id);
 
                         checkbox.addEventListener('change', function () {
                             if (checkbox.checked) {
@@ -304,8 +347,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.getElementById('confirmar-pagamento').addEventListener('click', function () {
         var colaboradorId = parseInt(document.getElementById('colaborador').value, 10);
-        var checkboxes = document.querySelectorAll('.pagamento-checkbox:checked');
-        var ids = Array.from(checkboxes).map(cb => ({
+        // Apenas checkboxes visíveis e marcadas
+        var checkboxes = Array.from(document.querySelectorAll('.pagamento-checkbox:checked')).filter(cb => cb.closest('tr').offsetParent !== null);
+        var ids = checkboxes.map(cb => ({
             id: parseInt(cb.getAttribute('data-id'), 10),
             origem: cb.getAttribute('data-origem'), // Coletando o atributo origem
             funcao_id: parseInt(cb.getAttribute('funcao'), 10) // Coletando o atributo funcao_id
@@ -356,8 +400,9 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     document.getElementById('adicionar-valor').addEventListener('click', function () {
-        var checkboxes = document.querySelectorAll('.pagamento-checkbox:checked');
-        var ids = Array.from(checkboxes).map(cb => ({
+        // Apenas checkboxes visíveis e marcadas
+        var checkboxes = Array.from(document.querySelectorAll('.pagamento-checkbox:checked')).filter(cb => cb.closest('tr').offsetParent !== null);
+        var ids = checkboxes.map(cb => ({
             id: cb.getAttribute('data-id'),
             origem: cb.getAttribute('data-origem'),
             funcao_id: cb.getAttribute('funcao')
@@ -398,18 +443,71 @@ function contarLinhasTabela() {
     const linhas = tbody.getElementsByTagName("tr");
     let totalImagens = 0;
     let totalValor = 0;
-
+    // Mantém o comportamento anterior: contar imagens visíveis e somar valores
     for (let i = 0; i < linhas.length; i++) {
-        if (linhas[i].style.display !== "none") {
+        const linha = linhas[i];
+        if (linha.style.display !== "none") {
             totalImagens++;
-            const valorCell = linhas[i].getElementsByTagName("td")[3]; // Supondo que o valor está na quarta coluna (índice 3)
-            const valor = parseFloat(valorCell.textContent.replace('R$', '').replace(',', '.').trim());
-            totalValor += !isNaN(valor) ? valor : 0; // Soma o valor se for um número
+            const valorCell = linha.getElementsByTagName("td")[3]; // Supondo que o valor está na quarta coluna (índice 3)
+            const raw = valorCell ? valorCell.textContent : '';
+            // Normaliza o valor: remove tudo que não seja número, ponto ou vírgula, transforma milhares
+            const numero = parseFloat(raw.replace(/[^0-9,.-]+/g, '').replace(/\./g, '').replace(',', '.'));
+            totalValor += !isNaN(numero) ? numero : 0; // Soma o valor se for um número
         }
     }
 
-    document.getElementById("total-imagens").innerText = totalImagens;
-    document.getElementById("totalValor").innerText = totalValor.toFixed(2).replace('.', ','); // Atualiza o total
+    // Atualiza totais gerais
+    const elTotalImagens = document.getElementById("total-imagens");
+    const elTotalValor = document.getElementById("totalValor");
+    if (elTotalImagens) elTotalImagens.innerText = totalImagens;
+    if (elTotalValor) elTotalValor.innerText = totalValor.toFixed(2).replace('.', ','); // Atualiza o total
+
+    // --- Contagem por função (atualiza cada label dentro de .tipo-imagem) ---
+    // A marcação usa um único container .tipo-imagem com vários <label class="checkbox-label">;
+    // vamos contar as funções nas linhas visíveis e atualizar cada label individualmente.
+    const mapaContagem = {};
+    for (let i = 0; i < linhas.length; i++) {
+        const linha = linhas[i];
+        if (linha.style.display === 'none') continue; // apenas linhas visíveis
+        const funcaoCell = linha.cells[2];
+        const funcaoText = funcaoCell ? (funcaoCell.textContent || funcaoCell.innerText).trim() : '';
+        if (!funcaoText) continue;
+        mapaContagem[funcaoText] = (mapaContagem[funcaoText] || 0) + 1;
+    }
+
+    // Seleciona cada label dentro o container e atualiza seu contador
+    const labels = document.querySelectorAll('.tipo-imagem .checkbox-label');
+    labels.forEach(label => {
+        const input = label.querySelector('input[type="checkbox"]');
+        let nomeFuncao = '';
+        if (input && input.name) {
+            nomeFuncao = input.name.trim();
+        } else {
+            // fallback: texto do próprio label (ex.: <span>...)</
+            const span = label.querySelector('span');
+            nomeFuncao = span ? span.textContent.trim() : (label.textContent || '').trim();
+        }
+
+        const count = mapaContagem[nomeFuncao] || 0;
+
+        // Atualiza ou cria o span .tipo-count dentro do label
+        let spanCount = label.querySelector('.tipo-count');
+        // Mostrar o contador apenas quando for maior que 0
+        if (count > 0) {
+            if (!spanCount) {
+                spanCount = document.createElement('span');
+                spanCount.className = 'tipo-count';
+                spanCount.style.marginLeft = '6px';
+                spanCount.style.color = '#666';
+                label.appendChild(spanCount);
+            }
+            spanCount.textContent = `(${count})`;
+            spanCount.style.display = '';
+        } else {
+            // Se existir e o count for zero, remove o elemento para não mostrar
+            if (spanCount) spanCount.remove();
+        }
+    });
 }
 
 
@@ -453,7 +551,7 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
 
 
     const today = new Date();
-    today.setDate(today.getDate() + 0); // Adiciona 1 dia
+    today.setDate(today.getDate() + 2); // Adiciona 1 dia
     const day = String(today.getDate() + 0).padStart(2, '0');
 
     // Obtém o número do mês (0 = Janeiro, 11 = Dezembro)
@@ -634,11 +732,11 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
     // // const novaTabelaHeaders = ['Extra', 'Valor'];
     // const novaTabelaHeaders = ['Categoria', 'Valor'];
     // const novaTabelaBody = [
-    //     // ['Atendimento', '3000,00'],
+    //     ['Atendimento', '3000,00'],
     //     // ['Fixo', '1600,00'],
     //     // ['Bônus', '350,00'],
-    //     ['Reembolso almoço', '266,00'],
-    //     ['Desconto de imagem: 5. HAA_HOR Fachada Fora', '-350,00'],
+    //     // ['Reembolso almoço', '266,00'],
+    //     // ['Desconto de imagem: 5. HAA_HOR Fachada Fora', '-350,00'],
     //     // ['Gasolina', '88,00'],
     //     // ['Diaria Drone', '525,00'],
     //     // ['Outros', '490,00']
@@ -922,4 +1020,65 @@ function exportToExcel() {
     // Gera o arquivo Excel e faz o download com o nome personalizado
     XLSX.writeFile(wb, nomeArquivo);
 }
+
+
+// // ---- UI enhancement: convert status text into styled badges and keep them updated ----
+// (function () {
+//     const statusClassMap = {
+//         'pendente_envio': 'status-pendente_envio',
+//         'aguardando_retorno': 'status-aguardando_retorno',
+//         'validado': 'status-validado',
+//         'adendo_gerado': 'status-adendo_gerado',
+//         'pago': 'status-pago'
+//     };
+
+//     function normalizeText(t) {
+//         return (t || '').toString().trim().toLowerCase().replace(/\s+/g, '_');
+//     }
+
+//     function transformCell(td) {
+//         if (!td) return;
+//         const text = td.textContent.trim();
+//         const key = normalizeText(text);
+//         if (statusClassMap[key]) {
+//             // avoid double-wrapping
+//             if (td.querySelector('.status-badge')) return;
+//             td.innerHTML = `<span class="status-badge ${statusClassMap[key]}">${text}</span>`;
+//         }
+//     }
+
+//     function transformAll() {
+//         // scan resumo and faturamento tables
+//         const tds = Array.from(document.querySelectorAll('#tabela-resumo tbody td, #tabela-faturamento tbody td'));
+//         tds.forEach(td => {
+//             const txt = td.textContent.trim().toLowerCase();
+//             // quick check: if cell text contains one of the known status words
+//             if (txt.length === 0) return;
+//             const normalized = normalizeText(txt);
+//             if (Object.keys(statusClassMap).includes(normalized)) transformCell(td);
+//         });
+//     }
+
+//     // Observe changes on the two tables and re-run transform when content changes
+//     function observeTable(selector) {
+//         const el = document.querySelector(selector);
+//         if (!el) return;
+//         const tbody = el.querySelector('tbody');
+//         if (!tbody) return;
+//         const mo = new MutationObserver(mutations => {
+//             transformAll();
+//         });
+//         mo.observe(tbody, { childList: true, subtree: true, characterData: true });
+//     }
+
+//     document.addEventListener('DOMContentLoaded', function () {
+//         // initial transform (in case server rendered statuses exist)
+//         setTimeout(transformAll, 200);
+//         observeTable('#tabela-resumo');
+//         observeTable('#tabela-faturamento');
+//     });
+
+//     // also expose for manual invocation after dynamic updates
+//     window._transformPagamentoStatusBadges = transformAll;
+// })();
 

@@ -59,7 +59,21 @@ if ($colaboradorId == 1) {
         fi.imagem_id,
         ico.imagem_nome,
         fi.funcao_id,
-        f.nome_funcao,
+        CASE 
+            WHEN fi.funcao_id = 4 THEN 
+                    CASE 
+                        WHEN EXISTS (
+                            SELECT 1 
+                            FROM funcao_imagem fi_sub
+                            JOIN funcao f_sub ON fi_sub.funcao_id = f_sub.idfuncao
+                            WHERE fi_sub.imagem_id = fi.imagem_id 
+                            AND f_sub.nome_funcao = 'Pré-Finalização'
+                        ) OR ico.status_id = 1
+                        THEN 'Finalização Parcial'
+                        ELSE 'Finalização Completa'
+                    END 
+            ELSE f.nome_funcao 
+        END AS nome_funcao,
         fi.status,
         fi.prazo,
         fi.pagamento,
@@ -117,17 +131,17 @@ if ($colaboradorId == 1) {
     fi.funcao_id,
     CASE 
         WHEN fi.funcao_id = 4 THEN 
-            CASE 
-                WHEN EXISTS (
-                    SELECT 1 
-                    FROM funcao_imagem fi_sub
-                    JOIN funcao f_sub ON fi_sub.funcao_id = f_sub.idfuncao
-                    WHERE fi_sub.imagem_id = fi.imagem_id 
-                    AND f_sub.nome_funcao = 'Pré-Finalização'
-                ) 
-                THEN 'Finalização Parcial'
-                ELSE 'Finalização Completa'
-            END 
+                CASE 
+                    WHEN EXISTS (
+                        SELECT 1 
+                        FROM funcao_imagem fi_sub
+                        JOIN funcao f_sub ON fi_sub.funcao_id = f_sub.idfuncao
+                        WHERE fi_sub.imagem_id = fi.imagem_id 
+                        AND f_sub.nome_funcao = 'Pré-Finalização'
+                    ) OR ico.status_id = 1
+                    THEN 'Finalização Parcial'
+                    ELSE 'Finalização Completa'
+                END 
         ELSE f.nome_funcao 
     END AS nome_funcao,
     fi.status,
@@ -192,17 +206,17 @@ WHERE
         fi.funcao_id,
         CASE 
             WHEN fi.funcao_id = 4 THEN 
-                CASE 
-                    WHEN EXISTS (
-                        SELECT 1 
-                        FROM funcao_imagem fi_sub
-                        JOIN funcao f_sub ON fi_sub.funcao_id = f_sub.idfuncao
-                        WHERE fi_sub.imagem_id = fi.imagem_id 
-                        AND f_sub.nome_funcao = 'Pré-Finalização'
-                    ) 
-                    THEN 'Finalização Parcial'
-                    ELSE 'Finalização Completa'
-                END 
+                    CASE 
+                        WHEN EXISTS (
+                            SELECT 1 
+                            FROM funcao_imagem fi_sub
+                            JOIN funcao f_sub ON fi_sub.funcao_id = f_sub.idfuncao
+                            WHERE fi_sub.imagem_id = fi.imagem_id 
+                            AND f_sub.nome_funcao = 'Pré-Finalização'
+                        ) OR ico.status_id = 1
+                        THEN 'Finalização Parcial'
+                        ELSE 'Finalização Completa'
+                    END 
             ELSE f.nome_funcao 
         END AS nome_funcao,
         fi.status,

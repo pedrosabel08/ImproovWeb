@@ -75,17 +75,13 @@ $conn->close();
 	include '../sidebar.php';
 
 	?>
-	<header>
-		<img src="../gif/assinatura_branco.gif" alt="" style="width: 250px;">
-
-		<p id="data"></p>
-	</header>
 
 	<main>
 		<div class="filtro">
 			<div class="colaborador">
 				<h2>Colaborador:</h2>
 				<select name="colaborador" id="colaborador">
+					<option value="">Escolha um colaborador</option>
 					<?php foreach ($colaboradores as $colab): ?>
 						<option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
 							<?= htmlspecialchars($colab['nome_colaborador']); ?>
@@ -120,57 +116,32 @@ $conn->close();
 				</select>
 			</div>
 
-			<div class="tipo-imagem" style="display: grid; grid-template-columns: repeat(3, 1fr);">
-
-				<div>
-					<input type="checkbox" name="Caderno" id="Caderno" onclick="filtrarTabela()">
-					<p>Caderno</p>
-				</div>
-				<div>
-					<input type="checkbox" name="Filtro de assets" id="Filtro de assets" onclick="filtrarTabela()">
-					<p>Filtro de assets</p>
-				</div>
-				<div>
-					<input type="checkbox" name="Modelagem" id="Modelagem" onclick="filtrarTabela()">
-					<p>Modelagem</p>
-				</div>
-				<div>
-					<input type="checkbox" name="Composição" id="Composição" onclick="filtrarTabela()">
-					<p>Composição</p>
-				</div>
-				<div>
-					<input type="checkbox" name="Pré-Finalização" id="Pré-Finalização" onclick="filtrarTabela()">
-					<p>Pré-Finalização</p>
-				</div>
-				<div>
-					<input type="checkbox" name="Finalização Completa" id="Finalização Completa" onclick="filtrarTabela()">
-					<p>Finalização Completa</p>
-				</div>
-				<div>
-					<input type="checkbox" name="Finalização Parcial" id="Finalização Parcial" onclick="filtrarTabela()">
-					<p>Finalização Parcial</p>
-				</div>
-				<div>
-					<input type="checkbox" name="Alteração" id="Alteração" onclick="filtrarTabela()">
-					<p>Alteração</p>
-				</div>
-				<div>
-					<input type="checkbox" name="Pós-produção" id="Pós-produção" onclick="filtrarTabela()">
-					<p>Pós-produção</p>
-				</div>
-				<div>
-					<input type="checkbox" name="Planta Humanizada" id="Planta Humanizada" onclick="filtrarTabela()">
-					<p>Planta Humanizada</p>
-				</div>
-				<div>
-					<input type="checkbox" name="Acompanhamento" id="Acompanhamento" onclick="filtrarTabela()">
-					<p>Acompanhamento</p>
-				</div>
-				<div>
-					<input type="checkbox" name="Animação" id="Animação" onclick="filtrarTabela()">
-					<p>Animação</p>
-				</div>
-			</div>
+		</div>
+		<div class="tipo-imagem" style="display: grid; grid-template-columns: repeat(3, 1fr); gap:10px;">
+			<label class="checkbox-label"><input type="checkbox" name="Caderno" id="Caderno"
+					onclick="filtrarTabela()"><span>Caderno</span></label>
+			<label class="checkbox-label"><input type="checkbox" name="Filtro de assets" id="Filtro de_assets"
+					onclick="filtrarTabela()"><span>Filtro de assets</span></label>
+			<label class="checkbox-label"><input type="checkbox" name="Modelagem" id="Modelagem"
+					onclick="filtrarTabela()"><span>Modelagem</span></label>
+			<label class="checkbox-label"><input type="checkbox" name="Composição" id="Composicao"
+					onclick="filtrarTabela()"><span>Composição</span></label>
+			<label class="checkbox-label"><input type="checkbox" name="Pré-Finalização" id="Pre-Finalizacao"
+					onclick="filtrarTabela()"><span>Pré-Finalização</span></label>
+			<label class="checkbox-label"><input type="checkbox" name="Finalização Completa" id="Finalizacao_Completa"
+					onclick="filtrarTabela()"><span>Finalização Completa</span></label>
+			<label class="checkbox-label"><input type="checkbox" name="Finalização Parcial" id="Finalizacao_Parcial"
+					onclick="filtrarTabela()"><span>Finalização Parcial</span></label>
+			<label class="checkbox-label"><input type="checkbox" name="Alteração" id="Alteracao"
+					onclick="filtrarTabela()"><span>Alteração</span></label>
+			<label class="checkbox-label"><input type="checkbox" name="Pós-produção" id="Pos_producao"
+					onclick="filtrarTabela()"><span>Pós-produção</span></label>
+			<label class="checkbox-label"><input type="checkbox" name="Planta Humanizada" id="Planta_Humanizada"
+					onclick="filtrarTabela()"><span>Planta Humanizada</span></label>
+			<label class="checkbox-label"><input type="checkbox" name="Acompanhamento" id="Acompanhamento"
+					onclick="filtrarTabela()"><span>Acompanhamento</span></label>
+			<label class="checkbox-label"><input type="checkbox" name="Animação" id="Animacao"
+					onclick="filtrarTabela()"><span>Animação</span></label>
 		</div>
 		<section id="table-list">
 			<div class="menu-buttons">

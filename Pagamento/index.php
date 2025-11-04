@@ -77,6 +77,48 @@ $conn->close();
 	?>
 
 	<main>
+		<section id="resumo-pagamentos" style="margin-bottom: 20px;">
+			<h2 style="margin: 10px 0;">Resumo por colaborador (MVP)</h2>
+			<div style="display:flex; gap:10px; align-items: center; flex-wrap: wrap;">
+				<label>Referência:</label>
+				<select id="mes-resumo">
+					<option value="1">Janeiro</option>
+					<option value="2">Fevereiro</option>
+					<option value="3">Março</option>
+					<option value="4">Abril</option>
+					<option value="5">Maio</option>
+					<option value="6">Junho</option>
+					<option value="7">Julho</option>
+					<option value="8">Agosto</option>
+					<option value="9">Setembro</option>
+					<option value="10">Outubro</option>
+					<option value="11">Novembro</option>
+					<option value="12">Dezembro</option>
+				</select>
+				<select id="ano-resumo">
+					<option value="2025">2025</option>
+					<option value="2024">2024</option>
+					<option value="2023">2023</option>
+					<option value="2022">2022</option>
+				</select>
+				<button id="btn-carregar-resumo">Carregar Resumo</button>
+			</div>
+			<div class="tabela" style="margin-top:10px;">
+				<table id="tabela-resumo">
+					<thead>
+						<tr>
+							<th>Colaborador</th>
+							<th>Mês</th>
+							<th>Valor pendente (R$)</th>
+							<th>Status</th>
+							<th>Última atualização</th>
+							<th>Ações</th>
+						</tr>
+					</thead>
+					<tbody></tbody>
+				</table>
+			</div>
+		</section>
 		<div class="filtro">
 			<div class="colaborador">
 				<h2>Colaborador:</h2>

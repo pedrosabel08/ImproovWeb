@@ -6,6 +6,121 @@ function formatarDataAtual() {
 
 
 document.addEventListener('DOMContentLoaded', function () {
+    // ====== Resumo (dashboard) ======
+    const mesResumo = document.getElementById('mes-resumo');
+    const anoResumo = document.getElementById('ano-resumo');
+    const btnResumo = document.getElementById('btn-carregar-resumo');
+
+    function setDefaultMesAnoResumo() {
+        if (!mesResumo || !anoResumo) return;
+        const today = new Date();
+        const prev = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        mesResumo.value = (prev.getMonth() + 1).toString();
+        anoResumo.value = prev.getFullYear().toString();
+    }
+
+    function currencyBRL(n) {
+        return (n || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+
+    async function carregarResumo() {
+        if (!mesResumo || !anoResumo) return;
+        const mes = parseInt(mesResumo.value, 10);
+        const ano = parseInt(anoResumo.value, 10);
+        const tbody = document.querySelector('#tabela-resumo tbody');
+        if (tbody) tbody.innerHTML = '<tr><td colspan="6">Carregando...</td></tr>';
+        try {
+            const res = await fetch(`getResumo.php?mes=${encodeURIComponent(mes)}&ano=${encodeURIComponent(ano)}`);
+            const json = await res.json();
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            if (!json.items || json.items.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6">Sem dados para o período.</td></tr>';
+                return;
+            }
+            json.items.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${item.nome}</td>
+                    <td>${item.mes_ref}</td>
+                    <td data-valor="${item.valor}">${currencyBRL(item.valor)}</td>
+                    <td><span class="badge status-${(item.status||'').toLowerCase()}">${item.status}</span></td>
+                    <td>${item.ultima_atualizacao ? item.ultima_atualizacao : '-'}</td>
+                    <td>
+                        <button class="btn-enviar" data-colab="${item.colaborador_id}">Enviar</button>
+                        <button class="btn-pagar" data-colab="${item.colaborador_id}">Marcar Pago</button>
+                        <button class="btn-detalhes" data-colab="${item.colaborador_id}">Detalhes</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            // Wire actions
+            tbody.querySelectorAll('.btn-enviar').forEach(btn => {
+                btn.addEventListener('click', () => atualizarStatusResumo(parseInt(btn.dataset.colab,10), 'ENVIADO'));
+            });
+            tbody.querySelectorAll('.btn-pagar').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const ok = confirm('Confirmar pagamento para todas as tarefas do mês selecionado deste colaborador?');
+                    if (!ok) return;
+                    await atualizarStatusResumo(parseInt(btn.dataset.colab,10), 'PAGO');
+                });
+            });
+            tbody.querySelectorAll('.btn-detalhes').forEach(btn => {
+                btn.addEventListener('click', () => abrirDetalhesColaborador(parseInt(btn.dataset.colab,10)));
+            });
+        } catch (e) {
+            console.error('Erro ao carregar resumo', e);
+            if (tbody) tbody.innerHTML = '<tr><td colspan="6">Erro ao carregar</td></tr>';
+        }
+    }
+
+    async function atualizarStatusResumo(colaboradorId, status) {
+        const mes = parseInt(mesResumo.value, 10);
+        const ano = parseInt(anoResumo.value, 10);
+        try {
+            const res = await fetch('updateStatusPagamento.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ colaborador_id: colaboradorId, mes, ano, status })
+            });
+            const json = await res.json();
+            if (!json.success) {
+                alert('Falha ao atualizar status: ' + (json.error || 'erro desconhecido'));
+            } else {
+                carregarResumo();
+            }
+        } catch (e) {
+            console.error('Erro ao atualizar status', e);
+            alert('Erro ao atualizar status');
+        }
+    }
+
+    function abrirDetalhesColaborador(colaboradorId) {
+        const selColab = document.getElementById('colaborador');
+        const selMes = document.getElementById('mes');
+        const selAno = document.getElementById('ano');
+        if (selColab && selMes && selAno) {
+            selColab.value = String(colaboradorId);
+            selMes.value = mesResumo.value;
+            selAno.value = anoResumo.value;
+            if (typeof window.carregarDadosColab === 'function') {
+                window.carregarDadosColab();
+                const detalheSec = document.getElementById('table-list');
+                if (detalheSec) detalheSec.scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+    }
+
+    if (btnResumo) {
+        btnResumo.addEventListener('click', carregarResumo);
+    }
+    if (mesResumo && anoResumo) {
+        mesResumo.addEventListener('change', carregarResumo);
+        anoResumo.addEventListener('change', carregarResumo);
+        setDefaultMesAnoResumo();
+        carregarResumo();
+    }
     document.getElementById('colaborador').addEventListener('change', function () {
         carregarDadosColab();
     });
@@ -149,6 +264,9 @@ document.addEventListener('DOMContentLoaded', function () {
             totalValorLabel.textContent = 'Total: R$ 0,00';
         }
     }
+
+    // Expor para o dashboard
+    window.carregarDadosColab = carregarDadosColab;
 
 
 

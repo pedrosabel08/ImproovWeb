@@ -259,18 +259,18 @@ a {
 	font-weight: bold;
 }
 
-#table-list table {
+table {
 	width: 100%;
 	border-collapse: collapse;
 }
 
 /* Table visual improvements */
-#table-list table thead {
+table thead {
 	background: var(--panel);
 	/* solid background for sticky header */
 }
 
-#table-list table th {
+table th {
 	color: var(--text);
 	padding: 10px 8px;
 	font-weight: 600;
@@ -284,24 +284,24 @@ a {
 	box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06);
 }
 
-#table-list table td {
+table td {
 	text-align: center;
 	padding: 10px 8px;
 	color: var(--text);
 	vertical-align: middle;
 }
 
-#table-list tbody {
+tbody {
 	font-size: 14px;
 }
 
 /* zebra rows */
-#table-list tbody tr:nth-child(even) td {
+tbody tr:nth-child(even) td {
 	background: rgba(255, 255, 255, 0.02);
 }
 
 /* hover and selection */
-#table-list tbody tr:hover td {
+tbody tr:hover td {
 	background: var(--hover);
 	color: var(--text);
 }

@@ -252,7 +252,7 @@ document.addEventListener('click', function (event) {
         const idNotificacao = notificacao.getAttribute('data-not-id');
 
         if (idNotificacao) {
-            fetch(`https://improov.com.br/sistema/ler_notificacao.php?id=${idNotificacao}`, {
+            fetch(`ler_notificacao.php?id=${idNotificacao}`, {
                 method: 'POST'
             })
                 .then(response => response.json())
@@ -265,7 +265,7 @@ document.addEventListener('click', function (event) {
                         notificacao.remove();
                     }, 200);
                     atualizarContadorTarefas(); // Atualiza as tarefas após marcar como lida
-                    popover.classList.add('oculto');
+
 
                 })
                 .catch(error => console.error('Erro ao marcar notificação como lida:', error));

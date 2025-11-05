@@ -27,6 +27,7 @@ while ($row = $res->fetch_assoc()) {
         'mes_ref' => $mes_ref,
         'valor_pendente' => 0.0,
         'valor_mes' => 0.0,
+        'valor_fixo' => 0.0,
         'status' => null,
         'ultima_atualizacao' => null,
         'pagamento_id' => null,
@@ -117,6 +118,23 @@ if ($stmt->execute()) {
 }
 $stmt->close();
 
+// OPTIONAL: if colaborador table has a 'valor_fixo' column, fetch it and add to the collaborator totals
+$check = $conn->query("SHOW COLUMNS FROM colaborador LIKE 'valor_fixo'");
+if ($check && $check->num_rows > 0) {
+    $sqlFixo = "SELECT idcolaborador, valor_fixo FROM colaborador WHERE idcolaborador IN ($ids)";
+    if ($r = $conn->query($sqlFixo)) {
+        while ($row = $r->fetch_assoc()) {
+            $id = (int)$row['idcolaborador'];
+            if (!isset($cols[$id])) continue;
+            $cols[$id]['valor_fixo'] = (float)$row['valor_fixo'];
+            // include fixed value in the monthly total so UI shows combined amount
+            $cols[$id]['valor_mes'] += (float)$row['valor_fixo'];
+            // if there is no pagamento record, consider it pending as well
+            $cols[$id]['valor_pendente'] += (float)$row['valor_fixo'];
+        }
+    }
+}
+
 // Build items array, compute display status
 $items = [];
 foreach ($cols as $c) {
@@ -134,6 +152,7 @@ foreach ($cols as $c) {
         'nome' => $c['nome'],
         'mes_ref' => $c['mes_ref'],
         'valor' => (float)$c['valor_pendente'],
+        'valor_fixo' => (float)$c['valor_fixo'],
         'valor_mes' => (float)$c['valor_mes'],
         'status' => $status,
         'ultima_atualizacao' => $c['ultima_atualizacao'],

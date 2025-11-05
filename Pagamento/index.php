@@ -103,12 +103,13 @@ $conn->close();
 				</select>
 				<button id="btn-carregar-resumo">Carregar Resumo</button>
 			</div>
-			<div class="tabela" style="margin-top:10px;">
+			<div class="tabela" style="margin-top:10px; max-height: max-content;">
 				<table id="tabela-resumo">
 					<thead>
 						<tr>
 							<th>Colaborador</th>
 							<th>Mês</th>
+							<th>Fixo (R$)</th>
 							<th>Valor pendente (R$)</th>
 							<th>Status</th>
 							<th>Última atualização</th>

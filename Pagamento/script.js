@@ -34,14 +34,14 @@ document.addEventListener('DOMContentLoaded', function () {
         const mes = parseInt(mesResumo.value, 10);
         const ano = parseInt(anoResumo.value, 10);
         const tbody = document.querySelector('#tabela-resumo tbody');
-        if (tbody) tbody.innerHTML = '<tr><td colspan="6">Carregando...</td></tr>';
+    if (tbody) tbody.innerHTML = '<tr><td colspan="7">Carregando...</td></tr>';
         try {
             const res = await fetch(`getResumo.php?mes=${encodeURIComponent(mes)}&ano=${encodeURIComponent(ano)}`);
             const json = await res.json();
             if (!tbody) return;
             tbody.innerHTML = '';
             if (!json.items || json.items.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6">Sem dados para o período.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7">Sem dados para o período.</td></tr>';
                 return;
             }
             json.items.forEach(item => {
@@ -85,6 +85,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 tr.innerHTML = `
                     <td>${item.nome}</td>
                     <td>${item.mes_ref}</td>
+                    <td data-fixo="${item.valor_fixo}">${currencyBRL(item.valor_fixo)}</td>
                     <td data-valor="${item.valor}">${currencyBRL(item.valor)}</td>
                     <td><span class="badge status-${(key || '').toLowerCase()}">${displayLabel}</span></td>
                     <td>${item.ultima_atualizacao ? item.ultima_atualizacao : '-'}</td>
@@ -113,7 +114,7 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         } catch (e) {
             console.error('Erro ao carregar resumo', e);
-            if (tbody) tbody.innerHTML = '<tr><td colspan="6">Erro ao carregar</td></tr>';
+            if (tbody) tbody.innerHTML = '<tr><td colspan="7">Erro ao carregar</td></tr>';
         }
     }
 
@@ -551,7 +552,7 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
 
 
     const today = new Date();
-    today.setDate(today.getDate() + 2); // Adiciona 1 dia
+    today.setDate(today.getDate() + 1); // Adiciona 1 dia
     const day = String(today.getDate() + 0).padStart(2, '0');
 
     // Obtém o número do mês (0 = Janeiro, 11 = Dezembro)
@@ -637,9 +638,22 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10); // Tamanho padrão para o corpo do texto
 
+    let textoAnima = '';
+    let cnpjAnima = '';
+
+    const nomeColaboradorNormalized = (nomeColaborador || '').trim().toLowerCase();
+    const colaboradoresAnima = ['andré luis tavares'];
+    if (colaboradoresAnima.includes(nomeColaboradorNormalized)) {
+        textoAnima = 'STELLAR ANIMA';
+        cnpjAnima = '45.284.934/0001-30';
+    } else {
+        textoAnima = 'IMPROOV';
+        cnpjAnima = '37.066.879/0001-84';
+    }
+
     // Parte 1: Texto do contrato
     // Definição das variáveis de texto
-    let text1 = "De um lado IMPROOV LTDA., CNPJ: 37.066.879/0001-84, com endereço/sede na RUA BAHIA, 988, SALA 503, BAIRRO DO SALTO, BLUMENAU, SC, CEP 89.031-001;Se seguir denominado simplesmente parte CONTRATANTE, neste ato representado por DIOGO JOSÉ POFFO, nacionalidade: brasileira, estado civil: divorciado, inscrito no CPF sob o nº. 036.698.519-17, residente e domiciliado na Avenida Senador Atílio Fontana, nº 2101 apt. 308 Edifício Caravelas, bairro Balneário Pereque – Porto Belo/SC – CEP 88210-000, doravante denominada parte CONTRATANTE.";
+    let text1 = `De um lado ${textoAnima} LTDA., CNPJ: ${cnpjAnima}, com endereço/sede na RUA BAHIA, 988, SALA 503, BAIRRO DO SALTO, BLUMENAU, SC, CEP 89.031-001;Se seguir denominado simplesmente parte CONTRATANTE, neste ato representado por DIOGO JOSÉ POFFO, nacionalidade: brasileira, estado civil: divorciado, inscrito no CPF sob o nº. 036.698.519-17, residente e domiciliado na Avenida Senador Atílio Fontana, nº 2101 apt. 308 Edifício Caravelas, bairro Balneário Pereque – Porto Belo/SC – CEP 88210-000, doravante denominada parte CONTRATANTE.`;
 
     let text2 = `De outro, ${nomeEmpresarial} ,CNPJ: ${cnpjColaborador}, com endereço/sede na ${enderecoColaborador}, CEP: ${cep} ; se seguir denominado simplesmente parte CONTRATADA; neste ato representado por ${nomeColaborador}, brasileiro(a), ${estadoCivil}, inscrito(a) no CPF sob  o nº. ${cpfColaborador}, residente e domiciliado na ${enderecoCNPJ} e CEP: ${cepCNPJ} doravante denominada parte CONTRATADA.`;
 
@@ -653,7 +667,7 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
 
 
     // Adicionando os textos ao PDF
-    addTextWithPageCheck(text1, 10, ["IMPROOV", "LTDA", "DIOGO", "JOSÉ", "POFFO", "37.066.879/0001-84", "036.698.519-17", "CONTRATANTE", "CONTRATADO"]);
+    addTextWithPageCheck(text1, 10, ["STELLAR", "ANIMA", "IMPROOV", "LTDA", "DIOGO", "JOSÉ", "POFFO", "37.066.879/0001-84", "45.284.934/0001-30", "036.698.519-17", "CONTRATANTE", "CONTRATADO"]);
     addTextWithPageCheck(text2, 10, ["CONTRATADA", "CONTRATATO", ...nomeEmpresarialWords, cnpjColaborador, ...nomeColaboradorWords, cpfColaborador]);
     addTextWithPageCheck(text3, 10, ["TERMO", "ADITIVO"]);
     addTextWithPageCheck(text4, 0, ["DO OBJETO"]);
@@ -662,7 +676,13 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
 
     // Parte 2: Lista de tarefas/tabela
     const table = document.getElementById('tabela-faturamento');
-    const selectedColumnIndexes = [0, 2, 3];
+    // por padrão incluímos colunas 0 (nome), 2 (função) e 3 (valor)
+    let selectedColumnIndexes = [0, 2, 3];
+    // se for colaborador específico, remover a coluna de valor (índice 3)
+    const colaboradoresSemValor = ['anderson roberto de souza', 'pedro henrique munhoz da silva'];
+    if (colaboradoresSemValor.includes(nomeColaboradorNormalized)) {
+        selectedColumnIndexes = [0, 2];
+    }
     const dataPagamentoColumnIndex = 5;
     const headers = [];
     const rows = [];
@@ -698,8 +718,23 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
             });
 
             const valorColumnIndex = 3; // Substitua pelo índice da coluna com os valores
-            const valor = parseFloat(cells[valorColumnIndex]?.innerText.trim().replace('R$ ', '').replace('.', '').replace(',', '.') || 0);
+            const valor = parseFloat(cells[valorColumnIndex]?.innerText.trim().replace('R$ ', '').replace(/\./g, '').replace(',', '.') || 0);
             totalValor += valor; // Soma o valor da linha ao total
+
+            // Se a função for "Animação" (comparação normalize para ignorar acentos) e o valor for 125,
+            // alterar o nome da função para "Variação de proporção" no rowData.
+            const funcaoCellIndex = 2; // índice da coluna função no table (conforme usada acima)
+            const funcaoTextoRaw = cells[funcaoCellIndex]?.innerText.trim() || '';
+            // Normaliza removendo acentos para comparação segura
+            const funcaoTextoNormalized = funcaoTextoRaw.normalize ? funcaoTextoRaw.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').toLowerCase() : funcaoTextoRaw.toLowerCase();
+            // compara sem acentos com 'animacao'
+            const isAnimacao = funcaoTextoNormalized.indexOf('animacao') !== -1 || funcaoTextoNormalized.indexOf('anima') !== -1;
+            if (isAnimacao && Math.abs((valor || 0) - 125) < 0.01) {
+                // rowData layout: [No., coluna0, coluna2(funcao), coluna3(valor)] => função está em rowData[2]
+                if (rowData.length >= 3) {
+                    rowData[2] = 'Variação de proporção';
+                }
+            }
 
             if (rowData.length) {
                 rows.push(rowData);
@@ -732,10 +767,10 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
     // // const novaTabelaHeaders = ['Extra', 'Valor'];
     // const novaTabelaHeaders = ['Categoria', 'Valor'];
     // const novaTabelaBody = [
-    //     ['Atendimento', '3000,00'],
+    //     // ['Atendimento', '3000,00'],
     //     // ['Fixo', '1600,00'],
     //     // ['Bônus', '350,00'],
-    //     // ['Reembolso almoço', '266,00'],
+    //     ['Reembolso almoço', '38,00'],
     //     // ['Desconto de imagem: 5. HAA_HOR Fachada Fora', '-350,00'],
     //     // ['Gasolina', '88,00'],
     //     // ['Diaria Drone', '525,00'],
@@ -798,8 +833,8 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
 
     // Primeira assinatura: IMPROOV LTDA.
     doc.text("_________________________", xEmpresa, y);  // Linha para assinatura
-    doc.text("IMPROOV LTDA.", xEmpresa, y + 8); // Nome da empresa
-    doc.text("CNPJ: 37.066.879/0001-84", xEmpresa, y + 18); // CNPJ da empresa
+    doc.text(`${textoAnima} LTDA.`, xEmpresa, y + 8); // Nome da empresa
+    doc.text(`CNPJ: ${cnpjAnima}`, xEmpresa, y + 18); // CNPJ da empresa
     doc.text("DIOGO JOSÉ POFFO", xEmpresa, y + 28); // Nome do responsável
     doc.text("CPF: 036.698.519-17", xEmpresa, y + 38); // CPF do responsável
 

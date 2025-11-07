@@ -111,46 +111,105 @@ try {
         $ev->close();
     } elseif ($status === 'pago') {
         // Collect all unpaid items for the month
-        $idsFI = [];$idsAC = [];$idsAN = [];$valor_total = 0.0;
-        // funcao_imagem by prazo
-        $q = $conn->prepare("SELECT idfuncao_imagem, IFNULL(valor,0) AS valor FROM funcao_imagem WHERE colaborador_id = ? AND pagamento = 0 AND YEAR(prazo) = ? AND MONTH(prazo) = ?");
-        $q->bind_param('iii', $colaborador_id, $ano, $mes);
-        $q->execute(); $rs = $q->get_result();
-        while ($row = $rs->fetch_assoc()) { $idsFI[] = (int)$row['idfuncao_imagem']; $valor_total += (float)$row['valor']; }
-        $q->close();
-        // acompanhamento by data
-        $q = $conn->prepare("SELECT idacompanhamento, IFNULL(valor,0) AS valor FROM acompanhamento WHERE colaborador_id = ? AND pagamento = 0 AND YEAR(data) = ? AND MONTH(data) = ?");
-        $q->bind_param('iii', $colaborador_id, $ano, $mes);
-        $q->execute(); $rs = $q->get_result();
-        while ($row = $rs->fetch_assoc()) { $idsAC[] = (int)$row['idacompanhamento']; $valor_total += (float)$row['valor']; }
-        $q->close();
-        // animacao by data_anima
-        $q = $conn->prepare("SELECT idanimacao, IFNULL(valor,0) AS valor FROM animacao WHERE colaborador_id = ? AND pagamento = 0 AND YEAR(data_anima) = ? AND MONTH(data_anima) = ?");
-        $q->bind_param('iii', $colaborador_id, $ano, $mes);
-        $q->execute(); $rs = $q->get_result();
-        while ($row = $rs->fetch_assoc()) { $idsAN[] = (int)$row['idanimacao']; $valor_total += (float)$row['valor']; }
-        $q->close();
+    $idsFI = [];$idsAC = [];$idsAN = [];$valor_total = 0.0;
+    // funcao_imagem by prazo (also fetch imagem status_id to detect Finalização Parcial)
+    // include funcao_id and imagem_id and detect if a 'Pré-Finalização' exists for the same imagem
+    $q = $conn->prepare("SELECT fi.idfuncao_imagem, IFNULL(fi.valor,0) AS valor, i.status_id, fi.funcao_id, fi.imagem_id, (SELECT COUNT(1) FROM funcao_imagem fi_sub JOIN funcao f_sub ON fi_sub.funcao_id = f_sub.idfuncao WHERE fi_sub.imagem_id = fi.imagem_id AND f_sub.nome_funcao = 'Pré-Finalização') AS has_prefinalizacao FROM funcao_imagem fi LEFT JOIN imagens_cliente_obra i ON fi.imagem_id = i.idimagens_cliente_obra WHERE fi.colaborador_id = ? AND fi.pagamento = 0 AND YEAR(fi.prazo) = ? AND MONTH(fi.prazo) = ?");
+    $q->bind_param('iii', $colaborador_id, $ano, $mes);
+    $q->execute(); $rs = $q->get_result();
+    while ($row = $rs->fetch_assoc()) { $idsFI[] = ['id' => (int)$row['idfuncao_imagem'], 'valor' => (float)$row['valor'], 'status_id' => isset($row['status_id']) ? intval($row['status_id']) : null, 'funcao_id' => isset($row['funcao_id']) ? intval($row['funcao_id']) : null, 'imagem_id' => isset($row['imagem_id']) ? intval($row['imagem_id']) : null, 'has_prefinalizacao' => isset($row['has_prefinalizacao']) ? intval($row['has_prefinalizacao']) : 0 ]; $valor_total += (float)$row['valor']; }
+    $q->close();
+    // acompanhamento by data
+    $q = $conn->prepare("SELECT idacompanhamento, IFNULL(valor,0) AS valor FROM acompanhamento WHERE colaborador_id = ? AND pagamento = 0 AND YEAR(data) = ? AND MONTH(data) = ?");
+    $q->bind_param('iii', $colaborador_id, $ano, $mes);
+    $q->execute(); $rs = $q->get_result();
+    while ($row = $rs->fetch_assoc()) { $idsAC[] = ['id' => (int)$row['idacompanhamento'], 'valor' => (float)$row['valor']]; $valor_total += (float)$row['valor']; }
+    $q->close();
+    // animacao by data_anima
+    $q = $conn->prepare("SELECT idanimacao, IFNULL(valor,0) AS valor FROM animacao WHERE colaborador_id = ? AND pagamento = 0 AND YEAR(data_anima) = ? AND MONTH(data_anima) = ?");
+    $q->bind_param('iii', $colaborador_id, $ano, $mes);
+    $q->execute(); $rs = $q->get_result();
+    while ($row = $rs->fetch_assoc()) { $idsAN[] = ['id' => (int)$row['idanimacao'], 'valor' => (float)$row['valor']]; $valor_total += (float)$row['valor']; }
+    $q->close();
 
         // Update origin tables: mark as paid
         if (!empty($idsFI)) {
-            $ids = implode(',', array_map('intval', $idsFI));
+            $ids = implode(',', array_map(function($x){return intval($x['id']);}, $idsFI));
             $conn->query("UPDATE funcao_imagem SET pagamento = 1, data_pagamento = NOW() WHERE idfuncao_imagem IN ($ids)");
         }
         if (!empty($idsAC)) {
-            $ids = implode(',', array_map('intval', $idsAC));
+            $ids = implode(',', array_map(function($x){return intval($x['id']);}, $idsAC));
             $conn->query("UPDATE acompanhamento SET pagamento = 1, data_pagamento = NOW() WHERE idacompanhamento IN ($ids)");
         }
         if (!empty($idsAN)) {
-            $ids = implode(',', array_map('intval', $idsAN));
+            $ids = implode(',', array_map(function($x){return intval($x['id']);}, $idsAN));
             $conn->query("UPDATE animacao SET pagamento = 1, data_pagamento = NOW() WHERE idanimacao IN ($ids)");
         }
 
-        // Insert items rows
-        $insItem = $conn->prepare("INSERT INTO pagamento_itens (pagamento_id, origem, origem_id, valor) VALUES (?,?,?,?)");
-        foreach ($idsFI as $id) { $o='funcao_imagem'; $v=null; $insItem->bind_param('isid', $pagamento_id, $o, $id, $v); $insItem->execute(); }
-        foreach ($idsAC as $id) { $o='acompanhamento'; $v=null; $insItem->bind_param('isid', $pagamento_id, $o, $id, $v); $insItem->execute(); }
-        foreach ($idsAN as $id) { $o='animacao'; $v=null; $insItem->bind_param('isid', $pagamento_id, $o, $id, $v); $insItem->execute(); }
-        $insItem->close();
+        // Insert items rows with valor and observacao (if applicable)
+        // Some environments might not yet have the 'observacao' column in pagamento_itens.
+        // Detect column existence and prepare the appropriate INSERT to avoid failing the whole transaction.
+        $hasObservacao = false;
+        $colChk = $conn->query("SHOW COLUMNS FROM pagamento_itens LIKE 'observacao'");
+        if ($colChk && $colChk->num_rows > 0) $hasObservacao = true;
+
+        if ($hasObservacao) {
+            $insItem = $conn->prepare("INSERT INTO pagamento_itens (pagamento_id, origem, origem_id, valor, observacao) VALUES (?,?,?,?,?)");
+            if (!$insItem) throw new Exception('Prepare failed (pagamento_itens with observacao): ' . $conn->error);
+            foreach ($idsFI as $item) {
+                $o = 'funcao_imagem';
+                $id = $item['id'];
+                $v = $item['valor'];
+                $isFinalizacaoFunc = (isset($item['funcao_id']) && intval($item['funcao_id']) === 4);
+                $hasPrefinal = (isset($item['has_prefinalizacao']) && intval($item['has_prefinalizacao']) > 0);
+                $obs = ($isFinalizacaoFunc && ( (isset($item['status_id']) && intval($item['status_id']) === 1) || $hasPrefinal )) ? 'Finalização Parcial' : null;
+                $insItem->bind_param('isids', $pagamento_id, $o, $id, $v, $obs);
+                $insItem->execute();
+            }
+            foreach ($idsAC as $item) {
+                $o = 'acompanhamento';
+                $id = $item['id'];
+                $v = $item['valor'];
+                $obs = null;
+                $insItem->bind_param('isids', $pagamento_id, $o, $id, $v, $obs);
+                $insItem->execute();
+            }
+            foreach ($idsAN as $item) {
+                $o = 'animacao';
+                $id = $item['id'];
+                $v = $item['valor'];
+                $obs = null;
+                $insItem->bind_param('isids', $pagamento_id, $o, $id, $v, $obs);
+                $insItem->execute();
+            }
+            $insItem->close();
+        } else {
+            // Fallback: table has no 'observacao' column; insert without it
+            $insItem = $conn->prepare("INSERT INTO pagamento_itens (pagamento_id, origem, origem_id, valor) VALUES (?,?,?,?)");
+            if (!$insItem) throw new Exception('Prepare failed (pagamento_itens without observacao): ' . $conn->error);
+            foreach ($idsFI as $item) {
+                $o = 'funcao_imagem';
+                $id = $item['id'];
+                $v = $item['valor'];
+                $insItem->bind_param('isid', $pagamento_id, $o, $id, $v);
+                $insItem->execute();
+            }
+            foreach ($idsAC as $item) {
+                $o = 'acompanhamento';
+                $id = $item['id'];
+                $v = $item['valor'];
+                $insItem->bind_param('isid', $pagamento_id, $o, $id, $v);
+                $insItem->execute();
+            }
+            foreach ($idsAN as $item) {
+                $o = 'animacao';
+                $id = $item['id'];
+                $v = $item['valor'];
+                $insItem->bind_param('isid', $pagamento_id, $o, $id, $v);
+                $insItem->execute();
+            }
+            $insItem->close();
+        }
 
     // Update aggregate pagamento (use new lowercase status and set data_pagamento)
     $upd = $conn->prepare("UPDATE pagamentos SET status='pago', valor_total = ?, data_pagamento = NOW(), pago_em = NOW() WHERE idpagamento = ?");

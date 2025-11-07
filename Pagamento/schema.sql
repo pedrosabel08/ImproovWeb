@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS pagamento_itens (
   origem ENUM('funcao_imagem','acompanhamento','animacao') NOT NULL,
   origem_id INT NOT NULL,
   valor DECIMAL(12,2) DEFAULT 0.00,
+  observacao VARCHAR(255) DEFAULT NULL,
   criado_em DATETIME DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_pagamento_itens_pagamento FOREIGN KEY (pagamento_id) REFERENCES pagamentos(idpagamento) ON DELETE CASCADE,
   INDEX idx_origem (origem, origem_id)

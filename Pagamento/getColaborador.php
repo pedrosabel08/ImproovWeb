@@ -78,7 +78,8 @@ if ($colaboradorId == 1) {
         fi.prazo,
         fi.pagamento,
         fi.valor,
-        fi.data_pagamento
+    fi.data_pagamento,
+    (SELECT COUNT(1) FROM pagamento_itens pi JOIN pagamentos p ON pi.pagamento_id = p.idpagamento WHERE pi.origem = 'funcao_imagem' AND pi.origem_id = fi.idfuncao_imagem AND pi.observacao = 'Finalização Parcial') AS pago_parcial_count
     FROM 
         funcao_imagem fi
     JOIN 
@@ -108,7 +109,8 @@ if ($colaboradorId == 1) {
         NULL AS prazo,
         ac.pagamento,
         ac.valor,
-        ac.data_pagamento
+        ac.data_pagamento,
+        NULL AS pago_parcial_count
     FROM 
         acompanhamento ac
     JOIN 
@@ -149,6 +151,7 @@ if ($colaboradorId == 1) {
     fi.pagamento,
     fi.valor,
     fi.data_pagamento,
+    (SELECT COUNT(1) FROM pagamento_itens pi JOIN pagamentos p ON pi.pagamento_id = p.idpagamento WHERE pi.origem = 'funcao_imagem' AND pi.origem_id = fi.idfuncao_imagem AND pi.observacao = 'Finalização Parcial') AS pago_parcial_count,
     o.idobra AS obra_id   
 FROM 
     funcao_imagem fi
@@ -181,6 +184,7 @@ SELECT
     an.pagamento,
     an.valor,
     an.data_pagamento,
+    NULL AS pago_parcial_count,
     an.obra_id  
 FROM 
     animacao an
@@ -223,7 +227,8 @@ WHERE
         fi.prazo,
         fi.pagamento,
         fi.valor,
-        fi.data_pagamento
+        fi.data_pagamento,
+        (SELECT COUNT(1) FROM pagamento_itens pi JOIN pagamentos p ON pi.pagamento_id = p.idpagamento WHERE pi.origem = 'funcao_imagem' AND pi.origem_id = fi.idfuncao_imagem AND pi.observacao = 'Finalização Parcial') AS pago_parcial_count
     FROM 
         funcao_imagem fi
     JOIN 

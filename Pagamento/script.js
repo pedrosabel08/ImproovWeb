@@ -258,6 +258,20 @@ document.addEventListener('DOMContentLoaded', function () {
                             cellValor.textContent = item.valor;
                             cellData.textContent = item.data_pagamento;
 
+                            // Mostrar indicador se esta função já foi paga como 'Finalização Parcial' em pagamentos anteriores
+                            if (item.pago_parcial_count && parseInt(item.pago_parcial_count, 10) > 0) {
+                                const badge = document.createElement('span');
+                                badge.textContent = 'Pago Parcial';
+                                badge.style.background = '#ffdf99';
+                                badge.style.color = '#663c00';
+                                badge.style.padding = '2px 6px';
+                                badge.style.borderRadius = '12px';
+                                badge.style.fontSize = '11px';
+                                badge.style.marginLeft = '8px';
+                                badge.title = 'Este item já foi pago anteriormente como Finalização Parcial';
+                                cellFuncao.appendChild(badge);
+                            }
+
                             totalValor += parseFloat(item.valor) || 0;
                         } else if (item.origem === 'acompanhamento') {
                             cellNomeImagem.textContent = item.imagem_nome;
@@ -357,12 +371,15 @@ document.addEventListener('DOMContentLoaded', function () {
         }));
 
         if (ids.length > 0) {
+            // include selected month/year so backend can group itens into pagamentos (mes_ref)
+            const mes = document.getElementById('mes').value;
+            const ano = document.getElementById('ano').value;
             fetch('updatePagamento.php', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ ids: ids, colaborador_id: colaboradorId })
+                body: JSON.stringify({ ids: ids, colaborador_id: colaboradorId, mes: mes, ano: ano })
             })
                 .then(response => response.json())
                 .then(data => {
@@ -552,7 +569,7 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
 
 
     const today = new Date();
-    today.setDate(today.getDate() + 1); // Adiciona 1 dia
+    today.setDate(today.getDate()); // Adiciona 1 dia
     const day = String(today.getDate() + 0).padStart(2, '0');
 
     // Obtém o número do mês (0 = Janeiro, 11 = Dezembro)

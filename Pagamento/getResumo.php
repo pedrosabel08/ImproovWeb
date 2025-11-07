@@ -47,7 +47,7 @@ $sqlFI = "SELECT colaborador_id,
   SUM(IFNULL(valor,0)) AS valor_mes,
   MAX(GREATEST(IFNULL(data_pagamento, '0000-00-00'), IFNULL(prazo, '0000-00-00'))) AS last_update
 FROM funcao_imagem
-WHERE colaborador_id IN ($ids) AND colaborador_id NOT IN (9, 21) AND YEAR(prazo) = $ano AND MONTH(prazo) = $mes
+WHERE colaborador_id IN ($ids) AND colaborador_id NOT IN (9) AND YEAR(prazo) = $ano AND MONTH(prazo) = $mes
 GROUP BY colaborador_id";
 
 if ($r = $conn->query($sqlFI)) {

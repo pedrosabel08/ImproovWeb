@@ -20,6 +20,7 @@ $funcoes = obterFuncoes($conn);
 $imagens = obterImagens($conn);
 $status_etapa = obterStatus($conn);
 $obras = obterObras($conn);
+$clientes = obterClientes($conn);
 
 // Monta um array de colaboradores por função (usando a tabela funcao_colaborador)
 $colaboradores_por_funcao = [];

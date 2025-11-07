@@ -9,6 +9,82 @@ header("Access-Control-Allow-Origin: https://improov.com.br");
 header("Access-Control-Allow-Methods: POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type");
 
+// --- Small dotenv loader (no external dependency) ---
+function load_dotenv($path)
+{
+    if (!file_exists($path)) return;
+    $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        $line = trim($line);
+        if ($line === '' || $line[0] === '#') continue;
+        if (strpos($line, '=') === false) continue;
+        list($k, $v) = array_map('trim', explode('=', $line, 2));
+        $v = trim($v, "\"'");
+        // set into environment
+        putenv("$k=$v");
+        $_ENV[$k] = $v;
+        $_SERVER[$k] = $v;
+    }
+}
+
+// --- Slack helpers ---
+function send_slack_webhook($webhookUrl, $text, &$log)
+{
+    if (!$webhookUrl) { $log[] = "Slack webhook not configured"; return false; }
+    $payload = json_encode(['text' => $text]);
+    $ch = curl_init($webhookUrl);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    $res = curl_exec($ch);
+    $err = curl_error($ch);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    if ($res === false || $code >= 400) {
+        $log[] = "Slack webhook failed (code=$code): $err / resp=" . substr($res ?: '',0,200);
+        return false;
+    }
+    $log[] = "Slack webhook sent (code=$code)";
+    return true;
+}
+
+function send_slack_token_message($token, $channel, $text, &$log)
+{
+    if (!$token || !$channel) { $log[] = "Slack token or channel missing"; return false; }
+    $url = 'https://slack.com/api/chat.postMessage';
+    $body = json_encode(['channel' => $channel, 'text' => $text]);
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Content-Type: application/json; charset=utf-8',
+        'Authorization: Bearer ' . $token
+    ]);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    $res = curl_exec($ch);
+    $err = curl_error($ch);
+    curl_close($ch);
+    if ($res === false) {
+        $log[] = "Slack API (token) request failed: $err";
+        return false;
+    }
+    $json = json_decode($res, true);
+    if (!$json || empty($json['ok'])) {
+        $log[] = "Slack API error: " . ($json['error'] ?? substr($res,0,200));
+        return false;
+    }
+    $log[] = "Slack message sent via token to $channel";
+    return true;
+}
+
+// Load .env (if present) from project root
+load_dotenv(__DIR__ . '/../.env');
+
+// Slack config from env
+$SLACK_WEBHOOK_URL = getenv('SLACK_WEBHOOK_URL') ?: null;
+$FLOW_TOKEN = getenv('FLOW_TOKEN') ?: null;
+
 $host = "imp-nas.ddns.net";
 $port = 2222;
 $username = "flow";
@@ -668,6 +744,7 @@ if (!empty($arquivosPorImagem) && $refsSkpModo === 'porImagem') {
                 // Notificar colaborador(es) associados à funcao_id = 4 para esta imagem
                 try {
                     $notifMsg = "Ângulo definido para a imagem, confira abaixo:";
+                    $notifMsg2 = "Ângulo definido para a imagem";
                     $sel = $conn->prepare("SELECT colaborador_id, idfuncao_imagem FROM funcao_imagem WHERE imagem_id = ? AND funcao_id = 4");
                     if ($sel) {
                         $sel->bind_param("i", $imagem_id);
@@ -682,6 +759,39 @@ if (!empty($arquivosPorImagem) && $refsSkpModo === 'porImagem') {
                                     $ins->bind_param("isi", $colabId, $notifMsg, $funcaoImagemId);
                                     $ins->execute();
                                     $log[] = "Notificação criada para colaborador $colabId";
+                                    // Enviar notificação também para o Slack (se o usuário tiver nome_slack)
+                                    try {
+                                        $stmtSlack = $conn->prepare("SELECT nome_slack FROM usuario WHERE idcolaborador = ? LIMIT 1");
+                                        if ($stmtSlack) {
+                                            $stmtSlack->bind_param('i', $colabId);
+                                            $stmtSlack->execute();
+                                            $resSlack = $stmtSlack->get_result();
+                                            if ($resSlack && $rowSlack = $resSlack->fetch_assoc()) {
+                                                $nomeSlack = trim($rowSlack['nome_slack']);
+                                                if ($nomeSlack) {
+                                                    // prefer token-based chat.postMessage when FLOW_TOKEN is set
+                                                    $text = "[IMPROOV] $notifMsg2: $nome_imagem\nAcesse: https://improov.com.br/sistema/inicio.php";
+                                                    if (!empty($FLOW_TOKEN)) {
+                                                        $ok = send_slack_token_message($FLOW_TOKEN, $nomeSlack, $text, $log);
+                                                        if (!$ok) {
+                                                            // Per request: do NOT fallback to webhook/channel — only token-based person messages
+                                                            $log[] = "Slack token send failed for $nomeSlack; webhook fallback disabled per config.";
+                                                        }
+                                                    } else {
+                                                        // No FLOW_TOKEN configured — skip sending to Slack for individual
+                                                        $log[] = "FLOW_TOKEN not configured; skipping Slack notification for $nomeSlack per request.";
+                                                    }
+                                                } else {
+                                                    $log[] = "Usuário $colabId sem nome_slack cadastrado";
+                                                }
+                                            }
+                                            $stmtSlack->close();
+                                        } else {
+                                            $log[] = "Falha ao preparar select nome_slack: " . $conn->error;
+                                        }
+                                    } catch (Exception $e) {
+                                        $log[] = "Erro ao enviar Slack: " . $e->getMessage();
+                                    }
                                 } else {
                                     $log[] = "Falha ao preparar insert notificacoes: " . $conn->error;
                                 }

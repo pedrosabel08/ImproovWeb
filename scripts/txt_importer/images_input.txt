@@ -4,77 +4,37 @@
 # 1. Fachada
 # 2. Planta baixa
 
-36,51
-1. Fotomontagem aérea com inserção do empreendimento no terreno ângulo 1
-2. Fotomontagem aérea com inserção do empreendimento no terreno ângulo 2
-3. Fotomontagem aérea com foco no Rooftop Sky place
-4. Fotomontagem mostrando a marina
-5. Fachada no angulo do observador de baixo
-6. Embasamento
-7. Porte-cochère mostrando o hall de entrada
-8. Hall de entrada
-9. Marina vista a partir de um yacht no rio Perequê
-10. Bistro marina
-11. Piscinas ângulo geral 1
-12. Piscinas ângulo geral 2 com foco no bar molhado
-13. Área da piscina com foco nos gazebos
-14. Piscina aquecida
-15. Piscina Raia
-16. Área de jogos externa
-17. Sala de jogos interna
-18. Poker Room
-19. Espaço Teen
-20. Quadra Squash
-21. Gourmet
-22. Dog park
-23. Passeio externo com fire places
-24. Wine bar
-25. Playground
-26. Brinquedoteca
-27. Country House interno
-28. Country House externo
-29. Salão de festas interno
-30. Salão de festas externo
-31. Piscina com vista para o Rio Perequê
-32. Espaço Multiuso
-33. Espaço de banho e massagem
-34. Sala de massagem 1 e 2
-35. Sauna seca
-36. Sala de Pilates
-37. Salão de beleza
-38. Academia ângulo geral
-39. Academia com foco na vista fotográfica real
-40. Academia com Ângulo mais aereo (voo passaro)
-41. Sala para exercicios de membros inferiores
-42. Sala livre
-43. Gourmet Sky Place angulo geral
-44. Gourmet Sky Place angulo com foco na vista real
-45. Lounge
-46. Piscina com borda infinita ângulo geral
-47. Piscina com borda infinita e vista fotográfica real para Porto Belo
-48. Piscina com borda infinita ângulo 2 - SPA
-49. Piscina com borda infinita ângulo 3 - Bar molhado
-50. Living integrado com vista fotográfica real ângulo 1
-51. Living integrado com vista fotográfica real ângulo 2
-52. Suíte master angulo geral
-53. Suíte master angulo com foco no closet
-54. Sacada com vista fotográfica real da Suíte master
-55. Banheiro suíte master perspectiva banheira de imersão
-56. Living integrado com vista fotográfica real ângulo 1
-57. Living integrado com vista fotográfica real ângulo 2
-58. Living integrado com vista fotográfica real ângulo 3 - Piscina
-59. Cozinha
-60. Suíte master com vista fotográfica real
-61. Closet da Suíte master com vista fotográfica real
-62. Banheiro suíte master perspectiva banheira de imersão
-63. Planta humanizada pavimento Subsolo
-64. Planta humanizada implantação real mostrando o pavimento térreo com marina e rio
-65. Planta humanizada Mezanino do pavimento térreo
-66. Planta humanizada pavimento G1
-67. Planta humanizada do pavimento lazer
-68. Planta humanizada do pavimento lazer reduto 1
-69. Planta humanizada do pavimento lazer reduto 2
-70. Planta humanizada do pavimento lazer Rooftop SKY place
-71. Planta humanizada do apartamento tipo 1
-72. Planta humanizada do apartamento tipo 2
-73. Planta humanizada do apartamento Penthouse
+55, 84
+1. Fotomontagem com empreendimento no terreno real
+2. Fotomontagem com foco no rooftop
+3. Fachada no angulo do observador
+4. Embasamento
+5. Hall de entrada
+6. Espaço Gourmet
+7. Salão de festas
+8. Lavanderia
+9. Mercadinho interno
+10. Sala de jogos
+11. Coworking com sala de reuniões
+12. Playground com Pet place
+13. Piscinas
+14. Espaço churrasqueira
+15. SPA com sauna
+16. Academia
+17. Living do Studio unidade à definir com vista fotográfica real - ângulo 1
+18. Living do Studio unidade à definir com vista fotográfica real - ângulo 2
+19. Living do Apartamento unidade à definir com vista fotográfica real - ângulo 1
+20. Living do Apartamento unidade à definir com vista fotográfica real - ângulo 2
+21. Suíte do Apartamento unidade à definir com vista fotográfica real - ângulo 1
+22. Planta humanizada implantação geral mostrando o pavimento terreo
+23. Planta humanizada do pavimento lazer Rooftop
+24. Planta humanizada do pavimento tipo 1
+25. Variação - Diferenciado da Planta humanizada do pavimento tipo 1
+26. Planta humanizada do pavimento tipo 2
+27. Variação - Diferenciado da Planta humanizada do pavimento tipo 2
+28. Planta humanizada do pavimento tipo 3
+29. Planta humanizada do pavimento tipo 3 - Laje Aptos
+30. Variação - Diferenciado da Planta humanizada do pavimento tipo 3
+31. Planta humanizada do pavimento tipo 4
+32. Variação - Diferenciado da Planta humanizada do pavimento tipo 4
+33. Planta humanizada do pavimento tipo 5

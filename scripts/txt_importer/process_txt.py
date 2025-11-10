@@ -44,6 +44,58 @@ def get_nomenclatura(conn, obra_id):
     cursor.close()
     return row[0] if row else None
 
+
+def _remove_accents(s: str) -> str:
+    import unicodedata
+    if not s:
+        return s
+    nkfd_form = unicodedata.normalize('NFKD', s)
+    return ''.join([c for c in nkfd_form if not unicodedata.combining(c)])
+
+
+def detect_tipo_imagem(imagem_nome: str) -> str:
+    """Return a tipo_imagem label based on keywords in imagem_nome.
+
+    Mapping (case-insensitive, accent-insensitive):
+    - Fachada: fotomontagem, fachada, embasamento
+    - Unidade: living, suite, teraco, duplex
+    - Planta humanizada: planta humanizada
+    - Imagem Interna: academia, hall de entrada, salao de jogos, salao de festas, piscina aquecida, jogos, coworking, lavanderia, gourmet, interno
+    - Imagem Externa: piscina, playground, externo
+    """
+    if not imagem_nome:
+        return ''
+    s = imagem_nome.lower()
+    s = _remove_accents(s)
+
+    # priority checks (phrases first)
+    if 'planta humanizada' in s:
+        return 'Planta humanizada'
+    if 'piscina aquecida' in s:
+        return 'Imagem Interna'
+
+    # Fachada group
+    for kw in ['fotomontagem', 'fachada', 'embasamento']:
+        if kw in s:
+            return 'Fachada'
+
+    # Unidade group
+    for kw in ['living', 'suite', 'suíte', 'teraco', 'terraço', 'duplex']:
+        if _remove_accents(kw) in s:
+            return 'Unidade'
+
+    # Imagem Interna group
+    for kw in ['academia', 'hall de entrada', 'salao de jogos', 'salon de jogos', 'salao de festas', 'salon de festas', 'jogos', 'coworking', 'lavanderia', 'gourmet', 'interno']:
+        if kw in s:
+            return 'Imagem Interna'
+
+    # Imagem Externa group (generic piscina after piscina aquecida handled)
+    for kw in ['piscina', 'playground', 'externo']:
+        if kw in s:
+            return 'Imagem Externa'
+
+    return ''
+
 def insert_imagem(conn, cliente_id, obra_id, imagem_nome, recebimento_arquivos='', data_inicio='', prazo='', tipo_imagem='', dry_run=False):
     sql = ("INSERT INTO imagens_cliente_obra (cliente_id, obra_id, imagem_nome, recebimento_arquivos, data_inicio, prazo, tipo_imagem) "
            "VALUES (%s, %s, %s, %s, %s, %s, %s)")
@@ -77,17 +129,25 @@ def process_file(path, dry_run=False, nomenclatura_override=None):
     print(f"📄 {len(lines)} linhas encontradas (incluindo cabeçalho, se houver).")
 
     # Detectar formato
-    first_parts = re.split(r"[\t,;]+", lines[0])
+    # split and strip parts so values like "55, 84" are detected as digits
+    first_parts = [p.strip() for p in re.split(r"[\t,;]+", lines[0]) if p.strip() != '']
     use_header = False
-    if len(first_parts) >= 2 and all(p.isdigit() for p in first_parts[:2]):
+    if len(first_parts) >= 2 and first_parts[0].isdigit() and first_parts[1].isdigit():
+        # treat as header only when first line contains exactly two numeric ids (cliente_id, obra_id)
         if len(first_parts) == 2:
             use_header = True
 
     conn = None
-    if not dry_run:
-        try:
-            print("🔌 Conectando ao banco...")
+    # Attempt to connect to DB when possible. In dry-run we will try but not abort on failure
+    try_connect = True
+    if dry_run:
+        print("🧪 Modo DRY-RUN: nenhuma inserção real será feita.")
+        if nomenclatura_override:
+            print(f"� Usando nomenclatura fornecida: {nomenclatura_override}")
 
+    if try_connect:
+        try:
+            print("🔌 Tentando conectar ao banco (apenas para leitura/nomenclatura quando em dry-run)...")
             # Print target host/user (but don't print password)
             target_host = DB_CONFIG.get('host')
             target_port = DB_CONFIG.get('port', 3306)
@@ -122,17 +182,13 @@ def process_file(path, dry_run=False, nomenclatura_override=None):
             if getattr(err, 'errno', None) == errorcode.ER_ACCESS_DENIED_ERROR:
                 print("❌ Erro de autenticação com o banco de dados (credenciais rejeitadas)")
             else:
-                print(f"❌ Erro ao conectar ao banco: {err}")
-            return
+                print(f"⚠️  Erro ao conectar ao banco (continuando sem DB): {err}")
+            conn = None
         except Exception as e:
             import traceback
-            print("❌ Erro inesperado ao tentar conectar ao banco:")
+            print("⚠️  Erro inesperado ao tentar conectar ao banco (continuando sem DB):")
             traceback.print_exc()
-            return
-    else:
-        print("🧪 Modo DRY-RUN: nenhuma inserção real será feita.")
-        if nomenclatura_override:
-            print(f"👉 Usando nomenclatura fornecida: {nomenclatura_override}")
+            conn = None
 
     total_inseridas = 0
 
@@ -141,17 +197,29 @@ def process_file(path, dry_run=False, nomenclatura_override=None):
         cliente_id = int(first_parts[0])
         obra_id = int(first_parts[1])
 
-        nomenclatura = get_nomenclatura(conn, obra_id) if conn else nomenclatura_override
+        # Try to fetch nomenclatura from DB when connected; otherwise use provided override
+        if conn:
+            nomenclatura = get_nomenclatura(conn, obra_id)
+        else:
+            nomenclatura = nomenclatura_override
+
+        # Fallback: when running in dry-run without a DB and no override was provided,
+        # synthesize a sensible nomenclatura so the header mode can still be tested.
         if not nomenclatura:
-            print(f"❌ Nenhuma nomenclatura encontrada para obra_id={obra_id}")
-            if conn: conn.close()
-            return
+            if dry_run:
+                nomenclatura = f"OBRA{obra_id}"
+                print(f"⚠️  Dry-run fallback: usando nomenclatura sintética '{nomenclatura}' for obra_id={obra_id}")
+            else:
+                print(f"❌ Nenhuma nomenclatura encontrada para obra_id={obra_id}")
+                if conn: conn.close()
+                return
 
         for line in lines[1:]:
             imagem_nome = format_name(line, nomenclatura)
-            print(f"➡️  Inserindo imagem: {imagem_nome}")
+            tipo_imagem = detect_tipo_imagem(imagem_nome)
+            print(f"➡️  Inserindo imagem: {imagem_nome} (tipo_imagem='{tipo_imagem}')")
             try:
-                insert_imagem(conn, cliente_id, obra_id, imagem_nome, dry_run=dry_run)
+                insert_imagem(conn, cliente_id, obra_id, imagem_nome, dry_run=dry_run, tipo_imagem=tipo_imagem)
                 total_inseridas += 1
             except Exception as e:
                 print(f"❌ Erro ao inserir {imagem_nome}: {e}")
@@ -170,9 +238,10 @@ def process_file(path, dry_run=False, nomenclatura_override=None):
                 continue
 
             imagem_nome = format_name(imagem_nome_raw, nomenclatura)
-            print(f"➡️  Inserindo imagem: {imagem_nome}")
+            tipo_imagem = detect_tipo_imagem(imagem_nome)
+            print(f"➡️  Inserindo imagem: {imagem_nome} (tipo_imagem='{tipo_imagem}')")
             try:
-                insert_imagem(conn, cliente_id, obra_id, imagem_nome, dry_run=dry_run)
+                insert_imagem(conn, cliente_id, obra_id, imagem_nome, dry_run=dry_run, tipo_imagem=tipo_imagem)
                 total_inseridas += 1
             except Exception as e:
                 print(f"❌ Erro ao inserir {imagem_nome}: {e}")

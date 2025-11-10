@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Finalizações por colaborador (últimos 3 meses)</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Chart.js via CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+    <div class="container">
+        <header class="top">
+            <h1>Finalizações por colaborador — últimos 3 meses</h1>
+            <div class="controls">
+                <div id="filters" class="filters" aria-hidden="false">
+                    <!-- checkboxes serão injetados aqui -->
+                </div>
+                <button id="downloadCsv" class="btn">Baixar CSV</button>
+            </div>
+        </header>
+
+        <div class="chart-wrap card">
+            <canvas id="lineChart" aria-label="Gráfico de finalizações" role="img"></canvas>
+        </div>
+
+        <div id="legend" class="legend"></div>
+        <p class="hint">Dados carregados do servidor. Filtre colaboradores clicando nas caixas acima.</p>
+    </div>
+
+    <script>
+        // Exemplo do formato retornado pelo servidor:
+        // [{colaborador_id:6, nome_colaborador:'Pedro', ano_mes:'2025-09', quantidade:2}, ...]
+
+        // cores agradáveis e acessíveis
+        const COLORS = ['#0b74de', '#ff8c42', '#2fb67d', '#ef476f', '#7a4de8', '#5c6ac4'];
+
+        // Small helpers
+        function uniqueSortedMonths(rows) {
+            const set = new Set(rows.map(r => r.ano_mes));
+            return Array.from(set).sort();
+        }
+
+        function uniqueSortedMonths(rows) {
+            const set = new Set(rows.map(r => r.ano_mes));
+            return Array.from(set).sort();
+        }
+
+        function buildDatasets(rows) {
+            const months = uniqueSortedMonths(rows);
+            const collaborators = Array.from(new Set(rows.map(r => r.colaborador_id))).sort((a, b) => a - b);
+
+            const datasets = collaborators.map((colabId, idx) => {
+                const name = rows.find(r => r.colaborador_id === colabId)?.nome_colaborador || ('Colab ' + colabId);
+                const dataByMonth = months.map(m => {
+                    const row = rows.find(r => r.colaborador_id === colabId && r.ano_mes === m);
+                    return row ? row.quantidade : 0;
+                });
+                const color = COLORS[idx % COLORS.length];
+                return {
+                    id: colabId,
+                    label: name,
+                    data: dataByMonth,
+                    borderColor: color,
+                    backgroundColor: color,
+                    fill: false,
+                    tension: 0.25,
+                    pointRadius: 4
+                };
+            });
+
+            return { months, datasets };
+        }
+
+        const ctx = document.getElementById('lineChart').getContext('2d');
+        // cria chart vazio (será populado depois)
+        const chart = new Chart(ctx, {
+            type: 'line',
+            data: { labels: [], datasets: [] },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { mode: 'index', intersect: false }
+                },
+                interaction: { mode: 'nearest', axis: 'x', intersect: false },
+                scales: {
+                    x: { title: { display: true, text: 'Mês' } },
+                    y: { title: { display: true, text: 'Finalizações' }, beginAtZero: true, ticks: { precision: 0 } }
+                }
+            }
+        });
+
+        // carregamento real dos dados
+        fetch('data.php')
+            .then(r => r.json())
+            .then(rows => {
+                if (rows.error) throw new Error(rows.error);
+                const d = buildDatasets(rows);
+                chart.data.labels = d.months;
+                chart.data.datasets = d.datasets;
+                chart.update();
+                renderFiltersAndLegend(d.datasets);
+            })
+            .catch(err => {
+                console.error('Erro ao carregar dados do servidor', err);
+                document.querySelector('.hint').textContent = 'Erro ao carregar dados: ' + err.message;
+            });
+
+        // cria filtros (checkboxes) e legenda interativa
+        function renderFiltersAndLegend(datasets) {
+            const filters = document.getElementById('filters');
+            const legend = document.getElementById('legend');
+            filters.innerHTML = '';
+            legend.innerHTML = '';
+
+            datasets.forEach((ds, i) => {
+                const id = 'cb-' + ds.id;
+
+                // checkbox
+                const wrapper = document.createElement('label');
+                wrapper.className = 'chk';
+                const cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.checked = true;
+                cb.id = id;
+                cb.dataset.index = i;
+                wrapper.appendChild(cb);
+                wrapper.appendChild(document.createTextNode(' ' + ds.label));
+                filters.appendChild(wrapper);
+
+                // legend swatch
+                const item = document.createElement('div');
+                item.className = 'legend-item';
+                item.innerHTML = `<span class="swatch" style="background:${ds.borderColor}"></span><span class="name">${ds.label}</span>`;
+                legend.appendChild(item);
+
+                cb.addEventListener('change', e => {
+                    const idx = Number(e.target.dataset.index);
+                    chart.data.datasets[idx].hidden = !e.target.checked;
+                    chart.update();
+                });
+            });
+
+            // download CSV
+            document.getElementById('downloadCsv').addEventListener('click', () => {
+                downloadCSV(chart.data.labels, chart.data.datasets);
+            });
+        }
+
+        function downloadCSV(labels, datasets) {
+            const rows = [['colaborador', ...labels]];
+            datasets.forEach(ds => {
+                if (ds.hidden) return; // opcional: pular ocultos
+                rows.push([ds.label, ...ds.data]);
+            });
+            const csv = rows.map(r => r.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(',')).join('\n');
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'finalizacoes_colaboradores.csv';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,121 @@
+/* Simple styles for the colaboradores line chart */
+:root {
+    --bg: #fafafa;
+    --card: #ffffff;
+    --muted: #666;
+}
+
+* {
+    box-sizing: border-box
+}
+
+    .top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+    .controls {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+    }
+    .filters {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+    .chk {
+        font-size: 13px;
+        color: var(--muted);
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .btn {
+        background: #0b74de;
+        color: #fff;
+        border: none;
+        padding: 8px 12px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+    }
+    .btn:hover {
+        opacity: .95;
+    }
+    .card {
+        background: var(--card);
+        border: 1px solid #e6e6e6;
+        padding: 14px;
+        height: 420px;
+        border-radius: 6px;
+        box-shadow: 0 4px 18px rgba(11, 116, 222, 0.06);
+    max-width: 980px;
+    margin: 0 auto;
+}
+
+h1 {
+    font-size: 20px;
+    margin: 0 0 12px 0;
+}
+
+.chart-wrap {
+    background: var(--card);
+    border: 1px solid #e6e6e6;
+    padding: 14px;
+    height: 420px;
+    /* Legend */
+    .legend {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: 10px;
+    }
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 8px;
+        background: #fff;
+        border-radius: 6px;
+        border: 1px solid #f0f0f0;
+    }
+    .swatch {
+        width: 14px;
+        height: 14px;
+        border-radius: 3px;
+        display: inline-block;
+    }
+    .legend-item .name {
+        font-size: 13px;
+        color: #333;
+    }
+    /* canvas container height */
+    border-radius: 6px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+}
+
+canvas {
+    width: 100% !important;
+    height: 100% !important;
+    display: block
+}
+
+.hint {
+    color: var(--muted);
+    font-size: 13px;
+    margin-top: 8px
+}
+
+/* Responsive tweaks */
+@media (max-width:600px) {
+    .container {
+        padding: 0 12px
+    }
+
+    h1 {
+        font-size: 16px
+    }
+}

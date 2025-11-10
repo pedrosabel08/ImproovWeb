@@ -50,7 +50,7 @@ try {
         LEFT JOIN status_imagem s ON i.status_id = s.idstatus
         LEFT JOIN obra o ON i.obra_id = o.idobra
         WHERE f.funcao_id IN (1, 2, 3, 4, 5, 6, 7, 8, 9) 
-          AND f.status IN ('Em aprovação', 'Ajuste', 'Aprovado com ajustes') AND o.status_obra = 0
+          AND f.status IN ('Em aprovação', 'Ajuste', 'Aprovado com ajustes', 'Em andamento') AND o.status_obra = 0
         ORDER BY data_aprovacao DESC";
   } elseif ($idusuario == 9 || $idusuario == 20 || $idusuario == 3) {
     $sql = "SELECT 
@@ -86,7 +86,7 @@ try {
         LEFT JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
         LEFT JOIN obra o ON i.obra_id = o.idobra
         WHERE f.funcao_id IN (1, 2, 3, 4, 5, 6, 7, 8, 9) 
-          AND f.status IN ('Em aprovação', 'Ajuste', 'Aprovado com ajustes')
+          AND f.status IN ('Em aprovação', 'Ajuste', 'Aprovado com ajustes', 'Em andamento')
         ORDER BY data_aprovacao DESC";
   } else {
     $sql = "SELECT 
@@ -122,7 +122,7 @@ try {
         LEFT JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
         LEFT JOIN obra o ON i.obra_id = o.idobra
         WHERE f.funcao_id IN (1, 2, 3, 4, 5, 6, 7, 8, 9) 
-          AND (f.status = 'Em aprovação' OR f.status = 'Ajuste' OR f.status = 'Aprovado com ajustes')
+          AND f.status IN ('Em aprovação', 'Ajuste', 'Aprovado com ajustes', 'Em andamento')
           AND o.idobra IN (
               SELECT i2.obra_id
               FROM imagens_cliente_obra i2

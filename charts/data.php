@@ -5,9 +5,9 @@ header('Content-Type: application/json; charset=utf-8');
 include __DIR__ . '/../conexao.php';
 
 // Parâmetros opcionais: funcao_id (int) e colaboradores (csv de ids)
-$funcao_id = isset($_GET['funcao_id']) ? (int)$_GET['funcao_id'] : 3;
-// $colabs = isset($_GET['colaboradores']) ? $_GET['colaboradores'] : '6,8,23,20,33';
-$colabs = isset($_GET['colaboradores']) ? $_GET['colaboradores'] : '4,5,27';
+$funcao_id = isset($_GET['funcao_id']) ? (int)$_GET['funcao_id'] : 4;
+$colabs = isset($_GET['colaboradores']) ? $_GET['colaboradores'] : '6,8,23,20,33';
+// $colabs = isset($_GET['colaboradores']) ? $_GET['colaboradores'] : '4,5,27';
 
 // Sanitiza a lista de colaboradores (mantém apenas números e vírgulas)
 $colabs = preg_replace('/[^0-9,]/', '', $colabs);
@@ -28,7 +28,7 @@ $sql = "SELECT
   COUNT(*) AS quantidade
 FROM funcao_imagem fi
 LEFT JOIN colaborador c ON c.idcolaborador = fi.colaborador_id
-WHERE fi.funcao_id IN (?, 2)
+WHERE fi.funcao_id IN (?)
   AND fi.colaborador_id IN ($colabs)
   AND (
     (YEAR(fi.prazo) = YEAR(CURDATE()) AND MONTH(fi.prazo) = MONTH(CURDATE()))

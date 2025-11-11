@@ -147,6 +147,8 @@ function limparCampos() {
 let idsImagensObra = []; // Array para armazenar os IDs das imagens da obra
 let indiceImagemAtual = 0; // Índice da imagem atualmente exibida no modal
 let linhasTabela = [];
+// Guarda os dados de imagens carregados para uso nos filtros
+let dadosImagens = [];
 
 function addEventListenersToRows() {
     linhasTabela = document.querySelectorAll(".linha-tabela");
@@ -674,6 +676,9 @@ function infosObra(obraId) {
                 // Reset batchMode
                 batchMode = false;
             }
+            // Guarda os dados carregados globalmente para filtros
+            dadosImagens = data.imagens || [];
+
             // Verifica se os dados são válidos e não vazios
             if (!Array.isArray(data.imagens) || data.imagens.length === 0) {
                 console.warn('Nenhuma função encontrada para esta obra.');
@@ -884,10 +889,15 @@ function infosObra(obraId) {
                     const colaborador = item[`${coluna.col}_colaborador`] || '-';
                     const status = item[`${coluna.col}_status`] || '-';
 
+                    // Criar apenas a célula do colaborador e refletir o status por cor nessa célula
                     const cellColaborador = document.createElement('td');
                     cellColaborador.textContent = colaborador;
+                    // Armazena o status como atributo para debug/estilos futuros
+                    cellColaborador.setAttribute('data-status', status);
+
                     cellColaborador.addEventListener('mouseenter', (event) => {
-                        tooltip.textContent = colaborador;
+                        // Mostra colaborador + status no tooltip
+                        tooltip.textContent = colaborador + (status ? (' — ' + status) : '');
                         tooltip.style.display = 'block';
                         tooltip.style.left = event.clientX + 'px';
                         tooltip.style.top = event.clientY - 30 + 'px';
@@ -902,27 +912,11 @@ function infosObra(obraId) {
                         tooltip.style.top = event.clientY - 30 + 'px';
                     });
 
-                    const cellStatus = document.createElement('td');
-                    cellStatus.textContent = status;
-                    cellStatus.addEventListener('mouseenter', (event) => {
-                        tooltip.textContent = status;
-                        tooltip.style.display = 'block';
-                        tooltip.style.left = event.clientX + 'px';
-                        tooltip.style.top = event.clientY - 30 + 'px';
-                    });
-
-                    cellStatus.addEventListener('mouseleave', () => {
-                        tooltip.style.display = 'none';
-                    });
-
-                    cellStatus.addEventListener('mousemove', (event) => {
-                        tooltip.style.left = event.clientX + 'px';
-                        tooltip.style.top = event.clientY - 30 + 'px';
-                    });
+                    // Anexa somente a célula do colaborador (não exibimos mais a célula de status separada)
                     row.appendChild(cellColaborador);
-                    row.appendChild(cellStatus);
 
-                    applyStyleNone(cellColaborador, cellStatus, colaborador);
+                    // Ajusta estilo quando 'Não se aplica'
+                    applyStyleNone(cellColaborador, null, colaborador);
 
 
                     const statusNormalizado = status.trim().toLowerCase();
@@ -935,12 +929,13 @@ function infosObra(obraId) {
                         }
                     }
                     // ...dentro do forEach de colunas...
+                    // Aplicamos a cor do status diretamente na célula do colaborador
                     if (!(item.imagem_status === 'EF' && item.imagem_sub_status === 'EF')) {
-                        applyStatusStyle(cellStatus, status, colaborador);
+                        applyStatusStyle(cellColaborador, status, colaborador);
                     } else {
                         // Limpa o estilo se for EF/EF
-                        cellStatus.style.backgroundColor = '';
-                        cellStatus.style.color = '';
+                        cellColaborador.style.backgroundColor = '';
+                        cellColaborador.style.color = '';
                     }
 
                 });
@@ -1405,35 +1400,45 @@ function mostrarFiltroColaborador(funcaoSelecionada) {
     const indexFuncao = colunas.findIndex(c => c.col === funcaoSelecionada);
     if (indexFuncao === -1) return;
 
-    // índice da célula do colaborador (não do status)
-    const indexTd = 3 + (indexFuncao * 2);
+    // novo índice da célula do colaborador (após Etapa, Imagem, Status, Prazo)
+    const indexTd = 4 + indexFuncao;
 
     // limpa tudo da linha primeiro
+    // garante que a linha tenha tds suficientes (um por th do header)
+    const headerCols = document.querySelectorAll('#tabela-obra thead tr:nth-child(2) th').length || 0;
+    while (linhaPorcentagem.children.length < headerCols) {
+        const td = document.createElement('td');
+        linhaPorcentagem.appendChild(td);
+    }
+    // limpa conteúdo anterior
     linhaPorcentagem.querySelectorAll('td').forEach(td => td.textContent = '');
 
     const tdAlvo = linhaPorcentagem.children[indexTd];
     if (!tdAlvo) return;
 
-    // 🔽 cria o select
+    // limpa qualquer select anterior
+    tdAlvo.innerHTML = '';
+
+    // criar select
     const select = document.createElement('select');
     const colaboradoresSet = new Set();
 
-    // percorre todos os itens carregados no tbody
-    dados.forEach(item => {
+    // percorre os dados carregados para esta obra (apenas colaboradores desta função na obra)
+    (dadosImagens || []).forEach(item => {
         const colaborador = item[`${funcaoSelecionada}_colaborador`];
         if (colaborador && colaborador !== '-' && colaborador !== 'Não se aplica') {
             colaboradoresSet.add(colaborador);
         }
     });
 
-    // opção "todos"
+    // opção "Todos"
     const optionTodos = document.createElement('option');
     optionTodos.value = '';
     optionTodos.textContent = 'Todos';
     select.appendChild(optionTodos);
 
     // adiciona cada colaborador
-    colaboradoresSet.forEach(colab => {
+    Array.from(colaboradoresSet).sort().forEach(colab => {
         const option = document.createElement('option');
         option.value = colab;
         option.textContent = colab;
@@ -1453,7 +1458,7 @@ function filtrarPorColaborador(funcao, colaborador) {
     const linhas = document.querySelectorAll('#tabela-obra tbody tr');
 
     linhas.forEach(linha => {
-        const cellIndex = 3 + (colunas.findIndex(c => c.col === funcao) * 2);
+        const cellIndex = 4 + colunas.findIndex(c => c.col === funcao);
         const cell = linha.children[cellIndex];
         if (!cell) return;
 
@@ -1802,15 +1807,23 @@ function applyStatusStyle(cell, status, colaborador) {
 
 function applyStyleNone(cell, cell2, nome) {
     if (nome === 'Não se aplica') {
-        cell.style.backgroundColor = '#b4b4b4';
-        cell.style.color = 'black';
-        cell2.style.backgroundColor = '#b4b4b4';
-        cell2.style.color = 'black';
+        if (cell) {
+            cell.style.backgroundColor = '#b4b4b4';
+            cell.style.color = 'black';
+        }
+        if (cell2) {
+            cell2.style.backgroundColor = '#b4b4b4';
+            cell2.style.color = 'black';
+        }
     } else {
-        cell.style.backgroundColor = '';
-        cell.style.color = '';
-        cell2.style.backgroundColor = '';
-        cell2.style.color = '';
+        if (cell) {
+            cell.style.backgroundColor = '';
+            cell.style.color = '';
+        }
+        if (cell2) {
+            cell2.style.backgroundColor = '';
+            cell2.style.color = '';
+        }
     }
 }
 
@@ -4953,3 +4966,54 @@ function addOpenButton(inputId, containerSelector) {
 addOpenButton('fotografico');
 addOpenButton('link_drive');
 addOpenButton('link_review');
+
+// Actions menu initialization (moved from inline in obra.php)
+(function(){
+    function initActionsMenu(){
+        const btn = document.getElementById('actionsMenuBtn');
+        const menu = document.getElementById('actionsMenu');
+        if (!btn || !menu) return;
+
+        const firstAction = menu.querySelector('.action-item');
+
+        function openMenu(){
+            btn.setAttribute('aria-expanded','true');
+            menu.setAttribute('aria-hidden','false');
+            btn.parentElement.classList.add('open');
+            // focus first action for keyboard users
+            if(firstAction) firstAction.focus();
+        }
+
+        function closeMenu(){
+            btn.setAttribute('aria-expanded','false');
+            menu.setAttribute('aria-hidden','true');
+            btn.parentElement.classList.remove('open');
+        }
+
+        btn.addEventListener('click', function(e){
+            e.stopPropagation();
+            const isOpen = btn.getAttribute('aria-expanded') === 'true';
+            if(isOpen) closeMenu(); else openMenu();
+        });
+
+        // close when clicking outside
+        document.addEventListener('click', function(e){
+            if (!menu.contains(e.target) && !btn.contains(e.target)) closeMenu();
+        });
+
+        // keyboard handling: Esc closes, ArrowDown focuses first action
+        document.addEventListener('keydown', function(e){
+            if (e.key === 'Escape') { closeMenu(); btn.focus(); }
+            if (e.key === 'ArrowDown' && btn.getAttribute('aria-expanded') === 'true') { if(firstAction) firstAction.focus(); }
+        });
+
+        // keep clicks inside the menu from bubbling (so external click listener doesn't immediately close it)
+        menu.addEventListener('click', function(e){ e.stopPropagation(); });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initActionsMenu);
+    } else {
+        initActionsMenu();
+    }
+})();

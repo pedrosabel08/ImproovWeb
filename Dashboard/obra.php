@@ -192,16 +192,22 @@ $conn->close();
                 </div>
 
                 <div id="prazos-list"></div>
-                <div id="calendarMini" class="animate__animated"></div>
+                <div id="calendarMini" class="animate__animated" style="display: none;"></div>
             </div>
 
             <div class="buttons animate__animated">
-                <button id="editImagesBtn" class="animate__animated">Editar Imagens</button>
-                <button id="addImagem" class="animate__animated">Adicionar Imagem</button>
-                <button id="editArquivos" class="animate__animated">Editar Arquivos</button>
-                <button id="addFollowup" onclick="gerarFollowUpPDF()" class="animate__animated">Follow Up</button>
-                <button id="clearFilters" class="animate__animated">Limpar filtros</button>
-                <!-- <button id="flowReviewBtn">Flow Review</button> -->
+                <div class="actions-menu">
+                    <button id="actionsMenuBtn" class="menu-icon animate__animated" aria-expanded="false" aria-label="Ações da obra" title="Ações">
+                        <i class="fas fa-ellipsis-v" aria-hidden="true"></i>
+                    </button>
+                    <div id="actionsMenu" class="actions-menu-dropdown" aria-hidden="true">
+                        <button id="editImagesBtn" class="action-item">Editar Imagens</button>
+                        <button id="addImagem" class="action-item">Adicionar Imagem</button>
+                        <button id="editArquivos" class="action-item">Editar Arquivos</button>
+                        <button id="addFollowup" class="action-item" onclick="gerarFollowUpPDF()">Follow Up</button>
+                        <!-- <button id="clearFilters" class="action-item">Limpar filtros</button> -->
+                    </div>
+                </div>
             </div>
 
             <div class="contagem_imagens">
@@ -355,21 +361,13 @@ $conn->close();
                             <th>Status</th>
                             <th style="max-width: 15px;">Prazo</th>
                             <th onclick="mostrarFiltroColaborador('caderno')">Caderno</th>
-                            <th>Status</th>
                             <th onclick="mostrarFiltroColaborador('filtro')">Filtro de assets</th>
-                            <th>Status</th>
                             <th onclick="mostrarFiltroColaborador('modelagem')">Modelagem</th>
-                            <th>Status</th>
                             <th onclick="mostrarFiltroColaborador('composicao')">Composição</th>
-                            <th>Status</th>
                             <th onclick="mostrarFiltroColaborador('pre')">Pré-Finalização</th>
-                            <th>Status</th>
                             <th onclick="mostrarFiltroColaborador('finalizacao')">Finalização</th>
-                            <th>Status</th>
                             <th onclick="mostrarFiltroColaborador('pos_producao')">Pós-Produção</th>
-                            <th>Status</th>
                             <th onclick="mostrarFiltroColaborador('alteracao')">Alteração</th>
-                            <th>Status</th>
                             <!-- <th onclick="mostrarFiltroColaborador('planta')">Planta</th>
                             <th>Status</th> -->
                         </tr>

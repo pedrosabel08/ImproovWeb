@@ -1211,24 +1211,11 @@ table#tabela-logs tbody tr:hover {
     margin-top: 30px;
 }
 
-#editImagesBtn,
-#addImagem,
-#editArquivos,
-#addFollowup,
-#acoesBtn {
+#editImagesBtn {
     background-color: red;
-    width: max-content;
-    text-align: center;
-    padding: 0.2rem 0.6rem;
-    border-radius: 10px;
-    color: white;
-    font-size: 0.8rem;
-    transition: 0.3s all ease;
-    cursor: pointer;
 }
 
 #addImagem {
-    width: max-content;
     background-color: #0056b3;
 }
 
@@ -2374,4 +2361,85 @@ ul.file-list {
 
 .link_campo .open-link-btn:hover {
     background: #eee;
+}
+
+tr#linha-porcentagem td select {
+    width: 100%;
+    font-size: 0.8rem;
+    border: none;
+    border-bottom: 1px solid;
+}
+
+
+/* Styles for compact actions menu */
+.actions-menu {
+    position: relative;
+    display: inline-block;
+}
+
+.menu-icon {
+    background: transparent;
+    border: none;
+    font-size: 18px;
+    padding: 6px 8px;
+    cursor: pointer;
+    color: inherit;
+}
+
+.menu-icon:focus {
+    outline: 2px solid #5b9dd9;
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+.actions-menu-dropdown {
+    display: none;
+    position: absolute;
+    top: 120%;
+    background: #fff;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+    border-radius: 6px;
+    padding: 6px;
+    z-index: 1100;
+    min-width: 180px;
+    max-width: 320px;
+}
+
+.actions-menu.open .actions-menu-dropdown,
+.actions-menu-dropdown[aria-hidden="false"] {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.actions-menu-dropdown .action-item {
+    padding: 0.2rem 0.6rem;
+    border-radius: 10px;
+    color: white;
+    font-size: 0.8rem;
+    transition: 0.3s all ease;
+    text-align: center;
+}
+
+.actions-menu-dropdown .action-item:hover,
+.actions-menu-dropdown .action-item:focus {
+    background: #f2f2f2;
+}
+
+.actions-menu-dropdown .action-item:focus {
+    outline: none;
+}
+
+/* Small responsive tweak */
+@media (max-width: 600px) {
+    .actions-menu-dropdown {
+        right: 8px;
+        left: 8px;
+        min-width: auto;
+    }
+}
+
+/* Keep existing toolbar spacing consistent */
+.buttons .actions-menu {
+    margin-right: 8px;
 }

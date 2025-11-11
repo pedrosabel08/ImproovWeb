@@ -52,6 +52,18 @@ function send_slack_webhook($webhookUrl, $text, &$log)
 function send_slack_token_message($token, $channel, $text, &$log)
 {
     if (!$token || !$channel) { $log[] = "Slack token or channel missing"; return false; }
+    // If $channel is not an ID (starts with U/C/D), try to resolve it using users.list
+    if (!preg_match('/^[UCD][A-Z0-9]+$/', $channel)) {
+        $resolved = resolve_slack_user_id($token, $channel, $log);
+        if ($resolved) {
+            $log[] = "Resolved Slack identifier '$channel' => user id $resolved";
+            $channel = $resolved;
+        } else {
+            $log[] = "Could not resolve Slack identifier: $channel";
+            // continue and let chat.postMessage return channel_not_found if still invalid
+        }
+    }
+
     $url = 'https://slack.com/api/chat.postMessage';
     $body = json_encode(['channel' => $channel, 'text' => $text]);
     $ch = curl_init($url);
@@ -76,6 +88,50 @@ function send_slack_token_message($token, $channel, $text, &$log)
     }
     $log[] = "Slack message sent via token to $channel";
     return true;
+}
+
+/**
+ * Resolve a human-readable Slack identifier (username, display name or email) to a Slack user ID using users.list.
+ * Returns the user ID (e.g. U1234...) or null if not found.
+ */
+function resolve_slack_user_id($token, $identifier, &$log)
+{
+    if (!$token || !$identifier) return null;
+    $ch = curl_init('https://slack.com/api/users.list');
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Authorization: Bearer ' . $token,
+        'Content-Type: application/x-www-form-urlencoded'
+    ]);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    $res = curl_exec($ch);
+    $err = curl_error($ch);
+    curl_close($ch);
+    if ($res === false) {
+        $log[] = "Slack users.list request failed: $err";
+        return null;
+    }
+    $json = json_decode($res, true);
+    if (!$json || empty($json['ok']) || empty($json['members'])) {
+        $log[] = "Slack users.list error: " . ($json['error'] ?? 'no members');
+        return null;
+    }
+
+    $needle = mb_strtolower(trim($identifier), 'UTF-8');
+    foreach ($json['members'] as $m) {
+        // skip bots and deleted
+        if (!empty($m['deleted']) || !empty($m['is_bot'])) continue;
+        $candidates = [];
+        if (!empty($m['name'])) $candidates[] = $m['name'];
+        if (!empty($m['profile']['display_name'])) $candidates[] = $m['profile']['display_name'];
+        if (!empty($m['profile']['real_name'])) $candidates[] = $m['profile']['real_name'];
+        if (!empty($m['profile']['email'])) $candidates[] = $m['profile']['email'];
+        foreach ($candidates as $cand) {
+            if (mb_strtolower($cand, 'UTF-8') === $needle) {
+                return $m['id'];
+            }
+        }
+    }
+    return null;
 }
 
 // Load .env (if present) from project root
@@ -759,6 +815,54 @@ if (!empty($arquivosPorImagem) && $refsSkpModo === 'porImagem') {
                                     $ins->bind_param("isi", $colabId, $notifMsg, $funcaoImagemId);
                                     $ins->execute();
                                     $log[] = "Notificação criada para colaborador $colabId";
+
+                                    // Atualiza o status da funcao_imagem para 'Não iniciado' quando o ângulo é definido
+                                    try {
+                                        $novoStatus = 'Não iniciado';
+                                        $statusAnterior = null;
+                                        $stmtStatus = $conn->prepare("SELECT status FROM funcao_imagem WHERE idfuncao_imagem = ? LIMIT 1");
+                                        if ($stmtStatus) {
+                                            $stmtStatus->bind_param('i', $funcaoImagemId);
+                                            $stmtStatus->execute();
+                                            $resStatus = $stmtStatus->get_result();
+                                            if ($resStatus && $rowS = $resStatus->fetch_assoc()) {
+                                                $statusAnterior = $rowS['status'];
+                                            }
+                                            $stmtStatus->close();
+                                        }
+
+                                        // Só atualiza se for diferente
+                                        if ($statusAnterior !== $novoStatus) {
+                                            $upd = $conn->prepare("UPDATE funcao_imagem SET status = ? WHERE idfuncao_imagem = ?");
+                                            if ($upd) {
+                                                $upd->bind_param('si', $novoStatus, $funcaoImagemId);
+                                                $upd->execute();
+                                                $log[] = "Status da funcao_imagem $funcaoImagemId atualizado: '" . ($statusAnterior ?? 'NULL') . "' => '$novoStatus'";
+                                                $upd->close();
+
+                                                // Insere no historico_aprovacoes para registrar a mudança
+                                                $histColab = is_numeric($colabId) ? (int)$colabId : 0;
+                                                $responsavel = 0; // upload automático / sistema
+                                                $insHist = $conn->prepare("INSERT INTO historico_aprovacoes (funcao_imagem_id, status_anterior, status_novo, colaborador_id, responsavel) VALUES (?, ?, ?, ?, ?)");
+                                                if ($insHist) {
+                                                    // status_anterior pode ser NULL; passar como string vazia quando necessário
+                                                    $sa = $statusAnterior ?? '';
+                                                    $insHist->bind_param('issii', $funcaoImagemId, $sa, $novoStatus, $histColab, $responsavel);
+                                                    $insHist->execute();
+                                                    $insHist->close();
+                                                    $log[] = "Histórico de status criado para funcao_imagem $funcaoImagemId";
+                                                } else {
+                                                    $log[] = "Falha ao preparar insert historico_aprovacoes: " . $conn->error;
+                                                }
+                                            } else {
+                                                $log[] = "Falha ao preparar update funcao_imagem: " . $conn->error;
+                                            }
+                                        } else {
+                                            $log[] = "Funcao_imagem $funcaoImagemId já está com status '$novoStatus' — sem alteração.";
+                                        }
+                                    } catch (Exception $e) {
+                                        $log[] = "Erro ao atualizar status da funcao_imagem: " . $e->getMessage();
+                                    }
                                     // Enviar notificação também para o Slack (se o usuário tiver nome_slack)
                                     try {
                                         $stmtSlack = $conn->prepare("SELECT nome_slack FROM usuario WHERE idcolaborador = ? LIMIT 1");

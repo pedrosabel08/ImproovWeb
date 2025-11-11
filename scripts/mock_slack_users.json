@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "members": [
+    {
+      "id": "U111AAA",
+      "name": "pedrosabel",
+      "deleted": false,
+      "is_bot": false,
+      "profile": {
+        "display_name": "Pedro",
+        "real_name": "Pedro Sabel",
+        "email": "pedro@example.com"
+      }
+    },
+    {
+      "id": "U222BBB",
+      "name": "maria",
+      "deleted": false,
+      "is_bot": false,
+      "profile": {
+        "display_name": "Maria",
+        "real_name": "Maria Silva",
+        "email": "maria@example.com"
+      }
+    }
+  ]
+}

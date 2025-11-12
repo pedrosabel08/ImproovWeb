@@ -2615,6 +2615,270 @@ function renderArquivosList(arquivos) {
     });
 }
 
+const tipoArquivoSelect = document.querySelector('select[name="tipo_arquivo"]');
+const tipoImagemSelect = document.querySelector('select[name="tipo_imagem[]"]');
+const referenciasContainer = document.getElementById('referenciasContainer');
+const arquivoFile = document.getElementById('arquivoFile');
+const tipoCategoria = document.getElementById('tipo_categoria');
+const sufixoSelect = document.getElementById('sufixoSelect');
+const labelSufixo = document.getElementById('labelSufixo');
+
+const btnClose = document.getElementById('closeModal');
+const uploadModal = document.getElementById('uploadModal');
+btnClose.addEventListener('click', () => uploadModal.style.display = 'none');
+
+// Mapping of suffix options per file type
+const SUFIXOS = {
+    'DWG': ['TERREO', 'LAZER', 'COBERTURA', 'MEZANINO', 'CORTES', 'GERAL', 'TIPO', 'GARAGEM', 'FACHADA', 'DUPLEX', 'ROOFTOP', 'LOGO'],
+    'PDF': ['DOCUMENTACAO', 'RELATORIO', 'LOGO', 'ARQUITETONICO', 'REFERENCIA', 'ESQUADRIA'],
+    'SKP': ['MODELAGEM', 'REFERENCIA'],
+    'IMG': ['FACHADA', 'INTERNA', 'EXTERNA', 'UNIDADE'],
+    'IFC': ['BIM'],
+    'Outros': ['Geral']
+};
+
+tipoArquivoSelect.addEventListener('change', async () => {
+    const tipoArquivo = tipoArquivoSelect.value;
+    referenciasContainer.innerHTML = '';
+    // Mostra o modo para SKP ou REFS
+    // Mostrar a opção de modo (geral / porImagem) para todos os tipos — permitir envio por imagem universal
+    document.getElementById('refsSkpModo').style.display = 'block';
+
+    const modo = document.querySelector('input[name="refsSkpModo"]:checked')?.value || 'geral';
+
+    // Se modo porImagem, mostrar inputs por imagem para TODOS os tipos configurados
+    if (modo === 'porImagem') {
+        const obraId = document.querySelector('select[name="obra_id"]').value;
+        const tipoImagemIds = Array.from(tipoImagemSelect.selectedOptions).map(o => o.value);
+
+        if (!obraId || tipoImagemIds.length === 0) return;
+
+        const res = await fetch('../Arquivos/getImagensObra.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ obra_id: obraId, tipo_imagem: tipoImagemIds })
+        });
+
+
+        arquivoFile.style.display = 'none';
+        arquivoFile.required = false;
+        arquivoFile.disabled = true;
+
+        const imagens = await res.json();
+        imagens.forEach(img => {
+            const div = document.createElement('div');
+            div.innerHTML = `
+                <label>${img.imagem_nome}</label>
+                <input type="file" name="arquivos_por_imagem[${img.id}][]" multiple>
+            `;
+            referenciasContainer.appendChild(div);
+        });
+    } else {
+        // Upload geral
+        arquivoFile.style.display = 'block';
+        arquivoFile.required = true;
+        arquivoFile.disabled = false;
+    }
+
+    // Populate suffix select based on type
+    const options = SUFIXOS[tipoArquivo] || [];
+    if (options.length) {
+        sufixoSelect.innerHTML = '';
+        options.forEach(opt => {
+            const o = document.createElement('option');
+            o.value = opt;
+            o.textContent = opt;
+            sufixoSelect.appendChild(o);
+        });
+        sufixoSelect.style.display = '';
+        labelSufixo.style.display = '';
+    } else {
+        sufixoSelect.innerHTML = '';
+        sufixoSelect.style.display = 'none';
+        labelSufixo.style.display = 'none';
+    }
+});
+document.getElementById('refsSkpModo').addEventListener('change', () => {
+    tipoArquivoSelect.dispatchEvent(new Event('change'));
+});
+
+function buildFormData(form) {
+    const formData = new FormData();
+
+    const inputs = form.querySelectorAll('input, select, textarea');
+    inputs.forEach(input => {
+        if (input.type === 'file') return; // trata separadamente
+
+        if (input.multiple && input.tagName === 'SELECT') {
+            Array.from(input.selectedOptions).forEach(option => {
+                formData.append(input.name, option.value);
+            });
+        } else {
+            formData.append(input.name, input.value);
+        }
+    });
+
+    // arquivos
+    const fileInputs = form.querySelectorAll('input[type="file"]');
+    fileInputs.forEach(input => {
+        Array.from(input.files).forEach(file => {
+            if (file.size > 0) formData.append(input.name, file);
+        });
+    });
+
+    return formData;
+}
+
+document.getElementById("uploadForm").addEventListener("submit", async function (e) {
+    e.preventDefault();
+
+    const form = e.target;
+    const obra_id = form.obra_id.value;
+    const tipo_arquivo = form.tipo_arquivo.value;
+    const tipo_categoria = form.tipo_categoria.value;
+    const tipo_imagem = Array.from(form['tipo_imagem[]'].selectedOptions).map(o => o.value);
+
+    // Se modo porImagem, checar por imagem; caso contrário checagem padrão para outros tipos
+    const modoSubmit = document.querySelector('input[name="refsSkpModo"]:checked')?.value || 'geral';
+    if (modoSubmit === 'porImagem') {
+        let imagensInputs = referenciasContainer.querySelectorAll('input[type="file"]');
+        let existeAlgum = false;
+
+        for (let input of imagensInputs) {
+            // 🔎 Pula inputs sem arquivos
+            if (!input.files || input.files.length === 0) continue;
+
+            let imagemIdMatch = input.name.match(/\[(\d+)\]/);
+            if (!imagemIdMatch) continue; // segurança caso não bata o regex
+            let imagemId = imagemIdMatch[1];
+
+            // Checa se existe para cada imagem que realmente tem arquivo
+            const checkRes = await fetch('../Arquivos/checkArquivoExistente.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ obra_id, tipo_arquivo, tipo_categoria, tipo_imagem, imagem_id: imagemId, tipo_categoria: tipo_categoria })
+            });
+            const checkData = await checkRes.json();
+            if (checkData.existe) existeAlgum = true;
+        }
+
+        if (existeAlgum) {
+            const confirm = await Swal.fire({
+                title: 'Já existe arquivo para uma ou mais imagens!',
+                text: 'Deseja substituir os arquivos existentes?',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Sim, substituir',
+                cancelButtonText: 'Não, continuar'
+            });
+
+            form.querySelector('[name="flag_substituicao"]').checked = confirm.isConfirmed;
+        }
+
+    } else {
+        // Checagem padrão para outros tipos
+        const checkRes = await fetch('../Arquivos/checkArquivoExistente.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ obra_id, tipo_arquivo, tipo_imagem, tipo_categoria })
+        });
+        const checkData = await checkRes.json();
+
+        if (checkData.existe) {
+            const confirm = await Swal.fire({
+                title: 'Já existe arquivo desse tipo!',
+                text: 'Deseja substituir o arquivo existente?',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Sim, substituir',
+                cancelButtonText: 'Não, continuar'
+            });
+
+            if (confirm.isConfirmed) {
+                form.querySelector('[name="flag_substituicao"]').checked = true;
+            } else {
+                // Usuário cancelou, garante que a substituição continue como false
+                form.querySelector('[name="flag_substituicao"]').checked = false;
+                // Aqui não precisa retornar, o envio continua
+            }
+        }
+    }
+
+    // Agora sim monta o FormData
+    const formData = buildFormData(form);
+
+    const modo = document.querySelector('input[name="refsSkpModo"]:checked')?.value || 'geral';
+    formData.append('refsSkpModo', modo);
+
+    // Remover arquivos vazios
+    for (let [key, value] of formData.entries()) {
+        if (value instanceof File && value.size === 0) {
+            formData.delete(key);
+        }
+    }
+
+    // Debug
+    for (let [key, value] of formData.entries()) {
+        console.log("Final:", key, value);
+    }
+    try {
+        const response = await fetch('https://improov/ImproovWeb/Arquivos/upload.php', {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await response.json();
+        // Mensagens de sucesso
+        if (result.success && result.success.length > 0) {
+            result.success.forEach(msg => {
+                Toastify({
+                    text: msg,
+                    duration: 3000,
+                    close: true,
+                    gravity: "top",
+                    position: "right",
+                    backgroundColor: "green",
+                    stopOnFocus: true,
+                }).showToast();
+            });
+
+            // Recarrega tabela
+            form.reset();
+            modal.style.display = 'none';
+            carregarArquivosObra(obra_id);
+        }
+
+        // Mensagens de erro
+        if (result.errors && result.errors.length > 0) {
+            result.errors.forEach(msg => {
+                Toastify({
+                    text: msg,
+                    duration: 5000,
+                    close: true,
+                    gravity: "top",
+                    position: "right",
+                    backgroundColor: "red",
+                    stopOnFocus: true,
+                }).showToast();
+            });
+        }
+
+    } catch (err) {
+        console.error(err);
+        Toastify({
+            text: "Erro ao enviar os arquivos.",
+            duration: 5000,
+            close: true,
+            gravity: "top",
+            position: "right",
+            backgroundColor: "red",
+            stopOnFocus: true,
+        }).showToast();
+    }
+});
+
+
+
 // Wire buttons
 document.addEventListener('DOMContentLoaded', () => {
     const btnAdd = document.getElementById('btnAddArquivo');
@@ -2622,7 +2886,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnAdd) {
         btnAdd.addEventListener('click', () => {
             // Reuse existing modalArquivos
-            const modal = document.getElementById('modalArquivos');
+            const modal = document.getElementById('uploadModal');
             if (modal) modal.style.display = 'flex';
         });
     }
@@ -5097,135 +5361,6 @@ function nextPage() {
 //     document.getElementById('modalUploadAcompanhamento').style.display = 'block';
 // });
 
-let arquivoSelecionado = null;
-let tiposPendentes = [];
-let tipoSelecionado = null;
-
-const arquivoInput = document.getElementById("arquivo_acomp");
-const statusArquivo = document.getElementById("status_arquivo");
-const checklistContainer = document.getElementById("checklistContainer");
-const uploadFormContainer = document.getElementById("uploadFormContainer");
-
-// Etapa 1: Escolher arquivo
-arquivoInput.addEventListener("change", function () {
-    arquivoSelecionado = this.files[0];
-});
-
-// Etapa 2: Escolher status (Completo/Incompleto)
-statusArquivo.addEventListener("change", function () {
-    if (!arquivoSelecionado) {
-        alert("Escolha um arquivo primeiro.");
-        statusArquivo.value = "";
-        return;
-    }
-
-    if (this.value === "Completo") {
-        // Vai direto para formulário
-        checklistContainer.style.display = "none";
-        uploadFormContainer.style.display = "block";
-        tipoSelecionado = null; // não precisa escolher tipo
-    } else if (this.value === "Incompleto") {
-        // Buscar pendências
-        const formData = new FormData();
-        formData.append("nome_arquivo", arquivoSelecionado.name);
-        formData.append("obra_id", obraId);
-
-        fetch("verifica_tipo_arquivo.php", {
-            method: "POST",
-            body: formData
-        })
-            .then(res => res.json())
-            .then(data => {
-                tiposPendentes = data.tipos_pendentes;
-                checklistContainer.innerHTML = "<h4>Selecione o tipo de imagem:</h4>";
-
-                if (tiposPendentes.length > 0) {
-                    tiposPendentes.forEach(tipo => {
-                        const btn = document.createElement("button");
-                        btn.type = "button";
-                        btn.className = "tipo-imagem-btn";
-                        btn.textContent = tipo.nome;
-                        btn.dataset.id = tipo.id_tipo_imagem;
-
-                        btn.addEventListener("click", function () {
-                            document.querySelectorAll(".tipo-imagem-btn").forEach(b => b.classList.remove("selected"));
-                            this.classList.add("selected");
-                            tipoSelecionado = this.dataset.id;
-                        });
-
-                        checklistContainer.appendChild(btn);
-                    });
-
-                    checklistContainer.style.display = "block";
-                    uploadFormContainer.style.display = "block";
-                } else {
-                    checklistContainer.style.display = "none";
-                    uploadFormContainer.style.display = "none";
-                    alert("Nenhum tipo de imagem pendente para este arquivo.");
-                }
-            });
-    } else {
-        checklistContainer.style.display = "none";
-        uploadFormContainer.style.display = "none";
-    }
-});
-
-// Etapa 5: Enviar
-document.getElementById("formUploadAcompanhamento").addEventListener("submit", function (e) {
-    e.preventDefault();
-
-    if (!arquivoSelecionado) {
-        alert("Escolha um arquivo.");
-        return;
-    }
-
-    // Se estiver incompleto, precisa escolher tipo
-    if (statusArquivo.value === "Incompleto" && !tipoSelecionado) {
-        alert("Selecione um tipo de imagem.");
-        return;
-    }
-
-    const descricao = document.getElementById("descricao_acomp").value;
-    const status = document.getElementById("status_acomp").value;
-    const obra_id = obraId;
-
-    const formData = new FormData();
-    formData.append("arquivo", arquivoSelecionado);
-    formData.append("descricao", descricao);
-    formData.append("status", status);
-    formData.append("obra_id", obra_id);
-
-    if (tipoSelecionado) {
-        formData.append("tipo_imagem", tipoSelecionado);
-    }
-
-    fetch("upload_arquivo_acomp.php", {
-        method: "POST",
-        body: formData
-    })
-        .then(res => res.json())
-        .then(data => {
-            if (data.sucesso) {
-                document.getElementById("uploadAcompStatus").textContent = data.mensagem;
-                // Reset modal
-                arquivoInput.value = "";
-                statusArquivo.value = "";
-                document.getElementById("descricao_acomp").value = "";
-                document.getElementById("status_acomp").value = "Incompleto";
-                checklistContainer.innerHTML = "";
-                checklistContainer.style.display = "none";
-                uploadFormContainer.style.display = "none";
-                tipoSelecionado = null;
-            } else {
-                alert(data.mensagem);
-            }
-        });
-});
-
-function fecharModalUploadAcompanhamento() {
-    document.getElementById("modalUploadAcompanhamento").style.display = "none";
-}
-
 // Função auxiliar: normaliza URL (adiciona https:// se necessário)
 function normalizeUrl(url) {
     if (!url) return null;
@@ -5359,5 +5494,40 @@ addOpenButton('link_review');
         document.addEventListener('DOMContentLoaded', initActionsMenu);
     } else {
         initActionsMenu();
+    }
+})();
+
+// Preseleciona o select obra_id do modal de upload com o obraId atual (pegado do localStorage)
+(function preselectUploadObra() {
+    function tryPreselect() {
+        try {
+            const uploadSelect = document.querySelector('#uploadForm select[name="obra_id"]');
+            const stored = (localStorage.getItem('obraId') || localStorage.getItem('idObra') || '').toString().trim();
+            if (!uploadSelect || !stored) return;
+
+            // Se já existir a option correspondente, apenas seleciona
+            const exists = Array.from(uploadSelect.options).some(opt => String(opt.value) === stored);
+            if (!exists) {
+                // tenta pegar um nome da página (nomenclatura) como label para a option
+                const nome = document.getElementById('nomenclatura') ? document.getElementById('nomenclatura').textContent.trim() : '';
+                const newOpt = document.createElement('option');
+                newOpt.value = stored;
+                newOpt.text = nome || `Obra ${stored}`;
+                uploadSelect.appendChild(newOpt);
+            }
+
+            uploadSelect.value = stored;
+            // dispara change caso existam listeners que precisem reagir
+            uploadSelect.dispatchEvent(new Event('change'));
+        } catch (e) {
+            console.warn('Erro ao pré-selecionar obra no uploadForm:', e);
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', tryPreselect);
+    } else {
+        // Se o script já foi executado e elementos estão disponíveis
+        setTimeout(tryPreselect, 20);
     }
 })();

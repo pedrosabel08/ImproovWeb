@@ -1059,9 +1059,6 @@ header {
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
-header h1 {
-    border-bottom: 2px solid black;
-}
 
 .labels {
     display: flex;

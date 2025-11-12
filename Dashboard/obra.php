@@ -1322,57 +1322,84 @@ $conn->close();
     <!-- <button id="btnUploadAcompanhamento">Upload Acompanhamento Obra</button> -->
 
     <!-- Modal para upload -->
-    <div id="modalUploadAcompanhamento" class="modal" style="display:none;">
-        <div class="modal-content" style="width:600px; max-height:80vh; overflow-y:auto;">
-            <h3>Upload de Arquivo - Acompanhamento da Obra</h3>
-
-            <!-- Etapa 1: Escolher arquivo -->
-            <div style="margin-bottom:15px;">
-                <label>Escolher arquivo:</label>
-                <input type="file" id="arquivo_acomp" required>
-            </div>
-
-            <!-- Etapa 2: Completo ou Incompleto -->
-            <div style="margin-bottom:15px;">
-                <label>Status do arquivo:</label>
-                <select id="status_arquivo">
+    <!-- Modal Upload -->
+    <div class="modal" id="uploadModal">
+        <div class="modal-content">
+            <h2>Novo Upload</h2>
+            <form id="uploadForm" enctype="multipart/form-data">
+                <label>Projeto</label>
+                <select name="obra_id" required>
                     <option value="">-- Selecione --</option>
-                    <option value="Completo">Completo</option>
-                    <option value="Incompleto">Incompleto</option>
+                    <?php foreach ($obras as $obra): ?>
+                        <option value="<?= $obra['idobra']; ?>"><?= htmlspecialchars($obra['nomenclatura']); ?>
+                        </option>
+                    <?php endforeach; ?>
                 </select>
-            </div>
 
-            <!-- Etapa 3: Tipos pendentes (se Incompleto) -->
-            <div id="checklistContainer" style="margin-top:15px; display:none;">
-                <h4>Selecione o tipo de imagem:</h4>
-            </div>
+                <label>Categoria</label>
+                <select name="tipo_categoria" required>
+                    <option value="1">Arquitetônico</option>
+                    <option value="2">Referências</option>
+                    <option value="3">Paisagismo</option>
+                    <option value="4">Luminotécnico</option>
+                    <option value="5">Estrutural</option>
+                    <option value="6">Alterações</option>
+                    <option value="7">Ângulo definido</option>
+                </select>
 
-            <!-- Etapa 4: Formulário final -->
-            <div id="uploadFormContainer" style="margin-top:20px; display:none;">
-                <form id="formUploadAcompanhamento">
-                    <input type="hidden" id="obra_id_acomp" value="">
+                <label>Tipo de Imagem</label>
+                <select name="tipo_imagem[]" multiple size="5" required>
+                    <option value="Fachada">Fachada</option>
+                    <option value="Imagem Interna">Interna</option>
+                    <option value="Imagem Externa">Externa</option>
+                    <option value="Unidade">Unidades</option>
+                    <option value="Planta Humanizada">Plantas Humanizadas</option>
+                </select>
 
-                    <div style="margin-bottom:10px;">
-                        <label>Descrição:</label>
-                        <input type="text" id="descricao_acomp" required style="width:100%;">
-                    </div>
+                <label>Tipo de Arquivo</label>
+                <select name="tipo_arquivo" required>
+                    <option value="">-- Selecione --</option>
+                    <option value="DWG">DWG</option>
+                    <option value="PDF">PDF</option>
+                    <option value="SKP">SKP</option>
+                    <option value="IMG">IMG</option>
+                    <option value="IFC">IFC</option>
+                    <option value="Outros">Outros</option>
+                </select>
 
-                    <div style="margin-bottom:10px;">
-                        <label>Status:</label>
-                        <select id="status_acomp">
-                            <option value="Incompleto">Incompleto</option>
-                            <option value="Completo">Completo</option>
-                        </select>
-                    </div>
+                <label id="labelSufixo" style="display:none;">Sufixo</label>
+                <select name="sufixo" id="sufixoSelect" style="display:none;">
+                    <!-- options populated by script.js based on tipo_arquivo -->
+                </select>
 
-                    <div style="margin-top:15px;">
-                        <button type="submit">Enviar</button>
-                        <button type="button" onclick="fecharModalUploadAcompanhamento()">Cancelar</button>
-                    </div>
-                </form>
-            </div>
+                <!-- Adicione dentro do form do modal -->
+                <div id="refsSkpModo" style="display:none;">
+                    <label>
+                        <input type="radio" name="refsSkpModo" value="geral" checked> Enviar geral
+                    </label>
+                    <label>
+                        <input type="radio" name="refsSkpModo" value="porImagem"> Enviar por imagem
+                    </label>
+                </div>
 
-            <div id="uploadAcompStatus" style="margin-top:10px; color:green;"></div>
+                <div id="referenciasContainer" style="max-height: 50vh; overflow-y: auto;"></div>
+
+                <label>Arquivo</label>
+                <input id="arquivoFile" type="file" name="arquivos[]" multiple required>
+
+                <label>Descrição</label>
+                <textarea name="descricao" rows="4"></textarea>
+
+                <div class="checkbox-group">
+                    <label><input type="checkbox" name="flag_substituicao" value="1"> Substituir existente</label>
+                </div>
+
+                <div class="buttons">
+                    <button type="button" class="btn-close" id="closeModal">Cancelar</button>
+                    <button type="submit" class="btn-submit">Enviar</button>
+                </div>
+            </form>
+
         </div>
     </div>
 

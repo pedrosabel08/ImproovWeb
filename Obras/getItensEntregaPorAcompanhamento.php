@@ -59,13 +59,21 @@ try {
     }
 
     // Busca nomes das imagens da entrega
-    $sqlItens = "
-        SELECT i.imagem_nome AS nome
-        FROM entregas_itens ei
-        INNER JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = ei.imagem_id
-        WHERE ei.entrega_id = ?
-        ORDER BY i.imagem_nome
-    ";
+    // Return only items that were actually delivered. We consider an item delivered when
+    // ei.status starts with 'Entregue' or when data_entregue is not null.
+        // Return only items that were actually delivered.
+        // Treat '0000-00-00' as not delivered (some rows store zero-date instead of NULL).
+        $sqlItens = "
+                SELECT i.imagem_nome AS nome
+                FROM entregas_itens ei
+                INNER JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = ei.imagem_id
+                WHERE ei.entrega_id = ?
+                    AND (
+                            ei.status LIKE 'Entregue%'
+                            OR (ei.data_entregue IS NOT NULL AND ei.data_entregue <> '0000-00-00')
+                    )
+                ORDER BY i.imagem_nome
+        ";
     $stmt2 = $conn->prepare($sqlItens);
     $stmt2->bind_param('i', $entregaId);
     $stmt2->execute();

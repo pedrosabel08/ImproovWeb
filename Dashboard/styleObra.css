@@ -1580,6 +1580,36 @@ i.fa-info {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
 }
 
+/* Make the quick-access alt button visually match the quick-link anchors */
+#quickAccess #altBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    background: var(--card-bg, #fff);
+    color: var(--text, #222);
+    text-decoration: none;
+    font-size: 14px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+    cursor: pointer;
+    border: none;
+}
+
+#quickAccess #altBtn i {
+    font-size: 16px;
+}
+
+#quickAccess #altBtn .qa-label {
+    display: inline-block;
+}
+
+#quickAccess #altBtn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
 /* Hide label on small screens, keep icon only */
 @media (max-width: 700px) {
     .quick-link {

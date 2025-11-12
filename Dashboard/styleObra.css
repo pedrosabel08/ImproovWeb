@@ -624,7 +624,7 @@ a {
 
     .quick-mobile-menu.open {
         transform: translateX(0);
-        display: block;
+        display: block !important;
     }
 
     .quick-mobile-inner {

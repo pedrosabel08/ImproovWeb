@@ -1799,6 +1799,14 @@ function applyStatusStyle(cell, status, colaborador) {
             cell.style.backgroundColor = 'mediumslateblue';
             cell.style.color = 'black';
             break;
+        case 'Não iniciado':
+            cell.style.backgroundColor = '#eeeeeeff';
+            cell.style.color = 'black';
+            break;
+        case 'HOLD':
+            cell.style.backgroundColor = '#ff0000ff';
+            cell.style.color = 'black';
+            break;
         default:
             cell.style.backgroundColor = '';
             cell.style.color = '';
@@ -2311,9 +2319,299 @@ const idObra = localStorage.getItem('obraId');
 
 if (idObra) {
     abrirModalAcompanhamento(idObra); // Carrega os acompanhamentos automaticamente
+    carregarArquivosObra(idObra); // Carrega arquivos da obra na nova seção
 } else {
     console.warn('ID da obra não encontrado no localStorage.');
 }
+
+// Store latest fetched acompanhamentos for client-side filtering
+window.__acompFetched = [];
+
+// Helper: categorize an acompanhamento into one of: todos, manuais, entregas, arquivos
+function categorizeAcomp(acomp) {
+    // Prefer explicit tipo from server
+    const tipo = (acomp.tipo || '').toString().toLowerCase();
+    if (tipo === 'entrega' || tipo === 'entregas') return 'entregas';
+    if (tipo === 'arquivo' || tipo === 'arquivos' || tipo === 'file') return 'arquivos';
+
+    // Heuristics on assunto to detect manuais (manual actions) - fallback
+    const assunto = (acomp.assunto || '').toString().toLowerCase();
+    if (assunto.includes('manual') || assunto.includes('obs') || assunto.includes('observa') || assunto.includes('nota')) return 'manuais';
+
+    // Default: place in 'manuais' if not entrega/arquivos
+    return 'manuais';
+}
+
+// ==== Arquivos da Obra =====================================================
+// Render and interaction logic for new Arquivos section.
+
+function formatBytes(bytes) {
+    if (!bytes || isNaN(bytes)) return '-';
+    const sizes = ['B','KB','MB','GB','TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+    const val = (bytes / Math.pow(1024, i)).toFixed(1);
+    return `${val} ${sizes[i]}`;
+}
+
+function formatDateTime(dtStr) {
+    if (!dtStr) return '-';
+    const d = new Date(dtStr.replace(' ', 'T'));
+    if (isNaN(d.getTime())) return dtStr;
+    return d.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' }) + ' ' + d.toLocaleTimeString('pt-BR',{hour:'2-digit', minute:'2-digit'});
+}
+
+// Infer file type category based on explicit tipo fields or filename extension
+function inferArquivoTipo(arq) {
+    const known = new Set(['DWG','PDF','SKP','IFC','IMG']);
+    const fromTipo = (arq.tipo || '').toString().trim().toUpperCase();
+    const fromTipoImagem = (arq.tipo_imagem || '').toString().trim().toUpperCase();
+
+    // Prefer explicit file-type field (ex.: DWG, PDF, SKP, IFC, IMG)
+    if (known.has(fromTipo)) return fromTipo;
+    if (known.has(fromTipoImagem)) return fromTipoImagem;
+
+    // Heuristics from tipo_imagem wording
+    if (/IMG|IMAGEM|IMAGENS|FOTO|FOTOS/.test(fromTipoImagem)) return 'IMG';
+
+    // Fallback: infer by file extension
+    const nome = (arq.nome || arq.nome_interno || arq.nome_original || arq.nome_arquivo || '').toString();
+    const m = nome.match(/\.([a-z0-9]+)$/i);
+    const ext = m ? m[1].toUpperCase() : '';
+    if (ext === 'PDF') return 'PDF';
+    if (ext === 'DWG') return 'DWG';
+    if (ext === 'SKP') return 'SKP';
+    if (ext === 'IFC') return 'IFC';
+    if (['PNG','JPG','JPEG','BMP','GIF','WEBP','TIFF','TIF'].includes(ext)) return 'IMG';
+    return 'OUTROS';
+}
+
+function iconForTipo(tipo) {
+    switch (tipo) {
+        case 'PDF': return { icon: 'fa-file-pdf', css: 'arq-ico--pdf' };
+        case 'DWG': return { icon: 'fa-drafting-compass', css: 'arq-ico--dwg' };
+        case 'SKP': return { icon: 'fa-cube', css: 'arq-ico--skp' };
+        case 'IMG': return { icon: 'fa-file-image', css: 'arq-ico--img' };
+        case 'IFC': return { icon: 'fa-cubes', css: 'arq-ico--ifc' };
+        default: return { icon: 'fa-file', css: 'arq-ico--outros' };
+    }
+}
+
+function carregarArquivosObra(obraId) {
+    const lista = document.getElementById('listaArquivos');
+    if (!lista) return;
+    lista.innerHTML = '<div class="arquivos-loading">Carregando arquivos...</div>';
+    fetch(`../Arquivos/getArquivos.php?obra_id=${encodeURIComponent(obraId)}`)
+        .then(r => r.json())
+        .then(data => {
+            if (!Array.isArray(data) || data.length === 0) {
+                lista.innerHTML = '<div class="arquivos-empty">Nenhum arquivo encontrado.</div>';
+                return;
+            }
+            renderArquivosList(data);
+        })
+        .catch(err => {
+            console.error('Erro ao carregar arquivos:', err);
+            lista.innerHTML = '<div class="arquivos-error">Erro ao carregar arquivos.</div>';
+        });
+}
+
+function renderArquivosList(arquivos) {
+    const lista = document.getElementById('listaArquivos');
+    if (!lista) return;
+    lista.innerHTML = '';
+    arquivos.forEach(arq => {
+        const row = document.createElement('div');
+        row.className = 'arquivo-row';
+
+        // Nome
+        const colNome = document.createElement('div');
+        colNome.className = 'arq-col nome';
+        colNome.setAttribute('data-label','Nome');
+        const tipoResolvido = inferArquivoTipo(arq);
+        const { icon, css } = iconForTipo(tipoResolvido);
+        const nomeArquivo = (arq.nome || arq.nome_interno || arq.nome_arquivo || 'Arquivo');
+        colNome.title = nomeArquivo;
+        colNome.innerHTML = `<i class="fa-solid ${icon} arq-ico ${css}" aria-hidden="true"></i><span class="arq-nome-text">${nomeArquivo}</span>`;
+
+        // Tipo
+        const colTipo = document.createElement('div');
+        colTipo.className = 'arq-col tipo';
+        colTipo.setAttribute('data-label','Tipo');
+        colTipo.textContent = arq.tipo_imagem || arq.tipo || tipoResolvido || '-';
+
+        // Colaborador
+        const colColab = document.createElement('div');
+        colColab.className = 'arq-col colaborador';
+    colColab.setAttribute('data-label','Colaborador');
+        const nomeColab = arq.colaborador_nome || arq.nome_colaborador || arq.colaborador || '-';
+        colColab.textContent = nomeColab || '-';
+
+        // Tamanho
+        const colTam = document.createElement('div');
+        colTam.className = 'arq-col tamanho';
+    colTam.setAttribute('data-label','Tamanho');
+        colTam.textContent = formatBytes(parseInt(arq.tamanho_bytes || arq.tamanho || 0));
+
+        // Modificado
+        const colMod = document.createElement('div');
+        colMod.className = 'arq-col modificado';
+    colMod.setAttribute('data-label','Modificado');
+        colMod.textContent = formatDateTime(arq.updated_at || arq.recebido_em || arq.created_at);
+
+
+        row.appendChild(colNome);
+        row.appendChild(colTipo);
+        row.appendChild(colColab);
+        row.appendChild(colTam);
+        row.appendChild(colMod);
+        lista.appendChild(row);
+    });
+}
+
+// Wire buttons
+document.addEventListener('DOMContentLoaded', () => {
+    const btnAdd = document.getElementById('btnAddArquivo');
+    const btnRefresh = document.getElementById('btnRefreshArquivos');
+    if (btnAdd) {
+        btnAdd.addEventListener('click', () => {
+            // Reuse existing modalArquivos
+            const modal = document.getElementById('modalArquivos');
+            if (modal) modal.style.display = 'flex';
+        });
+    }
+    if (btnRefresh) {
+        btnRefresh.addEventListener('click', () => {
+            if (idObra) carregarArquivosObra(idObra);
+        });
+    }
+});
+
+// Reusable renderer that applies optional category filter
+function renderAcompanhamentosList(acompList, category = 'todos') {
+    const container = document.getElementById('list_acomp');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const filtered = (category === 'todos') ? acompList : acompList.filter(a => categorizeAcomp(a) === category);
+
+    if (!filtered || filtered.length === 0) {
+        container.innerHTML = '<p>Nenhum acompanhamento encontrado para essa categoria.</p>';
+        return;
+    }
+
+    filtered.forEach(acomp => {
+        const div = document.createElement('div');
+        div.className = 'acomp-conteudo';
+        div.style.position = 'relative';
+
+        const pAssunto = document.createElement('p');
+        pAssunto.className = 'acomp-assunto';
+        pAssunto.innerHTML = `<strong>📝</strong> <span class="acomp-texto">${acomp.assunto}</span>`;
+
+        if ((acomp.tipo || '').toLowerCase() === 'entrega') {
+            const btnVer = document.createElement('button');
+            btnVer.type = 'button';
+            btnVer.title = 'Ver imagens desta entrega';
+            btnVer.textContent = '📷';
+            btnVer.className = 'btn-ver-entrega';
+            pAssunto.appendChild(btnVer);
+
+            btnVer.addEventListener('click', (ev) => {
+                ev.stopPropagation();
+                const popState = window.__acompPopover;
+                const popEl = popState.el;
+                if (popState.openAcomp === acomp.id) {
+                    popEl.classList.add('hidden');
+                    popEl.setAttribute('aria-hidden', 'true');
+                    popState.openAcomp = null;
+                    popState.anchor = null;
+                    return;
+                }
+                popState.openAcomp = acomp.id;
+                popState.anchor = btnVer;
+                const itensDiv = popEl.querySelector('.itens');
+                itensDiv.innerHTML = '<div class="pop-message">Carregando...</div>';
+                popEl.classList.remove('hidden');
+                popEl.setAttribute('aria-hidden', 'false');
+                positionPopover(popEl, btnVer);
+
+                if (popState.cache[acomp.id]) {
+                    renderItensList(popEl, popState.cache[acomp.id]);
+                    return;
+                }
+
+                fetch(`../Obras/getItensEntregaPorAcompanhamento.php?acomp_id=${encodeURIComponent(acomp.id)}`)
+                    .then(r => r.json())
+                    .then(data => {
+                        if (!data.success) {
+                            itensDiv.innerHTML = `<div class="pop-message error">Erro: ${data.message || 'Falha ao carregar.'}</div>`;
+                            return;
+                        }
+                        popState.cache[acomp.id] = data.itens || [];
+                        renderItensList(popEl, popState.cache[acomp.id]);
+                    })
+                    .catch(err => {
+                        console.error('Erro ao buscar itens da entrega:', err);
+                        itensDiv.innerHTML = '<div class="pop-message error">Erro ao carregar itens.</div>';
+                    });
+            });
+        }
+
+        const pData = document.createElement('p');
+        pData.className = 'acomp-data';
+        pData.innerHTML = `<strong>↳ 📅</strong> ${formatarData(acomp.data)}`;
+
+        // edição inline (same behavior as before)
+        pAssunto.addEventListener('click', (ev) => {
+            if (ev.target.closest && ev.target.closest('.btn-ver-entrega')) return;
+            const spanTexto = pAssunto.querySelector('.acomp-texto');
+            const textoAtual = spanTexto ? spanTexto.textContent : '';
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.value = textoAtual;
+            input.className = 'input-edicao';
+            spanTexto.replaceWith(input);
+            input.focus();
+            input.addEventListener('blur', () => {
+                const novoTexto = input.value;
+                salvarAcompanhamento(acomp.id, idObra, novoTexto);
+                const novoSpan = document.createElement('span');
+                novoSpan.className = 'acomp-texto';
+                novoSpan.textContent = novoTexto;
+                input.replaceWith(novoSpan);
+            });
+        });
+
+        div.appendChild(pAssunto);
+        div.appendChild(pData);
+        container.appendChild(div);
+    });
+}
+
+// Wire up filter buttons
+document.addEventListener('DOMContentLoaded', () => {
+    const btns = document.querySelectorAll('.acomp-filter-btn');
+    btns.forEach(btn => btn.addEventListener('click', (ev) => {
+        btns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const cat = btn.getAttribute('data-category') || 'todos';
+        renderAcompanhamentosList(window.__acompFetched || [], cat);
+    }));
+});
+
+// If script runs after DOMContentLoaded (common because script tag is at page end), wire immediately
+const __init_acomp_btns = () => {
+    const btns = document.querySelectorAll('.acomp-filter-btn');
+    if (!btns || btns.length === 0) return false;
+    btns.forEach(btn => btn.addEventListener('click', (ev) => {
+        btns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const cat = btn.getAttribute('data-category') || 'todos';
+        renderAcompanhamentosList(window.__acompFetched || [], cat);
+    }));
+    return true;
+};
+__init_acomp_btns();
 
 function abrirModalAcompanhamento(obraId) {
     fetch(`../Obras/getAcompanhamentoEmail.php?idobra=${obraId}`)
@@ -2357,113 +2655,12 @@ function abrirModalAcompanhamento(obraId) {
             }
 
             if (acompanhamentos.length > 0) {
-                acompanhamentos.forEach(acomp => {
-                    const container = document.createElement('div');
-                    container.className = 'acomp-conteudo';
-                    container.style.position = 'relative'; // para posicionar popover
-
-                    const pAssunto = document.createElement('p');
-                    pAssunto.className = 'acomp-assunto';
-                    pAssunto.innerHTML = `<strong>📝</strong> <span class="acomp-texto">${acomp.assunto}</span>`;
-
-                    if (acomp.tipo === 'entrega') {
-                        // Botão para ver imagens entregues (lazy-load). Uses global popover appended to body so it's not clipped.
-                        const btnVer = document.createElement('button');
-                        btnVer.type = 'button';
-                        btnVer.title = 'Ver imagens desta entrega';
-                        btnVer.textContent = '📷';
-                        btnVer.className = 'btn-ver-entrega';
-                        // visual handled by CSS in styleObra.css
-                        pAssunto.appendChild(btnVer);
-
-                        btnVer.addEventListener('click', (ev) => {
-                            ev.stopPropagation();
-                            const popState = window.__acompPopover;
-                            const popEl = popState.el;
-                            // toggle same acomp
-                            if (popState.openAcomp === acomp.id) {
-                                popEl.classList.add('hidden');
-                                popEl.setAttribute('aria-hidden', 'true');
-                                popState.openAcomp = null;
-                                popState.anchor = null;
-                                return;
-                            }
-                            popState.openAcomp = acomp.id;
-                            popState.anchor = btnVer; // used for positioning
-                            const itensDiv = popEl.querySelector('.itens');
-                            // show loading
-                            itensDiv.innerHTML = '<div class="pop-message">Carregando...</div>';
-                            popEl.classList.remove('hidden');
-                            popEl.setAttribute('aria-hidden', 'false');
-                            positionPopover(popEl, btnVer);
-
-                            // cached?
-                            if (popState.cache[acomp.id]) {
-                                renderItensList(popEl, popState.cache[acomp.id]);
-                                return;
-                            }
-
-                            fetch(`../Obras/getItensEntregaPorAcompanhamento.php?acomp_id=${encodeURIComponent(acomp.id)}`)
-                                .then(r => r.json())
-                                .then(data => {
-                                    if (!data.success) {
-                                        itensDiv.innerHTML = `<div class="pop-message error">Erro: ${data.message || 'Falha ao carregar.'}</div>`;
-                                        return;
-                                    }
-                                    popState.cache[acomp.id] = data.itens || [];
-                                    renderItensList(popEl, popState.cache[acomp.id]);
-                                })
-                                .catch(err => {
-                                    console.error('Erro ao buscar itens da entrega:', err);
-                                    itensDiv.innerHTML = '<div class="pop-message error">Erro ao carregar itens.</div>';
-                                });
-                        });
-                    }
-
-                    const pData = document.createElement('p');
-                    pData.className = 'acomp-data';
-                    pData.innerHTML = `<strong>↳ 📅</strong> ${formatarData(acomp.data)}`;
-
-                    // Evento de clique para editar somente o texto (sem "Assunto:")
-                    // Ignora cliques no botão de ver imagens (ou em outros controles dentro do parágrafo)
-                    pAssunto.addEventListener('click', (ev) => {
-                        // Se clicou no botão de ver entrega, não iniciar edição
-                        if (ev.target.closest && ev.target.closest('.btn-ver-entrega')) return;
-                        const spanTexto = pAssunto.querySelector('.acomp-texto');
-                        const textoAtual = spanTexto ? spanTexto.textContent : '';
-
-                        // Cria um input para edição
-                        const input = document.createElement('input');
-                        input.type = 'text';
-                        input.value = textoAtual;
-                        input.className = 'input-edicao';
-
-                        // Substitui o span pelo input
-                        spanTexto.replaceWith(input);
-                        input.focus();
-
-                        // Ao sair do campo (blur), volta para texto
-                        input.addEventListener('blur', () => {
-                            const novoTexto = input.value;
-
-                            // Aqui você pode fazer o fetch para salvar no banco
-                            salvarAcompanhamento(acomp.id, obraId, novoTexto);
-
-                            const novoSpan = document.createElement('span');
-                            novoSpan.className = 'acomp-texto';
-                            novoSpan.textContent = novoTexto;
-
-                            input.replaceWith(novoSpan);
-                        });
-                    });
-
-                    // popover is global; append only the button and content to container
-                    container.appendChild(pAssunto);
-                    container.appendChild(pData);
-                    acompanhamentoConteudo.appendChild(container);
-                });
+                // store globally for client-side filtering
+                window.__acompFetched = acompanhamentos;
+                // render default view (Todos)
+                renderAcompanhamentosList(window.__acompFetched, 'todos');
             } else {
-                acompanhamentoConteudo.innerHTML = '<p>Nenhum acompanhamento encontrado.</p>';
+                renderAcompanhamentosList([], 'todos');
             }
         })
         .catch(error => {

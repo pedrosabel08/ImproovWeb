@@ -380,10 +380,20 @@ $conn->close();
 
         <div id="infos-obra" style="width: 95%; margin: 30px auto; box-shadow: 0 1px 10px rgba(0, 0, 0, 0.7);">
             <div class="acompanhamentos">
-                <h1>Histórico</h1>
-                <button id="acomp" class="btnAcompObs">Acompanhamento</button>
+                <div class="infos-obra-header">
+                    <h1>Histórico</h1>
+                    <button id="acomp" class="btnAcompObs">+ Novo</button>
+                </div>
 
-                <div id="list_acomp" class="list-acomp"></div>
+                <!-- Acompanhamentos: filtros por categoria -->
+                <div class="acomp-filters" aria-label="Filtrar acompanhamentos">
+                    <button id="btn_acomp_todos" class="acomp-filter-btn active" data-category="todos">Todos</button>
+                    <button id="btn_acomp_manuais" class="acomp-filter-btn" data-category="manuais">Manuais</button>
+                    <button id="btn_acomp_entregas" class="acomp-filter-btn" data-category="entregas">Entregas</button>
+                    <button id="btn_acomp_arquivos" class="acomp-filter-btn" data-category="arquivos">Arquivos</button>
+                </div>
+
+                <div id="list_acomp" class="list-acomp" aria-live="polite"></div>
                 <button id="btnMostrarAcomps"><i class="fas fa-chevron-down"></i></button>
             </div>
         </div>
@@ -391,9 +401,10 @@ $conn->close();
             style="width: 95%; margin: 30px auto; box-shadow: 0 1px 10px rgba(0, 0, 0, 0.7);">
 
             <div class="obs">
-                <h1>Informações da Obra</h1>
-                <button id="obsAdd" class="btnAcompObs">Adicionar Informação</button>
-
+                <div class="infos-obra-header">
+                    <h1>Informações da Obra</h1>
+                    <button id="obsAdd" class="btnAcompObs">+ Novo</button>
+                </div>
                 <div id="briefing">
                     <div class="campo">
                         <label for="nivel">Qual o nível de padrão do empreendimento?</label>
@@ -620,6 +631,27 @@ $conn->close();
                 </div>
             </div>
         </div>
+
+        <!-- Secao Arquivos da Obra (inserida abaixo de Observação) -->
+        <section id="secao-arquivos" class="secao arquivos-secao infos-obra">
+            <div class="secao-titulo arquivos-header">
+                <h2>Arquivos da Obra</h2>
+                <div class="arquivos-actions">
+                    <button id="btnAddArquivo" type="button" class="btn-add-arquivo" title="Adicionar novo arquivo">+ Novo</button>
+                    <button id="btnRefreshArquivos" type="button" class="btn-refresh-arquivo" title="Recarregar lista">↻</button>
+                </div>
+            </div>
+            <div id="arquivosWrapper" class="arquivos-wrapper">
+                <div class="arquivos-head-row">
+                    <div class="arq-col nome">Nome</div>
+                    <div class="arq-col tipo">Tipo</div>
+                    <div class="arq-col colaborador">Colaborador</div>
+                    <div class="arq-col tamanho">Tamanho</div>
+                    <div class="arq-col modificado">Modificado</div>
+                </div>
+                <div id="listaArquivos" class="arquivos-grid" aria-live="polite"></div>
+            </div>
+        </section>
 
     </div>
     <div class="form-edicao" id="form-edicao">

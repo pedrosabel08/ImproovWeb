@@ -10,11 +10,15 @@ $filtro_tipo_arquivo = isset($_GET['tipo_arquivo']) ? $conn->real_escape_string(
 // opcional: filtro por status (campo `status` na tabela arquivos)
 $filtro_status = isset($_GET['status']) ? $conn->real_escape_string($_GET['status']) : null;
 
-$sql = "SELECT a.*, o.nomenclatura as projeto, ti.nome as tipo_imagem
-        FROM arquivos a
-        LEFT JOIN obra o ON a.obra_id = o.idobra
-        LEFT JOIN tipo_imagem ti ON a.tipo_imagem_id = ti.id_tipo_imagem
-        WHERE 1";
+$sql = "SELECT a.*, 
+           o.nomenclatura as projeto, 
+           ti.nome as tipo_imagem,
+           c.nome_colaborador AS colaborador_nome
+    FROM arquivos a
+    LEFT JOIN obra o ON a.obra_id = o.idobra
+    LEFT JOIN tipo_imagem ti ON a.tipo_imagem_id = ti.id_tipo_imagem
+    LEFT JOIN colaborador c ON c.idcolaborador = a.colaborador_id
+    WHERE 1";
 
 if ($obra_id) $sql .= " AND a.obra_id = $obra_id";
 if ($filtro_tipo) $sql .= " AND ti.nome = '$filtro_tipo'";

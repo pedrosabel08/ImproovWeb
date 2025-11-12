@@ -4,6 +4,8 @@ require_once __DIR__ . '/../vendor/autoload.php';
 use phpseclib3\Net\SFTP;
 
 include '../conexao.php';
+// Start session to capture colaborador_id for auditing
+if (session_status() === PHP_SESSION_NONE) { session_start(); }
 header('Content-Type: application/json');
 header("Access-Control-Allow-Origin: https://improov.com.br");
 header("Access-Control-Allow-Methods: POST, OPTIONS");
@@ -157,6 +159,9 @@ $ftp_base = "/www/sistema/uploads/angulo_definido";
 $log = [];
 $success = [];
 $errors = [];
+
+// Colaborador (auditoria) — use NULL when not available to avoid FK constraint failures
+$colaborador_id_sess = (isset($_SESSION['idcolaborador']) && intval($_SESSION['idcolaborador']) > 0) ? intval($_SESSION['idcolaborador']) : null;
 
 // Dados do formulário
 $obra_id      = intval($_POST['obra_id']);
@@ -563,11 +568,25 @@ function gerarNomeInterno($conn, $obra_id, $tipo_id, $categoria, $nomeTipo, $tip
 // =======================
 if (!empty($arquivosTmp) && count($arquivosTmp) > 0 && ($refsSkpModo === 'geral' || $tipo_arquivo !== 'SKP')) {
     $indice = 1;
+    $imagem_id = null; // upload principal não é por imagem específica
+
+    // Pré-calcula próxima ordem para acompanhamento_email
+    $next_ordem_acomp = 1;
+    if ($obra_id) {
+        if ($stmtOrdem = $conn->prepare("SELECT IFNULL(MAX(ordem),0)+1 AS next_ordem FROM acompanhamento_email WHERE obra_id = ?")) {
+            $stmtOrdem->bind_param('i', $obra_id);
+            $stmtOrdem->execute();
+            $rOrd = $stmtOrdem->get_result()->fetch_assoc();
+            if ($rOrd && isset($rOrd['next_ordem'])) $next_ordem_acomp = intval($rOrd['next_ordem']);
+            $stmtOrdem->close();
+        }
+    }
 
     foreach ($arquivosTmp as $index => $fileTmp) {
         $fileOriginalName = basename($arquivosName[$index]);
         $ext = pathinfo($fileOriginalName, PATHINFO_EXTENSION);
         $log[] = "Processando upload principal: $fileOriginalName";
+        $tamanhoArquivo = (is_file($fileTmp) ? (string)filesize($fileTmp) : '0');
 
         foreach ($tiposImagem as $nomeTipo) {
             $tipo_id = buscarTipoImagemId($conn, $nomeTipo, $log);
@@ -613,6 +632,7 @@ if (!empty($arquivosTmp) && count($arquivosTmp) > 0 && ($refsSkpModo === 'geral'
             $check->execute();
             $result = $check->get_result();
             $log[] = "Encontrados {$result->num_rows} arquivos antigos para $fileOriginalName.";
+            $foiAtualizacao = ($result->num_rows > 0 && $substituicao);
             if ($result->num_rows > 0 && $substituicao) {
                 while ($old = $result->fetch_assoc()) {
                     $oldPath = $destDir . "/" . $old['nome_interno'];
@@ -628,14 +648,30 @@ if (!empty($arquivosTmp) && count($arquivosTmp) > 0 && ($refsSkpModo === 'geral'
             if (!empty($fileTmp) && file_exists($fileTmp)) {
                 if (sftpPutWithFallback($sftp, $destFile, $fileTmp, $log, $errors)) {
                     $stmt = $conn->prepare("INSERT INTO arquivos 
-                    (obra_id, tipo_imagem_id, imagem_id, nome_original, nome_interno, caminho, tipo, versao, status, origem, recebido_por, categoria_id, sufixo, descricao) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'atualizado', 'upload_web', 'sistema', ?, ?, ?)");
-                    // types: obra_id(i), tipo_imagem_id(i), imagem_id(i), nome_original(s), nome_interno(s), caminho(s), tipo(s), versao(i), categoria(i), sufixo(s), descricao(s)
-                    $stmt->bind_param("iiissssiiss", $obra_id, $tipo_id, $imagem_id, $fileOriginalName, $fileNomeInterno, $destFile, $tipo_arquivo, $versao, $categoria, $sufixo, $descricao);
+                    (obra_id, tipo_imagem_id, imagem_id, nome_original, nome_interno, caminho, tipo, versao, status, origem, recebido_por, categoria_id, sufixo, descricao, tamanho, colaborador_id) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'atualizado', 'upload_web', 'sistema', ?, ?, ?, ?, ?)");
+                    // types: obra_id(i), tipo_imagem_id(i), imagem_id(i), nome_original(s), nome_interno(s), caminho(s), tipo(s), versao(i), categoria(i), sufixo(s), descricao(s), tamanho(s), colaborador_id(i)
+                    $stmt->bind_param("iiissssiisssi", $obra_id, $tipo_id, $imagem_id, $fileOriginalName, $fileNomeInterno, $destFile, $tipo_arquivo, $versao, $categoria, $sufixo, $descricao, $tamanhoArquivo, $colaborador_id_sess);
 
                     $stmt->execute();
+                    $arquivo_id = $conn->insert_id;
                     $success[] = "Arquivo '$fileOriginalName' enviado para $nomeTipo como '$fileNomeInterno'";
                     $log[] = "Arquivo enviado com sucesso: $destFile";
+
+                    // Registrar acompanhamento_email para este arquivo
+                    $acao = $foiAtualizacao ? (strtoupper($tipo_arquivo) . " atualizado para $nomeTipo") : ("Adicionado " . strtoupper($tipo_arquivo) . " para $nomeTipo");
+                    $hojeData = date('Y-m-d');
+                    if ($stmtA = $conn->prepare("INSERT INTO acompanhamento_email (obra_id, colaborador_id, assunto, data, ordem, arquivo_id, tipo, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")) {
+                        $tipo_acomp = 'arquivo';
+                        $status_acomp = 'pendente';
+                        // tipos: i,i,s,s,i,i,s,s => 'iissiiss'
+                        $stmtA->bind_param('iissiiss', $obra_id, $colaborador_id_sess, $acao, $hojeData, $next_ordem_acomp, $arquivo_id, $tipo_acomp, $status_acomp);
+                        $stmtA->execute();
+                        $stmtA->close();
+                        $next_ordem_acomp++;
+                    } else {
+                        $log[] = "Falha ao preparar insert em acompanhamento_email: " . $conn->error;
+                    }
 
                     // Se for categoria 7, também envia ao FTP secundário
                     if ($categoria == 7) {
@@ -692,6 +728,7 @@ if (!empty($arquivosPorImagem) && $refsSkpModo === 'porImagem') {
             $stmtCheck->execute();
             $check = $stmtCheck->get_result();
             $log[] = "Encontrados {$check->num_rows} arquivos refs/skp antigos para imagem $imagem_id (categoria $categoria).";
+            $foiAtualizacaoImagem = ($check->num_rows > 0 && $substituicao);
             if ($check->num_rows > 0 && $substituicao) {
                 while ($old = $check->fetch_assoc()) {
                     $oldPath = $old['caminho'];
@@ -721,6 +758,7 @@ if (!empty($arquivosPorImagem) && $refsSkpModo === 'porImagem') {
                 continue;
             }
             $ext = pathinfo($nomeOriginal, PATHINFO_EXTENSION);
+            $tamanhoArquivo = (is_file($tmpFile) ? (string)filesize($tmpFile) : '0');
 
             $nomeTipo = $tiposImagem[0] ?? '';
             $tipo_id = buscarTipoImagemId($conn, $nomeTipo, $log);
@@ -736,6 +774,8 @@ if (!empty($arquivosPorImagem) && $refsSkpModo === 'porImagem') {
                 continue;
             }
             $nome_imagem = $queryImagem->fetch_assoc()['imagem_nome'];
+            // Anexa o nome da imagem na descrição do arquivo quando estiver no modo porImagem
+            $descricao_para_insert = $nome_imagem . ($descricao ? ' - ' . $descricao : '');
 
             $categoriaNome = buscarNomeCategoria($categoria);
             $categoriaDir = resolveCategoriaDir($sftp, $pastaBase, $categoriaNome, $log);
@@ -758,14 +798,44 @@ if (!empty($arquivosPorImagem) && $refsSkpModo === 'porImagem') {
 
                 if (sftpPutWithFallback($sftp, $destFile, $tmpFile, $log, $errors)) {
                 $stmt = $conn->prepare("INSERT INTO arquivos 
-                (obra_id, tipo_imagem_id, imagem_id, nome_original, nome_interno, caminho, tipo, versao, status, origem, recebido_por, categoria_id, sufixo, descricao) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'atualizado', 'upload_web', 'sistema', ?, ?, ?)");
-                // types: obra_id(i), tipo_imagem_id(i), imagem_id(i), nome_original(s), nome_interno(s), caminho(s), tipo(s), versao(i), categoria(i), sufixo(s), descricao(s)
-                $stmt->bind_param("iiissssiiss", $obra_id, $tipo_id, $imagem_id, $nomeOriginal, $fileNomeInterno, $destFile, $tipo_arquivo, $versao, $categoria, $sufixo, $descricao);
+                (obra_id, tipo_imagem_id, imagem_id, nome_original, nome_interno, caminho, tipo, versao, status, origem, recebido_por, categoria_id, sufixo, descricao, tamanho, colaborador_id) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'atualizado', 'upload_web', 'sistema', ?, ?, ?, ?, ?)");
+                // types: obra_id(i), tipo_imagem_id(i), imagem_id(i), nome_original(s), nome_interno(s), caminho(s), tipo(s), versao(i), categoria(i), sufixo(s), descricao(s), tamanho(s), colaborador_id(i)
+                $stmt->bind_param("iiissssiisssi", $obra_id, $tipo_id, $imagem_id, $nomeOriginal, $fileNomeInterno, $destFile, $tipo_arquivo, $versao, $categoria, $sufixo, $descricao_para_insert, $tamanhoArquivo, $colaborador_id_sess);
 
                 $stmt->execute();
+                $arquivo_id = $conn->insert_id;
                 $success[] = "Arquivo '$nomeOriginal' enviado para Imagem $imagem_id";
                 $log[] = "Arquivo enviado com sucesso: $destFile";
+
+                // Registrar acompanhamento_email para este arquivo (modo porImagem)
+                // Calcula ordem incremental (se não existir variável vinda do bloco principal)
+                if (!isset($next_ordem_acomp)) {
+                    $next_ordem_acomp = 1;
+                    if ($obra_id) {
+                        if ($stmtOrdem2 = $conn->prepare("SELECT IFNULL(MAX(ordem),0)+1 AS next_ordem FROM acompanhamento_email WHERE obra_id = ?")) {
+                            $stmtOrdem2->bind_param('i', $obra_id);
+                            $stmtOrdem2->execute();
+                            $rOrd2 = $stmtOrdem2->get_result()->fetch_assoc();
+                            if ($rOrd2 && isset($rOrd2['next_ordem'])) $next_ordem_acomp = intval($rOrd2['next_ordem']);
+                            $stmtOrdem2->close();
+                        }
+                    }
+                }
+                // Use o nome da imagem no assunto em vez do tipo de imagem
+                $acao = $foiAtualizacaoImagem ? (strtoupper($tipo_arquivo) . " atualizado para $nome_imagem") : ("Adicionado " . strtoupper($tipo_arquivo) . " para $nome_imagem");
+                $hojeData = date('Y-m-d');
+                if ($stmtA = $conn->prepare("INSERT INTO acompanhamento_email (obra_id, colaborador_id, assunto, data, ordem, arquivo_id, tipo, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")) {
+                    $tipo_acomp = 'arquivo';
+                    $status_acomp = 'pendente';
+                    $stmtA->bind_param('iissiiss', $obra_id, $colaborador_id_sess, $acao, $hojeData, $next_ordem_acomp, $arquivo_id, $tipo_acomp, $status_acomp);
+                    // Corrigimos tipos: i,i,s,s,i,i,s,s => 'iiss iiss' sem espaços => 'iissiiss'
+                    $stmtA->execute();
+                    $stmtA->close();
+                    $next_ordem_acomp++;
+                } else {
+                    $log[] = "Falha ao preparar insert em acompanhamento_email: " . $conn->error;
+                }
 
                 // Se for categoria 7, envia também ao FTP secundário
                 if ($categoria == 7) {

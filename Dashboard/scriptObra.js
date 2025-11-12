@@ -1093,8 +1093,8 @@ function infosObra(obraId) {
             }
 
             const obra = data.obra;
-            document.getElementById('nomenclatura').textContent = obra.nomenclatura || "Nome não disponível";
-            document.title = obra.nomenclatura || "Nome não disponível";
+            document.getElementById('nomenclatura').textContent = obra.nome_real || "Nome não disponível";
+            document.title = obra.nome_real || "Nome não disponível";
             // document.getElementById('data_inicio_obra').textContent = `Data de Início: ${formatarData(obra.data_inicio)}`;
             // document.getElementById('prazo_obra').textContent = `Prazo: ${formatarData(obra.prazo)}`;
             // document.getElementById('dias_trabalhados').innerHTML = obra.dias_trabalhados ? `<strong>${obra.dias_trabalhados}</strong> dias` : '';
@@ -1143,6 +1143,153 @@ function infosObra(obraId) {
             } catch (err) {
                 console.warn('addOpenButton error', err);
             }
+
+            // Initialize quick access links (Drive, Fotográfico, Review)
+            (function initQuickAccess() {
+                function normalizeUrl(url) {
+                    if (!url) return '';
+                    url = String(url).trim();
+                    if (!url) return '';
+                    if (!/^https?:\/\//i.test(url)) return 'https://' + url;
+                    return url;
+                }
+
+                const quickContainer = document.getElementById('quickAccess');
+                const qFot = document.getElementById('quick_fotografico');
+                const qDrive = document.getElementById('quick_drive');
+                const qReview = document.getElementById('quick_review');
+
+                const fotograficoInput = document.getElementById('fotografico');
+                const driveInput = document.getElementById('link_drive');
+                const reviewInput = document.getElementById('link_review');
+
+                function update() {
+                    let any = false;
+                    if (fotograficoInput && qFot) {
+                        const url = normalizeUrl(fotograficoInput.value || fotograficoInput.getAttribute('value') || '');
+                        if (url) { qFot.href = url; qFot.style.display = 'inline-flex'; qFot.setAttribute('aria-hidden', 'false'); any = true; }
+                        else { qFot.style.display = 'none'; qFot.setAttribute('aria-hidden', 'true'); }
+                    }
+                    if (driveInput && qDrive) {
+                        const url = normalizeUrl(driveInput.value || driveInput.getAttribute('value') || '');
+                        if (url) { qDrive.href = url; qDrive.style.display = 'inline-flex'; qDrive.setAttribute('aria-hidden', 'false'); any = true; }
+                        else { qDrive.style.display = 'none'; qDrive.setAttribute('aria-hidden', 'true'); }
+                    }
+                    if (reviewInput && qReview) {
+                        const url = normalizeUrl(reviewInput.value || reviewInput.getAttribute('value') || '');
+                        if (url) { qReview.href = url; qReview.style.display = 'inline-flex'; qReview.setAttribute('aria-hidden', 'false'); any = true; }
+                        else { qReview.style.display = 'none'; qReview.setAttribute('aria-hidden', 'true'); }
+                    }
+                    // If internal sections exist, keep quick access visible for in-page anchors
+                    const hasInternal = document.getElementById('tabela-obra') || document.getElementById('list_acomp') || document.getElementById('obsSection') || document.getElementById('secao-arquivos');
+                    if (quickContainer) quickContainer.style.display = (any || hasInternal) ? 'flex' : 'none';
+                }
+
+                // wire events to update live when fields change
+                [fotograficoInput, driveInput, reviewInput].forEach(el => {
+                    if (!el) return;
+                    el.addEventListener('input', update);
+                    el.addEventListener('change', update);
+                });
+
+                // initial run
+                setTimeout(update, 50);
+            })();
+
+            // Mobile quick-access hamburger behavior
+            (function initMobileQuick() {
+                function normalizeUrl(url) {
+                    if (!url) return '';
+                    url = String(url).trim();
+                    if (!url) return '';
+                    if (!/^https?:\/\//i.test(url)) return 'https://' + url;
+                    return url;
+                }
+
+                const hamburger = document.getElementById('quickHamburger');
+                const mobileMenu = document.getElementById('quickMobileMenu');
+                const mobileClose = document.getElementById('quickMobileClose');
+
+                const mobileFot = document.getElementById('mobile_fotografico');
+                const mobileDrive = document.getElementById('mobile_drive');
+                const mobileReview = document.getElementById('mobile_review');
+
+                const fotograficoInput = document.getElementById('fotografico');
+                const driveInput = document.getElementById('link_drive');
+                const reviewInput = document.getElementById('link_review');
+
+                function setMobileLinks() {
+                    if (mobileFot) {
+                        const url = normalizeUrl(fotograficoInput ? (fotograficoInput.value || fotograficoInput.getAttribute('value') || '') : '');
+                        mobileFot.href = url || '#';
+                        mobileFot.style.display = url ? 'flex' : 'none';
+                    }
+                    if (mobileDrive) {
+                        const url = normalizeUrl(driveInput ? (driveInput.value || driveInput.getAttribute('value') || '') : '');
+                        mobileDrive.href = url || '#';
+                        mobileDrive.style.display = url ? 'flex' : 'none';
+                    }
+                    if (mobileReview) {
+                        const url = normalizeUrl(reviewInput ? (reviewInput.value || reviewInput.getAttribute('value') || '') : '');
+                        mobileReview.href = url || '#';
+                        mobileReview.style.display = url ? 'flex' : 'none';
+                    }
+                    // internal anchors always present if elements exist
+                    ['mobile_tabela', 'mobile_hist', 'mobile_obs', 'mobile_arquivos'].forEach(id => {
+                        const el = document.getElementById(id);
+                        if (!el) return;
+                        // hide if target doesn't exist
+                        const target = document.getElementById(el.getAttribute('href').slice(1));
+                        el.style.display = target ? 'flex' : 'none';
+                    });
+                }
+
+                function openMenu() {
+                    if (!mobileMenu) return;
+                    mobileMenu.classList.add('open');
+                    mobileMenu.setAttribute('aria-hidden', 'false');
+                    if (hamburger) hamburger.setAttribute('aria-expanded', 'true');
+                    // lock body scroll
+                    document.body.style.overflow = 'hidden';
+                }
+                function closeMenu() {
+                    if (!mobileMenu) return;
+                    mobileMenu.classList.remove('open');
+                    mobileMenu.setAttribute('aria-hidden', 'true');
+                    if (hamburger) hamburger.setAttribute('aria-expanded', 'false');
+                    document.body.style.overflow = '';
+                }
+
+                if (hamburger) {
+                    hamburger.addEventListener('click', function () { setMobileLinks(); openMenu(); });
+                }
+                if (mobileClose) { mobileClose.addEventListener('click', closeMenu); }
+
+                // close when clicking a mobile link that is internal (so the menu closes and anchor scrolls)
+                document.getElementById('quickMobileNav')?.addEventListener('click', function (ev) {
+                    const a = ev.target.closest('a');
+                    if (!a) return;
+                    const href = a.getAttribute('href') || '';
+                    if (href.startsWith('#')) { closeMenu(); }
+                });
+
+                // close if user clicks outside panel (on overlay area) - panel covers right side only so listen on document
+                document.addEventListener('click', function (ev) {
+                    if (!mobileMenu || !mobileMenu.classList.contains('open')) return;
+                    const inside = ev.target.closest('#quickMobileMenu, #quickHamburger');
+                    if (!inside) closeMenu();
+                });
+
+                // update links when inputs change
+                [fotograficoInput, driveInput, reviewInput].forEach(el => {
+                    if (!el) return;
+                    el.addEventListener('input', setMobileLinks);
+                    el.addEventListener('change', setMobileLinks);
+                });
+
+                // initial
+                setTimeout(setMobileLinks, 60);
+            })();
 
             // const infosDiv = document.getElementById('infos');
 
@@ -2347,7 +2494,7 @@ function categorizeAcomp(acomp) {
 
 function formatBytes(bytes) {
     if (!bytes || isNaN(bytes)) return '-';
-    const sizes = ['B','KB','MB','GB','TB'];
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
     const i = Math.floor(Math.log(bytes) / Math.log(1024));
     const val = (bytes / Math.pow(1024, i)).toFixed(1);
     return `${val} ${sizes[i]}`;
@@ -2357,12 +2504,12 @@ function formatDateTime(dtStr) {
     if (!dtStr) return '-';
     const d = new Date(dtStr.replace(' ', 'T'));
     if (isNaN(d.getTime())) return dtStr;
-    return d.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' }) + ' ' + d.toLocaleTimeString('pt-BR',{hour:'2-digit', minute:'2-digit'});
+    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
 
 // Infer file type category based on explicit tipo fields or filename extension
 function inferArquivoTipo(arq) {
-    const known = new Set(['DWG','PDF','SKP','IFC','IMG']);
+    const known = new Set(['DWG', 'PDF', 'SKP', 'IFC', 'IMG']);
     const fromTipo = (arq.tipo || '').toString().trim().toUpperCase();
     const fromTipoImagem = (arq.tipo_imagem || '').toString().trim().toUpperCase();
 
@@ -2381,7 +2528,7 @@ function inferArquivoTipo(arq) {
     if (ext === 'DWG') return 'DWG';
     if (ext === 'SKP') return 'SKP';
     if (ext === 'IFC') return 'IFC';
-    if (['PNG','JPG','JPEG','BMP','GIF','WEBP','TIFF','TIF'].includes(ext)) return 'IMG';
+    if (['PNG', 'JPG', 'JPEG', 'BMP', 'GIF', 'WEBP', 'TIFF', 'TIF'].includes(ext)) return 'IMG';
     return 'OUTROS';
 }
 
@@ -2426,7 +2573,7 @@ function renderArquivosList(arquivos) {
         // Nome
         const colNome = document.createElement('div');
         colNome.className = 'arq-col nome';
-        colNome.setAttribute('data-label','Nome');
+        colNome.setAttribute('data-label', 'Nome');
         const tipoResolvido = inferArquivoTipo(arq);
         const { icon, css } = iconForTipo(tipoResolvido);
         const nomeArquivo = (arq.nome || arq.nome_interno || arq.nome_arquivo || 'Arquivo');
@@ -2436,26 +2583,26 @@ function renderArquivosList(arquivos) {
         // Tipo
         const colTipo = document.createElement('div');
         colTipo.className = 'arq-col tipo';
-        colTipo.setAttribute('data-label','Tipo');
+        colTipo.setAttribute('data-label', 'Tipo');
         colTipo.textContent = arq.tipo_imagem || arq.tipo || tipoResolvido || '-';
 
         // Colaborador
         const colColab = document.createElement('div');
         colColab.className = 'arq-col colaborador';
-    colColab.setAttribute('data-label','Colaborador');
+        colColab.setAttribute('data-label', 'Colaborador');
         const nomeColab = arq.colaborador_nome || arq.nome_colaborador || arq.colaborador || '-';
         colColab.textContent = nomeColab || '-';
 
         // Tamanho
         const colTam = document.createElement('div');
         colTam.className = 'arq-col tamanho';
-    colTam.setAttribute('data-label','Tamanho');
+        colTam.setAttribute('data-label', 'Tamanho');
         colTam.textContent = formatBytes(parseInt(arq.tamanho_bytes || arq.tamanho || 0));
 
         // Modificado
         const colMod = document.createElement('div');
         colMod.className = 'arq-col modificado';
-    colMod.setAttribute('data-label','Modificado');
+        colMod.setAttribute('data-label', 'Modificado');
         colMod.textContent = formatDateTime(arq.updated_at || arq.recebido_em || arq.created_at);
 
 
@@ -5165,47 +5312,47 @@ addOpenButton('link_drive');
 addOpenButton('link_review');
 
 // Actions menu initialization (moved from inline in obra.php)
-(function(){
-    function initActionsMenu(){
+(function () {
+    function initActionsMenu() {
         const btn = document.getElementById('actionsMenuBtn');
         const menu = document.getElementById('actionsMenu');
         if (!btn || !menu) return;
 
         const firstAction = menu.querySelector('.action-item');
 
-        function openMenu(){
-            btn.setAttribute('aria-expanded','true');
-            menu.setAttribute('aria-hidden','false');
+        function openMenu() {
+            btn.setAttribute('aria-expanded', 'true');
+            menu.setAttribute('aria-hidden', 'false');
             btn.parentElement.classList.add('open');
             // focus first action for keyboard users
-            if(firstAction) firstAction.focus();
+            if (firstAction) firstAction.focus();
         }
 
-        function closeMenu(){
-            btn.setAttribute('aria-expanded','false');
-            menu.setAttribute('aria-hidden','true');
+        function closeMenu() {
+            btn.setAttribute('aria-expanded', 'false');
+            menu.setAttribute('aria-hidden', 'true');
             btn.parentElement.classList.remove('open');
         }
 
-        btn.addEventListener('click', function(e){
+        btn.addEventListener('click', function (e) {
             e.stopPropagation();
             const isOpen = btn.getAttribute('aria-expanded') === 'true';
-            if(isOpen) closeMenu(); else openMenu();
+            if (isOpen) closeMenu(); else openMenu();
         });
 
         // close when clicking outside
-        document.addEventListener('click', function(e){
+        document.addEventListener('click', function (e) {
             if (!menu.contains(e.target) && !btn.contains(e.target)) closeMenu();
         });
 
         // keyboard handling: Esc closes, ArrowDown focuses first action
-        document.addEventListener('keydown', function(e){
+        document.addEventListener('keydown', function (e) {
             if (e.key === 'Escape') { closeMenu(); btn.focus(); }
-            if (e.key === 'ArrowDown' && btn.getAttribute('aria-expanded') === 'true') { if(firstAction) firstAction.focus(); }
+            if (e.key === 'ArrowDown' && btn.getAttribute('aria-expanded') === 'true') { if (firstAction) firstAction.focus(); }
         });
 
         // keep clicks inside the menu from bubbling (so external click listener doesn't immediately close it)
-        menu.addEventListener('click', function(e){ e.stopPropagation(); });
+        menu.addEventListener('click', function (e) { e.stopPropagation(); });
     }
 
     if (document.readyState === 'loading') {

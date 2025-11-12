@@ -57,16 +57,9 @@ $stmtFuncoes->close();
 
 // Segundo SELECT: Detalhes gerais da obra
 $sqlObra = "SELECT
-    o.idobra,
-    o.nomenclatura,
     i.data_inicio,
 	i.prazo,
-    o.local,
-    o.altura_drone,
-    o.fotografico,
-    o.link_drive,
-    o.link_review,
-    o.nome_obra,
+    o.*,
     COUNT(*) AS total_imagens,
     COUNT(CASE WHEN i.antecipada = 1 THEN 1 ELSE NULL END) AS total_imagens_antecipadas,
     i.dias_trabalhados

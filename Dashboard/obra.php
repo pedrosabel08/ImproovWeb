@@ -167,13 +167,65 @@ $conn->close();
     <div class="container animate__animated animate__fadeIn">
         <header>
             <h1 id="nomenclatura" class="animate__animated animate__fadeInDown"></h1>
-        </header>
-        <div class="buttons-nav">
-            <button id="altBtn" class="hidden">Flow Review</button>
-            <!-- <button onclick="document.querySelector('.acompanhamentos').scrollIntoView({behavior: 'smooth'})"><i class="fa-solid fa-circle-info"></i></button>
-            <button onclick="document.querySelector('.filtro-tabela').scrollIntoView({behavior: 'smooth'})"><i class="fa-solid fa-info"></i></button> -->
-        </div>
 
+            <!-- Quick access links: in-page anchors + Drive, Fotográfico, Review Studio -->
+            <div id="quickAccess" class="quick-access" aria-label="Acessos rápidos" style="display: none;">
+                <!-- Internal anchors -->
+                <a class="quick-link" href="#tabela-obra" title="Ir para Tabela" aria-hidden="false">
+                    <i class="fa-solid fa-table-cells"></i>
+                    <span class="qa-label">Tabela</span>
+                </a>
+                <a class="quick-link" href="#list_acomp" title="Ir para Histórico" aria-hidden="false">
+                    <i class="fa-solid fa-list"></i>
+                    <span class="qa-label">Histórico</span>
+                </a>
+                <a class="quick-link" href="#obsSection" title="Ir para Observações" aria-hidden="false">
+                    <i class="fa-solid fa-note-sticky"></i>
+                    <span class="qa-label">Observações</span>
+                </a>
+                <a class="quick-link" href="#secao-arquivos" title="Ir para Arquivos" aria-hidden="false">
+                    <i class="fa-solid fa-file"></i>
+                    <span class="qa-label">Arquivos</span>
+                </a>
+
+                <!-- External quick links -->
+                <a id="quick_fotografico" class="quick-link" href="#" target="_blank" rel="noopener noreferrer" title="Fotográfico" aria-hidden="true">
+                    <i class="fa-solid fa-camera"></i>
+                    <span class="qa-label">Fotográfico</span>
+                </a>
+                <a id="quick_drive" class="quick-link" href="#" target="_blank" rel="noopener noreferrer" title="Drive" aria-hidden="true">
+                    <i class="fa-brands fa-google-drive"></i>
+                    <span class="qa-label">Drive</span>
+                </a>
+                <a id="quick_review" class="quick-link" href="#" target="_blank" rel="noopener noreferrer" title="Review Studio" aria-hidden="true">
+                    <i class="fa-solid fa-folder-open"></i>
+                    <span class="qa-label">Review</span>
+                </a>
+                <button id="altBtn" class="hidden">Flow Review</button>
+            </div>
+            <!-- Mobile hamburger for quick access (visible on small screens) -->
+            <button id="quickHamburger" class="quick-hamburger" aria-label="Acessos rápidos" aria-expanded="false" style="display: none;">
+                <i class="fa-solid fa-bars"></i>
+            </button>
+
+            <!-- Mobile quick access panel -->
+            <div id="quickMobileMenu" class="quick-mobile-menu" aria-hidden="true" style="display: none;">
+                <div class="quick-mobile-inner">
+                    <button id="quickMobileClose" class="quick-mobile-close" aria-label="Fechar menu"><i class="fa-solid fa-times"></i></button>
+                    <nav id="quickMobileNav" class="quick-mobile-nav">
+                        <!-- Items populated by JS: internal anchors and external links -->
+                        <a class="mobile-link" id="mobile_tabela" href="#tabela-obra"><i class="fa-solid fa-table-cells"></i> <span>Tabela</span></a>
+                        <a class="mobile-link" id="mobile_hist" href="#list_acomp"><i class="fa-solid fa-list"></i> <span>Histórico</span></a>
+                        <a class="mobile-link" id="mobile_obs" href="#obsSection"><i class="fa-solid fa-note-sticky"></i> <span>Observações</span></a>
+                        <a class="mobile-link" id="mobile_arquivos" href="#secao-arquivos"><i class="fa-solid fa-file"></i> <span>Arquivos</span></a>
+                        <hr>
+                        <a class="mobile-link" id="mobile_fotografico" href="#" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-camera"></i> <span>Fotográfico</span></a>
+                        <a class="mobile-link" id="mobile_drive" href="#" target="_blank" rel="noopener noreferrer"><i class="fa-brands fa-google-drive"></i> <span>Drive</span></a>
+                        <a class="mobile-link" id="mobile_review" href="#" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-folder-open"></i> <span>Review</span></a>
+                    </nav>
+                </div>
+            </div>
+        </header>
         <!-- Tabela para exibir as funções da obra -->
         <div class="filtro-tabela">
             <div class="filtro">
@@ -400,7 +452,7 @@ $conn->close();
         <div id="infos-obra" class="infos-obra"
             style="width: 95%; margin: 30px auto; box-shadow: 0 1px 10px rgba(0, 0, 0, 0.7);">
 
-            <div class="obs">
+            <div id="obsSection" class="obs">
                 <div class="infos-obra-header">
                     <h1>Informações da Obra</h1>
                     <button id="obsAdd" class="btnAcompObs">+ Novo</button>

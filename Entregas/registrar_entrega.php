@@ -38,13 +38,14 @@ try {
         }
     }
 
-    // Verificar total de imagens e quantas já estão entregues
+    // Verificar total de imagens, quantas já estão entregues e obter obra_id/data_prevista
     $stmt = $conn->prepare("SELECT COUNT(*) AS total, 
-                                   SUM(CASE WHEN ei.status LIKE 'Entregue%' THEN 1 ELSE 0 END) AS entregues,
-                                   e.data_prevista
-                            FROM entregas_itens ei
-                            JOIN entregas e ON ei.entrega_id = e.id
-                            WHERE ei.entrega_id=?");
+                    SUM(CASE WHEN ei.status LIKE 'Entregue%' THEN 1 ELSE 0 END) AS entregues,
+                    e.data_prevista,
+                    e.obra_id
+                FROM entregas_itens ei
+                JOIN entregas e ON ei.entrega_id = e.id
+                WHERE ei.entrega_id=?");
     $stmt->bind_param('i', $entrega_id);
     $stmt->execute();
     $res = $stmt->get_result()->fetch_assoc();
@@ -52,6 +53,7 @@ try {
     $total = intval($res['total']);
     $entregues = intval($res['entregues']);
     $data_prevista = $res['data_prevista'];
+    $obra_id = isset($res['obra_id']) ? intval($res['obra_id']) : null;
 
     // Determinar novo status da entrega
     if ($entregues === 0) {
@@ -69,9 +71,109 @@ try {
     }
 
 
-    // Atualizar status da entrega
-    $stmt = $conn->prepare("UPDATE entregas SET status=?, data_conclusao=NOW() WHERE id=?");
-    $stmt->bind_param('si', $novo_status, $entrega_id);
+    // Fetch previous status (and status_id) so we can detect transitions
+    $old_status = null;
+    $old_status_id = null;
+    $stmtOld = $conn->prepare("SELECT status, status_id FROM entregas WHERE id = ?");
+    $stmtOld->bind_param('i', $entrega_id);
+    $stmtOld->execute();
+    $rOld = $stmtOld->get_result()->fetch_assoc();
+    if ($rOld) {
+        $old_status = $rOld['status'];
+        $old_status_id = isset($rOld['status_id']) ? intval($rOld['status_id']) : null;
+    }
+
+    // If certain transitions happen, also insert an entry into acompanhamento_email
+    // Compute next ordem for this obra (simple MAX+1)
+    $next_ordem = 1;
+    if ($obra_id) {
+        $stmtOrdem = $conn->prepare("SELECT IFNULL(MAX(ordem),0)+1 AS next_ordem FROM acompanhamento_email WHERE obra_id = ?");
+        $stmtOrdem->bind_param('i', $obra_id);
+        $stmtOrdem->execute();
+        $rOrd = $stmtOrdem->get_result()->fetch_assoc();
+        if ($rOrd && isset($rOrd['next_ordem'])) $next_ordem = intval($rOrd['next_ordem']);
+        $stmtOrdem->close();
+    }
+
+    // Get obra nomenclatura for description
+    $obra_nome = '';
+    if ($obra_id) {
+        $stmtObra = $conn->prepare("SELECT nomenclatura FROM obra WHERE idobra = ? LIMIT 1");
+        $stmtObra->bind_param('i', $obra_id);
+        $stmtObra->execute();
+        $rObra = $stmtObra->get_result()->fetch_assoc();
+        if ($rObra) $obra_nome = $rObra['nomenclatura'];
+        $stmtObra->close();
+    }
+
+
+    // Prepare insert into acompanhamento_email (we'll use it conditionally)
+    $insertAcompStmt = $conn->prepare("INSERT INTO acompanhamento_email (obra_id, colaborador_id, assunto, data, ordem, entrega_id, tipo, status) VALUES (?, NULL, ?, ?, ?, ?, ?, ?)");
+
+    // Resolve nome_status using the entrega's status_id if available; otherwise try to match novo_status text.
+    $status_nome = $novo_status;
+    $novo_status_id = null;
+    if (!empty($old_status_id)) {
+        $stmtStatus = $conn->prepare("SELECT idstatus, nome_status FROM status_imagem WHERE idstatus = ? LIMIT 1");
+        if ($stmtStatus) {
+            $stmtStatus->bind_param('i', $old_status_id);
+            $stmtStatus->execute();
+            $rStat = $stmtStatus->get_result()->fetch_assoc();
+            if ($rStat && isset($rStat['nome_status'])) {
+                $status_nome = $rStat['nome_status'];
+                $novo_status_id = intval($rStat['idstatus']);
+            }
+            $stmtStatus->close();
+        }
+    }
+    // If not found by id, try matching by the computed novo_status text
+    if (empty($novo_status_id)) {
+        $stmtStatusName = $conn->prepare("SELECT idstatus, nome_status FROM status_imagem WHERE nome_status COLLATE utf8mb4_unicode_ci = ? LIMIT 1");
+        if ($stmtStatusName) {
+            $stmtStatusName->bind_param('s', $novo_status);
+            $stmtStatusName->execute();
+            $rStatName = $stmtStatusName->get_result()->fetch_assoc();
+            if ($rStatName && isset($rStatName['nome_status'])) {
+                $status_nome = $rStatName['nome_status'];
+                $novo_status_id = intval($rStatName['idstatus']);
+            }
+            $stmtStatusName->close();
+        }
+    }
+
+    // Evento de entrega parcial
+    if ($novo_status === 'Parcial' && $old_status !== 'Parcial') {
+        $assunto = 'Entrega parcialmente concluída ('. $entregues . ' de ' . $total . ' itens entregues) na obra ' . $obra_nome . ' com status ' . $status_nome;
+        $tipo = 'entrega';
+        $status_acomp = 'pendente';
+        $data_today = date('Y-m-d');
+        if ($insertAcompStmt) $insertAcompStmt->bind_param('issiiss', $obra_id, $assunto, $data_today, $next_ordem, $entrega_id, $tipo, $status_acomp);
+        if ($insertAcompStmt) $insertAcompStmt->execute();
+        // increment ordem for subsequent insert
+        $next_ordem++;
+    }
+
+    // Evento de entrega concluída
+    $concluido_set = array('Entregue no prazo','Entregue com atraso','Entrega antecipada');
+    if (in_array($novo_status, $concluido_set) && !in_array($old_status, $concluido_set)) {
+        $assunto = 'Entrega ' . $status_nome . ' concluída na obra ' . $obra_nome;
+        $tipo = 'entrega';
+        $status_acomp = 'pendente';
+        $data_today = date('Y-m-d');
+        if ($insertAcompStmt) $insertAcompStmt->bind_param('issiiss', $obra_id, $assunto, $data_today, $next_ordem, $entrega_id, $tipo, $status_acomp);
+        if ($insertAcompStmt) $insertAcompStmt->execute();
+    }
+
+    if ($insertAcompStmt) $insertAcompStmt->close();
+
+    // Atualizar status da entrega (inclui status_id quando disponível)
+    if ($novo_status_id !== null) {
+        $stmt = $conn->prepare("UPDATE entregas SET status=?, status_id=?, data_conclusao=NOW() WHERE id=?");
+        $stmt->bind_param('sii', $novo_status, $novo_status_id, $entrega_id);
+    } else {
+        $stmt = $conn->prepare("UPDATE entregas SET status=?, data_conclusao=NOW() WHERE id=?");
+        $stmt->bind_param('si', $novo_status, $entrega_id);
+    }
     $stmt->execute();
 
     $conn->commit();

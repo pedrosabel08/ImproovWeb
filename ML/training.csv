@@ -1,0 +1,1829 @@
+imagem_nome,tipo_imagem
+"1.MSA_SQU Fotomontagem aerea com insercao do empreendimento em terreno real angulo 1",Fachada
+"2.MSA_SQU Fotomontagem aerea com insercao do empreendimento em terreno real angulo 2",Fachada
+"3.MSA_SQU Fachada no angulo do observador",Fachada
+"4.MSA_SQU Embasamento mostrando area comercial",Fachada
+"5.MSA_SQU Hall de entrada","Imagem Interna"
+"6.MSA_SQU Salao de festas a definir (1 ou 2) Qual ficar maior e melhor","Imagem Interna"
+"7.MSA_SQU Sala de jogos / PUB","Imagem Interna"
+"8.MSA_SQU Academia","Imagem Interna"
+"9.MSA_SQU Quiosque Piscina","Imagem Interna"
+"10.MSA_SQU Brinquedoteca","Imagem Interna"
+"11.MSA_SQU Piscina","Imagem Externa"
+"12.MSA_SQU Lounge Ofuro","Imagem Externa"
+"13.MSA_SQU Living do apartamento tipo (unidade a definir)",Unidade
+"14.MSA_SQU Suite do apartamento tipo (unidade a definir)",Unidade
+"15.MSA_SQU Sacada com vista real do apartamento face rua Dorvalino",Unidade
+"16.MSA_SQU Sacada com vista real do apartamento face rua Dorvalino",Unidade
+"17.MSA_SQU Sacada com vista real do apartamento face rua Dorvalino",Unidade
+"18.MSA_SQU Planta humanizada implantacao geral mostrando o pavimento terreo","Planta Humanizada"
+"19.MSA_SQU Planta humanizada do pavimento lazer","Planta Humanizada"
+"20.MSA_SQU Planta humanizada do pavimento tipo","Planta Humanizada"
+"1.AYA_CAS Portaria",Fachada
+"2.AYA_CAS Boulevard entre casas","Imagem Externa"
+"3.AYA_CAS Fotomontagem aerea",Fachada
+"4.AYA_CAS Implantacao",Fachada
+"5.AYA_CAS Casa fundos",Fachada
+"6.AYA_CAS Living olhando para fora angulo 1",Unidade
+"7.AYA_CAS Living olhando para fora angulo 2",Unidade
+"8.AYA_CAS Fachada aerea",Fachada
+"9.AYA_CAS Suite casa nova olhando para copa das arvores","Imagem Interna"
+"1.RDO_VIL Fachada diurna",Fachada
+"2.RDO_VIL Fachada noturna",Fachada
+"3.RDO_VIL Fachada com aproximacao do portico",Fachada
+"4.RDO_VIL Imagem de drone com a fachada aplicada (temos essa imagem).",Fachada
+"5.RDO_VIL Hall de entrada","Imagem Interna"
+"6.RDO_VIL Business","Imagem Interna"
+"7.RDO_VIL Salao de festas","Imagem Interna"
+"8.RDO_VIL Gourmet","Imagem Interna"
+"9.RDO_VIL Varanda","Imagem Interna"
+"10.RDO_VIL Pub","Imagem Interna"
+"11.RDO_VIL Sala de jogos","Imagem Interna"
+"12.RDO_VIL Teens","Imagem Interna"
+"13.RDO_VIL Kids","Imagem Interna"
+"14.RDO_VIL Play+Petplace (externo)","Imagem Externa"
+"15.RDO_VIL Piscina aquecida","Imagem Externa"
+"16.RDO_VIL Spa","Imagem Externa"
+"17.RDO_VIL Academia","Imagem Interna"
+"18.RDO_VIL Market","Imagem Interna"
+"19.RDO_VIL Quiosque+quadra","Imagem Externa"
+"20.RDO_VIL Fireplace + horta","Imagem Externa"
+"21.RDO_VIL Car Care/Vagas verdes","Imagem Interna"
+"22.RDO_VIL Bicicletario","Imagem Interna"
+"23.RDO_VIL Living de um apartamento",Unidade
+"24.RDO_VIL Planta humanizada do pavimento lazer","Planta Humanizada"
+"1.PHA_NET Fotomontagem 1",Fachada
+"2.PHA_NET Fotomontagem 2",Fachada
+"3.PHA_NET Fotomontagem foco 20",Fachada
+"4.PHA_NET Fachada observador",Fachada
+"5.PHA_NET Embasamento frontal",Fachada
+"6.PHA_NET Fachada diurna",Fachada
+"7.PHA_NET Fachada angular noturna",Fachada
+"8.PHA_NET Boulevard 1","Imagem Externa"
+"9.PHA_NET Boulevard 2","Imagem Externa"
+"10.PHA_NET Boulevard Noturno","Imagem Externa"
+"11.PHA_NET Hall entrada + mini market","Imagem Interna"
+"12.PHA_NET Piscina adulto","Imagem Externa"
+"13.PHA_NET Area deck","Imagem Externa"
+"14.PHA_NET Piscina infantil","Imagem Externa"
+"15.PHA_NET SPA/Sauna","Imagem Interna"
+"16.PHA_NET Academia","Imagem Interna"
+"17.PHA_NET Brinquedoteca","Imagem Interna"
+"18.PHA_NET Salao festas","Imagem Interna"
+"19.PHA_NET Gourmet","Imagem Interna"
+"20.PHA_NET Lounge gourmet","Imagem Interna"
+"21.PHA_NET Lamina agua","Imagem Externa"
+"22.PHA_NET Area fogo","Imagem Externa"
+"23.PHA_NET Playground","Imagem Externa"
+"24.PHA_NET Lounge externo","Imagem Externa"
+"25.PHA_NET Coworking","Imagem Interna"
+"26.PHA_NET Wine bar","Imagem Interna"
+"27.PHA_NET Sala de jogos","Imagem Interna"
+"28.PHA_NET Planta baixa lazer","Planta Humanizada"
+"29.PHA_NET Planta baixa mezanino","Planta Humanizada"
+"30.PHA_NET Planta baixa 8-19 (Referente ao pavimento 11/12)","Planta Humanizada"
+"31.PHA_NET Living apto K fechada",Unidade
+"32.PHA_NET Living apto F aberta",Unidade
+"33.PHA_NET Planta baixa 20","Planta Humanizada"
+"34.PHA_NET Jardim apto J","Imagem Interna"
+"35.PHA_NET Planta baixa 21-29 (Referente ao pavimento 26/27)","Planta Humanizada"
+"36.PHA_NET Living apto G",Unidade
+"37.PHA_NET Planta baixa 30","Planta Humanizada"
+"38.PHA_NET Planta baixa 31","Planta Humanizada"
+"39.PHA_NET Living apto Q",Unidade
+"1.HSA_WIN Fotomontagem aerea com insercao da torre em terreno real",Fachada
+"2.HSA_WIN Fachada diurna no angulo do observador (portfolio)",Fachada
+"3.HSA_WIN Fachada noturna",Fachada
+"4.HSA_WIN Playground mostrando Mini Quadra","Imagem Externa"
+"5.HSA_WIN Espaco fogo","Imagem Externa"
+"6.HSA_WIN Academia","Imagem Interna"
+"7.HSA_WIN Gourmet da piscina","Imagem Interna"
+"8.HSA_WIN SPA","Imagem Interna"
+"9.HSA_WIN Salao de festas","Imagem Interna"
+"10.HSA_WIN Sala de jogos","Imagem Interna"
+"11.HSA_WIN Espaco poker","Imagem Interna"
+"12.HSA_WIN Espaco kids","Imagem Interna"
+"13.HSA_WIN Hall de entrada","Imagem Interna"
+"14.HSA_WIN Piscinas - Foco na piscina infantil","Imagem Externa"
+"15.HSA_WIN Piscinas - Foco na piscina adulto","Imagem Externa"
+"16.HSA_WIN Piscinas - Foco nos ambientes de estar","Imagem Externa"
+"17.HSA_WIN Living do apartamento tipo 1 - Geral",Unidade
+"18.HSA_WIN Living do apartamento tipo 1 - Angulo 2",Unidade
+"19.HSA_WIN Suite do apartamento tipo 1",Unidade
+"20.HSA_WIN Planta do pavimento lazer","Planta Humanizada"
+"21.HSA_WIN Planta humanizada do apartamento tipo","Planta Humanizada"
+"1.HSA_MON Fotomontagem aerea com insercao do empreendimento em terreno real angulo 1",Fachada
+"4.HSA_MON Fachada no angulo do observador Diurna de baixo",Fachada
+"5.HSA_MON Fachada no angulo do observador Noturna",Fachada
+"6.HSA_MON Fachada no angulo de portfolio",Fachada
+"7.HSA_MON Hall de entrada","Imagem Interna"
+"8.HSA_MON Espaco Office","Imagem Interna"
+"9.HSA_MON Piscinas angulo 1","Imagem Externa"
+"10.HSA_MON Piscinas angulo 2","Imagem Externa"
+"11.HSA_MON Gusto & Aroma","Imagem Externa"
+"12.HSA_MON Fire place","Imagem Externa"
+"13.HSA_MON Playground","Imagem Externa"
+"14.HSA_MON Salao de festas","Imagem Interna"
+"15.HSA_MON Terraco do Salao de festas","Imagem Externa"
+"16.HSA_MON Espaco kids","Imagem Interna"
+"17.HSA_MON Pet Care olhando para espaco Pet","Imagem Interna"
+"18.HSA_MON Academia","Imagem Interna"
+"19.HSA_MON Piscina aquecida","Imagem Interna"
+"20.HSA_MON Sala de jogos","Imagem Interna"
+"21.HSA_MON Mini Mercado","Imagem Interna"
+"22.HSA_MON Sky Pub","Imagem Interna"
+"23.HSA_MON Ville del Acqua","Imagem Interna"
+"24.HSA_MON Terraco Sky Pub",Unidade
+"25.HSA_MON Wine lounge","Imagem Interna"
+"26.HSA_MON Living do apartamento tipo 1 + Sacada",Unidade
+"27.HSA_MON Vista real do living do apartamento tipo 1",Unidade
+"28.HSA_MON Sacada gourmet sensacao da vista do apartamento tipo 1",Unidade
+"29.HSA_MON Suite do apartamento tipo 1",Unidade
+"30.HSA_MON Living do apartamento Penthouse angulo 1",Unidade
+"31.HSA_MON Living do apartamento Penthouse angulo 2",Unidade
+"32.HSA_MON Living do apartamento Penthouse foco na vista",Unidade
+"33.HSA_MON Suite do apartamento Penthouse",Unidade
+"34.HSA_MON Suite do apartamento Penthouse com foco no closet",Unidade
+"35.HSA_MON Vista da banheira da suite do apartamento Penthouse",Unidade
+"36.HSA_MON Planta humanizada implantacao geral mostrando o pavimento terreo","Planta Humanizada"
+"37.HSA_MON Planta humanizada do pavimento lazer - 4° Pavimento","Planta Humanizada"
+"38.HSA_MON Planta humanizada do pavimento lazer - 26° Pavimento","Planta Humanizada"
+"39.HSA_MON Planta humanizada do pavimento Tipo","Planta Humanizada"
+"40.HSA_MON Planta humanizada do pavimento Penthouse","Planta Humanizada"
+"1.OTT_EKO Fotomontagem aerea - Insercao do empreendimento em terreno real visto do mar angulo 1",Fachada
+"2.OTT_EKO Fotomontagem aerea - Insercao do empreendimento em terreno real visto do mar angulo 2",Fachada
+"3.OTT_EKO Fachada diurna no angulo do observador",Fachada
+"4.OTT_EKO Embasamento com foco no acesso",Fachada
+"5.OTT_EKO Hall de entrada","Imagem Interna"
+"6.OTT_EKO Piscina 1 com vista fotografica real","Imagem Externa"
+"7.OTT_EKO Vista Living Tipo Final 2 ou 3","Imagem Externa"
+"8.OTT_EKO Bar da piscina 1","Imagem Interna"
+"9.OTT_EKO Academia com sacada com vista para o mar","Imagem Interna"
+"10.OTT_EKO Brinquedoteca com vista para o playground","Imagem Interna"
+"11.OTT_EKO Vista do tipo final 1","Imagem Interna"
+"12.OTT_EKO Sacada do Salao de festas com vista fotografica real","Imagem Interna"
+"13.OTT_EKO Living do apartamento tipo final 1 com vista fotografica real para o mar",Unidade
+"14.OTT_EKO Living do apartamento tipo final 2 ou 3 com vista fotografica real para o mar",Unidade
+"16.OTT_EKO Living do apartamento cobertura final 1 com vista fotografica real para o mar",Unidade
+"17.OTT_EKO Area de festas do apartamento cobertura final 1 com vista fotografica real",Unidade
+"18.OTT_EKO Planta humanizada do pavimento lazer","Planta Humanizada"
+"19.OTT_EKO Planta humanizada do apartamento tipo 1 - Planta Eng.Genesio","Planta Humanizada"
+"20.OTT_EKO Planta humanizada do apartamento tipo 2","Planta Humanizada"
+"21.OTT_EKO Planta humanizada do apartamento tipo 3","Planta Humanizada"
+"22.OTT_EKO Planta humanizada do apartamento cobertura inferior 1","Planta Humanizada"
+"23.OTT_EKO Planta humanizada do apartamento cobertura superior 1","Planta Humanizada"
+"24.OTT_EKO Planta humanizada do apartamento cobertura inferior 2","Planta Humanizada"
+"25.OTT_EKO Planta humanizada do apartamento cobertura superior 2","Planta Humanizada"
+"26.OTT_EKO Planta humanizada do apartamento cobertura inferior 3","Planta Humanizada"
+"27.OTT_EKO Planta humanizada do apartamento cobertura superior 3","Planta Humanizada"
+"26.DOM_MOR PLANTA HUMANIZADA DO PAVIMENTO SUBSOLO","Planta Humanizada"
+"27.DOM_MOR PLANTA HUMANIZADA IMPLANTACAO MOSTRANDO PAVIMENTO DE LAZER","Planta Humanizada"
+"28.DOM_MOR PLANTA HUMANIZADA DO PAVIMENTO MEZANINO TORRE A JUNTAMENTE COM O 1º PAVIMENTO TORRE B","Planta Humanizada"
+"29.DOM_MOR PLANTA HUMANIZADA DO 1º PAVIMENTO TORRE A JUNTAMENTE COM O 2º PAVIMENTO TORRE B","Planta Humanizada"
+"30.DOM_MOR PLANTA HUMANIZADA DO 2º PAVIMENTO TORRE A JUNTAMENTE COM O 3º PAVIMENTO TORRE B","Planta Humanizada"
+"31.DOM_MOR PLANTA HUMANIZADA DO 3º PAVIMENTO TORRE A JUNTAMENTE COM O MEZANINO TORRE B","Planta Humanizada"
+"32.DOM_MOR PLANTA HUMANIZADA DO PAVIMENTO DAS COBERTURAS DAS TORRES A E B","Planta Humanizada"
+"1.FG_TRI Fachada no angulo do observador de baixo - Diurna",Fachada
+"2.FG_TRI_Fotomontagem_RSVI7835
+",Fachada
+"3.FG_TRI_Fotomontagem_RSVI8085
+",Fachada
+4.FG_TRI_Fotomontagem_RSVI8389,Fachada
+5.FG_TRI_Fotomontagem_RSVI9033,Fachada
+"6.FG_TRI Fachada no angulo do observador de baixo - Sunset",Fachada
+"7.FG_TRI_Fotomontagem_RSVI777
+",Fachada
+"8.FG_TRI Aerea do lazer de topo - Lazer 1 posterior","Imagem externa"
+"9.FG_TRI Quadra","Imagem externa"
+"10.FG_TRI Pet place","Imagem externa"
+"11.FG_TRI Fire place","Imagem externa"
+"12.FG_TRI Caminhos angulo 1","Imagem externa"
+"13.FG_TRI Caminhos angulo 2","Imagem externa"
+"14.FG_TRI Caminhos angulo 3","Imagem externa"
+"15.FG_TRI Bar - Lazer 1 posterior","Imagem externa"
+"16.FG_TRI Piscina angulo 1 - Lazer 1 frente mar","Imagem externa"
+"17.FG_TRI Piscina angulo 2 - Lazer 1 frente mar","Imagem externa"
+"18.FG_TRI Piscina angulo 3 - Lazer 1 frente mar","Imagem externa"
+"19.FG_TRI Estar da piscina - Lazer 1 frente mar","Imagem externa"
+"20.FG_TRI Estar da piscina - Lazer 1 frente mar","Imagem externa"
+"21.FG_TRI Bar da piscina - Lazer 1 frente mar","Imagem externa"
+"22.FG_TRI Piscina angulo 1 - Lazer 2","Imagem externa"
+"23.FG_TRI Piscina angulo 2 - Lazer 2","Imagem externa"
+"24.FG_TRI Estar da piscina angulo 1 - Lazer 2","Imagem externa"
+"25.FG_TRI Estar da piscina angulo 2 - Lazer 2","Imagem externa"
+"26.FG_TRI Estar da piscina angulo 3 - Lazer 2","Imagem externa"
+"27.FG_TRI Estar da piscina angulo 4 - Lazer 2",Imagem externa
+"1.DOM_MOR Externa aerea / frontal com mar","Imagem Externa"
+"2.DOM_MOR Externa Lateral com piscina","Imagem Externa"
+"3.DOM_MOR Externa Fundos com acesso rua","Imagem Externa"
+"4.DOM_MOR Externa Paisagismo circulacoes ACESSO","Imagem Externa"
+"5.DOM_MOR Externa Paisagismo circulacoes ao mar","Imagem Externa"
+"6.DOM_MOR Externa pet place + ACADEMIA EXTERNA","Imagem Externa"
+"7.DOM_MOR Externa piscina + Espaco FOGO","Imagem Externa"
+"8.DOM_MOR Externa ESPACO BALANCOS","Imagem Externa"
+"9.DOM_MOR Externa da praia olhando para predio","Imagem Externa"
+"10.DOM_MOR Interno Gourmet Mezanino - integrados","Imagem Interna"
+"11.DOM_MOR Interno Gourmet Terreo","Imagem Interna"
+"12.DOM_MOR Interno Piscina aquecida","Imagem Interna"
+"13.DOM_MOR Interno Sauna","Imagem Interna"
+"14.DOM_MOR Fotomontagem 01 - Antigo Wine Bar",Fachada
+"15.DOM_MOR Fotomontagem 02 - Antigo Espaco Office",Fachada
+"16.DOM_MOR Interno Academia","Imagem Interna"
+"17.DOM_MOR Interno Brinquedoteca","Imagem Interna"
+"18.DOM_MOR Apto varanda vista mar - T05 TORRE A","Imagem Interna"
+"19.DOM_MOR Apto vista suite - L03 - TORRE B",Unidade
+"20.DOM_MOR Apto sala e varanda vista mar - C05 TORRE B","Imagem Interna"
+"21.DOM_MOR Fotomontagem",Fachada
+"22.DOM_MOR Detalhe/conceito espreguicadeira + piscina","Imagem Interna"
+"23.DOM_MOR Detalhe/conceito vista mar da suite / cortina","Imagem Interna"
+"24.DOM_MOR Detalhe/conceito piscina aquecida","Imagem Interna"
+"25.DOM_MOR Detalhe/conceito hall entrada","Imagem Interna"
+"1.MSA_LIN Fotomontagem aerea com insercao do empreendimento em terreno real angulo 1",Fachada
+"2.MSA_LIN Fotomontagem aerea com insercao do empreendimento em terreno real angulo 2",Fachada
+"3.MSA_LIN Fachada no angulo do observador",Fachada
+"4.MSA_LIN Embasamento mostrando area comercial",Fachada
+"5.MSA_LIN Hall de entrada","Imagem Interna"
+"6.MSA_LIN Quadra poliesportiva","Imagem Externa"
+"7.MSA_LIN Playground","Imagem Externa"
+"8.MSA_LIN Line park (Fire place antigo)","Imagem Externa"
+"9.MSA_LIN Coworking (Terraco antigo)",Unidade
+"10.MSA_LIN Espaco funcional","Imagem Externa"
+"11.MSA_LIN PUB / Sala de jogos","Imagem Interna"
+"12.MSA_LIN Academia","Imagem Interna"
+"13.MSA_LIN Boate (Espaco gourmet antigo)","Imagem Interna"
+"14.MSA_LIN Salao de festas","Imagem Interna"
+"15.MSA_LIN Market place","Imagem Interna"
+"16.MSA_LIN Brinquedoteca","Imagem Interna"
+"17.MSA_LIN Piscinas angulo 1","Imagem Externa"
+"18.MSA_LIN Piscinas angulo 2","Imagem Externa"
+"19.MSA_LIN Quiosque das piscinas","Imagem Interna"
+"20.MSA_LIN Living do apartamento tipo 1 ou 2",Unidade
+"21.MSA_LIN Sacada com vista real do apartamento tipo 1 ou 2",Unidade
+"22.MSA_LIN Suite do apartamento tipo 1 ou 2",Unidade
+"23.MSA_LIN Living do apartamento tipo 3 ou 4",Unidade
+"24.MSA_LIN Suite do apartamento tipo 3 ou 4",Unidade
+"25.MSA_LIN Sacada com vista real do apartamento tipo 3",Unidade
+"26.MSA_LIN Sacada com vista real do apartamento tipo 4",Unidade
+"27.MSA_LIN Planta humanizada implantacao geral mostrando o pavimento terreo","Planta Humanizada"
+"28.MSA_LIN Planta humanizada do pavimento lazer","Planta Humanizada"
+"29.MSA_LIN Planta humanizada do pavimento tipo","Planta Humanizada"
+"1.INO_ITA Fachada noturna",Fachada
+"1.DAN_UPP Fachada focada em uma torre",Fachada
+"2.DAN_UPP Fachada angulo a decidir",Fachada
+"3.DAN_UPP Fachada mostrando torres",Fachada
+"4.DAN_UPP Fachada aerea mostrando as areas de lazer entres as torres",Fachada
+"5.DAN_UPP Fachada aerea mostrando sentido entrada olhando para as torres",Fachada
+"6.DAN_UPP Hall de entrada","Imagem interna"
+"7.DAN_UPP Piscina","Imagem externa"
+"8.DAN_UPP Piscina angulo","Imagem externa"
+"9.DAN_UPP Vending Machine - Terreo","Imagem interna"
+"10.DAN_UPP Salao de festas adulto - torre A","Imagem interna"
+"11.DAN_UPP Arena Gamer - Torre A","Imagem Interna"
+"12.DAN_UPP Cinema - Torre A","Imagem Interna"
+"13.DAN_UPP Espaco Beleza - Torre A","Imagem Interna"
+"14.DAN_UPP Churrasqueira - Torre B","Imagem externa"
+"15.DAN_UPP Playground - Torre B","Imagem externa"
+"16.DAN_UPP Espaco Yoga - Torre B","Imagem Interna"
+"17.DAN_UPP Salao de festas infantil","Imagem interna"
+"18.DAN_UPP Fitness - Danca e Luta - Torre B","Imagem interna"
+"19.DAN_UPP Mini Quadra esportiva - torre C","Imagem Externa"
+"20.DAN_UPP Pet Place - Torre C","Imagem externa"
+"21.DAN_UPP Brinquedoteca - Torre C","Imagem Interna"
+"22.DAN_UPP Salao de jogos - Torre C","Imagem Interna"
+"23.DAN_UPP Pet Care - Torre C","Imagem interna"
+"24.DAN_UPP Living apto tipo a escolher",Unidade
+"25.DAN_UPP PB Apto tipo","Planta Humanizada"
+"26.DAN_UPP Implantacao terreo acesso as torres","Planta Humanizada"
+"27.DAN_UPP Sobressolo","Planta Humanizada"
+"28.DAN_UPP Pavimento tipo","Planta Humanizada"
+"1.LIN_SUR Fachada embasamento",Fachada
+"2.LIN_SUR Fachada Noturna",Fachada
+"3.LIN_SUR Fachada Diurna",Fachada
+"4.LIN_SUR Fachada fotomontagem",Fachada
+"5.LIN_SUR Fachada fotomontagem angulo",Fachada
+"6.LIN_SUR Fachada angular",Fachada
+"1.LIN_MIL Fachada diurna",Fachada
+"2.LIN_MIL Fachada fotomontagem",Fachada
+"3.LIN_MIL Fachada frontal",Fachada
+"4.LIN_MIL Fachada embasamento",Fachada
+"1.MEN_COL Fachada Diurna",Fachada
+"2.MEN_COL Fachada Entardecer",Fachada
+"3.MEN_COL Fachada Fundos",Fachada
+"4.MEN_COL Fachada Voo do passaro",Fachada
+"5.MEN_COL Hall de entrada","Imagem interna"
+"6.MEN_COL Piscina + Gourmet","Imagem externa"
+"7.MEN_COL Living de uma unidade a definir",Unidade
+"1.INO_TAB Fotomontagem com empreendimento no terreno real",Fachada
+"2.INO_TAB Fachada diagonal vindo do mar",Fachada
+"3.INO_TAB Fachada lateral esquerda (terreno e de esquina)",Fachada
+"4.INO_TAB Sacada externa ""olhando de fora do predio"", mostrando a vista mar","Imagem Externa"
+"5.INO_TAB Piscina e area frontal de lazer - explorando vista mar","Imagem Externa"
+"6.INO_TAB Piscina noturna explorando iluminacao, do terraco e lazer","Imagem Externa"
+"7.INO_TAB Salao de festa fundos","Imagem Externa"
+"8.INO_TAB Salao Gourmet frente","Imagem Interna"
+"9.INO_TAB Brinquedoteca","Imagem Interna"
+"10.INO_TAB Academia - explorando vista mar","Imagem Interna"
+"11.INO_TAB Fireplace - explorando vista mar","Imagem Externa"
+"12.INO_TAB Sala de jogos","Imagem Interna"
+"13.INO_TAB Playground com terraco de lazer","Imagem Externa"
+"14.INO_TAB Hall de entrada","Imagem Interna"
+"15.INO_TAB Acesso de pedestres, mostrando areas de canteiro, acabamentos e proximidade com a praia","Imagem Externa"
+"16.INO_TAB Living com sacada lateral – explorando vista mar",Unidade
+"17.INO_TAB Living apartamento fundos",Unidade
+"18.INO_TAB Suite master com vista mar","Imagem Interna"
+"19.INO_TAB Suite solteiro com vista mar","Imagem Interna"
+"20.INO_TAB Sacada com vista 1 – apartamentos da frente - explorando vista mar",Unidade
+"21.INO_TAB Sacada com vista 2 – apartamentos da frente - explorando vista mar",Unidade
+"22.INO_TAB PH Terreo","Planta Humanizada"
+"23.INO_TAB PH Garagem tipo","Planta Humanizada"
+"24.INO_TAB PH Lazer","Planta Humanizada"
+"25.INO_TAB Salao de festas Angulo Extra","Imagem Interna"
+"26.INO_TAB Salao Gourmet Angulo Extra","Imagem interna"
+"27.INO_TAB Sala de jogos alteracao de projeto","Imagem interna"
+"1.FAS_ELI Planta humanizada do pavimento lazer 1","Planta Humanizada"
+"2.FAS_ELI Planta humanizada do pavimento tipo","Planta Humanizada"
+"1.CAP_TIV Fachada diurna",Fachada
+"2.CAP_TIV Fachada noturna",Fachada
+"3.CAP_TIV Fachada aerea",Fachada
+"4.CAP_TIV Fachada embasamento",Fachada
+"5.CAP_TIV Fotomontagem aerea",Fachada
+"6.CAP_TIV Fachada angulo a escolher",Fachada
+"7.CAP_TIV Salao de festas","Imagem Interna"
+"8.CAP_TIV BBQ Grill","Imagem Externa"
+"9.CAP_TIV Piscina","Imagem Externa"
+"10.CAP_TIV Piscina angulo","Imagem Externa"
+"11.CAP_TIV Academia","Imagem Interna"
+"12.CAP_TIV Home market","Imagem Interna"
+"13.CAP_TIV Casa da Piscina","Imagem Interna"
+"14.CAP_TIV Casa da piscina angulo","Imagem Interna"
+"15.CAP_TIV Vinoteca","Imagem Interna"
+"16.CAP_TIV Fire Place","Imagem Externa"
+"17.CAP_TIV Cinema","Imagem Externa"
+"18.CAP_TIV Varanda Rooftop","Imagem Externa"
+"19.CAP_TIV Praca contemplacao","Imagem Externa"
+"20.CAP_TIV Sala de jogos interna","Imagem Interna"
+"21.CAP_TIV Sala de jogos externa","Imagem externa"
+"22.CAP_TIV Living- Sacada do apto tipo 1",Unidade
+"23.CAP_TIV Living- Sacada apto tipo 1 angulo",Unidade
+"24.CAP_TIV Suite do apto tipo 1",Unidade
+"25.CAP_TIV Living- Sacada do apto tipo 2",Unidade
+"26.CAP_TIV Living- Sacada apto tipo 2 angulo",Unidade
+"27.CAP_TIV Suite apto tipo 2",Unidade
+"28.CAP_TIV Living apto tipo 3",Unidade
+"29.CAP_TIV Living apto tipo 3 angulo",Unidade
+"30.CAP_TIV Suite apto tipo 4",Unidade
+"31.CAP_TIV Planta Humanizada pavimento lazer 01","Planta Humanizada"
+"32.CAP_TIV Planta Humanizada pavimento lazer rooftop","Planta Humanizada"
+"33.CAP_TIV Planta Humanizada pavimento tipo diferenciado","Planta Humanizada"
+"34.CAP_TIV Planta Humanizada pavimento tipo","Planta Humanizada"
+"35.CAP_TIV Planta Humanizada pavimento terreo","Planta Humanizada"
+"1.STR_SPA Fotomontagem aerea com insercao da fachada - Angulo 1",Fachada
+"2.STR_SPA Fotomontagem aerea com insercao da fachada - Angulo 2",Fachada
+"3.STR_SPA Quadras externas mostrando churrasqueiras","Imagem Externa"
+"4.STR_SPA Quadras internas angulo 1 - Corredor","Imagem Interna"
+"5.STR_SPA Quadras internas angulo 2 - Aerea","Imagem Interna"
+"6.STR_SPA Quadras internas angulo 3 - Quadra areia","Imagem Interna"
+"7.STR_SPA Bar interno","Imagem Interna"
+"1.CAR_MOV Fachada diurna",Fachada
+"2.CAR_MOV Fachada noturna no angulo do observador de baixo",Fachada
+"3.CAR_MOV Fachada aerea",Fachada
+"4.CAR_MOV Embasamento",Fachada
+"5.CAR_MOV Portaria / Acesso",Fachada
+"6.CAR_MOV Hall de entrada - torre 1","Imagem Interna"
+"7.CAR_MOV Horta - torre 1","Imagem Externa"
+"8.CAR_MOV Lounge + Redario - torre 1","Imagem Externa"
+"9.CAR_MOV Fire Place + Chess - torre 1","Imagem Externa"
+"10.CAR_MOV Academia externa - torre 1","Imagem Externa"
+"11.CAR_MOV Terraco - torre 1","Imagem Externa"
+"12.CAR_MOV Pet Place-torre 1","Imagem Externa"
+"13.CAR_MOV Espaco pub - torre 1","Imagem Interna"
+"14.CAR_MOV Festas 1 - torre 1","Imagem Interna"
+"15.CAR_MOV Festas 2 - torre 1","Imagem Interna"
+"16.CAR_MOV Espaco kids - torre 1","Imagem Interna"
+"17.CAR_MOV Espaco mulher - torre 1","Imagem Interna"
+"18.CAR_MOV Espaco gourmet - torre 1","Imagem Interna"
+"19.CAR_MOV Jogos teen - torre 1","Imagem Interna"
+"20.CAR_MOV Festas teen - torre 1","Imagem Interna"
+"21.CAR_MOV Academia - torre 1","Imagem Interna"
+"22.CAR_MOV Poker Place - torre 1","Imagem Interna"
+"23.CAR_MOV Living apto tipo - torre 1",Unidade
+"24.CAR_MOV Sacado apto tipo - torre 1",Unidade
+"25.CAR_MOV Suite 01 apto tipo - torre 1",Unidade
+"26.CAR_MOV Living cobertura tipo - torre 1",Unidade
+"27.CAR_MOV Suite cobertura tipo - torre 1",Unidade
+"28.CAR_MOV Sacada cobertura tipo com vista - torre 1",Unidade
+"29.CAR_MOV Terraco descoberto cobertura + sacada - torre 1","Imagem Externa"
+"30.CAR_MOV Piscina cobertura - torre 1","Imagem Externa"
+"31.CAR_MOV Implantacao terreo","Planta Humanizada"
+"32.CAR_MOV PB cobertura 1 - Torre 1","Planta Humanizada"
+"33.CAR_MOV PB Cobertura 2 - torre 1","Planta Humanizada"
+"34.CAR_MOV Implantacao lazer - torre 1","Planta Humanizada"
+"35.CAR_MOV PB Apto tipo - torre 1","Planta Humanizada"
+"36.CAR_MOV PB Apto tipo 2 - torre 1","Planta Humanizada"
+"1.CAR_ABS Fachada diurna no angulo do observador de baixo",Fachada
+"2.CAR_ABS Fachada noturna",Fachada
+"3.CAR_ABS Embasamento",Fachada
+"4.CAR_ABS Hall de entrada","Imagem Interna"
+"5.CAR_ABS Pergolado","Imagem Externa"
+"6.CAR_ABS Espaco luau + estar","Imagem Externa"
+"7.CAR_ABS Spa Lounge","Imagem Externa"
+"8.CAR_ABS Ioga space","Imagem Externa"
+"9.CAR_ABS Academia","Imagem Interna"
+"10.CAR_ABS Pub","Imagem Interna"
+"11.CAR_ABS Salao de festas 1","Imagem Interna"
+"12.CAR_ABS Suite 1 apto tipo",Unidade
+"13.CAR_ABS Living apto tipo",Unidade
+"14.CAR_ABS Salao de festas 2","Imagem Interna"
+"15.CAR_ABS Piscina Rooftop","Imagem Externa"
+"16.CAR_ABS Implantacao terreo Louvre (mostrando as 7 torres)","Planta Humanizada"
+"17.CAR_ABS Implantacao terreo Louvre (unica torre )","Planta Humanizada"
+"18.CAR_ABS Implantacao lazer Louvre lazer tipo","Planta Humanizada"
+"19.CAR_ABS PB Apto tipo 1","Planta Humanizada"
+28.FG_TRI_Fotomontagem_RSVI0166,"Fachada "
+29.FG_TRI_Fotomontagem_DJI2024,"Fachada "
+"1.HUR_SEN Fotomontagem da fachada com entorno",Fachada
+"2.HUR_SEN Imagem de acesso nivel do pedestre",Fachada
+"3.HUR_SEN Imagem Garden terceiro pavimento","Imagem Externa"
+"4.HUR_SEN Imagem Garden Terreo","Imagem Externa"
+"5.HUR_SEN Imagem Piscina Atico","Imagem Interna"
+"40.PHA_NET Embasamento extra",Fachada
+"41.PHA_NET Fotomontagem noturna",Fachada
+"1.EDI_ONE Variacao da fotomontagem aerea mostrando academia e restaurante (atualizacao da imagem abrindo as janelas da academia e restaurante)",Fachada
+"2.EDI_ONE Embasamento visto da praia mostrando academia e restaurante",Fachada
+"3.EDI_ONE Restaurante interna","Imagem Interna"
+"1.PRA_DUB Fotomontagem mostrando a Fachada no terreno diurna",Fachada
+"2.PRA_DUB Fotomontagem mostrando a Fachada no terreno noturna",Fachada
+"3.PRA_DUB Fachada do acesso do Shopping",Fachada
+"4.PRA_DUB Shopping cena 1 - Corredor","Imagem Interna"
+"5.PRA_DUB Shopping cena 2 - Praca de alimentacao","Imagem Interna"
+"6.PRA_DUB Piscinas","Imagem Externa"
+"7.PRA_DUB Cena de apartamento - Tipo 1",Unidade
+"8.PRA_DUB Cena de apartamento - Tipo 2",Unidade
+"9.PRA_DUB Cena de apartamento - Tipo 3",Unidade
+"42.PHA_NET Embasamento extra 2",Fachada
+"1.HSA_236 Fachada Diurna",Fachada
+"2.HSA_236 Fachada Noturna",Fachada
+"4.HSA_236 Garden","Imagem Externa"
+"10.HSA_236 Living Apto Tipo 01",Unidade
+"4.EDI_ONE Fotomontagem_01",Fachada
+6.HSA_236_Piscina,"Imagem Externa"
+"1.ZIM_AMO Fotomontagem aerea - Insercao do empreendimento em terreno real angulo 1",Fachada
+"2.ZIM_AMO Fotomontagem aerea - Insercao do empreendimento em terreno real angulo 2",Fachada
+"3.ZIM_AMO Fachada diurna no angulo do observador 1",Fachada
+"4.ZIM_AMO Fachada diurna no angulo do observador 2",Fachada
+"5.ZIM_AMO Fachada diurna no angulo do observador 3",Fachada
+"6.ZIM_AMO Embasamento com foco no acesso",Fachada
+"7.ZIM_AMO Hall de entrada torre A","Imagem Interna"
+"8.ZIM_AMO Hall de entrada torre B","Imagem Interna"
+"9.ZIM_AMO Area de contemplacao torre A","Imagem Externa"
+"10.ZIM_AMO Espaco Cross","Imagem Interna"
+"11.ZIM_AMO Academia","Imagem Interna"
+"12.ZIM_AMO Solarium","Imagem Interna"
+"13.ZIM_AMO Piscina aquecida","Imagem Interna"
+"14.ZIM_AMO Piscinas entre torres angulo 1","Imagem Externa"
+"15.ZIM_AMO Piscinas entre torres angulo 2","Imagem Externa"
+"16.ZIM_AMO Piscinas entre torres angulo 3","Imagem Externa"
+"17.ZIM_AMO Salao de festas 1","Imagem Externa"
+"18.ZIM_AMO Salao de festas 2","Imagem Externa"
+"19.ZIM_AMO Sala de jogos","Imagem Interna"
+"20.ZIM_AMO Espaco Gourmet","Imagem Interna"
+"21.ZIM_AMO Area de contemplacao torre B","Imagem Externa"
+"22.ZIM_AMO Playground","Imagem Externa"
+"23.ZIM_AMO Relax Place","Imagem Externa"
+"24.ZIM_AMO Fire Place","Imagem Externa"
+"25.ZIM_AMO Living do apartamento tipo torre A com vista fotografica real",Unidade
+"26.ZIM_AMO Living do apartamento tipo torre A com vista fotografica real angulo 2 - Foco na vista real",Unidade
+"27.ZIM_AMO Suite master do apartamento tipo torre A",Unidade
+"28.ZIM_AMO Living do apartamento tipo torre B com vista fotografica real - Final 1 ou 3",Unidade
+"29.ZIM_AMO Sacada do apartamento tipo torre B com vista fotografica real angulo 2 - Foco na vista real - Final 1 ou 3",Unidade
+"30.ZIM_AMO Suite master do apartamento tipo torre B - Final 1 ou 3",Unidade
+"31.ZIM_AMO Living do apartamento tipo torre B com vista fotografica real - Final 2",Unidade
+"32.ZIM_AMO Living do apartamento tipo torre B com vista fotografica real angulo 2 - Foco na vista real - Final 2",Unidade
+"33.ZIM_AMO Suite master do apartamento tipo torre B - Final 2",Unidade
+"1.KRE_SEN Fotomontagem aerea com insercao do empreendimento no terreno visto de forma lateral sentido costao",Fachada
+"2.KRE_SEN Fotomontagem aerea com insercao do empreendimento no terreno visto do mar",Fachada
+"3.KRE_SEN Fachada no angulo do observador visto da praia",Fachada
+"4.KRE_SEN Embasamento com foco na area comercial - Av.Aderbal com Rua Anturios",Fachada
+"5.KRE_SEN Embasamento com foco no acesso residencial na Rua dos Anturios",Fachada
+"6.KRE_SEN Estacionamento no subsolo","Imagem Interna"
+"7.KRE_SEN Hall de entrada da Torre C","Imagem Interna"
+"8.KRE_SEN Academia","Imagem Interna"
+"9.KRE_SEN Playground","Imagem Externa"
+"10.KRE_SEN Salao de festas","Imagem Interna"
+"11.KRE_SEN Churrasqueiras de apoio as piscinas","Imagem Externa"
+"12.KRE_SEN Spa com fireplace e yoga","Imagem Interna"
+"13.KRE_SEN Piscina adulto com borda infitnita com vista real fotografica angulo 1 - Ambiente geral","Imagem Externa"
+"14.KRE_SEN Piscina adulto com borda infitnita com vista real fotografica angulo 2 - Foco na vista real","Imagem Externa"
+"15.KRE_SEN Piscina infantil","Imagem Externa"
+"16.KRE_SEN Living com vista real do apartamento tipo (Torre A)",Unidade
+"17.KRE_SEN Suite com vista real do apartamento tipo (Torre A)",Unidade
+"18.KRE_SEN Sacada com vista real do apartamento tipo (Torre A)",Unidade
+"19.KRE_SEN Living com vista real do apartamento cobertura (Torre A)",Unidade
+"20.KRE_SEN Living com vista real do apartamento tipo (Torre B)",Unidade
+"21.KRE_SEN Living com vista real do apartamento cobertura (Torre B)",Unidade
+"22.KRE_SEN Living com vista real do apartamento tipo (Torre C)",Unidade
+"23.KRE_SEN Suite 1 com vista real do apartamento tipo (Torre C)",Unidade
+"24.KRE_SEN Living com vista real do apartamento cobertura (Torre C)",Unidade
+"25.KRE_SEN Living com vista real do apartamento tipo (Torre D)",Unidade
+"26.KRE_SEN Suite 1 com vista real do apartamento tipo (Torre D)",Unidade
+"27.KRE_SEN Sacada com vista real do apartamento tipo (Torre D)",Unidade
+"28.KRE_SEN Living com vista real do apartamento cobertura (Torre D)",Unidade
+"29.KRE_SEN Planta humanizada implantacao geral mostrando o mar, o pavimento terreo lazer com area comercial","Planta Humanizada"
+"30.KRE_SEN Planta humanizada do pavimento subsolo estacionamento","Planta Humanizada"
+"31.KRE_SEN Planta humanizada do pavimento tipo - Torre A","Planta Humanizada"
+"32.KRE_SEN Planta humanizada do pavimento cobertura - Torre A","Planta Humanizada"
+"33.KRE_SEN Planta humanizada do pavimento tipo - Torre B","Planta Humanizada"
+"34.KRE_SEN Planta humanizada do pavimento cobertura - Torre B","Planta Humanizada"
+"35.KRE_SEN Planta humanizada do pavimento tipo - Torre C","Planta Humanizada"
+"36.KRE_SEN Planta humanizada do pavimento cobertura - Torre C","Planta Humanizada"
+"37.KRE_SEN Planta humanizada do pavimento tipo - Torre D","Planta Humanizada"
+"38.KRE_SEN Planta humanizada do pavimento cobertura - Torre D","Planta Humanizada"
+"1.MEN_KSA Fachada diurna",Fachada
+"2.MEN_KSA Fachada noturna",Fachada
+"3.MEN_KSA Imagem interna 1","Imagem Interna"
+"4.MEN_KSA Imagem interna 2","Imagem Interna"
+"5.MEN_KSA Imagem interna 3","Imagem Interna"
+"6.MEN_KSA Imagem interna 4","Imagem Interna"
+"7.MEN_KSA Planta implantacao","Planta Humanizada"
+"8.MEN_KSA Planta tipo 1 garden","Planta Humanizada"
+"9.MEN_KSA Planta tipo 2 garden","Planta Humanizada"
+"10.MEN_KSA Planta tipo 3 duplex meio","Planta Humanizada"
+"11.MEN_KSA Planta tipo 4 duplex meio","Planta Humanizada"
+"1.INO_ITA Fotomontagem com empreendimento no terreno real",Fachada
+"2.INO_ITA Fotomontagem mostrando localizacao com mar",Fachada
+"3.INO_ITA Fachada frontal",Fachada
+"4.INO_ITA Piscina","Imagem Externa"
+"5.INO_ITA Playground","Imagem Externa"
+"6.INO_ITA Salao de festa com espaco externo","Imagem Externa"
+"7.INO_ITA Salao Gourmet com terraco","Imagem Externa"
+"8.INO_ITA Jogos/brinquedoteca com terraco","Imagem Externa"
+"9.INO_ITA Terraco de lazer","Imagem Externa"
+"10.INO_ITA Academia","Imagem Interna"
+"11.INO_ITA Sacada com vista",Unidade
+"12.INO_ITA Dormitorio casal","Imagem Interna"
+"13.INO_ITA Dormitorio solteiro","Imagem Interna"
+"14.INO_ITA Sala/cozinha conjugadas","Imagem Interna"
+"15.INO_ITA Terreo","Planta Humanizada"
+"16.INO_ITA 1º pavimento (garagem)","Planta Humanizada"
+"17.INO_ITA 2º pavimento (apartamentos + lazer) (x6)","Planta Humanizada"
+"18.INO_ITA Tipo (x8)","Planta Humanizada"
+"1.INO_BRA Fotomontagem com empreendimento no terreno real",Fachada
+"2.INO_BRA Fachada diagonal (terreno e de esquina)",Fachada
+"3.INO_BRA Piscina","Imagem Externa"
+"4.INO_BRA Playground","Imagem Externa"
+"5.INO_BRA Espaco pet","Imagem Externa"
+"6.INO_BRA Salao de festa","Imagem Externa"
+"7.INO_BRA Salao Gourmet","Imagem Externa"
+"8.INO_BRA Coworking","Imagem Externa"
+"9.INO_BRA Terraco de lazer (na cobertura)","Imagem Externa"
+"10.INO_BRA Sacada com vista",Unidade
+"11.INO_BRA Dormitorio casal","Imagem Interna"
+"12.INO_BRA Dormitorio solteiro","Imagem Interna"
+"13.INO_BRA Sala/cozinha conjugadas","Imagem Interna"
+"14.INO_BRA Terreo","Planta Humanizada"
+"15.INO_BRA 1º pavimento","Planta Humanizada"
+"16.INO_BRA Pavimento giardinos (x6)","Planta Humanizada"
+"17.INO_BRA Tipo (x6)","Planta Humanizada"
+"18.INO_BRA Cobertura com terraco de lazer (x4)","Planta Humanizada"
+"1.HSA_236 Fotomontagem aerea com insercao da torre em terreno real",Fachada
+"2.HSA_236 Fachada diurna no angulo do observador (portfolio)",Fachada
+"3.HSA_236 Fachada noturna",Fachada
+"4.HSA_236 Espaco garden mostrando Playground","Imagem Externa"
+"5.HSA_236 Piscina","Imagem Externa"
+"6.HSA_236 Quiosque da piscina","Imagem Externa"
+"7.HSA_236 Academia","Imagem Interna"
+"8.HSA_236 Sala de jogos","Imagem Interna"
+"9.HSA_236 Salao de festas","Imagem Interna"
+"10.HSA_236 Living do apartamento tipo 1",Unidade
+"11.HSA_236 Living do apartamento Penthouse",Unidade
+"12.HSA_236 Sacada com vista fotografica do apartamento Penthouse",Unidade
+"13.HSA_236 Planta do pavimento lazer","Planta Humanizada"
+"14.HSA_236 Planta humanizada do pavimento tipo","Planta Humanizada"
+"15.HSA_236 Planta humanizada do pavimento Penthouse","Planta Humanizada"
+"1.SIL_ELI Fachada no angulo do observador",Fachada
+"2.SIL_ELI Fotomontagem aerea por do sol",Fachada
+"3.SIL_ELI Fotomontagem aerea voo do passaro mostrando topo da torre",Fachada
+"4.SIL_ELI Playground","Imagem Externa"
+"5.SIL_ELI Brinquedoteca","Imagem Externa"
+"6.SIL_ELI Piscinas","Imagem Externa"
+"7.SIL_ELI Quiosque esportes mostrando quadra","Imagem Externa"
+"8.SIL_ELI Hall de entrada","Imagem Interna"
+"8.SIL_ELI Planta humanizada do pavimento Lazer","Planta Humanizada"
+"9.SIL_ELI Planta humanizada do pavimento G1","Planta Humanizada"
+9.SIL_ELI_Academia,"Imagem Interna"
+10.SIL_ELI_Gourmet,"Imagem Interna"
+11.SIL_ELI_Festas,"Imagem Interna"
+"5.EDI_ONE Garagem","Imagem Interna"
+"5.HSA_236_Suite Master Penthouse",Unidade
+"1.AMA_PEN Fotomontagem aerea com insercao do empreendimento em terreno real angulo 1",Fachada
+"2.AMA_PEN Fotomontagem aerea com insercao do empreendimento em terreno real angulo 2",Fachada
+"3.AMA_PEN Fachadas angulo 1",Fachada
+"4.AMA_PEN Fachadas angulo 2",Fachada
+"5.AMA_PEN Fachadas angulo 3",Fachada
+"6.AMA_PEN Avenida de acesso mostrando o embasamento",Fachada
+"7.AMA_PEN Porte-cochère",Fachada
+"8.AMA_PEN Quadras 1","Imagem Interna"
+"9.AMA_PEN Quadras 2","Imagem Interna"
+"10.AMA_PEN Piscinas angulo 1","Imagem Externa"
+"11.AMA_PEN Piscinas angulo 2","Imagem Externa"
+"12.AMA_PEN Piscinas angulo 3","Imagem Externa"
+"13.AMA_PEN Jacuzi SPA 1","Imagem Interna"
+"14.AMA_PEN Jacuzi SPA 2","Imagem Interna"
+"15.AMA_PEN Lounge Cafe 1","Imagem Interna"
+"16.AMA_PEN Lounge Cafe 2","Imagem Interna"
+"17.AMA_PEN Area das mesas entre torres","Imagem Interna"
+"18.AMA_PEN Playground angulo 1","Imagem Externa"
+"19.AMA_PEN Playground angulo 2","Imagem Externa"
+"20.AMA_PEN Lounge externo","Imagem Externa"
+"21.AMA_PEN Espelho D Agua","Imagem Externa"
+"1.OTT_INF Fotomontagem aerea - Insercao do empreendimento em terreno real visto do mar angulo 1",Fachada
+"2.OTT_INF Fotomontagem aerea - Insercao do empreendimento em terreno real visto do mar angulo 2",Fachada
+"3.OTT_INF Fachada diurna no angulo do observador",Fachada
+"4.OTT_INF Embasamento com foco no acesso",Fachada
+"5.OTT_INF Piscina com vista fotografica real","Imagem Externa"
+"6.OTT_INF Solarium com piscina","Imagem Externa"
+"7.OTT_INF Salao de festas mostrando terraco com vista fotografica real",Unidade
+"8.OTT_INF Academia","Imagem Interna"
+"9.OTT_INF Living do apartamento tipo final 1 com vista fotografica real",Unidade
+"10.OTT_INF Sacada do apartamento tipo final 1 com vista fotografica real",Unidade
+"11.OTT_INF Living do apartamento tipo final 2 com vista fotografica real",Unidade
+"12.OTT_INF Sacada do apartamento tipo final 2 com vista fotografica real",Unidade
+"13.OTT_INF Planta humanizada implantacao geral mostrando o pavimento terreo","Planta Humanizada"
+"14.OTT_INF Planta humanizada do apartamento tipo 1","Planta Humanizada"
+"15.OTT_INF Planta humanizada do apartamento tipo 2","Planta Humanizada"
+"12.MEN_KAZ_Terraco_Apto Meio","Imagem Externa"
+"39.KRE_SEN_Sacada tipo (torre C)_Extra",Unidade
+"1.AMA_PEN Cafe","Imagem Interna"
+"2.AMA_PEN Lounge","Imagem Interna"
+"3.AMA_PEN Cascata","Imagem Interna"
+"4.AMA_PEN Piscinas ponto 1","Imagem Interna"
+"4.AMA_PEN Piscinas ponto 2","Imagem Interna"
+"6.AMA_PEN Jacuzi","Imagem Externa"
+"7.AMA_PEN Playground","Imagem Externa"
+"8.AMA_PEN Quadra","Imagem Externa"
+"9.AMA_PEN Restaurante","Imagem Interna"
+"4.EDI_ONE Academia","Imagem Interna"
+"5.EDI_ONE Piscina","Imagem Externa"
+"6.EDI_ONE Sacada PUB",Unidade
+"7.EDI_ONE Living do apartamento tipo - ponto 360 1",Unidade
+"8.EDI_ONE Living do apartamento tipo - ponto 360 2",Unidade
+"9.EDI_ONE Suite master",Unidade
+"10.EDI_ONE Living top of view",Unidade
+"11.EDI_ONE Suite triplex",Unidade
+"43.ZIM_AMO Living do apartamento tipo torre A_Angulo Extra",Unidade
+"HSA_MON - Fachadas",Fachada
+"Alteracao Fachada",Fachada
+"19.INO_ITA Espaco Pet","Imagem Interna"
+"25.INO_TAB PH Tipo","Planta Humanizada"
+"44.ZIM_AMO Area Externa","Imagem Externa"
+"33.DOM_MOR Planta Pavto Tipo Torre A","Planta Humanizada"
+"46.ZIM_AMO_Sacada Torre B_Apto02",Unidade
+"1.RZI_LIN_FACHADA DIURNA_EF",Fachada
+1.ERS_SAN_Fachada_b,Fachada
+2.ERS_SAN_Fachada,Fachada
+40.KRE_SEN_Fotomontagem_noite,Fachada
+1.ARS_ACC_Garagem_EF,"Imagem Interna"
+2.ARS_ACC_Embasamento_EF,Fachada
+"19.INO_BRA_Fachada_noturna_001 (extra)",Fachada
+"12.SIL_ELI Fotomontagem nascer do sol",Fachada
+3.ARS_ACC_Fachada_topo,Fachada
+"HSA_MON Salao de festas ","Imagem Interna"
+"HSA_MON Piscina aquecida Adulto (antigo)","Imagem Externa"
+"HSA_MON Sala de jogos (antigo)","Imagem Interna"
+19.INO_BRA_Living,Unidade
+20.INO_BRA_Sacada_Com_Vista,Unidade
+"4.ARS_ACC Observador",Fachada
+1.HSA_MON_Fachada_Observador,Fachada
+13.SIL_ELI_Fotomontagem_Piscina_Embasamento,Fachada
+"5.LIN_MIL Hall de entrada","Imagem Interna"
+"6.LIN_MIL Market","Imagem Interna"
+"7.LIN_MIL Salao de festas","Imagem Interna"
+"8.LIN_MIL Terraco salao de festas + salao de festas","Imagem Externa"
+"9.LIN_MIL Playground","Imagem Externa"
+"10.LIN_MIL Brinquedoteca","Imagem Interna"
+"11.LIN_MIL Academia","Imagem Interna"
+"12.LIN_MIL Salao de jogos","Imagem Interna"
+"13.LIN_MIL Espaco Gourmet","Imagem Interna"
+"14.LIN_MIL Jardim 03 - terraco gourmet + terraco salao jogos","Imagem Externa"
+"15.LIN_MIL Gourmet Rooftop","Imagem Interna"
+"16.LIN_MIL Jogos Adulto Rooftop","Imagem Interna"
+"17.LIN_MIL Piscina","Imagem Externa"
+"18.LIN_MIL Aerea da piscina + terraco da piscina","Imagem Externa"
+"19.LIN_MIL Estar – jantar apto tipo",Unidade
+"20.LIN_MIL Suite master apto tipo",Unidade
+"21.LIN_MIL Planta humanizada do pavimento terreo","Planta Humanizada"
+"22.LIN_MIL Planta Humanizada do pavimento lazer","Planta Humanizada"
+"23.LIN_MIL Planta Humanizada do pavimento tipo","Planta Humanizada"
+"24.LIN_MIL Planta Humanizada Rooftop","Planta Humanizada"
+"7.LIN_SUR Hall de entrada","Imagem Interna"
+"8.LIN_SUR Piscina","Imagem Externa"
+"9.LIN_SUR Aerea mostrando toda a area de lazer","Imagem Externa"
+"10.LIN_SUR Salao de festas","Imagem Interna"
+"11.LIN_SUR Jogos","Imagem Interna"
+"12.LIN_SUR Cartas","Imagem Interna"
+"13.LIN_SUR Playground","Imagem Externa"
+"14.LIN_SUR Brinquedoteca","Imagem interna"
+"15.LIN_SUR Academia","Imagem Interna"
+"16.LIN_SUR Living apto tipo",Unidade
+"17.LIN_SUR Suite 1 apto tipo",Unidade
+"18.LIN_SUR Planta humanizada do pavimento terreo","Planta Humanizada"
+"19.LIN_SUR Planta Humanizada do pavimento lazer","Planta Humanizada"
+"20.LIN_SUR Planta Humanizada do pavimento tipo diferenciado","Planta Humanizada"
+"21.LIN_SUR Planta Humanizada do pavimento tipo","Planta Humanizada"
+"22.LIN_SUR Planta Humanizada do pavimento duplex superior","Planta Humanizada"
+"23.LIN_SUR Planta Humanizada do pavimento duplex inferior","Planta Humanizada"
+"7.HSA_236 Academia","Imagem Interna"
+"1.AYA_KAR Fotomontagem aerea com insercao do empreendimento no terreno - angulo 1 visto sentido mar",Fachada
+"2.AYA_KAR Fotomontagem aerea com insercao do empreendimento no terreno - angulo 2 visto sentido morros ou lateral",Fachada
+"3.AYA_KAR Fachada no angulo do observador frontal mostrando o acesso com guarita",Fachada
+"4.AYA_KAR Rampa da garagem com rasgo e arvore",Fachada
+"5.AYA_KAR Passeio entre piscina e apto","Imagem Externa"
+"6.AYA_KAR Piscina maior","Imagem Externa"
+"7.AYA_KAR Piscina infantil","Imagem Externa"
+"8.AYA_KAR Sauna","Imagem Interna"
+"9.AYA_KAR Piscina geral semi aerea mostrando todo lazer, teto verde, rasgo, etc","Imagem Externa"
+"10.AYA_KAR Academia","Imagem Interna"
+"11.AYA_KAR Sala Manaca - apto 302",Unidade
+"12.AYA_KAR Suite master ultimo apartamento virado para a mata - apto 310",Unidade
+"13.AYA_KAR Rooftop Piscina Manaca - apto 302",Unidade
+"14.AYA_KAR Sala com escada Ipe - apto 306",Unidade
+"15.AYA_KAR Sala sem escada Ipe - apto 206",Unidade
+"16.AYA_KAR Suite Ipe - apto 306",Unidade
+"17.AYA_KAR Rooftop Piscina Ipe - apto 306",Unidade
+"18.AYA_KAR Planta humanizada do pavimento subsolo Garagens","Planta Humanizada"
+"19.AYA_KAR Planta humanizada implantacao geral","Planta Humanizada"
+"20.AYA_KAR Planta humanizada do segundo pavimento Tipo 02","Planta Humanizada"
+"21.AYA_KAR Planta humanizada do terceiro pavimento tipo 02","Planta Humanizada"
+"22.AYA_KAR Planta humanizada do quarto pavimento","Planta Humanizada"
+"23.AYA_KAR Hall de entrada do empreendimento Foyer","Imagem Interna"
+"24.AYA_KAR Playground com teto verde","Imagem Externa"
+"25.AYA_KAR Caminho da entrada coberto na frente dos gourmets visualizando o caminho entre piscinas e aptos com paisagismo","Imagem Interna"
+"26.AYA_KAR Planta Humanizada Lazer","Planta Humanizada"
+"27.AYA_KAR Embasamento com foco no acesso mostrando acesso pedestres banhistas e carro, guarita",Fachada
+"28.AYA_KAR Brinquedoteca","Imagem Interna"
+"29.AYA_KAR Gourmet 1","Imagem Interna"
+"30.AYA_KAR Gourmet 2","Imagem Interna"
+"1.TER_ARG Fotomontagem aerea mostrando os arredores",Fachada
+"2.TER_ARG Fotomontagem Aerea mostrando Rio Tijucas para dentro do loteamento",Fachada
+"3.TER_ARG Planta geral mostrando o condominio","Planta Humanizada"
+"1. SDS_LIT Embasamento mostrando o acesso SC-410",Fachada
+"2. SDS_LIT Embasamento frente mar mostrando praia, gramado e torre",Fachada
+"3. SDS_LIT Fotomontagem aerea com insercao da torre em terreno real - angulo 1",Fachada
+"4. SDS_LIT Fotomontagem aerea com insercao da torre em terreno real - angulo 2",Fachada
+"5. SDS_LIT Boulevard - caminho entre torres","Imagem Externa"
+"6. SDS_LIT Hall de entrada (torre a definir)","Imagem Interna"
+"7. SDS_LIT Salao de festas","Imagem Interna"
+"8. SDS_LIT Sala de Jogos com PUB","Imagem Interna"
+"9. SDS_LIT Espaco Churrasco com piscina","Imagem Interna"
+"10. SDS_LIT Academia","Imagem Interna"
+"11. SDS_LIT Espaco Gourmet","Imagem Interna"
+"12. SDS_LIT Espaco descanso com Piscina termica","Imagem Interna"
+"13. SDS_LIT Piscinas angulo 1 - Area geral","Imagem Externa"
+"14. SDS_LIT Piscinas angulo 2 - Foco na vista fotografica para o mar","Imagem Externa"
+"15. SDS_LIT Apartamento tipo frente mar 1 - Torres A/B - Living",Unidade
+"16. SDS_LIT Apartamento tipo frente mar 1 - Torres A/B - Sacada com vista fotografica para o mar",Unidade
+"17. SDS_LIT Apartamento tipo frente mar 1 - Torres A/B - Suite com vista fotografica para o mar",Unidade
+"18. SDS_LIT Apartamento cobertura frente mar - Living com vista fotografica para o mar",Unidade
+"19. SDS_LIT Apartamento cobertura frente mar - Terraco com vista fotografica para o mar",Unidade
+"20. SDS_LIT Apartamento cobertura frente mar - Suite com vista fotografica para o mar",Unidade
+"21. SDS_LIT Planta humanizada implantacao geral mostrando o Pavimento terreo / Lazer","Planta Humanizada"
+"22. SDS_LIT Planta humanizada do pavimento Diferenciado - Torre A/B - x6 aptos","Planta Humanizada"
+"23. SDS_LIT Planta humanizada do apartamento Diferenciado da Torre A/B - 1","Planta Humanizada"
+"24. SDS_LIT Planta humanizada do apartamento Diferenciado da Torre A/B - 2","Planta Humanizada"
+"25. SDS_LIT Planta humanizada do apartamento Diferenciado da Torre A/B - 3","Planta Humanizada"
+"26. SDS_LIT Planta humanizada do apartamento Diferenciado da Torre A/B - 4","Planta Humanizada"
+"27. SDS_LIT Planta humanizada do apartamento Diferenciado da Torre A/B - 5","Planta Humanizada"
+"28. SDS_LIT Planta humanizada do apartamento Diferenciado da Torre A/B - 6","Planta Humanizada"
+"29. SDS_LIT Planta humanizada do pavimento Diferenciado - Torre C/D - x4 aptos","Planta Humanizada"
+"30. SDS_LIT Planta humanizada do apartamento Diferenciado da Torre C/D - 1","Planta Humanizada"
+"31. SDS_LIT Planta humanizada do apartamento Diferenciado da Torre C/D - 2","Planta Humanizada"
+"32. SDS_LIT Planta humanizada do apartamento Diferenciado da Torre C/D - 3","Planta Humanizada"
+"33. SDS_LIT Planta humanizada do apartamento Diferenciado da Torre C/D - 4","Planta Humanizada"
+"34. SDS_LIT Planta humanizada do pavimento Tipo - Torre A/B - x6 aptos","Planta Humanizada"
+"35. SDS_LIT Planta humanizada do apartamento Tipo da Torre A/B - 1","Planta Humanizada"
+"36. SDS_LIT Planta humanizada do apartamento Tipo da Torre A/B - 2","Planta Humanizada"
+"37. SDS_LIT Planta humanizada do apartamento Tipo da Torre A/B - 3","Planta Humanizada"
+"38. SDS_LIT Planta humanizada do pavimento Tipo - Torre C/D - x4 aptos","Planta Humanizada"
+"39. SDS_LIT Planta humanizada do apartamento Tipo da Torre C/D - 1","Planta Humanizada"
+"40. SDS_LIT Planta humanizada do pavimento Cobertura - Torre A/B - x2 aptos","Planta Humanizada"
+"41. SDS_LIT Planta humanizada do apartamento Cobertura da Torre A/B - 1","Planta Humanizada"
+"42. SDS_LIT Planta humanizada do apartamento Cobertura da Torre A/B - 2","Planta Humanizada"
+"43. SDS_LIT Planta humanizada do pavimento Cobertura - Torre C/D - x4 aptos","Planta Humanizada"
+"44. SDS_LIT Planta humanizada do apartamento Cobertura da Torre C/D - 1","Planta Humanizada"
+"45. SDS_LIT Planta humanizada do apartamento Cobertura da Torre C/D - 2","Planta Humanizada"
+"46. SDS_LIT Planta humanizada do apartamento Cobertura da Torre C/D - 3","Planta Humanizada"
+"47. SDS_LIT Planta humanizada do apartamento Cobertura da Torre C/D - 4","Planta Humanizada"
+"10.AYA_CAS Home Office com vista mata","Imagem Interna"
+"1.IDE_LAU Fotomontagem aerea com insercao do empreendimento no terreno",Fachada
+"2.IDE_LAU Fachada fim de tarde no angulo do observador",Fachada
+"3.IDE_LAU Embasamento com foto no acesso",Fachada
+"4.IDE_LAU Salao de festas","Imagem Interna"
+"5.IDE_LAU Piscina","Imagem Externa"
+"6.IDE_LAU Academia","Imagem Interna"
+"7.IDE_LAU Living do apartmento tipo 03 a definir angulo 1",Unidade
+"8.IDE_LAU Living do apartmento tipo 03 a definir angulo 2 com foco na vista real",Unidade
+"9.IDE_LAU Suite do apartamento tipo 03 a definir",Unidade
+"10.IDE_LAU Living do apartmento cobertura a definir angulo 1",Unidade
+"11.IDE_LAU Varanda do apartamento cobertura a definir angulo 1 com foco na vista real",Unidade
+"12.IDE_LAU Suite do apartamento cobertura a definir",Unidade
+"13.IDE_LAU Planta humanizada do pavimento lazer","Planta Humanizada"
+"14.IDE_LAU Planta humanizada do apartamento tipo 1 - Garden","Planta Humanizada"
+"15.IDE_LAU Planta humanizada do apartamento tipo 2","Planta Humanizada"
+"16.IDE_LAU Planta humanizada do apartamento tipo 3 - Variacao de sacadas com floreiras","Planta Humanizada"
+"17.IDE_LAU Planta humanizada do apartamento tipo 4","Planta Humanizada"
+"18.IDE_LAU Planta humanizada do apartamento Cobertura duplex inferior","Planta Humanizada"
+"19.IDE_LAU Planta humanizada do apartamento Cobertura duplex superior","Planta Humanizada"
+"34.DOM_MOR Voo do Passaro Extra",Fachada
+"36.CAP_TIV Salao de festa angulo extra","Imagem Interna"
+"29.DAN_UPP Planta Lazer da torre A","Planta Humanizada"
+"30.DAN_UPP Planta Lazer da torre C","Planta Humanizada"
+"30.FG_TRI Fachada com corte mostrando o estaqueamento",Fachada
+"5.ARS_ACC Fachada Embasamento 2",Fachada
+"37.CAP_TIV Brinquedoteca extra","Imagem Interna"
+"31.AYA_KAR Sala Ultimo apartamento com vista pra mata App com muxarabi - apto 310",Unidade
+"13.STR_SPA Passeio mostrando bar e estar externo ","Imagem Externa"
+"19.STR_SPA Quadras internas angulo 4 - Quadra padel","Imagem Interna"
+"41.HSA_MON Fotomontagem aerea com insercao do empreendimento em terreno real angulo 2",Fachada
+"42.HSA_MON Fotomontagem aerea com insercao do empreendimento em terreno real angulo 3",Fachada
+"10.PRA_DUB Cena do Apartamento - Tipo 1 Vista",Unidade
+"1.GES_ELI Fachada Embasamento",Fachada
+"2.GES_ELI Hall de entrada","Imagem Interna"
+"3.GES_ELI Piscina","Imagem Externa"
+"4.GES_ELI Living Penthouse com vista mar",Unidade
+"38.CAP_TIV Embasamento extra",Fachada
+"32.AYA_KAR Rooftop com vista para mata - Apto 310",Unidade
+"1.HAA_HOR Fotomontagem com empreendimento no terreno real angulo 1",Fachada
+"2.HAA_HOR Fotomontagem com empreendimento no terreno real angulo 2",Fachada
+"3.HAA_HOR Fotomontagem com empreendimento no terreno real angulo 3",Fachada
+"4.HAA_HOR Fachada diurna no angulo do observador de baixo para cima",Fachada
+"5.HAA_HOR Embasamento",Fachada
+"6.HAA_HOR Beach point com vista fotografica real","Imagem Interna"
+"7.HAA_HOR Piscinas com vista fotografica real - angulo 1","Imagem Externa"
+"8.HAA_HOR Piscinas com vista fotografica real - angulo 2","Imagem Externa"
+"9.HAA_HOR Piscina aquecida com vista fotografica real","Imagem Interna"
+"10.HAA_HOR Ocean Lounge com vista fotografica real","Imagem Interna"
+"11.HAA_HOR Salao de festas","Imagem Interna"
+"12.HAA_HOR Living com quatro suites - Angulo em corte",Unidade
+"13.HAA_HOR Living do apartamento tipo frente mar com vista fotografica real tres suites",Unidade
+"14.HAA_HOR Sacada do apartamento tipo frente mar com vista fotografica real tres suites",Unidade
+"15.HAA_HOR Suite do apartamento tipo frente mar com vista fotografica real",Unidade
+"16.HAA_HOR Planta Humanizada do apartamento tipo 1 com 4 suites","Planta Humanizada"
+"17.HAA_HOR Planta Humanizada do apartamento tipo 2 com 3 suites","Planta Humanizada"
+"18.HAA_HOR Planta Humanizada do apartamento tipo 3 com 3 suites","Planta Humanizada"
+"39.CAP_TIV Fotomontagem aerea diurna EXTRA",Fachada
+"1.HAA_SPR Fotomontagem com empreendimento no terreno real angulo 1",Fachada
+"2.HAA_SPR Fotomontagem com empreendimento no terreno real angulo 2",Fachada
+"3.HAA_SPR Fachada diurna",Fachada
+"4.HAA_SPR Fachada noturna",Fachada
+"5.HAA_SPR Embasamento comercial",Fachada
+"6.HAA_SPR Embasamento acesso",Fachada
+"7.HAA_SPR Discoteca","Imagem Interna"
+"8.HAA_SPR Car wash","Imagem Interna"
+"9.HAA_SPR Piscina aquecida com Spa mostrando sauna","Imagem Interna"
+"10.HAA_SPR Beauty space e Barber shop e panoramica de corte","Imagem Interna"
+"11.HAA_SPR Sala de massagem","Imagem Interna"
+"12.HAA_SPR Academia","Imagem Interna"
+"13.HAA_SPR Wine lounge","Imagem Interna"
+"14.HAA_SPR Salao de festas principal","Imagem Interna"
+"15.HAA_SPR Brinquedoteca","Imagem Interna"
+"16.HAA_SPR Quiosque da piscina","Imagem Externa"
+"17.HAA_SPR Drink lounge da piscina","Imagem Externa"
+"18.HAA_SPR Sala de jogos gourmet","Imagem Interna"
+"19.HAA_SPR Salao gourmet","Imagem Interna"
+"20.HAA_SPR Piscinas angulo 1","Imagem Externa"
+"21.HAA_SPR Piscinas angulo 2","Imagem Externa"
+"22.HAA_SPR Externa do apto garden","Imagem Externa"
+"23.HAA_SPR Living do aparatmento tipo 1",Unidade
+"24.HAA_SPR Suite do apartamento tipo 1",Unidade
+"25.HAA_SPR Living do apartamento tipo 4 - vista parque",Unidade
+"26.HAA_SPR Sacada do apartamento tipo 4 - vista parque",Unidade
+"27.HAA_SPR Suite do apartamento tipo 4 - vista parque",Unidade
+"28.HAA_SPR Sala e estar do apartamento duplex inferior 1 - Unidade virada para o parque",Unidade
+"29.HAA_SPR Suite master com sacada do apartamento duplex inferior 1 - Unidade virada para o parque",Unidade
+"30.HAA_SPR Living do apartamento duplex superior 1 - Unidade virada para o parque",Unidade
+"31.HAA_SPR Terraco do apartamento duplex superior 1 - Unidade virada para o parque",Unidade
+"32.HAA_SPR Planta humanizada implantacao geral mostrando o pavimento terreo","Planta Humanizada"
+"33.HAA_SPR Planta humanizada do pavimento garagem G1","Planta Humanizada"
+"34.HAA_SPR Planta humanizada do pavimento garagem G2","Planta Humanizada"
+"35.HAA_SPR Planta humanizada do pavimento garagem G3","Planta Humanizada"
+"36.HAA_SPR Planta humanizada do pavimento lazer","Planta Humanizada"
+"37.HAA_SPR Planta humanizada do apartamento garden tipo 1 - Torre A","Planta Humanizada"
+"38.HAA_SPR Planta humanizada do apartamento garden tipo 1 - Torre B - Variacao","Planta Humanizada"
+"39.HAA_SPR Planta Humanizada do aparamento tipo 1 - Torre A","Planta Humanizada"
+"40.HAA_SPR Planta Humanizada do aparamento tipo 2 - Torre A","Planta Humanizada"
+"41.HAA_SPR Planta Humanizada do aparamento tipo 1 - Torre B - Variacao","Planta Humanizada"
+"42.HAA_SPR Planta Humanizada do aparamento tipo 2 - Torre B - Variacao","Planta Humanizada"
+"43.HAA_SPR Planta humanizada duplex 1 inferior - Torre A","Planta Humanizada"
+"44.HAA_SPR Planta humanizada duplex 1 superior - Torre A","Planta Humanizada"
+"45.HAA_SPR Planta humanizada duplex 2 inferior - Torre A","Planta Humanizada"
+"46.HAA_SPR Planta humanizada duplex 2 superior - Torre A","Planta Humanizada"
+"47.HAA_SPR Planta humanizada duplex 1 inferior - Torre B - Variacao","Planta Humanizada"
+"48.HAA_SPR Planta humanizada duplex 1 superior - Torre B - Variacao","Planta Humanizada"
+"49.HAA_SPR Planta humanizada duplex 2 inferior - Torre B - Variacao","Planta Humanizada"
+"50.HAA_SPR Planta humanizada duplex 2 superior - Torre B - Variacao","Planta Humanizada"
+"1.ARS_VIE Fotomontagem Vista da praia Pereque",Fachada
+"2.ARS_VIE Fotomontagem Aerea geral de localizacao",Fachada
+"3.ARS_VIE Fotomontagem Vista de Porto Belo",Fachada
+"4.ARS_VIE Fotomontagem Mapa com localizacao do empreendimento + rua revitalizada + deck do costao das vieiras",Fachada
+"5.ARS_VIE Fachada no angulo do observador 1 (Angular)",Fachada
+"6.ARS_VIE Fotomontagem Vista de Porto Belo 2",Fachada
+"7.ARS_VIE Embasamento mostrando o acesso",Fachada
+"8.ARS_VIE Corredor comercial 1 - Terreo","Imagem Externa"
+"9.ARS_VIE Corredor comercial 2 - Terreo","Imagem Externa"
+"10.ARS_VIE Hall de entrada","Imagem Interna"
+"11.ARS_VIE Sport bar","Imagem Interna"
+"12.ARS_VIE Quadra","Imagem Externa"
+"13.ARS_VIE Area do Lago ornamental","Imagem Externa"
+"14.ARS_VIE Salao de festas 1","Imagem Interna"
+"15.ARS_VIE Brinquedoteca","Imagem Interna"
+"16.ARS_VIE Playground 1","Imagem Externa"
+"17.ARS_VIE Jogos/PUB","Imagem Interna"
+"18.ARS_VIE Bar/Barbecue","Imagem Interna"
+"19.ARS_VIE Piscinas angulo 1","Imagem Externa"
+"20.ARS_VIE Piscinas angulo 2","Imagem Externa"
+"21.ARS_VIE Pool bar","Imagem Externa"
+"22.ARS_VIE Redario","Imagem Externa"
+"23.ARS_VIE Playground 2 / Jatos de agua","Imagem Externa"
+"24.ARS_VIE Espaco beleza","Imagem Interna"
+"25.ARS_VIE Academia","Imagem Interna"
+"26.ARS_VIE Espaco zen","Imagem Externa"
+"27.ARS_VIE Coworking","Imagem Interna"
+"28.ARS_VIE Fire place","Imagem Externa"
+"29.ARS_VIE Piscina aquecida","Imagem Interna"
+"30.ARS_VIE Espaco wellness","Imagem Interna"
+"31.ARS_VIE Sauna seca","Imagem Interna"
+"32.ARS_VIE Wine com charutaria","Imagem Interna"
+"33.ARS_VIE Salao de festas 2","Imagem Interna"
+"34.ARS_VIE Living do apartamento tipo 1 com vista fotografica real - Torre 1/Torre 2",Unidade
+"35.ARS_VIE Living do apartamento tipo 1 angulo 2 focado na vista fotografica real - Torre 1/Torre 2",Unidade
+"36.ARS_VIE Suite Master do apartamento tipo 1 com vista fotografica real - Torre 1/Torre 2",Unidade
+"37.ARS_VIE Living do apartamento tipo 1 com vista fotografica real - Torre 3",Unidade
+"38.ARS_VIE Living do apartamento tipo 3 com vista fotografica real - Torre 3",Unidade
+"39.ARS_VIE Planta humanizada implantacao geral mostrando o pavimento terreo","Planta Humanizada"
+"40.ARS_VIE Planta humanizada do pavimento lazer","Planta Humanizada"
+"41.ARS_VIE Planta Humanizada do apartamento tipo 1 e 2 (Espelho e iguais nas torres","Planta Humanizada"
+"42.ARS_VIE Planta Humanizada do apartamento tipo 3 - Torres 1 e 2","Planta Humanizada"
+"43.ARS_VIE Planta Humanizada do apartamento tipo 3 - Torres 3","Planta Humanizada"
+"40.CAP_TIV Fotomontagem Extra 01",Fachada
+"41.CAP_TIV Fotomontagam Extra 02",Fachada
+"42.CAP_TIV Fotomontagem Extra 03",Fachada
+"1.LD9_URB Fotomontagem aerea com insercao do empreendimento em fotografia aerea angulo 1",Fachada
+"2.LD9_URB Fotomontagem aerea com insercao do empreendimento em fotografia aerea angulo 2 - Noturna",Fachada
+"3.LD9_URB Embasamento comercial com foco no acesso (Rua Jose Rodrigues com Maurino)",Fachada
+"4.LD9_URB Fachada no angulo do observador de baixo",Fachada
+"5.LD9_URB Imagem da area externa do terreo urbanizada - Placemaking 1",Fachada
+"6.LD9_URB Hall de entrada residencial","Imagem Interna"
+"7.LD9_URB Pitstop Coffee (Coworking)","Imagem Interna"
+"8.LD9_URB Academia angulo 2 (Espaco para Bike)","Imagem Interna"
+"9.LD9_URB Quiosques externos","Imagem Externa"
+"10.LD9_URB Playground mostrando a quadra - Parquinho","Imagem Externa"
+"11.LD9_URB Fire place mostrando o redario","Imagem Externa"
+"12.LD9_URB Piscinas angulo 1","Imagem Externa"
+"13.LD9_URB Piscinas angulo 2","Imagem Externa"
+"14.LD9_URB Piscina interna aquecida angulo 1","Imagem Interna"
+"15.LD9_URB Kids Zone (Brinquedoteca)","Imagem Interna"
+"16.LD9_URB Piscina interna aquecida angulo 2 (Salao de jogos) ","Imagem Interna"
+"17.LD9_URB Salao de festas Altus","Imagem Interna"
+"18.LD9_URB Salao de festas Kids (Espaco gourmet)","Imagem Interna"
+"19.LD9_URB Academia angulo 1","Imagem Interna"
+"20.LD9_URB Beauty Room (Espaco Homem)","Imagem Interna"
+"21.LD9_URB Salao de festas Pulse (Espaco mulher)","Imagem Interna"
+"22.LD9_URB Living do apartamento Duplex unidade 4301 B",Unidade
+"23.LD9_URB Suite do apartamento Duplex unidade 4301 B",Unidade
+"24.LD9_URB Living do apartamento Tipo unidade 4402A",Unidade
+"25.LD9_URB Living do apartamento Loft unidade 4301 A",Unidade
+"26.LD9_URB Suite no mezanino do apartamento Loft unidade 4301 A",Unidade
+"27.LD9_URB Living do apartamento Studio lateral unidade 4404B",Unidade
+"28.LD9_URB Implantacao do pavimento terreo","Planta Humanizada"
+"29.LD9_URB Planta humanizada do pavimento lazer","Planta Humanizada"
+"30.LD9_URB Planta humanizada do pavimento mezanino lazer","Planta Humanizada"
+"31.LD9_URB Planta humanizada do pavimento tipo superior","Planta Humanizada"
+"32.LD9_URB Planta humanizada do pavimento tipo inferior","Planta Humanizada"
+"33.LD9_URB Planta humanizada do apartamento Duplex de 83 m² - Inferior","Planta Humanizada"
+"34.LD9_URB Planta humanizada do apartamento Duplex de 83 m² - Superior","Planta Humanizada"
+"35.LD9_URB Planta humanizada do apartamento Apartamentos de 80 m²","Planta Humanizada"
+"36.LD9_URB Planta humanizada do apartamento Apartamentos de 78 m²","Planta Humanizada"
+"37.LD9_URB Planta humanizada do apartamento Apartamentos de 70 m²","Planta Humanizada"
+"38.LD9_URB Planta humanizada do apartamento Lofts de 63 m² - Inferior","Planta Humanizada"
+"39.LD9_URB Planta humanizada do apartamento Lofts de 63 m² - Superior","Planta Humanizada"
+"40.LD9_URB Planta humanizada do apartamento Studios de 41m²","Planta Humanizada"
+"41.LD9_URB Planta humanizada do apartamento Studios de 35m²","Planta Humanizada"
+"1.LD1_RES Fotomontagem aerea com insercao do empreendimento em fotografia aerea angulo 1",Fachada
+"2.LD1_RES Fotomontagem aerea com insercao do empreendimento em fotografia aerea angulo 2",Fachada
+"3.LD1_RES Fotomontagem aerea com insercao do empreendimento em fotografia aerea angulo 3",Fachada
+"4.LD1_RES Embasamento com foco no acesso",Fachada
+"5.LD1_RES Fachada no angulo do observador da baixo",Fachada
+"6.LD1_RES Hall de entrada principal","Imagem Interna"
+"7.LD1_RES Campo poliesportivo com quiosque aberto","Imagem Externa"
+"8.LD1_RES Quiosque da quadra","Imagem Externa"
+"9.LD1_RES Piscinas angulo geral","Imagem Externa"
+"10.LD1_RES Piscinas angulo 2","Imagem Externa"
+"11.LD1_RES Piscinas angulo 3 com foco na vista fotografica para o mar","Imagem Externa"
+"12.LD1_RES Quiosque piscina 1","Imagem Externa"
+"13.LD1_RES Fire place","Imagem Externa"
+"14.LD1_RES Redario","Imagem Externa"
+"15.LD1_RES Playground","Imagem Externa"
+"16.LD1_RES Pub Gourmet","Imagem Interna"
+"17.LD1_RES Sala de jogos","Imagem Interna"
+"18.LD1_RES Salao de festas 1","Imagem Interna"
+"19.LD1_RES Salao de festas 2","Imagem Interna"
+"20.LD1_RES Salao de festas 3","Imagem Interna"
+"21.LD1_RES Piscina aquecida","Imagem Interna"
+"22.LD1_RES Espaco zen com fire place","Imagem Externa"
+"23.LD1_RES Brinquedoteca","Imagem Interna"
+"24.LD1_RES Sala de massagem 1","Imagem Interna"
+25.LD1_RES Sauna,"Imagem Interna"
+"26.LD1_RES Pilates","Imagem Interna"
+"27.LD1_RES Academia","Imagem Interna"
+"28.LD1_RES Living do apartamento tipo 1 angulo 1",Unidade
+"29.LD1_RES Living do apartamento tipo 1 angulo 2",Unidade
+"30.LD1_RES Sacada do apartamento tipo 1",Unidade
+"31.LD1_RES Suite master do apartamento tipo 1",Unidade
+"32.LD1_RES Living do apartamento tipo 2",Unidade
+"33.LD1_RES Sacada do apartamento tipo 2",Unidade
+"34.LD1_RES Suite master do apartamento tipo 2",Unidade
+"35.LD1_RES Living do apartamento tipo 3",Unidade
+"36.LD1_RES Sacada do apartamento tipo 3",Unidade
+"37.LD1_RES Suite master do apartamento tipo 3 com vista fotografica",Unidade
+"38.LD1_RES Living do apartamento cobertura duplex 1",Unidade
+"39.LD1_RES Living do apartamento cobertura duplex 1 angulo 2",Unidade
+"40.LD1_RES Sacada do apartamento cobertura duplex 1",Unidade
+"41.LD1_RES Living do apartamento cobertura duplex 2",Unidade
+"42.LD1_RES Suite master do apartamento cobertura duplex 2",Unidade
+"43.LD1_RES Living do apartamento cobertura duplex 3",Unidade
+"44.LD1_RES Suite master do apartamento cobertura duplex 3 com sacada",Unidade
+"45.LD1_RES Suite master do apartamento cobertura duplex 1",Unidade
+"46.LD1_RES Suite master do apartamento cobertura duplex 1 angulo 2",Unidade
+"47.LD1_RES Implantacao implantacao mostrando o pavimento terreo","Planta Humanizada"
+"48.LD1_RES Planta humanizada do pavimento lazer","Planta Humanizada"
+"49.LD1_RES Planta humanizada do pavimento mezanino do lazer","Planta Humanizada"
+"50.LD1_RES  Planta humanizada do apartamento tipo 1 (torre 1)","Planta Humanizada"
+"51.LD1_RES Planta humanizada do apartamento tipo 2 (torre 1)","Planta Humanizada"
+"52.LD1_RES Planta humanizada do apartamento tipo 3 (torre 1)","Planta Humanizada"
+"53.LD1_RES Planta humanizada do apartamento cobertura duplex inferior 1 (torre 1)","Planta Humanizada"
+"54.LD1_RES Planta humanizada do apartamento cobertura duplex superior 1 (torre 1)","Planta Humanizada"
+"55.LD1_RES Planta humanizada do apartamento cobertura duplex inferior 2 (torre 1)","Planta Humanizada"
+"56.LD1_RES Planta humanizada do apartamento cobertura duplex superior 2 (torre 1)","Planta Humanizada"
+"57.LD1_RES Planta humanizada do apartamento cobertura duplex inferior 3 (torre 1)","Planta Humanizada"
+"58.LD1_RES Planta humanizada do apartamento cobertura duplex superior 3 (torre 1)","Planta Humanizada"
+"1.CP8_DIS Fachada angulo de baixo para cima",Fachada
+"2.CP8_DIS Fachada noturna - fim de tarde",Fachada
+"3.CP8_DIS Fachada embasamento",Fachada
+"4.CP8_DIS Fotomontagem aerea 1",Fachada
+"5.CP8_DIS Fotomontagem aerea 2 - Foco no Roof",Fachada
+"6.CP8_DIS Hall de entrada","Imagem Interna"
+"7.CP8_DIS Mini Mercado","Imagem Interna"
+"8.CP8_DIS Academia","Imagem Interna"
+"9.CP8_DIS Piscina","Imagem Externa"
+"10.CP8_DIS Bar da Piscina (Antigo Piscina infantil)","Imagem Externa"
+"11.CP8_DIS Sport Grill","Imagem Externa"
+"12.CP8_DIS Salao de festas","Imagem Interna"
+"13.CP8_DIS Espaco kids","Imagem Interna"
+"14.CP8_DIS PUB","Imagem Interna"
+"15.CP8_DIS Living apto tipo com tres suites - Apto 1",Unidade
+"16.CP8_DIS Cozinha apto tipo - Apto 1",Unidade
+"17.CP8_DIS Varanda apto tipo mostrando a vista - Apto 1",Unidade
+"18.CP8_DIS Suite master apto tipo - Apto 1",Unidade
+"19.CP8_DIS Quarto apto tipo - Apto 1",Unidade
+"20.CP8_DIS Living apto tipo diferenciado - Com piscina",Unidade
+"21.CP8_DIS Suite apto tipo diferenciado - Com piscina",Unidade
+"22.CP8_DIS Piscina apto tipo diferenciado",Unidade
+"23.CP8_DIS Imagem recepcao - andar tipo","Imagem Interna"
+"24.CP8_DIS Planta humanizada pavimento terreo","Planta Humanizada"
+"25.CP8_DIS Planta humanizada pavimento lazer – pavimento 13","Planta Humanizada"
+"26.CP8_DIS Planta humanizada Apto Garden tipo 1","Planta Humanizada"
+"27.CP8_DIS Planta humanizada Apto tipo 2","Planta Humanizada"
+"28.CP8_DIS Planta humanizada Apto Garden tipo 3","Planta Humanizada"
+"29.CP8_DIS Planta humanizada Apto tipo 4","Planta Humanizada"
+"30.CP8_DIS Planta humanizada Apto tipo 5","Planta Humanizada"
+"31.CP8_DIS Planta humanizada Apto tipo 6","Planta Humanizada"
+"32.CP8_DIS Planta Humanizada G1","Planta Humanizada"
+"5.GES_ELI Fotomontagem aerea mostrando o empreendimento em frente ao mar ",Fachada
+"6.GES_ELI Living Penthouse com vista mar, mais proximo da sacada - Angulo 2",Unidade
+"11.PRA_DUB Fotomontagem 2",Fachada
+"12.PRA_DUB Embasamento noturno",Fachada
+"13.PRA_DUB Acesso",Fachada
+"19.HAA_HOR Extra Fotomontagem noturna 1",Fachada
+"20.HAA_HOR Extra Fotomontagem noturna 2",Fachada
+"8.MEN_COL Extra Fotomontagem aerea com insercao da fachada em terreno real",Fachada
+"1.MPE_SUN Fotomontagem aerea com insercao da fachada em terreno real",Fachada
+"2.MPE_SUN Fotomontagem aerea com insercao da fachada em terreno real e foco no Rooftop",Fachada
+"3.MPE_SUN Fachada no angulo do observador",Fachada
+"4.MPE_SUN Embasamento",Fachada
+"5.MPE_SUN Hall de entrada","Imagem Interna"
+"6.MPE_SUN Gourmet","Imagem Interna"
+"7.MPE_SUN Lavanderia","Imagem Interna"
+"8.MPE_SUN Sala de reunioes","Imagem Interna"
+"9.MPE_SUN Piscina com vista real fotografica","Imagem Externa"
+"10.MPE_SUN Academia","Imagem Interna"
+"11.MPE_SUN Ambiente externo com vista real fotografica","Imagem Externa"
+"12.MPE_SUN Living do apartamento - 3 dormitorios - tipo 1 com vista real fotografica - Final 10",Unidade
+"13.MPE_SUN Sacada do apartamento - 3 dormitorios - tipo 1 com vista real fotografica - Final 10",Unidade
+"14.MPE_SUN Living do apartamento - 2 dormitorios - tipo 2 com vista real fotografica - Final 9",Unidade
+"15.MPE_SUN Sacada do apartamento - 2 dormitorios - tipo 2 com vista real fotografica - Final 9",Unidade
+"16.MPE_SUN Terraco do apartamento cobertura 6 com vista real fotografica - Final 1",Unidade
+"17.MPE_SUN Living do apartamento cobertura 6 com vista real fotografica - Final 1",Unidade
+"18.MPE_SUN Planta humanizada implantacao geral mostrando pavimento terreo","Planta Humanizada"
+"19.MPE_SUN Planta humanizada do pavimento mezanino mostrando lazer","Planta Humanizada"
+"20.MPE_SUN Planta humanizada apartamento tipo 1 - 3D","Planta Humanizada"
+"21.MPE_SUN Planta humanizada apartamento tipo 2 - 2D","Planta Humanizada"
+"22.MPE_SUN Planta humanizada apartamento tipo 3 - Studio","Planta Humanizada"
+"23.MPE_SUN Planta humanizada apartamento tipo 6 - Cobertura 2D","Planta Humanizada"
+"24.MPE_SUN Planta humanizada apartamento tipo 7 - Cobertura 2D","Planta Humanizada"
+"25.MPE_SUN Planta humanizada do lazer Rooftop","Planta Humanizada"
+"1.MPE_TUC Fotomontagem aerea com insercao da fachada em terreno real",Fachada
+"2.MPE_TUC Fotomontagem aerea com insercao da fachada em terreno real e foco no Rooftop",Fachada
+"3.MPE_TUC Fachada no angulo do observador",Fachada
+"4.MPE_TUC Embasamento",Fachada
+"5.MPE_TUC Hall de entrada","Imagem Interna"
+"6.MPE_TUC Fachada extra (Nordeste) ",Fachada
+"7.MPE_TUC Fotomontagem extra vista mar",Fachada
+"8.MPE_TUC Bicicletario","Imagem Interna"
+"9.MPE_TUC Espaco gourmet","Imagem Interna"
+"10.MPE_TUC Churrasqueira Gourmet com area externa","Imagem Externa"
+"11.MPE_TUC Lavanderia","Imagem Interna"
+"12.MPE_TUC Sala de reunioes","Imagem Interna"
+"13.MPE_TUC Coworking","Imagem Interna"
+"14.MPE_TUC Sala de jogos","Imagem Interna"
+"15.MPE_TUC Piscina com vista real fotografica angulo 1","Imagem Externa"
+"16.MPE_TUC Piscina com vista real fotografica angulo 2","Imagem Externa"
+"17.MPE_TUC Academia","Imagem Interna"
+"18.MPE_TUC Living do apartamento tipo 1 com vista real fotografica",Unidade
+"19.MPE_TUC Sacada do apartamento tipo 1 com vista real fotografica",Unidade
+"20.MPE_TUC Living do apartamento tipo 2 ou 3 com vista real fotografica - angulo 1",Unidade
+"21.MPE_TUC Living do apartamento Studio com vista real fotografica",Unidade
+"22.MPE_TUC Sacada do apartamento Studio com vista real fotografica",Unidade
+"23.MPE_TUC Terraco do apartamento cobertura 4 com vista real fotografica",Unidade
+"24.MPE_TUC Terraco do apartamento cobertura 5 ou 6 com vista real fotografica",Unidade
+"25.MPE_TUC Planta humanizada implantacao geral mostrando pavimento terreo","Planta Humanizada"
+"26.MPE_TUC Planta humanizada do pavimento mezanino lazer","Planta Humanizada"
+"27.MPE_TUC Planta humanizada apartamento tipo 1","Planta Humanizada"
+"28.MPE_TUC Planta humanizada apartamento tipo 2","Planta Humanizada"
+"29.MPE_TUC Planta humanizada apartamento tipo 3","Planta Humanizada"
+"30.MPE_TUC Planta humanizada apartamento Studio","Planta Humanizada"
+"31.MPE_TUC Planta humanizada apartamento cobertura 4","Planta Humanizada"
+"32.MPE_TUC Planta humanizada apartamento cobertura 5","Planta Humanizada"
+"33.MPE_TUC Planta humanizada apartamento cobertura 6","Planta Humanizada"
+"34.MPE_TUC Planta humanizada do lazer Rooftop","Planta Humanizada"
+"1.ROM_MAE Fotomontagem aerea com insercao da fachada",Fachada
+"2.ROM_MAE Fachada diurna",Fachada
+"3.ROM_MAE Embasamento frontal",Fachada
+"4.ROM_MAE Fachada frontal",Fachada
+"5.ROM_MAE Fachada noturna com os leds ligados",Fachada
+"6.ROM_MAE Fachada com vista no wine garden noturna",Fachada
+"7.ROM_MAE Fachada com vista dentro do rooftop com vista da cidade noturna ou diurna",Fachada
+"8.ROM_MAE Hall de entrada","Imagem Interna"
+"9.ROM_MAE Bicicletario","Imagem Interna"
+"10.ROM_MAE Piscina","Imagem Externa"
+"11.ROM_MAE Vista da borda vidro suspensa da piscina","Imagem Externa"
+"12.ROM_MAE Piscina + deck","Imagem Externa"
+"13.ROM_MAE Prainha+ deck molhado","Imagem Externa"
+"14.ROM_MAE Terraco descoberto","Imagem Externa"
+"15.ROM_MAE Quiosque da piscina","Imagem Externa"
+"16.ROM_MAE Espaco kids","Imagem Interna"
+"17.ROM_MAE Salao de festas","Imagem Interna"
+"18.ROM_MAE Pub tematico interior","Imagem Interna"
+"19.ROM_MAE Pub tematico interior angulo","Imagem Interna"
+"20.ROM_MAE Jogos superior (Em planta - Mezanino Dancing Bar)","Imagem Interna"
+"21.ROM_MAE Jogos superior angulo (Em planta - Mezanino Dancing Bar)","Imagem Interna"
+"22.ROM_MAE Wine garden sacada","Imagem Externa"
+"23.ROM_MAE Playground","Imagem Externa"
+"24.ROM_MAE Pet place","Imagem Externa"
+"25.ROM_MAE Aerea do lounge 01+02","Imagem Externa"
+"26.ROM_MAE Pergolado do chimarrao","Imagem Externa"
+"27.ROM_MAE Sala fitness","Imagem Interna"
+"28.ROM_MAE SPA","Imagem Interna"
+"29.ROM_MAE Deck com jacuzzi","Imagem Interna"
+"30.ROM_MAE Suite apto",Unidade
+"31.ROM_MAE Sala de tv apto",Unidade
+"32.ROM_MAE Sala de estar apto",Unidade
+"33.ROM_MAE Espaco gourmet apto",Unidade
+"34.ROM_MAE Copa- Cozinha apto",Unidade
+"35.ROM_MAE Home office apto",Unidade
+"36.ROM_MAE Suite cobertura duplex",Unidade
+"37.ROM_MAE Living cobertura duplex",Unidade
+"38.ROM_MAE Living cobertura duplex angulo",Unidade
+"39.ROM_MAE Imagem interna cobertura duplex a decidir",Unidade
+"40.ROM_MAE Planta humanizada pavimento terreo","Planta Humanizada"
+"41.ROM_MAE Planta humanizada do pavimento rooftop","Planta Humanizada"
+"42.ROM_MAE Planta humanizada pavimento wine garden","Planta Humanizada"
+"43.ROM_MAE Planta humanizada do pavimento do lazer","Planta Humanizada"
+"44.ROM_MAE Planta humanizada do pavimento fitness","Planta Humanizada"
+"45.ROM_MAE Planta humanizada cobertura superior","Planta Humanizada"
+"46.ROM_MAE Planta humanizada cobertura inferior","Planta Humanizada"
+"47.ROM_MAE Planta humanizada do apto tipo 1","Planta Humanizada"
+"1.RES_MAR Fotomontagem aerea com insercao da fachada em terreno real",Fachada
+"2.RES_MAR Fotomontagem aerea com insercao da fachada em terreno real e foco no Rooftop",Fachada
+"3.RES_MAR Embasamento",Fachada
+"4.RES_MAR Piscina com vista real fotografica","Imagem Externa"
+"5.RES_MAR Salao de festas vendo o terraco","Imagem Interna"
+"6.RES_MAR Living do apartamento tipo 1 dormitorio com vista real fotografica - Unidade 305",Unidade
+"7.RES_MAR Living do apartamento tipo 2 dormitorio com vista real fotografica - unidade 206 c/ 2 suites",Unidade
+"8.RES_MAR Living do apartamento cobertura 2 (2 Suites) com vista real fotografica - Unidade 401",Unidade
+"9.RES_MAR Planta humanizada implantacao geral mostrando pavimento terreo","Planta Humanizada"
+"10.RES_MAR Planta humanizada apartamento tipo 1 - 2D","Planta Humanizada"
+"11.RES_MAR Planta humanizada apartamento tipo 2 - 1D","Planta Humanizada"
+"12.RES_MAR Planta humanizada apartamento cobertura 1 - Suite + 1D","Planta Humanizada"
+"13.RES_MAR Planta humanizada apartamento cobertura 2 - 2 Suites","Planta Humanizada"
+"14.RES_MAR Planta humanizada do pavimento Rooftop","Planta Humanizada"
+"1.TER_ALT Fachada fotomontagem aerea geral",Fachada
+"2.TER_ALT Planta humanizada implantacao geral","Planta Humanizada"
+"33.AYA_KAR Planta Humanizada do segundo pavimento Tipo 04","Planta Humanizada"
+"34.AYA_KAR Planta Humanizada do segundo pavimento Tipo 10","Planta Humanizada"
+"35.AYA_KAR Planta Humanizada do segundo Pavimento Tipo 11","Planta Humanizada"
+"36.AYA_KAR Planta Humanizada do terceiro pavimento tipo 04","Planta Humanizada"
+"37.AYA_KAR Planta Humanizada do terceiro pavimento tipo 10","Planta Humanizada"
+"38.AYA_KAR Planta Humanizada do terceiro pavimento tipo 11","Planta Humanizada"
+"44.ARS_VIE Living do apto tipo 3 da torre 1/2",Unidade
+"48.SDS_LIT Apartamento cobertura frente mar - Suite com vista fotografica para o mar Extra",Unidade
+"49.SDS_LIT Fachada vista do Fire Place",Fachada
+"51.SDS_LIT Piscinas angulo Extra 1","Imagem Externa"
+"52.SDS_LIT Piscinas angulo Extra 2","Imagem Externa"
+"1.MSA_HYD Fotomontagem aerea com insercao do empreendimento em terreno real angulo 1",Fachada
+"2.MSA_HYD Fotomontagem aerea com foco no rooftop",Fachada
+"3.MSA_HYD Fachada no angulo do observador",Fachada
+"4.MSA_HYD Embasamento mostrando area comercial da avenida Gov.Celso Ramos",Fachada
+"5.MSA_HYD Coffee + market place","Imagem Interna"
+"6.MSA_HYD Coworking mostrando lan house","Imagem Interna"
+"7.MSA_HYD Espaco care + zen","Imagem Externa"
+"8.MSA_HYD PUB com vista para winter garden","Imagem Interna"
+"9.MSA_HYD Movie space","Imagem Externa"
+"10.MSA_HYD Academia mostrando o crossfit","Imagem Interna"
+"11.MSA_HYD Sunset place","Imagem Externa"
+"12.MSA_HYD Brinquedoteca","Imagem Interna"
+"13.MSA_HYD Salao de festas","Imagem Interna"
+"14.MSA_HYD Sala de jogos","Imagem Interna"
+"15.MSA_HYD Deck SPA","Imagem Externa"
+"16.MSA_HYD Piscinas","Imagem Externa"
+"17.MSA_HYD Quiosque","Imagem Externa"
+"18.MSA_HYD Living do apartamento tipo Studio 8",Unidade
+"19.MSA_HYD Suite master do apartamento tipo 1",Unidade
+"20.MSA_HYD Living do apartamento tipo 3",Unidade
+"21.MSA_HYD Living do apartamento tipo 6",Unidade
+"22.MSA_HYD Planta humanizada implantacao geral mostrando o pavimento terreo","Planta Humanizada"
+"23.MSA_HYD Planta humanizada do pavimento lazer 1","Planta Humanizada"
+"24.MSA_HYD Planta humanizada do pavimento lazer 2 - Rooftop","Planta Humanizada"
+"25.MSA_HYD Planta humanizada de apartamento tipo 1","Planta Humanizada"
+"26.MSA_HYD Planta humanizada de apartamento tipo 2","Planta Humanizada"
+"27.MSA_HYD Planta humanizada de apartamento tipo 3","Planta Humanizada"
+"28.MSA_HYD Planta humanizada de apartamento Tipo Studio 4","Planta Humanizada"
+"29.MSA_HYD Planta humanizada de apartamento Tipo Studio 5","Planta Humanizada"
+"30.MSA_HYD Planta humanizada de apartamento tipo 6","Planta Humanizada"
+"31.MSA_HYD Planta humanizada de apartamento Tipo Studio 7","Planta Humanizada"
+"32.MSA_HYD Planta humanizada de apartamento Tipo Studio 8","Planta Humanizada"
+"33.MSA_HYD Planta humanizada de apartamento Tipo Studio 9","Planta Humanizada"
+"7.GES_ELI Living Penthouse com vista mar, mais proximo da sacada - Angulo 3",Unidade
+"1.INO_MAR Fotomontagem com empreendimento no terreno real",Fachada
+"2.INO_MAR Fachada diurna (dia ensolarado)",Fachada
+"3.INO_MAR Fachada noturna",Fachada
+"4.INO_MAR Piscina","Imagem Externa"
+"5.INO_MAR Playground com estar externo","Imagem Externa"
+"6.INO_MAR Salao de festas","Imagem Interna"
+"7.INO_MAR Gourmet","Imagem Interna"
+"8.INO_MAR Academia com area externa","Imagem Interna"
+"9.INO_MAR Brinquedoteca","Imagem Interna"
+"10.INO_MAR Quiosque","Imagem Interna"
+"11.INO_MAR Living do apartamento tipo final 01 - Torre 2 - Ultimo pavimento",Unidade
+"12.INO_MAR Sacada com vista do apartamento tipo final 01 - Torre 2 - Ultimo pavimento",Unidade
+"13.INO_MAR Dormitorio de casal do apartamento tipo final 01 - Torre 2 - Ultimo pavimento",Unidade
+"14.INO_MAR Planta humanizada do pavimento terreo","Planta Humanizada"
+"15.INO_MAR Planta humanizada do 2° pavimento Garagem","Planta Humanizada"
+"16.INO_MAR Planta humanizada do 3° pavimento Garagem","Planta Humanizada"
+"17.INO_MAR Planta humanizada do pavimento tipo torre 1","Planta Humanizada"
+"18.INO_MAR Planta humanizada do pavimento tipo torre 2","Planta Humanizada"
+"24.LIN_SUR Espaco Gourmet - Extra","Imagem Interna"
+"29.INO_TAB Living do apartamento Tipo 1 com vista fotografica real para o mar",Unidade
+"30.INO_TAB Planta humanizada do 3° pavimento Garagem","Planta Humanizada"
+"1.CIB_RIV Fotomontagem aerea com o empreendimento inserido no terreno - Rio",Fachada
+"2.CIB_RIV Fotomontagem aerea com o empreendimento inserido no terreno - Rua",Fachada
+"3.CIB_RIV Embasamento frontal",Fachada
+"1.TER_PRA Fotomontagem aerea geral diurna mostrando o projeto completo (Fase I e Fase II)",Fachada
+"2.TER_PRA Entrada do loteamento",Fachada
+"3.TER_PRA Avenida Garapuvu",Fachada
+"4.TER_PRA Corte de avenida a definir mostrando detalhes da infraestrutura",Fachada
+"5.TER_PRA Area verde de lazer - AVL 1 - Fase I","Imagem Externa"
+"6.TER_PRA Area verde de lazer - AVL 2 - Fase I","Imagem Externa"
+"7.TER_PRA Area verde de lazer - AVL 3 - Fase I","Imagem Externa"
+"8.TER_PRA Area de uso publico - AUP 2 - Fase I","Imagem Externa"
+"9.TER_PRA Passarela para a praia pegando praia e casas a partir do mar - AVL 4 - Fase II","Imagem Externa"
+"10.TER_PRA Passarela para a praia pegando praia e casas a partir do loteamento - AVL 4 - Fase II","Imagem Externa"
+"11.TER_PRA Planta humanizada implantacao geral mostrando o projeto completo (Fase I e Fase II)","Planta Humanizada"
+"31.INO_TAB Fachada Noturna",Fachada
+"39.AYA_KAR Planta humanizada do apartamento 101","Planta Humanizada"
+"40.AYA_KAR Planta humanizada do apartamento 102/105 e 205/209","Planta Humanizada"
+"41.AYA_KAR Planta humanizada do apartamento 106","Planta Humanizada"
+"42.AYA_KAR Planta humanizada do apartamento 203","Planta Humanizada"
+"43.AYA_KAR Planta humanizada do apartamento 301","Planta Humanizada"
+"44.AYA_KAR Planta humanizada do apartamento 303","Planta Humanizada"
+"45.AYA_KAR Planta humanizada do apartamento 305","Planta Humanizada"
+"46.AYA_KAR Planta humanizada do apartamento 306/309","Planta Humanizada"
+"47.AYA_KAR Planta humanizada do apartamento 310","Planta Humanizada"
+"48.AYA_KAR Planta humanizada do apartamento 301","Planta Humanizada"
+"49.AYA_KAR Planta humanizada do apartamento 303","Planta Humanizada"
+"50.AYA_KAR Planta humanizada do apartamento 304","Planta Humanizada"
+"51.AYA_KAR Planta humanizada do apartamento 305, 307 e 309","Planta Humanizada"
+"52.AYA_KAR Planta humanizada do apartamento 102/103/104/105/202/203/204/205","Planta Humanizada"
+"53.AYA_KAR Planta humanizada do apartamento 106/206","Planta Humanizada"
+"54.AYA_KAR Planta humanizada do apartamento 302/303/304/305","Planta Humanizada"
+"55.AYA_KAR Planta humanizada do apartamento 306","Planta Humanizada"
+"56.AYA_KAR Planta humanizada do apartamento 302 e 304","Planta Humanizada"
+"57.AYA_KAR Planta humanizada do apartamento 303 e 305","Planta Humanizada"
+"58.AYA_KAR Planta humanizada do apartamento 306","Planta Humanizada"
+"1.RDO_VAL Fotomontagem aerea com insercao do empreendimento em terreno real angulo 1 - Diurna",Fachada
+"2.RDO_VAL Fotomontagem aerea com insercao do empreendimento em terreno real angulo 2 - Fim de tarde",Fachada
+"3.RDO_VAL Fotomontagem aerea com insercao do empreendimento em terreno real angulo 3 - Com foco na area de lazer 1",Fachada
+"4.RDO_VAL Fotomontagem aerea com insercao do empreendimento em terreno real angulo 4 - Com foco na area de lazer 2",Fachada
+"5.RDO_VAL Fachada no angulo do observador da rua 1 - Diurna",Fachada
+"6.RDO_VAL Fachada no angulo do observador da rua 2 - Fim de tarde",Fachada
+"7.RDO_VAL Embasamento mostrando mall e calcadas 1 da Rua A - Diurna",Fachada
+"8.RDO_VAL Embasamento mostrando mall e calcadas 2 mostrando a Avenida I com a Avenida Ver.Pedro Elias - Fim de tarde",Fachada
+"9.RDO_VAL Corredor do mall",Fachada
+"10.RDO_VAL Bicicletario","Imagem Interna"
+"11.RDO_VAL Hall residencial geral","Imagem Interna"
+"12.RDO_VAL Hall residencial com foco no elevador mostrando o Mini Market","Imagem Interna"
+"13.RDO_VAL Piscina coberta","Imagem Interna"
+"14.RDO_VAL Fitness","Imagem Interna"
+"15.RDO_VAL Funcional","Imagem Interna"
+"16.RDO_VAL Coworking","Imagem Interna"
+"17.RDO_VAL Sala de jogos","Imagem Interna"
+"18.RDO_VAL PUB","Imagem Interna"
+"19.RDO_VAL Espaco Teens","Imagem Interna"
+"20.RDO_VAL Salao de festas 1","Imagem Interna"
+"21.RDO_VAL Salao de festas 2","Imagem Interna"
+"22.RDO_VAL Espaco Kids","Imagem Interna"
+"23.RDO_VAL Espaco Gourmet","Imagem Interna"
+"24.RDO_VAL Playground externo (Antigo salao de festas 2)","Imagem Externa"
+"25.RDO_VAL Piscina externa angulo 1 - com vista real fotografica","Imagem Externa"
+"26.RDO_VAL Piscina externa angulo 2 - com vista real fotografica","Imagem Externa"
+"27.RDO_VAL Piscina coberta 2 vista para sauna (Piscina angulo 3 antigo) ","Imagem Interna"
+"28.RDO_VAL Suite do embasamento unid. 312",Unidade
+"29.RDO_VAL Ambiente externo do pavimento de lazer a definir 1 - com vista real fotografica","Imagem Externa"
+"30.RDO_VAL Ambiente externo do pavimento de lazer a definir 2 - com vista real fotografica","Imagem Externa"
+"31.RDO_VAL Sala de reunioes (antigo ambiente externo 3)","Imagem Interna"
+"32.RDO_VAL Living com vista real fotografica - Torre 1 - unid.1402",Unidade
+"33.RDO_VAL Living com vista real fotografica - Torre 1 - unid.1701",Unidade
+"34.RDO_VAL Sacada com vista real fotografica - Torre 1 - unid.1704",Unidade
+"35.RDO_VAL Living com vista real fotografica - Torre 1 - unid.3001",Unidade
+"36.RDO_VAL Sacada com vista real fotografica - Torre 1 - unid.3003",Unidade
+"37.RDO_VAL Living com vista real fotografica - Torre 2 - Final 12",Unidade
+"38.RDO_VAL Sacada com vista real fotografica - Torre 2 - Final 12",Unidade
+"39.RDO_VAL Suite com vista real fotografica - Torre 1 - unid. 1406 (antiga sacada final 13)",Unidade
+"40.RDO_VAL Living com vista real fotografica - Embasamento - unid.512",Unidade
+"41.RDO_VAL Planta humanizada implantacao geral mostrando o pavimento terreo","Planta Humanizada"
+"42.RDO_VAL Planta humanizada do pavimento Lazer Pilotis","Planta Humanizada"
+"43.RDO_VAL Planta humanizada do pavimento Garagem G1","Planta Humanizada"
+"44.RDO_VAL Planta humanizada do pavimento Garagem G2","Planta Humanizada"
+"45.RDO_VAL Planta humanizada do pavimento Garagem G3","Planta Humanizada"
+"46.RDO_VAL Planta humanizada do pavimento Garagem G4","Planta Humanizada"
+"47.RDO_VAL Planta humanizada do apartamento Garagem G2 - tipo 1","Planta Humanizada"
+"48.RDO_VAL Planta humanizada do apartamento Garagem G2 - tipo 2","Planta Humanizada"
+"49.RDO_VAL Planta humanizada do apartamento Garagem G2 - tipo 3","Planta Humanizada"
+"50.RDO_VAL Planta humanizada do pavimento Tipo 1 x 8","Planta Humanizada"
+"51.RDO_VAL Planta humanizada do apartamento Tipo 1 - Final 1","Planta Humanizada"
+"52.RDO_VAL Planta humanizada do apartamento Tipo 1 - Final 2","Planta Humanizada"
+"53.RDO_VAL Planta humanizada do apartamento Tipo 1 - Final 3","Planta Humanizada"
+"54.RDO_VAL Planta humanizada do apartamento Tipo 1 - Final 4","Planta Humanizada"
+"55.RDO_VAL Planta humanizada do pavimento Tipo 02 diferenciado - Variacao","Planta Humanizada"
+"56.RDO_VAL Planta humanizada do apartamento Tipo 2 Diferenciado - Final 1","Planta Humanizada"
+"57.RDO_VAL Planta humanizada do apartamento Tipo 2 Diferenciado - Final 2","Planta Humanizada"
+"58.RDO_VAL Planta humanizada do apartamento Tipo 2 Diferenciado - Final 3","Planta Humanizada"
+"59.RDO_VAL Planta humanizada do apartamento Tipo 2 Diferenciado - Final 4","Planta Humanizada"
+"60.RDO_VAL Planta humanizada do pavimento Tipo 02 x 7 - Variacao","Planta Humanizada"
+"61.RDO_VAL Planta humanizada do apartamento Tipo 02 - Final 1","Planta Humanizada"
+"62.RDO_VAL Planta humanizada do apartamento Tipo 02 - Final 2","Planta Humanizada"
+"63.RDO_VAL Planta humanizada do apartamento Tipo 02 - Final 3","Planta Humanizada"
+"64.RDO_VAL Planta humanizada do apartamento Tipo 02 - Final 4","Planta Humanizada"
+"65.RDO_VAL Planta humanizada do pavimento Tipo 03 diferenciado - Variacao","Planta Humanizada"
+"66.RDO_VAL Planta humanizada do apartamento Tipo 03 Diferenciado - Final 1","Planta Humanizada"
+"67.RDO_VAL Planta humanizada do apartamento Tipo 03 Diferenciado - Final 2","Planta Humanizada"
+"68.RDO_VAL Planta humanizada do apartamento Tipo 03 Diferenciado - Final 3","Planta Humanizada"
+"69.RDO_VAL Planta humanizada do apartamento Tipo 1 - Final 5","Planta Humanizada"
+"70.RDO_VAL Planta humanizada do pavimento Tipo 03 x 6 - Variacao","Planta Humanizada"
+"71.RDO_VAL Planta humanizada do apartamento Tipo 3 - Final 1","Planta Humanizada"
+"72.RDO_VAL Planta humanizada do apartamento Tipo 3 - Final 2","Planta Humanizada"
+"73.RDO_VAL Planta humanizada do apartamento Tipo 3 - Final 3","Planta Humanizada"
+"74.RDO_VAL Planta humanizada do apartamento Tipo 1 - Final 6","Planta Humanizada"
+"75.RDO_VAL Planta humanizada do pavimento tipo 1 Diferenciado - Torre 2","Planta Humanizada"
+"76.RDO_VAL Planta humanizada do apartamento da Torre 2 - unid.711","Planta Humanizada"
+"77.RDO_VAL Planta humanizada do apartamento da Torre 2 - unid.712","Planta Humanizada"
+"78.RDO_VAL Planta humanizada do apartamento da Torre 2 - unid.713","Planta Humanizada"
+"1.INO_TIM Fotomontagem aerea com empreendimento no terreno real",Fachada
+"2.INO_TIM Fachada diurna",Fachada
+"3.INO_TIM Fachada noturna",Fachada
+"4.INO_TIM Hall de entrada","Imagem Interna"
+"5.INO_TIM Pet place","Imagem Externa"
+"6.INO_TIM Piscina diurna","Imagem Externa"
+"7.INO_TIM Piscina noturna","Imagem Externa"
+"8.INO_TIM Quiosque","Imagem Externa"
+"9.INO_TIM Playground","Imagem Externa"
+"10.INO_TIM Brinquedoteca","Imagem Interna"
+"11.INO_TIM Academia com area externa (crossfit)","Imagem Externa"
+"12.INO_TIM Salao de festas","Imagem Interna"
+"13.INO_TIM Gourmet","Imagem Interna"
+"14.INO_TIM Coworking","Imagem Interna"
+"15.INO_TIM Living do apartamento tipo 1, com 1 dorm, com vista real fotografica - unid.1402",Unidade
+"16.INO_TIM Dormitorio do apartamento tipo 1, com 1 dorm, com vista real fotografica - unid.1402",Unidade
+"17.INO_TIM Living do apartamento tipo 1, com 1 suite + 1 dorm., com vista real fotografica - unid.1404",Unidade
+"18.INO_TIM Suite do apartamento tipo 1, com 1 suite + 1 dorm., com vista real fotografica - unid.1404",Unidade
+"19.INO_TIM Sacada do apartamento tipo 1, com 1 suite + 1 dorm., com vista real fotografica - unid.1404",Unidade
+"20.INO_TIM Suite do apartamento tipo 1, com 1 suite + 2 dorm., com vista real fotografica - unid.1401",Unidade
+"21.INO_TIM Living do apartamento Studio tipo 1, com vista real fotografica - unid.1403",Unidade
+"22.INO_TIM Planta humanizada implantacao geral mostrando o pavimento terreo","Planta Humanizada"
+"23.INO_TIM Planta humanizada do 2º pavimento Tipo + Lazer","Planta Humanizada"
+"24.INO_TIM Planta humanizada do 1º pavimento - Garagem","Planta Humanizada"
+"25.INO_TIM Planta humanizada do apartamento tipo 1, com 1 dorm.- unid.1402","Planta Humanizada"
+"26.INO_TIM Planta humanizada do apartamento tipo 1, com 1 dorm.- unid.1405","Planta Humanizada"
+"27.INO_TIM Planta humanizada do apartamento tipo 1, com 2 dorm.- unid.1404","Planta Humanizada"
+"28.INO_TIM Planta humanizada do apartamento tipo 1, com 3 dorm.- unid.1401","Planta Humanizada"
+"29.INO_TIM Planta humanizada do apartamento tipo 1, tipo studio - unid.1406","Planta Humanizada"
+"30.INO_TIM Planta humanizada do apartamento tipo 1, tipo studio - unid.1403","Planta Humanizada"
+"79.RDO_VAL Planta humanizada do apartamento da Torre 2 - unid.714","Planta Humanizada"
+"80.RDO_VAL Planta Humanizada do pavimento TIPO 01 (X11)","Planta Humanizada"
+"81.RDO_VAL Planta Humanizada da Torre 2 - Tipo 1 - Final 11","Planta Humanizada"
+"82.RDO_VAL Planta Humanizada da Torre 2 - Tipo 1 - Final 12","Planta Humanizada"
+"83.RDO_VAL Planta Humanizada da Torre 2 - Tipo 1 - Final 13","Planta Humanizada"
+"84.RDO_VAL Planta Humanizada da Torre 2 - Tipo 1 - Final 14","Planta Humanizada"
+"85.RDO_VAL Planta Humanizada do pavimento TIPO 02 (X12)","Planta Humanizada"
+"86.RDO_VAL Planta Humanizada da Torre 2 - Tipo 2 - Final 11","Planta Humanizada"
+"87.RDO_VAL Planta Humanizada da Torre 2 - Tipo 2 - Final 12","Planta Humanizada"
+"88.RDO_VAL Planta Humanizada da Torre 2 - Tipo 2 - Final 13","Planta Humanizada"
+"89.RDO_VAL Planta Humanizada da Torre 2 - Tipo 2 - Final 14","Planta Humanizada"
+"1.SAN_LAJ Fotomontagem aerea geral diurna com insercao do loteamento em terreno real angulo 1",Fachada
+"2.SAN_LAJ Fotomontagem aerea geral diurna com insercao do loteamento em terreno real angulo 2",Fachada
+"3.SAN_LAJ Planta humanizada implantacao geral","Planta Humanizada"
+"1.JON_LIN Fotomontagem aerea angulo 1",Fachada
+"2.JON_LIN Fotomontagem aerea angulo 2",Fachada
+"3.JON_LIN Fotomontagem aerea angulo 3",Fachada
+"4.JON_LIN Fachada no angulo so observador a partir do acesso",Fachada
+"5.JON_LIN Lobby","Imagem Interna"
+"6.JON_LIN Garagem","Imagem Interna"
+"7.JON_LIN Docas para motos na garagem","Imagem Interna"
+"8.JON_LIN Quadras de beach tenis","Imagem Externa"
+"9.JON_LIN Area interna do patio coberto - 1 - Foco no palco","Imagem Interna"
+"10.JON_LIN Area interna do patio coberto - 2 - Foco nas lojas","Imagem Interna"
+"11.JON_LIN Area interna do patio coberto - 3 - Foco geral mostrando lojas, fachada e cobertura retratil","Imagem Interna"
+"12.JON_LIN Piscina","Imagem Interna"
+"13.JON_LIN Academia","Imagem Interna"
+"14.JON_LIN Jogos","Imagem Interna"
+"15.JON_LIN Coworking","Imagem Interna"
+"16.JON_LIN Loft unidade 16 - angulo 1",Unidade
+"17.JON_LIN Loft unidade 16 - angulo 2",Unidade
+"18.JON_LIN Living do apartamento tipo 3 - 3 Suites",Unidade
+"19.JON_LIN Planta humanizada do pavimento Subsolo","Planta Humanizada"
+"20.JON_LIN Planta humanizada implantacao geral mostrando o pavimento Terreo x28 lojas","Planta Humanizada"
+"21.JON_LIN Planta humanizada do apartamento Loft tipo 1","Planta Humanizada"
+"22.JON_LIN Planta humanizada do apartamento Loft tipo 2","Planta Humanizada"
+"23.JON_LIN Planta humanizada do apartamento Apartamento tipo 1 - Suite + 1","Planta Humanizada"
+"24.JON_LIN Planta humanizada do apartamento Apartamento tipo 3 - 3 Suites","Planta Humanizada"
+"25.JON_LIN Planta humanizada do apartamento Apartamento tipo 2 - 2 Quartos","Planta Humanizada"
+"26.JON_LIN Planta humanizada do pavimento Lazer Rooftop","Planta Humanizada"
+"31.INO_TIM Planta Humanizada do pavimento tipo","Planta Humanizada"
+teste,Fachada
+teste2,Fachada
+"1.TES_TES teste3",Fachada
+"32.INO_TIM Planta humanizada do apartamento tipo 1, com 3 dorm.- unid.1401 - Variacao 01","Planta Humanizada"
+"33.CP8_DIS Planta humanizada andar tipo mostrando o lazer","Planta Humanizada"
+"1.CEG_TIJ Fachada frontal",Fachada
+"2.CEG_TIJ Fotomontagem da fachada esquina mostrando a igreja",Fachada
+"3.CEG_TIJ Fotomontagem aerea",Fachada
+"4.CEG_TIJ Hall de entrada","Imagem Interna"
+"5.CEG_TIJ Coworking (Area de leitura)","Imagem Interna"
+"6.CEG_TIJ Lavanderia","Imagem Interna"
+"7.CEG_TIJ Jogos","Imagem Interna"
+"8.CEG_TIJ Gourmet 1","Imagem Interna"
+"9.CEG_TIJ Gourmet 2","Imagem Interna"
+"10.CEG_TIJ Piscina","Imagem Externa"
+"11.CEG_TIJ Academia","Imagem Interna"
+"12.CEG_TIJ Imagem Studio 08 tipo - Tipo 10 (x4)",Unidade
+"13.CEG_TIJ Imagem Studio 08 tipo Ângulo - Tipo 10 (x4)",Unidade
+"14.CEG_TIJ Planta humanizada andar terreo","Planta Humanizada"
+"15.CEG_TIJ Planta humanizada andar lazer 1","Planta Humanizada"
+"16.CEG_TIJ Planta humanizada andar lazer 2","Planta Humanizada"
+"17.CEG_TIJ Planta humanizada andar tipo - Tipo 10 (x4)","Planta Humanizada"
+"18.CEG_TIJ Planta humanizada studio 08 tipo - Tipo 10 (x4)","Planta Humanizada"
+"19.CEG_TIJ Imagem Studio tipo 360",Unidade
+"1.CEG_RES Fachada embasamento",Fachada
+"2.CEG_RES Fachada esquina",Fachada
+"3.CEG_RES Fotomontagem aerea",Fachada
+"4.CEG_RES Hall de entrada + Mini Market fundo","Imagem Interna"
+"5.CEG_RES Ferramentaria","Imagem Interna"
+"6.CEG_RES Academia","Imagem Interna"
+"7.CEG_RES Garagem Band","Imagem Interna"
+"8.CEG_RES Lavanderia","Imagem Interna"
+"9.CEG_RES Salao de festas","Imagem Interna"
+"10.CEG_RES Gourmet externo","Imagem Externa"
+"11.CEG_RES Sala de jogos","Imagem Interna"
+"12.CEG_RES Piscina","Imagem Externa"
+"13.CEG_RES Piscina infantil + Piscina adulto","Imagem Externa"
+"14.CEG_RES Suite 1 apto tipo - Final 01",Unidade
+"15.CEG_RES Suite 2 apto tipo - Final 01",Unidade
+"16.CEG_RES Suite 3 apto tipo - Final 01",Unidade
+"17.CEG_RES Living apto tipo - Final 01",Unidade
+"18.CEG_RES Banheiro suite 1 apto - Final 01",Unidade
+"19.CEG_RES Banheiro suite 2 apto - Final 01",Unidade
+"20.CEG_RES Banheiro suite 3 apto - Final 01",Unidade
+"21.CEG_RES Planta humanizada andar terreo","Planta Humanizada"
+"22.CEG_RES Planta humanizada andar lazer","Planta Humanizada"
+"23.CEG_RES Planta humanizada G1","Planta Humanizada"
+"24.CEG_RES Planta humanizada G2","Planta Humanizada"
+"25.CEG_RES Planta humanizada G3","Planta Humanizada"
+"26.CEG_RES Planta Humanizada G4","Planta Humanizada"
+"27.CEG_RES Planta humanizada apto cobertura tipo 1 superior","Planta Humanizada"
+"28.CEG_RES Planta humanizada apto cobertura tipo 2 superior","Planta Humanizada"
+"29.CEG_RES Planta humanizada apto cobertura tipo 3 superior","Planta Humanizada"
+"30.CEG_RES Planta humanizada apto cobertura tipo 4 superior","Planta Humanizada"
+"31.CEG_RES Planta humanizada apto cobertura tipo 1 inferior","Planta Humanizada"
+"32.CEG_RES Planta humanizada apto cobertura tipo 2 inferior","Planta Humanizada"
+"33.CEG_RES Planta humanizada apto cobertura tipo 3 inferior","Planta Humanizada"
+"34.CEG_RES Planta humanizada apto cobertura tipo 4 inferior","Planta Humanizada"
+"35.CEG_RES Planta humanizada apto tipo 1","Planta Humanizada"
+"36.CEG_RES Planta humanizada apto tipo 2","Planta Humanizada"
+"37.CEG_RES Planta humanizada apto tipo 3","Planta Humanizada"
+"38.CEG_RES Planta humanizada apto tipo 4","Planta Humanizada"
+"39.CEG_RES Suite apto tipo tipo 360",Unidade
+"40.CEG_RES Suite 1 apto tipo 360",Unidade
+"41.CEG_RES Suite 2 apto tipo 360",Unidade
+"42.CEG_RES Living apto tipo 360",Unidade
+"43.CEG_RES Banheiro suite apto 360",Unidade
+"44.CEG_RES Banheiro 1 suite apto 360",Unidade
+"45.CEG_RES Banheiro 2 suite apto 360",Unidade
+"1.GPI_PIN Fachada fotomontagem aerea",Fachada
+"2.GPI_PIN Fachada fotomontagem aerea a definir",Fachada
+"3.GPI_PIN Fachada frontal",Fachada
+"4.GPI_PIN Academia rooftop","Imagem Interna"
+"5.GPI_PIN Piscina","Imagem Externa"
+"6.GPI_PIN Churrasqueira na piscina","Imagem Externa"
+"7.GPI_PIN Salao de festas","Imagem Interna"
+"8.GPI_PIN Salao de jogos","Imagem Interna"
+"9.GPI_PIN Coworking","Imagem Interna"
+"10.GPI_PIN Mercadinho","Imagem Interna"
+"11.GPI_PIN Lavanderia","Imagem Interna"
+"12.GPI_PIN Living apto tipo 01",Unidade
+"13.GPI_PIN Sacada com vista apto tipo 01",Unidade
+"14.GPI_PIN Planta humanizada andar lazer","Planta humanizada"
+"15.GPI_PIN Planta humanizada apartamento tipo 1","Planta humanizada"
+"16.GPI_PIN Planta humanizada apartamento tipo 2","Planta humanizada"
+"17.GPI_PIN Planta humanizada apartamento tipo 3","Planta humanizada"
+"18.GPI_PIN Planta humanizada apartamento tipo 4","Planta humanizada"
+"19.GPI_PIN Planta humanizada apartamento tipo 5","Planta humanizada"
+"20.GPI_PIN Planta humanizada apartamento tipo 6","Planta humanizada"
+"1.RAY_SKY Planta humanizada do pavimento lazer","Planta Humanizada"
+"2.RAY_SKY Planta humanizada do pavimento tipo (apto x2)","Planta Humanizada"
+"1.ALP_SC Fotomontagem 1",Fachada
+"2.ALP_SC Fotomontagem 2",Fachada
+"3.ALP_SC Fotomontagem 3",Fachada
+"45.ARS_VIE Jardim das Vieiras Geral","Imagem Externa"
+"34.MSA_HYD Hall de entrada","Imagem Interna"
+"21.GPI_PIN Hall de Entrada","Imagem Interna"
+"35.MSA_HYD Fachada noturna extra",Fachada
+"36.MSA_HYD Planta Humanizada Pavimento Tipo","Planta Humanizada"
+"42.LD9_URB Living do apartamento Loft unidade 4301 A - Angulo 2",Unidade
+"1.MUL_SPL Fotomontagem aerea",Fachada
+"2.MUL_SPL Fotomontagem aerea angulo",Fachada
+"3.MUL_SPL Fachada embasamento",Fachada
+"4.MUL_SPL Fachada lateral 1- vista mar",Fachada
+"5.MUL_SPL Fachada lateral 2 – vista natureza",Fachada
+"6.MUL_SPL Hall de entrada (possui pe direito duplo)","Imagem Interna"
+"7.MUL_SPL Bicicletario","Imagem Interna"
+"8.MUL_SPL Salao Gourmet – tem vista para a mata","Imagem Interna"
+"9.MUL_SPL Salao de festas 01","Imagem Interna"
+"10.MUL_SPL Salao de festas 02- tem vista para o mar","Imagem Interna"
+"11.MUL_SPL Salao de jogos – integra os ambientes","Imagem Interna"
+"12.MUL_SPL Mini market","Imagem Interna"
+"13.MUL_SPL Brinquedoteca","Imagem Interna"
+"14.MUL_SPL Academia – tem vista para o mar","Imagem Interna"
+"15.MUL_SPL Espaco pizza – integra com a piscina","Imagem Interna"
+"16.MUL_SPL Piscina","Imagem Externa"
+"17.MUL_SPL Area externa – ao lado da piscina","Imagem Externa"
+"18.MUL_SPL Living duplex 01",Unidade
+"19.MUL_SPL Living unidade 06 – imagem que mostra as duas vistas laterais",Unidade
+"20.MUL_SPL Suite unidade 06- tem vista para o mar",Unidade
+"21.MUL_SPL Living unidade 03- tem vista para a mata",Unidade
+"22.MUL_SPL Suite unidade 03- tem vista para a mata",Unidade
+"23.MUL_SPL Living unidade 02 – mostrando a churrasqueira urrasqueira",Unidade
+"24.MUL_SPL Planta humanizada andar terreo","Planta Humanizada"
+"25.MUL_SPL Planta humanizada andar mezanino","Planta Humanizada"
+"26.MUL_SPL Planta humanizada subsolo (garagem)","Planta Humanizada"
+"27.MUL_SPL Planta humanizada andar tipo ( fazer as plantas individuais de cada apartamento – sao 6 tipos)","Planta Humanizada"
+"28.MUL_SPL Plantas pavimento do duplex inferior – os 3 duplex ( fazer as plantas individuais de cada apartamento )","Planta Humanizada"
+"29.MUL_SPL Plantas pavimento do duplex superior – os 3 duplex (fazer as plantas individuais de cada apartamento, neste andar esta o atico junto)","Planta Humanizada"
+"46.ARS_VIE Jardim das Vieiras com foco no cinema","Imagem Externa"
+"1. HAA_GRA Living do apartamento tipo unificado com foco na Area de jantar Gourmet",Unidade
+"2. HAA_GRA Living do apartamento tipo unificado com foco na Sala de estar",Unidade
+"3. HAA_GRA Living do apartamento tipo unificado com foco na Sala de TV",Unidade
+"43.LD9_URB Fotomontagem aerea com insercao do empreendimento em fotografia aerea angulo 3 - Meia altura Cassol",Fachada
+"44.LD9_URB Fotomontagem aerea com insercao do empreendimento em fotografia aerea foco no Rooftop",Fachada
+"45.LD9_URB Fotomontagem aerea com foco no Lazer (Academia, etc)",Fachada
+"46.LD9_URB Placemaking 2",Fachada
+"47.LD9_URB The Scotch Lounge","Imagem Interna"
+"48.LD9_URB Skyline Lounge","Imagem Externa"
+"49.LD9_URB Wine club - terraco","Imagem Interna"
+"50.LD9_URB Planta humanizada do pavimento lazer Rooftop","Planta Humanizada"
+2.TES_TES_PH,"Planta Humanizada"
+"1.WER_RIO Fotomontagem aerea 1",Fachada
+"2.WER_RIO Fotomontagem aerea 2",Fachada
+"3.WER_RIO Fachada diurna",Fachada
+"4.WER_RIO Fachada noturna",Fachada
+"5.WER_RIO Fachada embasamento",Fachada
+"6.WER_RIO Hall de entrada","Imagem Interna"
+"7.WER_RIO Salao de festas","Imagem Interna"
+"8.WER_RIO Salao Gourmet","Imagem Interna"
+"9.WER_RIO Brinquedoteca","Imagem Interna"
+"10.WER_RIO Playground","Imagem Interna"
+"11.WER_RIO Sala de jogos","Imagem Interna"
+"12.WER_RIO Academia","Imagem Interna"
+"13.WER_RIO Sauna","Imagem Interna"
+"14.WER_RIO SPA","Imagem Interna"
+"15.WER_RIO Massagem","Imagem Interna"
+"16.WER_RIO Quadra","Imagem Externa"
+"17.WER_RIO Piscina","Imagem Externa"
+"18.WER_RIO Piscina 02","Imagem Externa"
+"19.WER_RIO Terraco","Imagem Externa"
+"20.WER_RIO Terraco+ Piscina","Imagem Externa"
+"21.WER_RIO Living apartamento tipo view",Unidade
+"22.WER_RIO Living apartamento tipo garden",Unidade
+"23.WER_RIO Living apartamento tipo home",Unidade
+"24.WER_RIO Cozinha apartamento tipo",Unidade
+"25.WER_RIO Suite Master apartamento tipo",Unidade
+"26.WER_RIO Closet apartamento tipo",Unidade
+"27.WER_RIO Banheiro suite master apartamento tipo",Unidade
+"28.WER_RIO Living apartamento tipo duplex",Unidade
+"29.WER_RIO Cozinha apartamento tipo duplex",Unidade
+"30.WER_RIO Sala de estar apartamento tipo duplex",Unidade
+"31.WER_RIO Area externa apartamento tipo duplex",Unidade
+"32.WER_RIO Vista mezanino apartamento tipo duplex",Unidade
+"33.WER_RIO Suite Master apartamento tipo duplex",Unidade
+"34.WER_RIO Banheiro suite master apartamento tipo duplex",Unidade
+"35.WER_RIO Planta humanizada pavimento lazer","Planta Humanizada"
+"36.WER_RIO Planta humanizada apartamento tipo garden 1","Planta Humanizada"
+"37.WER_RIO Planta humanizada apartamento tipo garden 2","Planta Humanizada"
+"38.WER_RIO Planta humanizada apartamento tipo view 1","Planta Humanizada"
+"39.WER_RIO Planta humanizada apartamento tipo view 2","Planta Humanizada"
+"40.WER_RIO Planta humanizada apartamento tipo home 1","Planta Humanizada"
+"41.WER_RIO Planta humanizada apartamento tipo home 2","Planta Humanizada"
+"42.WER_RIO Planta humanizada apartamento duplex superior","Planta Humanizada"
+"43.WER_RIO Planta humanizada apartamento duplex inferior","Planta Humanizada"
+"1.MEN_991 Fotomontagem aerea com insercao do empreendimento no terreno real",Fachada
+"2.MEN_991 Fotomontagem aerea com foco no Rooftop",Fachada
+"3.MEN_991 Fachada no angulo do observador",Fachada
+"4.MEN_991 Embasamento com foco no passeio com area comercial",Fachada
+"5.MEN_991 Hall de entrada","Imagem Interna"
+"6.MEN_991 Academia - Lazer","Imagem Interna"
+"7.MEN_991 Sala de Yoga - Lazer","Imagem Interna"
+"8.MEN_991 Espaco gourmet - Atico","Imagem Interna"
+"9.MEN_991 Sala de Pilates - Lazer","Imagem Interna"
+"10.MEN_991 Brinquedoteca - Lazer","Imagem Interna"
+"11.MEN_991 Sala de jogos - Lazer","Imagem Interna"
+"12.MEN_991 Salao de festas - Lazer","Imagem Interna"
+"13.MEN_991 Piscina - 12° Pavimento","Imagem Interna"
+"14.MEN_991 Piscina - 12° Pavimento","Imagem Interna"
+"15.MEN_991 Sala do Cheff - Dining Experience - Atico","Imagem Interna"
+"16.MEN_991 Gourmet - Atico","Imagem Interna"
+"17.MEN_991 Sauna SPA - Atico","Imagem Interna"
+"18.MEN_991 Piscina aquecida - Atico","Imagem Interna"
+"19.MEN_991 Piscinas angulo 1 - Atico","Imagem Externa"
+"20.MEN_991 Piscinas angulo 2 - Atico","Imagem Externa"
+"21.MEN_991 Living do apartamento tipo, com vista fotografica real para o mar - Torre Maior - Apto 1005",Unidade
+"22.MEN_991 Suite do apartamento tipo, com vista fotografica real para o mar - Torre Maior - Apto 1005",Unidade
+"23.MEN_991 Living do apartamento Duplex, com vista fotografica real para o mar - Torre Maior - Apto 1004",Unidade
+"24.MEN_991 Living do apartamento tipo, com vista fotografica real para o mar - Torre Maior -1202",Unidade
+"25.MEN_991 Living do apartamento tipo, com vista fotografica real para a rua Delfim - Torre Maior -1201",Unidade
+"26.MEN_991 Living do apartamento studio, com vista fotografica real para o mar - Torre Menor - Apto 1001",Unidade
+"27.MEN_991 Living integrado com suite, do apartamento studio, com vista fotografica real para a rua Delfim - Torre Menor - Apto 1004 (Integrado)",Unidade
+"28.MEN_991 Living integrado com suite, do apartamento studio, com vista fotografica real para o mar - Torre Menor - Apto 805 (Integrado)",Unidade
+"29.MEN_991 Area externa aberta/Varanda, do apartamento studio, com vista fotografica real para o mar - Torre Maior - Apto 701",Unidade
+"30.MEN_991 Living integrado com suite, do apartamento studio, com vista fotografica real para o mar - Torre Menor - Apto 705 (Integrado)",Unidade
+"31.MEN_991 Planta humanizada do pavimento Terreo","Planta Humanizada"
+"32.MEN_991 Planta humanizada do 2º pavimento - Lazer 1","Planta Humanizada"
+"33.MEN_991 Planta humanizada do 12º pavimento - Lazer 2","Planta Humanizada"
+"34.MEN_991 Planta humanizada do 13º pavimento - Lazer 3","Planta Humanizada"
+"35.MEN_991 Planta humanizada do pavimento Garden - Studio (x5)","Planta Humanizada"
+"36.MEN_991 Planta humanizada do pavimento Garden - Tipo / Duplex inferior (x7)","Planta Humanizada"
+"37.MEN_991 Planta humanizada do pavimento Garden - Tipo / Duplex superior (x7)","Planta Humanizada"
+"38.MEN_991 Planta humanizada do pavimento Tipo Studio (x5)","Planta Humanizada"
+"39.MEN_991 Planta humanizada do pavimento Tipo / Duplex inferior (x7)","Planta Humanizada"
+"40.MEN_991 Planta humanizada do pavimento Tipo / Duplex superior (x7)","Planta Humanizada"
+"47.ARS_VIE Fotomontagem de topo",Fachada
+"27.JON_LIN Planta humanizada do Coworking ","Planta Humanizada"
+"1.TET_KOR Planta humanizada do 7º Pavimento - Lazer","Planta Humanizada"
+"2.TET_KOR Planta humanizada do apartamento Tipo 1","Planta Humanizada"
+"3.TET_KOR Planta humanizada do apartamento Tipo 2","Planta Humanizada"
+"4.TET_KOR Planta humanizada do apartamento Tipo 3","Planta Humanizada"
+"5.TET_KOR Planta humanizada do apartamento Tipo 4","Planta Humanizada"
+"1.GES_CHA Fotomontagem aérea com inserção do empreendimento no terreno ângulo 1",Fachada
+"2.GES_CHA Fotomontagem aérea com inserção do empreendimento no terreno ângulo 2",Fachada
+"3.GES_CHA Fotomontagem aérea com foco no Rooftop Sky place",Fachada
+"4.GES_CHA Fotomontagem mostrando a marina",Fachada
+"5.GES_CHA Fachada no angulo do observador de baixo",Fachada
+"6.GES_CHA Embasamento",Fachada
+"7.GES_CHA Porte-cochère mostrando o hall de entrada",Fachada
+"8.GES_CHA Hall de entrada","Imagem Interna"
+"9.GES_CHA Marina vista a partir de um yacht no rio Perequê","Imagem Externa"
+"10.GES_CHA Bistro marina","Imagem Externa"
+"11.GES_CHA Piscinas ângulo geral 1","Imagem Externa"
+"12.GES_CHA Piscinas ângulo geral 2 com foco no bar molhado","Imagem Externa"
+"13.GES_CHA Área da piscina com foco nos gazebos","Imagem Externa"
+"14.GES_CHA Piscina aquecida","Imagem Interna"
+"15.GES_CHA Piscina Raia","Imagem Externa"
+"16.GES_CHA Área de jogos externa","Imagem Externa"
+"17.GES_CHA Sala de jogos interna","Imagem Interna"
+"18.GES_CHA Poker Room","Imagem Interna"
+"19.GES_CHA Espaço Teen","Imagem Interna"
+"20.GES_CHA Quadra Squash","Imagem Interna"
+"21.GES_CHA Gourmet","Imagem Interna"
+"22.GES_CHA Dog park","Imagem Externa"
+"23.GES_CHA Passeio externo com fire places","Imagem Externa"
+"24.GES_CHA Wine bar","Imagem Interna"
+"25.GES_CHA Playground","Imagem Externa"
+"26.GES_CHA Brinquedoteca","Imagem Interna"
+"27.GES_CHA Country House interno","Imagem Interna"
+"28.GES_CHA Country House externo","Imagem Externa"
+"29.GES_CHA Salão de festas interno","Imagem Interna"
+"30.GES_CHA Salão de festas externo","Imagem Externa"
+"31.GES_CHA Piscina com vista para o Rio Perequê","Imagem Externa"
+"32.GES_CHA Espaço Multiuso","Imagem Interna"
+"33.GES_CHA Espaço de banho e massagem","Imagem Interna"
+"34.GES_CHA Sala de massagem 1 e 2","Imagem Interna"
+"35.GES_CHA Sauna seca","Imagem Interna"
+"36.GES_CHA Sala de Pilates","Imagem Interna"
+"37.GES_CHA Salão de beleza","Imagem Interna"
+"38.GES_CHA Academia ângulo geral","Imagem Interna"
+"39.GES_CHA Academia com foco na vista fotográfica real","Imagem Interna"
+"40.GES_CHA Academia com Ângulo mais aereo (voo passaro)","Imagem Interna"
+"41.GES_CHA Sala para exercicios de membros inferiores","Imagem Interna"
+"42.GES_CHA Sala livre","Imagem Interna"
+"43.GES_CHA Gourmet Sky Place angulo geral","Imagem Interna"
+"44.GES_CHA Gourmet Sky Place angulo com foco na vista real","Imagem Interna"
+"45.GES_CHA Lounge","Imagem Externa"
+"46.GES_CHA Piscina com borda infinita ângulo geral","Imagem Interna"
+"47.GES_CHA Piscina com borda infinita e vista fotográfica real para Porto Belo","Imagem Interna"
+"48.GES_CHA Piscina com borda infinita ângulo 2 - SPA","Imagem Interna"
+"49.GES_CHA Piscina com borda infinita ângulo 3 - Bar molhado","Imagem Interna"
+"50.GES_CHA Living integrado com vista fotográfica real ângulo 1",Unidade
+"51.GES_CHA Living integrado com vista fotográfica real ângulo 2",Unidade
+"52.GES_CHA Suíte master angulo geral",Unidade
+"53.GES_CHA Suíte master angulo com foco no closet",Unidade
+"54.GES_CHA Sacada com vista fotográfica real da Suíte master",Unidade
+"55.GES_CHA Banheiro suíte master perspectiva banheira de imersão",Unidade
+"56.GES_CHA Living integrado com vista fotográfica real ângulo 1",Unidade
+"57.GES_CHA Living integrado com vista fotográfica real ângulo 2",Unidade
+"58.GES_CHA Living integrado com vista fotográfica real ângulo 3 - Piscina",Unidade
+"59.GES_CHA Cozinha",Unidade
+"60.GES_CHA Suíte master com vista fotográfica real",Unidade
+"61.GES_CHA Closet da Suíte master com vista fotográfica real",Unidade
+"62.GES_CHA Banheiro suíte master perspectiva banheira de imersão",Unidade
+"63.GES_CHA Planta humanizada pavimento Subsolo","Planta Humanizada"
+"64.GES_CHA Planta humanizada implantação real mostrando o pavimento térreo com marina e rio","Planta Humanizada"
+"65.GES_CHA Planta humanizada Mezanino do pavimento térreo","Planta Humanizada"
+"66.GES_CHA Planta humanizada pavimento G1","Planta Humanizada"
+"67.GES_CHA Planta humanizada do pavimento lazer","Planta Humanizada"
+"68.GES_CHA Planta humanizada do pavimento lazer reduto 1","Planta Humanizada"
+"69.GES_CHA Planta humanizada do pavimento lazer reduto 2","Planta Humanizada"
+"70.GES_CHA Planta humanizada do pavimento lazer Rooftop SKY place","Planta Humanizada"
+"71.GES_CHA Planta humanizada do apartamento tipo 1","Planta Humanizada"
+"72.GES_CHA Planta humanizada do apartamento tipo 2","Planta Humanizada"
+"73.GES_CHA Planta humanizada do apartamento Penthouse","Planta Humanizada"
+"2.RAY_SKY Fachada",Fachada
+"3.RAY_SKY Piscina","Imagem Externa"
+"4.RAY_SKY Salão de festas","Imagem Interna"
+"59.LD1_RES Planta humanizada do pavimento tipo","Planta Humanizada"
+"60.LD1_RES Planta humanizada do pavimento cobertura inferior","Planta Humanizada"
+"61.LD1_RES Planta humanizada do pavimento cobertura superior","Planta Humanizada"
+"41.MEN_991 Embasamento com foco no passeio com area comercial",Fachada
+"26.MPE_SUN Planta Humanizada 2D com terraco","Planta Humanizada"
+"46.CEG_RES Fotomontagem extra",Fachada
+"48.ROM_MAE Salão de festas ângulo 2 extra","Imagem Interna"
+"49.ROM_MAE Deck com jacuzzi ângulo 2 extra","Imagem Interna"
+"1.NOW_BRI Fotomontagem com empreendimento no terreno real",Fachada
+"2.NOW_BRI Fotomontagem com foco no rooftop",Fachada
+"3.NOW_BRI Fachada no angulo do observador",Fachada
+"4.NOW_BRI Embasamento",Fachada
+"5.NOW_BRI Hall de entrada","Imagem Interna"
+"6.NOW_BRI Espaço Gourmet","Imagem Interna"
+"7.NOW_BRI Salão de festas","Imagem Interna"
+"8.NOW_BRI Lavanderia","Imagem Interna"
+"9.NOW_BRI Mercadinho interno","Imagem Interna"
+"10.NOW_BRI Sala de jogos","Imagem Interna"
+"11.NOW_BRI Coworking com sala de reuniões","Imagem Interna"
+"12.NOW_BRI Playground com Pet place","Imagem Externa"
+"13.NOW_BRI Piscinas","Imagem Externa"
+"14.NOW_BRI Espaço churrasqueira","Imagem Externa"
+"15.NOW_BRI SPA com sauna","Imagem Interna"
+"16.NOW_BRI Academia","Imagem Interna"
+"17.NOW_BRI Living do Studio unidade à definir com vista fotográfica real - ângulo 1",Unidade
+"18.NOW_BRI Living do Studio unidade à definir com vista fotográfica real - ângulo 2",Unidade
+"19.NOW_BRI Living do Apartamento unidade à definir com vista fotográfica real - ângulo 1",Unidade
+"20.NOW_BRI Living do Apartamento unidade à definir com vista fotográfica real - ângulo 2",Unidade
+"21.NOW_BRI Suíte do Apartamento unidade à definir com vista fotográfica real - ângulo 1",Unidade
+"22.NOW_BRI Planta humanizada implantação geral mostrando o pavimento terreo","Planta humanizada"
+"23.NOW_BRI Planta humanizada do pavimento lazer Rooftop","Planta humanizada"
+"24.NOW_BRI Planta humanizada do pavimento tipo 1","Planta humanizada"
+"25.NOW_BRI Variação - Diferenciado da Planta humanizada do pavimento tipo 1","Planta humanizada"
+"26.NOW_BRI Planta humanizada do pavimento tipo 2","Planta humanizada"
+"27.NOW_BRI Variação - Diferenciado da Planta humanizada do pavimento tipo 2","Planta humanizada"
+"28.NOW_BRI Planta humanizada do pavimento tipo 3","Planta humanizada"
+"29.NOW_BRI Planta humanizada do pavimento tipo 3 - Laje Aptos","Planta humanizada"
+"30.NOW_BRI Variação - Diferenciado da Planta humanizada do pavimento tipo 3","Planta humanizada"
+"31.NOW_BRI Planta humanizada do pavimento tipo 4","Planta humanizada"
+"32.NOW_BRI Variação - Diferenciado da Planta humanizada do pavimento tipo 4","Planta humanizada"
+"33.NOW_BRI Planta humanizada do pavimento tipo 5","Planta humanizada"

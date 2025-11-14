@@ -36,6 +36,8 @@ body {
 /* Smooth in-page scrolling for quick-access anchors */
 html {
     scroll-behavior: smooth;
+    scroll-padding-top: 200px;
+
 }
 
 /* Light theme (explicit variables, can be toggled by JS adding body.light) */

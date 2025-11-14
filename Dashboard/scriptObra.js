@@ -1540,6 +1540,9 @@ var colunas = [
     { col: 'planta', label: 'Planta' }
 ];
 
+// guarda filtros ativos por função: { caderno: 'Nome', modelagem: 'Outro', ... }
+var colaboradorFilters = {};
+
 function mostrarFiltroColaborador(funcaoSelecionada) {
     const linhaPorcentagem = document.getElementById('linha-porcentagem');
     if (!linhaPorcentagem) return;
@@ -1592,9 +1595,20 @@ function mostrarFiltroColaborador(funcaoSelecionada) {
         select.appendChild(option);
     });
 
+    // restaura seleção se já houver filtro ativo para essa função
+    if (colaboradorFilters[funcaoSelecionada]) {
+        select.value = colaboradorFilters[funcaoSelecionada];
+    }
+
     // evento de filtro
     select.addEventListener('change', () => {
-        filtrarPorColaborador(funcaoSelecionada, select.value);
+        // atualiza o estado do filtro por colaborador e reaplica todos os filtros
+        if (!select.value) {
+            delete colaboradorFilters[funcaoSelecionada];
+        } else {
+            colaboradorFilters[funcaoSelecionada] = select.value;
+        }
+        filtrarTabela();
     });
 
     tdAlvo.appendChild(select);
@@ -1602,20 +1616,18 @@ function mostrarFiltroColaborador(funcaoSelecionada) {
 
 
 function filtrarPorColaborador(funcao, colaborador) {
-    const linhas = document.querySelectorAll('#tabela-obra tbody tr');
-
-    linhas.forEach(linha => {
-        const cellIndex = 4 + colunas.findIndex(c => c.col === funcao);
-        const cell = linha.children[cellIndex];
-        if (!cell) return;
-
-        const nome = cell.textContent.trim();
-        if (!colaborador || nome === colaborador) {
-            linha.style.display = '';
-        } else {
-            linha.style.display = 'none';
-        }
-    });
+    // Atualiza o estado do filtro por colaborador e reaplica todos os filtros
+    if (!funcao) return;
+    if (!colaborador) {
+        delete colaboradorFilters[funcao];
+    } else {
+        colaboradorFilters[funcao] = colaborador;
+    }
+    try {
+        filtrarTabela();
+    } catch (e) {
+        console.warn('filtrarTabela falhou ao ser chamada:', e);
+    }
 }
 
 
@@ -1836,6 +1848,22 @@ function filtrarTabela() {
             }
         }
 
+        // Filtra pelos colaboradores se houver filtros ativos (um por função)
+        if (mostrarLinha && Object.keys(colaboradorFilters).length > 0) {
+            for (const func in colaboradorFilters) {
+                if (!colaboradorFilters.hasOwnProperty(func)) continue;
+                const colaboradorSel = colaboradorFilters[func];
+                if (!colaboradorSel) continue;
+                const colIdx = 4 + colunas.findIndex(c => c.col === func);
+                const cell = linhas[i].children[colIdx];
+                const nomeCol = cell ? cell.textContent.trim() : '';
+                if (nomeCol !== colaboradorSel) {
+                    mostrarLinha = false;
+                    break;
+                }
+            }
+        }
+
         if (mostrarLinha) {
             imagensFiltradas++;
             if (isAntecipada) antecipadasFiltradas++;
@@ -1881,6 +1909,8 @@ function initSelect2Filters() {
 function clearFilters() {
     // Se Select2 estiver ativo, usar sua API para limpar
     try {
+        // limpa também filtros por colaborador
+        colaboradorFilters = {};
         if (window.jQuery && jQuery().select2) {
             $('#tipo_imagem').val(null).trigger('change');
             $('#antecipada_obra').val(null).trigger('change');
@@ -2895,7 +2925,119 @@ document.addEventListener('DOMContentLoaded', () => {
             if (idObra) carregarArquivosObra(idObra);
         });
     }
+    // botão para adicionar arquivo específico da imagem (no form-edicao)
+    const btnAddImg = document.getElementById('btnAddArquivoImagem');
+    if (btnAddImg) {
+        btnAddImg.addEventListener('click', () => {
+            const imagemId = document.getElementById('imagem_id')?.value || '';
+            if (!imagemId) {
+                Toastify({ text: 'Selecione uma imagem antes de enviar um arquivo.', duration: 3000, gravity: 'top', position: 'right', backgroundColor: 'orange' }).showToast();
+                return;
+            }
+
+            const modal = document.getElementById('uploadModalImagem');
+            if (!modal) return;
+
+            // preenche campos ocultos
+            const obraVal = localStorage.getItem('obraId') || idObra || '';
+            document.getElementById('obra_id_img').value = obraVal;
+            document.getElementById('imagem_id_img').value = imagemId;
+
+            // tenta obter tipo_imagem da linha selecionada
+            let tipo = '';
+            const linha = document.querySelector(`tr[data-id="${imagemId}"]`);
+            if (linha) tipo = linha.getAttribute('tipo-imagem') || '';
+            document.getElementById('tipo_imagem_img').value = tipo;
+
+            modal.style.display = 'flex';
+        });
+    }
 });
+
+// fechar modal de upload por imagem
+document.addEventListener('click', function (ev) {
+    if (ev.target && ev.target.id === 'closeModalImg') {
+        const modal = document.getElementById('uploadModalImagem');
+        if (modal) modal.style.display = 'none';
+    }
+});
+
+// popula sufixos quando tipo_arquivo muda no modal por imagem
+const tipoArquivoImg = document.getElementById('tipo_arquivo_img');
+if (tipoArquivoImg) {
+    tipoArquivoImg.addEventListener('change', function () {
+        const tipo = this.value;
+        const sufixoSelectImg = document.getElementById('sufixoSelectImg');
+        const labelImg = document.getElementById('labelSufixoImg');
+        if (!sufixoSelectImg || !labelImg) return;
+        if (typeof SUFIXOS !== 'undefined' && SUFIXOS[tipo]) {
+            sufixoSelectImg.innerHTML = '';
+            SUFIXOS[tipo].forEach(opt => {
+                const o = document.createElement('option');
+                o.value = opt;
+                o.textContent = opt;
+                sufixoSelectImg.appendChild(o);
+            });
+            sufixoSelectImg.style.display = '';
+            labelImg.style.display = '';
+        } else {
+            sufixoSelectImg.innerHTML = '';
+            sufixoSelectImg.style.display = 'none';
+            labelImg.style.display = 'none';
+        }
+    });
+}
+
+// Envio do formulário simplificado por imagem
+const uploadFormImagem = document.getElementById('uploadFormImagem');
+if (uploadFormImagem) {
+    uploadFormImagem.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        const form = e.target;
+        // garantia: preenche obra_id/imagem_id caso não estejam setados
+        if (!form.obra_id.value) form.obra_id.value = localStorage.getItem('obraId') || idObra || '';
+        if (!form.imagem_id.value) form.imagem_id.value = document.getElementById('imagem_id')?.value || '';
+
+        // ajusta tipo_imagem para nome único (backend pode aceitar como array ou valor)
+        // envia como campo 'tipo_imagem[]' para manter compatibilidade
+        const tipoImgVal = form.tipo_imagem?.value || '';
+        if (tipoImgVal) {
+            // append to FormData later
+        }
+
+        const formData = buildFormData(form);
+        // garantir que tipo_imagem seja enviado como array (compat com uploadForm)
+        if (tipoImgVal) formData.append('tipo_imagem[]', tipoImgVal);
+        formData.append('refsSkpModo', 'porImagem');
+
+        // remover arquivos vazios
+        for (let [k, v] of formData.entries()) {
+            if (v instanceof File && v.size === 0) formData.delete(k);
+        }
+
+        try {
+            const response = await fetch('https://improov/ImproovWeb/Arquivos/upload.php', { method: 'POST', body: formData });
+            const result = await response.json();
+            if (result.success && result.success.length > 0) {
+                result.success.forEach(msg => {
+                    Toastify({ text: msg, duration: 3000, close: true, gravity: 'top', position: 'right', backgroundColor: 'green' }).showToast();
+                });
+                form.reset();
+                document.getElementById('uploadModalImagem').style.display = 'none';
+                const obraVal = form.obra_id.value || localStorage.getItem('obraId') || idObra || '';
+                if (obraVal) carregarArquivosObra(obraVal);
+            }
+            if (result.errors && result.errors.length > 0) {
+                result.errors.forEach(msg => {
+                    Toastify({ text: msg, duration: 5000, close: true, gravity: 'top', position: 'right', backgroundColor: 'red' }).showToast();
+                });
+            }
+        } catch (err) {
+            console.error(err);
+            Toastify({ text: 'Erro ao enviar os arquivos.', duration: 5000, close: true, gravity: 'top', position: 'right', backgroundColor: 'red' }).showToast();
+        }
+    });
+}
 
 // Reusable renderer that applies optional category filter
 function renderAcompanhamentosList(acompList, category = 'todos') {

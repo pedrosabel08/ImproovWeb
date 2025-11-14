@@ -165,6 +165,7 @@ $conn->close();
 
     ?>
     <div class="container animate__animated animate__fadeIn">
+
         <header>
             <h1 id="nomenclatura" class="animate__animated animate__fadeInDown"></h1>
 
@@ -1402,6 +1403,59 @@ $conn->close();
 
         </div>
     </div>
+
+    <!-- Modal para upload específico por imagem (simplificado) -->
+    <div class="modal" id="uploadModalImagem" style="display:none;">
+        <div class="modal-content">
+            <h2>Enviar arquivo (imagem)</h2>
+            <form id="uploadFormImagem" enctype="multipart/form-data">
+                <input type="hidden" name="obra_id" id="obra_id_img">
+                <input type="hidden" name="imagem_id" id="imagem_id_img">
+                <input type="hidden" name="tipo_imagem" id="tipo_imagem_img">
+
+                <label>Categoria</label>
+                <select name="tipo_categoria" required>
+                    <option value="1">Arquitetônico</option>
+                    <option value="2">Referências</option>
+                    <option value="3">Paisagismo</option>
+                    <option value="4">Luminotécnico</option>
+                    <option value="5">Estrutural</option>
+                    <option value="6">Alterações</option>
+                    <option value="7">Ângulo definido</option>
+                </select>
+
+                <label>Tipo de Arquivo</label>
+                <select name="tipo_arquivo" id="tipo_arquivo_img" required>
+                    <option value="">-- Selecione --</option>
+                    <option value="DWG">DWG</option>
+                    <option value="PDF">PDF</option>
+                    <option value="SKP">SKP</option>
+                    <option value="IMG">IMG</option>
+                    <option value="IFC">IFC</option>
+                    <option value="Outros">Outros</option>
+                </select>
+
+                <label id="labelSufixoImg" style="display:none;">Sufixo</label>
+                <select name="sufixo" id="sufixoSelectImg" style="display:none;"></select>
+
+                <label>Arquivo</label>
+                <input id="arquivoFileImg" type="file" name="arquivos[]" multiple required>
+
+                <label>Descrição</label>
+                <textarea name="descricao" rows="4"></textarea>
+
+                <div class="checkbox-group">
+                    <label><input type="checkbox" name="flag_substituicao" value="1"> Substituir existente</label>
+                </div>
+
+                <div class="buttons">
+                    <button type="button" class="btn-close-img" id="closeModalImg">Cancelar</button>
+                    <button type="submit" class="btn-submit-img">Enviar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
 
     <!-- HTML -->
     <div id="modalOverlay" class="modal-overlay">

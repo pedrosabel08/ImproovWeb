@@ -13,6 +13,11 @@ $idcolaborador = $_SESSION['idcolaborador'];
 
 try {
   // Construção da query com base no usuário
+  // Para o teste desta tela 2 vamos restringir para:
+  // - funcao_id = 5 (pós-produção)
+  // - obra_id = 57 (obra fixa para teste)
+  $obraFiltro = 57;
+
   if ($idusuario == 1 || $idusuario == 2) {
     $sql = "SELECT 
             f.idfuncao_imagem,
@@ -49,8 +54,9 @@ try {
         LEFT JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
         LEFT JOIN status_imagem s ON i.status_id = s.idstatus
         LEFT JOIN obra o ON i.obra_id = o.idobra
-        WHERE f.funcao_id IN (1, 2, 3, 4, 5, 6, 7, 8, 9) 
-          AND (f.status = 'Em aprovação' OR f.status = 'Ajuste' OR f.status = 'Aprovado com ajustes')
+        WHERE f.funcao_id = 5
+          AND o.idobra = ?
+          -- AND (f.status = 'Em aprovação' OR f.status = 'Ajuste' OR f.status = 'Aprovado com ajustes')
         ORDER BY data_aprovacao DESC";
   } elseif ($idusuario == 9 || $idusuario == 20 || $idusuario == 3) {
     $sql = "SELECT 
@@ -85,7 +91,8 @@ try {
         LEFT JOIN usuario u ON u.idcolaborador = c.idcolaborador
         LEFT JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
         LEFT JOIN obra o ON i.obra_id = o.idobra
-        WHERE f.funcao_id IN (1, 2, 3, 4, 5, 6, 7, 8, 9) 
+        WHERE f.funcao_id = 5
+          AND o.idobra = ?
           AND (f.status = 'Em aprovação' OR f.status = 'Ajuste' OR f.status = 'Aprovado com ajustes')
         ORDER BY data_aprovacao DESC";
   } else {
@@ -121,7 +128,8 @@ try {
         LEFT JOIN usuario u ON u.idcolaborador = c.idcolaborador
         LEFT JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
         LEFT JOIN obra o ON i.obra_id = o.idobra
-        WHERE f.funcao_id IN (1, 2, 3, 4, 5, 6, 7, 8, 9) 
+        WHERE f.funcao_id = 5
+          AND o.idobra = ?
           AND (f.status = 'Em aprovação' OR f.status = 'Ajuste' OR f.status = 'Aprovado com ajustes')
           AND o.idobra IN (
               SELECT i2.obra_id
@@ -134,8 +142,13 @@ try {
 
   // Preparar e executar a query
   $stmt = $conn->prepare($sql);
-  if (!($idusuario == 1 || $idusuario == 2 || $idusuario == 9 || $idusuario == 20 || $idusuario == 3)) {
-    $stmt->bind_param("i", $idcolaborador);
+
+  if ($idusuario == 1 || $idusuario == 2 || $idusuario == 9 || $idusuario == 20 || $idusuario == 3) {
+    // Usuários administradores / gestão: apenas filtra por obra fixa
+    $stmt->bind_param("i", $obraFiltro);
+  } else {
+    // Demais usuários: filtra por obra fixa e também pelas obras em que o colaborador atua
+    $stmt->bind_param("ii", $obraFiltro, $idcolaborador);
   }
   $stmt->execute();
   $result = $stmt->get_result();

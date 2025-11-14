@@ -18,7 +18,7 @@ $idusuario = $_SESSION['idusuario'];
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="style2.css">
+    <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css" integrity="sha512-5Hs3dF2AEPkpNAR7UiOHba+lRSJNeM2ECkwxUIxC1Q/FLycGTbNapWXB4tP889k5T5Ju8fs4b1P5z/iB4nMfSQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
         type="image/x-icon">
@@ -38,28 +38,6 @@ $idusuario = $_SESSION['idusuario'];
 </head>
 
 <body>
-
-    <?php
-    include '../conexao.php';
-
-    session_start();
-    // Verificar se o usuário está logado
-    if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
-        // Se não estiver logado, redirecionar para a página de login
-        header("Location: ../index.html");
-        exit();
-    }
-
-    include '../conexaoMain.php';
-    $conn = conectarBanco();
-
-    $clientes = obterClientes($conn);
-    $obras = obterObras($conn);
-    $colaboradores = obterColaboradores($conn);
-
-    $conn->close();
-    ?>
-
     <?php
 
     include '../sidebar.php';
@@ -75,19 +53,15 @@ $idusuario = $_SESSION['idusuario'];
             <select id="filtroFuncao" style="display: none;">
                 <option value="">Todas as funções</option>
             </select>
-            <div class="containerObra">
-            </div>
+            <div class="containerObra"></div>
             <div class="tarefasObra hidden">
                 <div class="header">
                     <nav class="breadcrumb-nav">
                         <a href="https://improov.com.br/sistema/Revisao/index2.php">Flow Review</a>
-                        <a id="obra_id_nav" class="obra_nav" href="https://improov.com.br/sistema/Revisao/index2.php?obra_id=''">Obra</a>
+                        <a id="obra_id_nav" class="obra_nav" href="https://improov.com.br/sistema/Revisao/index2.php?obra_id=57">Obra</a>
                     </nav>
                     <div class="filtros">
-                        <div>
-                            <label for="nome_funcao">Função:</label>
-                            <select name="nome_funcao" id="nome_funcao"></select>
-                        </div>
+                        <!-- Nesta tela 2 vamos agrupar por status, então não exibimos filtro de função -->
                         <div>
                             <label for="filtro_colaborador">Colaborador:</label>
                             <select name="filtro_colaborador" id="filtro_colaborador"></select>
@@ -109,7 +83,7 @@ $idusuario = $_SESSION['idusuario'];
         <header>
             <nav class="breadcrumb-nav">
                 <a href="https://improov.com.br/sistema/Revisao/index2.php">Flow Review</a>
-                <a id="obra_id_nav" class="obra_nav" href="https://improov.com.br/sistema/Revisao/index2.php?obra_id=''">Obra</a>
+                <a id="obra_id_nav" class="obra_nav" href="https://improov.com.br/sistema/Revisao/index2.php?obra_id=57">Obra</a>
             </nav>
             <div class="task-info" id="task-info">
                 <h3 id="funcao_nome"></h3>

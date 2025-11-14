@@ -1306,3 +1306,211 @@ nav.breadcrumb-nav a {
     padding: 2px 6px;
     font-size: 0.65rem;
 }
+
+/* Responsive layout: stack the 4-column grid on smaller screens
+   The .imagens grid columns are: .wrapper-sidebar | #imagens | #imagem_completa | .sidebar-direita
+   On tablets we reduce widths, on mobile we stack them vertically (one per row).
+*/
+
+@media (max-width: 768px) {
+
+    /* Stack everything in one column for mobile */
+    .imagens {
+        display: grid;
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto 1fr auto;
+        gap: 10px;
+        padding: 12px;
+    }
+
+    /* Ensure each logical area occupies full width in order */
+    .wrapper-sidebar {
+        grid-column: 1;
+        grid-row: 1;
+        width: 100%;
+        max-height: none;
+    }
+
+    /* Thumbnails become a horizontal scroller */
+    #imagens {
+        grid-column: 1;
+        grid-row: 2;
+        display: flex;
+        flex-direction: row;
+        gap: 8px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding-bottom: 6px;
+        align-items: center;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Make each thumb a horizontal item */
+    #imagens .imageWrapper,
+    #imagens .image-wrapper,
+    #imagens .tab-img {
+        flex: 0 0 auto;
+    }
+
+    /* Slightly larger thumbnails on mobile for easier tapping */
+    #imagens .imageWrapper {
+        width: 110px;
+        height: 70px;
+    }
+
+    /* Main image area becomes full width and sits below thumbs */
+    #imagem_completa {
+        grid-column: 1;
+        grid-row: 3;
+        width: 100%;
+        max-width: 100%;
+        margin: 0 auto;
+        overflow: hidden;
+    }
+
+    #imagem_completa img,
+    .image_wrapper img {
+        width: 100%;
+        height: auto;
+        object-fit: contain;
+        max-height: 60vh;
+    }
+
+    .sidebar-direita {
+        grid-column: 1;
+        grid-row: 4;
+        max-height: 30vh;
+        overflow: auto;
+        margin: 0 auto;
+    }
+
+    /* Reduce caption font on small devices */
+    .thumb-caption {
+        font-size: 11px;
+        padding: 4px 6px;
+    }
+}
+
+/* Landscape-specific layout tweaks
+   For devices in landscape orientation we free more horizontal space for the image
+   by hiding or shrinking the right sidebar and arranging thumbs + sidebar to the left.
+*/
+@media (max-width: 1024px) and (orientation: landscape) {
+
+    /* slightly different columns: sidebar (status) | thumbs | main image */
+    .imagens {
+        display: grid;
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto 1fr auto;
+        gap: 10px;
+        padding: 12px;
+    }
+
+    .wrapper-sidebar {
+        grid-column: 1;
+        grid-row: 1;
+        width: 100%;
+        max-height: none;
+    }
+
+    /* Thumbnails as a vertical list (can be horizontal if you prefer) */
+    #imagens {
+        grid-column: 1;
+        grid-row: 2;
+        display: flex;
+        flex-direction: row;
+        gap: 8px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding-bottom: 6px;
+        align-items: center;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Make each thumb a horizontal item */
+    #imagens .imageWrapper,
+    #imagens .image-wrapper,
+    #imagens .tab-img {
+        flex: 0 0 auto;
+    }
+
+    #imagens .imageWrapper {
+        width: 110px;
+        height: 70px;
+    }
+
+    /* Main image area becomes full width and sits below thumbs */
+    #imagem_completa {
+        grid-column: 1;
+        grid-row: 3;
+        width: 100%;
+        max-width: 100%;
+        margin: 0 auto;
+        overflow: hidden;
+    }
+
+    #imagem_completa img,
+    .image_wrapper img {
+        width: 100%;
+        height: auto;
+        object-fit: contain;
+        max-height: 60vh;
+    }
+
+    .sidebar-direita {
+        grid-column: 1;
+        grid-row: 4;
+        max-height: 30vh;
+        overflow: auto;
+        margin: 0 auto;
+    }
+
+    .thumb-caption {
+        font-size: 11px;
+        padding: 4px 6px;
+    }
+
+}
+
+@media (max-width: 768px) and (orientation: landscape) {
+
+    /* On smaller phones in landscape, use a 2-row layout: top thumbnails (horizontal) + image below */
+    .imagens {
+        display: grid;
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto;
+        gap: 8px;
+    }
+
+    .wrapper-sidebar {
+        display: none;
+    }
+
+    /* thumbs as a horizontal scroller on top */
+    #imagens {
+        grid-row: 1;
+        display: flex;
+        flex-direction: row;
+        gap: 8px;
+        overflow-x: auto;
+    }
+
+    #imagens .imageWrapper {
+        flex: 0 0 auto;
+        width: 120px;
+        height: 72px;
+    }
+
+    /* main image below */
+    #imagem_completa {
+        grid-row: 2;
+        width: 100%;
+    }
+
+    #imagem_completa img {
+        width: 100%;
+        height: auto;
+        max-height: 60vh;
+        object-fit: contain;
+    }
+}

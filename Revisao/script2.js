@@ -2,15 +2,22 @@ document.addEventListener("DOMContentLoaded", function () {
     const params = new URLSearchParams(window.location.search);
     const obraNome = params.get("obra_nome");
 
-    if (obraNome) {
-        // Primeiro carrega as tarefas
-        fetchObrasETarefas().then(() => {
-            // Depois filtra pela obra
+    // Nesta tela 2 o teste é sempre na obra id 57.
+    // Se vier o nome pela URL, usamos; caso contrário, buscamos a obra de id 57
+    fetchObrasETarefas().then(() => {
+        if (obraNome) {
             filtrarTarefasPorObra(obraNome);
-        });
-    } else {
-        fetchObrasETarefas();
-    }
+        } else {
+            // Descobre o nome da obra cujo idobra = 57
+            const tarefaObra57 = dadosTarefas.find(t => parseInt(t.idobra) === 57);
+            if (tarefaObra57) {
+                filtrarTarefasPorObra(tarefaObra57.nome_obra);
+            } else {
+                // fallback: mantém comportamento antigo
+                exibirCardsDeObra(dadosTarefas);
+            }
+        }
+    });
 });
 
 function revisarTarefa(idfuncao_imagem, nome_colaborador, imagem_nome, nome_funcao, colaborador_id, tipoRevisao) {
@@ -109,12 +116,13 @@ function toggleTaskDetails(taskElement) {
 let dadosTarefas = [];
 let todasAsObras = new Set();
 let todosOsColaboradores = new Set();
+// Nesta tela 2 não usamos filtro de função global, pois vamos agrupar por status
 let todasAsFuncoes = new Set();
 let funcaoGlobalSelecionada = null;
 
 async function fetchObrasETarefas() {
     try {
-        const response = await fetch(`atualizar.php`);
+        const response = await fetch(`atualizar2.php`);
         if (!response.ok) throw new Error("Erro ao buscar tarefas");
 
         dadosTarefas = await response.json();
@@ -123,28 +131,9 @@ async function fetchObrasETarefas() {
         todosOsColaboradores = new Set(dadosTarefas.map(t => t.nome_colaborador));
         todasAsFuncoes = new Set(dadosTarefas.map(t => t.nome_funcao)); // ou o nome do campo correspondente
 
-        exibirCardsDeObra(dadosTarefas); // Mostra os cards
-
+        // Nesta tela 2 não exibimos o select de função superior
         const filtroSelect = document.getElementById('filtroFuncao');
-        filtroSelect.style.display = 'block'; // Exibe o filtro de função
-        filtroSelect.innerHTML = '<option value="">Todas as funções</option>';
-
-        todasAsFuncoes.forEach(funcao => {
-            const option = document.createElement('option');
-            option.value = funcao;
-            option.textContent = funcao;
-            filtroSelect.appendChild(option);
-        });
-
-        document.getElementById('filtroFuncao').addEventListener('change', (event) => {
-            funcaoGlobalSelecionada = event.target.value || null;
-
-            const tarefasFiltradas = funcaoGlobalSelecionada
-                ? dadosTarefas.filter(t => t.nome_funcao === funcaoGlobalSelecionada)
-                : dadosTarefas;
-
-            exibirCardsDeObra(tarefasFiltradas);
-        });
+        if (filtroSelect) filtroSelect.style.display = 'none';
 
     } catch (error) {
         console.error(error);
@@ -182,7 +171,7 @@ async function exibirCardsDeObra(tarefas) {
     obrasMap.forEach((tarefasDaObra, nome_obra) => {
         tarefasDaObra.sort((a, b) => new Date(b.data_aprovacao) - new Date(a.data_aprovacao));
         const tarefaComImagem = tarefasDaObra.find(t => t.imagem);
-        const imagemPreview = tarefaComImagem ? `../${tarefaComImagem.imagem}` : '../assets/logo.jpg';
+        const imagemPreview = tarefaComImagem ? `https://improov.com.br/sistema/${tarefaComImagem.imagem}` : '../assets/logo.jpg';
 
         const mencoesNaObra = mencoes.mencoes_por_obra[nome_obra] || 0;
 
@@ -215,26 +204,12 @@ function filtrarTarefasPorObra(obraSelecionada) {
     // Filtra todas as tarefas da obra
     const tarefasDaObra = dadosTarefas.filter(t => t.nome_obra === obraSelecionada);
 
-    // Atualiza os filtros dinamicamente com base nessa obra
+    // Atualiza os filtros dinamicamente com base nessa obra (apenas colaborador)
     atualizarFiltrosDinamicos(tarefasDaObra);
 
-    // Captura os novos valores dos selects após atualização
     const colaboradorSelecionado = document.getElementById('filtro_colaborador').value;
-    let funcaoSelecionada = document.getElementById('nome_funcao').value;
-
-    // Se houver filtro global ativo, aplica e reflete visualmente
-    if (funcaoGlobalSelecionada) {
-        funcaoSelecionada = funcaoGlobalSelecionada;
-
-        const selectFuncao = document.getElementById('nome_funcao');
-        const opcoes = Array.from(selectFuncao.options).map(opt => opt.value);
-        if (opcoes.includes(funcaoGlobalSelecionada)) {
-            selectFuncao.value = funcaoGlobalSelecionada;
-        }
-    }
 
     if (tarefasDaObra.length > 0) {
-        const obraId = tarefasDaObra[0].idobra; // ajuste se o campo for diferente
         const nomeObra = tarefasDaObra[0].nome_obra;
         const nomenclatura = tarefasDaObra[0].nomenclatura;
 
@@ -247,11 +222,10 @@ function filtrarTarefasPorObra(obraSelecionada) {
 
     }
 
-    // Aplica os filtros adicionais (colaborador e função)
+    // Aplica apenas filtro de colaborador
     const tarefasFiltradas = tarefasDaObra.filter(t => {
         const matchColaborador = !colaboradorSelecionado || t.nome_colaborador === colaboradorSelecionado;
-        const matchFuncao = funcaoSelecionada === 'Todos' || t.nome_funcao === funcaoSelecionada;
-        return matchColaborador && matchFuncao;
+        return matchColaborador;
     });
 
     // Exibe as tarefas filtradas
@@ -277,36 +251,16 @@ function atualizarSelectColaborador(tarefas) {
     }
 }
 
-function atualizarSelectFuncao(tarefas) {
-    const selectFuncao = document.getElementById('nome_funcao');
-    const valorAnterior = selectFuncao.value;
-
-    const funcoes = [...new Set(tarefas.map(t => t.nome_funcao))];
-
-    selectFuncao.innerHTML = '<option value="Todos">Todos</option>';
-    funcoes.forEach(funcao => {
-        const option = document.createElement('option');
-        option.value = funcao;
-        option.textContent = funcao;
-        selectFuncao.appendChild(option);
-    });
-
-    if ([...selectFuncao.options].some(o => o.value === valorAnterior)) {
-        selectFuncao.value = valorAnterior;
-    }
-}
+// Não usamos mais o select de função nesta tela, mas mantemos a função vazia
+function atualizarSelectFuncao(tarefas) { }
 
 // Eventos para os filtros
 function atualizarFiltrosDinamicos(tarefas) {
     const selectColaborador = document.getElementById('filtro_colaborador');
-    const selectFuncao = document.getElementById('nome_funcao');
 
-    // Salva os valores antes de atualizar
     const valorAnteriorColaborador = selectColaborador.value;
-    const valorAnteriorFuncao = selectFuncao.value;
 
     const colaboradores = [...new Set(tarefas.map(t => t.nome_colaborador))];
-    const funcoes = [...new Set(tarefas.map(t => t.nome_funcao))];
 
     // Atualiza select de colaborador
     selectColaborador.innerHTML = '<option value="">Todos</option>';
@@ -317,22 +271,8 @@ function atualizarFiltrosDinamicos(tarefas) {
         selectColaborador.appendChild(option);
     });
 
-    // Atualiza select de função
-    selectFuncao.innerHTML = '<option value="Todos">Todos</option>';
-    funcoes.forEach(funcao => {
-        const option = document.createElement('option');
-        option.value = funcao;
-        option.textContent = funcao;
-        selectFuncao.appendChild(option);
-    });
-
-    // Reatribui os valores anteriores (se ainda existirem nas opções)
     if ([...selectColaborador.options].some(o => o.value === valorAnteriorColaborador)) {
         selectColaborador.value = valorAnteriorColaborador;
-    }
-
-    if ([...selectFuncao.options].some(o => o.value === valorAnteriorFuncao)) {
-        selectFuncao.value = valorAnteriorFuncao;
     }
 }
 
@@ -345,21 +285,7 @@ document.getElementById('filtro_colaborador').addEventListener('change', () => {
         !colaboradorSelecionado || t.nome_colaborador === colaboradorSelecionado
     );
 
-    atualizarSelectFuncao(tarefasFiltradas); // atualiza o outro filtro com base nesse
-
-    filtrarTarefasPorObra(obraSelecionada);
-});
-
-document.getElementById('nome_funcao').addEventListener('change', () => {
-    const obraSelecionada = document.getElementById('filtro_obra').value;
-    const funcaoSelecionada = document.getElementById('nome_funcao').value;
-
-    const tarefasDaObra = dadosTarefas.filter(t => t.nome_obra === obraSelecionada);
-    const tarefasFiltradas = tarefasDaObra.filter(t =>
-        funcaoSelecionada === 'Todos' || t.nome_funcao === funcaoSelecionada
-    );
-
-    atualizarSelectColaborador(tarefasFiltradas); // atualiza o outro filtro com base nesse
+    atualizarSelectColaborador(tarefasFiltradas);
 
     filtrarTarefasPorObra(obraSelecionada);
 });
@@ -382,17 +308,17 @@ function exibirTarefas(tarefas, tarefasCompletas) {
 
     tarefasImagensObra.innerHTML = ''; // Limpa as tarefas anteriores
 
+    // Nesta tela, o agrupamento visual principal fica na sidebar (por status)
     exibirSidebarTabulator(tarefasCompletas);
 
     if (tarefas.length > 0) {
         tarefas.forEach(tarefa => {
             const taskItem = document.createElement('div');
             taskItem.classList.add('task-item');
-            taskItem.setAttribute('onclick', `historyAJAX(${tarefa.idfuncao_imagem}, '${tarefa.nome_funcao}', '${tarefa.imagem_nome}', '${tarefa.nome_colaborador}')`);
+            taskItem.setAttribute('onclick', `historyAJAX(${tarefa.idfuncao_imagem})`);
 
-            const imagemPreview = tarefa.imagem ? `../${tarefa.imagem}` : '../assets/logo.jpg';
+            const imagemPreview = tarefa.imagem ? `https://improov.com.br/sistema/${tarefa.imagem}` : '../assets/logo.jpg';
 
-            // Define a cor de fundo com base no status
             const color = tarefa.status_novo === 'Em aprovação' ? '#000a59' : tarefa.status_novo === 'Ajuste' ? '#590000' : tarefa.status_novo === 'Aprovado com ajustes' ? '#2e0059ff' : 'transparent';
             const bgColor = tarefa.status_novo === 'Em aprovação' ? '#90c2ff' : tarefa.status_novo === 'Ajuste' ? '#ff5050' : tarefa.status_novo === 'Aprovado com ajustes' ? '#ae90ffff' : 'transparent';
             taskItem.innerHTML = `
@@ -400,10 +326,10 @@ function exibirTarefas(tarefas, tarefasCompletas) {
                   <div class="image-wrapper">
                      <img src="${imagemPreview}" alt="Imagem da obra ${tarefa.nome_obra}" class="task-image" onerror="this.onerror=null;this.src='../assets/logo.jpg';">
                 </div>
-                    <h3 class="nome_funcao">${tarefa.nome_funcao}</h3><span class="colaborador">${tarefa.nome_colaborador}</span>
+                    <h3 class="nome_funcao">${tarefa.nome_status || tarefa.status_novo}</h3><span class="colaborador">${tarefa.nome_colaborador}</span>
                     <p class="imagem_nome" data-obra="${tarefa.nome_obra}">${tarefa.imagem_nome}</p>
                     <p class="data_aprovacao">${formatarDataHora(tarefa.data_aprovacao)}</p>       
-                    <p id="status_funcao" style="color: ${color}; background-color: ${bgColor}">${tarefa.status_novo}</p>
+                    <p id="status_funcao" style="color: ${color}; background-color: ${bgColor}">${tarefa.nome_status || tarefa.status_novo}</p>
                 </div>
             `;
 
@@ -441,7 +367,8 @@ let funcaoImagemId = null; // armazenado globalmente
 
 
 function historyAJAX(idfuncao_imagem) {
-    fetch(`historico.php?ajid=${idfuncao_imagem}`)
+    // Nesta tela 2 usamos historico2.php para buscar todas as imagens do mesmo status
+    fetch(`historico2.php?ajid=${idfuncao_imagem}`)
         .then(response => response.json())
         .then(response => {
             console.log("Funcao Imagem:", idfuncao_imagem);
@@ -538,6 +465,7 @@ function historyAJAX(idfuncao_imagem) {
             document.getElementById('indiceSelect').replaceWith(indiceSelect);
             indiceSelect.innerHTML = '';
 
+            // Agora imagens já veio filtrado por status/obra; vamos apenas agrupar por envio
             const imagensAgrupadas = imagens.reduce((acc, img) => {
                 if (!acc[img.indice_envio]) acc[img.indice_envio] = [];
                 acc[img.indice_envio].push(img);
@@ -569,29 +497,33 @@ function historyAJAX(idfuncao_imagem) {
                 const imagensDoIndice = imagensAgrupadas[indiceSelecionado];
 
                 if (imagensDoIndice && imagensDoIndice.length > 0) {
-                    imagensDoIndice.sort((a, b) => new Date(b.data_envio) - new Date(a.data_envio));
-                    const maisRecente = imagensDoIndice[0];
-                    if (maisRecente) {
-                        mostrarImagemCompleta(`../${maisRecente.imagem}`, maisRecente.id);
+                    const maisRecentesOrdenadas = imagensDoIndice.sort((a, b) => new Date(b.data_envio) - new Date(a.data_envio));
+
+                    // A imagem completa (image_wrapper) mostra apenas a selecionada;
+                    // começamos mostrando a mais recente.
+                    const primeira = maisRecentesOrdenadas[0];
+                    if (primeira) {
+                        mostrarImagemCompleta(`https://improov.com.br/sistema/${primeira.imagem}`, primeira.id, primeira.imagem);
                     }
 
-                    imagensDoIndice.forEach(img => {
+                    // As thumbs ficam na barra lateral "imagens"; ao clicar troca a imagem completa.
+                    maisRecentesOrdenadas.forEach(img => {
                         const wrapper = document.createElement('div');
                         wrapper.className = 'imageWrapper';
 
-                        const imgElement = document.createElement('img');
-                        imgElement.src = `../${img.imagem}`;
-                        imgElement.alt = img.imagem;
-                        imgElement.className = 'image';
-                        imgElement.setAttribute('data-id', img.id);
+                        const imgThumb = document.createElement('img');
+                        imgThumb.src = `https://improov.com.br/sistema/${img.imagem}`;
+                        imgThumb.alt = img.imagem;
+                        imgThumb.className = 'image';
+                        imgThumb.setAttribute('data-id', img.id);
 
-                        imgElement.addEventListener('click', () => {
-                            mostrarImagemCompleta(imgElement.src, img.id);
+                        imgThumb.addEventListener('click', () => {
+                            mostrarImagemCompleta(imgThumb.src, img.id, img.imagem);
                         });
 
-                        imgElement.addEventListener('contextmenu', (event) => {
+                        imgThumb.addEventListener('contextmenu', (event) => {
                             event.preventDefault();
-                            abrirMenuContexto(event.pageX, event.pageY, img.id, imgElement.src);
+                            abrirMenuContexto(event.pageX, event.pageY, img.id, imgThumb.src);
                         });
 
                         if (img.has_comments == "1" || img.has_comments === 1) {
@@ -601,7 +533,14 @@ function historyAJAX(idfuncao_imagem) {
                             wrapper.appendChild(notificationDot);
                         }
 
-                        wrapper.appendChild(imgElement);
+                        wrapper.appendChild(imgThumb);
+
+                        // legenda embaixo da thumb com o nome do arquivo
+                        const thumbCaption = document.createElement('div');
+                        thumbCaption.className = 'thumb-caption';
+                        thumbCaption.textContent = img.imagem_nome || img.file || '';
+                        wrapper.appendChild(thumbCaption);
+
                         imageContainer.appendChild(wrapper);
                     });
                 }
@@ -639,10 +578,10 @@ function exibirSidebarTabulator(tarefas) {
     const tarefasPorFuncao = {};
 
     tarefas.forEach(t => {
-        if (!tarefasPorFuncao[t.nome_funcao]) {
-            tarefasPorFuncao[t.nome_funcao] = [];
+        if (!tarefasPorFuncao[t.nome_status]) {
+            tarefasPorFuncao[t.nome_status] = [];
         }
-        tarefasPorFuncao[t.nome_funcao].push(t);
+        tarefasPorFuncao[t.nome_status].push(t);
     });
 
     Object.entries(tarefasPorFuncao).forEach(([funcao, tarefas]) => {
@@ -664,7 +603,7 @@ function exibirSidebarTabulator(tarefas) {
         tarefas.forEach(t => {
             const tarefa = document.createElement('div');
             tarefa.classList.add('tarefa-item');
-            const imgSrc = t.imagem ? `../${t.imagem}` : '../assets/logo.jpg';
+            const imgSrc = t.imagem ? `https://improov.com.br/sistema/${t.imagem}` : '../assets/logo.jpg';
             tarefa.innerHTML = `
         <img src="${imgSrc}" class="tab-img" data-id="${t.idfuncao_imagem}" alt="${t.imagem_nome}">
         <span>${t.nome_colaborador} - ${t.imagem_nome}</span>
@@ -852,8 +791,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 let ap_imagem_id = null; // Variável para armazenar o ID da imagem atual
 
-// Mostra imagem e abre modal
-function mostrarImagemCompleta(src, id) {
+// Mostra imagem selecionada no image_wrapper (uma por vez) e abre comentários
+function mostrarImagemCompleta(src, id, nomeArquivo = '') {
     ap_imagem_id = id;
 
     const imageWrapper = document.getElementById("image_wrapper");
@@ -864,12 +803,16 @@ function mostrarImagemCompleta(src, id) {
         imageWrapper.removeChild(imageWrapper.firstChild);
     }
 
+    const container = document.createElement('div');
+    container.className = 'imagem-completa-container';
+
     const imgElement = document.createElement("img");
     imgElement.id = "imagem_atual";
     imgElement.src = src;
     imgElement.style.width = "100%";
 
-    imageWrapper.appendChild(imgElement);
+    container.appendChild(imgElement);
+    imageWrapper.appendChild(container);
     document.querySelector('#imagem_atual').scrollIntoView({ behavior: 'smooth' });
     renderComments(id);
     ajustarNavSelectAoTamanhoDaImagem();

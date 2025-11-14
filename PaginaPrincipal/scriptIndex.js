@@ -212,6 +212,8 @@ function processarDados(data) {
                         ` : ''}
                     </div>
                         <h5>${titulo || '-'}</h5>
+                        <!-- Use server-side thumb generator to reduce weight for thumbnails -->
+                        <img loading="lazy" src="${item.ultima_imagem ? `https://improov.com.br/sistema/thumb.php?path=${encodeURIComponent(item.ultima_imagem)}&w=360&q=80` : `https://improov.com.br/sistema/${item.ultima_imagem || ''}`}" alt="" style="max-width: 100%; height: auto; margin-bottom: 8px;">
                         <p>${subtitulo || '-'}</p>
                     <div class="card-footer">
                         <span class="date ${atrasada ? 'atrasada' : ''}">

@@ -63,7 +63,12 @@ $sql = "SELECT
         WHERE n.funcao_imagem_id = fi.idfuncao_imagem
           AND n.lida = 0
           AND n.colaborador_id = ?
-    ) AS notificacoes_nao_lidas
+    ) AS notificacoes_nao_lidas,
+    	(
+        SELECT MAX(hi.caminho_imagem) 
+                FROM historico_aprovacoes_imagens hi
+        WHERE hi.funcao_imagem_id = fi.idfuncao_imagem AND hi.caminho_imagem NOT LIKE '%imagem_%'
+    ) AS ultima_imagem
 FROM funcao_imagem fi
 JOIN imagens_cliente_obra ico ON fi.imagem_id = ico.idimagens_cliente_obra
 JOIN status_imagem si ON ico.status_id = si.idstatus
@@ -367,6 +372,7 @@ foreach ($funcoes as $funcao) {
         'imagem_prazo'               => $funcao['imagem_prazo'],
         'comentarios_ultima_versao'  => $funcao['comentarios_ultima_versao'],
         'indice_envio_atual'         => $funcao['indice_envio_atual'],
+        'ultima_imagem'              => $funcao['ultima_imagem'],
         'observacao'                 => $funcao['observacao'],
         'tempo_calculado'            => $tempoCalculado,
         'notificacoes_nao_lidas'     => isset($funcao['notificacoes_nao_lidas']) ? intval($funcao['notificacoes_nao_lidas']) : 0

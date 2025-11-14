@@ -100,7 +100,7 @@ $sqlTarefas = "SELECT
         ELSE 'Dentro do prazo'
     END AS situacao
 FROM tarefas
-WHERE colaborador_id = ?
+WHERE colaborador_id = ? AND (status <> 'Finalizado' && prazo < CURDATE())
 ORDER BY prazo ASC;";
 $stmtTarefas = $conn->prepare($sqlTarefas);
 $stmtTarefas->bind_param("i", $colaboradorId);

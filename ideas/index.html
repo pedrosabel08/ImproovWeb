@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Flow Externo — Protótipo</title>
+    <link rel="stylesheet" href="style.css" />
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <header class="topbar">
+        <div class="brand">Improov — <strong>Timeline de Entregas</strong></div>
+        <div class="actions">
+            <div class="avatar">A</div>
+        </div>
+    </header>
+
+    <div class="app app-single-column">
+        <main class="main">
+            <section class="kpis" id="metricas">
+                <div class="kpi">
+                    <div class="kpi-title">Imagens totais</div>
+                    <div class="kpi-value" id="kpi-total">0</div>
+                </div>
+                <div class="kpi">
+                    <div class="kpi-title">Em HOLD</div>
+                    <div class="kpi-value kpi-warn" id="kpi-hold">0</div>
+                </div>
+                <div class="kpi">
+                    <div class="kpi-title">Em produção</div>
+                    <div class="kpi-value" id="kpi-producao">0</div>
+                </div>
+                <div class="kpi">
+                    <div class="kpi-title">Liberadas</div>
+                    <div class="kpi-value kpi-success" id="kpi-liberadas">0</div>
+                </div>
+            </section>
+
+            <section class="alerta" id="aviso">
+                <h2>Aviso importante</h2>
+                <p>Os dados abaixo consideram somente a obra <strong>ID 70</strong> e estão divididos por status da
+                    entrega. Clique em um grupo para ver as imagens.</p>
+            </section>
+
+            <section class="timeline" id="timeline">
+                <h2>Timeline de entregas por status</h2>
+                <div id="timeline-container" class="timeline-list">
+                    <div class="timeline-empty">Carregando entregas...</div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <footer class="footer">
+        Legenda: <span class="badge success">Liberadas</span>
+        <span class="badge warn">Em HOLD</span>
+        <span class="badge">Em produção</span>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            function atualizarMetricas(dados) {
+                var total = dados.total || 0;
+                var hold = dados.hold || 0;
+                var producao = dados.producao || 0;
+                var liberadas = dados.liberadas || 0;
+                document.getElementById('kpi-total').textContent = total;
+                document.getElementById('kpi-hold').textContent = hold;
+                document.getElementById('kpi-producao').textContent = producao;
+                document.getElementById('kpi-liberadas').textContent = liberadas;
+            }
+
+            function criarItemTimeline(grupo) {
+                var item = document.createElement('article');
+                item.className = 'timeline-item';
+
+                var header = document.createElement('header');
+                header.className = 'timeline-header';
+
+                var title = document.createElement('div');
+                title.className = 'timeline-title';
+                title.textContent = grupo.status_label || grupo.status || 'Sem status';
+
+                var info = document.createElement('div');
+                info.className = 'timeline-info';
+                info.innerHTML = '<span>' + (grupo.total_imagens || 0) + ' imagens</span>' +
+                    '<span>Última atualização: ' + (grupo.ultima_info || '-') + '</span>';
+
+                // estruturar header em duas colunas: esquerda (title) e direita (info + botão)
+                var headerLeft = document.createElement('div');
+                headerLeft.className = 'header-left';
+                headerLeft.appendChild(title);
+
+                var headerRight = document.createElement('div');
+                headerRight.className = 'header-right';
+                headerRight.appendChild(info);
+
+                var toggle = document.createElement('button');
+                toggle.type = 'button';
+                toggle.className = 'timeline-toggle';
+                toggle.textContent = 'Ver mais imagens';
+
+                // só adiciona toggle se houver mais que 3 imagens
+                if (Array.isArray(grupo.imagens) && grupo.imagens.length > 3) {
+                    headerRight.appendChild(toggle);
+                }
+
+                header.appendChild(headerLeft);
+                header.appendChild(headerRight);
+
+                // criar uma única lista de imagens; as imagens com idx >= 3 recebem classe extra-img
+                var list = document.createElement('ul');
+                list.className = 'timeline-images';
+
+                if (Array.isArray(grupo.imagens) && grupo.imagens.length) {
+                    grupo.imagens.forEach(function (img, idx) {
+                        var li = document.createElement('li');
+                        li.innerHTML = '<span class="img-name">' + (img.nome || 'Imagem') + '</span>' +
+                            '<span class="img-date">Entregue em: ' + (img.data_criado || '-') + ' - ' + (img.data_entregue || '-') + '</span>';
+                        if (idx >= 4) {
+                            li.classList.add('extra-img');
+                        }
+                        list.appendChild(li);
+                    });
+                } else {
+                    var vazio = document.createElement('div');
+                    vazio.className = 'timeline-empty';
+                    vazio.textContent = 'Nenhuma imagem neste status.';
+                    item.appendChild(vazio);
+                }
+
+                // adiciona o listener no toggle apenas se houver itens extras
+                if (toggle && list.querySelectorAll('.extra-img').length > 0) {
+                    toggle.addEventListener('click', function () {
+                        var isOpen = item.classList.toggle('open');
+                        toggle.textContent = isOpen ? 'Ver menos' : 'Ver mais imagens';
+                    });
+                }
+
+                item.appendChild(header);
+                item.appendChild(list);
+                return item;
+            }
+
+            function carregarDados() {
+                fetch('../tools/get_timeline_obra.php?obra_id=76')
+                    .then(function (r) { return r.json(); })
+                    .then(function (json) {
+                        if (!json) return;
+
+                        if (json.metricas) {
+                            atualizarMetricas(json.metricas);
+                        }
+
+                        var container = document.getElementById('timeline-container');
+                        container.innerHTML = '';
+
+                        if (!Array.isArray(json.timeline) || !json.timeline.length) {
+                            var vazio = document.createElement('div');
+                            vazio.className = 'timeline-empty';
+                            vazio.textContent = 'Nenhuma entrega encontrada para esta obra.';
+                            container.appendChild(vazio);
+                            return;
+                        }
+
+                        json.timeline.forEach(function (grupo) {
+                            container.appendChild(criarItemTimeline(grupo));
+                        });
+                    })
+                    .catch(function () {
+                        var container = document.getElementById('timeline-container');
+                        container.innerHTML = '<div class="timeline-empty">Erro ao carregar dados.</div>';
+                    });
+            }
+
+            carregarDados();
+        });
+    </script>
+</body>
+
+</html>

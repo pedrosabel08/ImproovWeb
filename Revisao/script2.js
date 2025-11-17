@@ -453,7 +453,7 @@ function historyAJAX(idfuncao_imagem) {
             }
 
             const titulo = document.getElementById('funcao_nome');
-            titulo.textContent = `${item.colaborador_nome} - ${item.nome_funcao}`;
+            // titulo.textContent = `${item.colaborador_nome} - ${item.nome_funcao}`;
             document.getElementById("imagem_nome").textContent = item.imagem_nome;
 
             const imageContainer = document.getElementById('imagens');
@@ -503,7 +503,7 @@ function historyAJAX(idfuncao_imagem) {
                     // começamos mostrando a mais recente.
                     const primeira = maisRecentesOrdenadas[0];
                     if (primeira) {
-                        mostrarImagemCompleta(`https://improov.com.br/sistema/${primeira.imagem}`, primeira.id, primeira.imagem);
+                        mostrarImagemCompleta(`https://improov.com.br/sistema/${primeira.imagem}`, primeira.id, primeira.imagem_nome);
                     }
 
                     // As thumbs ficam na barra lateral "imagens"; ao clicar troca a imagem completa.
@@ -517,8 +517,13 @@ function historyAJAX(idfuncao_imagem) {
                         imgThumb.className = 'image';
                         imgThumb.setAttribute('data-id', img.id);
 
-                        imgThumb.addEventListener('click', () => {
-                            mostrarImagemCompleta(imgThumb.src, img.id, img.imagem);
+                        imgThumb.addEventListener('click', (e) => {
+                            mostrarImagemCompleta(imgThumb.src, img.id, img.imagem_nome);
+                            // remove selected de outros wrappers
+                            document.querySelectorAll('.imageWrapper.selected').forEach(w => w.classList.remove('selected'));
+                            // adiciona selected ao wrapper pai da thumb
+                            const wrapper = imgThumb.closest('.imageWrapper') || imgThumb.parentElement;
+                            if (wrapper) wrapper.classList.add('selected');
                         });
 
                         imgThumb.addEventListener('contextmenu', (event) => {
@@ -792,7 +797,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 let ap_imagem_id = null; // Variável para armazenar o ID da imagem atual
 
 // Mostra imagem selecionada no image_wrapper (uma por vez) e abre comentários
-function mostrarImagemCompleta(src, id, nomeArquivo = '') {
+function mostrarImagemCompleta(src, id, imagem_nome = '') {
     ap_imagem_id = id;
 
     const imageWrapper = document.getElementById("image_wrapper");
@@ -834,6 +839,9 @@ function mostrarImagemCompleta(src, id, nomeArquivo = '') {
         // Limpa os mencionados quando abre um novo comentário
         mencionadosIds = [];
     });
+
+    document.getElementById("imagem_nome").textContent = imagem_nome;
+
 
 }
 
@@ -995,7 +1003,7 @@ const USERS_PERMITIDOS = [1, 2, 3, 9, 20];   // quem pode editar / excluir
 // --------------------------------------------------------------------------
 
 async function renderComments(id) {
-    console.log('renderComments', id); // debug
+    // console.log('renderComments', id); // debug
     const comentariosDiv = document.querySelector(".comentarios");
     comentariosDiv.innerHTML = '';
     const imagemCompletaDiv = document.getElementById("image_wrapper");

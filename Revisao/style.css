@@ -1493,6 +1493,7 @@ nav.breadcrumb-nav a {
         flex-direction: row;
         gap: 8px;
         overflow-x: auto;
+        max-width: 100vh;
     }
 
     #imagens .imageWrapper {

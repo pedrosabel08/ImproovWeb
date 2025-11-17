@@ -17,10 +17,10 @@ header {
     box-shadow: 0 4px 8px rgb(0, 0, 0);
 }
 
-body {
+/* body {
     display: grid;
     grid-template-columns: 60px 1fr;
-}
+} */
 
 
 button,
@@ -47,9 +47,10 @@ a {
     display: flex;
     flex-direction: column;
     grid-column: 2;
-    overflow-x: auto;
+    overflow-x: hidden;
     background-color: #333;
     height: 100vh;
+    width: 100vw;
 }
 
 
@@ -379,6 +380,9 @@ a {
 
 nav {
     margin: 0 auto;
+    max-height: 60vh;
+    overflow: auto;
+    padding-right: 6px;
 }
 
 .image {
@@ -501,25 +505,16 @@ nav {
     padding: 10px;
 }
 
-#sidebarTabulator::-webkit-scrollbar,
-.tarefasObra::-webkit-scrollbar,
-.tarefasObra::-webkit-scrollbar,
-.containerObra::-webkit-scrollbar {
+::-webkit-scrollbar {
     width: 5px;
+    height: 5px;
 }
 
-#sidebarTabulator::-webkit-scrollbar-thumb,
-.comentarios::-webkit-scrollbar-thumb,
-.tarefasObra::-webkit-scrollbar-thumb,
-.containerObra::-webkit-scrollbar-thumb {
+::-webkit-scrollbar-thumb {
     background-color: #747474;
-    border-radius: 10px;
 }
 
-#sidebarTabulator::-webkit-scrollbar-track,
-.comentarios::-webkit-scrollbar-track,
-.tarefasObra::-webkit-scrollbar-track,
-.containerObra::-webkit-scrollbar-track {
+::-webkit-scrollbar-track {
     background-color: #f1f1f1;
 }
 
@@ -629,12 +624,14 @@ body::-webkit-scrollbar-track {
     border-radius: 8px;
 }
 
+.imageWrapper.selected {
+    background-color: #ffffff;
+}
+
 .notification-dot {
     position: absolute;
     top: 5px;
     right: 5px;
-    width: 10px;
-    height: 15px;
     background-color: red;
     border-radius: 50%;
     z-index: 10;
@@ -642,6 +639,7 @@ body::-webkit-scrollbar-track {
     font-size: 10px;
     text-align: center;
     color: white;
+    padding: 2px;
 }
 
 
@@ -861,7 +859,8 @@ p#data_aprovacao {
     font-weight: bold;
 }
 
-p#status_funcao {
+p#status_funcao,
+#status_tarefa {
     font-weight: bold;
     width: max-content;
     padding: 2px 8px;
@@ -903,6 +902,10 @@ p.imagem_nome {
     max-width: 100%;
     height: auto;
     display: block;
+}
+
+.image_wrapper img:hover {
+    cursor: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAYAAABWzo5XAAAAyElEQVR4AcSSgQ3CMAwELSZhE2ATmAQ2gU1gFEbBh/rBiZrWRZVa2bLj+q9x0p2t9GwKuvoQuIefLd3R06W3wSvYEtDeAdEAnlXIgu6D4OLx5S47KMmAGIcvE9EJBpCcms2BEB+/nWaMxtr8AXDyWGwKhEgQCYBxyG8VFHugMQiaahwK8jHQFKQaRxBiC/oL0oK44vZM6GGc7k5owOOOOEhq0VMQBBHEOnoagiiCuFLE+MNfzo7jPcUiSD8ZAPLSlEkiKNPf7fkAAAD//wBi2FMAAAAGSURBVAMA84weJVXb21sAAAAASUVORK5CYII=), auto !important;
 }
 
 
@@ -1140,6 +1143,7 @@ nav.breadcrumb-nav a {
     display: grid;
     margin-left: 10px;
     width: 100%;
+    max-height: 50vh;
 }
 
 #sidebarTabulator {
@@ -1149,6 +1153,8 @@ nav.breadcrumb-nav a {
     flex-direction: column;
     gap: 10px;
     z-index: 100;
+    max-height: 50vh;
+    overflow: auto;
 }
 
 
@@ -1299,4 +1305,220 @@ nav.breadcrumb-nav a {
     background-color: white;
     text-align: center;
     border-radius: 50%;
+}
+
+#status_tarefa {
+    padding: 2px 6px;
+    font-size: 0.65rem;
+}
+
+/* Responsive layout: stack the 4-column grid on smaller screens
+   The .imagens grid columns are: .wrapper-sidebar | #imagens | #imagem_completa | .sidebar-direita
+   On tablets we reduce widths, on mobile we stack them vertically (one per row).
+*/
+
+@media (max-width: 768px) {
+
+    /* Stack everything in one column for mobile */
+    .imagens {
+        display: grid;
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto 1fr auto;
+        gap: 10px;
+        padding: 12px;
+    }
+
+    /* Ensure each logical area occupies full width in order */
+    .wrapper-sidebar {
+        grid-column: 1;
+        grid-row: 1;
+        width: 100%;
+        max-height: none;
+    }
+
+    /* Thumbnails become a horizontal scroller */
+    #imagens {
+        grid-column: 1;
+        grid-row: 2;
+        display: flex;
+        flex-direction: row;
+        gap: 8px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding-bottom: 6px;
+        align-items: center;
+        -webkit-overflow-scrolling: touch;
+        max-width: 90vw;
+    }
+
+    /* Make each thumb a horizontal item */
+    #imagens .imageWrapper,
+    #imagens .image-wrapper,
+    #imagens .tab-img {
+        flex: 0 0 auto;
+    }
+
+    /* Slightly larger thumbnails on mobile for easier tapping */
+    #imagens .imageWrapper {
+        width: 110px;
+        height: 70px;
+    }
+
+    /* Main image area becomes full width and sits below thumbs */
+    #imagem_completa {
+        grid-column: 1;
+        grid-row: 3;
+        width: 100%;
+        max-width: 100%;
+        margin: 0 auto;
+        overflow: hidden;
+    }
+
+    #imagem_completa img,
+    .image_wrapper img {
+        width: 100%;
+        height: auto;
+        object-fit: contain;
+        max-height: 60vh;
+    }
+
+    .sidebar-direita {
+        grid-column: 1;
+        grid-row: 4;
+        max-height: 30vh;
+        overflow: auto;
+        margin: 0 auto;
+    }
+
+    /* Reduce caption font on small devices */
+    .thumb-caption {
+        font-size: 11px;
+        padding: 4px 6px;
+    }
+}
+
+/* Landscape-specific layout tweaks
+   For devices in landscape orientation we free more horizontal space for the image
+   by hiding or shrinking the right sidebar and arranging thumbs + sidebar to the left.
+*/
+@media (max-width: 1024px) and (orientation: landscape) {
+
+    /* slightly different columns: sidebar (status) | thumbs | main image */
+    .imagens {
+        display: grid;
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto 1fr auto;
+        gap: 10px;
+        padding: 12px;
+    }
+
+    .wrapper-sidebar {
+        grid-column: 1;
+        grid-row: 1;
+        width: 100%;
+        max-height: none;
+    }
+
+    /* Thumbnails as a vertical list (can be horizontal if you prefer) */
+    #imagens {
+        grid-column: 1;
+        grid-row: 2;
+        display: flex;
+        flex-direction: row;
+        gap: 8px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding-bottom: 6px;
+        align-items: center;
+        -webkit-overflow-scrolling: touch;
+        max-width: 90vw;
+    }
+
+    /* Make each thumb a horizontal item */
+    #imagens .imageWrapper,
+    #imagens .image-wrapper,
+    #imagens .tab-img {
+        flex: 0 0 auto;
+    }
+
+    #imagens .imageWrapper {
+        width: 110px;
+        height: 70px;
+    }
+
+    /* Main image area becomes full width and sits below thumbs */
+    #imagem_completa {
+        grid-column: 1;
+        grid-row: 3;
+        width: 100%;
+        max-width: 100%;
+        margin: 0 auto;
+        overflow: hidden;
+    }
+
+    #imagem_completa img,
+    .image_wrapper img {
+        width: 100%;
+        height: auto;
+        object-fit: contain;
+        max-height: 60vh;
+    }
+
+    .sidebar-direita {
+        grid-column: 1;
+        grid-row: 4;
+        max-height: 30vh;
+        overflow: auto;
+        margin: 0 auto;
+    }
+
+    .thumb-caption {
+        font-size: 11px;
+        padding: 4px 6px;
+    }
+
+}
+
+@media (max-width: 768px) and (orientation: landscape) {
+
+    /* On smaller phones in landscape, use a 2-row layout: top thumbnails (horizontal) + image below */
+    .imagens {
+        display: grid;
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto;
+        gap: 8px;
+    }
+
+    .wrapper-sidebar {
+        display: none;
+    }
+
+    /* thumbs as a horizontal scroller on top */
+    #imagens {
+        grid-row: 1;
+        display: flex;
+        flex-direction: row;
+        gap: 8px;
+        overflow-x: auto;
+        max-width: 100vh;
+    }
+
+    #imagens .imageWrapper {
+        flex: 0 0 auto;
+        width: 120px;
+        height: 72px;
+    }
+
+    /* main image below */
+    #imagem_completa {
+        grid-row: 2;
+        width: 100%;
+    }
+
+    #imagem_completa img {
+        width: 100%;
+        height: auto;
+        max-height: 60vh;
+        object-fit: contain;
+    }
 }

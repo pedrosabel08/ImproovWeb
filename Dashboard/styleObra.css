@@ -1589,7 +1589,7 @@ i.fa-info {
     gap: 8px;
     padding: 6px 10px;
     border-radius: 6px;
-    background: var(--card-bg, #fff);
+    background: #8ae8f5;
     color: var(--text, #222);
     text-decoration: none;
     font-size: 14px;

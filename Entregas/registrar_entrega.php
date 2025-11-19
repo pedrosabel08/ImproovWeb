@@ -178,11 +178,59 @@ try {
 
     $conn->commit();
 
+    // === Envio de e-mail com resumo da entrega (teste) ===
+    // Se existir token do Mailtrap, usa a API de envio; caso contrário, usa PHPMailer/SMTP ou mail().
+    $mail_log = '';
+    $mailtrap_token = getenv('MAILTRAP_API_TOKEN') ?: null;
+    $to = 'giovanasabel24@gmail.com';
+    $subject = "Resumo de entrega - {$obra_nome}";
+    $link = (isset($_SERVER['HTTP_HOST']) ? (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https://' : 'http://') . $_SERVER['HTTP_HOST'] : '') . 
+            "/ImproovWeb/Entregas/?entrega_id={$entrega_id}";
+    $html_body = "<p>Olá,</p><p>Foram postadas <strong>{$entregues}</strong> imagens da obra <strong>{$obra_nome}</strong> com status <strong>{$status_nome}</strong>.</p><p>Consulte a entrega aqui: <a href=\"{$link}\">{$link}</a></p><p>Atenciosamente,<br>Equipe</p>";
+
+    if ($mailtrap_token) {
+        // Envia via Mailtrap Send API
+        $payload = [
+            'from' => ['email' => getenv('MAIL_FROM') ?: 'hello@demomailtrap.co', 'name' => getenv('MAIL_FROM_NAME') ?: 'Improov'],
+            'to' => [['email' => $to]],
+            'subject' => $subject,
+            'html' => $html_body,
+            'text' => strip_tags(str_replace(['<br>', '<br/>', '<p>','</p>'], "\n", $html_body)),
+            'category' => 'Entrega'
+        ];
+
+        $ch = curl_init('https://send.api.mailtrap.io/api/send');
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Authorization: Bearer ' . $mailtrap_token,
+            'Content-Type: application/json'
+        ]);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+
+        $resp = curl_exec($ch);
+        if (curl_errno($ch)) {
+            $mail_log = 'Curl error: ' . curl_error($ch);
+        } else {
+            $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            if ($http_code >= 200 && $http_code < 300) {
+                $mail_log = 'Email enviado via Mailtrap API para ' . $to;
+            } else {
+                $mail_log = 'Mailtrap API retornou HTTP ' . $http_code . ' resposta: ' . substr($resp, 0, 1000);
+            }
+        }
+        curl_close($ch);
+    } else {
+        // Apenas Mailtrap suportado para testes locais; se não houver token, não envia.
+        $mail_log = 'MAILTRAP_API_TOKEN não definido — email não enviado.';
+    }
+
     echo json_encode([
         'success' => true,
         'novo_status' => $novo_status,
         'total_imagens' => $total,
-        'entregues' => $entregues
+        'entregues' => $entregues,
+        'mail_log' => $mail_log ?? 'mail não executado'
     ]);
 } catch (Exception $e) {
     $conn->rollback();

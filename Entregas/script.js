@@ -113,16 +113,31 @@ document.addEventListener('DOMContentLoaded', () => {
             // salvar dados para uso por outros handlers (ex: adicionar imagem por id)
             entregaDados = data;
             modalPrazo.textContent = formatarData(data.data_prevista) || '-';
-            modalProgresso.textContent = `${data.itens.filter(i => i.nome_substatus === 'RVW' || i.nome_substatus === 'DRV').length} / ${data.itens.length} finalizadas`;
+            // Use the same delivered logic as the list below to compute finalized count
+            const finalizedCount = data.itens.filter(i => {
+                const statusStr = (i.status || '').toString().trim();
+                const substatus = (i.nome_substatus || '').toString().trim().toUpperCase();
+                const isPendente = (statusStr === 'Entrega pendente') || (substatus === 'RVW') || (substatus === 'DRV');
+                const entregue = !isPendente && (/^entrega/i.test(statusStr) || /^entregue/i.test(statusStr));
+                return entregue;
+            }).length;
+            modalProgresso.textContent = `${finalizedCount} / ${data.itens.length} finalizadas`;
 
             modalImagens.innerHTML = '';
             data.itens.forEach(img => {
                 const div = document.createElement('div');
                 div.classList.add('modal-imagem-item');
 
-                const finalizada = (img.nome_substatus === 'RVW' || img.nome_substatus === 'DRV');
-                const entregue = /^entrega/i.test(img.status) || /^entregue/i.test(img.status);
-                // regex para pegar status que começam com "Entrega" ou "Entregue" (sem case sensitive)
+                // Marcar como Pendente quando o item está com status 'Entrega pendente'
+                // OU quando o substatus da imagem é 'RVW' ou 'DRV'.
+                // Nesses casos NÃO deve ser tratado como 'Entregue'.
+                const statusStr = (img.status || '').toString().trim();
+                const substatusStr = (img.nome_substatus || '').toString().trim().toUpperCase();
+
+                const isPendente = (statusStr === 'Entrega pendente') || (substatusStr === 'RVW') || (substatusStr === 'DRV');
+
+                // Considera entregue apenas quando não for um dos casos pendentes e o status indicar entrega
+                const entregue = !isPendente && (/^entrega/i.test(statusStr) || /^entregue/i.test(statusStr));
 
                 // Se estiver entregue, checkbox vem marcado e desabilitado
                 const checked = entregue ? 'checked' : '';
@@ -133,7 +148,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <label for="img-${img.id}" class="imagem_nome">
                     ${img.nome}
                 </label>
-                <span class="entregue">${entregue ? '📦 Entregue' : finalizada ? '✅ Finalizada' : '⏳ Em andamento'}</span>
+                <span class="entregue">${entregue ? '📦 Entregue' : isPendente ? '✅ Pendente' : '⏳ Em andamento'}</span>
             `;
                 modalImagens.appendChild(div);
             });

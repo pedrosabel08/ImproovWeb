@@ -12,10 +12,13 @@ $sql = "SELECT
     s.nome_status as nome_etapa,
     o.nomenclatura,
     COUNT(ei.id) AS total_itens,
-    SUM(CASE WHEN ei.status <> 'Pendente' THEN 1 ELSE 0 END) AS entregues_count,
-    (SUM(CASE WHEN ei.status <> 'Pendente' THEN 1 ELSE 0 END) / GREATEST(COUNT(ei.id),1)) * 100 AS pct_entregue,
-    -- Conta imagens que estão finalizadas (substatus RVW/DRV) e ainda não marcadas como entregues
-    SUM(CASE WHEN ss.nome_substatus IN ('RVW','DRV') AND ei.status NOT LIKE 'Entregue%' AND ei.status NOT LIKE 'Entrega%' THEN 1 ELSE 0 END) AS ready_count
+    SUM(CASE WHEN ei.status NOT IN ('Pendente', 'Entrega pendente') THEN 1 ELSE 0 END) AS entregues_count,
+    (SUM(CASE WHEN ei.status NOT IN ('Pendente', 'Entrega pendente')  THEN 1 ELSE 0 END) / GREATEST(COUNT(ei.id),1)) * 100 AS pct_entregue,
+    -- Conta imagens que estão finalizadas (substatus RVW/DRV) ou marcadas como 'Entrega pendente',
+    -- mas exclui itens que já têm status de entrega (p.ex. 'Entregue no prazo', 'Entregue com atraso', 'Entrega antecipada')
+    SUM(CASE WHEN (ei.status = 'Entrega pendente' OR ss.nome_substatus IN ('RVW','DRV'))
+                 AND ei.status NOT IN ('Entregue no prazo', 'Entregue com atraso', 'Entrega antecipada')
+                 THEN 1 ELSE 0 END) AS ready_count
 FROM entregas e
 LEFT JOIN entregas_itens ei ON ei.entrega_id = e.id
 LEFT JOIN imagens_cliente_obra i ON ei.imagem_id = i.idimagens_cliente_obra
@@ -23,7 +26,7 @@ LEFT JOIN substatus_imagem ss ON ss.id = i.substatus_id
 JOIN obra o ON e.obra_id = o.idobra
 JOIN status_imagem s ON e.status_id = s.idstatus
 GROUP BY e.id
-ORDER BY e.data_prevista DESC";
+ORDER BY ready_count DESC, e.data_prevista DESC";
 
 $res = $conn->query($sql);
 $out = [];

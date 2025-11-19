@@ -25,7 +25,7 @@ $idusuario = $_SESSION['idusuario'];
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
 
-    <link rel="stylesheet" href="../css/styleSidebar.css">
+    <!-- <link rel="stylesheet" href="../css/styleSidebar.css"> -->
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
     <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
@@ -177,7 +177,7 @@ $idusuario = $_SESSION['idusuario'];
 
 
     <script src="script2.js"></script>
-    <script src="../script/sidebar.js"></script>
+    <!-- <script src="../script/sidebar.js"></script> -->
 
 </body>
 

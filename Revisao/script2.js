@@ -1,24 +1,120 @@
+// ================= NOVO FLUXO INICIAL =================
+// Ao carregar a página buscamos entregas da obra fixa (74) e agrupamos versões por imagem.
+// Mostramos automaticamente a primeira imagem (última versão) e thumbnails das versões.
 document.addEventListener("DOMContentLoaded", function () {
-    const params = new URLSearchParams(window.location.search);
-    const obraNome = params.get("obra_nome");
-
-    // Nesta tela 2 o teste é sempre na obra id 57.
-    // Se vier o nome pela URL, usamos; caso contrário, buscamos a obra de id 57
-    fetchObrasETarefas().then(() => {
-        if (obraNome) {
-            filtrarTarefasPorObra(obraNome);
-        } else {
-            // Descobre o nome da obra cujo idobra = 57
-            const tarefaObra57 = dadosTarefas.find(t => parseInt(t.idobra) === 57);
-            if (tarefaObra57) {
-                filtrarTarefasPorObra(tarefaObra57.nome_obra);
-            } else {
-                // fallback: mantém comportamento antigo
-                exibirCardsDeObra(dadosTarefas);
-            }
-        }
-    });
+    carregarImagensAgrupadas();
 });
+
+let imagensAgrupadasGlobal = []; // [{ imagem_id, preview_url, versoes:[...], totalVersoes }]
+
+async function carregarImagensAgrupadas() {
+    try {
+        const dados = await fetchEntregasObraFixa(); // { entregas: [...] }
+        imagensAgrupadasGlobal = agruparPorImagem(dados.entregas || []);
+        exibirGridImagens(imagensAgrupadasGlobal);
+        if (imagensAgrupadasGlobal.length > 0) {
+            historyAJAX(imagensAgrupadasGlobal[0].imagem_id);
+        }
+    } catch (e) {
+        console.error('Erro ao carregar imagens agrupadas:', e);
+    }
+}
+
+async function fetchEntregasObraFixa() {
+    const r = await fetch('atualizar2.php');
+    if (!r.ok) throw new Error('Falha ao buscar entregas');
+    return await r.json();
+}
+
+function agruparPorImagem(entregas) {
+    const mapa = new Map();
+    entregas.forEach(ent => {
+        const identrega = ent.identrega;
+        const nomeEtapa = ent.nome_etapa;
+        (ent.itens || []).forEach(item => {
+            const imagemId = item.imagem_id;
+            if (!imagemId) return;
+            if (!mapa.has(imagemId)) {
+                mapa.set(imagemId, {
+                    imagem_id: imagemId,
+                    versoes: [],
+                    funcao_imagem_ids: new Set(),
+                    nome_funcao: item.nome_funcao || '',
+                    nome_colaborador: item.nome_colaborador || '',
+                    nome_status_imagem: item.nome_status_imagem || ''
+                });
+            }
+            const grupo = mapa.get(imagemId);
+            grupo.versoes.push({
+                entrega_id: identrega,
+                nome_etapa: nomeEtapa,
+                historico_imagem_id: item.historico_imagem_id,
+                nome_arquivo: item.nome_arquivo,
+                imagem_nome: item.imagem_nome,
+                indice_envio: item.indice_envio || 0,
+                data_envio: item.data_envio,
+                imagem_url: item.imagem,
+                idfuncao_imagem: item.idfuncao_imagem,
+                colaborador_id: item.colaborador_id,
+                nome_funcao: item.nome_funcao
+            });
+            if (item.idfuncao_imagem) grupo.funcao_imagem_ids.add(item.idfuncao_imagem);
+        });
+    });
+    const resultado = [];
+    mapa.forEach(grupo => {
+        grupo.versoes.sort((a, b) => {
+            const da = a.data_envio ? new Date(a.data_envio) : null;
+            const db = b.data_envio ? new Date(b.data_envio) : null;
+            if (da && db && da.getTime() !== db.getTime()) return db - da;
+            return b.entrega_id - a.entrega_id;
+        });
+        grupo.preview_url = (grupo.versoes[0] && grupo.versoes[0].imagem_url) || null;
+        grupo.totalVersoes = grupo.versoes.length;
+        resultado.push(grupo);
+    });
+    return resultado;
+}
+
+function exibirGridImagens(imagens) {
+    const container = document.querySelector('.containerObra');
+    if (!container) return;
+    container.innerHTML = '';
+    container.style.display = 'grid';
+    container.style.gridTemplateColumns = 'repeat(auto-fill, minmax(220px, 1fr))';
+    container.style.gap = '16px';
+    if (imagens.length === 0) {
+        container.innerHTML = '<p style="text-align:center;color:#888;">Nenhuma imagem encontrada.</p>';
+        return;
+    }
+    imagens.forEach(img => {
+        const card = document.createElement('div');
+        card.className = 'imagem-card';
+        card.style.cursor = 'pointer';
+        card.style.border = '1px solid #ddd';
+        card.style.borderRadius = '8px';
+        card.style.overflow = 'hidden';
+        card.style.background = '#fff';
+        card.style.boxShadow = '0 2px 4px rgba(0,0,0,0.08)';
+        card.innerHTML = `
+          <div class="imagem-thumb" style="height:150px;display:flex;align-items:center;justify-content:center;background:#f8f8f8;">
+            ${img.preview_url ? `<img src="${img.preview_url}" alt="Imagem ${img.imagem_id}" style="max-width:100%;max-height:100%;object-fit:contain;">` : '<span style="color:#aaa;font-size:12px;">Sem preview</span>'}
+          </div>
+          <div style="padding:8px 10px;">
+            <div style="font-size:13px;font-weight:600;">Imagem #${img.imagem_id}</div>
+            <div style="font-size:12px;color:#555;">${img.nome_funcao || 'Função não definida'}</div>
+            <div style="font-size:11px;color:#777;">${img.nome_colaborador || ''}</div>
+            <div style="margin-top:6px;font-size:11px;color:#444;">Versões: ${img.totalVersoes}</div>
+          </div>
+        `;
+        card.addEventListener('click', () => historyAJAX(img.imagem_id));
+        container.appendChild(card);
+    });
+}
+
+// Modal de versões removido (uso direto)
+function abrirModalVersoes() { /* placeholder */ }
+// ================= FIM NOVO FLUXO INICIAL =================
 
 function revisarTarefa(idfuncao_imagem, nome_colaborador, imagem_nome, nome_funcao, colaborador_id, tipoRevisao) {
     const idcolaborador = localStorage.getItem('idcolaborador');
@@ -57,11 +153,8 @@ function revisarTarefa(idfuncao_imagem, nome_colaborador, imagem_nome, nome_func
                 return response.json();
             })
             .then(data => {
-                console.log("Resposta do servidor:", data);
-
                 let message = "";
                 let bgColor = "";
-
                 switch (tipoRevisao) {
                     case "aprovado":
                         message = "Tarefa aprovada com sucesso!";
@@ -76,7 +169,6 @@ function revisarTarefa(idfuncao_imagem, nome_colaborador, imagem_nome, nome_func
                         bgColor = "blue";
                         break;
                 }
-
                 Toastify({
                     text: data.success ? message : "Falha ao atualizar a tarefa: " + data.message,
                     duration: 3000,
@@ -85,12 +177,6 @@ function revisarTarefa(idfuncao_imagem, nome_colaborador, imagem_nome, nome_func
                     gravity: "top",
                     position: "right"
                 }).showToast();
-
-                if (data.success) {
-                    const obraSelecionada = document.getElementById('filtro_obra').value;
-
-                    filtrarTarefasPorObra(obraSelecionada);
-                }
             })
             .catch(error => {
                 console.error("Erro:", error);
@@ -104,19 +190,14 @@ function revisarTarefa(idfuncao_imagem, nome_colaborador, imagem_nome, nome_func
                 }).showToast();
             });
     }
-
     event.stopPropagation();
 }
 
-// Função para alternar a visibilidade dos detalhes da tarefa
-function toggleTaskDetails(taskElement) {
-    taskElement.classList.toggle('open');
-}
+function toggleTaskDetails(taskElement) { taskElement.classList.toggle('open'); }
 
 let dadosTarefas = [];
 let todasAsObras = new Set();
 let todosOsColaboradores = new Set();
-// Nesta tela 2 não usamos filtro de função global, pois vamos agrupar por status
 let todasAsFuncoes = new Set();
 let funcaoGlobalSelecionada = null;
 
@@ -124,441 +205,326 @@ async function fetchObrasETarefas() {
     try {
         const response = await fetch(`atualizar2.php`);
         if (!response.ok) throw new Error("Erro ao buscar tarefas");
-
-        dadosTarefas = await response.json();
-
-        todasAsObras = new Set(dadosTarefas.map(t => t.nome_obra));
-        todosOsColaboradores = new Set(dadosTarefas.map(t => t.nome_colaborador));
-        todasAsFuncoes = new Set(dadosTarefas.map(t => t.nome_funcao)); // ou o nome do campo correspondente
-
-        // Nesta tela 2 não exibimos o select de função superior
+        const json = await response.json();
+        const plano = [];
+        if (json && json.entregas) {
+            json.entregas.forEach(ent => {
+                (ent.itens || []).forEach(item => {
+                    plano.push({
+                        nome_obra: 'Obra 74',
+                        imagem: item.imagem,
+                        imagem_id: item.imagem_id,
+                        idfuncao_imagem: item.idfuncao_imagem,
+                        nome_colaborador: item.nome_colaborador,
+                        nome_funcao: item.nome_funcao,
+                        nome_status: item.nome_status_imagem,
+                        data_aprovacao: item.data_envio,
+                        nomenclatura: `Imagem ${item.imagem_id}`,
+                        status_novo: item.nome_status_imagem
+                    });
+                });
+            });
+        }
+        dadosTarefas = plano;
+        todasAsObras = new Set(plano.map(t => t.nome_obra));
+        todosOsColaboradores = new Set(plano.map(t => t.nome_colaborador));
+        todasAsFuncoes = new Set(plano.map(t => t.nome_funcao));
         const filtroSelect = document.getElementById('filtroFuncao');
         if (filtroSelect) filtroSelect.style.display = 'none';
-
     } catch (error) {
         console.error(error);
     }
 }
 
-async function buscarMencoesDoUsuario() {
-    const response = await fetch('buscar_mencoes.php');
-    return await response.json();
-}
+async function buscarMencoesDoUsuario() { const r = await fetch('buscar_mencoes.php'); return await r.json(); }
 
 async function exibirCardsDeObra(tarefas) {
     const mencoes = await buscarMencoesDoUsuario();
-
     if (mencoes.total_mencoes > 0) {
         Swal.fire({
             title: '📣 Você foi mencionado!',
             text: `Há ${mencoes.total_mencoes} menção(ões) nas tarefas.`,
-            icon: 'info',
-            confirmButtonText: 'Ver cards'
+            icon: 'info', confirmButtonText: 'Ver cards'
         });
     }
-
     const container = document.querySelector('.containerObra');
     container.innerHTML = '';
-
     const obrasMap = new Map();
-    tarefas.forEach(tarefa => {
-        if (!obrasMap.has(tarefa.nome_obra)) {
-            obrasMap.set(tarefa.nome_obra, []);
-        }
-        obrasMap.get(tarefa.nome_obra).push(tarefa);
-    });
-
+    tarefas.forEach(t => { if (!obrasMap.has(t.nome_obra)) obrasMap.set(t.nome_obra, []); obrasMap.get(t.nome_obra).push(t); });
     obrasMap.forEach((tarefasDaObra, nome_obra) => {
         tarefasDaObra.sort((a, b) => new Date(b.data_aprovacao) - new Date(a.data_aprovacao));
         const tarefaComImagem = tarefasDaObra.find(t => t.imagem);
         const imagemPreview = tarefaComImagem ? `https://improov.com.br/sistema/${tarefaComImagem.imagem}` : '../assets/logo.jpg';
-
         const mencoesNaObra = mencoes.mencoes_por_obra[nome_obra] || 0;
-
-        const card = document.createElement('div');
-        card.classList.add('obra-card');
-
+        const card = document.createElement('div'); card.classList.add('obra-card');
         card.innerHTML = `
-        ${mencoesNaObra > 0 ? `<div class="mencao-badge">${mencoesNaObra}</div>` : ''}
-        <div class="obra-img-preview">
-            <img src="${imagemPreview}" alt="Imagem da obra ${nome_obra}">
-        </div>
-        <div class="obra-info">
-            <h3>${tarefasDaObra[0].nomenclatura}</h3>
-            <p>${tarefasDaObra.length} aprovações</p>
-        </div>
-    `;
-
-        card.addEventListener('click', () => {
-            filtrarTarefasPorObra(nome_obra);
-        });
-
+          ${mencoesNaObra > 0 ? `<div class="mencao-badge">${mencoesNaObra}</div>` : ''}
+          <div class="obra-img-preview"><img src="${imagemPreview}" alt="Imagem da obra ${nome_obra}"></div>
+          <div class="obra-info"><h3>${tarefasDaObra[0].nomenclatura}</h3><p>${tarefasDaObra.length} aprovações</p></div>
+        `;
+        card.addEventListener('click', () => filtrarTarefasPorObra(nome_obra));
         container.appendChild(card);
     });
 }
 
 function filtrarTarefasPorObra(obraSelecionada) {
-
     document.getElementById('filtro_obra').value = obraSelecionada;
-
-    // Filtra todas as tarefas da obra
     const tarefasDaObra = dadosTarefas.filter(t => t.nome_obra === obraSelecionada);
-
-    // Atualiza os filtros dinamicamente com base nessa obra (apenas colaborador)
     atualizarFiltrosDinamicos(tarefasDaObra);
-
     const colaboradorSelecionado = document.getElementById('filtro_colaborador').value;
-
     if (tarefasDaObra.length > 0) {
         const nomeObra = tarefasDaObra[0].nome_obra;
         const nomenclatura = tarefasDaObra[0].nomenclatura;
-
-        const obraNavLinks = document.querySelectorAll('.obra_nav');
-
-        obraNavLinks.forEach(link => {
-            link.href = `https://improov.com.br/sistema/Revisao/index2.php?obra_nome=${nomeObra}`;
-            link.textContent = nomenclatura;
-        });
-
+        document.querySelectorAll('.obra_nav').forEach(link => { link.href = `https://improov.com.br/sistema/Revisao/index2.php?obra_nome=${nomeObra}`; link.textContent = nomenclatura; });
     }
-
-    // Aplica apenas filtro de colaborador
-    const tarefasFiltradas = tarefasDaObra.filter(t => {
-        const matchColaborador = !colaboradorSelecionado || t.nome_colaborador === colaboradorSelecionado;
-        return matchColaborador;
-    });
-
-    // Exibe as tarefas filtradas
+    const tarefasFiltradas = tarefasDaObra.filter(t => !colaboradorSelecionado || t.nome_colaborador === colaboradorSelecionado);
     exibirTarefas(tarefasFiltradas, tarefasDaObra);
 }
 
 function atualizarSelectColaborador(tarefas) {
     const selectColaborador = document.getElementById('filtro_colaborador');
     const valorAnterior = selectColaborador.value;
-
     const colaboradores = [...new Set(tarefas.map(t => t.nome_colaborador))];
-
     selectColaborador.innerHTML = '<option value="">Todos</option>';
-    colaboradores.forEach(colab => {
-        const option = document.createElement('option');
-        option.value = colab;
-        option.textContent = colab;
-        selectColaborador.appendChild(option);
-    });
-
-    if ([...selectColaborador.options].some(o => o.value === valorAnterior)) {
-        selectColaborador.value = valorAnterior;
-    }
+    colaboradores.forEach(colab => { const option = document.createElement('option'); option.value = colab; option.textContent = colab; selectColaborador.appendChild(option); });
+    if ([...selectColaborador.options].some(o => o.value === valorAnterior)) selectColaborador.value = valorAnterior;
 }
 
-// Não usamos mais o select de função nesta tela, mas mantemos a função vazia
-function atualizarSelectFuncao(tarefas) { }
+function atualizarSelectFuncao() { }
 
-// Eventos para os filtros
 function atualizarFiltrosDinamicos(tarefas) {
     const selectColaborador = document.getElementById('filtro_colaborador');
-
     const valorAnteriorColaborador = selectColaborador.value;
-
     const colaboradores = [...new Set(tarefas.map(t => t.nome_colaborador))];
-
-    // Atualiza select de colaborador
     selectColaborador.innerHTML = '<option value="">Todos</option>';
-    colaboradores.forEach(colaborador => {
-        const option = document.createElement('option');
-        option.value = colaborador;
-        option.textContent = colaborador;
-        selectColaborador.appendChild(option);
-    });
-
-    if ([...selectColaborador.options].some(o => o.value === valorAnteriorColaborador)) {
-        selectColaborador.value = valorAnteriorColaborador;
-    }
+    colaboradores.forEach(col => { const o = document.createElement('option'); o.value = col; o.textContent = col; selectColaborador.appendChild(o); });
+    if ([...selectColaborador.options].some(o => o.value === valorAnteriorColaborador)) selectColaborador.value = valorAnteriorColaborador;
 }
 
 document.getElementById('filtro_colaborador').addEventListener('change', () => {
     const obraSelecionada = document.getElementById('filtro_obra').value;
     const colaboradorSelecionado = document.getElementById('filtro_colaborador').value;
-
     const tarefasDaObra = dadosTarefas.filter(t => t.nome_obra === obraSelecionada);
-    const tarefasFiltradas = tarefasDaObra.filter(t =>
-        !colaboradorSelecionado || t.nome_colaborador === colaboradorSelecionado
-    );
-
+    const tarefasFiltradas = tarefasDaObra.filter(t => !colaboradorSelecionado || t.nome_colaborador === colaboradorSelecionado);
     atualizarSelectColaborador(tarefasFiltradas);
-
     filtrarTarefasPorObra(obraSelecionada);
 });
 
-// Função para exibir as tarefas e abastecer os filtros
 function exibirTarefas(tarefas, tarefasCompletas) {
     const container = document.querySelector('.containerObra');
-    container.style.display = 'none'; // Esconde o container de obras
-
-    const containerMain = document.querySelector('.container-main');
-    // containerMain.classList.add('expanded');
-
-    const filtroFuncao = document.getElementById('filtroFuncao');
-    filtroFuncao.style.display = 'none'; // Esconde o filtro de função
-
+    container.style.display = 'none';
+    document.getElementById('filtroFuncao').style.display = 'none';
     const tarefasObra = document.querySelector('.tarefasObra');
     tarefasObra.classList.remove('hidden');
-
     const tarefasImagensObra = document.querySelector('.tarefasImagensObra');
-
-    tarefasImagensObra.innerHTML = ''; // Limpa as tarefas anteriores
-
-    // Nesta tela, o agrupamento visual principal fica na sidebar (por status)
+    tarefasImagensObra.innerHTML = '';
     exibirSidebarTabulator(tarefasCompletas);
-
     if (tarefas.length > 0) {
         tarefas.forEach(tarefa => {
             const taskItem = document.createElement('div');
             taskItem.classList.add('task-item');
-            taskItem.setAttribute('onclick', `historyAJAX(${tarefa.idfuncao_imagem})`);
-
+            taskItem.setAttribute('onclick', `historyAJAX(${tarefa.imagem_id})`);
             const imagemPreview = tarefa.imagem ? `https://improov.com.br/sistema/${tarefa.imagem}` : '../assets/logo.jpg';
-
             const color = tarefa.status_novo === 'Em aprovação' ? '#000a59' : tarefa.status_novo === 'Ajuste' ? '#590000' : tarefa.status_novo === 'Aprovado com ajustes' ? '#2e0059ff' : 'transparent';
             const bgColor = tarefa.status_novo === 'Em aprovação' ? '#90c2ff' : tarefa.status_novo === 'Ajuste' ? '#ff5050' : tarefa.status_novo === 'Aprovado com ajustes' ? '#ae90ffff' : 'transparent';
             taskItem.innerHTML = `
-                <div class="task-info">
-                  <div class="image-wrapper">
-                     <img src="${imagemPreview}" alt="Imagem da obra ${tarefa.nome_obra}" class="task-image" onerror="this.onerror=null;this.src='../assets/logo.jpg';">
-                </div>
-                    <h3 class="nome_funcao">${tarefa.nome_status || tarefa.status_novo}</h3><span class="colaborador">${tarefa.nome_colaborador}</span>
-                    <p class="imagem_nome" data-obra="${tarefa.nome_obra}">${tarefa.imagem_nome}</p>
-                    <p class="data_aprovacao">${formatarDataHora(tarefa.data_aprovacao)}</p>       
-                    <p id="status_funcao" style="color: ${color}; background-color: ${bgColor}">${tarefa.nome_status || tarefa.status_novo}</p>
-                </div>
-            `;
-
+              <div class="task-info">
+                <div class="image-wrapper"><img src="${imagemPreview}" alt="Imagem da obra ${tarefa.nome_obra}" class="task-image" onerror="this.onerror=null;this.src='../assets/logo.jpg';"></div>
+                <h3 class="nome_funcao">${tarefa.nome_status || tarefa.status_novo}</h3><span class="colaborador">${tarefa.nome_colaborador}</span>
+                <p class="imagem_nome" data-obra="${tarefa.nome_obra}">${tarefa.imagem_nome}</p>
+                <p class="data_aprovacao">${formatarDataHora(tarefa.data_aprovacao)}</p>
+                <p id="status_funcao" style="color:${color};background-color:${bgColor}">${tarefa.nome_status || tarefa.status_novo}</p>
+              </div>`;
             tarefasImagensObra.appendChild(taskItem);
         });
     } else {
-        container.innerHTML = '<p style="text-align: center; color: #888;">Não há tarefas de revisão no momento.</p>';
+        container.innerHTML = '<p style="text-align:center;color:#888;">Não há tarefas de revisão no momento.</p>';
     }
 }
 
-function formatarData(data) {
-    const [ano, mes, dia] = data.split('-'); // Divide a string no formato 'YYYY-MM-DD'
-    return `${dia}/${mes}/${ano}`; // Retorna o formato 'DD/MM/YYYY'
+function formatarData(data) { const [ano, mes, dia] = data.split('-'); return `${dia}/${mes}/${ano}`; }
+function formatarDataHora(data) { const d = new Date(data); const dia = String(d.getDate()).padStart(2, '0'); const mes = String(d.getMonth() + 1).padStart(2, '0'); const ano = d.getFullYear(); const h = String(d.getHours()).padStart(2, '0'); const m = String(d.getMinutes()).padStart(2, '0'); return `${dia}/${mes}/${ano} ${h}:${m}`; }
+
+const idusuario = parseInt(localStorage.getItem('idusuario'));
+let funcaoImagemId = null;
+let ap_imagem_id = null;
+let versoesAtuaisDaImagem = []; // armazenar versões da imagem atualmente aberta
+
+function construirLabelVersao(v) {
+    console.log(v);
+    const envio = (v.indice_envio !== undefined && v.indice_envio !== null) ? `${v.nome_etapa}` : 'Envio ?';
+    const data = v.data_envio ? new Date(v.data_envio) : null;
+    const dataFmt = data ? `${String(data.getDate()).padStart(2,'0')}/${String(data.getMonth()+1).padStart(2,'0')}/${data.getFullYear()}` : '';
+    return `${envio}`;
 }
 
-function formatarDataHora(data) {
-    const date = new Date(data); // Cria um objeto Date a partir da string datetime
+function historyAJAX(imagemId) {
+    const grupo = imagensAgrupadasGlobal.find(g => g.imagem_id == imagemId);
+    if (!grupo) return;
 
-    const dia = String(date.getDate()).padStart(2, '0'); // Pega o dia e formata com 2 dígitos
-    const mes = String(date.getMonth() + 1).padStart(2, '0'); // Pega o mês e formata com 2 dígitos (mes começa do 0)
-    const ano = date.getFullYear(); // Pega o ano
-    const horas = String(date.getHours()).padStart(2, '0'); // Pega a hora e formata com 2 dígitos
-    const minutos = String(date.getMinutes()).padStart(2, '0'); // Pega os minutos e formata com 2 dígitos
+    const main = document.querySelector('.main');
+    if (main) main.classList.add('hidden');
+    const container_aprovacao = document.querySelector('.container-aprovacao');
+    if (container_aprovacao) container_aprovacao.classList.remove('hidden');
 
-    return `${dia}/${mes}/${ano} ${horas}:${minutos}`; // Retorna o formato desejado
+    const imageContainer = document.getElementById('imagens');
+    if (imageContainer) imageContainer.innerHTML = '';
+
+    const indiceSelect = document.getElementById('indiceSelect');
+    if (indiceSelect) indiceSelect.style.display = 'none';
+
+    // 1) Carrega a imagem atual (última versão deste grupo)
+    const versoesOrdenadas = (grupo.versoes || []).slice().sort((a, b) => {
+        const da = a.data_envio ? new Date(a.data_envio) : 0;
+        const db = b.data_envio ? new Date(b.data_envio) : 0;
+        if (db - da !== 0) return db - da;
+        return (b.entrega_id || 0) - (a.entrega_id || 0);
+    });
+
+    let entregaReferencia = null;
+    if (versoesOrdenadas[0]) {
+        const v0 = versoesOrdenadas[0];
+        entregaReferencia = v0.entrega_id || null;
+        mostrarImagemCompleta(
+            v0.imagem_url,
+            v0.historico_imagem_id,
+            v0.imagem_nome || ''
+        );
+    }
+
+    // Armazena versões correntes e constrói/select de versões
+    versoesAtuaisDaImagem = versoesOrdenadas;
+    const selectVersoes = document.getElementById('indiceSelect');
+    if (selectVersoes) {
+        selectVersoes.innerHTML = '';
+        // Mostrar novamente o select
+        selectVersoes.style.display = 'block';
+        versoesOrdenadas.forEach((v, idx) => {
+            const opt = document.createElement('option');
+            opt.value = v.historico_imagem_id;
+            opt.textContent = idx === 0 ? construirLabelVersao(v) : construirLabelVersao(v);
+            selectVersoes.appendChild(opt);
+        });
+        // Evento de mudança: mostrar versão selecionada
+        selectVersoes.onchange = function () {
+            const idHist = this.value;
+            const versao = versoesAtuaisDaImagem.find(v => String(v.historico_imagem_id) === String(idHist));
+            if (versao) {
+                mostrarImagemCompleta(
+                    versao.imagem_url,
+                    versao.historico_imagem_id,
+                    versao.imagem_nome || ''
+                );
+            }
+        };
+    }
+
+    // 2) Preenche a sidebar ESQUERDA com TODAS as imagens da mesma entrega
+    //    (ex.: outras imagens 1871, 1872, 1873 que compõem a entrega)
+    if (imageContainer) {
+        // Filtra grupos que possuam ao menos uma versão com o mesmo entrega_id
+        let gruposDaEntrega = imagensAgrupadasGlobal;
+        if (entregaReferencia !== null) {
+            gruposDaEntrega = imagensAgrupadasGlobal.filter(gr =>
+                (gr.versoes || []).some(v => (v.entrega_id || null) === entregaReferencia)
+            );
+        }
+
+        // Ordena por imagem_id para uma navegação previsível
+        gruposDaEntrega.sort((a, b) => Number(a.imagem_id) - Number(b.imagem_id));
+
+        gruposDaEntrega.forEach(gr => {
+            // Última versão geral do grupo (já estão ordenadas em agruparPorImagem)
+            const ultimaVersao = (gr.versoes && gr.versoes[0]) ? gr.versoes[0] : null;
+            if (!ultimaVersao) return;
+
+            const wrapper = document.createElement('div');
+            wrapper.className = 'imageWrapper';
+
+            const imgThumb = document.createElement('img');
+            imgThumb.src = ultimaVersao.imagem_url;
+            imgThumb.alt = ultimaVersao.nome_arquivo || ultimaVersao.imagem_url;
+            imgThumb.className = 'image';
+            imgThumb.setAttribute('data-id', ultimaVersao.historico_imagem_id);
+            imgThumb.addEventListener('click', () => {
+                // Recarrega o painel principal com esta imagem (sempre última versão)
+                historyAJAX(gr.imagem_id);
+            });
+            wrapper.appendChild(imgThumb);
+
+            const caption = document.createElement('div');
+            caption.className = 'thumb-caption';
+            caption.textContent = (ultimaVersao.imagem_nome || `Imagem ${gr.imagem_id}`);
+            wrapper.appendChild(caption);
+
+            // Destaque visual do item atualmente aberto
+            if (gr.imagem_id == imagemId) {
+                wrapper.classList.add('selected');
+            }
+
+            imageContainer.appendChild(wrapper);
+        });
+    }
 }
 
-
-
-const modalComment = document.getElementById('modalComment');
-
-const idusuario = parseInt(localStorage.getItem('idusuario')); // Obtém o idusuario do localStorage
-
-let funcaoImagemId = null; // armazenado globalmente
-
-
-function historyAJAX(idfuncao_imagem) {
-    // Nesta tela 2 usamos historico2.php para buscar todas as imagens do mesmo status
-    fetch(`historico2.php?ajid=${idfuncao_imagem}`)
-        .then(response => response.json())
-        .then(response => {
-            console.log("Funcao Imagem:", idfuncao_imagem);
-            const main = document.querySelector('.main');
-            main.classList.add('hidden');
-
-            const comentariosDiv = document.querySelector(".comentarios");
-            comentariosDiv.innerHTML = '';
-
-            const container_aprovacao = document.querySelector('.container-aprovacao');
-            container_aprovacao.classList.remove('hidden');
-
-            const sidebarDiv = document.getElementById('sidebarTabulator');
-            sidebarDiv.classList.remove('sidebar-expanded')
-            sidebarDiv.classList.add('sidebar-min')
-
-            const todasAsListas = sidebarDiv.querySelectorAll('.tarefas-lista');
-
-            // Fecha todos os grupos
-            todasAsListas.forEach(l => {
-                l.style.display = 'none';
-            });
-
-            // Clona e substitui botões para evitar múltiplos event listeners
-            const btnOpen = replaceElementById("submit_decision");
-            const modal = document.getElementById("decisionModal");
-            const btnClose = replaceElementByClass("close");
-            const cancelBtn = replaceElementById("cancelBtn");
-            const btnConfirm = replaceElementById("confirmBtn");
-
-            // Clona e substitui radios
-            document.querySelectorAll('input[name="decision"]').forEach(radio => {
-                const clone = radio.cloneNode(true);
-                radio.replaceWith(clone);
-            });
-            const radios = document.querySelectorAll('input[name="decision"]');
-
-            const { historico, imagens } = response;
-            const item = historico[0];
-
-            if ([1, 2, 9, 20, 3].includes(idusuario)) {
-                btnOpen.addEventListener("click", () => {
-                    modal.classList.remove("hidden");
-                });
-
-                btnClose.addEventListener("click", () => {
-                    modal.classList.add("hidden");
-                    btnConfirm.classList.add("hidden");
-                });
-
-                cancelBtn.addEventListener("click", () => {
-                    modal.classList.add("hidden");
-                    btnConfirm.classList.add("hidden");
-                    radios.forEach(r => r.checked = false);
-                });
-
-                radios.forEach(radio => {
-                    radio.addEventListener("change", () => {
-                        btnConfirm.classList.remove("hidden");
-                    });
-                });
-
-                btnConfirm.addEventListener("click", () => {
-                    const selected = Array.from(radios).find(r => r.checked)?.value;
-                    if (!selected) return;
-
-                    revisarTarefa(
-                        item.funcao_imagem_id,
-                        item.colaborador_nome,
-                        item.imagem_nome,
-                        item.nome_funcao,
-                        item.colaborador_id,
-                        selected
-                    );
-
-                    modal.classList.add("hidden");
-                    btnConfirm.classList.add("hidden");
-                    radios.forEach(r => r.checked = false);
-                });
-            } else {
-                btnOpen.style.display = "none";
-            }
-
-            const titulo = document.getElementById('funcao_nome');
-            // titulo.textContent = `${item.colaborador_nome} - ${item.nome_funcao}`;
-            document.getElementById("imagem_nome").textContent = item.imagem_nome;
-
-            const imageContainer = document.getElementById('imagens');
-            imageContainer.innerHTML = '';
-
-            // Clona e substitui select
-            let indiceSelect = document.getElementById('indiceSelect');
-            indiceSelect = indiceSelect.cloneNode(true);
-            document.getElementById('indiceSelect').replaceWith(indiceSelect);
-            indiceSelect.innerHTML = '';
-
-            // Agora imagens já veio filtrado por status/obra; vamos apenas agrupar por envio
-            const imagensAgrupadas = imagens.reduce((acc, img) => {
-                if (!acc[img.indice_envio]) acc[img.indice_envio] = [];
-                acc[img.indice_envio].push(img);
-                return acc;
-            }, {});
-
-            const indicesOrdenados = Object.keys(imagensAgrupadas).sort((a, b) => b - a);
-
-            if (indicesOrdenados.length === 0) {
-                indiceSelect.style.display = 'none';
-            } else {
-                indiceSelect.style.display = 'block';
-
-                indicesOrdenados.forEach(indice => {
-                    const option = document.createElement('option');
-                    option.value = indice;
-                    option.textContent = `Envio ${indice}`;
-                    indiceSelect.appendChild(option);
-                });
-
-                indiceSelect.value = indicesOrdenados[0];
-                indiceSelect.dispatchEvent(new Event('change'));
-            }
-
-            indiceSelect.addEventListener('change', () => {
-                const indiceSelecionado = indiceSelect.value;
-                imageContainer.innerHTML = '';
-
-                const imagensDoIndice = imagensAgrupadas[indiceSelecionado];
-
-                if (imagensDoIndice && imagensDoIndice.length > 0) {
-                    const maisRecentesOrdenadas = imagensDoIndice.sort((a, b) => new Date(b.data_envio) - new Date(a.data_envio));
-
-                    // A imagem completa (image_wrapper) mostra apenas a selecionada;
-                    // começamos mostrando a mais recente.
-                    const primeira = maisRecentesOrdenadas[0];
-                    if (primeira) {
-                        mostrarImagemCompleta(`https://improov.com.br/sistema/${primeira.imagem}`, primeira.id, primeira.imagem_nome);
-                    }
-
-                    // As thumbs ficam na barra lateral "imagens"; ao clicar troca a imagem completa.
-                    maisRecentesOrdenadas.forEach(img => {
-                        const wrapper = document.createElement('div');
-                        wrapper.className = 'imageWrapper';
-
-                        const imgThumb = document.createElement('img');
-                        imgThumb.src = `https://improov.com.br/sistema/${img.imagem}`;
-                        imgThumb.alt = img.imagem;
-                        imgThumb.className = 'image';
-                        imgThumb.setAttribute('data-id', img.id);
-
-                        imgThumb.addEventListener('click', (e) => {
-                            mostrarImagemCompleta(imgThumb.src, img.id, img.imagem_nome);
-                            // remove selected de outros wrappers
-                            document.querySelectorAll('.imageWrapper.selected').forEach(w => w.classList.remove('selected'));
-                            // adiciona selected ao wrapper pai da thumb
-                            const wrapper = imgThumb.closest('.imageWrapper') || imgThumb.parentElement;
-                            if (wrapper) wrapper.classList.add('selected');
-                        });
-
-                        imgThumb.addEventListener('contextmenu', (event) => {
-                            event.preventDefault();
-                            abrirMenuContexto(event.pageX, event.pageY, img.id, imgThumb.src);
-                        });
-
-                        if (img.has_comments == "1" || img.has_comments === 1) {
-                            const notificationDot = document.createElement('div');
-                            notificationDot.className = 'notification-dot';
-                            notificationDot.textContent = `${img.comment_count}`;
-                            wrapper.appendChild(notificationDot);
-                        }
-
-                        wrapper.appendChild(imgThumb);
-
-                        // legenda embaixo da thumb com o nome do arquivo
-                        const thumbCaption = document.createElement('div');
-                        thumbCaption.className = 'thumb-caption';
-                        thumbCaption.textContent = img.imagem_nome || img.file || '';
-                        wrapper.appendChild(thumbCaption);
-
-                        imageContainer.appendChild(wrapper);
-                    });
-                }
-            });
-
-            if (indicesOrdenados.length > 0) {
-                indiceSelect.value = indicesOrdenados[0];
-                indiceSelect.dispatchEvent(new Event('change'));
-            }
-
-        })
-        .catch(error => console.error("Erro ao buscar dados:", error));
+// Comentários / interação
+let relativeX = 0, relativeY = 0;
+function mostrarImagemCompleta(src, id, imagem_nome = '') {
+    ap_imagem_id = id;
+    const imageWrapper = document.getElementById('image_wrapper');
+    const sidebar = document.querySelector('.sidebar-direita'); if (sidebar) sidebar.style.display = 'flex';
+    while (imageWrapper.firstChild) imageWrapper.removeChild(imageWrapper.firstChild);
+    const container = document.createElement('div'); container.className = 'imagem-completa-container';
+    const imgElement = document.createElement('img'); imgElement.id = 'imagem_atual'; imgElement.src = src; imgElement.style.width = '100%';
+    container.appendChild(imgElement); imageWrapper.appendChild(container); document.querySelector('#imagem_atual').scrollIntoView({ behavior: 'smooth' }); renderComments(id); ajustarNavSelectAoTamanhoDaImagem();
+    imgElement.addEventListener('click', function (event) {
+        if (dragMoved) return; if (![1, 2, 9, 20, 3].includes(idusuario)) return;
+        const rect = imgElement.getBoundingClientRect(); relativeX = ((event.clientX - rect.left) / rect.width) * 100; relativeY = ((event.clientY - rect.top) / rect.height) * 100;
+        document.getElementById('comentarioTexto').value = ''; document.getElementById('imagemComentario').value = ''; document.getElementById('comentarioModal').style.display = 'flex'; mencionadosIds = [];
+    });
+    const nomeSpan = document.getElementById('imagem_nome'); if (nomeSpan) nomeSpan.textContent = imagem_nome;
 }
+
+function ajustarNavSelectAoTamanhoDaImagem() {
+    const img = document.getElementById('imagem_atual'); const navSelect = document.querySelector('.nav-select'); if (img && navSelect) { const apply = () => { navSelect.style.width = img.width + 'px'; }; img.onload = apply; if (img.complete) apply(); }
+}
+
+// (Restante do arquivo original: envio de imagens, comentários, zoom, etc.)
+// ================= NOVO FLUXO INICIAL =================
+// Agora ao carregar a página listamos diretamente TODAS as imagens da obra fixa (74)
+// exibindo sempre a última versão (última entrega) como preview. Versões podem ser
+// (Antiga implementação de historyAJAX removida - agora usamos versão local acima)
+// (nenhum bloco aqui)
+
+// Função para alternar a visibilidade dos detalhes da tarefa
+function toggleTaskDetails(taskElement) {
+    taskElement.classList.toggle('open');
+}
+
+// (Removidos duplicados de variáveis globais já declaradas acima)
+
+// Função antiga mantida para evitar que outras partes que ainda a chamem quebrem.
+// Agora converte a estrutura {entregas:[...]} em uma lista plana compatível com o restante.
+// (Removida duplicata de fetchObrasETarefas)
+
+// (Removida duplicata de buscarMencoesDoUsuario)
+
+// (Removida duplicata de exibirCardsDeObra)
+
+// (Removida duplicata de filtrarTarefasPorObra)
+
+// (Removida duplicata de atualizarSelectColaborador)
+
+// (Removido: duplicata de historyAJAX)
+
+// (Removidas duplicatas de formatarData/formatarDataHora)
+
+
+
+// REMOVIDO: duplicada antiga de historyAJAX baseada em historico2.php
+// const modalComment = document.getElementById('modalComment');
+// const idusuario = parseInt(localStorage.getItem('idusuario')); // Obtém o idusuario do localStorage
+// let funcaoImagemId = null; // armazenado globalmente
 
 // Função utilitária para substituir elementos por ID
 function replaceElementById(id) {
@@ -613,7 +579,7 @@ function exibirSidebarTabulator(tarefas) {
         <img src="${imgSrc}" class="tab-img" data-id="${t.idfuncao_imagem}" alt="${t.imagem_nome}">
         <span>${t.nome_colaborador} - ${t.imagem_nome}</span>
       `;
-            tarefa.addEventListener('click', () => historyAJAX(t.idfuncao_imagem));
+            tarefa.addEventListener('click', () => historyAJAX(t.imagem_id));
             lista.appendChild(tarefa);
         });
 
@@ -794,71 +760,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 });
 
-let ap_imagem_id = null; // Variável para armazenar o ID da imagem atual
-
-// Mostra imagem selecionada no image_wrapper (uma por vez) e abre comentários
-function mostrarImagemCompleta(src, id, imagem_nome = '') {
-    ap_imagem_id = id;
-
-    const imageWrapper = document.getElementById("image_wrapper");
-    const sidebar = document.querySelector(".sidebar-direita");
-    sidebar.style.display = "flex";
-
-    while (imageWrapper.firstChild) {
-        imageWrapper.removeChild(imageWrapper.firstChild);
-    }
-
-    const container = document.createElement('div');
-    container.className = 'imagem-completa-container';
-
-    const imgElement = document.createElement("img");
-    imgElement.id = "imagem_atual";
-    imgElement.src = src;
-    imgElement.style.width = "100%";
-
-    container.appendChild(imgElement);
-    imageWrapper.appendChild(container);
-    document.querySelector('#imagem_atual').scrollIntoView({ behavior: 'smooth' });
-    renderComments(id);
-    ajustarNavSelectAoTamanhoDaImagem();
-
-    imgElement.addEventListener('click', function (event) {
-        if (dragMoved) {
-            return;
-        }
-        if (![1, 2, 9, 20, 3].includes(idusuario)) return;
-
-        const rect = imgElement.getBoundingClientRect();
-        relativeX = ((event.clientX - rect.left) / rect.width) * 100;
-        relativeY = ((event.clientY - rect.top) / rect.height) * 100;
-
-        document.getElementById('comentarioTexto').value = '';
-        document.getElementById('imagemComentario').value = '';
-        document.getElementById('comentarioModal').style.display = 'flex';
-
-        // Limpa os mencionados quando abre um novo comentário
-        mencionadosIds = [];
-    });
-
-    document.getElementById("imagem_nome").textContent = imagem_nome;
-
-
-}
-
-function ajustarNavSelectAoTamanhoDaImagem() {
-    const img = document.getElementById('imagem_atual');
-    const navSelect = document.querySelector('.nav-select');
-    if (img && navSelect) {
-        // Aguarda a imagem carregar para pegar o tamanho real
-        img.onload = function () {
-            navSelect.style.width = img.width + 'px';
-        };
-        // Se a imagem já estiver carregada (cache)
-        if (img.complete) {
-            navSelect.style.width = img.width + 'px';
-        }
-    }
-}
+// (Removidos duplicados de ap_imagem_id e mostrarImagemCompleta)
 
 
 const btnDownload = document.getElementById('btn-download-imagem');

@@ -140,6 +140,70 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $resultadoFinal['success'] = true;
         $resultadoFinal['message'] = 'Tarefa atualizada com sucesso.';
+        // Ao aprovar uma função, atualizar entregas_itens.historico_id com o id correspondente
+        if (in_array($status, ['Aprovado', 'Aprovado com ajustes'])) {
+            if ($imagem_id) {
+                // obtém status_id e obra_id da imagem
+                $stmtImg = $conn->prepare("SELECT status_id, obra_id FROM imagens_cliente_obra WHERE idimagens_cliente_obra = ?");
+                $stmtImg->bind_param("i", $imagem_id);
+                $stmtImg->execute();
+                $stmtImg->bind_result($img_status_id, $img_obra_id);
+                if ($stmtImg->fetch()) {
+                    $stmtImg->close();
+
+                    // encontra a entrega correspondente (escolhe a mais recente)
+                    $stmtEnt = $conn->prepare("SELECT id FROM entregas WHERE status_id = ? AND obra_id = ? ORDER BY id DESC LIMIT 1");
+                    $stmtEnt->bind_param("ii", $img_status_id, $img_obra_id);
+                    $stmtEnt->execute();
+                    $stmtEnt->bind_result($entrega_id_found);
+                    if ($stmtEnt->fetch()) {
+                        $stmtEnt->close();
+
+                        // encontra o item da entrega para essa imagem
+                        $stmtItem = $conn->prepare("SELECT id FROM entregas_itens WHERE entrega_id = ? AND imagem_id = ? LIMIT 1");
+                        $stmtItem->bind_param("ii", $entrega_id_found, $imagem_id);
+                        $stmtItem->execute();
+                        $stmtItem->bind_result($entrega_item_id);
+                        if ($stmtItem->fetch()) {
+                            $stmtItem->close();
+
+                            // obtém id do historico_aprovacoes_imagens pelo idfuncao_imagem (mais recente)
+                            $stmtHistImg = $conn->prepare("SELECT id FROM historico_aprovacoes_imagens WHERE funcao_imagem_id = ? ORDER BY id DESC LIMIT 1");
+                            $stmtHistImg->bind_param("i", $idfuncao_imagem);
+                            $stmtHistImg->execute();
+                            $stmtHistImg->bind_result($hist_img_id);
+                            if ($stmtHistImg->fetch()) {
+                                $stmtHistImg->close();
+
+                                // atualiza entregas_itens.historico_id
+                                $stmtUpd = $conn->prepare("UPDATE entregas_itens SET historico_id = ?, status = 'Entrega pendente' WHERE id = ?");
+                                $stmtUpd->bind_param("ii", $hist_img_id, $entrega_item_id);
+                                if ($stmtUpd->execute()) {
+                                    $resultadoFinal['logs'][] = "entregas_itens id=$entrega_item_id atualizado com historico_id=$hist_img_id.";
+                                } else {
+                                    $resultadoFinal['logs'][] = "Falha ao atualizar entregas_itens id=$entrega_item_id.";
+                                }
+                                $stmtUpd->close();
+                            } else {
+                                $stmtHistImg->close();
+                                $resultadoFinal['logs'][] = "historico_aprovacoes_imagens para funcao_imagem_id=$idfuncao_imagem não encontrado.";
+                            }
+                        } else {
+                            $stmtItem->close();
+                            $resultadoFinal['logs'][] = "entregas_itens para entrega_id=$entrega_id_found imagem_id=$imagem_id não encontrado.";
+                        }
+                    } else {
+                        $stmtEnt->close();
+                        $resultadoFinal['logs'][] = "entrega com status_id=$img_status_id e obra_id=$img_obra_id não encontrada.";
+                    }
+                } else {
+                    $stmtImg->close();
+                    $resultadoFinal['logs'][] = "imagem id=$imagem_id não encontrada na tabela imagens_cliente_obra.";
+                }
+            } else {
+                $resultadoFinal['logs'][] = "imagem_id não fornecido; pulando atualização de entregas_itens.";
+            }
+        }
     } else {
         $resultadoFinal['success'] = false;
         $resultadoFinal['message'] = 'Erro ao atualizar tarefa.';
@@ -316,7 +380,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $normalizedCandidates = array_map('normalize_name', $candidates);
 
             // add debug log of what we're comparing (only a few entries to avoid huge logs)
-            $resultadoFinal['logs'][] = 'Checando membro Slack: id=' . ($member['id'] ?? 'n/a') . ' nomes=[' . implode(',', array_slice($candidates,0,3)) . ']';
+            $resultadoFinal['logs'][] = 'Checando membro Slack: id=' . ($member['id'] ?? 'n/a') . ' nomes=[' . implode(',', array_slice($candidates, 0, 3)) . ']';
 
             // compare normalized versions and collect matches (do not stop at first)
             foreach ($normalizedTargets as $t) {
@@ -349,7 +413,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $matchedTargets = array_values(array_unique($matchedTargets));
 
-        $unmatchedTargets = array_filter($normalizedTargets, function($t) use ($matchedTargets) {
+        $unmatchedTargets = array_filter($normalizedTargets, function ($t) use ($matchedTargets) {
             return $t !== '' && !in_array($t, $matchedTargets, true);
         });
 

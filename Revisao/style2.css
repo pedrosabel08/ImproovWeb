@@ -418,6 +418,16 @@ nav {
     gap: 10px;
 }
 
+.thumb-caption {
+    position: absolute;
+    bottom: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    background-color: #333;
+    color: white;
+}
+
 
 #imagem_completa {
     position: relative;
@@ -622,6 +632,7 @@ body::-webkit-scrollbar-track {
     width: 100px;
     height: 100px;
     border-radius: 8px;
+    overflow: hidden;
 }
 
 .imageWrapper.selected {

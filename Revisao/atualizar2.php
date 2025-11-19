@@ -16,7 +16,7 @@ try {
   // Para o teste desta tela 2 vamos restringir para:
   // - funcao_id = 5 (pós-produção)
   // - obra_id = 57 (obra fixa para teste)
-  $obraFiltro = 57;
+  $obraFiltro = 74;
 
   if ($idusuario == 1 || $idusuario == 2) {
     $sql = "SELECT 
@@ -140,31 +140,91 @@ try {
         ORDER BY data_aprovacao DESC";
   }
 
-  // Preparar e executar a query
-  $stmt = $conn->prepare($sql);
+  // Instead of returning a flat list of tasks, return deliveries (entregas) grouped with their items.
+  // This builds an array: entregas[] { entrega_id, nome_etapa, data_entrega, itens: [...] }
 
-  if ($idusuario == 1 || $idusuario == 2 || $idusuario == 9 || $idusuario == 20 || $idusuario == 3) {
-    // Usuários administradores / gestão: apenas filtra por obra fixa
-    $stmt->bind_param("i", $obraFiltro);
-  } else {
-    // Demais usuários: filtra por obra fixa e também pelas obras em que o colaborador atua
-    $stmt->bind_param("ii", $obraFiltro, $idcolaborador);
-  }
-  $stmt->execute();
-  $result = $stmt->get_result();
+  // 1) Fetch entregas for the obra
+  $sqlEntregas = "SELECT e.id as identrega, s.nome_status as nome_etapa, e.obra_id
+                  FROM entregas e
+                  LEFT JOIN status_imagem s ON e.status_id = s.idstatus
+                  WHERE e.obra_id = ?
+                  ORDER BY e.id DESC";
+  $stmtEnt = $conn->prepare($sqlEntregas);
+  $stmtEnt->bind_param("i", $obraFiltro);
+  $stmtEnt->execute();
+  $resEnt = $stmtEnt->get_result();
 
-  // Processar os resultados
-  $tarefas = [];
-  if ($result->num_rows > 0) {
-    while ($row = $result->fetch_assoc()) {
-      $tarefas[] = $row;
+  $entregas = [];
+
+  while ($ent = $resEnt->fetch_assoc()) {
+    $entregaId = $ent['identrega'];
+
+    // 2) For each entrega, fetch its items and related image/version metadata
+    $sqlItens = "SELECT ei.id,
+            ei.entrega_id,
+            ei.imagem_id,
+            ei.historico_id,
+            hi.nome_arquivo,
+            hi.data_envio,
+            hi.id AS historico_imagem_id,
+            hi.indice_envio,
+            i.imagem_nome,
+            s.nome_status AS nome_status_imagem,
+            f.idfuncao_imagem,
+            f.colaborador_id,
+            c.nome_colaborador,
+            fun.nome_funcao
+          FROM entregas_itens ei
+          LEFT JOIN historico_aprovacoes_imagens hi ON hi.id = ei.historico_id
+          LEFT JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = ei.imagem_id
+          LEFT JOIN status_imagem s ON i.status_id = s.idstatus
+          LEFT JOIN funcao_imagem f ON f.imagem_id = i.idimagens_cliente_obra AND f.funcao_id = 5
+          LEFT JOIN colaborador c ON c.idcolaborador = f.colaborador_id
+          LEFT JOIN funcao fun ON fun.idfuncao = f.funcao_id
+          WHERE ei.entrega_id = ?";
+
+    $stmtItens = $conn->prepare($sqlItens);
+    $stmtItens->bind_param("i", $entregaId);
+    $stmtItens->execute();
+    $resItens = $stmtItens->get_result();
+
+    $itens = [];
+    while ($it = $resItens->fetch_assoc()) {
+      // Build a usable image URL ensuring an extension; append .jpg if none present
+      $imagemUrl = null;
+      if (!empty($it['nome_arquivo'])) {
+        $nf = $it['nome_arquivo'];
+        $ext = strtolower(pathinfo($nf, PATHINFO_EXTENSION));
+        $allowed = ['jpg','jpeg','png','gif','webp','bmp'];
+        if ($ext === '' || !in_array($ext, $allowed)) {
+          $nf .= '.jpg';
+        }
+        $imagemUrl = 'https://improov.com.br/sistema/uploads/' . $nf;
+      } elseif (!empty($it['imagem_nome'])) {
+        $im = $it['imagem_nome'];
+        $ext2 = strtolower(pathinfo($im, PATHINFO_EXTENSION));
+        $allowed = ['jpg','jpeg','png','gif','webp','bmp'];
+        if ($ext2 === '' || !in_array($ext2, $allowed)) {
+          $im .= '.jpg';
+        }
+        $imagemUrl = 'https://improov.com.br/sistema/uploads/' . $im;
+      }
+
+      $it['imagem'] = $imagemUrl;
+
+      $itens[] = $it;
     }
+
+    $ent['itens'] = $itens;
+    $entregas[] = $ent;
+
+    $stmtItens->close();
   }
 
-  // Retornar os resultados no formato JSON
-  echo json_encode($tarefas);
+  // Return entregas structure
+  echo json_encode(['entregas' => $entregas]);
 
-  $stmt->close();
+  $stmtEnt->close();
   $conn->close();
 } catch (Exception $e) {
   // Retornar erro em caso de falha

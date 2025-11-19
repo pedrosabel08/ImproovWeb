@@ -14,6 +14,11 @@ window.addEventListener('DOMContentLoaded', () => {
     if (selectMesFuncao) {
         selectMesFuncao.value = mesAtual.toString(); // Ex: 3
     }
+
+    const selectMesAtual = document.getElementById('mes_atual');
+    if (selectMesAtual) {
+        selectMesAtual.value = mesAtual.toString(); // Ex: 3
+    }
 });
 
 function formatarData(data) {
@@ -38,7 +43,7 @@ function buscarDados() {
                 tr.innerHTML = `
             <td>${linha.nome_colaborador}</td>
             <td>${linha.nome_funcao}</td>
-            <td>${linha.quantidade} (Pagas: ${linha.pagas})</td>
+            <td>${linha.quantidade - linha.pagas}</td>
           `;
                 tabela.appendChild(tr);
             });
@@ -186,7 +191,7 @@ function buscarDadosFuncao() {
                 const tr = document.createElement("tr");
                 tr.innerHTML = `
             <td>${linha.nome_funcao}</td>
-            <td>${linha.quantidade} (Pagas: ${linha.pagas})</td>
+            <td>${linha.quantidade - linha.pagas}</td>
           `;
                 tabela.appendChild(tr);
 

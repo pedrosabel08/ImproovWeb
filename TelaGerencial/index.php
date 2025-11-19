@@ -76,7 +76,7 @@ $conn->close();
                 <option value="mes_tipo" selected>Mês</option>
             
             <!-- Tabela de entregas por mês -->
-            <h3 style="margin-top:18px;">Imagens entregues por mês (ano atual)</h3>
+            <h3 style="margin-top:18px;">Imagens entregues por mês <span id="mes_atual"></span></h3>
             <table id="tabelaEntregas">
                 <thead>
                     <tr>
@@ -87,9 +87,6 @@ $conn->close();
                 <tbody>
                 </tbody>
             </table>
-                <option value="semana_tipo">Semana</option>
-                <option value="dia_tipo">Dia Anterior</option>
-            </select> -->
 
             <h2 id="total_producao">Total de produção por função <span id="mesSelecionadoFuncao">---</span></h2>
 

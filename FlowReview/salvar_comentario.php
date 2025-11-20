@@ -1,13 +1,13 @@
 <?php
 include '../conexao.php';
-session_start();
+require_once __DIR__ . '/auth_cookie.php';
 
 // Agora os dados vêm de $_POST e $_FILES
 $ap_imagem_id = $_POST['ap_imagem_id'];
 $x = $_POST['x'];
 $y = $_POST['y'];
 $texto = $_POST['texto'];
-$usuario_id = isset($_SESSION['idusuario']) ? intval($_SESSION['idusuario']) : null;
+$usuario_id = $flow_user_id;
 
 // Processar imagem (se enviada)
 $imagem_path = null;

@@ -1,14 +1,29 @@
 <?php
-session_start();
+// Cookie-only authentication: validate `flow_auth` cookie and expose `idusuario` to frontend.
+require_once __DIR__ . '/../conexao.php';
 
-// Verificar se o usuário está logado
-if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
-    // Se não estiver logado, redirecionar para a página de login
-    header("Location: ../index.html");
-    exit();
+$idusuario = null;
+if (isset($_COOKIE['flow_auth']) && !empty($_COOKIE['flow_auth'])) {
+    $token = $_COOKIE['flow_auth'];
+    $stmt = $conn->prepare("SELECT user_id, expires_at FROM login_tokens WHERE token_hash = SHA2(?, 256) LIMIT 1");
+    if ($stmt) {
+        $stmt->bind_param('s', $token);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($row = $result->fetch_assoc()) {
+            if (strtotime($row['expires_at']) > time()) {
+                // Token válido → define idusuario para uso no frontend
+                $idusuario = (int) $row['user_id'];
+
+                // Renovar cookie (estende validade por mais 2 dias)
+                $expires = time() + 86400 * 2;
+                $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+                setcookie("flow_auth", $token, $expires, "/", "", $secure, true);
+            }
+        }
+        $stmt->close();
+    }
 }
-
-$idusuario = $_SESSION['idusuario'];
 
 ?>
 
@@ -19,7 +34,9 @@ $idusuario = $_SESSION['idusuario'];
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css" integrity="sha512-5Hs3dF2AEPkpNAR7UiOHba+lRSJNeM2ECkwxUIxC1Q/FLycGTbNapWXB4tP889k5T5Ju8fs4b1P5z/iB4nMfSQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css"
+        integrity="sha512-5Hs3dF2AEPkpNAR7UiOHba+lRSJNeM2ECkwxUIxC1Q/FLycGTbNapWXB4tP889k5T5Ju8fs4b1P5z/iB4nMfSQ=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
         type="image/x-icon">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
@@ -38,6 +55,66 @@ $idusuario = $_SESSION['idusuario'];
 </head>
 
 <body>
+    <?php if (empty($idusuario)): ?>
+        <div class="auth-page">
+            <main class="auth-card">
+                <h1>Entrar ou Registrar</h1>
+                <p class="muted">Acesse o Flow Review com sua conta</p>
+
+                <div class="auth-tabs">
+                    <button id="showLogin" class="button primary" style="margin-right:8px;">Entrar</button>
+                    <button id="showRegister" class="button ghost">Registrar</button>
+                </div>
+
+                <div id="loginBox" style="margin-top:12px;">
+                    <form id="loginForm" action="auth_login.php" method="post" autocomplete="off">
+                        <label>E-mail
+                            <input type="email" name="email" required maxlength="150">
+                        </label>
+                        <label>Senha
+                            <input type="password" name="senha" required minlength="6">
+                        </label>
+                        <div class="actions">
+                            <button type="submit" class="button primary">Entrar</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div id="registerBox" style="display:none; margin-top:12px;">
+                    <form id="registerForm" action="auth_register.php" method="post" autocomplete="off">
+                        <label>Nome
+                            <input type="text" name="nome_usuario" required maxlength="100">
+                        </label>
+                        <label>E-mail
+                            <input type="email" name="email" required maxlength="150">
+                        </label>
+                        <label>Senha
+                            <input type="password" name="senha" required minlength="6">
+                        </label>
+                        <label>Cargo
+                            <input type="text" name="cargo" required maxlength="80">
+                        </label>
+                        <div class="actions">
+                            <button type="submit" class="button primary">Criar conta</button>
+                        </div>
+                    </form>
+                </div>
+
+                <p style="margin-top:10px;font-size:12px;color:#6b7280;">Ao entrar, um cookie seguro será definido por 2
+                    dias.</p>
+            </main>
+        </div>
+
+        <!-- auth UI is controlled from script.js -->
+
+    <?php endif; ?>
+
+    <?php if (!empty($idusuario)): ?>
+        <script>
+            // make idusuario available to client-side code
+            try { localStorage.setItem('idusuario', '<?php echo $idusuario; ?>'); } catch (e) { /* ignore */ }
+        </script>
+    <?php endif; ?>
     <div class="main">
 
 
@@ -51,21 +128,16 @@ $idusuario = $_SESSION['idusuario'];
                 <div class="header">
                     <nav class="breadcrumb-nav">
                         <a href="https://improov.com.br/sistema/Revisao/index2.php">Flow Review</a>
-                        <a id="obra_id_nav" class="obra_nav" href="https://improov.com.br/sistema/Revisao/index2.php?obra_id=57">Obra</a>
+                        <a id="obra_id_nav" class="obra_nav"
+                            href="https://improov.com.br/sistema/Revisao/index2.php?obra_id=57">Obra</a>
                     </nav>
                     <div class="filtros">
-                        <!-- Nesta tela 2 vamos agrupar por status, então não exibimos filtro de função -->
                         <div>
                             <label for="filtro_colaborador">Colaborador:</label>
                             <select name="filtro_colaborador" id="filtro_colaborador"></select>
                         </div>
                         <input type="hidden" name="filtro_obra" id="filtro_obra">
                     </div>
-                    <!-- 
-                    <div class="alternar">
-                        <button onclick="fetchObrasETarefas('Todos', 'Em aprovação')">Em aprovação</button>
-                        <button onclick="fetchObrasETarefas('Todos', 'Ajuste')">Ajuste</button>
-                    </div> -->
                 </div>
                 <div class="tarefasImagensObra"></div>
             </div>
@@ -75,10 +147,7 @@ $idusuario = $_SESSION['idusuario'];
     <div class="container-aprovacao hidden">
         <header>
             <div class="task-info" id="task-info">
-                <!-- <h3 id="funcao_nome"></h3> -->
-                <!-- <h3 id="colaborador_nome"></h3> -->
                 <h3 id="imagem_nome"></h3>
-
             </div>
         </header>
 
@@ -112,7 +181,8 @@ $idusuario = $_SESSION['idusuario'];
                     <div class="modal-content-decision">
                         <span class="close">&times;</span>
                         <label><input type="radio" name="decision" value="aprovado"> Aprovado</label><br>
-                        <label><input type="radio" name="decision" value="aprovado_com_ajustes"> Aprovado com ajustes</label><br>
+                        <label><input type="radio" name="decision" value="aprovado_com_ajustes"> Aprovado com
+                            ajustes</label><br>
                         <label><input type="radio" name="decision" value="ajuste"> Ajuste</label><br>
 
                         <div class="modal-footer">
@@ -132,7 +202,8 @@ $idusuario = $_SESSION['idusuario'];
     <div id="comentarioModal" class="modal" style="display: none;">
         <div class="modal-content">
             <h3>Novo Comentário</h3>
-            <textarea id="comentarioTexto" rows="5" placeholder="Digite um comentário..." style="width: calc(100% - 10px); padding: 5px;"></textarea>
+            <textarea id="comentarioTexto" rows="5" placeholder="Digite um comentário..."
+                style="width: calc(100% - 10px); padding: 5px;"></textarea>
             <input type="file" id="imagemComentario" accept="image/*" />
             <div class="modal-actions">
                 <button id="enviarComentario" style="background-color: green;">Enviar</button>

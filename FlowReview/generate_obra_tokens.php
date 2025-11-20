@@ -12,9 +12,9 @@ try {
 
     // Permitir execução via CLI ou por usuário admin
     $isCli = php_sapi_name() === 'cli';
-    session_start();
-    $isAdmin = isset($_SESSION['idusuario']) && in_array($_SESSION['idusuario'], [1,2]);
-    if (!$isCli && !$isAdmin) {
+    require_once __DIR__ . '/auth_cookie.php';
+    $isAdmin = $isCli || (!empty($flow_user_id) && in_array($flow_user_id, [1,2]));
+    if (!$isAdmin) {
         http_response_code(403);
         echo json_encode(['success' => false, 'message' => 'Acesso negado. Execute via CLI ou usuário admin.']);
         exit();

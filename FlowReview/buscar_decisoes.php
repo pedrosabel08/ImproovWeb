@@ -1,9 +1,7 @@
 <?php
-session_start();
 header('Content-Type: application/json');
-require_once '../conexao.php';
-
-if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
+require_once __DIR__ . '/auth_cookie.php';
+if (empty($flow_user_id)) {
     http_response_code(401);
     echo json_encode(['success' => false, 'message' => 'Não autorizado']);
     exit();

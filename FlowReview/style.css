@@ -1646,3 +1646,30 @@ nav.breadcrumb-nav a {
         padding: 6px 8px 6px 10px;
     }
 }
+
+/* ================== Auth pages ================== */
+.auth-page {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    background: linear-gradient(135deg,#0f1724 0%, #1f2a44 100%);
+}
+.auth-card {
+    background: #ffffff;
+    padding: 28px 28px;
+    border-radius: 12px;
+    width: 360px;
+    box-shadow: 0 10px 30px rgba(2,6,23,0.6);
+    color: #1f2937;
+    text-align: left;
+}
+.auth-card h1 { font-size: 22px; margin-bottom: 6px; }
+.auth-card .muted { color: #6b7280; margin-bottom: 14px; }
+.auth-card label { display: block; font-size: 13px; color: #374151; margin-bottom: 10px; }
+.auth-card input { width: 100%; padding: 10px 12px; margin-top: 6px; border-radius: 8px; border: 1px solid #e6e9ef; box-sizing: border-box; }
+.actions { display:flex; gap:10px; align-items:center; margin-top: 12px; }
+.button { display:inline-block; padding:10px 14px; border-radius:8px; text-align:center; text-decoration:none; }
+.button.primary { background: #0ea5a4; color: white; }
+.button.ghost { background: transparent; color: #0f1724; border: 1px solid #e6e9ef; }
+.muted.success { color: #059669; margin-bottom: 8px; }

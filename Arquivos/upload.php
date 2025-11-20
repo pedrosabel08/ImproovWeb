@@ -185,6 +185,8 @@ $arquivosName = $_FILES['arquivos']['name'] ?? [];
 
 // Arquivos por imagem (refs/skp)
 $arquivosPorImagem = $_FILES['arquivos_por_imagem'] ?? [];
+// Observações por imagem (nome: observacoes_por_imagem[<id>])
+$observacoesPorImagem = $_POST['observacoes_por_imagem'] ?? [];
 
 $sftp = new SFTP($host, $port);
 if (!$sftp->login($username, $password)) {
@@ -774,8 +776,17 @@ if (!empty($arquivosPorImagem) && $refsSkpModo === 'porImagem') {
                 continue;
             }
             $nome_imagem = $queryImagem->fetch_assoc()['imagem_nome'];
-            // Anexa o nome da imagem na descrição do arquivo quando estiver no modo porImagem
-            $descricao_para_insert = $nome_imagem . ($descricao ? ' - ' . $descricao : '');
+            // Descrição para insert: usar SOMENTE a observação enviada para esta imagem quando existir
+            // Caso contrário, usar o campo de descrição global como fallback
+            $observacao_local = '';
+            if (is_array($observacoesPorImagem) && isset($observacoesPorImagem[$imagem_id])) {
+                $observacao_local = trim((string)$observacoesPorImagem[$imagem_id]);
+            }
+            if ($observacao_local !== '') {
+                $descricao_para_insert = $observacao_local;
+            } else {
+                $descricao_para_insert = $descricao ?: '';
+            }
 
             $categoriaNome = buscarNomeCategoria($categoria);
             $categoriaDir = resolveCategoriaDir($sftp, $pastaBase, $categoriaNome, $log);

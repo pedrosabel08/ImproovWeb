@@ -189,9 +189,11 @@ tipoArquivoSelect.addEventListener('change', async () => {
         const imagens = await res.json();
         imagens.forEach(img => {
             const div = document.createElement('div');
+            div.className = 'ref-imagem-block';
             div.innerHTML = `
                 <label>${img.imagem_nome}</label>
                 <input type="file" name="arquivos_por_imagem[${img.id}][]" multiple>
+                <textarea name="observacoes_por_imagem[${img.id}]" placeholder="Observação para esta imagem (opcional)" rows="2" style="width:100%;margin-top:6px;"></textarea>
             `;
             referenciasContainer.appendChild(div);
         });

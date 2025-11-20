@@ -13,6 +13,41 @@ document.getElementById('idcolab').addEventListener('change', function () {
 
 });
 
+
+// Converte um caminho SFTP/servidor para a URL pública onde os JPGs ficam acessíveis
+// Ex: /mnt/clientes/2025/TES_TES/05.Exchange/01.Input/Angulo_definido/Fachada/IMG/teste2/file.jpg
+// => https://improov.com.br/uploads/angulo_definido/Fachada/IMG/teste2/file.jpg
+function sftpToPublicUrl(rawPath) {
+    if (!rawPath) return null;
+    // normaliza barras
+    const p = rawPath.replace(/\\/g, '/');
+    // Primeira tentativa: detectar caminho completo com nomenclatura
+    // /mnt/clientes/<ano>/<nomenclatura>/05.Exchange/01.Input/<rest>
+    const mFull = p.match(/\/mnt\/clientes\/\d+\/([^\/]+)\/05\.Exchange\/01\.Input\/(.*)/i);
+    if (mFull && mFull[1] && mFull[2]) {
+        const nomen = mFull[1];
+        const rest = mFull[2];
+        // Monta com a nomenclatura logo após angulo_definido conforme solicitado
+        return 'https://improov.com.br/sistema/uploads/angulo_definido/' + nomen + '/' + rest;
+    }
+
+    // Segunda tentativa: localizar Angulo_definido no caminho e usar o que vem depois
+    const m = p.match(/\/Angulo_definido\/(.*)/i);
+    if (m && m[1]) {
+        return 'https://improov.com.br/sistema/uploads/angulo_definido/' + m[1];
+    }
+
+    // Terceira tentativa: pega tudo depois de /05.Exchange/01.Input/
+    const idx = p.indexOf('/05.Exchange/01.Input/');
+    if (idx >= 0) {
+        const after = p.substring(idx + '/05.Exchange/01.Input/'.length);
+        return 'https://improov.com.br/sistema/uploads/' + after;
+    }
+
+    return null;
+}
+
+
 function carregarDados(colaborador_id) {
 
     let url = `PaginaPrincipal/getFuncoesPorColaborador.php?colaborador_id=${colaborador_id}`;
@@ -198,6 +233,31 @@ function processarDados(data) {
         // Marca como atrasada apenas se estiver 'Em andamento' e o prazo já passou
         const atrasada = (status === 'Em andamento' && item.prazo) ? isAtrasada(item.prazo) : false;
 
+        // Normalize ultima_imagem: if it's an SFTP server path (/mnt/clientes/...), convert to public URL
+        const ultimaImagemRaw = item.ultima_imagem || '';
+        let ultimaImagemPublic = ultimaImagemRaw;
+        try {
+            if (typeof ultimaImagemPublic === 'string' && ultimaImagemPublic.startsWith('/mnt/clientes')) {
+                ultimaImagemPublic = sftpToPublicUrl(ultimaImagemPublic);
+            }
+        } catch (e) {
+            // if conversion fails, fallback to raw path
+            console.error('sftpToPublicUrl error for', ultimaImagemRaw, e);
+            ultimaImagemPublic = ultimaImagemRaw;
+        }
+
+        // Decide image src: if we have an http(s) public URL, use it directly; otherwise use thumb.php to generate a thumbnail
+        let imgSrc = '';
+        if (ultimaImagemPublic) {
+            if (ultimaImagemPublic.startsWith('http://') || ultimaImagemPublic.startsWith('https://')) {
+                imgSrc = ultimaImagemPublic;
+            } else {
+                imgSrc = `https://improov.com.br/sistema/thumb.php?path=${encodeURIComponent(ultimaImagemPublic)}&w=360&q=80`;
+            }
+        } else {
+            imgSrc = `https://improov.com.br/sistema/${ultimaImagemPublic || ''}`;
+        }
+
         card.innerHTML = `
                     <div class="header-kanban">
                         <span class="priority ${item.prioridade || 'medium'}">
@@ -213,7 +273,7 @@ function processarDados(data) {
                     </div>
                         <h5>${titulo || '-'}</h5>
                         <!-- Use server-side thumb generator to reduce weight for thumbnails -->
-                        <img loading="lazy" src="${item.ultima_imagem ? `https://improov.com.br/sistema/thumb.php?path=${encodeURIComponent(item.ultima_imagem)}&w=360&q=80` : `https://improov.com.br/sistema/${item.ultima_imagem || ''}`}" alt="" style="max-width: 100%; height: auto; margin-bottom: 8px;">
+                        <img loading="lazy" src="${imgSrc}" alt="" style="max-width: 100%; height: auto; margin-bottom: 8px;">
                         <p>${subtitulo || '-'}</p>
                     <div class="card-footer">
                         <span class="date ${atrasada ? 'atrasada' : ''}">
@@ -1539,38 +1599,6 @@ function abrirSidebar(idFuncao, idImagem) {
                 return parts.join('\\');
             }
 
-            // Converte um caminho SFTP/servidor para a URL pública onde os JPGs ficam acessíveis
-            // Ex: /mnt/clientes/2025/TES_TES/05.Exchange/01.Input/Angulo_definido/Fachada/IMG/teste2/file.jpg
-            // => https://improov.com.br/uploads/angulo_definido/Fachada/IMG/teste2/file.jpg
-            function sftpToPublicUrl(rawPath) {
-                if (!rawPath) return null;
-                // normaliza barras
-                const p = rawPath.replace(/\\/g, '/');
-                // Primeira tentativa: detectar caminho completo com nomenclatura
-                // /mnt/clientes/<ano>/<nomenclatura>/05.Exchange/01.Input/<rest>
-                const mFull = p.match(/\/mnt\/clientes\/\d+\/([^\/]+)\/05\.Exchange\/01\.Input\/(.*)/i);
-                if (mFull && mFull[1] && mFull[2]) {
-                    const nomen = mFull[1];
-                    const rest = mFull[2];
-                    // Monta com a nomenclatura logo após angulo_definido conforme solicitado
-                    return 'https://improov.com.br/sistema/uploads/angulo_definido/' + nomen + '/' + rest;
-                }
-
-                // Segunda tentativa: localizar Angulo_definido no caminho e usar o que vem depois
-                const m = p.match(/\/Angulo_definido\/(.*)/i);
-                if (m && m[1]) {
-                    return 'https://improov.com.br/sistema/uploads/angulo_definido/' + m[1];
-                }
-
-                // Terceira tentativa: pega tudo depois de /05.Exchange/01.Input/
-                const idx = p.indexOf('/05.Exchange/01.Input/');
-                if (idx >= 0) {
-                    const after = p.substring(idx + '/05.Exchange/01.Input/'.length);
-                    return 'https://improov.com.br/sistema/uploads/' + after;
-                }
-
-                return null;
-            }
 
             function renderGroupedArquivos(title, arr, isTipoLevel = false) {
                 if (!arr || arr.length === 0) return;

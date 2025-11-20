@@ -426,6 +426,9 @@ nav {
     white-space: nowrap;
     background-color: #333;
     color: white;
+    width: 100%;
+    font-size: 0.7rem;
+    padding-left: 5px;
 }
 
 
@@ -447,7 +450,6 @@ nav {
         max-width: 60%;
     }
 }
-
 
 .sidebar-direita {
     overflow: auto;
@@ -627,12 +629,13 @@ body::-webkit-scrollbar-track {
 
 .imageWrapper {
     position: relative;
-    padding: 6px;
+    /* padding: 6px; */
     background-color: #5b5b5b;
     width: 100px;
     height: 100px;
-    border-radius: 8px;
+    /* border-radius: 8px; */
     overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
 }
 
 .imageWrapper.selected {
@@ -1531,5 +1534,115 @@ nav.breadcrumb-nav a {
         height: auto;
         max-height: 60vh;
         object-fit: contain;
+    }
+}
+
+/* ================== DECISÕES (APROVAÇÕES) ================== */
+#decisoes.decisoes {
+    margin: 10px 12px 16px;
+    padding: 10px 12px;
+    background: #ffffff;
+    border: 1px solid #e2e6ec;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    font-size: 12px;
+    max-height: 180px;
+    overflow-y: auto;
+}
+
+#decisoes.decisoes::-webkit-scrollbar {
+    width: 6px;
+}
+
+#decisoes.decisoes::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+#decisoes.decisoes::-webkit-scrollbar-thumb {
+    background: #bbb;
+    border-radius: 4px;
+}
+
+.decisoes-empty {
+    font-style: italic;
+    color: #666;
+    text-align: center;
+    padding: 6px 0;
+}
+
+.decisoes-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.decisao-item {
+    padding: 6px 10px 6px 12px;
+    background: linear-gradient(135deg, #f7f9fc 0%, #eef2f7 100%);
+    border-left: 4px solid #d0d7e2;
+    border-radius: 6px;
+    position: relative;
+}
+
+.decisao-item:hover {
+    background: linear-gradient(135deg, #f5f8fb 0%, #e9eef4 100%);
+}
+
+.decisao-header {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 500;
+    color: #2b3a48;
+    line-height: 1.2;
+}
+
+.decisao-header strong {
+    font-weight: 600;
+}
+
+.decisao-label {
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    background: #e0e5eb;
+    font-weight: 600;
+    letter-spacing: .3px;
+}
+
+.decisao-aprovado {
+    background: #d6f6e3;
+    color: #116a36;
+    border: 1px solid #b4e9cc;
+}
+
+.decisao-aprovado_com_ajustes {
+    background: #d9e8ff;
+    color: #0c4c99;
+    border: 1px solid #b9d5fb;
+}
+
+.decisao-ajuste {
+    background: #ffe2cf;
+    color: #8f3d00;
+    border: 1px solid #ffc6a3;
+}
+
+.decisao-date {
+    margin-top: 3px;
+    font-size: 10px;
+    color: #6e7b87;
+    display: flex;
+    justify-content: flex-start;
+}
+
+@media (max-width: 768px) {
+    #decisoes.decisoes {
+        max-height: 140px;
+        margin: 8px 8px 12px;
+    }
+
+    .decisao-item {
+        padding: 6px 8px 6px 10px;
     }
 }

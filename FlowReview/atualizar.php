@@ -2,21 +2,49 @@
 session_start();
 include '../conexao.php'; // Conexão com o banco de dados
 
-// Verifique se o usuário está autenticado
-if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
-  header("Location: ../index.html");
+// Ler token antecipadamente (GET ou POST)
+$token = null;
+if (isset($_GET['token']) && $_GET['token'] !== '') $token = $_GET['token'];
+if (isset($_POST['token']) && $_POST['token'] !== '') $token = $_POST['token'];
+
+// Se não foi fornecido token, negar acesso (esta rota só funciona via token)
+if (!$token) {
+  header('Content-Type: application/json');
+  echo json_encode(['erro' => 'token_obrigatorio', 'mensagem' => 'O parâmetro token é obrigatório para acessar este endpoint.']);
+  $conn->close();
   exit();
 }
 
-$idusuario = $_SESSION['idusuario'];
-$idcolaborador = $_SESSION['idcolaborador'];
+// Se token foi fornecido, não exigimos sessão. Mas, caso haja sessão ativa, ainda podemos
+// ler info do usuário (não obrigatório). Tentamos iniciar sessão caso ainda não exista.
+if (session_status() !== PHP_SESSION_ACTIVE) session_start();
+$idusuario = $_SESSION['idusuario'] ?? null;
+$idcolaborador = $_SESSION['idcolaborador'] ?? null;
 
 try {
-  // Construção da query com base no usuário
-  // Para o teste desta tela 2 vamos restringir para:
-  // - funcao_id = 5 (pós-produção)
-  // - obra_id = 57 (obra fixa para teste)
-  $obraFiltro = 74;
+  // Resolvemos token -> obra_id
+  $obraFiltro = null;
+  $stmtToken = $conn->prepare("SELECT idobra FROM obra WHERE token = ? LIMIT 1");
+  if ($stmtToken) {
+    $stmtToken->bind_param('s', $token);
+    $stmtToken->execute();
+    $resToken = $stmtToken->get_result();
+    if ($rowT = $resToken->fetch_assoc()) {
+      $obraFiltro = intval($rowT['idobra']);
+    } else {
+      header('Content-Type: application/json');
+      echo json_encode(['erro' => 'token_invalido', 'mensagem' => 'Obra não encontrada para o token informado']);
+      $stmtToken->close();
+      $conn->close();
+      exit();
+    }
+    $stmtToken->close();
+  } else {
+    header('Content-Type: application/json');
+    echo json_encode(['erro' => 'db_error', 'mensagem' => 'Não foi possível validar o token (prepare falhou)']);
+    $conn->close();
+    exit();
+  }
 
   if ($idusuario == 1 || $idusuario == 2) {
     $sql = "SELECT 
@@ -169,18 +197,11 @@ try {
             hi.id AS historico_imagem_id,
             hi.indice_envio,
             i.imagem_nome,
-            s.nome_status AS nome_status_imagem,
-            f.idfuncao_imagem,
-            f.colaborador_id,
-            c.nome_colaborador,
-            fun.nome_funcao
+            s.nome_status AS nome_status_imagem
           FROM entregas_itens ei
           LEFT JOIN historico_aprovacoes_imagens hi ON hi.id = ei.historico_id
           LEFT JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = ei.imagem_id
           LEFT JOIN status_imagem s ON i.status_id = s.idstatus
-          LEFT JOIN funcao_imagem f ON f.imagem_id = i.idimagens_cliente_obra AND f.funcao_id = 5
-          LEFT JOIN colaborador c ON c.idcolaborador = f.colaborador_id
-          LEFT JOIN funcao fun ON fun.idfuncao = f.funcao_id
           WHERE ei.entrega_id = ?";
 
     $stmtItens = $conn->prepare($sqlItens);

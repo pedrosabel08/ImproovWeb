@@ -5,6 +5,31 @@ document.addEventListener("DOMContentLoaded", function () {
     carregarImagensAgrupadas();
 });
 
+// Lê token da query string (ex: ?token=...)
+function getTokenFromUrl() {
+    try {
+        // 1) Querystring fallback: ?token=...
+        const params = new URLSearchParams(window.location.search);
+        const q = params.get('token');
+        if (q && q !== '') return q;
+
+        // 2) Path-based token support for URLs like:
+        //    /sistema/FlowReview/<token>
+        //    /sistema/FlowReview/token/<token>
+        const path = window.location.pathname || '';
+        const parts = path.split('/').filter(Boolean); // remove empty segments
+        // find 'FlowReview' segment
+        const idx = parts.indexOf('FlowReview');
+        if (idx === -1) return null;
+        const next = parts[idx + 1];
+        if (!next) return null;
+        if (next === 'token') return parts[idx + 2] || null;
+        return next;
+    } catch (e) {
+        return null;
+    }
+}
+
 let imagensAgrupadasGlobal = []; // [{ imagem_id, preview_url, versoes:[...], totalVersoes }]
 
 async function carregarImagensAgrupadas() {
@@ -21,7 +46,9 @@ async function carregarImagensAgrupadas() {
 }
 
 async function fetchEntregasObraFixa() {
-    const r = await fetch('atualizar2.php');
+    const token = getTokenFromUrl();
+    const url = token ? `atualizar.php?token=${encodeURIComponent(token)}` : 'atualizar.php';
+    const r = await fetch(url);
     if (!r.ok) throw new Error('Falha ao buscar entregas');
     return await r.json();
 }
@@ -47,6 +74,7 @@ function agruparPorImagem(entregas) {
             const grupo = mapa.get(imagemId);
             grupo.versoes.push({
                 entrega_id: identrega,
+                entrega_item_id: item.id,
                 nome_etapa: nomeEtapa,
                 historico_imagem_id: item.historico_imagem_id,
                 nome_arquivo: item.nome_arquivo,
@@ -203,7 +231,9 @@ let funcaoGlobalSelecionada = null;
 
 async function fetchObrasETarefas() {
     try {
-        const response = await fetch(`atualizar2.php`);
+        const token = getTokenFromUrl();
+        const url = token ? `atualizar.php?token=${encodeURIComponent(token)}` : 'atualizar.php';
+        const response = await fetch(url);
         if (!response.ok) throw new Error("Erro ao buscar tarefas");
         const json = await response.json();
         const plano = [];
@@ -275,7 +305,7 @@ function filtrarTarefasPorObra(obraSelecionada) {
     if (tarefasDaObra.length > 0) {
         const nomeObra = tarefasDaObra[0].nome_obra;
         const nomenclatura = tarefasDaObra[0].nomenclatura;
-        document.querySelectorAll('.obra_nav').forEach(link => { link.href = `https://improov.com.br/sistema/Revisao/index2.php?obra_nome=${nomeObra}`; link.textContent = nomenclatura; });
+        document.querySelectorAll('.obra_nav').forEach(link => { link.href = `https://improov.com.br/sistema/Revisao/index.php?obra_nome=${nomeObra}`; link.textContent = nomenclatura; });
     }
     const tarefasFiltradas = tarefasDaObra.filter(t => !colaboradorSelecionado || t.nome_colaborador === colaboradorSelecionado);
     exibirTarefas(tarefasFiltradas, tarefasDaObra);
@@ -349,12 +379,14 @@ const idusuario = parseInt(localStorage.getItem('idusuario'));
 let funcaoImagemId = null;
 let ap_imagem_id = null;
 let versoesAtuaisDaImagem = []; // armazenar versões da imagem atualmente aberta
+let entregaItemIdAtual = null; // entrega_itens.id da versão atualmente aberta
+let imagemTemDecisao = false; // flag: existe decisão para a versão atualmente exibida
 
 function construirLabelVersao(v) {
     console.log(v);
     const envio = (v.indice_envio !== undefined && v.indice_envio !== null) ? `${v.nome_etapa}` : 'Envio ?';
     const data = v.data_envio ? new Date(v.data_envio) : null;
-    const dataFmt = data ? `${String(data.getDate()).padStart(2,'0')}/${String(data.getMonth()+1).padStart(2,'0')}/${data.getFullYear()}` : '';
+    const dataFmt = data ? `${String(data.getDate()).padStart(2, '0')}/${String(data.getMonth() + 1).padStart(2, '0')}/${data.getFullYear()}` : '';
     return `${envio}`;
 }
 
@@ -388,7 +420,8 @@ function historyAJAX(imagemId) {
         mostrarImagemCompleta(
             v0.imagem_url,
             v0.historico_imagem_id,
-            v0.imagem_nome || ''
+            v0.imagem_nome || '',
+            v0.entrega_item_id || null
         );
     }
 
@@ -413,7 +446,8 @@ function historyAJAX(imagemId) {
                 mostrarImagemCompleta(
                     versao.imagem_url,
                     versao.historico_imagem_id,
-                    versao.imagem_nome || ''
+                    versao.imagem_nome || '',
+                    versao.entrega_item_id || null
                 );
             }
         };
@@ -470,20 +504,112 @@ function historyAJAX(imagemId) {
 // Comentários / interação
 let relativeX = 0, relativeY = 0;
 function mostrarImagemCompleta(src, id, imagem_nome = '') {
+    let entrega_item_id = null;
+    if (arguments.length >= 4) {
+        entrega_item_id = arguments[3];
+    }
     ap_imagem_id = id;
+    entregaItemIdAtual = entrega_item_id || entregaItemIdAtual;
     const imageWrapper = document.getElementById('image_wrapper');
-    const sidebar = document.querySelector('.sidebar-direita'); if (sidebar) sidebar.style.display = 'flex';
+    const sidebar = document.querySelector('.sidebar-direita');
+    if (sidebar) sidebar.style.display = 'flex';
     while (imageWrapper.firstChild) imageWrapper.removeChild(imageWrapper.firstChild);
-    const container = document.createElement('div'); container.className = 'imagem-completa-container';
-    const imgElement = document.createElement('img'); imgElement.id = 'imagem_atual'; imgElement.src = src; imgElement.style.width = '100%';
-    container.appendChild(imgElement); imageWrapper.appendChild(container); document.querySelector('#imagem_atual').scrollIntoView({ behavior: 'smooth' }); renderComments(id); ajustarNavSelectAoTamanhoDaImagem();
+    const container = document.createElement('div');
+    container.className = 'imagem-completa-container';
+    const imgElement = document.createElement('img');
+    imgElement.id = 'imagem_atual';
+    imgElement.src = src;
+    imgElement.style.width = '100%';
+    container.appendChild(imgElement);
+    imageWrapper.appendChild(container);
+    document.querySelector('#imagem_atual').scrollIntoView({ behavior: 'smooth' });
+    renderComments(id);
+    renderDecisions(id, entregaItemIdAtual);
+    ajustarNavSelectAoTamanhoDaImagem();
     imgElement.addEventListener('click', function (event) {
-        if (dragMoved) return; if (![1, 2, 9, 20, 3].includes(idusuario)) return;
+        if (dragMoved) return;
+        // Se já existe decisão nesta versão, bloquear comentários e avisar
+        if (imagemTemDecisao) {
+            Toastify({
+                text: 'Comentário bloqueado: já existe uma decisão para esta versão.',
+                duration: 4000,
+                backgroundColor: 'orange',
+                close: true,
+                gravity: 'top',
+                position: 'right'
+            }).showToast();
+            return;
+        }
+        if (![1, 2, 9, 20, 3].includes(idusuario)) return;
         const rect = imgElement.getBoundingClientRect(); relativeX = ((event.clientX - rect.left) / rect.width) * 100; relativeY = ((event.clientY - rect.top) / rect.height) * 100;
-        document.getElementById('comentarioTexto').value = ''; document.getElementById('imagemComentario').value = ''; document.getElementById('comentarioModal').style.display = 'flex'; mencionadosIds = [];
+        document.getElementById('comentarioTexto').value = '';
+        document.getElementById('imagemComentario').value = '';
+        document.getElementById('comentarioModal').style.display = 'flex';
+        mencionadosIds = [];
     });
     const nomeSpan = document.getElementById('imagem_nome'); if (nomeSpan) nomeSpan.textContent = imagem_nome;
 }
+async function renderDecisions(historicoId, entregaItemId) {
+    try {
+        const cont = document.getElementById('decisoes');
+        if (!cont) return;
+        // começar oculto; só mostraremos se houver decisões
+        cont.innerHTML = '';
+        cont.style.display = 'none';
+        const params = new URLSearchParams();
+        if (historicoId) params.append('historico_imagem_id', historicoId);
+        if (entregaItemId) params.append('entrega_item_id', entregaItemId);
+        const r = await fetch(`buscar_decisoes.php?${params.toString()}`);
+        const j = await r.json();
+        if (!j.success) {
+            cont.innerHTML = '<div class="decisoes-empty">Erro ao carregar decisões.</div>';
+            return;
+        }
+        const list = j.decisoes || [];
+        if (list.length === 0) {
+            // sem decisões: nada a exibir (mantém o contêiner oculto)
+            cont.innerHTML = '';
+            cont.style.display = 'none';
+            // Atualiza estado e reabilita botão/inputs de comentário
+            imagemTemDecisao = false;
+            const btnOpen = document.getElementById('submit_decision');
+            if (btnOpen) {
+                // Mostrar botão apenas para usuários permitidos (IDs padrão)
+                const allowed = [1, 2, 3, 9, 20];
+                btnOpen.style.display = allowed.includes(idusuario) ? '' : 'none';
+            }
+            const enviarBtn = document.getElementById('enviarComentario');
+            if (enviarBtn) enviarBtn.disabled = false;
+            return;
+        }
+        const wrap = document.createElement('div');
+        wrap.className = 'decisoes-list';
+        list.forEach(d => {
+            const item = document.createElement('div');
+            item.className = 'decisao-item';
+            const date = new Date(d.created_at);
+            const dateStr = `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+            const label = d.decisao === 'aprovado' ? 'Aprovado' : d.decisao === 'aprovado_com_ajustes' ? 'Aprovado com ajustes' : 'Ajuste';
+            item.innerHTML = `
+                <div class="decisao-header"><strong>${d.usuario_nome}</strong> • <span class="decisao-label decisao-${d.decisao}">${label}</span></div>
+                <div class="decisao-date">${dateStr}</div>
+            `;
+            wrap.appendChild(item);
+        });
+        // Há decisões: mostra o contêiner e adiciona o conteúdo
+        cont.style.display = 'block';
+        cont.appendChild(wrap);
+        // Atualiza estado e desabilita ações de comentário/decisão
+        imagemTemDecisao = true;
+        const btnOpen2 = document.getElementById('submit_decision');
+        if (btnOpen2) btnOpen2.style.display = 'none';
+        const enviarBtn2 = document.getElementById('enviarComentario');
+        if (enviarBtn2) enviarBtn2.disabled = true;
+    } catch (e) {
+        console.error('Erro ao renderizar decisões:', e);
+    }
+}
+
 
 function ajustarNavSelectAoTamanhoDaImagem() {
     const img = document.getElementById('imagem_atual'); const navSelect = document.querySelector('.nav-select'); if (img && navSelect) { const apply = () => { navSelect.style.width = img.width + 'px'; }; img.onload = apply; if (img.complete) apply(); }
@@ -725,39 +851,90 @@ document.addEventListener('click', (e) => {
     }
 });
 
-let tribute; // variável global
 let mencionadosIds = []; // armazenar os IDs dos mencionados
 
 document.addEventListener('DOMContentLoaded', async () => {
-    try {
-        const response = await fetch('buscar_usuarios.php');
-        const users = await response.json();
-
-        tribute = new Tribute({
-            values: users.map(user => ({
-                key: user.nome_colaborador,
-                value: user.nome_colaborador,
-                id: user.idcolaborador
-            })),
-            selectTemplate: item => {
-                // Evita duplicados
-                if (!mencionadosIds.includes(item.original.id)) {
-                    mencionadosIds.push(item.original.id);
-                }
-                return `@${item.original.value}`; // Aparece só o nome no texto
-            },
-            menuItemTemplate: item => item.string
-        });
-
-        tribute.attach(document.getElementById('comentarioTexto'));
-    } catch (error) {
-        console.error('Erro ao carregar usuários:', error);
-    }
+    // Removed user-lookup and Tribute initialization (buscar_usuarios.php)
 
     // Modal: fechar
     document.getElementById('fecharComentarioModal').onclick = () => {
         document.getElementById('comentarioModal').style.display = 'none';
     };
+
+    // Decisão: wiring do modal de aprovação
+    try {
+        const btnOpen = document.getElementById('submit_decision');
+        const modal = document.getElementById('decisionModal');
+        const btnClose = modal.querySelector('.close');
+        const cancelBtn = document.getElementById('cancelBtn');
+        const btnConfirm = document.getElementById('confirmBtn');
+        const radios = modal.querySelectorAll('input[name="decision"]');
+
+        // Controle de permissão: apenas alguns usuários
+        const USERS_PERMITIDOS_DECISAO = [1, 2, 3, 9, 20];
+        if (!USERS_PERMITIDOS_DECISAO.includes(idusuario)) {
+            if (btnOpen) btnOpen.style.display = 'none';
+        } else {
+            if (btnOpen) {
+                btnOpen.addEventListener('click', () => {
+                    if (!ap_imagem_id || !entregaItemIdAtual) {
+                        Toastify({ text: 'Selecione uma imagem/versão válida antes.', duration: 3000, backgroundColor: 'orange', close: true, gravity: 'top', position: 'right' }).showToast();
+                        return;
+                    }
+                    modal.classList.remove('hidden');
+                });
+            }
+
+            if (btnClose) btnClose.addEventListener('click', () => {
+                modal.classList.add('hidden');
+                btnConfirm.classList.add('hidden');
+                radios.forEach(r => r.checked = false);
+            });
+            if (cancelBtn) cancelBtn.addEventListener('click', () => {
+                modal.classList.add('hidden');
+                btnConfirm.classList.add('hidden');
+                radios.forEach(r => r.checked = false);
+            });
+
+            radios.forEach(radio => {
+                radio.addEventListener('change', () => {
+                    btnConfirm.classList.remove('hidden');
+                });
+            });
+
+            if (btnConfirm) btnConfirm.addEventListener('click', async () => {
+                const selected = Array.from(radios).find(r => r.checked)?.value;
+                if (!selected) return;
+                try {
+                    const resp = await fetch('salvar_decisao.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            entrega_item_id: entregaItemIdAtual,
+                            historico_imagem_id: ap_imagem_id,
+                            decisao: selected
+                        })
+                    });
+                    const json = await resp.json();
+                    if (json.success) {
+                        Toastify({ text: 'Decisão registrada com sucesso!', duration: 3000, backgroundColor: 'green', close: true, gravity: 'top', position: 'right' }).showToast();
+                        renderDecisions(ap_imagem_id, entregaItemIdAtual);
+                    } else {
+                        Toastify({ text: json.message || 'Falha ao registrar decisão.', duration: 3000, backgroundColor: 'red', close: true, gravity: 'top', position: 'right' }).showToast();
+                    }
+                } catch (err) {
+                    console.error('Erro ao salvar decisão:', err);
+                    Toastify({ text: 'Erro ao salvar decisão.', duration: 3000, backgroundColor: 'red', close: true, gravity: 'top', position: 'right' }).showToast();
+                } finally {
+                    modal.classList.add('hidden');
+                    btnConfirm.classList.add('hidden');
+                    radios.forEach(r => r.checked = false);
+                }
+            });
+        }
+    } catch (err) {
+        console.error('Erro ao inicializar modal de decisão:', err);
+    }
 });
 
 // (Removidos duplicados de ap_imagem_id e mostrarImagemCompleta)
@@ -830,7 +1007,6 @@ document.getElementById('enviarComentario').onclick = async () => {
     formData.append('x', relativeX);
     formData.append('y', relativeY);
     formData.append('texto', texto);
-    formData.append('mencionados', JSON.stringify(mencionadosIds));
 
     if (imagemFile) {
         formData.append('imagem', imagemFile);
@@ -921,14 +1097,7 @@ async function renderComments(id) {
         comentariosDiv.style.display = 'flex';
     }
 
-    const users = await fetch('buscar_usuarios.php').then(res => res.json());
-
-    const tribute = new Tribute({
-        values: users.map(user => ({ key: user.nome_colaborador, value: user.nome_colaborador })),
-        selectTemplate: function (item) {
-            return `@${item.original.value}`;
-        }
-    });
+    // Mention support disabled: removed fetch to buscar_usuarios.php and Tribute setup
 
     comentarios.forEach(comentario => {
         const commentCard = document.createElement('div');

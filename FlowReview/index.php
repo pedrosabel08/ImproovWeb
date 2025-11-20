@@ -18,7 +18,7 @@ $idusuario = $_SESSION['idusuario'];
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="style2.css">
+    <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css" integrity="sha512-5Hs3dF2AEPkpNAR7UiOHba+lRSJNeM2ECkwxUIxC1Q/FLycGTbNapWXB4tP889k5T5Ju8fs4b1P5z/iB4nMfSQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
         type="image/x-icon">
@@ -74,22 +74,12 @@ $idusuario = $_SESSION['idusuario'];
 
     <div class="container-aprovacao hidden">
         <header>
-            <nav class="breadcrumb-nav">
-                <a href="https://improov.com.br/sistema/Revisao/index2.php">Flow Review</a>
-                <a id="obra_id_nav" class="obra_nav" href="https://improov.com.br/sistema/Revisao/index2.php?obra_id=57">Obra</a>
-            </nav>
             <div class="task-info" id="task-info">
                 <!-- <h3 id="funcao_nome"></h3> -->
                 <!-- <h3 id="colaborador_nome"></h3> -->
                 <h3 id="imagem_nome"></h3>
-                <div id="buttons-task">
-
-                </div>
 
             </div>
-            <!-- <div>
-                <button id="add-imagem" class="tooltip" data-tooltip="Adicionar imagem" style="transform: translateX(-90%);">+</button>
-            </div> -->
         </header>
 
 
@@ -131,6 +121,7 @@ $idusuario = $_SESSION['idusuario'];
                         </div>
                     </div>
                 </div>
+                <div id="decisoes" class="decisoes"></div>
                 <div class="comentarios"></div>
             </div>
         </div>
@@ -176,8 +167,7 @@ $idusuario = $_SESSION['idusuario'];
     <script src="https://unpkg.com/tabulator-tables@5.5.0/dist/js/tabulator.min.js"></script>
 
 
-    <script src="script2.js"></script>
-    <!-- <script src="../script/sidebar.js"></script> -->
+    <script src="script.js"></script>
 
 </body>
 

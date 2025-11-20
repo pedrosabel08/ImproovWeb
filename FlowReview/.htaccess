@@ -1,0 +1,8 @@
+RewriteEngine On
+RewriteBase /sistema/FlowReview/
+
+# /UUID
+RewriteRule ^([0-9a-fA-F-]+)$ index.php?token=$1 [L,QSA]
+
+# /token/UUID
+RewriteRule ^token/([0-9a-fA-F-]+)$ index.php?token=$1 [L,QSA]

@@ -1,12 +1,10 @@
 <?php
-session_start();
 header('Content-Type: application/json');
 require_once '../conexao.php';
 require_once __DIR__ . '/vendor/autoload.php';
-
 use Dotenv\Dotenv;
-
-if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
+require_once __DIR__ . '/auth_cookie.php';
+if (empty($flow_user_id)) {
     http_response_code(401);
     echo json_encode(['success' => false, 'message' => 'Não autorizado']);
     exit();
@@ -18,7 +16,7 @@ $data = json_decode($raw, true);
 $entrega_item_id = isset($data['entrega_item_id']) ? intval($data['entrega_item_id']) : 0;
 $historico_imagem_id = isset($data['historico_imagem_id']) ? intval($data['historico_imagem_id']) : 0;
 $decisao = isset($data['decisao']) ? trim($data['decisao']) : '';
-$usuario_id = isset($_SESSION['idusuario']) ? intval($_SESSION['idusuario']) : null;
+$usuario_id = $flow_user_id;
 
 if ($entrega_item_id <= 0 || $historico_imagem_id <= 0 || $decisao === '') {
     http_response_code(400);

@@ -1,6 +1,6 @@
 <?php
-session_start();
 include '../conexao.php'; // Conexão com o banco de dados
+require_once __DIR__ . '/auth_cookie.php';
 
 // Ler token antecipadamente (GET ou POST)
 $token = null;
@@ -15,11 +15,9 @@ if (!$token) {
   exit();
 }
 
-// Se token foi fornecido, não exigimos sessão. Mas, caso haja sessão ativa, ainda podemos
-// ler info do usuário (não obrigatório). Tentamos iniciar sessão caso ainda não exista.
-if (session_status() !== PHP_SESSION_ACTIVE) session_start();
-$idusuario = $_SESSION['idusuario'] ?? null;
-$idcolaborador = $_SESSION['idcolaborador'] ?? null;
+// cookie-based user info
+$idusuario = $flow_user_id;
+$idcolaborador = $flow_idcolaborador;
 
 try {
   // Resolvemos token -> obra_id

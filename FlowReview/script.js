@@ -1,9 +1,102 @@
 // ================= NOVO FLUXO INICIAL =================
 // Ao carregar a página buscamos entregas da obra fixa (74) e agrupamos versões por imagem.
 // Mostramos automaticamente a primeira imagem (última versão) e thumbnails das versões.
-document.addEventListener("DOMContentLoaded", function () {
-    carregarImagensAgrupadas();
+// On load: ensure authentication first, then initialize the app.
+document.addEventListener('DOMContentLoaded', async function () {
+    try {
+        const auth = await checkAuth();
+        if (!auth.authenticated) {
+            showAuthOverlay();
+            attachAuthHandlers();
+        } else {
+            try { localStorage.setItem('idusuario', String(auth.idusuario || '')); } catch (e) {}
+            hideAuthOverlay();
+            carregarImagensAgrupadas();
+        }
+    } catch (e) {
+        console.error('Auth check failed:', e);
+        // fallback: show auth UI so the user can login
+        showAuthOverlay();
+        attachAuthHandlers();
+    }
 });
+
+async function checkAuth() {
+    try {
+        const r = await fetch('auth_check.php', { credentials: 'same-origin' });
+        if (!r.ok) throw new Error('Auth check failed');
+        return await r.json();
+    } catch (e) {
+        console.error('checkAuth error', e);
+        return { authenticated: false };
+    }
+}
+
+function showAuthOverlay() {
+    const overlay = document.querySelector('.auth-page');
+    if (overlay) overlay.style.display = 'flex';
+}
+
+function hideAuthOverlay() {
+    const overlay = document.querySelector('.auth-page');
+    if (overlay) overlay.style.display = 'none';
+}
+
+function attachAuthHandlers() {
+    // tab buttons
+    const showLogin = document.getElementById('showLogin');
+    const showRegister = document.getElementById('showRegister');
+    if (showLogin) showLogin.addEventListener('click', () => { document.getElementById('loginBox').style.display = ''; document.getElementById('registerBox').style.display = 'none'; });
+    if (showRegister) showRegister.addEventListener('click', () => { document.getElementById('loginBox').style.display = 'none'; document.getElementById('registerBox').style.display = ''; });
+
+    // login form
+    const loginForm = document.getElementById('loginForm');
+    if (loginForm) {
+        loginForm.addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const fd = new FormData(loginForm);
+            try {
+                const resp = await fetch(loginForm.action, { method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }, credentials: 'same-origin' });
+                const json = await resp.json();
+                if (json.success) {
+                    if (json.idusuario) localStorage.setItem('idusuario', String(json.idusuario));
+                    Toastify({ text: 'Login realizado com sucesso', duration: 2500, backgroundColor: 'green', close: true, gravity: 'top', position: 'right' }).showToast();
+                    hideAuthOverlay();
+                    carregarImagensAgrupadas();
+                } else {
+                    Toastify({ text: json.message || 'Credenciais inválidas', duration: 4000, backgroundColor: 'red', close: true, gravity: 'top', position: 'right' }).showToast();
+                }
+            } catch (err) {
+                console.error('login error', err);
+                Toastify({ text: 'Erro ao contatar o servidor. Tente novamente.', duration: 4000, backgroundColor: 'red', close: true, gravity: 'top', position: 'right' }).showToast();
+            }
+        });
+    }
+
+    // register form
+    const registerForm = document.getElementById('registerForm');
+    if (registerForm) {
+        registerForm.addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const fd = new FormData(registerForm);
+            try {
+                const resp = await fetch(registerForm.action, { method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }, credentials: 'same-origin' });
+                const json = await resp.json();
+                if (json.success) {
+                    if (json.idusuario) localStorage.setItem('idusuario', String(json.idusuario));
+                    Toastify({ text: 'Conta criada e logado', duration: 2500, backgroundColor: 'green', close: true, gravity: 'top', position: 'right' }).showToast();
+                    hideAuthOverlay();
+                    carregarImagensAgrupadas();
+                } else {
+                    Toastify({ text: json.message || 'Falha ao registrar', duration: 4000, backgroundColor: 'red', close: true, gravity: 'top', position: 'right' }).showToast();
+                }
+            } catch (err) {
+                console.error('register error', err);
+                Toastify({ text: 'Erro ao contatar o servidor. Tente novamente.', duration: 4000, backgroundColor: 'red', close: true, gravity: 'top', position: 'right' }).showToast();
+            }
+        });
+    }
+}
 
 // Lê token da query string (ex: ?token=...)
 function getTokenFromUrl() {
@@ -48,7 +141,7 @@ async function carregarImagensAgrupadas() {
 async function fetchEntregasObraFixa() {
     const token = getTokenFromUrl();
     const url = token ? `atualizar.php?token=${encodeURIComponent(token)}` : 'atualizar.php';
-    const r = await fetch(url);
+    const r = await fetch(url, { credentials: 'same-origin' });
     if (!r.ok) throw new Error('Falha ao buscar entregas');
     return await r.json();
 }

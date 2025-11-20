@@ -205,12 +205,12 @@ $conn->close();
                 <button id="altBtn" class="hidden">Flow Review</button>
             </div>
             <!-- Mobile hamburger for quick access (visible on small screens) -->
-            <button id="quickHamburger" class="quick-hamburger" aria-label="Acessos rápidos" aria-expanded="false" style="display: none;">
+            <button id="quickHamburger" class="quick-hamburger" aria-label="Acessos rápidos" aria-expanded="false">
                 <i class="fa-solid fa-bars"></i>
             </button>
 
             <!-- Mobile quick access panel -->
-            <div id="quickMobileMenu" class="quick-mobile-menu" aria-hidden="true" style="display: none;">
+            <div id="quickMobileMenu" class="quick-mobile-menu" aria-hidden="true">
                 <div class="quick-mobile-inner">
                     <button id="quickMobileClose" class="quick-mobile-close" aria-label="Fechar menu"><i class="fa-solid fa-times"></i></button>
                     <nav id="quickMobileNav" class="quick-mobile-nav">

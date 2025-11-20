@@ -4341,12 +4341,12 @@ function notificarEventosDaSemana(eventos) {
                 return `<li><strong>${ev.title}</strong> em ${dataLocal.toLocaleDateString()}</li>`;
             }).join('');
 
-        Swal.fire({
-            icon: 'info',
-            title: 'Eventos desta semana',
-            html: `<ul style="text-align: left; padding: 0 20px">${listaEventos}</ul>`,
-            confirmButtonText: 'Entendi'
-        });
+        // Swal.fire({
+        //     icon: 'info',
+        //     title: 'Eventos desta semana',
+        //     html: `<ul style="text-align: left; padding: 0 20px">${listaEventos}</ul>`,
+        //     confirmButtonText: 'Entendi'
+        // });
     }
 }
 

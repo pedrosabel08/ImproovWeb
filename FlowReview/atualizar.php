@@ -190,12 +190,14 @@ try {
             ei.entrega_id,
             ei.imagem_id,
             ei.historico_id,
+            ei.status AS entrega_item_status,
             hi.nome_arquivo,
             hi.data_envio,
             hi.id AS historico_imagem_id,
             hi.indice_envio,
             i.imagem_nome,
-            s.nome_status AS nome_status_imagem
+            s.nome_status AS nome_status_imagem,
+            (SELECT COUNT(*) FROM angulos_imagens ai WHERE ai.entrega_item_id = ei.id) AS angulos_count
           FROM entregas_itens ei
           LEFT JOIN historico_aprovacoes_imagens hi ON hi.id = ei.historico_id
           LEFT JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = ei.imagem_id
@@ -231,6 +233,36 @@ try {
 
       $it['imagem'] = $imagemUrl;
 
+      // Se houver ângulos vinculados, prefira a imagem do primeiro ângulo
+      if (intval($it['angulos_count']) > 0) {
+        $sqlAng = "SELECT hi.imagem AS ang_imagem
+                   FROM angulos_imagens ai
+                   LEFT JOIN historico_aprovacoes_imagens hi ON hi.id = ai.historico_id
+                   WHERE ai.entrega_item_id = ?
+                   ORDER BY ai.id ASC
+                   LIMIT 1";
+        $stmtAng = $conn->prepare($sqlAng);
+        if ($stmtAng) {
+          $stmtAng->bind_param('i', $it['id']);
+          $stmtAng->execute();
+          $resAng = $stmtAng->get_result();
+          if ($rowAng = $resAng->fetch_assoc()) {
+            $arquivoBaseAng = $rowAng['ang_imagem'];
+            if (!empty($arquivoBaseAng)) {
+              $extA = strtolower(pathinfo($arquivoBaseAng, PATHINFO_EXTENSION));
+              if ($extA === '') $arquivoBaseAng .= '.jpg';
+              // monta URL completa (mesma base usada nas outras imagens)
+              $it['imagem'] = 'https://improov.com.br/sistema/' . $arquivoBaseAng;
+            }
+          }
+          $stmtAng->close();
+        }
+      }
+
+      // Flag para front decidir se deve buscar ângulos em carrossel
+      // Regra ajustada: se não há historico_id (fluxo P00) e há ângulos vinculados
+      // opcionalmente restringe ao status da imagem P00 para evitar acionar em outras etapas
+      $it['carrossel_angulos'] = (empty($it['historico_id']) && intval($it['angulos_count']) > 0 && $it['nome_status_imagem'] === 'P00') ? 1 : 0;
       $itens[] = $it;
     }
 

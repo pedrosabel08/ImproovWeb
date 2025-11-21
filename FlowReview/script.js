@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             showAuthOverlay();
             attachAuthHandlers();
         } else {
-            try { localStorage.setItem('idusuario', String(auth.idusuario || '')); } catch (e) {}
+            try { localStorage.setItem('idusuario', String(auth.idusuario || '')); } catch (e) { }
             hideAuthOverlay();
             carregarImagensAgrupadas();
         }
@@ -177,7 +177,10 @@ function agruparPorImagem(entregas) {
                 imagem_url: item.imagem,
                 idfuncao_imagem: item.idfuncao_imagem,
                 colaborador_id: item.colaborador_id,
-                nome_funcao: item.nome_funcao
+                nome_funcao: item.nome_funcao,
+                entrega_item_status: item.entrega_item_status,
+                angulos_count: item.angulos_count,
+                carrossel_angulos: item.carrossel_angulos
             });
             if (item.idfuncao_imagem) grupo.funcao_imagem_ids.add(item.idfuncao_imagem);
         });
@@ -201,33 +204,24 @@ function exibirGridImagens(imagens) {
     const container = document.querySelector('.containerObra');
     if (!container) return;
     container.innerHTML = '';
-    container.style.display = 'grid';
-    container.style.gridTemplateColumns = 'repeat(auto-fill, minmax(220px, 1fr))';
-    container.style.gap = '16px';
     if (imagens.length === 0) {
         container.innerHTML = '<p style="text-align:center;color:#888;">Nenhuma imagem encontrada.</p>';
         return;
     }
     imagens.forEach(img => {
-        const card = document.createElement('div');
-        card.className = 'imagem-card';
-        card.style.cursor = 'pointer';
-        card.style.border = '1px solid #ddd';
-        card.style.borderRadius = '8px';
-        card.style.overflow = 'hidden';
-        card.style.background = '#fff';
-        card.style.boxShadow = '0 2px 4px rgba(0,0,0,0.08)';
-        card.innerHTML = `
-          <div class="imagem-thumb" style="height:150px;display:flex;align-items:center;justify-content:center;background:#f8f8f8;">
-            ${img.preview_url ? `<img src="${img.preview_url}" alt="Imagem ${img.imagem_id}" style="max-width:100%;max-height:100%;object-fit:contain;">` : '<span style="color:#aaa;font-size:12px;">Sem preview</span>'}
-          </div>
-          <div style="padding:8px 10px;">
-            <div style="font-size:13px;font-weight:600;">Imagem #${img.imagem_id}</div>
-            <div style="font-size:12px;color:#555;">${img.nome_funcao || 'Função não definida'}</div>
-            <div style="font-size:11px;color:#777;">${img.nome_colaborador || ''}</div>
-            <div style="margin-top:6px;font-size:11px;color:#444;">Versões: ${img.totalVersoes}</div>
-          </div>
-        `;
+                const card = document.createElement('div');
+                card.className = 'imagem-card';
+                card.innerHTML = `
+                    <div class="imagem-thumb">
+                        ${img.preview_url ? `<img src="${img.preview_url}" alt="Imagem ${img.imagem_id}" class="imagem-preview">` : '<span class="sem-preview">Sem preview</span>'}
+                    </div>
+                    <div class="imagem-card-body">
+                        <div class="imagem-card-title">Imagem #${img.imagem_id}</div>
+                        <div class="imagem-card-funcao">${img.nome_funcao || 'Função não definida'}</div>
+                        <div class="imagem-card-colaborador">${img.nome_colaborador || ''}</div>
+                        <div class="imagem-card-versoes">Versões: ${img.totalVersoes}</div>
+                    </div>
+                `;
         card.addEventListener('click', () => historyAJAX(img.imagem_id));
         container.appendChild(card);
     });
@@ -612,13 +606,21 @@ function mostrarImagemCompleta(src, id, imagem_nome = '') {
     const imgElement = document.createElement('img');
     imgElement.id = 'imagem_atual';
     imgElement.src = src;
-    imgElement.style.width = '100%';
     container.appendChild(imgElement);
     imageWrapper.appendChild(container);
-    document.querySelector('#imagem_atual').scrollIntoView({ behavior: 'smooth' });
+    // document.querySelector('#imagem_atual').scrollIntoView({ behavior: 'smooth' });
     renderComments(id);
     renderDecisions(id, entregaItemIdAtual);
     ajustarNavSelectAoTamanhoDaImagem();
+
+    // Carregar carrossel de ângulos se condição P00 entregue (historico_id nulo + flag carrossel_angulos)
+    // Detecta a versão corrente no array versoesAtuaisDaImagem
+    const versaoCorrente = versoesAtuaisDaImagem.find(v => String(v.historico_imagem_id) === String(id)) || versoesAtuaisDaImagem[0];
+    if (versaoCorrente && versaoCorrente.carrossel_angulos && !versaoCorrente.historico_imagem_id && entregaItemIdAtual) {
+        // Place carousel and navigation buttons in the outer container (#imagem_completa)
+        const imagemCompletaContainer = document.getElementById('imagem_completa') || imageWrapper;
+        carregarCarrosselAngulos(entregaItemIdAtual, imagemCompletaContainer, imgElement);
+    }
     imgElement.addEventListener('click', function (event) {
         if (dragMoved) return;
         // Se já existe decisão nesta versão, bloquear comentários e avisar
@@ -641,6 +643,197 @@ function mostrarImagemCompleta(src, id, imagem_nome = '') {
         mencionadosIds = [];
     });
     const nomeSpan = document.getElementById('imagem_nome'); if (nomeSpan) nomeSpan.textContent = imagem_nome;
+}
+
+// Busca ângulos e monta carrossel abaixo da imagem principal
+async function carregarCarrosselAngulos(entregaItemId, containerWrapper, mainImgEl) {
+    try {
+        const r = await fetch(`get_angulos_imagem.php?entrega_item_id=${encodeURIComponent(entregaItemId)}`);
+        const j = await r.json();
+        if (!j.success || !Array.isArray(j.angulos) || j.angulos.length === 0) return;
+
+        // Remove carrossel antigo, se houver
+        let old = document.getElementById('carrossel-angulos');
+        if (old) old.remove();
+
+        // Estrutura principal
+        const carrossel = document.createElement('div');
+        carrossel.id = 'carrossel-angulos';
+        carrossel.className = 'carrossel-angulos';
+
+        const header = document.createElement('div');
+        header.className = 'carrossel-header';
+        header.textContent = `Ângulos disponíveis (${j.angulos.length})`;
+        carrossel.appendChild(header);
+
+        // Viewport (esconde overflow) e faixa (flex)
+        const viewport = document.createElement('div');
+        viewport.className = 'carrossel-viewport';
+
+        const faixa = document.createElement('div');
+        faixa.id = 'carrossel-faixa';
+        faixa.className = 'carrossel-faixa';
+
+        // Monta thumbs e controla seleção
+        const thumbs = [];
+        let currentIndex = 0;
+
+        function selectThumb(i) {
+            if (i < 0) i = 0;
+            if (i >= thumbs.length) i = thumbs.length - 1;
+            currentIndex = i;
+            const t = thumbs[i];
+            if (!t) return;
+            // aplica destaque via classe
+            thumbs.forEach(x => x.classList.remove('selected-thumb'));
+            t.classList.add('selected-thumb');
+            // atualiza imagem principal se existir url
+            const imgEl = t.querySelector('img');
+            if (imgEl && imgEl.dataset.preview) {
+                // always resolve the current main image element by id in case it was re-created
+                const currentMain = document.getElementById('imagem_atual') || mainImgEl;
+                try { currentMain.src = imgEl.dataset.preview; } catch (e) { /* ignore */ }
+            }
+        }
+
+        // track last explicit thumb click to avoid pointerup logic overriding it
+        let lastClickedIndex = null;
+
+        j.angulos.forEach((ang, idx) => {
+            const thumb = document.createElement('div');
+            thumb.className = 'carrossel-thumb';
+            thumb.dataset.anguloId = ang.angulo_id;
+
+            const img = document.createElement('img');
+            img.src = ang.preview_url || '';
+            img.alt = `Ângulo ${ang.angulo_id}`;
+            img.className = 'carrossel-thumb-img';
+            img.loading = 'lazy';
+            // guardar preview em dataset para uso após seleção
+            img.dataset.preview = ang.preview_url || '';
+
+            const label = document.createElement('div');
+            label.textContent = idx + 1;
+            label.className = 'carrossel-thumb-label';
+
+            thumb.appendChild(img);
+            thumb.appendChild(label);
+
+            // Ensure we set lastClickedIndex on pointerdown so it happens
+            // before the parent 'pointerup' handler (pointerup runs before click).
+            thumb.addEventListener('pointerdown', (e) => {
+                lastClickedIndex = idx;
+            });
+
+            thumb.addEventListener('click', (e) => {
+                console.log(`Thumb #${idx} clicked`);
+                // Prevent the click from bubbling to the faixa which may trigger pointer handlers
+                e.stopPropagation();
+                // select the thumb (click may arrive after pointerup)
+                selectThumb(idx);
+                // clear after a short delay to allow pointerup logic to read lastClickedIndex
+                setTimeout(() => { lastClickedIndex = null; }, 300);
+            });
+
+            faixa.appendChild(thumb);
+            thumbs.push(thumb);
+        });
+
+        // Seleciona primeiro por padrão
+        if (thumbs.length > 0) selectThumb(0);
+
+        viewport.appendChild(faixa);
+        carrossel.appendChild(viewport);
+
+        // Setas: colocadas ao lado da imagem completa (dentro do containerWrapper)
+        const btnLeft = document.createElement('button');
+        btnLeft.type = 'button';
+        btnLeft.className = 'carrossel-btn carrossel-left';
+        btnLeft.innerHTML = '&#9664;';
+        btnLeft.title = 'Anterior';
+
+        const btnRight = document.createElement('button');
+        btnRight.type = 'button';
+        btnRight.className = 'carrossel-btn carrossel-right';
+        btnRight.innerHTML = '&#9654;';
+        btnRight.title = 'Próximo';
+
+        // Append buttons to the image container so they overlay the main image
+        try {
+            containerWrapper.style.position = containerWrapper.style.position || 'relative';
+            containerWrapper.appendChild(btnLeft);
+            containerWrapper.appendChild(btnRight);
+        } catch (err) {
+            // fallback: append to carrossel
+            carrossel.appendChild(btnLeft);
+            carrossel.appendChild(btnRight);
+        }
+
+        // Scroll helpers
+        const scrollAmount = 160; // pixels per click
+        btnLeft.addEventListener('click', () => { selectThumb(currentIndex - 1); });
+        btnRight.addEventListener('click', () => { selectThumb(currentIndex + 1); });
+
+        // Drag to scroll on faixa
+        let isDown = false, startX = 0, scrollLeft = 0;
+        let movedDuringDrag = false;
+        faixa.addEventListener('pointerdown', (e) => {
+            isDown = true;
+            movedDuringDrag = false;
+            faixa.setPointerCapture(e.pointerId);
+            startX = e.clientX;
+            scrollLeft = viewport.scrollLeft;
+            faixa.style.cursor = 'grabbing';
+        });
+        faixa.addEventListener('pointermove', (e) => {
+            if (!isDown) return;
+            const dx = e.clientX - startX;
+            if (Math.abs(dx) > 6) movedDuringDrag = true;
+            viewport.scrollLeft = scrollLeft - dx;
+        });
+        faixa.addEventListener('pointerup', (e) => {
+            isDown = false;
+            try { faixa.releasePointerCapture(e.pointerId); } catch (err) { }
+            faixa.style.cursor = 'grab';
+            // Only re-evaluate nearest thumb when user actually dragged.
+            if (!movedDuringDrag) {
+                // If the user clicked a thumb recently, respect that click.
+                if (lastClickedIndex !== null) {
+                    try { selectThumb(lastClickedIndex, true); } catch (err) { /* ignore */ }
+                    lastClickedIndex = null;
+                    movedDuringDrag = false;
+                    return;
+                }
+                movedDuringDrag = false;
+                return;
+            }
+            // após drag, seleciona thumb mais próxima do centro do viewport
+            try {
+                const center = viewport.scrollLeft + (viewport.clientWidth / 2);
+                let best = 0;
+                let bestDist = Infinity;
+                thumbs.forEach((t, idx) => {
+                    const thumbCenter = (t.offsetLeft + (t.offsetWidth / 2));
+                    const dist = Math.abs(thumbCenter - center);
+                    if (dist < bestDist) { bestDist = dist; best = idx; }
+                });
+                selectThumb(best, true);
+            } catch (err) { /* ignore */ }
+            movedDuringDrag = false;
+        });
+        faixa.addEventListener('pointerleave', () => { isDown = false; movedDuringDrag = false; faixa.style.cursor = 'grab'; });
+
+        // Keyboard navigation when hovering carrossel
+        carrossel.tabIndex = 0;
+        carrossel.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') selectThumb(currentIndex - 1);
+            if (e.key === 'ArrowRight') selectThumb(currentIndex + 1);
+        });
+
+        containerWrapper.appendChild(carrossel);
+    } catch (e) {
+        console.error('Falha ao carregar carrossel de ângulos', e);
+    }
 }
 async function renderDecisions(historicoId, entregaItemId) {
     try {

@@ -1653,23 +1653,208 @@ nav.breadcrumb-nav a {
     align-items: center;
     justify-content: center;
     height: 100vh;
-    background: linear-gradient(135deg,#0f1724 0%, #1f2a44 100%);
+    background: linear-gradient(135deg, #0f1724 0%, #1f2a44 100%);
 }
+
 .auth-card {
     background: #ffffff;
     padding: 28px 28px;
     border-radius: 12px;
     width: 360px;
-    box-shadow: 0 10px 30px rgba(2,6,23,0.6);
+    box-shadow: 0 10px 30px rgba(2, 6, 23, 0.6);
     color: #1f2937;
     text-align: left;
 }
-.auth-card h1 { font-size: 22px; margin-bottom: 6px; }
-.auth-card .muted { color: #6b7280; margin-bottom: 14px; }
-.auth-card label { display: block; font-size: 13px; color: #374151; margin-bottom: 10px; }
-.auth-card input { width: 100%; padding: 10px 12px; margin-top: 6px; border-radius: 8px; border: 1px solid #e6e9ef; box-sizing: border-box; }
-.actions { display:flex; gap:10px; align-items:center; margin-top: 12px; }
-.button { display:inline-block; padding:10px 14px; border-radius:8px; text-align:center; text-decoration:none; }
-.button.primary { background: #0ea5a4; color: white; }
-.button.ghost { background: transparent; color: #0f1724; border: 1px solid #e6e9ef; }
-.muted.success { color: #059669; margin-bottom: 8px; }
+
+.auth-card h1 {
+    font-size: 22px;
+    margin-bottom: 6px;
+}
+
+.auth-card .muted {
+    color: #6b7280;
+    margin-bottom: 14px;
+}
+
+.auth-card label {
+    display: block;
+    font-size: 13px;
+    color: #374151;
+    margin-bottom: 10px;
+}
+
+.auth-card input {
+    width: 100%;
+    padding: 10px 12px;
+    margin-top: 6px;
+    border-radius: 8px;
+    border: 1px solid #e6e9ef;
+    box-sizing: border-box;
+}
+
+.actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-top: 12px;
+}
+
+.button {
+    display: inline-block;
+    padding: 10px 14px;
+    border-radius: 8px;
+    text-align: center;
+    text-decoration: none;
+}
+
+.button.primary {
+    background: #0ea5a4;
+    color: white;
+}
+
+.button.ghost {
+    background: transparent;
+    color: #0f1724;
+    border: 1px solid #e6e9ef;
+}
+
+.muted.success {
+    color: #059669;
+    margin-bottom: 8px;
+}
+
+/* Additional styles moved from inline JS for carousel and image cards */
+.imagem-card {
+    cursor: pointer;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #fff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+.imagem-thumb {
+    height: 150px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f8f8f8;
+}
+
+.imagem-thumb .imagem-preview {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+.sem-preview {
+    color: #aaa;
+    font-size: 12px;
+}
+
+.imagem-card-body {
+    padding: 8px 10px;
+}
+
+.imagem-card-title {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.imagem-card-funcao {
+    font-size: 12px;
+    color: #555;
+}
+
+.imagem-card-colaborador {
+    font-size: 11px;
+    color: #777;
+}
+
+.imagem-card-versoes {
+    margin-top: 6px;
+    font-size: 11px;
+    color: #444;
+}
+
+.carrossel-angulos {
+    margin-top: 12px;
+    position: relative;
+    background: #fafafa;
+    border: 1px solid #e0e0e0;
+    padding: 8px;
+    border-radius: 6px;
+}
+
+.carrossel-header {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.carrossel-viewport {
+    overflow: auto;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.carrossel-faixa {
+    display: flex;
+    gap: 8px;
+    transition: all 300ms ease;
+    will-change: transform;
+    padding: 4px 0 8px 0;
+}
+
+.carrossel-thumb {
+    min-width: 140px;
+    flex: 0 0 auto;
+    cursor: pointer;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    background: #fff;
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: 12px;
+}
+
+.carrossel-thumb-img {
+    width: 140px !important;
+    height: 90px !important;
+    object-fit: cover !important;
+    border-radius: 4px;
+}
+
+.carrossel-thumb-label {
+    margin-top: 6px;
+    text-align: center;
+}
+
+.carrossel-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 60;
+    border: none;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 8px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.carrossel-left {
+    left: 8px;
+}
+
+.carrossel-right {
+    right: 8px;
+}
+
+#imagem_atual {
+    width: 100%;
+}
+
+.carrossel-thumb.selected-thumb { outline: 3px solid #0d6efd; }

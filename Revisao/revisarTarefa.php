@@ -140,7 +140,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $resultadoFinal['success'] = true;
         $resultadoFinal['message'] = 'Tarefa atualizada com sucesso.';
-        // Ao aprovar uma função, atualizar entregas_itens.historico_id com o id correspondente
+        // Ao aprovar uma função, atualizar vínculos de entrega
+        // - Para P00 + Finalização: vincular TODOS os ângulos (historico_aprovacoes_imagens) ao item de entrega via angulos_imagens.entrega_item_id
+        // - Para demais (R00..EF): atualizar entregas_itens.historico_id com o id correspondente (último)
         if (in_array($status, ['Aprovado', 'Aprovado com ajustes'])) {
             if ($imagem_id) {
                 // obtém status_id e obra_id da imagem
@@ -150,6 +152,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmtImg->bind_result($img_status_id, $img_obra_id);
                 if ($stmtImg->fetch()) {
                     $stmtImg->close();
+
+                    // Descobre o nome do status (ex.: P00, R00, EF...)
+                    $status_nome_atual = null;
+                    $stmtSt = $conn->prepare("SELECT nome_status FROM status_imagem WHERE idstatus = ? LIMIT 1");
+                    if ($stmtSt) {
+                        $stmtSt->bind_param("i", $img_status_id);
+                        $stmtSt->execute();
+                        $stmtSt->bind_result($status_nome_atual);
+                        $stmtSt->fetch();
+                        $stmtSt->close();
+                    }
 
                     // encontra a entrega correspondente (escolhe a mais recente)
                     $stmtEnt = $conn->prepare("SELECT id FROM entregas WHERE status_id = ? AND obra_id = ? ORDER BY id DESC LIMIT 1");
@@ -167,26 +180,78 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         if ($stmtItem->fetch()) {
                             $stmtItem->close();
 
-                            // obtém id do historico_aprovacoes_imagens pelo idfuncao_imagem (mais recente)
-                            $stmtHistImg = $conn->prepare("SELECT id FROM historico_aprovacoes_imagens WHERE funcao_imagem_id = ? ORDER BY id DESC LIMIT 1");
-                            $stmtHistImg->bind_param("i", $idfuncao_imagem);
-                            $stmtHistImg->execute();
-                            $stmtHistImg->bind_result($hist_img_id);
-                            if ($stmtHistImg->fetch()) {
-                                $stmtHistImg->close();
+                            // Verifica se é o caso especial de P00 + função finalização
+                            $isFinalizacao = (mb_strtolower($nome_funcao, 'UTF-8') === 'finalização');
+                            $isP00 = ($status_nome_atual === 'P00');
 
-                                // atualiza entregas_itens.historico_id
-                                $stmtUpd = $conn->prepare("UPDATE entregas_itens SET historico_id = ?, status = 'Entrega pendente' WHERE id = ?");
-                                $stmtUpd->bind_param("ii", $hist_img_id, $entrega_item_id);
-                                if ($stmtUpd->execute()) {
-                                    $resultadoFinal['logs'][] = "entregas_itens id=$entrega_item_id atualizado com historico_id=$hist_img_id.";
-                                } else {
-                                    $resultadoFinal['logs'][] = "Falha ao atualizar entregas_itens id=$entrega_item_id.";
+                            if ($isFinalizacao && $isP00) {
+                                // Garante coluna entrega_item_id em angulos_imagens (migração leve e segura durante a execução)
+                                $colExists = false;
+                                if ($chk = $conn->prepare("SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'angulos_imagens' AND COLUMN_NAME = 'entrega_item_id'")) {
+                                    $chk->execute();
+                                    $resChk = $chk->get_result();
+                                    $colExists = ($resChk && $resChk->num_rows > 0);
+                                    $chk->close();
                                 }
-                                $stmtUpd->close();
+                                if (!$colExists) {
+                                    // Tenta adicionar a coluna e índice (ignora erro se já existir por condição de corrida)
+                                    @$conn->query("ALTER TABLE angulos_imagens ADD COLUMN entrega_item_id INT NULL AFTER historico_id");
+                                    @$conn->query("CREATE INDEX idx_angulos_entrega_item ON angulos_imagens(entrega_item_id)");
+                                }
+
+                                // Remove vínculos anteriores deste item (reaprovações repetem a lista)
+                                if ($del = $conn->prepare("DELETE FROM angulos_imagens WHERE entrega_item_id = ?")) {
+                                    $del->bind_param("i", $entrega_item_id);
+                                    $del->execute();
+                                    $del->close();
+                                }
+
+                                // Busca TODOS os históricos de imagem desta função
+                                $stmtHistAll = $conn->prepare("SELECT id FROM historico_aprovacoes_imagens WHERE funcao_imagem_id = ? ORDER BY id ASC");
+                                $stmtHistAll->bind_param("i", $idfuncao_imagem);
+                                $stmtHistAll->execute();
+                                $rsAll = $stmtHistAll->get_result();
+                                $inserted = 0;
+                                if ($ins = $conn->prepare("INSERT INTO angulos_imagens (liberada, sugerida, motivo_sugerida, imagem_id, historico_id, entrega_item_id) VALUES (1, 0, '', ?, ?, ?)")) {
+                                    while ($rowH = $rsAll->fetch_assoc()) {
+                                        $hid = intval($rowH['id']);
+                                        $ins->bind_param("iii", $imagem_id, $hid, $entrega_item_id);
+                                        if ($ins->execute()) $inserted++;
+                                    }
+                                    $ins->close();
+                                }
+                                $stmtHistAll->close();
+
+                                // Atualiza o status do item da entrega para pendente de envio ao cliente
+                                if ($up = $conn->prepare("UPDATE entregas_itens SET status = 'Entrega pendente' WHERE id = ?")) {
+                                    $up->bind_param("i", $entrega_item_id);
+                                    $up->execute();
+                                    $up->close();
+                                }
+
+                                $resultadoFinal['logs'][] = "P00: $inserted ângulo(s) liberado(s) em angulos_imagens para entrega_item_id=$entrega_item_id.";
                             } else {
-                                $stmtHistImg->close();
-                                $resultadoFinal['logs'][] = "historico_aprovacoes_imagens para funcao_imagem_id=$idfuncao_imagem não encontrado.";
+                                // Fluxo padrão (R00..EF): usa o último historico para preencher entregas_itens.historico_id
+                                $stmtHistImg = $conn->prepare("SELECT id FROM historico_aprovacoes_imagens WHERE funcao_imagem_id = ? ORDER BY id DESC LIMIT 1");
+                                $stmtHistImg->bind_param("i", $idfuncao_imagem);
+                                $stmtHistImg->execute();
+                                $stmtHistImg->bind_result($hist_img_id);
+                                if ($stmtHistImg->fetch()) {
+                                    $stmtHistImg->close();
+
+                                    // atualiza entregas_itens.historico_id
+                                    $stmtUpd = $conn->prepare("UPDATE entregas_itens SET historico_id = ?, status = 'Entrega pendente' WHERE id = ?");
+                                    $stmtUpd->bind_param("ii", $hist_img_id, $entrega_item_id);
+                                    if ($stmtUpd->execute()) {
+                                        $resultadoFinal['logs'][] = "entregas_itens id=$entrega_item_id atualizado com historico_id=$hist_img_id.";
+                                    } else {
+                                        $resultadoFinal['logs'][] = "Falha ao atualizar entregas_itens id=$entrega_item_id.";
+                                    }
+                                    $stmtUpd->close();
+                                } else {
+                                    $stmtHistImg->close();
+                                    $resultadoFinal['logs'][] = "historico_aprovacoes_imagens para funcao_imagem_id=$idfuncao_imagem não encontrado.";
+                                }
                             }
                         } else {
                             $stmtItem->close();

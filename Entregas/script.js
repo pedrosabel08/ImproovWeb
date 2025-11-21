@@ -7,6 +7,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const modalProgresso = document.getElementById('modalProgresso');
     const modalImagens = document.getElementById('modalImagens');
 
+
+    // Conjuntos de classificação de status/substatus (normalizados em lowercase)
+    const STATUS_PENDENTE = new Set(['entrega pendente']);
+    const STATUS_ENTREGUE = new Set(['entregue no prazo', 'entrega antecipada', 'entregue com atraso']);
+    const SUBSTATUS_PENDENTE = new Set(['rvw', 'drv']);
+
     // botão de registrar entrega
     const btnRegistrarEntrega = document.createElement('button');
     btnRegistrarEntrega.textContent = 'Registrar Entrega';
@@ -113,45 +119,88 @@ document.addEventListener('DOMContentLoaded', () => {
             // salvar dados para uso por outros handlers (ex: adicionar imagem por id)
             entregaDados = data;
             modalPrazo.textContent = formatarData(data.data_prevista) || '-';
-            // Use the same delivered logic as the list below to compute finalized count
+            // Contabiliza somente itens realmente entregues conforme regras solicitadas
             const finalizedCount = data.itens.filter(i => {
                 const statusStr = (i.status || '').toString().trim();
-                const substatus = (i.nome_substatus || '').toString().trim().toUpperCase();
-                const isPendente = (statusStr === 'Entrega pendente') || (substatus === 'RVW') || (substatus === 'DRV');
-                const entregue = !isPendente && (/^entrega/i.test(statusStr) || /^entregue/i.test(statusStr));
-                return entregue;
+                const substatus = (i.nome_substatus || '').toString().trim();
+                // normalizar para comparação
+                const ns = statusStr.toLowerCase();
+                const nsub = substatus.toLowerCase();
+                const isPendente = STATUS_PENDENTE.has(ns) || (SUBSTATUS_PENDENTE.has(nsub) && !STATUS_ENTREGUE.has(ns));
+                const isEntregue = STATUS_ENTREGUE.has(ns) && !isPendente;
+                return isEntregue;
             }).length;
             modalProgresso.textContent = `${finalizedCount} / ${data.itens.length} finalizadas`;
 
             modalImagens.innerHTML = '';
+
+            // adiciona checkbox mestre para ações em batch (selecionar todos)
+            const masterDiv = document.createElement('div');
+            masterDiv.classList.add('modal-imagem-item', 'select-all-item');
+            masterDiv.innerHTML = `
+                <input type="checkbox" id="selectAllImagens">
+                <label for="selectAllImagens" class="imagem_nome">Selecionar todos</label>
+            `;
+            modalImagens.appendChild(masterDiv);
+
             data.itens.forEach(img => {
                 const div = document.createElement('div');
                 div.classList.add('modal-imagem-item');
 
-                // Marcar como Pendente quando o item está com status 'Entrega pendente'
-                // OU quando o substatus da imagem é 'RVW' ou 'DRV'.
-                // Nesses casos NÃO deve ser tratado como 'Entregue'.
                 const statusStr = (img.status || '').toString().trim();
-                const substatusStr = (img.nome_substatus || '').toString().trim().toUpperCase();
+                const substatusStr = (img.nome_substatus || '').toString().trim();
 
-                const isPendente = (statusStr === 'Entrega pendente') || (substatusStr === 'RVW') || (substatusStr === 'DRV');
+                const ns = statusStr.toLowerCase();
+                const nsub = substatusStr.toLowerCase();
 
-                // Considera entregue apenas quando não for um dos casos pendentes e o status indicar entrega
-                const entregue = !isPendente && (/^entrega/i.test(statusStr) || /^entregue/i.test(statusStr));
+                const isPendente = STATUS_PENDENTE.has(ns) || (SUBSTATUS_PENDENTE.has(nsub) && !STATUS_ENTREGUE.has(ns));
+                const isEntregue = STATUS_ENTREGUE.has(ns) && !isPendente;
+                const isEmAndamento = !isPendente && !isEntregue;
 
-                // Se estiver entregue, checkbox vem marcado e desabilitado
-                const checked = entregue ? 'checked' : '';
-                const disabled = entregue ? 'disabled' : '';
+                const checked = isEntregue ? 'checked' : '';
+                const disabled = isEntregue ? 'disabled' : '';
 
                 div.innerHTML = `
                 <input type="checkbox" id="img-${img.id}" value="${img.id}" ${checked} ${disabled}>
-                <label for="img-${img.id}" class="imagem_nome">
-                    ${img.nome}
-                </label>
-                <span class="entregue">${entregue ? '📦 Entregue' : isPendente ? '✅ Pendente' : '⏳ Em andamento'}</span>
+                <label for="img-${img.id}" class="imagem_nome">${img.nome}</label>
+                <span class="entregue">${isEntregue ? '📦 Entregue' : isPendente ? '✅ Pendente' : '⏳ Em andamento'}</span>
             `;
                 modalImagens.appendChild(div);
             });
+
+            // configurar comportamento do checkbox mestre e sincronização
+            const master = document.getElementById('selectAllImagens');
+            if (master) {
+                const selectableSelector = 'input[type="checkbox"]:not([disabled])';
+                const getSelectable = () => Array.from(modalImagens.querySelectorAll(selectableSelector)).filter(cb => cb.id !== 'selectAllImagens');
+
+                const updateMasterState = () => {
+                    const selectable = getSelectable();
+                    const total = selectable.length;
+                    const checkedCount = selectable.filter(cb => cb.checked).length;
+                    master.checked = total > 0 && checkedCount === total;
+                    master.indeterminate = checkedCount > 0 && checkedCount < total;
+                };
+
+                master.addEventListener('change', () => {
+                    const selectable = getSelectable();
+                    selectable.forEach(cb => cb.checked = master.checked);
+                    master.indeterminate = false;
+                });
+
+                // adicionar listener para cada checkbox selecionável para manter o mestre em sincronia
+                const attachIndividualListeners = () => {
+                    const selectable = getSelectable();
+                    selectable.forEach(cb => {
+                        cb.removeEventListener('change', updateMasterState);
+                        cb.addEventListener('change', updateMasterState);
+                    });
+                };
+
+                attachIndividualListeners();
+                // inicializar estado do mestre
+                updateMasterState();
+            }
 
             modal.style.display = 'flex';
         } catch (err) {
@@ -339,6 +388,15 @@ function carregarImagens() {
             const container = document.getElementById('imagens_container');
             container.innerHTML = '';
 
+            // adicionar checkbox mestre para seleção em lote dentro do container principal
+            const masterDiv = document.createElement('div');
+            masterDiv.classList.add('checkbox-item', 'select-all-item');
+            masterDiv.innerHTML = `
+                <input type="checkbox" id="selectAllImagens_list">
+                <label for="selectAllImagens_list"><strong>Selecionar todos</strong></label>
+            `;
+            container.appendChild(masterDiv);
+
             if (!imagens.length) {
                 container.innerHTML = '<p>Nenhuma imagem encontrada para esses critérios.</p>';
                 return;
@@ -353,11 +411,42 @@ function carregarImagens() {
                 }
 
                 div.innerHTML = `
-            <input type="checkbox" name="imagem_ids[]" value="${img.id}">
-            <span>${img.nome}</span>
+            <input type="checkbox" name="imagem_ids[]" value="${img.id}" class="img-selectable" id="lista-img-${img.id}">
+            <label for="lista-img-${img.id}"><span>${img.nome}</span></label>
         `;
                 container.appendChild(div);
             });
+
+            // configurar comportamento do checkbox mestre no container
+            const master = document.getElementById('selectAllImagens_list');
+            if (master) {
+                const getSelectable = () => Array.from(container.querySelectorAll('input[type="checkbox"].img-selectable:not([disabled])'));
+
+                const updateMasterState = () => {
+                    const selectable = getSelectable();
+                    const total = selectable.length;
+                    const checkedCount = selectable.filter(cb => cb.checked).length;
+                    master.checked = total > 0 && checkedCount === total;
+                    master.indeterminate = checkedCount > 0 && checkedCount < total;
+                };
+
+                master.addEventListener('change', () => {
+                    const selectable = getSelectable();
+                    selectable.forEach(cb => cb.checked = master.checked);
+                    master.indeterminate = false;
+                });
+
+                const attachIndividualListeners = () => {
+                    const selectable = getSelectable();
+                    selectable.forEach(cb => {
+                        cb.removeEventListener('change', updateMasterState);
+                        cb.addEventListener('change', updateMasterState);
+                    });
+                };
+
+                attachIndividualListeners();
+                updateMasterState();
+            }
         })
         .catch(err => {
             console.error('Erro ao carregar imagens:', err);

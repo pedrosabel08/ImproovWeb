@@ -95,153 +95,7 @@ try {
             throw new Exception('Erro ao executar statement angulos: ' . $stmtA->error);
         }
         $stmtA->close();
-
-        // Recupera informações do ângulo para notificação e mover arquivo
-        $stmtAng = $conn->prepare("SELECT ai.*, hi.nome_arquivo AS nome_arquivo, i.imagem_nome, i.tipo_imagem, i.idimagens_cliente_obra AS imagem_id, o.nomenclatura, hi.indice_envio
-                                    FROM angulos_imagens ai
-                                    LEFT JOIN historico_aprovacoes_imagens hi ON hi.id = ai.historico_id
-                                    LEFT JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = ai.imagem_id
-                                    LEFT JOIN obra o ON o.idobra = i.obra_id
-                                    WHERE ai.id = ? LIMIT 1");
-        if ($stmtAng) {
-            $stmtAng->bind_param('i', $angulo_id);
-            if ($stmtAng->execute()) {
-                $resAng = $stmtAng->get_result();
-                if ($rowAng = $resAng->fetch_assoc()) {
-                    $arquivoAng = $rowAng['nome_arquivo'] ?? null;
-                    $imagemNome = $rowAng['imagem_nome'] ?? null;
-                    $tipoImagem = $rowAng['tipo_imagem'] ?? null;
-                    $nomenclaturaObra = $rowAng['nomenclatura'] ?? null;
-                    $indiceEnvioAng = $rowAng['indice_envio'] ?? 1;
-
-                    // NOVO: Buscar arquivo via FTP servidor do sistema (/www/sistema/uploads)
-                    $extensionsToTry = ['jpg','jpeg','png','gif','webp'];
-                    $basename = $arquivoAng ?? '';
-                    $rawExt = pathinfo($basename, PATHINFO_EXTENSION);
-                    $validExt = $rawExt !== '' && in_array(strtolower($rawExt), $extensionsToTry, true);
-                    $hasExt = $validExt;
-                    $ftp_host = 'ftp.improov.com.br';
-                    $ftp_port = 21;
-                    $ftp_user = 'improov';
-                    $ftp_pass = 'Impr00v';
-                    $ftp_base_dir = '/www/sistema/uploads/';
-                    $localFound = null;
-                    $discLog = __DIR__ . '/logs/sftp_upload.log';
-                    $discNow = date('Y-m-d H:i:s');
-                    if (!is_dir(dirname($discLog))) @mkdir(dirname($discLog), 0755, true);
-                    if ($basename !== '') {
-                        $ftp_conn = @ftp_connect($ftp_host, $ftp_port, 10);
-                        if ($ftp_conn && @ftp_login($ftp_conn, $ftp_user, $ftp_pass)) {
-                            @ftp_pasv($ftp_conn, true);
-                            $candidatePaths = [];
-                            if ($hasExt) {
-                                $candidatePaths[] = $ftp_base_dir . $basename;
-                            } else {
-                                foreach ($extensionsToTry as $eTry) {
-                                    $candidatePaths[] = $ftp_base_dir . $basename . '.' . $eTry;
-                                }
-                            }
-                            $candidatePaths[] = $ftp_base_dir . $basename; // sempre tenta sem extensão
-                            foreach ($candidatePaths as $remote) {
-                                $tmpLocal = sys_get_temp_dir() . '/improov_' . uniqid() . '_' . basename($remote);
-                                if (@ftp_get($ftp_conn, $tmpLocal, $remote, FTP_BINARY)) {
-                                    if (filesize($tmpLocal) > 200) {
-                                        $localFound = $tmpLocal;
-                                        $rawExt = pathinfo($tmpLocal, PATHINFO_EXTENSION);
-                                        break;
-                                    } else { @unlink($tmpLocal); }
-                                } else { @unlink($tmpLocal); }
-                            }
-                            file_put_contents($discLog, "[$discNow] FTP discovery basename='$basename' paths=" . json_encode($candidatePaths) . " found=" . ($localFound ?: 'NONE') . "\n", FILE_APPEND);
-                        } else {
-                            file_put_contents($discLog, "[$discNow] FTP connect/login FAILED '$ftp_host'\n", FILE_APPEND);
-                        }
-                        if ($ftp_conn) { @ftp_close($ftp_conn); }
-                    }
-
-                    // Descobrir extensão real
-                    $foundExt = '';
-                    if ($localFound) {
-                        $foundExt = pathinfo($localFound, PATHINFO_EXTENSION);
-                        if ($foundExt) $foundExt = '.' . $foundExt;
-                    }
-
-                    // Montar caminho destino (ex: /2025/MEN_991/05.Exchange/01.Input/Angulo_definido/Imagem Interna/IMG/5.MEN_991 Hall de entrada.jpg)
-                    $year = date('Y');
-                    $safeImagemNome = preg_replace('/[^A-Za-z0-9 _.-]/', '', ($indiceEnvioAng . '.' . ($nomenclaturaObra ? $nomenclaturaObra : '') . ' ' . ($imagemNome ?? '')));
-                    $safeImagemNome = trim(preg_replace('/\s+/', ' ', $safeImagemNome));
-                    // If we discovered an extension from the found local file, append it to the remote filename
-                    if (!empty($foundExt) && pathinfo($safeImagemNome, PATHINFO_EXTENSION) === '') {
-                        $safeImagemNome .= $foundExt;
-                    }
-                    // Caminho no NAS (/mnt/clientes/<ano>/<obra>/...)
-                    $remoteSub = "/mnt/clientes/$year/" . ($nomenclaturaObra ?: 'UNKNOWN') . "/05.Exchange/01.Input/Angulo_definido/" . ($tipoImagem ?: 'IMG') . "/IMG/";
-
-                    // Usar SFTP conforme Arquivos/upload.php (fazer upload para NAS)
-                    try {
-                        // credenciais SFTP padrão (copiadas de Arquivos/upload.php). Ajuste se necessário.
-                        $host = "imp-nas.ddns.net";
-                        $port = 2222;
-                        $username = "flow";
-                        $password = "flow@2025";
-                        $sftp = new \phpseclib3\Net\SFTP($host, $port);
-
-                        // prepare sftp log
-                        $sftpLog = __DIR__ . '/logs/sftp_upload.log';
-                        if (!is_dir(dirname($sftpLog))) @mkdir(dirname($sftpLog), 0755, true);
-                        $sftpNow = date('Y-m-d H:i:s');
-
-                        if (!$sftp->login($username, $password)) {
-                            file_put_contents($sftpLog, "[$sftpNow] SFTP: login failed for $username@$host:$port\n", FILE_APPEND);
-                        } elseif ($localFound) {
-                            // Upload direto para remoteSub (já absoluto)
-                            $remoteFullDir = trim($remoteSub, '/');
-
-                            // Garante criação recursiva dos diretórios
-                            $segments = explode('/', trim($remoteFullDir, '/'));
-                            $buildPath = '';
-                            foreach ($segments as $seg) {
-                                if ($seg === '') continue;
-                                $buildPath .= '/' . $seg;
-                                if (!$sftp->is_dir($buildPath)) {
-                                    if ($sftp->mkdir($buildPath)) {
-                                        file_put_contents($sftpLog, "[$sftpNow] SFTP: mkdir $buildPath\n", FILE_APPEND);
-                                    } else {
-                                        file_put_contents($sftpLog, "[$sftpNow] SFTP: mkdir FAILED $buildPath\n", FILE_APPEND);
-                                    }
-                                }
-                            }
-                            $remotePath = '/' . trim($remoteFullDir, '/') . '/' . $safeImagemNome;
-                            $remotePath = '/' . preg_replace('#/+#','/', $remotePath);
-                            file_put_contents($sftpLog, "[$sftpNow] SFTP: ready upload local='$localFound' => remote='$remotePath'\n", FILE_APPEND);
-                            $okPut = $sftp->put($remotePath, $localFound);
-                            if ($okPut) {
-                                file_put_contents($sftpLog, "[$sftpNow] SFTP: uploaded $localFound => $remotePath\n", FILE_APPEND);
-                                // cleanup temp if we downloaded it to sys temp dir
-                                $sysTmp = sys_get_temp_dir();
-                                if (stripos($localFound, $sysTmp) === 0) {
-                                    @unlink($localFound);
-                                    file_put_contents($sftpLog, "[$sftpNow] SFTP: removed temp file $localFound\n", FILE_APPEND);
-                                }
-                            } else {
-                                file_put_contents($sftpLog, "[$sftpNow] SFTP: put failed for $localFound => $remotePath\n", FILE_APPEND);
-                            }
-                        } else {
-                            file_put_contents($sftpLog, "[$sftpNow] SFTP: no local file found to upload after enhanced discovery (basename='$basename')\n", FILE_APPEND);
-                        }
-                    } catch (Exception $e) {
-                        // falha em mover arquivo — não interrompe fluxo principal; log para diagnóstico
-                        $sftpNow = date('Y-m-d H:i:s');
-                        $sftpLog = $sftpLog ?? (__DIR__ . '/logs/sftp_upload.log');
-                        if (!is_dir(dirname($sftpLog))) @mkdir(dirname($sftpLog), 0755, true);
-                        file_put_contents($sftpLog, "[$sftpNow] SFTP exception: " . $e->getMessage() . "\n", FILE_APPEND);
-                    }
-
-                    // (Notificações para colaborador removidas — apenas envio para canal será feito)
-                }
-            }
-            $stmtAng->close();
-        }
+        // Removido: qualquer tentativa de localizar e enviar arquivo de ângulo para FTP/NAS
     }
 
     // Recupera informações adicionais para enriquecer a mensagem
@@ -297,60 +151,254 @@ try {
 
     date_default_timezone_set('America/Sao_Paulo');
     $hora = date('d/m/Y H:i');
+    // garantir variável com nome do usuário responsável pela ação
+    $nomeUsuario = $usuarioNome ?? 'Usuário';
     $textoSlack = "Decisão registrada:\n";
-    $textoSlack .= "• Imagem: #" . ($imagemId ?? 'N/D') . " - " . ($imagemNome ?? 'sem nome') . "\n";
-    if ($data_entregue) {
+    $textoSlack .= "• Imagem: " . ($imagemNome ?? 'sem nome') . "\n";
+    if (!empty($data_entregue)) {
         $dataEnvioFmt = date('d/m/Y H:i', strtotime($data_entregue));
         $textoSlack .= "• Data envio versão: $dataEnvioFmt\n";
     }
     $textoSlack .= "• Decisão: $decisaoLabel\n";
-    $textoSlack .= "• Responsável: " . ($usuarioNome ?? 'Usuário') . "\n";
+    $textoSlack .= "• Responsável: " . ($nomeUsuario) . "\n";
     $textoSlack .= "• Registrado em: $hora";
 
-    // Envia para Slack se token disponível — com logs para diagnóstico
+    // Envia DM no Slack ao finalizador (funcao_id = 4) e mensagem ao canal — logs para diagnóstico
     $slackStatus = null;
     $logDir = __DIR__ . '/logs';
     if (!is_dir($logDir)) @mkdir($logDir, 0755, true);
     $logFile = $logDir . '/slack_notify.log';
     $now = date('Y-m-d H:i:s');
-    if ($slackToken) {
-        $payload = [
-            'channel' => $slackChannel,
-            'text' => $textoSlack,
-        ];
-        $payloadJson = json_encode($payload, JSON_UNESCAPED_UNICODE);
-        file_put_contents($logFile, "[$now] Slack: sending payload: $payloadJson\n", FILE_APPEND);
 
-        $ch = curl_init('https://slack.com/api/chat.postMessage');
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Authorization: Bearer ' . $slackToken,
-            'Content-Type: application/json'
+    // channel send will be executed later depending on decision type
+    $chanStatus = null;
+
+    // Descobrir nome_slack do finalizador a partir da imagem
+    $finalizadorSlack = null;
+    if (!empty($imagemId)) {
+        $stmtFin = $conn->prepare("SELECT colaborador_id FROM funcao_imagem WHERE funcao_id = 4 AND imagem_id = ? ORDER BY idfuncao_imagem DESC LIMIT 1");
+        if ($stmtFin) {
+            $stmtFin->bind_param('i', $imagemId);
+            if ($stmtFin->execute()) {
+                $resFin = $stmtFin->get_result();
+                if ($rowF = $resFin->fetch_assoc()) {
+                    $colabId = intval($rowF['colaborador_id']);
+                    $stmtUS = $conn->prepare("SELECT nome_slack FROM usuario WHERE idcolaborador = ? LIMIT 1");
+                    if ($stmtUS) {
+                        $stmtUS->bind_param('i', $colabId);
+                        if ($stmtUS->execute()) {
+                            $resUS = $stmtUS->get_result();
+                            if ($rowUS = $resUS->fetch_assoc()) {
+                                $finalizadorSlack = trim((string)$rowUS['nome_slack']);
+                            }
+                        }
+                        $stmtUS->close();
+                    }
+                }
+            }
+            $stmtFin->close();
+        }
+    }
+
+    if ($slackToken && $finalizadorSlack) {
+        // 1) Obter user id via users.list procurando por real_name == nome_slack
+        $chList = curl_init('https://slack.com/api/users.list');
+        curl_setopt($chList, CURLOPT_HTTPHEADER, [
+            'Authorization: Bearer ' . $slackToken
         ]);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $payloadJson);
-        $resp = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        if (curl_errno($ch)) {
-            $curlErr = curl_error($ch);
-            $slackStatus = 'erro_curl: ' . $curlErr;
-            file_put_contents($logFile, "[$now] Slack: curl error: $curlErr\n", FILE_APPEND);
-        } else {
-            file_put_contents($logFile, "[$now] Slack: response HTTP $httpCode: $resp\n", FILE_APPEND);
-            $respData = json_decode($resp, true);
-            if (isset($respData['ok']) && $respData['ok']) {
-                $slackStatus = 'enviado';
+        curl_setopt($chList, CURLOPT_RETURNTRANSFER, true);
+        $respList = curl_exec($chList);
+        $httpList = curl_getinfo($chList, CURLINFO_HTTP_CODE);
+        $userId = null;
+        if (!curl_errno($chList)) {
+            file_put_contents($logFile, "[$now] Slack: users.list HTTP $httpList\n", FILE_APPEND);
+            $dataList = json_decode($respList, true);
+            if (!empty($dataList['ok'])) {
+                $needle = mb_strtolower($finalizadorSlack);
+                foreach (($dataList['members'] ?? []) as $memb) {
+                    $rn = isset($memb['real_name']) ? mb_strtolower($memb['real_name']) : '';
+                    if ($rn !== '' && $rn === $needle) {
+                        $userId = $memb['id'] ?? null;
+                        break;
+                    }
+                }
             } else {
-                $err = $respData['error'] ?? 'desconhecido';
-                $slackStatus = 'falha_api: ' . $err;
-                file_put_contents($logFile, "[$now] Slack: api error: $err\n", FILE_APPEND);
+                $err = $dataList['error'] ?? 'desconhecido';
+                file_put_contents($logFile, "[$now] Slack: users.list error: $err\n", FILE_APPEND);
+            }
+        } else {
+            $curlErr = curl_error($chList);
+            file_put_contents($logFile, "[$now] Slack: users.list curl error: $curlErr\n", FILE_APPEND);
+        }
+        curl_close($chList);
+
+        if ($userId) {
+            $payload = [
+                'channel' => $userId,
+                'text' => $textoSlack,
+            ];
+            $payloadJson = json_encode($payload, JSON_UNESCAPED_UNICODE);
+            file_put_contents($logFile, "[$now] Slack DM: sending payload to $userId: $payloadJson\n", FILE_APPEND);
+
+            $ch = curl_init('https://slack.com/api/chat.postMessage');
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                'Authorization: Bearer ' . $slackToken,
+                'Content-Type: application/json'
+            ]);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $payloadJson);
+            $resp = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            if (curl_errno($ch)) {
+                $curlErr = curl_error($ch);
+                $dmStatus = 'erro_curl: ' . $curlErr;
+                file_put_contents($logFile, "[$now] Slack DM: curl error: $curlErr\n", FILE_APPEND);
+            } else {
+                file_put_contents($logFile, "[$now] Slack DM: response HTTP $httpCode: $resp\n", FILE_APPEND);
+                $respData = json_decode($resp, true);
+                if (isset($respData['ok']) && $respData['ok']) {
+                    $dmStatus = 'dm_enviada';
+                } else {
+                    $err = $respData['error'] ?? 'desconhecido';
+                    $dmStatus = 'falha_api: ' . $err;
+                    file_put_contents($logFile, "[$now] Slack DM: api error: $err\n", FILE_APPEND);
+                }
+            }
+            curl_close($ch);
+        } else {
+            $dmStatus = 'usuario_slack_nao_encontrado';
+            file_put_contents($logFile, "[$now] Slack DM: user not found for real_name='$finalizadorSlack'\n", FILE_APPEND);
+        }
+    } else {
+        if (!$slackToken) {
+            $dmStatus = 'token_indisponivel';
+            file_put_contents($logFile, "[$now] Slack: token not available\n", FILE_APPEND);
+        } elseif (!$finalizadorSlack) {
+            $dmStatus = 'finalizador_slack_vazio';
+            file_put_contents($logFile, "[$now] Slack DM: finalizador nome_slack vazio/indisponível (imagem_id=" . ($imagemId ?? 'N/D') . ")\n", FILE_APPEND);
+        }
+    }
+    // Agora decide o tipo de mensagem e envia ao canal / DM conforme solicitado
+    // Monta link para FlowReview (ponto de conferência)
+    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    $link = $scheme . '://' . $host . '/sistema/FlowReview/index.php?imagem_id=' . urlencode((string)($imagemId ?? ''));
+
+    // Se for decisão de ângulo, enviar DM ao finalizador e mensagem ao canal com responsável
+    if ($angulo_id > 0) {
+        $dmText = "Angulo escolhido:\nImagem: " . ($imagemNome ?? 'sem nome') . "\nConfira: $link";
+        $chanText = "Angulo escolhido:\nImagem: " . ($imagemNome ?? 'sem nome') . "\nResponsavel: " . ($usuarioNome ?? 'Usuário') . "\nConfira: $link";
+
+        // enviar ao canal
+        if ($slackToken) {
+            $payloadCh = ['channel' => $slackChannel, 'text' => $chanText];
+            $payloadChJson = json_encode($payloadCh, JSON_UNESCAPED_UNICODE);
+            file_put_contents($logFile, "[$now] Slack CHANNEL (angle): sending payload: $payloadChJson\n", FILE_APPEND);
+            $chChan = curl_init('https://slack.com/api/chat.postMessage');
+            curl_setopt($chChan, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . $slackToken, 'Content-Type: application/json']);
+            curl_setopt($chChan, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($chChan, CURLOPT_POST, true);
+            curl_setopt($chChan, CURLOPT_POSTFIELDS, $payloadChJson);
+            $respChan = curl_exec($chChan);
+            $httpChan = curl_getinfo($chChan, CURLINFO_HTTP_CODE);
+            if (curl_errno($chChan)) {
+                $chanStatus = 'canal_erro_curl: ' . curl_error($chChan);
+                file_put_contents($logFile, "[$now] Slack CHANNEL (angle): curl error: " . curl_error($chChan) . "\n", FILE_APPEND);
+            } else {
+                file_put_contents($logFile, "[$now] Slack CHANNEL (angle): response HTTP $httpChan: $respChan\n", FILE_APPEND);
+                $respDataChan = json_decode($respChan, true);
+                if (!empty($respDataChan['ok'])) $chanStatus = 'canal_enviado';
+                else $chanStatus = 'canal_falha_api: ' . ($respDataChan['error'] ?? 'desconhecido');
+            }
+            curl_close($chChan);
+        } else {
+            $chanStatus = 'token_indisponivel';
+            file_put_contents($logFile, "[$now] Slack CHANNEL (angle): token not available\n", FILE_APPEND);
+        }
+
+        // enviar DM ao finalizador (se possível)
+        if (!empty($finalizadorSlack) && $slackToken) {
+            // Resolve user id via users.list (re-using earlier approach)
+            $userId = null;
+            $chList2 = curl_init('https://slack.com/api/users.list');
+            curl_setopt($chList2, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . $slackToken]);
+            curl_setopt($chList2, CURLOPT_RETURNTRANSFER, true);
+            $respList2 = curl_exec($chList2);
+            if (!curl_errno($chList2)) {
+                $dataList2 = json_decode($respList2, true);
+                if (!empty($dataList2['ok'])) {
+                    $needle = mb_strtolower($finalizadorSlack);
+                    foreach (($dataList2['members'] ?? []) as $memb) {
+                        $rn = isset($memb['real_name']) ? mb_strtolower($memb['real_name']) : '';
+                        if ($rn !== '' && $rn === $needle) {
+                            $userId = $memb['id'] ?? null;
+                            break;
+                        }
+                    }
+                }
+            }
+            curl_close($chList2);
+
+            if ($userId) {
+                $payload = ['channel' => $userId, 'text' => $dmText];
+                $payloadJson = json_encode($payload, JSON_UNESCAPED_UNICODE);
+                file_put_contents($logFile, "[$now] Slack DM (angle): sending payload to $userId: $payloadJson\n", FILE_APPEND);
+                $ch = curl_init('https://slack.com/api/chat.postMessage');
+                curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . $slackToken, 'Content-Type: application/json']);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_POST, true);
+                curl_setopt($ch, CURLOPT_POSTFIELDS, $payloadJson);
+                $resp = curl_exec($ch);
+                if (curl_errno($ch)) {
+                    $dmStatus = 'erro_curl: ' . curl_error($ch);
+                    file_put_contents($logFile, "[$now] Slack DM (angle): curl error: " . curl_error($ch) . "\n", FILE_APPEND);
+                } else {
+                    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                    file_put_contents($logFile, "[$now] Slack DM (angle): response HTTP $httpCode: $resp\n", FILE_APPEND);
+                    $respData = json_decode($resp, true);
+                    if (!empty($respData['ok'])) $dmStatus = 'dm_enviada';
+                    else $dmStatus = 'falha_api: ' . ($respData['error'] ?? 'desconhecido');
+                }
+                curl_close($ch);
+            } else {
+                $dmStatus = 'usuario_slack_nao_encontrado';
+                file_put_contents($logFile, "[$now] Slack DM (angle): user not found for real_name='$finalizadorSlack'\n", FILE_APPEND);
             }
         }
-        curl_close($ch);
     } else {
-        $slackStatus = 'token_indisponivel';
-        file_put_contents($logFile, "[$now] Slack: token not available\n", FILE_APPEND);
+        // Decisão de imagem: apenas enviar ao canal com o texto já preparado ($textoSlack)
+        if ($slackToken) {
+            $payloadCh = ['channel' => $slackChannel, 'text' => $textoSlack];
+            $payloadChJson = json_encode($payloadCh, JSON_UNESCAPED_UNICODE);
+            file_put_contents($logFile, "[$now] Slack CHANNEL (image): sending payload: $payloadChJson\n", FILE_APPEND);
+            $chChan = curl_init('https://slack.com/api/chat.postMessage');
+            curl_setopt($chChan, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . $slackToken, 'Content-Type: application/json']);
+            curl_setopt($chChan, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($chChan, CURLOPT_POST, true);
+            curl_setopt($chChan, CURLOPT_POSTFIELDS, $payloadChJson);
+            $respChan = curl_exec($chChan);
+            $httpChan = curl_getinfo($chChan, CURLINFO_HTTP_CODE);
+            if (curl_errno($chChan)) {
+                $chanStatus = 'canal_erro_curl: ' . curl_error($chChan);
+                file_put_contents($logFile, "[$now] Slack CHANNEL (image): curl error: " . curl_error($chChan) . "\n", FILE_APPEND);
+            } else {
+                file_put_contents($logFile, "[$now] Slack CHANNEL (image): response HTTP $httpChan: $respChan\n", FILE_APPEND);
+                $respDataChan = json_decode($respChan, true);
+                if (!empty($respDataChan['ok'])) $chanStatus = 'canal_enviado';
+                else $chanStatus = 'canal_falha_api: ' . ($respDataChan['error'] ?? 'desconhecido');
+            }
+            curl_close($chChan);
+        } else {
+            $chanStatus = 'token_indisponivel';
+            file_put_contents($logFile, "[$now] Slack CHANNEL (image): token not available\n", FILE_APPEND);
+        }
+        // não enviar DM para decisões de imagem
+        $dmStatus = null;
     }
+
+    // Combina status do canal e do DM para retorno
+    $slackStatus = trim(implode(';', array_filter([$chanStatus ?? null, $dmStatus ?? null])), ";");
 
     echo json_encode([
         'success' => true,

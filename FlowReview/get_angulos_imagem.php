@@ -40,11 +40,16 @@ $sql = "SELECT
             hi.indice_envio,
             hi.funcao_imagem_id,
             COALESCE(hi.nome_arquivo, hi.imagem) AS base_nome,
-            hi.data_envio
+            hi.data_envio,
+            ida.decisao,
+            ida.observacao,
+            u.nome_usuario
         FROM angulos_imagens ai
         LEFT JOIN historico_aprovacoes_imagens hi ON hi.id = ai.historico_id
+        LEFT JOIN imagem_decisoes_angulos ida ON ida.angulo_id = ai.id
+        LEFT JOIN usuario_externo u ON u.idusuario = ida.usuario_id
         WHERE $where
-        ORDER BY ai.id ASC";
+        ORDER BY ida.decisao ,ai.id ASC";
 
 $stmt = $conn->prepare($sql);
 if (!$stmt) {

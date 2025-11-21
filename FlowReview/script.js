@@ -209,9 +209,9 @@ function exibirGridImagens(imagens) {
         return;
     }
     imagens.forEach(img => {
-                const card = document.createElement('div');
-                card.className = 'imagem-card';
-                card.innerHTML = `
+        const card = document.createElement('div');
+        card.className = 'imagem-card';
+        card.innerHTML = `
                     <div class="imagem-thumb">
                         ${img.preview_url ? `<img src="${img.preview_url}" alt="Imagem ${img.imagem_id}" class="imagem-preview">` : '<span class="sem-preview">Sem preview</span>'}
                     </div>
@@ -677,6 +677,15 @@ async function carregarCarrosselAngulos(entregaItemId, containerWrapper, mainImg
         // Monta thumbs e controla seleção
         const thumbs = [];
         let currentIndex = 0;
+        // currently selected angle id (when carrossel of ângulos is present)
+        window.selectedAngleId = null;
+
+        // elemento de info sobre ângulo aprovado (criado se houver ângulo decidido)
+        let angleDecisionInfoBox = null;
+
+        // Detecta ângulo decidido (aprovado) se houver
+        const decidedAngle = j.angulos.find(a => String(a.decisao).toLowerCase() === 'aprovado');
+        let decidedIndex = null;
 
         function selectThumb(i) {
             if (i < 0) i = 0;
@@ -687,6 +696,8 @@ async function carregarCarrosselAngulos(entregaItemId, containerWrapper, mainImg
             // aplica destaque via classe
             thumbs.forEach(x => x.classList.remove('selected-thumb'));
             t.classList.add('selected-thumb');
+            // track selected angle id globally so decision submit can include it
+            try { window.selectedAngleId = t.dataset.anguloId ? String(t.dataset.anguloId) : null; } catch (e) { window.selectedAngleId = null; }
             // atualiza imagem principal se existir url
             const imgEl = t.querySelector('img');
             if (imgEl && imgEl.dataset.preview) {
@@ -694,6 +705,12 @@ async function carregarCarrosselAngulos(entregaItemId, containerWrapper, mainImg
                 const currentMain = document.getElementById('imagem_atual') || mainImgEl;
                 try { currentMain.src = imgEl.dataset.preview; } catch (e) { /* ignore */ }
             }
+            // Atualiza visibilidade da caixa de info do ângulo aprovado (se existir)
+            try {
+                if (angleDecisionInfoBox && decidedIndex !== null) {
+                    angleDecisionInfoBox.style.display = (i === decidedIndex) ? '' : 'none';
+                }
+            } catch (err) { /* ignore UI toggle errors */ }
         }
 
         // track last explicit thumb click to avoid pointerup logic overriding it
@@ -703,6 +720,11 @@ async function carregarCarrosselAngulos(entregaItemId, containerWrapper, mainImg
             const thumb = document.createElement('div');
             thumb.className = 'carrossel-thumb';
             thumb.dataset.anguloId = ang.angulo_id;
+
+            if (ang.decisao === 'aprovado') {
+                thumb.classList.add('aprovado');
+                decidedIndex = idx;
+            }
 
             const img = document.createElement('img');
             img.src = ang.preview_url || '';
@@ -726,9 +748,12 @@ async function carregarCarrosselAngulos(entregaItemId, containerWrapper, mainImg
             });
 
             thumb.addEventListener('click', (e) => {
-                console.log(`Thumb #${idx} clicked`);
-                // Prevent the click from bubbling to the faixa which may trigger pointer handlers
                 e.stopPropagation();
+                // Se houver um ângulo decidido, só permite clicar no escolhido
+                if (decidedIndex !== null && idx !== decidedIndex) {
+                    Toastify({ text: 'Esta imagem não é o ângulo aprovado — não é possível escolher.', duration: 2500, backgroundColor: 'orange', close: true, gravity: 'top', position: 'right' }).showToast();
+                    return;
+                }
                 // select the thumb (click may arrive after pointerup)
                 selectThumb(idx);
                 // clear after a short delay to allow pointerup logic to read lastClickedIndex
@@ -739,8 +764,48 @@ async function carregarCarrosselAngulos(entregaItemId, containerWrapper, mainImg
             thumbs.push(thumb);
         });
 
-        // Seleciona primeiro por padrão
-        if (thumbs.length > 0) selectThumb(0);
+        // Se houver ângulo decidido, destaque-o (chosen) e dim nos demais.
+        // A caixa com as informações do ângulo aprovado será criada aqui, mas
+        // exibida somente quando o thumb correspondente estiver selecionado.
+        if (decidedIndex !== null && thumbs[decidedIndex]) {
+            // destaque visual: adicionar classe chosen a aprovado e dim aos demais
+            thumbs.forEach((t, i) => {
+                if (i === decidedIndex) {
+                    t.classList.add('chosen-angle');
+                } else {
+                    t.classList.add('dimmed-thumb');
+                }
+            });
+
+            // Cria a caixa de info do ângulo aprovado (mas não a mostra até selection)
+            try {
+                const ang = j.angulos[decidedIndex];
+                const submitBtn = document.getElementById('submit_decision');
+                angleDecisionInfoBox = document.createElement('div');
+                angleDecisionInfoBox.className = 'angle-decision-info';
+                const who = ang.nome_usuario || ang.usuario || ang.usuario_nome || '';
+                const obs = ang.observacao || ang.motivo_sugerida || '';
+                angleDecisionInfoBox.innerHTML = `
+                    <div class="angle-decision-title">Ângulo aprovado</div>
+                    <div class="angle-decision-who">Aprovado por: <strong>${who}</strong></div>
+                    ${obs ? `<div class="angle-decision-obs">Observação: ${obs}</div>` : ''}
+                `;
+                // inicialmente escondida; selectThumb irá revelar se for o escolhido
+                angleDecisionInfoBox.style.display = 'none';
+                if (submitBtn) {
+                    submitBtn.style.display = 'none';
+                    submitBtn.insertAdjacentElement('afterend', angleDecisionInfoBox);
+                } else {
+                    // fallback: anexar ao containerWrapper
+                    containerWrapper.appendChild(angleDecisionInfoBox);
+                }
+            } catch (e) { /* ignore UI fallback failures */ }
+
+            // Seleciona o thumb decidido (isto acionará o toggle da infoBox)
+            selectThumb(decidedIndex);
+        } else {
+            if (thumbs.length > 0) selectThumb(0);
+        }
 
         viewport.appendChild(faixa);
         carrossel.appendChild(viewport);
@@ -1163,7 +1228,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else {
             if (btnOpen) {
                 btnOpen.addEventListener('click', () => {
-                    if (!ap_imagem_id || !entregaItemIdAtual) {
+                    // Para P00 a imagem pode não ter historico (ap_imagem_id null) —
+                    // permitir abrir o modal quando houver `entregaItemIdAtual` e
+                    // ou quando um ângulo estiver selecionado (`window.selectedAngleId`).
+                    if (!entregaItemIdAtual || (!ap_imagem_id && !window.selectedAngleId)) {
                         Toastify({ text: 'Selecione uma imagem/versão válida antes.', duration: 3000, backgroundColor: 'orange', close: true, gravity: 'top', position: 'right' }).showToast();
                         return;
                     }
@@ -1192,13 +1260,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const selected = Array.from(radios).find(r => r.checked)?.value;
                 if (!selected) return;
                 try {
+                    // collect optional observation from modal (if present)
+                    const obsEl = modal.querySelector('#decisionObservation');
+                    const observacaoVal = obsEl ? (String(obsEl.value || '').trim() || null) : null;
+
                     const resp = await fetch('salvar_decisao.php', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             entrega_item_id: entregaItemIdAtual,
                             historico_imagem_id: ap_imagem_id,
-                            decisao: selected
+                            decisao: selected,
+                            angulo_id: window.selectedAngleId || null,
+                            observacao: observacaoVal
                         })
                     });
                     const json = await resp.json();

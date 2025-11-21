@@ -1,0 +1,114 @@
+/* Styles for FlowReview carrossel angulos */
+.carrossel-angulos {
+    margin-top: 12px;
+    font-family: inherit;
+}
+
+.carrossel-header {
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #113;
+}
+
+.carrossel-viewport {
+    overflow: hidden;
+}
+
+.carrossel-faixa {
+    display: flex;
+    gap: 8px;
+    padding: 6px 0;
+    align-items: center;
+}
+
+.carrossel-thumb {
+    width: 84px;
+    height: 64px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: transform .12s ease, box-shadow .12s ease, opacity .12s ease;
+    background: #fff;
+    padding: 4px;
+    box-sizing: border-box;
+}
+
+.carrossel-thumb img {
+    max-width: 100%;
+    max-height: 42px;
+    object-fit: cover;
+    border-radius: 4px;
+    display: block;
+}
+
+.carrossel-thumb-label {
+    font-size: 12px;
+    color: #444;
+    margin-top: 4px;
+}
+
+/* Highlight for the chosen (approved) angle */
+.carrossel-thumb.chosen-angle {
+    border: 2px solid #2e8b57;
+    box-shadow: 0 6px 14px rgba(46, 139, 87, 0.12);
+}
+
+/* Dim non-approved thumbs when an approved one exists */
+.carrossel-thumb.dimmed-thumb {
+    opacity: 0.45;
+    filter: grayscale(60%);
+}
+
+/* Visual for the currently selected thumb */
+.carrossel-thumb.selected-thumb {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.08);
+}
+
+/* Info box for approved angle. Hidden by default; JS reveals it when approved thumb is selected. */
+.angle-decision-info {
+    display: none;
+    margin-top: 10px;
+    padding: 10px 12px;
+    background: #fbfbfb;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    font-size: 14px;
+    color: #222;
+    max-width: 420px;
+}
+
+.angle-decision-title {
+    font-weight: 700;
+    color: #0b5a4f;
+    margin-bottom: 6px;
+}
+
+.angle-decision-who {
+    margin-bottom: 6px;
+}
+
+.angle-decision-obs {
+    font-style: italic;
+    color: #333;
+}
+
+/* Make sure carousel controls (if present) don't cover the info box */
+.imagem-completa-container .carrossel-btn {
+    z-index: 20;
+}
+
+@media (max-width: 640px) {
+    .carrossel-thumb {
+        width: 64px;
+        height: 64px;
+    }
+
+    .angle-decision-info {
+        max-width: 100%;
+        font-size: 13px;
+    }
+}

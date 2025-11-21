@@ -53,6 +53,22 @@ def _remove_accents(s: str) -> str:
     return ''.join([c for c in nkfd_form if not unicodedata.combining(c)])
 
 
+def sanitize_text(s: str) -> str:
+    """Remove accents and special characters, leaving letters, numbers, spaces, dot, dash and underscore.
+
+    Collapses multiple spaces and strips leading/trailing spaces.
+    """
+    if not s:
+        return s
+    # remove accents first
+    s = _remove_accents(s)
+    # remove any character that is not alnum, space, dot, dash or underscore
+    s = re.sub(r"[^A-Za-z0-9 \._\-]", "", s)
+    # collapse multiple spaces
+    s = re.sub(r"\s+", " ", s).strip()
+    return s
+
+
 def detect_tipo_imagem(imagem_nome: str) -> str:
     """Return a tipo_imagem label based on keywords in imagem_nome.
 
@@ -70,12 +86,12 @@ def detect_tipo_imagem(imagem_nome: str) -> str:
 
     # priority checks (phrases first)
     if 'planta humanizada' in s:
-        return 'Planta humanizada'
+        return 'Planta Humanizada'
     if 'piscina aquecida' in s:
         return 'Imagem Interna'
 
     # Fachada group
-    for kw in ['fotomontagem', 'fachada', 'embasamento']:
+    for kw in ['fotomontagem', 'fachada', 'embasamento', 'foto inserção']:
         if kw in s:
             return 'Fachada'
 
@@ -203,6 +219,10 @@ def process_file(path, dry_run=False, nomenclatura_override=None):
         else:
             nomenclatura = nomenclatura_override
 
+        # sanitize nomenclatura to remove accents/special chars
+        if nomenclatura:
+            nomenclatura = sanitize_text(nomenclatura)
+
         # Fallback: when running in dry-run without a DB and no override was provided,
         # synthesize a sensible nomenclatura so the header mode can still be tested.
         if not nomenclatura:
@@ -233,6 +253,8 @@ def process_file(path, dry_run=False, nomenclatura_override=None):
             cliente_id, obra_id, imagem_nome_raw = int(parts[0]), int(parts[1]), parts[2]
 
             nomenclatura = get_nomenclatura(conn, obra_id) if conn else nomenclatura_override
+            if nomenclatura:
+                nomenclatura = sanitize_text(nomenclatura)
             if not nomenclatura:
                 print(f"⚠️  Nenhuma nomenclatura encontrada para obra_id={obra_id}")
                 continue
@@ -254,15 +276,27 @@ def process_file(path, dry_run=False, nomenclatura_override=None):
     print(f"✅ Processo concluído. Total de imagens inseridas: {total_inseridas}")
 
 def format_name(imagem_nome, nomenclatura):
-    """If imagem_nome starts with number+dot (e.g. "1. Fachada"), return "1.NOME Rest" else "NOME Rest"""
+    """If imagem_nome starts with number+dot (e.g. "1. Fachada"), return "1.NOME Rest" else "NOME Rest".
+
+    The returned string is sanitized (no accents, no special characters).
+    """
     imagem_nome = imagem_nome.strip()
+    # ensure nomenclatura is sanitized as well
+    nomenclatura = sanitize_text(nomenclatura) if nomenclatura else ''
     m = re.match(r'^(\d+\.)\s*(.*)$', imagem_nome)
     if m:
         prefix = m.group(1)
-        rest = m.group(2)
-        return f"{prefix}{nomenclatura} {rest}"
+        rest = sanitize_text(m.group(2))
+        if rest:
+            return f"{prefix}{nomenclatura} {rest}"
+        else:
+            return f"{prefix}{nomenclatura}"
     else:
-        return f"{nomenclatura} {imagem_nome}"
+        rest = sanitize_text(imagem_nome)
+        if rest:
+            return f"{nomenclatura} {rest}"
+        else:
+            return f"{nomenclatura}"
 
 
 if __name__ == '__main__':

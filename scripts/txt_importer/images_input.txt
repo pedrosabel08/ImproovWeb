@@ -4,37 +4,25 @@
 # 1. Fachada
 # 2. Planta baixa
 
-55, 84
-1. Fotomontagem com empreendimento no terreno real
-2. Fotomontagem com foco no rooftop
-3. Fachada no angulo do observador
-4. Embasamento
-5. Hall de entrada
-6. Espaço Gourmet
-7. Salão de festas
-8. Lavanderia
-9. Mercadinho interno
-10. Sala de jogos
-11. Coworking com sala de reuniões
-12. Playground com Pet place
-13. Piscinas
-14. Espaço churrasqueira
-15. SPA com sauna
-16. Academia
-17. Living do Studio unidade à definir com vista fotográfica real - ângulo 1
-18. Living do Studio unidade à definir com vista fotográfica real - ângulo 2
-19. Living do Apartamento unidade à definir com vista fotográfica real - ângulo 1
-20. Living do Apartamento unidade à definir com vista fotográfica real - ângulo 2
-21. Suíte do Apartamento unidade à definir com vista fotográfica real - ângulo 1
-22. Planta humanizada implantação geral mostrando o pavimento terreo
-23. Planta humanizada do pavimento lazer Rooftop
-24. Planta humanizada do pavimento tipo 1
-25. Variação - Diferenciado da Planta humanizada do pavimento tipo 1
-26. Planta humanizada do pavimento tipo 2
-27. Variação - Diferenciado da Planta humanizada do pavimento tipo 2
-28. Planta humanizada do pavimento tipo 3
-29. Planta humanizada do pavimento tipo 3 - Laje Aptos
-30. Variação - Diferenciado da Planta humanizada do pavimento tipo 3
-31. Planta humanizada do pavimento tipo 4
-32. Variação - Diferenciado da Planta humanizada do pavimento tipo 4
-33. Planta humanizada do pavimento tipo 5
+37, 86
+1. Fotomontagem com empreendimento no terreno real ou Imagem de fachada - 1
+2. Fotomontagem com empreendimento no terreno real ou Imagem de fachada - 2
+3. Fotomontagem com empreendimento no terreno real ou Imagem de fachada - 3
+4. Fotomontagem com empreendimento no terreno real ou Imagem de fachada - 4
+5. Fotomontagem com empreendimento no terreno real ou Imagem de fachada - 5
+6. Fotomontagem com empreendimento no terreno real ou Imagem de fachada - 6
+7. Embasamento
+8. Área comum à definir 1
+9. Área comum à definir 2
+10. Área comum à definir 3
+11. Área comum à definir 4
+12. Área comum à definir 5
+13. Área comum à definir 6
+14. Área comum à definir 7
+15. Apartamento à definir 1
+16. Apartamento à definir 2
+17. Apartamento à definir 3
+18. Planta humanizada implantação geral mostrando o pavimento térreo
+19. Planta humanizada do pavimento lazer
+20. Planta humanizada de apartamento à definir - 1
+21. Planta humanizada de apartamento à definir - 2

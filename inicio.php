@@ -1,5 +1,20 @@
 <?php
-session_start();
+// Prevent caching of user-specific pages (helps avoid reverse-proxy serving other's HTML)
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
+header('Expires: Tue, 01 Jan 2000 00:00:00 GMT');
+header('Vary: Cookie');
+
+// Harden session settings
+ini_set('session.use_strict_mode', 1);
+ini_set('session.use_only_cookies', 1);
+ini_set('session.cookie_httponly', 1);
+// If using HTTPS in production, enable the secure flag:
+// ini_set('session.cookie_secure', 1);
+
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 include 'conexao.php';
 
@@ -11,6 +26,12 @@ if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
 $idusuario = $_SESSION['idusuario'];
 $tela_atual = basename($_SERVER['PHP_SELF']);
 $ultima_atividade = date('Y-m-d H:i:s');
+
+// We already extracted needed session values; close the session to release the lock
+// before performing heavier DB work below.
+if (session_status() === PHP_SESSION_ACTIVE) {
+    session_write_close();
+}
 
 $sql2 = "UPDATE logs_usuarios 
          SET tela_atual = ?, ultima_atividade = ?

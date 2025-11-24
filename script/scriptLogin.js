@@ -25,6 +25,9 @@ document.querySelector('form').addEventListener('submit', function (e) {
     })
         .then(response => response.json())
         .then(data => {
+            // Log response for debugging (temporary)
+            console.log('login response:', data);
+
             if (data.status === "success") {
 
                 ToastifyLib({
@@ -33,9 +36,13 @@ document.querySelector('form').addEventListener('submit', function (e) {
                     duration: 3000
                 }).showToast();
 
+                // // Log cookies available to JS before redirect (temporary)
+                // console.log('document.cookie before redirect:', document.cookie);
+
+                // Slightly longer delay to allow inspection in DevTools
                 setTimeout(function () {
                     window.location.href = 'inicio.php';
-                }, 500);
+                }, 360);
                 localStorage.setItem('tocarSomAoEntrar', 'true');
 
             } else {

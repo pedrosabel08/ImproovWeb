@@ -252,7 +252,7 @@ function processarDados(data) {
             if (ultimaImagemPublic.startsWith('http://') || ultimaImagemPublic.startsWith('https://')) {
                 imgSrc = ultimaImagemPublic;
             } else {
-                imgSrc = `https://improov.com.br/sistema/thumb.php?path=${encodeURIComponent(ultimaImagemPublic)}&w=360&q=80`;
+                imgSrc = `https://improov.com.br/sistema/thumb.php?path=${encodeURIComponent(ultimaImagemPublic)}&w=360&q=70`;
             }
         } else {
             imgSrc = `https://improov.com.br/sistema/${ultimaImagemPublic || ''}`;

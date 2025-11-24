@@ -34,13 +34,28 @@ if ($isRemote) {
     $key = md5($path);
     $local = $cacheDir . '/remote_' . $key;
     if (!file_exists($local)) {
-        $ctx = stream_context_create(['http' => ['timeout' => 10]]);
-        $data = @file_get_contents($path, false, $ctx);
-        if ($data === false) {
+        // Use cURL streaming to avoid loading entire file into memory on shared hosts
+        $fp = @fopen($local . '.tmp', 'wb');
+        if ($fp === false) {
+            http_response_code(500);
+            exit('Unable to write cache');
+        }
+        $ch = curl_init($path);
+        curl_setopt($ch, CURLOPT_FILE, $fp);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+        curl_setopt($ch, CURLOPT_FAILONERROR, true);
+        curl_exec($ch);
+        $err = curl_errno($ch);
+        curl_close($ch);
+        fclose($fp);
+        if ($err) {
+            @unlink($local . '.tmp');
             http_response_code(404);
             exit('Remote image not reachable');
         }
-        file_put_contents($local, $data);
+        @rename($local . '.tmp', $local);
     }
     $file = $local;
 } else {
@@ -82,12 +97,26 @@ if ($isRemote) {
         } else {
             $publicUrl = 'https://improov.com.br/' . ltrim($originalPath, '/\\');
         }
-        $ctx = stream_context_create(['http' => ['timeout' => 10]]);
-        $data = @file_get_contents($publicUrl, false, $ctx);
-        if ($data !== false) {
-            $tmpLocal = $cacheDir . '/remote_fallback_' . md5($publicUrl);
-            file_put_contents($tmpLocal, $data);
-            $file = $tmpLocal;
+        // fetch via cURL streaming to tmp file
+        $tmpLocal = $cacheDir . '/remote_fallback_' . md5($publicUrl);
+        $fp = @fopen($tmpLocal . '.tmp', 'wb');
+        if ($fp !== false) {
+            $ch = curl_init($publicUrl);
+            curl_setopt($ch, CURLOPT_FILE, $fp);
+            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+            curl_setopt($ch, CURLOPT_FAILONERROR, true);
+            curl_exec($ch);
+            $err = curl_errno($ch);
+            curl_close($ch);
+            fclose($fp);
+            if (!$err) {
+                @rename($tmpLocal . '.tmp', $tmpLocal);
+                $file = $tmpLocal;
+            } else {
+                @unlink($tmpLocal . '.tmp');
+            }
         }
     }
 
@@ -95,6 +124,20 @@ if ($isRemote) {
         http_response_code(404);
         exit('File not found (tried candidates)');
     }
+}
+
+// If GD missing, fail-fast and redirect to original (or return error)
+if (!function_exists('imagecreatetruecolor')) {
+    // fallback: attempt to serve original file directly
+    if (is_file($file)) {
+        $mime = mime_content_type($file) ?: 'application/octet-stream';
+        header('Content-Type: ' . $mime);
+        header('Cache-Control: public, max-age=2592000');
+        readfile($file);
+        exit;
+    }
+    http_response_code(415);
+    exit('GD extension required');
 }
 
 $info = @getimagesize($file);
@@ -121,12 +164,27 @@ if ($new_w > $orig_w) {
 $cacheKey = md5($file . '|w=' . $new_w . '|q=' . $q);
 $cacheFile = $cacheDir . '/' . $cacheKey . '.jpg';
 
+// Compare mtimes to avoid regenerating thumbnails unnecessarily
+$src_mtime = @filemtime($file) ?: time();
 if (file_exists($cacheFile)) {
-    // serve cached
-    header('Content-Type: image/jpeg');
-    header('Cache-Control: public, max-age=2592000'); // 30 days
-    readfile($cacheFile);
-    exit;
+    $cache_mtime = @filemtime($cacheFile) ?: 0;
+    // if cache is newer or equal to source, serve cached
+    if ($cache_mtime >= $src_mtime) {
+        // ETag and Last-Modified handling for conditional requests
+        $etag = '"' . md5_file($cacheFile) . '"';
+        $lastMod = gmdate('D, d M Y H:i:s', $cache_mtime) . ' GMT';
+        if ((isset($_SERVER['HTTP_IF_NONE_MATCH']) && stripslashes($_SERVER['HTTP_IF_NONE_MATCH']) === $etag) ||
+            (isset($_SERVER['HTTP_IF_MODIFIED_SINCE']) && @strtotime($_SERVER['HTTP_IF_MODIFIED_SINCE']) >= $cache_mtime)) {
+            header('HTTP/1.1 304 Not Modified');
+            exit;
+        }
+        header('Content-Type: image/jpeg');
+        header('Cache-Control: public, max-age=2592000'); // 30 days
+        header('ETag: ' . $etag);
+        header('Last-Modified: ' . $lastMod);
+        readfile($cacheFile);
+        exit;
+    }
 }
 
 // create image resource from source
@@ -182,5 +240,3 @@ readfile($cacheFile);
 imagedestroy($src);
 imagedestroy($dst);
 exit;
-
-?>

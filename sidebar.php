@@ -20,23 +20,23 @@
         <ul>
             <ul class="division">
                 <label for="">Insights</label>
-                <li><a title="Página Principal" href="https://improov.com.br/sistema/inicio.php"><i class="fas fa-home"></i><span> Página Principal</span></a></li>
-                <li><a title="Lista Pós-Produção" href="https://improov.com.br/sistema/Pos-Producao"><i class="fas fa-list"></i><span> Lista Pós-Produção</span></a></li>
-                <li><a title="Lista Alteração" href="https://improov.com.br/sistema/Alteracao"><i class="fa-solid fa-user-pen"></i><span> Lista Alteração</span></a></li>
+                <li><a title="Página Principal" href="https://improov.com.br/flow/ImproovWeb/inicio.php"><i class="fas fa-home"></i><span> Página Principal</span></a></li>
+                <li><a title="Lista Pós-Produção" href="https://improov.com.br/flow/ImproovWeb/Pos-Producao"><i class="fas fa-list"></i><span> Lista Pós-Produção</span></a></li>
+                <li><a title="Lista Alteração" href="https://improov.com.br/flow/ImproovWeb/Alteracao"><i class="fa-solid fa-user-pen"></i><span> Lista Alteração</span></a></li>
                 <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 3)): ?>
-                    <li><a title="Recebimento de arquivos" href="https://improov.com.br/sistema/Arquivos"><i class="fas fa-file"></i><span> Arquivos</span></a></li>
-                    <!-- <li><a title="Infos Cliente" href="https://improov.com.br/sistema/infoCliente"><i class="fas fa-chart-line"></i><span> Infos Cliente</span></a></li> -->
+                    <li><a title="Recebimento de arquivos" href="https://improov.com.br/flow/ImproovWeb/Arquivos"><i class="fas fa-file"></i><span> Arquivos</span></a></li>
+                    <!-- <li><a title="Infos Cliente" href="https://improov.com.br/flow/ImproovWeb/infoCliente"><i class="fas fa-chart-line"></i><span> Infos Cliente</span></a></li> -->
                 <?php endif; ?>
                 <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 4)): ?>
-                    <li><a title="Lista Animação" href="https://improov.com.br/sistema/Animacao"><i class="fas fa-film"></i><span> Lista Animação</span></a></li>
+                    <li><a title="Lista Animação" href="https://improov.com.br/flow/ImproovWeb/Animacao"><i class="fas fa-film"></i><span> Lista Animação</span></a></li>
                 <?php endif; ?>
 
                 <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1)): ?>
-                    <!-- <li><a title="Obras" href="https://improov.com.br/sistema/Obras"><i class="fas fa-building"></i><span> Obras</span></a></li> -->
-                    <li><a title="Dashboard" href="https://improov.com.br/sistema/Dashboard"><i class="fa-solid fa-chart-line"></i><span> Dashboard</span></a></li>
-                    <li><a title="Projetos" href="https://improov.com.br/sistema/Projetos"><i class="fa-solid fa-diagram-project"></i><span> Projetos</span></a></li>
-                    <li><a title="Entregas" href="https://improov.com.br/sistema/Entregas"><i class="fa-solid fa-diagram-project"></i><span> Entregas</span></a></li>
-                    <li><a title="Gestão" href="https://improov.com.br/sistema/Gestao"><i class="fa-solid fa-diagram-project"></i><span> Gestão</span></a></li>
+                    <!-- <li><a title="Obras" href="https://improov.com.br/flow/ImproovWeb/Obras"><i class="fas fa-building"></i><span> Obras</span></a></li> -->
+                    <li><a title="Dashboard" href="https://improov.com.br/flow/ImproovWeb/Dashboard"><i class="fa-solid fa-chart-line"></i><span> Dashboard</span></a></li>
+                    <li><a title="Projetos" href="https://improov.com.br/flow/ImproovWeb/Projetos"><i class="fa-solid fa-diagram-project"></i><span> Projetos</span></a></li>
+                    <li><a title="Entregas" href="https://improov.com.br/flow/ImproovWeb/Entregas"><i class="fa-solid fa-diagram-project"></i><span> Entregas</span></a></li>
+                    <li><a title="Gestão" href="https://improov.com.br/flow/ImproovWeb/Gestao"><i class="fa-solid fa-diagram-project"></i><span> Gestão</span></a></li>
                 <?php endif; ?>
             </ul>
 
@@ -44,7 +44,7 @@
 
                 <ul class="division">
                     <label for="">Comercial</label>
-                    <li><a title="Tela Gerencial" href="https://improov.com.br/sistema/TelaGerencial"><i class="fa-solid fa-desktop"></i><span> Tela Gerencial</span></a></li>
+                    <li><a title="Tela Gerencial" href="https://improov.com.br/flow/ImproovWeb/TelaGerencial"><i class="fa-solid fa-desktop"></i><span> Tela Gerencial</span></a></li>
                 </ul>
             <?php endif; ?>
 
@@ -52,8 +52,8 @@
 
                 <ul class="division">
                     <label for="">Financeiro</label>
-                    <li><a title="Tela de custos" href="https://improov.com.br/sistema/Custos"><i class="fa-solid fa-desktop"></i><span> Tela Custos</span></a></li>
-                    <li><a title="Pagamento" href="https://improov.com.br/sistema/Pagamento"><i class="fas fa-money-bill-wave"></i><span> Pagamento</span></a></li>
+                    <li><a title="Tela de custos" href="https://improov.com.br/flow/ImproovWeb/Custos"><i class="fa-solid fa-desktop"></i><span> Tela Custos</span></a></li>
+                    <li><a title="Pagamento" href="https://improov.com.br/flow/ImproovWeb/Pagamento"><i class="fas fa-money-bill-wave"></i><span> Pagamento</span></a></li>
 
                 </ul>
             <?php endif; ?>
@@ -66,14 +66,13 @@
 
             <ul class="division">
                 <label for="">Ferramentas</label>
-                <!-- <li><a title="Filtro Colaborador" href="https://improov.com.br/sistema/main.php#filtro-colab"><i class="fa-solid fa-user"></i><span>Filtro Colaborador</span></a></li> -->
-                <li><a title="Lista Render" href="https://improov.com.br/sistema/Render"><i class="fas fa-list"></i><span> Lista Render</span></a></li>
-                <li><a title="Flow Review" href="https://improov.com.br/sistema/Revisao"><i class="fas fa-check"></i><span> Flow Review</span></a></li>
+                <!-- <li><a title="Filtro Colaborador" href="https://improov.com.br/flow/ImproovWeb/main.php#filtro-colab"><i class="fa-solid fa-user"></i><span>Filtro Colaborador</span></a></li> -->
+                <li><a title="Lista Render" href="https://improov.com.br/flow/ImproovWeb/Render"><i class="fas fa-list"></i><span> Lista Render</span></a></li>
+                <li><a title="Flow Review" href="https://improov.com.br/flow/ImproovWeb/Revisao"><i class="fas fa-check"></i><span> Flow Review</span></a></li>
                 <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1)): ?>
-                    <li><a title="Adicionar cliente ou obra" href="https://improov.com.br/sistema/main.php#add-cliente"><i class="fa-solid fa-person"></i><span>Adicionar cliente ou obra</span></a></li>
-                    <li><a title="Gerenciar prioridades" href="https://improov.com.br/sistema/Prioridade"><i class="fa-solid fa-user-plus"></i><span>Gerenciar prioridades</span></a></li>
-                    <li><a title="Quadro TEA" href="https://improov.com.br/sistema/Quadro"><i class="fa-solid fa-columns"></i><span>Quadro TEA</span></a></li>
-
+                    <li><a title="Adicionar cliente ou obra" href="https://improov.com.br/flow/ImproovWeb/main.php#add-cliente"><i class="fa-solid fa-person"></i><span>Adicionar cliente ou obra</span></a></li>
+                    <li><a title="Gerenciar prioridades" href="https://improov.com.br/flow/ImproovWeb/Prioridade"><i class="fa-solid fa-user-plus"></i><span>Gerenciar prioridades</span></a></li>
+                    <li><a title="Quadro TEA" href="https://improov.com.br/flow/ImproovWeb/Quadro"><i class="fa-solid fa-columns"></i><span>Quadro TEA</span></a></li>
 
                 <?php endif; ?>
 
@@ -92,7 +91,7 @@
 
             <ul id="obras-list" class="division">
                 <label for="">Usuário</label>
-                <li><a title="Informações do Usuário" href="https://improov.com.br/sistema/infos.php"><i class="fa-solid fa-user"></i><span>Informações</span></a></li>
+                <li><a title="Informações do Usuário" href="https://improov.com.br/flow/ImproovWeb/infos.php"><i class="fa-solid fa-user"></i><span>Informações</span></a></li>
             </ul>
         </ul>
     </div>

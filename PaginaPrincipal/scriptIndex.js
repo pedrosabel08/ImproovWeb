@@ -28,20 +28,20 @@ function sftpToPublicUrl(rawPath) {
         const nomen = mFull[1];
         const rest = mFull[2];
         // Monta com a nomenclatura logo após angulo_definido conforme solicitado
-        return 'https://improov.com.br/Flow/ImproovWeb/uploads/angulo_definido/' + nomen + '/' + rest;
+        return 'https://improov.com.br/flow/ImproovWeb/uploads/angulo_definido/' + nomen + '/' + rest;
     }
 
     // Segunda tentativa: localizar Angulo_definido no caminho e usar o que vem depois
     const m = p.match(/\/Angulo_definido\/(.*)/i);
     if (m && m[1]) {
-        return 'https://improov.com.br/Flow/ImproovWeb/uploads/angulo_definido/' + m[1];
+        return 'https://improov.com.br/flow/ImproovWeb/uploads/angulo_definido/' + m[1];
     }
 
     // Terceira tentativa: pega tudo depois de /05.Exchange/01.Input/
     const idx = p.indexOf('/05.Exchange/01.Input/');
     if (idx >= 0) {
         const after = p.substring(idx + '/05.Exchange/01.Input/'.length);
-        return 'https://improov.com.br/Flow/ImproovWeb/uploads/' + after;
+        return 'https://improov.com.br/flow/ImproovWeb/uploads/' + after;
     }
 
     return null;
@@ -252,10 +252,10 @@ function processarDados(data) {
             if (ultimaImagemPublic.startsWith('http://') || ultimaImagemPublic.startsWith('https://')) {
                 imgSrc = ultimaImagemPublic;
             } else {
-                imgSrc = `https://improov.com.br/Flow/ImproovWeb/thumb.php?path=${encodeURIComponent(ultimaImagemPublic)}&w=360&q=70`;
+                imgSrc = `https://improov.com.br/flow/ImproovWeb/thumb.php?path=${encodeURIComponent(ultimaImagemPublic)}&w=360&q=70`;
             }
         } else {
-            imgSrc = `https://improov.com.br/Flow/ImproovWeb/${ultimaImagemPublic || ''}`;
+            imgSrc = `https://improov.com.br/flow/ImproovWeb/${ultimaImagemPublic || ''}`;
         }
 
         card.innerHTML = `

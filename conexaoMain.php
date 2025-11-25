@@ -3,7 +3,7 @@
 
 function conectarBanco()
 {
-    $conn = new mysqli('mysql.improov.com.br', 'improov', 'Impr00v', 'improov');
+    $conn = new mysqli('72.60.137.192', 'improov', 'Impr00v@', 'flowdb');
 
     if ($conn->connect_error) {
         die("Falha na conexão: " . $conn->connect_error);

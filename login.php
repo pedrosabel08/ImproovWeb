@@ -23,12 +23,7 @@ session_set_cookie_params($tempoSessao);
 ini_set('session.gc_maxlifetime', $tempoSessao);
 session_start();
 
-// Conectar ao banco de dados
-$conn = new mysqli('mysql.improov.com.br', 'improov', 'Impr00v', 'improov');
-if ($conn->connect_error) {
-    die(json_encode(["error" => "Falha na conexão: " . $conn->connect_error]));
-}
-$conn->set_charset('utf8mb4');
+include 'conexao.php';
 
 // Verificar se a requisição é POST
 if ($_SERVER["REQUEST_METHOD"] == "POST") {

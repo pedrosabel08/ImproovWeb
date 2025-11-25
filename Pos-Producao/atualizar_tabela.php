@@ -1,11 +1,5 @@
 <?php
-$conn = new mysqli('mysql.improov.com.br', 'improov', 'Impr00v', 'improov');
-
-if ($conn->connect_error) {
-    die("Falha na conexão: " . $conn->connect_error);
-}
-
-$conn->set_charset('utf8mb4');
+include_once __DIR__ . '/../conexao.php';
 
 $sql = "SELECT 
     p.idpos_producao,

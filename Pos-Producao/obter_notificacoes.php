@@ -2,7 +2,7 @@
 
 session_start();
 
-include('conexao.php'); // Inclui a conexão com o banco de dados
+include_once '../conexao.php'; // Inclui a conexão com o banco de dados (central)
 
 if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
     // Se não estiver logado, redirecionar para a página de login

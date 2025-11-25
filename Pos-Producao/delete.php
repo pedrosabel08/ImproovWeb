@@ -1,15 +1,8 @@
 <?php
 header("Content-Type: application/json");
 
-// Conectar ao banco de dados
-$conn = new mysqli('mysql.improov.com.br', 'improov', 'Impr00v', 'improov');
-
-if ($conn->connect_error) {
-    echo json_encode(['success' => false, 'message' => 'Falha na conexão com o banco de dados']);
-    exit;
-}
-
-$conn->set_charset('utf8mb4');
+// Conectar ao banco de dados central
+include_once __DIR__ . '/../conexao.php';
 
 // Receber o JSON do JavaScript
 $data = json_decode(file_get_contents('php://input'), true);

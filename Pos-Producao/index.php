@@ -9,13 +9,7 @@ if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
     exit();
 }
 
-$conn = new mysqli('mysql.improov.com.br', 'improov', 'Impr00v', 'improov');
-
-if ($conn->connect_error) {
-    die("Falha na conexão: " . $conn->connect_error);
-}
-
-$conn->set_charset('utf8mb4');
+include '../conexao.php';
 
 $usuario_id = $_SESSION['idusuario']; // ID do usuário logado
 

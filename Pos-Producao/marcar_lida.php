@@ -1,6 +1,6 @@
 <?php
 session_start();
-include('conexao.php');
+include_once '../conexao.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $usuario_id = $_SESSION['idusuario']; // ID do usuário logado

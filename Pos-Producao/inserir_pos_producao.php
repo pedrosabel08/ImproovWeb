@@ -4,14 +4,8 @@ header("Access-Control-Allow-Origin: *"); // Allows all domains
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS"); // Allow specific methods
 header("Access-Control-Allow-Headers: Content-Type");
 
-// Conectar ao banco de dados
-$conn = new mysqli('mysql.improov.com.br', 'improov', 'Impr00v', 'improov');
-
-if ($conn->connect_error) {
-    die("Falha na conexão: " . $conn->connect_error);
-}
-
-$conn->set_charset('utf8mb4');
+// Conectar ao banco de dados central
+include_once __DIR__ . '/../conexao.php';
 
 date_default_timezone_set('America/Sao_Paulo');
 

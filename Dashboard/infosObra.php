@@ -57,19 +57,20 @@ $stmtFuncoes->close();
 
 // Segundo SELECT: Detalhes gerais da obra
 $sqlObra = "SELECT
-    i.data_inicio,
-	i.prazo,
-    o.*,
+    o.*, 
     COUNT(*) AS total_imagens,
     COUNT(CASE WHEN i.antecipada = 1 THEN 1 ELSE NULL END) AS total_imagens_antecipadas,
-    i.dias_trabalhados
+    MIN(i.data_inicio) AS primeira_imagem_data_inicio,
+    MAX(i.prazo) AS max_imagem_prazo,
+    SUM(i.dias_trabalhados) AS soma_dias_trabalhados
 FROM 
     imagens_cliente_obra i
 JOIN
     obra o 
     ON o.idobra = i.obra_id
 WHERE 
-    i.obra_id = ?";
+    i.obra_id = ?
+GROUP BY o.idobra";
 
 $stmtObra = $conn->prepare($sqlObra);
 if ($stmtObra === false) {
@@ -221,7 +222,7 @@ $sqlImagens = "SELECT
     LEFT JOIN substatus_imagem su ON su.id = ico.substatus_id
     LEFT JOIN status_hold sh ON sh.imagem_id = ico.idimagens_cliente_obra
     WHERE ico.obra_id = ?
-    GROUP BY ico.imagem_nome
+    GROUP BY ico.idimagens_cliente_obra
     ORDER BY FIELD(ico.tipo_imagem, 'Fachada', 'Imagem Interna', 'Unidade', 'Imagem Externa', 'Planta Humanizada'), ico.idimagens_cliente_obra
 ";
 
@@ -284,8 +285,8 @@ WHERE
     i.obra_id = ?";
 
 $stmtTotalObra = $conn->prepare($sqlTotalObra);
-if ($stmtInfos === false) {
-    die('Erro na preparação da consulta (imagens): ' . $conn->error);
+if ($stmtTotalObra === false) {
+    die('Erro na preparação da consulta (totalObra): ' . $conn->error);
 }
 
 $stmtTotalObra->bind_param("i", $obraId);

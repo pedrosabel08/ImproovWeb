@@ -1,9 +1,9 @@
 <?php
 
-$servername = 'mysql.improov.com.br';
+$servername = '72.60.137.192';
 $username = 'improov';
-$password = 'Impr00v';
-$dbname = 'improov';
+$password = 'Impr00v@';
+$dbname = 'flowdb';
 
 $conn = new mysqli($servername, $username, $password, $dbname);
 

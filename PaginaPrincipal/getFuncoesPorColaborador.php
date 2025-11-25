@@ -2,11 +2,7 @@
 header('Content-Type: application/json');
 
 // Conectar ao banco de dados
-$conn = new mysqli('mysql.improov.com.br', 'improov', 'Impr00v', 'improov');
-if ($conn->connect_error) {
-    die(json_encode(["error" => "Falha na conexão: " . $conn->connect_error]));
-}
-$conn->set_charset('utf8mb4');
+include '../conexao.php';
 
 $colaboradorId = intval($_GET['colaborador_id']);
 date_default_timezone_set('America/Sao_Paulo');

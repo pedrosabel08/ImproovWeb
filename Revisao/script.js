@@ -950,6 +950,168 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 let ap_imagem_id = null; // Variável para armazenar o ID da imagem atual
 
+// Tipo de comentário: 'ponto' (bolinha) ou 'livre' (rabiscar)
+let commentMode = 'ponto';
+// Flag global para evitar conflito entre desenho e pan/drag
+let isDrawing = false;
+
+function ensureCommentTypeSelect() {
+    const navSelect = document.querySelector('.nav-select');
+    if (!navSelect) return;
+    let sel = document.getElementById('commentTypeSelect');
+    if (!sel) {
+        sel = document.createElement('select');
+        sel.id = 'commentTypeSelect';
+        sel.style.marginRight = '8px';
+        const opt1 = document.createElement('option'); opt1.value = 'ponto'; opt1.text = 'Comentário (ponto)';
+        const opt2 = document.createElement('option'); opt2.value = 'livre'; opt2.text = 'Rabiscar (livre)';
+        sel.appendChild(opt1);
+        sel.appendChild(opt2);
+        // insert at the start of navSelect
+        navSelect.insertBefore(sel, navSelect.firstChild);
+    }
+    sel.addEventListener('change', () => {
+        commentMode = sel.value;
+    });
+    // set initial
+    commentMode = sel.value || 'ponto';
+}
+
+// Creates a canvas overlay sized to image and returns {canvas, ctx, destroy}
+function createDrawingOverlay(imgElement, container) {
+    // remove existing overlay if any
+    const existing = container.querySelector('.drawing-overlay-canvas');
+    if (existing) existing.remove();
+
+    const canvas = document.createElement('canvas');
+    canvas.className = 'drawing-overlay-canvas';
+    canvas.style.position = 'absolute';
+    canvas.style.left = '0';
+    canvas.style.top = '0';
+    canvas.style.zIndex = 9999;
+    canvas.width = imgElement.clientWidth;
+    canvas.height = imgElement.clientHeight;
+    canvas.style.width = imgElement.clientWidth + 'px';
+    canvas.style.height = imgElement.clientHeight + 'px';
+
+    container.appendChild(canvas);
+    const ctx = canvas.getContext('2d');
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = '#ff0000';
+
+    let drawing = false;
+    let current = [];
+    let strokes = [];
+
+    function toCanvasXY(e) {
+        const rect = canvas.getBoundingClientRect();
+        return { x: (e.clientX - rect.left) * (canvas.width / rect.width), y: (e.clientY - rect.top) * (canvas.height / rect.height) };
+    }
+
+    function redraw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const all = strokes.concat([current]);
+        all.forEach(st => {
+            if (!st || st.length === 0) return;
+            ctx.beginPath();
+            for (let i = 0; i < st.length; i++) {
+                const p = st[i];
+                if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
+            }
+            ctx.stroke();
+        });
+    }
+
+    function pointerDown(e) {
+        drawing = true;
+        isDrawing = true;
+        current = [];
+        const p = toCanvasXY(e);
+        current.push(p);
+        canvas.setPointerCapture && canvas.setPointerCapture(e.pointerId);
+        redraw();
+    }
+
+    function pointerMove(e) {
+        if (!drawing) return;
+        const p = toCanvasXY(e);
+        current.push(p);
+        redraw();
+    }
+
+    function pointerUp(e) {
+        if (!drawing) return;
+        drawing = false;
+        isDrawing = false;
+        strokes.push(current.slice());
+        current = [];
+        canvas.releasePointerCapture && canvas.releasePointerCapture(e.pointerId);
+    }
+
+    canvas.addEventListener('pointerdown', pointerDown);
+    canvas.addEventListener('pointermove', pointerMove);
+    canvas.addEventListener('pointerup', pointerUp);
+    canvas.addEventListener('pointercancel', pointerUp);
+
+    function clear() { strokes = []; current = []; redraw(); }
+
+    function destroy() {
+        canvas.removeEventListener('pointerdown', pointerDown);
+        canvas.removeEventListener('pointermove', pointerMove);
+        canvas.removeEventListener('pointerup', pointerUp);
+        canvas.removeEventListener('pointercancel', pointerUp);
+        canvas.remove();
+        isDrawing = false;
+    }
+
+    return {
+        canvas,
+        ctx,
+        clear,
+        destroy,
+        toBlob: (cb) => {
+            // Produce a blob at the image's natural resolution so the saved overlay
+            // will align correctly with the original image when re-rendered.
+            try {
+                const naturalW = imgElement.naturalWidth || canvas.width;
+                const naturalH = imgElement.naturalHeight || canvas.height;
+
+                const tmp = document.createElement('canvas');
+                tmp.width = naturalW;
+                tmp.height = naturalH;
+                const tctx = tmp.getContext('2d');
+
+                tctx.lineJoin = 'round';
+                tctx.lineCap = 'round';
+                tctx.strokeStyle = ctx.strokeStyle;
+                // scale line width proportionally
+                tctx.lineWidth = Math.max(1, ctx.lineWidth * (naturalW / canvas.width));
+
+                const all = strokes.concat([current]);
+                all.forEach(st => {
+                    if (!st || st.length === 0) return;
+                    tctx.beginPath();
+                    for (let i = 0; i < st.length; i++) {
+                        const p = st[i];
+                        const sx = p.x * (naturalW / canvas.width);
+                        const sy = p.y * (naturalH / canvas.height);
+                        if (i === 0) tctx.moveTo(sx, sy); else tctx.lineTo(sx, sy);
+                    }
+                    tctx.stroke();
+                });
+
+                tmp.toBlob(cb, 'image/png');
+            } catch (err) {
+                // fallback to displayed-size blob
+                canvas.toBlob(cb, 'image/png');
+            }
+        },
+        strokes
+    };
+}
+
 // Mostra imagem e abre modal
 function mostrarImagemCompleta(src, id) {
     ap_imagem_id = id;
@@ -968,26 +1130,111 @@ function mostrarImagemCompleta(src, id) {
     imgElement.style.width = "100%";
 
     imageWrapper.appendChild(imgElement);
-    document.querySelector('#imagem_atual').scrollIntoView({ behavior: 'smooth' });
-    renderComments(id);
-    ajustarNavSelectAoTamanhoDaImagem();
+    // Wait for the image to load before rendering overlays/comments and adjusting select width
+    const imgEl = document.querySelector('#imagem_atual');
+    function afterImageReady() {
+        document.querySelector('#imagem_atual').scrollIntoView({ behavior: 'smooth' });
+        renderComments(id);
+        ajustarNavSelectAoTamanhoDaImagem();
+    }
+
+    if (imgEl.complete) {
+        afterImageReady();
+    } else {
+        imgEl.onload = afterImageReady;
+    }
+
+    // ensure the comment type select exists
+    ensureCommentTypeSelect();
 
     imgElement.addEventListener('click', function (event) {
-        if (dragMoved) {
+        if (dragMoved) return;
+
+        // comportamento por bolinha (ponto)
+        if (commentMode === 'ponto') {
+            const rect = imgElement.getBoundingClientRect();
+            relativeX = ((event.clientX - rect.left) / rect.width) * 100;
+            relativeY = ((event.clientY - rect.top) / rect.height) * 100;
+
+            document.getElementById('comentarioTexto').value = '';
+            document.getElementById('imagemComentario').value = '';
+            document.getElementById('comentarioModal').style.display = 'flex';
+
+            // Limpa os mencionados quando abre um novo comentário
+            mencionadosIds = [];
             return;
         }
-        // if (![1, 2, 9, 20, 3].includes(idusuario)) return;
 
-        const rect = imgElement.getBoundingClientRect();
-        relativeX = ((event.clientX - rect.left) / rect.width) * 100;
-        relativeY = ((event.clientY - rect.top) / rect.height) * 100;
+        // modo livre (rabiscar)
+        if (commentMode === 'livre') {
+            // Cria overlay canvas e toolbar
+            const overlay = createDrawingOverlay(imgElement, imageWrapper);
 
-        document.getElementById('comentarioTexto').value = '';
-        document.getElementById('imagemComentario').value = '';
-        document.getElementById('comentarioModal').style.display = 'flex';
+            // toolbar
+            let toolbar = imageWrapper.querySelector('.draw-toolbar');
+            if (toolbar) toolbar.remove();
+            toolbar = document.createElement('div');
+            toolbar.className = 'draw-toolbar';
+            toolbar.style.position = 'absolute';
+            toolbar.style.top = '8px';
+            toolbar.style.right = '8px';
+            toolbar.style.zIndex = 10010;
+            toolbar.style.display = 'flex';
+            toolbar.style.gap = '8px';
 
-        // Limpa os mencionados quando abre um novo comentário
-        mencionadosIds = [];
+            const btnSave = document.createElement('button'); btnSave.textContent = 'Salvar Risco';
+            const btnClear = document.createElement('button'); btnClear.textContent = 'Limpar';
+            const btnCancel = document.createElement('button'); btnCancel.textContent = 'Cancelar';
+
+            toolbar.appendChild(btnSave);
+            toolbar.appendChild(btnClear);
+            toolbar.appendChild(btnCancel);
+            imageWrapper.appendChild(toolbar);
+
+            btnClear.addEventListener('click', () => {
+                overlay.clear();
+            });
+
+            btnCancel.addEventListener('click', () => {
+                overlay.destroy();
+                toolbar.remove();
+            });
+
+            btnSave.addEventListener('click', async () => {
+                // get blob
+                overlay.toBlob(async (blob) => {
+                    if (!blob) {
+                        Toastify({ text: 'Nada desenhado.', duration: 2000, backgroundColor: 'orange' }).showToast();
+                        return;
+                    }
+                    const fd = new FormData();
+                    fd.append('ap_imagem_id', ap_imagem_id);
+                    fd.append('x', 0);
+                    fd.append('y', 0);
+                    fd.append('texto', '');
+                    fd.append('mencionados', JSON.stringify([]));
+                    fd.append('tipo', 'livre');
+                    // append blob as file
+                    fd.append('imagem', blob, `rabisco_${Date.now()}.png`);
+
+                    try {
+                        const resp = await fetch('salvar_comentario.php', { method: 'POST', body: fd });
+                        const json = await resp.json();
+                        if (json.sucesso) {
+                            Toastify({ text: 'Risco salvo com sucesso!', duration: 2500, backgroundColor: 'green' }).showToast();
+                            overlay.destroy();
+                            toolbar.remove();
+                            renderComments(ap_imagem_id);
+                        } else {
+                            Toastify({ text: json.erro || 'Erro ao salvar.', duration: 3000, backgroundColor: 'red' }).showToast();
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        Toastify({ text: 'Erro de conexão.', duration: 3000, backgroundColor: 'red' }).showToast();
+                    }
+                });
+            });
+        }
     });
 
 }
@@ -1157,7 +1404,9 @@ async function renderComments(id) {
     const response = await fetch(`buscar_comentarios.php?id=${id}`);
     const comentarios = await response.json();
 
+    // remove existing comment pins and any previous scribble overlays
     imagemCompletaDiv.querySelectorAll('.comment').forEach(c => c.remove());
+    imagemCompletaDiv.querySelectorAll('.riscos-overlay').forEach(o => o.remove());
 
     // Oculta a sidebar-direita se não houver comentários
     if (comentarios.length === 0) {
@@ -1254,12 +1503,31 @@ async function renderComments(id) {
             p.addEventListener('keydown', handleKeyDown);
         });
 
+        // If this comment is a scribble overlay: heuristics
+        // Older DB schema doesn't have a `tipo` column — treat any comentario
+        // with an `imagem` and x==0 && y==0 as a 'livre' overlay.
+        if (comentario.imagem && (Number(comentario.x) === 0 && Number(comentario.y) === 0 || comentario.tipo === 'livre')) {
+            const overlayImg = document.createElement('img');
+            overlayImg.classList.add('riscos-overlay');
+            overlayImg.src = `${comentario.imagem}`;
+            overlayImg.alt = 'Risco';
+            overlayImg.style.position = 'absolute';
+            overlayImg.style.top = '0';
+            overlayImg.style.left = '0';
+            overlayImg.style.width = '100%';
+            overlayImg.style.height = '100%';
+            overlayImg.style.pointerEvents = 'none';
+            overlayImg.style.zIndex = '5';
+            imagemCompletaDiv.appendChild(overlayImg);
+        }
+
         const commentDiv = document.createElement('div');
         commentDiv.classList.add('comment');
         commentDiv.setAttribute('data-id', comentario.id);
         commentDiv.innerText = comentario.numero_comentario;
         commentDiv.style.left = `${comentario.x}%`;
         commentDiv.style.top = `${comentario.y}%`;
+        commentDiv.style.zIndex = '10';
 
         commentDiv.addEventListener('click', () => {
             document.querySelectorAll('.comment-number').forEach(n => n.classList.remove('highlight'));
@@ -1282,7 +1550,6 @@ async function renderComments(id) {
                 number.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
         });
-
 
         const respButton = commentCard.querySelector('.comment-resp');
 
@@ -1530,50 +1797,60 @@ document.getElementById('reset-zoom').addEventListener('click', function () {
     applyTransforms();
 });
 
-imageWrapper.addEventListener('mousedown', (e) => {
-    if (e.button === 0 && !e.ctrlKey) {
-        isDragging = true;
-        dragMoved = false; // reset
-        imageWrapper.style.cursor = 'grabbing'; // mão fechada
+// imageWrapper.addEventListener('mousedown', (e) => {
+//     // Start pan on left-click (button 0) or middle-click (button 1).
+//     // For left-click we also require !e.ctrlKey to avoid conflict with ctrl+wheel zoom.
+//     if ((e.button === 0 && !e.ctrlKey) || e.button === 1) {
+//         // Prevent default to stop browser auto-scroll on middle-click
+//         e.preventDefault();
 
-        imageWrapper.classList.add('grabbing');
-        startX = e.clientX - currentTranslateX;
-        startY = e.clientY - currentTranslateY;
-        imageWrapper.style.transition = 'none';
-    }
-});
+//         isDragging = true;
+//         dragMoved = false; // reset
+//         imageWrapper.style.cursor = 'grabbing'; // mão fechada
 
-document.addEventListener('mousemove', (e) => {
-    if (!isDragging) return;
-    imageWrapper.style.cursor = 'grabbing'; // mão fechada
+//         imageWrapper.classList.add('grabbing');
+//         startX = e.clientX - currentTranslateX;
+//         startY = e.clientY - currentTranslateY;
+//         imageWrapper.style.transition = 'none';
+//     }
+// });
 
-    e.preventDefault();
+// // Prevent default auxclick action (middle-button auto-scroll) on the wrapper
+// imageWrapper.addEventListener('auxclick', (e) => {
+//     if (e.button === 1) e.preventDefault();
+// });
 
-    const dx = e.clientX - startX;
-    const dy = e.clientY - startY;
+// document.addEventListener('mousemove', (e) => {
+//     if (!isDragging) return;
+//     imageWrapper.style.cursor = 'grabbing'; // mão fechada
 
-    // Marcar que houve movimento significativo
-    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
-        dragMoved = true;
-    }
+//     e.preventDefault();
 
-    currentTranslateX = dx;
-    currentTranslateY = dy;
+//     const dx = e.clientX - startX;
+//     const dy = e.clientY - startY;
 
-    applyTransforms();
-});
+//     // Marcar que houve movimento significativo
+//     if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+//         dragMoved = true;
+//     }
 
-document.addEventListener('mouseup', (e) => {
-    if (isDragging) {
-        isDragging = false;
-        imageWrapper.style.cursor = 'grab'; // mão aberta
-        imageWrapper.classList.remove('grabbing');
-        imageWrapper.style.transition = 'transform 0.1s ease-out';
-    }
-});
+//     currentTranslateX = dx;
+//     currentTranslateY = dy;
 
-// Initialize transforms
-applyTransforms();
+//     applyTransforms();
+// });
+
+// document.addEventListener('mouseup', (e) => {
+//     if (isDragging) {
+//         isDragging = false;
+//         imageWrapper.style.cursor = 'grab'; // mão aberta
+//         imageWrapper.classList.remove('grabbing');
+//         imageWrapper.style.transition = 'transform 0.1s ease-out';
+//     }
+// });
+
+// // Initialize transforms
+// applyTransforms();
 
 const id_revisao = document.getElementById('id_revisao');
 

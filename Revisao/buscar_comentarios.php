@@ -17,6 +17,10 @@ $result = $stmt->get_result();
 $comentarios = [];
 
 while ($comentario = $result->fetch_assoc()) {
+    // Normalize imagem path: remove leading ../ if present so frontend gets consistent paths
+    if (!empty($comentario['imagem'])) {
+        $comentario['imagem'] = preg_replace('#^\.\./+#', '', $comentario['imagem']);
+    }
     $comentario_id = $comentario['id'];
     $resQuery = $conn->prepare("SELECT id, texto, data, c.nome_colaborador as nome_responsavel FROM respostas_comentario r 
     JOIN colaborador c on r.responsavel = c.idcolaborador WHERE comentario_id = ?");

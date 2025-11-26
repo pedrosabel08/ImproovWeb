@@ -39,10 +39,12 @@ try {
     }
 
     // Verificar total de imagens, quantas já estão entregues e obter obra_id/data_prevista
+    // Use agregação para evitar ONLY_FULL_GROUP_BY: data_prevista/obra_id são constantes por entrega, então
+    // MAX() retorna o valor correto sem precisar de GROUP BY.
     $stmt = $conn->prepare("SELECT COUNT(*) AS total, 
                     SUM(CASE WHEN ei.status LIKE 'Entregue%' THEN 1 ELSE 0 END) AS entregues,
-                    e.data_prevista,
-                    e.obra_id
+                    MAX(e.data_prevista) AS data_prevista,
+                    MAX(e.obra_id) AS obra_id
                 FROM entregas_itens ei
                 JOIN entregas e ON ei.entrega_id = e.id
                 WHERE ei.entrega_id=?");

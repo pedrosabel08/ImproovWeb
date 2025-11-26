@@ -13,10 +13,11 @@
 </head>
 
 <body>
-    <div class="sidebar mini">
-        <button id="menuButton">
+    <div class="sidebar complete">
+        <!-- <button id="menuButton">
             <i class="fa-solid fa-bars"></i>
-        </button>
+        </button> -->
+        <img id="gif" src="https://improov.com.br/flow/ImproovWeb/gif/assinatura_preto.gif" alt="">
         <ul>
             <ul class="division">
                 <label for="">Insights</label>

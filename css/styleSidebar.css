@@ -10,7 +10,7 @@ body {
     height: 100vh;
     background-color: white;
     color: black;
-    position: fixed;
+    /* position: fixed; */
     top: 0;
     left: 0;
     display: flex;
@@ -19,7 +19,14 @@ body {
     transition: width 0.3s ease;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
     font-size: 12px;
-    z-index: 1000;
+    /* z-index: 1000; */
+}
+
+@media (prefers-color-scheme: dark) {
+
+    #gif {
+        content: url("../gif/assinatura_branco.gif") !important;
+    }
 }
 
 .sidebar.complete {
@@ -42,7 +49,7 @@ body {
 }
 
 .sidebar.mini {
-    width: 60px;
+    width: 200px;
     overflow-y: hidden;
 }
 
@@ -160,6 +167,7 @@ button#menuButton:active {
     .sidebar ul li a {
         color: white;
     }
+
     .sidebar.mini ul.division {
         border-top: 1px solid white;
     }

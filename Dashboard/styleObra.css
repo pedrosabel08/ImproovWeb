@@ -30,7 +30,9 @@ body {
     background-color: var(--bg);
     color: var(--text);
     display: grid;
-    grid-template-columns: 60px 1fr;
+    grid-template-columns: auto 1fr;
+    /* Prevent page-level scroll; container will handle internal scrolling */
+    overflow: hidden;
 }
 
 /* Smooth in-page scrolling for quick-access anchors */
@@ -270,6 +272,10 @@ main {
 .container {
     grid-column: 2;
     width: 100%;
+    /* Allow this element to scroll independently from body */
+    overflow: auto;
+    max-height: 100vh;
+    -webkit-overflow-scrolling: touch;
 }
 
 
@@ -990,7 +996,6 @@ a {
     border-radius: 8px;
     padding: 20px;
     height: auto;
-    max-height: 80%;
     overflow-y: auto;
     animation: slideDown 0.3s ease-out;
     gap: 15px;

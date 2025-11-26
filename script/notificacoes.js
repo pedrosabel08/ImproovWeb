@@ -4,7 +4,7 @@ var colaborador_id = parseInt(localStorage.getItem('idcolaborador'));
 function getUrlBuscarTarefas() {
     const idusuario = localStorage.getItem('idusuario');
     const colaborador_id = parseInt(localStorage.getItem('idcolaborador'));
-    return `https://improov.com.br/sistema/buscar_tarefas.php?idusuario=${idusuario}&colaborador_id=${colaborador_id}`;
+    return `https://improov.com.br/flow/ImproovWeb/buscar_tarefas.php?idusuario=${idusuario}&colaborador_id=${colaborador_id}`;
 }
 
 
@@ -169,7 +169,7 @@ sino.addEventListener('click', function () {
     const funcoes = filtrarFuncoesPorColaborador(colaborador_id);
 
     // 🔊 Som ao clicar
-    const audio = new Audio('https://improov.com.br/sistema/sons/not.mp3');
+    const audio = new Audio('https://improov.com.br/flow/ImproovWeb/sons/not.mp3');
     audio.play();
 
     buscarTarefas(false).then(({ notificacoes }) => {
@@ -242,7 +242,7 @@ document.addEventListener('click', function (event) {
 
 // Botão "Ir para Revisão"
 btnIr.addEventListener('click', function () {
-    window.open('https://improov.com.br/sistema/Revisao', '_blank');
+    window.open('https://improov.com.br/flow/ImproovWeb/Revisao', '_blank');
 });
 
 
@@ -453,7 +453,7 @@ function enviarRevisaoMes() {
 // checkRenderItems também retorna uma Promise
 function checkRenderItems(colaborador_id) {
     return new Promise((resolve, reject) => {
-        fetch('https://improov.com.br/sistema/verifica_render.php', {
+        fetch('https://improov.com.br/flow/ImproovWeb/verifica_render.php', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',

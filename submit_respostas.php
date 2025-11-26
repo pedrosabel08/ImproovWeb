@@ -1,26 +1,60 @@
 <?php
-require_once __DIR__ . '/Revisao/vendor/autoload.php'; // Instale via composer require omarusman/ics-parser
+// Mostrar erros em ambiente de desenvolvimento (remover em produção)
+ini_set('display_errors', '1');
+ini_set('display_startup_errors', '1');
+error_reporting(E_ALL);
+
+header('Content-Type: application/json');
+
+// Verifica se o autoload do composer existe
+$autoload = __DIR__ . '/Revisao/vendor/autoload.php';
+if (file_exists($autoload)) {
+    require_once $autoload; // Instale via composer quando necessário
+} else {
+    error_log("submit_respostas.php: autoload não encontrado em: $autoload");
+    http_response_code(500);
+    echo json_encode(['success' => false, 'message' => 'Erro interno: dependências ausentes (vendor/autoload.php).']);
+    exit;
+}
 
 use ICal\ICal;
-
 use Dotenv\Dotenv;
 
 $envPath = __DIR__ . '/Revisao/.env';
-
 if (!file_exists($envPath)) {
-    die("Arquivo .env não encontrado em: $envPath");
+    error_log("submit_respostas.php: .env não encontrado em: $envPath");
+    http_response_code(500);
+    echo json_encode(['success' => false, 'message' => 'Erro interno: arquivo .env não encontrado.']);
+    exit;
 }
 
-$dotenv = Dotenv::createImmutable(__DIR__ . '/Revisao');
-$dotenv->load();
+try {
+    $dotenv = Dotenv::createImmutable(__DIR__ . '/Revisao');
+    $dotenv->load();
+} catch (Exception $e) {
+    error_log('submit_respostas.php: Dotenv erro: ' . $e->getMessage());
+    http_response_code(500);
+    echo json_encode(['success' => false, 'message' => 'Erro interno ao carregar variáveis de ambiente.']);
+    exit;
+}
 
 $slack_webhook_url = $_ENV['SLACK_WEBHOOK_DAILY_URL'] ?? null;
-
 if (!$slack_webhook_url) {
-    die('Erro: Variável SLACK_WEBHOOK_URL não encontrada no .env');
+    error_log('submit_respostas.php: SLACK_WEBHOOK_DAILY_URL ausente no .env');
+    http_response_code(500);
+    echo json_encode(['success' => false, 'message' => 'Erro interno: configuração Slack ausente.']);
+    exit;
 }
 
+// Inclui conexão e inicia sessão
 include 'conexao.php';
+if (!isset($conn) || !$conn) {
+    error_log('submit_respostas.php: conexão ($conn) não inicializada por conexao.php');
+    http_response_code(500);
+    echo json_encode(['success' => false, 'message' => 'Erro interno: falha na conexão ao banco.']);
+    exit;
+}
+
 session_start();
 
 // Verifique se os dados foram enviados

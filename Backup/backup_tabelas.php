@@ -1,9 +1,10 @@
 <?php
 // Configurações do banco de dados
-$host = 'mysql.improov.com.br';
-$dbName = 'improov';
+$host = '72.60.137.192';
+$dbName = 'flowdb';
 $user = 'improov';
-$password = 'Impr00v';
+$password = 'Impr00v@';
+
 
 // Tabelas que serão incluídas no backup
 $tabelas = ['funcao_imagem', 'obra', 'imagens_cliente_obra', 'acompanhamento_email'];

@@ -1,14 +1,6 @@
 <?php
-// Incluir o arquivo de conexão
-include '../conexao.php';
-
-// Criação da conexão
-$conn = new mysqli($servername, $username, $password, $dbname);
-
-// Checando a conexão
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
-}
+// Incluir o arquivo de conexão central
+include_once __DIR__ . '/../conexao.php';
 
 // Query SQL para buscar os dados
 $sql = "SELECT o.nome_obra, o.idobra, o.nomenclatura, SUM(fi.valor) AS total_custo_obra 

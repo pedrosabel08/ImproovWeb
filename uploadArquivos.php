@@ -3,11 +3,11 @@ header('Content-Type: application/json');
 require 'conexao.php';
 
 // ---------- Dados FTP ----------
-$ftp_host = "ftp.improov.com.br";
+$ftp_host = "72.60.137.192";
 $ftp_port = 21; // porta padrão FTP
 $ftp_user = "improov";
-$ftp_pass = "Impr00v";
-$ftp_base = "/www/sistema/uploads/"; // pasta remota já existente
+$ftp_pass = "Impr00v@";
+$ftp_base = "/web/improov.com.br/public_html/flow/ImproovWeb/uploads/"; // pasta remota já existente
 
 // ---------- Funções utilitárias ----------
 function removerTodosAcentos($str)
@@ -43,12 +43,32 @@ function enviarArquivoFTP($conn_ftp, $arquivoLocal, $arquivoRemoto)
     // Ativa modo passivo
     ftp_pasv($conn_ftp, true);
 
-    // Envia o arquivo
-    if (ftp_put($conn_ftp, $arquivoRemoto, $arquivoLocal, FTP_BINARY)) {
+    // tentativa direta
+    if (@ftp_put($conn_ftp, $arquivoRemoto, $arquivoLocal, FTP_BINARY)) {
         return [true, $arquivoRemoto];
-    } else {
-        return [false, "⚠ Erro ao enviar via FTP: $arquivoRemoto"];
     }
+
+    // coleta informações de debug
+    $pwd = @ftp_pwd($conn_ftp);
+    $remoteDir = dirname($arquivoRemoto);
+    $remoteFile = basename($arquivoRemoto);
+    $remoteDir = rtrim(str_replace('\\', '/', $remoteDir), '/');
+    $nlist = @ftp_nlist($conn_ftp, $remoteDir);
+    $raw = @ftp_rawlist($conn_ftp, $remoteDir);
+
+    // tenta mudar para o diretório remoto e enviar apenas o nome do arquivo (fallback)
+    if (@ftp_chdir($conn_ftp, $remoteDir)) {
+        if (@ftp_put($conn_ftp, $remoteFile, $arquivoLocal, FTP_BINARY)) {
+            // volta ao diretório original
+            if ($pwd) @ftp_chdir($conn_ftp, $pwd);
+            return [true, $remoteDir . '/' . $remoteFile];
+        } else {
+            if ($pwd) @ftp_chdir($conn_ftp, $pwd);
+            return [false, "⚠ Erro ao enviar via FTP (put em cwd): $remoteDir/$remoteFile. pwd=$pwd, nlist=" . json_encode($nlist) . ", raw=" . json_encode($raw)];
+        }
+    }
+
+    return [false, "⚠ Erro ao enviar via FTP: $arquivoRemoto (pwd=$pwd, nlist=" . json_encode($nlist) . ", raw=" . json_encode($raw) . ")"];
 }
 
 // ---------- Parâmetros ----------

@@ -718,7 +718,7 @@ function infosObra(obraId) {
             if (data?.obra?.nome_obra && data?.aprovacaoObra && Object.keys(data.aprovacaoObra).length > 0) {
                 document.getElementById('altBtn').classList.remove('hidden');
                 document.getElementById('altBtn').onclick = function () {
-                    window.location.href = `https://improov.com.br/sistema/Revisao/index.php?obra_nome=${data.obra.nome_obra}`;
+                    window.location.href = `https://improov.com.br/flow/ImproovWeb/Revisao/index.php?obra_nome=${data.obra.nome_obra}`;
                 };
             } else {
                 document.getElementById('altBtn').classList.add('hidden');
@@ -2207,7 +2207,7 @@ document.getElementById("salvar_funcoes").addEventListener("click", function (ev
     function enviarFormulario() {
         $.ajax({
             type: "POST",
-            url: "https://www.improov.com.br/sistema/insereFuncao2.php",
+            url: "https://www.improov.com.br/flow/ImproovWeb/insereFuncao2.php",
             data: dados,
             success: function (response) {
                 Toastify({

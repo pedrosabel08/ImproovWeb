@@ -2,14 +2,10 @@
 
 header('Content-Type: application/json');
 
-// Conexão com o banco de dados
-$conn = new mysqli('mysql.improov.com.br', 'improov', 'Impr00v', 'improov');
-$conn->set_charset('utf8mb4');
+// Incluir o arquivo de conexão central
+include_once __DIR__ . '/../conexao.php';
 
-// Verificar a conexão
-if ($conn->connect_error) {
-    die(json_encode(['error' => 'Falha na conexão: ' . $conn->connect_error]));
-}
+// conexao.php já define charset e trata falhas
 
 // Array para manter a ordem dos meses
 $meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];

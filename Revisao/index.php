@@ -62,15 +62,15 @@ $conn->close();
             <select id="filtroFuncao" style="display: none;">
                 <option value="">Todas as funções</option>
             </select>
-            <div id="metrics-panel" style="margin-bottom:8px;">
+            <div id="metrics-panel" style="margin-bottom:8px; display:none;">
             </div>
             <div class="containerObra">
             </div>
             <div class="tarefasObra hidden">
                 <div class="header">
                     <nav class="breadcrumb-nav">
-                        <a href="https://improov.com.br/sistema/Revisao/index.php">Flow Review</a>
-                        <a id="obra_id_nav" class="obra_nav" href="https://improov.com.br/sistema/Revisao/index.php?obra_id=''">Obra</a>
+                        <a href="https://improov.com.br/flow/ImproovWeb/Revisao/index.php">Flow Review</a>
+                        <a id="obra_id_nav" class="obra_nav" href="https://improov.com.br/flow/ImproovWeb/Revisao/index.php?obra_id=''">Obra</a>
                     </nav>
                     <div class="filtros">
                         <div>
@@ -97,8 +97,8 @@ $conn->close();
     <div class="container-aprovacao hidden">
         <header>
             <nav class="breadcrumb-nav">
-                <a href="https://improov.com.br/sistema/Revisao/index.php">Flow Review</a>
-                <a id="obra_id_nav" class="obra_nav" href="https://improov.com.br/sistema/Revisao/index.php?obra_id=''">Obra</a>
+                <a href="https://improov.com.br/flow/ImproovWeb/Revisao/index.php">Flow Review</a>
+                <a id="obra_id_nav" class="obra_nav" href="https://improov.com.br/flow/ImproovWeb/Revisao/index.php?obra_id=''">Obra</a>
             </nav>
             <div class="task-info" id="task-info">
                 <h3 id="funcao_nome"></h3>

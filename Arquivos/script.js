@@ -346,7 +346,7 @@ document.getElementById("uploadForm").addEventListener("submit", async function 
         console.log("Final:", key, value);
     }
     try {
-        const response = await fetch('https://improov/ImproovWeb/Arquivos/upload.php', {
+        const response = await fetch('https://improov.com.br/flow/ImproovWeb/Arquivos/upload.php', {
             method: 'POST',
             body: formData
         });

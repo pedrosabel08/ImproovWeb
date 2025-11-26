@@ -4,11 +4,14 @@ header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type");
 
-$conn = new mysqli('mysql.improov.com.br', 'improov', 'Impr00v', 'improov');
-$conn->set_charset('utf8mb4');
+include_once __DIR__ . '/../conexao.php';
 
-if ($conn->connect_error) {
-    die("Falha na conexão: " . $conn->connect_error);
+if (isset($conn) && method_exists($conn, 'set_charset')) {
+    $conn->set_charset('utf8mb4');
+}
+
+if (!isset($conn) || (isset($conn->connect_error) && $conn->connect_error)) {
+    die("Falha na conexão: " . ($conn->connect_error ?? 'conexão indisponível'));
 }
 
 if ($_SERVER["REQUEST_METHOD"] === "GET") {

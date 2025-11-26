@@ -12,19 +12,110 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 include 'conexao.php';
-
-require __DIR__ . '/vendor/autoload.php';
+// Verifica se o autoload do composer está presente para evitar fatal error (500)
+$vendorAutoload = __DIR__ . '/vendor/autoload.php';
+if (!file_exists($vendorAutoload)) {
+    error_log("uploadFinal.php: vendor/autoload.php not found at $vendorAutoload");
+    echo json_encode(['error' => 'Dependência ausente: vendor/autoload.php não encontrada no servidor.']);
+    exit;
+}
+require $vendorAutoload;
 
 use phpseclib3\Net\SFTP;
 use phpseclib3\Exception\UnableToConnectException;
 
 header('Content-Type: application/json');
 
+// Permite execução longa para uploads / transferências grandes
+@set_time_limit(0);
+@ini_set('max_execution_time', '0');
+@ini_set('max_input_time', '0');
+@ignore_user_abort(true);
+error_log('uploadFinal.php: time limits removed, starting request handling');
+
 // Log dos limites do PHP
 error_log('upload_max_filesize: ' . ini_get('upload_max_filesize'));
 error_log('post_max_size: ' . ini_get('post_max_size'));
 error_log('memory_limit: ' . ini_get('memory_limit'));
 error_log('max_file_uploads: ' . ini_get('max_file_uploads'));
+
+// --- Enhanced debug logging to file to capture fatal errors and runtime issues ---
+$debugLog = __DIR__ . '/uploads/debug_uploadFinal.log';
+$debugDir = dirname($debugLog);
+if (!is_dir($debugDir)) {
+    mkdir($debugDir, 0777, true);
+}
+function _uf_log($msg)
+{
+    global $debugLog;
+    $time = date('Y-m-d H:i:s');
+    @file_put_contents($debugLog, "[$time] $msg\n", FILE_APPEND | LOCK_EX);
+}
+
+_uf_log("uploadFinal.php: debug log started");
+_uf_log('PHP settings: upload_max_filesize=' . ini_get('upload_max_filesize') . ', post_max_size=' . ini_get('post_max_size') . ', memory_limit=' . ini_get('memory_limit'));
+// Log minimal request context
+@_uf_log('REQUEST_URI: ' . ($_SERVER['REQUEST_URI'] ?? '')); 
+@_uf_log('REMOTE_ADDR: ' . ($_SERVER['REMOTE_ADDR'] ?? '')); 
+@_uf_log('CONTENT_LENGTH: ' . ($_SERVER['CONTENT_LENGTH'] ?? '')); 
+@_uf_log('$_POST: ' . json_encode($_POST));
+// Log only file metadata (avoid dumping binary content)
+$files_meta = [];
+foreach ($_FILES as $k => $v) {
+    $files_meta[$k] = [
+        'name' => is_array($v['name']) ? $v['name'] : [$v['name']],
+        'size' => is_array($v['size']) ? $v['size'] : [$v['size']],
+        'tmp_name' => is_array($v['tmp_name']) ? $v['tmp_name'] : [$v['tmp_name']],
+        'error' => is_array($v['error']) ? $v['error'] : [$v['error']],
+    ];
+}
+@_uf_log('$_FILES metadata: ' . json_encode($files_meta));
+
+set_error_handler(function ($severity, $message, $file, $line) {
+    _uf_log("PHP ERROR [$severity] $message in $file:$line");
+    // let PHP handle the error after logging
+    return false;
+});
+
+register_shutdown_function(function () {
+    $err = error_get_last();
+    if ($err) {
+        _uf_log('SHUTDOWN ERROR: ' . json_encode($err));
+        if (!headers_sent()) {
+            http_response_code(500);
+            echo json_encode(['error' => 'Internal server error. Consulte uploads/debug_uploadFinal.log']);
+        }
+    }
+});
+
+// Helper to ensure DB connection is alive; reconnects by re-including conexao.php if needed
+function ensure_db_connection()
+{
+    global $conn;
+    if (!isset($conn)) {
+        _uf_log('ensure_db_connection: $conn not set, including conexao.php');
+        include __DIR__ . '/conexao.php';
+        return;
+    }
+    // ping returns true on success
+    try {
+        if (!$conn->ping()) {
+            _uf_log('ensure_db_connection: ping failed, reconnecting');
+            // close existing connection if possible
+            @$conn->close();
+            include __DIR__ . '/conexao.php';
+            _uf_log('ensure_db_connection: reconnected');
+        }
+    } catch (Exception $e) {
+        _uf_log('ensure_db_connection: exception during ping: ' . $e->getMessage());
+        try {
+            @$conn->close();
+        } catch (Exception $ee) {
+        }
+        include __DIR__ . '/conexao.php';
+    }
+}
+
 
 // Log do array $_FILES
 // file_put_contents(__DIR__ . '/debug_files.txt', print_r($_FILES, true));

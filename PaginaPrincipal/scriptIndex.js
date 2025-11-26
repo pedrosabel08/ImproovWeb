@@ -1447,7 +1447,7 @@ function abrirSidebar(idFuncao, idImagem) {
             }
 
             const imagemDiv = document.createElement('p');
-            imagemDiv.innerHTML = `<strong>Imagem: ${funcao.imagem_nome || '-'} (${funcao.idimagem || '-'})</strong>`;
+            imagemDiv.innerHTML = `<strong>Imagem: ${funcao.imagem_nome || '-'}</strong>`;
             sidebarContent.appendChild(imagemDiv);
             // Exibe status da imagem
             if (data.status_imagem) {
@@ -2777,7 +2777,7 @@ function enviarArquivo() {
             const startTime = Date.now();
             let uploadCancelado = false;
 
-            xhr.open('POST', 'https://improov/ImproovWeb/uploadFinal.php');
+            xhr.open('POST', 'https://improov.com.br/flow/ImproovWeb/uploadFinal.php');
 
             xhr.upload.addEventListener('progress', (e) => {
                 if (e.lengthComputable) {
@@ -2798,18 +2798,47 @@ function enviarArquivo() {
                 }
             });
 
-            xhr.onreadystatechange = () => {
-                if (xhr.readyState === 4 && xhr.status === 200 && !uploadCancelado) {
-                    const res = JSON.parse(xhr.responseText);
-                    const destino = res[0]?.destino || 'Caminho não encontrado';
-                    Swal.fire({
-                        position: "center",
-                        icon: "success",
-                        text: `Salvo em: ${destino}, como: ${res[0]?.nome_arquivo || 'Nome não encontrado'}`,
-                        showConfirmButton: false,
-                        timer: 2000
-                    });
+            // onload executa para respostas HTTP (independente de status)
+            xhr.onload = () => {
+                if (uploadCancelado) return;
+                // tenta parsear JSON, se possível
+                let res = null;
+                try {
+                    res = JSON.parse(xhr.responseText || 'null');
+                } catch (err) {
+                    console.error('Resposta não-JSON do servidor:', xhr.responseText);
+                }
+
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    if (res && Array.isArray(res) && res.length > 0) {
+                        const destino = res[0]?.destino || 'Caminho não encontrado';
+                        Swal.fire({
+                            position: "center",
+                            icon: "success",
+                            text: `Salvo em: ${destino}, como: ${res[0]?.nome_arquivo || 'Nome não encontrado'}`,
+                            showConfirmButton: false,
+                            timer: 2000
+                        });
+                    } else {
+                        Swal.fire({
+                            position: "center",
+                            icon: "success",
+                            text: 'Upload concluído.',
+                            showConfirmButton: false,
+                            timer: 1500
+                        });
+                    }
                     fecharModal();
+                } else {
+                    // status não-200: mostra erro com texto do servidor quando disponível
+                    const serverMsg = xhr.responseText ? xhr.responseText : `Status ${xhr.status}`;
+                    Swal.close();
+                    Toastify({
+                        text: "Erro no servidor: " + serverMsg,
+                        duration: 6000,
+                        gravity: "top",
+                        backgroundColor: "#f44336"
+                    }).showToast();
                 }
             };
 

@@ -1,9 +1,9 @@
 <?php
 // Configurações do banco de dados
-$host = 'mysql.improov.com.br';
-$dbName = 'improov';
+$host = '72.60.137.192';
+$dbName = 'flowdb';
 $user = 'improov';
-$password = 'Impr00v';
+$password = 'Impr00v@';
 
 // Nome do arquivo de backup
 $backupFile = __DIR__ . "/backup_completo_" . date('Y-m-d') . ".sql";

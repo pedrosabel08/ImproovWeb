@@ -443,7 +443,7 @@ function buscarInfosImagem(idImagemSelecionada) {
     $.ajax({
         type: "GET",
         dataType: "json",
-        url: "https://www.improov.com.br/sistema/Pos-Producao/buscaAJAX.php",
+        url: "https://www.improov.com.br/flow/ImproovWeb/Pos-Producao/buscaAJAX.php",
         data: { ajid: idImagemSelecionada },
         success: function (response) {
             if (response.length > 0) {

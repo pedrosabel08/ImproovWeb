@@ -149,12 +149,11 @@ $username = "flow";
 $password = "flow@2025";
 
 // ---------- Dados FTP ----------
-$ftp_host = "ftp.improov.com.br";
+$ftp_host = "72.60.137.192";
 $ftp_port = 21; // porta padrão FTP
 $ftp_user = "improov";
-$ftp_pass = "Impr00v";
-$ftp_base = "/www/sistema/uploads/angulo_definido";
-
+$ftp_pass = "Impr00v@";
+$ftp_base = "/web/improov.com.br/public_html/flow/ImproovWeb/uploads/angulo_definido";
 // Variáveis do log
 $log = [];
 $success = [];

@@ -38,7 +38,7 @@ function renderCards(renders) {
     $('#renderGrid').html('');
     renders.forEach(function (render) {
         const imgUrl = render.previa_jpg
-            ? `https://improov.com.br/sistema/uploads/renders/${render.previa_jpg}`
+            ? `https://improov.com.br/flow/ImproovWeb/uploads/renders/${render.previa_jpg}`
             : '../assets/logo.jpg';
 
         let statusBadgeClass = '';
@@ -162,7 +162,7 @@ function editRender(idrender_alta) {
                 if (previews.length > 0) {
                     const first = previews[0];
                     const mainUrl = first.filename
-                        ? `https://improov.com.br/sistema/uploads/renders/${first.filename}`
+                        ? `https://improov.com.br/flow/ImproovWeb/uploads/renders/${first.filename}`
                         : '../assets/logo.jpg';
 
                     // Set main image src to first preview
@@ -172,7 +172,7 @@ function editRender(idrender_alta) {
                     const $gallery = $('<div id="modalGallery" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"></div>');
                     previews.forEach(function (p, idx) {
                         const thumbUrl = p.filename
-                            ? `https://improov.com.br/sistema/uploads/renders/${p.filename}`
+                            ? `https://improov.com.br/flow/ImproovWeb/uploads/renders/${p.filename}`
                             : '../assets/logo.jpg';
                         const $thumb = $(`<img class="modal-thumb" data-filename="${p.filename}" data-idx="${idx}" src="${thumbUrl}" alt="Preview ${idx + 1}">`);
                         // style the thumbnail a bit (you can move to CSS file)
@@ -199,7 +199,7 @@ function editRender(idrender_alta) {
                 } else {
                     // No previews: fallback to previsa_jpg if available
                     const imgUrl = r.previa_jpg
-                        ? `https://improov.com.br/sistema/uploads/renders/${r.previa_jpg}`
+                        ? `https://improov.com.br/flow/ImproovWeb/uploads/renders/${r.previa_jpg}`
                         : '../assets/logo.jpg';
                     $('#modalPreviewImg').attr('src', imgUrl);
                 }

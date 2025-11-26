@@ -1,10 +1,17 @@
 <?php
+// inclui conexao central (mantém compatibilidade com PDO local abaixo)
+include_once __DIR__ . '/../conexao.php';
+
+header('Content-Type: application/json');
+
+// OBS: este arquivo também usa PDO diretamente. Mantive a criação PDO
+// para preservar o funcionamento atual. Se quiser, posso migrar
+// a lógica para usar o `$conn` do `conexao.php` posteriormente.
+
 $host = 'mysql.improov.com.br';
 $db = 'improov';
 $user = 'improov';
 $pass = 'Impr00v';
-
-header('Content-Type: application/json');
 
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$db", $user, $pass);

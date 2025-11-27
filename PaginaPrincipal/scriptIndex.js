@@ -248,14 +248,34 @@ function processarDados(data) {
 
         // Decide image src: if we have an http(s) public URL, use it directly; otherwise use thumb.php to generate a thumbnail
         let imgSrc = '';
-        if (ultimaImagemPublic) {
-            if (ultimaImagemPublic.startsWith('http://') || ultimaImagemPublic.startsWith('https://')) {
-                imgSrc = ultimaImagemPublic;
+
+        // Special override: se for o colaborador Marcio (id 8) ou nome 'Marcio', usar a imagem local fixa
+        try {
+            const nomeColl = String(item.nome_colaborador || '').trim();
+            if ((typeof colaborador_id !== 'undefined' && Number(colaborador_id) === 8) || nomeColl === 'Marcio') {
+                imgSrc = 'assets/marcio_cafezinho.jpg';
             } else {
-                imgSrc = `https://improov.com.br/flow/ImproovWeb/thumb.php?path=${encodeURIComponent(ultimaImagemPublic)}&w=360&q=70`;
+                if (ultimaImagemPublic) {
+                    if (ultimaImagemPublic.startsWith('http://') || ultimaImagemPublic.startsWith('https://')) {
+                        imgSrc = ultimaImagemPublic;
+                    } else {
+                        imgSrc = `https://improov.com.br/flow/ImproovWeb/thumb.php?path=${encodeURIComponent(ultimaImagemPublic)}&w=360&q=70`;
+                    }
+                } else {
+                    imgSrc = `https://improov.com.br/flow/ImproovWeb/${ultimaImagemPublic || ''}`;
+                }
             }
-        } else {
-            imgSrc = `https://improov.com.br/flow/ImproovWeb/${ultimaImagemPublic || ''}`;
+        } catch (e) {
+            // fallback to original logic if anything falhar
+            if (ultimaImagemPublic) {
+                if (ultimaImagemPublic.startsWith('http://') || ultimaImagemPublic.startsWith('https://')) {
+                    imgSrc = ultimaImagemPublic;
+                } else {
+                    imgSrc = `https://improov.com.br/flow/ImproovWeb/thumb.php?path=${encodeURIComponent(ultimaImagemPublic)}&w=360&q=70`;
+                }
+            } else {
+                imgSrc = `https://improov.com.br/flow/ImproovWeb/${ultimaImagemPublic || ''}`;
+            }
         }
 
         card.innerHTML = `

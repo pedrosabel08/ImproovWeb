@@ -220,7 +220,7 @@ try {
         if ($ext === '' || !in_array($ext, $allowed)) {
           $nf .= '.jpg';
         }
-        $imagemUrl = 'https://improov.com.br/sistema/uploads/' . $nf;
+        $imagemUrl = 'https://improov.com.br/flow/ImproovWeb/uploads/' . $nf;
       } elseif (!empty($it['imagem_nome'])) {
         $im = $it['imagem_nome'];
         $ext2 = strtolower(pathinfo($im, PATHINFO_EXTENSION));
@@ -228,7 +228,7 @@ try {
         if ($ext2 === '' || !in_array($ext2, $allowed)) {
           $im .= '.jpg';
         }
-        $imagemUrl = 'https://improov.com.br/sistema/uploads/' . $im;
+        $imagemUrl = 'https://improov.com.br/flow/ImproovWeb/uploads/' . $im;
       }
 
       $it['imagem'] = $imagemUrl;
@@ -252,7 +252,7 @@ try {
               $extA = strtolower(pathinfo($arquivoBaseAng, PATHINFO_EXTENSION));
               if ($extA === '') $arquivoBaseAng .= '.jpg';
               // monta URL completa (mesma base usada nas outras imagens)
-              $it['imagem'] = 'https://improov.com.br/sistema/' . $arquivoBaseAng;
+              $it['imagem'] = 'https://improov.com.br/flow/ImproovWeb/' . $arquivoBaseAng;
             }
           }
           $stmtAng->close();

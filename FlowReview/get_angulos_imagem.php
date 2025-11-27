@@ -79,7 +79,7 @@ while ($row = $res->fetch_assoc()) {
         if ($ext === '') {
             $arquivoBase .= '.jpg';
         }
-        $url = 'https://improov.com.br/sistema/' . $arquivoBase;
+        $url = 'https://improov.com.br/flow/ImproovWeb/' . $arquivoBase;
     }
     $row['preview_url'] = $url;
     $angulos[] = $row;

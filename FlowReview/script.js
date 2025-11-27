@@ -371,7 +371,7 @@ async function exibirCardsDeObra(tarefas) {
     obrasMap.forEach((tarefasDaObra, nome_obra) => {
         tarefasDaObra.sort((a, b) => new Date(b.data_aprovacao) - new Date(a.data_aprovacao));
         const tarefaComImagem = tarefasDaObra.find(t => t.imagem);
-        const imagemPreview = tarefaComImagem ? `https://improov.com.br/sistema/${tarefaComImagem.imagem}` : '../assets/logo.jpg';
+        const imagemPreview = tarefaComImagem ? `https://improov.com.br/flow/ImproovWeb/${tarefaComImagem.imagem}` : '../assets/logo.jpg';
         const mencoesNaObra = mencoes.mencoes_por_obra[nome_obra] || 0;
         const card = document.createElement('div'); card.classList.add('obra-card');
         card.innerHTML = `
@@ -392,7 +392,7 @@ function filtrarTarefasPorObra(obraSelecionada) {
     if (tarefasDaObra.length > 0) {
         const nomeObra = tarefasDaObra[0].nome_obra;
         const nomenclatura = tarefasDaObra[0].nomenclatura;
-        document.querySelectorAll('.obra_nav').forEach(link => { link.href = `https://improov.com.br/sistema/Revisao/index.php?obra_nome=${nomeObra}`; link.textContent = nomenclatura; });
+        document.querySelectorAll('.obra_nav').forEach(link => { link.href = `https://improov.com.br/flow/ImproovWeb/Revisao/index.php?obra_nome=${nomeObra}`; link.textContent = nomenclatura; });
     }
     const tarefasFiltradas = tarefasDaObra.filter(t => !colaboradorSelecionado || t.nome_colaborador === colaboradorSelecionado);
     exibirTarefas(tarefasFiltradas, tarefasDaObra);
@@ -441,7 +441,7 @@ function exibirTarefas(tarefas, tarefasCompletas) {
             const taskItem = document.createElement('div');
             taskItem.classList.add('task-item');
             taskItem.setAttribute('onclick', `historyAJAX(${tarefa.imagem_id})`);
-            const imagemPreview = tarefa.imagem ? `https://improov.com.br/sistema/${tarefa.imagem}` : '../assets/logo.jpg';
+            const imagemPreview = tarefa.imagem ? `https://improov.com.br/flow/ImproovWeb/${tarefa.imagem}` : '../assets/logo.jpg';
             const color = tarefa.status_novo === 'Em aprovação' ? '#000a59' : tarefa.status_novo === 'Ajuste' ? '#590000' : tarefa.status_novo === 'Aprovado com ajustes' ? '#2e0059ff' : 'transparent';
             const bgColor = tarefa.status_novo === 'Em aprovação' ? '#90c2ff' : tarefa.status_novo === 'Ajuste' ? '#ff5050' : tarefa.status_novo === 'Aprovado com ajustes' ? '#ae90ffff' : 'transparent';
             taskItem.innerHTML = `
@@ -616,13 +616,50 @@ function mostrarImagemCompleta(src, id, imagem_nome = '') {
     // Carregar carrossel de ângulos se condição P00 entregue (historico_id nulo + flag carrossel_angulos)
     // Detecta a versão corrente no array versoesAtuaisDaImagem
     const versaoCorrente = versoesAtuaisDaImagem.find(v => String(v.historico_imagem_id) === String(id)) || versoesAtuaisDaImagem[0];
-    if (versaoCorrente && versaoCorrente.carrossel_angulos && !versaoCorrente.historico_imagem_id && entregaItemIdAtual) {
-        // Place carousel and navigation buttons in the outer container (#imagem_completa)
-        const imagemCompletaContainer = document.getElementById('imagem_completa') || imageWrapper;
+    // Decide whether to load the angles carousel.
+    // Primary condition: backend-provided flag `carrossel_angulos`.
+    // Fallbacks: if there are angles (`angulos_count>0`), no historico (P00 flow),
+    // and either the image-status (`nome_status_imagem`) OR the entrega step (`nome_etapa`) is 'P00',
+    // then also load the carousel. This covers cases where backend didn't set the flag.
+    const hasAngles = versaoCorrente && Number(versaoCorrente.angulos_count) > 0;
+    const isNoHistorico = versaoCorrente && !versaoCorrente.historico_imagem_id;
+    const statusIsP00 = versaoCorrente && (versaoCorrente.nome_status_imagem === 'P00' || versaoCorrente.nome_etapa === 'P00');
+    const shouldLoadCarousel = versaoCorrente && (versaoCorrente.carrossel_angulos || (hasAngles && isNoHistorico && statusIsP00));
+
+    const imagemCompletaContainer = document.getElementById('imagem_completa') || imageWrapper;
+    // Only load the carousel when the stricter condition `shouldLoadCarousel` is met.
+    // Previous code triggered on any non-zero `angulos_count`, which caused the
+    // carousel and approved-angle info to appear on images that shouldn't have it.
+    if (shouldLoadCarousel && entregaItemIdAtual) {
+        try {
+            const submitBtn = document.getElementById('submit_decision');
+            if (submitBtn) submitBtn.style.display = 'none';
+        } catch (e) { /* ignore */ }
         carregarCarrosselAngulos(entregaItemIdAtual, imagemCompletaContainer, imgElement);
+    } else {
+        // Ensure any existing carousel, approval info or related actions are removed when not applicable
+        try {
+            const old = document.getElementById('carrossel-angulos');
+            if (old) old.remove();
+        } catch (e) { }
+        try {
+            document.querySelectorAll('.angle-decision-info').forEach(el => el.remove());
+        } catch (e) { }
+        try {
+            document.querySelectorAll('.carrossel-actions').forEach(el => el.remove());
+        } catch (e) { }
+        try { document.body.classList.remove('has-angle-carousel'); } catch (e) { }
+        // Restore submit button visibility for permitted users when no carousel present
+        try {
+            const submitBtn = document.getElementById('submit_decision');
+            if (submitBtn) {
+                const allowed = [1, 2, 3, 9, 20];
+                submitBtn.style.display = allowed.includes(idusuario) ? '' : 'none';
+            }
+        } catch (e) { }
     }
     imgElement.addEventListener('click', function (event) {
-        if (dragMoved) return;
+        if (dragMoved || statusIsP00 || hasAngles) return;
         // Se já existe decisão nesta versão, bloquear comentários e avisar
         if (imagemTemDecisao) {
             Toastify({
@@ -650,7 +687,13 @@ async function carregarCarrosselAngulos(entregaItemId, containerWrapper, mainImg
     try {
         const r = await fetch(`get_angulos_imagem.php?entrega_item_id=${encodeURIComponent(entregaItemId)}`);
         const j = await r.json();
-        if (!j.success || !Array.isArray(j.angulos) || j.angulos.length === 0) return;
+        if (!j.success || !Array.isArray(j.angulos) || j.angulos.length === 0) {
+            try { document.body.classList.remove('has-angle-carousel'); } catch (e) { }
+            return;
+        }
+
+        // mark that a carousel with angles is present so CSS can hide the submit button
+        try { document.body.classList.add('has-angle-carousel'); } catch (e) { }
 
         // Remove carrossel antigo, se houver
         let old = document.getElementById('carrossel-angulos');
@@ -679,6 +722,8 @@ async function carregarCarrosselAngulos(entregaItemId, containerWrapper, mainImg
         let currentIndex = 0;
         // currently selected angle id (when carrossel of ângulos is present)
         window.selectedAngleId = null;
+        // refazer button reference (created only when no angle is chosen)
+        let refazerBtn = null;
 
         // elemento de info sobre ângulo aprovado (criado se houver ângulo decidido)
         let angleDecisionInfoBox = null;
@@ -696,6 +741,8 @@ async function carregarCarrosselAngulos(entregaItemId, containerWrapper, mainImg
             // aplica destaque via classe
             thumbs.forEach(x => x.classList.remove('selected-thumb'));
             t.classList.add('selected-thumb');
+            // ensure the selected thumb is visible/centered in the viewport
+            try { t.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' }); } catch (e) { /* ignore */ }
             // track selected angle id globally so decision submit can include it
             try { window.selectedAngleId = t.dataset.anguloId ? String(t.dataset.anguloId) : null; } catch (e) { window.selectedAngleId = null; }
             // atualiza imagem principal se existir url
@@ -708,7 +755,29 @@ async function carregarCarrosselAngulos(entregaItemId, containerWrapper, mainImg
             // Atualiza visibilidade da caixa de info do ângulo aprovado (se existir)
             try {
                 if (angleDecisionInfoBox && decidedIndex !== null) {
-                    angleDecisionInfoBox.style.display = (i === decidedIndex) ? '' : 'none';
+                    const isDecided = (i === decidedIndex);
+                    angleDecisionInfoBox.style.display = isDecided ? 'block' : 'none';
+                }
+
+                // HIDE submit_decision whenever any angle is selected.
+                // If no angle is selected, restore visibility based on permission list.
+                // Consider an angle 'selected' if there's a selectedAngleId OR
+                // if there is a decidedIndex (approved angle) and the current
+                // thumb equals that decided index (we already set angle info display above).
+                const anyAngleSelected = (typeof window.selectedAngleId === 'string' && window.selectedAngleId !== '') || (decidedIndex !== null && i === decidedIndex);
+                const submitBtnLocal = document.getElementById('submit_decision');
+                if (submitBtnLocal) {
+                    if (anyAngleSelected) {
+                        submitBtnLocal.style.display = 'none';
+                    } else {
+                        const allowed = [1, 2, 3, 9, 20];
+                        submitBtnLocal.style.display = allowed.includes(idusuario) ? '' : 'none';
+                    }
+                }
+
+                // Toggle the "Refazer ângulos" button: show only when no angle is selected
+                if (refazerBtn) {
+                    try { refazerBtn.style.display = anyAngleSelected ? 'none' : ''; } catch (e) { }
                 }
             } catch (err) { /* ignore UI toggle errors */ }
         }
@@ -721,7 +790,7 @@ async function carregarCarrosselAngulos(entregaItemId, containerWrapper, mainImg
             thumb.className = 'carrossel-thumb';
             thumb.dataset.anguloId = ang.angulo_id;
 
-            if (ang.decisao === 'aprovado') {
+            if (String(ang.decisao).toLowerCase() === 'aprovado') {
                 thumb.classList.add('aprovado');
                 decidedIndex = idx;
             }
@@ -749,11 +818,6 @@ async function carregarCarrosselAngulos(entregaItemId, containerWrapper, mainImg
 
             thumb.addEventListener('click', (e) => {
                 e.stopPropagation();
-                // Se houver um ângulo decidido, só permite clicar no escolhido
-                if (decidedIndex !== null && idx !== decidedIndex) {
-                    Toastify({ text: 'Esta imagem não é o ângulo aprovado — não é possível escolher.', duration: 2500, backgroundColor: 'orange', close: true, gravity: 'top', position: 'right' }).showToast();
-                    return;
-                }
                 // select the thumb (click may arrive after pointerup)
                 selectThumb(idx);
                 // clear after a short delay to allow pointerup logic to read lastClickedIndex
@@ -772,6 +836,7 @@ async function carregarCarrosselAngulos(entregaItemId, containerWrapper, mainImg
             thumbs.forEach((t, i) => {
                 if (i === decidedIndex) {
                     t.classList.add('chosen-angle');
+                    t.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 } else {
                     t.classList.add('dimmed-thumb');
                 }
@@ -780,7 +845,6 @@ async function carregarCarrosselAngulos(entregaItemId, containerWrapper, mainImg
             // Cria a caixa de info do ângulo aprovado (mas não a mostra até selection)
             try {
                 const ang = j.angulos[decidedIndex];
-                const submitBtn = document.getElementById('submit_decision');
                 angleDecisionInfoBox = document.createElement('div');
                 angleDecisionInfoBox.className = 'angle-decision-info';
                 const who = ang.nome_usuario || ang.usuario || ang.usuario_nome || '';
@@ -792,19 +856,63 @@ async function carregarCarrosselAngulos(entregaItemId, containerWrapper, mainImg
                 `;
                 // inicialmente escondida; selectThumb irá revelar se for o escolhido
                 angleDecisionInfoBox.style.display = 'none';
-                if (submitBtn) {
-                    submitBtn.style.display = 'none';
-                    submitBtn.insertAdjacentElement('afterend', angleDecisionInfoBox);
-                } else {
-                    // fallback: anexar ao containerWrapper
+
+                // Helper: try to place the info box immediately after the submit button
+                function placeInfoBoxNearSubmit() {
+                    const sb = document.getElementById('submit_decision');
+                    if (sb) {
+                        try { sb.style.display = 'none'; } catch (e) { }
+                        try { sb.insertAdjacentElement('afterend', angleDecisionInfoBox); } catch (e) { containerWrapper.appendChild(angleDecisionInfoBox); }
+                        return true;
+                    }
+                    return false;
+                }
+
+                // Try immediate placement; if not present, append to container and watch for the button
+                if (!placeInfoBoxNearSubmit()) {
                     containerWrapper.appendChild(angleDecisionInfoBox);
+                    const mo = new MutationObserver((mutations, observer) => {
+                        if (placeInfoBoxNearSubmit()) {
+                            observer.disconnect();
+                        }
+                    });
+                    mo.observe(document.body, { childList: true, subtree: true });
+                    // safety disconnect after a short period
+                    setTimeout(() => mo.disconnect(), 5000);
                 }
             } catch (e) { /* ignore UI fallback failures */ }
 
-            // Seleciona o thumb decidido (isto acionará o toggle da infoBox)
-            selectThumb(decidedIndex);
+            // NOTE: selection will occur after the carrossel is appended to DOM
+
+
         } else {
             if (thumbs.length > 0) selectThumb(0);
+        }
+
+        // If there is NO decided/approved angle, create the "Refazer ângulos" button.
+        if (decidedIndex === null) {
+            try {
+                const actionsDiv = document.createElement('div');
+                actionsDiv.className = 'carrossel-actions';
+                refazerBtn = document.createElement('button');
+                refazerBtn.type = 'button';
+                refazerBtn.className = 'refazer-angulos-btn';
+                refazerBtn.textContent = 'Refazer ângulos';
+                refazerBtn.title = 'Solicitar refazer dos ângulos para esta imagem';
+                refazerBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    ensureRefazerModal();
+                    const modal = document.getElementById('refazerAngulosModal');
+                    const ta = document.getElementById('refazerObservacao');
+                    if (ta) ta.value = '';
+                    if (modal) {
+                        modal.dataset.entregaItemId = String(entregaItemId || entregaItemIdAtual || '');
+                        modal.style.display = 'flex';
+                    }
+                });
+                actionsDiv.appendChild(refazerBtn);
+                try { header.insertAdjacentElement('afterend', actionsDiv); } catch (e) { carrossel.appendChild(actionsDiv); }
+            } catch (e) { /* ignore UI errors */ }
         }
 
         viewport.appendChild(faixa);
@@ -896,10 +1004,74 @@ async function carregarCarrosselAngulos(entregaItemId, containerWrapper, mainImg
         });
 
         containerWrapper.appendChild(carrossel);
+
+        // After the carrossel is in the DOM, select the decided thumb (or first)
+        try {
+            if (decidedIndex !== null && thumbs[decidedIndex]) {
+                selectThumb(decidedIndex);
+            } else if (thumbs.length > 0) {
+                selectThumb(0);
+            }
+        } catch (e) { /* ignore selection errors */ }
     } catch (e) {
         console.error('Falha ao carregar carrossel de ângulos', e);
     }
 }
+
+// Ensure the "Refazer ângulos" modal exists and wire handlers
+function ensureRefazerModal() {
+    if (document.getElementById('refazerAngulosModal')) return;
+    const modal = document.createElement('div');
+    modal.id = 'refazerAngulosModal';
+    modal.className = 'refazer-angulos-modal';
+    // default hidden; visibility toggled with `style.display` by callers
+    modal.style.display = 'none';
+
+    modal.innerHTML = `
+        <div class="refazer-angulos-panel">
+            <h3 class="refazer-angulos-title">Solicitar refazer dos ângulos</h3>
+            <p class="refazer-angulos-desc">Explique por que deseja refazer os ângulos (opcional):</p>
+            <textarea id="refazerObservacao" class="refazer-angulos-textarea"></textarea>
+            <div class="refazer-angulos-actions">
+                <button id="refazerCancelar" type="button" class="refazer-angulos-cancel">Cancelar</button>
+                <button id="refazerEnviar" type="button" class="refazer-angulos-send">Enviar solicitação</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+
+    document.getElementById('refazerCancelar').addEventListener('click', () => {
+        modal.style.display = 'none';
+    });
+
+    document.getElementById('refazerEnviar').addEventListener('click', async () => {
+        const ta = document.getElementById('refazerObservacao');
+        const observacao = String(ta.value || '').trim();
+        const entregaId = modal.dataset.entregaItemId || entregaItemIdAtual || '';
+        if (!entregaId) {
+            Toastify({ text: 'ID da entrega não disponível.', duration: 3000, backgroundColor: 'red', close: true, gravity: 'top', position: 'right' }).showToast();
+            return;
+        }
+        try {
+            const resp = await fetch('solicitar_refazer_angulos.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ entrega_item_id: entregaId, observacao: observacao, idusuario: idusuario || null })
+            });
+            const j = await resp.json();
+            if (j.success) {
+                Toastify({ text: j.message || 'Solicitação enviada. A gestão será notificada.', duration: 4000, backgroundColor: 'green', close: true, gravity: 'top', position: 'right' }).showToast();
+                modal.style.display = 'none';
+            } else {
+                Toastify({ text: j.message || 'Falha ao enviar solicitação.', duration: 4000, backgroundColor: 'red', close: true, gravity: 'top', position: 'right' }).showToast();
+            }
+        } catch (err) {
+            console.error('Erro ao solicitar refazer ângulos:', err);
+            Toastify({ text: 'Erro na comunicação. Tente novamente.', duration: 4000, backgroundColor: 'red', close: true, gravity: 'top', position: 'right' }).showToast();
+        }
+    });
+}
+
 async function renderDecisions(historicoId, entregaItemId) {
     try {
         const cont = document.getElementById('decisoes');
@@ -1051,7 +1223,7 @@ function exibirSidebarTabulator(tarefas) {
         tarefas.forEach(t => {
             const tarefa = document.createElement('div');
             tarefa.classList.add('tarefa-item');
-            const imgSrc = t.imagem ? `https://improov.com.br/sistema/${t.imagem}` : '../assets/logo.jpg';
+            const imgSrc = t.imagem ? `https://improov.com.br/flow/ImproovWeb/${t.imagem}` : '../assets/logo.jpg';
             tarefa.innerHTML = `
         <img src="${imgSrc}" class="tab-img" data-id="${t.idfuncao_imagem}" alt="${t.imagem_nome}">
         <span>${t.nome_colaborador} - ${t.imagem_nome}</span>

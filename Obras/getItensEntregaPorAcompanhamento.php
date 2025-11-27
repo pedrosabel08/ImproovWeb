@@ -70,8 +70,8 @@ try {
                 WHERE ei.entrega_id = ?
                     AND (
                             ei.status LIKE 'Entregue%'
-                            OR (ei.data_entregue IS NOT NULL AND ei.data_entregue <> '0000-00-00')
-                    )
+                            OR (ei.data_entregue IS NOT NULL AND UNIX_TIMESTAMP(ei.data_entregue) > 0)
+                        )
                 ORDER BY i.imagem_nome
         ";
     $stmt2 = $conn->prepare($sqlItens);

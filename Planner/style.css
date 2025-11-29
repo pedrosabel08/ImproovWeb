@@ -50,7 +50,13 @@
     font-family: var(--font-body);
 }
 
+body {
+    display: grid;
+    grid-template-columns: 60px 1fr;
+}
+
 #planner {
+    grid-column: 2;
     display: grid;
     grid-template-columns: 360px 1fr;
     min-height: 100vh;

@@ -1,5 +1,29 @@
 <?php
-require_once __DIR__ . '/../conexao.php';
+
+session_start();
+// $nome_usuario = $_SESSION['nome_usuario'];
+
+include '../conexaoMain.php';
+include '../conexao.php';
+
+if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
+    // Se não estiver logado, redirecionar para a página de login
+    header("Location: ../index.html");
+    exit();
+}
+
+
+$conn = conectarBanco();
+
+$clientes = obterClientes($conn);
+$obras = obterObras($conn);
+$colaboradores = obterColaboradores($conn);
+$status_imagens = obterStatusImagens($conn);
+$funcoes = obterFuncoes($conn);
+$imagens = obterImagens($conn);
+$status_etapa = obterStatus($conn);
+
+$conn->close();
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -7,11 +31,28 @@ require_once __DIR__ . '/../conexao.php';
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Planner — Entregas</title>
+
     <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="../css/styleSidebar.css">
+
+    <link href="https://cdn.jsdelivr.net/npm/remixicon/fonts/remixicon.css" rel="stylesheet">
+    <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
+        type="image/x-icon">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+
+    <title>Flow Planner</title>
 </head>
 
 <body>
+
+    <?php
+
+    include '../sidebar.php';
+
+    ?>
     <div id="planner">
         <aside id="left-panel">
             <header class="panel-header">
@@ -66,6 +107,8 @@ require_once __DIR__ . '/../conexao.php';
         const API_DETALHE = 'get_entrega_detalhe.php';
     </script>
     <script src="script.js"></script>
+    <script src="../script/sidebar.js"></script>
+
 </body>
 
 </html>

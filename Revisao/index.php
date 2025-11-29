@@ -125,10 +125,10 @@ $conn->close();
             </nav>
             <div id="imagem_completa">
                 <div class="nav-select">
-                    <select id="commentTypeSelect" style="margin-right:8px;">
+                    <!-- <select id="commentTypeSelect" style="margin-right:8px;">
                         <option value="ponto">Comentário (ponto)</option>
                         <option value="livre">Rabiscar (livre)</option>
-                    </select>
+                    </select> -->
                     <select id="indiceSelect"></select>
                     <div class="buttons">
                         <button id="reset-zoom"><i class="fa-solid fa-compress"></i></button>

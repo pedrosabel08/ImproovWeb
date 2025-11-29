@@ -208,6 +208,57 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // --- REMOVER IMAGEM COM CLIQUE DIREITO ---
+    modalImagens.addEventListener('contextmenu', async (e) => {
+        const item = e.target.closest('.modal-imagem-item');
+        if (!item || item.classList.contains('select-all-item')) return;
+        if (!entregaAtualId) return;
+        e.preventDefault();
+        const checkbox = item.querySelector('input[type="checkbox"]');
+        if (!checkbox) return;
+        const itemId = parseInt(checkbox.value, 10); // este é o id do registro em entregas_itens
+        // obter também a imagem_id armazenada nos dados, se disponível
+        let imagemId = null;
+        if (entregaDados && Array.isArray(entregaDados.itens)) {
+            const found = entregaDados.itens.find(it => parseInt(it.id,10) === itemId);
+            if (found) imagemId = found.imagem_id;
+        }
+        const nomeLabel = item.querySelector('label.imagem_nome');
+        const nomeImagem = nomeLabel ? nomeLabel.textContent.trim() : ('Item ' + itemId);
+        const confirmar = confirm(`Remover a imagem "${nomeImagem}" desta entrega?`);
+        if (!confirmar) return;
+        try {
+            const payload = { entrega_id: entregaAtualId, item_id: itemId };
+            const res = await fetch('remove_imagem_entrega.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const json = await res.json();
+            if (json.success) {
+                item.remove();
+                if (entregaDados && Array.isArray(entregaDados.itens)) {
+                    entregaDados.itens = entregaDados.itens.filter(it => parseInt(it.id,10) !== itemId);
+                }
+                const total = modalImagens.querySelectorAll('.modal-imagem-item:not(.select-all-item)').length;
+                const entregues = Array.from(modalImagens.querySelectorAll('.modal-imagem-item:not(.select-all-item) input[disabled]')).length;
+                modalProgresso.textContent = `${entregues} / ${total} finalizadas`;
+                const master = document.getElementById('selectAllImagens');
+                if (master) {
+                    const selectable = Array.from(modalImagens.querySelectorAll('input[type="checkbox"]:not([disabled])')).filter(cb => cb.id !== 'selectAllImagens');
+                    const checkedCount = selectable.filter(cb => cb.checked).length;
+                    master.checked = selectable.length > 0 && checkedCount === selectable.length;
+                    master.indeterminate = checkedCount > 0 && checkedCount < selectable.length;
+                }
+            } else {
+                alert('Não foi possível remover: ' + (json.error || 'erro desconhecido'));
+            }
+        } catch (err) {
+            console.error('Erro ao remover imagem da entrega:', err);
+            alert('Falha ao remover imagem (ver console)');
+        }
+    });
+
 
     // --- REGISTRAR ENTREGA ---
     btnRegistrarEntrega.addEventListener('click', async () => {

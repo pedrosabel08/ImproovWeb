@@ -153,7 +153,7 @@ $ftp_host = "72.60.137.192";
 $ftp_port = 21; // porta padrão FTP
 $ftp_user = "improov";
 $ftp_pass = "Impr00v@";
-$ftp_base = "/web/improov.com.br/public_html/flow/ImproovWeb/uploads/angulo_definido";
+$ftp_base = "/web/improov.com.br/public_html/flow/ImproovWeb/uploads/angulo_definido/";
 // Variáveis do log
 $log = [];
 $success = [];

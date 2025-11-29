@@ -1,0 +1,344 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Open+Sans:ital,wght@0,300..800;1,300..800&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap');
+
+/* =====================================================
+   DESIGN TOKENS (CSS VARIABLES)
+   Light defaults + automatic dark via prefers-color-scheme
+   ===================================================== */
+:root {
+    --color-bg: #f7f9fc;
+    --color-bg-panel: #ffffff;
+    --color-border: #d9e2ef;
+    --color-text: #1b2b42;
+    --color-text-muted: #61748f;
+    --color-badge-red: #e53935;
+    --color-badge-yellow: #ffb300;
+    --color-badge-blue: #1e88e5;
+    --color-badge-green: #43a047;
+    --color-badge-entregue: #43a047;
+    /* alias for entregues */
+    --color-badge-entregue: #4cf598;
+    --color-progress-bg: #e2e8f0;
+    --color-progress-bar: var(--color-badge-blue);
+    --shadow-card: 0 2px 4px -2px rgba(0, 0, 0, .08), 0 4px 12px -2px rgba(0, 0, 0, .06);
+    --radius-card: 10px;
+    --font-body: "Inter", system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Noto Sans', sans-serif;
+    --transition-fast: .15s ease;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --color-bg: #0f1320;
+        --color-bg-panel: #131a2a;
+        --color-border: #1e2538;
+        --color-text: #e8ecf1;
+        --color-text-muted: #8fa0b8;
+        --color-badge-red: #ff6b6b;
+        --color-badge-yellow: #ffd166;
+        --color-badge-blue: #78c0e0;
+        --color-badge-green: #95d5b2;
+        --color-badge-entregue: #95d5b2;
+        --color-progress-bg: #1b2336;
+        --color-progress-bar: #2aa5ff;
+        --shadow-card: 0 2px 4px -2px rgba(0, 0, 0, .5), 0 4px 14px -2px rgba(0, 0, 0, .4);
+    }
+}
+
+* {
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+    font-family: var(--font-body);
+}
+
+#planner {
+    display: grid;
+    grid-template-columns: 360px 1fr;
+    min-height: 100vh;
+}
+
+#left-panel {
+    border-right: 1px solid var(--color-border);
+    padding: 16px;
+    background: var(--color-bg-panel);
+    max-height: 100vh;
+    overflow-y: auto;
+}
+
+#right-panel {
+    padding: 20px;
+    max-height: 100vh;
+    overflow-y: auto;
+}
+
+.panel-header h2 {
+    margin: 0 0 4px;
+    font-size: 18px;
+    color: var(--color-text);
+}
+
+.panel-header small {
+    color: var(--color-text-muted);
+}
+
+.group {
+    margin-top: 18px;
+}
+
+.group-title {
+    font-size: 13px;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    margin-bottom: 8px;
+}
+
+.cards {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.card {
+    background: var(--color-bg-panel);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-card);
+    padding: 10px;
+    cursor: pointer;
+    transition: transform .08s ease, border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.card:hover {
+    transform: translateY(-1px);
+    border-color: var(--color-badge-blue);
+    box-shadow: var(--shadow-card);
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.card-title {
+    font-size: 14px;
+    color: var(--color-text);
+}
+
+.card-code {
+    font-size: 12px;
+    color: var(--color-text-muted);
+}
+
+.card-row {
+    font-size: 12px;
+    color: var(--color-text-muted);
+    display: flex;
+    gap: 8px;
+}
+
+.progress {
+    height: 6px;
+    background: var(--color-progress-bg);
+    border-radius: 999px;
+    margin-top: 8px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 100%;
+    background: var(--color-progress-bar);
+}
+
+.badge {
+    display: inline-block;
+    padding: 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    color: #0c101a;
+    font-weight: 600;
+}
+
+.badge.red {
+    background: var(--color-badge-red);
+}
+
+.badge.yellow {
+    background: var(--color-badge-yellow);
+}
+
+.badge.blue {
+    background: var(--color-badge-blue);
+}
+
+.badge.green {
+    background: var(--color-badge-green);
+}
+
+.detail-header h2 {
+    margin: 0 0 4px;
+    font-size: 20px;
+    color: var(--color-text);
+}
+
+.detail-meta {
+    display: flex;
+    gap: 18px;
+    color: var(--color-text-muted);
+    font-size: 13px;
+    margin-bottom: 14px;
+}
+
+.filters {
+    display: flex;
+    gap: 12px;
+    margin: 10px 0 16px;
+}
+
+.filters .hide-delivered-filter {
+    align-self: flex-end;
+}
+
+.filters .toggle-delivered {
+    font-size: 12px;
+    color: var(--color-text-muted);
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    cursor: pointer;
+}
+
+.filters .toggle-delivered input {
+    accent-color: var(--color-badge-blue);
+    cursor: pointer;
+}
+
+.filters .filter {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.filters label {
+    font-size: 12px;
+    color: var(--color-text-muted);
+}
+
+.filters select {
+    background: var(--color-bg-panel);
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 6px 8px;
+}
+
+.image-item {
+    background: var(--color-bg-panel);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-card);
+    padding: 10px;
+    margin-bottom: 8px;
+}
+
+.image-item.entregue {
+    opacity: .55;
+    position: relative;
+}
+
+.image-item.entregue:hover {
+    opacity: .75;
+}
+
+.badge-entregue {
+    background: var(--color-badge-green);
+    color: #0c101a;
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 999px;
+    margin-left: 8px;
+}
+
+.image-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.image-name {
+    color: var(--color-text);
+    font-size: 14px;
+}
+
+.image-meta {
+    font-size: 12px;
+    color: var(--color-text-muted);
+    display: flex;
+    gap: 10px;
+}
+
+.etapa-pill {
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+}
+
+.etapa-Render {
+    background: var(--color-badge-blue);
+    color: #0c101a;
+}
+
+.etapa-Pós {
+    background: var(--color-badge-yellow);
+    color: #0c101a;
+}
+
+.etapa-Finalização {
+    background: var(--color-badge-green);
+    color: #0c101a;
+}
+
+.etapa-Aguardando\ aprovação {
+    background: var(--color-badge-red);
+    color: #0c101a;
+}
+
+.etapa-Entregue {
+    background: var(--color-badge-entregue);
+    color: #0c101a;
+    font-weight: 600;
+}
+
+.etapa-Em-render {
+    background: var(--color-badge-blue);
+    color: #0c101a;
+}
+
+.etapa-Em-aprovacao {
+    background: var(--color-badge-yellow);
+    color: #0c101a;
+}
+
+
+/* ===== SCROLLBAR ===== */
+::-webkit-scrollbar {
+    width: 4px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--color-bg);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    transition: background .3s;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--color-text-muted);
+}
+
+body {
+    background: var(--color-bg);
+    color: var(--color-text);
+    transition: background var(--transition-fast), color var(--transition-fast);
+}

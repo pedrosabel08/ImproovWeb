@@ -1,3 +1,4 @@
+<?php /* atualiza_log_tela.php removed from server-side include to avoid duplicate/incorrect entries; client-side fetch below records the title/url. */ ?>
 <!DOCTYPE html>
 <html lang="pt-br">
 
@@ -83,7 +84,7 @@
                 <?php foreach ($obras as $obra): ?>
                     <li class="obra">
                         <i class="fa fa-star favorite-icon" data-id="<?= $obra['idobra']; ?>" title="<?= htmlspecialchars($obra['nomenclatura']); ?>"></i>
-                        <a title="<?= htmlspecialchars($obra['nomenclatura']); ?>" href="#" class="obra-item" data-id="<?= $obra['idobra']; ?>" data-name="<?= htmlspecialchars($obra['nome_obra']); ?>">
+                        <a title="<?= htmlspecialchars($obra['nomenclatura']); ?>" href="#" class="obra-item" data-id="<?= $obra['idobra']; ?>" data-name="<?= htmlspecialchars($obra['nomenclatura']); ?>">
                             <span><?= htmlspecialchars($obra['nomenclatura']); ?></span>
                         </a>
                     </li>
@@ -99,3 +100,31 @@
 </body>
 
 </html>
+
+<script>
+    // Envia o title e url ao servidor para registrar histórico com título amigável
+    (function() {
+        try {
+            if (!window.fetch) return;
+            const payload = new FormData();
+            payload.append('title', document.title || 'Página');
+            payload.append('url', window.location.href);
+
+            // envia de forma assíncrona; o endpoint ignora se usuário não autenticado
+            // usa o caminho absoluto para evitar requests relativos incorretos
+            const endpoint = window.location.origin + '/flow/ImproovWeb/atualiza_log_tela.php';
+            fetch(endpoint, {
+                method: 'POST',
+                body: payload,
+                credentials: 'same-origin',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            }).then(resp => resp.json().then(js => {
+                if (!js.ok) console.debug('atualiza_log_tela response:', js);
+            })).catch(err => { console.debug('atualiza_log_tela fetch error', err); });
+        } catch (e) {
+            // noop
+        }
+    })();
+</script>

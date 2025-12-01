@@ -9,6 +9,33 @@ if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
 }
 
 $idusuario = $_SESSION['idusuario'];
+$tela_atual = basename($_SERVER['PHP_SELF']);
+// Use DB server time for ultima_atividade to avoid clock/timezone mismatches
+// $ultima_atividade = date('Y-m-d H:i:s');
+
+// We already extracted needed session values; close the session to release the lock
+// before performing heavier DB work below.
+if (session_status() === PHP_SESSION_ACTIVE) {
+    session_write_close();
+}
+
+// Use MySQL NOW() so the database records its own current timestamp
+$sql2 = "UPDATE logs_usuarios 
+         SET tela_atual = ?, ultima_atividade = NOW()
+         WHERE usuario_id = ?";
+$stmt2 = $conn->prepare($sql2);
+
+if (!$stmt2) {
+    die("Erro no prepare: " . $conn->error);
+}
+
+// 'si' indica os tipos: string, integer
+$stmt2->bind_param("si", $tela_atual, $idusuario);
+
+if (!$stmt2->execute()) {
+    die("Erro no execute: " . $stmt2->error);
+}
+$stmt2->close();
 
 include '../conexaoMain.php';
 $conn = conectarBanco();
@@ -27,7 +54,9 @@ $conn->close();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css" integrity="sha512-5Hs3dF2AEPkpNAR7UiOHba+lRSJNeM2ECkwxUIxC1Q/FLycGTbNapWXB4tP889k5T5Ju8fs4b1P5z/iB4nMfSQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css"
+        integrity="sha512-5Hs3dF2AEPkpNAR7UiOHba+lRSJNeM2ECkwxUIxC1Q/FLycGTbNapWXB4tP889k5T5Ju8fs4b1P5z/iB4nMfSQ=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
         type="image/x-icon">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
@@ -70,7 +99,8 @@ $conn->close();
                 <div class="header">
                     <nav class="breadcrumb-nav">
                         <a href="https://improov.com.br/flow/ImproovWeb/Revisao/index.php">Flow Review</a>
-                        <a id="obra_id_nav" class="obra_nav" href="https://improov.com.br/flow/ImproovWeb/Revisao/index.php?obra_id=''">Obra</a>
+                        <a id="obra_id_nav" class="obra_nav"
+                            href="https://improov.com.br/flow/ImproovWeb/Revisao/index.php?obra_id=''">Obra</a>
                     </nav>
                     <div class="filtros">
                         <div>
@@ -98,7 +128,8 @@ $conn->close();
         <header>
             <nav class="breadcrumb-nav">
                 <a href="https://improov.com.br/flow/ImproovWeb/Revisao/index.php">Flow Review</a>
-                <a id="obra_id_nav" class="obra_nav" href="https://improov.com.br/flow/ImproovWeb/Revisao/index.php?obra_id=''">Obra</a>
+                <a id="obra_id_nav" class="obra_nav"
+                    href="https://improov.com.br/flow/ImproovWeb/Revisao/index.php?obra_id=''">Obra</a>
             </nav>
             <div class="task-info" id="task-info">
                 <h3 id="funcao_nome"></h3>
@@ -148,7 +179,8 @@ $conn->close();
                     <div class="modal-content-decision">
                         <span class="close">&times;</span>
                         <label><input type="radio" name="decision" value="aprovado"> Aprovado</label><br>
-                        <label><input type="radio" name="decision" value="aprovado_com_ajustes"> Aprovado com ajustes</label><br>
+                        <label><input type="radio" name="decision" value="aprovado_com_ajustes"> Aprovado com
+                            ajustes</label><br>
                         <label><input type="radio" name="decision" value="ajuste"> Ajuste</label><br>
 
                         <div class="modal-footer">
@@ -167,7 +199,8 @@ $conn->close();
     <div id="comentarioModal" class="modal" style="display: none;">
         <div class="modal-content">
             <h3>Novo Comentário</h3>
-            <textarea id="comentarioTexto" rows="5" placeholder="Digite um comentário..." style="width: calc(100% - 10px); padding: 5px;"></textarea>
+            <textarea id="comentarioTexto" rows="5" placeholder="Digite um comentário..."
+                style="width: calc(100% - 10px); padding: 5px;"></textarea>
             <input type="file" id="imagemComentario" accept="image/*" />
             <div class="modal-actions">
                 <button id="enviarComentario" style="background-color: green;">Enviar</button>

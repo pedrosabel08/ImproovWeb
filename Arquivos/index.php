@@ -11,6 +11,34 @@ if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
 $nome_usuario = $_SESSION['nome_usuario'];
 $idcolaborador = $_SESSION['idcolaborador'];
 
+$idusuario = $_SESSION['idusuario'];
+$tela_atual = basename($_SERVER['PHP_SELF']);
+// Use DB server time for ultima_atividade to avoid clock/timezone mismatches
+// $ultima_atividade = date('Y-m-d H:i:s');
+
+// We already extracted needed session values; close the session to release the lock
+// before performing heavier DB work below.
+if (session_status() === PHP_SESSION_ACTIVE) {
+    session_write_close();
+}
+
+// Use MySQL NOW() so the database records its own current timestamp
+$sql2 = "UPDATE logs_usuarios 
+         SET tela_atual = ?, ultima_atividade = NOW()
+         WHERE usuario_id = ?";
+$stmt2 = $conn->prepare($sql2);
+
+if (!$stmt2) {
+    die("Erro no prepare: " . $conn->error);
+}
+
+// 'si' indica os tipos: string, integer
+$stmt2->bind_param("si", $tela_atual, $idusuario);
+
+if (!$stmt2->execute()) {
+    die("Erro no execute: " . $stmt2->error);
+}
+$stmt2->close();
 
 include '../conexaoMain.php';
 
@@ -35,7 +63,8 @@ $conn->close();
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="../css/styleSidebar.css">
     <link href="https://cdn.jsdelivr.net/npm/remixicon/fonts/remixicon.css" rel="stylesheet">
-    <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s" type="image/x-icon">
+    <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
+        type="image/x-icon">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">

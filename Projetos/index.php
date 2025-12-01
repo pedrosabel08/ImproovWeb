@@ -11,6 +11,34 @@ if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
     exit();
 }
 
+$idusuario = $_SESSION['idusuario'];
+$tela_atual = basename($_SERVER['PHP_SELF']);
+// Use DB server time for ultima_atividade to avoid clock/timezone mismatches
+// $ultima_atividade = date('Y-m-d H:i:s');
+
+// We already extracted needed session values; close the session to release the lock
+// before performing heavier DB work below.
+if (session_status() === PHP_SESSION_ACTIVE) {
+    session_write_close();
+}
+
+// Use MySQL NOW() so the database records its own current timestamp
+$sql2 = "UPDATE logs_usuarios 
+         SET tela_atual = ?, ultima_atividade = NOW()
+         WHERE usuario_id = ?";
+$stmt2 = $conn->prepare($sql2);
+
+if (!$stmt2) {
+    die("Erro no prepare: " . $conn->error);
+}
+
+// 'si' indica os tipos: string, integer
+$stmt2->bind_param("si", $tela_atual, $idusuario);
+
+if (!$stmt2->execute()) {
+    die("Erro no execute: " . $stmt2->error);
+}
+$stmt2->close();
 
 $conn = conectarBanco();
 
@@ -46,7 +74,9 @@ $conn->close();
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
     <link href="https://unpkg.com/tabulator-tables@5.5.0/dist/css/tabulator.min.css" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.7/js/bootstrap.min.js" integrity="sha512-zKeerWHHuP3ar7kX2WKBSENzb+GJytFSBL6HrR2nPSR1kOX1qjm+oHooQtbDpDBSITgyl7QXZApvDfDWvKjkUw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.7/js/bootstrap.min.js"
+        integrity="sha512-zKeerWHHuP3ar7kX2WKBSENzb+GJytFSBL6HrR2nPSR1kOX1qjm+oHooQtbDpDBSITgyl7QXZApvDfDWvKjkUw=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <title>Gerenciamento de projetos</title>
 </head>
 
@@ -62,7 +92,8 @@ $conn->close();
         <button id="btnRelatorio">Relatório</button>
 
         <!-- Modal simples para seleção de data -->
-        <div id="modalRelatorio" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%); background:#fff; padding:20px; border:1px solid #ccc; z-index:9999;">
+        <div id="modalRelatorio"
+            style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%); background:#fff; padding:20px; border:1px solid #ccc; z-index:9999;">
             <label>Data inicial: <input type="date" id="dataInicial"></label><br>
             <label>Data final: <input type="date" id="dataFinal"></label><br>
             <button id="gerarRelatorio">Gerar Relatório</button>

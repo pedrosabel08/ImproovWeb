@@ -25,7 +25,8 @@ if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
 
 $idusuario = $_SESSION['idusuario'];
 $tela_atual = basename($_SERVER['PHP_SELF']);
-$ultima_atividade = date('Y-m-d H:i:s');
+// Use DB server time for ultima_atividade to avoid clock/timezone mismatches
+// $ultima_atividade = date('Y-m-d H:i:s');
 
 // We already extracted needed session values; close the session to release the lock
 // before performing heavier DB work below.
@@ -33,8 +34,9 @@ if (session_status() === PHP_SESSION_ACTIVE) {
     session_write_close();
 }
 
+// Use MySQL NOW() so the database records its own current timestamp
 $sql2 = "UPDATE logs_usuarios 
-         SET tela_atual = ?, ultima_atividade = ?
+         SET tela_atual = ?, ultima_atividade = NOW()
          WHERE usuario_id = ?";
 $stmt2 = $conn->prepare($sql2);
 
@@ -42,8 +44,8 @@ if (!$stmt2) {
     die("Erro no prepare: " . $conn->error);
 }
 
-// 'ssi' indica os tipos: string, string, integer
-$stmt2->bind_param("ssi", $tela_atual, $ultima_atividade, $idusuario);
+// 'si' indica os tipos: string, integer
+$stmt2->bind_param("si", $tela_atual, $idusuario);
 
 if (!$stmt2->execute()) {
     die("Erro no execute: " . $stmt2->error);
@@ -353,6 +355,40 @@ $conn->close();
 
                 <button type="submit">Enviar respostas</button>
             </form>
+        </div>
+    </div>
+
+    <!-- Painel 'O que fazer agora' (mostra uma vez por dia) -->
+    <div class="modal" id="dailyPanelModal">
+        <div class="modal-content">
+            <h2>O que fazer agora?</h2>
+            <p>Resumo rápido das suas prioridades para hoje.</p>
+
+            <div class="panel-row">
+                <div class="panel-card">
+                    <strong id="daily_renders">0</strong>
+                    <div>Renders em aprovação</div>
+                </div>
+                <div class="panel-card">
+                    <strong id="daily_ajustes">0</strong>
+                    <div>Tarefas em <span>ajuste</span></div>
+                </div>
+                <div class="panel-card">
+                    <strong id="daily_atrasadas">0</strong>
+                    <div>Tarefas <span>atrasadas</span></div>
+                </div>
+                <div class="panel-card">
+                    <strong id="daily_hoje">0</strong>
+                    <div>Tarefas para <span class="">hoje</span></div>
+                </div>
+            </div>
+
+            <h3 class="panel-heading">Últimas telas visitadas</h3>
+            <ul id="daily_recent_pages"></ul>
+
+            <div class="panel-actions">
+                <button id="daily_go_tasks" class="btn">Ir para Minhas Tarefas</button>
+            </div>
         </div>
     </div>
 

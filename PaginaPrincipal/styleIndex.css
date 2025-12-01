@@ -1238,6 +1238,147 @@ h1 {
     background-color: white !important;
 }
 
+/* Daily panel specific styles moved from inline attributes in PHP */
+#dailyPanelModal {
+    display: none;
+}
+
+#dailyPanelModal .modal-content {
+    max-width: 43%;
+    width: 90%;
+    background: var(--card-bg);
+    color: var(--cor-principal);
+    padding: 18px;
+}
+
+#dailyPanelModal #dailyPanelClose {
+    position: absolute;
+    right: 12px;
+    top: 10px;
+    /* background: red; */
+    color: var(--cor-principal);
+    border: none;
+    padding: 6px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+#dailyPanelModal .panel-card {
+    flex: 1;
+    min-width: 140px;
+    padding: 12px;
+    border-radius: 8px;
+    background: var(--card-bg);
+    text-align: center;
+    font-size: 0.8rem;
+    box-shadow: 0 4px 6px rgb(0 0 0 / 64%);
+}
+
+#dailyPanelModal h2 {
+    margin-top: 0;
+}
+
+#daily_recent_pages {
+    display: flex;
+    justify-content: space-around;
+    padding: 8px;
+    background: var(--card-bg);
+    border-radius: 6px;
+}
+
+#dailyPanelModal #daily_go_tasks {
+    background: var(--cor-secundaria);
+    color: #fff;
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: none;
+}
+
+/* Styles for recent page buttons (minimal defaults) */
+.recent-page-btn {
+    display: inline-flex;
+    margin: 6px 8px 6px 0;
+    padding: 8px 12px !important;
+    border-radius: 8px !important;
+    background: transparent;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    cursor: pointer;
+    box-shadow: 0 4px 6px rgb(0 0 0 / 65%) !important;
+    gap: 10px;
+    align-items: center;
+    font-size: 0.8rem;
+}
+
+.recent-page-btn:hover {
+    filter: brightness(0.98);
+}
+
+.recent-page-btn.accessed {
+    opacity: 0.6;
+}
+
+.recent-page-btn.current {
+    font-weight: 700;
+    outline: 2px solid var(--cor-secundaria);
+}
+
+/* Additional helper classes to replace inline styles in inicio.php */
+.panel-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin: 20px 0;
+}
+
+.panel-heading {
+    margin-top: 14px;
+}
+
+.panel-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 12px;
+}
+
+/* Top gif size */
+#gif {
+    width: 200px;
+    height: auto;
+}
+
+/* Mini calendar container styling */
+#mini-calendar-container {
+    display: inline-block;
+    vertical-align: middle;
+    margin-right: 8px;
+}
+
+/* Standard button variants used across the page */
+.btn {
+    display: inline-block;
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+}
+
+.btn-danger {
+    background: var(--cor-referencias);
+    color: #fff;
+}
+
+.btn-success {
+    background: #16a34a;
+    /* green */
+    color: #fff;
+}
+
+/* small utility to hide elements (used instead of inline display:none) */
+.hidden {
+    display: none !important;
+}
+
 form#dailyForm {
     display: flex;
     flex-direction: column;

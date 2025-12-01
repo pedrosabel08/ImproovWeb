@@ -11,8 +11,34 @@ if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
 
 include '../conexao.php';
 
-$usuario_id = $_SESSION['idusuario']; // ID do usuário logado
+$idusuario = $_SESSION['idusuario'];
+$tela_atual = basename($_SERVER['PHP_SELF']);
+// Use DB server time for ultima_atividade to avoid clock/timezone mismatches
+// $ultima_atividade = date('Y-m-d H:i:s');
 
+// We already extracted needed session values; close the session to release the lock
+// before performing heavier DB work below.
+if (session_status() === PHP_SESSION_ACTIVE) {
+    session_write_close();
+}
+
+// Use MySQL NOW() so the database records its own current timestamp
+$sql2 = "UPDATE logs_usuarios 
+         SET tela_atual = ?, ultima_atividade = NOW()
+         WHERE usuario_id = ?";
+$stmt2 = $conn->prepare($sql2);
+
+if (!$stmt2) {
+    die("Erro no prepare: " . $conn->error);
+}
+
+// 'si' indica os tipos: string, integer
+$stmt2->bind_param("si", $tela_atual, $idusuario);
+
+if (!$stmt2->execute()) {
+    die("Erro no execute: " . $stmt2->error);
+}
+$stmt2->close();
 
 $sql_clientes = "SELECT idcliente, nome_cliente FROM cliente";
 $result_cliente = $conn->query($sql_clientes);
@@ -90,7 +116,9 @@ $conn->close();
     <link rel="stylesheet" href="stylePos.css">
     <link rel="stylesheet" href="../css/styleSidebar.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastify-js/1.12.0/toastify.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
+        integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
         type="image/x-icon">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
@@ -106,7 +134,7 @@ $conn->close();
 
 <body>
 
-    <?php include '../sidebar.php';   ?>
+    <?php include '../sidebar.php'; ?>
 
     <div id="filtro">
         <header>
@@ -154,7 +182,8 @@ $conn->close();
                         <select name="obra_id" id="opcao_obra" onchange="buscarImagens()" required>
                             <option value="0">Selecione uma obra:</option>
                             <?php foreach ($obras as $obra): ?>
-                                <option value="<?= $obra['idobra']; ?>"><?= htmlspecialchars($obra['nome_obra']); ?></option>
+                                <option value="<?= $obra['idobra']; ?>"><?= htmlspecialchars($obra['nome_obra']); ?>
+                                </option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -165,7 +194,8 @@ $conn->close();
                             <option value="">Selecione uma imagem:</option>
                             <?php foreach ($imagens as $imagem): ?>
                                 <option value="<?= $imagem['idimagens_cliente_obra']; ?>">
-                                    <?= htmlspecialchars($imagem['imagem_nome']); ?></option>
+                                    <?= htmlspecialchars($imagem['imagem_nome']); ?>
+                                </option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -238,7 +268,8 @@ $conn->close();
                 <li>Máscara RGB para vidros</li>
                 <li>Máscara RGB para paredes das fachadas</li>
                 <li>Máscara RGB para detalhes arquitetônicos</li>
-                <li>(Essas máscaras RGB não precisam ser necessariamente cada uma em um element diferente, apenas cores diferentes)</li>
+                <li>(Essas máscaras RGB não precisam ser necessariamente cada uma em um element diferente, apenas cores
+                    diferentes)</li>
                 <li>Wire Color</li>
                 <li>Masking ID</li>
                 <li>Direct</li>
@@ -258,9 +289,12 @@ $conn->close();
                 <li>Zdeph</li>
             </ul>
             <p><strong>Observações sobre luzes:</strong></p>
-            <h3>Alguns mandam cada luz da cena num element, como a academia que tinha um element para cada spot, não precisa.</h3>
+            <h3>Alguns mandam cada luz da cena num element, como a academia que tinha um element para cada spot, não
+                precisa.</h3>
             <p><strong>Observações sobre Zdeph:</strong></p>
-            <h3>Sobre o Zdeph, eu não sei como são feitas as configurações, mas alguns vem todo preto e outros já num gradiente, o legal é esse gradiente, que dá pra usar pra colocar um fog e separar os planos da imagem.</h3>
+            <h3>Sobre o Zdeph, eu não sei como são feitas as configurações, mas alguns vem todo preto e outros já num
+                gradiente, o legal é esse gradiente, que dá pra usar pra colocar um fog e separar os planos da imagem.
+            </h3>
         </div>
     </div>
 

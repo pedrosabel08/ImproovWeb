@@ -7,10 +7,39 @@ if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
     header("Location: ../index.html");
     exit();
 }
- 
+
 include_once __DIR__ . '/../conexao.php';
 
 include '../conexaoMain.php';
+
+$idusuario = $_SESSION['idusuario'];
+$tela_atual = basename($_SERVER['PHP_SELF']);
+// Use DB server time for ultima_atividade to avoid clock/timezone mismatches
+// $ultima_atividade = date('Y-m-d H:i:s');
+
+// We already extracted needed session values; close the session to release the lock
+// before performing heavier DB work below.
+if (session_status() === PHP_SESSION_ACTIVE) {
+    session_write_close();
+}
+
+// Use MySQL NOW() so the database records its own current timestamp
+$sql2 = "UPDATE logs_usuarios 
+         SET tela_atual = ?, ultima_atividade = NOW()
+         WHERE usuario_id = ?";
+$stmt2 = $conn->prepare($sql2);
+
+if (!$stmt2) {
+    die("Erro no prepare: " . $conn->error);
+}
+
+// 'si' indica os tipos: string, integer
+$stmt2->bind_param("si", $tela_atual, $idusuario);
+
+if (!$stmt2->execute()) {
+    die("Erro no execute: " . $stmt2->error);
+}
+$stmt2->close();
 
 $conn = conectarBanco();
 
@@ -59,8 +88,7 @@ $conn->close();
         <header style="position: relative;">
             <img src="../gif/assinatura_preto.gif" alt="" style="width: 200px;">
         </header>
-        <button id="startTutorial"
-            style="position: fixed;top: 1rem;right: 1rem;font-size: 24px;color: darkblue;"
+        <button id="startTutorial" style="position: fixed;top: 1rem;right: 1rem;font-size: 24px;color: darkblue;"
             onmouseover="document.getElementById('tooltipTutorial').style.display='block'; this.style.color='#007bff'; this.style.cursor='pointer';"
             onmouseout="document.getElementById('tooltipTutorial').style.display='none'; this.style.color='darkblue';">
             <i class="fa-solid fa-circle-info"></i>
@@ -132,7 +160,9 @@ $conn->close();
 
                         <div class="modal-item" id="errorsContainer" style="display: none;">
                             <button id="toggleErrors">Mostrar erros ▼</button>
-                            <div id="modal_errors" style="display: none; border: 1px solid #ccc; padding: 10px; margin-top: 5px; max-height: 200px; overflow-y: auto;"></div>
+                            <div id="modal_errors"
+                                style="display: none; border: 1px solid #ccc; padding: 10px; margin-top: 5px; max-height: 200px; overflow-y: auto;">
+                            </div>
                         </div>
 
                         <div class="modal-item">
@@ -149,7 +179,8 @@ $conn->close();
 
                         <div class="buttons">
                             <button type="button" id="aprovarRender">Aprovar</button>
-                            <button type="button" id="reprovarRender" style="background-color: orange;">Reprovar</button>
+                            <button type="button" id="reprovarRender"
+                                style="background-color: orange;">Reprovar</button>
                             <button id="deleteRender">Excluir</button>
                         </div>
                     </div>

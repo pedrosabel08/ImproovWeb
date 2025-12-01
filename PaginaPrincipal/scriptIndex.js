@@ -610,6 +610,91 @@ function mostrarResumoInteligente() {
     });
 }
 
+// Busca os dados do painel diário e exibe modal com as informações (se necessário)
+function fetchDailyPanel() {
+    fetch('PaginaPrincipal/get_daily_panel.php')
+        .then(r => r.ok ? r.json() : Promise.reject('Erro na resposta'))
+        .then(data => {
+            if (!data || data.error) return;
+            if (!data.show) return; // não mostrar hoje
+
+            // Preenche contadores
+            document.getElementById('daily_renders').textContent = data.renders ?? 0;
+            document.getElementById('daily_ajustes').textContent = data.ajustes ?? 0;
+            document.getElementById('daily_atrasadas').textContent = data.atrasadas ?? 0;
+            document.getElementById('daily_hoje').textContent = data.hoje ?? 0;
+
+            // Preenche últimas páginas (apenas 3) como botões com o título
+            const container = document.getElementById('daily_recent_pages');
+            container.innerHTML = '';
+            if (Array.isArray(data.recent_pages) && data.recent_pages.length) {
+                // pega até 3 e adiciona botões soltos (sem <li>)
+                data.recent_pages.slice(0, 3).forEach(p => {
+                    const btn = document.createElement('button');
+                        btn.type = 'button';
+                        btn.className = 'recent-page-btn';
+
+                        // label text + arrow icon to the right
+                        let label = p.tela || p.url || 'Página';
+                        try {
+                            // If the label is exactly 'Detalhes da obra', append obraName from localStorage when available
+                            if (String(label).trim() === 'Detalhes da Obra') {
+                                const obraNome = localStorage.getItem('obraNome') || '';
+                                if (obraNome) label = `${label} (${obraNome})`;
+                            }
+                        } catch (e) {
+                            // localStorage might be unavailable in some contexts; ignore silently
+                        }
+
+                        const labelSpan = document.createElement('span');
+                        labelSpan.className = 'recent-page-label';
+                        labelSpan.textContent = label;
+                        btn.appendChild(labelSpan);
+
+                        const icon = document.createElement('i');
+                        icon.className = 'fa-solid fa-circle-arrow-right recent-page-icon';
+                        btn.appendChild(icon);
+
+                        btn.addEventListener('click', () => {
+                            const url = p.url || '#';
+                            if (url === '#') return;
+                            window.open(url, '_blank');
+                        });
+
+                        container.appendChild(btn);
+                });
+            } else {
+                const span = document.createElement('span');
+                span.textContent = 'Nenhuma página registrada.';
+                container.appendChild(span);
+            }
+
+            const modal = document.getElementById('dailyPanelModal');
+            if (modal) modal.style.display = 'flex';
+
+            // Bind buttons (only once)
+            const goTasks = document.getElementById('daily_go_tasks');
+
+            function markSeenAndClose(redirect) {
+                fetch('PaginaPrincipal/mark_daily_panel_seen.php', { method: 'POST' })
+                    .then(r => r.json())
+                    .finally(() => {
+                        const m = document.getElementById('dailyPanelModal');
+                        if (m) m.style.display = 'none';
+                    });
+            }
+
+            if (goTasks) {
+                goTasks.onclick = () => {
+                    markSeenAndClose(true);
+                    // alternativamente direcionar para o Kanban principal
+                    modal.style.display = 'none';
+                };
+            }
+        })
+        .catch(err => console.error('Erro ao buscar painel diário:', err));
+}
+
 // Nav button handlers
 const btnOverview = document.getElementById('overview');
 const btnKanban = document.getElementById('kanban');
@@ -733,6 +818,7 @@ checkDailyAccess()
     .then(() => {
         buscarTarefas();
         mostrarChangelogSeNecessario();
+        try { fetchDailyPanel(); } catch (e) { console.error(e); }
         // mostrarResumoInteligente();
     })
     .catch(() => console.log('Fluxo interrompido'));

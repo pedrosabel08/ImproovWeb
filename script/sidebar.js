@@ -113,6 +113,7 @@ document.addEventListener("DOMContentLoaded", () => {
             // Salva o data-id no localStorage
             if (obraId) {
                 localStorage.setItem('obraId', obraId);
+                localStorage.setItem('obraNome', this.getAttribute('data-name'));
             }
 
             // Redireciona para a URL com o hash desejado

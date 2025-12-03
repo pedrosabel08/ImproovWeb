@@ -21,10 +21,9 @@ $resp = [
 
 // Verifica se o painel já foi mostrado hoje usando a data do banco (CURDATE())
 // Fazemos esta comparação no MySQL para evitar discrepâncias de timezone/clock entre PHP e o servidor de banco.
-$query = "SELECT last_panel_shown_date, ultima_atividade,
+$query = "SELECT last_panel_shown_date,
     (CASE
         WHEN last_panel_shown_date IS NOT NULL AND DATE(last_panel_shown_date) = CURDATE() THEN 1
-        WHEN last_panel_shown_date IS NULL AND DATE(ultima_atividade) = CURDATE() THEN 1
         ELSE 0
     END) AS seen_today
     FROM logs_usuarios WHERE usuario_id = ? LIMIT 1";

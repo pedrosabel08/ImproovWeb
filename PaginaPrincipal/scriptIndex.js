@@ -251,20 +251,20 @@ function processarDados(data) {
 
         // Special override: se for o colaborador Marcio (id 8) ou nome 'Marcio', usar a imagem local fixa
         try {
-            const nomeColl = String(item.nome_colaborador || '').trim();
-            if ((typeof colaborador_id !== 'undefined' && Number(colaborador_id) === 8) || nomeColl === 'Marcio') {
-                imgSrc = 'assets/marcio_cafezinho.jpg';
-            } else {
-                if (ultimaImagemPublic) {
-                    if (ultimaImagemPublic.startsWith('http://') || ultimaImagemPublic.startsWith('https://')) {
-                        imgSrc = ultimaImagemPublic;
-                    } else {
-                        imgSrc = `https://improov.com.br/flow/ImproovWeb/thumb.php?path=${encodeURIComponent(ultimaImagemPublic)}&w=360&q=70`;
-                    }
+            // const nomeColl = String(item.nome_colaborador || '').trim();
+            // if ((typeof colaborador_id !== 'undefined' && Number(colaborador_id) === 8) || nomeColl === 'Marcio') {
+            //     imgSrc = 'assets/marcio_cafezinho.jpg';
+            // } else {
+            if (ultimaImagemPublic) {
+                if (ultimaImagemPublic.startsWith('http://') || ultimaImagemPublic.startsWith('https://')) {
+                    imgSrc = ultimaImagemPublic;
                 } else {
-                    imgSrc = `https://improov.com.br/flow/ImproovWeb/${ultimaImagemPublic || ''}`;
+                    imgSrc = `https://improov.com.br/flow/ImproovWeb/thumb.php?path=${encodeURIComponent(ultimaImagemPublic)}&w=360&q=70`;
                 }
+            } else {
+                imgSrc = `https://improov.com.br/flow/ImproovWeb/${ultimaImagemPublic || ''}`;
             }
+            // }
         } catch (e) {
             // fallback to original logic if anything falhar
             if (ultimaImagemPublic) {
@@ -631,37 +631,37 @@ function fetchDailyPanel() {
                 // pega até 3 e adiciona botões soltos (sem <li>)
                 data.recent_pages.slice(0, 3).forEach(p => {
                     const btn = document.createElement('button');
-                        btn.type = 'button';
-                        btn.className = 'recent-page-btn';
+                    btn.type = 'button';
+                    btn.className = 'recent-page-btn';
 
-                        // label text + arrow icon to the right
-                        let label = p.tela || p.url || 'Página';
-                        try {
-                            // If the label is exactly 'Detalhes da obra', append obraName from localStorage when available
-                            if (String(label).trim() === 'Detalhes da Obra') {
-                                const obraNome = localStorage.getItem('obraNome') || '';
-                                if (obraNome) label = `${label} (${obraNome})`;
-                            }
-                        } catch (e) {
-                            // localStorage might be unavailable in some contexts; ignore silently
+                    // label text + arrow icon to the right
+                    let label = p.tela || p.url || 'Página';
+                    try {
+                        // If the label is exactly 'Detalhes da obra', append obraName from localStorage when available
+                        if (String(label).trim() === 'Detalhes da Obra') {
+                            const obraNome = localStorage.getItem('obraNome') || '';
+                            if (obraNome) label = `${label} (${obraNome})`;
                         }
+                    } catch (e) {
+                        // localStorage might be unavailable in some contexts; ignore silently
+                    }
 
-                        const labelSpan = document.createElement('span');
-                        labelSpan.className = 'recent-page-label';
-                        labelSpan.textContent = label;
-                        btn.appendChild(labelSpan);
+                    const labelSpan = document.createElement('span');
+                    labelSpan.className = 'recent-page-label';
+                    labelSpan.textContent = label;
+                    btn.appendChild(labelSpan);
 
-                        const icon = document.createElement('i');
-                        icon.className = 'fa-solid fa-circle-arrow-right recent-page-icon';
-                        btn.appendChild(icon);
+                    const icon = document.createElement('i');
+                    icon.className = 'fa-solid fa-circle-arrow-right recent-page-icon';
+                    btn.appendChild(icon);
 
-                        btn.addEventListener('click', () => {
-                            const url = p.url || '#';
-                            if (url === '#') return;
-                            window.open(url, '_blank');
-                        });
+                    btn.addEventListener('click', () => {
+                        const url = p.url || '#';
+                        if (url === '#') return;
+                        window.open(url, '_blank');
+                    });
 
-                        container.appendChild(btn);
+                    container.appendChild(btn);
                 });
             } else {
                 const span = document.createElement('span');

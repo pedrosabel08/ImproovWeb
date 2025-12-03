@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const mes = parseInt(mesResumo.value, 10);
         const ano = parseInt(anoResumo.value, 10);
         const tbody = document.querySelector('#tabela-resumo tbody');
-    if (tbody) tbody.innerHTML = '<tr><td colspan="7">Carregando...</td></tr>';
+        if (tbody) tbody.innerHTML = '<tr><td colspan="7">Carregando...</td></tr>';
         try {
             const res = await fetch(`getResumo.php?mes=${encodeURIComponent(mes)}&ano=${encodeURIComponent(ano)}`);
             const json = await res.json();
@@ -569,8 +569,8 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
 
 
     const today = new Date();
-    today.setDate(today.getDate()); // Adiciona 1 dia
-    const day = String(today.getDate() + 0).padStart(2, '0');
+    today.setDate(today.getDate() + 2); // Adiciona 2 dias
+    const day = String(today.getDate()).padStart(2, '0');
 
     // Obtém o número do mês (0 = Janeiro, 11 = Dezembro)
     const currentMonthIndex = today.getMonth();
@@ -719,8 +719,14 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
 
     table.querySelectorAll('tbody tr').forEach(row => {
         const cells = row.querySelectorAll('td');
-        const dataPagamento = cells[dataPagamentoColumnIndex]?.innerText.trim(); // Data de pagamento
-        if (dataPagamento === '0000-00-00' && row.style.display !== 'none') {
+        // Detecta se a célula de função contém a marca 'Pago Parcial' (case-insensitive)
+        const funcaoTextoRawPreview = (cells[2]?.innerText || '').trim();
+        const hasPagoParcialPreview = funcaoTextoRawPreview.toLowerCase().indexOf('pago parcial') !== -1;
+        // Normaliza a célula de data para lidar com NBSP e strings vazias
+        const rawDataPagamento = (cells[dataPagamentoColumnIndex]?.innerText || '').replace(/\u00A0/g, ' ').trim();
+        // Se a célula estiver vazia, usar null para consistência com outras verificações
+        const dataPagamento = rawDataPagamento === '' ? null : rawDataPagamento;
+        if ((dataPagamento === '0000-00-00' || dataPagamento === null || hasPagoParcialPreview) && row.style.display !== 'none') {
             // if (row.style.display !== 'none') {
 
             const rowData = [];
@@ -733,6 +739,14 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
                     rowData.push(cell.innerText.trim());
                 }
             });
+
+            // Se a linha tiver indicador de "Pago Parcial", substitui o texto da função
+            if (hasPagoParcialPreview) {
+                // função ocupa a posição 2 no rowData: [No., nome, função, valor]
+                if (rowData.length >= 3) {
+                    rowData[2] = 'Finalização completa com pagamento final';
+                }
+            }
 
             const valorColumnIndex = 3; // Substitua pelo índice da coluna com os valores
             const valor = parseFloat(cells[valorColumnIndex]?.innerText.trim().replace('R$ ', '').replace(/\./g, '').replace(',', '.') || 0);
@@ -774,7 +788,11 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
             headStyles: { fillColor: [0, 0, 0], textColor: [255, 255, 255] },
             bodyStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0] },
             margin: { top: 10, left: 20, right: 20 },
-            styles: { fontSize: 10, cellPadding: 2 }
+            styles: { fontSize: 10, cellPadding: 2 },
+            // Aumenta a largura da coluna de função (índice 2 no PDF: No.=0, Nome=1, Função=2, Valor=3)
+            columnStyles: {
+                2: { cellWidth: 50 }
+            }
         });
         y = doc.lastAutoTable.finalY + 20; // Atualiza a posição Y após a tabela
 
@@ -784,10 +802,10 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
     // // const novaTabelaHeaders = ['Extra', 'Valor'];
     // const novaTabelaHeaders = ['Categoria', 'Valor'];
     // const novaTabelaBody = [
-    //     // ['Atendimento', '3000,00'],
+    //     ['Atendimento', '3000,00'],
     //     // ['Fixo', '1600,00'],
     //     // ['Bônus', '350,00'],
-    //     ['Reembolso almoço', '38,00'],
+    //     // ['Reembolso almoço', '38,00'],
     //     // ['Desconto de imagem: 5. HAA_HOR Fachada Fora', '-350,00'],
     //     // ['Gasolina', '88,00'],
     //     // ['Diaria Drone', '525,00'],
@@ -947,13 +965,27 @@ document.getElementById('generate-lista').addEventListener('click', function () 
 
                 table.querySelectorAll('tbody tr').forEach(row => {
                     const cells = row.querySelectorAll('td');
-                    const dataPagamento = cells[dataPagamentoColumnIndex]?.innerText.trim();
+                    const cell = cells[dataPagamentoColumnIndex];
 
-                    // Filtra conforme solicitado
-                    if (dataPagamento === '0000-00-00' && row.style.display !== 'none') {
+                    // Protege contra cell undefined e normaliza espaços/nbsp
+                    const rawText = cell?.innerText?.replace(/\u00A0/g, ' ').trim() ?? '';
 
-                        // === Conta por função ===
-                        const funcao = cells[funcaoColumnIndex]?.innerText.trim() || "Sem função";
+                    // Converte string vazia para null para sua lógica ficar consistente
+                    const dataPagamento = rawText === '' ? null : rawText;
+
+                    // Detecta se a célula de função contém a marca 'Pago Parcial' (case-insensitive)
+                    const funcaoTextoRaw = (cells[funcaoColumnIndex]?.innerText || '').trim();
+                    const funcaoTextoLower = funcaoTextoRaw.toLowerCase();
+                    const hasPagoParcial = funcaoTextoLower.indexOf('pago parcial') !== -1;
+
+                    // Observação: usar getComputedStyle caso a visibilidade seja controlada por classe/CSS
+                    const visible = (row.style.display !== 'none') && (getComputedStyle(row).display !== 'none');
+
+                    // Incluir linhas com data '0000-00-00' OU que tenham a marca 'Pago Parcial'
+                    if ((dataPagamento === '0000-00-00' || dataPagamento === null || hasPagoParcial) && visible) {
+
+                        // === Conta por função (removendo o rótulo 'Pago Parcial' para agregação) ===
+                        const funcao = (funcaoTextoRaw.replace(/Pago Parcial/ig, '').trim()) || "Sem função";
                         agrupamentoFuncoes[funcao] = (agrupamentoFuncoes[funcao] || 0) + 1;
 
                         // === Monta linhas para o PDF ===

@@ -117,7 +117,7 @@ if ($colaboradorId == 1) {
     if ($mesNumero && $ano) {
         $sql .= " AND YEAR(ac.data) = ? AND MONTH(ac.data) = ?";
     }
-} elseif (in_array($colaboradorId, [13, 20, 23])) {
+} elseif (in_array($colaboradorId, [13, 20, 23, 37])) {
     $sql = "SELECT 
     fi.colaborador_id,
     'funcao_imagem' AS origem,
@@ -253,7 +253,8 @@ error_log("SQL Gerado: " . $sql);
 error_log("Parâmetros: " . json_encode([$colaboradorId, $ano, $mesNumero]));
 
 // Bind de parâmetros conforme necessário
-if (in_array($colaboradorId, [1, 13, 20, 23])) {
+// include collaborator 37 in the same bind pattern so UNION queries receive the correct params
+if (in_array($colaboradorId, [1, 13, 20, 23, 37])) {
     if ($mesNumero && $ano) {
         $stmt->bind_param('iiiiii',   $colaboradorId, $ano, $mesNumero, $colaboradorId, $ano, $mesNumero);
     } else {
@@ -282,9 +283,19 @@ if ($result->num_rows > 0) {
 }
 
 // Combinar dados do colaborador com as outras funções
+
+// Build simple counts by origem to help debug missing animacao rows
+$countsByOrigem = [];
+foreach ($funcoes as $f) {
+    $orig = $f['origem'] ?? 'unknown';
+    if (!isset($countsByOrigem[$orig])) $countsByOrigem[$orig] = 0;
+    $countsByOrigem[$orig]++;
+}
+
 $response = [
     "dadosColaborador" => $dadosColaborador,
-    "funcoes" => $funcoes
+    "funcoes" => $funcoes,
+    "debug_counts_by_origem" => $countsByOrigem
 ];
 
 echo json_encode($response);

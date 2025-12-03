@@ -1,8 +1,9 @@
 <?php
 include '../conexao.php';
 
-$mes = $_GET['mes'] ?? date('m');
-$ano = date('Y');
+// Recebe mês e ano (padroniza para inteiros)
+$mes = isset($_GET['mes']) ? (int) $_GET['mes'] : (int) date('m');
+$ano = isset($_GET['ano']) ? (int) $_GET['ano'] : (int) date('Y');
 
 // 1. Total de produção por função no mês atual
 $sqlTotal = "SELECT 
@@ -10,10 +11,13 @@ $sqlTotal = "SELECT
     COUNT(*) AS total_mes
 FROM funcao_imagem fi
 JOIN funcao f ON f.idfuncao = fi.funcao_id
-WHERE MONTH(fi.prazo) = 05 AND YEAR(fi.prazo) = ? AND fi.valor > 1 AND fi.funcao_id = 4
+WHERE MONTH(fi.prazo) = ? AND YEAR(fi.prazo) = ? AND fi.valor > 1 AND fi.funcao_id = 4
 GROUP BY f.nome_funcao";
 $stmtTotal = $conn->prepare($sqlTotal);
-$stmtTotal->bind_param("i",  $ano);
+$stmtTotal->bind_param("ii", $mes, $ano);
+$stmtTotal->execute();
+$resTotal = $stmtTotal->get_result();
+$dadosTotais = $resTotal->fetch_all(MYSQLI_ASSOC);
 $stmtTotal->execute();
 $resTotal = $stmtTotal->get_result();
 $dadosTotais = $resTotal->fetch_all(MYSQLI_ASSOC);
@@ -47,10 +51,10 @@ $sqlContrib = "SELECT
 FROM funcao_imagem fi
 JOIN colaborador c ON c.idcolaborador = fi.colaborador_id
 JOIN funcao f ON f.idfuncao = fi.funcao_id
-WHERE MONTH(fi.prazo) = 05 AND YEAR(fi.prazo) = ? AND fi.valor > 1 AND fi.funcao_id = 4
+WHERE MONTH(fi.prazo) = ? AND YEAR(fi.prazo) = ? AND fi.valor > 1 AND fi.funcao_id = 4
 GROUP BY f.nome_funcao, c.nome_colaborador";
 $stmtContrib = $conn->prepare($sqlContrib);
-$stmtContrib->bind_param("i",  $ano);
+$stmtContrib->bind_param("ii", $mes, $ano);
 $stmtContrib->execute();
 $resContrib = $stmtContrib->get_result();
 $contribuicoes = $resContrib->fetch_all(MYSQLI_ASSOC);

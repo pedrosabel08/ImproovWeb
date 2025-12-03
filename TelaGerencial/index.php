@@ -14,6 +14,9 @@ if (session_status() === PHP_SESSION_ACTIVE) {
     session_write_close();
 }
 
+// Initialize DB connection before using it (was causing undefined $conn)
+$conn = conectarBanco();
+
 // Use MySQL NOW() so the database records its own current timestamp
 $sql2 = "UPDATE logs_usuarios 
          SET tela_atual = ?, ultima_atividade = NOW()
@@ -31,8 +34,6 @@ if (!$stmt2->execute()) {
     die("Erro no execute: " . $stmt2->error);
 }
 $stmt2->close();
-
-$conn = conectarBanco();
 
 $clientes = obterClientes($conn);
 $obras = obterObras($conn);
@@ -73,7 +74,7 @@ $conn->close();
             <h2>Total Produção por colaborador</h2>
 
             <label for="mes">Selecione o mês:</label>
-            <select id="mes" onchange="buscarDados()">
+            <select id="mes" onchange="buscarDados(); buscarEntregasMes();">
                 <option value="01">Janeiro</option>
                 <option value="02">Fevereiro</option>
                 <option value="03">Março</option>
@@ -87,6 +88,7 @@ $conn->close();
                 <option value="11">Novembro</option>
                 <option value="12">Dezembro</option>
             </select>
+            <button id="gerar-relatorio" style="margin-left:12px;">Gerar relatório</button>
         </div>
 
         <table id="tabelaProducao">
@@ -95,6 +97,8 @@ $conn->close();
                     <th>Colaborador</th>
                     <th>Função</th>
                     <th>Quantidade</th>
+                    <th>Mês anterior</th>
+                    <th>Recorde de produção</th>
                 </tr>
             </thead>
             <tbody>
@@ -114,6 +118,7 @@ $conn->close();
                     <tr>
                         <th>Mês</th>
                         <th>Quantidade de imagens entregues</th>
+                        <th>Quantidade de plantas entregues</th>
                     </tr>
                 </thead>
                 <tbody>

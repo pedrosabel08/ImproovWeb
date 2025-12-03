@@ -44,6 +44,8 @@ function buscarDados() {
             <td>${linha.nome_colaborador}</td>
             <td>${linha.nome_funcao}</td>
             <td>${linha.quantidade - linha.pagas}</td>
+            <td>${linha.mes_anterior}</td>
+            <td>${linha.recorde_producao}</td>
           `;
                 tabela.appendChild(tr);
             });
@@ -210,14 +212,110 @@ window.onload = function () {
     buscarEntregasMes();
 };
 
+// Gerar relatório: abre nova janela com cópia exata das tabelas atuais para visualização/impressão
+document.addEventListener('DOMContentLoaded', function () {
+    const btn = document.getElementById('gerar-relatorio');
+    if (btn) btn.addEventListener('click', gerarRelatorio);
+});
+
+function coletarTabelaHtml(tableSelector) {
+    const table = document.querySelector(tableSelector);
+    if (!table) return '';
+    const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent.trim());
+    const rows = Array.from(table.querySelectorAll('tbody tr')).map(tr =>
+        Array.from(tr.querySelectorAll('td')).map(td => td.textContent.trim())
+    );
+
+    let html = '<table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;width:100%;">';
+    html += '<thead><tr>' + headers.map(h => `<th style="background:#eee;text-align:left;">${h}</th>`).join('') + '</tr></thead>';
+    html += '<tbody>' + rows.map(r => '<tr>' + r.map(c => `<td>${c}</td>`).join('') + '</tr>').join('') + '</tbody>';
+    html += '</table>';
+    return html;
+}
+
+function gerarRelatorio() {
+    const mesSelect = document.getElementById('mes');
+    const mes = mesSelect ? mesSelect.options[mesSelect.selectedIndex].text : '';
+    const now = new Date();
+    const header = `<h2>Relatório - Tela Gerencial</h2><p>Mês selecionado: <strong>${mes}</strong> — gerado em ${now.toLocaleString()}</p>`;
+
+    const tabelaProducaoHtml = coletarTabelaHtml('#tabelaProducao');
+    const tabelaFuncaoHtml = coletarTabelaHtml('#tabelaFuncao');
+    const tabelaEntregasHtml = coletarTabelaHtml('#tabelaEntregas');
+
+    const safeFileMonth = (mes || '').replace(/\s+/g, '_');
+    const content = `
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <title>Relatório - Tela Gerencial</title>
+                <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+                <style>
+                    body{font-family:'Inter', Arial,Helvetica,sans-serif;margin:20px;color:#111}
+                    h2{margin-bottom:6px}
+                    table{margin-bottom:18px;border-collapse:collapse;width:100%}
+                    th{background:#eee;text-align:left;padding:6px}
+                    td{padding:6px}
+                </style>
+            </head>
+            <body>
+                <div id="report-root">
+                    ${header}
+                    <h3>Produção por Colaborador</h3>
+                    ${tabelaProducaoHtml || '<p>Sem dados</p>'}
+                    <h3>Produção por Função</h3>
+                    ${tabelaFuncaoHtml || '<p>Sem dados</p>'}
+                    <h3>Imagens entregues por mês</h3>
+                    ${tabelaEntregasHtml || '<p>Sem dados</p>'}
+                    <p style="margin-top:20px;font-size:12px;color:#666">Gerado pelo sistema</p>
+                </div>
+
+                <!-- libs via CDN -->
+                <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+                <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+                <script>
+                    // Aguarda o carregamento visual e das libs
+                    (function waitAndExport() {
+                        if (!(window.jspdf && window.html2canvas)) {
+                            return setTimeout(waitAndExport, 200);
+                        }
+                        const { jsPDF } = window.jspdf;
+                        const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+                        const element = document.getElementById('report-root');
+                        // Ajustes de margem/escala podem ser alterados conforme necessário
+                        doc.html(element, {
+                            callback: function (doc) {
+                                const fileName = 'Relatorio_Tela_Gerencial_${safeFileMonth}_' + new Date().getFullYear() + '.pdf';
+                                doc.save(fileName);
+                            },
+                            x: 20,
+                            y: 20,
+                            html2canvas: { scale: 1.2 }
+                        });
+                    })();
+                </script>
+            </body>
+            </html>
+        `;
+
+    const win = window.open('', '_blank');
+    if (!win) {
+        alert('Não foi possível abrir a janela do relatório (bloqueador de popups?).');
+        return;
+    }
+    win.document.open();
+    win.document.write(content);
+    win.document.close();
+}
+
 /**
  * Busca entregas agrupadas por status para o mês selecionado.
  * Se nenhum mês for selecionado, usa o mês atual.
  */
-function buscarEntregasMes(ano) {
+function buscarEntregasMes() {
     const selectMes = document.getElementById('mes');
-    const mes = selectMes ? selectMes.value : (new Date().getMonth() + 1).toString().padStart(2, '0');
-    ano = ano || new Date().getFullYear();
+    const mes = selectMes ? parseInt(selectMes.value, 10) : (new Date().getMonth() + 1);
+    const ano = new Date().getFullYear();
 
     fetch(`buscar_entregas_mes.php?mes=${mes}&ano=${ano}`)
         .then(res => res.json())
@@ -231,6 +329,7 @@ function buscarEntregasMes(ano) {
                 thead.innerHTML = `
                     <th>Status</th>
                     <th>Quantidade de imagens entregues</th>
+                    <th>Quantidade de plantas entregues</th>
                 `;
             }
 
@@ -241,6 +340,7 @@ function buscarEntregasMes(ano) {
                 tr.innerHTML = `
                     <td>${row.nome_status}</td>
                     <td>${row.quantidade}</td>
+                    <td>${row.quantidade_ph}</td>
                 `;
                 tabela.appendChild(tr);
             });

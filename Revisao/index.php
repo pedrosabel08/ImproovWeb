@@ -19,6 +19,10 @@ if (session_status() === PHP_SESSION_ACTIVE) {
     session_write_close();
 }
 
+// Carrega conexão com o banco antes de executar atualizações de logs
+include '../conexaoMain.php';
+$conn = conectarBanco();
+
 // Use MySQL NOW() so the database records its own current timestamp
 $sql2 = "UPDATE logs_usuarios 
          SET tela_atual = ?, ultima_atividade = NOW()
@@ -36,9 +40,6 @@ if (!$stmt2->execute()) {
     die("Erro no execute: " . $stmt2->error);
 }
 $stmt2->close();
-
-include '../conexaoMain.php';
-$conn = conectarBanco();
 
 $clientes = obterClientes($conn);
 $obras = obterObras($conn);

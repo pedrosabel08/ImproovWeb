@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Teste de Upload (enqueue)</title>
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            margin: 24px
+        }
+
+        label {
+            display: block;
+            margin-top: 12px
+        }
+
+        pre {
+            background: #f6f6f6;
+            border: 1px solid #ddd;
+            padding: 12px
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Teste de Upload (enqueue)</h1>
+
+    <form id="f" enctype="multipart/form-data" method="post" action="upload_enqueue.php">
+        <label>Arquivo:
+            <input type="file" name="arquivo_final" required>
+        </label>
+
+        <!-- Campos padrão solicitados -->
+        <input type="hidden" name="nomenclatura" value="TES_TES">
+        <input type="hidden" name="nome_funcao" value="pós-produção">
+        <input type="hidden" name="numeroImagem" value="01">
+        <input type="hidden" name="primeiraPalavra" value="Teste">
+        <input type="hidden" name="nome_imagem" value="01.Teste">
+        <input type="hidden" name="status_nome" value="R01">
+
+        <button type="submit">Enviar (form tradicional)</button>
+        <button type="button" id="ajax">Enviar via AJAX</button>
+    </form>
+
+    <h2>Resposta</h2>
+    <pre id="out">Nenhuma ação ainda.</pre>
+
+    <script>
+        document.getElementById('f').addEventListener('submit', function (e) {
+            // permite submit tradicional; atualize a área de resposta após retorno do servidor
+            // se a resposta for JSON o navegador exibirá o download; use AJAX para ver o JSON inline
+            document.getElementById('out').textContent = 'Enviado via formulário tradicional. Aguarde o retorno do servidor...';
+        });
+
+        document.getElementById('ajax').addEventListener('click', function () {
+            var form = document.getElementById('f');
+            var fd = new FormData(form);
+            var out = document.getElementById('out');
+            out.textContent = '';
+
+            // Mostrar parâmetros que serão enviados (iteração do FormData)
+            var lines = ['== FormData entries =='];
+            for (var pair of fd.entries()) {
+                var key = pair[0];
+                var val = pair[1];
+                if (val instanceof File) {
+                    lines.push(key + ': [File] name=' + val.name + ', size=' + val.size + ', type=' + val.type);
+                } else {
+                    lines.push(key + ': ' + val);
+                }
+            }
+            out.textContent = lines.join('\n') + '\n\nEnviando...\n';
+
+            // Envio via XHR para permitir progress e verificação
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', form.action, true);
+
+            xhr.upload.onprogress = function (e) {
+                if (e.lengthComputable) {
+                    var pct = Math.round((e.loaded / e.total) * 100);
+                    out.textContent += 'Upload progresso: ' + pct + '% (' + e.loaded + '/' + e.total + ')\n';
+                } else {
+                    out.textContent += 'Upload progresso: ' + e.loaded + ' bytes enviados\n';
+                }
+            };
+
+            xhr.onload = function () {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    try {
+                        var json = JSON.parse(xhr.responseText);
+                        out.textContent += '\nResposta (JSON):\n' + JSON.stringify(json, null, 2) + '\n';
+                    } catch (err) {
+                        out.textContent += '\nResposta (texto):\n' + xhr.responseText + '\n';
+                    }
+                } else {
+                    out.textContent += '\nErro HTTP: ' + xhr.status + '\n' + xhr.responseText + '\n';
+                }
+            };
+
+            xhr.onerror = function () {
+                out.textContent += '\nErro de rede ao enviar o arquivo.\n';
+            };
+
+            xhr.send(fd);
+        });
+    </script>
+</body>
+
+</html>

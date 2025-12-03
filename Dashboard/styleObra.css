@@ -30,8 +30,7 @@ body {
     background-color: var(--bg);
     color: var(--text);
     display: grid;
-    grid-template-columns: auto 1fr;
-    /* Prevent page-level scroll; container will handle internal scrolling */
+    grid-template-columns: 60px 1fr;
     overflow: hidden;
 }
 

@@ -869,7 +869,12 @@ function infosObra(obraId) {
                 tipoImagemUnicos.add(item.tipo_imagem);
 
                 var cellPrazo = document.createElement('td');
-                cellPrazo.textContent = formatarDataDiaMes(item.prazo);
+                // Se prazo for nulo, vazio ou não estiver no formato YYYY-MM-DD, mostra '-' como placeholder
+                var prazoText = '-';
+                if (item.prazo && typeof item.prazo === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(item.prazo)) {
+                    prazoText = formatarDataDiaMes(item.prazo);
+                }
+                cellPrazo.textContent = prazoText;
                 row.appendChild(cellPrazo);
 
                 var colunas = [

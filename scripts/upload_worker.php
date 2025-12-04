@@ -7,6 +7,7 @@ require __DIR__ . '/../conexao.php';
 
 use phpseclib3\Net\SFTP;
 use phpseclib3\Exception\UnableToConnectException;
+use Predis\Client as PredisClient;
 
 $baseDir = __DIR__ . '/../uploads/staging';
 $processedDir = __DIR__ . '/../uploads/sent';
@@ -21,7 +22,7 @@ $ftp_pass = "flow@2025";
 $ftp_host = "imp-nas.ddns.net";
 $ftp_port = 2222;
 
-function enviarArquivoSFTP($host, $usuario, $senha, $arquivoLocal, $arquivoRemoto, $porta = 2222)
+function enviarArquivoSFTP($host, $usuario, $senha, $arquivoLocal, $arquivoRemoto, $porta = 2222, callable $onProgress = null)
 {
     if (!file_exists($arquivoLocal)) {
         return [false, "Arquivo local não encontrado: $arquivoLocal"];
@@ -38,11 +39,60 @@ function enviarArquivoSFTP($host, $usuario, $senha, $arquivoLocal, $arquivoRemot
             return [false, "Diretório remoto não existe: $diretorio"];
         }
 
-        if ($sftp->put($arquivoRemoto, $arquivoLocal, SFTP::SOURCE_LOCAL_FILE)) {
-            return [true, 'OK'];
-        }
+        // If phpseclib provides fopen/fwrite on the SFTP object we can stream and report progress.
+        // Some distributions/versions may not expose these methods; provide a safe fallback to put().
+        if (method_exists($sftp, 'fopen') && method_exists($sftp, 'fwrite') && method_exists($sftp, 'fclose')) {
+            $localHandle = @fopen($arquivoLocal, 'rb');
+            if (!$localHandle) return [false, 'Erro ao abrir arquivo local para leitura.'];
 
-        return [false, 'Erro ao enviar o arquivo via SFTP.'];
+            $remoteHandle = $sftp->fopen($arquivoRemoto, 'wb');
+            if ($remoteHandle === false) {
+                fclose($localHandle);
+                return [false, 'Erro ao abrir arquivo remoto para escrita.'];
+            }
+
+            $totalSize = filesize($arquivoLocal);
+            $sent = 0;
+            $chunkSize = 8192;
+            while (!feof($localHandle)) {
+                $buffer = fread($localHandle, $chunkSize);
+                if ($buffer === false) break;
+                $written = $sftp->fwrite($remoteHandle, $buffer);
+                if ($written === false) {
+                    fclose($localHandle);
+                    $sftp->fclose($remoteHandle);
+                    return [false, 'Erro ao escrever no remoto durante upload.'];
+                }
+                $sent += strlen($buffer);
+                if ($onProgress && $totalSize > 0) {
+                    try { $onProgress($sent, $totalSize); } catch (Exception $e) {}
+                }
+            }
+
+            fclose($localHandle);
+            $sftp->fclose($remoteHandle);
+
+            // basic verification: if we reached total size consider OK
+            if ($totalSize > 0 && $sent >= $totalSize) {
+                return [true, 'OK'];
+            }
+
+            return [false, 'Upload incompleto via SFTP.'];
+        } else {
+            // Fallback: use put() with local file source. This does not provide per-chunk callbacks
+            // on all phpseclib builds but will reliably transfer the file. We still call the
+            // onProgress callback before/after to indicate start and end.
+            if ($onProgress) {
+                try { $onProgress(0, filesize($arquivoLocal)); } catch (Exception $e) {}
+            }
+            if ($sftp->put($arquivoRemoto, $arquivoLocal, SFTP::SOURCE_LOCAL_FILE)) {
+                if ($onProgress) {
+                    try { $onProgress(filesize($arquivoLocal), filesize($arquivoLocal)); } catch (Exception $e) {}
+                }
+                return [true, 'OK'];
+            }
+            return [false, 'Erro ao enviar o arquivo via SFTP (put fallback).'];
+        }
     } catch (UnableToConnectException $e) {
         return [false, 'Erro ao conectar SFTP: ' . $e->getMessage()];
     } catch (Exception $e) {
@@ -105,6 +155,24 @@ function writeMeta(string $path, array $meta)
     @file_put_contents($path, json_encode($meta, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
 }
 
+function publishProgress(?PredisClient $redis, string $id, int $progress, string $status = 'running', string $message = '')
+{
+    // log attempt for observability (will go to journal when run under systemd)
+    error_log("[upload_worker] publishProgress called id={$id} progress={$progress} status={$status} message={$message}");
+    if (!$redis || !$id) {
+        error_log("[upload_worker] publishProgress: Predis client missing or invalid id");
+        return;
+    }
+    $payload = json_encode(['id' => $id, 'status' => $status, 'progress' => $progress, 'message' => $message]);
+    try {
+        $redis->publish("upload_progress:{$id}", $payload);
+        $redis->setex("upload_status:{$id}", 3600, $payload);
+        error_log("[upload_worker] publishProgress: published id={$id} progress={$progress}");
+    } catch (Exception $e) {
+        error_log("[upload_worker] publishProgress: Redis publish failed: " . $e->getMessage());
+    }
+}
+
 // Process loop (single run or daemon loop)
 do {
     $metaFiles = glob($baseDir . '/*.json');
@@ -135,6 +203,16 @@ do {
             continue;
         }
 
+        // try to connect to Redis for progress publishing
+        $redis = null;
+        try {
+            if (class_exists('\Predis\Client')) {
+                $redis = new PredisClient();
+            }
+        } catch (Exception $e) {
+            $redis = null;
+        }
+
         $staged = $meta['staged_path'] ?? null;
         if (!$staged || !file_exists($staged)) {
             echo "Arquivo staged não encontrado: $staged\n";
@@ -144,6 +222,9 @@ do {
 
         // ensure attempts count
         $meta['attempts'] = isset($meta['attempts']) ? (int)$meta['attempts'] : 0;
+
+        $jobId = $meta['id'] ?? pathinfo($processingMeta, PATHINFO_FILENAME);
+        publishProgress($redis, $jobId, 0, 'claimed', 'Job claimed by worker');
 
         // extract post fields
         $nomenclatura = $meta['post']['nomenclatura'] ?? '';
@@ -177,6 +258,7 @@ do {
             file_put_contents($failedDir . '/' . basename($processingMeta) . '.err', date('c') . " - destino não encontrado\n", FILE_APPEND);
             rename($staged, $failedDir . '/' . basename($staged));
             rename($processingMeta, $failedDir . '/' . basename($processingMeta));
+            publishProgress($redis, $jobId, 0, 'failed', 'Destino remoto não encontrado');
             continue;
         }
 
@@ -196,7 +278,23 @@ do {
             $meta['attempts']++;
             writeMeta($processingMeta, $meta);
 
-            list($ok, $msg) = enviarArquivoSFTP($ftp_host, $ftp_user, $ftp_pass, $staged, $remote_path, $ftp_port);
+            publishProgress($redis, $jobId, 10, 'connecting', 'Conectando ao SFTP');
+            // attempt upload with progress callback
+            list($ok, $msg) = enviarArquivoSFTP($ftp_host, $ftp_user, $ftp_pass, $staged, $remote_path, $ftp_port, function($sent, $total) use ($redis, $jobId) {
+                $pct = (int) round(($sent / max(1, $total)) * 100);
+                // don't spam too frequently: publish at increments of 1% or when reaching 100%
+                static $lastPct = null;
+                if ($lastPct === null || $pct >= $lastPct + 1 || $pct === 100) {
+                    publishProgress($redis, $jobId, $pct, 'uploading', "Transferindo ({$sent}/{$total})");
+                    $lastPct = $pct;
+                }
+            });
+
+            if ($ok) {
+                publishProgress($redis, $jobId, 100, 'done', 'Enviado com sucesso');
+            } else {
+                publishProgress($redis, $jobId, min(95, 10 + $meta['attempts'] * 15), 'retry', $msg);
+            }
             $lastMsg = $msg;
             if ($ok) break;
 
@@ -219,11 +317,13 @@ do {
             // mover arquivos para sent
             rename($staged, $processedDir . '/' . basename($staged));
             rename($processingMeta, $processedDir . '/' . basename($processingMeta));
+            publishProgress($redis, $jobId, 100, 'done', 'Finalizado e movido para sent');
         } else {
             echo "Falha ao enviar (todas tentativas ou erro irreversível): $lastMsg\n";
             file_put_contents($failedDir . '/' . basename($processingMeta) . '.err', date('c') . " - $lastMsg\n", FILE_APPEND);
             rename($staged, $failedDir . '/' . basename($staged));
             rename($processingMeta, $failedDir . '/' . basename($processingMeta));
+            publishProgress($redis, $jobId, 0, 'failed', $lastMsg);
         }
     }
 

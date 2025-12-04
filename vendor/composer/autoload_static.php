@@ -17,6 +17,7 @@ class ComposerStaticInita702940bbf24a822224611db5c22942b
         ),
         'P' => 
         array (
+            'Predis\\' => 7,
             'ParagonIE\\ConstantTime\\' => 23,
         ),
     );
@@ -25,6 +26,10 @@ class ComposerStaticInita702940bbf24a822224611db5c22942b
         'phpseclib3\\' => 
         array (
             0 => __DIR__ . '/..' . '/phpseclib/phpseclib/phpseclib',
+        ),
+        'Predis\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/predis/predis/src',
         ),
         'ParagonIE\\ConstantTime\\' => 
         array (

@@ -39,7 +39,12 @@ for ($i = 0; $i < $total; $i++) {
     }
 
     $ext = pathinfo($originalName, PATHINFO_EXTENSION);
-    $id = uniqid('upl_', true);
+    // allow client-provided id so the browser can subscribe to progress before upload completes
+    if (isset($_POST['client_id']) && preg_match('/^[A-Za-z0-9_\-\.]+$/', $_POST['client_id'])) {
+        $id = $_POST['client_id'];
+    } else {
+        $id = uniqid('upl_', true);
+    }
     $destFile = "$stagingDir/{$id}.{$ext}";
 
     if (!move_uploaded_file($tmpName, $destFile)) {
@@ -51,6 +56,7 @@ for ($i = 0; $i < $total; $i++) {
     $meta = [];
     $meta['original_name'] = $originalName;
     $meta['staged_path'] = $destFile;
+    $meta['id'] = $id;
     $meta['uploaded_at'] = date('c');
     $meta['post'] = $_POST;
     // dataIdFuncoes pode estar serializado como JSON ou string
@@ -64,6 +70,23 @@ for ($i = 0; $i < $total; $i++) {
 
     $metaFile = "$stagingDir/{$id}.json";
     file_put_contents($metaFile, json_encode($meta, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
+
+    // Publish initial status to Redis (if Predis available)
+    try {
+        if (file_exists(__DIR__ . '/vendor/autoload.php')) {
+            require_once __DIR__ . '/vendor/autoload.php';
+        }
+        if (class_exists('\Predis\Client')) {
+            $redis = new \Predis\Client();
+            $ch = "upload_progress:{$id}";
+            $payload = json_encode(['id' => $id, 'status' => 'queued', 'progress' => 0, 'message' => 'Enfileirado no servidor']);
+            $redis->publish($ch, $payload);
+            // also set a key so WS can read latest state
+            $redis->setex("upload_status:{$id}", 3600, $payload);
+        }
+    } catch (Exception $e) {
+        // ignore Redis failures here - enqueue still works
+    }
 
     $results[] = ['arquivo' => $originalName, 'status' => 'enfileirado', 'id' => $id, 'meta' => $metaFile];
 }

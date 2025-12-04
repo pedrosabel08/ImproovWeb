@@ -1,0 +1,13 @@
+{
+  "name": "improov-ws",
+  "version": "1.0.0",
+  "description": "WebSocket broadcaster for upload progress (listens Redis pubsub)",
+  "main": "ws-server.js",
+  "scripts": {
+    "start": "node ws-server.js"
+  },
+  "dependencies": {
+    "redis": "^4.6.7",
+    "ws": "^8.13.0"
+  }
+}

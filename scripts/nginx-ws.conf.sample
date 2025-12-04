@@ -1,0 +1,46 @@
+## Nginx sample config to proxy WSS to local WS server
+## Save as /etc/nginx/sites-available/improov-ws.conf and enable with symlink to sites-enabled
+
+server {
+    listen 443 ssl;
+    server_name improov.com.br;
+
+    # SSL certs (Let's Encrypt example)
+    ssl_certificate /etc/letsencrypt/live/improov.com.br/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/improov.com.br/privkey.pem;
+
+    # Proxy WebSocket path to local node process
+    location /ws/ {
+        proxy_pass http://127.0.0.1:8082/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "Upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    # Serve the web app (adjust root if necessary)
+    root /home/improov/web/improov.com.br/public_html/flow/ImproovWeb;
+    index index.php index.html index.htm;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    # Pass PHP to backend if needed (example using php-fpm unix socket)
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/run/php/php8.1-fpm.sock; # adjust PHP version/socket
+    }
+}
+
+## To enable:
+# sudo ln -s /etc/nginx/sites-available/improov-ws.conf /etc/nginx/sites-enabled/
+# sudo nginx -t && sudo systemctl reload nginx
+
+## To obtain certificates (Let's Encrypt):
+# sudo apt install certbot python3-certbot-nginx
+# sudo certbot --nginx -d improov.com.br

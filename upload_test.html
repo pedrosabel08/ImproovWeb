@@ -49,18 +49,34 @@
 
     <script>
         document.getElementById('f').addEventListener('submit', function (e) {
-            // permite submit tradicional; atualize a área de resposta após retorno do servidor
-            // se a resposta for JSON o navegador exibirá o download; use AJAX para ver o JSON inline
             document.getElementById('out').textContent = 'Enviado via formulário tradicional. Aguarde o retorno do servidor...';
         });
 
         document.getElementById('ajax').addEventListener('click', function () {
             var form = document.getElementById('f');
+            // generate a client-side id so we can subscribe to progress immediately
+            var clientId = 'upl_' + Date.now() + '_' + Math.random().toString(36).slice(2,9);
+            var existing = form.querySelector('input[name="client_id"]');
+            if (!existing) {
+                var hi = document.createElement('input');
+                hi.type = 'hidden';
+                hi.name = 'client_id';
+                hi.value = clientId;
+                form.appendChild(hi);
+            } else {
+                existing.value = clientId;
+            }
+
+            // persist client id so other pages can subscribe to progress
+            try { localStorage.setItem('improov_client_id', clientId); } catch (e) {}
+
+            // open WS subscription immediately (while upload is happening)
+            startProgressWS(clientId);
+
             var fd = new FormData(form);
             var out = document.getElementById('out');
             out.textContent = '';
 
-            // Mostrar parâmetros que serão enviados (iteração do FormData)
             var lines = ['== FormData entries =='];
             for (var pair of fd.entries()) {
                 var key = pair[0];
@@ -73,7 +89,6 @@
             }
             out.textContent = lines.join('\n') + '\n\nEnviando...\n';
 
-            // Envio via XHR para permitir progress e verificação
             var xhr = new XMLHttpRequest();
             xhr.open('POST', form.action, true);
 
@@ -81,8 +96,23 @@
                 if (e.lengthComputable) {
                     var pct = Math.round((e.loaded / e.total) * 100);
                     out.textContent += 'Upload progresso: ' + pct + '% (' + e.loaded + '/' + e.total + ')\n';
+                    try {
+                        var pb = document.getElementById('progressBar');
+                        var pm = document.getElementById('progressMsg');
+                        if (pb) {
+                            pb.style.width = pct + '%';
+                            pb.textContent = pct + '%';
+                        }
+                        if (pm) {
+                            pm.textContent = 'Enviando... ' + pct + '%';
+                        }
+                    } catch (e) {}
                 } else {
                     out.textContent += 'Upload progresso: ' + e.loaded + ' bytes enviados\n';
+                    try {
+                        var pm2 = document.getElementById('progressMsg');
+                        if (pm2) pm2.textContent = 'Enviando... ' + e.loaded + ' bytes enviados';
+                    } catch (e) {}
                 }
             };
 
@@ -91,6 +121,14 @@
                     try {
                         var json = JSON.parse(xhr.responseText);
                         out.textContent += '\nResposta (JSON):\n' + JSON.stringify(json, null, 2) + '\n';
+                        // subscribe to websocket progress if an id was returned
+                        if (Array.isArray(json) && json[0] && json[0].id) {
+                            try { localStorage.setItem('improov_client_id', json[0].id); } catch (e) {}
+                            startProgressWS(json[0].id);
+                        } else if (json.id) {
+                            try { localStorage.setItem('improov_client_id', json.id); } catch (e) {}
+                            startProgressWS(json.id);
+                        }
                     } catch (err) {
                         out.textContent += '\nResposta (texto):\n' + xhr.responseText + '\n';
                     }
@@ -105,6 +143,124 @@
 
             xhr.send(fd);
         });
+
+        // Progress UI
+        var ws;
+        // track which jobs we've already alerted as completed to avoid duplicate alerts
+        var alertedJobs = {};
+        function startProgressWS(id) {
+            if (!id) return;
+            var out = document.getElementById('out');
+            // inject progress UI if not present
+            if (!document.getElementById('progressWrap')) {
+                var div = document.createElement('div');
+                div.id = 'progressWrap';
+                div.style = 'margin-top:12px;';
+                div.innerHTML = '<label>Progresso:</label>' +
+                    '<div style="position:fixed;top:0;width:100%;background:#eee;border:1px solid #ccc;height:18px;border-radius:4px;overflow:hidden;">' +
+                    '<div id="progressBar" style="height:100%;width:0%;background:#4caf50;text-align:center;color:#fff;font-size:12px;line-height:18px;">0%</div>' +
+                    '</div>' +
+                    '<div id="progressMsg" style="margin-top:6px;font-size:13px;color:#333;"></div>';
+                out.parentNode.insertBefore(div, out.nextSibling);
+            }
+            var wrap = document.getElementById('progressWrap');
+            var bar = document.getElementById('progressBar');
+            var msg = document.getElementById('progressMsg');
+            wrap.style.display = 'block';
+
+            // build ws url and log it for debugging
+            var wsUrl;
+            if (location.protocol === 'https:') {
+                // prefer path-based WSS via reverse proxy (Nginx) when page is HTTPS
+                wsUrl = 'wss://' + location.hostname + '/ws/';
+            } else {
+                // if using plain HTTP, connect directly to the WS port
+                wsUrl = 'ws://' + location.hostname + ':8082';
+            }
+            console.log('Attempting WebSocket connection to', wsUrl);
+            out.textContent += '\nTentando conectar WebSocket em ' + wsUrl + '\n';
+
+            try {
+                if (!ws || ws.readyState !== WebSocket.OPEN) {
+                    ws = new WebSocket(wsUrl);
+                }
+                // if ws is already open, send subscribe immediately and set 0%
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    try { ws.send(JSON.stringify({ subscribe: id })); } catch (e) {}
+                    try {
+                        if (document.getElementById('progressBar')) {
+                            document.getElementById('progressBar').style.width = '0%';
+                            document.getElementById('progressBar').textContent = '0%';
+                        }
+                        if (document.getElementById('progressMsg')) {
+                            document.getElementById('progressMsg').textContent = 'Conectado — aguardando progresso...';
+                        }
+                    } catch (e) {}
+                }
+            } catch (e) {
+                console.error('Falha ao criar WebSocket', e);
+                out.textContent += '\nFalha ao criar WebSocket: ' + e.message + '\n';
+                return;
+            }
+
+            ws.onopen = function () {
+                console.log('WebSocket aberto', wsUrl);
+                out.textContent += '\nWebSocket conectado. Aguardando progresso...\n';
+                try {
+                    // tell server which id we want updates for (server may ignore)
+                    ws.send(JSON.stringify({ subscribe: id }));
+                } catch (e) {}
+                // set explicit 0% UI state when connection opens
+                try {
+                    if (document.getElementById('progressBar')) {
+                        document.getElementById('progressBar').style.width = '0%';
+                        document.getElementById('progressBar').textContent = '0%';
+                    }
+                    if (document.getElementById('progressMsg')) {
+                        document.getElementById('progressMsg').textContent = 'Conectado — aguardando progresso...';
+                    }
+                } catch (e) {}
+            };
+
+            ws.onmessage = function (ev) {
+                try {
+                    var data = JSON.parse(ev.data);
+                    var payload = data.payload || data;
+                    console.log('WS message', payload, data.channel || '');
+
+                    if (payload && payload.id === id) {
+                        var p = payload.progress || 0;
+                        bar.style.width = p + '%';
+                        bar.textContent = p + '%';
+                        msg.textContent = payload.message || payload.status || '';
+
+                        // show a single alert when the NAS-side transfer finishes (100% / done)
+                        var isDone = (payload.progress === 100) || (payload.status && payload.status.toLowerCase() === 'done');
+                        if (isDone && !alertedJobs[id]) {
+                            alertedJobs[id] = true;
+                            try {
+                                alert('Upload concluído com sucesso!');
+                            } catch (e) {
+                                // fallback: write to progress message
+                                msg.textContent = (msg.textContent ? msg.textContent + ' ' : '') + 'Upload concluído com sucesso!';
+                            }
+                        }
+                    }
+                } catch (err) {
+                    console.error('ws parse', err, ev.data);
+                }
+            };
+
+            ws.onerror = function (e) {
+                console.error('WebSocket error', e);
+                out.textContent += '\nWebSocket error: see console for details\n';
+            };
+
+            ws.onclose = function (ev) {
+                console.log('WebSocket closed', ev);
+                out.textContent += '\nWebSocket fechado\n';
+            };
+        }
     </script>
 </body>
 

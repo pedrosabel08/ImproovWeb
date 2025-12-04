@@ -100,6 +100,8 @@
 </body>
 
 </html>
+ 
+<script src="/flow/ImproovWeb/assets/js/upload-ws.js"></script>
 
 <script>
     // Envia o title e url ao servidor para registrar histórico com título amigável

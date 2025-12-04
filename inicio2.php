@@ -1,5 +1,20 @@
 <?php
-session_start();
+// Prevent caching of user-specific pages (helps avoid reverse-proxy serving other's HTML)
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
+header('Expires: Tue, 01 Jan 2000 00:00:00 GMT');
+header('Vary: Cookie');
+
+// Harden session settings
+ini_set('session.use_strict_mode', 1);
+ini_set('session.use_only_cookies', 1);
+ini_set('session.cookie_httponly', 1);
+// If using HTTPS in production, enable the secure flag:
+// ini_set('session.cookie_secure', 1);
+
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 include 'conexao.php';
 
@@ -10,10 +25,18 @@ if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
 
 $idusuario = $_SESSION['idusuario'];
 $tela_atual = basename($_SERVER['PHP_SELF']);
-$ultima_atividade = date('Y-m-d H:i:s');
+// Use DB server time for ultima_atividade to avoid clock/timezone mismatches
+// $ultima_atividade = date('Y-m-d H:i:s');
 
+// We already extracted needed session values; close the session to release the lock
+// before performing heavier DB work below.
+if (session_status() === PHP_SESSION_ACTIVE) {
+    session_write_close();
+}
+
+// Use MySQL NOW() so the database records its own current timestamp
 $sql2 = "UPDATE logs_usuarios 
-         SET tela_atual = ?, ultima_atividade = ?
+         SET tela_atual = ?, ultima_atividade = NOW()
          WHERE usuario_id = ?";
 $stmt2 = $conn->prepare($sql2);
 
@@ -21,8 +44,8 @@ if (!$stmt2) {
     die("Erro no prepare: " . $conn->error);
 }
 
-// 'ssi' indica os tipos: string, string, integer
-$stmt2->bind_param("ssi", $tela_atual, $ultima_atividade, $idusuario);
+// 'si' indica os tipos: string, integer
+$stmt2->bind_param("si", $tela_atual, $idusuario);
 
 if (!$stmt2->execute()) {
     die("Erro no execute: " . $stmt2->error);
@@ -74,7 +97,7 @@ $conn->close();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="css/styleIndex.css">
+    <link rel="stylesheet" href="PaginaPrincipal/styleIndex.css">
     <link rel="stylesheet" href="css/styleSidebar.css">
     <link href="https://cdn.jsdelivr.net/npm/remixicon/fonts/remixicon.css" rel="stylesheet">
     <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s" type="image/x-icon">
@@ -82,6 +105,7 @@ $conn->close();
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 
     <title>Improov+Flow</title>
 </head>
@@ -102,19 +126,32 @@ $conn->close();
                 </div>
                 <nav>
                     <div class="nav-left">
-                        <!-- <button id="overview"><span>Overview</span></button> -->
+                        <button id="overview" style="display: none;"><i class="ri-dashboard-line"></i><span>Overview</span></button>
                         <button id="kanban" class="active"><i class="ri-kanban-view"></i><span>Kanban</span></button>
                         <!-- <button id="activities"><i class="fa-solid fa-chart-line"><span></i>Activity</span></button> -->
                         <!-- <button id="timeline"><span>Timeline</span></button> -->
                     </div>
                     <div class="nav-right">
+                        <!-- Mini calendar (semana) -->
+
+                        <div id="mini-calendar-container" style="display:inline-block; vertical-align: middle; margin-right:8px;">
+                            <div id="mini-calendar" style="width:350px; height:80px;"></div>
+                        </div>
+                        <select name="idcolab" id="idcolab">
+
+                            <?php foreach ($colaboradores as $colab): ?>
+                                <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                    <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
                         <button id="date"><i class="ri-calendar-todo-fill"></i><span></span></button>
                         <button id="filter"><i class="ri-equalizer-fill"></i><span>Filtros</span></button>
                         <button id="add-task"><i class="ri-add-line"></i></i><span>Adicionar tarefa</span></button>
                     </div>
                 </nav>
             </header>
-            <div class="kanban">
+            <div class="kanban" id="kanban-section">
                 <div class="kanban-box" id="to-do">
                     <div class="header">
                         <div class="title"><i class="fa-solid fa-play"></i><span>Não iniciado</span></div>
@@ -125,7 +162,7 @@ $conn->close();
                 </div>
                 <div class="kanban-box" id="hold">
                     <div class="header">
-                        <div class="title"><i class="fa-solid fa-play"></i><span>Hold</span></div>
+                        <div class="title"><i class="fa-solid fa-play"></i><span>HOLD</span></div>
                         <span class="task-count"></span>
                     </div>
                     <div class="content">
@@ -226,6 +263,9 @@ $conn->close();
                 <textarea id="modalObs" rows="4"></textarea>
             </div>
 
+            <div class="modal-item statusAnterior">
+                <h4>A função anterior está <span class="aprovadaComAjustes">Aprovada com ajustes</span>, verifique no Flow Review!</h4>
+            </div>
             <div class="modal-item modalUploads">
 
                 <div id="etapaPrevia">
@@ -287,6 +327,15 @@ $conn->close();
                         <label><input type="checkbox" value="Finalizado"> Finalizado</label>
                     </div>
                 </div>
+
+                <div class="dropdown">
+                    <button class="dropbtn">📅 Prazo</button>
+                    <div class="dropdown-content" id="filtroPrazo">
+                        <input id="prazoRange" type="text" placeholder="Selecione o intervalo de datas" readonly>
+                        <button type="button" id="resetPrazo">❌</button>
+                    </div>
+                </div>
+
             </div>
         </div>
     </div>
@@ -309,9 +358,69 @@ $conn->close();
         </div>
     </div>
 
+    <!-- Painel 'O que fazer agora' (mostra uma vez por dia) -->
+    <div class="modal" id="dailyPanelModal">
+        <div class="modal-content">
+            <h2>O que fazer agora?</h2>
+            <p>Resumo rápido das suas prioridades para hoje.</p>
+
+            <div class="panel-row">
+                <div class="panel-card">
+                    <strong id="daily_renders">0</strong>
+                    <div>Renders em aprovação</div>
+                </div>
+                <div class="panel-card">
+                    <strong id="daily_ajustes">0</strong>
+                    <div>Tarefas em <span>ajuste</span></div>
+                </div>
+                <div class="panel-card">
+                    <strong id="daily_atrasadas">0</strong>
+                    <div>Tarefas <span>atrasadas</span></div>
+                </div>
+                <div class="panel-card">
+                    <strong id="daily_hoje">0</strong>
+                    <div>Tarefas para <span class="">hoje</span></div>
+                </div>
+            </div>
+
+            <h3 class="panel-heading">Últimas telas visitadas</h3>
+            <ul id="daily_recent_pages"></ul>
+
+            <div class="panel-actions">
+                <button id="daily_go_tasks" class="btn">Ir para Minhas Tarefas</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resumo inteligente modal (após Daily) -->
+    <div class="modal" id="resumoModal" style="display:none;">
+        <div class="modal-content" style="width:600px;">
+            <h2>Resumo inteligente</h2>
+            <div id="resumo-content">
+                <!-- Conteúdo preenchido dinamicamente -->
+                <p>Carregando resumo...</p>
+            </div>
+            <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+                <button id="resumo-overview" class="btn">Ir para Overview</button>
+                <button id="resumo-kanban" class="btn">Ir para Kanban</button>
+                <button id="resumo-close" class="btn">Fechar</button>
+            </div>
+        </div>
+    </div>
+
     <div id="notificacao-sino" class="notificacao-sino">
         <i class="fas fa-bell sino" id="icone-sino"></i>
         <span id="contador-tarefas" class="contador-tarefas">0</span>
+    </div>
+
+    <!-- Modal para calendário full (expand) -->
+    <div id="calendarFullModal" class="modal" style="display:none;">
+        <div class="modal-content" style="width:90vw; max-width:1100px; height:80vh; padding:12px;">
+            <div id="calendarFull" style="width:100%; height:100%;"></div>
+            <div style="display:flex;justify-content:flex-end;margin-top:8px;">
+                <button id="closeFullCalendar" class="btn" style="background:#ef4444;color:#fff;border:none;padding:6px 12px;border-radius:6px;">Fechar</button>
+            </div>
+        </div>
     </div>
 
     <!-- Popover unificado -->
@@ -341,33 +450,14 @@ $conn->close();
     <!-- Modal simples para adicionar evento -->
     <div id="eventModal">
         <div class="eventos">
-            <h3>Evento</h3>
-            <form id="eventForm">
-                <input type="hidden" name="id" id="eventId">
-                <label for="opcao">Obra:</label>
-                <select name="opcao" id="obra_calendar">
-                    <?php foreach ($obras as $obra): ?>
-                        <option value="<?= $obra['idobra']; ?>"><?= htmlspecialchars($obra['nomenclatura']); ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-                <label>Título:</label>
-                <input type="text" name="title" id="eventTitle" required>
-                <label>Tipo de Evento:</label>
-                <select name="eventType" id="eventType" required>
-                    <option value="">Selecione</option>
-                    <option value="Entrega">Entrega</option>
-                    <option value="Arquivos">Arquivos</option>
-                    <option value="Reunião">Reunião</option>
-                    <option value="Outro">Outro</option>
-                </select>
-                <label>Data:</label>
-                <input type="date" name="date" id="eventDate" required>
-                <div class="buttons">
-                    <button type="submit" style="background-color: green;">Salvar</button>
-                    <button type="button" style="background-color: red;" onclick="deleteEvent()">Excluir</button>
-                </div>
-            </form>
+
+            <!-- Detail view: shown when clicking an existing event -->
+            <div id="eventDetail">
+                <p><strong>Nome da função:</strong> <span id="detailNomeFuncao">-</span></p>
+                <p><strong>Nome da imagem:</strong> <span id="detailNomeImagem">-</span></p>
+                <p><strong>Status:</strong> <span id="detailStatus">-</span></p>
+                <p><strong>Prazo:</strong> <span id="detailPrazo">-</span></p>
+            </div>
         </div>
     </div>
 
@@ -382,6 +472,16 @@ $conn->close();
     <div id="loading" style="display:none; position:fixed; top:50%; left:50%;
  transform:translate(-50%,-50%); background:#fff; padding:20px; border-radius:8px; box-shadow:0 0 10px rgba(0,0,0,.3);">
         <i class="ri-loader-4-line ri-spin"></i> Carregando...
+    </div>
+
+    <div class="sidebar-right" id="sidebar-right">
+        <div class="sidebar-header">
+            <h2>Detalhes da Tarefa</h2>
+            <span class="close-button" id="close-sidebar">&times;</span>
+        </div>
+        <div class="sidebar-content" id="sidebar-content">
+            <!-- Conteúdo dinâmico será carregado aqui -->
+        </div>
     </div>
 
 
@@ -436,209 +536,16 @@ $conn->close();
 
         const idColaborador = <?php echo json_encode($idcolaborador); ?>;
         localStorage.setItem('idcolaborador', idColaborador);
-
-
-        document.getElementById('modalDaily').style.display = 'none';
-
-        // checkDailyAccess agora retorna uma Promise
-        function checkDailyAccess() {
-            return new Promise((resolve, reject) => {
-                fetch('verifica_respostas.php', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded',
-                        },
-                        body: `idcolaborador=${idColaborador}`
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.hasResponses) {
-                            // Se já respondeu, segue para checkRender
-                            resolve();
-                        } else {
-                            // Se não respondeu, exibe modal e interrompe fluxo (não resolve ainda)
-                            document.getElementById('modal').style.display = 'flex';
-                            // Resolve apenas após o envio do formulário
-                            document.getElementById('dailyForm').addEventListener('submit', function onSubmit(e) {
-                                e.preventDefault();
-                                this.removeEventListener('submit', onSubmit); // evita múltiplas submissões
-
-                                const formData = new FormData(this);
-
-                                fetch('submit_respostas.php', {
-                                        method: 'POST',
-                                        body: formData
-                                    })
-                                    .then(response => response.json())
-                                    .then(data => {
-                                        if (data.success) {
-                                            document.getElementById('modal').style.display = 'none';
-                                            Swal.fire({
-                                                icon: 'success',
-                                                text: 'Respostas enviadas com sucesso!',
-                                                showConfirmButton: false,
-                                                timer: 2000
-                                            }).then(() => resolve()); // continua depois de enviar
-                                        } else {
-                                            Swal.fire({
-                                                icon: 'error',
-                                                text: 'Erro ao enviar as tarefas, tente novamente!',
-                                                showConfirmButton: false,
-                                                timer: 2000
-                                            });
-                                            reject(); // interrompe a sequência
-                                        }
-                                    })
-                                    .catch(error => {
-                                        console.error('Erro:', error);
-                                        reject();
-                                    });
-                            });
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Erro ao verificar respostas:', error);
-                        reject();
-                    });
-            });
-        }
-
-        // checkRenderItems também retorna uma Promise
-        function checkRenderItems(idColaborador) {
-            return new Promise((resolve, reject) => {
-                fetch('verifica_render.php', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded',
-                        },
-                        body: `idcolaborador=${idColaborador}`
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.total > 0) {
-                            Swal.fire({
-                                title: `Você tem ${data.total} item(ns) na sua lista de render!`,
-                                text: "Deseja ver agora ou depois?",
-                                icon: "info",
-                                showCancelButton: true,
-                                confirmButtonText: "Ver agora",
-                                cancelButtonText: "Ver depois",
-                            }).then((result) => {
-                                if (result.isConfirmed) {
-                                    window.location.href = "./Render/";
-                                } else {
-                                    resolve(); // segue o fluxo
-                                }
-                            });
-                        } else {
-                            resolve(); // segue o fluxo mesmo sem render
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Erro ao verificar itens de render:', error);
-                        reject();
-                    });
-            });
-        }
-
-        function checkFuncoesEmAndamento(idColaborador) {
-            return new Promise((resolve, reject) => {
-                fetch('getFuncoesEmAndamento.php', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded'
-                        },
-                        body: `idcolaborador=${idColaborador}`
-                    })
-                    .then(res => res.json())
-                    .then(funcoes => {
-                        if (!funcoes || funcoes.length === 0) {
-                            resolve(); // nada em andamento, segue fluxo
-                            return;
-                        }
-
-                        // Processa em sequência cada função
-                        let index = 0;
-
-                        function perguntarProximo() {
-                            if (index >= funcoes.length) {
-                                resolve(); // terminou todas
-                                return;
-                            }
-
-                            const funcao = funcoes[index];
-                            Swal.fire({
-                                title: `Você ainda está trabalhando em ${funcao.imagem_nome}?`,
-                                text: `Função: ${funcao.nome_funcao}`,
-                                icon: "question",
-                                showCancelButton: true,
-                                confirmButtonText: "Sim, estou fazendo",
-                                cancelButtonText: "Não, colocar em HOLD"
-                            }).then((result) => {
-                                if (result.isConfirmed) {
-                                    // continua sem alterar
-                                    index++;
-                                    perguntarProximo();
-                                } else {
-                                    // pede observação
-                                    Swal.fire({
-                                        title: "Observação",
-                                        input: "text",
-                                        inputPlaceholder: "Por que não está fazendo?",
-                                        showCancelButton: false,
-                                        confirmButtonText: "Salvar"
-                                    }).then((obsResult) => {
-                                        const obs = obsResult.value || "";
-
-                                        fetch('atualizarFuncao.php', {
-                                            method: 'POST',
-                                            headers: {
-                                                'Content-Type': 'application/x-www-form-urlencoded'
-                                            },
-                                            body: `idfuncao_imagem=${funcao.idfuncao_imagem}&observacao=${encodeURIComponent(obs)}`
-                                        }).finally(() => {
-                                            index++;
-                                            perguntarProximo();
-                                        });
-                                    });
-                                }
-                            });
-                        }
-
-                        perguntarProximo();
-                    })
-                    .catch(err => {
-                        console.error("Erro ao verificar funções em andamento:", err);
-                        reject();
-                    });
-            });
-        }
-
-        // const MODO_TESTE = true;
-
-        // if (MODO_TESTE) {
-        //     checkFuncoesEmAndamento(idColaborador);
-        // } else {
-        checkDailyAccess()
-            .then(() => checkFuncoesEmAndamento(idColaborador))
-            .then(() => checkRenderItems(idColaborador))
-            .then(() => {
-                buscarTarefas();
-                mostrarChangelogSeNecessario();
-            })
-            .catch(() => {
-                console.log('Fluxo interrompido devido a erro ou resposta incompleta.');
-            });
-        // }
     </script>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <!-- <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script> -->
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="script/notificacoes.js"></script>
-    <script src="script/scriptIndex.js"></script>
+    <script src="PaginaPrincipal/scriptIndex2.js"></script>
     <script src="./script/sidebar.js"></script>
 
 </body>

@@ -22,6 +22,10 @@ $ftp_pass = "flow@2025";
 $ftp_host = "imp-nas.ddns.net";
 $ftp_port = 2222;
 
+// Slack webhook URL: set in environment `SLACK_WEBHOOK_URL`
+// Example: setx SLACK_WEBHOOK_URL "https://hooks.slack.com/services/..../..../.."
+
+
 function enviarArquivoSFTP($host, $usuario, $senha, $arquivoLocal, $arquivoRemoto, $porta = 2222, callable $onProgress = null)
 {
     if (!file_exists($arquivoLocal)) {
@@ -100,6 +104,52 @@ function enviarArquivoSFTP($host, $usuario, $senha, $arquivoLocal, $arquivoRemot
     }
 }
 
+// Helpers para sanitização e criação de diretórios remotos
+function removerTodosAcentos_worker($str)
+{
+    return preg_replace(
+        ['/[áàãâä]/ui', '/[éèêë]/ui', '/[íìîï]/ui', '/[óòõôö]/ui', '/[úùûü]/ui', '/[ç]/ui'],
+        ['a', 'e', 'i', 'o', 'u', 'c'],
+        $str
+    );
+}
+
+function sanitizeFilename_worker($str)
+{
+    $str = removerTodosAcentos_worker($str);
+    $str = preg_replace('/[\/\\:*?"<>|]/', '', $str);
+    $str = preg_replace('/\s+/', '_', $str);
+    return $str;
+}
+
+function ensure_remote_dir_recursive(SFTP $sftp, string $dir): bool
+{
+    $dir = rtrim($dir, '/');
+    if ($sftp->is_dir($dir)) return true;
+    $parts = explode('/', ltrim($dir, '/'));
+    $path = '';
+    foreach ($parts as $p) {
+        if ($p === '') continue;
+        $path .= '/' . $p;
+        if (!$sftp->is_dir($path)) {
+            if (!$sftp->mkdir($path)) return false;
+        }
+    }
+    return $sftp->is_dir($dir);
+}
+
+// Converte caminho do NAS Linux para caminho acessível no Windows (Z:\)
+function to_windows_access_path(string $path): string
+{
+    // troca prefixo /mnt/clientes por Z:\
+    $out = preg_replace('#^/mnt/clientes#i', 'Z:', $path);
+    // normaliza barras para backslashes
+    $out = str_replace('/', '\\', $out);
+    // remove possíveis duplicidades de backslash
+    $out = preg_replace('/\\{2,}/', '\\', $out);
+    return $out;
+}
+
 // Função auxiliar: mapear função -> pasta (mesma lógica simplificada de uploadFinal.php)
 function mapFuncaoParaPasta($nome_funcao)
 {
@@ -144,8 +194,12 @@ if (function_exists('pcntl_signal') && defined('SIGTERM') && defined('SIGINT')) 
 // helper to claim a job by renaming the meta file atomically
 function claimJob(string $metaFile)
 {
-    $processing = $metaFile . '.processing';
-    if (@rename($metaFile, $processing)) return $processing;
+    $pid = getmypid() ?: uniqid();
+    $processing = $metaFile . '.processing.' . $pid;
+    if (@rename($metaFile, $processing)) {
+        error_log("[upload_worker] claimed {$metaFile} -> {$processing} by pid={$pid}");
+        return $processing;
+    }
     return false;
 }
 
@@ -155,7 +209,35 @@ function writeMeta(string $path, array $meta)
     @file_put_contents($path, json_encode($meta, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
 }
 
-function publishProgress(?PredisClient $redis, string $id, int $progress, string $status = 'running', string $message = '')
+// Move a file out of staging to destination dir. Attempts rename, then copy+unlink fallback.
+function moveFromStaging(string $src, string $destDir): bool
+{
+    if (!file_exists($src)) return false;
+    if (!is_dir($destDir)) {
+        if (!@mkdir($destDir, 0777, true)) {
+            error_log("[upload_worker] failed to create dest dir: {$destDir}");
+            return false;
+        }
+    }
+    $dest = rtrim($destDir, '/\\') . DIRECTORY_SEPARATOR . basename($src);
+    // Try atomic rename first
+    if (@rename($src, $dest)) {
+        return true;
+    }
+    // Fallback: copy then unlink
+    if (@copy($src, $dest)) {
+        if (@unlink($src)) {
+            return true;
+        }
+        // copy succeeded but unlink failed — leave copy and report
+        error_log("[upload_worker] copied but failed to unlink source: {$src}");
+        return false;
+    }
+    error_log("[upload_worker] failed to move file from {$src} to {$dest}");
+    return false;
+}
+
+function publishProgress($redis, string $id, int $progress, string $status = 'running', string $message = '')
 {
     // log attempt for observability (will go to journal when run under systemd)
     error_log("[upload_worker] publishProgress called id={$id} progress={$progress} status={$status} message={$message}");
@@ -173,9 +255,260 @@ function publishProgress(?PredisClient $redis, string $id, int $progress, string
     }
 }
 
+// --- DB and Slack helpers ---
+function load_dotenv_if_present()
+{
+    $envPath = __DIR__ . '/.env';
+    if (!is_file($envPath)) return;
+    $lines = @file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    if (!$lines) return;
+    foreach ($lines as $line) {
+        $line = trim($line);
+        if ($line === '' || $line[0] === '#') continue;
+        if (preg_match('/^([A-Z0-9_]+)\s*=\s*(.*)$/', $line, $m)) {
+            $key = $m[1];
+            $val = $m[2];
+            if ((str_starts_with($val, '"') && str_ends_with($val, '"')) || (str_starts_with($val, "'") && str_ends_with($val, "'"))) {
+                $val = substr($val, 1, -1);
+            }
+            if (getenv($key) === false) {
+                putenv("{$key}={$val}");
+            }
+        }
+    }
+}
+function ensure_db_connection_local()
+{
+    global $conn;
+    if (!isset($conn)) {
+        @include __DIR__ . '/../conexao.php';
+        return;
+    }
+    try {
+        if (method_exists($conn, 'ping')) {
+            if (!$conn->ping()) {
+                @$conn->close();
+                @include __DIR__ . '/../conexao.php';
+            }
+        }
+    } catch (Exception $e) {
+        try { @$conn->close(); } catch (Exception $_) {}
+        @include __DIR__ . '/../conexao.php';
+    }
+}
+
+function create_arquivo_log_table_if_missing()
+{
+    // No-op in production: tabela já existe com schema real.
+}
+
+function create_log_entries_if_missing(string $metaPath, array &$meta, string $remote_path = null, $nome_final = null, $tamanho = null, $tipo = null)
+{
+    global $conn;
+    if (!isset($conn)) return;
+    if (!empty($meta['log_ids'])) return;
+
+    $createIds = [];
+    $dataIdFuncoes = $meta['dataIdFuncoes'] ?? [];
+    $colaborador_id = $meta['post']['idcolaborador'] ?? null;
+
+    if (empty($dataIdFuncoes)) {
+        // insert a single row with funcao_imagem_id = NULL
+        $q = $conn->prepare("INSERT INTO arquivo_log (funcao_imagem_id, caminho, nome_arquivo, tamanho, tipo, colaborador_id, status) VALUES (NULL,?,?,?,?,?,?)");
+        if ($q) {
+            $status = 'enfileirado';
+            $q->bind_param('ssisss', $remote_path, $nome_final, $tamanho, $tipo, $colaborador_id, $status);
+            $q->execute();
+            $createIds[] = $q->insert_id;
+            $q->close();
+        }
+    } else {
+        $stmt = $conn->prepare("INSERT INTO arquivo_log (funcao_imagem_id, caminho, nome_arquivo, tamanho, tipo, colaborador_id, status) VALUES (?,?,?,?,?,?,?)");
+        if ($stmt) {
+            $status = 'enfileirado';
+            foreach ($dataIdFuncoes as $fid) {
+                $stmt->bind_param('ississs', $fid, $remote_path, $nome_final, $tamanho, $tipo, $colaborador_id, $status);
+                $stmt->execute();
+                $createIds[] = $stmt->insert_id;
+            }
+            $stmt->close();
+        }
+    }
+
+    if (!empty($createIds)) {
+        $meta['log_ids'] = $createIds;
+        writeMeta($metaPath, $meta);
+    }
+}
+
+function update_log_entries_status(array $logIds = null, string $status = '', $caminho = null, $nome_arquivo = null, $tamanho = null, $tipo = null)
+{
+    global $conn;
+    if (!isset($conn) || empty($logIds)) return;
+    $sql = "UPDATE arquivo_log SET status = ?, caminho = COALESCE(?, caminho), nome_arquivo = COALESCE(?, nome_arquivo), tamanho = COALESCE(?, tamanho), tipo = COALESCE(?, tipo) WHERE id = ?";
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) return;
+    foreach ($logIds as $id) {
+        $stmt->bind_param('sssisi', $status, $caminho, $nome_arquivo, $tamanho, $tipo, $id);
+        $stmt->execute();
+    }
+    $stmt->close();
+}
+
+function send_slack_notification_for_colaborador($colaborador_id, array $meta, $remote_path = null, $nome_final = null, $ok = true)
+{
+    global $conn;
+    // Load .env and use Slack API with token and optional default channel
+    load_dotenv_if_present();
+    $token = getenv('SLACK_TOKEN') ?: null;
+    $defaultChannel = getenv('SLACK_CHANNEL') ?: null;
+    $apiUrl = getenv('SLACK_API_URL') ?: 'https://slack.com/api/chat.postMessage';
+    if (!$token) {
+        error_log('[upload_worker] Slack token missing: set SLACK_TOKEN');
+        return false;
+    }
+    if (!isset($conn) || !$colaborador_id) return false;
+    // Correção: usar colunas reais da tabela `usuario`
+    $stmt = $conn->prepare('SELECT nome_slack, nome_usuario FROM usuario WHERE idcolaborador = ? LIMIT 1');
+    if (!$stmt) {
+        error_log('[upload_worker] Slack: failed to prepare usuario query');
+        return false;
+    }
+    $stmt->bind_param('i', $colaborador_id);
+    $stmt->execute();
+    $res = $stmt->get_result();
+    $row = $res ? $res->fetch_assoc() : null;
+    $stmt->close();
+    if (!$row) {
+        error_log("[upload_worker] Slack: no usuario found for idcolaborador={$colaborador_id}");
+        return false;
+    }
+    $nome_slack = $row['nome_slack'] ?? null;
+    $nome = $row['nome_usuario'] ?? null;
+    if (!$nome_slack) {
+        error_log("[upload_worker] Slack: usuario {$nome} missing nome_slack, skipping");
+        return false;
+    }
+
+    // Determine channel and mention formatting
+    $mention = $nome_slack;
+    $looksLikeUserId = preg_match('/^[UW][A-Z0-9]+$/', $nome_slack) === 1;
+    if ($looksLikeUserId) {
+        $mention = "<@{$nome_slack}>";
+    }
+
+    $original = $meta['original_name'] ?? ($meta['post']['arquivo_final'] ?? 'arquivo');
+    $statusText = $ok ? 'enviado com sucesso' : 'falhou ao enviar';
+    $text = "Olá {$mention}, o arquivo *{$original}* foi {$statusText}. Destino: `{$remote_path}`";
+
+    // We must DM the user (no channels). Resolve user ID if nome_slack isn't already an ID.
+    $userId = null;
+    if ($looksLikeUserId) {
+        $userId = $nome_slack;
+    } else {
+        // Try to resolve via users.list (match display name or real name)
+        $listUrl = 'https://slack.com/api/users.list';
+        $ch = null;
+        $res = null;
+        if (function_exists('curl_init')) {
+            $ch = curl_init($listUrl);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [ 'Authorization: Bearer ' . $token ]);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 8);
+            $res = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            if ($res === false || ($httpCode && $httpCode >= 400)) {
+                error_log('[upload_worker] Slack users.list failed to resolve user');
+                curl_close($ch);
+                $res = null;
+            } else {
+                curl_close($ch);
+            }
+        } else {
+            $ctx = stream_context_create(['http' => [
+                'method' => 'GET',
+                'header' => "Authorization: Bearer {$token}\r\n",
+                'timeout' => 8
+            ]]);
+            $res = @file_get_contents($listUrl, false, $ctx);
+        }
+        if ($res) {
+            $data = json_decode($res, true);
+            if ($data && !empty($data['ok']) && !empty($data['members']) && is_array($data['members'])) {
+                foreach ($data['members'] as $m) {
+                    $real = ($m['profile']['real_name'] ?? '') ?: '';
+                    $display = ($m['profile']['display_name'] ?? '') ?: '';
+                    if (mb_strtolower($real) === mb_strtolower($nome_slack) || mb_strtolower($display) === mb_strtolower($nome_slack)) {
+                        $userId = $m['id'] ?? null;
+                        break;
+                    }
+                }
+            } else {
+                error_log('[upload_worker] Slack users.list returned not ok');
+            }
+        }
+        if (!$userId) {
+            error_log('[upload_worker] Slack: could not resolve user ID from nome_slack');
+            return false;
+        }
+    }
+    $payload = [ 'channel' => $userId, 'text' => $text ];
+    $json = json_encode($payload);
+    if (function_exists('curl_init')) {
+        $ch = curl_init($apiUrl);
+        curl_setopt($ch, CURLOPT_POST, 1);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $json);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [ 'Content-Type: application/json', 'Authorization: Bearer ' . $token ]);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 8);
+        $res = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        if ($res === false || ($httpCode && $httpCode >= 400)) {
+            $err = curl_error($ch);
+            error_log("[upload_worker] Slack API failed: http={$httpCode} err={$err}");
+            curl_close($ch);
+            return false;
+        }
+        $resp = json_decode($res, true);
+        if (!$resp || empty($resp['ok'])) {
+            error_log('[upload_worker] Slack API response not ok: ' . $res);
+            curl_close($ch);
+            return false;
+        }
+        curl_close($ch);
+        error_log('[upload_worker] Slack send OK via API');
+        return true;
+    } else {
+        $ctx = stream_context_create(['http' => [
+            'method' => 'POST',
+            'header' => "Content-Type: application/json\r\nAuthorization: Bearer {$token}\r\n",
+            'content' => $json,
+            'timeout' => 8
+        ]]);
+        $res = @file_get_contents($apiUrl, false, $ctx);
+        if ($res === false) {
+            error_log('[upload_worker] Slack API send failed via file_get_contents');
+            return false;
+        }
+        $resp = json_decode($res, true);
+        if (!$resp || empty($resp['ok'])) {
+            error_log('[upload_worker] Slack API response not ok: ' . $res);
+            return false;
+        }
+        error_log('[upload_worker] Slack send OK via API (stream)');
+        return true;
+    }
+}
+
 // Process loop (single run or daemon loop)
 do {
-    $metaFiles = glob($baseDir . '/*.json');
+    // Considere jobs pendentes e jobs já "claimed" (.json.processing and variants)
+    $metaFiles = array_merge(
+        glob($baseDir . '/*.json') ?: [],
+        glob($baseDir . '/*.json.processing*') ?: []
+    );
     if (!$metaFiles) {
         if ($daemon && !$shutdown) {
             sleep($sleepWhenIdle);
@@ -188,11 +521,32 @@ do {
     foreach ($metaFiles as $metaFile) {
         if ($shutdown) break 2;
 
-        echo "Tentando claim: $metaFile\n";
-        $processingMeta = claimJob($metaFile);
-        if (!$processingMeta) {
-            echo "Falha ao claim (outro worker talvez esteja processando): $metaFile\n";
-            continue;
+        // Se já está em modo processing (qualquer sufixo), use diretamente; senão tente claim.
+        if (strpos($metaFile, '.json.processing') !== false) {
+            $processingMeta = $metaFile;
+            // If the processing file belongs to another PID and is stale, try to take it over.
+            if (preg_match('/\.json\.processing\.(\d+)$/', $metaFile, $m)) {
+                $ownerPid = $m[1];
+                $age = time() - @filemtime($metaFile);
+                $staleSeconds = 3600; // 1 hour
+                if ($age > $staleSeconds) {
+                    $newProc = preg_replace('/\.json\.processing\.(\d+)$/', '.json.processing.' . (getmypid() ?: uniqid()), $metaFile);
+                    if (@rename($metaFile, $newProc)) {
+                        $processingMeta = $newProc;
+                        error_log("[upload_worker] took over stale processing file {$metaFile} -> {$newProc} (age={$age}s)");
+                    } else {
+                        error_log("[upload_worker] failed to takeover stale processing file {$metaFile}");
+                    }
+                }
+            }
+            echo "Retomando job em processing: $processingMeta\n";
+        } else {
+            echo "Tentando claim: $metaFile\n";
+            $processingMeta = claimJob($metaFile);
+            if (!$processingMeta) {
+                echo "Falha ao claim (outro worker talvez esteja processando): $metaFile\n";
+                continue;
+            }
         }
 
         echo "Processando $processingMeta\n";
@@ -225,6 +579,12 @@ do {
 
         $jobId = $meta['id'] ?? pathinfo($processingMeta, PATHINFO_FILENAME);
         publishProgress($redis, $jobId, 0, 'claimed', 'Job claimed by worker');
+        // update DB status to 'processando'
+        ensure_db_connection_local();
+        create_arquivo_log_table_if_missing();
+        if (!empty($meta['log_ids'])) {
+            update_log_entries_status($meta['log_ids'], 'processando', null, null, null, null);
+        }
 
         // extract post fields
         $nomenclatura = $meta['post']['nomenclatura'] ?? '';
@@ -233,6 +593,10 @@ do {
         $primeiraPalavra = $meta['post']['primeiraPalavra'] ?? '';
         $nome_imagem = $meta['post']['nome_imagem'] ?? '';
         $nomeStatus = $meta['post']['status_nome'] ?? '';
+        // Normalizar componentes do nome do arquivo removendo acentos
+        $nomenclatura_clean = removerTodosAcentos_worker($nomenclatura);
+        $primeiraPalavra_clean = removerTodosAcentos_worker($primeiraPalavra);
+        $nome_imagem_clean = removerTodosAcentos_worker($nome_imagem);
 
         $pasta_funcao = mapFuncaoParaPasta($nome_funcao);
         if (!$pasta_funcao) {
@@ -258,17 +622,85 @@ do {
             file_put_contents($failedDir . '/' . basename($processingMeta) . '.err', date('c') . " - destino não encontrado\n", FILE_APPEND);
             rename($staged, $failedDir . '/' . basename($staged));
             rename($processingMeta, $failedDir . '/' . basename($processingMeta));
+            // Update DB and publish failure
+            ensure_db_connection_local();
+            create_arquivo_log_table_if_missing();
+            try { create_log_entries_if_missing($processingMeta, $meta, null, null, filesize($staged), $tipo); } catch (Exception $_) {}
+            if (!empty($meta['log_ids'])) {
+                update_log_entries_status($meta['log_ids'], 'falha', null, null, null, null);
+            }
             publishProgress($redis, $jobId, 0, 'failed', 'Destino remoto não encontrado');
             continue;
         }
 
         $ext = pathinfo($staged, PATHINFO_EXTENSION);
         $tipo = in_array(strtolower($ext), ['pdf']) ? 'PDF' : 'IMG';
-        $semAcento = preg_replace(['/[áàãâä]/ui','/[éèêë]/ui','/[íìîï]/ui','/[óòõôö]/ui','/[úùûü]/ui','/[ç]/ui'], ['a','e','i','o','u','c'], $nome_funcao);
+        $semAcento = removerTodosAcentos_worker($nome_funcao);
         $processo = strtoupper(mb_substr($semAcento, 0, 3, 'UTF-8'));
-        $nome_base = "{$numeroImagem}.{$nomenclatura}-{$primeiraPalavra}-{$tipo}-{$processo}";
+        $nome_base = "{$numeroImagem}.{$nomenclatura_clean}-{$primeiraPalavra_clean}-{$tipo}-{$processo}";
         $revisao = $nomeStatus ?: 'R00';
-        $remote_path = "$upload_ok/{$nome_base}-{$revisao}.{$ext}";
+        $remote_dir = $upload_ok;
+        $nome_final = "{$nome_base}-{$revisao}.{$ext}";
+
+        // Regras especiais iguais ao uploadFinal.php
+        $funcao_normalizada = mb_strtolower($nome_funcao, 'UTF-8');
+        if ($pasta_funcao === '03.Models') {
+            $nomeImagemSanitizado = sanitizeFilename_worker($nome_imagem);
+            $funcao_key = $funcao_normalizada;
+            if ($funcao_key === 'alteração' || $funcao_key === 'alteracao') {
+                $remote_dir = $remote_dir . "/{$nomeImagemSanitizado}/Final/{$revisao}";
+            } else {
+                $mapa_sub = [
+                    'modelagem' => 'MT',
+                    'composição' => 'Comp',
+                    'composicao' => 'Comp',
+                    'finalização' => 'Final',
+                    'finalizacao' => 'Final',
+                    'pré-finalização' => 'Final',
+                    'pre-finalizacao' => 'Final'
+                ];
+                $subpasta_funcao = $mapa_sub[$funcao_key] ?? 'OUTROS';
+                $remote_dir = $remote_dir . "/{$nomeImagemSanitizado}/{$subpasta_funcao}";
+            }
+        } elseif ($funcao_normalizada === 'pós-produção' || $funcao_normalizada === 'pos-producao' || $funcao_normalizada === 'pos-produção') {
+            // Pós-Produção: nome_final = nome_imagem_revisao.ext em pasta revisao
+            $nome_final = "{$nome_imagem_clean}_{$revisao}.{$ext}";
+            $remote_dir = $remote_dir . "/{$revisao}";
+        } elseif ($funcao_normalizada === 'planta humanizada') {
+            $nome_final = "{$nome_imagem_clean}_{$revisao}.{$ext}";
+            $remote_dir = $remote_dir . "/{$revisao}/PH";
+        }
+
+        // Garantir diretórios remotos existentes
+        $sftpPrep = new SFTP($ftp_host, $ftp_port);
+        if (!$sftpPrep->login($ftp_user, $ftp_pass)) {
+            $lastMsg = 'Falha na autenticação SFTP ao preparar diretórios.';
+            echo $lastMsg . "\n";
+            file_put_contents($failedDir . '/' . basename($processingMeta) . '.err', date('c') . " - $lastMsg\n", FILE_APPEND);
+            rename($staged, $failedDir . '/' . basename($staged));
+            rename($processingMeta, $failedDir . '/' . basename($processingMeta));
+            publishProgress($redis, $jobId, 0, 'failed', $lastMsg);
+            ensure_db_connection_local();
+            if (!empty($meta['log_ids'])) {
+                update_log_entries_status($meta['log_ids'], 'falha', null, null, null, null);
+            }
+            continue;
+        }
+        if (!ensure_remote_dir_recursive($sftpPrep, $remote_dir)) {
+            $lastMsg = 'Não foi possível criar/verificar diretórios remotos: ' . $remote_dir;
+            echo $lastMsg . "\n";
+            file_put_contents($failedDir . '/' . basename($processingMeta) . '.err', date('c') . " - $lastMsg\n", FILE_APPEND);
+            rename($staged, $failedDir . '/' . basename($staged));
+            rename($processingMeta, $failedDir . '/' . basename($processingMeta));
+            publishProgress($redis, $jobId, 0, 'failed', $lastMsg);
+            ensure_db_connection_local();
+            if (!empty($meta['log_ids'])) {
+                update_log_entries_status($meta['log_ids'], 'falha', null, null, null, null);
+            }
+            continue;
+        }
+        $remote_path = $remote_dir . '/' . $nome_final;
+        $windows_path = to_windows_access_path($remote_path);
 
         // retry loop with exponential backoff
         $maxAttempts = 5;
@@ -286,44 +718,56 @@ do {
                 static $lastPct = null;
                 if ($lastPct === null || $pct >= $lastPct + 1 || $pct === 100) {
                     publishProgress($redis, $jobId, $pct, 'uploading', "Transferindo ({$sent}/{$total})");
+                    // optional: we skip frequent DB progress updates to reduce writes
                     $lastPct = $pct;
                 }
             });
 
             if ($ok) {
                 publishProgress($redis, $jobId, 100, 'done', 'Enviado com sucesso');
+                // defer final DB update to finalize block below
             } else {
                 publishProgress($redis, $jobId, min(95, 10 + $meta['attempts'] * 15), 'retry', $msg);
+                // retry state is transient; no DB write
             }
             $lastMsg = $msg;
             if ($ok) break;
-
-            // classify as retryable by message or assume retryable for connection issues
-            $retryable = true;
-            if (stripos($msg, 'Diretório remoto não existe') !== false || stripos($msg, 'Falha na autenticação') !== false) {
-                $retryable = false;
-            }
-
-            if (!$retryable) break;
-
-            // backoff
-            $backoff = min(60, pow(2, $meta['attempts']) * 1);
-            echo "Tentativa {$meta['attempts']} falhou, aguardando {$backoff}s antes de nova tentativa...\n";
-            sleep($backoff);
         }
 
+        // after retry loop: finalize
         if ($ok) {
             echo "Enviado com sucesso: $remote_path\n";
             // mover arquivos para sent
             rename($staged, $processedDir . '/' . basename($staged));
             rename($processingMeta, $processedDir . '/' . basename($processingMeta));
             publishProgress($redis, $jobId, 100, 'done', 'Finalizado e movido para sent');
+            // final DB update and Slack notify (status: concluido)
+            ensure_db_connection_local();
+            if (!empty($meta['log_ids'])) {
+                $tamanho_final = @filesize($processedDir . '/' . basename($staged));
+                // salva caminho acessível no Windows (Z:\) no banco
+                update_log_entries_status($meta['log_ids'], 'concluido', $windows_path, $nome_final, $tamanho_final ?: null, $tipo);
+            }
+            // send slack to collaborator if present
+            $colab = $meta['post']['idcolaborador'] ?? null;
+            if ($colab) {
+                try { send_slack_notification_for_colaborador($colab, $meta, $windows_path, null, true); } catch (Exception $_) {}
+            }
         } else {
             echo "Falha ao enviar (todas tentativas ou erro irreversível): $lastMsg\n";
             file_put_contents($failedDir . '/' . basename($processingMeta) . '.err', date('c') . " - $lastMsg\n", FILE_APPEND);
             rename($staged, $failedDir . '/' . basename($staged));
             rename($processingMeta, $failedDir . '/' . basename($processingMeta));
             publishProgress($redis, $jobId, 0, 'failed', $lastMsg);
+            ensure_db_connection_local();
+            if (!empty($meta['log_ids'])) {
+                update_log_entries_status($meta['log_ids'], 'falha', null, null, null, null);
+            }
+            // send slack failure notice
+            $colab = $meta['post']['idcolaborador'] ?? null;
+            if ($colab) {
+                try { send_slack_notification_for_colaborador($colab, $meta, $remote_path, null, false); } catch (Exception $_) {}
+            }
         }
     }
 

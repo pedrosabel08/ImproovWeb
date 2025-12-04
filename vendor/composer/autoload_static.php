@@ -17,6 +17,7 @@ class ComposerStaticInita702940bbf24a822224611db5c22942b
         ),
         'P' => 
         array (
+            'Psr\\Http\\Message\\' => 17,
             'Predis\\' => 7,
             'ParagonIE\\ConstantTime\\' => 23,
         ),
@@ -26,6 +27,10 @@ class ComposerStaticInita702940bbf24a822224611db5c22942b
         'phpseclib3\\' => 
         array (
             0 => __DIR__ . '/..' . '/phpseclib/phpseclib/phpseclib',
+        ),
+        'Psr\\Http\\Message\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/psr/http-message/src',
         ),
         'Predis\\' => 
         array (

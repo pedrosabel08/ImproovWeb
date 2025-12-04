@@ -1,6 +1,6 @@
 {
     "require": {
         "phpseclib/phpseclib": "^3.0",
-        "predis/predis": "^1.1"
+        "predis/predis": "^3.3"
     }
 }

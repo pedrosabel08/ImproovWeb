@@ -11,8 +11,16 @@ if (!$obra_id || !$status_id) {
 
 // Ajuste conforme sua estrutura real de imagens
 $stmt = $conn->prepare("SELECT idimagens_cliente_obra AS id, imagem_nome AS nome, antecipada
-    FROM imagens_cliente_obra
-    WHERE obra_id = ? AND status_id = ?
+        FROM imagens_cliente_obra ico
+        WHERE ico.obra_id = ?
+            AND ico.status_id = ?
+            AND NOT EXISTS (
+                    SELECT 1
+                    FROM entregas_itens ei
+                    JOIN entregas e ON ei.entrega_id = e.id
+                    WHERE ei.imagem_id = ico.idimagens_cliente_obra
+                        AND e.status_id = ico.status_id
+            )
 ");
 $stmt->bind_param("ii", $obra_id, $status_id);
 $stmt->execute();

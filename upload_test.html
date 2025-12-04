@@ -5,49 +5,173 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Teste de Upload (enqueue)</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <style>
+        :root {
+            --primary: #4caf50;
+            --muted: #666
+        }
+
         body {
-            font-family: Arial, Helvetica, sans-serif;
-            margin: 24px
+            font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+            margin: 28px;
+            background: #f8fafc;
+            color: #111
+        }
+
+        .card {
+            background: #fff;
+            border: 1px solid #e6e9ee;
+            border-radius: 8px;
+            padding: 18px;
+            max-width: 820px
+        }
+
+        h1 {
+            font-weight: 600;
+            margin: 0 0 14px
+        }
+
+        form {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            flex-wrap: wrap
+        }
+
+        .file-wrap {
+            flex: 1;
+            min-width: 260px
+        }
+
+        .actions {
+            display: flex;
+            gap: 8px
+        }
+
+        button {
+            background: var(--primary);
+            color: #fff;
+            border: 0;
+            padding: 10px 14px;
+            border-radius: 6px;
+            cursor: pointer
+        }
+
+        button.secondary {
+            background: #eef2f6;
+            color: #333
         }
 
         label {
             display: block;
-            margin-top: 12px
+            font-size: 14px;
+            color: var(--muted);
+            margin-bottom: 6px
         }
 
         pre {
-            background: #f6f6f6;
-            border: 1px solid #ddd;
-            padding: 12px
+            background: #0f1720;
+            color: #e6eef8;
+            padding: 12px;
+            border-radius: 6px;
+            margin-top: 14px;
+            overflow: auto
+        }
+
+        .note {
+            font-size: 13px;
+            color: #555;
+            margin-top: 8px
         }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="/flow/ImproovWeb/assets/js/upload-ws.js"></script>
+
 </head>
 
 <body>
-    <h1>Teste de Upload (enqueue)</h1>
+    <div class="card">
+        <h1>Enviar arquivo (enqueue)</h1>
 
-    <form id="f" enctype="multipart/form-data" method="post" action="upload_enqueue.php">
-        <label>Arquivo:
-            <input type="file" name="arquivo_final" required>
-        </label>
+        <form id="f" enctype="multipart/form-data" method="post" action="upload_enqueue.php">
+            <div class="file-wrap">
+                <label for="arquivo">Arquivo</label>
+                <input id="arquivo" type="file" name="arquivo_final" required>
+                <div class="note">Selecione um arquivo para enviar. Você pode navegar para outra página assim que o
+                    upload para o servidor terminar; receberá uma notificação quando o processamento no servidor
+                    concluir.</div>
+            </div>
 
-        <!-- Campos padrão solicitados -->
-        <input type="hidden" name="nomenclatura" value="TES_TES">
-        <input type="hidden" name="nome_funcao" value="pós-produção">
-        <input type="hidden" name="numeroImagem" value="01">
-        <input type="hidden" name="primeiraPalavra" value="Teste">
-        <input type="hidden" name="nome_imagem" value="01.Teste">
-        <input type="hidden" name="status_nome" value="R01">
+            <!-- Campos padrão solicitados -->
+            <input type="hidden" name="nomenclatura" value="TES_TES">
+            <input type="hidden" name="nome_funcao" value="pós-produção">
+            <input type="hidden" name="numeroImagem" value="01">
+            <input type="hidden" name="primeiraPalavra" value="Teste">
+            <input type="hidden" name="nome_imagem" value="01.Teste">
+            <input type="hidden" name="status_nome" value="R01">
 
-        <button type="submit">Enviar (form tradicional)</button>
-        <button type="button" id="ajax">Enviar via AJAX</button>
-    </form>
+            <div class="actions">
+                <button type="submit">Enviar (form tradicional)</button>
+                <button type="button" id="ajax">Enviar via AJAX</button>
+            </div>
+        </form>
 
-    <h2>Resposta</h2>
-    <pre id="out">Nenhuma ação ainda.</pre>
+        <h2 style="margin-top:18px;font-size:16px">Resposta / logs</h2>
+        <pre id="out">Nenhuma ação ainda.</pre>
+    </div>
 
     <script>
+        // use SweetAlert UI for first-phase upload; skip built-in progress UI for second phase
+        window.improov_use_swal = true;
+
+        // beforeunload guard to prevent navigation during active XHR upload
+        window._uploadInProgress = false;
+        function enableUnloadGuard() {
+            window._uploadInProgress = true;
+            window.addEventListener('beforeunload', beforeUnloadHandler);
+        }
+        function disableUnloadGuard() {
+            window._uploadInProgress = false;
+            window.removeEventListener('beforeunload', beforeUnloadHandler);
+        }
+        function beforeUnloadHandler(e) {
+            if (window._uploadInProgress) {
+                e.preventDefault();
+                e.returnValue = 'Upload em andamento — tem certeza que quer sair?';
+                return e.returnValue;
+            }
+        }
+
+        // SweetAlert helpers for first phase
+        function showSwalUpload() {
+            Swal.fire({
+                title: 'Enviando arquivo...',
+                html: '<div style="margin-top:10px">' +
+                    '<div style="background:#eef2f6;border-radius:6px;height:18px;width:100%;overflow:hidden">' +
+                    '<div id="swal-progress-bar" style="height:100%;width:0%;background:var(--primary);text-align:center;color:#fff;font-size:12px;line-height:18px">0%</div>' +
+                    '</div>' +
+                    '<div id="swal-progress-msg" style="margin-top:8px;color:#333;font-size:13px">Preparando upload...</div>' +
+                    '</div>',
+                allowOutsideClick: false,
+                showConfirmButton: false,
+                didOpen: () => {
+                    // request notification permission early (optional)
+                    try { if (window.Notification && Notification.permission === 'default') Notification.requestPermission(); } catch (e) { }
+                }
+            });
+        }
+        function updateSwalProgress(pct, msg) {
+            try {
+                var bar = document.getElementById('swal-progress-bar');
+                var pm = document.getElementById('swal-progress-msg');
+                if (bar) { bar.style.width = pct + '%'; bar.textContent = pct + '%'; }
+                if (pm && msg) pm.textContent = msg;
+            } catch (e) { }
+        }
+        function closeSwalUpload() {
+            try { Swal.close(); } catch (e) { }
+        }
         document.getElementById('f').addEventListener('submit', function (e) {
             document.getElementById('out').textContent = 'Enviado via formulário tradicional. Aguarde o retorno do servidor...';
         });
@@ -55,7 +179,7 @@
         document.getElementById('ajax').addEventListener('click', function () {
             var form = document.getElementById('f');
             // generate a client-side id so we can subscribe to progress immediately
-            var clientId = 'upl_' + Date.now() + '_' + Math.random().toString(36).slice(2,9);
+            var clientId = 'upl_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
             var existing = form.querySelector('input[name="client_id"]');
             if (!existing) {
                 var hi = document.createElement('input');
@@ -68,10 +192,17 @@
             }
 
             // persist client id so other pages can subscribe to progress
-            try { localStorage.setItem('improov_client_id', clientId); } catch (e) {}
+            try { localStorage.setItem('improov_client_id', clientId); } catch (e) { }
 
-            // open WS subscription immediately (while upload is happening)
+            // ensure the global WS listener (upload-ws.js) subscribes in THIS tab
+            try { if (window.improovUploadWS && typeof window.improovUploadWS.subscribe === 'function') window.improovUploadWS.subscribe(clientId); } catch (e) {}
+
+            // open WS subscription immediately for this page's UI (while upload is happening)
             startProgressWS(clientId);
+
+            // show a SweetAlert modal for first-phase progress and guard unload
+            enableUnloadGuard();
+            showSwalUpload();
 
             var fd = new FormData(form);
             var out = document.getElementById('out');
@@ -97,6 +228,8 @@
                     var pct = Math.round((e.loaded / e.total) * 100);
                     out.textContent += 'Upload progresso: ' + pct + '% (' + e.loaded + '/' + e.total + ')\n';
                     try {
+                        // update Swal progress UI if present
+                        updateSwalProgress(pct, 'Enviando... ' + pct + '%');
                         var pb = document.getElementById('progressBar');
                         var pm = document.getElementById('progressMsg');
                         if (pb) {
@@ -106,13 +239,14 @@
                         if (pm) {
                             pm.textContent = 'Enviando... ' + pct + '%';
                         }
-                    } catch (e) {}
+                    } catch (e) { }
                 } else {
                     out.textContent += 'Upload progresso: ' + e.loaded + ' bytes enviados\n';
                     try {
+                        updateSwalProgress(0, 'Enviando... ' + e.loaded + ' bytes enviados');
                         var pm2 = document.getElementById('progressMsg');
                         if (pm2) pm2.textContent = 'Enviando... ' + e.loaded + ' bytes enviados';
-                    } catch (e) {}
+                    } catch (e) { }
                 }
             };
 
@@ -121,23 +255,35 @@
                     try {
                         var json = JSON.parse(xhr.responseText);
                         out.textContent += '\nResposta (JSON):\n' + JSON.stringify(json, null, 2) + '\n';
+                        // first-phase complete: close SweetAlert and remove guard
+                        closeSwalUpload();
+                        disableUnloadGuard();
                         // subscribe to websocket progress if an id was returned
                         if (Array.isArray(json) && json[0] && json[0].id) {
-                            try { localStorage.setItem('improov_client_id', json[0].id); } catch (e) {}
+                            try { localStorage.setItem('improov_client_id', json[0].id); } catch (e) { }
+                            try { if (window.improovUploadWS && typeof window.improovUploadWS.subscribe === 'function') window.improovUploadWS.subscribe(json[0].id); } catch (e) {}
                             startProgressWS(json[0].id);
                         } else if (json.id) {
-                            try { localStorage.setItem('improov_client_id', json.id); } catch (e) {}
+                            try { localStorage.setItem('improov_client_id', json.id); } catch (e) { }
+                            try { if (window.improovUploadWS && typeof window.improovUploadWS.subscribe === 'function') window.improovUploadWS.subscribe(json.id); } catch (e) {}
                             startProgressWS(json.id);
                         }
                     } catch (err) {
+                        closeSwalUpload();
+                        disableUnloadGuard();
                         out.textContent += '\nResposta (texto):\n' + xhr.responseText + '\n';
                     }
                 } else {
+                    closeSwalUpload();
+                    disableUnloadGuard();
                     out.textContent += '\nErro HTTP: ' + xhr.status + '\n' + xhr.responseText + '\n';
                 }
             };
 
             xhr.onerror = function () {
+                closeSwalUpload();
+                disableUnloadGuard();
+                Swal.fire({ icon: 'error', title: 'Erro', text: 'Erro de rede ao enviar o arquivo.' });
                 out.textContent += '\nErro de rede ao enviar o arquivo.\n';
             };
 
@@ -151,22 +297,28 @@
         function startProgressWS(id) {
             if (!id) return;
             var out = document.getElementById('out');
-            // inject progress UI if not present
-            if (!document.getElementById('progressWrap')) {
-                var div = document.createElement('div');
-                div.id = 'progressWrap';
-                div.style = 'margin-top:12px;';
-                div.innerHTML = '<label>Progresso:</label>' +
-                    '<div style="position:fixed;top:0;width:100%;background:#eee;border:1px solid #ccc;height:18px;border-radius:4px;overflow:hidden;">' +
-                    '<div id="progressBar" style="height:100%;width:0%;background:#4caf50;text-align:center;color:#fff;font-size:12px;line-height:18px;">0%</div>' +
-                    '</div>' +
-                    '<div id="progressMsg" style="margin-top:6px;font-size:13px;color:#333;"></div>';
-                out.parentNode.insertBefore(div, out.nextSibling);
+            // inject progress UI if not present (skipped when using SweetAlert UI)
+            if (!window.improov_use_swal) {
+                if (!document.getElementById('progressWrap')) {
+                    var div = document.createElement('div');
+                    div.id = 'progressWrap';
+                    div.style = 'margin-top:12px;';
+                    div.innerHTML = '<label>Progresso:</label>' +
+                        '<div style="position:fixed;top:0;width:100%;background:#eee;border:1px solid #ccc;height:18px;border-radius:4px;overflow:hidden;">' +
+                        '<div id="progressBar" style="height:100%;width:0%;background:#4caf50;text-align:center;color:#fff;font-size:12px;line-height:18px;">0%</div>' +
+                        '</div>' +
+                        '<div id="progressMsg" style="margin-top:6px;font-size:13px;color:#333;"></div>';
+                    out.parentNode.insertBefore(div, out.nextSibling);
+                }
+                var wrap = document.getElementById('progressWrap');
+                var bar = document.getElementById('progressBar');
+                var msg = document.getElementById('progressMsg');
+                wrap.style.display = 'block';
+            } else {
+                // when using Swal, the SweetAlert modal shows first-phase progress; keep legacy variables nullable
+                var bar = document.getElementById('progressBar');
+                var msg = document.getElementById('progressMsg');
             }
-            var wrap = document.getElementById('progressWrap');
-            var bar = document.getElementById('progressBar');
-            var msg = document.getElementById('progressMsg');
-            wrap.style.display = 'block';
 
             // build ws url and log it for debugging
             var wsUrl;
@@ -186,7 +338,7 @@
                 }
                 // if ws is already open, send subscribe immediately and set 0%
                 if (ws && ws.readyState === WebSocket.OPEN) {
-                    try { ws.send(JSON.stringify({ subscribe: id })); } catch (e) {}
+                    try { ws.send(JSON.stringify({ subscribe: id })); } catch (e) { }
                     try {
                         if (document.getElementById('progressBar')) {
                             document.getElementById('progressBar').style.width = '0%';
@@ -195,7 +347,7 @@
                         if (document.getElementById('progressMsg')) {
                             document.getElementById('progressMsg').textContent = 'Conectado — aguardando progresso...';
                         }
-                    } catch (e) {}
+                    } catch (e) { }
                 }
             } catch (e) {
                 console.error('Falha ao criar WebSocket', e);
@@ -209,7 +361,7 @@
                 try {
                     // tell server which id we want updates for (server may ignore)
                     ws.send(JSON.stringify({ subscribe: id }));
-                } catch (e) {}
+                } catch (e) { }
                 // set explicit 0% UI state when connection opens
                 try {
                     if (document.getElementById('progressBar')) {
@@ -219,7 +371,7 @@
                     if (document.getElementById('progressMsg')) {
                         document.getElementById('progressMsg').textContent = 'Conectado — aguardando progresso...';
                     }
-                } catch (e) {}
+                } catch (e) { }
             };
 
             ws.onmessage = function (ev) {
@@ -230,20 +382,31 @@
 
                     if (payload && payload.id === id) {
                         var p = payload.progress || 0;
-                        bar.style.width = p + '%';
-                        bar.textContent = p + '%';
-                        msg.textContent = payload.message || payload.status || '';
+                        var displayMsg = payload.message || payload.status || '';
+                        // update either the injected top-bar UI or the SweetAlert modal
+                        try {
+                            if (bar) {
+                                bar.style.width = p + '%';
+                                bar.textContent = p + '%';
+                            } else {
+                                // update Swal modal progress if present
+                                updateSwalProgress(p, displayMsg);
+                            }
+                        } catch (e) { }
+                        try { if (msg) msg.textContent = displayMsg; } catch (e) { }
 
-                        // show a single alert when the NAS-side transfer finishes (100% / done)
+                        // detect done state but do not show blocking alert here; push notification handled by upload-ws.js
                         var isDone = (payload.progress === 100) || (payload.status && payload.status.toLowerCase() === 'done');
                         if (isDone && !alertedJobs[id]) {
                             alertedJobs[id] = true;
                             try {
-                                alert('Upload concluído com sucesso!');
-                            } catch (e) {
-                                // fallback: write to progress message
-                                msg.textContent = (msg.textContent ? msg.textContent + ' ' : '') + 'Upload concluído com sucesso!';
-                            }
+                                if (msg) {
+                                    msg.textContent = (msg.textContent ? msg.textContent + ' ' : '') + 'Upload concluído no servidor.';
+                                } else {
+                                    updateSwalProgress(100, displayMsg || 'Upload concluído no servidor.');
+                                }
+                            } catch (e) { }
+                            try { localStorage.removeItem('improov_client_id'); } catch (e) { }
                         }
                     }
                 } catch (err) {

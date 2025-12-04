@@ -26,15 +26,58 @@
 
     function notify(title, body) {
         // prefer Notifications API
-        if (window.Notification && Notification.permission === 'granted') {
-            try { new Notification(title, { body }); return; } catch (e) {}
-        }
-        if (window.Notification && Notification.permission !== 'denied') {
-            Notification.requestPermission().then(p => { if (p === 'granted') new Notification(title, { body }); });
-            return;
-        }
-        // fallback: in-page alert
-        try { alert(title + '\n' + body); } catch (e) { log('notify fallback', e); }
+        try {
+            if (window.Notification) {
+                if (Notification.permission === 'granted') {
+                    new Notification(title, { body });
+                    return;
+                }
+                if (Notification.permission === 'default') {
+                    // request permission and notify if granted
+                    Notification.requestPermission().then(p => { if (p === 'granted') try { new Notification(title, { body }); } catch (e) { log('notify new error', e); } });
+                    return;
+                }
+            }
+        } catch (e) { log('notify check error', e); }
+
+        // fallback UI: small transient toast in-page
+        try {
+            var t = document.createElement('div');
+            t.textContent = title + ' — ' + body;
+            t.style.position = 'fixed';
+            t.style.right = '16px';
+            t.style.bottom = '16px';
+            t.style.background = 'rgba(0,0,0,0.85)';
+            t.style.color = 'white';
+            t.style.padding = '10px 14px';
+            t.style.borderRadius = '8px';
+            t.style.zIndex = 99999;
+            t.style.fontSize = '13px';
+            document.body.appendChild(t);
+            setTimeout(function () { try { t.remove(); } catch (e) {} }, 6000);
+        } catch (e) { log('notify fallback', e); }
+    }
+
+    // ensure notification for payload (handles permission flow)
+    function ensureNotify(payload) {
+        var title = 'Upload concluído';
+        var body = payload.message || 'Upload finalizado com sucesso.';
+        try {
+            if (window.Notification && Notification.permission === 'granted') {
+                notify(title, body);
+                return;
+            }
+            if (window.Notification && Notification.permission === 'default') {
+                // try requesting permission on user gesture; if browser blocks, fallback will show
+                Notification.requestPermission().then(p => {
+                    if (p === 'granted') notify(title, body);
+                    else notify(title, body); // will use in-page fallback
+                }).catch(function (e) { log('requestPermission error', e); notify(title, body); });
+                return;
+            }
+        } catch (e) { log('ensureNotify error', e); }
+        // fallback
+        notify(title, body);
     }
 
     function connect() {
@@ -75,7 +118,7 @@
                     markNotified(payload.id);
                     // also broadcast so other tabs update quickly
                     try { bc.postMessage({ type: 'notified', id: payload.id }); } catch (e) {}
-                    notify('Upload concluído', payload.message || 'Upload finalizado com sucesso.');
+                    try { ensureNotify(payload); } catch (e) { notify('Upload concluído', payload.message || 'Upload finalizado com sucesso.'); }
                 }
                 // optionally: dispatch a DOM event for pages to hook into
                 try {

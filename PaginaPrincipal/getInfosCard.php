@@ -166,7 +166,7 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
             FROM arquivo_log al
             LEFT JOIN funcao_imagem fi ON al.funcao_imagem_id = fi.idfuncao_imagem
             LEFT JOIN funcao f ON fi.funcao_id = f.idfuncao
-            WHERE fi.imagem_id = " . $idImagemSelecionada . " AND al.status = 'atualizado'
+            WHERE fi.imagem_id = " . $idImagemSelecionada . " AND al.status IN ('atualizado', 'concluido')
             ORDER BY al.criado_em DESC";
 
         if ($resAnteriores = $conn->query($sqlArquivosAnteriores)) {

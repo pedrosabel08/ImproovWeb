@@ -569,7 +569,7 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
 
 
     const today = new Date();
-    today.setDate(today.getDate() + 2); // Adiciona 2 dias
+    today.setDate(today.getDate() + 1); // Adiciona 2 dias
     const day = String(today.getDate()).padStart(2, '0');
 
     // Obtém o número do mês (0 = Janeiro, 11 = Dezembro)
@@ -765,6 +765,11 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
                 if (rowData.length >= 3) {
                     rowData[2] = 'Variação de proporção';
                 }
+            } else if (isAnimacao && Math.abs((valor || 0) - 175) < 0.01) {
+                // Se for animacao com valor 175, renomear para Pós-Produção
+                if (rowData.length >= 3) {
+                    rowData[2] = 'Pós-Produção';
+                }
             }
 
             if (rowData.length) {
@@ -802,13 +807,12 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
     // // const novaTabelaHeaders = ['Extra', 'Valor'];
     // const novaTabelaHeaders = ['Categoria', 'Valor'];
     // const novaTabelaBody = [
-    //     ['Atendimento', '3000,00'],
-    //     // ['Fixo', '1600,00'],
+    //     // ['Atendimento', '3000,00'],
     //     // ['Bônus', '350,00'],
-    //     // ['Reembolso almoço', '38,00'],
+    //     ['Reembolso almoço', '152,00'],
     //     // ['Desconto de imagem: 5. HAA_HOR Fachada Fora', '-350,00'],
-    //     // ['Gasolina', '88,00'],
-    //     // ['Diaria Drone', '525,00'],
+    //     ['Gasolina', '342,00'],
+    //     ['Diaria Drone', '700,00'],
     //     // ['Outros', '490,00']
     // ];
 

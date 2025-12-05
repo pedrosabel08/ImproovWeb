@@ -13,7 +13,7 @@ try {
     JOIN entregas e ON ei.entrega_id = e.id
     JOIN status_imagem si ON si.idstatus = e.status_id
     LEFT JOIN imagens_cliente_obra i ON ei.imagem_id = i.idimagens_cliente_obra
-    WHERE MONTH(ei.data_entregue) = ? AND YEAR(ei.data_entregue) = ?
+    WHERE MONTH(ei.data_entregue) = ? AND YEAR(ei.data_entregue) = ? AND i.obra_id <> 74
     GROUP BY e.status_id, si.nome_status";
 
     $stmt = $conn->prepare($sql);

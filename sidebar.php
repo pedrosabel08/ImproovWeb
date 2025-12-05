@@ -24,13 +24,13 @@
                 <label for="">Insights</label>
                 <li><a title="Página Principal" href="https://improov.com.br/flow/ImproovWeb/inicio.php"><i class="fas fa-home"></i><span> Página Principal</span></a></li>
                 <li><a title="Lista Pós-Produção" href="https://improov.com.br/flow/ImproovWeb/Pos-Producao"><i class="fas fa-list"></i><span> Lista Pós-Produção</span></a></li>
-                <li><a title="Lista Alteração" href="https://improov.com.br/flow/ImproovWeb/Alteracao"><i class="fa-solid fa-user-pen"></i><span> Lista Alteração</span></a></li>
+                <!-- <li><a title="Lista Alteração" href="https://improov.com.br/flow/ImproovWeb/Alteracao"><i class="fa-solid fa-user-pen"></i><span> Lista Alteração</span></a></li> -->
                 <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 3)): ?>
                     <li><a title="Recebimento de arquivos" href="https://improov.com.br/flow/ImproovWeb/Arquivos"><i class="fas fa-file"></i><span> Arquivos</span></a></li>
                     <!-- <li><a title="Infos Cliente" href="https://improov.com.br/flow/ImproovWeb/infoCliente"><i class="fas fa-chart-line"></i><span> Infos Cliente</span></a></li> -->
                 <?php endif; ?>
                 <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 4)): ?>
-                    <li><a title="Lista Animação" href="https://improov.com.br/flow/ImproovWeb/Animacao"><i class="fas fa-film"></i><span> Lista Animação</span></a></li>
+                    <!-- <li><a title="Lista Animação" href="https://improov.com.br/flow/ImproovWeb/Animacao"><i class="fas fa-film"></i><span> Lista Animação</span></a></li> -->
                 <?php endif; ?>
 
                 <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1)): ?>

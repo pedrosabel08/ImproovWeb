@@ -569,7 +569,7 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
 
 
     const today = new Date();
-    today.setDate(today.getDate() + 1); // Adiciona 2 dias
+    today.setDate(today.getDate() + 0); // Adiciona 2 dias
     const day = String(today.getDate()).padStart(2, '0');
 
     // Obtém o número do mês (0 = Janeiro, 11 = Dezembro)

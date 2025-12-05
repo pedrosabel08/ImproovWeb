@@ -104,12 +104,16 @@ $sqlTarefas = "SELECT
     status,
     prioridade,
     CASE 
-        WHEN prazo < CURDATE() AND status <> 'Finalizado' THEN 'Atrasada'
+        WHEN status = 'Finalizado' THEN 'Finalizada'
+        WHEN prazo < CURDATE() THEN 'Atrasada'
+        WHEN prazo = CURDATE() THEN 'Hoje'
         ELSE 'Dentro do prazo'
     END AS situacao
 FROM tarefas
-WHERE colaborador_id = ? AND (status <> 'Finalizado' && prazo < CURDATE())
-ORDER BY prazo ASC;";
+WHERE colaborador_id = ?
+  AND status <> 'Finalizado'
+  AND prazo <= CURDATE()
+ORDER BY prazo ASC";
 $stmtTarefas = $conn->prepare($sqlTarefas);
 $stmtTarefas->bind_param("i", $colaboradorId);
 $stmtTarefas->execute();

@@ -19,7 +19,11 @@ if (!is_dir($failedDir)) mkdir($failedDir, 0777, true);
 // Config SFTP (pode ajustar conforme necessário)
 $ftp_user = "flow";
 $ftp_pass = "flow@2025";
-$ftp_host = "imp-nas.ddns.net";
+// Load environment and prefer NAS_IP or NAS_HOST to avoid DNS issues
+load_dotenv_if_present();
+$__envNasIp = getenv('NAS_IP') ?: null;
+$__envNasHost = getenv('NAS_HOST') ?: null;
+$ftp_host = $__envNasIp ?: ($__envNasHost ?: "imp-nas.ddns.net");
 $ftp_port = 2222;
 
 // Slack webhook URL: set in environment `SLACK_WEBHOOK_URL`
@@ -136,6 +140,37 @@ function ensure_remote_dir_recursive(SFTP $sftp, string $dir): bool
         }
     }
     return $sftp->is_dir($dir);
+}
+
+// Resolve hostname up front and provide a safe connector that won't fatal on DNS
+function resolve_hostname_safe(string $host): ?string
+{
+    $ip = @gethostbyname($host);
+    if (!$ip || $ip === $host) {
+        error_log("[upload_worker] DNS resolution failed for host: {$host}");
+        return null;
+    }
+    return $ip;
+}
+
+function sftp_connect_safe(string $host, int $port, string $user, string $pass): ?SFTP
+{
+    $ip = resolve_hostname_safe($host);
+    if ($ip === null) return null;
+    try {
+        $sftp = new SFTP($ip, $port);
+        if (!$sftp->login($user, $pass)) {
+            error_log('[upload_worker] SFTP login failed');
+            return null;
+        }
+        return $sftp;
+    } catch (UnableToConnectException $e) {
+        error_log('[upload_worker] SFTP connect error: ' . $e->getMessage());
+        return null;
+    } catch (Exception $e) {
+        error_log('[upload_worker] SFTP generic error: ' . $e->getMessage());
+        return null;
+    }
 }
 
 // Converte caminho do NAS Linux para caminho acessível no Windows (Z:\)
@@ -577,6 +612,10 @@ do {
         // ensure attempts count
         $meta['attempts'] = isset($meta['attempts']) ? (int)$meta['attempts'] : 0;
 
+        // determine file type early for logging even on failures
+        $ext = pathinfo($staged, PATHINFO_EXTENSION);
+        $tipo = in_array(strtolower($ext), ['pdf']) ? 'PDF' : 'IMG';
+
         $jobId = $meta['id'] ?? pathinfo($processingMeta, PATHINFO_FILENAME);
         publishProgress($redis, $jobId, 0, 'claimed', 'Job claimed by worker');
         // update DB status to 'processando'
@@ -610,8 +649,8 @@ do {
         $upload_ok = '';
         foreach ($clientes_base as $base) {
             $destino_base = $base . '/' . $nomenclatura . '/' . $pasta_funcao;
-            $sftp = new SFTP($ftp_host, $ftp_port);
-            if (@$sftp->login($ftp_user, $ftp_pass) && @$sftp->is_dir($destino_base)) {
+            $sftp = sftp_connect_safe($ftp_host, $ftp_port, $ftp_user, $ftp_pass);
+            if ($sftp && @$sftp->is_dir($destino_base)) {
                 $upload_ok = $destino_base;
                 break;
             }
@@ -625,16 +664,20 @@ do {
             // Update DB and publish failure
             ensure_db_connection_local();
             create_arquivo_log_table_if_missing();
-            try { create_log_entries_if_missing($processingMeta, $meta, null, null, filesize($staged), $tipo); } catch (Exception $_) {}
+            $tamanhoFail = file_exists($staged) ? @filesize($staged) : null;
+            try { create_log_entries_if_missing($processingMeta, $meta, null, null, $tamanhoFail, $tipo); } catch (Exception $_) {}
             if (!empty($meta['log_ids'])) {
                 update_log_entries_status($meta['log_ids'], 'falha', null, null, null, null);
             }
             publishProgress($redis, $jobId, 0, 'failed', 'Destino remoto não encontrado');
+            // Slack failure notification
+            $colab = $meta['post']['idcolaborador'] ?? null;
+            if ($colab) {
+                try { send_slack_notification_for_colaborador($colab, $meta, null, null, false); } catch (Exception $_) {}
+            }
             continue;
         }
 
-        $ext = pathinfo($staged, PATHINFO_EXTENSION);
-        $tipo = in_array(strtolower($ext), ['pdf']) ? 'PDF' : 'IMG';
         $semAcento = removerTodosAcentos_worker($nome_funcao);
         $processo = strtoupper(mb_substr($semAcento, 0, 3, 'UTF-8'));
         $nome_base = "{$numeroImagem}.{$nomenclatura_clean}-{$primeiraPalavra_clean}-{$tipo}-{$processo}";
@@ -684,6 +727,11 @@ do {
             if (!empty($meta['log_ids'])) {
                 update_log_entries_status($meta['log_ids'], 'falha', null, null, null, null);
             }
+            // Slack failure notification
+            $colab = $meta['post']['idcolaborador'] ?? null;
+            if ($colab) {
+                try { send_slack_notification_for_colaborador($colab, $meta, null, null, false); } catch (Exception $_) {}
+            }
             continue;
         }
         if (!ensure_remote_dir_recursive($sftpPrep, $remote_dir)) {
@@ -696,6 +744,11 @@ do {
             ensure_db_connection_local();
             if (!empty($meta['log_ids'])) {
                 update_log_entries_status($meta['log_ids'], 'falha', null, null, null, null);
+            }
+            // Slack failure notification
+            $colab = $meta['post']['idcolaborador'] ?? null;
+            if ($colab) {
+                try { send_slack_notification_for_colaborador($colab, $meta, null, null, false); } catch (Exception $_) {}
             }
             continue;
         }
@@ -737,14 +790,29 @@ do {
         // after retry loop: finalize
         if ($ok) {
             echo "Enviado com sucesso: $remote_path\n";
-            // mover arquivos para sent
-            rename($staged, $processedDir . '/' . basename($staged));
-            rename($processingMeta, $processedDir . '/' . basename($processingMeta));
-            publishProgress($redis, $jobId, 100, 'done', 'Finalizado e movido para sent');
+            // calcular tamanho final antes de remover o arquivo local
+            $tamanho_final = @filesize($staged) ?: null;
+
+            // remover o arquivo staged para evitar acumulo no VPS; se falhar, mover para `sent` como fallback
+            if (file_exists($staged)) {
+                if (!@unlink($staged)) {
+                    @rename($staged, $processedDir . '/' . basename($staged));
+                    error_log("[upload_worker] warning: failed to unlink staged, moved to sent as fallback: {$staged}");
+                }
+            }
+
+            // remover o arquivo de metadados processing; se falhar, mover para `sent` como fallback
+            if (file_exists($processingMeta)) {
+                if (!@unlink($processingMeta)) {
+                    @rename($processingMeta, $processedDir . '/' . basename($processingMeta));
+                    error_log("[upload_worker] warning: failed to unlink processing meta, moved to sent as fallback: {$processingMeta}");
+                }
+            }
+
+            publishProgress($redis, $jobId, 100, 'done', 'Finalizado e removido localmente');
             // final DB update and Slack notify (status: concluido)
             ensure_db_connection_local();
             if (!empty($meta['log_ids'])) {
-                $tamanho_final = @filesize($processedDir . '/' . basename($staged));
                 // salva caminho acessível no Windows (Z:\) no banco
                 update_log_entries_status($meta['log_ids'], 'concluido', $windows_path, $nome_final, $tamanho_final ?: null, $tipo);
             }

@@ -39,7 +39,6 @@ FROM (
 ) AS t
 GROUP BY t.funcao_id, t.nome_funcao, t.nome_colaborador
 ORDER BY
-  CASE WHEN t.nome_funcao IN ('Finalização Parcial','Finalização Completa','Finalização de Planta Humanizada') THEN 0 ELSE 1 END,
   FIELD(t.nome_funcao, 'Caderno', 'Filtro de assets', 'Modelagem', 'Composição', 'Pré-finalização', 'Finalização Parcial','Finalização Completa','Finalização de Planta Humanizada', 'Pós-produção', 'Alteração'),
   t.nome_colaborador;";
 $stmt = $conn->prepare($sql); // Usa a conexão do arquivo conexao.php

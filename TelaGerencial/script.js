@@ -263,6 +263,7 @@ function gerarRelatorio() {
                     ${header}
                     <h3>Produção por Colaborador</h3>
                     ${tabelaProducaoHtml || '<p>Sem dados</p>'}
+                    <br><br><br><br>
                     <h3>Produção por Função</h3>
                     ${tabelaFuncaoHtml || '<p>Sem dados</p>'}
                     <h3>Imagens entregues por mês</h3>

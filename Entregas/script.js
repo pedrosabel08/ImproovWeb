@@ -7,6 +7,136 @@ document.addEventListener('DOMContentLoaded', () => {
     const modalProgresso = document.getElementById('modalProgresso');
     const modalImagens = document.getElementById('modalImagens');
 
+    // global store of fetched entregas so we can filter client-side
+    let entregasAll = [];
+
+    // Helper: create card element for a entrega
+    function createCard(entrega) {
+        const card = document.createElement('div');
+        card.classList.add('card-entrega');
+        card.dataset.id = entrega.id;
+
+            // add status-based class (use nome_etapa as canonical status)
+            const statusRaw = String(entrega.nome_etapa || entrega.kanban_status || entrega.status || 'UNKNOWN');
+        const statusCode = statusRaw.trim().replace(/\s+/g, '-').replace(/[^\w-]/g, '').toUpperCase() || 'UNKNOWN';
+        card.classList.add('status-' + statusCode);
+
+        const readyCount = parseInt(entrega.ready_count || 0, 10);
+
+        card.innerHTML = `
+                <div class="card-header">
+                    <h4>${entrega.nomenclatura || ''} - ${entrega.nome_etapa || ''}</h4>
+                    ${readyCount > 0 ? `<div class="entrega-badge" title="Imagens prontas para entrega">${readyCount}</div>` : ''}
+                </div>
+                <p><strong>Status:</strong> ${entrega.nome_etapa || entrega.status || entrega.kanban_status || ''}</p>
+                <p><strong>Prazo:</strong> ${entrega.data_prevista ? formatarData(entrega.data_prevista) : '-'}</p>
+                <div class="progress">
+                    <div class="progress-bar" style="width:${entrega.pct_entregue || 0}%"></div>
+                </div>
+                <small>${entrega.entregues || 0}/${entrega.total_itens || 0} imagens entregues</small>
+            `;
+
+        return card;
+    }
+
+    // Render a list of entregas into the columns
+    function renderEntregas(list) {
+        // clear existing cards
+        columns.forEach(col => col.querySelectorAll('.card-entrega').forEach(card => card.remove()));
+
+        list.forEach(entrega => {
+            // find column based on dataset statuses
+            const col = Array.from(columns).find(c => {
+                const statuses = (c.dataset.status || '').split(',').map(s => s.trim().toLowerCase());
+                // try to match using kanban_status first, then status, then nome_etapa
+                const entStatus = String(entrega.kanban_status || entrega.status || entrega.nome_etapa || '').trim().toLowerCase();
+                return entStatus && statuses.includes(entStatus);
+            });
+
+            if (!col) return;
+            const card = createCard(entrega);
+            col.appendChild(card);
+        });
+    }
+
+    // Populate filter selects (obra/status) from the fetched entregas
+    function populateFiltersFrom(entregas) {
+        try {
+            const obraSelect = document.getElementById('filterObra');
+            const statusSelect = document.getElementById('filterStatus');
+            if (!obraSelect || !statusSelect) return;
+
+            // derive unique obras and statuses present in entregas
+            const obras = new Map();
+            const statuses = new Map();
+            entregas.forEach(e => {
+                const obraId = e.obra_id || e.obraId || e.id_obra || null;
+                const obraLabel = e.obra_nome || e.nomenclatura || (obraId ? `Obra ${obraId}` : '');
+                if (obraId) obras.set(String(obraId), obraLabel);
+
+                // derive status code from the same fields used in filtering/rendering
+                const st = String(e.nome_etapa || '').trim();
+                if (st) statuses.set(st, st);
+            });
+
+            // clear and fill obra select (keep first option)
+            const obraDefault = obraSelect.querySelector('option');
+            obraSelect.innerHTML = '';
+            obraSelect.appendChild(obraDefault.cloneNode(true));
+            obras.forEach((label, id) => {
+                const opt = document.createElement('option');
+                opt.value = id;
+                opt.textContent = label;
+                obraSelect.appendChild(opt);
+            });
+
+            // clear and fill status select
+            const statusDefault = statusSelect.querySelector('option');
+            statusSelect.innerHTML = '';
+            statusSelect.appendChild(statusDefault.cloneNode(true));
+            statuses.forEach((label) => {
+                const opt = document.createElement('option');
+                opt.value = label;
+                opt.textContent = label;
+                statusSelect.appendChild(opt);
+            });
+        } catch (err) {
+            console.error('Erro ao popular filtros:', err);
+        }
+    }
+
+    // Apply current filter selections to the global entregasAll and render
+    function applyFilters() {
+        const obraVal = (document.getElementById('filterObra') || {}).value || '';
+        const statusVal = (document.getElementById('filterStatus') || {}).value || '';
+
+        const filtered = entregasAll.filter(e => {
+            let okObra = true;
+            let okStatus = true;
+
+            if (obraVal) {
+                const oid = String(e.obra_id || e.obraId || e.id_obra || '');
+                okObra = oid === String(obraVal);
+            }
+            if (statusVal) {
+                const st = String(e.nome_etapa || e.kanban_status || e.status || '').trim();
+                // compare normalized (case-insensitive)
+                okStatus = st.toLowerCase() === String(statusVal).trim().toLowerCase();
+            }
+            return okObra && okStatus;
+        });
+
+        renderEntregas(filtered);
+    }
+
+    // Clear filters UI and render all
+    function clearFilters() {
+        const obraSelect = document.getElementById('filterObra');
+        const statusSelect = document.getElementById('filterStatus');
+        if (obraSelect) obraSelect.value = '';
+        if (statusSelect) statusSelect.value = '';
+        renderEntregas(entregasAll);
+    }
 
     // Conjuntos de classificação de status/substatus (normalizados em lowercase)
     const STATUS_PENDENTE = new Set(['entrega pendente']);
@@ -64,38 +194,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await fetch('listar_entregas.php');
             const entregas = await res.json();
 
-            // Limpa colunas antes de preencher
-            columns.forEach(col => col.querySelectorAll('.card-entrega').forEach(card => card.remove()));
+            entregasAll = Array.isArray(entregas) ? entregas : [];
 
-            entregas.forEach(entrega => {
-                // Busca a coluna cujo data-status contém o status da entrega
-                const col = Array.from(document.querySelectorAll('.column')).find(c => {
-                    const statuses = c.dataset.status.split(',').map(s => s.trim());
-                    return statuses.includes(entrega.kanban_status);
-                });
-
-                if (!col) return;
-
-                const card = document.createElement('div');
-                card.classList.add('card-entrega');
-                card.dataset.id = entrega.id;
-                // Badge de imagens prontas para entrega (somente exibida no Kanban)
-                const readyCount = parseInt(entrega.ready_count || 0, 10);
-
-                card.innerHTML = `
-                <div class="card-header">
-                    <h4>${entrega.nomenclatura} - ${entrega.nome_etapa}</h4>
-                    ${readyCount > 0 ? `<div class="entrega-badge" title="Imagens prontas para entrega">${readyCount}</div>` : ''}
-                </div>
-                <p><strong>Status:</strong> ${entrega.status}</p>
-                <p><strong>Prazo:</strong> ${formatarData(entrega.data_prevista)}</p>
-                <div class="progress">
-                    <div class="progress-bar" style="width:${entrega.pct_entregue}%"></div>
-                </div>
-                <small>${entrega.entregues}/${entrega.total_itens} imagens entregues</small>
-            `;
-                col.appendChild(card);
-            });
+            populateFiltersFrom(entregasAll);
+            renderEntregas(entregasAll);
         } catch (err) {
             console.error('Erro ao carregar o Kanban:', err);
         }
@@ -103,6 +205,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     carregarKanban();
+
+    // wire filter UI events (after initial load will populate options)
+    const obraSelectEl = document.getElementById('filterObra');
+    const statusSelectEl = document.getElementById('filterStatus');
+
+    if (obraSelectEl) obraSelectEl.addEventListener('change', () => applyFilters());
+    if (statusSelectEl) statusSelectEl.addEventListener('change', () => applyFilters());
 
     // --- ABRIR MODAL AO CLICAR EM UM CARD ---
     document.addEventListener('click', async e => {

@@ -9,6 +9,12 @@
     --modal-bg: #1a1a1a;
     --progress-bg: #2a2a2a;
     --progress-fill: #00adb5;
+    /* status colors */
+    --status-R00: #00b894;
+    --status-R01: #ffb142;
+    --status-R02: #ff4757;
+    --status-EF: #3742fa;
+    --status-default: #6c757d;
 }
 
 /* ===== GLOBAL ===== */
@@ -30,6 +36,15 @@ header {
     font-size: 1.4rem;
     font-weight: 600;
     color: var(--accent-color);
+}
+
+.selectFilter {
+    margin-left: 6px;
+    padding: 4px;
+    border-radius: 6px;
+    background: var(--border-color);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
 }
 
 main {
@@ -332,6 +347,35 @@ form#formAdicionarEntrega {
 .status-pendente {
     color: #ffbf00;
     font-weight: 600;
+}
+
+/* ===== STATUS-SPECIFIC CARD STYLES ===== */
+.card-entrega.status-R00 {
+    border-left: 5px solid var(--status-R00);
+}
+
+.card-entrega.status-R01 {
+    border-left: 5px solid var(--status-R01);
+}
+
+.card-entrega.status-R02 {
+    border-left: 5px solid var(--status-R02);
+}
+
+.card-entrega.status-EF {
+    border-left: 5px solid var(--status-EF);
+}
+
+.card-entrega.status-UNKNOWN {
+    border-left: 5px solid var(--status-default);
+}
+
+/* Slightly lift colored cards to help visual separation */
+.card-entrega.status-R00:hover,
+.card-entrega.status-R01:hover,
+.card-entrega.status-R02:hover,
+.card-entrega.status-EF:hover {
+    transform: translateY(-3px) scale(1.02);
 }
 
 

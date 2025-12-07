@@ -31,7 +31,7 @@ $conn->close();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kanban de Entregas</title>
+    <title>Flow | Entregas</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="../PaginaPrincipal/styleIndex.css">
     <link rel="stylesheet" href="../css/styleSidebar.css">
@@ -54,8 +54,23 @@ $conn->close();
 
     ?>
     <div class="container">
-        <header>📦 Kanban de Entregas
-            <button id="adicionar_entrega">Adicionar Entrega</button>
+        <header>
+            <div style="display:flex;align-items:center;gap:12px;">
+                <span>📦 Kanban de Entregas</span>
+                <label style="font-size:0.9rem;color:var(--text-color);">Obra:
+                    <select id="filterObra" class="selectFilter">
+                        <option value="">Todas</option>
+                    </select>
+                </label>
+                <label style="font-size:0.9rem;color:var(--text-color);">Status:
+                    <select id="filterStatus" class="selectFilter">
+                        <option value="">Todos</option>
+                    </select>
+                </label>
+            </div>
+            <div style="margin-left:auto">
+                <button id="adicionar_entrega">Adicionar Entrega</button>
+            </div>
         </header>
 
         <main id="kanban">

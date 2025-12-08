@@ -26,6 +26,7 @@ LEFT JOIN substatus_imagem ss ON ss.id = i.substatus_id
 JOIN obra o ON e.obra_id = o.idobra
 JOIN status_imagem s ON e.status_id = s.idstatus
 GROUP BY e.id
+HAVING total_itens > 0
 ORDER BY ready_count DESC, e.data_prevista DESC";
 
 $res = $conn->query($sql);

@@ -71,7 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const statuses = new Map();
             entregas.forEach(e => {
                 const obraId = e.obra_id || e.obraId || e.id_obra || null;
-                const obraLabel = e.obra_nome || e.nomenclatura || (obraId ? `Obra ${obraId}` : '');
+                const obraLabel = e.nomenclatura || (obraId ? `Obra ${obraId}` : '');
                 if (obraId) obras.set(String(obraId), obraLabel);
 
                 // derive status code from the same fields used in filtering/rendering
@@ -79,22 +79,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (st) statuses.set(st, st);
             });
 
-            // clear and fill obra select (keep first option)
+            // clear and fill obra select (keep first option) - sort by label ascending
             const obraDefault = obraSelect.querySelector('option');
             obraSelect.innerHTML = '';
             obraSelect.appendChild(obraDefault.cloneNode(true));
-            obras.forEach((label, id) => {
+            // convert map to array and sort by label
+            const obraArr = Array.from(obras.entries()).sort((a, b) => a[1].localeCompare(b[1], 'pt', { sensitivity: 'base' }));
+            obraArr.forEach(([id, label]) => {
                 const opt = document.createElement('option');
                 opt.value = id;
                 opt.textContent = label;
                 obraSelect.appendChild(opt);
             });
 
-            // clear and fill status select
+            // clear and fill status select - sort alphabetically
             const statusDefault = statusSelect.querySelector('option');
             statusSelect.innerHTML = '';
             statusSelect.appendChild(statusDefault.cloneNode(true));
-            statuses.forEach((label) => {
+            const statusArr = Array.from(statuses.values()).sort((a, b) => a.localeCompare(b, 'pt', { sensitivity: 'base' }));
+            statusArr.forEach(label => {
                 const opt = document.createElement('option');
                 opt.value = label;
                 opt.textContent = label;
@@ -185,6 +188,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             entregaAtualId = null;
+            carregarKanban();
         });
     });
 

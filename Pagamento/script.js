@@ -236,6 +236,8 @@ document.addEventListener('DOMContentLoaded', function () {
                         checkbox.setAttribute('data-id', item.identificador);
                         checkbox.setAttribute('data-origem', item.origem);
                         checkbox.setAttribute('funcao', item.funcao_id);
+                        // include function name so backend can detect 'Finalização parcial'
+                        checkbox.setAttribute('data-funcao-name', item.nome_funcao || '');
 
                         checkbox.addEventListener('change', function () {
                             if (checkbox.checked) {
@@ -367,7 +369,8 @@ document.addEventListener('DOMContentLoaded', function () {
         var ids = checkboxes.map(cb => ({
             id: parseInt(cb.getAttribute('data-id'), 10),
             origem: cb.getAttribute('data-origem'), // Coletando o atributo origem
-            funcao_id: parseInt(cb.getAttribute('funcao'), 10) // Coletando o atributo funcao_id
+            funcao_id: parseInt(cb.getAttribute('funcao'), 10), // Coletando o atributo funcao_id
+            funcao_name: cb.getAttribute('data-funcao-name') || ''
         }));
 
         if (ids.length > 0) {

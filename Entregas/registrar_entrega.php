@@ -108,9 +108,31 @@ try {
         $stmtObra->close();
     }
 
+    // Calcular contagem total por obra (todas as entregas da obra)
+    $total_obra = 0;
+    $entregues_obra = 0;
+    if ($obra_id) {
+        $stmtObraCounts = $conn->prepare("SELECT COUNT(*) AS total_obra, SUM(CASE WHEN ei.status LIKE 'Entregue%' THEN 1 ELSE 0 END) AS entregues_obra
+            FROM entregas_itens ei
+            JOIN entregas e ON ei.entrega_id = e.id
+            WHERE e.obra_id = ?");
+        $stmtObraCounts->bind_param('i', $obra_id);
+        $stmtObraCounts->execute();
+        $rCounts = $stmtObraCounts->get_result()->fetch_assoc();
+        if ($rCounts) {
+            $total_obra = intval($rCounts['total_obra']);
+            $entregues_obra = intval($rCounts['entregues_obra']);
+        }
+        $stmtObraCounts->close();
+    }
+
 
     // Prepare insert into acompanhamento_email (we'll use it conditionally)
     $insertAcompStmt = $conn->prepare("INSERT INTO acompanhamento_email (obra_id, colaborador_id, assunto, data, ordem, entrega_id, tipo, status) VALUES (?, NULL, ?, ?, ?, ?, ?, ?)");
+
+    // Helper: procura acompanhamento pendente existente para a obra e tipo 'entrega'
+    $findPendingAcompStmt = $conn->prepare("SELECT idacompanhamento_email FROM acompanhamento_email WHERE obra_id = ? AND tipo = 'entrega' AND status = 'pendente' ORDER BY data DESC LIMIT 1");
+    $updateAcompStmt = $conn->prepare("UPDATE acompanhamento_email SET assunto = ?, data = ?, entrega_id = ? WHERE idacompanhamento_email = ?");
 
     // Resolve nome_status using the entrega's status_id if available; otherwise try to match novo_status text.
     $status_nome = $novo_status;
@@ -144,15 +166,36 @@ try {
     }
 
     // Evento de entrega parcial
-    if ($novo_status === 'Parcial' && $old_status !== 'Parcial') {
-        $assunto = 'Entrega parcialmente concluída ('. $entregues . ' de ' . $total . ' itens entregues) na obra ' . $obra_nome . ' com status ' . $status_nome;
+    // Atualiza acompanhamento sempre que a entrega estiver em estado 'Parcial',
+    // inclusive quando já estava parcial e recebe novas imagens.
+    if ($novo_status === 'Parcial') {
+        // Usar contagem pela entrega + contagem por obra para refletir entregas acumuladas
+        $assunto = 'Entrega parcialmente concluída ('. $entregues_obra . ' de ' . $total_obra . ' imagens entregues) com status ' . $status_nome;
         $tipo = 'entrega';
         $status_acomp = 'pendente';
         $data_today = date('Y-m-d');
-        if ($insertAcompStmt) $insertAcompStmt->bind_param('issiiss', $obra_id, $assunto, $data_today, $next_ordem, $entrega_id, $tipo, $status_acomp);
-        if ($insertAcompStmt) $insertAcompStmt->execute();
-        // increment ordem for subsequent insert
-        $next_ordem++;
+
+        // Se existir acompanhamento pendente para esta obra, atualiza em vez de inserir
+        if ($obra_id && $findPendingAcompStmt) {
+            $findPendingAcompStmt->bind_param('i', $obra_id);
+            $findPendingAcompStmt->execute();
+            $rFind = $findPendingAcompStmt->get_result()->fetch_assoc();
+            if ($rFind && isset($rFind['idacompanhamento_email'])) {
+                $acomp_id = intval($rFind['idacompanhamento_email']);
+                if ($updateAcompStmt) {
+                    $updateAcompStmt->bind_param('ssii', $assunto, $data_today, $entrega_id, $acomp_id);
+                    $updateAcompStmt->execute();
+                }
+            } else {
+                if ($insertAcompStmt) $insertAcompStmt->bind_param('issiiss', $obra_id, $assunto, $data_today, $next_ordem, $entrega_id, $tipo, $status_acomp);
+                if ($insertAcompStmt) $insertAcompStmt->execute();
+                $next_ordem++;
+            }
+        } else {
+            if ($insertAcompStmt) $insertAcompStmt->bind_param('issiiss', $obra_id, $assunto, $data_today, $next_ordem, $entrega_id, $tipo, $status_acomp);
+            if ($insertAcompStmt) $insertAcompStmt->execute();
+            $next_ordem++;
+        }
     }
 
     // Evento de entrega concluída
@@ -162,11 +205,31 @@ try {
         $tipo = 'entrega';
         $status_acomp = 'pendente';
         $data_today = date('Y-m-d');
-        if ($insertAcompStmt) $insertAcompStmt->bind_param('issiiss', $obra_id, $assunto, $data_today, $next_ordem, $entrega_id, $tipo, $status_acomp);
-        if ($insertAcompStmt) $insertAcompStmt->execute();
+
+        // Para conclusão também atualizamos acompanhamento pendente se existir (mantendo comportamento consistente)
+        if ($obra_id && $findPendingAcompStmt) {
+            $findPendingAcompStmt->bind_param('i', $obra_id);
+            $findPendingAcompStmt->execute();
+            $rFind = $findPendingAcompStmt->get_result()->fetch_assoc();
+                if ($rFind && isset($rFind['idacompanhamento_email'])) {
+                    $acomp_id = intval($rFind['idacompanhamento_email']);
+                    if ($updateAcompStmt) {
+                        $updateAcompStmt->bind_param('ssii', $assunto, $data_today, $entrega_id, $acomp_id);
+                        $updateAcompStmt->execute();
+                    }
+            } else {
+                if ($insertAcompStmt) $insertAcompStmt->bind_param('issiiss', $obra_id, $assunto, $data_today, $next_ordem, $entrega_id, $tipo, $status_acomp);
+                if ($insertAcompStmt) $insertAcompStmt->execute();
+            }
+        } else {
+            if ($insertAcompStmt) $insertAcompStmt->bind_param('issiiss', $obra_id, $assunto, $data_today, $next_ordem, $entrega_id, $tipo, $status_acomp);
+            if ($insertAcompStmt) $insertAcompStmt->execute();
+        }
     }
 
     if ($insertAcompStmt) $insertAcompStmt->close();
+    if ($findPendingAcompStmt) $findPendingAcompStmt->close();
+    if ($updateAcompStmt) $updateAcompStmt->close();
 
     // Atualizar status da entrega (inclui status_id quando disponível)
     if ($novo_status_id !== null) {

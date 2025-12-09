@@ -5,7 +5,9 @@ use phpseclib3\Net\SFTP;
 
 include '../conexao.php';
 // Start session to capture colaborador_id for auditing
-if (session_status() === PHP_SESSION_NONE) { session_start(); }
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 header('Content-Type: application/json');
 header("Access-Control-Allow-Origin: https://improov.com.br");
 header("Access-Control-Allow-Methods: POST, OPTIONS");
@@ -32,7 +34,10 @@ function load_dotenv($path)
 // --- Slack helpers ---
 function send_slack_webhook($webhookUrl, $text, &$log)
 {
-    if (!$webhookUrl) { $log[] = "Slack webhook not configured"; return false; }
+    if (!$webhookUrl) {
+        $log[] = "Slack webhook not configured";
+        return false;
+    }
     $payload = json_encode(['text' => $text]);
     $ch = curl_init($webhookUrl);
     curl_setopt($ch, CURLOPT_POST, true);
@@ -44,7 +49,7 @@ function send_slack_webhook($webhookUrl, $text, &$log)
     $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
     if ($res === false || $code >= 400) {
-        $log[] = "Slack webhook failed (code=$code): $err / resp=" . substr($res ?: '',0,200);
+        $log[] = "Slack webhook failed (code=$code): $err / resp=" . substr($res ?: '', 0, 200);
         return false;
     }
     $log[] = "Slack webhook sent (code=$code)";
@@ -53,7 +58,10 @@ function send_slack_webhook($webhookUrl, $text, &$log)
 
 function send_slack_token_message($token, $channel, $text, &$log)
 {
-    if (!$token || !$channel) { $log[] = "Slack token or channel missing"; return false; }
+    if (!$token || !$channel) {
+        $log[] = "Slack token or channel missing";
+        return false;
+    }
     // If $channel is not an ID (starts with U/C/D), try to resolve it using users.list
     if (!preg_match('/^[UCD][A-Z0-9]+$/', $channel)) {
         $resolved = resolve_slack_user_id($token, $channel, $log);
@@ -85,7 +93,7 @@ function send_slack_token_message($token, $channel, $text, &$log)
     }
     $json = json_decode($res, true);
     if (!$json || empty($json['ok'])) {
-        $log[] = "Slack API error: " . ($json['error'] ?? substr($res,0,200));
+        $log[] = "Slack API error: " . ($json['error'] ?? substr($res, 0, 200));
         return false;
     }
     $log[] = "Slack message sent via token to $channel";
@@ -195,13 +203,19 @@ if (!$sftp->login($username, $password)) {
 $log[] = "Conectado no servidor SFTP.";
 
 // Helper: tenta enviar via SFTP e registra erros detalhados; faz fallback para enviar o conteúdo do arquivo
-function sftpPutWithFallback($sftp, $remotePath, $localFile, &$log, &$errors) {
+function sftpPutWithFallback($sftp, $remotePath, $localFile, &$log, &$errors)
+{
     // tentativa 1: enviar como arquivo local
     try {
         if ($sftp->put($remotePath, $localFile, SFTP::SOURCE_LOCAL_FILE)) {
             // aplicar permissões 0777 no arquivo enviado, se possível
             if (method_exists($sftp, 'chmod')) {
-                try { $sftp->chmod(0777, $remotePath); $log[] = "Permissões 0777 aplicadas em $remotePath"; } catch (Exception $e) { $log[] = "Falha chmod após put(local): " . $e->getMessage(); }
+                try {
+                    $sftp->chmod(0777, $remotePath);
+                    $log[] = "Permissões 0777 aplicadas em $remotePath";
+                } catch (Exception $e) {
+                    $log[] = "Falha chmod após put(local): " . $e->getMessage();
+                }
             }
             return true;
         }
@@ -230,7 +244,12 @@ function sftpPutWithFallback($sftp, $remotePath, $localFile, &$log, &$errors) {
                     $log[] = "Fallback: enviado via conteúdo para $remotePath";
                     // aplicar permissões 0777 no arquivo enviado, se possível
                     if (method_exists($sftp, 'chmod')) {
-                        try { $sftp->chmod(0777, $remotePath); $log[] = "Permissões 0777 aplicadas em $remotePath"; } catch (Exception $e) { $log[] = "Falha chmod após put(content): " . $e->getMessage(); }
+                        try {
+                            $sftp->chmod(0777, $remotePath);
+                            $log[] = "Permissões 0777 aplicadas em $remotePath";
+                        } catch (Exception $e) {
+                            $log[] = "Falha chmod após put(content): " . $e->getMessage();
+                        }
                     }
                     return true;
                 } else {
@@ -606,14 +625,24 @@ if (!empty($arquivosTmp) && count($arquivosTmp) > 0 && ($refsSkpModo === 'geral'
                 $log[] = "Criado diretório: $destDir";
                 // tentar definir permissões da pasta
                 if (method_exists($sftp, 'chmod')) {
-                    try { $sftp->chmod(0777, $destDir); $log[] = "Permissões 0777 aplicadas em $destDir"; } catch (Exception $e) { $log[] = "Falha chmod dir $destDir: " . $e->getMessage(); }
+                    try {
+                        $sftp->chmod(0777, $destDir);
+                        $log[] = "Permissões 0777 aplicadas em $destDir";
+                    } catch (Exception $e) {
+                        $log[] = "Falha chmod dir $destDir: " . $e->getMessage();
+                    }
                 }
             }
             if (!$sftp->is_dir($destDir . "/OLD")) {
                 $sftp->mkdir($destDir . "/OLD", 0777, true);
                 $log[] = "Criado diretório: $destDir/OLD";
                 if (method_exists($sftp, 'chmod')) {
-                    try { $sftp->chmod(0777, $destDir . "/OLD"); $log[] = "Permissões 0777 aplicadas em $destDir/OLD"; } catch (Exception $e) { $log[] = "Falha chmod dir $destDir/OLD: " . $e->getMessage(); }
+                    try {
+                        $sftp->chmod(0777, $destDir . "/OLD");
+                        $log[] = "Permissões 0777 aplicadas em $destDir/OLD";
+                    } catch (Exception $e) {
+                        $log[] = "Falha chmod dir $destDir/OLD: " . $e->getMessage();
+                    }
                 }
             }
 
@@ -806,7 +835,7 @@ if (!empty($arquivosPorImagem) && $refsSkpModo === 'porImagem') {
 
             $indice++;
 
-                if (sftpPutWithFallback($sftp, $destFile, $tmpFile, $log, $errors)) {
+            if (sftpPutWithFallback($sftp, $destFile, $tmpFile, $log, $errors)) {
                 $stmt = $conn->prepare("INSERT INTO arquivos 
                 (obra_id, tipo_imagem_id, imagem_id, nome_original, nome_interno, caminho, tipo, versao, status, origem, recebido_por, categoria_id, sufixo, descricao, tamanho, colaborador_id) 
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'atualizado', 'upload_web', 'sistema', ?, ?, ?, ?, ?)");

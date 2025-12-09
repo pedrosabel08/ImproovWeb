@@ -346,12 +346,99 @@ document.getElementById("uploadForm").addEventListener("submit", async function 
         console.log("Final:", key, value);
     }
     try {
-        const response = await fetch('https://improov.com.br/flow/ImproovWeb/Arquivos/upload.php', {
-            method: 'POST',
-            body: formData
+        // Preparar resumo dos parâmetros para exibir no Swal
+        const paramsSummary = [];
+        for (let [key, value] of formData.entries()) {
+            if (value instanceof File) continue; // arquivos listados separadamente
+            if (paramsSummary.find(p => p.key === key)) continue; // evita chaves repetidas
+            paramsSummary.push({ key, value: String(value) });
+        }
+
+        // Lista de nomes de arquivos e tamanho total
+        const fileNames = [];
+        let totalBytes = 0;
+        for (let [k, v] of formData.entries()) {
+            if (v instanceof File) {
+                fileNames.push(v.name + ' (' + Math.round(v.size/1024) + ' KB)');
+                totalBytes += v.size;
+            }
+        }
+
+        // Mostrar Swal com barra de progresso e detalhes
+        const swalHtml = `
+            <div style="text-align:left;margin-bottom:8px">
+                <strong>Parâmetros:</strong>
+                <strong>Arquivos (${fileNames.length}):</strong>
+                <ul style="padding-left:18px;margin:6px 0">${fileNames.map(n => `<li>${n}</li>`).join('')}</ul>
+            </div>
+            <div style="margin-top:8px">
+                <div id="swal-upload-progress" style="width:100%;background:#eee;border-radius:6px;overflow:hidden;height:14px">
+                    <div id="swal-upload-bar" style="width:0%;height:100%;background:#3085d6"></div>
+                </div>
+                <div id="swal-upload-info" style="margin-top:6px;font-size:13px;color:#666">0% - 0 KB de ${Math.round(totalBytes/1024)} KB</div>
+            </div>`;
+
+        let xhr = new XMLHttpRequest();
+        xhr.open('POST', 'https://improov.com.br/flow/ImproovWeb/Arquivos/upload.php', true);
+
+        // Mostrar modal Swal e iniciar upload sem aguardar sua resolução
+        const swalPromise = Swal.fire({
+            title: 'Enviando arquivos',
+            html: swalHtml,
+            showConfirmButton: false,
+            showCancelButton: true,
+            cancelButtonText: 'Cancelar',
+            allowOutsideClick: false,
+            willOpen: () => {
+                // attach progress handler
+                const container = Swal.getHtmlContainer();
+                const bar = container ? container.querySelector('#swal-upload-bar') : null;
+                const info = container ? container.querySelector('#swal-upload-info') : null;
+
+                xhr.upload.onprogress = function (e) {
+                    if (e.lengthComputable) {
+                        const pct = Math.round((e.loaded / e.total) * 100);
+                        if (bar) bar.style.width = pct + '%';
+                        if (info) info.textContent = pct + '% - ' + Math.round(e.loaded/1024) + ' KB de ' + Math.round(e.total/1024) + ' KB';
+                    }
+                };
+
+                xhr.onreadystatechange = function () {
+                    if (xhr.readyState === 4) {
+                        // Response handling below after Swal.close()
+                    }
+                };
+            }
         });
 
-        const result = await response.json();
+        // Start sending immediately so progress events update the open Swal
+        xhr.send(formData);
+
+        // Await Swal resolution (user may cancel). If user cancels, abort the XHR.
+        const swalResult = await swalPromise;
+        if (swalResult && swalResult.dismiss === Swal.DismissReason.cancel) {
+            try { xhr.abort(); } catch (e) {}
+            Swal.close();
+            throw new Error('Envio cancelado pelo usuário');
+        }
+
+        // Await response via Promise
+        const uploadResult = await new Promise((resolve, reject) => {
+            xhr.onload = function () {
+                try {
+                    const json = JSON.parse(xhr.responseText || '{}');
+                    resolve(json);
+                } catch (err) {
+                    reject(new Error('Resposta inválida do servidor'));
+                }
+            };
+            xhr.onerror = function () { reject(new Error('Erro na requisição')); };
+            xhr.onabort = function () { reject(new Error('Envio cancelado')); };
+        });
+
+        Swal.close();
+
+        const result = uploadResult;
         // Mensagens de sucesso
         if (result.success && result.success.length > 0) {
             result.success.forEach(msg => {
@@ -389,8 +476,9 @@ document.getElementById("uploadForm").addEventListener("submit", async function 
 
     } catch (err) {
         console.error(err);
+        Swal.close();
         Toastify({
-            text: "Erro ao enviar os arquivos.",
+            text: err.message || "Erro ao enviar os arquivos.",
             duration: 5000,
             close: true,
             gravity: "top",

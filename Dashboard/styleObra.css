@@ -2813,3 +2813,27 @@ tr#linha-porcentagem td select {
 .buttons .actions-menu {
     margin-right: 8px;
 }
+
+/* Two-column layout for modal-funcoes */
+.modal-funcoes-inner {
+    display: flex;
+    gap: 16px;
+}
+.modal-funcoes-left {
+    flex: 1 1 60%;
+    min-width: 320px;
+}
+.modal-funcoes-right {
+    flex: 0 0 340px;
+    background: #fafafa;
+    border-radius: 8px;
+    padding: 12px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+#modalFuncoesInfo h3 { margin: 0 0 6px 0; font-size: 16px; }
+#modalFuncoesInfo ul { padding-left: 18px; margin: 6px 0; }
+
+@media (max-width: 900px) {
+    .modal-funcoes-inner { flex-direction: column; }
+    .modal-funcoes-right { width: 100%; }
+}

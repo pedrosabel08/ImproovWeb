@@ -561,6 +561,57 @@ function atualizarModal(idImagem) {
             if (response.status_id !== null) {
                 statusSelect.value = response.status_id;
             }
+
+            // Carrega informações adicionais da imagem na coluna direita
+            try {
+                fetch(`../PaginaPrincipal/getInfosCard.php?imagem_id=${encodeURIComponent(idImagem)}`)
+                    .then(r => r.json())
+                    .then(info => {
+                        const container = document.getElementById('modalFuncoesInfo');
+                        if (!container) return;
+
+                        // Monta HTML simples com os dados mais relevantes
+                        let html = '';
+                        const nome = info.funcoes && info.funcoes[0] ? info.funcoes[0].imagem_nome : '';
+                        const status = info.status_imagem && info.status_imagem.nome_status ? info.status_imagem.nome_status : '';
+
+                        html += `<h3 style="margin-top:0">${nome || 'Imagem'}</h3>`;
+                        if (status) html += `<p><strong>Status:</strong> ${status}</p>`;
+
+                        if (Array.isArray(info.colaboradores) && info.colaboradores.length) {
+                            html += '<div><strong>Colaboradores:</strong><ul>';
+                            info.colaboradores.forEach(c => {
+                                html += `<li>${c.nome_colaborador} <small style="color:#666">(${c.funcoes || ''})</small></li>`;
+                            });
+                            html += '</ul></div>';
+                        }
+
+                        if (Array.isArray(info.arquivos_imagem) && info.arquivos_imagem.length) {
+                            html += '<div><strong>Arquivos vinculados:</strong><ul>';
+                            info.arquivos_imagem.slice(0,6).forEach(a => {
+                                html += `<li>${a.nome_interno || a.caminho || a.sufixo || 'Arquivo'}</li>`;
+                            });
+                            if (info.arquivos_imagem.length > 6) html += `<li>+ ${info.arquivos_imagem.length - 6} outros</li>`;
+                            html += '</ul></div>';
+                        }
+
+                        if (Array.isArray(info.log_alteracoes) && info.log_alteracoes.length) {
+                            const last = info.log_alteracoes[0];
+                            html += `<div><strong>Última alteração:</strong><div style="font-size:12px;color:#444">${last.responsavel || ''} — ${last.data || ''} — ${last.status_novo || ''}</div></div>`;
+                        }
+
+                        if (html === '') html = '<p>Nenhuma informação disponível.</p>';
+
+                        container.innerHTML = html;
+                    })
+                    .catch(err => {
+                        const container = document.getElementById('modalFuncoesInfo');
+                        if (container) container.innerHTML = '<p>Erro ao carregar informações.</p>';
+                        console.error('Erro getInfosCard:', err);
+                    });
+            } catch (e) {
+                console.error('Erro ao iniciar fetch de infos:', e);
+            }
         })
         .catch(error => console.error("Erro ao buscar dados da linha:", error));
 }

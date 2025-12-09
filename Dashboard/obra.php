@@ -714,7 +714,9 @@ $conn->close();
             </div> <input type="hidden" id="imagem_id" name="imagem_id" value="">
             <div class="modal-funcoes">
                 <span id="mood"></span>
-                <div class="funcao_comp">
+                <div class="modal-funcoes-inner">
+                    <div class="modal-funcoes-left">
+                        <div class="funcao_comp">
                     <div class="funcao">
                         <div class="titulo">
                             <p id="caderno">Caderno</p>
@@ -741,6 +743,14 @@ $conn->close();
                                 <button type="button" onclick="abrirModal(this)" id="revisao_imagem_caderno">Adicionar
                                     Imagens</button>
                             </div>
+                        </div>
+                    </div>
+                        </div>
+                    </div>
+                    <div class="modal-funcoes-right">
+                        <div id="modalFuncoesInfo">
+                            <!-- Informações da imagem serão carregadas aqui via AJAX -->
+                            <p class="info-placeholder">Carregando informações da imagem...</p>
                         </div>
                     </div>
                 </div>

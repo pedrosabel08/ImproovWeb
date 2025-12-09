@@ -575,34 +575,270 @@ function atualizarModal(idImagem) {
                         const nome = info.funcoes && info.funcoes[0] ? info.funcoes[0].imagem_nome : '';
                         const status = info.status_imagem && info.status_imagem.nome_status ? info.status_imagem.nome_status : '';
 
-                        html += `<h3 style="margin-top:0">${nome || 'Imagem'}</h3>`;
-                        if (status) html += `<p><strong>Status:</strong> ${status}</p>`;
 
-                        if (Array.isArray(info.colaboradores) && info.colaboradores.length) {
-                            html += '<div><strong>Colaboradores:</strong><ul>';
-                            info.colaboradores.forEach(c => {
-                                html += `<li>${c.nome_colaborador} <small style="color:#666">(${c.funcoes || ''})</small></li>`;
+                        // Insere o cabeçalho básico primeiro
+                        container.innerHTML = html;
+
+                        // --- Helpers para renderizar arquivos com layout parecido com `scriptIndex.js` ---
+                        function groupArquivos(arr) {
+                            const grouped = {}; // { categoria: { tipo: [items] } }
+                            arr.forEach(a => {
+                                const cat = a.categoria_nome || 'Sem categoria';
+                                const tipo = a.tipo || (a.nome_interno && a.nome_interno.split('.').pop()?.toUpperCase()) || 'Outros';
+                                if (!grouped[cat]) grouped[cat] = {};
+                                if (!grouped[cat][tipo]) grouped[cat][tipo] = [];
+                                grouped[cat][tipo].push(a);
                             });
-                            html += '</ul></div>';
+                            return grouped;
                         }
 
+                        function normalizePath(rawPath, isTipoLevel = false) {
+                            if (!rawPath) return '';
+                            let p = rawPath;
+                            // normalize slashes to backslashes for display
+                            p = p.replace(/\//g, '\\\\');
+                            // remove trailing backslashes
+                            p = p.replace(/\\+$/g, '');
+
+                            const parts = p.split('\\').filter(Boolean);
+                            if (parts.length === 0) return p;
+
+                            const TYPES = ['IMG', 'DWG', 'PDF', 'OUTROS', 'SKP'];
+                            let idx = -1;
+                            for (let i = 0; i < parts.length; i++) {
+                                if (TYPES.includes(parts[i].toUpperCase())) {
+                                    idx = i;
+                                    break;
+                                }
+                            }
+
+                            if (idx >= 0) {
+                                if (isTipoLevel) {
+                                    return parts.slice(0, idx + 1).join('\\');
+                                }
+                                if (idx + 1 < parts.length) {
+                                    return parts.slice(0, idx + 2).join('\\');
+                                }
+                                return parts.slice(0, idx + 1).join('\\');
+                            }
+
+                            // fallback: drop last segment if looks like filename
+                            const last = parts[parts.length - 1];
+                            if (/\.[A-Za-z0-9]{1,6}$/.test(last)) {
+                                return parts.slice(0, -1).join('\\');
+                            }
+
+                            return parts.join('\\');
+                        }
+
+                        function renderGroupedArquivos(title, arr, isTipoLevel = false) {
+                            if (!arr || arr.length === 0) return;
+
+                            const section = document.createElement('div');
+                            section.classList.add('arquivos-section');
+
+                            const header = document.createElement('h3');
+                            header.innerHTML = `📁 ${title}`;
+                            section.appendChild(header);
+
+                            const grouped = groupArquivos(arr);
+
+                            Object.keys(grouped).forEach(cat => {
+                                const catDiv = document.createElement('div');
+                                catDiv.classList.add('arquivos-categoria');
+
+                                const totalCat = Object.values(grouped[cat]).reduce((s, arr) => s + arr.length, 0);
+
+                                // Detect if this category contains *only* items with categoria_id === 7
+                                const allAreCat7 = Object.values(grouped[cat]).flat().every(it => parseInt(it.categoria_id, 10) === 7);
+
+                                const catHeader = document.createElement('div');
+                                catHeader.classList.add('cat-header');
+                                // Se todos são categoria 7, não mostramos a contagem
+                                if (allAreCat7) {
+                                    catHeader.innerHTML = `🏗️ ${cat}`;
+                                } else {
+                                    catHeader.innerHTML = `🏗️ ${cat} <span class="count">(${totalCat})</span>`;
+                                }
+                                catDiv.appendChild(catHeader);
+
+                                Object.keys(grouped[cat]).forEach(tipo => {
+                                    const tipoArr = grouped[cat][tipo];
+                                    const tipoDiv = document.createElement('div');
+                                    tipoDiv.classList.add('arquivos-tipo');
+
+                                    const containsCategoria7 = tipoArr.some(it => parseInt(it.categoria_id, 10) === 7);
+                                    if (!containsCategoria7) {
+                                        tipoDiv.innerHTML = `<div class="tipo-header">↳ ${tipo} <span class="count">(${tipoArr.length})</span></div>`;
+                                    } else {
+                                        tipoDiv.classList.add('no-tipo-header');
+                                    }
+
+                                    const infoDiv = document.createElement('div');
+                                    infoDiv.classList.add('tipo-info');
+
+                                    const jpgItems = tipoArr.filter(it => parseInt(it.categoria_id, 10) === 7);
+                                    const otherItems = tipoArr.filter(it => parseInt(it.categoria_id, 10) !== 7);
+
+                                    const rawPaths = Array.from(new Set(otherItems.map(it => it.caminho).filter(Boolean)));
+                                    const paths = rawPaths.map(p => normalizePath(p, isTipoLevel));
+                                    const uniquePaths = Array.from(new Set(paths));
+
+                                    if (uniquePaths.length > 0) {
+                                        uniquePaths.forEach(p => {
+                                            const pDiv = document.createElement('div');
+                                            pDiv.classList.add('path');
+                                            pDiv.innerHTML = `📂 ${p}`;
+                                            infoDiv.appendChild(pDiv);
+
+                                            const filesForPath = otherItems.filter(it => normalizePath(it.caminho, isTipoLevel) === p);
+                                            if (filesForPath.length > 0) {
+                                                const listDiv = document.createElement('div');
+                                                listDiv.classList.add('path-files');
+
+                                                filesForPath.forEach(it => {
+                                                    const titleDiv = document.createElement('div');
+                                                    titleDiv.classList.add('file-title');
+                                                    titleDiv.textContent = `↳ ${it.nome_interno || it.nome_arquivo || '—'}`;
+                                                    listDiv.appendChild(titleDiv);
+
+                                                    const metaDiv = document.createElement('div');
+                                                    metaDiv.classList.add('file-meta');
+                                                    const partes = [];
+                                                    const rawDate = it.recebido_em || it.data || it.data_recebimento || '';
+                                                    if (rawDate) partes.push(`📅 ${rawDate}`);
+                                                    if (it.sufixo) partes.push(`📝 ${it.sufixo}`);
+                                                    if (it.descricao) partes.push(`⚠️ ${it.descricao}`);
+                                                    if (partes.length) {
+                                                        metaDiv.textContent = partes.join(' | ');
+                                                        listDiv.appendChild(metaDiv);
+                                                    }
+                                                });
+
+                                                infoDiv.appendChild(listDiv);
+                                            }
+                                        });
+                                    } else if (otherItems.length === 0 && jpgItems.length === 0) {
+                                        const noneDiv = document.createElement('div');
+                                        noneDiv.classList.add('path');
+                                        noneDiv.textContent = 'Sem caminho';
+                                        infoDiv.appendChild(noneDiv);
+                                    }
+
+                                    if (jpgItems.length > 0) {
+                                        jpgItems.forEach(it => {
+                                            const pDiv = document.createElement('div');
+                                            pDiv.classList.add('path', 'jpg-entry');
+
+                                            let filename = it.nome_interno || '';
+                                            if (!filename && it.caminho) {
+                                                const parts = it.caminho.split(/[\\\/]/).filter(Boolean);
+                                                filename = parts.length ? parts[parts.length - 1] : it.caminho;
+                                            }
+
+                                            // Tenta criar URL pública via sftpToPublicUrl; se não retornar uma URL http, monta heurísticas públicas
+                                            let urlCandidate = null;
+                                            if (typeof sftpToPublicUrl === 'function' && it.caminho) {
+                                                try { urlCandidate = sftpToPublicUrl(it.caminho); } catch (e) { urlCandidate = null; }
+                                            }
+
+                                            // Decide src final (prioriza URLs http/https). NÃO usar thumb.php — montar URL pública direta quando possível.
+                                            let imgSrc = null;
+                                            if (urlCandidate && (String(urlCandidate).startsWith('http://') || String(urlCandidate).startsWith('https://'))) {
+                                                imgSrc = urlCandidate;
+                                            } else if (it.caminho) {
+                                                // Heurísticas: procura por /Angulo_definido/ ou /05.Exchange/01.Input/ e monta o caminho público
+                                                const p = it.caminho.replace(/\\/g, '/');
+                                                const mAng = p.match(/\/Angulo_definido\/(.*)/i);
+                                                if (mAng && mAng[1]) {
+                                                    // Tenta detectar a nomenclatura (ex: MEN_991) presente antes no caminho
+                                                    const mNomen = p.match(/\/mnt\/clientes\/~?\d*\/([^\/]+)\//i) || p.match(/\/(?:uploads|flow\/ImproovWeb)\/([^\/]+)\/Angulo_definido\//i);
+                                                    if (mNomen && mNomen[1]) {
+                                                        // monta com nomenclatura logo após angulo_definido
+                                                        // Observação: o caminho público correto inclui 'Angulo_definido' novamente
+                                                        imgSrc = 'https://improov.com.br/flow/ImproovWeb/uploads/angulo_definido/' + encodeURIComponent(mNomen[1]) + '/Angulo_definido/' + mAng[1];
+                                                    } else {
+                                                        // Mesmo quando não encontramos nomenclatura, incluir o segmento 'Angulo_definido' duas vezes
+                                                        imgSrc = 'https://improov.com.br/flow/ImproovWeb/uploads/angulo_definido/Angulo_definido/' + mAng[1];
+                                                    }
+                                                } else {
+                                                    const idx = p.indexOf('/05.Exchange/01.Input/');
+                                                    if (idx >= 0) {
+                                                        const after = p.substring(idx + '/05.Exchange/01.Input/'.length);
+                                                        imgSrc = 'https://improov.com.br/flow/ImproovWeb/uploads/' + after;
+                                                    } else {
+                                                        // fallback: se contiver /uploads/ usa depois disso; senão tenta usar o nome do arquivo em uploads
+                                                        const upIdx = p.indexOf('/uploads/');
+                                                        if (upIdx >= 0) {
+                                                            imgSrc = 'https://improov.com.br/flow/ImproovWeb' + p.substring(upIdx);
+                                                        } else {
+                                                            const parts = p.split('/').filter(Boolean);
+                                                            const filenameOnly = parts.length ? parts[parts.length - 1] : p;
+                                                            imgSrc = 'https://improov.com.br/flow/ImproovWeb/uploads/' + filenameOnly;
+                                                        }
+                                                    }
+                                                }
+                                            }
+
+                                            if (imgSrc) {
+                                                const img = document.createElement('img');
+                                                img.loading = 'lazy';
+                                                img.src = encodeURI(imgSrc);
+                                                img.alt = filename;
+                                                img.title = filename;
+                                                img.classList.add('thumb');
+
+                                                // Se este item é categoria 7 (jpg), não mostrar o nome do arquivo conforme solicitado
+                                                // Apenas append a imagem
+                                                pDiv.appendChild(img);
+                                            } else {
+                                                // Se não houver src, mostrar um ícone genérico sem o nome do arquivo
+                                                pDiv.textContent = `🖼️`;
+                                            }
+
+                                            if (it.descricao) {
+                                                const descDiv = document.createElement('div');
+                                                descDiv.classList.add('arquivo-descricao');
+                                                descDiv.textContent = `⚠️ ${it.descricao}`;
+                                                pDiv.appendChild(descDiv);
+                                            }
+
+                                            infoDiv.appendChild(pDiv);
+                                        });
+                                    }
+
+                                    tipoDiv.appendChild(infoDiv);
+                                    catDiv.appendChild(tipoDiv);
+                                });
+
+                                section.appendChild(catDiv);
+                            });
+
+                            container.appendChild(section);
+                        }
+
+                        // Renderiza arquivos da imagem e do tipo (se existirem)
                         if (Array.isArray(info.arquivos_imagem) && info.arquivos_imagem.length) {
-                            html += '<div><strong>Arquivos vinculados:</strong><ul>';
-                            info.arquivos_imagem.slice(0,6).forEach(a => {
-                                html += `<li>${a.nome_interno || a.caminho || a.sufixo || 'Arquivo'}</li>`;
-                            });
-                            if (info.arquivos_imagem.length > 6) html += `<li>+ ${info.arquivos_imagem.length - 6} outros</li>`;
-                            html += '</ul></div>';
+                            renderGroupedArquivos('Arquivos da imagem', info.arquivos_imagem, false);
+                        }
+                        if (Array.isArray(info.arquivos_tipo) && info.arquivos_tipo.length) {
+                            renderGroupedArquivos('Arquivos do tipo de imagem', info.arquivos_tipo, true);
                         }
 
+                        // Log de alterações (resumido)
                         if (Array.isArray(info.log_alteracoes) && info.log_alteracoes.length) {
                             const last = info.log_alteracoes[0];
-                            html += `<div><strong>Última alteração:</strong><div style="font-size:12px;color:#444">${last.responsavel || ''} — ${last.data || ''} — ${last.status_novo || ''}</div></div>`;
+                            const logDiv = document.createElement('div');
+                            logDiv.classList.add('infos-obra-header');
+                            logDiv.innerHTML = '<strong>Última alteração</strong>';
+                            const content = document.createElement('div');
+                            content.classList.add('info');
+                            content.style.fontSize = '12px';
+                            content.style.color = '#444';
+                            content.textContent = `${last.responsavel || ''} — ${last.data || ''} — ${last.status_novo || ''}`;
+                            container.appendChild(logDiv);
+                            container.appendChild(content);
                         }
-
-                        if (html === '') html = '<p>Nenhuma informação disponível.</p>';
-
-                        container.innerHTML = html;
                     })
                     .catch(err => {
                         const container = document.getElementById('modalFuncoesInfo');

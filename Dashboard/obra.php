@@ -190,15 +190,18 @@ $conn->close();
                 </a>
 
                 <!-- External quick links -->
-                <a id="quick_fotografico" class="quick-link" href="#" target="_blank" rel="noopener noreferrer" title="Fotográfico" aria-hidden="true">
+                <a id="quick_fotografico" class="quick-link" href="#" target="_blank" rel="noopener noreferrer"
+                    title="Fotográfico" aria-hidden="true">
                     <i class="fa-solid fa-camera"></i>
                     <span class="qa-label">Fotográfico</span>
                 </a>
-                <a id="quick_drive" class="quick-link" href="#" target="_blank" rel="noopener noreferrer" title="Drive" aria-hidden="true">
+                <a id="quick_drive" class="quick-link" href="#" target="_blank" rel="noopener noreferrer" title="Drive"
+                    aria-hidden="true">
                     <i class="fa-brands fa-google-drive"></i>
                     <span class="qa-label">Drive</span>
                 </a>
-                <a id="quick_review" class="quick-link" href="#" target="_blank" rel="noopener noreferrer" title="Review Studio" aria-hidden="true">
+                <a id="quick_review" class="quick-link" href="#" target="_blank" rel="noopener noreferrer"
+                    title="Review Studio" aria-hidden="true">
                     <i class="fa-solid fa-folder-open"></i>
                     <span class="qa-label">Review</span>
                 </a>
@@ -212,17 +215,25 @@ $conn->close();
             <!-- Mobile quick access panel -->
             <div id="quickMobileMenu" class="quick-mobile-menu" aria-hidden="true">
                 <div class="quick-mobile-inner">
-                    <button id="quickMobileClose" class="quick-mobile-close" aria-label="Fechar menu"><i class="fa-solid fa-times"></i></button>
+                    <button id="quickMobileClose" class="quick-mobile-close" aria-label="Fechar menu"><i
+                            class="fa-solid fa-times"></i></button>
                     <nav id="quickMobileNav" class="quick-mobile-nav">
                         <!-- Items populated by JS: internal anchors and external links -->
-                        <a class="mobile-link" id="mobile_tabela" href="#tabela-obra"><i class="fa-solid fa-table-cells"></i> <span>Tabela</span></a>
-                        <a class="mobile-link" id="mobile_hist" href="#list_acomp"><i class="fa-solid fa-list"></i> <span>Histórico</span></a>
-                        <a class="mobile-link" id="mobile_obs" href="#obsSection"><i class="fa-solid fa-note-sticky"></i> <span>Observações</span></a>
-                        <a class="mobile-link" id="mobile_arquivos" href="#secao-arquivos"><i class="fa-solid fa-file"></i> <span>Arquivos</span></a>
+                        <a class="mobile-link" id="mobile_tabela" href="#tabela-obra"><i
+                                class="fa-solid fa-table-cells"></i> <span>Tabela</span></a>
+                        <a class="mobile-link" id="mobile_hist" href="#list_acomp"><i class="fa-solid fa-list"></i>
+                            <span>Histórico</span></a>
+                        <a class="mobile-link" id="mobile_obs" href="#obsSection"><i
+                                class="fa-solid fa-note-sticky"></i> <span>Observações</span></a>
+                        <a class="mobile-link" id="mobile_arquivos" href="#secao-arquivos"><i
+                                class="fa-solid fa-file"></i> <span>Arquivos</span></a>
                         <hr>
-                        <a class="mobile-link" id="mobile_fotografico" href="#" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-camera"></i> <span>Fotográfico</span></a>
-                        <a class="mobile-link" id="mobile_drive" href="#" target="_blank" rel="noopener noreferrer"><i class="fa-brands fa-google-drive"></i> <span>Drive</span></a>
-                        <a class="mobile-link" id="mobile_review" href="#" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-folder-open"></i> <span>Review</span></a>
+                        <a class="mobile-link" id="mobile_fotografico" href="#" target="_blank"
+                            rel="noopener noreferrer"><i class="fa-solid fa-camera"></i> <span>Fotográfico</span></a>
+                        <a class="mobile-link" id="mobile_drive" href="#" target="_blank" rel="noopener noreferrer"><i
+                                class="fa-brands fa-google-drive"></i> <span>Drive</span></a>
+                        <a class="mobile-link" id="mobile_review" href="#" target="_blank" rel="noopener noreferrer"><i
+                                class="fa-solid fa-folder-open"></i> <span>Review</span></a>
                     </nav>
                 </div>
             </div>
@@ -250,7 +261,8 @@ $conn->close();
 
             <div class="buttons animate__animated">
                 <div class="actions-menu">
-                    <button id="actionsMenuBtn" class="menu-icon animate__animated" aria-expanded="false" aria-label="Ações da obra" title="Ações">
+                    <button id="actionsMenuBtn" class="menu-icon animate__animated" aria-expanded="false"
+                        aria-label="Ações da obra" title="Ações">
                         <i class="fas fa-ellipsis-v" aria-hidden="true"></i>
                     </button>
                     <div id="actionsMenu" class="actions-menu-dropdown" aria-hidden="true">
@@ -690,8 +702,10 @@ $conn->close();
             <div class="secao-titulo arquivos-header">
                 <h2>Arquivos da Obra</h2>
                 <div class="arquivos-actions">
-                    <button id="btnAddArquivo" type="button" class="btn-add-arquivo" title="Adicionar novo arquivo">+ Novo</button>
-                    <button id="btnRefreshArquivos" type="button" class="btn-refresh-arquivo" title="Recarregar lista">↻</button>
+                    <button id="btnAddArquivo" type="button" class="btn-add-arquivo" title="Adicionar novo arquivo">+
+                        Novo</button>
+                    <button id="btnRefreshArquivos" type="button" class="btn-refresh-arquivo"
+                        title="Recarregar lista">↻</button>
                 </div>
             </div>
             <div id="arquivosWrapper" class="arquivos-wrapper">
@@ -717,40 +731,36 @@ $conn->close();
                 <div class="modal-funcoes-inner">
                     <div class="modal-funcoes-left">
                         <div class="funcao_comp">
-                    <div class="funcao">
-                        <div class="titulo">
-                            <p id="caderno">Caderno</p>
-                            <i class="fas fa-chevron-down toggle-options"></i>
-                        </div>
-                        <div class="opcoes" style="display: none;">
-                            <select name="caderno_id" id="opcao_caderno">
-                                <?php renderColabOptions($funcoes, $colaboradores_por_funcao, $colaboradores, 'caderno'); ?>
-                            </select>
-                            <select name="status_caderno" id="status_caderno">
-                                <option value="Não iniciado">Não iniciado</option>
-                                <option value="Em andamento">Em andamento</option>
-                                <option value="Finalizado">Finalizado</option>
-                                <option value="HOLD">HOLD</option>
-                                <option value="Não se aplica">Não se aplica</option>
-                                <option value="Em aprovação">Em aprovação</option>
-                                <option value="Aprovado">Aprovado</option>
-                                <option value="Ajuste">Ajuste</option>
-                                <option value="Aprovado com ajustes">Aprovado com ajustes</option>
-                            </select>
-                            <input type="date" name="prazo_caderno" id="prazo_caderno">
-                            <input type="text" name="obs_caderno" id="obs_caderno" placeholder="Caminho arquivo">
-                            <div class="revisao_imagem" style="display: none;">
-                                <button type="button" onclick="abrirModal(this)" id="revisao_imagem_caderno">Adicionar
-                                    Imagens</button>
+                            <div class="funcao">
+                                <div class="titulo">
+                                    <p id="caderno">Caderno</p>
+                                    <i class="fas fa-chevron-down toggle-options"></i>
+                                </div>
+                                <div class="opcoes" style="display: none;">
+                                    <select name="caderno_id" id="opcao_caderno">
+                                        <?php renderColabOptions($funcoes, $colaboradores_por_funcao, $colaboradores, 'caderno'); ?>
+                                    </select>
+                                    <select name="status_caderno" id="status_caderno">
+                                        <option value="Não iniciado">Não iniciado</option>
+                                        <option value="Em andamento">Em andamento</option>
+                                        <option value="Finalizado">Finalizado</option>
+                                        <option value="HOLD">HOLD</option>
+                                        <option value="Não se aplica">Não se aplica</option>
+                                        <option value="Em aprovação">Em aprovação</option>
+                                        <option value="Aprovado">Aprovado</option>
+                                        <option value="Ajuste">Ajuste</option>
+                                        <option value="Aprovado com ajustes">Aprovado com ajustes</option>
+                                    </select>
+                                    <input type="date" name="prazo_caderno" id="prazo_caderno">
+                                    <input type="text" name="obs_caderno" id="obs_caderno"
+                                        placeholder="Caminho arquivo">
+                                    <div class="revisao_imagem" style="display: none;">
+                                        <button type="button" onclick="abrirModal(this)"
+                                            id="revisao_imagem_caderno">Adicionar
+                                            Imagens</button>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                    </div>
-                        </div>
-                    </div>
-                    <div class="modal-funcoes-right">
-                        <div id="modalFuncoesInfo">
-                            <!-- Informações da imagem serão carregadas aqui via AJAX -->
-                            <p class="info-placeholder">Carregando informações da imagem...</p>
                         </div>
                     </div>
                 </div>
@@ -968,7 +978,7 @@ $conn->close();
                         </div>
                     </div>
                 </div>
-                <div class="funcao_comp">
+                <div class="funcao_comp" style="display: none;">
                     <div class="funcao">
                         <div class="titulo">
                             <p id="planta">Planta Humanizada</p>
@@ -1052,7 +1062,12 @@ $conn->close();
                             class="fa-solid fa-angle-right"></i></button>
                 </div>
             </div>
-
+            <div class="modal-funcoes-right">
+                <div id="modalFuncoesInfo">
+                    <!-- Informações da imagem serão carregadas aqui via AJAX -->
+                    <p class="info-placeholder">Carregando informações da imagem...</p>
+                </div>
+            </div>
         </form>
     </div>
 

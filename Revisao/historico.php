@@ -31,13 +31,11 @@ if ($_SERVER["REQUEST_METHOD"] == "GET") {
         i.imagem_nome, 
         fun.nome_funcao,
         s.nome_status,
-        i.idimagens_cliente_obra AS imagem_id,
-        hi.id AS historico_imagem_id
+        i.idimagens_cliente_obra AS imagem_id
     FROM historico_aprovacoes h
-    JOIN colaborador c ON h.colaborador_id = c.idcolaborador
-    JOIN colaborador c2 ON h.responsavel = c2.idcolaborador
+    LEFT JOIN colaborador c ON h.colaborador_id = c.idcolaborador
+    LEFT JOIN colaborador c2 ON h.responsavel = c2.idcolaborador
     LEFT JOIN funcao_imagem f ON f.idfuncao_imagem = h.funcao_imagem_id
-    LEFT JOIN historico_aprovacoes_imagens hi ON f.idfuncao_imagem = hi.funcao_imagem_id
     LEFT JOIN funcao fun ON fun.idfuncao = f.funcao_id
     LEFT JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
     LEFT JOIN status_imagem s ON i.status_id = s.idstatus

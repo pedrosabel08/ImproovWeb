@@ -173,6 +173,8 @@ $conn->close();
                 </div>
             </div>
             <div class="sidebar-direita">
+                
+                <div id="approval_info" style="display:none;margin-bottom:10px;padding:8px;border-radius:6px;background:#f5f7fa;font-size:14px;color:#222"></div>
                 <button id="submit_decision">Enviar aprovação</button>
 
                 <!-- Modal -->

@@ -487,6 +487,17 @@ function formatarDataHora(data) {
     return `${dia}/${mes}/${ano} ${horas}:${minutos}`; // Retorna o formato desejado
 }
 
+// Escapa texto para evitar injeção de HTML ao inserir conteúdo dinâmico
+function escapeHtml(unsafe) {
+    if (unsafe === null || unsafe === undefined) return '';
+    return String(unsafe)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
 
 
 const modalComment = document.getElementById('modalComment');
@@ -537,6 +548,34 @@ function historyAJAX(idfuncao_imagem) {
 
             const { historico, imagens } = response;
             const item = historico[0];
+
+            // Preencher o container de aprovação (se houver um responsavel registrado)
+            try {
+                const approvalContainer = document.getElementById('approval_info');
+                if (approvalContainer) {
+                    approvalContainer.style.display = 'none';
+                    if (Array.isArray(historico) && historico.length > 0) {
+                        // procura o último registro com 'responsavel' preenchido
+                        const reversed = [...historico].slice().reverse();
+                        const approver = reversed.find(h => h.responsavel && (h.responsavel !== '0')) || null;
+                        if (approver) {
+                            const name = approver.responsavel_nome || '—';
+                            const status = approver.status_novo || approver.status || '—';
+                            const dt = approver.data_aprovacao || approver.data || null;
+                            const fecha = dt ? formatarDataHora(new Date(dt)) : '';
+                            if (status !== 'Em aprovação') {
+                                approvalContainer.innerHTML = `<div><strong>${escapeHtml(name)}</strong> — <span>${escapeHtml(status)} ${fecha ? '<br><small style="color:#666">' + escapeHtml(fecha) + '</small>' : ''}</div>`;
+                                approvalContainer.style.display = 'block';
+                            }
+                        } else {
+                            approvalContainer.innerHTML = '';
+                            approvalContainer.style.display = 'none';
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error('Erro ao preencher approval_info', e);
+            }
 
             if ([1, 2, 9, 20, 3].includes(idusuario)) {
                 btnOpen.addEventListener("click", () => {

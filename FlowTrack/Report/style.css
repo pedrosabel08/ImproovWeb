@@ -1,0 +1,109 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Open+Sans:ital,wght@0,300..800;1,300..800&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap');
+
+/* FlowTrack styles adapted from Entregas/style.css */
+:root {
+    --bg-color: #121212;
+    --card-bg: #1e1e1e;
+    --column-bg: #181818;
+    --text-color: #f5f5f5;
+    --accent-color: #00dae4;
+    --border-color: #2a2a2a;
+    --hover-bg: #222;
+    --muted: #cfcfcf;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Arial;
+    background: var(--bg-color);
+    color: var(--text-color);
+    display: grid;
+    grid-template-columns: 60px 1fr;
+    height: 100vh;
+}
+
+/* ===== SCROLLBAR ===== */
+::-webkit-scrollbar {
+    height: 6px;
+    width: 5px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+}
+
+.container {
+    grid-column: 2;
+    padding: 2rem;
+}
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+    table-layout: fixed;
+    box-shadow: 0 2px 4px rgba(255, 255, 255, 0.1);
+}
+
+th,
+td {
+    padding: 8px;
+    text-align: left;
+    background-color: white;
+    text-align: center;
+    font-size: 0.9rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+td:first-child {
+    color: black;
+    text-align: left;
+    white-space: normal;
+}
+
+th {
+    background: #f4f4f4;
+    color: black;
+}
+
+.status-OK {
+    background: #d4edda;
+    color: black;
+}
+
+.status-TO-DO {
+    background: #f8d7da;
+    color: black;
+}
+
+.status-TEA {
+    background: #fff3cd;
+    color: black;
+}
+
+.status-APR {
+    background: #9eecff;
+    color: black;
+}
+
+.status-HOLD {
+    background: #ff381e;
+    color: black;
+}
+
+.not-allocated {
+    color: #666;
+    background: white;
+}
+
+.badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+}

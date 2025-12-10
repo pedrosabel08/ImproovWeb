@@ -85,8 +85,8 @@ body {
     gap: 8px;
 }
 
-.radar-obra-filters select {
-    background: rgba(255, 255, 255, 0.06);
+.radar-obra-filters select, .radar-alloc-controls select {
+    background: var(--bg);
     color: var(--text);
     border: 1px solid var(--border);
     border-radius: 6px;
@@ -156,7 +156,7 @@ body {
 }
 
 .radar-type-filter select {
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--bg);
     color: var(--text);
     border: 1px solid var(--border);
     border-radius: 6px;

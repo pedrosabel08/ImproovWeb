@@ -1,0 +1,193 @@
+:root {
+    --bg: #0b0f1a;
+    --panel: #11182a;
+    --panel-2: #152041;
+    --text: #f5f7fb;
+    --muted: #a7afc2;
+    --accent: #00e0ff;
+    --accent-2: #6ef3c5;
+    --border: #1f2c4d;
+    --danger: #f48fb1;
+    --warn: #ffd166;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: grid;
+    grid-template-columns: 60px 1fr;
+    min-height: 100vh;
+}
+
+.radar-container {
+    grid-column: 2;
+    padding: 24px;
+}
+
+.radar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.radar-header h1 {
+    margin: 0 0 4px 0;
+}
+
+.radar-header p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.95rem;
+}
+
+.radar-btn {
+    background: var(--accent);
+    color: #001420;
+    border: none;
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(0, 224, 255, 0.25);
+}
+
+.radar-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+}
+
+.radar-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 8px 0 16px 0;
+}
+
+.filter-btn {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.filter-btn.active {
+    background: var(--accent);
+    color: #001420;
+    border-color: var(--accent);
+    box-shadow: 0 4px 12px rgba(0, 224, 255, 0.25);
+}
+
+.radar-card {
+    background: linear-gradient(135deg, var(--panel), var(--panel-2));
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    position: relative;
+    overflow: hidden;
+}
+
+.radar-card h2 {
+    margin: 0 0 6px 0;
+    font-size: 1.05rem;
+}
+
+.radar-card .subtitle {
+    margin: 0 0 10px 0;
+    color: var(--muted);
+    font-size: 0.9rem;
+}
+
+.radar-collabs,
+.radar-suggest {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px;
+    margin-bottom: 10px;
+}
+
+.radar-collabs h3,
+.radar-suggest h3 {
+    margin: 0 0 8px 0;
+    font-size: 0.95rem;
+    color: var(--muted);
+}
+
+.radar-type-filter {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 8px 0 12px;
+    font-size: 0.9rem;
+    color: var(--muted);
+}
+
+.radar-type-filter select {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 8px;
+}
+
+.pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    font-size: 0.9rem;
+    margin: 3px;
+}
+
+.badge {
+    background: var(--border);
+    padding: 2px 6px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    color: var(--muted);
+}
+
+.suggest-item {
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    padding: 8px;
+    margin-bottom: 8px;
+    background: rgba(0, 0, 0, 0.15);
+}
+
+.suggest-item strong {
+    color: var(--text);
+}
+
+.suggest-item .small {
+    color: var(--muted);
+    font-size: 0.85rem;
+}
+
+.status-prev {
+    color: var(--warn);
+}
+
+.status-cur {
+    color: var(--danger);
+}
+
+.empty {
+    color: var(--muted);
+    font-size: 0.9rem;
+}

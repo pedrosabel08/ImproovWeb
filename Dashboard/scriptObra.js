@@ -5977,7 +5977,8 @@ if (markInactiveBtn) {
         }
         if (!confirm('Tem certeza que deseja marcar esta obra como inativa?')) return;
 
-        var url = window.location.origin + '/ImproovWeb/atualizarObraStatus.php';
+        const basePath = window.location.pathname.includes('/flow/ImproovWeb/') ? '/flow/ImproovWeb/' : '/ImproovWeb/';
+        const url = new URL(basePath + 'atualizarObraStatus.php', window.location.origin).toString();
         fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

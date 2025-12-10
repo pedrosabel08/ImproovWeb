@@ -77,7 +77,18 @@ $conn->close();
 
 
 <?php
+include 'conexaoMain.php';
 
+$conn = conectarBanco();
+
+$clientes = obterClientes($conn);
+$obras = obterObras($conn);
+$colaboradores = obterColaboradores($conn);
+$status_imagens = obterStatusImagens($conn);
+$funcoes = obterFuncoes($conn);
+$obras_inativas = obterObras($conn, 1);
+
+$conn->close();
 ?>
 
 
@@ -116,7 +127,7 @@ $conn->close();
                 </div>
                 <nav>
                     <div class="nav-left">
-                        <button id="overviewBtn"><i class="ri-dashboard-line"></i><span>Overview</span></button>
+                        <!-- <button id="overviewBtn"><i class="ri-dashboard-line"></i><span>Overview</span></button> -->
                         <button id="kanbanBtn" class="active"><i class="ri-kanban-view"></i><span>Kanban</span></button>
                         <!-- <button id="activities"><i class="fa-solid fa-chart-line"><span></i>Activity</span></button> -->
                         <!-- <button id="timeline"><span>Timeline</span></button> -->

@@ -34,14 +34,80 @@ $conn->close();
     <title>Flow | Track</title>
     <link rel="stylesheet" href="style.css" />
     <link rel="stylesheet" href="../css/styleSidebar.css" />
+    <style>
+        /* Entry modal styles */
+        .ft-modal {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .ft-modal-backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        .ft-modal-content {
+            position: relative;
+            background: #fff;
+            color: #000;
+            padding: 20px;
+            border-radius: 8px;
+            width: 420px;
+            max-width: 95%;
+            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3);
+            text-align: left;
+        }
+
+        .ft-modal-content h2 {
+            margin: 0 0 8px 0;
+        }
+
+        .ft-modal-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+
+        .ft-btn {
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            background: #f5f5f5;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        .ft-btn-primary {
+            background: #007bff;
+            color: #fff;
+            border-color: #007bff;
+        }
+    </style>
 </head>
 
 <body>
+    <!-- Entry modal -->
+    <div id="ft-entry-modal" class="ft-modal" role="dialog" aria-modal="true">
+        <div class="ft-modal-backdrop" data-close></div>
+        <div class="ft-modal-content" aria-labelledby="ft-modal-title">
+            <h2 id="ft-modal-title">Para onde deseja ir?</h2>
+            <p>Escolha uma opção para continuar:</p>
+            <div class="ft-modal-buttons">
+                <button type="button" class="ft-btn ft-btn-primary" data-target="Report/index.php">Report (Obras)</button>
+                <button type="button" class="ft-btn" data-target="index.php">Finalizações</button>
+                <button type="button" class="ft-btn" data-target="Radar/index.php">Tarefas</button>
+            </div>
+            <div style="margin-top:12px;text-align:right;"><button id="ft-modal-close" class="ft-btn">Fechar</button></div>
+        </div>
+    </div>
 
     <?php
-
     include '../sidebar.php';
-
     ?>
     <div class="container">
 
@@ -101,6 +167,35 @@ $conn->close();
         </template>
     </div>
     <script src="script.js"></script>
+    <script>
+        (function() {
+            const modal = document.getElementById('ft-entry-modal');
+            if (!modal) return;
+            const backdrop = modal.querySelector('.ft-modal-backdrop');
+            const closeBtn = document.getElementById('ft-modal-close');
+            const btns = modal.querySelectorAll('[data-target]');
+
+            function close() {
+                modal.style.display = 'none';
+            }
+
+            backdrop && backdrop.addEventListener('click', close);
+            closeBtn && closeBtn.addEventListener('click', close);
+
+            btns.forEach(b => {
+                b.addEventListener('click', (ev) => {
+                    const t = b.getAttribute('data-target');
+                    if (t) window.location.href = t;
+                });
+            });
+
+            // keep modal visible on first paint; focus first button for accessibility
+            window.addEventListener('DOMContentLoaded', () => {
+                const first = modal.querySelector('[data-target]');
+                if (first) first.focus();
+            });
+        })();
+    </script>
     <script src="../script/sidebar.js"></script>
 </body>
 

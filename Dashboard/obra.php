@@ -142,23 +142,6 @@ $conn->close();
 
 <body>
 
-    <!-- <div class="sidebar" id="sidebar" style="display: none;">
-            <div class="content">
-                <div class="nav">
-                    <p class="top">+</p>
-                    <a href="index.php" id="dashboard" class="tooltip"><i class="fa-solid fa-chart-line"></i><span class="tooltiptext">Dashboard</span></a>
-                    <a href="projetos.php" id="projects" class="tooltip active"><i class="fa-solid fa-list-check"></i><span class="tooltiptext">Projetos</span></a>
-                    <?php if ($nivel_acesso === 1): ?>
-                        <a href="#" id="colabs" class="tooltip"><i class="fa-solid fa-users"></i><span class="tooltiptext">Colaboradores</span></a>
-                        <a href="controle_comercial.html" id="controle_comercial" class="tooltip"><i class="fa-solid fa-dollar-sign"></i><span class="tooltiptext">Controle Comercial</span></a>
-                    <?php endif; ?>
-                </div>
-                <div class="bottom">
-                    <a href="#" id="sair" class="tooltip"><i class="fa fa-arrow-left"></i><span class="tooltiptext">Sair</span></a>
-                </div>
-            </div>
-        </div> -->
-
     <?php
 
     include '../sidebar.php';
@@ -724,10 +707,70 @@ $conn->close();
     <div class="form-edicao" id="form-edicao">
         <form id="form-add" method="post" action="insereFuncao.php">
             <div class="titulo-funcoes">
+                <button type="button" id="btnAnterior" style="background: white; color: black"><i
+                        class="fa-solid fa-angle-left"></i></button>
                 <span id="campoNomeImagem"></span>
+                <button type="button" id="btnProximo" style="background: white; color: black"><i
+                        class="fa-solid fa-angle-right"></i></button>
             </div> <input type="hidden" id="imagem_id" name="imagem_id" value="">
             <div class="modal-funcoes">
-                <span id="mood"></span>
+                <span id="mood" style="display: none;"></span>
+                <div class="acoesModal">
+
+                    <div class="funcao status_select" id="status_funcao" style="margin-bottom: 15px;width: max-content;">
+                        <p id="status">Status</p>
+                        <select name="status_id" id="opcao_status">
+                            <?php foreach ($status_imagens as $status): ?>
+                                <option value="<?= htmlspecialchars($status['idstatus']); ?>">
+                                    <?= htmlspecialchars($status['nome_status']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <select name="status_hold" id="status_hold" multiple style="width: 200px;">
+                            <option value="Paisagismo">Paisagismo</option>
+                            <option value="Mood">Mood</option>
+                            <option value="Interiores">Interiores</option>
+                            <option value="Luminotécnico">Luminotécnico</option>
+                            <option value="Arquitetônico">Arquitetônico</option>
+                            <option value="Definição de unidade">Definição de unidade</option>
+                            <option value="Aguardando aprovações">Aguardando aprovações</option>
+                            <option value="Aguardando arquivos">Aguardando arquivos</option>
+                        </select>
+                    </div>
+                    <div class="funcao render_add" id="status_funcao" style="width: 200px; margin-bottom: 15px;">
+                        <div class="render">
+                            <p id="render_alta">Render</p>
+                            <button id="addRender" class="buttons-form-add"
+                                style=" padding: 3px 10px; font-size: 13px; background-color: steelblue;">Adicionar
+                                render</button>
+                            <label class="switch">
+                                <input type="checkbox" id="notificar">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="funcao revisao_add" id="status_funcao" style="width: 200px; margin-bottom: 15px;">
+                        <div class="revisao">
+                            <p id="revisao">Revisao</p>
+                            <button id="addRevisao" class="buttons-form-add"
+                                style=" padding: 3px 10px; font-size: 13px; background-color: steelgreen;">Adicionar
+                                revisão</button>
+                        </div>
+                    </div>
+                    <div class="buttons">
+
+                        <div>
+                            <button type="submit" id="salvar_funcoes" class="buttons-form-add">Salvar</button>
+                            <div id="loadingBar" style="display: none;">
+                                <div class="progress"></div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- Row that will contain function cards (populated by JS) -->
+                <div class="funcoes-cards-row" aria-label="Funções"></div>
                 <div class="modal-funcoes-inner">
                     <div class="modal-funcoes-left">
                         <div class="funcao_comp">
@@ -736,24 +779,26 @@ $conn->close();
                                     <p id="caderno">Caderno</p>
                                     <i class="fas fa-chevron-down toggle-options"></i>
                                 </div>
-                                <div class="opcoes" style="display: none;">
-                                    <select name="caderno_id" id="opcao_caderno">
-                                        <?php renderColabOptions($funcoes, $colaboradores_por_funcao, $colaboradores, 'caderno'); ?>
-                                    </select>
-                                    <select name="status_caderno" id="status_caderno">
-                                        <option value="Não iniciado">Não iniciado</option>
-                                        <option value="Em andamento">Em andamento</option>
-                                        <option value="Finalizado">Finalizado</option>
-                                        <option value="HOLD">HOLD</option>
-                                        <option value="Não se aplica">Não se aplica</option>
-                                        <option value="Em aprovação">Em aprovação</option>
-                                        <option value="Aprovado">Aprovado</option>
-                                        <option value="Ajuste">Ajuste</option>
-                                        <option value="Aprovado com ajustes">Aprovado com ajustes</option>
-                                    </select>
-                                    <input type="date" name="prazo_caderno" id="prazo_caderno">
-                                    <input type="text" name="obs_caderno" id="obs_caderno"
-                                        placeholder="Caminho arquivo">
+                                <div class="opcoes" style="display: flex;">
+                                    <div class="funcao-fields">
+                                        <select name="caderno_id" id="opcao_caderno" aria-label="Colaborador do caderno">
+                                            <?php renderColabOptions($funcoes, $colaboradores_por_funcao, $colaboradores, 'caderno'); ?>
+                                        </select>
+                                        <select name="status_caderno" id="status_caderno" aria-label="Status do caderno">
+                                            <option value="" disabled selected>Status</option>
+                                            <option value="Não iniciado">Não iniciado</option>
+                                            <option value="Em andamento">Em andamento</option>
+                                            <option value="Finalizado">Finalizado</option>
+                                            <option value="HOLD">HOLD</option>
+                                            <option value="Não se aplica">Não se aplica</option>
+                                            <option value="Em aprovação">Em aprovação</option>
+                                            <option value="Aprovado">Aprovado</option>
+                                            <option value="Ajuste">Ajuste</option>
+                                            <option value="Aprovado com ajustes">Aprovado com ajustes</option>
+                                        </select>
+                                        <input type="date" name="prazo_caderno" id="prazo_caderno" placeholder="dd/mm/aaaa" aria-label="Prazo do caderno">
+                                        <input type="text" name="obs_caderno" id="obs_caderno" placeholder="Caminho arquivo" aria-label="Caminho do arquivo do caderno">
+                                    </div>
                                     <div class="revisao_imagem" style="display: none;">
                                         <button type="button" onclick="abrirModal(this)"
                                             id="revisao_imagem_caderno">Adicionar
@@ -770,23 +815,25 @@ $conn->close();
                             <p id="filtro">Filtro de assets</p>
                             <i class="fas fa-chevron-down" id="toggle-options"></i>
                         </div>
-                        <div class="opcoes" id="opcoes" style="display: none;">
-                            <select name="filtro_id" id="opcao_filtro">
-                                <?php renderColabOptions($funcoes, $colaboradores_por_funcao, $colaboradores, 'filtro'); ?>
-                            </select>
-                            <select name="status_filtro" id="status_filtro">
-                                <option value="Não iniciado">Não iniciado</option>
-                                <option value="Em andamento">Em andamento</option>
-                                <option value="Finalizado">Finalizado</option>
-                                <option value="HOLD">HOLD</option>
-                                <option value="Não se aplica">Não se aplica</option>
-                                <option value="Em aprovação">Em aprovação</option>
-                                <option value="Aprovado">Aprovado</option>
-                                <option value="Ajuste">Ajuste</option>
-                                <option value="Aprovado com ajustes">Aprovado com ajustes</option>
-                            </select>
-                            <input type="date" name="prazo_filtro" id="prazo_filtro" placeholder="Data">
-                            <input type="text" name="obs_filtro" id="obs_filtro" placeholder="Caminho arquivo">
+                        <div class="opcoes" id="opcoes" style="display: flex;">
+                            <div class="funcao-fields">
+                                <select name="filtro_id" id="opcao_filtro">
+                                    <?php renderColabOptions($funcoes, $colaboradores_por_funcao, $colaboradores, 'filtro'); ?>
+                                </select>
+                                <select name="status_filtro" id="status_filtro">
+                                    <option value="Não iniciado">Não iniciado</option>
+                                    <option value="Em andamento">Em andamento</option>
+                                    <option value="Finalizado">Finalizado</option>
+                                    <option value="HOLD">HOLD</option>
+                                    <option value="Não se aplica">Não se aplica</option>
+                                    <option value="Em aprovação">Em aprovação</option>
+                                    <option value="Aprovado">Aprovado</option>
+                                    <option value="Ajuste">Ajuste</option>
+                                    <option value="Aprovado com ajustes">Aprovado com ajustes</option>
+                                </select>
+                                <input type="date" name="prazo_filtro" id="prazo_filtro" placeholder="Data">
+                                <input type="text" name="obs_filtro" id="obs_filtro" placeholder="Caminho arquivo">
+                            </div>
                             <div class="revisao_imagem" style="display: none;">
                                 <button type="button" onclick="abrirModal(this)" id="revisao_imagem_filtro">Adicionar
                                     Imagens</button>
@@ -800,23 +847,25 @@ $conn->close();
                             <p id="modelagem">Modelagem</p>
                             <i class="fas fa-chevron-down" id="toggle-options"></i>
                         </div>
-                        <div class="opcoes" style="display: none;">
-                            <select name="model_id" id="opcao_model">
-                                <?php renderColabOptions($funcoes, $colaboradores_por_funcao, $colaboradores, 'modelagem'); ?>
-                            </select>
-                            <select name="status_modelagem" id="status_modelagem">
-                                <option value="Não iniciado">Não iniciado</option>
-                                <option value="Em andamento">Em andamento</option>
-                                <option value="Finalizado">Finalizado</option>
-                                <option value="HOLD">HOLD</option>
-                                <option value="Não se aplica">Não se aplica</option>
-                                <option value="Em aprovação">Em aprovação</option>
-                                <option value="Aprovado">Aprovado</option>
-                                <option value="Ajuste">Ajuste</option>
-                                <option value="Aprovado com ajustes">Aprovado com ajustes</option>
-                            </select>
-                            <input type="date" name="prazo_modelagem" id="prazo_modelagem">
-                            <input type="text" name="obs_modelagem" id="obs_modelagem" placeholder="Caminho arquivo">
+                        <div class="opcoes" style="display: flex;">
+                            <div class="funcao-fields">
+                                <select name="model_id" id="opcao_model">
+                                    <?php renderColabOptions($funcoes, $colaboradores_por_funcao, $colaboradores, 'modelagem'); ?>
+                                </select>
+                                <select name="status_modelagem" id="status_modelagem">
+                                    <option value="Não iniciado">Não iniciado</option>
+                                    <option value="Em andamento">Em andamento</option>
+                                    <option value="Finalizado">Finalizado</option>
+                                    <option value="HOLD">HOLD</option>
+                                    <option value="Não se aplica">Não se aplica</option>
+                                    <option value="Em aprovação">Em aprovação</option>
+                                    <option value="Aprovado">Aprovado</option>
+                                    <option value="Ajuste">Ajuste</option>
+                                    <option value="Aprovado com ajustes">Aprovado com ajustes</option>
+                                </select>
+                                <input type="date" name="prazo_modelagem" id="prazo_modelagem">
+                                <input type="text" name="obs_modelagem" id="obs_modelagem" placeholder="Caminho arquivo">
+                            </div>
                             <div class="revisao_imagem" style="display: none;">
                                 <button type="button" onclick="abrirModal(this)" id="revisao_imagem_model">Adicionar
                                     Imagens</button>
@@ -830,23 +879,25 @@ $conn->close();
                             <p id="comp">Composição</p>
                             <i class="fas fa-chevron-down" id="toggle-options"></i>
                         </div>
-                        <div class="opcoes" id="opcoes" style="display: none;">
-                            <select name="comp_id" id="opcao_comp">
-                                <?php renderColabOptions($funcoes, $colaboradores_por_funcao, $colaboradores, 'comp'); ?>
-                            </select>
-                            <select name="status_comp" id="status_comp">
-                                <option value="Não iniciado">Não iniciado</option>
-                                <option value="Em andamento">Em andamento</option>
-                                <option value="Finalizado">Finalizado</option>
-                                <option value="HOLD">HOLD</option>
-                                <option value="Não se aplica">Não se aplica</option>
-                                <option value="Em aprovação">Em aprovação</option>
-                                <option value="Aprovado">Aprovado</option>
-                                <option value="Ajuste">Ajuste</option>
-                                <option value="Aprovado com ajustes">Aprovado com ajustes</option>
-                            </select>
-                            <input type="date" name="prazo_comp" id="prazo_comp">
-                            <input type="text" name="obs_comp" id="obs_comp" placeholder="Caminho arquivo">
+                        <div class="opcoes" id="opcoes" style="display: flex;">
+                            <div class="funcao-fields">
+                                <select name="comp_id" id="opcao_comp">
+                                    <?php renderColabOptions($funcoes, $colaboradores_por_funcao, $colaboradores, 'comp'); ?>
+                                </select>
+                                <select name="status_comp" id="status_comp">
+                                    <option value="Não iniciado">Não iniciado</option>
+                                    <option value="Em andamento">Em andamento</option>
+                                    <option value="Finalizado">Finalizado</option>
+                                    <option value="HOLD">HOLD</option>
+                                    <option value="Não se aplica">Não se aplica</option>
+                                    <option value="Em aprovação">Em aprovação</option>
+                                    <option value="Aprovado">Aprovado</option>
+                                    <option value="Ajuste">Ajuste</option>
+                                    <option value="Aprovado com ajustes">Aprovado com ajustes</option>
+                                </select>
+                                <input type="date" name="prazo_comp" id="prazo_comp">
+                                <input type="text" name="obs_comp" id="obs_comp" placeholder="Caminho arquivo">
+                            </div>
                             <div class="revisao_imagem" style="display: none;">
                                 <button type="button" onclick="abrirModal(this)" id="revisao_imagem_comp">Adicionar
                                     Imagens</button>
@@ -854,29 +905,31 @@ $conn->close();
                         </div>
                     </div>
                 </div>
-                <div class="funcao_comp">
+                <div class="funcao_comp" style="display: none;">
                     <div class="funcao">
                         <div class="titulo">
                             <p id="pre">Pré-Finalização</p>
                             <i class="fas fa-chevron-down" id="toggle-options"></i>
                         </div>
-                        <div class="opcoes" style="display: none;">
-                            <select name="opcao_pre" id="opcao_pre">
-                                <?php renderColabOptions($funcoes, $colaboradores_por_funcao, $colaboradores, 'pre'); ?>
-                            </select>
-                            <select name="status_pre" id="status_pre">
-                                <option value="Não iniciado">Não iniciado</option>
-                                <option value="Em andamento">Em andamento</option>
-                                <option value="Finalizado">Finalizado</option>
-                                <option value="HOLD">HOLD</option>
-                                <option value="Não se aplica">Não se aplica</option>
-                                <option value="Em aprovação">Em aprovação</option>
-                                <option value="Aprovado">Aprovado</option>
-                                <option value="Ajuste">Ajuste</option>
-                                <option value="Aprovado com ajustes">Aprovado com ajustes</option>
-                            </select>
-                            <input type="date" name="prazo_pre" id="prazo_pre">
-                            <input type="text" name="obs_pre" id="obs_pre" placeholder="Caminho arquivo">
+                        <div class="opcoes" style="display: flex;">
+                            <div class="funcao-fields">
+                                <select name="opcao_pre" id="opcao_pre">
+                                    <?php renderColabOptions($funcoes, $colaboradores_por_funcao, $colaboradores, 'pre'); ?>
+                                </select>
+                                <select name="status_pre" id="status_pre">
+                                    <option value="Não iniciado">Não iniciado</option>
+                                    <option value="Em andamento">Em andamento</option>
+                                    <option value="Finalizado">Finalizado</option>
+                                    <option value="HOLD">HOLD</option>
+                                    <option value="Não se aplica">Não se aplica</option>
+                                    <option value="Em aprovação">Em aprovação</option>
+                                    <option value="Aprovado">Aprovado</option>
+                                    <option value="Ajuste">Ajuste</option>
+                                    <option value="Aprovado com ajustes">Aprovado com ajustes</option>
+                                </select>
+                                <input type="date" name="prazo_pre" id="prazo_pre">
+                                <input type="text" name="obs_pre" id="obs_pre" placeholder="Caminho arquivo">
+                            </div>
                             <div class="revisao_imagem" style="display: none;">
                                 <button type="button" onclick="abrirModal(this)" id="revisao_imagem_pre">Adicionar
                                     Imagens</button>
@@ -890,24 +943,25 @@ $conn->close();
                             <p id="final">Finalização</p>
                             <i class="fas fa-chevron-down" id="toggle-options"></i>
                         </div>
-                        <div class="opcoes" id="opcoes" style="display: none;">
-                            <select name="final_id" id="opcao_final">
-                                <?php renderColabOptions($funcoes, $colaboradores_por_funcao, $colaboradores, 'final'); ?>
-                            </select>
-                            <select name="status_finalizacao" id="status_finalizacao">
-                                <option value="Não iniciado">Não iniciado</option>
-                                <option value="Em andamento">Em andamento</option>
-                                <option value="Finalizado">Finalizado</option>
-                                <option value="HOLD">HOLD</option>
-                                <option value="Não se aplica">Não se aplica</option>
-                                <option value="Em aprovação">Em aprovação</option>
-                                <option value="Aprovado">Aprovado</option>
-                                <option value="Ajuste">Ajuste</option>
-                                <option value="Aprovado com ajustes">Aprovado com ajustes</option>
-                            </select>
-                            <input type="date" name="prazo_finalizacao" id="prazo_finalizacao">
-                            <input type="text" name="obs_finalizacao" id="obs_finalizacao"
-                                placeholder="Caminho arquivo">
+                        <div class="opcoes" id="opcoes" style="display: flex;">
+                            <div class="funcao-fields">
+                                <select name="final_id" id="opcao_final">
+                                    <?php renderColabOptions($funcoes, $colaboradores_por_funcao, $colaboradores, 'final'); ?>
+                                </select>
+                                <select name="status_finalizacao" id="status_finalizacao">
+                                    <option value="Não iniciado">Não iniciado</option>
+                                    <option value="Em andamento">Em andamento</option>
+                                    <option value="Finalizado">Finalizado</option>
+                                    <option value="HOLD">HOLD</option>
+                                    <option value="Não se aplica">Não se aplica</option>
+                                    <option value="Em aprovação">Em aprovação</option>
+                                    <option value="Aprovado">Aprovado</option>
+                                    <option value="Ajuste">Ajuste</option>
+                                    <option value="Aprovado com ajustes">Aprovado com ajustes</option>
+                                </select>
+                                <input type="date" name="prazo_finalizacao" id="prazo_finalizacao">
+                                <input type="text" name="obs_finalizacao" id="obs_finalizacao" placeholder="Caminho arquivo">
+                            </div>
                             <div class="revisao_imagem" style="display: none;">
                                 <button type="button" onclick="abrirModal(this)" id="revisao_imagem_final">Adicionar
                                     Imagens</button>
@@ -922,24 +976,26 @@ $conn->close();
                             <p id="pos">Pós-Produção</p>
                             <i class="fas fa-chevron-down" id="toggle-options"></i>
                         </div>
-                        <div class="opcoes" id="opcoes" style="display: none;">
-                            <select name="pos_id" id="opcao_pos">
-                                <?php renderColabOptions($funcoes, $colaboradores_por_funcao, $colaboradores, 'pos'); ?>
-                            </select>
+                        <div class="opcoes" id="opcoes" style="display: flex;">
+                            <div class="funcao-fields">
+                                <select name="pos_id" id="opcao_pos">
+                                    <?php renderColabOptions($funcoes, $colaboradores_por_funcao, $colaboradores, 'pos'); ?>
+                                </select>
 
-                            <select name="status_pos" id="status_pos">
-                                <option value="Não iniciado">Não iniciado</option>
-                                <option value="Em andamento">Em andamento</option>
-                                <option value="Finalizado">Finalizado</option>
-                                <option value="HOLD">HOLD</option>
-                                <option value="Não se aplica">Não se aplica</option>
-                                <option value="Em aprovação">Em aprovação</option>
-                                <option value="Aprovado">Aprovado</option>
-                                <option value="Ajuste">Ajuste</option>
-                                <option value="Aprovado com ajustes">Aprovado com ajustes</option>
-                            </select>
-                            <input type="date" name="prazo_pos" id="prazo_pos">
-                            <input type="text" name="obs_pos" id="obs_pos" placeholder="Caminho arquivo">
+                                <select name="status_pos" id="status_pos">
+                                    <option value="Não iniciado">Não iniciado</option>
+                                    <option value="Em andamento">Em andamento</option>
+                                    <option value="Finalizado">Finalizado</option>
+                                    <option value="HOLD">HOLD</option>
+                                    <option value="Não se aplica">Não se aplica</option>
+                                    <option value="Em aprovação">Em aprovação</option>
+                                    <option value="Aprovado">Aprovado</option>
+                                    <option value="Ajuste">Ajuste</option>
+                                    <option value="Aprovado com ajustes">Aprovado com ajustes</option>
+                                </select>
+                                <input type="date" name="prazo_pos" id="prazo_pos">
+                                <input type="text" name="obs_pos" id="obs_pos" placeholder="Caminho arquivo">
+                            </div>
                             <div class="revisao_imagem" style="display: none;">
                                 <button type="button" onclick="abrirModal(this)" id="revisao_imagem_pos">Adicionar
                                     Imagens</button>
@@ -953,24 +1009,26 @@ $conn->close();
                             <p id="alteracao">Alteração</p>
                             <i class="fas fa-chevron-down" id="toggle-options"></i>
                         </div>
-                        <div class="opcoes" id="opcoes" style="display: none;">
-                            <select name="alteracao_id" id="opcao_alteracao">
-                                <?php renderColabOptions($funcoes, $colaboradores_por_funcao, $colaboradores, 'alteracao'); ?>
-                            </select>
+                        <div class="opcoes" id="opcoes" style="display: flex;">
+                            <div class="funcao-fields">
+                                <select name="alteracao_id" id="opcao_alteracao">
+                                    <?php renderColabOptions($funcoes, $colaboradores_por_funcao, $colaboradores, 'alteracao'); ?>
+                                </select>
 
-                            <select name="status_alteracao" id="status_alteracao">
-                                <option value="Não iniciado">Não iniciado</option>
-                                <option value="Em andamento">Em andamento</option>
-                                <option value="Finalizado">Finalizado</option>
-                                <option value="HOLD">HOLD</option>
-                                <option value="Não se aplica">Não se aplica</option>
-                                <option value="Em aprovação">Em aprovação</option>
-                                <option value="Aprovado">Aprovado</option>
-                                <option value="Ajuste">Ajuste</option>
-                                <option value="Aprovado com ajustes">Aprovado com ajustes</option>
-                            </select>
-                            <input type="date" name="prazo_alteracao" id="prazo_alteracao">
-                            <input type="text" name="obs_alteracao" id="obs_alteracao" placeholder="Caminho arquivo">
+                                <select name="status_alteracao" id="status_alteracao">
+                                    <option value="Não iniciado">Não iniciado</option>
+                                    <option value="Em andamento">Em andamento</option>
+                                    <option value="Finalizado">Finalizado</option>
+                                    <option value="HOLD">HOLD</option>
+                                    <option value="Não se aplica">Não se aplica</option>
+                                    <option value="Em aprovação">Em aprovação</option>
+                                    <option value="Aprovado">Aprovado</option>
+                                    <option value="Ajuste">Ajuste</option>
+                                    <option value="Aprovado com ajustes">Aprovado com ajustes</option>
+                                </select>
+                                <input type="date" name="prazo_alteracao" id="prazo_alteracao">
+                                <input type="text" name="obs_alteracao" id="obs_alteracao" placeholder="Caminho arquivo">
+                            </div>
                             <div class="revisao_imagem" style="display: none;">
                                 <button type="button" onclick="abrirModal(this)" id="revisao_imagem_alt">Adicionar
                                     Imagens</button>
@@ -984,7 +1042,7 @@ $conn->close();
                             <p id="planta">Planta Humanizada</p>
                             <i class="fas fa-chevron-down" id="toggle-options"></i>
                         </div>
-                        <div class="opcoes" id="opcoes" style="display: none;">
+                        <div class="opcoes" id="opcoes" style="display: flex;">
                             <select name="planta_id" id="opcao_planta">
                                 <?php renderColabOptions($funcoes, $colaboradores_por_funcao, $colaboradores, 'planta'); ?>
                             </select>
@@ -1008,58 +1066,6 @@ $conn->close();
                             </div>
                         </div>
                     </div>
-                </div>
-                <div class="funcao status_select" id="status_funcao" style="margin-bottom: 15px;width: max-content;">
-                    <p id="status">Status</p>
-                    <select name="status_id" id="opcao_status">
-                        <?php foreach ($status_imagens as $status): ?>
-                            <option value="<?= htmlspecialchars($status['idstatus']); ?>">
-                                <?= htmlspecialchars($status['nome_status']); ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                    <select name="status_hold" id="status_hold" multiple style="width: 200px;">
-                        <option value="Paisagismo">Paisagismo</option>
-                        <option value="Mood">Mood</option>
-                        <option value="Interiores">Interiores</option>
-                        <option value="Luminotécnico">Luminotécnico</option>
-                        <option value="Arquitetônico">Arquitetônico</option>
-                        <option value="Definição de unidade">Definição de unidade</option>
-                        <option value="Aguardando aprovações">Aguardando aprovações</option>
-                        <option value="Aguardando arquivos">Aguardando arquivos</option>
-                    </select>
-                </div>
-                <div class="funcao render_add" id="status_funcao" style="width: 200px; margin-bottom: 15px;">
-                    <div class="render">
-                        <p id="render_alta">Render</p>
-                        <button id="addRender" class="buttons-form-add"
-                            style=" padding: 3px 10px; font-size: 13px; background-color: steelblue;">Adicionar
-                            render</button>
-                        <label class="switch">
-                            <input type="checkbox" id="notificar">
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-                </div>
-                <div class="funcao revisao_add" id="status_funcao" style="width: 200px; margin-bottom: 15px;">
-                    <div class="revisao">
-                        <p id="revisao">Revisao</p>
-                        <button id="addRevisao" class="buttons-form-add"
-                            style=" padding: 3px 10px; font-size: 13px; background-color: steelgreen;">Adicionar
-                            revisão</button>
-                    </div>
-                </div>
-                <div class="buttons">
-                    <button type="button" id="btnAnterior" style="background: white; color: black"><i
-                            class="fa-solid fa-angle-left"></i></button>
-                    <div>
-                        <button type="submit" id="salvar_funcoes" class="buttons-form-add">Salvar</button>
-                        <div id="loadingBar" style="display: none;">
-                            <div class="progress"></div>
-                        </div>
-                    </div>
-                    <button type="button" id="btnProximo" style="background: white; color: black"><i
-                            class="fa-solid fa-angle-right"></i></button>
                 </div>
             </div>
             <div class="modal-funcoes-right">
@@ -1494,6 +1500,32 @@ $conn->close();
         </div>
     </div>
 
+
+    <style>
+
+    </style>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const row = document.querySelector('.funcoes-cards-row');
+            if (!row) return;
+            // Select function blocks that represent stages
+            const funcs = Array.from(document.querySelectorAll('.modal-funcoes .funcao_comp'));
+            funcs.forEach(fn => {
+                row.appendChild(fn);
+                const toggle = fn.querySelector('.toggle-options');
+                const titulo = fn.querySelector('.titulo');
+                const opener = toggle || titulo;
+                if (opener) {
+                    opener.addEventListener('click', function(e) {
+                        if (e.target.tagName.toLowerCase() === 'select' || e.target.tagName.toLowerCase() === 'input') return;
+                        fn.classList.toggle('open');
+                    });
+                    fn.setAttribute('tabindex', '0');
+                }
+            });
+        });
+    </script>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>

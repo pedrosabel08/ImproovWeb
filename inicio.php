@@ -126,8 +126,8 @@ $conn->close();
                 </div>
                 <nav>
                     <div class="nav-left">
-                        <button id="overview" style="display: none;"><i class="ri-dashboard-line"></i><span>Overview</span></button>
-                        <button id="kanban" class="active"><i class="ri-kanban-view"></i><span>Kanban</span></button>
+                        <button id="overviewBtn"><i class="ri-dashboard-line"></i><span>Overview</span></button>
+                        <button id="kanbanBtn" class="active"><i class="ri-kanban-view"></i><span>Kanban</span></button>
                         <!-- <button id="activities"><i class="fa-solid fa-chart-line"><span></i>Activity</span></button> -->
                         <!-- <button id="timeline"><span>Timeline</span></button> -->
                     </div>
@@ -201,6 +201,10 @@ $conn->close();
                     </div>
                 </div>
 
+            </div>
+            <!-- Overview embed container (hidden by default) -->
+            <div id="overview-section" style="display:none; width:100%; height: calc(100vh - 140px);">
+                <iframe id="overview-iframe" src="PaginaPrincipal/Overview/index.php" frameborder="0" style="width:100%; height:100%;"></iframe>
             </div>
         </main>
     </div>
@@ -547,6 +551,32 @@ $conn->close();
     <script src="script/notificacoes.js"></script>
     <script src="PaginaPrincipal/scriptIndex.js"></script>
     <script src="./script/sidebar.js"></script>
+    <script>
+        // Toggle between Kanban and Overview (embedded iframe)
+        (function() {
+            const btnOverview = document.getElementById('overviewBtn');
+            const btnKanban = document.getElementById('kanbanBtn');
+            const kanbanSec = document.getElementById('kanban-section');
+            const overviewSec = document.getElementById('overview-section');
+
+            function showOverview() {
+                kanbanSec.style.display = 'none';
+                overviewSec.style.display = 'block';
+                btnOverview.classList.add('active');
+                btnKanban.classList.remove('active');
+            }
+
+            function showKanban() {
+                overviewSec.style.display = 'none';
+                kanbanSec.style.display = 'grid';
+                btnKanban.classList.add('active');
+                btnOverview.classList.remove('active');
+            }
+
+            btnOverview.addEventListener('click', showOverview);
+            btnKanban.addEventListener('click', showKanban);
+        })();
+    </script>
 
 </body>
 

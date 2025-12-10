@@ -1173,8 +1173,7 @@ form#form-add {
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
     animation: fadeIn 0.3s ease;
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    grid-template-rows: auto auto;
+    grid-template-rows: auto auto auto;
 }
 
 form#form-add .funcao {
@@ -1206,7 +1205,7 @@ form#form-add .funcao {
 .titulo-funcoes {
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: space-between;
     gap: 10px;
     margin-bottom: 40px;
     position: sticky;
@@ -1220,7 +1219,6 @@ form#form-add .funcao {
 }
 
 .modal-funcoes {
-    grid-column: 1;
     background: #fafafa;
     border-radius: 8px;
     padding: 12px;
@@ -1934,10 +1932,76 @@ i.fa-info {
     color: var(--text);
 }
 
+.acoesModal {
+    display: grid;
+    max-width: 100vw;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+}
+
 .funcao_comp {
-    display: flex;
-    align-items: center;
     margin-bottom: 15px;
+}
+
+.funcao-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* Funções cards row and card styles */
+.funcoes-cards-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-around;
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.funcoes-cards-row .funcao_comp {
+    background: var(--card-bg, #fff);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    border-radius: 8px;
+    padding: 8px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+    min-width: 180px;
+    max-width: 240px;
+    cursor: pointer;
+}
+
+.funcoes-cards-row .funcao_comp .titulo {
+    margin-bottom: 6px
+}
+
+.funcoes-cards-row .funcao_comp .opcoes {
+    display: none
+}
+
+.funcoes-cards-row .funcao_comp.open .opcoes {
+    display: block
+}
+
+.funcoes-cards-row .funcao_comp:focus {
+    outline: 2px solid #7aa7ff
+}
+
+@media(max-width:900px) {
+    .funcoes-cards-row .funcao_comp {
+        min-width: 140px;
+        max-width: 45%
+    }
+}
+
+@media(max-width:480px) {
+    .funcoes-cards-row {
+        gap: 8px
+    }
+
+    .funcoes-cards-row .funcao_comp {
+        max-width: 100%;
+        min-width: 100%
+    }
 }
 
 .check {

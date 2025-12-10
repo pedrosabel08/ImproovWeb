@@ -77,10 +77,23 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
     // 4) Log de alterações da função selecionada
     // ==========================================================
 
+    // defaults for computed times (will be overwritten if logs exist)
+    $tempo_total_producao = [
+        'seconds' => 0,
+        'hours' => 0,
+        'readable' => '0s'
+    ];
+    $tempo_pessoal_producao = [
+        'seconds' => 0,
+        'hours' => 0,
+        'readable' => '0s'
+    ];
+
     $logAlteracoes = [];
     if ($idFuncaoImagem > 0) {
+        // Fetch logs in DESC order for the UI display (most recent first)
         $sqlLog = "SELECT la.idlog, la.funcao_imagem_id, la.status_anterior, la.status_novo, la.data,
-                   c.nome_colaborador AS responsavel
+                   la.colaborador_id, c.nome_colaborador AS responsavel
             FROM log_alteracoes la
             LEFT JOIN colaborador c ON la.colaborador_id = c.idcolaborador
             WHERE la.funcao_imagem_id = $idFuncaoImagem
@@ -89,6 +102,126 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
         if ($resultLog = $conn->query($sqlLog)) {
             while ($row = $resultLog->fetch_assoc()) {
                 $logAlteracoes[] = $row;
+            }
+        }
+
+        // --- Additional query (ASC) to compute time intervals between consecutive logs ---
+        $logAsc = [];
+        $sqlLogAsc = "SELECT la.idlog, la.funcao_imagem_id, la.status_anterior, la.status_novo, la.data,
+                          la.colaborador_id
+            FROM log_alteracoes la
+            WHERE la.funcao_imagem_id = $idFuncaoImagem
+            ORDER BY la.data ASC
+        ";
+        if ($resAsc = $conn->query($sqlLogAsc)) {
+            while ($r = $resAsc->fetch_assoc()) {
+                $logAsc[] = $r;
+            }
+        }
+
+        // --- build durations map per log id (time until next log) ---
+        $durations_by_log = []; // idlog => seconds
+        $countDur = count($logAsc);
+        if ($countDur >= 2) {
+            for ($i = 0; $i < $countDur - 1; $i++) {
+                $current = $logAsc[$i];
+                $next = $logAsc[$i + 1];
+                $startTs = (new DateTime($current['data']))->getTimestamp();
+                $endTs = (new DateTime($next['data']))->getTimestamp();
+                $diff = $endTs - $startTs;
+                if ($diff < 0) $diff = 0;
+                $durations_by_log[(int)$current['idlog']] = $diff;
+            }
+            // last log has no next event => null (or 0). Keep as null to indicate open interval.
+            $lastLog = $logAsc[$countDur - 1];
+            $durations_by_log[(int)$lastLog['idlog']] = null;
+        }
+
+        // Compute total production time and personal production time
+        $tempo_total_seg = 0;
+        $tempo_pessoal_seg = 0;
+
+        // determine assigned collaborator for this funcao_imagem (if available)
+        $assigned_colab_id = null;
+        if (!empty($funcoes) && isset($funcoes[0]['colaborador_id'])) {
+            $assigned_colab_id = (int)$funcoes[0]['colaborador_id'];
+        }
+
+        // active states considered as 'production' for personal time
+        $active_states = ['Em andamento', 'Ajuste'];
+
+        $countAsc = count($logAsc);
+        if ($countAsc >= 2) {
+            for ($i = 0; $i < $countAsc - 1; $i++) {
+                $start = new DateTime($logAsc[$i]['data']);
+                $end = new DateTime($logAsc[$i + 1]['data']);
+                $interval_sec = $end->getTimestamp() - $start->getTimestamp();
+                if ($interval_sec < 0) $interval_sec = 0;
+                $tempo_total_seg += $interval_sec;
+
+                $status_novo = isset($logAsc[$i]['status_novo']) ? $logAsc[$i]['status_novo'] : null;
+                $log_colab_id = isset($logAsc[$i]['colaborador_id']) ? (int)$logAsc[$i]['colaborador_id'] : null;
+
+                // Count as personal production if the interval starts with an active state
+                // and the actor matches the assigned collaborator (if known).
+                if (in_array($status_novo, $active_states, true)) {
+                    if ($assigned_colab_id === null || $log_colab_id === $assigned_colab_id) {
+                        $tempo_pessoal_seg += $interval_sec;
+                    }
+                }
+            }
+        }
+
+        // helper readable format
+        function secs_to_readable($s)
+        {
+            $days = floor($s / 86400);
+            $s -= $days * 86400;
+            $hours = floor($s / 3600);
+            $s -= $hours * 3600;
+            $minutes = floor($s / 60);
+            $seconds = $s - $minutes * 60;
+            $parts = [];
+            if ($days > 0) $parts[] = $days . 'd';
+            if ($hours > 0) $parts[] = $hours . 'h';
+            if ($minutes > 0) $parts[] = $minutes . 'm';
+            if ($seconds > 0) $parts[] = $seconds . 's';
+            return implode(' ', $parts) ?: '0s';
+        }
+
+        // attach computed values to a variable for later JSON response
+        $tempo_total_producao = [
+            'seconds' => $tempo_total_seg,
+            'hours' => round($tempo_total_seg / 3600, 2),
+            'readable' => secs_to_readable($tempo_total_seg)
+        ];
+        $tempo_pessoal_producao = [
+            'seconds' => $tempo_pessoal_seg,
+            'hours' => round($tempo_pessoal_seg / 3600, 2),
+            'readable' => secs_to_readable($tempo_pessoal_seg)
+        ];
+
+        // --- enrich logAlteracoes (which was fetched DESC) with duration fields ---
+        if (!empty($logAlteracoes)) {
+            foreach ($logAlteracoes as $idx => $entry) {
+                $idlog = isset($entry['idlog']) ? (int)$entry['idlog'] : null;
+                if ($idlog !== null && array_key_exists($idlog, $durations_by_log)) {
+                    $secs = $durations_by_log[$idlog];
+                    if ($secs === null) {
+                        $logAlteracoes[$idx]['tempo_segundos'] = null;
+                        $logAlteracoes[$idx]['tempo_horas'] = null;
+                        $logAlteracoes[$idx]['tempo_readable'] = null;
+                    } else {
+                        $logAlteracoes[$idx]['tempo_segundos'] = $secs;
+                        $logAlteracoes[$idx]['tempo_horas'] = round($secs / 3600, 4);
+                        $logAlteracoes[$idx]['tempo_readable'] = secs_to_readable($secs);
+                    }
+                } else {
+                    // if we couldn't compute, keep nulls
+                    $logAlteracoes[$idx]['tempo_segundos'] = null;
+                    $logAlteracoes[$idx]['tempo_horas'] = null;
+                    $logAlteracoes[$idx]['tempo_readable'] = null;
+                }
             }
         }
     }
@@ -200,6 +333,8 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
         "status_imagem" => $statusImagem,
         "colaboradores" => $colaboradores,
         "log_alteracoes" => $logAlteracoes,
+        "tempo_total_producao" => $tempo_total_producao,
+        "tempo_pessoal_producao" => $tempo_pessoal_producao,
         "arquivos_imagem" => $arquivos_imagem,
         "arquivos_tipo" => $arquivos_tipo,
         "arquivos_anteriores" => $arquivos_anteriores,

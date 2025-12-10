@@ -72,6 +72,27 @@ body {
     margin: 8px 0 16px 0;
 }
 
+.radar-filters-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.radar-obra-filters {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.radar-obra-filters select {
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 8px;
+}
+
 .filter-btn {
     background: rgba(255, 255, 255, 0.05);
     color: var(--text);

@@ -47,7 +47,17 @@ $conn->close();
             <button id="radar-refresh" class="radar-btn">Revarrer</button>
         </header>
 
-        <div class="radar-filters" id="radar-filters" aria-label="Filtrar funções"></div>
+        <div class="radar-filters-row">
+            <div class="radar-filters" id="radar-filters" aria-label="Filtrar funções"></div>
+            <div class="radar-obra-filters" id="radar-obra-filters" aria-label="Filtrar por obra"></div>
+            <div class="radar-type-filter">
+                <span class="small">Filtrar por anterior:</span>
+                <select id="filter-prev-started">
+                    <option value="">Todos</option>
+                    <option value="started">Somente iniciado</option>
+                </select>
+            </div>
+        </div>
 
         <div id="radar-grid" class="radar-grid" aria-live="polite"></div>
     </div>

@@ -14,7 +14,6 @@ function renderFunctionCard(fn) {
     // Tipo de imagem filter per card (derived from suggestions)
     const tipos = Array.from(new Set((fn.sugestoes || []).map(s => s.tipo_imagem || ''))).filter(Boolean);
     let currentTipo = '';
-
     const filterWrap = el('div', 'radar-type-filter');
     const lbl = el('span', 'small');
     lbl.textContent = 'Filtrar por tipo:';
@@ -24,6 +23,19 @@ function renderFunctionCard(fn) {
     select.addEventListener('change', () => { currentTipo = select.value; renderSuggestions(); });
     filterWrap.append(lbl, select);
     card.appendChild(filterWrap);
+
+    // Obra filter per card (derived from suggestions)
+    const obras = Array.from(new Set((fn.sugestoes || []).map(s => s.obra_nome || ''))).filter(Boolean);
+    let currentObra = '';
+    const obraFilterWrap = el('div', 'radar-type-filter');
+    const lblObra = el('span', 'small');
+    lblObra.textContent = 'Filtrar por obra:';
+    const selectObra = el('select');
+    const optAllObra = el('option'); optAllObra.value = ''; optAllObra.textContent = 'Todas'; selectObra.appendChild(optAllObra);
+    obras.forEach(o => { const oo = el('option'); oo.value = o; oo.textContent = o; selectObra.appendChild(oo); });
+    selectObra.addEventListener('change', () => { currentObra = selectObra.value; renderSuggestions(); });
+    obraFilterWrap.append(lblObra, selectObra);
+    card.appendChild(obraFilterWrap);
 
     // Colaboradores
     const collabBox = el('div', 'radar-collabs');
@@ -44,6 +56,22 @@ function renderFunctionCard(fn) {
     collabBox.appendChild(collabWrap);
     card.appendChild(collabBox);
 
+    // Allocation controls: collaborator select + allocate button
+    const allocControls = el('div', 'radar-alloc-controls');
+    const collabSelect = el('select');
+    const collabDefault = el('option'); collabDefault.value = ''; collabDefault.textContent = 'Selecionar colaborador...'; collabSelect.appendChild(collabDefault);
+    if (fn.colaboradores && fn.colaboradores.length) {
+        fn.colaboradores.forEach(c => {
+            const o = el('option'); o.value = String(c.id || c.idcolaborador || c.id); o.textContent = c.nome || c.nome_colaborador || c.nome;
+            collabSelect.appendChild(o);
+        });
+    }
+    const allocBtn = el('button', 'btn'); allocBtn.textContent = 'Alocar selecionados'; allocBtn.style.display = 'none'; allocBtn.disabled = true;
+    allocControls.append(collabSelect, allocBtn);
+    card.appendChild(allocControls);
+
+    const selectedImgs = new Set();
+
     // Sugestões
     const sugBox = el('div', 'radar-suggest');
     const sh = el('h3'); sh.textContent = 'Sugestões para alocar (anterior já andou)';
@@ -52,17 +80,79 @@ function renderFunctionCard(fn) {
     function renderSuggestions() {
         // clear previous list content except header
         while (sugBox.children.length > 1) sugBox.removeChild(sugBox.lastChild);
-        const list = (fn.sugestoes || []).filter(s => !currentTipo || s.tipo_imagem === currentTipo);
+        selectedImgs.clear();
+        allocBtn.style.display = 'none';
+        allocBtn.disabled = true;
+        let list = (fn.sugestoes || []).filter(s =>
+            (!currentTipo || s.tipo_imagem === currentTipo) &&
+            (!currentObra || (s.obra_nome || '') === currentObra)
+        );
+        // Apply global 'previous started' filter from the index select if present
+        try {
+            const prevFilterEl = document.getElementById('filter-prev-started');
+            if (prevFilterEl && prevFilterEl.value === 'started') {
+                // keep only suggestions where previous status is not 'Não iniciado'
+                list = list.filter(s => (s.prev_status || '').trim() !== 'Não iniciado');
+            }
+        } catch (e) {
+            // ignore DOM errors
+        }
         if (list.length) {
             list.forEach(s => {
                 const it = el('div', 'suggest-item');
+                const cb = el('input'); cb.type = 'checkbox'; cb.className = 'suggest-checkbox';
+                cb.dataset.imagemId = String(s.imagem_id || '');
+                cb.addEventListener('change', () => {
+                    const id = cb.dataset.imagemId;
+                    if (cb.checked) selectedImgs.add(id); else selectedImgs.delete(id);
+                    allocBtn.style.display = selectedImgs.size ? '' : 'none';
+                    allocBtn.disabled = !collabSelect.value;
+                });
                 const title = el('div');
                 title.innerHTML = `<strong>${s.imagem_nome || 'Imagem ' + s.imagem_id}</strong> <span class="small">(${s.tipo_imagem || 'Tipo?'})</span>`;
                 const obra = el('div', 'small'); obra.textContent = s.obra_nome || '';
                 const st = el('div', 'small');
                 st.innerHTML = `Anterior: <span class="status-prev">${s.prev_status}</span> | Atual: <span class="status-cur">${s.cur_status || '-'}</span>`;
-                it.append(title, obra, st);
+                it.append(cb, title, obra, st);
                 sugBox.appendChild(it);
+            });
+
+            // when collaborator changes, enable/disable allocBtn
+            collabSelect.addEventListener('change', () => {
+                allocBtn.disabled = !collabSelect.value || selectedImgs.size === 0;
+                allocBtn.style.display = selectedImgs.size ? '' : 'none';
+            });
+
+            allocBtn.addEventListener('click', async () => {
+                if (!collabSelect.value) return alert('Selecione um colaborador.');
+                const ids = Array.from(selectedImgs).filter(Boolean);
+                if (!ids.length) return alert('Selecione ao menos uma sugestão.');
+                allocBtn.disabled = true;
+                const promises = ids.map(id => {
+                    const fd = new FormData();
+                    fd.append('imagem_id', id);
+                    fd.append('funcao_id', String(fn.funcao_id));
+                    fd.append('colaborador_id', collabSelect.value);
+                    return fetch('../../insereFuncao.php', { method: 'POST', body: fd }).then(r => r.json()).catch(e => ({ error: e.message }));
+                });
+                try {
+                    const results = await Promise.all(promises);
+                    const failed = results.filter(r => r && r.error);
+                    if (failed.length === 0) {
+                        // remove allocated images from suggestions
+                        fn.sugestoes = (fn.sugestoes || []).filter(s => !ids.includes(String(s.imagem_id)));
+                        renderSuggestions();
+                        alert('Alocado com sucesso.');
+                    } else {
+                        console.error('Falhas ao alocar', failed);
+                        alert('Algumas alocações falharam. Veja console.');
+                    }
+                } catch (e) {
+                    console.error(e);
+                    alert('Erro ao alocar: ' + e.message);
+                } finally {
+                    allocBtn.disabled = false;
+                }
             });
         } else {
             const empty = el('div', 'empty');
@@ -133,6 +223,10 @@ async function initRadar() {
             console.error(e);
         }
     };
+
+    // Re-render grid when the global 'previous started' select changes
+    const globalPrevSelect = document.getElementById('filter-prev-started');
+    if (globalPrevSelect) globalPrevSelect.addEventListener('change', () => renderGrid());
 
     btn && btn.addEventListener('click', load);
     load();

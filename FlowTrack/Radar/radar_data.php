@@ -134,18 +134,21 @@ try {
                 $tipoImg = $row['tipo_imagem'] ?? '';
                 $obraId = $row['obra_id'] ?? null;
 
-                // For modelagem (funcao_id = 2), only consider allowed types
-                if ($funcId === 2) {
-                    if (!in_array($tipoImg, ['Fachada', 'Imagem externa', 'Interna', 'Unidades'], true)) {
-                        continue;
-                    }
+                // Classificação de tipos (case-insensitive)
+                $tipoLow = mb_strtolower(trim($tipoImg ?? ''));
+                $isFachadaExterna = (bool)preg_match('/fachad|externa/', $tipoLow);
+                $isPlantaHumanizada = (bool)preg_match('/planta\s*humanizada/', $tipoLow);
+
+                // Tipo Planta Humanizada: apenas Finalização (funcao 4) é válida
+                if ($isPlantaHumanizada && $funcId !== 4) {
+                    continue;
                 }
 
                 // Do not suggest Caderno (funcao 1) for fachada or planta humanizada
-                if ($funcId === 1 && in_array($tipoImg, ['Fachada', 'Planta Humanizada'], true)) {
+                if ($funcId === 1 && ($isFachadaExterna || $isPlantaHumanizada)) {
                     continue;
                 }
-                if ($funcId === 8 && in_array($tipoImg, ['Fachada', 'Planta Humanizada'], true)) {
+                if ($funcId === 8 && ($isFachadaExterna || $isPlantaHumanizada)) {
                     continue;
                 }
 
@@ -156,22 +159,25 @@ try {
 
                 $noAllocation = ($curColab === null);
 
-                $ignorePrev = in_array($tipoImg, ['Fachada', 'Planta Humanizada', 'Imagem externa'], true);
+                $ignorePrev = ($isFachadaExterna || $isPlantaHumanizada);
 
-                if ($prevId === null) {
-                    // first function in chain: require TO-DO (substatus_id=2), unless ignored
-                    $prevOk = $ignorePrev ? true : ((int)($row['substatus_id'] ?? 0) === 2);
-                } else {
-                    $prevOk = $ignorePrev ? true : ($prevStatus !== 'Não iniciado');
-                }
+                // Previously we required the previous function to be started (not 'Não iniciado')
+                // to include a suggestion. That filter is now removed so the frontend (index)
+                // can apply desired filters. Allow suggestions regardless of previous status.
+                $prevOk = true;
 
                 // Modelagem de fachada/externa é o primeiro processo: não depende de etapa anterior
-                if ($funcId === 2 && in_array($tipoImg, ['Fachada', 'Imagem externa'], true)) {
+                if ($funcId === 2 && $isFachadaExterna) {
                     $prevOk = true;
                 }
 
-                // Modelagem de Interna/Unidades depende do Filtro (funcao 8) na obra ter sido iniciado
-                if ($funcId === 2 && in_array($tipoImg, ['Interna', 'Unidades'], true)) {
+                // Finalização para Planta Humanizada é única: não depende de etapa anterior
+                if ($funcId === 4 && $isPlantaHumanizada) {
+                    $prevOk = true;
+                }
+
+                // Modelagem de Interna/Unidades (todos os demais tipos) depende do Filtro (funcao 8) na obra ter sido iniciado
+                if ($funcId === 2 && !$isFachadaExterna) {
                     $filtroStarted = false;
                     if ($filtroStatus !== 'Não iniciado') {
                         $filtroStarted = true;
@@ -185,7 +191,7 @@ try {
                 }
 
                 // For modelagem (funcao_id = 2) on fachada/externa, if any image of the obra is Finalizado, skip suggestions for the whole obra.
-                if ($funcId === 2 && in_array($tipoImg, ['Fachada', 'Imagem externa'], true)) {
+                if ($funcId === 2 && $isFachadaExterna) {
                     if ($curStatus === 'Finalizado') {
                         if ($obraId !== null) {
                             $obraModelagemDone[$obraId] = true;
@@ -205,7 +211,7 @@ try {
                 }
 
                 if ($noAllocation && $prevOk) {
-                    if ($funcId === 2 && in_array($tipoImg, ['Fachada', 'Imagem externa'], true) && $obraId !== null) {
+                    if ($funcId === 2 && $isFachadaExterna && $obraId !== null) {
                         if (isset($obraModelagemSuggested[$obraId])) {
                             continue; // só conta uma por obra
                         }

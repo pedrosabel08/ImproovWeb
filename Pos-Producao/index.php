@@ -10,6 +10,7 @@ if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
 }
 
 include '../conexao.php';
+$conn = conectarBanco();
 
 $idusuario = $_SESSION['idusuario'];
 $tela_atual = basename($_SERVER['PHP_SELF']);
@@ -94,7 +95,6 @@ if ($result_status->num_rows > 0) {
 
 include '../conexaoMain.php';
 
-$conn = conectarBanco();
 
 $clientes = obterClientes($conn);
 $obras = obterObras($conn);

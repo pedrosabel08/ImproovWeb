@@ -752,12 +752,6 @@ $conn->close();
                             </div>
                         </div>
                     </div>
-                    <div class="modal-funcoes-right">
-                        <div id="modalFuncoesInfo">
-                            <!-- Informações da imagem serão carregadas aqui via AJAX -->
-                            <p class="info-placeholder">Carregando informações da imagem...</p>
-                        </div>
-                    </div>
                 </div>
                 <div class="funcao_comp">
                     <div class="funcao">
@@ -1057,7 +1051,12 @@ $conn->close();
                             class="fa-solid fa-angle-right"></i></button>
                 </div>
             </div>
-
+            <div class="modal-funcoes-right">
+                <div id="modalFuncoesInfo">
+                    <!-- Informações da imagem serão carregadas aqui via AJAX -->
+                    <p class="info-placeholder">Carregando informações da imagem...</p>
+                </div>
+            </div>
         </form>
     </div>
 

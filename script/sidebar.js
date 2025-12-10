@@ -116,9 +116,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 localStorage.setItem('obraNome', this.getAttribute('data-name'));
             }
 
-            // Redireciona para o caminho com o prefixo `/ImproovWeb` para apontar
-            // para a aplicação correta tanto local quanto no servidor.
-            window.location.href = window.location.origin + '/ImproovWeb/Dashboard/obra';
+            // Redireciona para o caminho correto dependendo do contexto
+            // (ex.: local `/ImproovWeb/` ou em `/flow/ImproovWeb/`).
+            const basePath = window.location.pathname.includes('/flow/ImproovWeb/') || window.location.pathname.includes('/flow/ImproovWeb')
+                ? '/flow/ImproovWeb/'
+                : '/ImproovWeb/';
+            window.location.href = window.location.origin + basePath + 'Dashboard/obra';
         });
     });
 });

@@ -217,7 +217,6 @@ form#formAdicionarEntrega {
     padding: 4px 8px;
     border-radius: 8px;
     font-size: 0.8rem;
-    outline: none;
 }
 
 .modal-content textarea {

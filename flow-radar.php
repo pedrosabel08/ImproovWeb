@@ -20,6 +20,8 @@ if (!function_exists('conectarBanco')) {
 
 $conn = conectarBanco();
 
+$obras_inativas = obterObras($conn, 1);
+
 $colaborador_id = isset($_GET['colaborador_id']) ? (int)$_GET['colaborador_id'] : 0;
 $funcao_id = isset($_GET['funcao_id']) ? (int)$_GET['funcao_id'] : 0;
 

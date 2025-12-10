@@ -28,16 +28,39 @@ function obterClientes($conn)
     return $clientes;
 }
 
-function obterObras($conn)
+function obterObras($conn, $status = 0)
 {
-    $sql = "SELECT idobra, nome_obra, nomenclatura FROM obra WHERE status_obra = 0 ORDER BY nomenclatura ASC";
-    $result = $conn->query($sql);
+    // $status: 0 = obras ativas (padrão), 1 = obras inativas, 'all' = todas as obras
     $obras = array();
 
-    if ($result->num_rows > 0) {
+    if ($status === 'all') {
+        $sql = "SELECT idobra, nome_obra, nomenclatura FROM obra ORDER BY nomenclatura ASC";
+        $stmt = $conn->prepare($sql);
+        if ($stmt === false) {
+            return $obras;
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+    } else {
+        $status_int = (int) $status;
+        $sql = "SELECT idobra, nome_obra, nomenclatura FROM obra WHERE status_obra = ? ORDER BY nomenclatura ASC";
+        $stmt = $conn->prepare($sql);
+        if ($stmt === false) {
+            return $obras;
+        }
+        $stmt->bind_param('i', $status_int);
+        $stmt->execute();
+        $result = $stmt->get_result();
+    }
+
+    if ($result && $result->num_rows > 0) {
         while ($row = $result->fetch_assoc()) {
             $obras[] = $row;
         }
+    }
+
+    if (isset($stmt) && $stmt) {
+        $stmt->close();
     }
 
     return $obras;

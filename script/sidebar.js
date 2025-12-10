@@ -116,8 +116,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 localStorage.setItem('obraNome', this.getAttribute('data-name'));
             }
 
-            // Redireciona para a URL com o hash desejado
-            window.location.href = 'https://improov.com.br/flow/ImproovWeb/Dashboard/obra';
+            // Redireciona para o caminho com o prefixo `/ImproovWeb` para apontar
+            // para a aplicação correta tanto local quanto no servidor.
+            window.location.href = window.location.origin + '/ImproovWeb/Dashboard/obra';
         });
     });
 });

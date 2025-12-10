@@ -1,4 +1,3 @@
-<?php /* atualiza_log_tela.php removed from server-side include to avoid duplicate/incorrect entries; client-side fetch below records the title/url. */ ?>
 <!DOCTYPE html>
 <html lang="pt-br">
 
@@ -92,6 +91,22 @@
                 <?php endforeach; ?>
             </ul>
 
+            <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1)): ?>
+
+                <?php if (!empty($obras_inativas)): ?>
+                    <ul id="obras-inativas" class="division">
+                        <label for="">Obras inativas</label>
+                        <?php foreach ($obras_inativas as $obra): ?>
+                            <li class="obra inativa">
+                                <i class="fa fa-star favorite-icon" data-id="<?= $obra['idobra']; ?>" title="<?= htmlspecialchars($obra['nomenclatura']); ?>"></i>
+                                <a title="<?= htmlspecialchars($obra['nomenclatura']); ?>" href="#" class="obra-item" data-id="<?= $obra['idobra']; ?>" data-name="<?= htmlspecialchars($obra['nomenclatura']); ?>">
+                                    <span><?= htmlspecialchars($obra['nomenclatura']); ?></span>
+                                </a>
+                            </li>
+                        <?php endforeach; ?>
+                    </ul>
+                <?php endif; ?>
+            <?php endif; ?>
             <ul id="obras-list" class="division">
                 <label for="">Usuário</label>
                 <li><a title="Informações do Usuário" href="https://improov.com.br/flow/ImproovWeb/infos.php"><i class="fa-solid fa-user"></i><span>Informações</span></a></li>
@@ -101,7 +116,7 @@
 </body>
 
 </html>
- 
+
 <script src="/flow/ImproovWeb/assets/js/upload-ws.js"></script>
 
 <script>
@@ -125,7 +140,9 @@
                 }
             }).then(resp => resp.json().then(js => {
                 if (!js.ok) console.debug('atualiza_log_tela response:', js);
-            })).catch(err => { console.debug('atualiza_log_tela fetch error', err); });
+            })).catch(err => {
+                console.debug('atualiza_log_tela fetch error', err);
+            });
         } catch (e) {
             // noop
         }

@@ -13,6 +13,7 @@ if (!function_exists('conectarBanco')) {
 }
 
 $conn = conectarBanco();
+$obras_inativas = obterObras($conn, 1);
 
 $funcao_id = isset($_GET['funcao_id']) ? (int)$_GET['funcao_id'] : 0;
 // opcional: colaborador que consultou (pode ser usado para filtrar sugestões)

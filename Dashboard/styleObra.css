@@ -1684,6 +1684,11 @@ table#tabela-logs tbody tr:hover {
     background-color: #ff9100;
 }
 
+#markInactiveBtn {
+    background-color: #a19f9d;
+    color: black;
+}
+
 #acoesBtn {
     background-color: #ffe000;
     color: black;

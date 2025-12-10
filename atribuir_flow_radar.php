@@ -5,6 +5,8 @@ include 'conexao.php';
 
 $conn = conectarBanco();
 
+$obras_inativas = obterObras($conn, 1);
+
 $data = json_decode(file_get_contents('php://input'), true);
 $colaborador_id = isset($data['colaborador_id']) ? (int)$data['colaborador_id'] : 0;
 $funcao_imagem_id = isset($data['funcao_imagem_id']) ? (int)$data['funcao_imagem_id'] : 0;

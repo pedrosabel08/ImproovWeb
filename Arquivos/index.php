@@ -46,6 +46,7 @@ $conn = conectarBanco();
 
 $clientes = obterClientes($conn);
 $obras = obterObras($conn);
+$obras_inativas = obterObras($conn, 1);
 $colaboradores = obterColaboradores($conn);
 $status_imagens = obterStatusImagens($conn);
 $funcoes = obterFuncoes($conn);
@@ -102,6 +103,7 @@ $conn->close();
                 <?php
                 // Busca tipos de imagem diretamente do banco (tabela tipo_imagem)
                 $conn2 = conectarBanco();
+                $obras_inativas = obterObras($conn2, 1);
                 $tipos = [];
                 $res = $conn2->query("SELECT id_tipo_imagem, nome FROM tipo_imagem ORDER BY nome ASC");
                 if ($res) {

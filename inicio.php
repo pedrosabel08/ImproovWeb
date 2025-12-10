@@ -77,17 +77,7 @@ $conn->close();
 
 
 <?php
-include 'conexaoMain.php';
 
-$conn = conectarBanco();
-
-$clientes = obterClientes($conn);
-$obras = obterObras($conn);
-$colaboradores = obterColaboradores($conn);
-$status_imagens = obterStatusImagens($conn);
-$funcoes = obterFuncoes($conn);
-
-$conn->close();
 ?>
 
 

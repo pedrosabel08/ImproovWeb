@@ -29,6 +29,7 @@
 
     $clientes = obterClientes($conn);
     $obras = obterObras($conn);
+    $obras_inativas = obterObras($conn, 1);
     $colaboradores = obterColaboradores($conn);
 
     $conn->close();

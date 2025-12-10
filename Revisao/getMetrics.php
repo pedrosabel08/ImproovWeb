@@ -4,6 +4,8 @@ require_once __DIR__ . '/../conexaoMain.php';
 
 $conn = conectarBanco();
 
+$obras_inativas = obterObras($conn, 1);
+
 $sql = "SELECT
     f.nome_funcao,
     ROUND(AVG(TIMESTAMPDIFF(HOUR, h1.data_aprovacao, (

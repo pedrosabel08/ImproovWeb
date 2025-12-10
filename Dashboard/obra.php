@@ -20,6 +20,7 @@ $funcoes = obterFuncoes($conn);
 $imagens = obterImagens($conn);
 $status_etapa = obterStatus($conn);
 $obras = obterObras($conn);
+$obras_inativas = obterObras($conn, 1);
 $clientes = obterClientes($conn);
 
 // Monta um array de colaboradores por função (usando a tabela funcao_colaborador)
@@ -217,6 +218,8 @@ $conn->close();
                                 class="fa-brands fa-google-drive"></i> <span>Drive</span></a>
                         <a class="mobile-link" id="mobile_review" href="#" target="_blank" rel="noopener noreferrer"><i
                                 class="fa-solid fa-folder-open"></i> <span>Review</span></a>
+                        <button id="altBtn" class="hidden">Flow Review</button>
+
                     </nav>
                 </div>
             </div>
@@ -253,10 +256,11 @@ $conn->close();
                         <button id="addImagem" class="action-item">Adicionar Imagem</button>
                         <button id="editArquivos" class="action-item">Editar Arquivos</button>
                         <button id="addFollowup" class="action-item" onclick="gerarFollowUpPDF()">Follow Up</button>
-                        <!-- <button id="clearFilters" class="action-item">Limpar filtros</button> -->
+                        <button id="markInactiveBtn" class="action-item">Marcar Inativa</button>
                     </div>
                 </div>
             </div>
+
 
             <div class="contagem_imagens">
                 <p id="imagens-totais"></p>

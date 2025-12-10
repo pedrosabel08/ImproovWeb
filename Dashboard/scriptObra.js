@@ -5965,3 +5965,33 @@ addOpenButton('link_review');
         setTimeout(tryPreselect, 20);
     }
 })();
+
+
+var markInactiveBtn = document.getElementById('markInactiveBtn');
+if (markInactiveBtn) {
+    markInactiveBtn.addEventListener('click', function () {
+        var _obraId = (typeof obraId !== 'undefined' && obraId) ? obraId : (localStorage.getItem('obraId') || localStorage.getItem('idObra') || null);
+        if (!_obraId) {
+            alert('ID da obra não encontrado na página.');
+            return;
+        }
+        if (!confirm('Tem certeza que deseja marcar esta obra como inativa?')) return;
+
+        var url = window.location.origin + '/ImproovWeb/atualizarObraStatus.php';
+        fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ obra_id: parseInt(_obraId), status: 1 })
+        }).then(function (resp) { return resp.json(); })
+            .then(function (json) {
+                if (json && json.success) {
+                    alert('Obra marcada como inativa. A página será recarregada.');
+                    window.location.reload();
+                } else {
+                    alert('Erro: ' + (json && json.message ? json.message : 'Resposta inválida'));
+                }
+            }).catch(function (err) {
+                alert('Erro na requisição: ' + err);
+            });
+    });
+}

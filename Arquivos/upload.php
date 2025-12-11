@@ -167,6 +167,9 @@ $log = [];
 $success = [];
 $errors = [];
 
+// Agrupamento para acompanhamento inteligente: chave = "categoria|tipo_arquivo"
+$acompGroups = [];
+
 // Colaborador (auditoria) — use NULL when not available to avoid FK constraint failures
 $colaborador_id_sess = (isset($_SESSION['idcolaborador']) && intval($_SESSION['idcolaborador']) > 0) ? intval($_SESSION['idcolaborador']) : null;
 
@@ -465,6 +468,18 @@ if (!$pastaBase) {
     exit;
 }
 
+// calcula próxima ordem de acompanhamento uma única vez (será usada para inserts agregados)
+$next_ordem_acomp = 1;
+if ($obra_id) {
+    if ($stmtOrdem = $conn->prepare("SELECT IFNULL(MAX(ordem),0)+1 AS next_ordem FROM acompanhamento_email WHERE obra_id = ?")) {
+        $stmtOrdem->bind_param('i', $obra_id);
+        $stmtOrdem->execute();
+        $rOrd = $stmtOrdem->get_result()->fetch_assoc();
+        if ($rOrd && isset($rOrd['next_ordem'])) $next_ordem_acomp = intval($rOrd['next_ordem']);
+        $stmtOrdem->close();
+    }
+}
+
 // Variável de conexão FTP (inicializada apenas se necessária)
 $ftp_conn = null;
 
@@ -688,20 +703,22 @@ if (!empty($arquivosTmp) && count($arquivosTmp) > 0 && ($refsSkpModo === 'geral'
                     $success[] = "Arquivo '$fileOriginalName' enviado para $nomeTipo como '$fileNomeInterno'";
                     $log[] = "Arquivo enviado com sucesso: $destFile";
 
-                    // Registrar acompanhamento_email para este arquivo
-                    $acao = $foiAtualizacao ? (strtoupper($tipo_arquivo) . " atualizado para $nomeTipo") : ("Adicionado " . strtoupper($tipo_arquivo) . " para $nomeTipo");
-                    $hojeData = date('Y-m-d');
-                    if ($stmtA = $conn->prepare("INSERT INTO acompanhamento_email (obra_id, colaborador_id, assunto, data, ordem, arquivo_id, tipo, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")) {
-                        $tipo_acomp = 'arquivo';
-                        $status_acomp = 'pendente';
-                        // tipos: i,i,s,s,i,i,s,s => 'iissiiss'
-                        $stmtA->bind_param('iissiiss', $obra_id, $colaborador_id_sess, $acao, $hojeData, $next_ordem_acomp, $arquivo_id, $tipo_acomp, $status_acomp);
-                        $stmtA->execute();
-                        $stmtA->close();
-                        $next_ordem_acomp++;
-                    } else {
-                        $log[] = "Falha ao preparar insert em acompanhamento_email: " . $conn->error;
+                    // Acumula dados para acompanhamento agregado (vamos inserir 1 registro por categoria|tipo_arquivo)
+                    $key = $categoria . '|' . $tipo_arquivo;
+                    if (!isset($acompGroups[$key])) {
+                        $acompGroups[$key] = [
+                            'categoria' => $categoria,
+                            'tipo_arquivo' => $tipo_arquivo,
+                            'targets' => [], // nomes de tipo (ex: Fachada, Planta ...)
+                            'arquivo_ids' => [],
+                            'is_update' => false,
+                            'count' => 0,
+                        ];
                     }
+                    $acompGroups[$key]['targets'][] = $nomeTipo;
+                    $acompGroups[$key]['arquivo_ids'][] = $arquivo_id;
+                    $acompGroups[$key]['is_update'] = ($acompGroups[$key]['is_update'] || $foiAtualizacao);
+                    $acompGroups[$key]['count']++;
 
                     // Se for categoria 7, também envia ao FTP secundário
                     if ($categoria == 7) {
@@ -847,8 +864,7 @@ if (!empty($arquivosPorImagem) && $refsSkpModo === 'porImagem') {
                 $success[] = "Arquivo '$nomeOriginal' enviado para Imagem $imagem_id";
                 $log[] = "Arquivo enviado com sucesso: $destFile";
 
-                // Registrar acompanhamento_email para este arquivo (modo porImagem)
-                // Calcula ordem incremental (se não existir variável vinda do bloco principal)
+                // Garantir que temos next_ordem_acomp calculado (feito apenas uma vez)
                 if (!isset($next_ordem_acomp)) {
                     $next_ordem_acomp = 1;
                     if ($obra_id) {
@@ -861,20 +877,22 @@ if (!empty($arquivosPorImagem) && $refsSkpModo === 'porImagem') {
                         }
                     }
                 }
-                // Use o nome da imagem no assunto em vez do tipo de imagem
-                $acao = $foiAtualizacaoImagem ? (strtoupper($tipo_arquivo) . " atualizado para $nome_imagem") : ("Adicionado " . strtoupper($tipo_arquivo) . " para $nome_imagem");
-                $hojeData = date('Y-m-d');
-                if ($stmtA = $conn->prepare("INSERT INTO acompanhamento_email (obra_id, colaborador_id, assunto, data, ordem, arquivo_id, tipo, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")) {
-                    $tipo_acomp = 'arquivo';
-                    $status_acomp = 'pendente';
-                    $stmtA->bind_param('iissiiss', $obra_id, $colaborador_id_sess, $acao, $hojeData, $next_ordem_acomp, $arquivo_id, $tipo_acomp, $status_acomp);
-                    // Corrigimos tipos: i,i,s,s,i,i,s,s => 'iiss iiss' sem espaços => 'iissiiss'
-                    $stmtA->execute();
-                    $stmtA->close();
-                    $next_ordem_acomp++;
-                } else {
-                    $log[] = "Falha ao preparar insert em acompanhamento_email: " . $conn->error;
+                // Acumula dados para acompanhamento agregado (modo porImagem usa nome da imagem como target)
+                $key = $categoria . '|' . $tipo_arquivo;
+                if (!isset($acompGroups[$key])) {
+                    $acompGroups[$key] = [
+                        'categoria' => $categoria,
+                        'tipo_arquivo' => $tipo_arquivo,
+                        'targets' => [],
+                        'arquivo_ids' => [],
+                        'is_update' => false,
+                        'count' => 0,
+                    ];
                 }
+                $acompGroups[$key]['targets'][] = $nome_imagem;
+                $acompGroups[$key]['arquivo_ids'][] = $arquivo_id;
+                $acompGroups[$key]['is_update'] = ($acompGroups[$key]['is_update'] || $foiAtualizacaoImagem);
+                $acompGroups[$key]['count']++;
 
                 // Se for categoria 7, envia também ao FTP secundário
                 if ($categoria == 7) {
@@ -1024,6 +1042,36 @@ if (!empty($arquivosPorImagem) && $refsSkpModo === 'porImagem') {
                 $errors[] = "Erro ao enviar '$nomeOriginal' para Imagem $imagem_id";
                 $log[] = "Falha ao enviar: $destFile";
             }
+        }
+    }
+}
+// Após processar todos os uploads, inserir acompanhamentos agregados (um por categoria|tipo_arquivo)
+if (!empty($acompGroups)) {
+    $log[] = "Inserindo " . count($acompGroups) . " acompanhamentos agregados...";
+    foreach ($acompGroups as $key => $grp) {
+        // Preparar texto: categoria antes do tipo de arquivo
+        $categoriaNome = buscarNomeCategoria($grp['categoria']);
+        $tipoUpper = strtoupper($grp['tipo_arquivo']);
+        $targets = array_values(array_unique($grp['targets']));
+        $targetsList = implode(', ', $targets);
+
+        $acao = $grp['is_update'] ? ("Atualizado " . $categoriaNome . " em " . $tipoUpper . " para " . $targetsList)
+                                  : ("Adicionado " . $categoriaNome . " em " . $tipoUpper . " para " . $targetsList);
+        $hojeData = date('Y-m-d');
+
+        // Use o primeiro arquivo como referência (quando disponível)
+        $arquivo_rep = isset($grp['arquivo_ids'][0]) ? intval($grp['arquivo_ids'][0]) : null;
+
+        if ($stmtA = $conn->prepare("INSERT INTO acompanhamento_email (obra_id, colaborador_id, assunto, data, ordem, arquivo_id, tipo, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")) {
+            $tipo_acomp = 'arquivo';
+            $status_acomp = 'pendente';
+            $stmtA->bind_param('iissiiss', $obra_id, $colaborador_id_sess, $acao, $hojeData, $next_ordem_acomp, $arquivo_rep, $tipo_acomp, $status_acomp);
+            $stmtA->execute();
+            $stmtA->close();
+            $log[] = "Acompanhamento inserido: [$key] $acao";
+            $next_ordem_acomp++;
+        } else {
+            $log[] = "Falha ao preparar insert agregado em acompanhamento_email: " . $conn->error;
         }
     }
 }

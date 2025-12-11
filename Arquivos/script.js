@@ -414,16 +414,8 @@ document.getElementById("uploadForm").addEventListener("submit", async function 
         // Start sending immediately so progress events update the open Swal
         xhr.send(formData);
 
-        // Await Swal resolution (user may cancel). If user cancels, abort the XHR.
-        const swalResult = await swalPromise;
-        if (swalResult && swalResult.dismiss === Swal.DismissReason.cancel) {
-            try { xhr.abort(); } catch (e) {}
-            Swal.close();
-            throw new Error('Envio cancelado pelo usuário');
-        }
-
-        // Await response via Promise
-        const uploadResult = await new Promise((resolve, reject) => {
+        // Prepare a promise that resolves when upload completes (or errors/aborts)
+        const uploadPromise = new Promise((resolve, reject) => {
             xhr.onload = function () {
                 try {
                     const json = JSON.parse(xhr.responseText || '{}');
@@ -433,10 +425,30 @@ document.getElementById("uploadForm").addEventListener("submit", async function 
                 }
             };
             xhr.onerror = function () { reject(new Error('Erro na requisição')); };
-            xhr.onabort = function () { reject(new Error('Envio cancelado')); };
+            xhr.onabort = function () { reject(new Error('Envio cancelado pelo usuário')); };
         });
 
+        // Race between upload completion and user cancelling the Swal.
+        // If user cancels first, abort XHR. If upload completes first, process the response.
+        const race = await Promise.race([
+            uploadPromise.then(res => ({ type: 'upload', res })).catch(err => ({ type: 'upload_error', err })),
+            swalPromise.then(res => ({ type: 'swal', res }))
+        ]);
+
+        if (race.type === 'swal' && race.res && race.res.dismiss === Swal.DismissReason.cancel) {
+            try { xhr.abort(); } catch (e) {}
+            Swal.close();
+            throw new Error('Envio cancelado pelo usuário');
+        }
+
+        if (race.type === 'upload_error') {
+            Swal.close();
+            throw race.err;
+        }
+
+        // At this point upload finished successfully
         Swal.close();
+        const uploadResult = race.res;
 
         const result = uploadResult;
         // Mensagens de sucesso

@@ -220,7 +220,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         pagination: "local",
                         responsiveLayout: true,
                         index: 'idpos_producao',
-                        maxHeight: "80vh",
+                        maxHeight: "83vh",
                         height: "100%",
                         pagination: true,
                         paginationSize: 100,

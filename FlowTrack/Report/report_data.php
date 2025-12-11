@@ -138,6 +138,43 @@ try {
     }
     unset($obra);
 
+    // --- Fetch pending entregas per obra ---
+    // We'll consider entregas with status not in the concluded set as pending.
+    $concluded_names = [
+        'Entregue no prazo',
+        'Entregue com atraso',
+        'Entrega antecipada',
+        'Concluída'
+    ];
+    $obras_ids = array_keys($data);
+    $entregas_by_obra = [];
+    if (!empty($obras_ids)) {
+        // build comma-separated int list (safe because we cast to int)
+        $in_list = implode(',', array_map('intval', $obras_ids));
+        // include nome_status from status_imagem when available
+        $sqlE = "SELECT e.id, e.obra_id, e.data_prevista, e.status, e.status_id, s.nome_status AS status_nome
+                 FROM entregas e
+                 LEFT JOIN status_imagem s ON e.status_id = s.idstatus
+                 WHERE e.obra_id IN ($in_list)
+                   AND (e.status IS NULL OR e.status NOT IN ('" . implode("','", $concluded_names) . "'))
+                 ORDER BY e.obra_id, e.data_prevista ASC";
+        $resE = mysqli_query($conn, $sqlE);
+        if ($resE) {
+            while ($r = mysqli_fetch_assoc($resE)) {
+                $oid = $r['obra_id'] ?? 0;
+                if (!isset($entregas_by_obra[$oid])) $entregas_by_obra[$oid] = [];
+                $entregas_by_obra[$oid][] = [
+                    'id' => intval($r['id']),
+                    'data_prevista' => $r['data_prevista'],
+                    'status' => $r['status'],
+                    'status_id' => isset($r['status_id']) ? intval($r['status_id']) : null,
+                    'status_nome' => $r['status_nome'] ?? null
+                ];
+            }
+            mysqli_free_result($resE);
+        }
+    }
+
     // function labels (ordered)
     $func_labels = [
         1 => 'Caderno',
@@ -155,7 +192,14 @@ try {
         $out_funcs[] = ['id' => $fid, 'label' => ($func_labels[$fid] ?? (string)$fid)];
     }
 
-    jsonOut(['obras' => array_values($data), 'funcoes' => $out_funcs]);
+    // attach entregas pendentes to each obra entry
+    $out_obras = [];
+    foreach ($data as $obra_id => $obra) {
+        $obra['entregas_pendentes'] = $entregas_by_obra[$obra_id] ?? [];
+        $out_obras[] = $obra;
+    }
+
+    jsonOut(['obras' => $out_obras, 'funcoes' => $out_funcs]);
 } catch (Throwable $e) {
     http_response_code(500);
     jsonOut(['error' => true, 'message' => $e->getMessage()]);

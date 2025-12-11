@@ -107,3 +107,164 @@ th {
     border-radius: 4px;
     font-size: 12px;
 }
+
+/* pending deliveries list */
+.pending-list {
+    margin: 8px 0 12px 0;
+    padding: 8px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+}
+
+.pending-title {
+    font-weight: 700;
+    color: var(--accent-color);
+    margin-bottom: 6px;
+}
+
+.pending-items {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.pending-item {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 0.85rem;
+    color: var(--muted);
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.pending-item.pending-soon {
+    border-left: 4px solid #ffbf00;
+    background: rgba(255, 191, 0, 0.06);
+}
+
+.pending-item.pending-today {
+    border-left: 4px solid #00b894;
+    background: rgba(0, 184, 148, 0.06);
+}
+
+.pending-item.pending-overdue {
+    border-left: 4px solid #ff4757;
+    background: rgba(255, 71, 87, 0.06);
+}
+
+.pending-item.pending-future {
+    border-left: 4px solid rgba(255, 255, 255, 0.06);
+}
+
+.pending-item.pending-no-date {
+    border-left: 4px solid rgba(255, 255, 255, 0.06);
+}
+
+.pending-item .pending-due {
+    margin-left: 8px;
+    font-weight: 700;
+}
+
+/* entrega modal styles */
+.rt-modal {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 2000;
+}
+
+.rt-modal-content {
+    background: #111;
+    border: 1px solid var(--border-color);
+    padding: 16px;
+    width: 760px;
+    max-width: calc(100% - 40px);
+    border-radius: 10px;
+    color: var(--text-color);
+}
+
+.rt-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px
+}
+
+.rt-modal-header button {
+    background: transparent;
+    border: none;
+    color: var(--text-color);
+    font-size: 18px;
+    cursor: pointer
+}
+
+.rt-modal-body {
+    max-height: 60vh;
+    overflow: auto
+}
+
+.rt-itens-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 8px
+}
+
+.rt-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 6px
+}
+
+.rt-item-left {
+    flex: 1;
+    color: var(--muted)
+}
+
+.rt-item-right {
+    color: var(--accent-color);
+    font-weight: 600
+}
+
+.pending-item .pending-id {
+    font-weight: 700;
+    color: var(--text-color);
+}
+
+.pending-item .pending-date {
+    color: var(--accent-color);
+}
+
+.pending-item .pending-status {
+    color: var(--muted);
+    font-style: italic;
+}
+
+.modal-imagem-item {
+    background: var(--card-bg);
+    padding: 0.5rem 0.8rem;
+    border-radius: 8px;
+    margin-top: 6px;
+    display: grid;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.9rem;
+    border: 1px solid var(--border-color);
+    grid-template-columns: 10% 1fr 15%;
+    gap: 10px;
+}
+
+.imagem_nome {
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+}

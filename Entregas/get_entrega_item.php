@@ -35,9 +35,15 @@ try {
              INNER JOIN imagens_cliente_obra i ON ei.imagem_id = i.idimagens_cliente_obra
              INNER JOIN substatus_imagem ss ON ss.id = i.substatus_id
              WHERE ei.entrega_id = ?
-             ORDER BY (CASE WHEN ei.status = 'Entrega pendente' OR ss.nome_substatus IN ('RVW','DRV') THEN 1 ELSE 0 END) DESC,
-                      FIELD(ei.status, 'Pendente', 'Parcial') DESC,
-                      ei.id ASC";
+             ORDER BY (
+                 CASE
+                     WHEN ei.status LIKE '%Pendente%' THEN 1
+                     WHEN ss.nome_substatus IN ('RVW','DRV') THEN 1
+                     ELSE 0
+                 END
+             ) DESC,
+             FIELD(ei.status, 'Pendente', 'Parcial', 'Entregue com atraso', 'Entregue no prazo', 'Entrega antecipada') ASC,
+             ei.id ASC";
     $stmt2 = $conn->prepare($sql2);
     $stmt2->bind_param("i", $entrega_id);
     $stmt2->execute();

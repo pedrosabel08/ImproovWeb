@@ -16,8 +16,8 @@ document.addEventListener('DOMContentLoaded', () => {
         card.classList.add('card-entrega');
         card.dataset.id = entrega.id;
 
-            // add status-based class (use nome_etapa as canonical status)
-            const statusRaw = String(entrega.nome_etapa || entrega.kanban_status || entrega.status || 'UNKNOWN');
+        // add status-based class (use nome_etapa as canonical status)
+        const statusRaw = String(entrega.nome_etapa || entrega.kanban_status || entrega.status || 'UNKNOWN');
         const statusCode = statusRaw.trim().replace(/\s+/g, '-').replace(/[^\w-]/g, '').toUpperCase() || 'UNKNOWN';
         card.classList.add('status-' + statusCode);
 
@@ -189,8 +189,97 @@ document.addEventListener('DOMContentLoaded', () => {
 
             entregaAtualId = null;
             carregarKanban();
+            // remover painel lateral se existir
+            const mini = document.getElementById('miniImagePanel');
+            if (mini) mini.remove();
         });
     });
+
+    // Create and manage mini image info panel
+    function showMiniImagePanel(data, imagemId, anchorEl) {
+        let panel = document.getElementById('miniImagePanel');
+        if (!panel) {
+            panel = document.createElement('div');
+            panel.id = 'miniImagePanel';
+            panel.className = 'mini-image-panel';
+            panel.innerHTML = `
+                <div class="mini-header">
+                    <strong>Imagem #<span id="miniImgId"></span></strong>
+                    <button id="miniCloseBtn" class="fecharMini">×</button>
+                </div>
+                <div id="miniContent">Carregando...</div>
+            `;
+            // append hidden first so we can measure and position
+            panel.style.visibility = 'hidden';
+            panel.style.display = 'block';
+            document.body.appendChild(panel);
+            document.getElementById('miniCloseBtn').addEventListener('click', () => panel.remove());
+        }
+
+        document.getElementById('miniImgId').textContent = imagemId;
+        const content = document.getElementById('miniContent');
+        if (!data) {
+            content.innerHTML = '<p>Sem histórico de função para esta imagem.</p>';
+            // position near anchor even when empty
+            positionPanelNearAnchor(panel, anchorEl);
+            return;
+        }
+
+        const funcao = data.nome_funcao || '—';
+        const status = data.status || '—';
+        const colaborador = data.nome_colaborador || '—';
+        const prazo = data.prazo ? formatarData(data.prazo) : '-';
+
+        content.innerHTML = `
+            <p><strong>Função:</strong> ${funcao}</p>
+            <p><strong>Status:</strong> ${status}</p>
+            <p><strong>Colaborador:</strong> ${colaborador}</p>
+            <p><strong>Prazo:</strong> ${prazo}</p>
+        `;
+
+        // After filling content, position panel near the clicked label
+        positionPanelNearAnchor(panel, anchorEl);
+    }
+
+    function positionPanelNearAnchor(panel, anchorEl) {
+        if (!panel) return;
+        // default width (should match CSS) — measure if possible
+        const panelWidth = panel.offsetWidth || 300;
+        const panelHeight = panel.offsetHeight || 150;
+
+        // If we have an anchor element, position next to it; otherwise keep to right
+        if (anchorEl && anchorEl.getBoundingClientRect) {
+            const rect = anchorEl.getBoundingClientRect();
+            // preferred position: to the right of the anchor
+            let left = rect.right + 8;
+            // center vertically relative to the anchor row
+            let top = rect.top + (rect.height / 2) + window.scrollY - (panelHeight / 2);
+
+            // if overflowing right edge, place to the left
+            if (left + panelWidth > window.innerWidth - 10) {
+                left = rect.left + window.scrollX - panelWidth - 8;
+            }
+            // ensure top is within viewport
+            if (top + panelHeight > window.scrollY + window.innerHeight - 10) {
+                top = Math.max(window.scrollY + 10, window.scrollY + window.innerHeight - panelHeight - 10);
+            }
+            // avoid going above the viewport
+            if (top < window.scrollY + 10) {
+                top = window.scrollY + 10;
+            }
+
+            panel.style.position = 'absolute';
+            panel.style.left = `${Math.max(10, left)}px`;
+            panel.style.top = `${Math.max(10, top)}px`;
+            panel.style.visibility = 'visible';
+        } else {
+            // fallback: fixed to right side
+            panel.style.position = 'fixed';
+            panel.style.right = '20px';
+            panel.style.top = '20%';
+            panel.style.visibility = 'visible';
+        }
+    }
 
     // --- FUNÇÃO PRINCIPAL PARA CARREGAR O KANBAN ---
     async function carregarKanban() {
@@ -274,11 +363,33 @@ document.addEventListener('DOMContentLoaded', () => {
                 const disabled = isEntregue ? 'disabled' : '';
 
                 div.innerHTML = `
-                <input type="checkbox" id="img-${img.id}" value="${img.id}" ${checked} ${disabled}>
-                <label for="img-${img.id}" class="imagem_nome">${img.nome}</label>
+                <input type="checkbox" id="img-item-${img.id}" value="${img.id}" ${checked} ${disabled} data-imagem-id="${img.imagem_id}">
+                <label class="imagem_nome" data-imagem-id="${img.imagem_id}">${img.nome}</label>
                 <span class="entregue">${isEntregue ? '📦 Entregue' : isPendente ? '✅ Pendente' : '⏳ Em andamento'}</span>
             `;
                 modalImagens.appendChild(div);
+            });
+
+            // Click on image name to open mini info panel (last função / status / colaborador)
+            modalImagens.addEventListener('click', async (e) => {
+                const label = e.target.closest('label.imagem_nome');
+                if (!label) return;
+                // get imagem_id from the label's data attribute (set from server data)
+                const imagemId = label.dataset && label.dataset.imagemId ? label.dataset.imagemId : null;
+                if (!imagemId) return;
+
+                try {
+                    const resp = await fetch(`get_imagem_funcao.php?imagem_id=${imagemId}`);
+                    const json = await resp.json();
+                    if (json && json.success && json.data) {
+                        showMiniImagePanel(json.data, imagemId, label);
+                    } else {
+                        showMiniImagePanel(null, imagemId, label);
+                    }
+                } catch (err) {
+                    console.error('Erro ao buscar função da imagem:', err);
+                    showMiniImagePanel(null, imagemId, label);
+                }
             });
 
             // configurar comportamento do checkbox mestre e sincronização
@@ -333,7 +444,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // obter também a imagem_id armazenada nos dados, se disponível
         let imagemId = null;
         if (entregaDados && Array.isArray(entregaDados.itens)) {
-            const found = entregaDados.itens.find(it => parseInt(it.id,10) === itemId);
+            const found = entregaDados.itens.find(it => parseInt(it.id, 10) === itemId);
             if (found) imagemId = found.imagem_id;
         }
         const nomeLabel = item.querySelector('label.imagem_nome');
@@ -351,7 +462,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (json.success) {
                 item.remove();
                 if (entregaDados && Array.isArray(entregaDados.itens)) {
-                    entregaDados.itens = entregaDados.itens.filter(it => parseInt(it.id,10) !== itemId);
+                    entregaDados.itens = entregaDados.itens.filter(it => parseInt(it.id, 10) !== itemId);
                 }
                 const total = modalImagens.querySelectorAll('.modal-imagem-item:not(.select-all-item)').length;
                 const entregues = Array.from(modalImagens.querySelectorAll('.modal-imagem-item:not(.select-all-item) input[disabled]')).length;

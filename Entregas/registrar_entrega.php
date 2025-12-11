@@ -17,9 +17,10 @@ try {
 
     $hoje = date('Y-m-d');
 
-    // Atualiza o status de cada item individualmente
+    // Atualiza o status de cada item individualmente e coleta imagem_id processadas
+    $processed_image_ids = array();
     if (!empty($imagens_entregues)) {
-        $stmtSelect = $conn->prepare("SELECT ei.id, e.data_prevista 
+        $stmtSelect = $conn->prepare("SELECT ei.id, ei.imagem_id, e.data_prevista 
                                       FROM entregas_itens ei 
                                       JOIN entregas e ON ei.entrega_id = e.id 
                                       WHERE ei.id = ? AND ei.entrega_id = ?");
@@ -35,7 +36,13 @@ try {
             $status_item = ($hoje <= $res['data_prevista']) ? 'Entregue no prazo' : 'Entregue com atraso';
             $stmtUpdate->bind_param('si', $status_item, $item_id);
             $stmtUpdate->execute();
+
+            if (isset($res['imagem_id']) && !empty($res['imagem_id'])) {
+                $processed_image_ids[] = intval($res['imagem_id']);
+            }
         }
+        if ($stmtSelect) $stmtSelect->close();
+        if ($stmtUpdate) $stmtUpdate->close();
     }
 
     // Verificar total de imagens, quantas já estão entregues e obter obra_id/data_prevista
@@ -240,6 +247,25 @@ try {
         $stmt->bind_param('si', $novo_status, $entrega_id);
     }
     $stmt->execute();
+
+    // Atualizar substatus_id nas imagens vinculadas aos itens desta entrega.
+    // Regra: se a entrega tiver status_id = 6 ou 1 => substatus_id = 9, senão => substatus_id = 6.
+    $substatus_to_set = 6;
+    if (!empty($novo_status_id) && ($novo_status_id === 6 || $novo_status_id === 1)) {
+        $substatus_to_set = 9;
+    }
+
+    // Atualiza apenas as imagens que foram marcadas como entregues (itens processados)
+    if (!empty($processed_image_ids)) {
+        $stmtUpdateImg = $conn->prepare("UPDATE imagens_cliente_obra SET substatus_id = ? WHERE idimagens_cliente_obra = ?");
+        if ($stmtUpdateImg) {
+            foreach ($processed_image_ids as $img_id) {
+                $stmtUpdateImg->bind_param('ii', $substatus_to_set, $img_id);
+                $stmtUpdateImg->execute();
+            }
+            $stmtUpdateImg->close();
+        }
+    }
 
     $conn->commit();
 

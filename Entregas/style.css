@@ -391,3 +391,38 @@ form#formAdicionarEntrega {
         opacity: 1;
     }
 }
+
+/* ===== MINI INFO PANEL (imagem) ===== */
+.mini-image-panel {
+    position: fixed;
+    right: 20px;
+    top: 20%;
+    width: 300px;
+    background: var(--modal-bg);
+    border: 1px solid var(--border-color);
+    padding: 12px;
+    border-radius: 10px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+    z-index: 1200;
+    color: var(--text-color);
+}
+
+.mini-image-panel .mini-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.mini-image-panel .fecharMini {
+    background: transparent;
+    border: none;
+    color: var(--text-color);
+    font-size: 18px;
+    cursor: pointer;
+}
+
+.mini-image-panel p {
+    margin: 6px 0;
+    font-size: 0.9rem;
+}

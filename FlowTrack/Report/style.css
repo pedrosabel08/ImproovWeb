@@ -10,6 +10,8 @@
     --border-color: #2a2a2a;
     --hover-bg: #222;
     --muted: #cfcfcf;
+    --modal-bg: #1a1a1a;
+
 }
 
 * {
@@ -151,8 +153,8 @@ th {
 }
 
 .pending-item.pending-overdue {
-    border-left: 4px solid #ff4757;
-    background: rgba(255, 71, 87, 0.06);
+    border-left: 4px solid #ff0016;
+    background: #b71414;
 }
 
 .pending-item.pending-future {
@@ -176,7 +178,7 @@ th {
     align-items: center;
     justify-content: center;
     background: rgba(0, 0, 0, 0.5);
-    z-index: 2000;
+    z-index: 100;
 }
 
 .rt-modal-content {
@@ -267,4 +269,40 @@ th {
     text-overflow: ellipsis;
     white-space: nowrap;
     overflow: hidden;
+}
+
+
+/* ===== MINI INFO PANEL (imagem) ===== */
+.mini-image-panel {
+    position: fixed;
+    right: 20px;
+    top: 20%;
+    width: 300px;
+    background: var(--modal-bg);
+    border: 1px solid var(--border-color);
+    padding: 12px;
+    border-radius: 10px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+    z-index: 1200;
+    color: var(--text-color);
+}
+
+.mini-image-panel .mini-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.mini-image-panel .fecharMini {
+    background: transparent;
+    border: none;
+    color: var(--text-color);
+    font-size: 18px;
+    cursor: pointer;
+}
+
+.mini-image-panel p {
+    margin: 6px 0;
+    font-size: 0.9rem;
 }

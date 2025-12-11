@@ -104,7 +104,7 @@ async function init() {
                     it.classList.add(dueClass);
                     const statusNome = ent.status_nome || ent.status || '';
                     const dateLabel = d ? d.split('-').reverse().join('/') : '-';
-                    it.innerHTML = `<span class="pending-date">${dateLabel}</span> <span class="pending-status">${statusNome}</span> <span class="pending-due">${dueLabel}</span>`;
+                    it.innerHTML = `<span class="pending-date">${dateLabel}</span> <span class="pending-status">${statusNome}</span> <span class="pending-due">${dueLabel}</span> <span class="pending-id">#${ent.id}</span>`;
                     list.appendChild(it);
                 });
                 pendWrap.appendChild(list);

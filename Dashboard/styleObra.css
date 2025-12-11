@@ -1689,6 +1689,10 @@ table#tabela-logs tbody tr:hover {
     color: black;
 }
 
+#fotograficoBtn {
+    background-color: #946ffa;
+}
+
 #acoesBtn {
     background-color: #ffe000;
     color: black;
@@ -3114,4 +3118,144 @@ tr#linha-porcentagem td select {
     .modal-funcoes-right {
         width: 100%;
     }
+}
+
+/* ---------- Fotográfico modal styles ---------- */
+#fotograficoModal .modal-content {
+    max-width: 600px;
+    width: 95%;
+    padding: 16px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+}
+
+#fotograficoModal label {
+    display: block;
+    margin-top: 8px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+#fotograficoModal input[type="text"],
+#fotograficoModal input[type="date"],
+#fotograficoModal textarea {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--card-bg);
+    color: var(--text);
+    box-sizing: border-box;
+}
+
+#fotografico_alturas_container div {
+    background: transparent;
+}
+
+.buttonsFotografico {
+    margin-top: 12px;
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+/* Buttons inside fotografico modal only */
+#fotograficoModal .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    background: var(--cor-secundaria);
+    color: #fff;
+    cursor: pointer;
+    border: none;
+    font-weight: 600;
+    font-size: 0.8rem;
+}
+
+#addAlturaBtn {
+    background-color: #ff7b00 !important;
+}
+
+#openRegistrarFotografico {
+    background-color: #00bfff !important;
+}
+
+#fotograficoModal .btn:hover {
+    filter: brightness(0.95);
+}
+
+/* secondary action color (e.g., 'Registrar Fotográfico') */
+#fotograficoModal .btn.secondary {
+    background: var(--cor-referencias);
+}
+
+/* small button variant used for delete action */
+#fotograficoModal .btn-sm {
+    padding: 4px 6px;
+    font-size: 13px;
+    border-radius: 4px;
+}
+
+/* delete 'X' button style - small red circular X */
+.delete-altura {
+    background: var(--danger) !important;
+    color: white;
+    width: 15px;
+    height: 15px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    font-weight: 700 !important;
+    line-height: 1;
+    padding: 2px !important;
+    font-size: 0.6rem !important;
+}
+
+.delete-altura:hover {
+    transform: scale(1.06);
+    filter: brightness(0.9);
+}
+
+/* altura list entries */
+#fotografico_alturas_container .altura-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 6px;
+    border-bottom: 1px solid var(--border);
+    align-items: center;
+}
+
+#fotografico_alturas_container .altura-item strong {
+    font-size: 14px;
+    color: var(--text);
+}
+
+#fotografico_alturas_container .altura-item div {
+    font-size: 13px;
+    color: var(--muted);
+}
+
+/* registro list styling */
+#fotograficoRegistrosList div {
+    padding: 8px;
+    border-bottom: 1px dashed var(--border);
+}
+
+/* ensure modal close button visually consistent */
+#closeFotografico {
+    background: transparent;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+    color: var(--muted);
+}
+
+#closeFotografico:hover {
+    color: var(--text);
 }

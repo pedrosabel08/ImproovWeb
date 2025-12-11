@@ -5996,3 +5996,242 @@ if (markInactiveBtn) {
             });
     });
 }
+
+document.addEventListener('DOMContentLoaded', function () {
+    const fotograficoBtn = document.getElementById('fotograficoBtn');
+    const quickFotografico = document.getElementById('quick_fotografico');
+    const modal = document.getElementById('fotograficoModal');
+    const closeBtn = document.getElementById('closeFotografico');
+
+    function getObraId() {
+        const el = document.getElementById('obra_id_img');
+        if (el && el.value) return el.value;
+        const params = new URLSearchParams(window.location.search);
+        return params.get('obra_id') || params.get('id') || null;
+    }
+
+    async function loadFotografico() {
+        if (!obraId) {
+            console.warn('obra_id não disponível');
+            return;
+        }
+        try {
+            const res = await fetch(`get_fotografico.php?obra_id=${obraId}`);
+            const json = await res.json();
+            if (json && json.success) {
+                const info = json.info || {};
+                document.getElementById('fotografico_endereco').value = info.endereco || '';
+                renderAlturas(json.alturas || []);
+                renderRegistros(json.registros || []);
+            } else {
+                document.getElementById('fotografico_endereco').value = '';
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    }
+
+    function renderAlturas(alturas) {
+        const container = document.getElementById('fotografico_alturas_container');
+        container.innerHTML = '';
+        if (!alturas || alturas.length === 0) {
+            container.innerHTML = '<p style="color:#666;">Nenhuma altura cadastrada.</p>';
+            return;
+        }
+        alturas.forEach(a => {
+            const div = document.createElement('div');
+            div.style.display = 'flex';
+            div.style.justifyContent = 'space-between';
+            div.style.alignItems = 'center';
+            div.style.padding = '6px 4px';
+            div.style.borderBottom = '1px solid #eee';
+            const left = document.createElement('div');
+            left.innerHTML = `<strong>${a.altura || ''}</strong><div style="font-size:13px;color:#333;">${(a.observacoes || '')}</div>`;
+            const right = document.createElement('div');
+            right.innerHTML = `<button class="btn btn-sm delete-altura" data-id="${a.id}"><i class="fa-solid fa-x"></i></button>`;
+            div.appendChild(left);
+            div.appendChild(right);
+            container.appendChild(div);
+        });
+    }
+
+    function renderRegistros(regs) {
+        const container = document.getElementById('fotograficoRegistrosList');
+        container.innerHTML = '';
+        if (!regs.length) {
+            container.innerHTML = '<p style="color:#666;">Nenhum registro encontrado.</p>';
+            return;
+        }
+        regs.forEach(r => {
+            const d = document.createElement('div');
+            d.style.padding = '6px 4px';
+            d.style.borderBottom = '1px solid #eee';
+            const date = r.registro_data ? r.registro_data.split('-').reverse().join('/') : r.created_at;
+            d.innerHTML = `<strong>${date}</strong><div style="font-size:13px;color:#333;">${(r.observacoes || '').replace(/\n/g, '<br>')}</div>`;
+            container.appendChild(d);
+        });
+    }
+
+    async function saveInfo() {
+        if (!obraId) {
+            alert('obra_id não disponível');
+            return;
+        }
+        const payload = {
+            obra_id: Number(obraId),
+            endereco: document.getElementById('fotografico_endereco').value.trim()
+        };
+        try {
+            const res = await fetch('save_fotografico_info.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+            const js = await res.json();
+            if (js.success) {
+                alert('Informações salvas');
+                loadFotografico();
+            } else alert('Erro: ' + (js.error || 'desconhecido'));
+        } catch (err) {
+            console.error(err);
+            alert('Erro salvando (ver console)');
+        }
+    }
+
+    // Altura handlers
+    document.getElementById('addAlturaBtn').addEventListener('click', () => {
+        document.getElementById('fotograficoAddAlturaForm').style.display = 'block';
+    });
+    document.getElementById('cancelAlturaBtn').addEventListener('click', () => {
+        document.getElementById('fotograficoAddAlturaForm').style.display = 'none';
+        document.getElementById('fotografico_altura_value').value = '';
+        document.getElementById('fotografico_altura_obs').value = '';
+    });
+    document.getElementById('saveAlturaBtn').addEventListener('click', async () => {
+        if (!obraId) {
+            alert('obra_id não disponível');
+            return;
+        }
+        const altura = document.getElementById('fotografico_altura_value').value.trim();
+        const obs = document.getElementById('fotografico_altura_obs').value.trim();
+        if (!altura) {
+            alert('Informe a altura');
+            return;
+        }
+        try {
+            const res = await fetch('add_fotografico_altura.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    obra_id: Number(obraId),
+                    altura: altura,
+                    observacoes: obs
+                })
+            });
+            const js = await res.json();
+            if (js.success) {
+                document.getElementById('fotograficoAddAlturaForm').style.display = 'none';
+                document.getElementById('fotografico_altura_value').value = '';
+                document.getElementById('fotografico_altura_obs').value = '';
+                loadFotografico();
+            } else alert('Erro: ' + (js.error || 'desconhecido'));
+        } catch (err) {
+            console.error(err);
+            alert('Erro ao salvar altura (ver console)');
+        }
+    });
+
+    // delegate delete altura
+    document.getElementById('fotografico_alturas_container').addEventListener('click', async (e) => {
+        const btn = e.target.closest('.delete-altura');
+        if (!btn) return;
+        const id = btn.dataset.id;
+        if (!confirm('Excluir esta altura?')) return;
+        try {
+            const fd = new FormData();
+            fd.append('id', id);
+            const res = await fetch('delete_fotografico_altura.php', {
+                method: 'POST',
+                body: fd
+            });
+            const js = await res.json();
+            if (js.success) loadFotografico();
+            else alert('Erro: ' + (js.error || 'desconhecido'));
+        } catch (err) {
+            console.error(err);
+            alert('Erro ao excluir (ver console)');
+        }
+    });
+
+    // registro handlers
+    document.getElementById('openRegistrarFotografico').addEventListener('click', () => {
+        document.getElementById('fotograficoRegistroForm').style.display = 'block';
+    });
+    document.getElementById('cancelFotograficoRegistro').addEventListener('click', () => {
+        document.getElementById('fotograficoRegistroForm').style.display = 'none';
+    });
+    document.getElementById('saveFotograficoRegistro').addEventListener('click', async () => {
+        if (!obraId) {
+            alert('obra_id não disponível');
+            return;
+        }
+        const data = document.getElementById('fotografico_registro_data').value;
+        const obs = document.getElementById('fotografico_registro_obs').value.trim();
+        if (!data) {
+            alert('Selecione a data do registro');
+            return;
+        }
+        try {
+            const res = await fetch('add_fotografico_registro.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    obra_id: Number(obraId),
+                    registro_data: data,
+                    observacoes: obs
+                })
+            });
+            const js = await res.json();
+            if (js.success) {
+                alert('Registro salvo');
+                document.getElementById('fotograficoRegistroForm').style.display = 'none';
+                document.getElementById('fotografico_registro_obs').value = '';
+                document.getElementById('fotografico_registro_data').value = '';
+                loadFotografico();
+            } else alert('Erro: ' + (js.error || 'desconhecido'));
+        } catch (err) {
+            console.error(err);
+            alert('Erro ao salvar registro (ver console)');
+        }
+    });
+
+    // save info
+    document.getElementById('saveFotograficoInfo').addEventListener('click', saveInfo);
+
+    function openModal() {
+        modal.style.display = 'flex';
+        modal.style.alignItems = 'center';
+        modal.style.justifyContent = 'center';
+        loadFotografico();
+    }
+
+    function closeModal() {
+        modal.style.display = 'none';
+        document.getElementById('fotograficoRegistroForm').style.display = 'none';
+        document.getElementById('fotograficoAddAlturaForm').style.display = 'none';
+    }
+
+    if (fotograficoBtn) fotograficoBtn.addEventListener('click', openModal);
+    if (quickFotografico) quickFotografico.addEventListener('click', (e) => {
+        e.preventDefault();
+        openModal();
+    });
+    if (closeBtn) closeBtn.addEventListener('click', closeModal);
+
+});

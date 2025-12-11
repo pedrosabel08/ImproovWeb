@@ -263,7 +263,7 @@ $conn->close();
                         <button id="addFollowup" class="action-item" onclick="gerarFollowUpPDF()">Follow Up</button>
                         <!-- <button id="clearFilters" class="action-item">Limpar filtros</button> -->
                         <button id="markInactiveBtn" class="action-item">Marcar Inativa</button>
-
+                        <button id="fotograficoBtn" class="action-item">Fotográfico</button>
                     </div>
                 </div>
             </div>
@@ -1485,6 +1485,52 @@ $conn->close();
 
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Fotografico modal -->
+    <div id="fotograficoModal" class="modal" style="display:none;">
+        <div class="modal-content" style="width:480px; max-width:95%; padding:16px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h3>Fotográfico - Informações</h3>
+                <button id="closeFotografico" style="background:none;border:0;font-size:20px;">&times;</button>
+            </div>
+            <div id="fotograficoBody">
+                <label>Endereço</label>
+                <input type="text" id="fotografico_endereco" style="width:100%;" />
+                <div id="fotografico_alturas_container" style="margin-top:8px;"></div>
+                <button id="addAlturaBtn" class="btn" style="margin-top:8px;">Adicionar Altura</button>
+                <div id="fotograficoAddAlturaForm" style="display:none; margin-top:8px;">
+                    <label>Altura</label>
+                    <input type="text" id="fotografico_altura_value" style="width:100%;" />
+                    <label>Observações</label>
+                    <input type="text" id="fotografico_altura_obs" style="width:100%;" />
+                    <div style="margin-top:8px; display:flex; gap:8px;">
+                        <button id="saveAlturaBtn" class="btn">Salvar Altura</button>
+                        <button id="cancelAlturaBtn" class="btn">Cancelar</button>
+                    </div>
+                </div>
+                <div class="buttonsFotografico">
+                    <button id="saveFotograficoInfo" class="btn">Salvar Informações</button>
+                    <button id="openRegistrarFotografico" class="btn">Registrar Fotográfico</button>
+                </div>
+
+                <hr style="margin:12px 0;" />
+                <h4>Registros</h4>
+                <div id="fotograficoRegistrosList" style="max-height:220px; overflow:auto; border:1px solid #eee; padding:8px; background:#fafafa;"></div>
+
+                <div id="fotograficoRegistroForm" style="display:none; margin-top:8px; border-top:1px solid #eee; padding-top:8px;">
+                    <label>Data</label>
+                    <input type="date" id="fotografico_registro_data" />
+                    <label style="margin-top:8px;">Observações</label>
+                    <textarea id="fotografico_registro_obs" style="width:100%; height:80px;"></textarea>
+                    <div style="margin-top:8px; display:flex; gap:8px;">
+                        <button id="saveFotograficoRegistro" class="btn">Salvar Registro</button>
+                        <button id="cancelFotograficoRegistro" class="btn">Cancelar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <!-- Select2 JS -->
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>

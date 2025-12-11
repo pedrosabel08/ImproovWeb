@@ -3,7 +3,7 @@
 include '../conexao.php';
 
 // Consulta para obter os dados da tabela obra
-$sql = "SELECT idobra, nome_obra, status_obra FROM obra ORDER BY status_obra, nome_obra";
+$sql = "SELECT idobra, nomenclatura as nome_obra, status_obra FROM obra ORDER BY idobra DESC";
 $result = $conn->query($sql);
 
 $obras = [];

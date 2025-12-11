@@ -4,25 +4,17 @@
 # 1. Fachada
 # 2. Planta baixa
 
-37, 86
-1. Fotomontagem com empreendimento no terreno real ou Imagem de fachada - 1
-2. Fotomontagem com empreendimento no terreno real ou Imagem de fachada - 2
-3. Fotomontagem com empreendimento no terreno real ou Imagem de fachada - 3
-4. Fotomontagem com empreendimento no terreno real ou Imagem de fachada - 4
-5. Fotomontagem com empreendimento no terreno real ou Imagem de fachada - 5
-6. Fotomontagem com empreendimento no terreno real ou Imagem de fachada - 6
-7. Embasamento
-8. Área comum à definir 1
-9. Área comum à definir 2
-10. Área comum à definir 3
-11. Área comum à definir 4
-12. Área comum à definir 5
-13. Área comum à definir 6
-14. Área comum à definir 7
-15. Apartamento à definir 1
-16. Apartamento à definir 2
-17. Apartamento à definir 3
-18. Planta humanizada implantação geral mostrando o pavimento térreo
-19. Planta humanizada do pavimento lazer
-20. Planta humanizada de apartamento à definir - 1
-21. Planta humanizada de apartamento à definir - 2
+57, 87
+1.Fotomontagem aérea
+2.Fachada diurna
+3.Fachada noturna
+4.Fachada embasamento
+5.Piscina
+6.Espaço Grill
+7.Planta humanizada pavimento térreo 
+8.Planta humanizada pavimento tipo 4 – Lazer 1
+9.Planta humanizada pavimento tipo 5 
+10.Planta humanizada pavimento tipo 6- variação 
+11.Planta humanizada pavimento tipo 7
+12.Planta humanizada pavimento tipo 8 – variação 
+13.Planta humanizada pavimento tipo 9 – Lazer 2 

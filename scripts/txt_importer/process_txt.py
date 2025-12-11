@@ -26,11 +26,11 @@ load_dotenv()
 
 # Configuration - prefer environment variables for safety in different environments
 DB_CONFIG = {
-    'host': os.getenv('IMPORT_DB_HOST', 'mysql.improov.com.br'),
+    'host': os.getenv('IMPORT_DB_HOST', '72.60.137.192'),
     'port': int(os.getenv('IMPORT_DB_PORT', '3306')),
     'user': os.getenv('IMPORT_DB_USER', 'improov'),
-    'password': os.getenv('IMPORT_DB_PASSWORD', 'Impr00v'),
-    'database': os.getenv('IMPORT_DB_NAME', 'improov'),
+    'password': os.getenv('IMPORT_DB_PASSWORD', 'Impr00v@'),
+    'database': os.getenv('IMPORT_DB_NAME', 'flowdb'),
     'charset': 'utf8mb4'
 }
 
@@ -101,7 +101,7 @@ def detect_tipo_imagem(imagem_nome: str) -> str:
             return 'Unidade'
 
     # Imagem Interna group
-    for kw in ['academia', 'hall de entrada', 'salao de jogos', 'salon de jogos', 'salao de festas', 'salon de festas', 'jogos', 'coworking', 'lavanderia', 'gourmet', 'interno']:
+    for kw in ['academia', 'hall de entrada', 'salao de jogos', 'salon de jogos', 'salao de festas', 'salon de festas', 'jogos', 'coworking', 'lavanderia', 'gourmet', 'interno', 'grill']:
         if kw in s:
             return 'Imagem Interna'
 
@@ -112,10 +112,25 @@ def detect_tipo_imagem(imagem_nome: str) -> str:
 
     return ''
 
-def insert_imagem(conn, cliente_id, obra_id, imagem_nome, recebimento_arquivos='', data_inicio='', prazo='', tipo_imagem='', dry_run=False):
-    sql = ("INSERT INTO imagens_cliente_obra (cliente_id, obra_id, imagem_nome, recebimento_arquivos, data_inicio, prazo, tipo_imagem) "
-           "VALUES (%s, %s, %s, %s, %s, %s, %s)")
-    params = (cliente_id, obra_id, imagem_nome, recebimento_arquivos, data_inicio, prazo, tipo_imagem)
+def insert_imagem(conn, cliente_id, obra_id, imagem_nome, recebimento_arquivos=None, data_inicio=None, prazo=None, tipo_imagem='', antecipada=0, dias_trabalhados=0, clima='', dry_run=False):
+    # Convert empty/blank date strings to None so MySQL INSERT will store NULL
+    # (empty strings cause "Incorrect date value" errors when sql_mode disallows
+    # implicit conversion). Accept None as default for date fields.
+    def _coerce_date(v):
+        if v is None:
+            return None
+        if isinstance(v, str) and v.strip() == '':
+            return None
+        return v
+
+    recebimento_arquivos_db = _coerce_date(recebimento_arquivos)
+    data_inicio_db = _coerce_date(data_inicio)
+    prazo_db = _coerce_date(prazo)
+
+    sql = ("INSERT INTO imagens_cliente_obra "
+           "(cliente_id, obra_id, imagem_nome, recebimento_arquivos, data_inicio, prazo, tipo_imagem, antecipada, dias_trabalhados, clima) "
+           "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)")
+    params = (cliente_id, obra_id, imagem_nome, recebimento_arquivos_db, data_inicio_db, prazo_db, tipo_imagem, antecipada, dias_trabalhados, clima)
     if dry_run:
         print("[DRY-RUN] SQL:", sql)
         print("[DRY-RUN] Params:", params)

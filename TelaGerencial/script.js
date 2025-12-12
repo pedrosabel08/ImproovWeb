@@ -43,7 +43,7 @@ function buscarDados() {
                 tr.innerHTML = `
             <td>${linha.nome_colaborador}</td>
             <td>${linha.nome_funcao}</td>
-            <td>${linha.quantidade - linha.pagas}</td>
+            <td>${linha.quantidade}</td>
             <td>${linha.mes_anterior}</td>
             <td>${linha.recorde_producao}</td>
           `;

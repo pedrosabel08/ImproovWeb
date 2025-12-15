@@ -215,6 +215,9 @@ $conn->close();
                 <label>Descrição</label>
                 <textarea name="descricao" rows="4"></textarea>
 
+                <label>Data de Recebimento</label>
+                <input type="date" name="data_recebido" value="<?= date('Y-m-d'); ?>" required style="padding: 2px 5px;border-radius: 4px;border: none;">
+
                 <div class="checkbox-group">
                     <label><input type="checkbox" name="flag_substituicao" value="1"> Substituir existente</label>
                 </div>

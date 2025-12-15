@@ -379,7 +379,7 @@ document.getElementById("uploadForm").addEventListener("submit", async function 
             </div>`;
 
         let xhr = new XMLHttpRequest();
-        xhr.open('POST', 'https://improov.com.br/flow/ImproovWeb/Arquivos/upload.php', true);
+        xhr.open('POST', 'upload.php', true);
 
         // Mostrar modal Swal e iniciar upload sem aguardar sua resolução
         const swalPromise = Swal.fire({

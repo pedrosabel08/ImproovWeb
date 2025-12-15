@@ -185,6 +185,21 @@ $refsSkpModo = $_POST['refsSkpModo'] ?? 'geral';
 $descricao    = $_POST['descricao'] ?? "";
 $sufixo       = $_POST['sufixo'] ?? "";
 
+// Data de recebimento fornecida pelo usuário (formato YYYY-MM-DD). Usada para todas as inserções que antes usavam NOW().
+$data_recebido_raw = $_POST['data_recebido'] ?? null;
+$data_recebido = null;
+if ($data_recebido_raw) {
+    $d = DateTime::createFromFormat('Y-m-d', $data_recebido_raw);
+    if ($d !== false) {
+        $data_recebido = $d->format('Y-m-d');
+    }
+}
+if (!$data_recebido) {
+    $data_recebido = date('Y-m-d');
+}
+$data_recebido_datetime = $data_recebido . ' 00:00:00';
+$log[] = "Data recebimento selecionada: $data_recebido";
+
 $log[] = "Recebido: obra_id=$obra_id, tipo_arquivo=$tipo_arquivo, substituicao=" . ($substituicao ? 'SIM' : 'NAO');
 $log[] = "Tipos imagem: " . json_encode($tiposImagem);
 $log[] = "Sufixo: " . ($sufixo ?: '(vazio)');
@@ -693,10 +708,10 @@ if (!empty($arquivosTmp) && count($arquivosTmp) > 0 && ($refsSkpModo === 'geral'
             if (!empty($fileTmp) && file_exists($fileTmp)) {
                 if (sftpPutWithFallback($sftp, $destFile, $fileTmp, $log, $errors)) {
                     $stmt = $conn->prepare("INSERT INTO arquivos 
-                    (obra_id, tipo_imagem_id, imagem_id, nome_original, nome_interno, caminho, tipo, versao, status, origem, recebido_por, categoria_id, sufixo, descricao, tamanho, colaborador_id) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'atualizado', 'upload_web', 'sistema', ?, ?, ?, ?, ?)");
-                    // types: obra_id(i), tipo_imagem_id(i), imagem_id(i), nome_original(s), nome_interno(s), caminho(s), tipo(s), versao(i), categoria(i), sufixo(s), descricao(s), tamanho(s), colaborador_id(i)
-                    $stmt->bind_param("iiissssiisssi", $obra_id, $tipo_id, $imagem_id, $fileOriginalName, $fileNomeInterno, $destFile, $tipo_arquivo, $versao, $categoria, $sufixo, $descricao, $tamanhoArquivo, $colaborador_id_sess);
+                    (obra_id, tipo_imagem_id, imagem_id, nome_original, nome_interno, caminho, tipo, versao, status, origem, recebido_por, recebido_em, categoria_id, sufixo, descricao, tamanho, colaborador_id) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'atualizado', 'upload_web', 'sistema', ?, ?, ?, ?, ?, ?)");
+                    // types: obra_id(i), tipo_imagem_id(i), imagem_id(i), nome_original(s), nome_interno(s), caminho(s), tipo(s), versao(i), recebido_em(s), categoria(i), sufixo(s), descricao(s), tamanho(s), colaborador_id(i)
+                    $stmt->bind_param("iiissssisisssi", $obra_id, $tipo_id, $imagem_id, $fileOriginalName, $fileNomeInterno, $destFile, $tipo_arquivo, $versao, $data_recebido_datetime, $categoria, $sufixo, $descricao, $tamanhoArquivo, $colaborador_id_sess);
 
                     $stmt->execute();
                     $arquivo_id = $conn->insert_id;
@@ -854,10 +869,10 @@ if (!empty($arquivosPorImagem) && $refsSkpModo === 'porImagem') {
 
             if (sftpPutWithFallback($sftp, $destFile, $tmpFile, $log, $errors)) {
                 $stmt = $conn->prepare("INSERT INTO arquivos 
-                (obra_id, tipo_imagem_id, imagem_id, nome_original, nome_interno, caminho, tipo, versao, status, origem, recebido_por, categoria_id, sufixo, descricao, tamanho, colaborador_id) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'atualizado', 'upload_web', 'sistema', ?, ?, ?, ?, ?)");
-                // types: obra_id(i), tipo_imagem_id(i), imagem_id(i), nome_original(s), nome_interno(s), caminho(s), tipo(s), versao(i), categoria(i), sufixo(s), descricao(s), tamanho(s), colaborador_id(i)
-                $stmt->bind_param("iiissssiisssi", $obra_id, $tipo_id, $imagem_id, $nomeOriginal, $fileNomeInterno, $destFile, $tipo_arquivo, $versao, $categoria, $sufixo, $descricao_para_insert, $tamanhoArquivo, $colaborador_id_sess);
+                (obra_id, tipo_imagem_id, imagem_id, nome_original, nome_interno, caminho, tipo, versao, status, origem, recebido_por, recebido_em, categoria_id, sufixo, descricao, tamanho, colaborador_id) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'atualizado', 'upload_web', 'sistema', ?, ?, ?, ?, ?, ?)");
+                // types: obra_id(i), tipo_imagem_id(i), imagem_id(i), nome_original(s), nome_interno(s), caminho(s), tipo(s), versao(i), recebido_em(s), categoria(i), sufixo(s), descricao(s), tamanho(s), colaborador_id(i)
+                $stmt->bind_param("iiissssisisssi", $obra_id, $tipo_id, $imagem_id, $nomeOriginal, $fileNomeInterno, $destFile, $tipo_arquivo, $versao, $data_recebido_datetime, $categoria, $sufixo, $descricao_para_insert, $tamanhoArquivo, $colaborador_id_sess);
 
                 $stmt->execute();
                 $arquivo_id = $conn->insert_id;
@@ -934,12 +949,13 @@ if (!empty($arquivosPorImagem) && $refsSkpModo === 'porImagem') {
                         $sel->execute();
                         $resSel = $sel->get_result();
                         if ($resSel && $resSel->num_rows > 0) {
-                            $ins = $conn->prepare("INSERT INTO notificacoes (colaborador_id, mensagem, data, lida, funcao_imagem_id) VALUES (?, ?, NOW(), 0, ?)");
+                            // Use selected date instead of NOW()
+                            $ins = $conn->prepare("INSERT INTO notificacoes (colaborador_id, mensagem, data, lida, funcao_imagem_id) VALUES (?, ?, ?, 0, ?)");
                             while ($rowNotif = $resSel->fetch_assoc()) {
                                 $colabId = $rowNotif['colaborador_id'];
                                 $funcaoImagemId = $rowNotif['idfuncao_imagem'];
                                 if ($ins) {
-                                    $ins->bind_param("isi", $colabId, $notifMsg, $funcaoImagemId);
+                                    $ins->bind_param("issi", $colabId, $notifMsg, $data_recebido_datetime, $funcaoImagemId);
                                     $ins->execute();
                                     $log[] = "Notificação criada para colaborador $colabId";
 
@@ -1057,7 +1073,8 @@ if (!empty($acompGroups)) {
 
         $acao = $grp['is_update'] ? ("Atualizado " . $categoriaNome . " em " . $tipoUpper . " para " . $targetsList)
                                   : ("Adicionado " . $categoriaNome . " em " . $tipoUpper . " para " . $targetsList);
-        $hojeData = date('Y-m-d');
+        // Use the selected date (general for all uploads) instead of today's date
+        $hojeData = $data_recebido;
 
         // Use o primeiro arquivo como referência (quando disponível)
         $arquivo_rep = isset($grp['arquivo_ids'][0]) ? intval($grp['arquivo_ids'][0]) : null;

@@ -73,7 +73,10 @@ function enviarArquivoSFTP($host, $usuario, $senha, $arquivoLocal, $arquivoRemot
                 }
                 $sent += strlen($buffer);
                 if ($onProgress && $totalSize > 0) {
-                    try { $onProgress($sent, $totalSize); } catch (Exception $e) {}
+                    try {
+                        $onProgress($sent, $totalSize);
+                    } catch (Exception $e) {
+                    }
                 }
             }
 
@@ -91,11 +94,17 @@ function enviarArquivoSFTP($host, $usuario, $senha, $arquivoLocal, $arquivoRemot
             // on all phpseclib builds but will reliably transfer the file. We still call the
             // onProgress callback before/after to indicate start and end.
             if ($onProgress) {
-                try { $onProgress(0, filesize($arquivoLocal)); } catch (Exception $e) {}
+                try {
+                    $onProgress(0, filesize($arquivoLocal));
+                } catch (Exception $e) {
+                }
             }
             if ($sftp->put($arquivoRemoto, $arquivoLocal, SFTP::SOURCE_LOCAL_FILE)) {
                 if ($onProgress) {
-                    try { $onProgress(filesize($arquivoLocal), filesize($arquivoLocal)); } catch (Exception $e) {}
+                    try {
+                        $onProgress(filesize($arquivoLocal), filesize($arquivoLocal));
+                    } catch (Exception $e) {
+                    }
                 }
                 return [true, 'OK'];
             }
@@ -219,8 +228,12 @@ if (function_exists('pcntl_async_signals')) {
     pcntl_async_signals(true);
 }
 if (function_exists('pcntl_signal') && defined('SIGTERM') && defined('SIGINT')) {
-    pcntl_signal(SIGTERM, function() use (&$shutdown) { $shutdown = true; });
-    pcntl_signal(SIGINT, function() use (&$shutdown) { $shutdown = true; });
+    pcntl_signal(SIGTERM, function () use (&$shutdown) {
+        $shutdown = true;
+    });
+    pcntl_signal(SIGINT, function () use (&$shutdown) {
+        $shutdown = true;
+    });
 } else {
     // pcntl not available: worker will not respond to SIGTERM gracefully.
     echo "Warning: pcntl extension not available; graceful shutdown disabled.\n";
@@ -327,7 +340,10 @@ function ensure_db_connection_local()
             }
         }
     } catch (Exception $e) {
-        try { @$conn->close(); } catch (Exception $_) {}
+        try {
+            @$conn->close();
+        } catch (Exception $_) {
+        }
         @include __DIR__ . '/../conexao.php';
     }
 }
@@ -447,7 +463,7 @@ function send_slack_notification_for_colaborador($colaborador_id, array $meta, $
         $res = null;
         if (function_exists('curl_init')) {
             $ch = curl_init($listUrl);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, [ 'Authorization: Bearer ' . $token ]);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . $token]);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
             curl_setopt($ch, CURLOPT_TIMEOUT, 8);
@@ -488,13 +504,13 @@ function send_slack_notification_for_colaborador($colaborador_id, array $meta, $
             return false;
         }
     }
-    $payload = [ 'channel' => $userId, 'text' => $text ];
+    $payload = ['channel' => $userId, 'text' => $text];
     $json = json_encode($payload);
     if (function_exists('curl_init')) {
         $ch = curl_init($apiUrl);
         curl_setopt($ch, CURLOPT_POST, 1);
         curl_setopt($ch, CURLOPT_POSTFIELDS, $json);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [ 'Content-Type: application/json', 'Authorization: Bearer ' . $token ]);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json', 'Authorization: Bearer ' . $token]);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
         curl_setopt($ch, CURLOPT_TIMEOUT, 8);
@@ -665,7 +681,10 @@ do {
             ensure_db_connection_local();
             create_arquivo_log_table_if_missing();
             $tamanhoFail = file_exists($staged) ? @filesize($staged) : null;
-            try { create_log_entries_if_missing($processingMeta, $meta, null, null, $tamanhoFail, $tipo); } catch (Exception $_) {}
+            try {
+                create_log_entries_if_missing($processingMeta, $meta, null, null, $tamanhoFail, $tipo);
+            } catch (Exception $_) {
+            }
             if (!empty($meta['log_ids'])) {
                 update_log_entries_status($meta['log_ids'], 'falha', null, null, null, null);
             }
@@ -673,7 +692,10 @@ do {
             // Slack failure notification
             $colab = $meta['post']['idcolaborador'] ?? null;
             if ($colab) {
-                try { send_slack_notification_for_colaborador($colab, $meta, null, null, false); } catch (Exception $_) {}
+                try {
+                    send_slack_notification_for_colaborador($colab, $meta, null, null, false);
+                } catch (Exception $_) {
+                }
             }
             continue;
         }
@@ -730,7 +752,10 @@ do {
             // Slack failure notification
             $colab = $meta['post']['idcolaborador'] ?? null;
             if ($colab) {
-                try { send_slack_notification_for_colaborador($colab, $meta, null, null, false); } catch (Exception $_) {}
+                try {
+                    send_slack_notification_for_colaborador($colab, $meta, null, null, false);
+                } catch (Exception $_) {
+                }
             }
             continue;
         }
@@ -748,7 +773,10 @@ do {
             // Slack failure notification
             $colab = $meta['post']['idcolaborador'] ?? null;
             if ($colab) {
-                try { send_slack_notification_for_colaborador($colab, $meta, null, null, false); } catch (Exception $_) {}
+                try {
+                    send_slack_notification_for_colaborador($colab, $meta, null, null, false);
+                } catch (Exception $_) {
+                }
             }
             continue;
         }
@@ -765,7 +793,7 @@ do {
 
             publishProgress($redis, $jobId, 10, 'connecting', 'Conectando ao SFTP');
             // attempt upload with progress callback
-            list($ok, $msg) = enviarArquivoSFTP($ftp_host, $ftp_user, $ftp_pass, $staged, $remote_path, $ftp_port, function($sent, $total) use ($redis, $jobId) {
+            list($ok, $msg) = enviarArquivoSFTP($ftp_host, $ftp_user, $ftp_pass, $staged, $remote_path, $ftp_port, function ($sent, $total) use ($redis, $jobId) {
                 $pct = (int) round(($sent / max(1, $total)) * 100);
                 // don't spam too frequently: publish at increments of 1% or when reaching 100%
                 static $lastPct = null;
@@ -819,7 +847,10 @@ do {
             // send slack to collaborator if present
             $colab = $meta['post']['idcolaborador'] ?? null;
             if ($colab) {
-                try { send_slack_notification_for_colaborador($colab, $meta, $windows_path, null, true); } catch (Exception $_) {}
+                try {
+                    send_slack_notification_for_colaborador($colab, $meta, $windows_path, null, true);
+                } catch (Exception $_) {
+                }
             }
         } else {
             echo "Falha ao enviar (todas tentativas ou erro irreversível): $lastMsg\n";
@@ -834,7 +865,10 @@ do {
             // send slack failure notice
             $colab = $meta['post']['idcolaborador'] ?? null;
             if ($colab) {
-                try { send_slack_notification_for_colaborador($colab, $meta, $remote_path, null, false); } catch (Exception $_) {}
+                try {
+                    send_slack_notification_for_colaborador($colab, $meta, $remote_path, null, false);
+                } catch (Exception $_) {
+                }
             }
         }
     }

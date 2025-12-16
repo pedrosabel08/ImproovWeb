@@ -54,7 +54,7 @@ const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
       if (!reconnectTimer) {
         reconnectTimer = setInterval(() => {
           console.log('Attempting to reconnect to Redis...');
-          startRedis().catch(() => {});
+          startRedis().catch(() => { });
         }, 5000);
       }
     }
@@ -94,8 +94,8 @@ const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
 
   process.on('SIGINT', async () => {
     console.log('Shutting down...');
-    try { await sub.quit(); } catch(e){}
-    try { await client.quit(); } catch(e){}
+    try { await sub.quit(); } catch (e) { }
+    try { await client.quit(); } catch (e) { }
     wss.close(() => process.exit(0));
   });
 })();

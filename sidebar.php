@@ -46,7 +46,7 @@
                 <ul class="division">
                     <label for="">Gerencial</label>
                     <li><a title="Tela Gerencial" href="https://improov.com.br/flow/ImproovWeb/TelaGerencial"><i class="fa-solid fa-desktop"></i><span> Tela Gerencial</span></a></li>
-                    <li><a title="FlowTrack" href="https://improov.com.br/flow/ImproovWeb/FlowTrack"><i class="fa-solid fa-desktop"></i><span> FlowTrack</span></a></li>
+                    <li><a title="Flow Track" href="https://improov.com.br/flow/ImproovWeb/FlowTrack"><i class="fa-solid fa-desktop"></i><span> Flow Track</span></a></li>
                 </ul>
             <?php endif; ?>
 

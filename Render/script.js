@@ -35,10 +35,13 @@ function formatarData(data) {
 }
 
 function renderCards(renders) {
+    // Build HTML in a single string to reduce DOM thrashing
+    let html = '';
     $('#renderGrid').html('');
     renders.forEach(function (render) {
+        // Prefer server-generated thumbnails to avoid loading full-size images on the grid
         const imgUrl = render.previa_jpg
-            ? `https://improov.com.br/flow/ImproovWeb/uploads/renders/${render.previa_jpg}`
+            ? `https://improov.com.br/flow/ImproovWeb/thumb.php?path=${encodeURI('uploads/renders/' + render.previa_jpg)}&w=360&q=75`
             : '../assets/logo.jpg';
 
         let statusBadgeClass = '';
@@ -58,9 +61,10 @@ function renderCards(renders) {
             statusBadgeClass = 'render-status-outro';
         }
 
-        $('#renderGrid').append(`
+        // Use native lazy loading attribute to avoid downloading all images at once
+        html += `
             <div class="render-card" data-id="${render.idrender_alta}">
-                <img src="${imgUrl}" alt="Preview" class="card-preview-img">
+                <img loading="lazy" decoding="async" width="270" height="160" src="${imgUrl}" alt="Preview" class="card-preview-img">
                 <div class="render-card-content">
                     <p class="render-card-title">${render.imagem_nome}</p>
                     <p class="render-card-responsavel">Responsável: ${render.nome_colaborador}</p>
@@ -69,13 +73,18 @@ function renderCards(renders) {
                     <p class="render-status-badge ${statusBadgeClass}">${render.status}</p>
                 </div>
             </div>
-        `);
+        `;
     });
-    $('.render-card').off('click').on('click', function () {
-        const idrender_alta = $(this).data('id');
-        editRender(idrender_alta);
-    });
+
+    // Append once
+    $('#renderGrid').append(html);
 }
+
+// Use event delegation to avoid re-attaching handlers on every re-render
+$('#renderGrid').off('click.renderClick').on('click.renderClick', '.render-card', function () {
+    const idrender_alta = $(this).data('id');
+    editRender(idrender_alta);
+});
 function loadRenders() {
     $.ajax({
         url: 'ajax.php',
@@ -161,20 +170,21 @@ function editRender(idrender_alta) {
 
                 if (previews.length > 0) {
                     const first = previews[0];
+                    // Main modal image: use a larger thumbnail to balance quality and speed
                     const mainUrl = first.filename
-                        ? `https://improov.com.br/flow/ImproovWeb/uploads/renders/${first.filename}`
+                        ? `https://improov.com.br/flow/ImproovWeb/uploads/renders/${encodeURIComponent(first.filename)}`
                         : '../assets/logo.jpg';
 
-                    // Set main image src to first preview
+                    // Set main image src to first preview (original full-size)
                     $('#modalPreviewImg').attr('src', mainUrl);
 
                     // Build gallery node
                     const $gallery = $('<div id="modalGallery" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"></div>');
                     previews.forEach(function (p, idx) {
                         const thumbUrl = p.filename
-                            ? `https://improov.com.br/flow/ImproovWeb/uploads/renders/${p.filename}`
+                            ? `https://improov.com.br/flow/ImproovWeb/uploads/renders/${encodeURIComponent(p.filename)}`
                             : '../assets/logo.jpg';
-                        const $thumb = $(`<img class="modal-thumb" data-filename="${p.filename}" data-idx="${idx}" src="${thumbUrl}" alt="Preview ${idx + 1}">`);
+                        const $thumb = $(`<img class="modal-thumb" loading="lazy" decoding="async" data-filename="${p.filename}" data-idx="${idx}" src="${thumbUrl}" alt="Preview ${idx + 1}">`);
                         // style the thumbnail a bit (you can move to CSS file)
                         $thumb.css({ width: '60px', height: '60px', objectFit: 'cover', cursor: 'pointer', borderRadius: '4px', border: '2px solid transparent' });
                         if (idx === 0) $thumb.css('border-color', '#4caf50');
@@ -199,7 +209,7 @@ function editRender(idrender_alta) {
                 } else {
                     // No previews: fallback to previsa_jpg if available
                     const imgUrl = r.previa_jpg
-                        ? `https://improov.com.br/flow/ImproovWeb/uploads/renders/${r.previa_jpg}`
+                        ? `https://improov.com.br/flow/ImproovWeb/uploads/renders/${encodeURIComponent(r.previa_jpg)}`
                         : '../assets/logo.jpg';
                     $('#modalPreviewImg').attr('src', imgUrl);
                 }
@@ -233,8 +243,9 @@ $('#modalPreviewImg').off('click').on('click', function () {
 
     $('body').append(fullScreenDiv);
 
-    const $imageWrapper = $('#image_wrapper');
-    const $img = $('#fullscreenImg');
+    // scope the elements inside the newly created fullScreenDiv to avoid global selectors
+    const $imageWrapper = fullScreenDiv.find('#image_wrapper');
+    const $img = fullScreenDiv.find('#fullscreenImg');
 
     // Zoom & Pan variables
     let currentZoom = 1;
@@ -272,8 +283,9 @@ $('#modalPreviewImg').off('click').on('click', function () {
         }
     });
 
+
     // Iniciar drag
-    $imageWrapper.on('mousedown', function (e) {
+    $imageWrapper.on('mousedown.fullscreen', function (e) {
         if (e.button === 0 && !e.ctrlKey) {
             isDragging = true;
             dragMoved = false;
@@ -283,8 +295,8 @@ $('#modalPreviewImg').off('click').on('click', function () {
         }
     });
 
-    // Arrastar
-    $(document).on('mousemove', function (e) {
+    // Use namespaced document handlers so we can remove them when closing
+    const mouseMoveHandler = function (e) {
         if (!isDragging) return;
         e.preventDefault();
         const dx = e.clientX - startX;
@@ -295,21 +307,29 @@ $('#modalPreviewImg').off('click').on('click', function () {
         currentTranslateX = dx;
         currentTranslateY = dy;
         applyTransforms();
-    });
+    };
 
-    // Finalizar drag
-    $(document).on('mouseup', function () {
+    const mouseUpHandler = function () {
         if (isDragging) {
             isDragging = false;
             $imageWrapper.css('cursor', 'grab').css('transition', 'transform 0.1s ease-out');
         }
-    });
+    };
 
-    // Fechar modal clicando no fundo
+    $(document).on('mousemove.fullscreen', mouseMoveHandler);
+    $(document).on('mouseup.fullscreen', mouseUpHandler);
+
+    // Fechar modal clicando no fundo - limpar handlers namespaced
     fullScreenDiv.on('click', function (e) {
         if (e.target.id === 'fullscreenImgDiv') {
+            $(document).off('.fullscreen');
             $(this).remove();
         }
+    });
+
+    // Ensure handlers are cleaned up if the element is removed programmatically
+    fullScreenDiv.on('remove', function () {
+        $(document).off('.fullscreen');
     });
 
     applyTransforms();

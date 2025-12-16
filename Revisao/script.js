@@ -238,7 +238,10 @@ async function exibirCardsDeObra(tarefas) {
     obrasMap.forEach((tarefasDaObra, nome_obra) => {
         tarefasDaObra.sort((a, b) => new Date(b.data_aprovacao) - new Date(a.data_aprovacao));
         const tarefaComImagem = tarefasDaObra.find(t => t.imagem);
-        const imagemPreview = tarefaComImagem ? `https://improov.com.br/flow/ImproovWeb/${tarefaComImagem.imagem}` : '../assets/logo.jpg';
+        // Use thumbnail for obra preview to reduce load
+        const imagemPreview = tarefaComImagem
+            ? `https://improov.com.br/flow/ImproovWeb/thumb.php?path=${encodeURI(tarefaComImagem.imagem)}&w=360&q=85`
+            : '../assets/logo.jpg';
 
         const mencoesNaObra = mencoes.mencoes_por_obra[nome_obra] || 0;
 
@@ -446,7 +449,10 @@ function exibirTarefas(tarefas, tarefasCompletas) {
             taskItem.classList.add('task-item');
             taskItem.setAttribute('onclick', `historyAJAX(${tarefa.idfuncao_imagem}, '${tarefa.nome_funcao}', '${tarefa.imagem_nome}', '${tarefa.nome_colaborador}')`);
 
-            const imagemPreview = tarefa.imagem ? `https://improov.com.br/flow/ImproovWeb/${tarefa.imagem}` : '../assets/logo.jpg';
+            // use thumbnail for task list previews; full image used only in mostrarImagemCompleta
+            const imagemPreview = tarefa.imagem
+                ? `https://improov.com.br/flow/ImproovWeb/thumb.php?path=${encodeURI(tarefa.imagem)}&w=450&q=85`
+                : '../assets/logo.jpg';
 
             // Define a cor de fundo com base no status
             const color = tarefa.status_novo === 'Em aprovação' ? '#000a59' : tarefa.status_novo === 'Ajuste' ? '#590000' : tarefa.status_novo === 'Aprovado com ajustes' ? '#2e0059ff' : 'transparent';
@@ -712,7 +718,8 @@ function historyAJAX(idfuncao_imagem) {
                         wrapper.className = 'imageWrapper';
 
                         const imgElement = document.createElement('img');
-                        imgElement.src = `https://improov.com.br/flow/ImproovWeb/${img.imagem}`;
+                        // thumbnail for gallery thumbnails; clicking opens full image via mostrarImagemCompleta
+                        imgElement.src = `https://improov.com.br/flow/ImproovWeb/thumb.php?path=${encodeURI(img.imagem)}&w=200&q=85`;
                         imgElement.alt = img.imagem;
                         imgElement.className = 'image';
                         imgElement.setAttribute('data-id', img.id);
@@ -800,7 +807,9 @@ function exibirSidebarTabulator(tarefas) {
 
             const tarefa = document.createElement('div');
             tarefa.classList.add('tarefa-item');
-            const imgSrc = t.imagem ? `https://improov.com.br/flow/ImproovWeb/${t.imagem}` : '../assets/logo.jpg';
+            const imgSrc = t.imagem
+                ? `https://improov.com.br/flow/ImproovWeb/thumb.php?path=${encodeURI(t.imagem)}&w=400&q=85`
+                : '../assets/logo.jpg';
             tarefa.innerHTML = `
         <img src="${imgSrc}" class="tab-img" data-id="${t.idfuncao_imagem}" alt="${t.imagem_nome}">
         <span id="status_tarefa" style="background-color: ${bgColor}; color: ${color}">${t.status_novo}</span>
@@ -1251,14 +1260,15 @@ async function renderComments(id) {
         respostas.id = `respostas-${comentario.id}`;
 
         commentCard.appendChild(header);
-        if (comentario.imagem) {
-            const imagemDiv = document.createElement('div');
-            imagemDiv.classList.add('comment-image');
-            imagemDiv.innerHTML = `
-                <img src="${comentario.imagem}" class="comment-img-thumb" onclick="abrirImagemModal('${comentario.imagem}')">
-            `;
-            commentCard.appendChild(imagemDiv);
-        }
+            if (comentario.imagem) {
+                const imagemDiv = document.createElement('div');
+                imagemDiv.classList.add('comment-image');
+                const thumb = `https://improov.com.br/flow/ImproovWeb/thumb.php?path=${encodeURI(comentario.imagem)}&w=200&q=85`;
+                imagemDiv.innerHTML = `
+                    <img src="${thumb}" class="comment-img-thumb" onclick="abrirImagemModal('${comentario.imagem}')">
+                `;
+                commentCard.appendChild(imagemDiv);
+            }
         commentCard.appendChild(commentBody);
         commentCard.appendChild(footer);
         commentCard.appendChild(respostas);

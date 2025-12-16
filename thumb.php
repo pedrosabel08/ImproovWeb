@@ -83,7 +83,45 @@ if ($isRemote) {
     }
 
     // try candidates
+    // expand candidates (normalize slashes, remove duplicate uploads, add __DIR__ prefixed variants)
+    $expanded = [];
     foreach ($candidates as $cand) {
+        $expanded[] = $cand;
+        $norm = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $cand);
+        $expanded[] = $norm;
+        // try removing duplicate uploads/uploads
+        $expanded[] = str_replace(DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'uploads', DIRECTORY_SEPARATOR . 'uploads', $norm);
+        // ensure project-dir prefixed variant
+        if (!preg_match('#^[A-Za-z]:\\\\#', $cand) && strpos($cand, DIRECTORY_SEPARATOR) !== 0) {
+            $expanded[] = __DIR__ . DIRECTORY_SEPARATOR . ltrim($cand, '/\\');
+        }
+    }
+
+    // unique and preserve order
+    $expanded = array_values(array_unique($expanded));
+
+    // debug helper: list candidates with status when ?dbg=1
+    if (isset($_GET['dbg']) && $_GET['dbg']) {
+        $debugOut = [];
+        foreach ($expanded as $cand) {
+            $debugOut[] = [
+                'path' => $cand,
+                'exists' => file_exists($cand) ? true : false,
+                'is_file' => is_file($cand) ? true : false,
+                'realpath' => @realpath($cand) ?: null,
+                'is_readable' => is_readable($cand) ? true : false
+            ];
+        }
+        header('Content-Type: application/json');
+        echo json_encode([
+            'isRemote' => $isRemote,
+            'originalPath' => $originalPath,
+            'expandedCandidates' => $debugOut
+        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
+    foreach ($expanded as $cand) {
         if (file_exists($cand) && is_file($cand)) {
             $file = $cand;
             break;
@@ -93,9 +131,9 @@ if ($isRemote) {
     // If not found locally, try public URL fallback. If originalPath is just a filename, prefer /sistema/uploads/filename
     if (!$file) {
         if (basename($originalPath) === $originalPath) {
-            $publicUrl = 'https://improov.com.br/sistema/uploads/' . ltrim($originalPath, '/\\');
+            $publicUrl = 'https://improov.com.br/flow/ImproovWeb/uploads/' . ltrim($originalPath, '/\\');
         } else {
-            $publicUrl = 'https://improov.com.br/' . ltrim($originalPath, '/\\');
+            $publicUrl = 'https://improov.com.br/flow/ImproovWeb/' . ltrim($originalPath, '/\\');
         }
         // fetch via cURL streaming to tmp file
         $tmpLocal = $cacheDir . '/remote_fallback_' . md5($publicUrl);
@@ -174,7 +212,8 @@ if (file_exists($cacheFile)) {
         $etag = '"' . md5_file($cacheFile) . '"';
         $lastMod = gmdate('D, d M Y H:i:s', $cache_mtime) . ' GMT';
         if ((isset($_SERVER['HTTP_IF_NONE_MATCH']) && stripslashes($_SERVER['HTTP_IF_NONE_MATCH']) === $etag) ||
-            (isset($_SERVER['HTTP_IF_MODIFIED_SINCE']) && @strtotime($_SERVER['HTTP_IF_MODIFIED_SINCE']) >= $cache_mtime)) {
+            (isset($_SERVER['HTTP_IF_MODIFIED_SINCE']) && @strtotime($_SERVER['HTTP_IF_MODIFIED_SINCE']) >= $cache_mtime)
+        ) {
             header('HTTP/1.1 304 Not Modified');
             exit;
         }

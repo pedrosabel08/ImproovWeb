@@ -382,6 +382,8 @@ document.getElementById("uploadForm").addEventListener("submit", async function 
         xhr.open('POST', 'upload.php', true);
 
         // Mostrar modal Swal e iniciar upload sem aguardar sua resolução
+        let startTime = null;
+
         const swalPromise = Swal.fire({
             title: 'Enviando arquivos',
             html: swalHtml,
@@ -395,11 +397,23 @@ document.getElementById("uploadForm").addEventListener("submit", async function 
                 const bar = container ? container.querySelector('#swal-upload-bar') : null;
                 const info = container ? container.querySelector('#swal-upload-info') : null;
 
+                startTime = Date.now();
+
                 xhr.upload.onprogress = function (e) {
                     if (e.lengthComputable) {
-                        const pct = Math.round((e.loaded / e.total) * 100);
-                        if (bar) bar.style.width = pct + '%';
-                        if (info) info.textContent = pct + '% - ' + Math.round(e.loaded/1024) + ' KB de ' + Math.round(e.total/1024) + ' KB';
+                        const now = Date.now();
+                        const elapsed = (now - startTime) / 1000; // seconds
+                        const uploadedMB = e.loaded / (1024 * 1024);
+                        const totalMB = e.total / (1024 * 1024);
+                        const percent = (e.loaded / e.total) * 100;
+                        const speed = uploadedMB / (elapsed || 0.0001); // MB/s
+                        const remainingMB = Math.max(0, totalMB - uploadedMB);
+                        const estimatedTime = remainingMB / (speed || 0.0001);
+
+                        if (bar) bar.style.width = percent + '%';
+                        if (info) {
+                            info.textContent = `${percent.toFixed(2)}% - ${Math.round(e.loaded/1024)} KB de ${Math.round(e.total/1024)} KB — Tempo: ${elapsed.toFixed(1)}s — Velocidade: ${speed.toFixed(2)} MB/s — Estimativa: ${estimatedTime.toFixed(1)}s`;
+                        }
                     }
                 };
 

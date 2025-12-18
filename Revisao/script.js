@@ -240,7 +240,7 @@ async function exibirCardsDeObra(tarefas) {
         const tarefaComImagem = tarefasDaObra.find(t => t.imagem);
         // Use thumbnail for obra preview to reduce load
         const imagemPreview = tarefaComImagem
-            ? `https://improov.com.br/flow/ImproovWeb/thumb.php?path=${encodeURI(tarefaComImagem.imagem)}&w=360&q=85`
+            ? `https://improov.com.br/flow/ImproovWeb/thumb.php?path=${encodeURIComponent(tarefaComImagem.imagem)}&w=450&q=85`
             : '../assets/logo.jpg';
 
         const mencoesNaObra = mencoes.mencoes_por_obra[nome_obra] || 0;
@@ -451,7 +451,7 @@ function exibirTarefas(tarefas, tarefasCompletas) {
 
             // use thumbnail for task list previews; full image used only in mostrarImagemCompleta
             const imagemPreview = tarefa.imagem
-                ? `https://improov.com.br/flow/ImproovWeb/thumb.php?path=${encodeURI(tarefa.imagem)}&w=450&q=85`
+                ? `https://improov.com.br/flow/ImproovWeb/thumb.php?path=${encodeURIComponent(tarefa.imagem)}&w=450&q=85`
                 : '../assets/logo.jpg';
 
             // Define a cor de fundo com base no status
@@ -719,18 +719,19 @@ function historyAJAX(idfuncao_imagem) {
 
                         const imgElement = document.createElement('img');
                         // thumbnail for gallery thumbnails; clicking opens full image via mostrarImagemCompleta
-                        imgElement.src = `https://improov.com.br/flow/ImproovWeb/thumb.php?path=${encodeURI(img.imagem)}&w=200&q=85`;
+                        const fullImageUrl = `https://improov.com.br/flow/ImproovWeb/${encodeURI(img.imagem)}`;
+                        imgElement.src = `https://improov.com.br/flow/ImproovWeb/thumb.php?path=${encodeURIComponent(img.imagem)}&w=200&q=85`;
                         imgElement.alt = img.imagem;
                         imgElement.className = 'image';
                         imgElement.setAttribute('data-id', img.id);
 
                         imgElement.addEventListener('click', () => {
-                            mostrarImagemCompleta(imgElement.src, img.id);
+                            mostrarImagemCompleta(fullImageUrl, img.id);
                         });
 
                         imgElement.addEventListener('contextmenu', (event) => {
                             event.preventDefault();
-                            abrirMenuContexto(event.pageX, event.pageY, img.id, imgElement.src);
+                            abrirMenuContexto(event.pageX, event.pageY, img.id, fullImageUrl);
                         });
 
                         if (img.has_comments == "1" || img.has_comments === 1) {
@@ -808,7 +809,7 @@ function exibirSidebarTabulator(tarefas) {
             const tarefa = document.createElement('div');
             tarefa.classList.add('tarefa-item');
             const imgSrc = t.imagem
-                ? `https://improov.com.br/flow/ImproovWeb/thumb.php?path=${encodeURI(t.imagem)}&w=400&q=85`
+                ? `https://improov.com.br/flow/ImproovWeb/thumb.php?path=${encodeURIComponent(t.imagem)}&w=400&q=85`
                 : '../assets/logo.jpg';
             tarefa.innerHTML = `
         <img src="${imgSrc}" class="tab-img" data-id="${t.idfuncao_imagem}" alt="${t.imagem_nome}">
@@ -1263,7 +1264,7 @@ async function renderComments(id) {
             if (comentario.imagem) {
                 const imagemDiv = document.createElement('div');
                 imagemDiv.classList.add('comment-image');
-                const thumb = `https://improov.com.br/flow/ImproovWeb/thumb.php?path=${encodeURI(comentario.imagem)}&w=200&q=85`;
+                const thumb = `https://improov.com.br/flow/ImproovWeb/thumb.php?path=${encodeURIComponent(comentario.imagem)}&w=200&q=85`;
                 imagemDiv.innerHTML = `
                     <img src="${thumb}" class="comment-img-thumb" onclick="abrirImagemModal('${comentario.imagem}')">
                 `;

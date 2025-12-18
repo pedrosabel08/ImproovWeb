@@ -3429,6 +3429,39 @@ function renderAcompanhamentosList(acompList, category = 'todos') {
 
         div.appendChild(pAssunto);
         div.appendChild(pData);
+
+        // context menu (right-click) to delete acompanhamento
+        div.addEventListener('contextmenu', (ev) => {
+            ev.preventDefault();
+            if (!acomp || !acomp.id) return;
+            const ok = confirm('Deseja excluir este acompanhamento?');
+            if (!ok) return;
+
+            fetch('../deleteAcompanhamento.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ id: acomp.id, action: 'delete' })
+            })
+                .then(r => r.json())
+                .then(res => {
+                    if (res && (res.success || res.deleted)) {
+                        Toastify({ text: 'Acompanhamento excluído', duration: 2500, gravity: 'top', position: 'left', backgroundColor: 'green' }).showToast();
+                        if (window.__acompFetched) {
+                            window.__acompFetched = window.__acompFetched.filter(a => String(a.id) !== String(acomp.id));
+                            renderAcompanhamentosList(window.__acompFetched, category);
+                        } else {
+                            div.remove();
+                        }
+                    } else {
+                        Toastify({ text: 'Falha ao excluir: ' + (res.message || 'erro'), duration: 4000, gravity: 'top', position: 'left', backgroundColor: 'red' }).showToast();
+                    }
+                })
+                .catch(err => {
+                    console.error('Erro excluir acompanhamento:', err);
+                    Toastify({ text: 'Erro ao excluir acompanhamento.', duration: 4000, gravity: 'top', position: 'left', backgroundColor: 'red' }).showToast();
+                });
+        });
+
         container.appendChild(div);
     });
 }
@@ -3589,8 +3622,124 @@ function salvarAcompanhamento(id, obraId, novoAssunto) {
 
 
 
-document.getElementById('acomp').addEventListener('click', function () {
-    modal.style.display = 'block';
+// Ensure the '+ Novo' button opens the adicionar acompanhamento modal
+const btnAcomp = document.getElementById('acomp');
+if (btnAcomp) {
+    btnAcomp.addEventListener('click', function () {
+        // show the modal to add a new acompanhamento
+        if (modal) modal.style.display = 'block';
+    });
+}
+
+// Configuration button: check duplicates and offer unify
+document.getElementById('configAcomp').addEventListener('click', function () {
+    // Try to get obraId from various places (fallbacks)
+    function resolveObraId() {
+        // prefer global variable obraId if set
+        if (typeof obraId !== 'undefined' && obraId) return obraId;
+        const el = document.getElementById('obra_id_img') || document.getElementById('obra_id');
+        if (el && el.value) return el.value;
+        // try URL params
+        const params = new URLSearchParams(window.location.search);
+        return params.get('idobra') || params.get('obra_id') || params.get('id') || null;
+    }
+
+    const idObra = resolveObraId();
+    if (!idObra) {
+        // sem obra_id — não abrir modal de adicionar aqui
+        Toastify({ text: 'Não foi possível identificar a obra.', duration: 3000, gravity: 'top', position: 'right', backgroundColor: '#f39c12' }).showToast();
+        return;
+    }
+
+    // Request duplicate groups for this obra
+    fetch('../unifyAcompanhamentos.php?action=list', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ obra_id: idObra })
+    })
+        .then(r => r.json())
+        .then(data => {
+            const groups = (data && data.groups) ? data.groups : [];
+            if (!groups || groups.length === 0) {
+                // sem grupos para unificar — informar usuário (não abrir modal de adicionar)
+                Toastify({ text: 'Nenhum acompanhamento duplicado encontrado para unificação.', duration: 3000, gravity: 'top', position: 'right', backgroundColor: '#3498db' }).showToast();
+                return;
+            }
+
+            // Populate the server-rendered modal `unifyAcompanhamentoModal`
+            const unifyModal = document.getElementById('unifyAcompanhamentoModal');
+            if (!unifyModal) {
+                // If modal not present, fallback to add modal
+                modal.style.display = 'block';
+                return;
+            }
+
+            const listEl = unifyModal.querySelector('#unifyGroupsList');
+            listEl.innerHTML = '';
+
+            groups.forEach(g => {
+                const row = document.createElement('div');
+                row.style.display = 'flex';
+                row.style.justifyContent = 'space-between';
+                row.style.alignItems = 'center';
+                row.style.padding = '8px 0';
+                row.style.borderBottom = '1px solid #eee';
+
+                const info = document.createElement('div');
+                info.innerHTML = `<strong>${formatarData(g.date)}</strong> — ${g.assunto} <small style="color:#666;margin-left:8px">(${g.count} itens)</small>`;
+
+                const actions = document.createElement('div');
+                const unifyBtn = document.createElement('button');
+                unifyBtn.textContent = 'Unificar';
+                unifyBtn.style.marginRight = '8px';
+                unifyBtn.addEventListener('click', function () {
+                    if (!confirm('Deseja unificar esses acompanhamentos? Essa ação irá apagar os duplicados e manter apenas um registro.')) return;
+                    fetch('../unifyAcompanhamentos.php?action=unify', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: new URLSearchParams({ obra_id: idObra, date: g.date, assunto: g.assunto })
+                    })
+                        .then(res => res.json())
+                        .then(res => {
+                            if (res && res.success) {
+                                Toastify({ text: 'Unificado com sucesso', duration: 3000, gravity: 'top', position: 'right', backgroundColor: 'green' }).showToast();
+                                try { abrirModalAcompanhamento(idObra); } catch (e) { }
+                                row.remove();
+                                // hide modal when no groups left
+                                if (!listEl.querySelector('div')) unifyModal.style.display = 'none';
+                            } else {
+                                Toastify({ text: (res && res.message) ? res.message : 'Erro ao unificar', duration: 3500, gravity: 'top', position: 'right', backgroundColor: 'red' }).showToast();
+                            }
+                        })
+                        .catch(err => {
+                            console.error(err);
+                            Toastify({ text: 'Erro ao unificar', duration: 3500, gravity: 'top', position: 'right', backgroundColor: 'red' }).showToast();
+                        });
+                });
+
+                const cancelBtn = document.createElement('button');
+                cancelBtn.textContent = 'Cancelar';
+                cancelBtn.addEventListener('click', function () {
+                    unifyModal.style.display = 'none';
+                });
+
+                actions.appendChild(unifyBtn);
+                actions.appendChild(cancelBtn);
+
+                row.appendChild(info);
+                row.appendChild(actions);
+                listEl.appendChild(row);
+            });
+
+            // Show modal and wire close buttons
+            unifyModal.style.display = 'block';
+            const closeEls = unifyModal.querySelectorAll('.unify-close, #unifyCloseBtn');
+            closeEls.forEach(el => el.addEventListener('click', () => { unifyModal.style.display = 'none'; }));
+        })
+        .catch(err => {
+            console.error('Erro ao buscar duplicados:', err);
+            Toastify({ text: 'Erro ao buscar acompanhamentos.', duration: 3500, gravity: 'top', position: 'right', backgroundColor: '#e74c3c' }).showToast();
+        });
 });
 
 document.getElementById('obsAdd').addEventListener('click', function () {

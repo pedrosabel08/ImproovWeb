@@ -231,15 +231,32 @@ function buildFormData(form) {
 
     const inputs = form.querySelectorAll('input, select, textarea');
     inputs.forEach(input => {
-        if (input.type === 'file') return; // trata separadamente
+        // ignore file inputs here (handled below)
+        if (input.type === 'file') return;
 
-        if (input.multiple && input.tagName === 'SELECT') {
-            Array.from(input.selectedOptions).forEach(option => {
-                formData.append(input.name, option.value);
-            });
-        } else {
-            formData.append(input.name, input.value);
+        // skip inputs without a name attribute
+        if (!input.name) return;
+
+        // checkboxes: only append if checked
+        if (input.type === 'checkbox') {
+            if (input.checked) formData.append(input.name, input.value || 'on');
+            return;
         }
+
+        // radios: only append the checked one
+        if (input.type === 'radio') {
+            if (input.checked) formData.append(input.name, input.value);
+            return;
+        }
+
+        // multi-select handling
+        if (input.tagName === 'SELECT' && input.multiple) {
+            Array.from(input.selectedOptions).forEach(option => formData.append(input.name, option.value));
+            return;
+        }
+
+        // default for other inputs/selects/textareas
+        formData.append(input.name, input.value);
     });
 
     // arquivos

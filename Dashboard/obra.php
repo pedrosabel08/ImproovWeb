@@ -436,11 +436,30 @@ $conn->close();
             </div>
         </div>
 
+        <!-- Modal para unificar acompanhamentos (populado pelo JS) -->
+        <div id="unifyAcompanhamentoModal" class="modal" style="display:none;">
+            <div class="modal-content" style="width:720px; max-width:95%;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                    <h2 style="margin:0;">Unificar Acompanhamentos</h2>
+                    <button class="unify-close" style="background:transparent;border:none;font-size:20px;">&times;</button>
+                </div>
+                <div id="unifyGroupsList" style="max-height:60vh; overflow:auto;">
+                    <!-- JS irá popular com grupos: cada grupo terá data, assunto, count e botões -->
+                </div>
+                <div style="text-align:right; margin-top:10px;">
+                    <button id="unifyCloseBtn">Fechar</button>
+                </div>
+            </div>
+        </div>
+
         <div id="infos-obra" style="width: 95%; margin: 30px auto; box-shadow: 0 1px 10px rgba(0, 0, 0, 0.7);">
             <div class="acompanhamentos">
                 <div class="infos-obra-header">
                     <h1>Histórico</h1>
-                    <button id="acomp" class="btnAcompObs">+ Novo</button>
+                    <div class="buttons-acomp" style="display: flex;">
+                        <button id="acomp" class="btnAcompObs">+ Novo</button>
+                        <button id="configAcomp" class="animate__animated" style="background-color: transparent; color: black;"><i class="fa-solid fa-gear"></i></button>
+                    </div>
                 </div>
 
                 <!-- Acompanhamentos: filtros por categoria -->

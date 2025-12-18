@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title></title>
+            <style>
+/* From extension vscode.github */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+.vscode-dark img[src$=\#gh-light-mode-only],
+.vscode-light img[src$=\#gh-dark-mode-only],
+.vscode-high-contrast:not(.vscode-high-contrast-light) img[src$=\#gh-light-mode-only],
+.vscode-high-contrast-light img[src$=\#gh-dark-mode-only] {
+	display: none;
+}
+
+</style>
+            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex/dist/katex.min.css">
+<link href="https://cdn.jsdelivr.net/npm/katex-copytex@latest/dist/katex-copytex.min.css" rel="stylesheet" type="text/css">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css">
+<style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+        </style>
+        <style>
+.task-list-item {
+    list-style-type: none;
+}
+
+.task-list-item-checkbox {
+    margin-left: -20px;
+    vertical-align: middle;
+    pointer-events: none;
+}
+</style>
+<style>
+:root {
+  --color-note: #0969da;
+  --color-tip: #1a7f37;
+  --color-warning: #9a6700;
+  --color-severe: #bc4c00;
+  --color-caution: #d1242f;
+  --color-important: #8250df;
+}
+
+</style>
+<style>
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-note: #2f81f7;
+    --color-tip: #3fb950;
+    --color-warning: #d29922;
+    --color-severe: #db6d28;
+    --color-caution: #f85149;
+    --color-important: #a371f7;
+  }
+}
+
+</style>
+<style>
+.markdown-alert {
+  padding: 0.5rem 1rem;
+  margin-bottom: 16px;
+  color: inherit;
+  border-left: .25em solid #888;
+}
+
+.markdown-alert>:first-child {
+  margin-top: 0
+}
+
+.markdown-alert>:last-child {
+  margin-bottom: 0
+}
+
+.markdown-alert .markdown-alert-title {
+  display: flex;
+  font-weight: 500;
+  align-items: center;
+  line-height: 1
+}
+
+.markdown-alert .markdown-alert-title .octicon {
+  margin-right: 0.5rem;
+  display: inline-block;
+  overflow: visible !important;
+  vertical-align: text-bottom;
+  fill: currentColor;
+}
+
+.markdown-alert.markdown-alert-note {
+  border-left-color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-note .markdown-alert-title {
+  color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-important {
+  border-left-color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-important .markdown-alert-title {
+  color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-warning {
+  border-left-color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-warning .markdown-alert-title {
+  color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-tip {
+  border-left-color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-tip .markdown-alert-title {
+  color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-caution {
+  border-left-color: var(--color-caution);
+}
+
+.markdown-alert.markdown-alert-caution .markdown-alert-title {
+  color: var(--color-caution);
+}
+
+</style>
+        
+        </head>
+        <body class="vscode-body vscode-light">
+            <p>README — atualizar_prazo.php</p>
+<p>Objetivo</p>
+<ul>
+<li>Atualiza prazos e datas de recebimento para imagens de uma obra e gera/atualiza o planejamento (Gantt) e alocações de colaboradores com base nas datas/flags informadas.</li>
+</ul>
+<p>Visão por função (regras gerais e por tipo de imagem)</p>
+<ol>
+<li>adicionarDiasUteis($dataInicial, $diasUteis)</li>
+</ol>
+<ul>
+<li>Regras gerais:
+<ul>
+<li>Conta apenas dias úteis (segunda a sexta).</li>
+<li>Pula feriados fixos (lista codificada: e.g., 01-01, 04-21, 05-01, 09-07, 10-12, 11-02, 11-15, 12-25).</li>
+<li>Pula feriados móveis calculados por <code>feriadosMoveis($ano)</code> (usa <code>easter_date()</code> para derivar Páscoa, Carnaval, Sexta Santa, Corpus, etc.).</li>
+<li>Itera dia-a-dia até cumprir <code>diasUteis</code> e retorna a última data útil.</li>
+</ul>
+</li>
+<li>Regras por tipo: nenhuma — função é neutra quanto a tipos de imagem.</li>
+</ul>
+<ol start="2">
+<li>feriadosMoveis($ano)</li>
+</ol>
+<ul>
+<li>Regras gerais:
+<ul>
+<li>Calcula data da Páscoa e deriva feriados móveis relevantes (Sexta Santa, Carnaval, Corpus, Ascensão etc.).</li>
+</ul>
+</li>
+<li>Regras por tipo: nenhuma — função fornece dados de feriados para <code>adicionarDiasUteis</code>.</li>
+</ul>
+<ol start="3">
+<li>gerarGantt($conn, $obra_id, $grupos)</li>
+</ol>
+<ul>
+<li>
+<p>Regras gerais:</p>
+<ul>
+<li>Lê tipos de imagem que têm <code>recebimento_arquivos</code> registrados em <code>imagens_cliente_obra</code> para a obra.</li>
+<li>Filtra o mapa <code>$grupos</code> (definição de etapas e durações) para incluir apenas tipos com recebimento.</li>
+<li>Para cada tipo (grupo) e para cada imagem do tipo:
+<ul>
+<li>Obtém <code>data_inicio</code> = <code>recebimento_arquivos</code> da imagem.</li>
+<li>Para cada etapa do grupo:
+<ul>
+<li>Calcula <code>diasCalculados</code> (padrão: valor definido no <code>$grupos</code>).</li>
+<li>Chama <code>verificarDisponibilidadeColaborador</code> para obter <code>data_inicio_disponivel</code> e flag <code>freelancer</code>.</li>
+<li>Calcula <code>data_fim = adicionarDiasUteis(data_inicio_disponivel['data_inicio'], diasCalculados)</code>.</li>
+<li>Insere/atualiza linha em <code>gantt_prazos</code> (ON DUPLICATE KEY UPDATE).</li>
+<li>Se houver <code>colaborador_id</code> e não for freelancer, insere em <code>etapa_colaborador</code> (evita duplicidade).</li>
+<li>Atualiza <code>data_inicio</code> para próxima etapa (dia útil após <code>data_fim</code>).</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>Após processar grupos principais, processa <code>Planta Humanizada</code> iniciando após o maior <code>data_fim</code> encontrado para a etapa Caderno (se aplicável).</li>
+</ul>
+</li>
+<li>
+<p>Regras por tipo (observações extraídas do código):</p>
+<ul>
+<li>Os grupos e durações são definidos no array <code>$grupos</code> (exemplo abaixo).</li>
+<li>Para <code>Planta Humanizada</code> o cálculo é feito somente após calcular <code>maiorDataCaderno</code> das demais etapas.</li>
+<li>Há uma regra pontual no código que refere <code>Modelagem</code> com comportamento condicional em alguns grupos (mantém <code>dias</code> específicos para <code>Modelagem</code> dependendo do grupo).</li>
+</ul>
+</li>
+<li>
+<p><code>$grupos</code> atual no código (valores de dias usados para gerar o Gantt):</p>
+<ul>
+<li>Fachada: Modelagem=7, Finalização=2, Pós-Produção=0.2</li>
+<li>Imagem Externa: Caderno=0.5, Filtro de assets=0.5, Modelagem=7, Composição=1, Finalização=1, Pós-Produção=0.2</li>
+<li>Imagem Interna: Caderno=0.5, Filtro de assets=0.5, Modelagem=0.5, Composição=0.5, Finalização=1, Pós-Produção=0.2</li>
+<li>Unidade: Caderno=0.5, Filtro de assets=0.5, Modelagem=0.5, Composição=0.5, Finalização=1, Pós-Produção=0.2</li>
+<li>Planta Humanizada: Planta Humanizada=1</li>
+</ul>
+</li>
+</ul>
+<ol start="4">
+<li>verificarDisponibilidadeColaborador($conn, $etapa, $data_inicio, $dias)</li>
+</ol>
+<ul>
+<li>Regras gerais:
+<ul>
+<li>Tenta localizar um colaborador disponível para a etapa começando em <code>data_inicio</code>.</li>
+<li>Realiza até 5 tentativas, incrementando <code>data_inicio</code> em 1 dia útil a cada tentativa.</li>
+<li>Em cada tentativa chama <code>colaboradorDisponivel()</code> que verifica limite de carga por colaborador.</li>
+<li>Se encontrar colaborador com capacidade, retorna <code>['data_inicio' =&gt; data, 'freelancer' =&gt; false, 'colaborador_id' =&gt; id]</code>.</li>
+<li>Se não encontrar após 5 tentativas, retorna <code>['data_inicio' =&gt; data_final, 'freelancer' =&gt; true, 'colaborador_id' =&gt; null]</code> (alocação por freelancer).</li>
+</ul>
+</li>
+<li>Regras por tipo: nenhuma explícita — tentativa é aplicada a todas as etapas/tipos igualmente.</li>
+</ul>
+<ol start="5">
+<li>colaboradorDisponivel($conn, $etapa, $data_inicio, $dias)</li>
+</ol>
+<ul>
+<li>Regras gerais:
+<ul>
+<li>Calcula <code>data_fim = adicionarDiasUteis(data_inicio, dias)</code>.</li>
+<li>Busca colaboradores associados à função/etapa (tabela <code>funcao_colaborador</code> e <code>funcao</code> para limite).</li>
+<li>Para cada candidato conta tarefas existentes no intervalo (verifica conflitos em <code>gantt_prazos</code> + <code>etapa_colaborador</code>).</li>
+<li>Se carga atual &lt; limite do colaborador → retorna <code>['data_inicio'=&gt;..., 'freelancer'=&gt;false, 'colaborador_id'=&gt;id]</code>.</li>
+<li>Caso contrário, verifica o próximo candidato.</li>
+</ul>
+</li>
+<li>Regras por tipo: nenhuma explícita — a checagem é por etapa (nome da função), independente do tipo de imagem.</li>
+</ul>
+<ol start="6">
+<li>enviarAlertaFreelancer($etapa, $imagem_id)</li>
+</ol>
+<ul>
+<li>Regras gerais:
+<ul>
+<li>Placeholder (stub) no código atual — intenção: notificar quando não houver colaborador disponível e for necessária alocação de freelancer.</li>
+</ul>
+</li>
+<li>Regras por tipo: nenhuma implementada.</li>
+</ul>
+<p>Consulta de seleção de &quot;última data por tipo&quot; (regras SQL aplicadas)</p>
+<ul>
+<li>A query <code>queryTipoData</code> só considera registros de <code>arquivos</code> que atendam combinações de flags por tipo:
+<ul>
+<li>Fachada: <code>dwg = 1 AND pdf = 1 AND trid = 1 AND paisagismo = 1</code></li>
+<li>Imagem Externa: <code>dwg = 1 AND pdf = 1 AND (trid = 1 OR paisagismo = 1)</code></li>
+<li>Imagem Interna: <code>dwg = 1 AND pdf = 1 AND (trid = 1 OR luminotecnico = 1)</code></li>
+<li>Unidade: <code>dwg = 1 AND pdf = 1 AND (trid = 1 OR unidades_definidas = 1) AND luminotecnico = 1</code></li>
+</ul>
+</li>
+</ul>
+<p>Efeitos no banco de dados (resumo)</p>
+<ul>
+<li><code>arquivos</code>: insert/update por tipo/obra com <code>data_recebimento</code> e flags.</li>
+<li><code>imagens_cliente_obra</code>: atualiza <code>recebimento_arquivos</code> e <code>prazo</code> onde houver correspondência com <code>arquivos</code>.</li>
+<li><code>gantt_prazos</code>: insert/update por obra/tipo/imagem/etapa com datas calculadas.</li>
+<li><code>etapa_colaborador</code>: associa colaboradores a itens do Gantt quando possível.</li>
+</ul>
+<p>Exemplo de entrada</p>
+<pre><code class="language-json"><span class="hljs-punctuation">{</span>
+  <span class="hljs-attr">&quot;obraId&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-number">123</span><span class="hljs-punctuation">,</span>
+  <span class="hljs-attr">&quot;tiposSelecionados&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">[</span>
+    <span class="hljs-punctuation">{</span>
+      <span class="hljs-attr">&quot;tipo&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;Fachada&quot;</span><span class="hljs-punctuation">,</span>
+      <span class="hljs-attr">&quot;dataRecebimento&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;2025-12-01&quot;</span><span class="hljs-punctuation">,</span>
+      <span class="hljs-attr">&quot;subtipos&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">{</span> <span class="hljs-attr">&quot;DWG&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-keyword">true</span><span class="hljs-punctuation">,</span> <span class="hljs-attr">&quot;PDF&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-keyword">true</span><span class="hljs-punctuation">,</span> <span class="hljs-attr">&quot;3D ou Referências/Mood&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-keyword">true</span><span class="hljs-punctuation">,</span> <span class="hljs-attr">&quot;Paisagismo&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-keyword">true</span> <span class="hljs-punctuation">}</span>
+    <span class="hljs-punctuation">}</span>
+  <span class="hljs-punctuation">]</span>
+<span class="hljs-punctuation">}</span>
+</code></pre>
+<p>Observações e recomendações</p>
+<ul>
+<li>Implementar retorno JSON resumido no fim da execução (quantas linhas atualizadas/erros).</li>
+<li>Implementar <code>enviarAlertaFreelancer()</code> (Slack/Email) para fechar o ciclo de alocação.</li>
+<li>Externalizar lista de feriados para configuração (evitar hardcode).</li>
+<li>Revisar chave única de <code>gantt_prazos</code> para confirmar comportamento de <code>ON DUPLICATE KEY</code>.</li>
+</ul>
+<p>Arquivo fonte</p>
+<ul>
+<li><code>atualizar_prazo.php</code> (local: <code>Dashboard/atualizar_prazo.php</code>)</li>
+</ul>
+<hr>
+<p>Gerado em: 2025-12-18</p>
+
+            <script async src="https://cdn.jsdelivr.net/npm/katex-copytex@latest/dist/katex-copytex.min.js"></script>
+            
+        </body>
+        </html>

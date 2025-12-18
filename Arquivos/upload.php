@@ -571,27 +571,50 @@ function gerarNomeInterno($conn, $obra_id, $tipo_id, $categoria, $nomeTipo, $tip
             }
         }
     }
-    // 🔹 Demais tipos → busca pela convenção antiga
+    // 🔹 Demais tipos → usar o campo `versao` baseado no MESMO critério do nome interno.
+    // Importante: não usar nome_original aqui, porque o usuário pode subir o “mesmo” arquivo com outro nome local,
+    // mas ainda assim queremos gerar v2/v3 e não sobrescrever o v1.
     else {
-        $sql = "SELECT nome_interno FROM arquivos 
-                WHERE obra_id = ? 
-                  AND tipo_imagem_id = ? 
-                  AND categoria_id = ? 
-                  AND tipo = ? 
-                  AND nome_original = ?";
-        $params = [$obra_id, $tipo_id, $categoria, $tipo_arquivo, $fileOriginalName];
-        $types = "iiiss";
-
-        $sql .= " ORDER BY idarquivo DESC LIMIT 1";
-        $stmt = $conn->prepare($sql);
-        $stmt->bind_param($types, ...$params);
-        $stmt->execute();
-        $res = $stmt->get_result();
-
         $versao = 1;
-        if ($row = $res->fetch_assoc()) {
-            if (preg_match('/_v(\d+)/', $row['nome_interno'], $m)) {
-                $versao = intval($m[1]) + 1;
+
+        $sufixoDb = (string)$sufixo;
+
+        // Versão incremental por contexto do nome interno: obra/tipo_imagem/categoria/tipo/sufixo/(imagem_id quando existir)
+        if ($imagem_id !== null) {
+            $sql = "SELECT MAX(versao) AS max_versao FROM arquivos
+                    WHERE obra_id = ?
+                      AND tipo_imagem_id = ?
+                      AND categoria_id = ?
+                      AND tipo = ?
+                      AND sufixo = ?
+                      AND imagem_id = ?";
+            $stmt = $conn->prepare($sql);
+            if ($stmt) {
+                $stmt->bind_param('iiissi', $obra_id, $tipo_id, $categoria, $tipo_arquivo, $sufixoDb, $imagem_id);
+                $stmt->execute();
+                $res = $stmt->get_result();
+                if ($res && ($row = $res->fetch_assoc()) && $row['max_versao'] !== null) {
+                    $versao = intval($row['max_versao']) + 1;
+                }
+                $stmt->close();
+            }
+        } else {
+            $sql = "SELECT MAX(versao) AS max_versao FROM arquivos
+                    WHERE obra_id = ?
+                      AND tipo_imagem_id = ?
+                      AND categoria_id = ?
+                      AND tipo = ?
+                      AND sufixo = ?
+                      AND imagem_id IS NULL";
+            $stmt = $conn->prepare($sql);
+            if ($stmt) {
+                $stmt->bind_param('iiiss', $obra_id, $tipo_id, $categoria, $tipo_arquivo, $sufixoDb);
+                $stmt->execute();
+                $res = $stmt->get_result();
+                if ($res && ($row = $res->fetch_assoc()) && $row['max_versao'] !== null) {
+                    $versao = intval($row['max_versao']) + 1;
+                }
+                $stmt->close();
             }
         }
     }
@@ -682,13 +705,16 @@ if (!empty($arquivosTmp) && count($arquivosTmp) > 0 && ($refsSkpModo === 'geral'
             $indice++;
 
             // Substituição
-            $check = $conn->prepare("SELECT * FROM arquivos 
-    WHERE obra_id = ? 
-      AND tipo_imagem_id = ? 
-      AND tipo = ? 
-      AND status = 'atualizado'
-      AND nome_original = ?");
-            $check->bind_param("iiss", $obra_id, $tipo_id, $tipo_arquivo, $fileOriginalName);
+                        // Substituição: considerar a mesma “família” do nome interno (independente do nome_original)
+                        $check = $conn->prepare("SELECT * FROM arquivos 
+        WHERE obra_id = ? 
+            AND tipo_imagem_id = ? 
+            AND categoria_id = ?
+            AND tipo = ? 
+            AND sufixo = ?
+            AND imagem_id IS NULL
+            AND status = 'atualizado'");
+                        $check->bind_param("iiiss", $obra_id, $tipo_id, $categoria, $tipo_arquivo, $sufixo);
             $check->execute();
             $result = $check->get_result();
             $log[] = "Encontrados {$result->num_rows} arquivos antigos para $fileOriginalName.";
@@ -1072,7 +1098,7 @@ if (!empty($acompGroups)) {
         $targetsList = implode(', ', $targets);
 
         $acao = $grp['is_update'] ? ("Atualizado " . $categoriaNome . " em " . $tipoUpper . " para " . $targetsList)
-                                  : ("Adicionado " . $categoriaNome . " em " . $tipoUpper . " para " . $targetsList);
+            : ("Adicionado " . $categoriaNome . " em " . $tipoUpper . " para " . $targetsList);
         // Use the selected date (general for all uploads) instead of today's date
         $hojeData = $data_recebido;
 

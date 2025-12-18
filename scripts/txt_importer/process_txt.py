@@ -54,7 +54,7 @@ def _remove_accents(s: str) -> str:
 
 
 def sanitize_text(s: str) -> str:
-    """Remove accents and special characters, leaving letters, numbers, spaces, dot, dash and underscore.
+    """Remove accents and replace special characters with underscore, leaving letters, numbers, spaces, dot, dash and underscore.
 
     Collapses multiple spaces and strips leading/trailing spaces.
     """
@@ -62,9 +62,13 @@ def sanitize_text(s: str) -> str:
         return s
     # remove accents first
     s = _remove_accents(s)
-    # remove any character that is not alnum, space, dot, dash or underscore
-    s = re.sub(r"[^A-Za-z0-9 \._\-]", "", s)
-    # collapse multiple spaces
+    # replace any character that is not alnum, space, dot, dash or underscore with '_'
+    s = re.sub(r"[^A-Za-z0-9 \._\-]", "_", s)
+    # collapse multiple spaces / underscores
+    s = re.sub(r"\s+", " ", s).strip()
+    s = re.sub(r"_+", "_", s)
+    # remove spaces around underscores ("a / b" -> "a_b")
+    s = re.sub(r"\s*_\s*", "_", s)
     s = re.sub(r"\s+", " ", s).strip()
     return s
 
@@ -296,6 +300,15 @@ def format_name(imagem_nome, nomenclatura):
     The returned string is sanitized (no accents, no special characters).
     """
     imagem_nome = imagem_nome.strip()
+    # Normalize a trailing parenthetical note: "X (ambiente interno)" -> "X - ambiente interno"
+    mparen = re.match(r"^(.*)\(([^)]*)\)\s*$", imagem_nome)
+    if mparen:
+        prefix = mparen.group(1).strip()
+        inside = mparen.group(2).strip()
+        if inside:
+            imagem_nome = f"{prefix} - {inside}" if prefix else inside
+        else:
+            imagem_nome = prefix
     # ensure nomenclatura is sanitized as well
     nomenclatura = sanitize_text(nomenclatura) if nomenclatura else ''
     m = re.match(r'^(\d+\.)\s*(.*)$', imagem_nome)

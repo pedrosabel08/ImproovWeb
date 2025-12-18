@@ -144,6 +144,25 @@ function limparCampos() {
     document.getElementById('observacao').value = ''; // Limpar campo de texto
 }
 
+// Helper: display image name (show '/' instead of '_')
+function displayImageName(name) {
+    if (!name && name !== 0) return '';
+    const s = String(name);
+    const firstSpace = s.indexOf(' ');
+    if (firstSpace === -1) {
+        // No suffix — keep nomenclatura as-is (preserve underscores)
+        return s;
+    }
+    const left = s.slice(0, firstSpace);
+    const right = s.slice(firstSpace + 1).replace(/_/g, '/');
+    return left + ' ' + right;
+}
+
+function tipoClassName(tipo) {
+    if (!tipo) return 'tipo-desconhecido';
+    return 'tipo-' + String(tipo).toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, '');
+}
+
 let idsImagensObra = []; // Array para armazenar os IDs das imagens da obra
 let indiceImagemAtual = 0; // Índice da imagem atualmente exibida no modal
 let linhasTabela = [];
@@ -428,7 +447,7 @@ function atualizarModal(idImagem) {
             document.getElementById('form-edicao').style.display = 'flex';
 
             if (response.funcoes && response.funcoes.length > 0) {
-                document.getElementById("campoNomeImagem").textContent = response.funcoes[0].imagem_nome;
+                document.getElementById("campoNomeImagem").textContent = displayImageName(response.funcoes[0].imagem_nome);
                 document.getElementById("mood").textContent = `Mood da cena: ${response.funcoes[0].clima || ''}`;
 
                 const statusHoldSelect = document.getElementById('status_hold'); // Seleciona o elemento <select>
@@ -572,7 +591,7 @@ function atualizarModal(idImagem) {
 
                         // Monta HTML simples com os dados mais relevantes
                         let html = '';
-                        const nome = info.funcoes && info.funcoes[0] ? info.funcoes[0].imagem_nome : '';
+                        const nome = info.funcoes && info.funcoes[0] ? displayImageName(info.funcoes[0].imagem_nome) : '';
                         const status = info.status_imagem && info.status_imagem.nome_status ? info.status_imagem.nome_status : '';
 
 
@@ -1084,6 +1103,7 @@ function infosObra(obraId) {
                 row.classList.add('linha-tabela');
                 row.setAttribute('data-id', item.imagem_id);
                 row.setAttribute('tipo-imagem', item.tipo_imagem)
+                row.classList.add(tipoClassName(item.tipo_imagem));
                 row.setAttribute('status', item.imagem_status)
 
                 var cellStatus = document.createElement('td');
@@ -1097,12 +1117,12 @@ function infosObra(obraId) {
                 }
 
                 var cellNomeImagem = document.createElement('td');
-                cellNomeImagem.textContent = item.imagem_nome;
+                cellNomeImagem.textContent = displayImageName(item.imagem_nome);
                 cellNomeImagem.setAttribute('antecipada', item.antecipada);
                 row.appendChild(cellNomeImagem);
 
                 cellNomeImagem.addEventListener('mouseenter', (event) => {
-                    tooltip.textContent = item.imagem_nome;
+                    tooltip.textContent = displayImageName(item.imagem_nome);
                     tooltip.style.display = 'block';
                     tooltip.style.left = event.clientX + 'px';
                     tooltip.style.top = event.clientY - 30 + 'px';
@@ -2673,6 +2693,104 @@ addImagem.addEventListener('click', function () {
     addImagemModal.style.display = 'flex';
 })
 
+// Importar imagens via TXT
+const importTxtBtn = document.getElementById('importTxtBtn');
+const importTxtModal = document.getElementById('importTxtModal');
+const importTxtForm = document.getElementById('importTxtForm');
+const importTxtCancel = document.getElementById('importTxtCancel');
+
+if (importTxtBtn && importTxtModal) {
+    importTxtBtn.addEventListener('click', function () {
+        importTxtModal.style.display = 'flex';
+    });
+}
+
+if (importTxtCancel && importTxtModal) {
+    importTxtCancel.addEventListener('click', function () {
+        importTxtModal.style.display = 'none';
+        if (importTxtForm) importTxtForm.reset();
+    });
+}
+
+if (importTxtModal) {
+    importTxtModal.addEventListener('click', function (e) {
+        if (e.target === importTxtModal) {
+            importTxtModal.style.display = 'none';
+            if (importTxtForm) importTxtForm.reset();
+        }
+    });
+}
+
+if (importTxtForm) {
+    importTxtForm.addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const fileInput = document.getElementById('importTxtFile');
+        const file = fileInput && fileInput.files ? fileInput.files[0] : null;
+        if (!file) {
+            Swal.fire({ icon: 'warning', title: 'Selecione um arquivo TXT.' });
+            return;
+        }
+
+        const currentObraId = (localStorage.getItem('obraId') || '').toString().trim();
+        const opcaoClienteEl = document.getElementById('opcao_cliente');
+        const currentClienteId = opcaoClienteEl ? opcaoClienteEl.value : '';
+
+        if (!currentObraId) {
+            Swal.fire({ icon: 'error', title: 'Obra não identificada', text: 'Não foi possível obter o ID da obra.' });
+            return;
+        }
+
+        const fd = new FormData();
+        fd.append('txtFile', file);
+        fd.append('obra_id', currentObraId);
+        if (currentClienteId) fd.append('cliente_id', currentClienteId);
+
+        try {
+            const resp = await fetch('importarImagensTxt.php', { method: 'POST', body: fd });
+
+            let data;
+            try {
+                data = await resp.json();
+            } catch (parseErr) {
+                const text = await resp.text();
+                throw new Error(text || 'Resposta inválida do servidor.');
+            }
+
+            if (!resp.ok || !data || data.success !== true) {
+                const msg = (data && data.message) ? data.message : 'Erro ao importar.';
+                Swal.fire({ icon: 'error', title: 'Falha na importação', text: msg });
+                return;
+            }
+
+            const inseridas = Number(data.inseridas || 0);
+            const erros = Array.isArray(data.erros) ? data.erros : [];
+            const hasErrors = erros.length > 0;
+
+            const htmlErros = hasErrors
+                ? `<div style="text-align:left; max-height:240px; overflow:auto; margin-top:8px;">
+                        <b>Linhas com erro:</b><br>
+                        ${erros.map(e => `Linha ${e.linha}: ${String(e.erro || '').replace(/</g, '&lt;')}`).join('<br>')}
+                   </div>`
+                : '';
+
+            await Swal.fire({
+                icon: hasErrors ? 'warning' : 'success',
+                title: 'Importação concluída',
+                html: `<div>Inseridas: <b>${inseridas}</b></div>${htmlErros}`,
+                confirmButtonText: 'OK'
+            });
+
+            importTxtModal.style.display = 'none';
+            importTxtForm.reset();
+            window.location.reload();
+        } catch (err) {
+            console.error('Erro ao importar TXT:', err);
+            Swal.fire({ icon: 'error', title: 'Erro ao importar', text: err && err.message ? err.message : 'Tente novamente.' });
+        }
+    });
+}
+
 const editArquivos = document.getElementById('editArquivos');
 const editImagesBtn = document.getElementById('editImagesBtn');
 const addFollowup = document.getElementById('addFollowup');
@@ -2684,6 +2802,8 @@ if (![1, 2, 9].includes(iduser)) {
     editImagesBtn.style.display = 'none';
     addImagem.style.display = 'none';
     addFollowup.style.display = 'none';
+
+    if (importTxtBtn) importTxtBtn.style.display = 'none';
 
 
     labelSwitch.forEach(label => {
@@ -2990,7 +3110,7 @@ tipoArquivoSelect.addEventListener('change', async () => {
         imagens.forEach(img => {
             const div = document.createElement('div');
             div.innerHTML = `
-                <label>${img.imagem_nome}</label>
+                <label>${displayImageName(img.imagem_nome)}</label>
                 <input type="file" name="arquivos_por_imagem[${img.id}][]" multiple>
             `;
             referenciasContainer.appendChild(div);
@@ -4101,7 +4221,7 @@ document.getElementById("editImagesBtn").addEventListener("click", () => {
                 imageContainer.innerHTML = `
                     <div class="image-item">
                         <div class="titulo_imagem">
-                            <h4>${image.imagem_nome}</h4>
+                            <h4>${displayImageName(image.imagem_nome)}</h4>
                             <i class="fas fa-chevron-down toggle-options"></i>
                         </div>
 

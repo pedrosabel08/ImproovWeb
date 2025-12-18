@@ -22,6 +22,7 @@ $status_etapa = obterStatus($conn);
 $obras = obterObras($conn);
 $obras_inativas = obterObras($conn, 1);
 $clientes = obterClientes($conn);
+$nivel_acesso = $_SESSION['nivel_acesso'];
 
 // Monta um array de colaboradores por função (usando a tabela funcao_colaborador)
 $colaboradores_por_funcao = [];
@@ -139,6 +140,12 @@ $conn->close();
     <!-- Select2 for improved multi-select UI -->
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+    <style>
+        /* Visual hint for image types */
+        .tipo-desconhecido td { background: rgba(255, 235, 205, 0.5); }
+        .tipo-planta-humanizada td { background: rgba(200, 230, 201, 0.3); }
+        .tipo-unidade td { background: rgba(187, 222, 251, 0.12); }
+    </style>
 </head>
 
 <body>
@@ -259,6 +266,9 @@ $conn->close();
                     <div id="actionsMenu" class="actions-menu-dropdown" aria-hidden="true">
                         <button id="editImagesBtn" class="action-item">Editar Imagens</button>
                         <button id="addImagem" class="action-item">Adicionar Imagem</button>
+                        <?php if ($nivel_acesso === 1): ?>
+                            <button id="importTxtBtn" class="action-item">Importar Imagens (TXT)</button>
+                        <?php endif; ?>
                         <button id="editArquivos" class="action-item">Editar Arquivos</button>
                         <button id="addFollowup" class="action-item" onclick="gerarFollowUpPDF()">Follow Up</button>
                         <!-- <button id="clearFilters" class="action-item">Limpar filtros</button> -->
@@ -407,6 +417,20 @@ $conn->close();
                     </div>
                 </form>
             </div>
+
+            <?php if ($nivel_acesso === 1): ?>
+                <div id="importTxtModal" class="modal" style="display:none;">
+                    <form class="modal-content" id="importTxtForm" style="width:520px; max-width:95%;" enctype="multipart/form-data">
+                        <h2>Importar Imagens (TXT)</h2>
+                        <label for="importTxtFile">Arquivo TXT:</label>
+                        <input type="file" id="importTxtFile" name="txtFile" accept=".txt,text/plain" required>
+                        <div class="buttons" style="margin: auto; display:flex; gap:10px; justify-content:center;">
+                            <button type="button" id="importTxtCancel">Cancelar</button>
+                            <button type="submit" id="importTxtSubmit">Importar</button>
+                        </div>
+                    </form>
+                </div>
+            <?php endif; ?>
 
             <div class="tabela">
                 <table id="tabela-obra">

@@ -1693,6 +1693,11 @@ table#tabela-logs tbody tr:hover {
     background-color: #946ffa;
 }
 
+#importTxtBtn {
+    background-color: #ff5722;
+    color: white;
+}
+
 #acoesBtn {
     background-color: #ffe000;
     color: black;

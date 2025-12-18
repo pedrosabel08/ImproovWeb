@@ -1,0 +1,145 @@
+/* Scoped modal styles derived from Entregas/style.css */
+
+#modalAddClienteObra {
+    --aco-bg-color: #121212;
+    --aco-card-bg: #1e1e1e;
+    --aco-text-color: #f5f5f5;
+    --aco-accent-color: #00adb5;
+    --aco-border-color: #2a2a2a;
+    --aco-hover-bg: #222;
+    --aco-modal-bg: #1a1a1a;
+}
+
+#modalAddClienteObra {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+}
+
+#modalAddClienteObra .aco-modal-content {
+    background: var(--aco-modal-bg);
+    color: var(--aco-text-color);
+    padding: 1.25rem;
+    border-radius: 12px;
+    width: 520px;
+    max-width: 92%;
+    box-shadow: 0 0 10px #000;
+    border: 1px solid var(--aco-border-color);
+}
+
+#modalAddClienteObra .aco-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
+#modalAddClienteObra .aco-modal-header h2 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--aco-accent-color);
+}
+
+#modalAddClienteObra .aco-close {
+    border: 0;
+    background: transparent;
+    color: #bbb;
+    font-size: 26px;
+    cursor: pointer;
+    line-height: 1;
+}
+
+#modalAddClienteObra .aco-step {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--aco-border-color);
+    border-radius: 10px;
+    padding: 12px;
+    margin-top: 10px;
+}
+
+#modalAddClienteObra .aco-step h3 {
+    margin: 0 0 10px 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #ddd;
+}
+
+#modalAddClienteObra label {
+    display: block;
+    font-size: 0.85rem;
+    margin: 10px 0 6px;
+    color: #ddd;
+}
+
+#modalAddClienteObra input[type="text"],
+#modalAddClienteObra input[type="file"] {
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px solid var(--aco-border-color);
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    background: var(--aco-card-bg);
+    color: var(--aco-text-color);
+}
+
+#modalAddClienteObra .aco-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 12px;
+}
+
+#modalAddClienteObra .aco-btn {
+    border: 1px solid var(--aco-border-color);
+    border-radius: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+    background: var(--aco-card-bg);
+    color: var(--aco-text-color);
+}
+
+#modalAddClienteObra .aco-btn:hover {
+    background: var(--aco-hover-bg);
+}
+
+#modalAddClienteObra .aco-btn-primary {
+    border-color: var(--aco-accent-color);
+}
+
+#modalAddClienteObra .aco-btn-primary:hover {
+    background: rgba(0, 173, 181, 0.15);
+}
+
+#modalAddClienteObra .aco-btn[disabled] {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+#modalAddClienteObra .aco-ids {
+    margin-top: 10px;
+    font-size: 0.85rem;
+    color: #ccc;
+}
+
+#btnAddClienteObra {
+    margin-left: 10px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    padding: 8px 12px;
+    background: #fff;
+    cursor: pointer;
+}
+
+#btnAddClienteObra:hover {
+    filter: brightness(0.95);
+}

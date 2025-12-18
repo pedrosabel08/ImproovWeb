@@ -87,6 +87,7 @@ $conn->close();
         integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="addClienteObra.css">
     <link rel="stylesheet" href="../css/styleSidebar.css">
     <link rel="stylesheet" href="../PaginaPrincipal/styleIndex.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper/swiper-bundle.min.css" />
@@ -155,6 +156,9 @@ $conn->close();
         <!-- Cabeçalho do Dashboard -->
         <div class="dashboard-header">
             <img id="gif" src="../gif/assinatura_preto.gif" alt="" style="width: 150px;">
+            <?php if ($nivel_acesso == 1): ?>
+                <button id="btnAddClienteObra" type="button">Adicionar cliente/obra</button>
+            <?php endif; ?>
         </div>
 
         <!-- Seção de Estatísticas -->
@@ -284,6 +288,52 @@ $conn->close();
 
     </div>
 
+    <?php if ($nivel_acesso == 1): ?>
+        <div id="modalAddClienteObra">
+            <div class="aco-modal-content">
+                <div class="aco-modal-header">
+                    <h2>Adicionar cliente/obra</h2>
+                    <button type="button" class="aco-close" id="closeAddClienteObra">&times;</button>
+                </div>
+
+                <div class="aco-step">
+                    <h3>1) Criar cliente/obra</h3>
+
+                    <label for="acoCliente">Cliente</label>
+                    <input id="acoCliente" type="text" autocomplete="off">
+
+                    <label for="acoObra">Obra</label>
+                    <input id="acoObra" type="text" autocomplete="off">
+
+                    <label for="acoNomenclatura">Nomenclatura</label>
+                    <input id="acoNomenclatura" type="text" autocomplete="off">
+
+                    <label for="acoNomeReal">Nome real</label>
+                    <input id="acoNomeReal" type="text" autocomplete="off">
+
+                    <div class="aco-buttons">
+                        <button type="button" class="aco-btn aco-btn-primary" id="acoSalvarClienteObra">Salvar</button>
+                    </div>
+
+                    <div class="aco-ids" id="acoIdsBox" style="display:none;">
+                        <span id="acoIdsText"></span>
+                    </div>
+                </div>
+
+                <div class="aco-step">
+                    <h3>2) Importar imagens (TXT)</h3>
+
+                    <label for="acoTxtFile">Arquivo TXT</label>
+                    <input id="acoTxtFile" type="file" accept=".txt,text/plain" disabled>
+
+                    <div class="aco-buttons">
+                        <button type="button" class="aco-btn aco-btn-primary" id="acoSalvarImagens" disabled>Salvar imagens</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    <?php endif; ?>
+
     <script>
         const idColaborador = <?php echo json_encode($idcolaborador); ?>;
         localStorage.setItem('idcolaborador', idColaborador);
@@ -293,6 +343,9 @@ $conn->close();
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="../script/sidebar.js" defer></script>
     <script src="script.js" defer></script>
+    <?php if ($nivel_acesso == 1): ?>
+        <script src="scriptAddClienteObra.js" defer></script>
+    <?php endif; ?>
 </body>
 
 </html>

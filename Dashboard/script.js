@@ -158,6 +158,18 @@ fetch('obras.php')
         console.error('Erro ao carregar obras:', err);
     });
 
+// Ao clicar em um card do kanban, salva o id da obra e vai para obra.php
+document.addEventListener('click', (e) => {
+    const card = e.target.closest && e.target.closest('.kanban-card');
+    if (!card) return;
+
+    const obraId = card.getAttribute('data-id');
+    if (!obraId) return;
+
+    localStorage.setItem('obraId', String(obraId));
+    window.location.href = 'obra.php';
+});
+
 // Simple HTML escaper to avoid XSS when inserting obra names
 function escapeHtml(str) {
     return String(str)

@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>SOE &ndash; Sistema Operacional Essencial &verbar; Improov</title>
+            <style>
+/* From extension vscode.github */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+.vscode-dark img[src$=\#gh-light-mode-only],
+.vscode-light img[src$=\#gh-dark-mode-only],
+.vscode-high-contrast:not(.vscode-high-contrast-light) img[src$=\#gh-light-mode-only],
+.vscode-high-contrast-light img[src$=\#gh-dark-mode-only] {
+	display: none;
+}
+
+</style>
+            
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css">
+<style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+        </style>
+        <style>
+.task-list-item {
+    list-style-type: none;
+}
+
+.task-list-item-checkbox {
+    margin-left: -20px;
+    vertical-align: middle;
+    pointer-events: none;
+}
+</style>
+<style>
+:root {
+  --color-note: #0969da;
+  --color-tip: #1a7f37;
+  --color-warning: #9a6700;
+  --color-severe: #bc4c00;
+  --color-caution: #d1242f;
+  --color-important: #8250df;
+}
+
+</style>
+<style>
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-note: #2f81f7;
+    --color-tip: #3fb950;
+    --color-warning: #d29922;
+    --color-severe: #db6d28;
+    --color-caution: #f85149;
+    --color-important: #a371f7;
+  }
+}
+
+</style>
+<style>
+.markdown-alert {
+  padding: 0.5rem 1rem;
+  margin-bottom: 16px;
+  color: inherit;
+  border-left: .25em solid #888;
+}
+
+.markdown-alert>:first-child {
+  margin-top: 0
+}
+
+.markdown-alert>:last-child {
+  margin-bottom: 0
+}
+
+.markdown-alert .markdown-alert-title {
+  display: flex;
+  font-weight: 500;
+  align-items: center;
+  line-height: 1
+}
+
+.markdown-alert .markdown-alert-title .octicon {
+  margin-right: 0.5rem;
+  display: inline-block;
+  overflow: visible !important;
+  vertical-align: text-bottom;
+  fill: currentColor;
+}
+
+.markdown-alert.markdown-alert-note {
+  border-left-color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-note .markdown-alert-title {
+  color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-important {
+  border-left-color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-important .markdown-alert-title {
+  color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-warning {
+  border-left-color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-warning .markdown-alert-title {
+  color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-tip {
+  border-left-color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-tip .markdown-alert-title {
+  color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-caution {
+  border-left-color: var(--color-caution);
+}
+
+.markdown-alert.markdown-alert-caution .markdown-alert-title {
+  color: var(--color-caution);
+}
+
+</style>
+        
+        </head>
+        <body class="vscode-body vscode-light">
+            <h1 id="soe--sistema-operacional-essencial--improov">SOE – Sistema Operacional Essencial | Improov</h1>
+<h2 id="resumo-técnico-para-implementação-no-flow">Resumo Técnico para Implementação no Flow</h2>
+<hr>
+<h2 id="1-objetivo-do-soe">1. Objetivo do SOE</h2>
+<p>Criar um sistema de gestão operacional que permita:</p>
+<ul>
+<li>Planejar produção semanal com previsibilidade</li>
+<li>Antecipar riscos de atraso</li>
+<li>Balancear carga entre etapas e colaboradores</li>
+<li>Priorizar projetos de forma objetiva</li>
+<li>Tomar decisões baseadas em dados, não feeling</li>
+</ul>
+<hr>
+<h2 id="2-estrutura-base-da-produção">2. Estrutura Base da Produção</h2>
+<h3 id="21-hierarquia-de-trabalho">2.1 Hierarquia de Trabalho</h3>
+<p>Projeto</p>
+<p>└── Imagens (≈30 por projeto)</p>
+<p>└── Etapas (7)</p>
+<h3 id="22-etapas-do-processo">2.2 Etapas do Processo</h3>
+<ol>
+<li>Caderno</li>
+<li>Modelagem Técnica</li>
+<li>Composição</li>
+<li>Finalização</li>
+<li>Pós-produção</li>
+<li>Alterações</li>
+<li>Entrega Final</li>
+</ol>
+<p>Cada imagem passa sequencialmente por todas as etapas.</p>
+<hr>
+<h2 id="3-modelo-de-capacidade-sem-horas">3. Modelo de Capacidade (sem horas)</h2>
+<h3 id="31-unidade-de-medida">3.1 Unidade de Medida</h3>
+<ul>
+<li>Capacidade é medida em <strong>tarefas/imagens por dia</strong></li>
+<li>Não utilizamos horas (modelo PJ)</li>
+</ul>
+<h3 id="32-capacidade-base">3.2 Capacidade Base</h3>
+<ul>
+<li>Calculada a partir de <strong>histórico de 3 meses</strong></li>
+<li>Média real de imagens entregues por dia</li>
+<li>Calculada por:
+<ul>
+<li>colaborador</li>
+<li>etapa específica</li>
+</ul>
+</li>
+</ul>
+<h3 id="33-capacidade-alvo-20">3.3 Capacidade Alvo (+20%)</h3>
+<ul>
+<li>Capacidade Alvo = Capacidade Base × 1,2</li>
+<li>Usada para planejamento semanal</li>
+<li>Objetivo: acelerar o sistema sem forçar artificialmente</li>
+</ul>
+<p>Exemplo:
+Capacidade Base: 2 imagens/dia
+Capacidade Alvo: 2,4 imagens/dia</p>
+<hr>
+<h2 id="4-janela-de-planejamento">4. Janela de Planejamento</h2>
+<h3 id="41-janela-padrão">4.1 Janela Padrão</h3>
+<ul>
+<li>Planejamento em <strong>janela móvel de 7 dias</strong></li>
+<li>Exemplo:
+<ul>
+<li>Hoje é quarta</li>
+<li>Planejamento olha até a próxima quarta</li>
+</ul>
+</li>
+</ul>
+<h3 id="42-vantagem">4.2 Vantagem</h3>
+<ul>
+<li>Visão contínua</li>
+<li>Antecipação de risco</li>
+<li>Não depende de fechamento de semana fixa</li>
+</ul>
+<hr>
+<h2 id="5-start-real-do-projeto">5. Start Real do Projeto</h2>
+<h3 id="51-conceito">5.1 Conceito</h3>
+<p>O prazo de produção <strong>só começa a contar quando</strong>:</p>
+<ul>
+<li>Todos os arquivos necessários foram recebidos</li>
+<li>O projeto está apto para produção</li>
+</ul>
+<p>Essa data é chamada de:</p>
+<p>Start Real</p>
+<h3 id="52-regra">5.2 Regra</h3>
+<ul>
+<li>Antes do Start Real:
+<ul>
+<li>Projeto fica em <code>Hold – aguardando arquivos</code></li>
+<li>Não consome capacidade</li>
+</ul>
+</li>
+<li>Após o Start Real:
+<ul>
+<li>Prazos são calculados automaticamente</li>
+<li>Projeto entra na fila real de produção</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h2 id="6-deadline-propagation-propagação-automática-de-prazos">6. Deadline Propagation (Propagação Automática de Prazos)</h2>
+<h3 id="61-princípio">6.1 Princípio</h3>
+<p>Os prazos das etapas <strong>não são definidos manualmente</strong>.</p>
+<p>Eles são:</p>
+<ul>
+<li>Calculados automaticamente</li>
+<li>Baseados em:
+<ul>
+<li>data final da imagem</li>
+<li>capacidade das etapas</li>
+<li>fila atual</li>
+</ul>
+</li>
+</ul>
+<h3 id="62-tempo-por-etapa">6.2 Tempo por Etapa</h3>
+<p>Tempo por imagem = <code>1 ÷ capacidade da etapa</code></p>
+<p>Exemplo:</p>
+<table>
+<thead>
+<tr>
+<th>Etapa</th>
+<th>Capacidade</th>
+<th>Tempo</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Caderno</td>
+<td>2/dia</td>
+<td>0,5 dia</td>
+</tr>
+<tr>
+<td>Modelagem</td>
+<td>1/dia</td>
+<td>1 dia</td>
+</tr>
+<tr>
+<td>Composição</td>
+<td>2/dia</td>
+<td>0,5 dia</td>
+</tr>
+<tr>
+<td>Finalização</td>
+<td>3/dia</td>
+<td>0,33 dia</td>
+</tr>
+<tr>
+<td>Pós</td>
+<td>3/dia</td>
+<td>0,33 dia</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h3 id="63-cálculo-simplificado">6.3 Cálculo Simplificado</h3>
+<ol>
+<li>Definir data final da imagem</li>
+<li>Calcular tempo total das etapas restantes</li>
+<li>Ajustar pelo volume da fila de cada etapa</li>
+<li>Propagar prazos para trás (backwards planning)</li>
+</ol>
+<h3 id="64-exemplo">6.4 Exemplo</h3>
+<p>Entrega final da imagem: <strong>10/01</strong></p>
+<p>Resultado automático:</p>
+<p>Pós → até 10/01
+Finalização → até 09/01
+Composição → até 08/01
+Modelagem → até 07/01
+Caderno → até 06/01</p>
+<hr>
+<h2 id="7-automático-vs-manual">7. Automático vs Manual</h2>
+<h3 id="71-regra-geral">7.1 Regra Geral</h3>
+<ul>
+<li><strong>80–90% dos prazos são automáticos</strong></li>
+<li><strong>10–20% são exceções manuais</strong></li>
+</ul>
+<h3 id="72-exceções-permitidas">7.2 Exceções Permitidas</h3>
+<ul>
+<li>Imagem hero / capa</li>
+<li>Projeto marcado como alta prioridade</li>
+<li>Mudança drástica de escopo</li>
+<li>Dependência externa específica</li>
+</ul>
+<h3 id="73-regra-de-ouro">7.3 Regra de Ouro</h3>
+<blockquote>
+<p>Toda exceção deve ter flag + motivo registrado.</p>
+</blockquote>
+<hr>
+<h2 id="8-gestão-de-múltiplos-projetos-com-mesmo-prazo-final">8. Gestão de Múltiplos Projetos com Mesmo Prazo Final</h2>
+<h3 id="81-problema">8.1 Problema</h3>
+<p>Dois ou mais projetos:</p>
+<ul>
+<li>Mesma data final</li>
+<li>Start Real tardio</li>
+<li>Capacidade insuficiente</li>
+</ul>
+<h3 id="82-critério-de-prioridade-ordem">8.2 Critério de Prioridade (ordem)</h3>
+<ol>
+<li>Projeto que entrou primeiro em produção (FIFO)</li>
+<li>Projeto com maior impacto sistêmico (mais imagens / mais gargalo)</li>
+<li>Prioridade comercial explícita (flag)</li>
+</ol>
+<hr>
+<h2 id="9-indicadores-essenciais-para-tela-operacional">9. Indicadores Essenciais para Tela Operacional</h2>
+<h3 id="91-capacidade-vs-demanda">9.1 Capacidade vs Demanda</h3>
+<ul>
+<li>Por etapa</li>
+<li>Por colaborador</li>
+<li>Próximos 7 dias</li>
+</ul>
+<h3 id="92-status-visual">9.2 Status Visual</h3>
+<ul>
+<li>🟢 Dentro da capacidade</li>
+<li>🟡 Atenção</li>
+<li>🔴 Risco real de atraso</li>
+</ul>
+<h3 id="93-alertas">9.3 Alertas</h3>
+<ul>
+<li>Imagens que deveriam ter avançado de etapa</li>
+<li>Gargalos futuros</li>
+<li>Conflitos de prazo</li>
+</ul>
+<hr>
+<h2 id="10-regra-final-do-sistema">10. Regra Final do Sistema</h2>
+<blockquote>
+<p>O Flow calcula.<br>
+O gestor valida.<br>
+A exceção é consciente.</p>
+</blockquote>
+<p>Esse modelo garante:</p>
+<ul>
+<li>escala</li>
+<li>previsibilidade</li>
+<li>justiça operacional</li>
+<li>redução de urgências artificiais</li>
+</ul>
+
+            
+            
+        </body>
+        </html>

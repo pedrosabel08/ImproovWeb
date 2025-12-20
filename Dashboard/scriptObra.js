@@ -325,7 +325,15 @@ function renderTEACharts(metrics) {
             indexAxis: 'y',
             responsive: true,
             plugins: { legend: { display: false } },
-            scales: { x: { beginAtZero: true } }
+            scales: { 
+                x: { 
+                    beginAtZero: true,
+                    ticks: {
+                        // force whole number ticks (1,2,3...)
+                        stepSize: 1
+                    }
+                }
+            }
         }
     });
 

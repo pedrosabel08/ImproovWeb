@@ -1,6 +1,27 @@
+// Determine the directory where this script is hosted so we can build
+// absolute paths to the PHP endpoints. This allows the same script to be
+// included from `/Entregas/...` or from `/Dashboard/...` without broken
+// relative fetch calls.
+const BASE = (function() {
+    try {
+        let src = '';
+        if (document.currentScript && document.currentScript.src) src = document.currentScript.src;
+        else {
+            const scripts = document.getElementsByTagName('script');
+            src = scripts[scripts.length - 1] && scripts[scripts.length - 1].src || '';
+        }
+        if (!src) return './';
+        const u = new URL(src, window.location.href);
+        u.pathname = u.pathname.replace(/\\/g, '/').replace(/\/[^/]*$/, '/');
+        return u.origin + u.pathname;
+    } catch (e) {
+        return './';
+    }
+})();
+
 document.addEventListener('DOMContentLoaded', () => {
     const columns = document.querySelectorAll('.column');
-    const modal = document.getElementById('entregaModal');
+    const modalEntrega = document.getElementById('entregaModal');
     const modalTitle = document.getElementById('modalTitulo');
     const modalEtapa = document.getElementById('modalEtapa');
     const modalPrazo = document.getElementById('modalPrazo');
@@ -30,7 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
                 <p><strong>Status:</strong> ${entrega.nome_etapa || entrega.status || entrega.kanban_status || ''}</p>
                 <p><strong>Prazo:</strong> ${entrega.data_prevista ? formatarData(entrega.data_prevista) : '-'}</p>
-                <div class="progress">
+                <div class="progress-entrega">
                     <div class="progress-bar" style="width:${entrega.pct_entregue || 0}%"></div>
                 </div>
                 <small>${entrega.entregues || 0}/${entrega.total_itens || 0} imagens entregues</small>
@@ -150,7 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnRegistrarEntrega = document.createElement('button');
     btnRegistrarEntrega.textContent = 'Registrar Entrega';
     btnRegistrarEntrega.classList.add('btn-salvar');
-    modal.querySelector('#entregaModal .buttons').appendChild(btnRegistrarEntrega);
+    modalEntrega.querySelector('.buttons').appendChild(btnRegistrarEntrega);
 
     let entregaAtualId = null;
     let entregaDados = null; // guarda dados retornados por get_entrega_item.php para uso posterior
@@ -284,7 +305,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- FUNÇÃO PRINCIPAL PARA CARREGAR O KANBAN ---
     async function carregarKanban() {
         try {
-            const res = await fetch('listar_entregas.php');
+            // If running inside Dashboard we may have an obraId in localStorage.
+            // When present, request only that obra from the server to avoid client-side filtering.
+            const storedObra = (typeof localStorage !== 'undefined') ? localStorage.getItem('obraId') : null;
+            let url = BASE + 'listar_entregas.php';
+            if (storedObra) {
+                url += '?obra_id=' + encodeURIComponent(storedObra);
+            }
+            const res = await fetch(url);
             const entregas = await res.json();
 
             entregasAll = Array.isArray(entregas) ? entregas : [];
@@ -314,7 +342,7 @@ document.addEventListener('DOMContentLoaded', () => {
         entregaAtualId = card.dataset.id;
 
         try {
-            const res = await fetch(`get_entrega_item.php?id=${entregaAtualId}`);
+            const res = await fetch(BASE + `get_entrega_item.php?id=${entregaAtualId}`);
             const data = await res.json();
 
             modalTitle.textContent = `${data.nomenclatura || 'Entrega'} - ${data.nome_etapa || data.id}`;
@@ -379,7 +407,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!imagemId) return;
 
                 try {
-                    const resp = await fetch(`get_imagem_funcao.php?imagem_id=${imagemId}`);
+                    const resp = await fetch(BASE + `get_imagem_funcao.php?imagem_id=${imagemId}`);
                     const json = await resp.json();
                     if (json && json.success && json.data) {
                         showMiniImagePanel(json.data, imagemId, label);
@@ -426,7 +454,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateMasterState();
             }
 
-            modal.style.display = 'flex';
+            modalEntrega.style.display = 'flex';
         } catch (err) {
             console.error('Erro ao carregar detalhes da entrega:', err);
         }
@@ -453,7 +481,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!confirmar) return;
         try {
             const payload = { entrega_id: entregaAtualId, item_id: itemId };
-            const res = await fetch('remove_imagem_entrega.php', {
+            const res = await fetch(BASE + 'remove_imagem_entrega.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
@@ -497,7 +525,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const imagens = Array.from(checkboxes).map(cb => cb.value);
 
         try {
-            const res = await fetch('registrar_entrega.php', {
+            const res = await fetch(BASE + 'registrar_entrega.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ entrega_id: entregaAtualId, imagens_entregues: imagens })
@@ -531,7 +559,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const newStatus = col.dataset.status;
 
             try {
-                const res = await fetch('update_entrega_status.php', {
+                const res = await fetch(BASE + 'update_entrega_status.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ id: cardId, status: newStatus })
@@ -563,7 +591,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         selecionarContainer.innerHTML = '<p>Carregando imagens...</p>';
         try {
-            const res = await fetch(`get_imagens.php?obra_id=${obraId}&status_id=${statusId}`);
+            const res = await fetch(BASE + `get_imagens.php?obra_id=${obraId}&status_id=${statusId}`);
             const imgs = await res.json();
             const container = selecionarContainer;
             container.innerHTML = '';
@@ -616,7 +644,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (checked.length === 0) { alert('Selecione ao menos uma imagem.'); return; }
             const ids = checked.map(cb => parseInt(cb.value));
             try {
-                const res = await fetch('add_imagem_entrega_id.php', {
+                const res = await fetch(BASE + 'add_imagem_entrega_id.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ entrega_id: entregaAtualId, imagem_ids: ids })
@@ -657,7 +685,7 @@ function carregarImagens() {
         return;
     }
 
-    fetch(`get_imagens.php?obra_id=${obraId}&status_id=${statusId}`)
+    fetch(BASE + `get_imagens.php?obra_id=${obraId}&status_id=${statusId}`)
         .then(res => res.json())
         .then(imagens => {
             const container = document.getElementById('imagens_container');
@@ -733,7 +761,7 @@ document.getElementById('formAdicionarEntrega').addEventListener('submit', funct
     e.preventDefault();
     const formData = new FormData(this);
 
-    fetch('save_entrega.php', {
+    fetch(BASE + 'save_entrega.php', {
         method: 'POST',
         body: formData
     })
@@ -767,7 +795,7 @@ if (btnAdicionarImagem) {
         if (ids.length === 0) { alert('Nenhum id válido informado.'); return; }
 
         try {
-            const res = await fetch('add_imagem_entrega_id.php', {
+            const res = await fetch(BASE + 'add_imagem_entrega_id.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ entrega_id: entregaAtualId, imagem_ids: ids })

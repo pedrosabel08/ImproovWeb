@@ -1,84 +1,3 @@
-:root {
-    --bg-color: #121212;
-    --card-bg: #1e1e1e;
-    --column-bg: #181818;
-    --text-color: #f5f5f5;
-    --accent-color: #00adb5;
-    --border-color: #2a2a2a;
-    --hover-bg: #222;
-    --modal-bg: #1a1a1a;
-    --progress-bg: #2a2a2a;
-    --progress-fill: #00adb5;
-    /* status colors */
-    --status-R00: #00b894;
-    --status-R01: #ffb142;
-    --status-R02: #ff4757;
-    --status-EF: #3742fa;
-    --status-default: #6c757d;
-}
-
-/* ===== GLOBAL ===== */
-body {
-    margin: 0;
-    font-family: "Inter", sans-serif;
-    background-color: var(--bg-color);
-    color: var(--text-color);
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
-    overflow: hidden;
-}
-
-header {
-    padding: 1rem 2rem;
-    background: var(--column-bg);
-    border-bottom: 1px solid var(--border-color);
-    font-size: 1.4rem;
-    font-weight: 600;
-    color: var(--accent-color);
-}
-
-.selectFilter {
-    margin-left: 6px;
-    padding: 4px;
-    border-radius: 6px;
-    background: var(--border-color);
-    color: var(--text-color);
-    border: 1px solid var(--border-color);
-}
-
-main {
-    display: flex;
-    flex: 1;
-    overflow-x: auto;
-    padding: 1rem;
-    gap: 1rem;
-    max-height: 90vh;
-    overflow-y: auto;
-}
-
-/* ===== COLUMNS ===== */
-.column {
-    background: var(--column-bg);
-    flex: 1;
-    min-width: 260px;
-    border-radius: 12px;
-    padding: 0.8rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.8rem;
-    border: 1px solid var(--border-color);
-    overflow-y: auto;
-}
-
-.column h2 {
-    font-size: 1.1rem;
-    font-weight: 500;
-    color: var(--accent-color);
-    margin: 0 0 0.4rem 0;
-    text-align: center;
-}
-
 /* ===== CARDS ===== */
 .card-entrega {
     background: var(--card-bg);
@@ -90,7 +9,7 @@ main {
 }
 
 .card-entrega:hover {
-    background: var(--hover-bg);
+    /* background: var(--hover-bg); */
     transform: scale(1.02);
 }
 
@@ -137,7 +56,7 @@ main {
 }
 
 /* ===== PROGRESS ===== */
-.progress {
+.progress-entrega {
     background: var(--progress-bg);
     border-radius: 6px;
     overflow: hidden;
@@ -157,69 +76,27 @@ main {
     border: 1px dashed var(--accent-color);
 }
 
-/* ===== SCROLLBAR ===== */
-::-webkit-scrollbar {
-    height: 8px;
-    width: 6px;
-}
-
-::-webkit-scrollbar-thumb {
-    background: var(--text-color);
-}
-
 #modalImagens {
     height: 50vh;
     overflow-y: auto;
 }
 
-/* ===== MODAL ===== */
-.modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.6);
-    display: none;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-}
-
-.modal-content {
-    background: var(--modal-bg);
-    padding: 1.5rem;
-    border-radius: 12px;
-    width: 450px;
-    max-width: 90%;
-    box-shadow: 0 0 10px #000;
-    animation: fadeIn 0.2s ease;
-}
-
-/* Improved form layout inside modalAdicionarEntrega */
-form#formAdicionarEntrega {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-    margin-top: 20px;
-}
-
-.modal-content label {
+#modalAdicionarEntrega .modal-content label {
     font-size: 0.85rem;
     margin-bottom: 6px;
     color: #ddd;
 }
 
-.modal-content select,
-.modal-content input[type="date"],
-.modal-content textarea {
+#modalAdicionarEntrega .modal-content select,
+#modalAdicionarEntrega .modal-content input[type="date"],
+#modalAdicionarEntrega .modal-content textarea {
     border: 1px solid var(--border-color);
     padding: 4px 8px;
     border-radius: 8px;
     font-size: 0.8rem;
 }
 
-.modal-content textarea {
+#modalAdicionarEntrega .modal-content textarea {
     min-height: 100px;
     resize: vertical;
 }
@@ -248,78 +125,9 @@ form#formAdicionarEntrega {
     color: #ff8b8b;
 }
 
-.buttons {
-    text-align: center;
-    font-size: 0.9rem;
-}
 
-.buttons .fecharModal {
-    margin-right: 10px;
-    background: linear-gradient(90deg, #b00000, #eb3131);
-
-}
-
-.btn-salvar {
-    background: linear-gradient(90deg, #00b09b, #96c93d);
-    color: #fff;
-    border: none;
-    padding: 10px 14px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-weight: 700;
-    justify-self: end;
-}
-
-.btn-salvar:hover {
-    filter: brightness(0.95);
-}
-
-/* Make modal content narrower on small screens */
-@media (max-width: 600px) {
-    .modal-content {
-        width: 92%;
-        padding: 1rem;
-    }
-
-    .modal-content form {
-        grid-template-columns: 1fr;
-    }
-
-    .btn-salvar {
-        width: 100%;
-    }
-}
-
-.modal-content h3 {
-    margin-top: 0;
-    color: var(--accent-color);
-}
-
-.modal-content p {
-    margin: 0.5rem 0;
-}
-
-/* .modal button {
-    margin-top: 1rem;
-    background: var(--accent-color);
-    color: white;
-    border: none;
-    border-radius: 8px;
-    padding: 0.6rem 1.2rem;
-    cursor: pointer;
-    transition: 0.2s;
-    width: max-content;
-    margin: 0 auto;
-    font-size: 0.8rem;
-}
-
-.modal button:hover {
-    background: #00c1c9;
-} */
-
-/* ===== IMAGENS NO MODAL ===== */
 .modal-imagem-item {
-    background: var(--card-bg);
+    background: var(--card-entrega-bg);
     padding: 0.5rem 0.8rem;
     border-radius: 8px;
     margin-top: 6px;
@@ -327,7 +135,7 @@ form#formAdicionarEntrega {
     justify-content: space-between;
     align-items: center;
     font-size: 0.9rem;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border-entrega-color);
     grid-template-columns: 10% 1fr auto;
     gap: 10px;
 }
@@ -425,4 +233,37 @@ form#formAdicionarEntrega {
 .mini-image-panel p {
     margin: 6px 0;
     font-size: 0.9rem;
+}
+
+#entregaModal .buttons button {
+    padding: 6px;
+    border-radius: 10px;
+    cursor: pointer;
+    box-shadow: 4px 0 6px rgba(0, 0, 0, 0.2);
+}
+
+#entregaModal .buttons {
+    text-align: center;
+    font-size: 0.9rem;
+}
+
+#entregaModal .buttons .fecharModal {
+    margin-right: 10px;
+    background: linear-gradient(90deg, #b00000, #eb3131);
+
+}
+
+#entregaModal .buttons .btn-salvar {
+    background: linear-gradient(90deg, #00b09b, #96c93d);
+    color: #fff;
+    border: none;
+    padding: 10px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 700;
+    justify-self: end;
+}
+
+#entregaModal .buttons .btn-salvar:hover {
+    filter: brightness(0.95);
 }

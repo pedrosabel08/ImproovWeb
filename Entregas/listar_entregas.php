@@ -2,6 +2,13 @@
 header('Content-Type: application/json; charset=utf-8');
 require_once '../conexao.php';
 
+$obra_id = isset($_GET['obra_id']) && is_numeric($_GET['obra_id']) ? intval($_GET['obra_id']) : null;
+
+$where = '';
+if ($obra_id !== null) {
+    $where = "WHERE e.obra_id = " . $obra_id;
+}
+
 $sql = "SELECT 
     e.id,
     e.obra_id,
@@ -25,7 +32,7 @@ LEFT JOIN imagens_cliente_obra i ON ei.imagem_id = i.idimagens_cliente_obra
 LEFT JOIN substatus_imagem ss ON ss.id = i.substatus_id
 JOIN obra o ON e.obra_id = o.idobra
 JOIN status_imagem s ON e.status_id = s.idstatus
-GROUP BY e.id
+" . PHP_EOL . $where . PHP_EOL . "GROUP BY e.id
 HAVING total_itens > 0
 ORDER BY ready_count DESC, e.data_conclusao DESC";
 

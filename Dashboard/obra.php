@@ -132,6 +132,7 @@ $conn->close();
         type="image/x-icon">
     <link rel="stylesheet" href="../css/styleSidebar.css">
     <link rel="stylesheet" href="../css/modalSessao.css">
+    <link rel="stylesheet" href="../Entregas/styleCard.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/airbnb.css">
@@ -142,9 +143,17 @@ $conn->close();
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
     <style>
         /* Visual hint for image types */
-        .tipo-desconhecido td { background: rgba(255, 235, 205, 0.5); }
-        .tipo-planta-humanizada td { background: rgba(200, 230, 201, 0.3); }
-        .tipo-unidade td { background: rgba(187, 222, 251, 0.12); }
+        .tipo-desconhecido td {
+            background: rgba(255, 235, 205, 0.5);
+        }
+
+        .tipo-planta-humanizada td {
+            background: rgba(200, 230, 201, 0.3);
+        }
+
+        .tipo-unidade td {
+            background: rgba(187, 222, 251, 0.12);
+        }
     </style>
 </head>
 
@@ -198,15 +207,18 @@ $conn->close();
                 </a>
 
                 <!-- External quick links -->
-                <a id="quick_fotografico" class="quick-link" href="#" target="_blank" rel="noopener noreferrer" title="Fotográfico" aria-hidden="true">
+                <a id="quick_fotografico" class="quick-link" href="#" target="_blank" rel="noopener noreferrer"
+                    title="Fotográfico" aria-hidden="true">
                     <i class="fa-solid fa-camera"></i>
                     <span class="qa-label">Fotográfico</span>
                 </a>
-                <a id="quick_drive" class="quick-link" href="#" target="_blank" rel="noopener noreferrer" title="Drive" aria-hidden="true">
+                <a id="quick_drive" class="quick-link" href="#" target="_blank" rel="noopener noreferrer" title="Drive"
+                    aria-hidden="true">
                     <i class="fa-brands fa-google-drive"></i>
                     <span class="qa-label">Drive</span>
                 </a>
-                <a id="quick_review" class="quick-link" href="#" target="_blank" rel="noopener noreferrer" title="Review Studio" aria-hidden="true">
+                <a id="quick_review" class="quick-link" href="#" target="_blank" rel="noopener noreferrer"
+                    title="Review Studio" aria-hidden="true">
                     <i class="fa-solid fa-folder-open"></i>
                     <span class="qa-label">Review</span>
                 </a>
@@ -220,17 +232,25 @@ $conn->close();
             <!-- Mobile quick access panel -->
             <div id="quickMobileMenu" class="quick-mobile-menu" aria-hidden="true">
                 <div class="quick-mobile-inner">
-                    <button id="quickMobileClose" class="quick-mobile-close" aria-label="Fechar menu"><i class="fa-solid fa-times"></i></button>
+                    <button id="quickMobileClose" class="quick-mobile-close" aria-label="Fechar menu"><i
+                            class="fa-solid fa-times"></i></button>
                     <nav id="quickMobileNav" class="quick-mobile-nav">
                         <!-- Items populated by JS: internal anchors and external links -->
-                        <a class="mobile-link" id="mobile_tabela" href="#tabela-obra"><i class="fa-solid fa-table-cells"></i> <span>Tabela</span></a>
-                        <a class="mobile-link" id="mobile_hist" href="#list_acomp"><i class="fa-solid fa-list"></i> <span>Histórico</span></a>
-                        <a class="mobile-link" id="mobile_obs" href="#obsSection"><i class="fa-solid fa-note-sticky"></i> <span>Observações</span></a>
-                        <a class="mobile-link" id="mobile_arquivos" href="#secao-arquivos"><i class="fa-solid fa-file"></i> <span>Arquivos</span></a>
+                        <a class="mobile-link" id="mobile_tabela" href="#tabela-obra"><i
+                                class="fa-solid fa-table-cells"></i> <span>Tabela</span></a>
+                        <a class="mobile-link" id="mobile_hist" href="#list_acomp"><i class="fa-solid fa-list"></i>
+                            <span>Histórico</span></a>
+                        <a class="mobile-link" id="mobile_obs" href="#obsSection"><i
+                                class="fa-solid fa-note-sticky"></i> <span>Observações</span></a>
+                        <a class="mobile-link" id="mobile_arquivos" href="#secao-arquivos"><i
+                                class="fa-solid fa-file"></i> <span>Arquivos</span></a>
                         <hr>
-                        <a class="mobile-link" id="mobile_fotografico" href="#" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-camera"></i> <span>Fotográfico</span></a>
-                        <a class="mobile-link" id="mobile_drive" href="#" target="_blank" rel="noopener noreferrer"><i class="fa-brands fa-google-drive"></i> <span>Drive</span></a>
-                        <a class="mobile-link" id="mobile_review" href="#" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-folder-open"></i> <span>Review</span></a>
+                        <a class="mobile-link" id="mobile_fotografico" href="#" target="_blank"
+                            rel="noopener noreferrer"><i class="fa-solid fa-camera"></i> <span>Fotográfico</span></a>
+                        <a class="mobile-link" id="mobile_drive" href="#" target="_blank" rel="noopener noreferrer"><i
+                                class="fa-brands fa-google-drive"></i> <span>Drive</span></a>
+                        <a class="mobile-link" id="mobile_review" href="#" target="_blank" rel="noopener noreferrer"><i
+                                class="fa-solid fa-folder-open"></i> <span>Review</span></a>
                         <button id="altBtn" class="hidden">Flow Review</button>
 
                     </nav>
@@ -258,9 +278,146 @@ $conn->close();
                 <div id="calendarMini" class="animate__animated" style="display: none;"></div>
             </div>
 
+
+            <!-- KPIs e Gráficos TEA (inseridos abaixo de .filtros-select) -->
+            <div id="kpi-charts" style="width:100%; margin-top:12px; display:flex; gap:12px; flex-wrap:wrap;">
+                <div class="kpi-row stats-container">
+                    <div class="stat-card small" style="flex:1; text-align:center;" id="kpi-tea-total">
+                        <h2>TEA (Em andamento)</h2>
+                        <p id="kpi-tea-total-value">—</p>
+                    </div>
+                    <div class="stat-card small" style="flex:1; text-align:center;" id="kpi-tea-percent">
+                        <h2>% TEA</h2>
+                        <p id="kpi-tea-percent-value">—</p>
+                    </div>
+                    <div class="stat-card small" style="flex:1; text-align:center;" id="kpi-tea-sem-prazo">
+                        <h2>TEA sem prazo</h2>
+                        <p id="kpi-tea-sem-prazo-value">—</p>
+                    </div>
+                    <div class="stat-card small" style="flex:1; text-align:center;" id="kpi-tea-atrasadas">
+                        <h2>TEA atrasadas</h2>
+                        <p id="kpi-tea-atrasadas-value">—</p>
+                    </div>
+                </div>
+
+                <!-- TEA chart and Entregas placed side-by-side -->
+                <div style="display:flex; gap:12px; width:100%; margin-top:12px; align-items:flex-start; flex-wrap:wrap;">
+                    <div class="chart-container" style="min-width:320px; flex:1;">
+                        <div class="chart-title">TEA por função</div>
+                        <canvas id="teaFuncChart" style="width:100%; height:240px;"></canvas>
+                    </div>
+
+                    <div class="chart-container" style="min-width:320px; flex:1;">
+                        <div class="chart-title">Entregas pendentes</div>
+
+                        <div class="entregas-widget" style="width:100%;">
+                            <header style="display:none;align-items:center;gap:12px;">
+                                <label style="font-size:0.9rem;color:var(--text-color);">Obra:
+                                    <select id="filterObra" class="selectFilter">
+                                        <option value="">Todas</option>
+                                    </select>
+                                </label>
+                                <label style="font-size:0.9rem;color:var(--text-color);">Status:
+                                    <select id="filterStatus" class="selectFilter">
+                                        <option value="">Todos</option>
+                                    </select>
+                                </label>
+                                <div style="margin-left:auto">
+                                    <button id="adicionar_entrega">Adicionar Entrega</button>
+                                </div>
+                            </header>
+
+                            <div id="kanban" style="margin-top:8px;">
+                                <!-- single column for pending deliveries (no kanban needed here) -->
+                                <div class="column" data-status="pendente,parcial,atrasada">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modals de Entregas (reaproveitados de /Entregas) -->
+                <div id="modalAdicionarEntrega" class="modal">
+                    <div class="modal-content" style="max-width: 75vh;">
+                        <h2>Adicionar Entrega</h2>
+                        <form id="formAdicionarEntrega">
+                            <div>
+                                <label>Obra:</label>
+                                <select name="obra_id" id="obra_id" required>
+                                    <option value="">Selecione a obra</option>
+                                    <?php foreach ($obras as $obra): ?>
+                                        <option value="<?= $obra['idobra']; ?>" <?= (isset($obra) && isset($obra['idobra']) && $obra['idobra'] ? '' : '') ?>><?= htmlspecialchars($obra['nomenclatura']); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label>Status:</label>
+                                <select name="status_id" id="status_id" required>
+                                    <option value="">Selecione o status</option>
+                                    <?php foreach ($status_imagens as $status): ?>
+                                        <option value="<?= htmlspecialchars($status['idstatus']); ?>">
+                                            <?= htmlspecialchars($status['nome_status']); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+
+                            <div id="imagens_container" class="imagens-container">
+                                <p>Selecione uma obra e status para listar as imagens.</p>
+                            </div>
+
+                            <div>
+                                <label for="prazo">Prazo previsto:</label>
+                                <input type="date" name="prazo" id="prazo">
+                            </div>
+                            <div>
+                                <label for="observacoes">Observações:</label>
+                                <textarea name="observacoes" id="observacoes"></textarea>
+                            </div>
+                            <div class="buttons">
+                                <button type="button" class="fecharModal">Fechar</button>
+                                <button type="submit" class="btn-salvar">Salvar Entrega</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="modal" id="entregaModal" style="justify-content: center; align-items: center;">
+                    <div class="modal-content" style="max-width: 85vh; width: 100%;">
+                        <h3 id="modalTitulo"></h3>
+                        <button id="btnAdicionarImagem">Adicionar Imagem</button>
+                        <p><strong>Prazo:</strong> <span id="modalPrazo"></span></p>
+                        <p><strong>Conclusão geral:</strong> <span id="modalProgresso"></span></p>
+                        <div id="modalImagens"></div>
+                        <div class="buttons" style="margin-top: 20px;">
+                            <button type="button" class="fecharModal">Fechar</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal Selecionar Imagens para Entrega -->
+                <div id="modalSelecionarImagens" class="modal">
+                    <div class="modal-content" style="max-width: 75vh;">
+                        <h2>Selecionar imagens para adicionar à entrega</h2>
+                        <div id="selecionar_imagens_container" class="imagens-container">
+                            <p>Selecione uma entrega para carregar imagens.</p>
+                        </div>
+                        <div class="buttons">
+                            <button type="button" class="fecharModal">Fechar</button>
+                            <button type="button" id="btnAdicionarSelecionadas" class="btn-salvar">Adicionar
+                                Selecionadas</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
             <div class="buttons animate__animated">
                 <div class="actions-menu">
-                    <button id="actionsMenuBtn" class="menu-icon animate__animated" aria-expanded="false" aria-label="Ações da obra" title="Ações">
+                    <button id="actionsMenuBtn" class="menu-icon animate__animated" aria-expanded="false"
+                        aria-label="Ações da obra" title="Ações">
                         <i class="fas fa-ellipsis-v" aria-hidden="true"></i>
                     </button>
                     <div id="actionsMenu" class="actions-menu-dropdown" aria-hidden="true">
@@ -420,7 +577,8 @@ $conn->close();
 
             <?php if ($nivel_acesso === 1): ?>
                 <div id="importTxtModal" class="modal" style="display:none;">
-                    <form class="modal-content" id="importTxtForm" style="width:520px; max-width:95%;" enctype="multipart/form-data">
+                    <form class="modal-content" id="importTxtForm" style="width:520px; max-width:95%;"
+                        enctype="multipart/form-data">
                         <h2>Importar Imagens (TXT)</h2>
                         <label for="importTxtFile">Arquivo TXT:</label>
                         <input type="file" id="importTxtFile" name="txtFile" accept=".txt,text/plain" required>
@@ -465,7 +623,8 @@ $conn->close();
             <div class="modal-content" style="width:720px; max-width:95%;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
                     <h2 style="margin:0;">Unificar Acompanhamentos</h2>
-                    <button class="unify-close" style="background:transparent;border:none;font-size:20px;">&times;</button>
+                    <button class="unify-close"
+                        style="background:transparent;border:none;font-size:20px;">&times;</button>
                 </div>
                 <div id="unifyGroupsList" style="max-height:60vh; overflow:auto;">
                     <!-- JS irá popular com grupos: cada grupo terá data, assunto, count e botões -->
@@ -482,7 +641,9 @@ $conn->close();
                     <h1>Histórico</h1>
                     <div class="buttons-acomp" style="display: flex;">
                         <button id="acomp" class="btnAcompObs">+ Novo</button>
-                        <button id="configAcomp" class="animate__animated" style="background-color: transparent; color: black;"><i class="fa-solid fa-gear"></i></button>
+                        <button id="configAcomp" class="animate__animated"
+                            style="background-color: transparent; color: black;"><i
+                                class="fa-solid fa-gear"></i></button>
                     </div>
                 </div>
 
@@ -738,8 +899,10 @@ $conn->close();
             <div class="secao-titulo arquivos-header">
                 <h2>Arquivos da Obra</h2>
                 <div class="arquivos-actions">
-                    <button id="btnAddArquivo" type="button" class="btn-add-arquivo" title="Adicionar novo arquivo">+ Novo</button>
-                    <button id="btnRefreshArquivos" type="button" class="btn-refresh-arquivo" title="Recarregar lista">↻</button>
+                    <button id="btnAddArquivo" type="button" class="btn-add-arquivo" title="Adicionar novo arquivo">+
+                        Novo</button>
+                    <button id="btnRefreshArquivos" type="button" class="btn-refresh-arquivo"
+                        title="Recarregar lista">↻</button>
                 </div>
             </div>
             <div id="arquivosWrapper" class="arquivos-wrapper">
@@ -786,9 +949,11 @@ $conn->close();
                                         <option value="Aprovado com ajustes">Aprovado com ajustes</option>
                                     </select>
                                     <input type="date" name="prazo_caderno" id="prazo_caderno">
-                                    <input type="text" name="obs_caderno" id="obs_caderno" placeholder="Caminho arquivo">
+                                    <input type="text" name="obs_caderno" id="obs_caderno"
+                                        placeholder="Caminho arquivo">
                                     <div class="revisao_imagem" style="display: none;">
-                                        <button type="button" onclick="abrirModal(this)" id="revisao_imagem_caderno">Adicionar
+                                        <button type="button" onclick="abrirModal(this)"
+                                            id="revisao_imagem_caderno">Adicionar
                                             Imagens</button>
                                     </div>
                                 </div>
@@ -1557,9 +1722,12 @@ $conn->close();
 
                 <hr style="margin:12px 0;" />
                 <h4>Registros</h4>
-                <div id="fotograficoRegistrosList" style="max-height:220px; overflow:auto; border:1px solid #eee; padding:8px; background:#fafafa;"></div>
+                <div id="fotograficoRegistrosList"
+                    style="max-height:220px; overflow:auto; border:1px solid #eee; padding:8px; background:#fafafa;">
+                </div>
 
-                <div id="fotograficoRegistroForm" style="display:none; margin-top:8px; border-top:1px solid #eee; padding-top:8px;">
+                <div id="fotograficoRegistroForm"
+                    style="display:none; margin-top:8px; border-top:1px solid #eee; padding-top:8px;">
                     <label>Data</label>
                     <input type="date" id="fotografico_registro_data" />
                     <label style="margin-top:8px;">Observações</label>
@@ -1587,9 +1755,26 @@ $conn->close();
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
     <script src="scriptObra.js"></script>
+    <script src="../Entregas/script.js"></script>
     <script src="../script/sidebar.js"></script>
     <script src="../script/notificacoes.js"></script>
     <script src="../script/controleSessao.js"></script>
+
+    <script>
+        // Auto-filter Entregas view to current obra (if available in localStorage)
+        document.addEventListener('DOMContentLoaded', () => {
+            const currentObra = localStorage.getItem('obraId') || null;
+            if (!currentObra) return;
+            // Delay a bit so Entregas script can populate selects
+            setTimeout(() => {
+                const sel = document.getElementById('filterObra');
+                if (sel) {
+                    sel.value = currentObra;
+                    sel.dispatchEvent(new Event('change'));
+                }
+            }, 450);
+        });
+    </script>
 
 </body>
 

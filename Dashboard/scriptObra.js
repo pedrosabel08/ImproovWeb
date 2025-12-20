@@ -4,6 +4,20 @@ var usuarioId = localStorage.getItem('idusuario');
 
 usuarioId = Number(usuarioId);
 
+// Controle de visibilidade do widget de Entregas: somente usuários 1 e 2 podem ver
+try {
+    const entregasWidget = document.querySelector('.entregas-widget');
+    if (entregasWidget) {
+        if (usuarioId === 1 || usuarioId === 2) {
+            entregasWidget.style.display = '';
+        } else {
+            entregasWidget.style.display = 'none';
+        }
+    }
+} catch (e) {
+    console.warn('Erro ao aplicar regra de visibilidade de entregas:', e);
+}
+
 if (usuarioId !== 1 && usuarioId !== 2 && usuarioId !== 9) {
     document.getElementById('acomp').classList.add('hidden');
     document.getElementById('obsAdd').classList.add('hidden');
@@ -82,14 +96,35 @@ document.querySelectorAll('.titulo').forEach(titulo => {
 
 
 function formatarData(data) {
-    const partes = data.split("-");
-    const dataFormatada = `${partes[2]}/${partes[1]}/${partes[0]}`;
-    return dataFormatada;
+    if (!data && data !== 0) return '-';
+    try {
+        const s = String(data).trim();
+        // Accept already formatted dates (DD/MM/YYYY)
+        if (s.indexOf('/') !== -1) return s;
+        const partes = s.split("-");
+        if (partes.length < 3) return s;
+        const dataFormatada = `${partes[2]}/${partes[1]}/${partes[0]}`;
+        return dataFormatada;
+    } catch (e) {
+        return '-';
+    }
 }
 function formatarDataDiaMes(data) {
-    const partes = data.split("-");
-    const dataFormatada = `${partes[2]}/${partes[1]}`;
-    return dataFormatada;
+    if (!data && data !== 0) return '-';
+    try {
+        const s = String(data).trim();
+        if (s.indexOf('/') !== -1) {
+            // If already in DD/MM or DD/MM/YYYY return DD/MM
+            const parts = s.split('/');
+            return parts.length >= 2 ? `${parts[0]}/${parts[1]}` : s;
+        }
+        const partes = s.split("-");
+        if (partes.length < 3) return s;
+        const dataFormatada = `${partes[2]}/${partes[1]}`;
+        return dataFormatada;
+    } catch (e) {
+        return '-';
+    }
 }
 
 
@@ -161,6 +196,151 @@ function displayImageName(name) {
 function tipoClassName(tipo) {
     if (!tipo) return 'tipo-desconhecido';
     return 'tipo-' + String(tipo).toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, '');
+}
+
+// ===== TEA helpers & charts =====
+const TEA_FUNC_FIELDS = ['caderno_status', 'filtro_status', 'modelagem_status', 'composicao_status', 'pre_status', 'finalizacao_status', 'pos_producao_status', 'alteracao_status', 'planta_status'];
+function computeTEAFromImages(imagens) {
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    const finals = ['finalizado', 'fin', 'concluído', 'concluido', 'concluida'];
+
+    let teaTotal = 0, teaNoPrazo = 0, teaOverdue = 0;
+    const teaByFunc = {};
+    const buckets = { 'Atrasadas': 0, '0-7 dias': 0, '8-14 dias': 0, '>14 dias': 0, 'Sem prazo': 0 };
+
+    // init functions
+    TEA_FUNC_FIELDS.forEach(f => teaByFunc[f.replace('_status', '')] = 0);
+
+    imagens.forEach(item => {
+        const sub = (item.imagem_sub_status || '').toString().toUpperCase();
+        const isHold = sub === 'HOLD' || sub === 'HOLD' || (item.descricao && item.descricao.toString().trim() !== '' && sub === 'HOLD');
+
+        // determine if image has TEA by checking function statuses
+        let imageIsTea = false;
+        TEA_FUNC_FIELDS.forEach(f => {
+            const val = (item[f] || '').toString().trim();
+            if (!val) return;
+            const low = val.toLowerCase();
+            if (finals.indexOf(low) === -1 && low.indexOf('não iniciado') === -1 && low.indexOf('nao iniciado') === -1 && low.indexOf('não iniciado'.toLowerCase()) === -1) {
+                // count as TEA for this function
+                imageIsTea = true;
+                const funcKey = f.replace('_status', '');
+                teaByFunc[funcKey] = (teaByFunc[funcKey] || 0) + 1;
+            }
+        });
+
+        if (isHold) return; // HOLD are not TEA here
+
+        if (imageIsTea) {
+            teaTotal++;
+            const prazo = item.prazo ? item.prazo.toString().trim() : null;
+            if (!prazo) {
+                teaNoPrazo++;
+                buckets['Sem prazo']++;
+            } else {
+                // prazo expected format YYYY-MM-DD
+                const p = new Date(prazo + 'T00:00:00');
+                if (isNaN(p)) {
+                    teaNoPrazo++;
+                    buckets['Sem prazo']++;
+                } else {
+                    // days remaining
+                    const diff = Math.ceil((p - hoje) / (1000 * 60 * 60 * 24));
+                    if (diff < 0) { teaOverdue++; buckets['Atrasadas']++; }
+                    else if (diff <= 7) buckets['0-7 dias']++;
+                    else if (diff <= 14) buckets['8-14 dias']++;
+                    else buckets['>14 dias']++;
+                }
+            }
+        }
+    });
+
+    return { teaTotal, teaNoPrazo, teaOverdue, teaByFunc, buckets };
+}
+
+function renderTEAKPIs(metrics, totalImages) {
+    function fmt(n) { return (n === null || n === undefined) ? '—' : String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
+    const pct = totalImages ? ((metrics.teaTotal / totalImages) * 100).toFixed(1) + '%' : '—';
+    const teaTotalEl = document.getElementById('kpi-tea-total-value');
+    const teaPctEl = document.getElementById('kpi-tea-percent-value');
+    const teaNoPrazoEl = document.getElementById('kpi-tea-sem-prazo-value');
+    const teaAtrasadasEl = document.getElementById('kpi-tea-atrasadas-value');
+
+    teaTotalEl.textContent = fmt(metrics.teaTotal);
+    teaPctEl.textContent = pct;
+    teaNoPrazoEl.textContent = fmt(metrics.teaNoPrazo);
+    teaAtrasadasEl.textContent = fmt(metrics.teaOverdue);
+
+    // color accents
+    teaPctEl.className = 'kpi-accent';
+    teaAtrasadasEl.className = metrics.teaOverdue > 0 ? 'kpi-danger' : 'kpi-muted';
+    teaNoPrazoEl.className = metrics.teaNoPrazo > 0 ? 'kpi-danger' : 'kpi-muted';
+
+    // subtle pulse to show update
+    try {
+        ['kpi-tea-total', 'kpi-tea-percent', 'kpi-tea-sem-prazo', 'kpi-tea-atrasadas'].forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.classList.add('pulse');
+            setTimeout(() => el.classList.remove('pulse'), 420);
+        });
+    } catch (e) { /* swallow */ }
+}
+
+function renderTEACharts(metrics) {
+    // TEA por função (horizontal bar)
+    const funcLabels = Object.keys(metrics.teaByFunc).map(k => k.charAt(0).toUpperCase() + k.slice(1));
+    const funcData = Object.values(metrics.teaByFunc);
+    // If the canvas isn't present on the page, bail out safely.
+    // Still attempt to destroy any existing Chart instance to avoid leaks.
+    const canvasEl = document.getElementById('teaFuncChart');
+    try {
+        if (window.teaFuncChart && typeof window.teaFuncChart.destroy === 'function') {
+            window.teaFuncChart.destroy();
+        } else if (window.teaFuncChart && window.teaFuncChart.chart && typeof window.teaFuncChart.chart.destroy === 'function') {
+            window.teaFuncChart.chart.destroy();
+        }
+    } catch (err) {
+        console.warn('Erro ao destruir teaFuncChart existente:', err);
+    }
+
+    if (!canvasEl || typeof canvasEl.getContext !== 'function') {
+        // No canvas to render into (maybe removed from page); skip chart rendering.
+        return;
+    }
+
+    const ctx1 = canvasEl.getContext('2d');
+    window.teaFuncChart = new Chart(ctx1, {
+        type: 'bar',
+        data: {
+            labels: funcLabels,
+            datasets: [{
+                label: 'Imagens TEA',
+                data: funcData,
+                backgroundColor: 'rgba(255,159,64,0.8)'
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: { x: { beginAtZero: true } }
+        }
+    });
+
+    // Buckets chart removed per user request.
+}
+
+// call this with data.imagens and data.obra.total_imagens
+function updateTEAVisuals(imagens, totalImages) {
+    try {
+        const metrics = computeTEAFromImages(imagens || []);
+        renderTEAKPIs(metrics, totalImages || 0);
+        renderTEACharts(metrics);
+    } catch (e) {
+        console.error('Erro ao montar TEA visuals', e);
+    }
 }
 
 let idsImagensObra = []; // Array para armazenar os IDs das imagens da obra
@@ -984,6 +1164,14 @@ function infosObra(obraId) {
             }
             // Guarda os dados carregados globalmente para filtros
             dadosImagens = data.imagens || [];
+
+            // Atualiza KPIs e gráficos TEA (usa dados já retornados por infosObra.php)
+            try {
+                const totalImgs = data?.obra?.total_imagens ? Number(data.obra.total_imagens) : (Array.isArray(data.imagens) ? data.imagens.length : 0);
+                updateTEAVisuals(dadosImagens, totalImgs);
+            } catch (e) {
+                console.warn('Erro ao atualizar TEA visuals', e);
+            }
 
             // Verifica se os dados são válidos e não vazios
             if (!Array.isArray(data.imagens) || data.imagens.length === 0) {
@@ -2432,16 +2620,16 @@ document.getElementById("salvar_funcoes").addEventListener("click", function (ev
         return;
     }
 
-    if (revisoesVisiveis) {
-        Swal.fire({
-            icon: 'warning',
-            title: 'Envie as prévias ou arquivos!',
-            text: 'Você precisa enviar as prévias e os arquivos antes de salvar.',
-            confirmButtonText: 'Ok',
-            confirmButtonColor: '#e74c3c',
-        });
-        return;
-    }
+    // if (revisoesVisiveis) {
+    //     Swal.fire({
+    //         icon: 'warning',
+    //         title: 'Envie as prévias ou arquivos!',
+    //         text: 'Você precisa enviar as prévias e os arquivos antes de salvar.',
+    //         confirmButtonText: 'Ok',
+    //         confirmButtonColor: '#e74c3c',
+    //     });
+    //     return;
+    // }
 
     var form = document.getElementById("form-add");
     var camposPrazo = form.querySelectorAll("input[type='date'][required]");

@@ -307,7 +307,7 @@ $conn->close();
                         <canvas id="teaFuncChart" style="width:100%; height:240px;"></canvas>
                     </div>
 
-                    <div class="chart-container" style="min-width:320px; flex:1;">
+                    <div class="chart-container entregas-container" style="min-width:320px; flex:1;">
                         <div class="chart-title">Entregas pendentes</div>
 
                         <div class="entregas-widget" style="width:100%;">

@@ -6,7 +6,7 @@ usuarioId = Number(usuarioId);
 
 // Controle de visibilidade do widget de Entregas: somente usuários 1 e 2 podem ver
 try {
-    const entregasWidget = document.querySelector('.entregas-widget');
+    const entregasWidget = document.querySelector('.entregas-container');
     if (entregasWidget) {
         if (usuarioId === 1 || usuarioId === 2) {
             entregasWidget.style.display = '';

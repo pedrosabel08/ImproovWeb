@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Documenta&ccedil;&atilde;o &mdash; M&eacute;trica de Tempo P00 &lpar;Planta Humanizada&rpar;</title>
+            <style>
+/* From extension vscode.github */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+.vscode-dark img[src$=\#gh-light-mode-only],
+.vscode-light img[src$=\#gh-dark-mode-only],
+.vscode-high-contrast:not(.vscode-high-contrast-light) img[src$=\#gh-light-mode-only],
+.vscode-high-contrast-light img[src$=\#gh-dark-mode-only] {
+	display: none;
+}
+
+</style>
+            
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css">
+<style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+        </style>
+        <style>
+.task-list-item {
+    list-style-type: none;
+}
+
+.task-list-item-checkbox {
+    margin-left: -20px;
+    vertical-align: middle;
+    pointer-events: none;
+}
+</style>
+<style>
+:root {
+  --color-note: #0969da;
+  --color-tip: #1a7f37;
+  --color-warning: #9a6700;
+  --color-severe: #bc4c00;
+  --color-caution: #d1242f;
+  --color-important: #8250df;
+}
+
+</style>
+<style>
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-note: #2f81f7;
+    --color-tip: #3fb950;
+    --color-warning: #d29922;
+    --color-severe: #db6d28;
+    --color-caution: #f85149;
+    --color-important: #a371f7;
+  }
+}
+
+</style>
+<style>
+.markdown-alert {
+  padding: 0.5rem 1rem;
+  margin-bottom: 16px;
+  color: inherit;
+  border-left: .25em solid #888;
+}
+
+.markdown-alert>:first-child {
+  margin-top: 0
+}
+
+.markdown-alert>:last-child {
+  margin-bottom: 0
+}
+
+.markdown-alert .markdown-alert-title {
+  display: flex;
+  font-weight: 500;
+  align-items: center;
+  line-height: 1
+}
+
+.markdown-alert .markdown-alert-title .octicon {
+  margin-right: 0.5rem;
+  display: inline-block;
+  overflow: visible !important;
+  vertical-align: text-bottom;
+  fill: currentColor;
+}
+
+.markdown-alert.markdown-alert-note {
+  border-left-color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-note .markdown-alert-title {
+  color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-important {
+  border-left-color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-important .markdown-alert-title {
+  color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-warning {
+  border-left-color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-warning .markdown-alert-title {
+  color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-tip {
+  border-left-color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-tip .markdown-alert-title {
+  color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-caution {
+  border-left-color: var(--color-caution);
+}
+
+.markdown-alert.markdown-alert-caution .markdown-alert-title {
+  color: var(--color-caution);
+}
+
+</style>
+        
+        </head>
+        <body class="vscode-body vscode-light">
+            <h1 id="documentação--métrica-de-tempo-p00-planta-humanizada">Documentação — Métrica de Tempo P00 (Planta Humanizada)</h1>
+<h2 id="objetivo">Objetivo</h2>
+<p>Medir o <strong>tempo de finalização</strong> de imagens do tipo <strong>Planta Humanizada</strong> na etapa <strong>P00</strong>, considerando o intervalo entre a <strong>primeira entrada em P00</strong> e a <strong>primeira chegada ao status final (RVW)</strong>, <strong>filtrando imagens finalizadas nos últimos 3 meses</strong>. A métrica serve como base para análise de SLA, identificação de gargalos e futura previsão de entregas.</p>
+<hr>
+<h2 id="escopo-e-definições">Escopo e Definições</h2>
+<ul>
+<li><strong>Etapa (status_id):</strong> representa a fase do fluxo (ex.: P00).</li>
+<li><strong>Status (substatus_id):</strong> estado dentro da etapa (ex.: RVW, DRV, etc.).</li>
+<li><strong>Início da contagem:</strong> primeira ocorrência histórica da imagem em P00.</li>
+<li><strong>Fim da contagem:</strong> primeira ocorrência histórica da imagem em RVW (na P00).</li>
+<li><strong>Filtro temporal:</strong> imagens cujo <strong>data_fim</strong> ocorreu nos <strong>últimos 3 meses</strong>.</li>
+<li><strong>Independência do estado atual:</strong> o status atual da imagem <strong>não</strong> é usado como filtro.</li>
+</ul>
+<hr>
+<h2 id="tabelas-utilizadas">Tabelas Utilizadas</h2>
+<ul>
+<li>
+<p><strong>imagens_cliente_obra</strong></p>
+<ul>
+<li>idimagens_cliente_obra (PK)</li>
+<li>tipo_imagem</li>
+<li>(demais campos cadastrais)</li>
+</ul>
+</li>
+<li>
+<p><strong>historico_imagens</strong></p>
+<ul>
+<li>imagem_id (FK)</li>
+<li>status_id (etapa)</li>
+<li>substatus_id (status)</li>
+<li>data_movimento (timestamp)</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h2 id="premissas-importantes">Premissas Importantes</h2>
+<ol>
+<li><strong>Histórico é a fonte de verdade</strong> para tempos (não usar apenas o estado atual).</li>
+<li><strong>Eventos ≠ Imagens</strong>: contagens devem usar <code>DISTINCT imagem_id</code> quando necessário.</li>
+<li><strong>Outliers existem</strong> (tempos longos por pausas, revisões, bloqueios). A média sozinha não representa bem o processo.</li>
+</ol>
+<hr>
+<h2 id="query-base-últimos-3-meses">Query Base (Últimos 3 Meses)</h2>
+<p>Calcula estatísticas agregadas do tempo (em horas) para P00 → RVW.</p>
+<pre><code class="language-sql"><span class="hljs-keyword">WITH</span> inicio_p00 <span class="hljs-keyword">AS</span> (
+    <span class="hljs-keyword">SELECT</span>
+        hi.imagem_id,
+        <span class="hljs-built_in">MIN</span>(hi.data_movimento) <span class="hljs-keyword">AS</span> data_inicio
+    <span class="hljs-keyword">FROM</span> historico_imagens hi
+    <span class="hljs-keyword">WHERE</span> hi.status_id <span class="hljs-operator">=</span> <span class="hljs-number">2</span>
+    <span class="hljs-keyword">GROUP</span> <span class="hljs-keyword">BY</span> hi.imagem_id
+),
+
+fim_p00 <span class="hljs-keyword">AS</span> (
+    <span class="hljs-keyword">SELECT</span>
+        hi.imagem_id,
+        <span class="hljs-built_in">MIN</span>(hi.data_movimento) <span class="hljs-keyword">AS</span> data_fim
+    <span class="hljs-keyword">FROM</span> historico_imagens hi
+    <span class="hljs-keyword">WHERE</span> hi.status_id <span class="hljs-operator">=</span> <span class="hljs-number">2</span>
+      <span class="hljs-keyword">AND</span> hi.substatus_id <span class="hljs-operator">=</span> <span class="hljs-number">6</span>
+      <span class="hljs-keyword">AND</span> hi.data_movimento <span class="hljs-operator">&gt;=</span> DATE_SUB(CURDATE(), <span class="hljs-type">INTERVAL</span> <span class="hljs-number">3</span> <span class="hljs-keyword">MONTH</span>)
+    <span class="hljs-keyword">GROUP</span> <span class="hljs-keyword">BY</span> hi.imagem_id
+),
+
+tempos <span class="hljs-keyword">AS</span> (
+    <span class="hljs-keyword">SELECT</span>
+        ico.idimagens_cliente_obra <span class="hljs-keyword">AS</span> imagem_id,
+        TIMESTAMPDIFF(
+            <span class="hljs-keyword">HOUR</span>,
+            i.data_inicio,
+            f.data_fim
+        ) <span class="hljs-keyword">AS</span> tempo_horas
+    <span class="hljs-keyword">FROM</span> imagens_cliente_obra ico
+    <span class="hljs-keyword">JOIN</span> inicio_p00 i
+        <span class="hljs-keyword">ON</span> i.imagem_id <span class="hljs-operator">=</span> ico.idimagens_cliente_obra
+    <span class="hljs-keyword">JOIN</span> fim_p00 f
+        <span class="hljs-keyword">ON</span> f.imagem_id <span class="hljs-operator">=</span> ico.idimagens_cliente_obra
+    <span class="hljs-keyword">WHERE</span> ico.tipo_imagem <span class="hljs-keyword">LIKE</span> <span class="hljs-string">&#x27;Planta%&#x27;</span>
+)
+<span class="hljs-keyword">SELECT</span>
+    <span class="hljs-built_in">COUNT</span>(<span class="hljs-operator">*</span>) <span class="hljs-keyword">AS</span> total_imagens,
+    <span class="hljs-built_in">MIN</span>(tempo_horas) <span class="hljs-keyword">AS</span> min_horas,
+    <span class="hljs-built_in">MAX</span>(tempo_horas) <span class="hljs-keyword">AS</span> max_horas,
+    ROUND(<span class="hljs-built_in">AVG</span>(tempo_horas), <span class="hljs-number">2</span>) <span class="hljs-keyword">AS</span> media_horas,
+    ROUND(<span class="hljs-built_in">STDDEV_POP</span>(tempo_horas), <span class="hljs-number">2</span>) <span class="hljs-keyword">AS</span> desvio_padrao
+<span class="hljs-keyword">FROM</span> tempos
+<span class="hljs-keyword">WHERE</span> tempo_horas <span class="hljs-operator">&gt;=</span> <span class="hljs-number">0</span>;
+</code></pre>
+<hr>
+<h2 id="validação-rápida">Validação Rápida</h2>
+<p>Confere o universo de imagens finalizadas (não eventos):</p>
+<pre><code class="language-sql"><span class="hljs-keyword">SELECT</span> <span class="hljs-built_in">COUNT</span>(<span class="hljs-keyword">DISTINCT</span> imagem_id)
+<span class="hljs-keyword">FROM</span> historico_imagens
+<span class="hljs-keyword">WHERE</span> status_id <span class="hljs-operator">=</span> <span class="hljs-number">2</span>
+  <span class="hljs-keyword">AND</span> substatus_id <span class="hljs-operator">=</span> <span class="hljs-number">6</span>
+  <span class="hljs-keyword">AND</span> data_movimento <span class="hljs-operator">&gt;=</span> DATE_SUB(CURDATE(), <span class="hljs-type">INTERVAL</span> <span class="hljs-number">3</span> <span class="hljs-keyword">MONTH</span>);
+</code></pre>
+<hr>
+<h2 id="ranking-de-outliers-top-n-mais-lentas">Ranking de Outliers (Top N Mais Lentas)</h2>
+<p>Identifica imagens com maior tempo P00 → RVW.</p>
+<pre><code class="language-sql"><span class="hljs-keyword">WITH</span> inicio_p00 <span class="hljs-keyword">AS</span> (
+    <span class="hljs-keyword">SELECT</span> imagem_id, <span class="hljs-built_in">MIN</span>(data_movimento) <span class="hljs-keyword">AS</span> data_inicio
+    <span class="hljs-keyword">FROM</span> historico_imagens
+    <span class="hljs-keyword">WHERE</span> status_id <span class="hljs-operator">=</span> <span class="hljs-number">2</span>
+    <span class="hljs-keyword">GROUP</span> <span class="hljs-keyword">BY</span> imagem_id
+),
+
+fim_p00 <span class="hljs-keyword">AS</span> (
+    <span class="hljs-keyword">SELECT</span> imagem_id, <span class="hljs-built_in">MIN</span>(data_movimento) <span class="hljs-keyword">AS</span> data_fim
+    <span class="hljs-keyword">FROM</span> historico_imagens
+    <span class="hljs-keyword">WHERE</span> status_id <span class="hljs-operator">=</span> <span class="hljs-number">2</span>
+      <span class="hljs-keyword">AND</span> substatus_id <span class="hljs-operator">=</span> <span class="hljs-number">6</span>
+      <span class="hljs-keyword">AND</span> data_movimento <span class="hljs-operator">&gt;=</span> DATE_SUB(CURDATE(), <span class="hljs-type">INTERVAL</span> <span class="hljs-number">3</span> <span class="hljs-keyword">MONTH</span>)
+    <span class="hljs-keyword">GROUP</span> <span class="hljs-keyword">BY</span> imagem_id
+)
+<span class="hljs-keyword">SELECT</span>
+    ico.idimagens_cliente_obra <span class="hljs-keyword">AS</span> imagem_id,
+    ico.nome <span class="hljs-keyword">AS</span> nome_imagem,
+    ico.tipo_imagem,
+    TIMESTAMPDIFF(<span class="hljs-keyword">HOUR</span>, i.data_inicio, f.data_fim) <span class="hljs-keyword">AS</span> tempo_horas,
+    i.data_inicio,
+    f.data_fim
+<span class="hljs-keyword">FROM</span> imagens_cliente_obra ico
+<span class="hljs-keyword">JOIN</span> inicio_p00 i <span class="hljs-keyword">ON</span> i.imagem_id <span class="hljs-operator">=</span> ico.idimagens_cliente_obra
+<span class="hljs-keyword">JOIN</span> fim_p00 f <span class="hljs-keyword">ON</span> f.imagem_id <span class="hljs-operator">=</span> ico.idimagens_cliente_obra
+<span class="hljs-keyword">WHERE</span> ico.tipo_imagem <span class="hljs-keyword">LIKE</span> <span class="hljs-string">&#x27;Planta%&#x27;</span>
+<span class="hljs-keyword">ORDER</span> <span class="hljs-keyword">BY</span> tempo_horas <span class="hljs-keyword">DESC</span>
+LIMIT <span class="hljs-number">10</span>;
+</code></pre>
+<hr>
+<h2 id="interpretação-dos-resultados">Interpretação dos Resultados</h2>
+<ul>
+<li><strong>Média alta + desvio alto</strong> indica processo instável.</li>
+<li><strong>Tempos = 0</strong> sugerem saltos de status ou registros inconsistentes.</li>
+<li><strong>Outliers</strong> geralmente refletem gargalos de fluxo (aprovação, retrabalho, espera).</li>
+</ul>
+<hr>
+<h2 id="próximos-passos-recomendados">Próximos Passos Recomendados</h2>
+<ol>
+<li>Calcular <strong>percentis (P50, P75, P90)</strong> para previsão mais realista.</li>
+<li>Segmentar por <strong>cliente, tipo de entrega ou carga</strong>.</li>
+<li>Marcar imagens problemáticas (flag) para uso futuro como feature em ML.</li>
+<li>Avaliar exclusão controlada de outliers para métricas operacionais.</li>
+</ol>
+<hr>
+<h2 id="observação-final">Observação Final</h2>
+<p>Esta métrica estabelece o <strong>baseline confiável</strong>. Antes de aplicar ML, estabilize o processo, use percentis e reduza ruído. O ganho virá mais do <strong>modelo de negócio</strong> do que do algoritmo.</p>
+
+            
+            
+        </body>
+        </html>

@@ -63,7 +63,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $hoje = $_POST['hoje'] ?? null;
     $bloqueio = $_POST['bloqueio'] ?? null;
     $colaborador_id = $_SESSION['idcolaborador'];
-    $data = date('Y-m-d'); // Data atual
+    date_default_timezone_set('America/Sao_Paulo');
+    $data = date('Y-m-d');
 
     // Verifique se todos os campos obrigatórios foram preenchidos
     if (!$finalizado || !$hoje || !$bloqueio || !$colaborador_id) {

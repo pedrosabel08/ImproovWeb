@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Dashboard — Tempo entre status</title>
+    <link rel="stylesheet" href="assets/status_dashboard.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <div class="wrap">
+        <div class="header">
+            <div class="title">SOE — Métricas por Status → Tipo</div>
+            <div class="controls">
+                <select id="status_select">
+                    <option value="">Todos</option>
+                </select>
+                <input id="tipo_input" placeholder="Tipo de imagem (opcional)">
+                <div class="actions">
+                    <button id="refresh" class="btn">Atualizar</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="cards" class="grid"></div>
+    </div>
+    <script>
+        // populate status select from API
+        async function loadStatusList() {
+            const res = await fetch('status_tipo_api.php');
+            const json = await res.json();
+            const select = document.getElementById('status_select');
+            const seen = new Set();
+            json.forEach(s => {
+                if (!seen.has(s.status_id)) {
+                    const opt = document.createElement('option'); opt.value = s.status_id; opt.textContent = s.status_name + ' (' + s.status_id + ')';
+                    select.appendChild(opt); seen.add(s.status_id);
+                }
+            });
+        }
+    </script>
+    <script src="assets/status_dashboard.js"></script>
+    <script>loadStatusList();</script>
+</body>
+
+</html>

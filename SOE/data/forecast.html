@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Forecast - SOE</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&family=Open+Sans:ital,wght@0,300..800;1,300..800&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap');
+
+        body {
+            font-family: 'Inter', Helvetica, sans-serif;
+            padding: 18px;
+            color: #222
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left
+        }
+
+        th {
+            background: #f4f4f4
+        }
+
+        caption {
+            font-weight: 600;
+            margin-bottom: 8px
+        }
+
+        pre {
+            background: #f8f8f8;
+            border: 1px solid #eee;
+            padding: 12px;
+            overflow: auto
+        }
+
+        .note {
+            margin: 12px 0;
+            padding: 8px;
+            background: #eef9ff;
+            border-left: 4px solid #5bb0ff
+        }
+
+        .metrics {
+            font-size: 13px;
+            color: #333;
+            line-height: 1.4
+        }
+
+        .metrics-row td {
+            padding: 14px
+        }
+
+        .metrics-wrap {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap
+        }
+
+        .metric-card {
+            flex: 1 1 320px;
+            background: linear-gradient(180deg, #fff, #fbfdff);
+            border: 1px solid #e6eef9;
+            padding: 12px;
+            border-radius: 8px;
+            box-shadow: 0 6px 18px rgba(20, 30, 60, 0.04)
+        }
+
+        .metric-title {
+            font-weight: 700;
+            color: #16325c;
+            margin-bottom: 6px
+        }
+
+        .metric-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: #0b5ed7
+        }
+
+        .metric-sub {
+            color: #666;
+            margin-top: 6px;
+            font-size: 13px
+        }
+
+        .metrics .explain {
+            color: #666;
+            display: block;
+            margin-top: 8px;
+            font-size: 12px
+        }
+    </style>
+</head>
+<p class="note">Cálculo realizado para: Setembro, Outubro e Novembro</p>
+
+<table>
+    <caption>Capacidade atual (Dia / Semana) — Capacidade projetada (Dia / Semana)</caption>
+    <thead>
+        <tr>
+            <th>Etapa</th>
+            <th>Capacidade atual (Dia / Semana)</th>
+            <th>Capacidade projetada (Dia / Semana)</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Finalização</td>
+            <td id="final_current">carregando...</td>
+            <td id="final_projected">carregando...</td>
+        </tr>
+        <tr class="metrics-row">
+            <td colspan="3">
+                <div id="final_metrics" class="metrics">carregando métricas...</div>
+            </td>
+        </tr>
+        <tr>
+            <td>Caderno</td>
+            <td id="caderno_current">carregando...</td>
+            <td id="caderno_projected">carregando...</td>
+        </tr>
+        <tr class="metrics-row">
+            <td colspan="3">
+                <div id="caderno_metrics" class="metrics">carregando métricas...</div>
+            </td>
+        </tr>
+        <tr>
+            <td>Modelagem</td>
+            <td id="modelagem_current">carregando...</td>
+            <td id="modelagem_projected">carregando...</td>
+        </tr>
+        <tr class="metrics-row">
+            <td colspan="3">
+                <div id="modelagem_metrics" class="metrics">carregando métricas...</div>
+            </td>
+        </tr>
+        <tr>
+            <td>Composição</td>
+            <td id="composicao_current">carregando...</td>
+            <td id="composicao_projected">carregando...</td>
+        </tr>
+        <tr class="metrics-row">
+            <td colspan="3">
+                <div id="composicao_metrics" class="metrics">carregando métricas...</div>
+            </td>
+        </tr>
+        <tr>
+            <td>Pós</td>
+            <td id="pos_current">carregando...</td>
+            <td id="pos_projected">carregando...</td>
+        </tr>
+        <tr class="metrics-row">
+            <td colspan="3">
+                <div id="pos_metrics" class="metrics">carregando métricas...</div>
+            </td>
+        </tr>
+        <tr>
+            <td>PH</td>
+            <td id="ph_current">carregando...</td>
+            <td id="ph_projected">carregando...</td>
+        </tr>
+        <tr class="metrics-row">
+            <td colspan="3">
+                <div id="ph_metrics" class="metrics">carregando métricas...</div>
+            </td>
+        </tr>
+    </tbody>
+</table>
+
+<style>
+    .metrics-row td {
+        background: #fbfbfb
+    }
+
+    .metrics {
+        font-size: 13px;
+        color: #333;
+        line-height: 1.4
+    }
+
+    .metrics b {
+        display: inline-block;
+        width: 220px
+    }
+
+    .metrics .explain {
+        color: #666;
+        display: block;
+        margin-top: 6px;
+        font-size: 12px
+    }
+</style>
+
+<p style="margin-top:18px">Observação: os valores acima foram calculados com base nos meses indicados e apresentam a
+    Capacidade Atual e a Capacidade Projetada conforme solicitado.</p>
+<script>
+    async function fetchStage(funcao_id, type) {
+        const res = await fetch(`forecast_calc.php?funcao_id=${funcao_id}&type=${type}`);
+        if (!res.ok) return null;
+        try { return await res.json(); } catch (e) { return null; }
+    }
+
+    function fmt(n, digits = 2) {
+        if (n === null || n === undefined) return '-';
+        if (Number.isInteger(n)) return n.toString();
+        return (Math.round(n * Math.pow(10, digits)) / Math.pow(10, digits)).toString();
+    }
+
+    function renderMetrics(containerId, data) {
+        const el = document.getElementById(containerId);
+        if (!el) return;
+        if (!data || data.error) { el.innerHTML = '<i>sem dados</i>'; return; }
+        // Exibir apenas Método 1 e Método 3 (visuais atraentes)
+        const html = `
+                <div class="metrics-wrap">
+                    <div class="metric-card">
+                        <div class="metric-title">Método 1 — Média das diárias por mês</div>
+                        <div class="metric-value">${data.avg_daily_rounded} / semana ${data.weekly_rounded}</div>
+                        <div class="metric-sub">(Média das médias diárias de cada mês; mais estável frente a variações mensais)</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-title">Método 3 — Total do período ÷ dias reais</div>
+                        <div class="metric-value">${data.alt_daily_via_total_over_period_rounded} / semana ${Math.round(data.alt_daily_via_total_over_period_rounded * 5)}</div>
+                        <div class="metric-sub">(Pondera por dias reais do período; mais fiel quando meses têm durações diferentes)</div>
+                    </div>
+                </div>
+                <div class="explain">Meses considerados: ${data.count_months} — total itens no período: ${data.sum_total_mes}</div>
+            `;
+        el.innerHTML = html;
+    }
+
+    (async function () {
+        // Finalização: funcao_id=4, exclui Planta Humanizada
+        const final = await fetchStage(4, 'exclude_ph');
+        if (final) {
+            const cur = `${final.avg_daily_rounded} / ${final.weekly_rounded}`;
+            const proj = `${final.projected_daily_rounded} / ${final.projected_weekly_rounded}`;
+            document.getElementById('final_current').innerText = cur;
+            document.getElementById('final_projected').innerText = proj;
+            renderMetrics('final_metrics', final);
+        } else {
+            document.getElementById('final_current').innerText = 'erro';
+            document.getElementById('final_projected').innerText = 'erro';
+            renderMetrics('final_metrics', { error: true });
+        }
+
+        // Caderno: funcao_id = 1
+        const caderno = await fetchStage(1, 'all');
+        if (caderno) {
+            document.getElementById('caderno_current').innerText = `${caderno.avg_daily_rounded} / ${caderno.weekly_rounded}`;
+            document.getElementById('caderno_projected').innerText = `${caderno.projected_daily_rounded} / ${caderno.projected_weekly_rounded}`;
+            renderMetrics('caderno_metrics', caderno);
+        } else {
+            document.getElementById('caderno_current').innerText = 'erro';
+            document.getElementById('caderno_projected').innerText = 'erro';
+            renderMetrics('caderno_metrics', { error: true });
+        }
+
+        // Modelagem: funcao_id = 2
+        const modelagem = await fetchStage(2, 'all');
+        if (modelagem) {
+            document.getElementById('modelagem_current').innerText = `${modelagem.avg_daily_rounded} / ${modelagem.weekly_rounded}`;
+            document.getElementById('modelagem_projected').innerText = `${modelagem.projected_daily_rounded} / ${modelagem.projected_weekly_rounded}`;
+            renderMetrics('modelagem_metrics', modelagem);
+        } else {
+            document.getElementById('modelagem_current').innerText = 'erro';
+            document.getElementById('modelagem_projected').innerText = 'erro';
+            renderMetrics('modelagem_metrics', { error: true });
+        }
+
+        // Composição: funcao_id = 3
+        const composicao = await fetchStage(3, 'all');
+        if (composicao) {
+            document.getElementById('composicao_current').innerText = `${composicao.avg_daily_rounded} / ${composicao.weekly_rounded}`;
+            document.getElementById('composicao_projected').innerText = `${composicao.projected_daily_rounded} / ${composicao.projected_weekly_rounded}`;
+            renderMetrics('composicao_metrics', composicao);
+        } else {
+            document.getElementById('composicao_current').innerText = 'erro';
+            document.getElementById('composicao_projected').innerText = 'erro';
+            renderMetrics('composicao_metrics', { error: true });
+        }
+
+        // Pós: funcao_id = 5
+        const pos = await fetchStage(5, 'all');
+        if (pos) {
+            document.getElementById('pos_current').innerText = `${pos.avg_daily_rounded} / ${pos.weekly_rounded}`;
+            document.getElementById('pos_projected').innerText = `${pos.projected_daily_rounded} / ${pos.projected_weekly_rounded}`;
+            renderMetrics('pos_metrics', pos);
+        } else {
+            document.getElementById('pos_current').innerText = 'erro';
+            document.getElementById('pos_projected').innerText = 'erro';
+            renderMetrics('pos_metrics', { error: true });
+        }
+
+        // PH (Planta Humanizada) — mesma funcao_id, tipo separado
+        const ph = await fetchStage(4, 'ph');
+        if (ph) {
+            const cur = `${ph.avg_daily_rounded} / ${ph.weekly_rounded}`;
+            const proj = `${ph.projected_daily_rounded} / ${ph.projected_weekly_rounded}`;
+            document.getElementById('ph_current').innerText = cur;
+            document.getElementById('ph_projected').innerText = proj;
+            renderMetrics('ph_metrics', ph);
+        } else {
+            document.getElementById('ph_current').innerText = 'erro';
+            document.getElementById('ph_projected').innerText = 'erro';
+            renderMetrics('ph_metrics', { error: true });
+        }
+    })();
+</script>
+</body>
+
+</html>

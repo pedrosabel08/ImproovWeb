@@ -7,7 +7,12 @@ $conn->query("SET SESSION sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_B
 
 // Pega o mês atual selecionado
 $mes = $_GET['mes'] ?? date('m');
-$mesAnterior = ($mes == 1) ? 12 : $mes - 1;
+$anoSelecionado = isset($_GET['ano']) ? (int)$_GET['ano'] : (int)date('Y');
+
+$mes = (int)$mes;
+$mesAnterior = ($mes === 1) ? 12 : ($mes - 1);
+$anoMesAnterior = ($mes === 1) ? ($anoSelecionado - 1) : $anoSelecionado;
+$mesRefAnterior = sprintf('%04d-%02d', $anoMesAnterior, $mesAnterior);
 
 // 1. Busca os dados do mês selecionado
 $sql = "SELECT
@@ -35,7 +40,7 @@ FROM (
   JOIN colaborador c ON c.idcolaborador = fi.colaborador_id
   JOIN funcao f ON f.idfuncao = fi.funcao_id
   LEFT JOIN imagens_cliente_obra i ON fi.imagem_id = i.idimagens_cliente_obra
-  WHERE MONTH(fi.prazo) = ? AND YEAR(fi.prazo) = YEAR(CURDATE()) AND fi.colaborador_id <> 21
+  WHERE MONTH(fi.prazo) = ? AND YEAR(fi.prazo) = YEAR(CURDATE()) AND fi.colaborador_id NOT IN (21, 15, 9)
 ) AS t
 GROUP BY t.funcao_id, t.nome_funcao, t.nome_colaborador
 ORDER BY
@@ -68,11 +73,11 @@ FROM (
   JOIN colaborador c ON c.idcolaborador = fi.colaborador_id
   JOIN funcao f ON f.idfuncao = fi.funcao_id
   LEFT JOIN imagens_cliente_obra i ON fi.imagem_id = i.idimagens_cliente_obra
-  WHERE MONTH(fi.data_pagamento) = ? AND YEAR(fi.data_pagamento) = YEAR(CURDATE()) AND fi.colaborador_id <> 21
+  WHERE MONTH(fi.data_pagamento) = ? AND YEAR(fi.data_pagamento) = ? AND fi.colaborador_id <> 21
 ) AS t
 GROUP BY t.nome_funcao, t.nome_colaborador;";
 $stmtAnterior = $conn->prepare($sqlAnterior);
-$stmtAnterior->bind_param("i", $mesAnterior);
+$stmtAnterior->bind_param("ii", $mesAnterior, $anoMesAnterior);
 $stmtAnterior->execute();
 $resultAnterior = $stmtAnterior->get_result();
 $dadosAnteriores = $resultAnterior->fetch_all(MYSQLI_ASSOC);
@@ -82,6 +87,29 @@ $anteriorIndexado = [];
 foreach ($dadosAnteriores as $linha) {
   $chave = $linha['nome_colaborador'] . '_' . $linha['nome_funcao'];
   $anteriorIndexado[$chave] = $linha['qtd_mes_anterior'];
+}
+
+// Regra especial: mês anterior de "Finalização Parcial" via pagamento_itens.observacao
+$sqlAnteriorParcial = "SELECT c.nome_colaborador, COUNT(*) AS qtd_mes_anterior
+FROM pagamento_itens pi
+JOIN pagamentos p ON p.idpagamento = pi.pagamento_id
+JOIN colaborador c ON c.idcolaborador = p.colaborador_id
+WHERE p.mes_ref = ?
+  AND pi.origem = 'funcao_imagem'
+  AND pi.observacao = 'Finalização Parcial'
+  AND p.colaborador_id <> 21
+GROUP BY c.nome_colaborador";
+$stmtAnteriorParcial = $conn->prepare($sqlAnteriorParcial);
+if ($stmtAnteriorParcial) {
+  $stmtAnteriorParcial->bind_param('s', $mesRefAnterior);
+  $stmtAnteriorParcial->execute();
+  $resParcial = $stmtAnteriorParcial->get_result();
+  $dadosParcialAnterior = $resParcial ? $resParcial->fetch_all(MYSQLI_ASSOC) : [];
+  foreach ($dadosParcialAnterior as $linha) {
+    $chave = $linha['nome_colaborador'] . '_Finalização Parcial';
+    $anteriorIndexado[$chave] = (int)$linha['qtd_mes_anterior'];
+  }
+  $stmtAnteriorParcial->close();
 }
 
 // 3. Busca o recorde geral de cada colaborador
@@ -132,6 +160,31 @@ foreach ($recordes as $linha) {
   $recordeIndexado[$chave] = $linha['recorde'];
 }
 
+// Regra especial: recorde de "Finalização Parcial" via pagamento_itens.observacao por colaborador
+$sqlRecordeParcial = "SELECT nome_colaborador, MAX(qtd_mes) AS recorde
+FROM (
+  SELECT c.nome_colaborador, p.mes_ref, COUNT(*) AS qtd_mes
+  FROM pagamento_itens pi
+  JOIN pagamentos p ON p.idpagamento = pi.pagamento_id
+  JOIN colaborador c ON c.idcolaborador = p.colaborador_id
+  WHERE pi.origem = 'funcao_imagem'
+    AND pi.observacao = 'Finalização Parcial'
+    AND p.colaborador_id <> 21
+  GROUP BY c.nome_colaborador, p.mes_ref
+) AS x
+GROUP BY nome_colaborador";
+$stmtRecordeParcial = $conn->prepare($sqlRecordeParcial);
+if ($stmtRecordeParcial) {
+  $stmtRecordeParcial->execute();
+  $resRecParcial = $stmtRecordeParcial->get_result();
+  $dadosRecParcial = $resRecParcial ? $resRecParcial->fetch_all(MYSQLI_ASSOC) : [];
+  foreach ($dadosRecParcial as $linha) {
+    $chave = $linha['nome_colaborador'] . '_Finalização Parcial';
+    $recordeIndexado[$chave] = (int)$linha['recorde'];
+  }
+  $stmtRecordeParcial->close();
+}
+
 // 4. Junta tudo
 $resultado = [];
 foreach ($dadosMesAtual as $linha) {
@@ -140,7 +193,9 @@ foreach ($dadosMesAtual as $linha) {
   $chave = $colaborador . '_' . $nomeFuncao;
 
   $linha['mes_anterior'] = $anteriorIndexado[$chave] ?? 0;
-  $linha['recorde_producao'] = $recordeIndexado[$chave] ?? '-';
+  $recorde = $recordeIndexado[$chave] ?? 0;
+  $quantidadeAtual = isset($linha['quantidade']) ? (int)$linha['quantidade'] : 0;
+  $linha['recorde_producao'] = max((int)$recorde, $quantidadeAtual);
 
   $resultado[] = $linha;
 }

@@ -194,6 +194,8 @@ function buscarDadosFuncao() {
                 tr.innerHTML = `
             <td>${linha.nome_funcao}</td>
             <td>${linha.quantidade - linha.pagas}</td>
+                        <td>${linha.mes_anterior ?? 0}</td>
+                        <td>${linha.recorde_producao ?? 0}</td>
           `;
                 tabela.appendChild(tr);
 
@@ -263,7 +265,7 @@ function gerarRelatorio() {
                     ${header}
                     <h3>Produção por Colaborador</h3>
                     ${tabelaProducaoHtml || '<p>Sem dados</p>'}
-                    <br><br><br><br>
+                    <br>
                     <h3>Produção por Função</h3>
                     ${tabelaFuncaoHtml || '<p>Sem dados</p>'}
                     <h3>Imagens entregues por mês</h3>

@@ -149,6 +149,8 @@ $conn->close();
                     <tr>
                         <th>Processo</th>
                         <th>Quantidade</th>
+                        <th>Mês anterior</th>
+                        <th>Recorde de produção</th>
                     </tr>
                 </thead>
                 <tbody>

@@ -307,9 +307,12 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             // If running inside Dashboard we may have an obraId in localStorage.
             // When present, request only that obra from the server to avoid client-side filtering.
+            // However, on the main Entregas page we always want to show all entregas,
+            // so ignore localStorage when the current page path contains '/entregas'.
             const storedObra = (typeof localStorage !== 'undefined') ? localStorage.getItem('obraId') : null;
+            const isEntregasPage = window.location.pathname.toLowerCase().includes('/entregas');
             let url = BASE + 'listar_entregas.php';
-            if (storedObra) {
+            if (storedObra && !isEntregasPage) {
                 url += '?obra_id=' + encodeURIComponent(storedObra);
             }
             const res = await fetch(url);

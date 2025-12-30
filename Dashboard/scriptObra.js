@@ -6691,3 +6691,232 @@ if (quickFotografico) quickFotografico.addEventListener('click', (e) => {
 });
 if (closeBtn) closeBtn.addEventListener('click', closeModal);
 
+
+// ===== HANDOFF COMERCIAL → PRODUÇÃO =====
+(function initHandoffComercial() {
+    const modal = document.getElementById('handoffComercialModal');
+    const form = document.getElementById('handoffComercialForm');
+    const closeBtn = document.getElementById('closeHandoffComercial');
+    const cancelBtn = document.getElementById('cancelHandoffComercial');
+    const quickBtn = document.getElementById('quick_handoff');
+    const mobileBtn = document.getElementById('mobile_handoff');
+
+    if (!modal || !form) return;
+
+    const allowedEditors = [1, 2, 9];
+    const canEdit = allowedEditors.includes(Number(usuarioId));
+
+    const els = {
+        fotograficoAereo: document.getElementById('fotografico_aereo_incluso'),
+        fieldFotograficoPlanejado: document.getElementById('field_fotografico_planejado'),
+        entregaAntecipada: document.getElementById('entrega_antecipada'),
+        fieldEntregaQuais: document.getElementById('field_entrega_quais'),
+        fieldEntregaPrazo: document.getElementById('field_entrega_prazo'),
+        datasIntermediarias: document.getElementById('datas_intermediarias'),
+        fieldDatasIntermediarias: document.getElementById('field_datas_intermediarias'),
+        deadlineExterno: document.getElementById('deadline_externo'),
+        fieldDeadlineTipo: document.getElementById('field_deadline_tipo'),
+        riscosCriativos: document.getElementById('riscos_criativos_identificados'),
+        fieldRiscosCriativos: document.getElementById('field_riscos_criativos'),
+        promessa: document.getElementById('promessa_especifica'),
+        fieldPromessa: document.getElementById('field_promessa'),
+        materiaisPendentes: document.getElementById('materiais_pendentes_cliente'),
+        fieldMateriaisPendentes: document.getElementById('field_materiais_pendentes'),
+        dependeTerceiros: document.getElementById('depende_terceiros'),
+        fieldTerceirosTipo: document.getElementById('field_terceiros_tipo')
+    };
+
+    function showIf(el, cond) {
+        if (!el) return;
+        el.style.display = cond ? '' : 'none';
+    }
+
+    function valIsYes(v) {
+        return String(v) === '1' || String(v).toLowerCase() === 'true';
+    }
+
+    function applyConditionals() {
+        showIf(els.fieldFotograficoPlanejado, els.fotograficoAereo && valIsYes(els.fotograficoAereo.value));
+        const entregaSim = els.entregaAntecipada && valIsYes(els.entregaAntecipada.value);
+        showIf(els.fieldEntregaQuais, entregaSim);
+        showIf(els.fieldEntregaPrazo, entregaSim);
+        showIf(els.fieldDatasIntermediarias, els.datasIntermediarias && valIsYes(els.datasIntermediarias.value));
+        showIf(els.fieldDeadlineTipo, els.deadlineExterno && valIsYes(els.deadlineExterno.value));
+        showIf(els.fieldRiscosCriativos, els.riscosCriativos && valIsYes(els.riscosCriativos.value));
+        showIf(els.fieldPromessa, els.promessa && valIsYes(els.promessa.value));
+        showIf(els.fieldMateriaisPendentes, els.materiaisPendentes && valIsYes(els.materiaisPendentes.value));
+        showIf(els.fieldTerceirosTipo, els.dependeTerceiros && valIsYes(els.dependeTerceiros.value));
+    }
+
+    ['change', 'input'].forEach(evt => {
+        if (els.fotograficoAereo) els.fotograficoAereo.addEventListener(evt, applyConditionals);
+        if (els.entregaAntecipada) els.entregaAntecipada.addEventListener(evt, applyConditionals);
+        if (els.datasIntermediarias) els.datasIntermediarias.addEventListener(evt, applyConditionals);
+        if (els.deadlineExterno) els.deadlineExterno.addEventListener(evt, applyConditionals);
+        if (els.riscosCriativos) els.riscosCriativos.addEventListener(evt, applyConditionals);
+        if (els.promessa) els.promessa.addEventListener(evt, applyConditionals);
+        if (els.materiaisPendentes) els.materiaisPendentes.addEventListener(evt, applyConditionals);
+        if (els.dependeTerceiros) els.dependeTerceiros.addEventListener(evt, applyConditionals);
+    });
+
+    function openModal() {
+        modal.style.display = 'flex';
+        modal.style.alignItems = 'center';
+        modal.style.justifyContent = 'center';
+    }
+
+    function closeModal() {
+        modal.style.display = 'none';
+    }
+
+    async function fetchHandoff() {
+        const idObra = (typeof obraId !== 'undefined' && obraId) ? obraId : localStorage.getItem('obraId');
+        if (!idObra) return { success: false, error: 'Obra não identificada' };
+        const res = await fetch(`handoff_comercial_get.php?obra_id=${encodeURIComponent(idObra)}`, { method: 'GET' });
+        return res.json();
+    }
+
+    function setFormDisabled(disabled) {
+        form.querySelectorAll('input, select, textarea, button').forEach(el => {
+            if (el.id === 'closeHandoffComercial' || el.id === 'cancelHandoffComercial') return;
+            if (disabled) {
+                el.disabled = true;
+            } else {
+                el.disabled = false;
+            }
+        });
+        const saveBtn = document.getElementById('saveHandoffComercial');
+        if (saveBtn) saveBtn.style.display = canEdit ? '' : 'none';
+    }
+
+    function populateForm(data) {
+        const idObra = (typeof obraId !== 'undefined' && obraId) ? obraId : localStorage.getItem('obraId');
+        const obraInput = document.getElementById('handoff_obra_id');
+        if (obraInput) obraInput.value = idObra || '';
+
+        if (!data) {
+            form.reset();
+            if (obraInput) obraInput.value = idObra || '';
+            applyConditionals();
+            return;
+        }
+
+        form.querySelectorAll('[name]').forEach(el => {
+            const name = el.getAttribute('name');
+            if (!name) return;
+            if (name === 'obra_id') return;
+            if (Object.prototype.hasOwnProperty.call(data, name) && data[name] !== null && data[name] !== undefined) {
+                el.value = String(data[name]);
+            }
+        });
+
+        applyConditionals();
+    }
+
+    async function loadIntoForm() {
+        try {
+            const js = await fetchHandoff();
+            if (js && js.success) {
+                populateForm(js.data);
+            } else {
+                populateForm(null);
+            }
+        } catch (e) {
+            console.error('Erro ao carregar handoff:', e);
+        }
+    }
+
+    async function saveForm() {
+        const fd = new FormData(form);
+        const payload = {};
+        fd.forEach((v, k) => payload[k] = v);
+
+        const res = await fetch('handoff_comercial_save.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        return res.json();
+    }
+
+    async function openAndLoad() {
+        openModal();
+        setFormDisabled(!canEdit);
+        await loadIntoForm();
+    }
+
+    if (quickBtn) {
+        quickBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            openAndLoad();
+        });
+    }
+    if (mobileBtn) {
+        mobileBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            openAndLoad();
+            // close mobile menu if open
+            const mm = document.getElementById('quickMobileMenu');
+            const hb = document.getElementById('quickHamburger');
+            if (mm) mm.setAttribute('aria-hidden', 'true');
+            if (hb) hb.setAttribute('aria-expanded', 'false');
+        });
+    }
+    if (closeBtn) closeBtn.addEventListener('click', closeModal);
+    if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+
+    // click outside modal-content closes
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+    });
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!canEdit) {
+            Swal.fire({ icon: 'warning', title: 'Sem permissão', text: 'Você não pode editar este handoff.' });
+            return;
+        }
+        try {
+            const js = await saveForm();
+            if (js && js.success) {
+                Swal.fire({ icon: 'success', title: 'Salvo', text: 'Handoff comercial salvo com sucesso.' });
+                closeModal();
+            } else {
+                Swal.fire({ icon: 'error', title: 'Erro ao salvar', text: (js && (js.error || js.details)) ? (js.error || js.details) : 'Tente novamente.' });
+            }
+        } catch (err) {
+            console.error(err);
+            Swal.fire({ icon: 'error', title: 'Erro ao salvar', text: 'Tente novamente.' });
+        }
+    });
+
+    // Alert if no handoff exists for this obra
+    (async function warnIfMissing() {
+        try {
+            const idObra = (typeof obraId !== 'undefined' && obraId) ? obraId : localStorage.getItem('obraId');
+            if (!idObra) return;
+            const js = await fetchHandoff();
+            const missing = js && js.success && !js.data;
+            if (!missing) return;
+
+            const result = await Swal.fire({
+                icon: 'warning',
+                title: 'Handoff comercial pendente',
+                text: 'Esta obra ainda não possui o handoff comercial preenchido. Deseja preencher agora? ',
+                showCancelButton: true,
+                confirmButtonText: 'Abrir handoff',
+                cancelButtonText: 'Depois'
+            });
+            if (result.isConfirmed) {
+                openAndLoad();
+            }
+        } catch (e) {
+            // silently ignore if endpoint/table not available yet
+            console.warn('Aviso handoff não pôde ser verificado:', e);
+        }
+    })();
+
+    // initial conditionals
+    applyConditionals();
+})();
+

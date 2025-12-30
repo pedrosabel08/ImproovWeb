@@ -206,6 +206,12 @@ $conn->close();
                     <span class="qa-label">Arquivos</span>
                 </a>
 
+                <!-- Handoff Comercial -->
+                <a id="quick_handoff" class="quick-link" href="#" title="Handoff Comercial" aria-hidden="false">
+                    <i class="fa-solid fa-handshake"></i>
+                    <span class="qa-label">Handoff</span>
+                </a>
+
                 <!-- External quick links -->
                 <a id="quick_fotografico" class="quick-link" href="#" target="_blank" rel="noopener noreferrer"
                     title="Fotográfico" aria-hidden="true">
@@ -244,6 +250,9 @@ $conn->close();
                                 class="fa-solid fa-note-sticky"></i> <span>Observações</span></a>
                         <a class="mobile-link" id="mobile_arquivos" href="#secao-arquivos"><i
                                 class="fa-solid fa-file"></i> <span>Arquivos</span></a>
+
+                        <a class="mobile-link" id="mobile_handoff" href="#"><i class="fa-solid fa-handshake"></i>
+                            <span>Handoff</span></a>
                         <hr>
                         <a class="mobile-link" id="mobile_fotografico" href="#" target="_blank"
                             rel="noopener noreferrer"><i class="fa-solid fa-camera"></i> <span>Fotográfico</span></a>
@@ -1623,6 +1632,373 @@ $conn->close();
                 </div>
             </form>
 
+        </div>
+    </div>
+
+
+    <!-- HANDOFF COMERCIAL (dentro da obra) -->
+    <div class="modal" id="handoffComercialModal" style="display:none;">
+        <div class="modal-content handoff-modal-content" style="max-width: 980px; width: 95%; max-height: 85vh; overflow-y: auto;">
+            <div class="handoff-header" style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+                <h2 style="margin:0;">Handoff Comercial → Produção</h2>
+                <button type="button" id="closeHandoffComercial" style="background:none;border:0;font-size:24px;line-height:1;">&times;</button>
+            </div>
+
+            <form id="handoffComercialForm" class="handoff-form" autocomplete="off">
+                <input type="hidden" name="obra_id" id="handoff_obra_id" value="">
+
+                <div class="handoff-section">
+                    <h3>1) Identificação do projeto</h3>
+                    <div class="handoff-grid">
+                        <div class="handoff-field">
+                            <label>Nome do projeto</label>
+                            <input type="text" name="projeto_nome" />
+                        </div>
+                        <div class="handoff-field">
+                            <label>Tipo de projeto</label>
+                            <select name="projeto_tipo">
+                                <option value="">Selecione</option>
+                                <option value="Fachada">Fachada</option>
+                                <option value="Área comum">Área comum</option>
+                                <option value="Interior">Interior</option>
+                                <option value="Masterplan">Masterplan</option>
+                                <option value="Misto">Misto</option>
+                            </select>
+                        </div>
+                        <div class="handoff-field">
+                            <label>Quantidade total de imagens vendidas</label>
+                            <input type="number" name="qtd_imagens_vendidas" min="0" step="1" />
+                        </div>
+                        <div class="handoff-field">
+                            <label>Projeto vitrine?</label>
+                            <select name="projeto_vitrine">
+                                <option value="">Selecione</option>
+                                <option value="1">Sim</option>
+                                <option value="0">Não</option>
+                            </select>
+                        </div>
+                        <div class="handoff-field">
+                            <label>Responsável comercial</label>
+                            <input type="text" name="responsavel_comercial" />
+                        </div>
+                        <div class="handoff-field">
+                            <label>Responsável pela produção (PM)</label>
+                            <input type="text" name="responsavel_producao" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="handoff-section">
+                    <h3>2) Escopo vendido</h3>
+                    <div class="handoff-grid">
+                        <div class="handoff-field">
+                            <label>Escopo está fechado e validado?</label>
+                            <select name="escopo_fechado_validado">
+                                <option value="">Selecione</option>
+                                <option value="1">Sim</option>
+                                <option value="0">Não</option>
+                            </select>
+                        </div>
+                        <div class="handoff-field">
+                            <label>Quantidade de imagens confirmada</label>
+                            <input type="number" name="qtd_imagens_confirmada" min="0" step="1" />
+                        </div>
+                        <div class="handoff-field">
+                            <label>Fotográfico aéreo incluso no escopo?</label>
+                            <select name="fotografico_aereo_incluso" id="fotografico_aereo_incluso">
+                                <option value="">Selecione</option>
+                                <option value="1">Sim</option>
+                                <option value="0">Não</option>
+                            </select>
+                        </div>
+                        <div class="handoff-field" id="field_fotografico_planejado" style="display:none;">
+                            <label>Se SIM → Fotográfico já planejado no fluxo?</label>
+                            <select name="fotografico_planejado_fluxo">
+                                <option value="">Selecione</option>
+                                <option value="1">Sim</option>
+                                <option value="0">Não</option>
+                            </select>
+                        </div>
+                        <div class="handoff-field">
+                            <label>Número de revisões acordadas</label>
+                            <select name="numero_revisoes">
+                                <option value="">Selecione</option>
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                                <option value="Outro">Outro</option>
+                            </select>
+                        </div>
+                        <div class="handoff-field">
+                            <label>Limite de ajustes definido?</label>
+                            <select name="limite_ajustes_definido">
+                                <option value="">Selecione</option>
+                                <option value="1">Sim</option>
+                                <option value="0">Não</option>
+                            </select>
+                        </div>
+                        <div class="handoff-field">
+                            <label>Ajustes permitidos</label>
+                            <select name="ajustes_permitidos">
+                                <option value="">Selecione</option>
+                                <option value="Materiais">Materiais</option>
+                                <option value="Iluminação">Iluminação</option>
+                                <option value="Composição">Composição</option>
+                                <option value="Todos">Todos</option>
+                                <option value="Nenhum">Nenhum</option>
+                            </select>
+                        </div>
+                        <div class="handoff-field">
+                            <label>Existe entrega antecipada de imagens?</label>
+                            <select name="entrega_antecipada" id="entrega_antecipada">
+                                <option value="">Selecione</option>
+                                <option value="1">Sim</option>
+                                <option value="0">Não</option>
+                            </select>
+                        </div>
+                        <div class="handoff-field" id="field_entrega_quais" style="display:none;">
+                            <label>Se SIM → Quais imagens</label>
+                            <input type="text" name="entrega_antecipada_quais" />
+                        </div>
+                        <div class="handoff-field" id="field_entrega_prazo" style="display:none;">
+                            <label>Se SIM → Prazo acordado</label>
+                            <input type="date" name="entrega_antecipada_prazo" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="handoff-section">
+                    <h3>3) Prazos e compromissos</h3>
+                    <div class="handoff-grid">
+                        <div class="handoff-field">
+                            <label>Prazo final prometido ao cliente</label>
+                            <input type="date" name="prazo_final_prometido" />
+                        </div>
+                        <div class="handoff-field">
+                            <label>Existem datas intermediárias?</label>
+                            <select name="datas_intermediarias" id="datas_intermediarias">
+                                <option value="">Selecione</option>
+                                <option value="1">Sim</option>
+                                <option value="0">Não</option>
+                            </select>
+                        </div>
+                        <div class="handoff-field" id="field_datas_intermediarias" style="display:none;">
+                            <label>Se SIM → (data / descrição)</label>
+                            <input type="text" name="datas_intermediarias_info" placeholder="Ex: 2026-01-15 | Envio prévia" />
+                        </div>
+                        <div class="handoff-field">
+                            <label>Existe deadline externo?</label>
+                            <select name="deadline_externo" id="deadline_externo">
+                                <option value="">Selecione</option>
+                                <option value="1">Sim</option>
+                                <option value="0">Não</option>
+                            </select>
+                        </div>
+                        <div class="handoff-field" id="field_deadline_tipo" style="display:none;">
+                            <label>Tipo de deadline</label>
+                            <select name="deadline_tipo">
+                                <option value="">Selecione</option>
+                                <option value="Lançamento">Lançamento</option>
+                                <option value="Marketing">Marketing</option>
+                                <option value="Legal">Legal</option>
+                                <option value="Outro">Outro</option>
+                            </select>
+                        </div>
+                        <div class="handoff-field">
+                            <label>Prazo é compatível com a complexidade? (validação Produção)</label>
+                            <select name="prazo_compativel_complexidade">
+                                <option value="">Selecione</option>
+                                <option value="1">Sim</option>
+                                <option value="0">Não</option>
+                            </select>
+                        </div>
+                        <div class="handoff-field">
+                            <label>Entrega antecipada impacta o fluxo?</label>
+                            <select name="entrega_antecipada_impacta_fluxo">
+                                <option value="">Selecione</option>
+                                <option value="1">Sim</option>
+                                <option value="0">Não</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="handoff-section">
+                    <h3>4) Expectativa criativa</h3>
+                    <div class="handoff-grid">
+                        <div class="handoff-field">
+                            <label>Exige cuidado criativo acima da média?</label>
+                            <select name="cuidado_criativo_acima_media">
+                                <option value="">Selecione</option>
+                                <option value="1">Sim</option>
+                                <option value="0">Não</option>
+                            </select>
+                        </div>
+                        <div class="handoff-field">
+                            <label>Nível de liberdade criativa</label>
+                            <select name="nivel_liberdade_criativa">
+                                <option value="">Selecione</option>
+                                <option value="Baixo">Baixo</option>
+                                <option value="Médio">Médio</option>
+                                <option value="Alto">Alto</option>
+                            </select>
+                        </div>
+                        <div class="handoff-field">
+                            <label>Riscos criativos já identificados?</label>
+                            <select name="riscos_criativos_identificados" id="riscos_criativos_identificados">
+                                <option value="">Selecione</option>
+                                <option value="1">Sim</option>
+                                <option value="0">Não</option>
+                            </select>
+                        </div>
+                        <div class="handoff-field" id="field_riscos_criativos" style="display:none;">
+                            <label>Se SIM → Quais?</label>
+                            <input type="text" name="riscos_criativos_quais" />
+                        </div>
+                        <div class="handoff-field handoff-field-full">
+                            <label>Observações criativas importantes</label>
+                            <textarea name="observacoes_criativas" rows="3" placeholder="Ex: projeto será usado em campanha, cliente sensível a iluminação"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="handoff-section">
+                    <h3>5) Condições comerciais que impactam o projeto</h3>
+                    <div class="handoff-grid">
+                        <div class="handoff-field">
+                            <label>Houve desconto relevante?</label>
+                            <select name="desconto_relevante">
+                                <option value="">Selecione</option>
+                                <option value="1">Sim</option>
+                                <option value="0">Não</option>
+                            </select>
+                        </div>
+                        <div class="handoff-field">
+                            <label>Existe alguma promessa específica?</label>
+                            <select name="promessa_especifica" id="promessa_especifica">
+                                <option value="">Selecione</option>
+                                <option value="1">Sim</option>
+                                <option value="0">Não</option>
+                            </select>
+                        </div>
+                        <div class="handoff-field" id="field_promessa" style="display:none;">
+                            <label>Se SIM → Qual?</label>
+                            <input type="text" name="promessa_especifica_texto" />
+                        </div>
+                        <div class="handoff-field">
+                            <label>Parcela final atrelada à entrega?</label>
+                            <select name="parcela_final_atrelada_entrega">
+                                <option value="">Selecione</option>
+                                <option value="1">Sim</option>
+                                <option value="0">Não</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="handoff-section">
+                    <h3>6) Dependências e insumos</h3>
+                    <div class="handoff-grid">
+                        <div class="handoff-field">
+                            <label>Todos os arquivos iniciais foram entregues?</label>
+                            <select name="arquivos_iniciais_entregues">
+                                <option value="">Selecione</option>
+                                <option value="1">Sim</option>
+                                <option value="0">Não</option>
+                            </select>
+                        </div>
+                        <div class="handoff-field">
+                            <label>Existem materiais pendentes do cliente?</label>
+                            <select name="materiais_pendentes_cliente" id="materiais_pendentes_cliente">
+                                <option value="">Selecione</option>
+                                <option value="1">Sim</option>
+                                <option value="0">Não</option>
+                            </select>
+                        </div>
+                        <div class="handoff-field" id="field_materiais_pendentes" style="display:none;">
+                            <label>Se SIM → Quais?</label>
+                            <input type="text" name="materiais_pendentes_texto" />
+                        </div>
+                        <div class="handoff-field">
+                            <label>Projeto depende de terceiros?</label>
+                            <select name="depende_terceiros" id="depende_terceiros">
+                                <option value="">Selecione</option>
+                                <option value="1">Sim</option>
+                                <option value="0">Não</option>
+                            </select>
+                        </div>
+                        <div class="handoff-field" id="field_terceiros_tipo" style="display:none;">
+                            <label>Tipo (terceiros)</label>
+                            <select name="terceiros_tipo">
+                                <option value="">Selecione</option>
+                                <option value="Fotográfico">Fotográfico</option>
+                                <option value="Paisagismo">Paisagismo</option>
+                                <option value="Interiores">Interiores</option>
+                                <option value="Outro">Outro</option>
+                            </select>
+                        </div>
+                        <div class="handoff-field">
+                            <label>Dependências registradas no fluxo?</label>
+                            <select name="dependencias_registradas_fluxo">
+                                <option value="">Selecione</option>
+                                <option value="1">Sim</option>
+                                <option value="0">Não</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="handoff-section">
+                    <h3>7) Reunião de handoff</h3>
+                    <div class="handoff-grid">
+                        <div class="handoff-field">
+                            <label>Reunião de handoff realizada?</label>
+                            <select name="reuniao_handoff_realizada">
+                                <option value="">Selecione</option>
+                                <option value="1">Sim</option>
+                                <option value="0">Não</option>
+                            </select>
+                        </div>
+                        <div class="handoff-field">
+                            <label>Comercial apresentou o projeto?</label>
+                            <select name="comercial_apresentou_projeto">
+                                <option value="">Selecione</option>
+                                <option value="1">Sim</option>
+                                <option value="0">Não</option>
+                            </select>
+                        </div>
+                        <div class="handoff-field">
+                            <label>Produção esclareceu dúvidas?</label>
+                            <select name="producao_esclareceu_duvidas">
+                                <option value="">Selecione</option>
+                                <option value="1">Sim</option>
+                                <option value="0">Não</option>
+                            </select>
+                        </div>
+                        <div class="handoff-field">
+                            <label>Riscos e pontos sensíveis discutidos?</label>
+                            <select name="riscos_pontos_sensiveis_discutidos">
+                                <option value="">Selecione</option>
+                                <option value="1">Sim</option>
+                                <option value="0">Não</option>
+                            </select>
+                        </div>
+                        <div class="handoff-field">
+                            <label>Decisões relevantes registradas?</label>
+                            <select name="decisoes_relevantes_registradas">
+                                <option value="">Selecione</option>
+                                <option value="1">Sim</option>
+                                <option value="0">Não</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="buttons" style="display:flex; gap:10px; justify-content:flex-end; margin-top: 14px;">
+                    <button type="button" id="cancelHandoffComercial" style="background: var(--danger);">Cancelar</button>
+                    <button type="submit" id="saveHandoffComercial" style="background: var(--success);">Salvar</button>
+                </div>
+            </form>
         </div>
     </div>
 

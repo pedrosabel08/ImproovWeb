@@ -3335,3 +3335,59 @@ tr#linha-porcentagem td select {
 #closeFotografico:hover {
     color: var(--text);
 }
+
+/* ===== Handoff Comercial (modal) ===== */
+.handoff-form {
+    margin-top: 12px;
+}
+
+.handoff-section {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    margin-top: 12px;
+    background: var(--card-bg);
+}
+
+.handoff-section h3 {
+    font-size: 15px;
+    margin-bottom: 10px;
+}
+
+.handoff-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 12px;
+}
+
+.handoff-field label {
+    display: block;
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 6px;
+}
+
+.handoff-field input,
+.handoff-field select,
+.handoff-field textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--card-bg);
+    color: var(--text);
+}
+
+.handoff-field textarea {
+    resize: vertical;
+}
+
+.handoff-field-full {
+    grid-column: 1 / -1;
+}
+
+@media (max-width: 780px) {
+    .handoff-grid {
+        grid-template-columns: 1fr;
+    }
+}

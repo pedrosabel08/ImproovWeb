@@ -6794,9 +6794,43 @@ if (closeBtn) closeBtn.addEventListener('click', closeModal);
         const obraInput = document.getElementById('handoff_obra_id');
         if (obraInput) obraInput.value = idObra || '';
 
+        const metaEl = document.getElementById('handoffMeta');
+        function formatDateTimeBR(dt) {
+            if (!dt) return '';
+            const s = String(dt);
+            // expected: YYYY-MM-DD HH:MM:SS
+            const m = s.match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})/);
+            if (!m) return s;
+            return `${m[3]}/${m[2]}/${m[1]} ${m[4]}:${m[5]}`;
+        }
+        function renderMeta(row) {
+            if (!metaEl) return;
+            if (!row) {
+                metaEl.textContent = '';
+                return;
+            }
+            const updatedAt = formatDateTimeBR(row.updated_at);
+            const updatedBy = row.updated_by_name || '';
+            const createdAt = formatDateTimeBR(row.created_at);
+            const createdBy = row.created_by_name || '';
+
+            if (updatedAt || updatedBy) {
+                const by = updatedBy ? ` por ${updatedBy}` : '';
+                metaEl.textContent = `Atualizado em ${updatedAt}${by}`;
+                return;
+            }
+            if (createdAt || createdBy) {
+                const by = createdBy ? ` por ${createdBy}` : '';
+                metaEl.textContent = `Criado em ${createdAt}${by}`;
+                return;
+            }
+            metaEl.textContent = '';
+        }
+
         if (!data) {
             form.reset();
             if (obraInput) obraInput.value = idObra || '';
+            renderMeta(null);
             applyConditionals();
             return;
         }
@@ -6811,6 +6845,8 @@ if (closeBtn) closeBtn.addEventListener('click', closeModal);
         });
 
         applyConditionals();
+
+        renderMeta(data);
     }
 
     async function loadIntoForm() {
@@ -6879,6 +6915,7 @@ if (closeBtn) closeBtn.addEventListener('click', closeModal);
         try {
             const js = await saveForm();
             if (js && js.success) {
+                if (js.data) populateForm(js.data);
                 Swal.fire({ icon: 'success', title: 'Salvo', text: 'Handoff comercial salvo com sucesso.' });
                 closeModal();
             } else {

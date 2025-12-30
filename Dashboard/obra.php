@@ -1641,8 +1641,11 @@ $conn->close();
         <div class="modal-content handoff-modal-content" style="max-width: 980px; width: 95%; max-height: 85vh; overflow-y: auto;">
             <div class="handoff-header" style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
                 <h2 style="margin:0;">Handoff Comercial → Produção</h2>
+
                 <button type="button" id="closeHandoffComercial" style="background:none;border:0;font-size:24px;line-height:1;">&times;</button>
             </div>
+
+            <div id="handoffMeta" class="handoff-meta" style="margin-top:6px; font-size:12px; color: var(--muted);"></div>
 
             <form id="handoffComercialForm" class="handoff-form" autocomplete="off">
                 <input type="hidden" name="obra_id" id="handoff_obra_id" value="">

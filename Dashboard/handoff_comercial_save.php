@@ -188,6 +188,27 @@ if (!$ok) {
 }
 
 $stmt->close();
+
+// Return fresh data with user names
+$sqlFetch = "SELECT 
+                hc.*,
+                u1.nome_usuario AS created_by_name,
+                u2.nome_usuario AS updated_by_name
+            FROM handoff_comercial hc
+            LEFT JOIN usuario u1 ON u1.idusuario = hc.created_by
+            LEFT JOIN usuario u2 ON u2.idusuario = hc.updated_by
+            WHERE hc.obra_id = ?
+            LIMIT 1";
+$stmt2 = $conn->prepare($sqlFetch);
+$row = null;
+if ($stmt2) {
+    $stmt2->bind_param('i', $obraId);
+    $stmt2->execute();
+    $res2 = $stmt2->get_result();
+    $row = $res2 ? $res2->fetch_assoc() : null;
+    $stmt2->close();
+}
+
 $conn->close();
 
-echo json_encode(['success' => true]);
+echo json_encode(['success' => true, 'data' => $row]);

@@ -20,7 +20,15 @@ if (!$obraId) {
     exit;
 }
 
-$sql = "SELECT * FROM handoff_comercial WHERE obra_id = ? LIMIT 1";
+$sql = "SELECT 
+            hc.*,
+            u1.nome_usuario AS created_by_name,
+            u2.nome_usuario AS updated_by_name
+        FROM handoff_comercial hc
+        LEFT JOIN usuario u1 ON u1.idusuario = hc.created_by
+        LEFT JOIN usuario u2 ON u2.idusuario = hc.updated_by
+        WHERE hc.obra_id = ?
+        LIMIT 1";
 $stmt = $conn->prepare($sql);
 if ($stmt === false) {
     http_response_code(500);

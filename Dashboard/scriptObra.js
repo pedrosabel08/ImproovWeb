@@ -325,8 +325,8 @@ function renderTEACharts(metrics) {
             indexAxis: 'y',
             responsive: true,
             plugins: { legend: { display: false } },
-            scales: { 
-                x: { 
+            scales: {
+                x: {
                     beginAtZero: true,
                     ticks: {
                         // force whole number ticks (1,2,3...)
@@ -1145,6 +1145,560 @@ if (obraId) {
     infosObra(obraId);
     carregarEventos(obraId);
 }
+
+// ===== BRIEFING (ARQUIVOS) =====
+const BRIEFING_ARQUIVOS = (function () {
+    const allowedEditors = [1, 2, 9];
+    const canEdit = allowedEditors.includes(Number(usuarioId));
+
+    const TIPOS_CANONICOS = ['Fachada', 'Imagem Externa', 'Imagem Interna', 'Unidade', 'Planta Humanizada'];
+    const CATEGORIAS = ['Arquitetônico', 'Referências', 'Paisagismo', 'Luminotécnico', 'Estrutural'];
+    const TIPOS_ARQUIVO = ['PDF', 'IMG', 'SKP', 'DWG', 'IFC', 'Outros'];
+
+    const IDS = {
+        modal: 'briefingArquivosModal',
+        closeBtn: 'closeBriefingArquivos',
+        form: 'briefingArquivosForm',
+        obraIdInput: 'briefing_arquivos_obra_id',
+        meta: 'briefingArquivosMeta',
+        container: 'briefingArquivosContainer',
+        saveBtn: 'saveBriefingArquivos',
+        editBtn: 'editBriefingArquivos',
+        cancelBtn: 'cancelEditBriefingArquivos',
+
+        quickLink: 'quick_briefing_arquivos',
+        mobileLink: 'mobile_briefing_arquivos',
+    };
+
+    let lastRenderedKey = null;
+    let cachedServerData = null;
+    let cachedTipos = [];
+
+    let isEditing = false;
+    let isAnswered = false;
+    let wired = false;
+
+    function el(id) { return document.getElementById(id); }
+
+    function sanitizeKey(s) {
+        return String(s || '')
+            .toLowerCase()
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+            .replace(/\s+/g, '_')
+            .replace(/[^a-z0-9_]/g, '');
+    }
+
+    function formatDateTimeBR(dt) {
+        if (!dt) return '';
+        const s = String(dt);
+        const m = s.match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})/);
+        if (!m) return s;
+        return `${m[3]}/${m[2]}/${m[1]} ${m[4]}:${m[5]}`;
+    }
+
+    function setMeta(meta) {
+        const metaEl = el(IDS.meta);
+        if (!metaEl) return;
+        if (!meta) { metaEl.textContent = ''; return; }
+
+        const updatedAt = formatDateTimeBR(meta.updated_at);
+        const updatedBy = meta.updated_by_name || '';
+        const createdAt = formatDateTimeBR(meta.created_at);
+        const createdBy = meta.created_by_name || '';
+
+        if (updatedAt) {
+            metaEl.textContent = `Atualizado em ${updatedAt}${updatedBy ? ` por ${updatedBy}` : ''}`;
+            return;
+        }
+        if (createdAt) {
+            metaEl.textContent = `Criado em ${createdAt}${createdBy ? ` por ${createdBy}` : ''}`;
+            return;
+        }
+        metaEl.textContent = '';
+    }
+
+    function setModalOpen(open) {
+        const modal = el(IDS.modal);
+        if (!modal) return;
+        modal.style.display = open ? 'flex' : 'none';
+        modal.style.alignItems = 'center';
+        modal.style.justifyContent = 'center';
+    }
+
+    function computeAnswered(serverData) {
+        const meta = serverData?.data?.meta || null;
+        if (meta && (meta.created_at || meta.updated_at)) return true;
+        const tipos = serverData?.data?.tipos || null;
+        if (tipos && typeof tipos === 'object' && Object.keys(tipos).length > 0) return true;
+        return false;
+    }
+
+    function updateButtons() {
+        const saveBtn = el(IDS.saveBtn);
+        const editBtn = el(IDS.editBtn);
+        const cancelBtn = el(IDS.cancelBtn);
+
+        if (!canEdit) {
+            if (saveBtn) saveBtn.style.display = 'none';
+            if (editBtn) editBtn.style.display = 'none';
+            if (cancelBtn) cancelBtn.style.display = 'none';
+            return;
+        }
+
+        if (isEditing) {
+            if (saveBtn) saveBtn.style.display = '';
+            if (editBtn) editBtn.style.display = 'none';
+            if (cancelBtn) cancelBtn.style.display = '';
+        } else {
+            if (saveBtn) saveBtn.style.display = isAnswered ? 'none' : '';
+            if (editBtn) editBtn.style.display = isAnswered ? '' : 'none';
+            if (cancelBtn) cancelBtn.style.display = 'none';
+        }
+    }
+
+    function setEditMode(editing) {
+        isEditing = !!editing;
+        updateButtons();
+
+        const container = el(IDS.container);
+        if (!container) return;
+
+        container.querySelectorAll('input[type="checkbox"]').forEach(input => {
+            // categoria checkbox
+            if (String(input.id || '').includes('_cliente')) {
+                input.disabled = !canEdit || !isEditing;
+                return;
+            }
+
+            // tipo arquivo checkbox
+            if (String(input.id || '').includes('_file_')) {
+                const catCbId = String(input.id).replace(/_file_.+$/, '_cliente');
+                const catCb = el(catCbId);
+                const shouldEnable = !!(catCb && catCb.checked);
+                input.disabled = !canEdit || !isEditing || !shouldEnable;
+                return;
+            }
+
+            input.disabled = !canEdit || !isEditing;
+        });
+    }
+
+    function getTiposFromDadosImagens(dados) {
+        const set = new Set();
+        (Array.isArray(dados) ? dados : []).forEach(img => {
+            const t = (img && img.tipo_imagem) ? String(img.tipo_imagem).trim() : '';
+            if (!t) return;
+            set.add(t);
+        });
+        const present = Array.from(set);
+        // Prioriza os 5 tipos canônicos, e depois o resto (se existir)
+        const canonicalPresent = TIPOS_CANONICOS.filter(t => present.includes(t));
+        const other = present.filter(t => !TIPOS_CANONICOS.includes(t)).sort();
+        return canonicalPresent.concat(other);
+    }
+
+    function buildUI(tipos) {
+        const container = el(IDS.container);
+        if (!container) return;
+
+        if (!Array.isArray(tipos) || tipos.length === 0) {
+            container.style.display = '';
+            container.innerHTML = '<div style="opacity:0.75; font-size:13px;">Sem tipos de imagem para esta obra.</div>';
+            return;
+        }
+
+        container.style.display = '';
+        container.innerHTML = '';
+
+        tipos.forEach(tipoImagem => {
+            const tipoKey = sanitizeKey(tipoImagem);
+            const sec = document.createElement('div');
+            sec.style.border = '1px solid rgba(0,0,0,0.12)';
+            sec.style.borderRadius = '8px';
+            sec.style.padding = '12px';
+            sec.style.margin = '10px 0';
+
+            const title = document.createElement('div');
+            title.style.display = 'flex';
+            title.style.alignItems = 'center';
+            title.style.justifyContent = 'space-between';
+            title.style.gap = '10px';
+
+            const h = document.createElement('h3');
+            h.textContent = tipoImagem;
+            h.style.margin = '0';
+            h.style.fontSize = '16px';
+
+            const hint = document.createElement('div');
+            hint.textContent = 'Marque o que vem do cliente e selecione 1+ tipos de arquivo.';
+            hint.style.fontSize = '12px';
+            hint.style.opacity = '0.75';
+
+            title.appendChild(h);
+            title.appendChild(hint);
+            sec.appendChild(title);
+
+            const grid = document.createElement('div');
+            grid.style.display = 'grid';
+            grid.style.gridTemplateColumns = '1fr';
+            grid.style.gap = '10px';
+            grid.style.marginTop = '10px';
+
+            CATEGORIAS.forEach(cat => {
+                const catKey = sanitizeKey(cat);
+                const row = document.createElement('div');
+                row.style.display = 'grid';
+                row.style.gridTemplateColumns = '1fr';
+                row.style.alignItems = 'center';
+                row.style.gap = '10px';
+
+                const left = document.createElement('label');
+                left.style.display = 'flex';
+                left.style.alignItems = 'center';
+                left.style.gap = '8px';
+                left.style.margin = '0';
+
+                const cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.id = `bf_${tipoKey}_${catKey}_cliente`;
+                cb.disabled = !canEdit || !isEditing;
+
+                const span = document.createElement('span');
+                span.textContent = `${cat} (receber do cliente)`;
+
+                left.appendChild(cb);
+                left.appendChild(span);
+
+                const typesWrap = document.createElement('div');
+                typesWrap.id = `bf_${tipoKey}_${catKey}_types_wrap`;
+                typesWrap.style.display = 'none';
+                typesWrap.style.marginLeft = '26px';
+                typesWrap.style.padding = '8px 10px';
+                typesWrap.style.border = '1px dashed rgba(0,0,0,0.18)';
+                typesWrap.style.borderRadius = '8px';
+
+                const typesTitle = document.createElement('div');
+                typesTitle.textContent = 'Tipos de arquivo:';
+                typesTitle.style.fontSize = '12px';
+                typesTitle.style.opacity = '0.8';
+                typesTitle.style.marginBottom = '6px';
+                typesWrap.appendChild(typesTitle);
+
+                const typesGrid = document.createElement('div');
+                typesGrid.style.display = 'flex';
+                typesGrid.style.flexWrap = 'wrap';
+                typesGrid.style.gap = '10px';
+
+                TIPOS_ARQUIVO.forEach(t => {
+                    const tKey = sanitizeKey(t);
+                    const lab = document.createElement('label');
+                    lab.style.display = 'flex';
+                    lab.style.alignItems = 'center';
+                    lab.style.gap = '6px';
+                    lab.style.margin = '0';
+                    lab.style.fontSize = '13px';
+
+                    const cbt = document.createElement('input');
+                    cbt.type = 'checkbox';
+                    cbt.id = `bf_${tipoKey}_${catKey}_file_${tKey}`;
+                    cbt.disabled = true;
+
+                    const sp = document.createElement('span');
+                    sp.textContent = t;
+
+                    lab.appendChild(cbt);
+                    lab.appendChild(sp);
+                    typesGrid.appendChild(lab);
+                });
+
+                typesWrap.appendChild(typesGrid);
+
+                cb.addEventListener('change', () => {
+                    const on = cb.checked && canEdit && isEditing;
+                    typesWrap.style.display = cb.checked ? '' : 'none';
+                    // Se desmarcar, limpa checkboxes
+                    if (!cb.checked) {
+                        TIPOS_ARQUIVO.forEach(t => {
+                            const tKey = sanitizeKey(t);
+                            const cbt = el(`bf_${tipoKey}_${catKey}_file_${tKey}`);
+                            if (cbt) cbt.checked = false;
+                        });
+                    }
+                    // Mesmo quando marcado, se não puder editar, mantém disabled
+                    TIPOS_ARQUIVO.forEach(t => {
+                        const tKey = sanitizeKey(t);
+                        const cbt = el(`bf_${tipoKey}_${catKey}_file_${tKey}`);
+                        if (cbt) cbt.disabled = !on;
+                    });
+                });
+
+                row.appendChild(left);
+                row.appendChild(typesWrap);
+                grid.appendChild(row);
+            });
+
+            sec.appendChild(grid);
+            container.appendChild(sec);
+        });
+
+        updateButtons();
+    }
+
+    function populateFromServer(serverData, tipos) {
+        cachedServerData = serverData;
+        const meta = serverData?.data?.meta || null;
+        setMeta(meta);
+
+        const savedTipos = serverData?.data?.tipos || {};
+
+        (Array.isArray(tipos) ? tipos : []).forEach(tipoImagem => {
+            const tipoKey = sanitizeKey(tipoImagem);
+            const savedTipo = savedTipos[tipoImagem] || null;
+            const reqs = savedTipo?.requisitos || {};
+
+            CATEGORIAS.forEach(cat => {
+                const catKey = sanitizeKey(cat);
+                const cb = el(`bf_${tipoKey}_${catKey}_cliente`);
+                const wrap = el(`bf_${tipoKey}_${catKey}_types_wrap`);
+                if (!cb || !wrap) return;
+
+                const r = reqs[cat] || null;
+                const origem = (r && r.origem) ? String(r.origem).toLowerCase() : 'interno';
+                const checked = origem === 'cliente';
+
+                cb.checked = checked;
+                wrap.style.display = checked ? '' : 'none';
+
+                // limpa e repopula
+                TIPOS_ARQUIVO.forEach(t => {
+                    const tKey = sanitizeKey(t);
+                    const cbt = el(`bf_${tipoKey}_${catKey}_file_${tKey}`);
+                    if (cbt) {
+                        cbt.checked = false;
+                        cbt.disabled = true;
+                    }
+                });
+
+                // Suporta novo formato (tipos_arquivo) e antigo (tipo_arquivo)
+                let tiposSel = [];
+                if (r && Array.isArray(r.tipos_arquivo)) {
+                    tiposSel = r.tipos_arquivo.map(x => String(x));
+                } else if (r && r.tipo_arquivo) {
+                    tiposSel = [String(r.tipo_arquivo)];
+                }
+
+                tiposSel.forEach(t => {
+                    if (!TIPOS_ARQUIVO.includes(t)) return;
+                    const tKey = sanitizeKey(t);
+                    const cbt = el(`bf_${tipoKey}_${catKey}_file_${tKey}`);
+                    if (cbt) cbt.checked = checked;
+                });
+            });
+        });
+    }
+
+    async function fetchServerData() {
+        const idObra = (typeof obraId !== 'undefined' && obraId) ? obraId : localStorage.getItem('obraId');
+        if (!idObra) return null;
+        const res = await fetch(`briefing_arquivos_get.php?obra_id=${encodeURIComponent(idObra)}`, { method: 'GET' });
+        return res.json();
+    }
+
+    function collectPayload(tipos) {
+        const payload = { obra_id: Number(obraId), tipos: {} };
+        (Array.isArray(tipos) ? tipos : []).forEach(tipoImagem => {
+            const tipoKey = sanitizeKey(tipoImagem);
+            payload.tipos[tipoImagem] = {};
+            CATEGORIAS.forEach(cat => {
+                const catKey = sanitizeKey(cat);
+                const cb = el(`bf_${tipoKey}_${catKey}_cliente`);
+                const receberCliente = !!(cb && cb.checked);
+                const tiposArquivo = [];
+
+                if (receberCliente) {
+                    TIPOS_ARQUIVO.forEach(t => {
+                        const tKey = sanitizeKey(t);
+                        const cbt = el(`bf_${tipoKey}_${catKey}_file_${tKey}`);
+                        if (cbt && cbt.checked) tiposArquivo.push(t);
+                    });
+                }
+
+                payload.tipos[tipoImagem][cat] = {
+                    receber_cliente: receberCliente,
+                    tipos_arquivo: receberCliente ? tiposArquivo : []
+                };
+            });
+        });
+        return payload;
+    }
+
+    async function savePayload(payload) {
+        const res = await fetch('briefing_arquivos_save.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        return res.json();
+    }
+
+    async function refreshFromServer() {
+        try {
+            const js = await fetchServerData();
+            if (js && js.success) {
+                isAnswered = computeAnswered(js);
+                populateFromServer(js, cachedTipos);
+            } else {
+                isAnswered = false;
+                setMeta(null);
+                populateFromServer({ data: { tipos: {}, meta: null } }, cachedTipos);
+            }
+        } catch (e) {
+            console.warn('Erro ao carregar briefing de arquivos:', e);
+        }
+    }
+
+    async function openModal() {
+        const modal = el(IDS.modal);
+        const container = el(IDS.container);
+        if (!modal || !container) return;
+
+        const obraIdInput = el(IDS.obraIdInput);
+        if (obraIdInput) {
+            obraIdInput.value = (typeof obraId !== 'undefined' && obraId) ? obraId : (localStorage.getItem('obraId') || '');
+        }
+
+        // Estado inicial: se não respondeu, começa em edição; se respondeu, começa travado
+        isEditing = canEdit;
+        isAnswered = false;
+        updateButtons();
+        buildUI(cachedTipos);
+
+        setModalOpen(true);
+
+        await refreshFromServer();
+
+        // aplica trava / modo
+        if (canEdit) {
+            setEditMode(!isAnswered);
+        } else {
+            setEditMode(false);
+        }
+    }
+
+    function closeModal() {
+        setModalOpen(false);
+    }
+
+    function bindOnce() {
+        if (wired) return;
+        wired = true;
+
+        const closeBtn = el(IDS.closeBtn);
+        if (closeBtn) closeBtn.addEventListener('click', closeModal);
+
+        const modal = el(IDS.modal);
+        if (modal) {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) closeModal();
+            });
+        }
+
+        const quick = el(IDS.quickLink);
+        if (quick) {
+            quick.addEventListener('click', (e) => {
+                e.preventDefault();
+                openModal();
+            });
+        }
+
+        const mobile = el(IDS.mobileLink);
+        if (mobile) {
+            mobile.addEventListener('click', (e) => {
+                e.preventDefault();
+                openModal();
+            });
+        }
+
+        const editBtn = el(IDS.editBtn);
+        if (editBtn) {
+            editBtn.addEventListener('click', () => {
+                if (!canEdit) return;
+                setEditMode(true);
+            });
+        }
+
+        const cancelBtn = el(IDS.cancelBtn);
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', async () => {
+                if (!canEdit) return;
+                // volta pro estado salvo (travado)
+                if (cachedServerData && cachedTipos.length) {
+                    isAnswered = computeAnswered(cachedServerData);
+                    populateFromServer(cachedServerData, cachedTipos);
+                    setEditMode(!isAnswered);
+                    return;
+                }
+                await refreshFromServer();
+                setEditMode(!isAnswered);
+            });
+        }
+
+        const form = el(IDS.form);
+        if (form) {
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                if (!canEdit) {
+                    Swal.fire({ icon: 'warning', title: 'Sem permissão', text: 'Você não pode editar este briefing.' });
+                    return;
+                }
+                if (!isEditing) return;
+
+                const tiposNow = cachedTipos;
+                const payload = collectPayload(tiposNow);
+
+                // valida: se cliente, tem tipo_arquivo
+                for (const tipoImagem of tiposNow) {
+                    for (const cat of CATEGORIAS) {
+                        const rec = payload.tipos?.[tipoImagem]?.[cat];
+                        if (rec?.receber_cliente && (!Array.isArray(rec?.tipos_arquivo) || rec.tipos_arquivo.length === 0)) {
+                            Swal.fire({ icon: 'error', title: 'Campos faltando', text: `Selecione ao menos um tipo de arquivo em ${tipoImagem} / ${cat}.` });
+                            return;
+                        }
+                    }
+                }
+
+                try {
+                    const js = await savePayload(payload);
+                    if (js && js.success) {
+                        Swal.fire({ icon: 'success', title: 'Salvo', text: 'Briefing (Arquivos) salvo com sucesso.' });
+                        await refreshFromServer();
+                        // trava depois de salvar
+                        if (canEdit) setEditMode(false);
+                    } else {
+                        Swal.fire({ icon: 'error', title: 'Erro ao salvar', text: (js && (js.error || js.details)) ? (js.error || js.details) : 'Tente novamente.' });
+                    }
+                } catch (err) {
+                    console.error(err);
+                    Swal.fire({ icon: 'error', title: 'Erro ao salvar', text: 'Tente novamente.' });
+                }
+            });
+        }
+    }
+
+    async function ensureRenderedFrom(dadosImagens) {
+        const tipos = getTiposFromDadosImagens(dadosImagens);
+        const renderKey = JSON.stringify(tipos);
+        if (renderKey !== lastRenderedKey) {
+            lastRenderedKey = renderKey;
+            cachedTipos = tipos;
+        }
+
+        // garante handlers do modal e botões de abrir
+        bindOnce();
+    }
+
+    return { ensureRenderedFrom, openModal };
+})();
 function infosObra(obraId) {
 
     fetch(`infosObra.php?obraId=${obraId}`)
@@ -1172,6 +1726,13 @@ function infosObra(obraId) {
             }
             // Guarda os dados carregados globalmente para filtros
             dadosImagens = data.imagens || [];
+
+            // Briefing (Arquivos): renderiza baseado nos tipos presentes na obra
+            try {
+                BRIEFING_ARQUIVOS.ensureRenderedFrom(dadosImagens);
+            } catch (e) {
+                console.warn('Erro ao renderizar Briefing (Arquivos):', e);
+            }
 
             // Atualiza KPIs e gráficos TEA (usa dados já retornados por infosObra.php)
             try {
@@ -6690,4 +7251,270 @@ if (quickFotografico) quickFotografico.addEventListener('click', (e) => {
     openModal();
 });
 if (closeBtn) closeBtn.addEventListener('click', closeModal);
+
+
+// ===== HANDOFF COMERCIAL → PRODUÇÃO =====
+(function initHandoffComercial() {
+    const modal = document.getElementById('handoffComercialModal');
+    const form = document.getElementById('handoffComercialForm');
+    const closeBtn = document.getElementById('closeHandoffComercial');
+    const cancelBtn = document.getElementById('cancelHandoffComercial');
+    const quickBtn = document.getElementById('quick_handoff');
+    const mobileBtn = document.getElementById('mobile_handoff');
+
+    if (!modal || !form) return;
+
+    const allowedEditors = [1, 2, 9];
+    const canEdit = allowedEditors.includes(Number(usuarioId));
+
+    const els = {
+        fotograficoAereo: document.getElementById('fotografico_aereo_incluso'),
+        fieldFotograficoPlanejado: document.getElementById('field_fotografico_planejado'),
+        entregaAntecipada: document.getElementById('entrega_antecipada'),
+        fieldEntregaQuais: document.getElementById('field_entrega_quais'),
+        fieldEntregaPrazo: document.getElementById('field_entrega_prazo'),
+        datasIntermediarias: document.getElementById('datas_intermediarias'),
+        fieldDatasIntermediarias: document.getElementById('field_datas_intermediarias'),
+        deadlineExterno: document.getElementById('deadline_externo'),
+        fieldDeadlineTipo: document.getElementById('field_deadline_tipo'),
+        riscosCriativos: document.getElementById('riscos_criativos_identificados'),
+        fieldRiscosCriativos: document.getElementById('field_riscos_criativos'),
+        promessa: document.getElementById('promessa_especifica'),
+        fieldPromessa: document.getElementById('field_promessa'),
+        materiaisPendentes: document.getElementById('materiais_pendentes_cliente'),
+        fieldMateriaisPendentes: document.getElementById('field_materiais_pendentes'),
+        dependeTerceiros: document.getElementById('depende_terceiros'),
+        fieldTerceirosTipo: document.getElementById('field_terceiros_tipo')
+    };
+
+    function showIf(el, cond) {
+        if (!el) return;
+        el.style.display = cond ? '' : 'none';
+    }
+
+    function valIsYes(v) {
+        return String(v) === '1' || String(v).toLowerCase() === 'true';
+    }
+
+    function applyConditionals() {
+        showIf(els.fieldFotograficoPlanejado, els.fotograficoAereo && valIsYes(els.fotograficoAereo.value));
+        const entregaSim = els.entregaAntecipada && valIsYes(els.entregaAntecipada.value);
+        showIf(els.fieldEntregaQuais, entregaSim);
+        showIf(els.fieldEntregaPrazo, entregaSim);
+        showIf(els.fieldDatasIntermediarias, els.datasIntermediarias && valIsYes(els.datasIntermediarias.value));
+        showIf(els.fieldDeadlineTipo, els.deadlineExterno && valIsYes(els.deadlineExterno.value));
+        showIf(els.fieldRiscosCriativos, els.riscosCriativos && valIsYes(els.riscosCriativos.value));
+        showIf(els.fieldPromessa, els.promessa && valIsYes(els.promessa.value));
+        showIf(els.fieldMateriaisPendentes, els.materiaisPendentes && valIsYes(els.materiaisPendentes.value));
+        showIf(els.fieldTerceirosTipo, els.dependeTerceiros && valIsYes(els.dependeTerceiros.value));
+    }
+
+    ['change', 'input'].forEach(evt => {
+        if (els.fotograficoAereo) els.fotograficoAereo.addEventListener(evt, applyConditionals);
+        if (els.entregaAntecipada) els.entregaAntecipada.addEventListener(evt, applyConditionals);
+        if (els.datasIntermediarias) els.datasIntermediarias.addEventListener(evt, applyConditionals);
+        if (els.deadlineExterno) els.deadlineExterno.addEventListener(evt, applyConditionals);
+        if (els.riscosCriativos) els.riscosCriativos.addEventListener(evt, applyConditionals);
+        if (els.promessa) els.promessa.addEventListener(evt, applyConditionals);
+        if (els.materiaisPendentes) els.materiaisPendentes.addEventListener(evt, applyConditionals);
+        if (els.dependeTerceiros) els.dependeTerceiros.addEventListener(evt, applyConditionals);
+    });
+
+    function openModal() {
+        modal.style.display = 'flex';
+        modal.style.alignItems = 'center';
+        modal.style.justifyContent = 'center';
+    }
+
+    function closeModal() {
+        modal.style.display = 'none';
+    }
+
+    async function fetchHandoff() {
+        const idObra = (typeof obraId !== 'undefined' && obraId) ? obraId : localStorage.getItem('obraId');
+        if (!idObra) return { success: false, error: 'Obra não identificada' };
+        const res = await fetch(`handoff_comercial_get.php?obra_id=${encodeURIComponent(idObra)}`, { method: 'GET' });
+        return res.json();
+    }
+
+    function setFormDisabled(disabled) {
+        form.querySelectorAll('input, select, textarea, button').forEach(el => {
+            if (el.id === 'closeHandoffComercial' || el.id === 'cancelHandoffComercial') return;
+            if (disabled) {
+                el.disabled = true;
+            } else {
+                el.disabled = false;
+            }
+        });
+        const saveBtn = document.getElementById('saveHandoffComercial');
+        if (saveBtn) saveBtn.style.display = canEdit ? '' : 'none';
+    }
+
+    function populateForm(data) {
+        const idObra = (typeof obraId !== 'undefined' && obraId) ? obraId : localStorage.getItem('obraId');
+        const obraInput = document.getElementById('handoff_obra_id');
+        if (obraInput) obraInput.value = idObra || '';
+
+        const metaEl = document.getElementById('handoffMeta');
+        function formatDateTimeBR(dt) {
+            if (!dt) return '';
+            const s = String(dt);
+            // expected: YYYY-MM-DD HH:MM:SS
+            const m = s.match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})/);
+            if (!m) return s;
+            return `${m[3]}/${m[2]}/${m[1]} ${m[4]}:${m[5]}`;
+        }
+        function renderMeta(row) {
+            if (!metaEl) return;
+            if (!row) {
+                metaEl.textContent = '';
+                return;
+            }
+            const updatedAt = formatDateTimeBR(row.updated_at);
+            const updatedBy = row.updated_by_name || '';
+            const createdAt = formatDateTimeBR(row.created_at);
+            const createdBy = row.created_by_name || '';
+
+            if (updatedAt || updatedBy) {
+                const by = updatedBy ? ` por ${updatedBy}` : '';
+                metaEl.textContent = `Atualizado em ${updatedAt}${by}`;
+                return;
+            }
+            if (createdAt || createdBy) {
+                const by = createdBy ? ` por ${createdBy}` : '';
+                metaEl.textContent = `Criado em ${createdAt}${by}`;
+                return;
+            }
+            metaEl.textContent = '';
+        }
+
+        if (!data) {
+            form.reset();
+            if (obraInput) obraInput.value = idObra || '';
+            renderMeta(null);
+            applyConditionals();
+            return;
+        }
+
+        form.querySelectorAll('[name]').forEach(el => {
+            const name = el.getAttribute('name');
+            if (!name) return;
+            if (name === 'obra_id') return;
+            if (Object.prototype.hasOwnProperty.call(data, name) && data[name] !== null && data[name] !== undefined) {
+                el.value = String(data[name]);
+            }
+        });
+
+        applyConditionals();
+
+        renderMeta(data);
+    }
+
+    async function loadIntoForm() {
+        try {
+            const js = await fetchHandoff();
+            if (js && js.success) {
+                populateForm(js.data);
+            } else {
+                populateForm(null);
+            }
+        } catch (e) {
+            console.error('Erro ao carregar handoff:', e);
+        }
+    }
+
+    async function saveForm() {
+        const fd = new FormData(form);
+        const payload = {};
+        fd.forEach((v, k) => payload[k] = v);
+
+        const res = await fetch('handoff_comercial_save.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        return res.json();
+    }
+
+    async function openAndLoad() {
+        openModal();
+        setFormDisabled(!canEdit);
+        await loadIntoForm();
+    }
+
+    if (quickBtn) {
+        quickBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            openAndLoad();
+        });
+    }
+    if (mobileBtn) {
+        mobileBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            openAndLoad();
+            // close mobile menu if open
+            const mm = document.getElementById('quickMobileMenu');
+            const hb = document.getElementById('quickHamburger');
+            if (mm) mm.setAttribute('aria-hidden', 'true');
+            if (hb) hb.setAttribute('aria-expanded', 'false');
+        });
+    }
+    if (closeBtn) closeBtn.addEventListener('click', closeModal);
+    if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+
+    // click outside modal-content closes
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+    });
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!canEdit) {
+            Swal.fire({ icon: 'warning', title: 'Sem permissão', text: 'Você não pode editar este handoff.' });
+            return;
+        }
+        try {
+            const js = await saveForm();
+            if (js && js.success) {
+                if (js.data) populateForm(js.data);
+                Swal.fire({ icon: 'success', title: 'Salvo', text: 'Handoff comercial salvo com sucesso.' });
+                closeModal();
+            } else {
+                Swal.fire({ icon: 'error', title: 'Erro ao salvar', text: (js && (js.error || js.details)) ? (js.error || js.details) : 'Tente novamente.' });
+            }
+        } catch (err) {
+            console.error(err);
+            Swal.fire({ icon: 'error', title: 'Erro ao salvar', text: 'Tente novamente.' });
+        }
+    });
+
+    // Alert if no handoff exists for this obra
+    (async function warnIfMissing() {
+        try {
+            const idObra = (typeof obraId !== 'undefined' && obraId) ? obraId : localStorage.getItem('obraId');
+            if (!idObra) return;
+            const js = await fetchHandoff();
+            const missing = js && js.success && !js.data;
+            if (!missing) return;
+
+            const result = await Swal.fire({
+                icon: 'warning',
+                title: 'Handoff comercial pendente',
+                text: 'Esta obra ainda não possui o handoff comercial preenchido. Deseja preencher agora? ',
+                showCancelButton: true,
+                confirmButtonText: 'Abrir handoff',
+                cancelButtonText: 'Depois'
+            });
+            if (result.isConfirmed) {
+                openAndLoad();
+            }
+        } catch (e) {
+            // silently ignore if endpoint/table not available yet
+            console.warn('Aviso handoff não pôde ser verificado:', e);
+        }
+    })();
+
+    // initial conditionals
+    applyConditionals();
+})();
 

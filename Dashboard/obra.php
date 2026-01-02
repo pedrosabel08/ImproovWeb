@@ -212,6 +212,13 @@ $conn->close();
                     <span class="qa-label">Handoff</span>
                 </a>
 
+                <!-- Briefing (Arquivos) -->
+                <a id="quick_briefing_arquivos" class="quick-link" href="#" title="Briefing (Arquivos)"
+                    aria-hidden="false">
+                    <i class="fa-solid fa-clipboard-list"></i>
+                    <span class="qa-label">Briefing</span>
+                </a>
+
                 <!-- External quick links -->
                 <a id="quick_fotografico" class="quick-link" href="#" target="_blank" rel="noopener noreferrer"
                     title="Fotográfico" aria-hidden="true">
@@ -253,6 +260,10 @@ $conn->close();
 
                         <a class="mobile-link" id="mobile_handoff" href="#"><i class="fa-solid fa-handshake"></i>
                             <span>Handoff</span></a>
+
+                        <a class="mobile-link" id="mobile_briefing_arquivos" href="#"><i
+                                class="fa-solid fa-clipboard-list"></i>
+                            <span>Briefing</span></a>
                         <hr>
                         <a class="mobile-link" id="mobile_fotografico" href="#" target="_blank"
                             rel="noopener noreferrer"><i class="fa-solid fa-camera"></i> <span>Fotográfico</span></a>
@@ -310,7 +321,8 @@ $conn->close();
                 </div>
 
                 <!-- TEA chart and Entregas placed side-by-side -->
-                <div style="display:flex; gap:12px; width:100%; margin-top:12px; align-items:flex-start; flex-wrap:wrap;">
+                <div
+                    style="display:flex; gap:12px; width:100%; margin-top:12px; align-items:flex-start; flex-wrap:wrap;">
                     <div class="chart-container" style="min-width:320px; flex:1;">
                         <div class="chart-title">TEA por função</div>
                         <canvas id="teaFuncChart" style="width:100%; height:240px;"></canvas>
@@ -1638,14 +1650,18 @@ $conn->close();
 
     <!-- HANDOFF COMERCIAL (dentro da obra) -->
     <div class="modal" id="handoffComercialModal" style="display:none;">
-        <div class="modal-content handoff-modal-content" style="max-width: 980px; width: 95%; max-height: 85vh; overflow-y: auto;">
-            <div class="handoff-header" style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+        <div class="modal-content handoff-modal-content"
+            style="max-width: 980px; width: 95%; max-height: 85vh; overflow-y: auto;">
+            <div class="handoff-header"
+                style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
                 <h2 style="margin:0;">Handoff Comercial → Produção</h2>
 
-                <button type="button" id="closeHandoffComercial" style="background:none;border:0;font-size:24px;line-height:1;">&times;</button>
+                <button type="button" id="closeHandoffComercial"
+                    style="background:none;border:0;font-size:24px;line-height:1;">&times;</button>
             </div>
 
-            <div id="handoffMeta" class="handoff-meta" style="margin-top:6px; font-size:12px; color: var(--muted);"></div>
+            <div id="handoffMeta" class="handoff-meta" style="margin-top:6px; font-size:12px; color: var(--muted);">
+            </div>
 
             <form id="handoffComercialForm" class="handoff-form" autocomplete="off">
                 <input type="hidden" name="obra_id" id="handoff_obra_id" value="">
@@ -1787,7 +1803,8 @@ $conn->close();
                         </div>
                         <div class="handoff-field" id="field_datas_intermediarias" style="display:none;">
                             <label>Se SIM → (data / descrição)</label>
-                            <input type="text" name="datas_intermediarias_info" placeholder="Ex: 2026-01-15 | Envio prévia" />
+                            <input type="text" name="datas_intermediarias_info"
+                                placeholder="Ex: 2026-01-15 | Envio prévia" />
                         </div>
                         <div class="handoff-field">
                             <label>Existe deadline externo?</label>
@@ -1860,7 +1877,8 @@ $conn->close();
                         </div>
                         <div class="handoff-field handoff-field-full">
                             <label>Observações criativas importantes</label>
-                            <textarea name="observacoes_criativas" rows="3" placeholder="Ex: projeto será usado em campanha, cliente sensível a iluminação"></textarea>
+                            <textarea name="observacoes_criativas" rows="3"
+                                placeholder="Ex: projeto será usado em campanha, cliente sensível a iluminação"></textarea>
                         </div>
                     </div>
                 </div>
@@ -1998,8 +2016,35 @@ $conn->close();
                 </div>
 
                 <div class="buttons" style="display:flex; gap:10px; justify-content:flex-end; margin-top: 14px;">
-                    <button type="button" id="cancelHandoffComercial" style="background: var(--danger);">Cancelar</button>
+                    <button type="button" id="cancelHandoffComercial"
+                        style="background: var(--danger);">Cancelar</button>
                     <button type="submit" id="saveHandoffComercial" style="background: var(--success);">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- BRIEFING (ARQUIVOS) - dentro da obra -->
+    <div class="modal" id="briefingArquivosModal" style="display:none;">
+        <div class="modal-content" style="max-width: 980px; width: 95%; max-height: 85vh; overflow-y: auto;">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+                <h2 style="margin:0;">Briefing (Arquivos)</h2>
+                <button type="button" id="closeBriefingArquivos"
+                    style="background:none;border:0;font-size:24px;line-height:1;">&times;</button>
+            </div>
+
+            <div id="briefingArquivosMeta" style="margin-top:6px; font-size:12px; color: var(--muted);"></div>
+
+            <form id="briefingArquivosForm" autocomplete="off">
+                <input type="hidden" name="obra_id" id="briefing_arquivos_obra_id" value="">
+
+                <div id="briefingArquivosContainer" style="margin-top: 12px;"></div>
+
+                <div style="display:flex; justify-content:flex-end; gap:10px; margin-top: 14px; flex-wrap: wrap;">
+                    <button type="button" id="editBriefingArquivos" style="width: max-content;">Editar</button>
+                    <button type="button" id="cancelEditBriefingArquivos"
+                        style="width: max-content; display:none;">Cancelar</button>
+                    <button type="submit" id="saveBriefingArquivos" style="width: max-content;">Salvar</button>
                 </div>
             </form>
         </div>

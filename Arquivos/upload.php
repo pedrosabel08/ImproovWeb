@@ -8,6 +8,21 @@ include '../conexao.php';
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
+
+// Timezone: keep dates consistent with the rest of the app (default: São Paulo).
+// This prevents server-default timezone drift (e.g., UTC+1) from shifting stored times.
+$APP_TIMEZONE = getenv('APP_TIMEZONE') ?: 'America/Sao_Paulo';
+@date_default_timezone_set($APP_TIMEZONE);
+$APP_TZ = null;
+try {
+    $APP_TZ = new DateTimeZone($APP_TIMEZONE);
+} catch (Exception $e) {
+    // fallback to São Paulo if an invalid timezone string is configured
+    $APP_TIMEZONE = 'America/Sao_Paulo';
+    @date_default_timezone_set($APP_TIMEZONE);
+    $APP_TZ = new DateTimeZone($APP_TIMEZONE);
+}
+
 header('Content-Type: application/json');
 header("Access-Control-Allow-Origin: https://improov.com.br");
 header("Access-Control-Allow-Methods: POST, OPTIONS");
@@ -16,12 +31,15 @@ header("Access-Control-Allow-Headers: Content-Type");
 // --- Small dotenv loader (no external dependency) ---
 function load_dotenv($path)
 {
-    if (!file_exists($path)) return;
+    if (!file_exists($path))
+        return;
     $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     foreach ($lines as $line) {
         $line = trim($line);
-        if ($line === '' || $line[0] === '#') continue;
-        if (strpos($line, '=') === false) continue;
+        if ($line === '' || $line[0] === '#')
+            continue;
+        if (strpos($line, '=') === false)
+            continue;
         list($k, $v) = array_map('trim', explode('=', $line, 2));
         $v = trim($v, "\"'");
         // set into environment
@@ -106,7 +124,8 @@ function send_slack_token_message($token, $channel, $text, &$log)
  */
 function resolve_slack_user_id($token, $identifier, &$log)
 {
-    if (!$token || !$identifier) return null;
+    if (!$token || !$identifier)
+        return null;
     $ch = curl_init('https://slack.com/api/users.list');
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
         'Authorization: Bearer ' . $token,
@@ -129,12 +148,17 @@ function resolve_slack_user_id($token, $identifier, &$log)
     $needle = mb_strtolower(trim($identifier), 'UTF-8');
     foreach ($json['members'] as $m) {
         // skip bots and deleted
-        if (!empty($m['deleted']) || !empty($m['is_bot'])) continue;
+        if (!empty($m['deleted']) || !empty($m['is_bot']))
+            continue;
         $candidates = [];
-        if (!empty($m['name'])) $candidates[] = $m['name'];
-        if (!empty($m['profile']['display_name'])) $candidates[] = $m['profile']['display_name'];
-        if (!empty($m['profile']['real_name'])) $candidates[] = $m['profile']['real_name'];
-        if (!empty($m['profile']['email'])) $candidates[] = $m['profile']['email'];
+        if (!empty($m['name']))
+            $candidates[] = $m['name'];
+        if (!empty($m['profile']['display_name']))
+            $candidates[] = $m['profile']['display_name'];
+        if (!empty($m['profile']['real_name']))
+            $candidates[] = $m['profile']['real_name'];
+        if (!empty($m['profile']['email']))
+            $candidates[] = $m['profile']['email'];
         foreach ($candidates as $cand) {
             if (mb_strtolower($cand, 'UTF-8') === $needle) {
                 return $m['id'];
@@ -170,42 +194,59 @@ $errors = [];
 // Agrupamento para acompanhamento inteligente: chave = "categoria|tipo_arquivo"
 $acompGroups = [];
 
+// Atualizações de status do briefing (pendente/validado -> recebido) por (tipo_imagem|categoria_id|tipo_arquivo)
+$briefingUpdates = [];
+
 // Colaborador (auditoria) — use NULL when not available to avoid FK constraint failures
 $colaborador_id_sess = (isset($_SESSION['idcolaborador']) && intval($_SESSION['idcolaborador']) > 0) ? intval($_SESSION['idcolaborador']) : null;
 
-// Dados do formulário
-$obra_id      = intval($_POST['obra_id']);
-$tipo_arquivo = $_POST['tipo_arquivo'] ?? "outros";
-$descricao    = $_POST['descricao'] ?? "";
-$flag_master  = !empty($_POST['flag_master']) ? 1 : 0;
-$substituicao = !empty($_POST['flag_substituicao']);
-$tiposImagem  = $_POST['tipo_imagem'] ?? [];
-$categoria  = intval($_POST['tipo_categoria'] ?? 0);
-$refsSkpModo = $_POST['refsSkpModo'] ?? 'geral';
-$descricao    = $_POST['descricao'] ?? "";
-$sufixo       = $_POST['sufixo'] ?? "";
+// Usuário (auditoria do briefing) — pode ser NULL
+$usuario_id_sess = (isset($_SESSION['idusuario']) && intval($_SESSION['idusuario']) > 0) ? intval($_SESSION['idusuario']) : null;
 
-// Data de recebimento fornecida pelo usuário (formato YYYY-MM-DD). Usada para todas as inserções que antes usavam NOW().
+// Dados do formulário
+$obra_id = intval($_POST['obra_id']);
+$tipo_arquivo = $_POST['tipo_arquivo'] ?? "outros";
+$descricao = $_POST['descricao'] ?? "";
+$flag_master = !empty($_POST['flag_master']) ? 1 : 0;
+$substituicao = !empty($_POST['flag_substituicao']);
+$tiposImagem = $_POST['tipo_imagem'] ?? [];
+$categoria = intval($_POST['tipo_categoria'] ?? 0);
+$refsSkpModo = $_POST['refsSkpModo'] ?? 'geral';
+$descricao = $_POST['descricao'] ?? "";
+$sufixo = $_POST['sufixo'] ?? "";
+
+// Data de recebimento fornecida pelo usuário (pode ser YYYY-MM-DD ou YYYY-MM-DD HH:MM:SS).
+// Gera um valor completo em formato DATETIME (Y-m-d H:i:s) usado em todas as inserções.
 $data_recebido_raw = $_POST['data_recebido'] ?? null;
-$data_recebido = null;
+$data_recebido_datetime = null;
 if ($data_recebido_raw) {
-    $d = DateTime::createFromFormat('Y-m-d', $data_recebido_raw);
+    // tenta vários formatos: full datetime, ISO T, ou apenas date
+    $d = DateTime::createFromFormat('Y-m-d H:i:s', $data_recebido_raw, $APP_TZ);
+    if ($d === false)
+        $d = DateTime::createFromFormat('Y-m-d\TH:i:s', $data_recebido_raw, $APP_TZ);
+    if ($d === false)
+        $d = DateTime::createFromFormat('Y-m-d', $data_recebido_raw, $APP_TZ);
     if ($d !== false) {
-        $data_recebido = $d->format('Y-m-d');
+        // se o usuário enviou apenas a data (YYYY-MM-DD), ajusta a hora para o horário atual
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', trim($data_recebido_raw))) {
+            $now = new DateTime('now', $APP_TZ);
+            $d->setTime((int) $now->format('H'), (int) $now->format('i'), (int) $now->format('s'));
+        }
+        $data_recebido_datetime = $d->format('Y-m-d H:i:s');
     }
 }
-if (!$data_recebido) {
-    $data_recebido = date('Y-m-d');
+if (!$data_recebido_datetime) {
+    $data_recebido_datetime = (new DateTime('now', $APP_TZ))->format('Y-m-d H:i:s');
 }
-$data_recebido_datetime = $data_recebido . ' 00:00:00';
-$log[] = "Data recebimento selecionada: $data_recebido";
+$log[] = "Data recebimento selecionada: $data_recebido_datetime";
+$log[] = "Timezone efetivo: $APP_TIMEZONE";
 
 $log[] = "Recebido: obra_id=$obra_id, tipo_arquivo=$tipo_arquivo, substituicao=" . ($substituicao ? 'SIM' : 'NAO');
 $log[] = "Tipos imagem: " . json_encode($tiposImagem);
 $log[] = "Sufixo: " . ($sufixo ?: '(vazio)');
 
 // Arquivos principais
-$arquivosTmp  = $_FILES['arquivos']['tmp_name'] ?? [];
+$arquivosTmp = $_FILES['arquivos']['tmp_name'] ?? [];
 $arquivosName = $_FILES['arquivos']['name'] ?? [];
 
 // Arquivos por imagem (refs/skp)
@@ -314,6 +355,110 @@ function buscarNomeCategoria($categoriaId)
     return $categorias[$categoriaId] ?? 'Outros';
 }
 
+// Mapeia id de categoria (Arquivos) para label usada no briefing (com acentos)
+function mapCategoriaBriefing($categoriaId)
+{
+    $map = [
+        1 => 'Arquitetônico',
+        2 => 'Referências',
+        3 => 'Paisagismo',
+        4 => 'Luminotécnico',
+        5 => 'Estrutural',
+    ];
+    return $map[intval($categoriaId)] ?? null;
+}
+
+function normTipoArquivoBriefing($tipo)
+{
+    $s = trim((string) $tipo);
+    if ($s === '')
+        return null;
+    if (strtoupper($s) === 'OUTROS' || strtolower($s) === 'outros')
+        return 'Outros';
+    return strtoupper($s);
+}
+
+function markBriefingRecebido($conn, $obraId, $tipoImagem, $categoriaId, $tipoArquivo, &$log)
+{
+    $cat = mapCategoriaBriefing($categoriaId);
+    $ta = normTipoArquivoBriefing($tipoArquivo);
+    if (!$cat || !$ta)
+        return;
+
+    // resolve tipo_id
+    if ($stmtTipo = $conn->prepare('SELECT id FROM briefing_tipo_imagem WHERE obra_id = ? AND tipo_imagem = ? LIMIT 1')) {
+        $stmtTipo->bind_param('is', $obraId, $tipoImagem);
+        $stmtTipo->execute();
+        $res = $stmtTipo->get_result();
+        $row = $res ? $res->fetch_assoc() : null;
+        $stmtTipo->close();
+
+        $tipoId = $row ? intval($row['id']) : 0;
+        if (!$tipoId)
+            return;
+
+        // obtém requisito atual
+        if (
+            $stmtSel = $conn->prepare(
+                "SELECT id, status FROM briefing_requisitos_arquivo
+             WHERE briefing_tipo_imagem_id = ?
+               AND categoria = ?
+               AND tipo_arquivo = ?
+               AND origem = 'cliente'
+               AND tipo_arquivo <> 'INTERNAL'
+             LIMIT 1"
+            )
+        ) {
+            $stmtSel->bind_param('iss', $tipoId, $cat, $ta);
+            $stmtSel->execute();
+            $r = $stmtSel->get_result();
+            $rowReq = $r ? $r->fetch_assoc() : null;
+            $stmtSel->close();
+
+            if (!$rowReq)
+                return;
+            $reqId = intval($rowReq['id']);
+            $from = strtolower((string) ($rowReq['status'] ?? ''));
+            if (!in_array($from, ['pendente', 'validado'], true))
+                return;
+
+            // pendente/validado -> recebido
+            if (
+                $stmtUp = $conn->prepare(
+                    "UPDATE briefing_requisitos_arquivo
+                 SET status = 'recebido', updated_at = CURRENT_TIMESTAMP
+                 WHERE id = ? AND status IN ('pendente','validado')"
+                )
+            ) {
+                $stmtUp->bind_param('i', $reqId);
+                $stmtUp->execute();
+                $aff = $stmtUp->affected_rows;
+                $stmtUp->close();
+                if ($aff > 0) {
+                    $log[] = "Briefing requisito marcado como recebido: obra=$obraId tipo='$tipoImagem' cat='$cat' arquivo='$ta'";
+
+                    // log (arquivo_id/usuario_id resolvidos fora)
+                    if (
+                        $stmtLog = $conn->prepare(
+                            "INSERT INTO briefing_requisitos_arquivo_log
+                            (requisito_id, obra_id, tipo_imagem, categoria, tipo_arquivo, from_status, to_status, action, arquivo_id, usuario_id)
+                         VALUES (?, ?, ?, ?, ?, ?, 'recebido', 'upload', ?, ?)"
+                        )
+                    ) {
+                        $arquivoId = isset($GLOBALS['__briefing_last_arquivo_id']) ? intval($GLOBALS['__briefing_last_arquivo_id']) : null;
+                        $usuarioId = isset($GLOBALS['__briefing_usuario_id']) ? intval($GLOBALS['__briefing_usuario_id']) : null;
+                        $fromStatus = $from;
+                        // bind: i i s s s s i i
+                        $stmtLog->bind_param('iissssii', $reqId, $obraId, $tipoImagem, $cat, $ta, $fromStatus, $arquivoId, $usuarioId);
+                        $stmtLog->execute();
+                        $stmtLog->close();
+                    }
+                }
+            }
+        }
+    }
+}
+
 // Normaliza um nome para uso em pasta: remove acentos, caracteres perigosos e substitui espaços por '_'
 function sanitizeDirName($str)
 {
@@ -374,7 +519,8 @@ function resolveCategoriaDir($sftp, $pastaBase, $categoriaNome, &$log)
 // Aplica chmod 0777 via SFTP quando suportado (retorna true se aplicado)
 function setSftpPermissions($sftp, $remotePath, &$log)
 {
-    if (!is_object($sftp)) return false;
+    if (!is_object($sftp))
+        return false;
     if (!method_exists($sftp, 'chmod')) {
         $log[] = "SFTP chmod não disponível para $remotePath";
         return false;
@@ -382,7 +528,7 @@ function setSftpPermissions($sftp, $remotePath, &$log)
     try {
         $ok = $sftp->chmod(0777, $remotePath);
         $log[] = $ok ? "SFTP chmod 0777 aplicado: $remotePath" : "SFTP chmod retornou false: $remotePath";
-        return (bool)$ok;
+        return (bool) $ok;
     } catch (Exception $e) {
         $log[] = "Exception ao aplicar chmod SFTP em $remotePath: " . $e->getMessage();
         return false;
@@ -392,7 +538,8 @@ function setSftpPermissions($sftp, $remotePath, &$log)
 // Tenta aplicar CHMOD 0777 via FTP (usa ftp_chmod se disponível, senão ftp_site)
 function ensureFtpPermissions($ftpConn, $path, &$log)
 {
-    if (!$ftpConn) return false;
+    if (!$ftpConn)
+        return false;
     if (function_exists('ftp_chmod')) {
         $res = @ftp_chmod($ftpConn, 0777, $path);
         $log[] = $res !== false ? "FTP chmod 0777 aplicado: $path" : "FTP chmod falhou: $path";
@@ -434,7 +581,8 @@ function ensureFtpDir($ftp, $path, &$log)
             if (@ftp_mkdir($ftp, $cur) === false) {
                 $log[] = "Falha ao criar pasta FTP: $cur";
                 // tenta voltar
-                if ($orig) @ftp_chdir($ftp, $orig);
+                if ($orig)
+                    @ftp_chdir($ftp, $orig);
                 return false;
             } else {
                 $log[] = "Criada pasta FTP: $cur";
@@ -442,7 +590,8 @@ function ensureFtpDir($ftp, $path, &$log)
         }
     }
     // volta para o original, se possível
-    if ($orig) @ftp_chdir($ftp, $orig);
+    if ($orig)
+        @ftp_chdir($ftp, $orig);
     return true;
 }
 
@@ -490,7 +639,8 @@ if ($obra_id) {
         $stmtOrdem->bind_param('i', $obra_id);
         $stmtOrdem->execute();
         $rOrd = $stmtOrdem->get_result()->fetch_assoc();
-        if ($rOrd && isset($rOrd['next_ordem'])) $next_ordem_acomp = intval($rOrd['next_ordem']);
+        if ($rOrd && isset($rOrd['next_ordem']))
+            $next_ordem_acomp = intval($rOrd['next_ordem']);
         $stmtOrdem->close();
     }
 }
@@ -577,7 +727,7 @@ function gerarNomeInterno($conn, $obra_id, $tipo_id, $categoria, $nomeTipo, $tip
     else {
         $versao = 1;
 
-        $sufixoDb = (string)$sufixo;
+        $sufixoDb = (string) $sufixo;
 
         // Versão incremental por contexto do nome interno: obra/tipo_imagem/categoria/tipo/sufixo/(imagem_id quando existir)
         if ($imagem_id !== null) {
@@ -650,7 +800,8 @@ if (!empty($arquivosTmp) && count($arquivosTmp) > 0 && ($refsSkpModo === 'geral'
             $stmtOrdem->bind_param('i', $obra_id);
             $stmtOrdem->execute();
             $rOrd = $stmtOrdem->get_result()->fetch_assoc();
-            if ($rOrd && isset($rOrd['next_ordem'])) $next_ordem_acomp = intval($rOrd['next_ordem']);
+            if ($rOrd && isset($rOrd['next_ordem']))
+                $next_ordem_acomp = intval($rOrd['next_ordem']);
             $stmtOrdem->close();
         }
     }
@@ -659,7 +810,7 @@ if (!empty($arquivosTmp) && count($arquivosTmp) > 0 && ($refsSkpModo === 'geral'
         $fileOriginalName = basename($arquivosName[$index]);
         $ext = pathinfo($fileOriginalName, PATHINFO_EXTENSION);
         $log[] = "Processando upload principal: $fileOriginalName";
-        $tamanhoArquivo = (is_file($fileTmp) ? (string)filesize($fileTmp) : '0');
+        $tamanhoArquivo = (is_file($fileTmp) ? (string) filesize($fileTmp) : '0');
 
         foreach ($tiposImagem as $nomeTipo) {
             $tipo_id = buscarTipoImagemId($conn, $nomeTipo, $log);
@@ -705,8 +856,8 @@ if (!empty($arquivosTmp) && count($arquivosTmp) > 0 && ($refsSkpModo === 'geral'
             $indice++;
 
             // Substituição
-                        // Substituição: considerar a mesma “família” do nome interno (independente do nome_original)
-                        $check = $conn->prepare("SELECT * FROM arquivos 
+            // Substituição: considerar a mesma “família” do nome interno (independente do nome_original)
+            $check = $conn->prepare("SELECT * FROM arquivos 
         WHERE obra_id = ? 
             AND tipo_imagem_id = ? 
             AND categoria_id = ?
@@ -714,7 +865,7 @@ if (!empty($arquivosTmp) && count($arquivosTmp) > 0 && ($refsSkpModo === 'geral'
             AND sufixo = ?
             AND imagem_id IS NULL
             AND status = 'atualizado'");
-                        $check->bind_param("iiiss", $obra_id, $tipo_id, $categoria, $tipo_arquivo, $sufixo);
+            $check->bind_param("iiiss", $obra_id, $tipo_id, $categoria, $tipo_arquivo, $sufixo);
             $check->execute();
             $result = $check->get_result();
             $log[] = "Encontrados {$result->num_rows} arquivos antigos para $fileOriginalName.";
@@ -743,6 +894,11 @@ if (!empty($arquivosTmp) && count($arquivosTmp) > 0 && ($refsSkpModo === 'geral'
                     $arquivo_id = $conn->insert_id;
                     $success[] = "Arquivo '$fileOriginalName' enviado para $nomeTipo como '$fileNomeInterno'";
                     $log[] = "Arquivo enviado com sucesso: $destFile";
+
+                    // Marca briefing como recebido (apenas se for categoria do briefing 1..5) + log
+                    $GLOBALS['__briefing_last_arquivo_id'] = $arquivo_id;
+                    $GLOBALS['__briefing_usuario_id'] = $usuario_id_sess ? intval($usuario_id_sess) : 0;
+                    markBriefingRecebido($conn, $obra_id, $nomeTipo, $categoria, $tipo_arquivo, $log);
 
                     // Acumula dados para acompanhamento agregado (vamos inserir 1 registro por categoria|tipo_arquivo)
                     $key = $categoria . '|' . $tipo_arquivo;
@@ -800,6 +956,8 @@ if (!empty($arquivosTmp) && count($arquivosTmp) > 0 && ($refsSkpModo === 'geral'
     }
 }
 
+// status do briefing já aplicado durante o loop de uploads
+
 // =======================
 // Upload por imagem (permitir para todos os tipos quando modo = 'porImagem')
 // =======================
@@ -846,7 +1004,7 @@ if (!empty($arquivosPorImagem) && $refsSkpModo === 'porImagem') {
                 continue;
             }
             $ext = pathinfo($nomeOriginal, PATHINFO_EXTENSION);
-            $tamanhoArquivo = (is_file($tmpFile) ? (string)filesize($tmpFile) : '0');
+            $tamanhoArquivo = (is_file($tmpFile) ? (string) filesize($tmpFile) : '0');
 
             $nomeTipo = $tiposImagem[0] ?? '';
             $tipo_id = buscarTipoImagemId($conn, $nomeTipo, $log);
@@ -866,7 +1024,7 @@ if (!empty($arquivosPorImagem) && $refsSkpModo === 'porImagem') {
             // Caso contrário, usar o campo de descrição global como fallback
             $observacao_local = '';
             if (is_array($observacoesPorImagem) && isset($observacoesPorImagem[$imagem_id])) {
-                $observacao_local = trim((string)$observacoesPorImagem[$imagem_id]);
+                $observacao_local = trim((string) $observacoesPorImagem[$imagem_id]);
             }
             if ($observacao_local !== '') {
                 $descricao_para_insert = $observacao_local;
@@ -913,7 +1071,8 @@ if (!empty($arquivosPorImagem) && $refsSkpModo === 'porImagem') {
                             $stmtOrdem2->bind_param('i', $obra_id);
                             $stmtOrdem2->execute();
                             $rOrd2 = $stmtOrdem2->get_result()->fetch_assoc();
-                            if ($rOrd2 && isset($rOrd2['next_ordem'])) $next_ordem_acomp = intval($rOrd2['next_ordem']);
+                            if ($rOrd2 && isset($rOrd2['next_ordem']))
+                                $next_ordem_acomp = intval($rOrd2['next_ordem']);
                             $stmtOrdem2->close();
                         }
                     }
@@ -1010,7 +1169,7 @@ if (!empty($arquivosPorImagem) && $refsSkpModo === 'porImagem') {
                                                 $upd->close();
 
                                                 // Insere no historico_aprovacoes para registrar a mudança
-                                                $histColab = is_numeric($colabId) ? (int)$colabId : 0;
+                                                $histColab = is_numeric($colabId) ? (int) $colabId : 0;
                                                 $responsavel = 0; // upload automático / sistema
                                                 $insHist = $conn->prepare("INSERT INTO historico_aprovacoes (funcao_imagem_id, status_anterior, status_novo, colaborador_id, responsavel) VALUES (?, ?, ?, ?, ?)");
                                                 if ($insHist) {
@@ -1069,7 +1228,8 @@ if (!empty($arquivosPorImagem) && $refsSkpModo === 'porImagem') {
                                     $log[] = "Falha ao preparar insert notificacoes: " . $conn->error;
                                 }
                             }
-                            if ($ins) $ins->close();
+                            if ($ins)
+                                $ins->close();
                         } else {
                             $log[] = "Nenhum colaborador (funcao_id=4) encontrado para imagem $imagem_id";
                         }
@@ -1099,8 +1259,8 @@ if (!empty($acompGroups)) {
 
         $acao = $grp['is_update'] ? ("Atualizado " . $categoriaNome . " em " . $tipoUpper . " para " . $targetsList)
             : ("Adicionado " . $categoriaNome . " em " . $tipoUpper . " para " . $targetsList);
-        // Use the selected date (general for all uploads) instead of today's date
-        $hojeData = $data_recebido;
+        // Use the selected datetime (general for all uploads) instead of today's date
+        $hojeData = $data_recebido_datetime;
 
         // Use o primeiro arquivo como referência (quando disponível)
         $arquivo_rep = isset($grp['arquivo_ids'][0]) ? intval($grp['arquivo_ids'][0]) : null;

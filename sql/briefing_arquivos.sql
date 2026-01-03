@@ -36,3 +36,29 @@ CREATE TABLE IF NOT EXISTS briefing_requisitos_arquivo (
         REFERENCES briefing_tipo_imagem(id)
         ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 3) Log de transições de status por requisito (auditoria)
+-- Guarda status anterior/novo, quem, quando e opcionalmente o arquivo relacionado.
+CREATE TABLE IF NOT EXISTS briefing_requisitos_arquivo_log (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    requisito_id INT NOT NULL,
+    obra_id INT NOT NULL,
+    tipo_imagem VARCHAR(60) NOT NULL,
+    categoria VARCHAR(40) NOT NULL,
+    tipo_arquivo VARCHAR(20) NOT NULL,
+    from_status VARCHAR(20) NOT NULL,
+    to_status VARCHAR(20) NOT NULL,
+    action VARCHAR(20) NOT NULL,
+    arquivo_id INT NULL,
+    usuario_id INT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    KEY idx_req (requisito_id),
+    KEY idx_obra (obra_id),
+    KEY idx_created (created_at),
+    KEY idx_lookup (obra_id, tipo_imagem, categoria, tipo_arquivo, created_at),
+
+    CONSTRAINT fk_bra_log_req FOREIGN KEY (requisito_id)
+        REFERENCES briefing_requisitos_arquivo(id)
+        ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

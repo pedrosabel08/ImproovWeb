@@ -2735,7 +2735,19 @@ function enviarImagens() {
         html: progressContainer,
         showConfirmButton: false,
         allowOutsideClick: false,
+        allowEscapeKey: false,
+        allowEnterKey: false,
         didOpen: () => {
+            // Avoid backdrop clicks bubbling to global handlers (which might close other modals/kanban UI)
+            try {
+                const container = Swal.getContainer();
+                if (container) {
+                    ['click', 'mousedown', 'touchstart', 'pointerdown'].forEach(evt => {
+                        container.addEventListener(evt, (e) => e.stopPropagation(), true);
+                    });
+                }
+            } catch (e) { }
+
             const xhr = new XMLHttpRequest();
             const startTime = Date.now();
             let uploadCancelado = false;
@@ -2870,7 +2882,19 @@ function enviarArquivo() {
         html: progressContainer,
         showConfirmButton: false,
         allowOutsideClick: false,
+        allowEscapeKey: false,
+        allowEnterKey: false,
         didOpen: () => {
+            // Avoid backdrop clicks bubbling to global handlers (which might close other modals/kanban UI)
+            try {
+                const container = Swal.getContainer();
+                if (container) {
+                    ['click', 'mousedown', 'touchstart', 'pointerdown'].forEach(evt => {
+                        container.addEventListener(evt, (e) => e.stopPropagation(), true);
+                    });
+                }
+            } catch (e) { }
+
             const xhr = new XMLHttpRequest();
             const startTime = Date.now();
             let uploadCancelado = false;

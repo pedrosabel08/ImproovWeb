@@ -1,0 +1,396 @@
+/* Styles for Briefing (Arquivos) pendências */
+.bf-tipo-box {
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin: 10px 0;
+}
+
+.bf-tipo-title {
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.bf-cat-box {
+    margin-left: 12px;
+    margin-bottom: 8px;
+}
+
+.bf-cat-title {
+    font-weight: 600;
+    margin: 6px 0;
+}
+
+.bf-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-left: 18px;
+    padding: 6px 0;
+}
+
+.bf-left {
+    display: flex;
+    flex-direction: column;
+}
+
+.bf-type-badge {
+    display: inline-block;
+    padding: 6px 10px;
+    border-radius: 12px;
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 13px;
+    margin-right: 8px;
+}
+
+.tipo-PDF {
+    background: #ef4444;
+}
+
+.tipo-IMG {
+    background: #6366f1;
+}
+
+.tipo-SKP {
+    background: #06b6d4;
+}
+
+.tipo-DWG {
+    background: #a16207;
+}
+
+.tipo-IFC {
+    background: #059669;
+}
+
+.tipo-Outros {
+    background: #6b7280;
+}
+
+.bf-status {
+    font-size: 12px;
+    padding: 4px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+}
+
+.status-pendente {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.status-recebido {
+    background: #fff7ed;
+    color: #b45309;
+}
+
+.status-validado {
+    background: #ecfdf5;
+    color: #15803d;
+}
+
+.bf-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    flex: 0 0 38%;
+}
+
+/* Layout: left column grows, right column keeps controls compact */
+.bf-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-left: 18px;
+    padding: 6px 0;
+}
+
+.bf-left {
+    flex: 1 1 60%;
+    min-width: 220px;
+}
+
+.bf-right>* {
+    margin-left: 6px;
+}
+
+.bf-file-input {
+    min-width: 160px;
+    max-width: 260px;
+}
+
+.bf-file-info {
+    order: 2;
+    flex-basis: 100%;
+    text-align: left;
+    padding-left: 6px;
+    margin-top: 6px;
+}
+
+.bf-suffix,
+.bf-obs {
+    vertical-align: middle;
+}
+
+.bf-send-btn {
+    background: #10b981;
+    color: white;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+/* Responsive: stack on narrow screens */
+@media (max-width: 800px) {
+    .bf-row {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .bf-right {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .bf-file-info {
+        order: 3;
+    }
+
+    .bf-left {
+        min-width: 100%;
+    }
+}
+
+.bf-choose-btn {
+    padding: 6px 10px;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    border-radius: 6px;
+    background: #fff;
+    cursor: pointer;
+}
+
+.bf-file-input {
+    min-width: 220px;
+}
+
+/* Dropzone (drag & drop) for briefing uploads */
+.bf-row-file .bf-file-input {
+    display: none;
+}
+
+.bf-dropzone {
+    min-width: 220px;
+    max-width: 320px;
+    padding: 10px 12px;
+    border: 2px dashed rgba(0, 0, 0, 0.18);
+    border-radius: 8px;
+    background: #fff;
+    cursor: pointer;
+    text-align: center;
+    user-select: none;
+}
+
+.bf-dropzone:focus {
+    outline: none;
+    border-color: #3b82f6;
+}
+
+.bf-dropzone.bf-dropzone--active {
+    border-color: #3b82f6;
+    background: #eee;
+}
+
+.bf-dropzone-title {
+    font-weight: 700;
+    font-size: 13px;
+}
+
+.bf-dropzone-sub {
+    margin-top: 2px;
+    opacity: 0.85;
+    font-size: 12px;
+}
+
+.bf-file-info {
+    display: none;
+    width: 100%;
+    opacity: 0.85;
+    font-size: 13px;
+    margin-left: 8px;
+}
+
+.bf-file-info.visible {
+    display: block;
+}
+
+.bf-suffix {
+    min-width: 170px;
+    display: none;
+}
+
+.bf-suffix.visible {
+    display: inline-block;
+}
+
+.bf-obs {
+    min-width: 240px;
+    display: none;
+    resize: vertical;
+}
+
+.bf-obs.visible {
+    display: block;
+}
+
+.bf-send-btn {
+    display: none;
+    width: max-content;
+}
+
+.bf-send-btn.visible {
+    display: inline-block;
+}
+
+.bf-validate-btn {
+    width: max-content;
+    padding: 6px 10px;
+    border-radius: 6px;
+}
+
+/* Upload modal progress */
+#uploadProgressFill {
+    width: 0%;
+    height: 100%;
+    background: #3b82f6;
+}
+
+#uploadProgressBar {
+    height: 12px;
+    background: #eee;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+#uploadProgressText {
+    margin-top: 8px;
+    font-size: 13px;
+    text-align: left;
+}
+
+/* Small modal for bf-right preview */
+#bfRightModalOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+#bfRightModal {
+    background: #fff;
+    border-radius: 8px;
+    padding: 12px 14px;
+    max-width: 520px;
+    width: 92%;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+    color: #111827;
+}
+
+#bfRightModal .bf-modal-close {
+    float: right;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 18px;
+    line-height: 1;
+    margin-left: 8px;
+}
+
+#bfRightModal .bf-modal-body {
+    clear: both;
+    margin-top: 6px;
+}
+
+/* Hide upload controls in the list; show them only inside the modal */
+.bf-right .bf-row-file,
+.bf-right .bf-row-controls,
+.bf-right .bf-row-send {
+    display: none;
+}
+
+#bfRightModalOverlay .bf-right {
+    justify-content: flex-start;
+    align-items: stretch;
+    flex: 1 1 auto;
+}
+
+#bfRightModalOverlay .bf-right .bf-row-file,
+#bfRightModalOverlay .bf-right .bf-row-controls,
+#bfRightModalOverlay .bf-right .bf-row-send {
+    display: flex;
+}
+
+/* Modal layout tweaks: make file row wider and center the send button */
+#bfRightModalOverlay .bf-right .bf-row-file,
+#bfRightModalOverlay .bf-right .bf-row-controls,
+#bfRightModalOverlay .bf-right .bf-row-files,
+#bfRightModalOverlay .bf-right .bf-row-send {
+    width: 100%;
+    gap: 8px;
+    align-items: center;
+}
+
+#bfRightModalOverlay .bf-right .bf-row-file {
+    justify-content: center;
+}
+
+#bfRightModalOverlay .bf-right .bf-row-send {
+    justify-content: center;
+}
+
+#bfRightModalOverlay .bf-dropzone {
+    width: 100%;
+    max-width: 480px;
+}
+
+/* Controls row: same width as dropzone */
+#bfRightModalOverlay .bf-right .bf-row-controls {
+    justify-content: center;
+}
+
+#bfRightModalOverlay .bf-right .bf-row-controls .bf-suffix,
+#bfRightModalOverlay .bf-right .bf-row-controls .bf-obs {
+    display: block;
+    width: 100%;
+    max-width: 480px;
+    box-sizing: border-box;
+    border: 1px solid rgba(0, 0, 0, 0.18);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 13px;
+    background: #fff;
+}
+
+#bfRightModalOverlay .bf-right .bf-row-controls .bf-suffix {
+    max-width: 180px;
+    height: 36px;
+    padding: 6px 10px;
+}
+
+#bfRightModalOverlay .bf-right .bf-row-controls .bf-obs {
+    max-width: 292px;
+    min-height: 36px;
+}
+
+#bfRightModalOverlay .bf-right .bf-row-controls .bf-suffix:focus,
+#bfRightModalOverlay .bf-right .bf-row-controls .bf-obs:focus {
+    outline: none;
+    border-color: #3b82f6;
+}

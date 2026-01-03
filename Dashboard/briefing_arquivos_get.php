@@ -83,7 +83,9 @@ try {
                 $tipos[$tipo]['requisitos'][$cat] = [
                     'origem' => 'interno',
                     'tipos_arquivo' => [],
-                    'status' => 'dispensado'
+                    'status' => 'dispensado',
+                    // itens por tipo_arquivo (cliente)
+                    'itens' => []
                 ];
             }
 
@@ -92,9 +94,23 @@ try {
 
             if ($origem === 'cliente') {
                 $tipos[$tipo]['requisitos'][$cat]['origem'] = 'cliente';
-                $tipos[$tipo]['requisitos'][$cat]['status'] = $row['status'] ?? 'pendente';
                 if ($tipoArquivo && strtoupper((string)$tipoArquivo) !== 'INTERNAL') {
                     $tipos[$tipo]['requisitos'][$cat]['tipos_arquivo'][] = $tipoArquivo;
+                    $tipos[$tipo]['requisitos'][$cat]['itens'][(string)$tipoArquivo] = [
+                        'tipo_arquivo' => $tipoArquivo,
+                        'status' => $row['status'] ?? 'pendente',
+                        'updated_at' => $row['requisito_updated_at'] ?? null,
+                    ];
+                }
+
+                // status agregado por categoria: prioriza RECEBIDO > PENDENTE > VALIDADO
+                $st = strtolower((string)($row['status'] ?? 'pendente'));
+                $cur = strtolower((string)($tipos[$tipo]['requisitos'][$cat]['status'] ?? 'pendente'));
+                $rank = ['recebido' => 3, 'pendente' => 2, 'validado' => 1, 'dispensado' => 0];
+                $rNew = $rank[$st] ?? 0;
+                $rCur = $rank[$cur] ?? 0;
+                if ($rNew > $rCur) {
+                    $tipos[$tipo]['requisitos'][$cat]['status'] = $st;
                 }
             } else {
                 // interno: mantém como interno e não adiciona tipos_arquivo
@@ -119,6 +135,21 @@ try {
 
     $stmt->close();
     $conn->close();
+
+    // Normaliza itens (map -> array) e remove duplicatas em tipos_arquivo
+    foreach ($tipos as &$t) {
+        foreach ($t['requisitos'] as &$r) {
+            if (isset($r['tipos_arquivo']) && is_array($r['tipos_arquivo'])) {
+                $r['tipos_arquivo'] = array_values(array_unique($r['tipos_arquivo']));
+            }
+            if (isset($r['itens']) && is_array($r['itens'])) {
+                $r['itens'] = array_values($r['itens']);
+            } else {
+                $r['itens'] = [];
+            }
+        }
+    }
+    unset($t, $r);
 
     echo json_encode([
         'success' => true,

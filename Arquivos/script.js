@@ -408,6 +408,19 @@ document.getElementById("uploadForm").addEventListener("submit", async function 
             showCancelButton: true,
             cancelButtonText: 'Cancelar',
             allowOutsideClick: false,
+            allowEscapeKey: false,
+            allowEnterKey: false,
+            didOpen: () => {
+                // Avoid backdrop clicks bubbling to global handlers (which might close other modals)
+                try {
+                    const container = Swal.getContainer();
+                    if (container) {
+                        ['click', 'mousedown', 'touchstart', 'pointerdown'].forEach(evt => {
+                            container.addEventListener(evt, (e) => e.stopPropagation(), true);
+                        });
+                    }
+                } catch (e) { }
+            },
             willOpen: () => {
                 // attach progress handler
                 const container = Swal.getHtmlContainer();

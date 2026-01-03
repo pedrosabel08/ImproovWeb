@@ -1,3 +1,148 @@
+// Small modal: open bf-right content when clicking a 'pendente' status
+; (function initBriefingRightModal() {
+    let lastPlaceholder = null;
+    let lastRight = null;
+
+    function hideOverlayOnly() {
+        const ov = document.getElementById('bfRightModalOverlay');
+        if (!ov) return;
+        ov.dataset.hiddenForUpload = '1';
+        ov.style.visibility = 'hidden';
+        ov.style.pointerEvents = 'none';
+        ov.style.background = 'transparent';
+    }
+
+    function showOverlayIfHidden() {
+        const ov = document.getElementById('bfRightModalOverlay');
+        if (!ov) return;
+        delete ov.dataset.hiddenForUpload;
+        ov.style.visibility = '';
+        ov.style.pointerEvents = '';
+        ov.style.background = '';
+    }
+
+    function resetRightControls(right) {
+        if (!right) return;
+
+        // clear file input
+        const fileInput = right.querySelector('input.bf-file-input[type="file"]');
+        if (fileInput) fileInput.value = '';
+
+        // reset suffix + obs
+        const suffix = right.querySelector('.bf-suffix');
+        if (suffix) {
+            suffix.value = '';
+            suffix.classList.remove('visible');
+        }
+
+        const obs = right.querySelector('.bf-obs');
+        if (obs) {
+            obs.value = '';
+            obs.classList.remove('visible');
+        }
+
+        // reset file info
+        const fileInfo = right.querySelector('.bf-file-info');
+        if (fileInfo) {
+            fileInfo.textContent = '';
+            fileInfo.classList.remove('visible');
+        }
+
+        // hide send button
+        const sendBtn = right.querySelector('.bf-send-btn');
+        if (sendBtn) {
+            sendBtn.disabled = false;
+            sendBtn.classList.remove('visible');
+        }
+
+        // reset dropzone label
+        const dropzone = right.querySelector('.bf-dropzone');
+        if (dropzone) {
+            dropzone.classList.remove('bf-dropzone--active');
+            dropzone.innerHTML = '<div class="bf-dropzone-title">Arraste arquivo(s) aqui</div><div class="bf-dropzone-sub">ou clique para selecionar</div>';
+        }
+    }
+
+    function restoreRight() {
+        if (lastPlaceholder && lastRight && lastPlaceholder.parentNode) {
+            lastPlaceholder.parentNode.insertBefore(lastRight, lastPlaceholder);
+            lastPlaceholder.parentNode.removeChild(lastPlaceholder);
+        }
+        lastPlaceholder = null;
+        lastRight = null;
+    }
+
+    function closeModal() {
+        const ov = document.getElementById('bfRightModalOverlay');
+        if (ov) document.body.removeChild(ov);
+
+        // reset state before putting it back in the list
+        resetRightControls(lastRight);
+        restoreRight();
+        document.removeEventListener('keydown', onKeyDown);
+    }
+
+    // Expose minimal hooks so the upload flow can hide this overlay during progress.
+    // Keep it intentionally small to avoid coupling with BRIEFING_ARQUIVOS internals.
+    try {
+        window.__bfPendingModal = {
+            hide: hideOverlayOnly,
+            show: showOverlayIfHidden,
+            close: closeModal
+        };
+    } catch (_) { }
+
+    function onKeyDown(e) {
+        if (e.key === 'Escape') closeModal();
+    }
+
+    document.addEventListener('click', function (ev) {
+        const target = ev.target.closest && ev.target.closest('.status-pendente');
+        if (!target) return;
+
+        const row = target.closest('.bf-row');
+        if (!row) return;
+
+        const right = row.querySelector('.bf-right');
+        if (!right) return;
+
+        // build overlay
+        if (document.getElementById('bfRightModalOverlay')) return; // already open
+
+        const overlay = document.createElement('div');
+        overlay.id = 'bfRightModalOverlay';
+
+        const modal = document.createElement('div');
+        modal.id = 'bfRightModal';
+
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'bf-modal-close';
+        closeBtn.innerHTML = '×';
+        closeBtn.addEventListener('click', closeModal);
+
+        const body = document.createElement('div');
+        body.className = 'bf-modal-body';
+
+        // Move the actual bf-right into the modal so existing handlers keep working.
+        // Keep a placeholder in the original layout to avoid jumping the row height.
+        lastRight = right;
+        lastPlaceholder = document.createElement('div');
+        lastPlaceholder.className = 'bf-right-placeholder';
+        right.parentNode.insertBefore(lastPlaceholder, right);
+        body.appendChild(right);
+        modal.appendChild(closeBtn);
+        modal.appendChild(body);
+        overlay.appendChild(modal);
+
+        // close when clicking outside modal
+        overlay.addEventListener('click', function (e) {
+            if (e.target === overlay) closeModal();
+        });
+
+        document.body.appendChild(overlay);
+        document.addEventListener('keydown', onKeyDown);
+    });
+})();
 // Obtém o 'obra_id' do localStorage
 var obraId = localStorage.getItem('obraId');
 var usuarioId = localStorage.getItem('idusuario');
@@ -1155,6 +1300,26 @@ const BRIEFING_ARQUIVOS = (function () {
     const CATEGORIAS = ['Arquitetônico', 'Referências', 'Paisagismo', 'Luminotécnico', 'Estrutural'];
     const TIPOS_ARQUIVO = ['PDF', 'IMG', 'SKP', 'DWG', 'IFC', 'Outros'];
 
+    // Opções de sufixo (mesma lógica do Arquivos/script.js)
+    const SUFIXOS = {
+        'DWG': ['TERREO', 'LAZER', 'COBERTURA', 'MEZANINO', 'CORTES', 'GERAL', 'TIPO', 'GARAGEM', 'FACHADA', 'DUPLEX', 'ROOFTOP', 'LOGO'],
+        'PDF': ['DOCUMENTACAO', 'RELATORIO', 'LOGO', 'ARQUITETONICO', 'REFERENCIA', 'ESQUADRIA'],
+        'SKP': ['MODELAGEM', 'REFERENCIA'],
+        'IMG': ['FACHADA', 'INTERNA', 'EXTERNA', 'UNIDADE', 'LOGO'],
+        'IFC': ['BIM'],
+        'Outros': ['Geral']
+    };
+
+    // (visual styles moved to css/briefing_arquivos.css)
+
+    const CATEGORIA_ID = {
+        'Arquitetônico': 1,
+        'Referências': 2,
+        'Paisagismo': 3,
+        'Luminotécnico': 4,
+        'Estrutural': 5
+    };
+
     const IDS = {
         modal: 'briefingArquivosModal',
         closeBtn: 'closeBriefingArquivos',
@@ -1174,11 +1339,60 @@ const BRIEFING_ARQUIVOS = (function () {
     let cachedServerData = null;
     let cachedTipos = [];
 
+    // pendências (seção acima da lista de arquivos)
+    let cachedPendencias = null;
+    let alertedRecebidos = false;
+
     let isEditing = false;
     let isAnswered = false;
     let wired = false;
 
     function el(id) { return document.getElementById(id); }
+
+    function escapeHtml(s) {
+        return String(s ?? '')
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#039;');
+    }
+
+    function normalizeTipoArquivoDisplay(tipo) {
+        const v = String(tipo || '').trim();
+        if (!v) return '';
+        if (v.toUpperCase() === 'OUTROS') return 'Outros';
+        return v.toUpperCase();
+    }
+
+    function sortTiposImagem(list) {
+        const arr = Array.isArray(list) ? list.slice() : [];
+        const canonical = TIPOS_CANONICOS.filter(t => arr.includes(t));
+        const other = arr.filter(t => !TIPOS_CANONICOS.includes(t)).sort((a, b) => String(a).localeCompare(String(b)));
+        return canonical.concat(other);
+    }
+
+    function sortTiposArquivo(list) {
+        const order = {
+            'PDF': 1,
+            'IMG': 2,
+            'SKP': 3,
+            'DWG': 4,
+            'IFC': 5,
+            'OUTROS': 6,
+            'Outros': 6
+        };
+        const arr = Array.isArray(list) ? list.slice() : [];
+        arr.sort((a, b) => {
+            const aa = normalizeTipoArquivoDisplay(a);
+            const bb = normalizeTipoArquivoDisplay(b);
+            const ra = order[aa] || 99;
+            const rb = order[bb] || 99;
+            if (ra !== rb) return ra - rb;
+            return aa.localeCompare(bb);
+        });
+        return arr;
+    }
 
     function sanitizeKey(s) {
         return String(s || '')
@@ -1504,6 +1718,563 @@ const BRIEFING_ARQUIVOS = (function () {
         return res.json();
     }
 
+    function buildPendenciasFromServer(serverData) {
+        const tiposObj = serverData?.data?.tipos || {};
+        const tiposImagem = Object.keys(tiposObj);
+        const orderedTipos = sortTiposImagem(tiposImagem);
+
+        const pend = [];
+        orderedTipos.forEach(tipoImagem => {
+            const tnode = tiposObj[tipoImagem];
+            const reqs = tnode?.requisitos || {};
+
+            const catsOut = [];
+            CATEGORIAS.forEach(cat => {
+                const r = reqs?.[cat];
+                const origem = (r?.origem ? String(r.origem).toLowerCase() : 'interno');
+                if (origem !== 'cliente') return;
+
+                const itens = Array.isArray(r?.itens) ? r.itens : [];
+                const itensNorm = itens
+                    .map(it => ({
+                        tipo_arquivo: normalizeTipoArquivoDisplay(it?.tipo_arquivo),
+                        status: String(it?.status || 'pendente').toLowerCase()
+                    }))
+                    .filter(it => !!it.tipo_arquivo);
+
+                if (!itensNorm.length) {
+                    // fallback compat: usa tipos_arquivo sem status
+                    const tiposArquivo = sortTiposArquivo(r?.tipos_arquivo || []);
+                    if (!tiposArquivo.length) return;
+                    catsOut.push({
+                        categoria: cat,
+                        categoria_id: CATEGORIA_ID[cat] || null,
+                        itens: tiposArquivo.map(x => ({ tipo_arquivo: normalizeTipoArquivoDisplay(x), status: 'pendente' })).filter(x => !!x.tipo_arquivo)
+                    });
+                    return;
+                }
+
+                catsOut.push({
+                    categoria: cat,
+                    categoria_id: CATEGORIA_ID[cat] || null,
+                    itens: sortTiposArquivo(itensNorm.map(x => x.tipo_arquivo)).map(t => {
+                        const found = itensNorm.find(i => i.tipo_arquivo === t);
+                        return { tipo_arquivo: t, status: found?.status || 'pendente' };
+                    })
+                });
+            });
+
+            if (catsOut.length) {
+                pend.push({ tipo_imagem: tipoImagem, categorias: catsOut });
+            }
+        });
+
+        return pend;
+    }
+
+    function statusLabel(status) {
+        const s = String(status || '').toLowerCase();
+        if (s === 'recebido') return 'Recebido (aguardando validação)';
+        if (s === 'validado') return 'Validado';
+        return 'Pendente';
+    }
+
+    function statusColor(status) {
+        const s = String(status || '').toLowerCase();
+        if (s === 'recebido') return '#b45309'; // amber-ish
+        if (s === 'validado') return '#15803d'; // green-ish
+        return '#b91c1c'; // red-ish
+    }
+
+    async function validarRequisito(obraId, tipoImagem, categoria, tipoArquivo) {
+        const res = await fetch('briefing_arquivos_validar.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+                obra_id: Number(obraId),
+                tipo_imagem: tipoImagem,
+                categoria: categoria,
+                tipo_arquivo: (tipoArquivo === 'Outros') ? 'Outros' : String(tipoArquivo).toUpperCase()
+            })
+        });
+        return res.json();
+    }
+
+    function renderPendenciasLayout(pendencias) {
+        const wrap = el('briefingArquivosPendentes');
+        const content = el('briefingArquivosPendentesContent');
+        if (!wrap || !content) return;
+
+        if (!Array.isArray(pendencias) || pendencias.length === 0) {
+            wrap.style.display = 'none';
+            content.innerHTML = '';
+            return;
+        }
+
+        wrap.style.display = '';
+        content.innerHTML = '';
+
+        pendencias.forEach(nodeTipo => {
+            const tipoBox = document.createElement('div');
+            tipoBox.className = 'bf-tipo-box';
+
+            const h3 = document.createElement('div');
+            h3.textContent = nodeTipo.tipo_imagem;
+            h3.className = 'bf-tipo-title';
+            tipoBox.appendChild(h3);
+
+            nodeTipo.categorias.forEach(nodeCat => {
+                const catBox = document.createElement('div');
+                catBox.className = 'bf-cat-box';
+
+                const h4 = document.createElement('div');
+                h4.textContent = nodeCat.categoria;
+                h4.className = 'bf-cat-title';
+                catBox.appendChild(h4);
+
+                const itens = Array.isArray(nodeCat.itens) ? nodeCat.itens : [];
+                itens.forEach(item => {
+                    const tipoArquivo = item.tipo_arquivo;
+                    const st = String(item.status || 'pendente').toLowerCase();
+                    const row = document.createElement('div');
+                    row.className = 'bf-row';
+
+                    const left = document.createElement('div');
+                    left.className = 'bf-left';
+
+                    const line = document.createElement('div');
+                    // type badge and status pill
+                    const tipoKeyForColor = (tipoArquivo === 'Outros') ? 'Outros' : String(tipoArquivo).toUpperCase();
+                    const tipoBadge = document.createElement('span');
+                    tipoBadge.className = 'bf-type-badge tipo-' + tipoKeyForColor;
+                    tipoBadge.textContent = tipoArquivo;
+
+                    const stKey = String(st || 'pendente').toLowerCase();
+                    const statusSpan = document.createElement('span');
+                    statusSpan.className = 'bf-status status-' + stKey;
+                    statusSpan.textContent = ' ' + statusLabel(st);
+
+                    line.appendChild(tipoBadge);
+                    line.appendChild(statusSpan);
+                    left.appendChild(line);
+
+                    row.appendChild(left);
+
+                    if (canEdit && st === 'pendente') {
+                        const right = document.createElement('div');
+                        right.className = 'bf-right';
+
+                        const file = document.createElement('input');
+                        file.type = 'file';
+                        file.multiple = true;
+                        file.className = 'bf-file-input';
+                        file.dataset.obraId = String((typeof obraId !== 'undefined' && obraId) ? obraId : (localStorage.getItem('obraId') || ''));
+                        file.dataset.tipoImagem = nodeTipo.tipo_imagem;
+                        file.dataset.categoria = nodeCat.categoria;
+                        file.dataset.categoriaId = nodeCat.categoria_id ? String(nodeCat.categoria_id) : '';
+                        file.dataset.tipoArquivo = tipoArquivo;
+
+                        // accept básico por tipo
+                        const tipoKeyAccept = (tipoArquivo === 'Outros') ? 'Outros' : String(tipoArquivo).toUpperCase();
+                        if (tipoKeyAccept === 'PDF') file.accept = '.pdf';
+                        if (tipoKeyAccept === 'DWG') file.accept = '.dwg';
+                        if (tipoKeyAccept === 'SKP') file.accept = '.skp';
+                        if (tipoKeyAccept === 'IFC') file.accept = '.ifc';
+                        if (tipoKeyAccept === 'IMG') file.accept = 'image/*';
+
+                        const suffix = document.createElement('select');
+                        suffix.className = 'bf-suffix';
+                        suffix.dataset.role = 'sufixo';
+
+                        const obs = document.createElement('textarea');
+                        obs.className = 'bf-obs';
+                        obs.rows = 2;
+                        obs.placeholder = 'Observação (opcional)';
+                        obs.dataset.role = 'observacao';
+
+                        const fileInfo = document.createElement('div');
+                        fileInfo.className = 'bf-file-info';
+                        fileInfo.dataset.role = 'fileinfo';
+
+                        const sendBtn = document.createElement('button');
+                        sendBtn.type = 'button';
+                        sendBtn.textContent = 'Enviar';
+                        sendBtn.className = 'bf-send-btn';
+
+                        const dropzone = document.createElement('div');
+                        dropzone.className = 'bf-dropzone';
+                        dropzone.tabIndex = 0;
+                        dropzone.setAttribute('role', 'button');
+                        dropzone.innerHTML = '<div class="bf-dropzone-title">Arraste arquivo(s) aqui</div><div class="bf-dropzone-sub">ou clique para selecionar</div>';
+
+                        function fillSuffixOptions(tipo) {
+                            const key = (tipo === 'Outros') ? 'Outros' : String(tipo).toUpperCase();
+                            const opts = SUFIXOS[key] || SUFIXOS['Outros'] || ['Geral'];
+                            suffix.innerHTML = '';
+                            const o0 = document.createElement('option');
+                            o0.value = '';
+                            o0.textContent = 'Sufixo';
+                            suffix.appendChild(o0);
+                            opts.forEach(v => {
+                                const o = document.createElement('option');
+                                o.value = v;
+                                o.textContent = v;
+                                suffix.appendChild(o);
+                            });
+                        }
+
+                        fillSuffixOptions(tipoArquivo);
+
+                        function fileMatchesAccept(f, accept) {
+                            if (!accept) return true;
+                            const a = String(accept).trim();
+                            if (!a) return true;
+                            const parts = a.split(',').map(s => s.trim()).filter(Boolean);
+                            const name = (f && f.name) ? String(f.name).toLowerCase() : '';
+                            const type = (f && f.type) ? String(f.type).toLowerCase() : '';
+                            return parts.some(p => {
+                                if (p === 'image/*') return type.startsWith('image/');
+                                if (p.startsWith('.')) return name.endsWith(p.toLowerCase());
+                                // fallback: mime exact match
+                                return type === p.toLowerCase();
+                            });
+                        }
+
+                        function setFilesOnInput(inputEl, files) {
+                            try {
+                                const dt = new DataTransfer();
+                                Array.from(files || []).forEach(f => dt.items.add(f));
+                                inputEl.files = dt.files;
+                            } catch (e) {
+                                // If DataTransfer is not supported, fallback: just open picker
+                                inputEl.click();
+                            }
+                            inputEl.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+
+                        dropzone.addEventListener('click', () => file.click());
+                        dropzone.addEventListener('keydown', (e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                file.click();
+                            }
+                        });
+
+                        ;['dragenter', 'dragover'].forEach(evt => {
+                            dropzone.addEventListener(evt, (e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                dropzone.classList.add('bf-dropzone--active');
+                            });
+                        });
+
+                        ;['dragleave', 'dragend'].forEach(evt => {
+                            dropzone.addEventListener(evt, (e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                dropzone.classList.remove('bf-dropzone--active');
+                            });
+                        });
+
+                        dropzone.addEventListener('drop', (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            dropzone.classList.remove('bf-dropzone--active');
+
+                            const filesDropped = (e.dataTransfer && e.dataTransfer.files) ? Array.from(e.dataTransfer.files) : [];
+                            if (!filesDropped.length) return;
+
+                            const acceptNow = file.accept || '';
+                            const ok = filesDropped.filter(f => fileMatchesAccept(f, acceptNow));
+                            if (!ok.length) {
+                                Swal.fire({
+                                    icon: 'warning',
+                                    title: 'Arquivo inválido',
+                                    text: 'Os arquivos arrastados não são compatíveis com este tipo.'
+                                });
+                                return;
+                            }
+                            setFilesOnInput(file, ok);
+                        });
+
+                        file.addEventListener('change', () => {
+                            const hasFile = !!(file.files && file.files.length > 0);
+                            suffix.classList.toggle('visible', hasFile);
+                            obs.classList.toggle('visible', hasFile);
+                            sendBtn.classList.toggle('visible', hasFile);
+                            fileInfo.classList.toggle('visible', hasFile);
+                            if (!hasFile) {
+                                suffix.value = '';
+                                obs.value = '';
+                                fileInfo.textContent = '';
+                                fileInfo.classList.remove('visible');
+                                dropzone.innerHTML = '<div class="bf-dropzone-title">Arraste arquivo(s) aqui</div><div class="bf-dropzone-sub">ou clique para selecionar</div>';
+                            }
+
+                            if (hasFile) {
+                                const names = Array.from(file.files).map(f => f.name);
+                                const maxShow = 6;
+                                const preview = names.slice(0, maxShow);
+                                const more = names.length > maxShow ? ` (+${names.length - maxShow})` : '';
+                                fileInfo.textContent = `${names.length} arquivo(s): ${preview.join(', ')}${more}`;
+                                dropzone.innerHTML = `<div class="bf-dropzone-title">${names.length} arquivo(s) selecionado(s)</div><div class="bf-dropzone-sub">Clique para trocar</div>`;
+                            }
+                        });
+
+                        sendBtn.addEventListener('click', async () => {
+                            const pendingModal = (typeof window !== 'undefined' && window.__bfPendingModal) ? window.__bfPendingModal : null;
+                            let hidPendingModal = false;
+
+                            const obraIdNow = file.dataset.obraId;
+                            const tipoImagemNow = file.dataset.tipoImagem;
+                            const categoriaIdNow = file.dataset.categoriaId;
+                            const tipoArquivoNow = file.dataset.tipoArquivo;
+                            const sufixoNow = suffix.value || '';
+                            const descricaoNow = obs.value || '';
+
+                            if (!file.files || file.files.length === 0) {
+                                Swal.fire({ icon: 'warning', title: 'Selecione arquivo(s)', text: 'Selecione um ou mais arquivos para enviar.' });
+                                return;
+                            }
+
+                            if (!obraIdNow || !tipoImagemNow || !categoriaIdNow || !tipoArquivoNow) {
+                                Swal.fire({ icon: 'error', title: 'Erro', text: 'Dados do requisito incompletos para envio.' });
+                                return;
+                            }
+
+                            // monta payload multipart compatível com Arquivos/upload.php
+                            const formData = new FormData();
+                            formData.append('obra_id', obraIdNow);
+                            formData.append('tipo_categoria', categoriaIdNow);
+                            formData.append('tipo_arquivo', (tipoArquivoNow === 'Outros') ? 'Outros' : String(tipoArquivoNow).toUpperCase());
+                            formData.append('tipo_imagem[]', tipoImagemNow);
+                            formData.append('sufixo', sufixoNow);
+                            formData.append('descricao', descricaoNow);
+                            formData.append('refsSkpModo', 'geral');
+                            formData.append('flag_substituicao', '0');
+
+                            Array.from(file.files).forEach(f => {
+                                formData.append('arquivos[]', f);
+                            });
+
+                            // UI: bloqueia controles durante envio
+                            const prevDisabled = {
+                                file: file.disabled,
+                                suffix: suffix.disabled,
+                                obs: obs.disabled,
+                                send: sendBtn.disabled
+                            };
+                            file.disabled = true;
+                            suffix.disabled = true;
+                            obs.disabled = true;
+                            sendBtn.disabled = true;
+                            
+                            try {
+                                // Hide the pending overlay modal so only the progress dialog stays visible.
+                                if (pendingModal && typeof pendingModal.hide === 'function') {
+                                    pendingModal.hide();
+                                    hidPendingModal = true;
+                                }
+
+                                // mostra modal com barra de progresso e estatísticas
+                                Swal.fire({
+                                    title: 'Enviando arquivos',
+                                    html: `
+                                        <div style="margin-top:8px">
+                                          <div style="height:12px;background:#eee;border-radius:8px;overflow:hidden">
+                                            <div id="uploadProgressFill" style="width:0%;height:100%;background:#3b82f6"></div>
+                                          </div>
+                                          <div id="uploadProgressText" style="margin-top:8px;font-size:13px;text-align:left">0% — 0.00 / 0.00 MB — 0.00 MB/s — 00:00 elapsed — 00:00 remaining</div>
+                                        </div>
+                                    `,
+                                    allowOutsideClick: false,
+                                    showConfirmButton: false,
+                                    didOpen: () => { }
+                                });
+
+                                const progressFill = document.getElementById('uploadProgressFill');
+                                const progressText = document.getElementById('uploadProgressText');
+
+                                function formatSeconds(sec) {
+                                    const s = Math.max(0, Math.round(sec));
+                                    const m = Math.floor(s / 60);
+                                    const ss = s % 60;
+                                    return `${String(m).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
+                                }
+
+                                const uploadResult = await new Promise((resolve, reject) => {
+                                    const xhr = new XMLHttpRequest();
+                                    const start = Date.now();
+
+                                    xhr.open('POST', '../Arquivos/upload.php', true);
+                                    xhr.withCredentials = true;
+
+                                    xhr.upload.onprogress = function (e) {
+                                        if (e.lengthComputable) {
+                                            const loaded = e.loaded;
+                                            const total = e.total;
+                                            const pct = Math.round((loaded / total) * 100);
+                                            const elapsedSec = Math.max(0.001, (Date.now() - start) / 1000);
+                                            const speedBps = loaded / elapsedSec;
+                                            const remainingSec = speedBps > 1 ? Math.max(0, Math.round((total - loaded) / speedBps)) : 0;
+
+                                            const mbLoaded = (loaded / 1024 / 1024).toFixed(2);
+                                            const mbTotal = (total / 1024 / 1024).toFixed(2);
+                                            const mbps = (speedBps / 1024 / 1024).toFixed(2);
+
+                                            if (progressFill) progressFill.style.width = pct + '%';
+                                            if (progressText) progressText.innerHTML = `${pct}% — ${mbLoaded} / ${mbTotal} MB — ${mbps} MB/s — ${formatSeconds(elapsedSec)} elapsed — ${formatSeconds(remainingSec)} remaining`;
+                                        } else {
+                                            if (progressText) progressText.innerHTML = 'Enviando...';
+                                        }
+                                    };
+
+                                    xhr.onerror = function () { reject(new Error('Network error')); };
+                                    xhr.onabort = function () { reject(new Error('Upload aborted')); };
+
+                                    xhr.onreadystatechange = function () {
+                                        if (xhr.readyState === 4) {
+                                            try {
+                                                const responseText = xhr.responseText || '{}';
+                                                const json = JSON.parse(responseText);
+                                                resolve(json);
+                                            } catch (e) {
+                                                reject(e);
+                                            }
+                                        }
+                                    };
+
+                                    xhr.send(formData);
+                                });
+
+                                Swal.close();
+
+                                if (uploadResult && Array.isArray(uploadResult.errors) && uploadResult.errors.length > 0) {
+                                    Swal.fire({ icon: 'error', title: 'Erro ao enviar', html: uploadResult.errors.map(e => escapeHtml(e)).join('<br>') });
+                                    return;
+                                }
+
+                                Swal.fire({ icon: 'success', title: 'Enviado', text: 'Arquivo(s) enviado(s) com sucesso.' });
+
+                                // após envio, recarrega pendências para atualizar status (pendente -> recebido)
+                                try {
+                                    const fresh = await fetchServerData();
+                                    if (fresh && fresh.success) {
+                                        cachedPendencias = buildPendenciasFromServer(fresh);
+                                        renderPendenciasLayout(cachedPendencias);
+                                    }
+                                } catch (e) {
+                                    console.warn('Erro ao recarregar pendências após upload:', e);
+                                }
+
+                                // limpa UI do input
+                                file.value = '';
+                                suffix.value = '';
+                                obs.value = '';
+                                suffix.classList.remove('visible');
+                                obs.classList.remove('visible');
+                                sendBtn.classList.remove('visible');
+                                fileInfo.classList.remove('visible');
+                                fileInfo.textContent = '';
+                            } catch (err) {
+                                console.error(err);
+                                Swal.close();
+                                Swal.fire({ icon: 'error', title: 'Erro ao enviar', text: 'Tente novamente.' });
+                            } finally {
+                                file.disabled = prevDisabled.file;
+                                suffix.disabled = prevDisabled.suffix;
+                                obs.disabled = prevDisabled.obs;
+                                sendBtn.disabled = prevDisabled.send;
+
+                                // Close/reset the pending overlay after upload attempt.
+                                if (hidPendingModal && pendingModal && typeof pendingModal.close === 'function') {
+                                    pendingModal.close();
+                                } else if (hidPendingModal && pendingModal && typeof pendingModal.show === 'function') {
+                                    pendingModal.show();
+                                }
+                            }
+                        });
+
+                        // organize into 4 rows: file input / (sufixo + obs) / file info / send button
+                        const rowFile = document.createElement('div');
+                        rowFile.className = 'bf-row-file';
+                        rowFile.appendChild(dropzone);
+                        rowFile.appendChild(file);
+
+                        const rowControls = document.createElement('div');
+                        rowControls.className = 'bf-row-controls';
+                        rowControls.appendChild(suffix);
+                        rowControls.appendChild(obs);
+
+                        const rowFiles = document.createElement('div');
+                        rowFiles.className = 'bf-row-files';
+                        rowFiles.appendChild(fileInfo);
+
+                        const rowSend = document.createElement('div');
+                        rowSend.className = 'bf-row-send';
+                        rowSend.appendChild(sendBtn);
+
+                        right.appendChild(rowFile);
+                        right.appendChild(rowControls);
+                        right.appendChild(rowFiles);
+                        right.appendChild(rowSend);
+                        row.appendChild(right);
+                    } else if (canEdit && st === 'recebido') {
+                        const right = document.createElement('div');
+                        right.className = 'bf-right';
+
+                        const btnVal = document.createElement('button');
+                        btnVal.type = 'button';
+                        btnVal.textContent = 'Validar';
+                        btnVal.className = 'bf-validate-btn';
+
+                        btnVal.addEventListener('click', async () => {
+                            const obraIdNow = (typeof obraId !== 'undefined' && obraId) ? obraId : (localStorage.getItem('obraId') || '');
+                            if (!obraIdNow) return;
+
+                            const confirm = await Swal.fire({
+                                title: 'Validar arquivo',
+                                text: `${nodeTipo.tipo_imagem} / ${nodeCat.categoria} / ${tipoArquivo}`,
+                                icon: 'question',
+                                showCancelButton: true,
+                                confirmButtonText: 'Validar',
+                                cancelButtonText: 'Cancelar'
+                            });
+                            if (!confirm.isConfirmed) return;
+
+                            try {
+                                const js = await validarRequisito(obraIdNow, nodeTipo.tipo_imagem, nodeCat.categoria, tipoArquivo);
+                                if (js && js.success) {
+                                    Swal.fire({ icon: 'success', title: 'Validado', text: 'Requisito validado com sucesso.' });
+                                    const fresh = await fetchServerData();
+                                    if (fresh && fresh.success) {
+                                        cachedPendencias = buildPendenciasFromServer(fresh);
+                                        renderPendenciasLayout(cachedPendencias);
+                                    }
+                                } else {
+                                    Swal.fire({ icon: 'error', title: 'Erro', text: (js && (js.error || js.details)) ? (js.error || js.details) : 'Tente novamente.' });
+                                }
+                            } catch (e) {
+                                console.error(e);
+                                Swal.fire({ icon: 'error', title: 'Erro', text: 'Tente novamente.' });
+                            }
+                        });
+
+                        right.appendChild(btnVal);
+                        row.appendChild(right);
+                    }
+
+                    catBox.appendChild(row);
+                });
+
+                tipoBox.appendChild(catBox);
+            });
+
+            content.appendChild(tipoBox);
+        });
+    }
+
     function collectPayload(tipos) {
         const payload = { obra_id: Number(obraId), tipos: {} };
         (Array.isArray(tipos) ? tipos : []).forEach(tipoImagem => {
@@ -1695,6 +2466,37 @@ const BRIEFING_ARQUIVOS = (function () {
 
         // garante handlers do modal e botões de abrir
         bindOnce();
+
+        // Renderiza pendências do cliente (layout) acima da lista de arquivos
+        try {
+            const js = await fetchServerData();
+            if (js && js.success) {
+                cachedPendencias = buildPendenciasFromServer(js);
+                renderPendenciasLayout(cachedPendencias);
+
+                // alerta se houver algum requisito recebido aguardando validação
+                if (canEdit && !alertedRecebidos) {
+                    const hasRecebido = (cachedPendencias || []).some(t => (t.categorias || []).some(c => (c.itens || []).some(i => String(i.status || '').toLowerCase() === 'recebido')));
+                    if (hasRecebido) {
+                        alertedRecebidos = true;
+                        Swal.fire({
+                            icon: 'info',
+                            title: 'Arquivos recebidos',
+                            text: 'Existem requisitos com arquivos recebidos aguardando validação. Verifique e valide na seção de requisitos.'
+                        }).then(() => {
+                            try {
+                                document.getElementById('secao-arquivos')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            } catch (_) { }
+                        });
+                    }
+                }
+            } else {
+                renderPendenciasLayout([]);
+            }
+        } catch (e) {
+            console.warn('Erro ao carregar pendências do briefing de arquivos:', e);
+            renderPendenciasLayout([]);
+        }
     }
 
     return { ensureRenderedFrom, openModal };

@@ -133,6 +133,7 @@ $conn->close();
     <link rel="stylesheet" href="../css/styleSidebar.css">
     <link rel="stylesheet" href="../css/modalSessao.css">
     <link rel="stylesheet" href="../Entregas/styleCard.css">
+    <link rel="stylesheet" href="../css/briefing_arquivos.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/airbnb.css">
@@ -926,6 +927,13 @@ $conn->close();
                         title="Recarregar lista">↻</button>
                 </div>
             </div>
+
+            <!-- Requisitos do cliente (Briefing Arquivos) - acima da lista de arquivos -->
+            <div id="briefingArquivosPendentes" style="display:none; margin: 10px 0 14px;">
+                <div style="font-weight: 700; margin-bottom: 8px;">Requisitos do cliente (pendentes)</div>
+                <div id="briefingArquivosPendentesContent"></div>
+            </div>
+
             <div id="arquivosWrapper" class="arquivos-wrapper">
                 <div class="arquivos-head-row">
                     <div class="arq-col nome">Nome</div>

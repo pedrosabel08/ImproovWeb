@@ -108,6 +108,9 @@ $conn->close();
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 
+    <!-- Tabulator (List view table) -->
+    <link href="https://cdn.jsdelivr.net/npm/tabulator-tables@6.2.5/dist/css/tabulator.min.css" rel="stylesheet">
+
     <title>Improov+Flow</title>
 </head>
 
@@ -127,8 +130,8 @@ $conn->close();
                 </div>
                 <nav>
                     <div class="nav-left">
-                        <!-- <button id="overviewBtn"><i class="ri-dashboard-line"></i><span>Overview</span></button> -->
                         <button id="kanbanBtn" class="active"><i class="ri-kanban-view"></i><span>Kanban</span></button>
+                        <button id="listBtn"><i class="ri-list-check"></i><span>Lista</span></button>
                         <!-- <button id="activities"><i class="fa-solid fa-chart-line"><span></i>Activity</span></button> -->
                         <!-- <button id="timeline"><span>Timeline</span></button> -->
                     </div>
@@ -203,9 +206,10 @@ $conn->close();
                 </div>
 
             </div>
-            <!-- Overview embed container (hidden by default) -->
-            <div id="overview-section" style="display:none; width:100%; height: calc(100vh - 140px);">
-                <iframe id="overview-iframe" src="PaginaPrincipal/Overview/index.php" frameborder="0" style="width:100%; height:100%;"></iframe>
+
+            <!-- Lista (tabela) -->
+            <div id="list-section" class="list-section" style="display:none; padding: 20px;">
+                <div id="tarefas-table"></div>
             </div>
         </main>
     </div>
@@ -549,35 +553,10 @@ $conn->close();
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tabulator-tables@6.2.5/dist/js/tabulator.min.js"></script>
     <script src="script/notificacoes.js"></script>
     <script src="PaginaPrincipal/scriptIndex.js"></script>
     <script src="./script/sidebar.js"></script>
-    <script>
-        // Toggle between Kanban and Overview (embedded iframe)
-        (function() {
-            const btnOverview = document.getElementById('overviewBtn');
-            const btnKanban = document.getElementById('kanbanBtn');
-            const kanbanSec = document.getElementById('kanban-section');
-            const overviewSec = document.getElementById('overview-section');
-
-            function showOverview() {
-                kanbanSec.style.display = 'none';
-                overviewSec.style.display = 'block';
-                btnOverview.classList.add('active');
-                btnKanban.classList.remove('active');
-            }
-
-            function showKanban() {
-                overviewSec.style.display = 'none';
-                kanbanSec.style.display = 'grid';
-                btnKanban.classList.add('active');
-                btnOverview.classList.remove('active');
-            }
-
-            btnOverview.addEventListener('click', showOverview);
-            btnKanban.addEventListener('click', showKanban);
-        })();
-    </script>
 
 </body>
 

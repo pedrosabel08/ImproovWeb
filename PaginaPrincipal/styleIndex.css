@@ -198,6 +198,106 @@ main .kanban .kanban-box {
     grid-template-rows: 5vh 1fr;
 }
 
+/* =====================
+   Lista (Tabulator)
+   ===================== */
+.list-section .tabulator {
+    border: 1px solid #dcdcdc;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.list-section .tabulator .tabulator-header {
+    background: #fff;
+    border-bottom: 1px solid #dcdcdc;
+}
+
+.list-section .tabulator .tabulator-col {
+    background: #fff;
+}
+
+.list-section .tabulator .tabulator-col-title {
+    font-weight: 700;
+}
+
+.list-section .tabulator .tabulator-header-filter input,
+.list-section .tabulator .tabulator-header-filter select {
+    width: 100%;
+    padding: 6px 8px;
+    border-radius: 8px;
+    border: 1px solid #dcdcdc;
+    outline: none;
+    font-size: 0.85rem;
+    background: #fff;
+}
+
+/* Tabulator list header filter (v6) */
+.list-section .tabulator .tabulator-header-filter .tabulator-input {
+    width: 100%;
+}
+
+/* Cada filtro com uma cor diferente */
+.list-section .tabulator .tabulator-col:nth-child(1) .tabulator-header-filter input {
+    border-left: 4px solid var(--cor-secundaria);
+}
+
+.list-section .tabulator .tabulator-col:nth-child(2) .tabulator-header-filter input {
+    border-left: 4px solid var(--cor-referencias);
+}
+
+.list-section .tabulator .tabulator-col:nth-child(3) .tabulator-header-filter select {
+    border-left: 4px solid var(--cor-principal);
+}
+
+.list-section .tabulator .tabulator-row {
+    border-bottom: 1px solid #f1f1f1;
+}
+
+.list-section .tabulator .tabulator-row:hover {
+    background: #fafafa;
+}
+
+/* Status pills (cores por status) */
+.list-section .status-pill {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 0.8rem;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.list-section .status-nao-iniciado {
+    color: #007bff;
+    background-color: #b0d6ff;
+}
+
+.list-section .status-hold {
+    color: #ffc107;
+    background-color: #ffeebb;
+}
+
+.list-section .status-em-andamento {
+    color: #17a2b8;
+    background-color: #a7f3ff;
+}
+
+.list-section .status-em-aprovacao {
+    color: #6f42c1;
+    background-color: #d5beff;
+}
+
+.list-section .status-ajuste {
+    color: #dc3545;
+    background-color: #ffb3ba;
+}
+
+.list-section .status-finalizado {
+    color: #28a745;
+    background-color: #a9fcbd;
+}
+
 /* Scrollbar estilizado para Webkit (Chrome, Edge, Safari) */
 ::-webkit-scrollbar {
     width: 4px;

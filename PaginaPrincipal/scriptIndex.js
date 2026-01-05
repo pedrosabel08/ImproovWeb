@@ -78,6 +78,15 @@ function carregarDados(colaborador_id) {
                     // Chama o tratamento do kanban
                     processarDados(data);
 
+                    // Atualiza a lista (tabela) quando disponível
+                    if (window.updateListaTabela) {
+                        try {
+                            window.updateListaTabela(data);
+                        } catch (e) {
+                            console.error('updateListaTabela error', e);
+                        }
+                    }
+
                 } catch (err) {
                     console.error("Erro ao parsear JSON:", err);
                 }
@@ -3055,3 +3064,120 @@ document.querySelectorAll('.dropbtn').forEach(btn => {
         dropdown.classList.toggle('show');
     });
 });
+
+
+
+// List view (Tabulator) - visual only
+(function () {
+    let tabelaLista = null;
+
+    function normalizarStatus(status) {
+        if (!status) return 'Não iniciado';
+        if (status === 'Hold') return 'HOLD';
+        if (status === 'Aprovado' || status === 'Aprovado com ajustes') return 'Finalizado';
+        return status;
+    }
+
+    function garantirTabela() {
+        if (tabelaLista || !window.Tabulator) return;
+
+        tabelaLista = new Tabulator("#tarefas-table", {
+            layout: "fitColumns",
+            height: "70vh",
+            placeholder: "Sem tarefas para exibir",
+            reactiveData: false,
+            movableColumns: false,
+            columns: [{
+                title: "Nome da imagem",
+                field: "imagem_nome",
+                headerFilter: "input",
+                headerFilterPlaceholder: "Filtrar imagem...",
+                sorter: "string"
+            },
+            {
+                title: "Nome da função",
+                field: "nome_funcao",
+                headerFilter: "input",
+                headerFilterPlaceholder: "Filtrar função...",
+                sorter: "string"
+            },
+            {
+                title: "Status",
+                field: "status",
+                headerFilter: "list",
+                headerFilterParams: {
+                    values: [
+                        "Não iniciado",
+                        "HOLD",
+                        "Em andamento",
+                        "Em aprovação",
+                        "Ajuste",
+                        "Finalizado"
+                    ],
+                    clearable: true
+                },
+                headerFilterFunc: "=",
+                formatter: function (cell) {
+                    const v = (cell.getValue() || '').toString();
+                    const statusKey = v
+                        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                        .toLowerCase()
+                        .replace(/\s+/g, '-')
+                        .replace(/[^a-z0-9\-]/g, '');
+
+                    return `<span class="status-pill status-${statusKey}">${v || '-'}</span>`;
+                },
+                sorter: "string"
+            }
+            ],
+        });
+    }
+
+    // Exposta para o scriptIndex.js reaproveitar o mesmo payload do Kanban
+    window.updateListaTabela = function (payload) {
+        try {
+            garantirTabela();
+            if (!tabelaLista) return;
+
+            const funcoes = (payload && Array.isArray(payload.funcoes)) ? payload.funcoes : [];
+
+            const linhas = funcoes.map(f => ({
+                imagem_nome: f.imagem_nome || "-",
+                nome_funcao: f.nome_funcao || "-",
+                status: normalizarStatus(f.status)
+            }));
+
+            tabelaLista.setData(linhas);
+        } catch (e) {
+            console.error('updateListaTabela error', e);
+        }
+    };
+})();
+
+
+// Toggle between Kanban and Lista (tabela)
+(function () {
+    const btnKanban = document.getElementById('kanbanBtn');
+    const btnLista = document.getElementById('listBtn');
+    const kanbanSec = document.getElementById('kanban-section');
+    const listSec = document.getElementById('list-section');
+
+    if (!btnKanban || !btnLista || !kanbanSec || !listSec) return;
+
+    function showKanban() {
+        listSec.style.display = 'none';
+        kanbanSec.style.display = 'flex';
+        btnKanban.classList.add('active');
+        btnLista.classList.remove('active');
+    }
+
+    function showLista() {
+        kanbanSec.style.display = 'none';
+        listSec.style.display = 'block';
+        btnLista.classList.add('active');
+        btnKanban.classList.remove('active');
+    }
+
+    btnKanban.addEventListener('click', showKanban);
+    btnLista.addEventListener('click', showLista);
+})();

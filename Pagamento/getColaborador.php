@@ -73,16 +73,18 @@ if ($colaboradorId == 1) {
         fi.pagamento,
         fi.valor,
     fi.data_pagamento,
-    (SELECT COUNT(1)
+    CASE WHEN fi.funcao_id = 4 THEN (
+        SELECT COUNT(1)
         FROM pagamento_itens pi
         JOIN funcao_imagem fi_pi ON pi.origem = 'funcao_imagem' AND pi.origem_id = fi_pi.idfuncao_imagem
         WHERE fi_pi.imagem_id = fi.imagem_id AND fi_pi.funcao_id = 4 AND pi.observacao = 'Finalização Parcial'
-    ) AS pago_parcial_count,
-    (SELECT COUNT(1)
+    ) ELSE 0 END AS pago_parcial_count,
+    CASE WHEN fi.funcao_id = 4 THEN (
+        SELECT COUNT(1)
         FROM pagamento_itens pi
         JOIN funcao_imagem fi_pi ON pi.origem = 'funcao_imagem' AND pi.origem_id = fi_pi.idfuncao_imagem
         WHERE fi_pi.imagem_id = fi.imagem_id AND fi_pi.funcao_id = 4 AND pi.observacao = 'Pago Completa'
-    ) AS pago_completa_count
+    ) ELSE 0 END AS pago_completa_count
     FROM 
         funcao_imagem fi
     JOIN 
@@ -155,16 +157,18 @@ if ($colaboradorId == 1) {
     fi.pagamento,
     fi.valor,
     fi.data_pagamento,
-    (SELECT COUNT(1)
+    CASE WHEN fi.funcao_id = 4 THEN (
+        SELECT COUNT(1)
         FROM pagamento_itens pi
         JOIN funcao_imagem fi_pi ON pi.origem = 'funcao_imagem' AND pi.origem_id = fi_pi.idfuncao_imagem
         WHERE fi_pi.imagem_id = fi.imagem_id AND fi_pi.funcao_id = 4 AND pi.observacao = 'Finalização Parcial'
-    ) AS pago_parcial_count,
-    (SELECT COUNT(1)
+    ) ELSE 0 END AS pago_parcial_count,
+    CASE WHEN fi.funcao_id = 4 THEN (
+        SELECT COUNT(1)
         FROM pagamento_itens pi
         JOIN funcao_imagem fi_pi ON pi.origem = 'funcao_imagem' AND pi.origem_id = fi_pi.idfuncao_imagem
         WHERE fi_pi.imagem_id = fi.imagem_id AND fi_pi.funcao_id = 4 AND pi.observacao = 'Pago Completa'
-    ) AS pago_completa_count,
+    ) ELSE 0 END AS pago_completa_count,
     o.idobra AS obra_id   
 FROM 
     funcao_imagem fi
@@ -242,16 +246,18 @@ WHERE
         fi.pagamento,
         fi.valor,
         fi.data_pagamento,
-        (SELECT COUNT(1)
+        CASE WHEN fi.funcao_id = 4 THEN (
+            SELECT COUNT(1)
             FROM pagamento_itens pi
             JOIN funcao_imagem fi_pi ON pi.origem = 'funcao_imagem' AND pi.origem_id = fi_pi.idfuncao_imagem
             WHERE fi_pi.imagem_id = fi.imagem_id AND fi_pi.funcao_id = 4 AND pi.observacao = 'Finalização Parcial'
-        ) AS pago_parcial_count,
-        (SELECT COUNT(1)
+        ) ELSE 0 END AS pago_parcial_count,
+        CASE WHEN fi.funcao_id = 4 THEN (
+            SELECT COUNT(1)
             FROM pagamento_itens pi
             JOIN funcao_imagem fi_pi ON pi.origem = 'funcao_imagem' AND pi.origem_id = fi_pi.idfuncao_imagem
             WHERE fi_pi.imagem_id = fi.imagem_id AND fi_pi.funcao_id = 4 AND pi.observacao = 'Pago Completa'
-        ) AS pago_completa_count
+        ) ELSE 0 END AS pago_completa_count
     FROM 
         funcao_imagem fi
     JOIN 

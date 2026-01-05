@@ -97,6 +97,7 @@ $conn->close();
 					<option value="12">Dezembro</option>
 				</select>
 				<select id="ano-resumo">
+					<option value="2026">2026</option>
 					<option value="2025">2025</option>
 					<option value="2024">2024</option>
 					<option value="2023">2023</option>
@@ -153,6 +154,7 @@ $conn->close();
 			<div class="ano">
 				<h2>Ano:</h2>
 				<select name="ano" id="ano">
+					<option value="2026">2026</option>
 					<option value="2025">2025</option>
 					<option value="2024">2024</option>
 					<option value="2023">2023</option>

@@ -609,7 +609,8 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
     const currentMonthName = monthNames[currentMonthIndex].toUpperCase();
     const previousMonthName = monthNames[previousMonthIndex].toUpperCase();
 
-    const year = today.getFullYear() - 1;
+    const year = today.getFullYear();
+    const prevYear = today.getFullYear() - 1;
 
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
@@ -669,7 +670,7 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
 
     // Calcula a posição x para centralizar o texto
     const pageWidth = doc.internal.pageSize.getWidth();
-    const text = `ADENDO CONTRATUAL - ${previousMonthName} ${year}`;
+    const text = `ADENDO CONTRATUAL - ${previousMonthName} ${prevYear}`;
     const textWidth = doc.getTextWidth(text);
     const x = (pageWidth - textWidth) / 2; // Centraliza o texto
 
@@ -827,30 +828,30 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
 
     }
 
-    // // Dados da nova tabela
-    // // const novaTabelaHeaders = ['Extra', 'Valor'];
-    // const novaTabelaHeaders = ['Categoria', 'Valor'];
-    // const novaTabelaBody = [
-    //     ['Atendimento', '3000,00'],
-    //     // ['Bônus', '350,00'],
-    //     // ['Reembolso almoço', '152,00'],
-    //     // ['Desconto de imagem: 5. HAA_HOR Fachada Fora', '-350,00'],
-    //     // ['Gasolina', '342,00'],
-    //     // ['Diaria Drone', '700,00'],
-    //     // ['Outros', '490,00']
-    // ];
+    // Dados da nova tabela
+    // const novaTabelaHeaders = ['Extra', 'Valor'];
+    const novaTabelaHeaders = ['Categoria', 'Valor'];
+    const novaTabelaBody = [
+        ['Atendimento', '3000,00'],
+        // ['Bônus', '350,00'],
+        // ['Reembolso almoço', '152,00'],
+        // ['Desconto de imagem: 5. HAA_HOR Fachada Fora', '-350,00'],
+        // ['Gasolina', '342,00'],
+        // ['Diaria Drone', '700,00'],
+        // ['Outros', '490,00']
+    ];
 
-    // // Adiciona nova tabela ao PDF
-    // doc.autoTable({
-    //     head: [novaTabelaHeaders],
-    //     body: novaTabelaBody,
-    //     startY: y, // Posiciona abaixo da tabela anterior
-    //     theme: 'grid',
-    //     headStyles: { fillColor: [0, 0, 0], textColor: [255, 255, 255] },
-    //     bodyStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0] },
-    //     margin: { top: 10, left: 20, right: 20 },
-    //     styles: { fontSize: 10, cellPadding: 2 }
-    // });
+    // Adiciona nova tabela ao PDF
+    doc.autoTable({
+        head: [novaTabelaHeaders],
+        body: novaTabelaBody,
+        startY: y, // Posiciona abaixo da tabela anterior
+        theme: 'grid',
+        headStyles: { fillColor: [0, 0, 0], textColor: [255, 255, 255] },
+        bodyStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0] },
+        margin: { top: 10, left: 20, right: 20 },
+        styles: { fontSize: 10, cellPadding: 2 }
+    });
 
     // Atualiza a posição Y para futuras adições no PDF (caso necessário)
     y = doc.lastAutoTable.finalY + 20;
@@ -867,12 +868,12 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
 
 
     // Parte 3: Segunda parte do contrato
-    let text6 = `Cláusula 2ª - O CONTRATADO  declara que no dia ${day} de ${currentMonthName} de 2025, recebeu do CONTRATANTE o valor de R$ ${novoTotal},00 (${totalValorExtenso}), pela entrega dos serviços acima referidos, e dá a mais ampla, geral e irrestrita quitação à dívida, renunciando seu direito de cobrança relativos a tais valores. `;
+    let text6 = `Cláusula 2ª - O CONTRATADO  declara que no dia ${day} de ${currentMonthName} de ${year}, recebeu do CONTRATANTE o valor de R$ ${novoTotal},00 (${totalValorExtenso}), pela entrega dos serviços acima referidos, e dá a mais ampla, geral e irrestrita quitação à dívida, renunciando seu direito de cobrança relativos a tais valores. `;
     // let text6 = `O CONTRATADO declara que o contrato se extingue diante deste dando a mais ampla, geral e irrestrita quitação à qualquer dívida, renunciando seu direito de cobrança relativos a quaisquer valores referentes a este contrato. `;
 
     let text7 = `E, assim, para que produza seus efeitos legais e jurídicos, por estarem juntas e contratadas, confirmamos, via assinatura eletrônica, nos moldes do art. 10 da MO 2.200/01 em vigor no Brasil, que estamos de acordo com o presente CONTRATO DE PRESTAÇÃO DE SERVIÇOS, e por estar plenamente cientes dos termos, reafirmamos o nosso dever de observar e fazer cumprir as cláusulas aqui estabelecidas, em vista de que possamos acessar a via do contrato através do endereço https://zapsign.com.br e gerar versão impressa do mesmo, considerado o fato de já tê-lo recebido por e-mail.`;
 
-    let text8 = `Blumenau/SC, ${day} de ${currentMonthName} de 2025.`;
+    let text8 = `Blumenau/SC, ${day} de ${currentMonthName} de ${year}.`;
 
     addTextWithPageCheck(text6, 10, ["Cláusula", "2ª", "CONTRATADO", "CONTRATANTE"]);
     addTextWithPageCheck(text7, 10);

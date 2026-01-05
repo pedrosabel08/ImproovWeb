@@ -239,6 +239,13 @@ document.addEventListener('DOMContentLoaded', function () {
                         // include function name so backend can detect 'Finalização parcial'
                         checkbox.setAttribute('data-funcao-name', item.nome_funcao || '');
 
+                        // If this item already has a recorded full payment, lock it to prevent edits and re-registering.
+                        const pagoCompletaCount = item.pago_completa_count ? parseInt(item.pago_completa_count, 10) : 0;
+                        if (pagoCompletaCount > 0) {
+                            checkbox.disabled = true;
+                            checkbox.title = 'Pagamento completo já registrado; não é possível alterar.';
+                        }
+
                         checkbox.addEventListener('change', function () {
                             if (checkbox.checked) {
                                 row.classList.add('row-selected');
@@ -260,8 +267,19 @@ document.addEventListener('DOMContentLoaded', function () {
                             cellValor.textContent = item.valor;
                             cellData.textContent = item.data_pagamento;
 
-                            // Mostrar indicador se esta função já foi paga como 'Finalização Parcial' em pagamentos anteriores
-                            if (item.pago_parcial_count && parseInt(item.pago_parcial_count, 10) > 0) {
+                            // Mostrar indicador: prioriza 'Pago Completa' sobre 'Pago Parcial'
+                            if (item.pago_completa_count && parseInt(item.pago_completa_count, 10) > 0) {
+                                const badge = document.createElement('span');
+                                badge.textContent = 'Pago Completa';
+                                badge.style.background = '#ffdf99';
+                                badge.style.color = '#663c00';
+                                badge.style.padding = '2px 6px';
+                                badge.style.borderRadius = '12px';
+                                badge.style.fontSize = '11px';
+                                badge.style.marginLeft = '8px';
+                                badge.title = 'Este item já teve pagamento parcial e foi pago por completo';
+                                cellFuncao.appendChild(badge);
+                            } else if (item.pago_parcial_count && parseInt(item.pago_parcial_count, 10) > 0) {
                                 const badge = document.createElement('span');
                                 badge.textContent = 'Pago Parcial';
                                 badge.style.background = '#ffdf99';
@@ -365,7 +383,10 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('confirmar-pagamento').addEventListener('click', function () {
         var colaboradorId = parseInt(document.getElementById('colaborador').value, 10);
         // Apenas checkboxes visíveis e marcadas
-        var checkboxes = Array.from(document.querySelectorAll('.pagamento-checkbox:checked')).filter(cb => cb.closest('tr').offsetParent !== null);
+        var checkboxes = Array.from(document.querySelectorAll('.pagamento-checkbox:checked'))
+            .filter(cb => cb.closest('tr').offsetParent !== null)
+            // Do not re-register items already paid, and do not include locked (Pago Completa) items.
+            .filter(cb => cb.getAttribute('pagamento') !== '1' && cb.disabled !== true);
         var ids = checkboxes.map(cb => ({
             id: parseInt(cb.getAttribute('data-id'), 10),
             origem: cb.getAttribute('data-origem'), // Coletando o atributo origem
@@ -572,7 +593,7 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
 
 
     const today = new Date();
-    today.setDate(today.getDate() + 0); // Adiciona 2 dias
+    today.setDate(today.getDate() + 2); // Adiciona 2 dias
     const day = String(today.getDate()).padStart(2, '0');
 
     // Obtém o número do mês (0 = Janeiro, 11 = Dezembro)
@@ -588,7 +609,7 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
     const currentMonthName = monthNames[currentMonthIndex].toUpperCase();
     const previousMonthName = monthNames[previousMonthIndex].toUpperCase();
 
-    const year = today.getFullYear();
+    const year = today.getFullYear() - 1;
 
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
@@ -810,12 +831,12 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
     // // const novaTabelaHeaders = ['Extra', 'Valor'];
     // const novaTabelaHeaders = ['Categoria', 'Valor'];
     // const novaTabelaBody = [
-    //     // ['Atendimento', '3000,00'],
+    //     ['Atendimento', '3000,00'],
     //     // ['Bônus', '350,00'],
-    //     ['Reembolso almoço', '152,00'],
+    //     // ['Reembolso almoço', '152,00'],
     //     // ['Desconto de imagem: 5. HAA_HOR Fachada Fora', '-350,00'],
-    //     ['Gasolina', '342,00'],
-    //     ['Diaria Drone', '700,00'],
+    //     // ['Gasolina', '342,00'],
+    //     // ['Diaria Drone', '700,00'],
     //     // ['Outros', '490,00']
     // ];
 

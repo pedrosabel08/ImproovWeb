@@ -73,7 +73,16 @@ if ($colaboradorId == 1) {
         fi.pagamento,
         fi.valor,
     fi.data_pagamento,
-    (SELECT COUNT(1) FROM pagamento_itens pi JOIN pagamentos p ON pi.pagamento_id = p.idpagamento WHERE pi.origem = 'funcao_imagem' AND pi.origem_id = fi.idfuncao_imagem AND pi.observacao = 'Finalização Parcial') AS pago_parcial_count
+    (SELECT COUNT(1)
+        FROM pagamento_itens pi
+        JOIN funcao_imagem fi_pi ON pi.origem = 'funcao_imagem' AND pi.origem_id = fi_pi.idfuncao_imagem
+        WHERE fi_pi.imagem_id = fi.imagem_id AND fi_pi.funcao_id = 4 AND pi.observacao = 'Finalização Parcial'
+    ) AS pago_parcial_count,
+    (SELECT COUNT(1)
+        FROM pagamento_itens pi
+        JOIN funcao_imagem fi_pi ON pi.origem = 'funcao_imagem' AND pi.origem_id = fi_pi.idfuncao_imagem
+        WHERE fi_pi.imagem_id = fi.imagem_id AND fi_pi.funcao_id = 4 AND pi.observacao = 'Pago Completa'
+    ) AS pago_completa_count
     FROM 
         funcao_imagem fi
     JOIN 
@@ -104,7 +113,8 @@ if ($colaboradorId == 1) {
         ac.pagamento,
         ac.valor,
         ac.data_pagamento,
-        NULL AS pago_parcial_count
+        NULL AS pago_parcial_count,
+        NULL AS pago_completa_count
     FROM 
         acompanhamento ac
     JOIN 
@@ -145,7 +155,16 @@ if ($colaboradorId == 1) {
     fi.pagamento,
     fi.valor,
     fi.data_pagamento,
-    (SELECT COUNT(1) FROM pagamento_itens pi JOIN pagamentos p ON pi.pagamento_id = p.idpagamento WHERE pi.origem = 'funcao_imagem' AND pi.origem_id = fi.idfuncao_imagem AND pi.observacao = 'Finalização Parcial') AS pago_parcial_count,
+    (SELECT COUNT(1)
+        FROM pagamento_itens pi
+        JOIN funcao_imagem fi_pi ON pi.origem = 'funcao_imagem' AND pi.origem_id = fi_pi.idfuncao_imagem
+        WHERE fi_pi.imagem_id = fi.imagem_id AND fi_pi.funcao_id = 4 AND pi.observacao = 'Finalização Parcial'
+    ) AS pago_parcial_count,
+    (SELECT COUNT(1)
+        FROM pagamento_itens pi
+        JOIN funcao_imagem fi_pi ON pi.origem = 'funcao_imagem' AND pi.origem_id = fi_pi.idfuncao_imagem
+        WHERE fi_pi.imagem_id = fi.imagem_id AND fi_pi.funcao_id = 4 AND pi.observacao = 'Pago Completa'
+    ) AS pago_completa_count,
     o.idobra AS obra_id   
 FROM 
     funcao_imagem fi
@@ -179,6 +198,7 @@ SELECT
     an.valor,
     an.data_pagamento,
     NULL AS pago_parcial_count,
+    NULL AS pago_completa_count,
     an.obra_id  
 FROM 
     animacao an
@@ -222,7 +242,16 @@ WHERE
         fi.pagamento,
         fi.valor,
         fi.data_pagamento,
-        (SELECT COUNT(1) FROM pagamento_itens pi JOIN pagamentos p ON pi.pagamento_id = p.idpagamento WHERE pi.origem = 'funcao_imagem' AND pi.origem_id = fi.idfuncao_imagem AND pi.observacao = 'Finalização Parcial') AS pago_parcial_count
+        (SELECT COUNT(1)
+            FROM pagamento_itens pi
+            JOIN funcao_imagem fi_pi ON pi.origem = 'funcao_imagem' AND pi.origem_id = fi_pi.idfuncao_imagem
+            WHERE fi_pi.imagem_id = fi.imagem_id AND fi_pi.funcao_id = 4 AND pi.observacao = 'Finalização Parcial'
+        ) AS pago_parcial_count,
+        (SELECT COUNT(1)
+            FROM pagamento_itens pi
+            JOIN funcao_imagem fi_pi ON pi.origem = 'funcao_imagem' AND pi.origem_id = fi_pi.idfuncao_imagem
+            WHERE fi_pi.imagem_id = fi.imagem_id AND fi_pi.funcao_id = 4 AND pi.observacao = 'Pago Completa'
+        ) AS pago_completa_count
     FROM 
         funcao_imagem fi
     JOIN 

@@ -40,14 +40,14 @@ FROM (
   JOIN colaborador c ON c.idcolaborador = fi.colaborador_id
   JOIN funcao f ON f.idfuncao = fi.funcao_id
   LEFT JOIN imagens_cliente_obra i ON fi.imagem_id = i.idimagens_cliente_obra
-  WHERE MONTH(fi.prazo) = ? AND YEAR(fi.prazo) = YEAR(CURDATE()) AND fi.colaborador_id NOT IN (21, 15, 9)
+  WHERE MONTH(fi.prazo) = ? AND YEAR(fi.prazo) = ? AND fi.colaborador_id NOT IN (21, 15, 9)
 ) AS t
 GROUP BY t.funcao_id, t.nome_funcao, t.nome_colaborador
 ORDER BY
   FIELD(t.nome_funcao, 'Caderno', 'Filtro de assets', 'Modelagem', 'Composição', 'Pré-finalização', 'Finalização Parcial','Finalização Completa','Finalização de Planta Humanizada', 'Pós-produção', 'Alteração'),
   t.nome_colaborador;";
 $stmt = $conn->prepare($sql); // Usa a conexão do arquivo conexao.php
-$stmt->bind_param("i", $mes);
+$stmt->bind_param("ii", $mes, $anoSelecionado);
 $stmt->execute();
 $result = $stmt->get_result();
 $dadosMesAtual = $result->fetch_all(MYSQLI_ASSOC);

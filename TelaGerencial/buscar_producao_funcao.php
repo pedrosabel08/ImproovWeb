@@ -36,14 +36,14 @@ if ($mes) {
     FROM funcao_imagem fi
     JOIN funcao f ON f.idfuncao = fi.funcao_id
     JOIN imagens_cliente_obra ico ON fi.imagem_id = ico.idimagens_cliente_obra
-    WHERE MONTH(fi.prazo) = ? AND YEAR(fi.prazo) = YEAR(CURDATE()) AND (fi.status <> 'Não iniciado' OR fi.status IS NULL)
+    WHERE MONTH(fi.prazo) = ? AND YEAR(fi.prazo) = ? AND (fi.status <> 'Não iniciado' OR fi.status IS NULL)
   ) AS t
   GROUP BY t.nome_funcao
   ORDER BY
       FIELD(t.nome_funcao, 'Caderno', 'Filtro de assets', 'Modelagem', 'Composição', 'Pré-finalização', 'Finalização Parcial','Finalização Completa','Finalização de Planta Humanizada', 'Pós-produção', 'Alteração'),
     funcao_order";
   $stmt = $conn->prepare($sql);
-  $stmt->bind_param("i", $mes);
+  $stmt->bind_param("ii", $mes, $anoSelecionado);
 } elseif ($data) {
   // Filtro por dia específico - calcular nome_funcao por linha e agregar externamente
   $sql = "SELECT COUNT(*) AS quantidade, t.nome_funcao, MIN(t.funcao_id) AS funcao_order

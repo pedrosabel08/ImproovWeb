@@ -74,22 +74,35 @@ $conn->close();
 
             <h2>Total Produção por colaborador</h2>
 
-            <label for="mes">Selecione o mês:</label>
-            <select id="mes" onchange="buscarDados(); buscarEntregasMes();">
-                <option value="01">Janeiro</option>
-                <option value="02">Fevereiro</option>
-                <option value="03">Março</option>
-                <option value="04">Abril</option>
-                <option value="05">Maio</option>
-                <option value="06">Junho</option>
-                <option value="07">Julho</option>
-                <option value="08">Agosto</option>
-                <option value="09">Setembro</option>
-                <option value="10">Outubro</option>
-                <option value="11">Novembro</option>
-                <option value="12">Dezembro</option>
-            </select>
-            <button id="gerar-relatorio" style="margin-left:12px;">Gerar relatório</button>
+            <div class="filtros-linha">
+                <label for="mes">Mês:</label>
+                <select id="mes" onchange="buscarDados(); buscarEntregasMes();">
+                    <option value="01">Janeiro</option>
+                    <option value="02">Fevereiro</option>
+                    <option value="03">Março</option>
+                    <option value="04">Abril</option>
+                    <option value="05">Maio</option>
+                    <option value="06">Junho</option>
+                    <option value="07">Julho</option>
+                    <option value="08">Agosto</option>
+                    <option value="09">Setembro</option>
+                    <option value="10">Outubro</option>
+                    <option value="11">Novembro</option>
+                    <option value="12">Dezembro</option>
+                </select>
+
+                <label for="ano">Ano:</label>
+                <select id="ano" onchange="buscarDados(); buscarEntregasMes();">
+                    <?php
+                    $anoAtual = (int) date('Y');
+                    for ($a = $anoAtual; $a >= $anoAtual - 10; $a--) {
+                        echo '<option value="' . $a . '">' . $a . '</option>';
+                    }
+                    ?>
+                </select>
+
+                <button id="gerar-relatorio" style="margin-left:12px;">Gerar relatório</button>
+            </div>
         </div>
 
         <table id="tabelaProducao">
@@ -128,21 +141,33 @@ $conn->close();
 
             <h2 id="total_producao">Total de produção por função <span id="mesSelecionadoFuncao">---</span></h2>
 
-            <label id="labelMesFuncao" for="mesFuncao">Selecione o mês:</label>
-            <select id="mesFuncao" onchange="buscarDadosFuncao()">
-                <option value="1">Janeiro</option>
-                <option value="2">Fevereiro</option>
-                <option value="3">Março</option>
-                <option value="4">Abril</option>
-                <option value="5">Maio</option>
-                <option value="6">Junho</option>
-                <option value="7">Julho</option>
-                <option value="8">Agosto</option>
-                <option value="9">Setembro</option>
-                <option value="10">Outubro</option>
-                <option value="11">Novembro</option>
-                <option value="12">Dezembro</option>
-            </select>
+            <div class="filtros-linha">
+                <label id="labelMesFuncao" for="mesFuncao">Mês:</label>
+                <select id="mesFuncao" onchange="buscarDadosFuncao()">
+                    <option value="1">Janeiro</option>
+                    <option value="2">Fevereiro</option>
+                    <option value="3">Março</option>
+                    <option value="4">Abril</option>
+                    <option value="5">Maio</option>
+                    <option value="6">Junho</option>
+                    <option value="7">Julho</option>
+                    <option value="8">Agosto</option>
+                    <option value="9">Setembro</option>
+                    <option value="10">Outubro</option>
+                    <option value="11">Novembro</option>
+                    <option value="12">Dezembro</option>
+                </select>
+
+                <label id="labelAnoFuncao" for="anoFuncao">Ano:</label>
+                <select id="anoFuncao" onchange="buscarDadosFuncao()">
+                    <?php
+                    $anoAtual = (int) date('Y');
+                    for ($a = $anoAtual; $a >= $anoAtual - 10; $a--) {
+                        echo '<option value="' . $a . '">' . $a . '</option>';
+                    }
+                    ?>
+                </select>
+            </div>
 
             <table id="tabelaFuncao">
                 <thead>

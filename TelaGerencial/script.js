@@ -1,6 +1,7 @@
 window.addEventListener('DOMContentLoaded', () => {
     const dataAtual = new Date();
     const mesAtual = dataAtual.getMonth() + 1; // Janeiro = 0, então soma 1
+    const anoAtual = dataAtual.getFullYear();
 
     // Para o primeiro select (valores "01", "02", ...)
     const selectMes = document.getElementById('mes');
@@ -9,10 +10,20 @@ window.addEventListener('DOMContentLoaded', () => {
         selectMes.value = valorMes;
     }
 
+    const selectAno = document.getElementById('ano');
+    if (selectAno) {
+        selectAno.value = anoAtual.toString();
+    }
+
     // Para o segundo select (valores 1, 2, ...)
     const selectMesFuncao = document.getElementById('mesFuncao');
     if (selectMesFuncao) {
         selectMesFuncao.value = mesAtual.toString(); // Ex: 3
+    }
+
+    const selectAnoFuncao = document.getElementById('anoFuncao');
+    if (selectAnoFuncao) {
+        selectAnoFuncao.value = anoAtual.toString();
     }
 
     const selectMesAtual = document.getElementById('mes_atual');
@@ -30,9 +41,10 @@ function formatarData(data) {
 
 function buscarDados() {
     const mes = document.getElementById('mes').value;
+    const ano = (document.getElementById('ano')?.value) || new Date().getFullYear();
     const nomeMeses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 
-    fetch('buscar_producao.php?mes=' + mes)
+    fetch('buscar_producao.php?mes=' + mes + '&ano=' + encodeURIComponent(ano))
         .then(res => res.json())
         .then(dados => {
             const tabela = document.querySelector('#tabelaProducao tbody');
@@ -92,6 +104,10 @@ function buscarDadosPorDiaAnterior() {
     document.getElementById("mesSelecionadoFuncao").innerText = `do dia ${dia}/${mes}/${ano}`; // Atualiza o mês selecionado
     document.getElementById("labelMesFuncao").style.display = "none";
     document.getElementById("mesFuncao").style.display = "none";
+    const labelAnoFuncao = document.getElementById("labelAnoFuncao");
+    const anoFuncao = document.getElementById("anoFuncao");
+    if (labelAnoFuncao) labelAnoFuncao.style.display = "none";
+    if (anoFuncao) anoFuncao.style.display = "none";
 
     fetch(`buscar_producao_funcao.php?data=${ano}-${mes}-${dia}`)
         .then(res => res.json())
@@ -137,6 +153,10 @@ function buscarDadosPorSemana() {
     document.getElementById("mesSelecionadoFuncao").innerText = `de ${formatarData(inicio)} até ${formatarData(fim)}`; // Atualiza o mês selecionado
     document.getElementById("labelMesFuncao").style.display = "none";
     document.getElementById("mesFuncao").style.display = "none";
+    const labelAnoFuncao = document.getElementById("labelAnoFuncao");
+    const anoFuncao = document.getElementById("anoFuncao");
+    if (labelAnoFuncao) labelAnoFuncao.style.display = "none";
+    if (anoFuncao) anoFuncao.style.display = "none";
 
 
     fetch(`buscar_producao_funcao.php?inicio=${inicio}&fim=${fim}`)
@@ -171,13 +191,18 @@ function buscarDadosPorSemana() {
 
 function buscarDadosFuncao() {
     const mes = document.getElementById('mesFuncao').value;
+    const ano = (document.getElementById('anoFuncao')?.value) || new Date().getFullYear();
     const nomeMeses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
     document.getElementById("mesSelecionadoFuncao").innerText = `mês: ${nomeMeses[parseInt(mes) - 1]}`;
 
     document.getElementById("labelMesFuncao").style.display = "flex";
     document.getElementById("mesFuncao").style.display = "flex";
+    const labelAnoFuncao = document.getElementById("labelAnoFuncao");
+    const anoFuncao = document.getElementById("anoFuncao");
+    if (labelAnoFuncao) labelAnoFuncao.style.display = "flex";
+    if (anoFuncao) anoFuncao.style.display = "flex";
 
-    fetch(`buscar_producao_funcao.php?mes=${mes}`)
+    fetch(`buscar_producao_funcao.php?mes=${mes}&ano=${encodeURIComponent(ano)}`)
         .then(res => res.json())
         .then(data => {
             const tabela = document.querySelector("#tabelaFuncao tbody");
@@ -238,8 +263,10 @@ function coletarTabelaHtml(tableSelector) {
 function gerarRelatorio() {
     const mesSelect = document.getElementById('mes');
     const mes = mesSelect ? mesSelect.options[mesSelect.selectedIndex].text : '';
+    const anoSelect = document.getElementById('ano');
+    const ano = anoSelect ? anoSelect.value : '';
     const now = new Date();
-    const header = `<h2>Relatório - Tela Gerencial</h2><p>Mês selecionado: <strong>${mes}</strong> — gerado em ${now.toLocaleString()}</p>`;
+    const header = `<h2>Relatório - Tela Gerencial</h2><p>Mês/ano selecionado: <strong>${mes}${ano ? '/' + ano : ''}</strong> — gerado em ${now.toLocaleString()}</p>`;
 
     const tabelaProducaoHtml = coletarTabelaHtml('#tabelaProducao');
     const tabelaFuncaoHtml = coletarTabelaHtml('#tabelaFuncao');
@@ -318,7 +345,8 @@ function gerarRelatorio() {
 function buscarEntregasMes() {
     const selectMes = document.getElementById('mes');
     const mes = selectMes ? parseInt(selectMes.value, 10) : (new Date().getMonth() + 1);
-    const ano = new Date().getFullYear();
+    const selectAno = document.getElementById('ano');
+    const ano = selectAno ? parseInt(selectAno.value, 10) : new Date().getFullYear();
 
     fetch(`buscar_entregas_mes.php?mes=${mes}&ano=${ano}`)
         .then(res => res.json())

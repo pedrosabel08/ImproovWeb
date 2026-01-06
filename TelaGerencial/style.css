@@ -56,6 +56,14 @@ table {
     margin-top: 40px;
 }
 
+.filtros-linha {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
 th,
 td {
     border: 1px solid #ccc;

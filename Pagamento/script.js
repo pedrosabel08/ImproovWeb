@@ -265,7 +265,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             cellFuncao.textContent = item.nome_funcao;
                             cellStatusFuncao.textContent = item.status;
                             cellValor.textContent = item.valor;
-                            cellData.textContent = item.data_pagamento;
+                            cellData.textContent = item.data_pagamento ? item.data_pagamento : '';
 
                             // Mostrar indicador: prioriza 'Pago Completa' sobre 'Pago Parcial'
                             if (item.pago_completa_count && parseInt(item.pago_completa_count, 10) > 0) {
@@ -298,7 +298,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             cellFuncao.textContent = 'Acompanhamento';
                             cellStatusFuncao.textContent = 'Finalizado';
                             cellValor.textContent = item.valor;
-                            cellData.textContent = item.data_pagamento;
+                            cellData.textContent = item.data_pagamento ? item.data_pagamento : '';
 
                             totalValor += parseFloat(item.valor) || 0;
                         } else if (item.origem === 'animacao') {
@@ -306,7 +306,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             cellFuncao.textContent = 'Animação';
                             cellStatusFuncao.textContent = item.status;
                             cellValor.textContent = item.valor;
-                            cellData.textContent = item.data_pagamento;
+                            cellData.textContent = item.data_pagamento ? item.data_pagamento : '';
                         }
 
                         row.appendChild(cellNomeImagem);
@@ -580,6 +580,12 @@ function filtrarTabela() {
 
 // Função para converter números para texto
 document.getElementById('generate-adendo').addEventListener('click', function () {
+    const colaboradorId = (() => {
+        const el = document.getElementById('colaborador');
+        const v = el ? parseInt(el.value, 10) : NaN;
+        return Number.isFinite(v) ? v : null;
+    })();
+
     const nomeColaborador = document.getElementById("nomeColaborador").textContent.trim();
     const cnpjColaborador = document.getElementById("cnpjColaborador").textContent.trim();
     const enderecoColaborador = document.getElementById("enderecoColaborador").textContent.trim();
@@ -593,7 +599,7 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
 
 
     const today = new Date();
-    today.setDate(today.getDate() + 2); // Adiciona 2 dias
+    today.setDate(today.getDate() + 1); // Adiciona 1 dia
     const day = String(today.getDate()).padStart(2, '0');
 
     // Obtém o número do mês (0 = Janeiro, 11 = Dezembro)
@@ -683,9 +689,20 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
     let textoAnima = '';
     let cnpjAnima = '';
 
-    const nomeColaboradorNormalized = (nomeColaborador || '').trim().toLowerCase();
-    const colaboradoresAnima = ['andré luis tavares'];
-    if (colaboradoresAnima.includes(nomeColaboradorNormalized)) {
+    const normalizeName = (s) => (s || '')
+        .toString()
+        .trim()
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+
+    const nomeColaboradorNormalized = normalizeName(nomeColaborador);
+    const colaboradoresAnimaIds = [13];
+    const colaboradoresAnimaNomes = ['andre luis tavares'];
+    const isAnima = (colaboradorId !== null && colaboradoresAnimaIds.includes(colaboradorId))
+        || colaboradoresAnimaNomes.includes(nomeColaboradorNormalized);
+
+    if (isAnima) {
         textoAnima = 'STELLAR ANIMA';
         cnpjAnima = '45.284.934/0001-30';
     } else {
@@ -718,6 +735,10 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
 
     // Parte 2: Lista de tarefas/tabela
     const table = document.getElementById('tabela-faturamento');
+    if (!table) {
+        alert('Tabela de faturamento não encontrada. Carregue o colaborador antes de gerar o adendo.');
+        return;
+    }
     // por padrão incluímos colunas 0 (nome), 2 (função) e 3 (valor)
     let selectedColumnIndexes = [0, 2, 3];
     // se for colaborador específico, remover a coluna de valor (índice 3)
@@ -749,9 +770,20 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
         const hasPagoParcialPreview = funcaoTextoRawPreview.toLowerCase().indexOf('pago parcial') !== -1;
         // Normaliza a célula de data para lidar com NBSP e strings vazias
         const rawDataPagamento = (cells[dataPagamentoColumnIndex]?.innerText || '').replace(/\u00A0/g, ' ').trim();
-        // Se a célula estiver vazia, usar null para consistência com outras verificações
-        const dataPagamento = rawDataPagamento === '' ? null : rawDataPagamento;
-        if ((dataPagamento === '0000-00-00' || dataPagamento === null || hasPagoParcialPreview) && row.style.display !== 'none') {
+
+        const isDataPagamentoEmpty = (() => {
+            const v = (rawDataPagamento || '').trim();
+            if (v === '') return true;
+            if (v === '-' || v === '—') return true;
+            const lower = v.toLowerCase();
+            if (lower === 'null' || lower === 'undefined') return true;
+            return false;
+        })();
+
+        const incluirLinha = ((rawDataPagamento === '0000-00-00' || isDataPagamentoEmpty) || hasPagoParcialPreview)
+            && row.style.display !== 'none';
+
+        if (incluirLinha) {
             // if (row.style.display !== 'none') {
 
             const rowData = [];
@@ -810,19 +842,32 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
 
     // Adiciona a tabela ao documento PDF
     if (rows.length > 0) {
+        const hasValorColumn = selectedColumnIndexes.includes(3);
+        // Fixar larguras para evitar "texto na vertical" quando o AutoTable comprime colunas.
+        // Page width útil (A4 retrato): 210 - 20 - 20 = 170
+        const columnStyles = hasValorColumn
+            ? {
+                0: { cellWidth: 10, halign: 'center' }, // No.
+                1: { cellWidth: 90 },                 // Nome da Imagem
+                2: { cellWidth: 50 },                 // Função
+                3: { cellWidth: 20, halign: 'right' } // Valor (R$)
+            }
+            : {
+                0: { cellWidth: 10, halign: 'center' },
+                1: { cellWidth: 110 },
+                2: { cellWidth: 50 }
+            };
+
         doc.autoTable({
             head: [headers],
             body: rows,
             startY: y,
             theme: 'grid',
-            headStyles: { fillColor: [0, 0, 0], textColor: [255, 255, 255] },
+            headStyles: { fillColor: [0, 0, 0], textColor: [255, 255, 255], halign: 'center' },
             bodyStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0] },
             margin: { top: 10, left: 20, right: 20 },
-            styles: { fontSize: 10, cellPadding: 2 },
-            // Aumenta a largura da coluna de função (índice 2 no PDF: No.=0, Nome=1, Função=2, Valor=3)
-            columnStyles: {
-                2: { cellWidth: 50 }
-            }
+            styles: { fontSize: 10, cellPadding: 2, overflow: 'linebreak' },
+            columnStyles
         });
         y = doc.lastAutoTable.finalY + 20; // Atualiza a posição Y após a tabela
 
@@ -832,9 +877,9 @@ document.getElementById('generate-adendo').addEventListener('click', function ()
     // const novaTabelaHeaders = ['Extra', 'Valor'];
     const novaTabelaHeaders = ['Categoria', 'Valor'];
     const novaTabelaBody = [
-        ['Atendimento', '3000,00'],
+        // ['Atendimento', '3000,00'],
         // ['Bônus', '350,00'],
-        // ['Reembolso almoço', '152,00'],
+        ['Reembolso almoço', '76,00'],
         // ['Desconto de imagem: 5. HAA_HOR Fachada Fora', '-350,00'],
         // ['Gasolina', '342,00'],
         // ['Diaria Drone', '700,00'],

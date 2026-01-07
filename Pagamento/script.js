@@ -238,6 +238,9 @@ document.addEventListener('DOMContentLoaded', function () {
                         checkbox.setAttribute('funcao', item.funcao_id);
                         // include function name so backend can detect 'Finalização parcial'
                         checkbox.setAttribute('data-funcao-name', item.nome_funcao || '');
+                        // counts to allow 2nd confirmation (pago parcial -> pago completa)
+                        checkbox.setAttribute('data-pago-parcial-count', item.pago_parcial_count != null ? String(item.pago_parcial_count) : '0');
+                        checkbox.setAttribute('data-pago-completa-count', item.pago_completa_count != null ? String(item.pago_completa_count) : '0');
 
                         // If this item already has a recorded full payment, lock it to prevent edits and re-registering.
                         const pagoCompletaCount = item.pago_completa_count ? parseInt(item.pago_completa_count, 10) : 0;
@@ -385,8 +388,22 @@ document.addEventListener('DOMContentLoaded', function () {
         // Apenas checkboxes visíveis e marcadas
         var checkboxes = Array.from(document.querySelectorAll('.pagamento-checkbox:checked'))
             .filter(cb => cb.closest('tr').offsetParent !== null)
-            // Do not re-register items already paid, and do not include locked (Pago Completa) items.
-            .filter(cb => cb.getAttribute('pagamento') !== '1' && cb.disabled !== true);
+            // Do not re-register items already paid, except when it is a Finalização Completa with a previous pagamento parcial.
+            .filter(cb => {
+                if (cb.disabled === true) return false;
+
+                const isPago = cb.getAttribute('pagamento') === '1';
+                if (!isPago) return true;
+
+                const parcialCount = parseInt(cb.getAttribute('data-pago-parcial-count') || '0', 10) || 0;
+                const completaCount = parseInt(cb.getAttribute('data-pago-completa-count') || '0', 10) || 0;
+                const rawName = (cb.getAttribute('data-funcao-name') || '').toString().trim();
+                const norm = (s) => (s || '').toString().trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                const funcaoName = norm(rawName);
+
+                const needsPagoCompleta = completaCount === 0 && parcialCount > 0 && funcaoName === norm('Finalização Completa');
+                return needsPagoCompleta;
+            });
         var ids = checkboxes.map(cb => ({
             id: parseInt(cb.getAttribute('data-id'), 10),
             origem: cb.getAttribute('data-origem'), // Coletando o atributo origem

@@ -55,6 +55,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 $valor_total = 0.0;
+                $didAnyNewPayments = false;
+                $didAnyAuditOnly = false;
                 $col_orig_ids = [];
                 $nullObs = null;
 
@@ -76,30 +78,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $imagem_id_db = ($row && isset($row['imagem_id'])) ? (int)$row['imagem_id'] : null;
                         $ja_pago = ($row && isset($row['pagamento'])) ? (int)$row['pagamento'] === 1 : false;
 
-                        // If it is already paid, do not re-register item/events.
-                        if ($ja_pago) {
-                            continue;
-                        }
-
-                        // mark origin as paid
-                        $u = $conn->prepare("UPDATE funcao_imagem SET pagamento = 1, data_pagamento = NOW() WHERE idfuncao_imagem = ?");
-                        $u->bind_param('i', $id);
-                        $u->execute();
-                        $u->close();
-
-                        // observation: use supplied funcao_name to detect 'Finalização parcial'
-                        $obs = null;
-                        if ($hasObservacao) {
-                            if (mb_strtolower($funcao_name, 'UTF-8') === mb_strtolower('Finalização parcial', 'UTF-8')) {
-                                $obs = 'Finalização Parcial';
-                            }
-                        }
-
-                        // If user is paying Finalização Completa and there was historic Finalização Parcial for the same imagem,
-                        // register audit events and mark this item as 'Pago Completa'.
                         $parcialInfo = null;
                         $isFinalizacao = ($funcao_id_db !== null && (int)$funcao_id_db === 4);
                         $isCompleta = (mb_strtolower($funcao_name, 'UTF-8') === mb_strtolower('Finalização completa', 'UTF-8'));
+                        $shouldRegisterPagoCompleta = false;
+
+                        // If user is paying Finalização Completa and there was historic Finalização Parcial for the same imagem,
+                        // allow registering an additional pagamento_itens row with observacao = 'Pago Completa', even if origin is already paid.
                         if ($hasObservacao && $isFinalizacao && $isCompleta && $imagem_id_db) {
                             // If a full payment has already been recorded for this imagem, ignore.
                             $dup = $conn->prepare(
@@ -115,6 +100,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 $drow = $dr ? $dr->fetch_assoc() : null;
                                 $dup->close();
                                 if (!empty($drow) && intval($drow['cnt']) > 0) {
+                                    // already has 'Pago Completa' for this imagem
                                     continue;
                                 }
                             }
@@ -134,6 +120,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 $ps->close();
                             }
                             if ($parcialInfo) {
+                                $shouldRegisterPagoCompleta = true;
+                            }
+                        }
+
+                        // mark origin as paid only when it isn't paid yet
+                        if (!$ja_pago) {
+                            $u = $conn->prepare("UPDATE funcao_imagem SET pagamento = 1, data_pagamento = NOW() WHERE idfuncao_imagem = ?");
+                            $u->bind_param('i', $id);
+                            $u->execute();
+                            $u->close();
+                            $didAnyNewPayments = true;
+                        } else {
+                            // If it is already paid, only proceed when we need to register 'Pago Completa'
+                            if (!$shouldRegisterPagoCompleta) {
+                                continue;
+                            }
+                            $didAnyAuditOnly = true;
+                        }
+
+                        // observation: use supplied funcao_name to detect 'Finalização parcial'
+                        $obs = null;
+                        if ($hasObservacao) {
+                            if (mb_strtolower($funcao_name, 'UTF-8') === mb_strtolower('Finalização parcial', 'UTF-8')) {
+                                $obs = 'Finalização Parcial';
+                            }
+                            if ($shouldRegisterPagoCompleta) {
                                 $obs = 'Pago Completa';
                             }
                         }
@@ -144,7 +156,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $insItem->bind_param('isid', $pagamento_id, $origem, $id, $valor);
                         }
                         $insItem->execute();
-                        $valor_total += $valor;
+                        // Only count values for newly paid items; for audit-only 'Pago Completa' we don't want to change totals.
+                        if (!$ja_pago) {
+                            $valor_total += $valor;
+                        }
 
                         if ($parcialInfo) {
                             $evx = $conn->prepare("INSERT INTO pagamento_eventos (pagamento_id, tipo, descricao, usuario_id) VALUES (?,?,?,?)");
@@ -208,17 +223,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 // finalize pagamentos
-                $upd = $conn->prepare("UPDATE pagamentos SET status='pago', valor_total = ?, data_pagamento = NOW(), pago_em = NOW() WHERE idpagamento = ?");
-                $upd->bind_param('di', $valor_total, $pagamento_id);
-                $upd->execute();
-                $upd->close();
+                // Only update pagamentos totals/status when we actually marked new items as paid.
+                if ($didAnyNewPayments) {
+                    $upd = $conn->prepare("UPDATE pagamentos SET status='pago', valor_total = ?, data_pagamento = NOW(), pago_em = NOW() WHERE idpagamento = ?");
+                    $upd->bind_param('di', $valor_total, $pagamento_id);
+                    $upd->execute();
+                    $upd->close();
 
-                $ev = $conn->prepare("INSERT INTO pagamento_eventos (pagamento_id, tipo, descricao, usuario_id) VALUES (?,?,?,?)");
-                $t = 'pago';
-                $d = 'Pagamento confirmado via UI (itens selecionados)';
-                $ev->bind_param('issi', $pagamento_id, $t, $d, $usuario_id);
-                $ev->execute();
-                $ev->close();
+                    $ev = $conn->prepare("INSERT INTO pagamento_eventos (pagamento_id, tipo, descricao, usuario_id) VALUES (?,?,?,?)");
+                    $t = 'pago';
+                    $d = 'Pagamento confirmado via UI (itens selecionados)';
+                    $ev->bind_param('issi', $pagamento_id, $t, $d, $usuario_id);
+                    $ev->execute();
+                    $ev->close();
+                } elseif ($didAnyAuditOnly) {
+                    // Audit-only path: register an event but do not overwrite valor_total.
+                    $ev = $conn->prepare("INSERT INTO pagamento_eventos (pagamento_id, tipo, descricao, usuario_id) VALUES (?,?,?,?)");
+                    $t = 'pago_completa';
+                    $d = 'Pagamento completo registrado (itens já estavam pagos; marcação de Pago Completa)';
+                    $ev->bind_param('issi', $pagamento_id, $t, $d, $usuario_id);
+                    $ev->execute();
+                    $ev->close();
+                }
 
                 $conn->commit();
                 echo json_encode(['success' => true, 'pagamento_id' => $pagamento_id]);

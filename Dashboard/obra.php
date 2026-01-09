@@ -147,14 +147,6 @@ $conn->close();
         .tipo-desconhecido td {
             background: rgba(255, 235, 205, 0.5);
         }
-
-        .tipo-planta-humanizada td {
-            background: rgba(200, 230, 201, 0.3);
-        }
-
-        .tipo-unidade td {
-            background: rgba(187, 222, 251, 0.12);
-        }
     </style>
 </head>
 

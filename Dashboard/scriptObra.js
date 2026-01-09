@@ -79,6 +79,16 @@
         // reset state before putting it back in the list
         resetRightControls(lastRight);
         restoreRight();
+        // If a Chart.js instance exists, trigger a resize so canvas layout is corrected
+        try {
+            if (window.teaFuncChart && typeof window.teaFuncChart.resize === 'function') {
+                window.teaFuncChart.resize();
+            } else if (window.teaFuncChart && window.teaFuncChart.chart && typeof window.teaFuncChart.chart.resize === 'function') {
+                window.teaFuncChart.chart.resize();
+            }
+        } catch (e) {
+            console.warn('Erro ao redimensionar teaFuncChart após fechar modal:', e);
+        }
         document.removeEventListener('keydown', onKeyDown);
     }
 
@@ -140,6 +150,16 @@
         });
 
         document.body.appendChild(overlay);
+        // Ensure charts reflow after overlay insertion (some CSS/layout shifts affect canvas)
+        try {
+            if (window.teaFuncChart && typeof window.teaFuncChart.resize === 'function') {
+                window.teaFuncChart.resize();
+            } else if (window.teaFuncChart && window.teaFuncChart.chart && typeof window.teaFuncChart.chart.resize === 'function') {
+                window.teaFuncChart.chart.resize();
+            }
+        } catch (e) {
+            console.warn('Erro ao redimensionar teaFuncChart após abrir modal:', e);
+        }
         document.addEventListener('keydown', onKeyDown);
     });
 })();
@@ -455,6 +475,17 @@ function renderTEACharts(metrics) {
         return;
     }
 
+    // Ajusta altura do canvas dinamicamente com base na quantidade de labels
+    try {
+        const perLabel = 36; // px por label (ajustável)
+        const base = 60; // padding extra
+        const desiredHeight = Math.max(180, funcLabels.length * perLabel + base);
+        canvasEl.style.height = desiredHeight + 'px';
+        canvasEl.height = desiredHeight;
+    } catch (e) {
+        // ignore
+    }
+
     const ctx1 = canvasEl.getContext('2d');
     window.teaFuncChart = new Chart(ctx1, {
         type: 'bar',
@@ -469,6 +500,7 @@ function renderTEACharts(metrics) {
         options: {
             indexAxis: 'y',
             responsive: true,
+            maintainAspectRatio: false,
             plugins: { legend: { display: false } },
             scales: {
                 x: {
@@ -481,6 +513,19 @@ function renderTEACharts(metrics) {
             }
         }
     });
+
+    // Força reflow/resize para garantir o canvas respeite o novo tamanho
+    try {
+        if (window.teaFuncChart && typeof window.teaFuncChart.resize === 'function') {
+            window.teaFuncChart.resize();
+            window.teaFuncChart.update();
+        } else if (window.teaFuncChart && window.teaFuncChart.chart) {
+            window.teaFuncChart.chart.resize();
+            if (typeof window.teaFuncChart.chart.update === 'function') window.teaFuncChart.chart.update();
+        }
+    } catch (e) {
+        console.warn('Erro ao forçar resize/update do teaFuncChart:', e);
+    }
 
     // Buckets chart removed per user request.
 }

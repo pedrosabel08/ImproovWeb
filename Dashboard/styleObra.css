@@ -1102,6 +1102,10 @@ table#tabela-obra tbody tr:hover {
     padding: 5px;
 }
 
+.tipo-desconhecido td {
+    background: rgba(255, 235, 205, 0.5);
+}
+
 #tabela-obra th {
     background-color: #333;
     color: white;

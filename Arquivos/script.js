@@ -152,7 +152,7 @@ const labelSufixo = document.getElementById('labelSufixo');
 // Mapping of suffix options per file type
 const SUFIXOS = {
     'DWG': ['TERREO', 'LAZER', 'COBERTURA', 'MEZANINO', 'CORTES', 'GERAL', 'TIPO', 'GARAGEM', 'FACHADA', 'DUPLEX', 'ROOFTOP', 'LOGO'],
-    'PDF': ['DOCUMENTACAO', 'RELATORIO', 'LOGO', 'ARQUITETONICO', 'REFERENCIA', 'ESQUADRIA'],
+    'PDF': ['DOCUMENTACAO', 'RELATORIO', 'LOGO', 'ARQUITETONICO', 'REFERENCIA', 'ESQUADRIA', 'ACABAMENTOS', 'TIPOLOGIA'],
     'SKP': ['MODELAGEM', 'REFERENCIA'],
     'IMG': ['FACHADA', 'INTERNA', 'EXTERNA', 'UNIDADE', 'LOGO'],
     'IFC': ['BIM'],

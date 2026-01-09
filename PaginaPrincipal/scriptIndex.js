@@ -106,35 +106,72 @@ function processarDados(data) {
         'Em andamento': 'in-progress',
         'Em aprovação': 'in-review',
         'Ajuste': 'ajuste',
+        'Aprovado': 'aprovado',
+        'Aprovado com ajustes': 'aprovado',
         'Finalizado': 'done',
         'HOLD': 'hold'
     };
 
     Object.values(statusMap).forEach(colId => {
         const col = document.getElementById(colId);
-        if (col) col.querySelector('.content').innerHTML = '';
+        if (col) {
+            // ensure column is visible before we re-populate and recount
+            col.style.display = '';
+            col.querySelector('.content').innerHTML = '';
+        }
     });
     // Função auxiliar para criar cards
     function criarCard(item, tipo, media) {
-        // Define status real
-        let status = item.status || 'Não iniciado';
-        if (status === 'Ajuste') status = 'Ajuste';
-        else if (status === 'Em aprovação')
-            status = 'Em aprovação';
-        else if (status === 'Em andamento')
-            status = 'Em andamento';
-        else if (['Aprovado', 'Aprovado com ajustes', 'Finalizado'].includes(status))
-            status = 'Finalizado';
-        else if (status === 'Não iniciado')
-            status = 'Não iniciado';
-        else if (status === 'HOLD' || status === 'Hold')
-            status = 'HOLD';
-        else
-            status = 'Não iniciado';
+        // Define status real (mantemos 'Aprovado com ajustes' separado)
+        // Normalize incoming status: trim and compare case-insensitively
+        const rawStatus = (item.status || 'Não iniciado').toString().trim();
+        const s = rawStatus.toLowerCase();
+        let status = 'Não iniciado';
+        if (s === 'ajuste') status = 'Ajuste';
+        else if (s === 'em aprovação' || s === 'em aprovacao') status = 'Em aprovação';
+        else if (s === 'em andamento' || s === 'em-andamento') status = 'Em andamento';
+        else if (s === 'aprovado') status = 'Aprovado';
+        else if (s === 'aprovado com ajustes' || s === 'aprovado_com_ajustes') {
+            // Se já existe arquivo associado à função, mostramos visualmente como Finalizado
+            // mas NÃO alteramos o status no banco (isso é responsabilidade do backend).
+            if (item.requires_file_upload == 0) {
+                status = 'Finalizado';
+            } else {
+                status = 'Aprovado com ajustes';
+            }
+        }
+        else if (s === 'finalizado') status = 'Finalizado';
+        else if (s === 'não iniciado' || s === 'nao iniciado' || s === 'não-iniciado') status = 'Não iniciado';
+        else if (s === 'hold') status = 'HOLD';
+        else status = rawStatus || 'Não iniciado';
 
         const colunaId = statusMap[status];
+        // DEBUG: log status mapping for troubleshooting (use console.log to ensure visibility)
+        try {
+            const parentBox = document.getElementById(colunaId)?.closest('.kanban-box');
+            const parentId = parentBox ? parentBox.id : null;
+            const parentTitle = parentBox ? parentBox.querySelector('.title span')?.textContent : null;
+            console.log('[criarCard] idfuncao_imagem=', item.idfuncao_imagem,
+                'rawStatus=', rawStatus,
+                'computedStatus=', status,
+                'colunaId=', colunaId,
+                'parentId=', parentId,
+                'parentTitle=', parentTitle
+            );
+        } catch (e) { console.error('criarCard debug error', e); }
         const coluna = document.getElementById(colunaId)?.querySelector('.content');
         if (!coluna) return;
+
+        // Se já existe um card com este id em outra coluna, remove-o antes
+        try {
+            if (item.idfuncao_imagem) {
+                const existing = document.querySelector(`.kanban-card[data-id="${item.idfuncao_imagem}"]`);
+                if (existing) {
+                    existing.remove();
+                    console.log('[criarCard] removed existing duplicate for idfuncao_imagem=', item.idfuncao_imagem);
+                }
+            }
+        } catch (e) { /* ignore */ }
 
         // Define a classe da tarefa (criada ou imagem)
         const tipoClasse = tipo === 'imagem' ? 'tarefa-imagem' : 'tarefa-criada';
@@ -1385,7 +1422,9 @@ const statusMap = {
     'Em aprovação': 'in-review',
     'Ajuste': 'ajuste',
     'Finalizado': 'done',
-    'HOLD': 'hold'
+    'HOLD': 'hold',
+    'Aprovado': 'aprovado',
+    'Aprovado com ajustes': 'aprovado'
 };
 
 
@@ -1393,12 +1432,29 @@ const statusMap = {
 function atualizarTaskCount() {
     Object.keys(statusMap).forEach(status => {
         const col = document.getElementById(statusMap[status]);
-        const count = col.querySelectorAll('.kanban-card:not([style*="display: none"])').length;
+        if (!col) return;
 
-        col.querySelector('.task-count').textContent = count;
+        let count = 0;
 
-        // Se for a coluna "ajuste", esconde quando não houver tarefas
-        if (statusMap[status] === 'ajuste') {
+        // Para as colunas de aprovação, contamos especificamente cards cujo data-status
+        // é 'Aprovado' ou 'Aprovado com ajustes' (visíveis). Isso garante que, mesmo
+        // quando "Aprovado com ajustes" for mostrado visualmente como Finalizado,
+        // a coluna "aprovado" será escondida quando não houver itens com esses status.
+        if (status === 'Aprovado' || status === 'Aprovado com ajustes') {
+            const nodes = document.querySelectorAll('.kanban-card[data-status="Aprovado"], .kanban-card[data-status="Aprovado com ajustes"]');
+            count = Array.from(nodes).filter(n => {
+                const style = window.getComputedStyle(n);
+                return style.display !== 'none' && n.offsetParent !== null;
+            }).length;
+        } else {
+            count = col.querySelectorAll('.kanban-card:not([style*="display: none"])').length;
+        }
+
+        const badge = col.querySelector('.task-count');
+        if (badge) badge.textContent = count;
+
+        // Esconder colunas de 'ajuste' e 'aprovado' quando vazias
+        if (statusMap[status] === 'ajuste' || statusMap[status] === 'aprovado') {
             col.style.display = count === 0 ? 'none' : '';
         }
     });
@@ -2630,6 +2686,11 @@ colunas.forEach(col => {
                 cardSelecionado.classList.add('selected');
                 configurarDropzone("drop-area-previa", "fileElemPrevia", "fileListPrevia", imagensSelecionadas);
                 configurarDropzone("drop-area-final", "fileElemFinal", "fileListFinal", arquivosFinais);
+                // Garantir que as sub-etapas (prévia / arquivo final) estejam visíveis por padrão
+                const etapaPreviaEl = document.getElementById('etapaPrevia');
+                const etapaFinalEl = document.getElementById('etapaFinal');
+                if (etapaPreviaEl) etapaPreviaEl.style.display = '';
+                if (etapaFinalEl) etapaFinalEl.style.display = '';
 
 
                 // Ajusta modal de acordo com a coluna de destino
@@ -2652,6 +2713,9 @@ colunas.forEach(col => {
                         document.querySelector('.modalUploads').style.display = 'flex';
                         document.querySelector('.buttons').style.display = 'none';
                         document.querySelector('.statusAnterior').style.display = 'none';
+                        // // Em aprovação: somente envio de PRÉVIA (esconde envio de arquivo final)
+                        // if (etapaPreviaEl) etapaPreviaEl.style.display = '';
+                        // if (etapaFinalEl) etapaFinalEl.style.display = 'none';
                         break;
                     case 'done': // "Finalizado"
                         // Mostra prazo, observação e botões
@@ -2659,6 +2723,9 @@ colunas.forEach(col => {
                         document.querySelector('.modalObs').style.display = 'flex';
                         document.querySelector('.modalUploads').style.display = 'flex';
                         document.querySelector('.statusAnterior').style.display = 'flex';
+                        // // Finalizado: somente envio do ARQUIVO FINAL (esconde prévias)
+                        // if (etapaPreviaEl) etapaPreviaEl.style.display = 'none';
+                        // if (etapaFinalEl) etapaFinalEl.style.display = '';
                         break;
                     default:
                         // padrão: tudo visível
@@ -2908,7 +2975,7 @@ function enviarArquivo() {
             const startTime = Date.now();
             let uploadCancelado = false;
 
-            xhr.open('POST', 'upload_enqueue.php');
+            xhr.open('POST', 'https://improov.com.br/flow/ImproovWeb/upload_enqueue.php');
 
             xhr.upload.addEventListener('progress', (e) => {
                 if (e.lengthComputable) {

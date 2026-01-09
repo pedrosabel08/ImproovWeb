@@ -25,6 +25,8 @@ $sql = "SELECT
     ico.prazo AS imagem_prazo,
     ico.idimagens_cliente_obra AS idimagem,
     si.nome_status,
+    fi.file_uploaded_at,
+    fi.requires_file_upload,
     TIMESTAMPDIFF(
         MINUTE,
         (SELECT la.data FROM log_alteracoes la
@@ -382,7 +384,9 @@ foreach ($funcoes as $funcao) {
         'ultima_imagem'              => $funcao['ultima_imagem'],
         'observacao'                 => $funcao['observacao'],
         'tempo_calculado'            => $tempoCalculado,
-        'notificacoes_nao_lidas'     => isset($funcao['notificacoes_nao_lidas']) ? intval($funcao['notificacoes_nao_lidas']) : 0
+        'notificacoes_nao_lidas'     => isset($funcao['notificacoes_nao_lidas']) ? intval($funcao['notificacoes_nao_lidas']) : 0,
+        'file_uploaded_at'           => $funcao['file_uploaded_at'],
+        'requires_file_upload'       => $funcao['requires_file_upload']
     ];
 }
 

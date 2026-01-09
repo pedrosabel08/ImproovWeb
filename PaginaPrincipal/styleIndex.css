@@ -344,12 +344,13 @@ main .kanban-box .content:not(:empty) {
 main .kanban div .header {
     font-weight: 700;
     font-size: 0.7rem;
-    color: var(--cor-principal);
+    color: black !important;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    border: 1px solid #dcdcdc;
+    /* border: 1px solid #dcdcdc; */
     padding: 10px;
+    border-radius: 8px 8px 0 0;
 }
 
 main .kanban div .header .title {

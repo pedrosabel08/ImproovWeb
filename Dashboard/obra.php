@@ -658,6 +658,9 @@ $conn->close();
                         <button id="configAcomp" class="animate__animated"
                             style="background-color: transparent; color: black;"><i
                                 class="fa-solid fa-gear"></i></button>
+                        <button id="btnHistoricoPdf" type="button" class="btnAcompObs" style="margin-left: 8px;">
+                            <i class="fa-solid fa-file-pdf"></i> PDF
+                        </button>
                     </div>
                 </div>
 

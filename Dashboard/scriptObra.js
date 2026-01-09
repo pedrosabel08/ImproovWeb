@@ -5355,6 +5355,22 @@ if (btnAcomp) {
     });
 }
 
+// PDF do histórico (abre em nova aba)
+const btnHistoricoPdf = document.getElementById('btnHistoricoPdf');
+if (btnHistoricoPdf) {
+    btnHistoricoPdf.addEventListener('click', function () {
+        const idObra = (typeof obraId !== 'undefined' && obraId) ? obraId : (localStorage.getItem('obraId') || null);
+        if (!idObra) {
+            Toastify({ text: 'Não foi possível identificar a obra.', duration: 3000, gravity: 'top', position: 'right', backgroundColor: '#f39c12' }).showToast();
+            return;
+        }
+        const activeBtn = document.querySelector('.acomp-filter-btn.active');
+        const cat = (activeBtn && activeBtn.getAttribute('data-category')) ? activeBtn.getAttribute('data-category') : 'todos';
+        const url = `../Obras/historico_pdf.php?idobra=${encodeURIComponent(idObra)}&category=${encodeURIComponent(cat)}`;
+        window.open(url, '_blank');
+    });
+}
+
 // Configuration button: check duplicates and offer unify
 document.getElementById('configAcomp').addEventListener('click', function () {
     // Try to get obraId from various places (fallbacks)

@@ -1,13 +1,34 @@
 <?php
 
+// Enable verbose errors for debugging (remove in production)
+error_reporting(E_ALL);
+ini_set('display_errors', '1');
+
 header("Access-Control-Allow-Origin: *"); // Allows all domains
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS"); // Allow specific methods
 header("Access-Control-Allow-Headers: Content-Type");
+
+// Basic sanity checks to avoid silent 500s
+// Check DB connection file
+if (!file_exists(__DIR__ . '/../conexao.php')) {
+    http_response_code(500);
+    echo "Missing required file: conexao.php";
+    error_log('Pos-Producao/inserir_pos_producao.php: conexao.php not found');
+    exit;
+}
 
 // Conectar ao banco de dados central
 include_once __DIR__ . '/../conexao.php';
 
 date_default_timezone_set('America/Sao_Paulo');
+
+// Check for composer autoload (Dotenv)
+if (!file_exists(__DIR__ . '/../Revisao/vendor/autoload.php')) {
+    http_response_code(500);
+    echo "Missing composer autoload (Revisao/vendor/autoload.php). Run 'composer install' in Revisao/ directory.";
+    error_log('Pos-Producao/inserir_pos_producao.php: vendor/autoload.php not found');
+    exit;
+}
 
 require_once __DIR__ . '/../Revisao/vendor/autoload.php';
 
@@ -16,7 +37,10 @@ use Dotenv\Dotenv;
 $envPath = __DIR__ . '/../Revisao/.env';
 
 if (!file_exists($envPath)) {
-    die("Arquivo .env não encontrado em: $envPath");
+    http_response_code(500);
+    echo "Arquivo .env não encontrado em: $envPath";
+    error_log('Pos-Producao/inserir_pos_producao.php: .env not found at ' . $envPath);
+    exit;
 }
 
 $dotenv = Dotenv::createImmutable(__DIR__ . '/../Revisao');
@@ -25,7 +49,10 @@ $dotenv->load();
 $slackWebhookUrl = $_ENV['SLACK_WEBHOOK_POS_URL'] ?? null;
 
 if (!$slackWebhookUrl) {
-    die('Erro: Variável SLACK_WEBHOOK_URL não encontrada no .env');
+    http_response_code(500);
+    echo 'Erro: Variável SLACK_WEBHOOK_POS_URL não encontrada no .env';
+    error_log('Pos-Producao/inserir_pos_producao.php: SLACK_WEBHOOK_POS_URL not set in .env');
+    exit;
 }
 
 

@@ -2,13 +2,13 @@
 
 include 'conexao.php';
 
-// 1️⃣ Atualizar status "Aprovado" para "Finalizado"
-$sql1 = "UPDATE funcao_imagem SET status = 'Finalizado' WHERE status = 'Aprovado'";
-if ($conn->query($sql1) === TRUE) {
-    echo "Status 'Aprovado' atualizado para 'Finalizado'.\n";
-} else {
-    echo "Erro na atualização de 'Finalizado': " . $conn->error . "\n";
-}
+// // 1️⃣ Atualizar status "Aprovado" para "Finalizado"
+// $sql1 = "UPDATE funcao_imagem SET status = 'Finalizado' WHERE status = 'Aprovado'";
+// if ($conn->query($sql1) === TRUE) {
+//     echo "Status 'Aprovado' atualizado para 'Finalizado'.\n";
+// } else {
+//     echo "Erro na atualização de 'Finalizado': " . $conn->error . "\n";
+// }
 
 // // 2️⃣ Atualizar status "Finalizado" para "Arquivado" se tiver mais de 3 dias
 // $sql2 = "UPDATE render_alta 

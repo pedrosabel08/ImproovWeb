@@ -4,9 +4,36 @@
 // Ele salva o arquivo enviado em `uploads/staging` e grava um arquivo .json com metadados.
 
 header('Content-Type: application/json');
-header("Access-Control-Allow-Origin: https://improov.com.br");
+
+// CORS: permite origens confiáveis (inclui localhost para testes locais)
+// Allowed origins list for stricter control
+$allowedOrigins = [
+    'https://improov.com.br',
+    'https://improov.com.br/',
+    'http://localhost',
+    'http://127.0.0.1',
+    'http://localhost:3000',
+    'http://127.0.0.1:5500'
+];
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+// Prefer echoing the exact Origin header when it's from our domain family (improov)
+// This allows variations like https://improov (local dev host) while keeping control.
+if (!empty($origin)) {
+    $host = parse_url($origin, PHP_URL_HOST) ?: '';
+    if (in_array($origin, $allowedOrigins, true) || stripos($host, 'improov') !== false) {
+        header("Access-Control-Allow-Origin: $origin");
+    } else {
+        // fallback to primary origin
+        header("Access-Control-Allow-Origin: https://improov.com.br");
+    }
+} else {
+    header("Access-Control-Allow-Origin: https://improov.com.br");
+}
+// Indicate that response varies by Origin for caching proxies
+header('Vary: Origin');
 header("Access-Control-Allow-Methods: POST, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type");
+header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
+header('Access-Control-Allow-Credentials: true');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
@@ -89,6 +116,51 @@ for ($i = 0; $i < $total; $i++) {
     // Permitir que o worker consiga renomear/remover o JSON
     @chmod($metaFile, 0666);
 
+    // prepara resultado SFTP por arquivo (será retornado ao cliente)
+    $sftpResult = [
+        'attempted' => false,
+        'success' => false,
+        'remote_path' => null,
+        'error' => null
+    ];
+
+    // Tenta enviar o arquivo enfileirado para o VPS via SFTP (se phpseclib disponível).
+    try {
+        if (file_exists(__DIR__ . '/vendor/autoload.php')) {
+            require_once __DIR__ . '/vendor/autoload.php';
+        }
+        if (class_exists('\\phpseclib3\\Net\\SFTP')) {
+            $sftpHost = 'imp-nas.ddns.net';
+            $sftpUser = 'flow';
+            $sftpPass = 'flow@2025';
+            $sftpPort = 2222;
+            $remoteDir = '/uploads/staging';
+
+            $sftp = new \phpseclib3\Net\SFTP($sftpHost, $sftpPort);
+            $sftpResult['attempted'] = true;
+            if ($sftp->login($sftpUser, $sftpPass)) {
+                // tenta criar diretório remoto
+                if (!$sftp->is_dir($remoteDir)) {
+                    @$sftp->mkdir($remoteDir, -1, true);
+                }
+                $remotePath = rtrim($remoteDir, '/') . '/' . basename($destFile);
+                if ($sftp->put($remotePath, $destFile, \phpseclib3\Net\SFTP::SOURCE_LOCAL_FILE)) {
+                    $meta['remote_staged_path'] = $remotePath;
+                    file_put_contents($metaFile, json_encode($meta, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
+                    $sftpResult['success'] = true;
+                    $sftpResult['remote_path'] = $remotePath;
+                } else {
+                    $sftpResult['error'] = 'failed_to_put_remote_file';
+                }
+            } else {
+                $sftpResult['error'] = 'sftp_auth_failed';
+            }
+        }
+    } catch (Exception $e) {
+        $sftpResult['attempted'] = true;
+        $sftpResult['error'] = $e->getMessage();
+    }
+
     // Insert initial log row into arquivo_log with status 'enfileirado' (use existing table schema)
     try {
         require_once __DIR__ . '/conexao.php';
@@ -131,6 +203,37 @@ for ($i = 0; $i < $total; $i++) {
         if (!empty($logIds)) {
             $meta['log_ids'] = $logIds;
             file_put_contents($metaFile, json_encode($meta, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
+            // Se inserimos logs vinculados a funções, limpar a flag de pendência de upload
+            try {
+                if (!empty($dataIdFuncoes)) {
+                    $upd = $conn->prepare("UPDATE funcao_imagem SET requires_file_upload = 0, file_uploaded_at = NOW() WHERE idfuncao_imagem = ?");
+                    if ($upd) {
+                        foreach ($dataIdFuncoes as $fid) {
+                            $fidInt = (int)$fid;
+                            $colIdInt = isset($colaborador_id) ? (int)$colaborador_id : 0;
+                            $upd->bind_param('i', $fidInt);
+                            @$upd->execute();
+                            // após limpar a pendência, se a função estiver aprovada (com ou sem ajustes), marca como Finalizado
+                            try {
+                                // Apenas finaliza automaticamente quando a função estava 'Aprovado'.
+                                // 'Aprovado com ajustes' será tratado visualmente no frontend quando houver arquivo,
+                                // sem alterar o status da função no banco.
+                                $updFinal = $conn->prepare("UPDATE funcao_imagem SET status = 'Finalizado' WHERE idfuncao_imagem = ? AND status = 'Aprovado'");
+                                if ($updFinal) {
+                                    $updFinal->bind_param('i', $fidInt);
+                                    @$updFinal->execute();
+                                    $updFinal->close();
+                                }
+                            } catch (Exception $e) {
+                                // não bloquear o enqueue por falha nesta atualização
+                            }
+                        }
+                            $upd->close();
+                    }
+                }
+            } catch (Exception $e) {
+                // não interromper o enqueue por falha na atualização
+            }
         }
     } catch (Exception $e) {
         // ignore DB failures at enqueue to avoid blocking; worker will try again
@@ -222,7 +325,7 @@ for ($i = 0; $i < $total; $i++) {
         // ignore Redis failures here - enqueue still works
     }
 
-    $results[] = ['arquivo' => $originalName, 'status' => 'enfileirado', 'id' => $id, 'meta' => $metaFile];
+    $results[] = ['arquivo' => $originalName, 'status' => 'enfileirado', 'id' => $id, 'meta' => $metaFile, 'sftp' => $sftpResult];
 }
 
 echo json_encode($results);

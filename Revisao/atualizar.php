@@ -58,6 +58,48 @@ try {
           )
           AND o.status_obra = 0
         ORDER BY data_aprovacao DESC";
+  } elseif ($idusuario == 5) {
+    $sql = "SELECT 
+            f.idfuncao_imagem,
+            f.funcao_id, 
+            fun.nome_funcao, 
+            f.status, 
+            f.imagem_id, 
+            i.imagem_nome, 
+            f.colaborador_id, 
+            c.nome_colaborador, 
+            c.telefone,
+            u.nome_slack,
+            o.nome_obra,
+            o.nomenclatura,
+            o.idobra,
+            (SELECT MAX(h.data_aprovacao)
+             FROM historico_aprovacoes h
+             WHERE h.funcao_imagem_id = f.idfuncao_imagem) AS data_aprovacao,
+            (SELECT h.status_novo
+             FROM historico_aprovacoes h
+             WHERE h.funcao_imagem_id = f.idfuncao_imagem
+             ORDER BY h.data_aprovacao DESC 
+             LIMIT 1) AS status_novo,
+            (SELECT hi.imagem
+             FROM historico_aprovacoes_imagens hi 
+             WHERE hi.funcao_imagem_id = f.idfuncao_imagem
+             ORDER BY hi.data_envio DESC 
+             LIMIT 1) AS imagem
+        FROM funcao_imagem f
+        LEFT JOIN funcao fun ON fun.idfuncao = f.funcao_id
+        LEFT JOIN colaborador c ON c.idcolaborador = f.colaborador_id
+        LEFT JOIN usuario u ON u.idcolaborador = c.idcolaborador
+        LEFT JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
+        LEFT JOIN obra o ON i.obra_id = o.idobra
+        WHERE f.funcao_id = 5
+          AND (
+            f.status IN ('Em aprovação', 'Ajuste', 'Aprovado com ajustes')
+            OR (f.status = 'Em andamento' AND EXISTS (
+                SELECT 1 FROM historico_aprovacoes h WHERE h.funcao_imagem_id = f.idfuncao_imagem
+            ))
+          )
+        ORDER BY data_aprovacao DESC";
   } elseif ($idusuario == 9 || $idusuario == 20 || $idusuario == 3) {
     $sql = "SELECT 
             f.idfuncao_imagem,
@@ -72,6 +114,7 @@ try {
             u.nome_slack,
             o.nome_obra,
             o.nomenclatura,
+            o.idobra,
             (SELECT MAX(h.data_aprovacao)
              FROM historico_aprovacoes h
              WHERE h.funcao_imagem_id = f.idfuncao_imagem) AS data_aprovacao,
@@ -113,6 +156,7 @@ try {
             u.nome_slack,
             o.nome_obra,
             o.nomenclatura,
+            o.idobra,
             (SELECT MAX(h.data_aprovacao)
              FROM historico_aprovacoes h
              WHERE h.funcao_imagem_id = f.idfuncao_imagem) AS data_aprovacao,
@@ -150,7 +194,7 @@ try {
 
   // Preparar e executar a query
   $stmt = $conn->prepare($sql);
-  if (!($idusuario == 1 || $idusuario == 2 || $idusuario == 9 || $idusuario == 20 || $idusuario == 3)) {
+  if (!($idusuario == 1 || $idusuario == 2 || $idusuario == 9 || $idusuario == 20 || $idusuario == 3 || $idusuario == 5)) {
     $stmt->bind_param("i", $idcolaborador);
   }
   $stmt->execute();

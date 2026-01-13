@@ -151,6 +151,22 @@ td.arquivoTd {
     text-align: left;
 }
 
+.btn-view-pdf {
+    margin-left: 10px;
+    display: inline-block;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: var(--button-bg);
+    color: #fff;
+    text-decoration: none;
+    font-size: 12px;
+    line-height: 1;
+}
+
+.btn-view-pdf:hover {
+    background: var(--button-hover);
+}
+
 tr:hover {
     background-color: rgba(0, 0, 0, 0.05);
 }

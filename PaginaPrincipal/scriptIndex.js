@@ -658,87 +658,102 @@ function mostrarResumoInteligente() {
 
 // Busca os dados do painel diário e exibe modal com as informações (se necessário)
 function fetchDailyPanel() {
-    fetch('PaginaPrincipal/get_daily_panel.php')
-        .then(r => r.ok ? r.json() : Promise.reject('Erro na resposta'))
-        .then(data => {
-            if (!data || data.error) return;
-            if (!data.show) return; // não mostrar hoje
-
-            // Preenche contadores
-            document.getElementById('daily_renders').textContent = data.renders ?? 0;
-            document.getElementById('daily_ajustes').textContent = data.ajustes ?? 0;
-            document.getElementById('daily_atrasadas').textContent = data.atrasadas ?? 0;
-            document.getElementById('daily_hoje').textContent = data.hoje ?? 0;
-
-            // Preenche últimas páginas (apenas 3) como botões com o título
-            const container = document.getElementById('daily_recent_pages');
-            container.innerHTML = '';
-            if (Array.isArray(data.recent_pages) && data.recent_pages.length) {
-                // pega até 3 e adiciona botões soltos (sem <li>)
-                data.recent_pages.slice(0, 3).forEach(p => {
-                    const btn = document.createElement('button');
-                    btn.type = 'button';
-                    btn.className = 'recent-page-btn';
-
-                    // label text + arrow icon to the right
-                    let label = p.tela || p.url || 'Página';
-                    try {
-                        // If the label is exactly 'Detalhes da obra', append obraName from localStorage when available
-                        if (String(label).trim() === 'Detalhes da Obra') {
-                            const obraNome = localStorage.getItem('obraNome') || '';
-                            if (obraNome) label = `${label} (${obraNome})`;
-                        }
-                    } catch (e) {
-                        // localStorage might be unavailable in some contexts; ignore silently
-                    }
-
-                    const labelSpan = document.createElement('span');
-                    labelSpan.className = 'recent-page-label';
-                    labelSpan.textContent = label;
-                    btn.appendChild(labelSpan);
-
-                    const icon = document.createElement('i');
-                    icon.className = 'fa-solid fa-circle-arrow-right recent-page-icon';
-                    btn.appendChild(icon);
-
-                    btn.addEventListener('click', () => {
-                        const url = p.url || '#';
-                        if (url === '#') return;
-                        window.open(url, '_blank');
-                    });
-
-                    container.appendChild(btn);
-                });
-            } else {
-                const span = document.createElement('span');
-                span.textContent = 'Nenhuma página registrada.';
-                container.appendChild(span);
-            }
-
-            const modal = document.getElementById('dailyPanelModal');
-            if (modal) modal.style.display = 'flex';
-
-            // Bind buttons (only once)
-            const goTasks = document.getElementById('daily_go_tasks');
-
-            function markSeenAndClose(redirect) {
-                fetch('PaginaPrincipal/mark_daily_panel_seen.php', { method: 'POST' })
-                    .then(r => r.json())
-                    .finally(() => {
-                        const m = document.getElementById('dailyPanelModal');
-                        if (m) m.style.display = 'none';
-                    });
-            }
-
-            if (goTasks) {
-                goTasks.onclick = () => {
-                    markSeenAndClose(true);
-                    // alternativamente direcionar para o Kanban principal
-                    modal.style.display = 'none';
-                };
-            }
+    // Ensure the user has answered the daily before showing the daily panel.
+    // This is a safe double-check in case fetchDailyPanel() is called from elsewhere.
+    try {
+        fetch('verifica_respostas.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `idcolaborador=${idColaborador}`
         })
-        .catch(err => console.error('Erro ao buscar painel diário:', err));
+            .then(r => r.ok ? r.json() : Promise.reject('Erro na resposta'))
+            .then(resp => {
+                if (!resp || !resp.hasResponses) {
+                    // user hasn't answered the daily yet — do not show the daily panel
+                    return;
+                }
+
+                // user answered — proceed to fetch and show the daily panel
+                fetch('PaginaPrincipal/get_daily_panel.php')
+                    .then(r => r.ok ? r.json() : Promise.reject('Erro na resposta'))
+                    .then(data => {
+                        if (!data || data.error) return;
+                        if (!data.show) return; // não mostrar hoje
+
+                        // Preenche contadores
+                        document.getElementById('daily_renders').textContent = data.renders ?? 0;
+                        document.getElementById('daily_ajustes').textContent = data.ajustes ?? 0;
+                        document.getElementById('daily_atrasadas').textContent = data.atrasadas ?? 0;
+                        document.getElementById('daily_hoje').textContent = data.hoje ?? 0;
+
+                        // Preenche últimas páginas (apenas 3) como botões com o título
+                        const container = document.getElementById('daily_recent_pages');
+                        container.innerHTML = '';
+                        if (Array.isArray(data.recent_pages) && data.recent_pages.length) {
+                            data.recent_pages.slice(0, 3).forEach(p => {
+                                const btn = document.createElement('button');
+                                btn.type = 'button';
+                                btn.className = 'recent-page-btn';
+
+                                let label = p.tela || p.url || 'Página';
+                                try {
+                                    if (String(label).trim() === 'Detalhes da Obra') {
+                                        const obraNome = localStorage.getItem('obraNome') || '';
+                                        if (obraNome) label = `${label} (${obraNome})`;
+                                    }
+                                } catch (e) { }
+
+                                const labelSpan = document.createElement('span');
+                                labelSpan.className = 'recent-page-label';
+                                labelSpan.textContent = label;
+                                btn.appendChild(labelSpan);
+
+                                const icon = document.createElement('i');
+                                icon.className = 'fa-solid fa-circle-arrow-right recent-page-icon';
+                                btn.appendChild(icon);
+
+                                btn.addEventListener('click', () => {
+                                    const url = p.url || '#';
+                                    if (url === '#') return;
+                                    window.open(url, '_blank');
+                                });
+
+                                container.appendChild(btn);
+                            });
+                        } else {
+                            const span = document.createElement('span');
+                            span.textContent = 'Nenhuma página registrada.';
+                            container.appendChild(span);
+                        }
+
+                        const modal = document.getElementById('dailyPanelModal');
+                        if (modal) modal.style.display = 'flex';
+
+                        // Bind buttons (only once)
+                        const goTasks = document.getElementById('daily_go_tasks');
+
+                        function markSeenAndClose(redirect) {
+                            fetch('PaginaPrincipal/mark_daily_panel_seen.php', { method: 'POST' })
+                                .then(r => r.json())
+                                .finally(() => {
+                                    const m = document.getElementById('dailyPanelModal');
+                                    if (m) m.style.display = 'none';
+                                });
+                        }
+
+                        if (goTasks) {
+                            goTasks.onclick = () => {
+                                markSeenAndClose(true);
+                                modal.style.display = 'none';
+                            };
+                        }
+                    })
+                    .catch(err => console.error('Erro ao buscar painel diário:', err));
+            })
+            .catch(err => console.error('Erro ao verificar respostas antes do painel diário:', err));
+    } catch (e) {
+        console.error('fetchDailyPanel unexpected error:', e);
+    }
 }
 
 // Nav button handlers
@@ -1466,6 +1481,97 @@ const sidebarRight = document.getElementById('sidebar-right');
 const sidebarContent = document.getElementById('sidebar-content');
 const closeSidebar = document.getElementById('close-sidebar');
 
+// =====================
+// PDF Viewer Modal (in-page)
+// =====================
+// Backward compatible:
+// - openPdfViewerModal(idarquivo, titulo)
+// - openPdfViewerModal({ rawUrl, downloadUrl, titulo })
+function openPdfViewerModal(idarquivoOrOptions, titulo = 'PDF') {
+    const baseViewerUrl = 'https://improov.com.br/flow/ImproovWeb/Arquivos/visualizar_pdf.php';
+
+    let rawUrl = '';
+    let downloadUrl = '';
+    let headerTitle = String(titulo || 'PDF');
+
+    if (idarquivoOrOptions && typeof idarquivoOrOptions === 'object') {
+        rawUrl = String(idarquivoOrOptions.rawUrl || '');
+        downloadUrl = String(idarquivoOrOptions.downloadUrl || '');
+        if (idarquivoOrOptions.titulo) headerTitle = String(idarquivoOrOptions.titulo);
+    } else {
+        const idarquivo = idarquivoOrOptions;
+        if (!idarquivo) return;
+        rawUrl = `${baseViewerUrl}?idarquivo=${encodeURIComponent(String(idarquivo))}&raw=1`;
+        downloadUrl = `${baseViewerUrl}?idarquivo=${encodeURIComponent(String(idarquivo))}&raw=1&download=1`;
+    }
+
+    if (!rawUrl) return;
+
+    let modal = document.getElementById('pdfViewerModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'pdfViewerModal';
+        modal.className = 'modal';
+        modal.style.display = 'none';
+        modal.innerHTML = `
+            <div class="modal-content pdf-modal-content">
+                <div class="pdf-modal-header">
+                    <div class="pdf-modal-title"></div>
+                    <div class="pdf-modal-actions">
+                        <a class="pdf-modal-btn secondary" data-action="download" href="#">Baixar</a>
+                        <a class="pdf-modal-btn" data-action="newtab" href="#" target="_blank" rel="noopener">Abrir em nova aba</a>
+                        <button type="button" class="pdf-modal-close" aria-label="Fechar">×</button>
+                    </div>
+                </div>
+                <div class="pdf-modal-body">
+                    <iframe class="pdf-modal-iframe" title="PDF" loading="lazy"></iframe>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+
+        // Close handlers
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) closePdfViewerModal();
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closePdfViewerModal();
+        });
+
+        modal.querySelector('.pdf-modal-close')?.addEventListener('click', closePdfViewerModal);
+    }
+
+    const safeTitle = headerTitle;
+    const titleEl = modal.querySelector('.pdf-modal-title');
+    if (titleEl) titleEl.textContent = safeTitle;
+
+    const iframe = modal.querySelector('.pdf-modal-iframe');
+    if (iframe) iframe.src = rawUrl;
+
+    const btnNewTab = modal.querySelector('[data-action="newtab"]');
+    if (btnNewTab) btnNewTab.href = rawUrl;
+
+    const btnDownload = modal.querySelector('[data-action="download"]');
+    if (btnDownload) {
+        btnDownload.href = downloadUrl || rawUrl;
+        btnDownload.onclick = (e) => {
+            // allow navigation for download but don't bubble to modal close
+            e.stopPropagation();
+        };
+    }
+
+    modal.style.display = 'flex';
+}
+
+function closePdfViewerModal() {
+    const modal = document.getElementById('pdfViewerModal');
+    if (!modal) return;
+    const iframe = modal.querySelector('.pdf-modal-iframe');
+    if (iframe) iframe.src = 'about:blank';
+    modal.style.display = 'none';
+}
+
 function abrirSidebarTarefaCriada(idTarefa) {
     fetch(`PaginaPrincipal/getInfosTarefaCriada.php?idtarefa=${idTarefa}`)
         .then(res => res.json())
@@ -1851,6 +1957,23 @@ function abrirSidebar(idFuncao, idImagem) {
                                         const titleDiv = document.createElement('div');
                                         titleDiv.classList.add('file-title');
                                         titleDiv.textContent = `↳ ${nome}`;
+
+                                        // Botão de visualização para PDF
+                                        const tipoArquivo = String(it.tipo || '').toUpperCase();
+                                        const idarquivo = it.idarquivo ? String(it.idarquivo) : '';
+                                        if (tipoArquivo === 'PDF' && idarquivo) {
+                                            const link = document.createElement('a');
+                                            link.classList.add('btn-view-pdf');
+                                            link.href = '#';
+                                            link.innerHTML = '<i class="fa-solid fa-file-pdf"></i>';
+                                            link.addEventListener('click', (e) => {
+                                                e.preventDefault();
+                                                // evita interferir com eventos de clique do sidebar
+                                                e.stopPropagation();
+                                                openPdfViewerModal(idarquivo, nome);
+                                            });
+                                            titleDiv.appendChild(link);
+                                        }
                                         listDiv.appendChild(titleDiv);
 
                                         // Metadados: data (recebido_em), sufixo, descricao
@@ -1998,7 +2121,7 @@ function abrirSidebar(idFuncao, idImagem) {
                     catHeader.innerHTML = `🏗️ ${funcName} <span class="count">(${totalFunc})</span>`;
                     catDiv.appendChild(catHeader);
 
-                    // for each tipo, only show tipo-info (paths)
+                    // for each tipo, show paths and allow per-file "Ver PDF" when tipo == PDF
                     Object.keys(groupedByFunc[funcName]).forEach(tipo => {
                         const tipoArr = groupedByFunc[funcName][tipo];
                         const tipoDiv = document.createElement('div');
@@ -2017,6 +2140,58 @@ function abrirSidebar(idFuncao, idImagem) {
                                 pDiv.classList.add('path');
                                 pDiv.innerHTML = `📂 ${p}`;
                                 infoDiv.appendChild(pDiv);
+
+                                const filesForPath = tipoArr.filter(it => {
+                                    const np = normalizePath(it.caminho, false);
+                                    return np === p;
+                                });
+
+                                if (filesForPath.length > 0) {
+                                    const listDiv = document.createElement('div');
+                                    listDiv.classList.add('path-files');
+
+                                    filesForPath.forEach(it => {
+                                        const fileEntry = document.createElement('div');
+                                        fileEntry.classList.add('file-entry');
+
+                                        let nomeArquivo = it.nome_arquivo || it.nome_interno || '';
+                                        if (!nomeArquivo && it.caminho) {
+                                            const parts = String(it.caminho).split(/[\\/]/).filter(Boolean);
+                                            nomeArquivo = parts.length ? parts[parts.length - 1] : String(it.caminho);
+                                        }
+                                        if (!nomeArquivo) nomeArquivo = '—';
+
+                                        const titleDiv = document.createElement('div');
+                                        titleDiv.classList.add('file-title');
+                                        titleDiv.textContent = `↳ ${nomeArquivo}`;
+
+                                        const tipoArquivo = String(it.tipo || '').toUpperCase();
+                                        const idlog = it.id ? String(it.id) : '';
+                                        if (tipoArquivo === 'PDF' && idlog) {
+                                            const link = document.createElement('a');
+                                            link.classList.add('btn-view-pdf');
+                                            link.href = '#';
+                                            link.textContent = 'Ver PDF';
+                                            link.addEventListener('click', (e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+
+                                                const base = 'https://improov.com.br/flow/ImproovWeb/Arquivos/visualizar_pdf_log.php';
+                                                openPdfViewerModal({
+                                                    rawUrl: `${base}?idlog=${encodeURIComponent(idlog)}&raw=1`,
+                                                    downloadUrl: `${base}?idlog=${encodeURIComponent(idlog)}&raw=1&download=1`,
+                                                    titulo: nomeArquivo
+                                                });
+                                            });
+                                            titleDiv.appendChild(link);
+                                        }
+
+                                        fileEntry.appendChild(titleDiv);
+                                        listDiv.appendChild(fileEntry);
+                                    });
+
+                                    infoDiv.appendChild(listDiv);
+                                }
                             });
                         } else {
                             const noneDiv = document.createElement('div');

@@ -49,6 +49,53 @@ if ($_SERVER["REQUEST_METHOD"] == "GET") {
         }
     }
 
+    // Decide when we should prefer showing a PDF instead of JPG.
+    // Rule: if funcao_id is 1 (caderno) or 8 (filtro de assets) AND the latest status is "Em aprovação".
+    $pdf = null;
+    try {
+        $sqlInfo = "SELECT 
+                f.funcao_id,
+                fun.nome_funcao,
+                f.idfuncao_imagem,
+                f.status AS status_atual,
+                (SELECT h2.status_novo
+                 FROM historico_aprovacoes h2
+                 WHERE h2.funcao_imagem_id = f.idfuncao_imagem
+                 ORDER BY h2.data_aprovacao DESC
+                 LIMIT 1) AS status_ultimo
+            FROM funcao_imagem f
+            LEFT JOIN funcao fun ON fun.idfuncao = f.funcao_id
+            WHERE f.idfuncao_imagem = $idFuncaoSelecionada
+            LIMIT 1";
+        $infoRes = $conn->query($sqlInfo);
+        $info = ($infoRes && $infoRes->num_rows > 0) ? $infoRes->fetch_assoc() : null;
+
+        if ($info) {
+            $statusUlt = mb_strtolower((string)($info['status_ultimo'] ?? ''), 'UTF-8');
+            $statusAtual = mb_strtolower((string)($info['status_atual'] ?? ''), 'UTF-8');
+
+            $funcaoId = isset($info['funcao_id']) ? intval($info['funcao_id']) : 0;
+            $isCadernoOuFiltro = in_array($funcaoId, [1, 8], true);
+            $isEmAprovacao = ($statusUlt === 'em aprovação' || $statusUlt === 'em aprovacao' || $statusAtual === 'em aprovação' || $statusAtual === 'em aprovacao');
+            $funcaoImagemId = isset($info['idfuncao_imagem']) ? intval($info['idfuncao_imagem']) : 0;
+
+            if ($isCadernoOuFiltro && $isEmAprovacao) {
+                $sqlPdf = "SELECT id, nome_arquivo, caminho
+                           FROM arquivo_log
+                           WHERE funcao_imagem_id = $funcaoImagemId
+                             AND UPPER(tipo) = 'PDF'
+                           ORDER BY id DESC
+                           LIMIT 1";
+                $pdfRes = $conn->query($sqlPdf);
+                if ($pdfRes && $pdfRes->num_rows > 0) {
+                    $pdf = $pdfRes->fetch_assoc();
+                }
+            }
+        }
+    } catch (Exception $e) {
+        // ignore and keep $pdf null
+    }
+
     // Query para buscar imagens associadas
     $sqlImagens = "SELECT 
     hi.*,
@@ -72,7 +119,8 @@ GROUP BY hi.id ORDER BY has_comments DESC, comment_count DESC";
 
     $response = array(
         'historico' => $historico,
-        'imagens' => $imagens
+        'imagens' => $imagens,
+        'pdf' => $pdf
     );
 
     header('Content-Type: application/json');

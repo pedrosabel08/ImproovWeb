@@ -247,7 +247,7 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
     }
 
     // Query arquivos directly linked to the image
-    $sqlArquivosImg = "SELECT a.obra_id, a.imagem_id, a.tipo_imagem_id, a.nome_interno, a.caminho, a.tipo, a.categoria_id, a.recebido_em, a.status,
+    $sqlArquivosImg = "SELECT a.idarquivo, a.obra_id, a.imagem_id, a.tipo_imagem_id, a.nome_interno, a.caminho, a.tipo, a.categoria_id, a.recebido_em, a.status,
         c.nome_categoria AS categoria_nome, a.descricao, a.sufixo
         FROM arquivos a
         LEFT JOIN categorias c ON c.idcategoria = a.categoria_id
@@ -274,7 +274,7 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
             $obraFilter = ' AND a.obra_id = ' . (int)$obraIdFromImage;
         }
 
-        $sqlArquivosTipo = "SELECT a.obra_id, a.imagem_id, a.tipo_imagem_id, a.nome_interno, a.caminho, a.tipo, a.categoria_id, a.recebido_em, a.status,
+        $sqlArquivosTipo = "SELECT a.idarquivo, a.obra_id, a.imagem_id, a.tipo_imagem_id, a.nome_interno, a.caminho, a.tipo, a.categoria_id, a.recebido_em, a.status,
                                 c.nome_categoria AS categoria_nome, a.descricao, a.sufixo
                         FROM arquivos a
                         LEFT JOIN tipo_imagem t ON (t.id_tipo_imagem = a.tipo_imagem_id OR t.nome = a.tipo_imagem_id)

@@ -238,6 +238,8 @@ $conn->close();
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://unpkg.com/tabulator-tables@5.5.0/dist/js/tabulator.min.js"></script>
 
+    <script src="../assets/pdfjs/pdf.min.js"></script>
+
 
     <script src="script.js"></script>
     <script src="../script/sidebar.js"></script>

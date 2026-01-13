@@ -32,6 +32,10 @@ async function carregarArquivos(filtros = {}) {
             else if (item.status === 'pendente') statusClass = 'status-pendente';
             else if (item.status === 'antigo') statusClass = 'status-antigo';
 
+            const viewPdf = (item.tipo === 'PDF' && item.idarquivo)
+                ? `<a class="btn-view-pdf" href="visualizar_pdf.php?idarquivo=${encodeURIComponent(item.idarquivo)}" target="_blank" rel="noopener" title="Visualizar PDF" onclick="event.stopPropagation();">Ver PDF</a>`
+                : '';
+
             let tr = document.createElement('tr');
             // add data attributes so we can act on click
             tr.dataset.idarquivo = item.idarquivo || '';
@@ -46,6 +50,7 @@ async function carregarArquivos(filtros = {}) {
                         item.tipo === 'SKP' ? `<i class="fas fa-cube tooltip" data-tooltip="${item.tipo}" style="color:#2ECC71;"></i>` :
                             item.tipo === 'IMG' ? `<i class="fas fa-image tooltip" data-tooltip="${item.tipo}" style="color:#ebc634"></i>` :
                                 `<i class="fas fa-file tooltip" data-tooltip="${item.tipo}"></i>`}
+                    ${viewPdf}
                     </td>
                 <td class="statusTd"><span class="${statusClass}">${item.status}</span></td>
                 <td>${new Date(item.recebido_em).toLocaleDateString()}</td>
@@ -119,6 +124,7 @@ async function carregarArquivos(filtros = {}) {
 
 // Carrega na inicialização
 carregarArquivos();
+
 
 // Wire filters to call carregarArquivos with selected values
 document.addEventListener('DOMContentLoaded', () => {

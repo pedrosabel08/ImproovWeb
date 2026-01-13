@@ -227,6 +227,11 @@ async function exibirCardsDeObra(tarefas) {
     const container = document.querySelector('.containerObra');
     container.innerHTML = '';
 
+    if (!Array.isArray(tarefas) || tarefas.length === 0) {
+        container.innerHTML = '<p style="text-align: center; color: #888; margin-top: 24px;">Não há tarefas de revisão no momento.</p>';
+        return;
+    }
+
     const obrasMap = new Map();
     tarefas.forEach(tarefa => {
         if (!obrasMap.has(tarefa.nome_obra)) {
@@ -552,8 +557,17 @@ function historyAJAX(idfuncao_imagem) {
             });
             const radios = document.querySelectorAll('input[name="decision"]');
 
-            const { historico, imagens } = response;
+            const { historico, imagens, pdf } = response;
             const item = historico[0];
+
+            const hasPdfPreferido = !!(pdf && pdf.id);
+            const pdfRawUrl = hasPdfPreferido
+                ? `../Arquivos/visualizar_pdf_log.php?idlog=${encodeURIComponent(String(pdf.id))}&raw=1`
+                : null;
+            const pdfDownloadUrl = hasPdfPreferido
+                ? `../Arquivos/visualizar_pdf_log.php?idlog=${encodeURIComponent(String(pdf.id))}&raw=1&download=1`
+                : null;
+            let pdfShownOnce = false;
 
             // Preencher o container de aprovação (se houver um responsavel registrado)
             try {
@@ -686,6 +700,13 @@ function historyAJAX(idfuncao_imagem) {
 
             if (indicesOrdenados.length === 0) {
                 indiceSelect.style.display = 'none';
+
+                // Fallback: quando não há imagens/JPGs, mas existe um PDF preferido, mostra o PDF direto.
+                if (hasPdfPreferido && pdfRawUrl) {
+                    const nome = (pdf && pdf.nome_arquivo) ? pdf.nome_arquivo : (item?.nome_funcao || 'PDF');
+                    mostrarPdfCompleto(pdfRawUrl, pdfDownloadUrl, nome, pdf.id);
+                    pdfShownOnce = true;
+                }
             } else {
                 indiceSelect.style.display = 'block';
 
@@ -710,7 +731,13 @@ function historyAJAX(idfuncao_imagem) {
                     imagensDoIndice.sort((a, b) => new Date(b.data_envio) - new Date(a.data_envio));
                     const maisRecente = imagensDoIndice[0];
                     if (maisRecente) {
-                        mostrarImagemCompleta(`https://improov.com.br/flow/ImproovWeb/${maisRecente.imagem}`, maisRecente.id);
+                        if (hasPdfPreferido && !pdfShownOnce && pdfRawUrl) {
+                            const nome = (pdf && pdf.nome_arquivo) ? pdf.nome_arquivo : (item?.nome_funcao || 'PDF');
+                            mostrarPdfCompleto(pdfRawUrl, pdfDownloadUrl, nome, pdf.id);
+                            pdfShownOnce = true;
+                        } else {
+                            mostrarImagemCompleta(`https://improov.com.br/flow/ImproovWeb/${maisRecente.imagem}`, maisRecente.id);
+                        }
                     }
 
                     imagensDoIndice.forEach(img => {
@@ -995,17 +1022,229 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('fecharComentarioModal').onclick = () => {
         document.getElementById('comentarioModal').style.display = 'none';
     };
+
+    // pdf.js worker (local)
+    try {
+        if (window.pdfjsLib && window.pdfjsLib.GlobalWorkerOptions) {
+            window.pdfjsLib.GlobalWorkerOptions.workerSrc = '../assets/pdfjs/pdf.worker.min.js';
+        }
+    } catch (e) {
+        console.warn('pdf.js não carregou corretamente:', e);
+    }
 });
 
 let ap_imagem_id = null; // Variável para armazenar o ID da imagem atual
 
+// Estado do PDF (arquivo_log) quando em modo PDF
+const pdfViewerState = {
+    logId: null,
+    rawUrl: null,
+    doc: null,
+    page: 1,
+    pages: 0,
+    title: 'PDF'
+};
+
+// Para o botão de download funcionar tanto para JPG quanto para PDF.
+let currentDownloadUrl = null;
+
+async function renderizarPaginaPdf() {
+    const imageWrapper = document.getElementById('image_wrapper');
+    const canvas = document.getElementById('pdf_canvas');
+    const canvasWrap = document.getElementById('pdf_canvas_wrap');
+    const pageLayer = document.getElementById('pdf_page_layer');
+    const pageLabel = document.getElementById('pdf_page_label');
+    const btnPrev = document.getElementById('pdf_prev_page');
+    const btnNext = document.getElementById('pdf_next_page');
+
+    if (!canvas || !canvasWrap || !pdfViewerState.doc) return;
+
+    try {
+        const page = await pdfViewerState.doc.getPage(pdfViewerState.page);
+        const viewport1 = page.getViewport({ scale: 1 });
+
+        const availableWidth = Math.max(320, canvasWrap.clientWidth || imageWrapper?.clientWidth || 800);
+        const scale = availableWidth / viewport1.width;
+        const viewport = page.getViewport({ scale });
+        const outputScale = window.devicePixelRatio || 1;
+
+        canvas.width = Math.floor(viewport.width * outputScale);
+        canvas.height = Math.floor(viewport.height * outputScale);
+        canvas.style.width = `${viewport.width}px`;
+        canvas.style.height = `${viewport.height}px`;
+
+        if (pageLayer) {
+            pageLayer.style.width = canvas.style.width;
+            pageLayer.style.height = canvas.style.height;
+        }
+
+        const ctx = canvas.getContext('2d');
+        ctx.setTransform(outputScale, 0, 0, outputScale, 0, 0);
+
+        await page.render({ canvasContext: ctx, viewport }).promise;
+
+        if (pageLabel) pageLabel.textContent = `Página ${pdfViewerState.page}/${pdfViewerState.pages || '?'}`;
+        if (btnPrev) btnPrev.disabled = pdfViewerState.page <= 1;
+        if (btnNext) btnNext.disabled = pdfViewerState.pages ? (pdfViewerState.page >= pdfViewerState.pages) : false;
+    } catch (e) {
+        console.error('Erro ao renderizar PDF:', e);
+    }
+
+    if (pdfViewerState.logId) {
+        renderComments({ arquivo_log_id: pdfViewerState.logId, pagina: pdfViewerState.page });
+    }
+}
+
+async function carregarPdf(rawUrl) {
+    if (!window.pdfjsLib) {
+        console.error('pdf.js não está disponível (window.pdfjsLib)');
+        return;
+    }
+
+    pdfViewerState.doc = null;
+    pdfViewerState.pages = 0;
+    pdfViewerState.page = 1;
+
+    try {
+        const loadingTask = window.pdfjsLib.getDocument(rawUrl);
+        pdfViewerState.doc = await loadingTask.promise;
+        pdfViewerState.pages = pdfViewerState.doc.numPages || 0;
+        pdfViewerState.page = 1;
+        await renderizarPaginaPdf();
+    } catch (e) {
+        console.error('Erro ao carregar PDF:', e);
+    }
+}
+
+function mostrarPdfCompleto(rawUrl, downloadUrl, titulo = 'PDF', arquivoLogId = null) {
+    ap_imagem_id = null;
+    currentDownloadUrl = downloadUrl || rawUrl || null;
+
+    pdfViewerState.logId = arquivoLogId ? String(arquivoLogId) : null;
+    pdfViewerState.rawUrl = rawUrl;
+    pdfViewerState.title = titulo || 'PDF';
+    pdfViewerState.page = 1;
+
+    const imageWrapper = document.getElementById('image_wrapper');
+    const sidebar = document.querySelector('.sidebar-direita');
+    if (sidebar) sidebar.style.display = 'flex';
+
+    if (imageWrapper) {
+        imageWrapper.querySelectorAll('.comment').forEach(c => c.remove());
+        while (imageWrapper.firstChild) imageWrapper.removeChild(imageWrapper.firstChild);
+
+        imageWrapper.classList.add('pdf-mode');
+
+        const toolbar = document.createElement('div');
+        toolbar.className = 'pdf-toolbar';
+
+        const titleEl = document.createElement('div');
+        titleEl.className = 'pdf-title';
+        titleEl.textContent = pdfViewerState.title;
+
+        const controls = document.createElement('div');
+        controls.className = 'pdf-controls';
+
+        const btnPrev = document.createElement('button');
+        btnPrev.id = 'pdf_prev_page';
+        btnPrev.type = 'button';
+        btnPrev.textContent = '◀';
+
+        const label = document.createElement('span');
+        label.id = 'pdf_page_label';
+        label.textContent = 'Página -/-';
+
+        const btnNext = document.createElement('button');
+        btnNext.id = 'pdf_next_page';
+        btnNext.type = 'button';
+        btnNext.textContent = '▶';
+
+        controls.appendChild(btnPrev);
+        controls.appendChild(label);
+        controls.appendChild(btnNext);
+
+        toolbar.appendChild(titleEl);
+        toolbar.appendChild(controls);
+
+        const wrap = document.createElement('div');
+        wrap.id = 'pdf_canvas_wrap';
+        wrap.className = 'pdf-canvas-wrap';
+
+        const pageLayer = document.createElement('div');
+        pageLayer.id = 'pdf_page_layer';
+        pageLayer.className = 'pdf-page-layer';
+
+        const canvas = document.createElement('canvas');
+        canvas.id = 'pdf_canvas';
+        canvas.className = 'pdf-canvas';
+
+        const overlay = document.createElement('div');
+        overlay.id = 'pdf_comment_layer';
+        overlay.className = 'pdf-comment-layer';
+
+        pageLayer.appendChild(canvas);
+        pageLayer.appendChild(overlay);
+        wrap.appendChild(pageLayer);
+
+        imageWrapper.appendChild(toolbar);
+        imageWrapper.appendChild(wrap);
+
+        // Clique no PDF para criar comentário (ponto)
+        pageLayer.addEventListener('click', function (event) {
+            if (dragMoved) return;
+            if (!pdfViewerState.logId) return;
+
+            const rect = canvas.getBoundingClientRect();
+            if (!rect.width || !rect.height) return;
+
+            relativeX = ((event.clientX - rect.left) / rect.width) * 100;
+            relativeY = ((event.clientY - rect.top) / rect.height) * 100;
+
+            document.getElementById('comentarioTexto').value = '';
+            document.getElementById('imagemComentario').value = '';
+            document.getElementById('comentarioModal').style.display = 'flex';
+            mencionadosIds = [];
+        });
+
+        btnPrev.addEventListener('click', async () => {
+            if (!pdfViewerState.doc) return;
+            if (pdfViewerState.page <= 1) return;
+            pdfViewerState.page -= 1;
+            await renderizarPaginaPdf();
+        });
+
+        btnNext.addEventListener('click', async () => {
+            if (!pdfViewerState.doc) return;
+            if (pdfViewerState.pages && pdfViewerState.page >= pdfViewerState.pages) return;
+            pdfViewerState.page += 1;
+            await renderizarPaginaPdf();
+        });
+    }
+
+    // Carrega e renderiza o PDF
+    carregarPdf(rawUrl);
+
+    // Tenta renderizar de novo no resize (ex: sidebar abre/fecha)
+    window.setTimeout(() => renderizarPaginaPdf(), 150);
+}
+
 // Mostra imagem e abre modal
 function mostrarImagemCompleta(src, id) {
     ap_imagem_id = id;
+    currentDownloadUrl = src || null;
+
+    // Sai do modo PDF
+    pdfViewerState.logId = null;
+    pdfViewerState.rawUrl = null;
+    pdfViewerState.doc = null;
+    pdfViewerState.page = 1;
+    pdfViewerState.pages = 0;
 
     const imageWrapper = document.getElementById("image_wrapper");
     const sidebar = document.querySelector(".sidebar-direita");
     sidebar.style.display = "flex";
+
+    imageWrapper.classList.remove('pdf-mode');
 
     while (imageWrapper.firstChild) {
         imageWrapper.removeChild(imageWrapper.firstChild);
@@ -1060,15 +1299,15 @@ function ajustarNavSelectAoTamanhoDaImagem() {
 const btnDownload = document.getElementById('btn-download-imagem');
 if (btnDownload) {
     btnDownload.addEventListener('click', function () {
-        const img = document.getElementById('imagem_atual');
-        if (img && img.src) {
-            const link = document.createElement('a');
-            link.href = img.src;
-            link.download = img.src.split('/').pop(); // nome do arquivo
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
+        const url = currentDownloadUrl || (document.getElementById('imagem_atual')?.src || '');
+        if (!url) return;
+
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = url.split('/').pop() || 'download';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     });
 }
 
@@ -1120,7 +1359,12 @@ document.getElementById('enviarComentario').onclick = async () => {
     }
 
     const formData = new FormData();
-    formData.append('ap_imagem_id', ap_imagem_id);
+    if (pdfViewerState.logId) {
+        formData.append('arquivo_log_id', pdfViewerState.logId);
+        formData.append('pagina', String(pdfViewerState.page || 1));
+    } else {
+        formData.append('ap_imagem_id', ap_imagem_id);
+    }
     formData.append('x', relativeX);
     formData.append('y', relativeY);
     formData.append('texto', texto);
@@ -1151,7 +1395,11 @@ document.getElementById('enviarComentario').onclick = async () => {
             }).showToast();
 
             // Atualiza comentários
-            renderComments(ap_imagem_id);
+            if (pdfViewerState.logId) {
+                renderComments({ arquivo_log_id: pdfViewerState.logId, pagina: pdfViewerState.page });
+            } else {
+                renderComments(ap_imagem_id);
+            }
         } else {
             Toastify({
                 text: result.mensagem || 'Erro ao salvar comentário!',
@@ -1203,7 +1451,16 @@ async function renderComments(id) {
     const comentariosDiv = document.querySelector(".comentarios");
     comentariosDiv.innerHTML = '';
     const imagemCompletaDiv = document.getElementById("image_wrapper");
-    const response = await fetch(`buscar_comentarios.php?id=${id}`);
+
+    const isPdf = (typeof id === 'object' && id && id.arquivo_log_id);
+    const markerContainer = isPdf
+        ? (document.getElementById('pdf_comment_layer') || imagemCompletaDiv)
+        : imagemCompletaDiv;
+    const url = isPdf
+        ? `buscar_comentarios.php?arquivo_log_id=${encodeURIComponent(String(id.arquivo_log_id))}&pagina=${encodeURIComponent(String(id.pagina || 1))}`
+        : `buscar_comentarios.php?id=${encodeURIComponent(String(id))}`;
+
+    const response = await fetch(url);
     const comentarios = await response.json();
 
     imagemCompletaDiv.querySelectorAll('.comment').forEach(c => c.remove());
@@ -1261,15 +1518,15 @@ async function renderComments(id) {
         respostas.id = `respostas-${comentario.id}`;
 
         commentCard.appendChild(header);
-            if (comentario.imagem) {
-                const imagemDiv = document.createElement('div');
-                imagemDiv.classList.add('comment-image');
-                const thumb = `https://improov.com.br/flow/ImproovWeb/thumb.php?path=${encodeURIComponent(comentario.imagem)}&w=200&q=85`;
-                imagemDiv.innerHTML = `
+        if (comentario.imagem) {
+            const imagemDiv = document.createElement('div');
+            imagemDiv.classList.add('comment-image');
+            const thumb = `https://improov.com.br/flow/ImproovWeb/thumb.php?path=${encodeURIComponent(comentario.imagem)}&w=200&q=85`;
+            imagemDiv.innerHTML = `
                     <img src="${thumb}" class="comment-img-thumb" onclick="abrirImagemModal('${comentario.imagem}')">
                 `;
-                commentCard.appendChild(imagemDiv);
-            }
+            commentCard.appendChild(imagemDiv);
+        }
         commentCard.appendChild(commentBody);
         commentCard.appendChild(footer);
         commentCard.appendChild(respostas);
@@ -1311,7 +1568,9 @@ async function renderComments(id) {
         commentDiv.style.left = `${comentario.x}%`;
         commentDiv.style.top = `${comentario.y}%`;
 
-        commentDiv.addEventListener('click', () => {
+        commentDiv.addEventListener('click', (e) => {
+            // No PDF, a bolinha fica em cima do canvas; evita abrir um novo comentário ao clicar nela.
+            if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
             document.querySelectorAll('.comment-number').forEach(n => n.classList.remove('highlight'));
             const number = document.querySelector(`.comment-card[data-id="${comentario.id}"] .comment-number`);
             if (number) {
@@ -1364,7 +1623,7 @@ async function renderComments(id) {
             }
         });
 
-        imagemCompletaDiv.appendChild(commentDiv);
+        markerContainer.appendChild(commentDiv);
         comentariosDiv.appendChild(commentCard);
 
         if (comentario.respostas && comentario.respostas.length > 0) {
@@ -1459,7 +1718,11 @@ async function deleteComment(commentId) {
                 gravity: "top",
                 position: "left"
             }).showToast();
-            renderComments(ap_imagem_id); // Atualiza a lista de comentários
+            if (pdfViewerState.logId) {
+                renderComments({ arquivo_log_id: pdfViewerState.logId, pagina: pdfViewerState.page });
+            } else {
+                renderComments(ap_imagem_id);
+            }
         } else {
             Toastify({
                 text: 'Erro ao excluir comentário!',
@@ -1513,7 +1776,6 @@ document.addEventListener('keydown', function (event) {
 });
 
 const imageWrapper = document.getElementById('image_wrapper');
-const comments = document.querySelectorAll('.comment');
 let currentZoom = 1;
 const zoomStep = 0.1;
 const maxZoom = 3;
@@ -1532,9 +1794,8 @@ function applyTransforms() {
     imageWrapper.style.transform = `scale(${currentZoom}) translate(${currentTranslateX}px, ${currentTranslateY}px)`;
 
     // Adjust comment scaling based on the new currentZoom
-    comments.forEach(comment => {
-
-        comment.style.transform = `scale(${1 / currentZoom})`;
+    document.querySelectorAll('#image_wrapper .comment').forEach(comment => {
+        comment.style.transform = `translate(-50%, -50%) scale(${1 / currentZoom})`;
     });
 }
 

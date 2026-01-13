@@ -13,3 +13,8 @@ Adicionado em cada função da imagem o campo para colocar o caminho onde foi sa
 
 Adicionado botão que contém ajuda para se localizar nas funções que a tela do sistema fornece
 
+
+## [Proposta] - 13/01/2026 - Módulo de Notificações e Lembretes
+
+Documento de especificação: [Notificacoes-Lembretes.md](Notificacoes-Lembretes.md)
+

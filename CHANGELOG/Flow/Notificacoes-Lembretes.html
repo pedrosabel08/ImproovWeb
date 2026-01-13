@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <title>M&oacute;dulo de Notifica&ccedil;&otilde;es e Lembretes &lpar;Proposta&rpar;</title>
+  <style>
+    /* From extension vscode.github */
+    /*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+    .vscode-dark img[src$=\#gh-light-mode-only],
+    .vscode-light img[src$=\#gh-dark-mode-only],
+    .vscode-high-contrast:not(.vscode-high-contrast-light) img[src$=\#gh-light-mode-only],
+    .vscode-high-contrast-light img[src$=\#gh-dark-mode-only] {
+      display: none;
+    }
+  </style>
+
+  <link rel="stylesheet"
+    href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css">
+  <link rel="stylesheet"
+    href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css">
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+  </style>
+  <style>
+    .task-list-item {
+      list-style-type: none;
+    }
+
+    .task-list-item-checkbox {
+      margin-left: -20px;
+      vertical-align: middle;
+      pointer-events: none;
+    }
+  </style>
+  <style>
+    :root {
+      --color-note: #0969da;
+      --color-tip: #1a7f37;
+      --color-warning: #9a6700;
+      --color-severe: #bc4c00;
+      --color-caution: #d1242f;
+      --color-important: #8250df;
+    }
+  </style>
+  <style>
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --color-note: #2f81f7;
+        --color-tip: #3fb950;
+        --color-warning: #d29922;
+        --color-severe: #db6d28;
+        --color-caution: #f85149;
+        --color-important: #a371f7;
+      }
+    }
+  </style>
+  <style>
+    .markdown-alert {
+      padding: 0.5rem 1rem;
+      margin-bottom: 16px;
+      color: inherit;
+      border-left: .25em solid #888;
+    }
+
+    .markdown-alert>:first-child {
+      margin-top: 0
+    }
+
+    .markdown-alert>:last-child {
+      margin-bottom: 0
+    }
+
+    .markdown-alert .markdown-alert-title {
+      display: flex;
+      font-weight: 500;
+      align-items: center;
+      line-height: 1
+    }
+
+    .markdown-alert .markdown-alert-title .octicon {
+      margin-right: 0.5rem;
+      display: inline-block;
+      overflow: visible !important;
+      vertical-align: text-bottom;
+      fill: currentColor;
+    }
+
+    .markdown-alert.markdown-alert-note {
+      border-left-color: var(--color-note);
+    }
+
+    .markdown-alert.markdown-alert-note .markdown-alert-title {
+      color: var(--color-note);
+    }
+
+    .markdown-alert.markdown-alert-important {
+      border-left-color: var(--color-important);
+    }
+
+    .markdown-alert.markdown-alert-important .markdown-alert-title {
+      color: var(--color-important);
+    }
+
+    .markdown-alert.markdown-alert-warning {
+      border-left-color: var(--color-warning);
+    }
+
+    .markdown-alert.markdown-alert-warning .markdown-alert-title {
+      color: var(--color-warning);
+    }
+
+    .markdown-alert.markdown-alert-tip {
+      border-left-color: var(--color-tip);
+    }
+
+    .markdown-alert.markdown-alert-tip .markdown-alert-title {
+      color: var(--color-tip);
+    }
+
+    .markdown-alert.markdown-alert-caution {
+      border-left-color: var(--color-caution);
+    }
+
+    .markdown-alert.markdown-alert-caution .markdown-alert-title {
+      color: var(--color-caution);
+    }
+  </style>
+
+</head>
+
+<body class="vscode-body vscode-light">
+  <h1 id="módulo-de-notificações-e-lembretes-proposta">Módulo de Notificações e Lembretes (Proposta)</h1>
+  <p>Data: 13/01/2026</p>
+  <h2 id="objetivo">Objetivo</h2>
+  <p>Criar um módulo único, dinâmico e reaproveitável para comunicações no sistema, cobrindo desde lembretes leves até
+    avisos críticos (ex.: atualizações, mudanças de processo, novidades por projeto).</p>
+  <p>O módulo deve permitir:</p>
+  <ul>
+    <li>Criar mensagens com agendamento (início/fim) e prioridade</li>
+    <li>Segmentar público (ex.: finalizadores) e contexto (global, por módulo/página, por projeto)</li>
+    <li>Controlar experiência do usuário (visto/dispensado/confirmado/soneca)</li>
+    <li>Padronizar UI (banner, toast, modal) com regras consistentes</li>
+  </ul>
+  <h2 id="casos-de-uso-exemplos">Casos de uso (exemplos)</h2>
+  <ol>
+    <li>Aviso aos finalizadores (segmentado por perfil)</li>
+    <li>Aviso geral de um projeto (segmentado por projeto/obra)</li>
+    <li>Aviso de versionamento (global; aparece 1 vez ou exige confirmação)</li>
+    <li>Novo arquivo de referências (por projeto; com CTA “Abrir arquivo”)</li>
+  </ol>
+  <h2 id="conceitos">Conceitos</h2>
+  <h3 id="1-mensagem">1) Mensagem</h3>
+  <p>Representa o conteúdo e as regras básicas de exibição.</p>
+  <p>Campos recomendados:</p>
+  <ul>
+    <li><code>titulo</code>, <code>mensagem</code></li>
+    <li><code>tipo</code>: <code>info | warning | danger | success</code></li>
+    <li><code>canal</code>: <code>banner | toast | modal | card</code></li>
+    <li><code>prioridade</code>: número (maior = mais importante)</li>
+    <li><code>ativa</code>: bool</li>
+    <li><code>inicio_em</code>, <code>fim_em</code>: janela de exibição</li>
+    <li><code>fixa</code>: mantém sempre visível durante a janela</li>
+    <li><code>fechavel</code>: permite dispensar</li>
+    <li><code>exige_confirmacao</code>: requer “Li e entendi”</li>
+    <li>CTA (call-to-action): <code>cta_label</code>, <code>cta_url</code></li>
+    <li><code>payload_json</code>: dados opcionais para casos especiais (ex.: versão, arquivo_id)</li>
+  </ul>
+  <h3 id="2-segmentação-e-contexto">2) Segmentação e contexto</h3>
+  <p>Define para quem e onde a mensagem aparece.</p>
+  <p>Dimensões típicas:</p>
+  <ul>
+    <li>Público: por <code>perfil/função</code> e/ou usuário específico</li>
+    <li>Escopo: global, por <code>projeto/obra</code>, por cliente</li>
+    <li>Local: global (todas telas), por módulo/página específica</li>
+  </ul>
+  <h3 id="3-estado-por-usuário">3) Estado por usuário</h3>
+  <p>Evita spam e permite fluxos “até confirmar”.</p>
+  <p>Estados recomendados:</p>
+  <ul>
+    <li><code>visto_em</code>: quando apareceu pela primeira vez</li>
+    <li><code>dispensado_em</code>: quando o usuário fechou</li>
+    <li><code>confirmado_em</code>: quando o usuário confirmou leitura</li>
+    <li><code>snooze_ate</code>: adiar por X tempo (opcional, muito útil para lembretes)</li>
+  </ul>
+  <h2 id="regras-de-exibição-sugestão">Regras de exibição (sugestão)</h2>
+  <ul>
+    <li><code>modal</code>: usar apenas para avisos críticos (prioridade alta) e, preferencialmente,
+      <code>exige_confirmacao = true</code></li>
+    <li><code>banner</code>: bom para avisos gerais e lembretes persistentes</li>
+    <li><code>toast</code>: bom para novidades/eventos (“novo arquivo”) e mensagens rápidas</li>
+    <li>Respeitar sempre:
+      <ul>
+        <li>janela (<code>inicio_em</code>/<code>fim_em</code>)</li>
+        <li>segmentação (perfil/usuário/projeto/página)</li>
+        <li>estado do usuário (dispensado/confirmado/soneca)</li>
+      </ul>
+    </li>
+  </ul>
+  <h2 id="modelo-de-dados-proposta">Modelo de dados (proposta)</h2>
+  <blockquote>
+    <p>Observação: nomes/tipos podem ser adaptados às tabelas/padrões atuais do projeto.</p>
+  </blockquote>
+  <h3 id="tabela-notificacoes">Tabela: <code>notificacoes</code></h3>
+  <p>Armazena o conteúdo e regras básicas.</p>
+  <p>Campos (sugestão):</p>
+  <ul>
+    <li><code>id</code> (PK)</li>
+    <li><code>titulo</code> (varchar)</li>
+    <li><code>mensagem</code> (text)</li>
+    <li><code>tipo</code> (varchar)</li>
+    <li><code>canal</code> (varchar)</li>
+    <li><code>prioridade</code> (int)</li>
+    <li><code>ativa</code> (tinyint)</li>
+    <li><code>inicio_em</code> (datetime, null)</li>
+    <li><code>fim_em</code> (datetime, null)</li>
+    <li><code>fixa</code> (tinyint)</li>
+    <li><code>fechavel</code> (tinyint)</li>
+    <li><code>exige_confirmacao</code> (tinyint)</li>
+    <li><code>cta_label</code> (varchar, null)</li>
+    <li><code>cta_url</code> (varchar, null)</li>
+    <li><code>payload_json</code> (json/text, null)</li>
+    <li>auditoria: <code>criado_por</code>, <code>criado_em</code>, <code>atualizado_em</code></li>
+  </ul>
+  <h3 id="tabela-notificacao_alvos">Tabela: <code>notificacao_alvos</code></h3>
+  <p>Relaciona a notificação com seus alvos/segmentos.</p>
+  <p>Exemplos de alvos:</p>
+  <ul>
+    <li><code>global</code></li>
+    <li><code>perfil:finalizador</code></li>
+    <li><code>usuario:123</code></li>
+    <li><code>pagina:FlowReferencias/index.php</code></li>
+    <li><code>projeto:456</code></li>
+  </ul>
+  <p>Campos (sugestão):</p>
+  <ul>
+    <li><code>id</code> (PK)</li>
+    <li><code>notificacao_id</code> (FK)</li>
+    <li><code>alvo_tipo</code> (varchar) — ex.: <code>global|perfil|usuario|pagina|projeto</code></li>
+    <li><code>alvo_valor</code> (varchar) — ex.: <code>finalizador</code>, <code>123</code>,
+      <code>FlowReferencias</code>, <code>456</code></li>
+  </ul>
+  <h3 id="tabela-notificacao_usuario_estado">Tabela: <code>notificacao_usuario_estado</code></h3>
+  <p>Persistência por usuário para “dispensar”, “confirmar”, etc.</p>
+  <p>Campos (sugestão):</p>
+  <ul>
+    <li><code>id</code> (PK)</li>
+    <li><code>notificacao_id</code> (FK)</li>
+    <li><code>usuario_id</code> (FK)</li>
+    <li><code>visto_em</code> (datetime, null)</li>
+    <li><code>dispensado_em</code> (datetime, null)</li>
+    <li><code>confirmado_em</code> (datetime, null)</li>
+    <li><code>snooze_ate</code> (datetime, null)</li>
+  </ul>
+  <p>Índices úteis (sugestão):</p>
+  <ul>
+    <li><code>notificacoes(ativa, inicio_em, fim_em, prioridade)</code></li>
+    <li><code>notificacao_alvos(notificacao_id, alvo_tipo, alvo_valor)</code></li>
+    <li><code>notificacao_usuario_estado(usuario_id, notificacao_id)</code> único</li>
+  </ul>
+  <h2 id="integração-no-sistema-proposta">Integração no sistema (proposta)</h2>
+  <h3 id="backend-php">Backend (PHP)</h3>
+  <ul>
+    <li>Função/serviço central para buscar notificações aplicáveis ao usuário/contexto.</li>
+    <li>Estratégia: carregar no layout global (header/sidebar) para mostrar em qualquer página.</li>
+  </ul>
+  <h3 id="endpoints-opcional">Endpoints (opcional)</h3>
+  <ul>
+    <li><code>notificacoes_listar.php</code> (retorna JSON com lista filtrada)</li>
+    <li><code>notificacao_dispensar.php</code> (marca <code>dispensado_em</code>)</li>
+    <li><code>notificacao_confirmar.php</code> (marca <code>confirmado_em</code>)</li>
+    <li><code>notificacao_snooze.php</code> (define <code>snooze_ate</code>)</li>
+  </ul>
+  <h2 id="uiux-proposta">UI/UX (proposta)</h2>
+  <ul>
+    <li>Componente de renderização único:
+      <ul>
+        <li>recebe lista de notificações</li>
+        <li>organiza por prioridade</li>
+        <li>aplica layout por <code>canal</code></li>
+      </ul>
+    </li>
+  </ul>
+  <p>Padrões:</p>
+  <ul>
+    <li>Banner topo: lista compacta (máximo 1–3 simultâneos; restante em “ver mais”)</li>
+    <li>Modal: 1 por vez (prioridade mais alta), com confirmação quando necessário</li>
+    <li>Toast: aparece e some; pode manter histórico por poucos minutos</li>
+  </ul>
+  <h2 id="roadmap-sugerido">Roadmap sugerido</h2>
+  <h3 id="mvp-primeira-entrega">MVP (primeira entrega)</h3>
+  <ul>
+    <li>CRUD básico de notificações (criar/editar/ativar/expirar)</li>
+    <li>Segmentação por perfil e global</li>
+    <li>Banner global no layout</li>
+    <li>“Dispensar” por usuário (persistente no banco)</li>
+  </ul>
+  <h3 id="v2">V2</h3>
+  <ul>
+    <li>Segmentação por projeto/página</li>
+    <li>Modal com confirmação (“Li e entendi”)</li>
+    <li>Snooze</li>
+  </ul>
+  <h3 id="v3">V3</h3>
+  <ul>
+    <li>Condições dinâmicas (gatilhos baseados em dados: atrasos, status, etc.)</li>
+    <li>Auditoria/relatórios (“quem viu”, “quem confirmou”)</li>
+  </ul>
+
+
+
+</body>
+
+</html>

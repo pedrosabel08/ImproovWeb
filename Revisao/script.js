@@ -1127,11 +1127,14 @@ function mostrarPdfCompleto(rawUrl, downloadUrl, titulo = 'PDF', arquivoLogId = 
 
     const imageWrapper = document.getElementById('image_wrapper');
     const sidebar = document.querySelector('.sidebar-direita');
+    const imagem_completa = document.getElementById('imagem_completa');
     if (sidebar) sidebar.style.display = 'flex';
 
     if (imageWrapper) {
         imageWrapper.querySelectorAll('.comment').forEach(c => c.remove());
         while (imageWrapper.firstChild) imageWrapper.removeChild(imageWrapper.firstChild);
+
+        imagem_completa.style.width = '90%';
 
         imageWrapper.classList.add('pdf-mode');
 

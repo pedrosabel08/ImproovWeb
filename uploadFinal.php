@@ -169,7 +169,7 @@ $nome_imagem = $_POST['nome_imagem'] ?? '';
 $nomeStatus = $_POST['status_nome'] ?? '';
 
 // Diretórios base para pesquisa, ordem preferida
-$clientes_base = ['/mnt/clientes/2024', '/mnt/clientes/2025'];
+$clientes_base = ['/mnt/clientes/2024', '/mnt/clientes/2025', '/mnt/clientes/2026'];
 
 // Define subdiretório conforme nome_funcao
 $mapa_funcao_pasta = [

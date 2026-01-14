@@ -19,7 +19,7 @@ if (!$nomenclatura || !$arquivo) {
 }
 
 // Pastas base para busca (ordem preferida)
-$clientes_base = ['/mnt/clientes/2024', '/mnt/clientes/2025'];
+$clientes_base = ['/mnt/clientes/2024', '/mnt/clientes/2025', '/mnt/clientes/2026'];
 $pasta_funcao = '02.Projetos'; // Se quiser parametrizar, ajuste aqui ou receba por GET
 
 // Conecta ao SFTP

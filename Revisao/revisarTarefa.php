@@ -361,7 +361,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $ftp_user = 'flow';
             $ftp_pass = 'flow@2025';
             $ftp_port = 2222;
-            $bases = ['/mnt/clientes/2024', '/mnt/clientes/2025'];
+            $bases = ['/mnt/clientes/2024', '/mnt/clientes/2025', '/mnt/clientes/2026'];
             $enviado = false;
 
             foreach ($bases as $base) {

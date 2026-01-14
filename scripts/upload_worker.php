@@ -661,7 +661,7 @@ do {
             continue;
         }
 
-        $clientes_base = ['/mnt/clientes/2024', '/mnt/clientes/2025'];
+        $clientes_base = ['/mnt/clientes/2024', '/mnt/clientes/2025', '/mnt/clientes/2026'];
         $upload_ok = '';
         foreach ($clientes_base as $base) {
             $destino_base = $base . '/' . $nomenclatura . '/' . $pasta_funcao;

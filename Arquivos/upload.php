@@ -598,9 +598,9 @@ function ensureFtpDir($ftp, $path, &$log)
 function buscarPastaBaseSFTP($sftp, $conn, $obra_id)
 {
     // Bases de clientes (anos possíveis)
-    $clientes_base = ['/mnt/clientes/2024', '/mnt/clientes/2025'];
+    $clientes_base = ['/mnt/clientes/2024', '/mnt/clientes/2025', '/mnt/clientes/2026'];
 
-    // Busca a nomenclatura da obra
+    // Busca a nomenclatura da obral
     $stmt = $conn->prepare("SELECT nomenclatura FROM obra WHERE idobra = ?");
     $stmt->bind_param("i", $obra_id);
     $stmt->execute();

@@ -299,8 +299,23 @@ $conn->close();
                 <div class="aco-step">
                     <h3>1) Criar cliente/obra</h3>
 
-                    <label for="acoCliente">Cliente</label>
-                    <input id="acoCliente" type="text" autocomplete="off">
+                    <label for="acoClienteSelect">Cliente</label>
+                    <select id="acoClienteSelect">
+                        <option value="0">Novo cliente</option>
+                        <?php if (!empty($clientes) && is_array($clientes)): ?>
+                            <?php foreach ($clientes as $c): ?>
+                                <?php
+                                $cid = isset($c['idcliente']) ? $c['idcliente'] : (isset($c['id'] ) ? $c['id'] : '');
+                                $cname = isset($c['nome_cliente']) ? $c['nome_cliente'] : (isset($c['nome']) ? $c['nome'] : '');
+                                ?>
+                                <?php if ($cid !== ''): ?>
+                                    <option value="<?php echo $cid; ?>"><?php echo htmlspecialchars($cname); ?></option>
+                                <?php endif; ?>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </select>
+
+                    <input id="acoClienteNovo" type="text" placeholder="Nome do novo cliente" autocomplete="off" style="display:block; margin-top:8px;">
 
                     <label for="acoObra">Obra</label>
                     <input id="acoObra" type="text" autocomplete="off">

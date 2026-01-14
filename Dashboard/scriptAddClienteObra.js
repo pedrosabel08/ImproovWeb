@@ -5,7 +5,8 @@
 
     const btnClose = document.getElementById('closeAddClienteObra');
 
-    const inputCliente = document.getElementById('acoCliente');
+    const selectCliente = document.getElementById('acoClienteSelect');
+    const inputClienteNovo = document.getElementById('acoClienteNovo');
     const inputObra = document.getElementById('acoObra');
     const inputNomenclatura = document.getElementById('acoNomenclatura');
     const inputNomeReal = document.getElementById('acoNomeReal');
@@ -58,22 +59,35 @@
     });
 
     btnSalvar.addEventListener('click', async () => {
-        const cliente = (inputCliente.value || '').trim();
+        const selectedClienteVal = selectCliente ? selectCliente.value : '0';
+        const clienteNovo = inputClienteNovo ? (inputClienteNovo.value || '').trim() : '';
+        const cliente = selectedClienteVal && selectedClienteVal !== '0' ? null : clienteNovo;
         const obra = (inputObra.value || '').trim();
         const nomenclatura = (inputNomenclatura.value || '').trim();
         const nome_real = (inputNomeReal.value || '').trim();
 
-        if (!cliente || !obra || !nomenclatura || !nome_real) {
-            alert('Preencha cliente, obra, nomenclatura e nome real.');
+        if ((selectedClienteVal === '0' && !clienteNovo) || (selectedClienteVal !== '0' && isNaN(parseInt(selectedClienteVal)))) {
+            alert('Selecione um cliente ou preencha o novo cliente.');
+            return;
+        }
+        if (!obra || !nomenclatura || !nome_real) {
+            alert('Preencha obra, nomenclatura e nome real.');
             return;
         }
 
         btnSalvar.disabled = true;
         try {
+            const payload = { obra, nomenclatura, nome_real };
+            if (selectedClienteVal && selectedClienteVal !== '0') {
+                payload.cliente_id = parseInt(selectedClienteVal, 10);
+            } else {
+                payload.cliente = clienteNovo;
+            }
+
             const res = await fetch('adicionarClienteObra.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ cliente, obra, nomenclatura, nome_real })
+                body: JSON.stringify(payload)
             });
 
             const data = await res.json().catch(() => null);
@@ -82,7 +96,7 @@
                 return;
             }
 
-            state.cliente_id = data.cliente_id;
+            state.cliente_id = data.cliente_id || (payload.cliente_id || null);
             state.obra_id = data.obra_id;
             state.nomenclatura = nomenclatura;
 

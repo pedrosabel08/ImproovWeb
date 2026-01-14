@@ -108,6 +108,7 @@ if (json_last_error() !== JSON_ERROR_NONE || !is_array($data)) {
 }
 
 $clienteNome = isset($data['cliente']) ? trim((string)$data['cliente']) : '';
+$clienteIdFromReq = isset($data['cliente_id']) ? intval($data['cliente_id']) : null;
 $obraNome = isset($data['obra']) ? trim((string)$data['obra']) : '';
 $nomenclatura = isset($data['nomenclatura']) ? trim((string)$data['nomenclatura']) : '';
 $nomeReal = isset($data['nome_real']) ? trim((string)$data['nome_real']) : '';
@@ -118,26 +119,39 @@ if (strlen($obraNome) > 45) $obraNome = substr($obraNome, 0, 45);
 if (strlen($nomenclatura) > 10) $nomenclatura = substr($nomenclatura, 0, 10);
 if (strlen($nomeReal) > 100) $nomeReal = substr($nomeReal, 0, 100);
 
-if ($clienteNome === '' || $obraNome === '' || $nomenclatura === '' || $nomeReal === '') {
+if ((is_null($clienteIdFromReq) && $clienteNome === '') || $obraNome === '' || $nomenclatura === '' || $nomeReal === '') {
     http_response_code(400);
-    echo json_encode(['success' => false, 'message' => 'Preencha cliente, obra, nomenclatura e nome real.']);
+    echo json_encode(['success' => false, 'message' => 'Preencha cliente (ou selecione existente), obra, nomenclatura e nome real.']);
     exit;
 }
 
 try {
     $conn->begin_transaction();
-
-    // 1) Inserir cliente
-    $stmtCliente = $conn->prepare('INSERT INTO cliente (nome_cliente) VALUES (?)');
-    if (!$stmtCliente) {
-        throw new Exception('Erro ao preparar INSERT cliente: ' . $conn->error);
+    // 1) Determinar cliente: usar cliente_id enviado (se válido) ou inserir novo cliente
+    if (!is_null($clienteIdFromReq) && $clienteIdFromReq > 0) {
+        $check = $conn->prepare('SELECT idcliente FROM cliente WHERE idcliente = ? LIMIT 1');
+        if (!$check) throw new Exception('Erro ao preparar verificação de cliente: ' . $conn->error);
+        $check->bind_param('i', $clienteIdFromReq);
+        $check->execute();
+        $resCheck = $check->get_result();
+        $exists = $resCheck && $resCheck->num_rows > 0;
+        $check->close();
+        if (!$exists) {
+            throw new Exception('Cliente selecionado não existe.');
+        }
+        $clienteId = $clienteIdFromReq;
+    } else {
+        $stmtCliente = $conn->prepare('INSERT INTO cliente (nome_cliente) VALUES (?)');
+        if (!$stmtCliente) {
+            throw new Exception('Erro ao preparar INSERT cliente: ' . $conn->error);
+        }
+        $stmtCliente->bind_param('s', $clienteNome);
+        if (!$stmtCliente->execute()) {
+            throw new Exception('Erro ao inserir cliente: ' . $stmtCliente->error);
+        }
+        $clienteId = (int)$stmtCliente->insert_id;
+        $stmtCliente->close();
     }
-    $stmtCliente->bind_param('s', $clienteNome);
-    if (!$stmtCliente->execute()) {
-        throw new Exception('Erro ao inserir cliente: ' . $stmtCliente->error);
-    }
-    $clienteId = (int)$stmtCliente->insert_id;
-    $stmtCliente->close();
 
     // 2) Inserir obra conforme schema enviado
     // - obra.cliente (FK para cliente.idcliente)

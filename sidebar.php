@@ -76,6 +76,7 @@
                     <li><a title="Adicionar cliente ou obra" href="https://improov.com.br/flow/ImproovWeb/main.php#add-cliente"><i class="fa-solid fa-person"></i><span>Adicionar cliente ou obra</span></a></li>
                     <li><a title="Gerenciar prioridades" href="https://improov.com.br/flow/ImproovWeb/Prioridade"><i class="fa-solid fa-user-plus"></i><span>Gerenciar prioridades</span></a></li>
                     <li><a title="Quadro TEA" href="https://improov.com.br/flow/ImproovWeb/Quadro"><i class="fa-solid fa-columns"></i><span>Quadro TEA</span></a></li>
+                    <li><a title="Notificações" href="https://improov.com.br/flow/ImproovWeb/notificacoes"><i class="fa-solid fa-bell"></i><span>Notificações</span></a></li>
 
                 <?php endif; ?>
 

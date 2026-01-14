@@ -130,3 +130,4 @@ INSERT IGNORE INTO flow_ref_subcategory (category_id, nome, slug, tipo_label, al
   (4, 'LUT False Color', 'lut-false-color', 'cube', '["cube"]', 5, 1),
   (4, 'LUT Leitura de Contraste', 'lut-leitura-de-contraste', 'cube', '["cube"]', 6, 1),
   (4, 'Action Photoshop', 'action-photoshop', 'psd', '["psd"]', 7, 1);
+  (4, 'Kit de Construção', 'kit-construcao', 'max', '["max"]', 8, 1);

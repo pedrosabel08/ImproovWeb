@@ -1135,7 +1135,7 @@ if (!empty($arquivosPorImagem) && $refsSkpModo === 'porImagem') {
                         $resSel = $sel->get_result();
                         if ($resSel && $resSel->num_rows > 0) {
                             // Use selected date instead of NOW()
-                            $ins = $conn->prepare("INSERT INTO notificacoes (colaborador_id, mensagem, data, lida, funcao_imagem_id) VALUES (?, ?, ?, 0, ?)");
+                            $ins = $conn->prepare("insert into notificacoes_gerais (colaborador_id, mensagem, data, lida, funcao_imagem_id) VALUES (?, ?, ?, 0, ?)");
                             while ($rowNotif = $resSel->fetch_assoc()) {
                                 $colabId = $rowNotif['colaborador_id'];
                                 $funcaoImagemId = $rowNotif['idfuncao_imagem'];

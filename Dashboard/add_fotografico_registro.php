@@ -143,7 +143,7 @@ try {
             $res = $s->get_result();
             if ($res) {
                 // prepare statement to create notificacoes (cards)
-                $insNotif = $conn->prepare("INSERT INTO notificacoes (colaborador_id, mensagem, data, lida, funcao_imagem_id) VALUES (?, ?, ?, 0, ?)");
+                $insNotif = $conn->prepare("insert into notificacoes_gerais (colaborador_id, mensagem, data, lida, funcao_imagem_id) VALUES (?, ?, ?, 0, ?)");
                 if (!$insNotif) error_log('[add_fotografico_registro] prepare insNotif failed: ' . $conn->error);
 
                 // prepared stmt to get nome_slack to deduplicate Slack DMs

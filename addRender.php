@@ -52,7 +52,7 @@ if ($notificar && $finalizador_id) {
     $mensagem = "Imagem {$imagem_nome} pode ser feito o render {$nome_status}";
 
     // Corrigido: não envia data, deixa o banco preencher
-    $stmt_notif = $conn->prepare("INSERT INTO notificacoes (colaborador_id, mensagem, lida, funcao_imagem_id) VALUES (?, ?, 0, ?)");
+    $stmt_notif = $conn->prepare("insert into notificacoes_gerais (colaborador_id, mensagem, lida, funcao_imagem_id) VALUES (?, ?, 0, ?)");
     if (!$stmt_notif) {
         echo json_encode(['status' => 'erro', 'message' => 'Erro no prepare: ' . $conn->error]);
         exit;

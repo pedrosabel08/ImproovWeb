@@ -76,7 +76,15 @@ if ($_SERVER["REQUEST_METHOD"] == "GET") {
 
             $funcaoId = isset($info['funcao_id']) ? intval($info['funcao_id']) : 0;
             $isCadernoOuFiltro = in_array($funcaoId, [1, 8], true);
-            $isEmAprovacao = ($statusUlt === 'em aprovação' || $statusUlt === 'em aprovacao' || $statusAtual === 'em aprovação' || $statusAtual === 'em aprovacao');
+
+            $possibleStatuses = [
+                'em aprovação', 'em aprovacao',
+                'ajuste', 'ajustes',
+                'aprovado com ajustes', 'aprovado com ajuste',
+                'aprovado_com_ajustes', 'aprovado_com_ajuste'
+            ];
+            $isEmAprovacao = in_array(trim($statusUlt), $possibleStatuses, true) || in_array(trim($statusAtual), $possibleStatuses, true);
+
             $funcaoImagemId = isset($info['idfuncao_imagem']) ? intval($info['idfuncao_imagem']) : 0;
 
             if ($isCadernoOuFiltro && $isEmAprovacao) {

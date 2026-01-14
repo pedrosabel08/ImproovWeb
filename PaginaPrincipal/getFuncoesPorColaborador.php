@@ -57,7 +57,7 @@ $sql = "SELECT
     ) AS indice_envio_atual
     ,(
         SELECT COALESCE(COUNT(*),0)
-        FROM notificacoes n
+        FROM notificacoes_gerais n
         WHERE n.funcao_imagem_id = fi.idfuncao_imagem
           AND n.lida = 0
           AND n.colaborador_id = ?

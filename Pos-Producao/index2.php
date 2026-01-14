@@ -16,7 +16,7 @@ $usuario_id = $_SESSION['idusuario']; // ID do usuário logado
 
 // Recuperar notificações não lidas
 $sql = "SELECT n.id AS notificacao_id, n.mensagem, nu.lida 
-        FROM notificacoes n 
+        FROM notificacoes_gerais n 
         JOIN notificacoes_usuarios nu ON n.id = nu.notificacao_id 
         WHERE nu.usuario_id = ? AND nu.lida = 0";
 

@@ -313,7 +313,7 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
         // ==========================================================
         $notificacoes = [];
         $sqlNotificacoes = "SELECT n.id, n.funcao_imagem_id, n.mensagem, n.data
-            FROM notificacoes n
+            FROM notificacoes_gerais n
             LEFT JOIN funcao_imagem fi ON n.funcao_imagem_id = fi.idfuncao_imagem
             WHERE fi.idfuncao_imagem = " . $idFuncaoImagem . " AND n.lida = 0
             ORDER BY n.data DESC";

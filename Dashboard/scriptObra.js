@@ -7858,31 +7858,107 @@ addOpenButton('link_review');
 
 var markInactiveBtn = document.getElementById('markInactiveBtn');
 if (markInactiveBtn) {
+    // Helper: ajusta o texto do botão conforme status atual (0 = ativo, 1 = inativo)
+    function setMarkBtnLabelByStatus(status) {
+        try {
+            if (parseInt(status) === 0) {
+                markInactiveBtn.textContent = 'Marcar Inativa';
+            } else if (parseInt(status) === 1) {
+                markInactiveBtn.textContent = 'Marcar Ativa';
+            } else {
+                markInactiveBtn.textContent = 'Marcar Inativa';
+            }
+        } catch (e) {
+            console.warn('Erro ao setar label do botão markInactiveBtn', e);
+        }
+    }
+
+    // Tentativa inicial de obter o status da obra para ajustar o texto do botão
+    (function trySetInitialMarkLabel() {
+        var _obraIdInit = (typeof obraId !== 'undefined' && obraId) ? obraId : (localStorage.getItem('obraId') || localStorage.getItem('idObra') || null);
+        if (!_obraIdInit) return;
+        const basePathInit = window.location.pathname.includes('/flow/ImproovWeb/') ? '/flow/ImproovWeb/' : '/ImproovWeb/';
+        const statusUrlInit = new URL(basePathInit + 'Obras/getObras.php', window.location.origin).toString();
+        fetch(statusUrlInit).then(function (r) { return r.json(); }).then(function (list) {
+            if (!Array.isArray(list)) return;
+            var found = list.find(function (o) { return parseInt(o.idobra) === parseInt(_obraIdInit); });
+            if (found && typeof found.status_obra !== 'undefined') {
+                setMarkBtnLabelByStatus(found.status_obra);
+            }
+        }).catch(function (e) { console.warn('Não foi possível definir label inicial de markInactiveBtn:', e); });
+    })();
     markInactiveBtn.addEventListener('click', function () {
         var _obraId = (typeof obraId !== 'undefined' && obraId) ? obraId : (localStorage.getItem('obraId') || localStorage.getItem('idObra') || null);
         if (!_obraId) {
             alert('ID da obra não encontrado na página.');
             return;
         }
-        if (!confirm('Tem certeza que deseja marcar esta obra como inativa?')) return;
 
         const basePath = window.location.pathname.includes('/flow/ImproovWeb/') ? '/flow/ImproovWeb/' : '/ImproovWeb/';
-        const url = new URL(basePath + 'atualizarObraStatus.php', window.location.origin).toString();
-        fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ obra_id: parseInt(_obraId), status: 1 })
-        }).then(function (resp) { return resp.json(); })
-            .then(function (json) {
-                if (json && json.success) {
-                    alert('Obra marcada como inativa. A página será recarregada.');
-                    window.location.reload();
-                } else {
-                    alert('Erro: ' + (json && json.message ? json.message : 'Resposta inválida'));
-                }
-            }).catch(function (err) {
-                alert('Erro na requisição: ' + err);
-            });
+        const statusUrl = new URL(basePath + 'Obras/getObras.php', window.location.origin).toString();
+        const updateUrl = new URL(basePath + 'atualizarObraStatus.php', window.location.origin).toString();
+
+        // Primeiro tentamos obter o status atual da obra para decidir a ação (toggle)
+        fetch(statusUrl).then(function (r) { return r.json(); }).then(function (list) {
+            var found = null;
+            if (Array.isArray(list)) {
+                found = list.find(function (o) { return parseInt(o.idobra) === parseInt(_obraId); });
+            }
+            var currentStatus = (found && typeof found.status_obra !== 'undefined') ? parseInt(found.status_obra) : null;
+            var newStatus, confirmMsg;
+            if (currentStatus === 0) {
+                newStatus = 1; // marcar inativa
+                confirmMsg = 'Tem certeza que deseja marcar esta obra como inativa?';
+            } else if (currentStatus === 1) {
+                newStatus = 0; // marcar ativa
+                confirmMsg = 'Tem certeza que deseja marcar esta obra como ativa?';
+            } else {
+                // fallback: perguntar ao usuário qual ação deseja
+                if (!confirm('Não foi possível determinar o status atual. Deseja marcar como inativa?')) return;
+                newStatus = 1;
+            }
+
+            if (!confirm(confirmMsg)) return;
+
+            fetch(updateUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ obra_id: parseInt(_obraId), status: newStatus })
+            }).then(function (resp) { return resp.json(); })
+                .then(function (json) {
+                    if (json && json.success) {
+                                var msg = newStatus === 1 ? 'Obra marcada como inativa.' : 'Obra marcada como ativa.';
+                                // Atualiza texto do botão antes de recarregar para feedback imediato
+                                setMarkBtnLabelByStatus(newStatus === 1 ? 1 : 0);
+                                alert(msg + ' A página será recarregada.');
+                                window.location.reload();
+                            } else {
+                        alert('Erro: ' + (json && json.message ? json.message : 'Resposta inválida'));
+                    }
+                }).catch(function (err) {
+                    alert('Erro na requisição: ' + err);
+                });
+
+        }).catch(function (err) {
+            // Se não for possível obter o status, mantém comportamento antigo (marcar inativa)
+            console.warn('Não foi possível obter status da obra:', err);
+            if (!confirm('Não foi possível verificar o status atual. Deseja marcar como inativa?')) return;
+            fetch(updateUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ obra_id: parseInt(_obraId), status: 1 })
+            }).then(function (resp) { return resp.json(); })
+                .then(function (json) {
+                    if (json && json.success) {
+                        alert('Obra marcada como inativa. A página será recarregada.');
+                        window.location.reload();
+                    } else {
+                        alert('Erro: ' + (json && json.message ? json.message : 'Resposta inválida'));
+                    }
+                }).catch(function (err) {
+                    alert('Erro na requisição: ' + err);
+                });
+        });
     });
 }
 

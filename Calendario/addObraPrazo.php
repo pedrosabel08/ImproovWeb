@@ -26,7 +26,7 @@ if (isset($_POST['obra_id'], $_POST['prazo'], $_POST['tipo_entrega'], $_POST['as
     $mensagem = "Prazo para $tipo_entrega na obra: $nomeObra, com prazo até $prazo.";
     $dataCriacao = date('Y-m-d H:i:s');
 
-    $stmt = $conn->prepare("INSERT INTO notificacoes (mensagem, data_criacao, tipo_notificacao, obra_id) VALUES (?, ?, 'entrega', ?)");
+    $stmt = $conn->prepare("insert into notificacoes_gerais (mensagem, data_criacao, tipo_notificacao, obra_id) VALUES (?, ?, 'entrega', ?)");
     $stmt->bind_param("ssi", $mensagem, $dataCriacao, $obra_id);
 
     if ($stmt->execute()) {
@@ -40,7 +40,7 @@ if (isset($_POST['obra_id'], $_POST['prazo'], $_POST['tipo_entrega'], $_POST['as
             $prazo_id = $conn->insert_id;
 
             // Associar a notificação a cada usuário selecionado
-            $stmt = $conn->prepare("INSERT INTO notificacoes_usuarios (usuario_id, notificacao_id, lida) VALUES (?, ?, 0)");
+            $stmt = $conn->prepare("insert into notificacoes_gerais_usuarios (usuario_id, notificacao_id, lida) VALUES (?, ?, 0)");
 
             foreach ($usuariosIds as $usuarioId) {
                 $stmt->bind_param("ii", $usuarioId, $notificacao_id);

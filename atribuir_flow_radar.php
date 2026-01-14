@@ -38,7 +38,7 @@ try {
         // Notificação simples (se existir tabela notificacoes)
         if ($conn->query("SHOW TABLES LIKE 'notificacoes'")->num_rows > 0) {
             $msg = 'Tarefa atribuída via Flow Radar';
-            $ins = $conn->prepare("INSERT INTO notificacoes (colaborador_id, mensagem, data, lida, funcao_imagem_id) VALUES (?, ?, NOW(), 0, ?)");
+            $ins = $conn->prepare("insert into notificacoes_gerais (colaborador_id, mensagem, data, lida, funcao_imagem_id) VALUES (?, ?, NOW(), 0, ?)");
             if ($ins) {
                 $ins->bind_param('isi', $colaborador_id, $msg, $funcao_imagem_id);
                 $ins->execute();

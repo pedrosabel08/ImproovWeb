@@ -120,7 +120,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($tipoRevisao === "ajuste") {
-        $stmtNotif = $conn->prepare("INSERT INTO notificacoes (mensagem, colaborador_id) VALUES (?, ?)");
+        $stmtNotif = $conn->prepare("insert into notificacoes_gerais (mensagem, colaborador_id) VALUES (?, ?)");
         $stmtNotif->bind_param("si", $mensagemSlack, $colaborador_id);
         $stmtNotif->execute();
         $stmtNotif->close();

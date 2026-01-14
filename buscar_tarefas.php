@@ -93,7 +93,7 @@ while ($row = $result->fetch_assoc()) {
 
 // Buscar notificações do colaborador logado
 $notificacoes = [];
-$notificacao_sql = "SELECT id, mensagem, data, lida FROM notificacoes WHERE colaborador_id = ? AND lida = 0 ORDER BY data DESC";
+$notificacao_sql = "SELECT id, mensagem, data, lida FROM notificacoes_gerais WHERE colaborador_id = ? AND lida = 0 ORDER BY data DESC";
 $notificacao_stmt = $conn->prepare($notificacao_sql);
 $notificacao_stmt->bind_param("i", $idcolaborador);
 $notificacao_stmt->execute();

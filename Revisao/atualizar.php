@@ -194,8 +194,14 @@ try {
 
   // Preparar e executar a query
   $stmt = $conn->prepare($sql);
+  // Permitir que o colaborador 8 veja as tarefas do colaborador 23
+  $bind_colaborador = $idcolaborador;
+  if ($idcolaborador == 8) {
+    $bind_colaborador = 23;
+  }
+
   if (!($idusuario == 1 || $idusuario == 2 || $idusuario == 9 || $idusuario == 20 || $idusuario == 3 || $idusuario == 5)) {
-    $stmt->bind_param("i", $idcolaborador);
+    $stmt->bind_param("i", $bind_colaborador);
   }
   $stmt->execute();
   $result = $stmt->get_result();

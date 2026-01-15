@@ -193,3 +193,17 @@ tr:hover {
 .btn-submit:hover {
     background-color: var(--button-hover);
 }
+
+.btn-delete {
+    background-color: #dc2626;
+    color: #fff;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.btn-delete:hover {
+    background-color: #b91c1c;
+}

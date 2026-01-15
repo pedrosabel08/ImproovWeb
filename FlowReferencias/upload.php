@@ -31,8 +31,8 @@ if (!$axis_id || !$category_id || !$subcategory_id) {
 // fetch taxonomy row (and validate consistency)
 $stmt = $conn->prepare(
     "SELECT sub.id, sub.nome, sub.slug, sub.allowed_exts_json, sub.tipo_label,
-            cat.id AS category_id, cat.slug AS category_slug,
-            ax.id AS axis_id, ax.slug AS axis_slug
+            cat.id AS category_id, cat.nome AS category_nome, cat.slug AS category_slug,
+            ax.id AS axis_id, ax.nome AS axis_nome, ax.slug AS axis_slug
      FROM flow_ref_subcategory sub
      JOIN flow_ref_category cat ON cat.id = sub.category_id
      JOIN flow_ref_axis ax ON ax.id = cat.axis_id
@@ -69,7 +69,8 @@ if (empty($allowed)) {
 }
 
 // Helpers
-function slug_safe($s) {
+function slug_safe($s)
+{
     $s = (string)$s;
     $s = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $s);
     $s = strtolower($s);
@@ -78,7 +79,20 @@ function slug_safe($s) {
     return $s !== '' ? $s : 'item';
 }
 
-function ensureDirSftp($sftp, $path) {
+function prefix3($s)
+{
+    $s = (string)$s;
+    $s = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $s);
+    $s = strtoupper($s);
+    $s = preg_replace('/[^A-Z0-9]/', '', $s);
+    $s = substr($s, 0, 3);
+    if ($s === '') $s = 'XXX';
+    if (strlen($s) < 3) $s = str_pad($s, 3, 'X');
+    return $s;
+}
+
+function ensureDirSftp($sftp, $path)
+{
     if ($sftp->is_dir($path)) return true;
     return $sftp->mkdir($path, 0777, true);
 }
@@ -116,6 +130,10 @@ $SFTP_BASE_DIR = '/mnt/exchange/_SIRE';
 $axisSlug = slug_safe($tax['axis_slug'] ?? $tax['axis_id']);
 $categorySlug = slug_safe($tax['category_slug'] ?? $tax['category_id']);
 $subSlug = slug_safe($tax['slug'] ?? $tax['id']);
+
+$axisPrefix = prefix3($tax['axis_nome'] ?? $tax['axis_slug'] ?? $tax['axis_id']);
+$catPrefix = prefix3($tax['category_nome'] ?? $tax['category_slug'] ?? $tax['category_id']);
+$subPrefix = prefix3($tax['nome'] ?? $tax['slug'] ?? $tax['id']);
 
 $remoteDir = rtrim($SFTP_BASE_DIR, '/') . '/flow_referencias/' . $axisSlug . '/' . $categorySlug . '/' . $subSlug;
 
@@ -165,9 +183,19 @@ for ($i = 0; $i < count($names); $i++) {
     $safeBase = preg_replace('/[^A-Za-z0-9._-]+/', '_', pathinfo($origName, PATHINFO_FILENAME));
     if ($safeBase === '' || $safeBase === '.' || $safeBase === '..') $safeBase = 'arquivo';
 
-    $stored = date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . '_' . $safeBase . '.' . $ext;
-
+    $prefix = $axisPrefix . '_' . $catPrefix . '_' . $subPrefix;
+    $storedBase = $prefix . '_' . $safeBase;
+    $stored = $storedBase . '.' . $ext;
     $remotePath = rtrim($remoteDir, '/') . '/' . $stored;
+
+    if ($sftp->file_exists($remotePath)) {
+        $suffix = 1;
+        do {
+            $stored = $storedBase . '_' . $suffix . '.' . $ext;
+            $remotePath = rtrim($remoteDir, '/') . '/' . $stored;
+            $suffix++;
+        } while ($sftp->file_exists($remotePath) && $suffix < 1000);
+    }
 
     // Upload without loading into memory
     if (!$sftp->put($remotePath, $tmp, SFTP::SOURCE_LOCAL_FILE)) {
@@ -196,7 +224,10 @@ for ($i = 0; $i < count($names); $i++) {
 
     if (!$insert->execute()) {
         // rollback file if DB fails
-        try { $sftp->delete($remotePath); } catch (Exception $e) { }
+        try {
+            $sftp->delete($remotePath);
+        } catch (Exception $e) {
+        }
         $errors[] = "Falha ao registrar '$origName' no banco: " . $insert->error;
         continue;
     }

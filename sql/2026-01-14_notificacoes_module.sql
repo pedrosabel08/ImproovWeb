@@ -16,6 +16,8 @@ CREATE TABLE IF NOT EXISTS notificacoes (
   exige_confirmacao TINYINT(1) NOT NULL DEFAULT 0,
   cta_label VARCHAR(100) NULL,
   cta_url VARCHAR(500) NULL,
+  arquivo_nome VARCHAR(255) NULL,
+  arquivo_path VARCHAR(500) NULL,
   payload_json LONGTEXT NULL,
   criado_por INT NULL,
   criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -40,6 +42,43 @@ SET @sql := IF(
 );
 
 PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Garantir colunas de arquivo PDF (idempotente)
+SET @col_arquivo_nome := (
+  SELECT COUNT(*)
+  FROM INFORMATION_SCHEMA.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'notificacoes'
+    AND COLUMN_NAME = 'arquivo_nome'
+);
+
+SET @sql_arquivo_nome := IF(
+  @col_arquivo_nome = 0,
+  'ALTER TABLE notificacoes ADD COLUMN arquivo_nome VARCHAR(255) NULL AFTER cta_url',
+  'SELECT 1'
+);
+
+PREPARE stmt FROM @sql_arquivo_nome;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @col_arquivo_path := (
+  SELECT COUNT(*)
+  FROM INFORMATION_SCHEMA.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'notificacoes'
+    AND COLUMN_NAME = 'arquivo_path'
+);
+
+SET @sql_arquivo_path := IF(
+  @col_arquivo_path = 0,
+  'ALTER TABLE notificacoes ADD COLUMN arquivo_path VARCHAR(500) NULL AFTER arquivo_nome',
+  'SELECT 1'
+);
+
+PREPARE stmt FROM @sql_arquivo_path;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 

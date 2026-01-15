@@ -140,8 +140,14 @@ async function carregarUploads() {
 
     dados.forEach(item => {
         const tr = document.createElement('tr');
-                const href = item.id ? ('view.php?id=' + encodeURIComponent(item.id)) : '#';
+        const href = item.id ? ('view.php?id=' + encodeURIComponent(item.id)) : '#';
         const name = item.original_name || item.stored_name;
+
+        const uploadedAt = (item.uploaded_at) ? (() => {
+            const d = new Date(item.uploaded_at);
+            if (isNaN(d.getTime())) return '';
+            return d.toLocaleDateString() + ' ' + d.toLocaleTimeString();
+        })() : '';
 
         tr.innerHTML = `
       <td><a class="file-link" href="${href}" target="_blank" rel="noopener">${escapeHtml(name)}</a></td>
@@ -149,7 +155,8 @@ async function carregarUploads() {
       <td>${escapeHtml(item.category_nome || '')}</td>
       <td>${escapeHtml(item.subcategory_nome || '')}</td>
       <td>${escapeHtml((item.ext || '').toUpperCase())}</td>
-      <td>${item.uploaded_at ? new Date(item.uploaded_at).toLocaleDateString() : ''}</td>
+      <td>${escapeHtml(uploadedAt)}</td>
+            <td><button class="btn-delete" data-id="${escapeHtml(String(item.id || ''))}">Excluir</button></td>
     `;
 
         tbody.appendChild(tr);
@@ -170,6 +177,49 @@ filterExt.addEventListener('change', carregarUploads);
 filterAxis.addEventListener('change', () => { updateFilterCategories(); carregarUploads(); });
 filterCategory.addEventListener('change', () => { updateFilterSubcategories(); carregarUploads(); });
 filterSubcategory.addEventListener('change', carregarUploads);
+
+document.querySelector('.tabelaRefs tbody').addEventListener('click', async (e) => {
+    const btn = e.target.closest('.btn-delete');
+    if (!btn) return;
+
+    const id = btn.getAttribute('data-id');
+    if (!id) return;
+
+    const row = btn.closest('tr');
+    const name = row ? row.querySelector('.file-link')?.textContent : '';
+
+    const confirm = await Swal.fire({
+        title: 'Excluir arquivo?',
+        text: name ? `Isso irá apagar "${name}" do NAS e do banco.` : 'Isso irá apagar o arquivo do NAS e do banco.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Excluir',
+        cancelButtonText: 'Cancelar'
+    });
+
+    if (!confirm.isConfirmed) return;
+
+    try {
+        const body = new URLSearchParams();
+        body.set('id', id);
+        const res = await fetch('delete.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: body.toString()
+        });
+        const data = await res.json();
+        if (data.ok) {
+            Toastify({ text: 'Arquivo excluído.', duration: 3000, close: true, gravity: 'top', position: 'right', backgroundColor: 'green' }).showToast();
+            await carregarUploads();
+        } else {
+            (data.errors || ['Falha ao excluir.']).forEach(msg =>
+                Toastify({ text: msg, duration: 5000, close: true, gravity: 'top', position: 'right', backgroundColor: 'red' }).showToast()
+            );
+        }
+    } catch (err) {
+        Toastify({ text: 'Falha ao excluir.', duration: 5000, close: true, gravity: 'top', position: 'right', backgroundColor: 'red' }).showToast();
+    }
+});
 
 // modal dependent selects
 axisSelect.addEventListener('change', updateModalCategories);

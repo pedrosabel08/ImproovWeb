@@ -44,6 +44,9 @@ $connMain->close();
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" />
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css" />
+    <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
+        type="image/x-icon">
+
     <title>Flow Referências</title>
 </head>
 
@@ -85,6 +88,7 @@ $connMain->close();
                         <th>Subcategoria</th>
                         <th>Tipo</th>
                         <th>Data</th>
+                        <th>Ações</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
@@ -131,6 +135,7 @@ $connMain->close();
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="script.js"></script>
+    <script src="../script/sidebar.js"></script>
 
 </body>
 

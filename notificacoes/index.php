@@ -9,6 +9,19 @@ $tableReady = true;
 
 $usuarios = getAllUsuarios($conn);
 
+$previewId = isset($_GET['preview']) ? (int)$_GET['preview'] : null;
+$previewRow = null;
+if ($previewId) {
+    $stmtP = $conn->prepare('SELECT * FROM notificacoes WHERE id = ?');
+    if ($stmtP) {
+        $stmtP->bind_param('i', $previewId);
+        $stmtP->execute();
+        $resP = $stmtP->get_result();
+        $previewRow = $resP ? $resP->fetch_assoc() : null;
+        $stmtP->close();
+    }
+}
+
 $editId = isset($_GET['edit']) ? (int)$_GET['edit'] : null;
 $editRow = null;
 $editTargets = [];
@@ -59,6 +72,7 @@ $segmentacaoLabel = function ($tipo) {
     return $tipo;
 };
 
+
 $notificacoes = [];
 $sqlList = "SELECT n.*,
                   COALESCE(x.total, 0) AS dest_total,
@@ -91,6 +105,8 @@ if ($res === false) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" href="style.css" />
     <link rel="stylesheet" href="../css/styleSidebar.css" />
+    <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
+        type="image/x-icon">
     <title>Notificações</title>
 </head>
 
@@ -196,6 +212,21 @@ if ($res === false) {
             </table>
         </div>
 
+        <?php if ($previewRow): ?>
+            <?php
+            $pTipo = $previewRow['tipo'] ?? 'info';
+            $pSegLabel = $segmentacaoLabel($previewRow['segmentacao_tipo'] ?? 'geral');
+            $pCtaLabel = $previewRow['cta_label'] ?? '';
+            $pCtaUrl = $previewRow['cta_url'] ?? '';
+            $pArquivoPath = $previewRow['arquivo_path'] ?? '';
+            ?>
+            <div class="card">
+                <h2 style="margin:0 0 12px 0; font-size: 16px;">Preview do modal (após criar/atualizar)</h2>
+                <div class="small" style="margin-bottom: 12px;">Este preview aparece apenas após salvar.</div>
+                <button class="btn" type="button" id="btnOpenPreview">Abrir preview do modal</button>
+            </div>
+        <?php endif; ?>
+
         <div class="small">
             Próxima etapa: exibir notificações para usuários (banner/toast/modal) + segmentação.
         </div>
@@ -220,7 +251,7 @@ if ($res === false) {
 
             <div class="modal__cols">
                 <div class="modal__col">
-                    <form method="POST" action="<?= $editRow ? 'actions/update.php' : 'actions/create.php' ?>">
+                    <form method="POST" action="<?= $editRow ? 'actions/update.php' : 'actions/create.php' ?>" enctype="multipart/form-data">
                         <?php if ($editRow): ?>
                             <input type="hidden" name="id" value="<?= (int)$editRow['id'] ?>" />
                         <?php endif; ?>
@@ -361,6 +392,15 @@ if ($res === false) {
                             <textarea id="f_payload" name="payload_json" placeholder='{"versao":"3.2.0","arquivo_id":123}'><?= h($editRow['payload_json'] ?? '') ?></textarea>
                         </div>
 
+                        <div class="row">
+                            <label>Arquivo (PDF ou imagem) (opcional)</label>
+                            <input type="file" name="arquivo_pdf" accept="application/pdf,image/*" />
+                            <?php if (!empty($editRow['arquivo_path'])): ?>
+                                <div class="small">Arquivo atual: <a href="../<?= h($editRow['arquivo_path']) ?>" target="_blank" rel="noopener noreferrer"><?= h($editRow['arquivo_nome'] ?? 'Arquivo') ?></a></div>
+                            <?php endif; ?>
+                            <div class="small">O arquivo será salvo em uploads/notificacao.</div>
+                        </div>
+
                         <div class="inline">
                             <button class="btn primary" type="submit"><?= $editRow ? 'Salvar' : 'Criar' ?></button>
                         </div>
@@ -418,9 +458,75 @@ if ($res === false) {
         </div>
     </div>
 
+    <?php if ($previewRow): ?>
+        <?php
+        $pTipo = $previewRow['tipo'] ?? 'info';
+        $pSegLabel = $segmentacaoLabel($previewRow['segmentacao_tipo'] ?? 'geral');
+        $pCtaLabel = $previewRow['cta_label'] ?? '';
+        $pCtaUrl = $previewRow['cta_url'] ?? '';
+        $pArquivoPath = $previewRow['arquivo_path'] ?? '';
+        ?>
+        <!-- Modal Preview (após salvar) -->
+        <div class="modal modal-preview" id="previewModal" aria-hidden="true" data-tipo="<?= h($pTipo) ?>">
+            <div class="modal__overlay" data-close-preview="1"></div>
+            <div class="modal__panel modal__panel--narrow">
+                <div class="modal__header">
+                    <div>
+                        <div class="modal__title">Preview do modal</div>
+                        <div class="small">Visualização real do canal Modal</div>
+                    </div>
+                    <button class="btn" type="button" data-close-preview="1">Fechar</button>
+                </div>
+                <div class="modal-preview__content" data-tipo="<?= h($pTipo) ?>">
+                    <div class="modal-preview__title"><?= h($previewRow['titulo'] ?? '') ?></div>
+                    <div class="modal-preview__text"><?= nl2br(h($previewRow['mensagem'] ?? '')) ?></div>
+                    <div class="modal-preview__meta small">Segmentação: <?= h($pSegLabel) ?></div>
+
+                    <?php if ($pCtaLabel && $pCtaUrl): ?>
+                        <div class="modal-preview__actions">
+                            <a class="btn primary" href="<?= h($pCtaUrl) ?>" target="_blank" rel="noopener noreferrer"><?= h($pCtaLabel) ?></a>
+                        </div>
+                    <?php endif; ?>
+
+                    <?php if ((int)($previewRow['exige_confirmacao'] ?? 0) === 1): ?>
+                        <div class="modal-preview__actions">
+                            <button class="btn primary">Li e entendi</button>
+                        </div>
+                    <?php endif; ?>
+
+                    <?php if ($pArquivoPath): ?>
+                        <?php
+                        $pExt = strtolower(pathinfo($pArquivoPath, PATHINFO_EXTENSION));
+                        $pIsPdf = $pExt === 'pdf';
+                        $pIsImg = in_array($pExt, ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg'], true);
+                        ?>
+
+                        <?php if ($pIsPdf): ?>
+                            <div class="modal-preview__pdf" data-pdf-url="../<?= h($pArquivoPath) ?>">
+                                <div class="small" style="margin-bottom: 8px;">PDF anexado</div>
+                                <canvas class="modal-preview__canvas"></canvas>
+                            </div>
+                        <?php elseif ($pIsImg): ?>
+                            <div class="modal-preview__img" data-img-url="../<?= h($pArquivoPath) ?>">
+                                <div class="small" style="margin-bottom: 8px;">Imagem anexada</div>
+                                <img class="modal-preview__img-el" alt="Imagem anexada" />
+                            </div>
+                        <?php else: ?>
+                            <div class="small" style="margin-top: 10px;">Arquivo anexado: <a href="../<?= h($pArquivoPath) ?>" target="_blank" rel="noopener noreferrer"><?= h($previewRow['arquivo_nome'] ?? 'Arquivo') ?></a></div>
+                        <?php endif; ?>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+    <?php endif; ?>
+
     <script>
         window.__editOpen = <?= $editRow ? 'true' : 'false' ?>;
+        window.__previewOpen = <?= $previewRow ? 'true' : 'false' ?>;
     </script>
+    <script src="../assets/pdfjs/pdf.min.js"></script>
+    window.__previewOpen = <?= $previewRow ? 'true' : 'false' ?>;
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.js" integrity="sha512-2LIYaQTk12F6Q4jqZsPjoQxGByfK4l4iLwG1g9nC5o2nCxfC2uZz7G9gYIzo0WlF1lboS2k0H9rB2bx6qD0XyA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script src="script.js"></script>
     <script src="../script/sidebar.js"></script>
 </body>

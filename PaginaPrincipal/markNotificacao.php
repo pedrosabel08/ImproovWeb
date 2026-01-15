@@ -11,7 +11,7 @@ if ($id <= 0 || $colaborador <= 0) {
     exit;
 }
 
-$stmt = $conn->prepare("UPDATE notificacoes SET lida = 1 WHERE id = ? AND colaborador_id = ? AND lida = 0");
+$stmt = $conn->prepare("UPDATE notificacoes_gerais SET lida = 1 WHERE id = ? AND colaborador_id = ? AND lida = 0");
 if (!$stmt) {
     echo json_encode(['success' => false, 'error' => 'Erro ao preparar consulta: ' . $conn->error]);
     exit;

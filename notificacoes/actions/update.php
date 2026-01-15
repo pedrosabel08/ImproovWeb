@@ -32,6 +32,27 @@ $cta_label = trim((string)($_POST['cta_label'] ?? ''));
 $cta_url = trim((string)($_POST['cta_url'] ?? ''));
 $payload_json = trim((string)($_POST['payload_json'] ?? ''));
 
+// Buscar arquivo atual para manter se não houver upload novo
+$currentArquivoPath = null;
+$currentArquivoNome = null;
+$stmtCur = $conn->prepare('SELECT arquivo_path, arquivo_nome FROM notificacoes WHERE id = ?');
+if ($stmtCur) {
+    $stmtCur->bind_param('i', $id);
+    $stmtCur->execute();
+    $resCur = $stmtCur->get_result();
+    if ($resCur && ($rowCur = $resCur->fetch_assoc())) {
+        $currentArquivoPath = $rowCur['arquivo_path'] ?? null;
+        $currentArquivoNome = $rowCur['arquivo_nome'] ?? null;
+    }
+    $stmtCur->close();
+}
+
+list($arquivo_path, $arquivo_nome, $finalPath) = saveUploadedPdf('arquivo_pdf', $currentArquivoPath);
+if ($arquivo_path === null) {
+    $arquivo_path = $currentArquivoPath;
+    $arquivo_nome = $currentArquivoNome;
+}
+
 if ($titulo === '' || $mensagem === '') {
     header('Location: ../index.php?err=' . urlencode('Título e mensagem são obrigatórios.'));
     exit();
@@ -66,8 +87,8 @@ if ($segmentacao_tipo === 'funcao') {
 }
 
 $sql = "UPDATE notificacoes
-        SET titulo = ?, mensagem = ?, tipo = ?, canal = ?, segmentacao_tipo = ?, prioridade = ?, ativa = ?, inicio_em = ?, fim_em = ?, fixa = ?, fechavel = ?, exige_confirmacao = ?, cta_label = ?, cta_url = ?, payload_json = ?
-        WHERE id = ?";
+    SET titulo = ?, mensagem = ?, tipo = ?, canal = ?, segmentacao_tipo = ?, prioridade = ?, ativa = ?, inicio_em = ?, fim_em = ?, fixa = ?, fechavel = ?, exige_confirmacao = ?, cta_label = ?, cta_url = ?, arquivo_nome = ?, arquivo_path = ?, payload_json = ?
+    WHERE id = ?";
 
 $stmt = $conn->prepare($sql);
 if (!$stmt) {
@@ -76,7 +97,7 @@ if (!$stmt) {
 }
 
 $stmt->bind_param(
-    'sssssisssiiisssi',
+    'sssssiissiiisssssi',
     $titulo,
     $mensagem,
     $tipo,
@@ -91,6 +112,8 @@ $stmt->bind_param(
     $exige_confirmacao,
     $cta_label,
     $cta_url,
+    $arquivo_nome,
+    $arquivo_path,
     $payload_json,
     $id
 );
@@ -105,5 +128,5 @@ $stmt->close();
 
 replaceTargetsAndRecipients($conn, $id, $segmentacao_tipo, $alvoIds);
 
-header('Location: ../index.php?ok=' . urlencode('Notificação atualizada!'));
+header('Location: ../index.php?ok=' . urlencode('Notificação atualizada!') . '&preview=' . $id);
 exit();

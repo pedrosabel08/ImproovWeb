@@ -4,7 +4,8 @@ var colaborador_id = parseInt(localStorage.getItem('idcolaborador'));
 function getUrlBuscarTarefas() {
     const idusuario = localStorage.getItem('idusuario');
     const colaborador_id = parseInt(localStorage.getItem('idcolaborador'));
-    return `https://improov.com.br/flow/ImproovWeb/buscar_tarefas.php?idusuario=${idusuario}&colaborador_id=${colaborador_id}`;
+    const query = `idusuario=${encodeURIComponent(idusuario)}&colaborador_id=${encodeURIComponent(colaborador_id)}`;
+    return resolveImproovUrl(`buscar_tarefas.php?${query}`);
 }
 
 
@@ -26,12 +27,15 @@ function atualizarContadorTarefas() {
         .then(response => response.json())
         .then(data => {
             const tarefas = data.tarefas || [];
+            const notificacoesModulo = data.notificacoes_modulo || [];
 
             const contadorTarefas = document.getElementById('contador-tarefas');
 
-            if (tarefas.length > 0 || data.notificacoes.length > 0) {
-                contadorTarefas.textContent = tarefas.length + data.notificacoes.length;
-                document.title += ` (${tarefas.length + data.notificacoes.length})`;
+            const qtdNotificacoes = (data.notificacoes || []).length + notificacoesModulo.length;
+
+            if (tarefas.length > 0 || qtdNotificacoes > 0) {
+                contadorTarefas.textContent = tarefas.length + qtdNotificacoes;
+                document.title += ` (${tarefas.length + qtdNotificacoes})`;
 
 
             } else {
@@ -47,6 +51,65 @@ function atualizarContadorTarefas() {
 
 let contagemTarefasGlobal = {};
 
+let filaNotificacoesModulo = [];
+let mostrandoNotificacaoModulo = false;
+const notiModuloMostradas = new Set();
+
+function configurarPdfJs() {
+    if (window.pdfjsLib?.GlobalWorkerOptions) {
+        // Prefer explicit PROJECT_ROOT when provided. Otherwise build an absolute
+        // root using the current origin and prefer the "/flow/ImproovWeb" path
+        // when the page is already under /flow/.
+        let root = '';
+        if (window.PROJECT_ROOT && String(window.PROJECT_ROOT).trim()) {
+            root = String(window.PROJECT_ROOT).trim();
+        } else {
+            const origin = window.location.origin || (window.location.protocol + '//' + window.location.host);
+            const useFlow = String(window.location.pathname).includes('/flow/');
+            root = origin + (useFlow ? '/flow/ImproovWeb' : '/ImproovWeb');
+        }
+        // Normalize (remove trailing slashes) and set worker src as absolute URL
+        root = root.replace(/\/+$/, '');
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = root + '/assets/pdfjs/pdf.worker.min.js';
+    }
+}
+
+function resolveImproovUrl(path) {
+    let resolvedUrl = path;
+    // If an absolute URL points to /ImproovWeb but is missing the /flow
+    // prefix while the current page is under /flow/, insert /flow so
+    // URLs like https://improov.com.br/ImproovWeb/... become
+    // https://improov.com.br/flow/ImproovWeb/...
+    try {
+        const pageUseFlow = String(window.location.pathname).includes('/flow/');
+        if (/^https?:\/\//i.test(resolvedUrl) && pageUseFlow && /\/ImproovWeb(\/|$)/i.test(resolvedUrl) && !/\/flow\/ImproovWeb/i.test(resolvedUrl)) {
+            const m = resolvedUrl.match(/^(https?:\/\/[^\/]+)(\/.*)$/i);
+            if (m) {
+                resolvedUrl = m[1] + '/flow' + m[2];
+            }
+        }
+    } catch (e) {
+        console.debug('resolveImproovUrl: normalize flow prefix failed', e);
+    }
+    if (!/^https?:\/\//i.test(resolvedUrl)) {
+        const origin = window.location.origin || (window.location.protocol + '//' + window.location.host);
+        const useFlow = String(window.location.pathname).includes('/flow/');
+        const defaultRoot = origin + (useFlow ? '/flow/ImproovWeb' : '/ImproovWeb');
+
+        if (resolvedUrl.startsWith('/')) {
+            if (resolvedUrl.startsWith('/ImproovWeb') && useFlow && !resolvedUrl.startsWith('/flow/')) {
+                resolvedUrl = origin + '/flow' + resolvedUrl;
+            } else {
+                resolvedUrl = origin + resolvedUrl;
+            }
+        } else {
+            const base = (window.PROJECT_ROOT && String(window.PROJECT_ROOT).trim()) || defaultRoot;
+            resolvedUrl = base.replace(/\/+$/, '') + '/' + resolvedUrl.replace(/^\/+/, '');
+        }
+    }
+    return resolvedUrl;
+}
+
 
 function buscarTarefas(mostrarAlerta = true) {
     return fetch(getUrlBuscarTarefas(), {
@@ -54,12 +117,14 @@ function buscarTarefas(mostrarAlerta = true) {
     })
         .then(response => response.json())
         .then(data => {
+            console.debug('buscarTarefas: recebeu dados', data);
             const tarefas = data.tarefas || [];
             const notificacoes = data.notificacoes || [];
+            const notificacoesModulo = data.notificacoes_modulo || [];
             const contadorTarefas = document.getElementById('contador-tarefas');
 
-            if (tarefas.length > 0 || notificacoes.length > 0) {
-                contadorTarefas.textContent = tarefas.length + notificacoes.length;
+            if (tarefas.length > 0 || notificacoes.length > 0 || notificacoesModulo.length > 0) {
+                contadorTarefas.textContent = tarefas.length + notificacoes.length + notificacoesModulo.length;
                 ativarSino();
 
                 // Contagem por função (considerando filtro por colaborador_id)
@@ -101,7 +166,12 @@ function buscarTarefas(mostrarAlerta = true) {
             }
 
 
-            return { tarefas, notificacoes };
+            if (mostrarAlerta && notificacoesModulo.length > 0) {
+                console.debug('buscarTarefas: enfileirando notificacoesModulo', notificacoesModulo.length);
+                enfileirarNotificacoesModulo(notificacoesModulo);
+            }
+
+            return { tarefas, notificacoes, notificacoesModulo };
 
         })
         .catch(error => console.error('Erro ao buscar tarefas:', error));
@@ -150,6 +220,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Atualiza o contador ao carregar a página
     atualizarContadorTarefas();
+    // Também buscar notificações do módulo ao carregar para enfileirar e mostrar modais imediatamente
+    buscarTarefas(true).catch(() => { });
     // avisoUltimoDiaUtil()
     if (!isInicio) {
         agendarProximaExecucao();
@@ -172,7 +244,7 @@ sino.addEventListener('click', function () {
     const audio = new Audio('https://improov.com.br/flow/ImproovWeb/sons/not.mp3');
     audio.play();
 
-    buscarTarefas(false).then(({ notificacoes }) => {
+    buscarTarefas(false).then(({ notificacoes, notificacoesModulo }) => {
         // --- TAREFAS ---
         let htmlTarefas = '';
         let qtdTarefas = 0;
@@ -190,9 +262,25 @@ sino.addEventListener('click', function () {
 
         if (notificacoes.length > 0) {
             notificacoes.forEach(notificacao => {
-                htmlNotificacoes += `<p class="notificacao" data-not-id="${notificacao.id}">${notificacao.mensagem}</p><hr>`;
+                const safeMsg = (notificacao.mensagem || '').replace(/\r?\n/g, '<br>');
+                htmlNotificacoes += `<p class="notificacao" data-not-id="${notificacao.id}">${safeMsg}</p><hr>`;
             });
-        } else {
+        }
+
+        if (notificacoesModulo.length > 0) {
+            notificacoesModulo.forEach(notificacao => {
+                const safeMsg = (notificacao.mensagem || '').replace(/\r?\n/g, '<br>');
+                htmlNotificacoes += `
+                    <div class="notificacao notificacao-modulo" data-not-mod-id="${notificacao.id}">
+                        <strong>${notificacao.titulo || 'Notificação'}</strong><br>
+                        <span>${safeMsg}</span>
+                    </div>
+                    <hr>
+                `;
+            });
+        }
+
+        if (!notificacoes.length && !notificacoesModulo.length) {
             htmlNotificacoes = '';
         }
 
@@ -486,4 +574,284 @@ function checkRenderItems(colaborador_id) {
                 reject();
             });
     });
+}
+
+function enfileirarNotificacoesModulo(lista) {
+    lista.forEach(n => {
+        if (!notiModuloMostradas.has(n.id)) {
+            filaNotificacoesModulo.push(n);
+            notiModuloMostradas.add(n.id);
+        }
+    });
+
+    if (!mostrandoNotificacaoModulo) {
+        mostrarProximaNotificacaoModulo();
+    }
+}
+
+function mostrarProximaNotificacaoModulo() {
+    if (filaNotificacoesModulo.length === 0) {
+        mostrandoNotificacaoModulo = false;
+        return;
+    }
+
+    mostrandoNotificacaoModulo = true;
+    const notif = filaNotificacoesModulo.shift();
+    abrirModalNotificacaoModulo(notif, () => {
+        mostrarProximaNotificacaoModulo();
+    });
+}
+
+function abrirModalNotificacaoModulo(notificacao, onClose) {
+    const modalId = 'noti-modal-modulo';
+    let modal = document.getElementById(modalId);
+
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = modalId;
+        modal.className = 'noti-modal oculto';
+        modal.innerHTML = `
+            <div class="noti-modal__overlay"></div>
+            <div class="noti-modal__panel">
+                <button class="noti-modal__close" aria-label="Fechar">×</button>
+                <div class="noti-modal__title"></div>
+                <div class="noti-modal__message"></div>
+                <div class="noti-modal__actions"></div>
+                <div class="noti-modal__pdf" style="display:none;">
+                    <canvas class="noti-modal__pdf-canvas"></canvas>
+                </div>
+                <div class="noti-modal__img" style="display:none;">
+                    <img class="noti-modal__img-el" alt="Imagem da notificação" />
+                </div>
+                <div class="noti-modal__confirm" style="display:none;"></div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+
+        modal.querySelector('.noti-modal__overlay')?.addEventListener('click', () => {
+            const blocked = modal.getAttribute('data-block-close') === '1';
+            if (!blocked) {
+                fecharModalNotificacaoModulo(onClose);
+            }
+        });
+    }
+
+    const panel = modal.querySelector('.noti-modal__panel');
+    const titleEl = modal.querySelector('.noti-modal__title');
+    const msgEl = modal.querySelector('.noti-modal__message');
+    const actionsEl = modal.querySelector('.noti-modal__actions');
+    const pdfEl = modal.querySelector('.noti-modal__pdf');
+    const imgEl = modal.querySelector('.noti-modal__img');
+    const confirmEl = modal.querySelector('.noti-modal__confirm');
+
+    if (panel) {
+        panel.setAttribute('data-tipo', notificacao.tipo || 'info');
+    }
+
+    if (titleEl) titleEl.textContent = notificacao.titulo || 'Notificação';
+    // Render message as HTML so formatting (bold, links, lists, etc.) appears as written
+    // Convert plain-text newlines to <br> so stored plain text keeps visual breaks
+    if (msgEl) msgEl.innerHTML = (notificacao.mensagem || '').replace(/\r?\n/g, '<br>');
+
+    if (actionsEl) {
+        actionsEl.innerHTML = '';
+        const closeBtn = modal.querySelector('.noti-modal__close');
+        if (closeBtn) {
+            closeBtn.disabled = false;
+            closeBtn.addEventListener('click', () => {
+                const exige = notificacao.exige_confirmacao && String(notificacao.exige_confirmacao) !== '0';
+                if (exige) {
+                    confirmarNotificacaoModulo(notificacao.id, () => {
+                        fecharModalNotificacaoModulo(onClose);
+                    });
+                } else {
+                    fecharModalNotificacaoModulo(onClose);
+                }
+            });
+        }
+
+        if (notificacao.cta_label && notificacao.cta_url) {
+            const btnCta = document.createElement('a');
+            btnCta.textContent = notificacao.cta_label;
+            btnCta.href = notificacao.cta_url;
+            btnCta.target = '_blank';
+            btnCta.rel = 'noopener noreferrer';
+            btnCta.className = 'btn-noti primary';
+            actionsEl.appendChild(btnCta);
+        }
+
+        if (notificacao.exige_confirmacao && String(notificacao.exige_confirmacao) !== '0') {
+            modal.setAttribute('data-block-close', '1');
+            if (closeBtn) {
+                closeBtn.disabled = true;
+                closeBtn.classList.add('disabled');
+            }
+
+            if (confirmEl) {
+                confirmEl.style.display = '';
+                confirmEl.innerHTML = `
+                    <label class="noti-modal__checkbox">
+                        <input type="checkbox" id="notiConfirmCheck">
+                        <span>Li e entendi</span>
+                    </label>
+                `;
+
+                const chk = confirmEl.querySelector('#notiConfirmCheck');
+                if (chk) {
+                    chk.addEventListener('change', (e) => {
+                        const checked = e.target.checked;
+                        if (checked) {
+                            modal.setAttribute('data-block-close', '0');
+                            if (closeBtn) {
+                                closeBtn.disabled = false;
+                                closeBtn.classList.remove('disabled');
+                            }
+                        } else {
+                            modal.setAttribute('data-block-close', '1');
+                            if (closeBtn) {
+                                closeBtn.disabled = true;
+                                closeBtn.classList.add('disabled');
+                            }
+                        }
+                    });
+                }
+            }
+        } else {
+            modal.setAttribute('data-block-close', '0');
+            if (confirmEl) {
+                confirmEl.style.display = 'none';
+                confirmEl.innerHTML = '';
+            }
+        }
+    }
+
+    if (pdfEl || imgEl) {
+        const filePath = notificacao.arquivo_path || '';
+        const fileName = notificacao.arquivo_nome || 'Arquivo';
+        const fileRef = `${filePath} ${fileName}`.toLowerCase();
+        const isPdf = /\.pdf(\s|$|\?)/i.test(fileRef);
+        const isImage = /\.(png|jpe?g|gif|webp|bmp|svg)(\s|$|\?)/i.test(fileRef);
+
+        if (filePath && isPdf && pdfEl) {
+            pdfEl.style.display = '';
+            if (imgEl) imgEl.style.display = 'none';
+
+            const canvas = pdfEl.querySelector('.noti-modal__pdf-canvas');
+
+            const resolvedUrl = resolveImproovUrl(filePath);
+            if (canvas && window.pdfjsLib) {
+                renderPdfInline(resolvedUrl, canvas);
+                canvas.classList.add('clickable');
+                canvas.title = 'Clique para ampliar';
+                canvas.onclick = () => {
+                    const rawUrl = resolvedUrl;
+                    if (typeof openPdfViewerModal === 'function') {
+                        openPdfViewerModal({
+                            rawUrl,
+                            downloadUrl: rawUrl,
+                            titulo: fileName
+                        });
+                    } else {
+                        window.open(rawUrl, '_blank');
+                    }
+                };
+            }
+        } else if (filePath && isImage && imgEl) {
+            imgEl.style.display = '';
+            if (pdfEl) pdfEl.style.display = 'none';
+
+            const imgTag = imgEl.querySelector('.noti-modal__img-el');
+
+            const resolvedUrl = resolveImproovUrl(filePath);
+            if (imgTag) {
+                imgTag.src = resolvedUrl;
+                imgTag.classList.add('clickable');
+                imgTag.title = 'Clique para ampliar';
+                imgTag.onclick = () => {
+                    const rawUrl = resolvedUrl;
+                    if (typeof openImageViewerModal === 'function') {
+                        openImageViewerModal({
+                            rawUrl,
+                            titulo: fileName
+                        });
+                    } else {
+                        window.open(rawUrl, '_blank');
+                    }
+                };
+            }
+        } else {
+            if (pdfEl) pdfEl.style.display = 'none';
+            if (imgEl) imgEl.style.display = 'none';
+        }
+    }
+
+    console.debug('abrirModalNotificacaoModulo: abrindo notificação', notificacao.id);
+    modal.classList.remove('oculto');
+
+    marcarNotificacaoModuloVisto(notificacao.id);
+}
+
+function fecharModalNotificacaoModulo(onClose) {
+    const modal = document.getElementById('noti-modal-modulo');
+    if (modal) {
+        modal.classList.add('oculto');
+    }
+
+    if (typeof onClose === 'function') {
+        onClose();
+    }
+}
+
+function marcarNotificacaoModuloVisto(id) {
+    const statusUrl = resolveImproovUrl('notificacao_modulo_status.php');
+    fetch(statusUrl, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `id=${encodeURIComponent(id)}&action=visto`
+    }).catch(() => { });
+}
+
+function confirmarNotificacaoModulo(id, onClose) {
+    const statusUrl = resolveImproovUrl('notificacao_modulo_status.php');
+    fetch(statusUrl, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `id=${encodeURIComponent(id)}&action=confirmado`
+    })
+        .then(response => {
+            return response.json().catch(() => ({}));
+        })
+        .then(data => {
+            const ok = data && (data.ok === true || data.success === true || data.result === true);
+            if (ok) {
+                if (typeof onClose === 'function') onClose();
+            } else {
+                // não fechar se servidor não retornar ok
+                console.warn('confirmarNotificacaoModulo: servidor retornou não ok', data);
+            }
+        })
+        .catch(err => {
+            console.error('Erro ao confirmar notificação:', err);
+        });
+}
+
+async function renderPdfInline(url, canvas) {
+    try {
+        if (!/\.pdf(\?|$)/i.test(String(url))) {
+            return;
+        }
+        configurarPdfJs();
+        const loadingTask = window.pdfjsLib.getDocument(url);
+        const pdf = await loadingTask.promise;
+        const page = await pdf.getPage(1);
+        const viewport = page.getViewport({ scale: 1.1 });
+        const ctx = canvas.getContext('2d');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        await page.render({ canvasContext: ctx, viewport }).promise;
+    } catch (e) {
+        console.error('Erro ao renderizar PDF:', e);
+    }
 }

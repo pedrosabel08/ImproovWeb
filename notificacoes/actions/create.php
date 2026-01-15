@@ -26,6 +26,8 @@ $cta_label = trim((string)($_POST['cta_label'] ?? ''));
 $cta_url = trim((string)($_POST['cta_url'] ?? ''));
 $payload_json = trim((string)($_POST['payload_json'] ?? ''));
 
+list($arquivo_path, $arquivo_nome) = saveUploadedPdf('arquivo_pdf');
+
 if ($titulo === '' || $mensagem === '') {
     header('Location: ../index.php?err=' . urlencode('Título e mensagem são obrigatórios.'));
     exit();
@@ -59,8 +61,8 @@ if ($segmentacao_tipo === 'funcao') {
     $alvoIds = $_POST['obra_ids'] ?? [];
 }
 
-$sql = "INSERT INTO notificacoes (titulo, mensagem, tipo, canal, segmentacao_tipo, prioridade, ativa, inicio_em, fim_em, fixa, fechavel, exige_confirmacao, cta_label, cta_url, payload_json, criado_por)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+$sql = "INSERT INTO notificacoes (titulo, mensagem, tipo, canal, segmentacao_tipo, prioridade, ativa, inicio_em, fim_em, fixa, fechavel, exige_confirmacao, cta_label, cta_url, arquivo_nome, arquivo_path, payload_json, criado_por)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
 $stmt = $conn->prepare($sql);
 if (!$stmt) {
@@ -70,7 +72,7 @@ if (!$stmt) {
 
 $criado_por = (int)($_SESSION['idusuario'] ?? 0);
 $stmt->bind_param(
-    'sssssisssiiisssi',
+    'sssssiissiiisssssi',
     $titulo,
     $mensagem,
     $tipo,
@@ -85,6 +87,8 @@ $stmt->bind_param(
     $exige_confirmacao,
     $cta_label,
     $cta_url,
+    $arquivo_nome,
+    $arquivo_path,
     $payload_json,
     $criado_por
 );
@@ -100,5 +104,5 @@ $stmt->close();
 
 replaceTargetsAndRecipients($conn, $notificacaoId, $segmentacao_tipo, $alvoIds);
 
-header('Location: ../index.php?ok=' . urlencode('Notificação criada!'));
+header('Location: ../index.php?ok=' . urlencode('Notificação criada!') . '&preview=' . $notificacaoId);
 exit();

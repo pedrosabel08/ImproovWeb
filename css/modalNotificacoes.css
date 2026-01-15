@@ -1,0 +1,170 @@
+.noti-modal {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: 2000;
+}
+
+.noti-modal.oculto {
+    display: none;
+}
+
+.noti-modal__panel {
+    width: 80vw;
+    background: #fff;
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    border: 2px solid #dcdcdc;
+    position: relative;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.noti-modal__panel[data-tipo="info"] {
+    border-color: #4fb4ff;
+    box-shadow: 0 10px 30px rgba(79, 180, 255, 0.2);
+}
+
+.noti-modal__panel[data-tipo="warning"] {
+    border-color: #f6b83f;
+    box-shadow: 0 10px 30px rgba(246, 184, 63, 0.2);
+}
+
+.noti-modal__panel[data-tipo="danger"] {
+    border-color: #ff6b6b;
+    box-shadow: 0 10px 30px rgba(255, 107, 107, 0.2);
+}
+
+.noti-modal__panel[data-tipo="success"] {
+    border-color: #37d67a;
+    box-shadow: 0 10px 30px rgba(55, 214, 122, 0.2);
+}
+
+.noti-modal__title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: #2b2b2b;
+}
+
+.noti-modal__message {
+    color: #444;
+    line-height: 1.5;
+    margin-bottom: 12px;
+}
+
+.noti-modal__actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 6px;
+}
+
+.btn-noti {
+    background: #efefef;
+    color: #333;
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.btn-noti.primary {
+    background: #0050ab;
+    color: #fff;
+}
+
+.noti-modal__pdf {
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px dashed #dcdcdc;
+}
+
+.noti-modal__pdf-title {
+    font-size: 0.85rem;
+    color: #666;
+    margin-bottom: 8px;
+}
+
+.noti-modal__pdf-canvas {
+    width: 100%;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    background: #f7f7f7;
+    max-height: 280px;
+    object-fit: contain;
+}
+
+.noti-modal__pdf-canvas.clickable {
+    cursor: zoom-in;
+}
+
+.noti-modal__img {
+    padding-top: 10px;
+    width: max-content;
+    margin: 0 auto;
+}
+
+.noti-modal__img-title {
+    font-size: 0.85rem;
+    color: #666;
+    margin-bottom: 8px;
+}
+
+.noti-modal__img-el {
+    width: 100%;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    background: #f7f7f7;
+    max-height: 370px;
+    object-fit: contain;
+    padding: 10px;
+}
+
+/* Close X in top-right for notification modal */
+.noti-modal__close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: transparent;
+    border: none;
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 6px;
+    color: #333;
+}
+
+.noti-modal__close:hover {
+    background: rgba(0, 0, 0, 0.04);
+}
+
+.noti-modal__close.disabled,
+.noti-modal__close[disabled] {
+    opacity: 0.45;
+    pointer-events: none;
+    cursor: default;
+}
+
+.noti-modal__confirm {
+    margin-top: 12px;
+}
+
+.noti-modal__checkbox {
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+    color: #333;
+    font-weight: 600;
+}
+
+.btn-noti.disabled,
+.btn-noti:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}

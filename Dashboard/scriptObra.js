@@ -8178,16 +8178,31 @@ function openModal() {
     loadFotografico();
 }
 
+function openFotograficoLink() {
+    const input = document.getElementById('fotografico');
+    const raw = input ? (input.value || input.getAttribute('value') || '') : '';
+    const url = normalizeUrl(raw);
+    if (url) {
+        window.open(url, '_blank', 'noopener');
+    } else {
+        if (typeof showToast === 'function') {
+            showToast('Link do fotográfico não informado.', 'error');
+        } else {
+            alert('Link do fotográfico não informado.');
+        }
+    }
+}
+
 function closeModal() {
     fotograficoModal.style.display = 'none';
     document.getElementById('fotograficoRegistroForm').style.display = 'none';
     document.getElementById('fotograficoAddAlturaForm').style.display = 'none';
 }
 
-if (fotograficoBtn) fotograficoBtn.addEventListener('click', openModal);
+if (fotograficoBtn) fotograficoBtn.addEventListener('click', openFotograficoLink);
 if (quickFotografico) quickFotografico.addEventListener('click', (e) => {
     e.preventDefault();
-    openModal();
+    openFotograficoLink();
 });
 if (closeBtn) closeBtn.addEventListener('click', closeModal);
 

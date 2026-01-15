@@ -100,6 +100,7 @@ $conn->close();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="PaginaPrincipal/styleIndex.css">
     <link rel="stylesheet" href="css/styleSidebar.css">
+    <link rel="stylesheet" href="css/modalNotificacoes.css">
     <link href="https://cdn.jsdelivr.net/npm/remixicon/fonts/remixicon.css" rel="stylesheet">
     <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s" type="image/x-icon">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
@@ -563,6 +564,7 @@ $conn->close();
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdn.jsdelivr.net/npm/tabulator-tables@6.2.5/dist/js/tabulator.min.js"></script>
+    <script src="assets/pdfjs/pdf.min.js"></script>
     <script src="script/notificacoes.js"></script>
     <script src="PaginaPrincipal/scriptIndex.js"></script>
     <script src="./script/sidebar.js"></script>

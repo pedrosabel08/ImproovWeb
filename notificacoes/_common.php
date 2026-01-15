@@ -61,7 +61,7 @@ function toDatetimeLocalValue($mysqlDatetime)
 function getAllUsuarios($conn)
 {
     $usuarios = [];
-    $res = $conn->query("SELECT idusuario, nome_usuario, ativo, idcolaborador FROM usuario ORDER BY nome_usuario ASC");
+    $res = $conn->query("SELECT idusuario, nome_usuario, ativo, idcolaborador FROM usuario WHERE ativo = 1 ORDER BY nome_usuario ASC");
     if ($res) {
         while ($row = $res->fetch_assoc()) {
             $usuarios[] = $row;
@@ -219,4 +219,51 @@ function replaceTargetsAndRecipients($conn, $notificacaoId, $segmentacaoTipo, $a
 
     $stmtIns2->close();
     return count($usuarioIds);
+}
+
+function saveUploadedPdf($fileField, $existingPath = null)
+{
+    if (!isset($_FILES[$fileField]) || !is_array($_FILES[$fileField])) {
+        return [null, null, $existingPath];
+    }
+
+    $file = $_FILES[$fileField];
+    if ($file['error'] === UPLOAD_ERR_NO_FILE) {
+        return [null, null, $existingPath];
+    }
+
+    if ($file['error'] !== UPLOAD_ERR_OK) {
+        return [null, null, $existingPath];
+    }
+
+    $originalName = (string)$file['name'];
+    $ext = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+    $allowedExt = ['pdf', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg'];
+    if (!in_array($ext, $allowedExt, true)) {
+        return [null, null, $existingPath];
+    }
+
+    $uploadDir = __DIR__ . '/../uploads/notificacao';
+    if (!is_dir($uploadDir)) {
+        @mkdir($uploadDir, 0775, true);
+    }
+
+    $safeName = 'noti_' . date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+    $destPath = $uploadDir . '/' . $safeName;
+
+    if (!move_uploaded_file($file['tmp_name'], $destPath)) {
+        return [null, null, $existingPath];
+    }
+
+    // Remove arquivo antigo se existir e estiver dentro de uploads/notificacao
+    if ($existingPath) {
+        $existingReal = realpath(__DIR__ . '/../' . ltrim($existingPath, '/'));
+        $uploadReal = realpath($uploadDir);
+        if ($existingReal && $uploadReal && str_starts_with($existingReal, $uploadReal)) {
+            @unlink($existingReal);
+        }
+    }
+
+    $publicPath = 'uploads/notificacao/' . $safeName;
+    return [$publicPath, $originalName, $publicPath];
 }

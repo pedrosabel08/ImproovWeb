@@ -256,7 +256,7 @@ textarea {
     padding: 16px;
 }
 
-.modal__col + .modal__col {
+.modal__col+.modal__col {
     border-left: 1px solid var(--border);
     background: rgba(255, 255, 255, 0.02);
 }
@@ -368,6 +368,198 @@ textarea {
     margin-top: 10px;
 }
 
+/* Preview modal (após salvar) */
+.modal-preview__content {
+    padding: 16px;
+    border-radius: 12px;
+    margin: 16px;
+    border: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.modal-preview__content[data-tipo="info"] {
+    border-color: rgba(96, 165, 250, 0.35);
+    background: rgba(96, 165, 250, 0.10);
+}
+
+.modal-preview__content[data-tipo="warning"] {
+    border-color: rgba(245, 158, 11, 0.35);
+    background: rgba(245, 158, 11, 0.12);
+}
+
+.modal-preview__content[data-tipo="danger"] {
+    border-color: rgba(239, 68, 68, 0.35);
+    background: rgba(239, 68, 68, 0.12);
+}
+
+.modal-preview__content[data-tipo="success"] {
+    border-color: rgba(34, 197, 94, 0.35);
+    background: rgba(34, 197, 94, 0.12);
+}
+
+.modal-preview__title {
+    font-weight: 700;
+    font-size: 18px;
+    margin-bottom: 8px;
+}
+
+.modal-preview__text {
+    color: rgba(255, 255, 255, 0.9);
+    line-height: 1.4;
+}
+
+.modal-preview__meta {
+    margin-top: 8px;
+}
+
+.modal-preview__actions {
+    margin-top: 12px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.modal-preview__pdf {
+    margin-top: 14px;
+    border-top: 1px dashed var(--border);
+    padding-top: 10px;
+}
+
+.modal-preview__canvas {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: #0b1020;
+}
+
+.modal-preview__img {
+    margin-top: 14px;
+    border-top: 1px dashed var(--border);
+    padding-top: 10px;
+}
+
+.modal-preview__img-el {
+    width: 100%;
+    max-height: 520px;
+    object-fit: contain;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: #0b1020;
+}
+
+.clickable {
+    cursor: zoom-in;
+}
+
+/* Visualização das notificações */
+.notif-wall {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+}
+
+.notif-card {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    background: rgba(255, 255, 255, 0.03);
+    position: relative;
+}
+
+.notif-card[data-tipo="info"] {
+    border-color: rgba(96, 165, 250, 0.35);
+    background: rgba(96, 165, 250, 0.08);
+}
+
+.notif-card[data-tipo="warning"] {
+    border-color: rgba(245, 158, 11, 0.35);
+    background: rgba(245, 158, 11, 0.08);
+}
+
+.notif-card[data-tipo="danger"] {
+    border-color: rgba(239, 68, 68, 0.35);
+    background: rgba(239, 68, 68, 0.08);
+}
+
+.notif-card[data-tipo="success"] {
+    border-color: rgba(34, 197, 94, 0.35);
+    background: rgba(34, 197, 94, 0.08);
+}
+
+.notif-card[data-canal="toast"] {
+    border-left-width: 6px;
+}
+
+.notif-card[data-canal="banner"] {
+    border-top-width: 4px;
+}
+
+.notif-card[data-canal="card"] {
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+.notif-card[data-canal="modal"] {
+    background: linear-gradient(0deg, rgba(0, 0, 0, 0.25), rgba(0, 0, 0, 0.25)), rgba(255, 255, 255, 0.03);
+}
+
+.notif-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.notif-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.notif-title {
+    font-weight: 700;
+    margin-bottom: 6px;
+}
+
+.notif-text {
+    color: rgba(255, 255, 255, 0.9);
+    line-height: 1.4;
+}
+
+.notif-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+}
+
+.notif-cta .btn {
+    padding: 8px 10px;
+}
+
+.notif-pdf {
+    margin-top: 12px;
+    border-top: 1px dashed var(--border);
+    padding-top: 10px;
+}
+
+.notif-pdf iframe {
+    width: 100%;
+    height: 220px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: #0b1020;
+}
+
+.notif-modal-cta {
+    margin-top: 12px;
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
 @media (max-width: 900px) {
     .container {
         margin-left: 0;
@@ -382,8 +574,12 @@ textarea {
         grid-template-columns: 1fr;
     }
 
-    .modal__col + .modal__col {
+    .modal__col+.modal__col {
         border-left: none;
         border-top: 1px solid var(--border);
+    }
+
+    .notif-wall {
+        grid-template-columns: 1fr;
     }
 }

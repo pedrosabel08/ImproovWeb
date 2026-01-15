@@ -2171,7 +2171,7 @@ function abrirSidebar(idFuncao, idImagem) {
                                             const link = document.createElement('a');
                                             link.classList.add('btn-view-pdf');
                                             link.href = '#';
-                                            link.textContent = 'Ver PDF';
+                                            link.innerHTML = '<i class="fa-solid fa-file-pdf"></i>';
                                             link.addEventListener('click', (e) => {
                                                 e.preventDefault();
                                                 e.stopPropagation();

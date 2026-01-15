@@ -103,8 +103,36 @@ while ($row = $notificacao_result->fetch_assoc()) {
     $notificacoes[] = $row;
 }
 
+// Buscar notificações do novo módulo (por usuário)
+$notificacoes_modulo = [];
+$notificacao_modulo_sql = "SELECT n.id, n.titulo, n.mensagem, n.tipo, n.canal, n.exige_confirmacao,
+                                        n.cta_label, n.cta_url, n.arquivo_path, n.arquivo_nome, n.criado_em
+                                                        FROM notificacoes n
+                                                        JOIN notificacoes_destinatarios d ON d.notificacao_id = n.id
+                                                        WHERE d.usuario_id = ?
+                                                            AND n.ativa = 1
+                                                            AND (n.inicio_em IS NULL OR n.inicio_em <= NOW())
+                                                            AND (n.fim_em IS NULL OR n.fim_em >= NOW())
+                                                            AND (
+                                                                (n.exige_confirmacao = 1 AND d.confirmado_em IS NULL)
+                                                                OR (n.exige_confirmacao = 0 AND d.visto_em IS NULL)
+                                                            )
+                                                        ORDER BY n.prioridade DESC, n.criado_em DESC";
+
+$notificacao_modulo_stmt = $conn->prepare($notificacao_modulo_sql);
+if ($notificacao_modulo_stmt) {
+    $notificacao_modulo_stmt->bind_param("i", $idusuario);
+    $notificacao_modulo_stmt->execute();
+    $notificacao_modulo_result = $notificacao_modulo_stmt->get_result();
+    while ($row = $notificacao_modulo_result->fetch_assoc()) {
+        $notificacoes_modulo[] = $row;
+    }
+    $notificacao_modulo_stmt->close();
+}
+
 // Resposta combinada
 echo json_encode([
     'tarefas' => $tarefas,
-    'notificacoes' => $notificacoes
+    'notificacoes' => $notificacoes,
+    'notificacoes_modulo' => $notificacoes_modulo
 ]);

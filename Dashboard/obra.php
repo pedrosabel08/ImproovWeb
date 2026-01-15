@@ -132,6 +132,7 @@ $conn->close();
         type="image/x-icon">
     <link rel="stylesheet" href="../css/styleSidebar.css">
     <link rel="stylesheet" href="../css/modalSessao.css">
+    <link rel="stylesheet" href="../css/modalNotificacoes.css">
     <link rel="stylesheet" href="../Entregas/styleCard.css">
     <link rel="stylesheet" href="../css/briefing_arquivos.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
@@ -2169,6 +2170,14 @@ $conn->close();
     </div>
 
 
+    <script>
+        // Project root for building root-relative URLs in scripts
+        (function () {
+            const path = String(window.location.pathname || '');
+            const useFlow = path.includes('/flow/');
+            window.PROJECT_ROOT = useFlow ? '/flow/ImproovWeb' : '/ImproovWeb';
+        })();
+    </script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <!-- Select2 JS -->
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
@@ -2186,6 +2195,8 @@ $conn->close();
     <script src="../script/sidebar.js"></script>
     <script src="../script/notificacoes.js"></script>
     <script src="../script/controleSessao.js"></script>
+    <script src="/ImproovWeb/assets/pdfjs/pdf.min.js"></script>
+
 
     <script>
         // Auto-filter Entregas view to current obra (if available in localStorage)

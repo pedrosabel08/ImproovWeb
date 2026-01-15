@@ -38,6 +38,20 @@ function closeStatusModal() {
     modal.setAttribute('aria-hidden', 'true');
 }
 
+function openPreviewModal() {
+    const modal = qs('#previewModal');
+    if (!modal) return;
+    modal.classList.add('is-open');
+    modal.setAttribute('aria-hidden', 'false');
+}
+
+function closePreviewModal() {
+    const modal = qs('#previewModal');
+    if (!modal) return;
+    modal.classList.remove('is-open');
+    modal.setAttribute('aria-hidden', 'true');
+}
+
 function setSegmentationUI() {
     const seg = qs('#f_segmentacao');
     if (!seg) return;
@@ -156,6 +170,13 @@ document.addEventListener('click', async (e) => {
         return;
     }
 
+    const openPreview = e.target.closest('#btnOpenPreview');
+    if (openPreview) {
+        openPreviewModal();
+        await renderPreviewAttachment();
+        return;
+    }
+
     if (e.target.closest('[data-close="1"]')) {
         closeModal();
         return;
@@ -163,6 +184,11 @@ document.addEventListener('click', async (e) => {
 
     if (e.target.closest('[data-close-status="1"]')) {
         closeStatusModal();
+        return;
+    }
+
+    if (e.target.closest('[data-close-preview="1"]')) {
+        closePreviewModal();
         return;
     }
 
@@ -208,4 +234,57 @@ document.addEventListener('DOMContentLoaded', () => {
         setSegmentationUI();
         updatePreview();
     }
+
+    if (window.__previewOpen) {
+        openPreviewModal();
+        renderPreviewAttachment();
+    }
 });
+
+function resolvePreviewWorkerSrc() {
+    const origin = window.location.origin || (window.location.protocol + '//' + window.location.host);
+    const useFlow = String(window.location.pathname).includes('/flow/');
+    const root = origin + (useFlow ? '/flow/ImproovWeb' : '/ImproovWeb');
+    return root.replace(/\/+$/, '') + '/assets/pdfjs/pdf.worker.min.js';
+}
+
+async function renderPreviewAttachment() {
+    const pdfContainer = qs('.modal-preview__pdf');
+    const imgContainer = qs('.modal-preview__img');
+
+    if (pdfContainer) {
+        const url = pdfContainer.getAttribute('data-pdf-url');
+        if (!url) return;
+        if (!window.pdfjsLib) return;
+
+        if (window.pdfjsLib?.GlobalWorkerOptions) {
+            window.pdfjsLib.GlobalWorkerOptions.workerSrc = resolvePreviewWorkerSrc();
+        }
+
+        const canvas = pdfContainer.querySelector('canvas');
+        if (!canvas) return;
+
+        const loadingTask = window.pdfjsLib.getDocument(url);
+        const pdf = await loadingTask.promise;
+        const page = await pdf.getPage(1);
+        const viewport = page.getViewport({ scale: 1.1 });
+        const ctx = canvas.getContext('2d');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+
+        await page.render({ canvasContext: ctx, viewport }).promise;
+        return;
+    }
+
+    if (imgContainer) {
+        const url = imgContainer.getAttribute('data-img-url');
+        const img = imgContainer.querySelector('img');
+        if (!url || !img) return;
+        img.src = url;
+        img.classList.add('clickable');
+        img.title = 'Clique para ampliar';
+        img.addEventListener('click', () => {
+            window.open(url, '_blank');
+        });
+    }
+}

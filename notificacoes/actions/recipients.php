@@ -13,7 +13,7 @@ if ($id <= 0) {
 $sql = "SELECT d.usuario_id, u.nome_usuario, u.ativo, d.visto_em, d.confirmado_em, d.dispensado_em
         FROM notificacoes_destinatarios d
         JOIN usuario u ON u.idusuario = d.usuario_id
-        WHERE d.notificacao_id = ?
+    WHERE d.notificacao_id = ? AND u.ativo = 1
         ORDER BY u.nome_usuario ASC";
 
 $stmt = $conn->prepare($sql);

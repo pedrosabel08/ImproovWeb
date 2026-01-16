@@ -1476,10 +1476,46 @@ function atualizarTaskCount() {
 }
 
 
-// remove seleção dos outros
-const sidebarRight = document.getElementById('sidebar-right');
-const sidebarContent = document.getElementById('sidebar-content');
-const closeSidebar = document.getElementById('close-sidebar');
+// Mind map modal (detalhes)
+const mindmapModal = document.getElementById('mindmapModal');
+const mindmapContent = document.getElementById('mindmap-content');
+const mindmapNotifications = document.getElementById('mindmap-notifications');
+const closeMindmap = document.getElementById('closeMindmap');
+
+function openMindmapModal() {
+    if (mindmapModal) mindmapModal.style.display = 'flex';
+}
+
+function resetMindmapModal() {
+    if (!mindmapContent) return;
+    mindmapContent.innerHTML = '';
+    if (mindmapNotifications) mindmapNotifications.innerHTML = '';
+    mindmapContent.classList.remove('mindmap-blurred-mode');
+}
+
+function closeMindmapModal() {
+    if (mindmapModal) mindmapModal.style.display = 'none';
+    resetMindmapModal();
+}
+
+if (closeMindmap) {
+    closeMindmap.addEventListener('click', closeMindmapModal);
+}
+
+if (mindmapModal) {
+    mindmapModal.addEventListener('click', (e) => {
+        if (e.target === mindmapModal) closeMindmapModal();
+    });
+}
+
+if (mindmapContent) {
+    mindmapContent.addEventListener('click', (e) => {
+        if (e.target.closest('.mindmap-card') || e.target.closest('.mindmap-header') || e.target.closest('.mindmap-notifications')) {
+            return;
+        }
+        closeMindmapModal();
+    });
+}
 
 // =====================
 // PDF Viewer Modal (in-page)
@@ -1576,25 +1612,31 @@ function abrirSidebarTarefaCriada(idTarefa) {
     fetch(`PaginaPrincipal/getInfosTarefaCriada.php?idtarefa=${idTarefa}`)
         .then(res => res.json())
         .then(data => {
-            sidebarContent.innerHTML = '';
+            resetMindmapModal();
 
             // Acessa o primeiro item do array dentro de "tarefa"
             const t = data.tarefa && data.tarefa[0] ? data.tarefa[0] : {};
 
-            const tarefaDiv = document.createElement('div');
-            tarefaDiv.innerHTML = `
-                <h3>${t.titulo || '-'}</h3>
-                <p><strong>Descrição:</strong> ${t.descricao || '-'}</p>
-                <p><strong>Prazo:</strong> ${t.prazo || '-'}</p>
-                <p><strong>Status:</strong> ${t.status || '-'}</p>
-                <p><strong>Prioridade:</strong> ${t.prioridade || '-'}</p>
-                <p><strong>Data de Criação:</strong> ${t.data_criacao || '-'}</p>
+            const card = document.createElement('div');
+            card.className = 'mindmap-card mindmap-center simple';
+            card.innerHTML = `
+                <div class="mindmap-center-title">Detalhes da tarefa</div>
+                <div class="mindmap-main">${t.titulo || '-'}</div>
+                <div class="mindmap-meta">
+                    <div><strong>Descrição:</strong> ${t.descricao || '-'}</div>
+                    <div><strong>Prazo:</strong> ${t.prazo || '-'}</div>
+                    <div><strong>Status:</strong> ${t.status || '-'}</div>
+                    <div><strong>Prioridade:</strong> ${t.prioridade || '-'}</div>
+                    <div><strong>Data de Criação:</strong> ${t.data_criacao || '-'}</div>
+                </div>
             `;
 
-            sidebarContent.appendChild(tarefaDiv);
+            if (mindmapContent) {
+                mindmapContent.innerHTML = '';
+                mindmapContent.appendChild(card);
+            }
+            openMindmapModal();
         });
-
-    sidebarRight.classList.add('active');
 }
 
 function abrirSidebar(idFuncao, idImagem) {
@@ -1605,29 +1647,18 @@ function abrirSidebar(idFuncao, idImagem) {
             return res.json();
         })
         .then(data => {
-            // Limpa conteúdo antigo
-            sidebarContent.innerHTML = '';
+            resetMindmapModal();
+            openMindmapModal();
 
-            const funcao = data.funcoes[0]; // pega o primeiro elemento do array
+            const funcao = data.funcoes && data.funcoes[0] ? data.funcoes[0] : {};
 
             if (data.notificacoes && data.notificacoes.length > 0) {
-                // ensure styles for notification UI exist
-                if (!document.getElementById('func-notif-styles')) {
-                    const s = document.createElement('style');
-                    s.id = 'func-notif-styles';
-                    s.textContent = `
-                        /* notifications panel styles */
-                        
-                    `;
-                    document.head.appendChild(s);
-                }
-
                 const notificacoesDiv = document.createElement('div');
                 notificacoesDiv.className = 'notificacoes-container';
                 notificacoesDiv.innerHTML = `<h3>Notificações</h3>`;
 
-                // mark sidebar as blurred except the notifications container
-                sidebarContent.classList.add('sidebar-blurred-mode');
+                // blur map while notifications are unread
+                if (mindmapContent) mindmapContent.classList.add('mindmap-blurred-mode');
 
                 data.notificacoes.forEach(notif => {
                     const notifEl = document.createElement('div');
@@ -1667,10 +1698,11 @@ function abrirSidebar(idFuncao, idImagem) {
                                     // if there are no more notifications, remove sidebar blur
                                     try {
                                         if (!notificacoesDiv.querySelector('.func-notif')) {
-                                            sidebarContent.classList.remove('sidebar-blurred-mode');
+                                            if (mindmapContent) mindmapContent.classList.remove('mindmap-blurred-mode');
+                                            notificacoesDiv.remove();
                                         }
                                     } catch (e) {
-                                        console.error('Erro ao atualizar blur da sidebar:', e);
+                                        console.error('Erro ao atualizar blur do mapa:', e);
                                     }
                                     // update any card icon counts if present
                                     const card = document.querySelector(`.kanban-card[data-id="${notif.funcao_imagem_id || notif.funcao_imagem || ''}"]`);
@@ -1682,7 +1714,6 @@ function abrirSidebar(idFuncao, idImagem) {
                                             if (n === 0) {
                                                 const icon = card.querySelector('.notif-icon');
                                                 if (icon) icon.remove();
-                                                notificacoesDiv.remove();
                                             } else {
                                                 countEl.textContent = n;
                                             }
@@ -1720,103 +1751,123 @@ function abrirSidebar(idFuncao, idImagem) {
                     notificacoesDiv.appendChild(notifEl);
                 });
 
-                sidebarContent.appendChild(notificacoesDiv);
+                if (mindmapNotifications) mindmapNotifications.appendChild(notificacoesDiv);
             }
 
-            const imagemDiv = document.createElement('p');
-            imagemDiv.innerHTML = `<strong>Imagem: ${funcao.imagem_nome || '-'}</strong>`;
-            sidebarContent.appendChild(imagemDiv);
-            // Exibe status da imagem
-            if (data.status_imagem) {
-
-                const statusDiv = document.createElement('p');
-                statusDiv.classList.add('status-imagem');
-                statusDiv.innerHTML = `<strong>Status da Imagem:</strong> `;
-
-                const nomestatusSpan = document.createElement('span');
-                nomestatusSpan.textContent = data.status_imagem.nome_status;
-
-                // Define a cor conforme o status
-                let corStatus;
-                switch (data.status_imagem.nome_status.toLowerCase()) {
-                    case 'p00':
-                        corStatus = '#c2ff1cff';
-                        break;
-                    case 'r00':
-                        corStatus = '#1cf4ff';
-                        break;
-                    case 'r01':
-                        corStatus = '#ff9800';
-                        break;
-                    case 'r02':
-                        corStatus = '#ff3c00';
-                        break;
-                    case 'r03':
-                    case 'r04':
-                    case 'r05':
-                        corStatus = '#dc3545';
-                        break;
-                    case 'ef':
-                        corStatus = '#0dff00';
-                        break;
+            function getFuncaoStatusColor(status) {
+                const s = String(status || '').toLowerCase();
+                switch (s) {
+                    case 'em aprovação':
+                    case 'em aprovacao':
+                        return '#4a90e2';
+                    case 'finalizado':
+                    case 'aprovado':
+                        return '#28a745';
+                    case 'aprovado com ajustes':
+                        return '#5e07ffff';
+                    case 'não iniciado':
+                    case 'nao iniciado':
+                        return '#6c757d';
+                    case 'em andamento':
+                        return '#ff9800';
+                    case 'ajuste':
+                    case 'hold':
+                        return '#dc3545';
                     default:
-                        corStatus = '#777';
+                        return '#777';
+                }
+            }
+
+            // ===== Canvas =====
+            const canvas = document.createElement('div');
+            canvas.className = 'mindmap-layout';
+
+            const grid = document.createElement('div');
+            grid.className = 'mindmap-grid';
+            canvas.appendChild(grid);
+
+            function createSlot(className, innerClassName) {
+                const slot = document.createElement('div');
+                slot.className = `mindmap-slot ${className}`;
+                const inner = document.createElement('div');
+                inner.className = `slot-inner ${innerClassName}`;
+                slot.appendChild(inner);
+                grid.appendChild(slot);
+                return inner;
+            }
+
+            const topSlot = createSlot('slot-top', 'slot-inner-bottom');
+            const leftSlot = createSlot('slot-left', 'slot-stack slot-stack-left');
+            const centerSlot = createSlot('slot-center', 'slot-inner-center');
+            const rightSlot = createSlot('slot-right', 'slot-stack slot-stack-right');
+            const bottomSlot = createSlot('slot-bottom', 'slot-inner-top');
+
+            const center = document.createElement('div');
+            center.className = 'mindmap-card mindmap-center';
+            center.innerHTML = `
+                <div class="mindmap-center-title">Núcleo principal</div>
+                <div class="mindmap-main">${funcao.imagem_nome || '-'}</div>
+                <div class="mindmap-meta">
+                    <div><strong>Função:</strong> ${funcao.nome_funcao || '-'}</div>
+                    <div><strong>Status:</strong> <span class="mindmap-status" style="background:${getFuncaoStatusColor(funcao.status)};">${funcao.status || '-'}</span></div>
+                    <div><strong>Prazo:</strong> ${funcao.prazo ? formatarData(funcao.prazo) : '-'}</div>
+                </div>
+            `;
+            centerSlot.appendChild(center);
+
+            function createNode(title, className, options = {}, parent = null) {
+                const node = document.createElement('div');
+                node.className = `mindmap-card mindmap-node ${className}`;
+
+                const header = document.createElement('div');
+                header.className = 'mindmap-node-title';
+
+                const titleSpan = document.createElement('span');
+                titleSpan.textContent = title;
+
+                const toggle = document.createElement('span');
+                toggle.className = 'mindmap-drawer-toggle';
+                toggle.innerHTML = '&#9662;';
+
+                header.appendChild(titleSpan);
+                header.appendChild(toggle);
+
+                const body = document.createElement('div');
+                body.className = 'mindmap-node-body';
+
+                node.appendChild(header);
+                node.appendChild(body);
+                (parent || grid).appendChild(node);
+
+                if (options.collapsible === false) {
+                    toggle.style.display = 'none';
+                } else {
+                    node.classList.add('mindmap-drawer');
+                    header.addEventListener('click', () => {
+                        node.classList.toggle('drawer-collapsed');
+                        requestAnimationFrame(drawMindmapLines);
+                    });
                 }
 
-                // Aplica estilo no span
-                nomestatusSpan.style.backgroundColor = corStatus;
-                nomestatusSpan.style.color = '#000';
-                nomestatusSpan.style.padding = '2px 6px';
-                nomestatusSpan.style.borderRadius = '5px';
-                nomestatusSpan.style.marginLeft = '8px';
-                nomestatusSpan.style.fontWeight = '500';
-
-                // Adiciona o span ao p e depois o p à sidebar
-                statusDiv.appendChild(nomestatusSpan);
-                sidebarContent.appendChild(statusDiv);
+                return body;
             }
 
+            const isAnguloDefinido = (it) => {
+                const raw = `${it?.caminho || ''} ${it?.nome_interno || ''} ${it?.nome_arquivo || ''}`;
+                return /angulo_definido/i.test(raw);
+            };
 
-            // Exibe colaboradores e suas funções
-            if (data.colaboradores && data.colaboradores.length > 0) {
-                const colabDiv = document.createElement('div');
-                colabDiv.innerHTML = `<strong>Colaboradores:</strong>`;
-                const ul = document.createElement('ul');
+            const arquivosImagemAll = Array.isArray(data.arquivos_imagem) ? data.arquivos_imagem : [];
+            const arquivosTipoAll = Array.isArray(data.arquivos_tipo) ? data.arquivos_tipo : [];
 
-                data.colaboradores.forEach(col => {
-                    let funcoes = col.funcoes || '';
-                    if (funcoes) {
-                        const arr = funcoes.split(',').map(f => f.trim());
-                        if (arr.length > 1) {
-                            const last = arr.pop();
-                            funcoes = arr.join(', ') + ' e ' + last;
-                        }
-                    }
-                    const li = document.createElement('li');
-                    li.textContent = `${col.nome_colaborador} - ${funcoes}`;
-                    ul.appendChild(li);
-                });
+            const anguloItems = [...arquivosImagemAll, ...arquivosTipoAll].filter(isAnguloDefinido);
+            const arquivosImagem = arquivosImagemAll.filter(it => !isAnguloDefinido(it));
+            const arquivosTipo = arquivosTipoAll.filter(it => !isAnguloDefinido(it));
 
-                colabDiv.appendChild(ul);
-                sidebarContent.appendChild(colabDiv);
-            }
-
-            // Exibe funções da imagem
-            if (data.funcoes && data.funcoes.length > 0) {
-                const funcoesDiv = document.createElement('div');
-                data.funcoes.forEach(f => {
-                    const fDiv = document.createElement('div');
-                    fDiv.classList.add('funcao-card');
-                    fDiv.innerHTML = `
-                                        <p><strong>Função:</strong> ${f.nome_funcao}</p>
-                                        <p><strong>Prazo:</strong> ${f.prazo || '—'}</p>
-                                        <p><strong>Status:</strong> ${f.status || '—'}</p>
-                                        <p><strong>Observação:</strong> ${f.observacao || '—'}</p>
-                                    `;
-                    funcoesDiv.appendChild(fDiv);
-                });
-                sidebarContent.appendChild(funcoesDiv);
-            }
+            // Arquivos (3 núcleos à esquerda)
+            const arquivosImagemBody = createNode('Arquivos da imagem', 'mindmap-files-image', {}, leftSlot);
+            const arquivosTipoBody = createNode('Arquivos do tipo de imagem', 'mindmap-files-type', {}, leftSlot);
+            const arquivosAnterioresBody = createNode('Processos anteriores', 'mindmap-files-previous', {}, leftSlot);
 
             // Helper: group array of arquivos by categoria_nome -> tipo
             function groupArquivos(arr) {
@@ -1877,8 +1928,8 @@ function abrirSidebar(idFuncao, idImagem) {
             }
 
 
-            function renderGroupedArquivos(title, arr, isTipoLevel = false) {
-                if (!arr || arr.length === 0) return;
+            function renderGroupedArquivos(title, arr, isTipoLevel = false, target = null) {
+                if (!arr || arr.length === 0) return null;
 
                 const section = document.createElement('div');
                 section.classList.add('arquivos-section');
@@ -2077,20 +2128,15 @@ function abrirSidebar(idFuncao, idImagem) {
                     section.appendChild(catDiv);
                 });
 
-                sidebarContent.appendChild(section);
+                if (target) target.appendChild(section);
+                return section;
             }
-
-            // Render image-specific arquivos grouped (show one folder after type)
-            renderGroupedArquivos('Arquivos da imagem', data.arquivos_imagem, false);
-
-            // Render type-level arquivos grouped (trim to the type folder)
-            renderGroupedArquivos('Arquivos do tipo de imagem', data.arquivos_tipo, true);
 
             // Render previous-task arquivos (logs) with custom layout:
             // - .cat-header = nome_funcao
             // - .arquivos-tipo will contain only .tipo-info with caminhos
-            function renderArquivosAnteriores(title, arr) {
-                if (!arr || arr.length === 0) return;
+            function renderArquivosAnteriores(title, arr, target = null) {
+                if (!arr || arr.length === 0) return null;
 
                 const section = document.createElement('div');
                 section.classList.add('arquivos-section');
@@ -2207,33 +2253,115 @@ function abrirSidebar(idFuncao, idImagem) {
                     section.appendChild(catDiv);
                 });
 
-                sidebarContent.appendChild(section);
+                if (target) target.appendChild(section);
+                return section;
 
             }
+            renderGroupedArquivos('Arquivos da imagem', arquivosImagem, false, arquivosImagemBody) ||
+                arquivosImagemBody.appendChild(Object.assign(document.createElement('div'), { className: 'mindmap-empty', textContent: 'Sem arquivos da imagem' }));
+            renderGroupedArquivos('Arquivos do tipo de imagem', arquivosTipo, true, arquivosTipoBody) ||
+                arquivosTipoBody.appendChild(Object.assign(document.createElement('div'), { className: 'mindmap-empty', textContent: 'Sem arquivos do tipo de imagem' }));
+            renderArquivosAnteriores('Processos anteriores', data.arquivos_anteriores, arquivosAnterioresBody) ||
+                arquivosAnterioresBody.appendChild(Object.assign(document.createElement('div'), { className: 'mindmap-empty', textContent: 'Sem processos anteriores' }));
 
-            if (data.arquivos_anteriores && data.arquivos_anteriores.length) {
-                renderArquivosAnteriores('Processos anteriores', data.arquivos_anteriores);
+            function renderAnguloDefinido(arr, target) {
+                if (!arr || arr.length === 0) return null;
+
+                const list = document.createElement('div');
+                list.className = 'mindmap-angulo-list';
+
+                arr.forEach(it => {
+                    const item = document.createElement('div');
+                    item.className = 'mindmap-angulo-item';
+
+                    let filename = it.nome_interno || it.nome_arquivo || '';
+                    if (!filename && it.caminho) {
+                        const parts = String(it.caminho).split(/[\\/]/).filter(Boolean);
+                        filename = parts.length ? parts[parts.length - 1] : String(it.caminho);
+                    }
+                    if (!filename) filename = '—';
+
+                    let url = null;
+                    if (it.caminho) {
+                        url = sftpToPublicUrl(it.caminho);
+                    }
+
+                    if (url) {
+                        const img = document.createElement('img');
+                        img.src = encodeURI(url);
+                        img.alt = filename;
+                        img.title = filename;
+                        img.classList.add('thumb');
+
+                        const filenameSpan = document.createElement('span');
+                        filenameSpan.textContent = filename;
+
+                        item.appendChild(filenameSpan);
+                        item.appendChild(img);
+                    } else {
+                        item.textContent = `🖼️ ${filename}`;
+                    }
+
+                    if (it.descricao) {
+                        const descDiv = document.createElement('div');
+                        descDiv.classList.add('arquivo-descricao');
+                        descDiv.textContent = `⚠️ ${it.descricao}`;
+                        item.appendChild(descDiv);
+                    }
+
+                    list.appendChild(item);
+                });
+
+                if (target) target.appendChild(list);
+                return list;
             }
 
-            // Exibe log de alterações
+            const anguloBody = createNode('Ângulo definido', 'mindmap-angle', {}, rightSlot);
+            renderAnguloDefinido(anguloItems, anguloBody) ||
+                anguloBody.appendChild(Object.assign(document.createElement('div'), { className: 'mindmap-empty', textContent: 'Sem ângulo definido' }));
+
+            // Colaboradores
+            const colabsBody = createNode('Colaboradores', 'mindmap-colabs', {}, rightSlot);
+            if (data.colaboradores && data.colaboradores.length > 0) {
+                const ul = document.createElement('ul');
+                data.colaboradores.forEach(col => {
+                    let funcoes = col.funcoes || '';
+                    if (funcoes) {
+                        const arr = funcoes.split(',').map(f => f.trim());
+                        if (arr.length > 1) {
+                            const last = arr.pop();
+                            funcoes = arr.join(', ') + ' e ' + last;
+                        }
+                    }
+                    const li = document.createElement('li');
+                    li.textContent = `${col.nome_colaborador} - ${funcoes}`;
+                    ul.appendChild(li);
+                });
+                colabsBody.appendChild(ul);
+            } else {
+                const empty = document.createElement('div');
+                empty.className = 'mindmap-empty';
+                empty.textContent = 'Sem colaboradores vinculados';
+                colabsBody.appendChild(empty);
+            }
+
+            // Logs
+            const logsBody = createNode('Logs', 'mindmap-logs', {}, rightSlot);
+            const logDiv = document.createElement('div');
+            logDiv.classList.add('log-alteracoes');
             if (data.log_alteracoes && data.log_alteracoes.length > 0) {
-                const logDiv = document.createElement('div');
-                logDiv.classList.add('log-alteracoes');
-                logDiv.innerHTML = `<strong>Log de Alterações:</strong>`;
-
                 data.log_alteracoes.forEach(log => {
                     const li = document.createElement('div');
                     li.classList.add('log-entry');
 
-                    // Define a cor da borda conforme o status_novo
                     let corBorda;
-                    switch (log.status_novo.toLowerCase()) {
+                    switch (String(log.status_novo || '').toLowerCase()) {
                         case 'em aprovação':
-                            corBorda = '#4a90e2'; // azul
+                            corBorda = '#4a90e2';
                             break;
                         case 'finalizado':
                         case 'aprovado':
-                            corBorda = '#28a745'; // verde
+                            corBorda = '#28a745';
                             break;
                         case 'aprovado com ajustes':
                             corBorda = '#5e07ffff';
@@ -2242,14 +2370,14 @@ function abrirSidebar(idFuncao, idImagem) {
                             corBorda = '#6c757d';
                             break;
                         case 'em andamento':
-                            corBorda = '#ff9800'; // laranja
+                            corBorda = '#ff9800';
                             break;
                         case 'ajuste':
                         case 'hold':
-                            corBorda = '#dc3545'; // vermelho
+                            corBorda = '#dc3545';
                             break;
                         default:
-                            corBorda = '#777'; // cinza padrão
+                            corBorda = '#777';
                     }
 
                     li.style.borderLeft = `3px solid ${corBorda}`;
@@ -2259,28 +2387,126 @@ function abrirSidebar(idFuncao, idImagem) {
                     li.innerHTML = `<strong>${log.data}</strong> ${log.status_anterior} → <em>${log.status_novo}</em> (${log.responsavel})`;
                     logDiv.appendChild(li);
                 });
-
-                sidebarContent.appendChild(logDiv);
+            } else {
+                const empty = document.createElement('div');
+                empty.className = 'mindmap-empty';
+                empty.textContent = 'Sem alterações recentes';
+                logDiv.appendChild(empty);
             }
-            const pathEl = document.querySelectorAll('.path');
-            pathEl.forEach(el => {
-                // Não sobrescrever elementos que já contêm conteúdo HTML (ex: imagens)
-                // ou que são entradas JPG específicas — isso removia o <img> criado acima.
-                if (el.classList.contains('jpg-entry') || el.querySelector('img')) return;
+            logsBody.appendChild(logDiv);
 
-                // Só aplica o word-break em paths que são texto puro
-                el.innerHTML = el.textContent.replace(/[\\\/]/g, '$&<wbr>');
+            function drawMindmapLines() {
+                if (!mindmapContent) return;
+                const existing = canvas.querySelector('.mindmap-lines');
+                if (existing) existing.remove();
+
+                const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                svg.classList.add('mindmap-lines');
+                svg.setAttribute('width', '100%');
+                svg.setAttribute('height', '100%');
+
+                const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+                const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+                marker.setAttribute('id', 'arrowhead');
+                marker.setAttribute('markerWidth', '8');
+                marker.setAttribute('markerHeight', '8');
+                marker.setAttribute('refX', '6');
+                marker.setAttribute('refY', '4');
+                marker.setAttribute('orient', 'auto');
+                const arrowPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                arrowPath.setAttribute('d', 'M0,0 L8,4 L0,8 Z');
+                arrowPath.setAttribute('fill', '#777');
+                marker.appendChild(arrowPath);
+                defs.appendChild(marker);
+                svg.appendChild(defs);
+
+                const canvasRect = canvas.getBoundingClientRect();
+                const centerRect = center.getBoundingClientRect();
+
+                const startLeft = {
+                    x: centerRect.left - canvasRect.left,
+                    y: centerRect.top - canvasRect.top + centerRect.height / 2
+                };
+                const startRight = {
+                    x: centerRect.left - canvasRect.left + centerRect.width,
+                    y: centerRect.top - canvasRect.top + centerRect.height / 2
+                };
+                const startTop = {
+                    x: centerRect.left - canvasRect.left + centerRect.width / 2,
+                    y: centerRect.top - canvasRect.top
+                };
+                const startBottom = {
+                    x: centerRect.left - canvasRect.left + centerRect.width / 2,
+                    y: centerRect.top - canvasRect.top + centerRect.height
+                };
+
+                const nodes = canvas.querySelectorAll('.mindmap-node');
+                nodes.forEach(node => {
+                    const rect = node.getBoundingClientRect();
+                    const nodeCenterY = rect.top - canvasRect.top + rect.height / 2;
+                    const nodeCenterX = rect.left - canvasRect.left + rect.width / 2;
+
+                    let start;
+                    let end;
+
+                    if (rect.right <= centerRect.left) {
+                        start = startLeft;
+                        end = { x: rect.right - canvasRect.left, y: nodeCenterY };
+                    } else if (rect.left >= centerRect.right) {
+                        start = startRight;
+                        end = { x: rect.left - canvasRect.left, y: nodeCenterY };
+                    } else if (rect.bottom <= centerRect.top) {
+                        start = startTop;
+                        end = { x: nodeCenterX, y: rect.bottom - canvasRect.top };
+                    } else if (rect.top >= centerRect.bottom) {
+                        start = startBottom;
+                        end = { x: nodeCenterX, y: rect.top - canvasRect.top };
+                    } else {
+                        return;
+                    }
+
+                    let d = '';
+                    if (start === startLeft || start === startRight) {
+                        const midX = (start.x + end.x) / 2;
+                        d = `M ${start.x} ${start.y} L ${midX} ${start.y} L ${midX} ${end.y} L ${end.x} ${end.y}`;
+                    } else {
+                        const midY = (start.y + end.y) / 2;
+                        d = `M ${start.x} ${start.y} L ${start.x} ${midY} L ${end.x} ${midY} L ${end.x} ${end.y}`;
+                    }
+
+                    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    path.setAttribute('d', d);
+                    path.setAttribute('stroke', '#9e9e9e');
+                    path.setAttribute('stroke-width', '2');
+                    path.setAttribute('fill', 'none');
+                    path.setAttribute('marker-end', 'url(#arrowhead)');
+                    svg.appendChild(path);
+                });
+
+                canvas.appendChild(svg);
+            }
+
+            if (mindmapContent) {
+                mindmapContent.appendChild(canvas);
+                requestAnimationFrame(drawMindmapLines);
+            }
+
+            if (!window.__mindmapResizeBound) {
+                window.__mindmapResizeBound = true;
+                window.addEventListener('resize', () => {
+                    requestAnimationFrame(drawMindmapLines);
+                });
+            }
+
+            const pathEl = mindmapContent ? mindmapContent.querySelectorAll('.path') : [];
+            pathEl.forEach(el => {
+                if (el.classList.contains('jpg-entry') || el.querySelector('img')) return;
+                el.innerHTML = el.textContent.replace(/[\\/]/g, '$&<wbr>');
             });
-            // Abre a sidebar
-            sidebarRight.classList.add('active');
+
             return data; // expose fetched data to caller
         });
 };
-
-// Fechar sidebar
-closeSidebar.addEventListener('click', () => {
-    sidebarRight.classList.remove('active');
-});
 
 
 function formatarDuracao(minutos) {
@@ -2588,20 +2814,20 @@ document.getElementById('salvarModal').addEventListener('click', () => {
                     const novo = (dados.status || '').toString().toLowerCase();
                     const prev = (previousStatus || '').toString().toLowerCase();
                     if (novo === 'em andamento' && prev === 'aprovado com ajustes') {
-                        // open sidebar and get data so we can show the previous function name
+                        // open mind map and get data so we can show the previous function name
                         abrirSidebar(dados.cardId, dados.imagem_id)
                             .then((data) => {
                                 // ensure notifications container exists
-                                let notificacoesDiv = sidebarContent.querySelector('.notificacoes-container');
+                                let notificacoesDiv = mindmapNotifications?.querySelector('.notificacoes-container');
                                 if (!notificacoesDiv) {
                                     notificacoesDiv = document.createElement('div');
                                     notificacoesDiv.className = 'notificacoes-container';
                                     notificacoesDiv.innerHTML = `<h3>Notificações</h3>`;
-                                    sidebarContent.insertBefore(notificacoesDiv, sidebarContent.firstChild);
+                                    mindmapNotifications?.appendChild(notificacoesDiv);
                                 }
 
                                 // enable blur mode so the notification stands out
-                                sidebarContent.classList.add('sidebar-blurred-mode');
+                                if (mindmapContent) mindmapContent.classList.add('mindmap-blurred-mode');
 
                                 // build reminder message using function name from fetched data if available
                                 const funcName = (data && data.funcoes && data.funcoes[0] && data.funcoes[0].nome_funcao) ? data.funcoes[0].nome_funcao : '';
@@ -2632,7 +2858,7 @@ document.getElementById('salvarModal').addEventListener('click', () => {
                                     try {
                                         reminder.remove();
                                         if (!notificacoesDiv.querySelector('.func-notif')) {
-                                            sidebarContent.classList.remove('sidebar-blurred-mode');
+                                            if (mindmapContent) mindmapContent.classList.remove('mindmap-blurred-mode');
                                             notificacoesDiv.remove();
                                         }
                                     } catch (e) { console.error('Erro ao remover lembrete:', e); }

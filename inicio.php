@@ -493,13 +493,18 @@ $conn->close();
         <i class="ri-loader-4-line ri-spin"></i> Carregando...
     </div>
 
-    <div class="sidebar-right" id="sidebar-right">
-        <div class="sidebar-header">
-            <h2>Detalhes da Tarefa</h2>
-            <span class="close-button" id="close-sidebar">&times;</span>
-        </div>
-        <div class="sidebar-content" id="sidebar-content">
-            <!-- Conteúdo dinâmico será carregado aqui -->
+    <!-- Modal do mapa mental -->
+    <div class="modal mindmap-modal" id="mindmapModal">
+        <div class="modal-content mindmap-modal-content">
+            <!-- <div class="mindmap-header">
+                <h2>Mapa mental</h2>
+                <span class="close-button" id="closeMindmap">&times;</span>
+            </div> -->
+            <div class="mindmap-body">
+                <div class="mindmap-notifications" id="mindmap-notifications"></div>
+                <div class="mindmap-canvas" id="mindmap-content">
+                </div>
+            </div>
         </div>
     </div>
 

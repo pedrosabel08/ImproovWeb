@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <title>Aprovação de Imagens</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="<?php echo asset_url('style.css'); ?>">
 </head>
 
 <body>
@@ -66,7 +66,7 @@
     <div id="toast" class="toast">Escolha salva!</div>
 
     <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
-    <script src="script.js"></script>
+    <script src="<?php echo asset_url('script.js'); ?>"></script>
 </body>
 
 </html>

@@ -1,4 +1,13 @@
 <?php
+$__root = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/\\');
+foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWeb/config/version.php'] as $__p) {
+    if ($__p && is_file($__p)) {
+        require_once $__p;
+        break;
+    }
+}
+unset($__root, $__p);
+
 header('Content-Type: text/html; charset=utf-8');
 session_start();
 
@@ -1058,10 +1067,10 @@ include 'sidebar.php';
 
 <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
 
-<script src="script/notificacoes.js"></script>
-<script src="./script/script.js"></script>
-<script src="./script/sidebar.js"></script>
-<script src="./script/controleSessao.js"></script>
+<script src="<?php echo asset_url('script/notificacoes.js'); ?>"></script>
+<script src="<?php echo asset_url('./script/script.js'); ?>"></script>
+<script src="<?php echo asset_url('./script/sidebar.js'); ?>"></script>
+<script src="<?php echo asset_url('./script/controleSessao.js'); ?>"></script>
 <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>

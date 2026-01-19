@@ -1,4 +1,13 @@
 <?php
+$__root = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/\\');
+foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWeb/config/version.php'] as $__p) {
+    if ($__p && is_file($__p)) {
+        require_once $__p;
+        break;
+    }
+}
+unset($__root, $__p);
+
 
 include '../conexaoMain.php';
 
@@ -138,7 +147,7 @@ $conn->close();
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.0/main.min.js'></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="script.js"></script>
+    <script src="<?php echo asset_url('script.js'); ?>"></script>
 </body>
 
 </html>

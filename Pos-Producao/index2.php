@@ -1,4 +1,13 @@
 <?php
+$__root = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/\\');
+foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWeb/config/version.php'] as $__p) {
+    if ($__p && is_file($__p)) {
+        require_once $__p;
+        break;
+    }
+}
+unset($__root, $__p);
+
 
 session_start();
 
@@ -100,8 +109,8 @@ $conn->close();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="../css/stylePos.css">
-    <link rel="stylesheet" href="../css/styleSidebar.css">
+    <link rel="stylesheet" href="<?php echo asset_url('../css/stylePos.css'); ?>">
+    <link rel="stylesheet" href="<?php echo asset_url('../css/styleSidebar.css'); ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastify-js/1.12.0/toastify.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
@@ -320,8 +329,8 @@ $conn->close();
     </div>
 
 
-    <script src="../script/scriptPos.js"></script>
-    <script src="../script/sidebar.js"></script>
+    <script src="<?php echo asset_url('../script/scriptPos.js'); ?>"></script>
+    <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>

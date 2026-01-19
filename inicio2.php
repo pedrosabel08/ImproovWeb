@@ -1,4 +1,13 @@
 <?php
+$__root = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/\\');
+foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWeb/config/version.php'] as $__p) {
+    if ($__p && is_file($__p)) {
+        require_once $__p;
+        break;
+    }
+}
+unset($__root, $__p);
+
 // Prevent caching of user-specific pages (helps avoid reverse-proxy serving other's HTML)
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
@@ -87,8 +96,8 @@ $conn->close();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="PaginaPrincipal/styleIndex.css">
-    <link rel="stylesheet" href="css/styleSidebar.css">
+    <link rel="stylesheet" href="<?php echo asset_url('PaginaPrincipal/styleIndex.css'); ?>">
+    <link rel="stylesheet" href="<?php echo asset_url('css/styleSidebar.css'); ?>">
     <link href="https://cdn.jsdelivr.net/npm/remixicon/fonts/remixicon.css" rel="stylesheet">
     <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s" type="image/x-icon">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
@@ -538,9 +547,9 @@ $conn->close();
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script src="script/notificacoes.js"></script>
-    <script src="PaginaPrincipal/scriptIndex.js"></script>
-    <script src="./script/sidebar.js"></script>
+    <script src="<?php echo asset_url('script/notificacoes.js'); ?>"></script>
+    <script src="<?php echo asset_url('PaginaPrincipal/scriptIndex.js'); ?>"></script>
+    <script src="<?php echo asset_url('./script/sidebar.js'); ?>"></script>
     <script>
         // Toggle between Kanban and Overview (embedded iframe)
         (function() {

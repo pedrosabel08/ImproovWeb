@@ -1,4 +1,13 @@
 <?php
+$__root = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/\\');
+foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWeb/config/version.php'] as $__p) {
+    if ($__p && is_file($__p)) {
+        require_once $__p;
+        break;
+    }
+}
+unset($__root, $__p);
+
 require_once __DIR__ . '/auth_cookie.php';
 // Se já estiver logado via cookie, redireciona para index
 if (!empty($flow_user_id)) {
@@ -12,7 +21,7 @@ if (!empty($flow_user_id)) {
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Registrar - Flow Review</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="<?php echo asset_url('style.css'); ?>">
 </head>
 <body class="auth-page">
     <main class="auth-card">

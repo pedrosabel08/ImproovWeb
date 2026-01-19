@@ -1,4 +1,13 @@
 <?php
+$__root = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/\\');
+foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWeb/config/version.php'] as $__p) {
+    if ($__p && is_file($__p)) {
+        require_once $__p;
+        break;
+    }
+}
+unset($__root, $__p);
+
 
 session_start();
 
@@ -9,7 +18,9 @@ if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
     exit();
 }
 
-include '../conexao.php';
+$conn = null;
+
+include_once __DIR__ . '/../conexao.php';
 
 $idusuario = $_SESSION['idusuario'];
 $tela_atual = basename($_SERVER['PHP_SELF']);
@@ -114,8 +125,8 @@ $conn->close();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="stylePos.css">
-    <link rel="stylesheet" href="../css/styleSidebar.css">
+    <link rel="stylesheet" href="<?php echo asset_url('stylePos.css'); ?>">
+    <link rel="stylesheet" href="<?php echo asset_url('../css/styleSidebar.css'); ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastify-js/1.12.0/toastify.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
         integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg=="
@@ -300,8 +311,8 @@ $conn->close();
     </div>
 
 
-    <script src="scriptPos.js"></script>
-    <script src="../script/sidebar.js"></script>
+    <script src="<?php echo asset_url('scriptPos.js'); ?>"></script>
+    <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>

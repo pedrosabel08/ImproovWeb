@@ -1,4 +1,13 @@
 <?php
+$__root = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/\\');
+foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWeb/config/version.php'] as $__p) {
+    if ($__p && is_file($__p)) {
+        require_once $__p;
+        break;
+    }
+}
+unset($__root, $__p);
+
 session_start();
 
 
@@ -35,8 +44,8 @@ $conn->close();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="../css/styleEditClientes.css">
-    <link rel="stylesheet" href="../css/styleSidebar.css">
+    <link rel="stylesheet" href="<?php echo asset_url('../css/styleEditClientes.css'); ?>">
+    <link rel="stylesheet" href="<?php echo asset_url('../css/styleSidebar.css'); ?>">
     <title>Document</title>
 
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
@@ -121,8 +130,8 @@ $conn->close();
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-    <script src="../script/scriptEditCliente.js"></script>
-    <script src="../script/sidebar.js"></script>
+    <script src="<?php echo asset_url('../script/scriptEditCliente.js'); ?>"></script>
+    <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
 
 </body>
 

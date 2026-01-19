@@ -1,4 +1,13 @@
 <?php
+$__root = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/\\');
+foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWeb/config/version.php'] as $__p) {
+    if ($__p && is_file($__p)) {
+        require_once $__p;
+        break;
+    }
+}
+unset($__root, $__p);
+
 session_start();
 include '../conexao.php'; // Inclui o arquivo de conexão com mysqli
 include '../conexaoMain.php';
@@ -52,8 +61,8 @@ $conn->close();
 
 <head>
     <meta charset="UTF-8">
-    <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="../css/styleSidebar.css">
+    <link rel="stylesheet" href="<?php echo asset_url('style.css'); ?>">
+    <link rel="stylesheet" href="<?php echo asset_url('../css/styleSidebar.css'); ?>">
     <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
         type="image/x-icon">
     <title>Tela Gerencial</title>
@@ -185,8 +194,8 @@ $conn->close();
     </div>
 
 
-    <script src="script.js"></script>
-    <script src="../script/sidebar.js"></script>
+    <script src="<?php echo asset_url('script.js'); ?>"></script>
+    <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
 </body>
 
 </html>

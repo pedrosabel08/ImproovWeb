@@ -1,4 +1,13 @@
 <?php
+$__root = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/\\');
+foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWeb/config/version.php'] as $__p) {
+    if ($__p && is_file($__p)) {
+        require_once $__p;
+        break;
+    }
+}
+unset($__root, $__p);
+
 $obraId = $_GET['obraId'] ?? 1; // ou pegue via query string
 ?>
 
@@ -8,7 +17,7 @@ $obraId = $_GET['obraId'] ?? 1; // ou pegue via query string
 <head>
     <meta charset="UTF-8">
     <title>Flow Review</title>
-    <link rel="stylesheet" href="styleImagens.css">
+    <link rel="stylesheet" href="<?php echo asset_url('styleImagens.css'); ?>">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
@@ -103,7 +112,7 @@ $obraId = $_GET['obraId'] ?? 1; // ou pegue via query string
         </div>
     </div>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="scriptImagens.js"></script>
+    <script src="<?php echo asset_url('scriptImagens.js'); ?>"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 </body>

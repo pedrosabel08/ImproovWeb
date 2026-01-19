@@ -1,4 +1,13 @@
 <?php
+$__root = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/\\');
+foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWeb/config/version.php'] as $__p) {
+    if ($__p && is_file($__p)) {
+        require_once $__p;
+        break;
+    }
+}
+unset($__root, $__p);
+
 session_start();
 $nome_usuario = $_SESSION['nome_usuario'];
 
@@ -122,19 +131,19 @@ $conn->close();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Detalhes da Obra</title>
-    <link rel="stylesheet" href="styleObra.css">
-    <link rel="stylesheet" href="popoverAcomp.css">
+    <link rel="stylesheet" href="<?php echo asset_url('styleObra.css'); ?>">
+    <link rel="stylesheet" href="<?php echo asset_url('popoverAcomp.css'); ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
         integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
     <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
         type="image/x-icon">
-    <link rel="stylesheet" href="../css/styleSidebar.css">
-    <link rel="stylesheet" href="../css/modalSessao.css">
-    <link rel="stylesheet" href="../css/modalNotificacoes.css">
-    <link rel="stylesheet" href="../Entregas/styleCard.css">
-    <link rel="stylesheet" href="../css/briefing_arquivos.css">
+    <link rel="stylesheet" href="<?php echo asset_url('../css/styleSidebar.css'); ?>">
+    <link rel="stylesheet" href="<?php echo asset_url('../css/modalSessao.css'); ?>">
+    <link rel="stylesheet" href="<?php echo asset_url('../css/modalNotificacoes.css'); ?>">
+    <link rel="stylesheet" href="<?php echo asset_url('../Entregas/styleCard.css'); ?>">
+    <link rel="stylesheet" href="<?php echo asset_url('../css/briefing_arquivos.css'); ?>">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/airbnb.css">
@@ -2190,12 +2199,12 @@ $conn->close();
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
-    <script src="scriptObra.js"></script>
-    <script src="../Entregas/script.js"></script>
-    <script src="../script/sidebar.js"></script>
-    <script src="../script/notificacoes.js"></script>
-    <script src="../script/controleSessao.js"></script>
-    <script src="/ImproovWeb/assets/pdfjs/pdf.min.js"></script>
+    <script src="<?php echo asset_url('scriptObra.js'); ?>"></script>
+    <script src="<?php echo asset_url('../Entregas/script.js'); ?>"></script>
+    <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
+    <script src="<?php echo asset_url('../script/notificacoes.js'); ?>"></script>
+    <script src="<?php echo asset_url('../script/controleSessao.js'); ?>"></script>
+    <script src="<?php echo asset_url('/ImproovWeb/assets/pdfjs/pdf.min.js'); ?>"></script>
 
 
     <script>

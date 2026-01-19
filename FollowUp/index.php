@@ -1,4 +1,13 @@
 <?php
+$__root = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/\\');
+foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWeb/config/version.php'] as $__p) {
+    if ($__p && is_file($__p)) {
+        require_once $__p;
+        break;
+    }
+}
+unset($__root, $__p);
+
 session_start();
 $nome_usuario = $_SESSION['nome_usuario'];
 
@@ -31,10 +40,10 @@ $conn->close();
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>FollowUp - Escolha de Ângulos</title>
-    <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="../css/styleSidebar.css">
+    <link rel="stylesheet" href="<?php echo asset_url('style.css'); ?>">
+    <link rel="stylesheet" href="<?php echo asset_url('../css/styleSidebar.css'); ?>">
     <!-- Use the project's standard base styles -->
-    <!-- <link rel="stylesheet" href="../css/stylePadrao.css"> -->
+    <!-- <link rel="stylesheet" href="<?php echo asset_url('../css/stylePadrao.css'); ?>"> -->
 </head>
 
 <body>
@@ -117,8 +126,8 @@ $conn->close();
 
     </div>
 
-    <script src="script.js"></script>
-    <script src="../script/sidebar.js"></script>
+    <script src="<?php echo asset_url('script.js'); ?>"></script>
+    <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
 </body>
 
 </html>

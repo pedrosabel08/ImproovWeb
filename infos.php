@@ -1,4 +1,13 @@
 <?php
+$__root = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/\\');
+foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWeb/config/version.php'] as $__p) {
+    if ($__p && is_file($__p)) {
+        require_once $__p;
+        break;
+    }
+}
+unset($__root, $__p);
+
 session_start();
 if (!isset($_SESSION['idusuario'])) {
     // Redirecionar para a página de login se não estiver autenticado
@@ -93,8 +102,8 @@ $conn->close();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Informações do Usuário</title>
-    <link rel="stylesheet" href="./css/styleUsuario.css">
-    <link rel="stylesheet" href="./css/styleSidebar.css">
+    <link rel="stylesheet" href="<?php echo asset_url('./css/styleUsuario.css'); ?>">
+    <link rel="stylesheet" href="<?php echo asset_url('./css/styleSidebar.css'); ?>">
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
@@ -262,8 +271,8 @@ $conn->close();
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
-    <script src="./script/scriptUsuario.js"></script>
-    <script src="./script/sidebar.js"></script>
+    <script src="<?php echo asset_url('./script/scriptUsuario.js'); ?>"></script>
+    <script src="<?php echo asset_url('./script/sidebar.js'); ?>"></script>
 </body>
 
 </html>

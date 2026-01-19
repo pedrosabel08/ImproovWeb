@@ -1,4 +1,13 @@
 <?php
+$__root = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/\\');
+foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWeb/config/version.php'] as $__p) {
+    if ($__p && is_file($__p)) {
+        require_once $__p;
+        break;
+    }
+}
+unset($__root, $__p);
+
 
 session_start();
 
@@ -57,8 +66,8 @@ $conn->close();
 	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
 		integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg=="
 		crossorigin="anonymous" referrerpolicy="no-referrer" />
-	<link rel="stylesheet" href="style.css" />
-	<link rel="stylesheet" href="../css/styleSidebar.css" />
+	<link rel="stylesheet" href="<?php echo asset_url('style.css'); ?>" />
+	<link rel="stylesheet" href="<?php echo asset_url('../css/styleSidebar.css'); ?>" />
 	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastify-js/1.12.0/toastify.min.css">
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
@@ -245,8 +254,8 @@ $conn->close();
 
 	<script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
 	<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-	<script src="script.js"></script>
-	<script src="../script/sidebar.js"></script>
+	<script src="<?php echo asset_url('script.js'); ?>"></script>
+	<script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
 
 </body>
 

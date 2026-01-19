@@ -1,4 +1,13 @@
 <?php
+$__root = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/\\');
+foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWeb/config/version.php'] as $__p) {
+    if ($__p && is_file($__p)) {
+        require_once $__p;
+        break;
+    }
+}
+unset($__root, $__p);
+
 session_start();
 $nome_usuario = $_SESSION['nome_usuario'];
 
@@ -27,10 +36,10 @@ $conn->close();
 <html lang="pt-br">
 
 <head>
-    <link rel="stylesheet" href="../css/styleSidebar.css">
-    <link rel="stylesheet" href="../css/modalSessao.css">
-    <link rel="stylesheet" href="../Dashboard/styleObra.css">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="<?php echo asset_url('../css/styleSidebar.css'); ?>">
+    <link rel="stylesheet" href="<?php echo asset_url('../css/modalSessao.css'); ?>">
+    <link rel="stylesheet" href="<?php echo asset_url('../Dashboard/styleObra.css'); ?>">
+    <link rel="stylesheet" href="<?php echo asset_url('style.css'); ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
         integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
@@ -145,10 +154,10 @@ $conn->close();
         </div>
     </div>
 
-    <script src="script.js"></script>
-    <script src="../script/sidebar.js"></script>
-    <script src="../script/notificacoes.js"></script>
-    <script src="../script/controleSessao.js"></script>
+    <script src="<?php echo asset_url('script.js'); ?>"></script>
+    <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
+    <script src="<?php echo asset_url('../script/notificacoes.js'); ?>"></script>
+    <script src="<?php echo asset_url('../script/controleSessao.js'); ?>"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
 

@@ -1,3 +1,11 @@
+<?php
+require_once __DIR__ . '/config/version.php';
+
+$__reqUri = $_SERVER['REQUEST_URI'] ?? '';
+$__basePath = (strpos($__reqUri, '/flow/ImproovWeb/') !== false || preg_match('~^/flow/ImproovWeb(?:/|$)~', $__reqUri))
+    ? '/flow/ImproovWeb/'
+    : '/ImproovWeb/';
+?>
 <!DOCTYPE html>
 <html lang="pt-br">
 
@@ -119,7 +127,74 @@
 
 </html>
 
-<script src="/flow/ImproovWeb/assets/js/upload-ws.js"></script>
+<script src="<?php echo asset_url($__basePath . 'assets/js/upload-ws.js'); ?>"></script>
+
+<script>
+    // Cache-busting didático:
+    // - No deploy, o servidor muda APP_VERSION (cache/deploy_version.txt)
+    // - Toda página (via sidebar) compara a versão do servidor com a do navegador
+    // - Se mudou, força um reload “limpo” alterando a URL com um param _v
+    (function() {
+        try {
+            if (!window.fetch || !window.localStorage || !window.sessionStorage) return;
+
+            var storageKey = 'improov_app_version';
+            var reloadGuardKey = 'improov_version_reload_guard';
+
+            // Evita loop infinito se algo der errado
+            var guard = sessionStorage.getItem(reloadGuardKey);
+            if (guard === '1') return;
+
+            // Do mesmo jeito que seu script/sidebar.js:
+            // se estiver em /flow/ImproovWeb/ usa essa base, senão usa /ImproovWeb/
+            var basePath = (window.location.pathname.includes('/flow/ImproovWeb/') || window.location.pathname.includes('/flow/ImproovWeb'))
+                ? '/flow/ImproovWeb/'
+                : '/ImproovWeb/';
+
+            var endpoint = window.location.origin + basePath + 'system_version.php';
+
+            fetch(endpoint, {
+                method: 'GET',
+                cache: 'no-store',
+                credentials: 'same-origin',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(function(resp) {
+                if (!resp.ok) throw new Error('bad');
+                return resp.json();
+            })
+            .then(function(data) {
+                if (!data || !data.ok || !data.version) return;
+
+                var current = String(data.version);
+                var saved = localStorage.getItem(storageKey);
+
+                // Primeira vez no navegador: salva e segue
+                if (!saved) {
+                    localStorage.setItem(storageKey, current);
+                    return;
+                }
+
+                // Se mudou: atualiza e força reload
+                if (saved !== current) {
+                    localStorage.setItem(storageKey, current);
+                    sessionStorage.setItem(reloadGuardKey, '1');
+
+                    var url = new URL(window.location.href);
+                    url.searchParams.set('_v', current);
+                    window.location.replace(url.toString());
+                }
+            })
+            .catch(function() {
+                // Se falhar, não quebra a navegação
+            });
+        } catch (e) {
+            // noop
+        }
+    })();
+</script>
 
 <script>
     // Envia o title e url ao servidor para registrar histórico com título amigável
@@ -132,7 +207,10 @@
 
             // envia de forma assíncrona; o endpoint ignora se usuário não autenticado
             // usa o caminho absoluto para evitar requests relativos incorretos
-            const endpoint = window.location.origin + '/flow/ImproovWeb/atualiza_log_tela.php';
+            const basePath = (window.location.pathname.includes('/flow/ImproovWeb/') || window.location.pathname.includes('/flow/ImproovWeb'))
+                ? '/flow/ImproovWeb/'
+                : '/ImproovWeb/';
+            const endpoint = window.location.origin + basePath + 'atualiza_log_tela.php';
             fetch(endpoint, {
                 method: 'POST',
                 body: payload,

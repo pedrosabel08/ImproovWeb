@@ -1,4 +1,13 @@
 <?php
+$__root = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/\\');
+foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWeb/config/version.php'] as $__p) {
+    if ($__p && is_file($__p)) {
+        require_once $__p;
+        break;
+    }
+}
+unset($__root, $__p);
+
 session_start();
 
 // Verificar se o usuário está logado
@@ -38,9 +47,9 @@ $conn->close();
     <link rel="stylesheet" href="https://unpkg.com/intro.js/minified/introjs.min.css">
     <script src="https://unpkg.com/intro.js/minified/intro.min.js"></script>
     <link href="https://unpkg.com/tabulator-tables@5.5.0/dist/css/tabulator.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="../css/styleSidebar.css">
-    <link rel="stylesheet" href="../css/modalSessao.css">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="<?php echo asset_url('../css/styleSidebar.css'); ?>">
+    <link rel="stylesheet" href="<?php echo asset_url('../css/modalSessao.css'); ?>">
+    <link rel="stylesheet" href="<?php echo asset_url('style.css'); ?>">
 </head>
 
 <body>
@@ -76,13 +85,13 @@ $conn->close();
         </div>
     </div>
 
-    <script src="script.js"></script>
+    <script src="<?php echo asset_url('script.js'); ?>"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
-    <script src="../script/sidebar.js"></script>
-    <script src="../script/controleSessao.js"></script>
+    <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
+    <script src="<?php echo asset_url('../script/controleSessao.js'); ?>"></script>
     <script src="https://unpkg.com/tabulator-tables@5.5.0/dist/js/tabulator.min.js"></script>
 </body>
 

@@ -252,6 +252,10 @@ textarea {
     gap: 0;
 }
 
+.modal__cols--single {
+    grid-template-columns: 1fr;
+}
+
 .modal__col {
     padding: 16px;
 }
@@ -259,6 +263,35 @@ textarea {
 .modal__col+.modal__col {
     border-left: 1px solid var(--border);
     background: rgba(255, 255, 255, 0.02);
+}
+
+.tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+}
+
+.tab {
+    border: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--text);
+    padding: 6px 12px;
+    border-radius: 999px;
+    cursor: pointer;
+}
+
+.tab.is-active {
+    background: rgba(96, 165, 250, 0.18);
+    border-color: rgba(96, 165, 250, 0.45);
+}
+
+.tab-panel {
+    display: none;
+}
+
+.tab-panel.is-active {
+    display: block;
 }
 
 /* Segmentação por pessoa */
@@ -288,167 +321,6 @@ textarea {
 .useritem input {
     width: 16px;
     height: 16px;
-}
-
-/* Preview */
-.preview {
-    position: sticky;
-    top: 16px;
-}
-
-.preview__title {
-    font-weight: 700;
-    margin-bottom: 6px;
-}
-
-.preview__hint {
-    margin-bottom: 10px;
-}
-
-.preview__banner {
-    display: flex;
-    gap: 12px;
-    padding: 12px;
-    border-radius: 12px;
-    border: 1px solid var(--border);
-    background: rgba(255, 255, 255, 0.04);
-}
-
-.preview__banner[data-tipo="info"] {
-    border-color: rgba(96, 165, 250, 0.35);
-    background: rgba(96, 165, 250, 0.10);
-}
-
-.preview__banner[data-tipo="warning"] {
-    border-color: rgba(245, 158, 11, 0.35);
-    background: rgba(245, 158, 11, 0.10);
-}
-
-.preview__banner[data-tipo="danger"] {
-    border-color: rgba(239, 68, 68, 0.35);
-    background: rgba(239, 68, 68, 0.10);
-}
-
-.preview__banner[data-tipo="success"] {
-    border-color: rgba(34, 197, 94, 0.35);
-    background: rgba(34, 197, 94, 0.10);
-}
-
-.preview__badge {
-    flex: 0 0 auto;
-    height: 22px;
-    padding: 2px 10px;
-    border-radius: 999px;
-    font-size: 12px;
-    border: 1px solid var(--border);
-    color: var(--text);
-    opacity: 0.9;
-}
-
-.preview__bannerTitle {
-    font-weight: 700;
-    margin-bottom: 2px;
-}
-
-.preview__bannerText {
-    color: rgba(255, 255, 255, 0.88);
-    white-space: pre-wrap;
-}
-
-.preview__cta {
-    margin-top: 8px;
-}
-
-.preview__cta a {
-    color: var(--text);
-    text-decoration: underline;
-}
-
-.preview__meta {
-    margin-top: 10px;
-}
-
-/* Preview modal (após salvar) */
-.modal-preview__content {
-    padding: 16px;
-    border-radius: 12px;
-    margin: 16px;
-    border: 1px solid var(--border);
-    background: rgba(255, 255, 255, 0.03);
-}
-
-.modal-preview__content[data-tipo="info"] {
-    border-color: rgba(96, 165, 250, 0.35);
-    background: rgba(96, 165, 250, 0.10);
-}
-
-.modal-preview__content[data-tipo="warning"] {
-    border-color: rgba(245, 158, 11, 0.35);
-    background: rgba(245, 158, 11, 0.12);
-}
-
-.modal-preview__content[data-tipo="danger"] {
-    border-color: rgba(239, 68, 68, 0.35);
-    background: rgba(239, 68, 68, 0.12);
-}
-
-.modal-preview__content[data-tipo="success"] {
-    border-color: rgba(34, 197, 94, 0.35);
-    background: rgba(34, 197, 94, 0.12);
-}
-
-.modal-preview__title {
-    font-weight: 700;
-    font-size: 18px;
-    margin-bottom: 8px;
-}
-
-.modal-preview__text {
-    color: rgba(255, 255, 255, 0.9);
-    line-height: 1.4;
-}
-
-.modal-preview__meta {
-    margin-top: 8px;
-}
-
-.modal-preview__actions {
-    margin-top: 12px;
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-}
-
-.modal-preview__pdf {
-    margin-top: 14px;
-    border-top: 1px dashed var(--border);
-    padding-top: 10px;
-}
-
-.modal-preview__canvas {
-    width: 100%;
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    background: #0b1020;
-}
-
-.modal-preview__img {
-    margin-top: 14px;
-    border-top: 1px dashed var(--border);
-    padding-top: 10px;
-}
-
-.modal-preview__img-el {
-    width: 100%;
-    max-height: 520px;
-    object-fit: contain;
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    background: #0b1020;
-}
-
-.clickable {
-    cursor: zoom-in;
 }
 
 /* Visualização das notificações */

@@ -38,18 +38,29 @@ function closeStatusModal() {
     modal.setAttribute('aria-hidden', 'true');
 }
 
-function openPreviewModal() {
-    const modal = qs('#previewModal');
-    if (!modal) return;
-    modal.classList.add('is-open');
-    modal.setAttribute('aria-hidden', 'false');
+function setActiveTab(target) {
+    const tabs = qsa('.tabs .tab');
+    const panels = qsa('.tab-panel');
+
+    tabs.forEach(btn => {
+        btn.classList.toggle('is-active', btn.getAttribute('data-tab-target') === target);
+    });
+
+    panels.forEach(panel => {
+        panel.classList.toggle('is-active', panel.getAttribute('data-tab-panel') === target);
+    });
 }
 
-function closePreviewModal() {
-    const modal = qs('#previewModal');
-    if (!modal) return;
-    modal.classList.remove('is-open');
-    modal.setAttribute('aria-hidden', 'true');
+function updateVersionManualUI() {
+    const type = qs('#f_version_type');
+    const manual = qs('#f_version_manual');
+    if (!type || !manual) return;
+
+    const isManual = type.value === 'manual';
+    manual.disabled = !isManual;
+    if (!isManual) {
+        manual.value = '';
+    }
 }
 
 function setSegmentationUI() {
@@ -70,46 +81,6 @@ function setSegmentationUI() {
     if (map[value]) {
         const el = qs(map[value]);
         if (el) el.style.display = '';
-    }
-}
-
-function updatePreview() {
-    const title = (qs('#f_titulo')?.value || '').trim();
-    const text = (qs('#f_mensagem')?.value || '').trim();
-    const tipo = (qs('#f_tipo')?.value || 'info').trim();
-    const canal = (qs('#f_canal')?.value || 'banner').trim();
-    const seg = (qs('#f_segmentacao')?.value || 'geral').trim();
-    const ctaLabel = (qs('#f_cta_label')?.value || '').trim();
-    const ctaUrl = (qs('#f_cta_url')?.value || '').trim();
-
-    const banner = qs('#previewBanner');
-    const badge = qs('#previewBadge');
-    const pTitle = qs('#previewTitle');
-    const pText = qs('#previewText');
-    const pCta = qs('#previewCta');
-    const pCtaLink = qs('#previewCtaLink');
-    const meta = qs('#previewMeta');
-
-    if (banner) {
-        banner.dataset.tipo = tipo;
-        banner.dataset.canal = canal;
-    }
-    if (badge) badge.textContent = tipo;
-    if (pTitle) pTitle.textContent = title || 'Título';
-    if (pText) pText.textContent = text || 'Mensagem';
-
-    if (pCta && pCtaLink) {
-        if (ctaLabel && ctaUrl) {
-            pCta.style.display = '';
-            pCtaLink.textContent = ctaLabel;
-        } else {
-            pCta.style.display = 'none';
-        }
-    }
-
-    if (meta) {
-        const segLabel = seg === 'geral' ? 'Geral' : seg === 'funcao' ? 'Por função' : seg === 'pessoa' ? 'Por pessoa' : 'Por projeto';
-        meta.textContent = `Canal: ${canal} · Segmentação: ${segLabel}`;
     }
 }
 
@@ -162,18 +133,18 @@ function escapeHtml(str) {
 }
 
 document.addEventListener('click', async (e) => {
-    const openBtn = e.target.closest('#btnOpenCreate');
-    if (openBtn) {
-        openModal();
-        updatePreview();
-        setSegmentationUI();
+    const tabBtn = e.target.closest('.tabs .tab');
+    if (tabBtn) {
+        const target = tabBtn.getAttribute('data-tab-target');
+        if (target) setActiveTab(target);
         return;
     }
 
-    const openPreview = e.target.closest('#btnOpenPreview');
-    if (openPreview) {
-        openPreviewModal();
-        await renderPreviewAttachment();
+    const openBtn = e.target.closest('#btnOpenCreate');
+    if (openBtn) {
+        openModal();
+        setSegmentationUI();
+        updateVersionManualUI();
         return;
     }
 
@@ -184,11 +155,6 @@ document.addEventListener('click', async (e) => {
 
     if (e.target.closest('[data-close-status="1"]')) {
         closeStatusModal();
-        return;
-    }
-
-    if (e.target.closest('[data-close-preview="1"]')) {
-        closePreviewModal();
         return;
     }
 
@@ -207,10 +173,6 @@ document.addEventListener('click', async (e) => {
 });
 
 document.addEventListener('input', (e) => {
-    if (e.target && (e.target.id || '').startsWith('f_')) {
-        updatePreview();
-    }
-
     if (e.target && e.target.id === 'userFilter') {
         const q = e.target.value.trim().toLowerCase();
         qsa('#userList .useritem').forEach(item => {
@@ -223,7 +185,10 @@ document.addEventListener('input', (e) => {
 document.addEventListener('change', (e) => {
     if (e.target && e.target.id === 'f_segmentacao') {
         setSegmentationUI();
-        updatePreview();
+    }
+
+    if (e.target && e.target.id === 'f_version_type') {
+        updateVersionManualUI();
     }
 });
 
@@ -232,59 +197,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (window.__editOpen) {
         openModal();
         setSegmentationUI();
-        updatePreview();
+        updateVersionManualUI();
     }
 
-    if (window.__previewOpen) {
-        openPreviewModal();
-        renderPreviewAttachment();
-    }
+    updateVersionManualUI();
 });
-
-function resolvePreviewWorkerSrc() {
-    const origin = window.location.origin || (window.location.protocol + '//' + window.location.host);
-    const useFlow = String(window.location.pathname).includes('/flow/');
-    const root = origin + (useFlow ? '/flow/ImproovWeb' : '/ImproovWeb');
-    return root.replace(/\/+$/, '') + '/assets/pdfjs/pdf.worker.min.js';
-}
-
-async function renderPreviewAttachment() {
-    const pdfContainer = qs('.modal-preview__pdf');
-    const imgContainer = qs('.modal-preview__img');
-
-    if (pdfContainer) {
-        const url = pdfContainer.getAttribute('data-pdf-url');
-        if (!url) return;
-        if (!window.pdfjsLib) return;
-
-        if (window.pdfjsLib?.GlobalWorkerOptions) {
-            window.pdfjsLib.GlobalWorkerOptions.workerSrc = resolvePreviewWorkerSrc();
-        }
-
-        const canvas = pdfContainer.querySelector('canvas');
-        if (!canvas) return;
-
-        const loadingTask = window.pdfjsLib.getDocument(url);
-        const pdf = await loadingTask.promise;
-        const page = await pdf.getPage(1);
-        const viewport = page.getViewport({ scale: 1.1 });
-        const ctx = canvas.getContext('2d');
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-
-        await page.render({ canvasContext: ctx, viewport }).promise;
-        return;
-    }
-
-    if (imgContainer) {
-        const url = imgContainer.getAttribute('data-img-url');
-        const img = imgContainer.querySelector('img');
-        if (!url || !img) return;
-        img.src = url;
-        img.classList.add('clickable');
-        img.title = 'Clique para ampliar';
-        img.addEventListener('click', () => {
-            window.open(url, '_blank');
-        });
-    }
-}

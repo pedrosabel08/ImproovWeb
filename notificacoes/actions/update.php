@@ -32,6 +32,11 @@ $cta_label = trim((string)($_POST['cta_label'] ?? ''));
 $cta_url = trim((string)($_POST['cta_url'] ?? ''));
 $payload_json = trim((string)($_POST['payload_json'] ?? ''));
 
+$version_bump = isset($_POST['version_bump']);
+$version_type = trim((string)($_POST['version_type'] ?? 'patch'));
+$version_manual = trim((string)($_POST['version_manual'] ?? ''));
+$version_desc = trim((string)($_POST['version_desc'] ?? ''));
+
 // Buscar arquivo atual para manter se não houver upload novo
 $currentArquivoPath = null;
 $currentArquivoNome = null;
@@ -128,5 +133,40 @@ $stmt->close();
 
 replaceTargetsAndRecipients($conn, $id, $segmentacao_tipo, $alvoIds);
 
-header('Location: ../index.php?ok=' . urlencode('Notificação atualizada!') . '&preview=' . $id);
+$okMsg = 'Notificação atualizada!';
+$errMsg = '';
+
+if ($version_bump) {
+    require_once realpath(__DIR__ . '/../../config/version_manager.php') ?: __DIR__ . '/../../config/version_manager.php';
+    $root = realpath(__DIR__ . '/../../');
+    $explicit = ($version_type === 'manual') ? $version_manual : null;
+    $result = improov_bump_versions($root ?: (__DIR__ . '/../../'), $version_type, $explicit);
+
+    if (!$result['ok']) {
+        $errMsg = $result['message'] ?? 'Falha ao atualizar a versão.';
+    } else {
+        $version_final = (string)($result['app_version'] ?? '');
+        $desc_final = $version_desc === '' ? null : $version_desc;
+        $tipo_final = $version_type === 'manual' ? 'manual' : $version_type;
+        $criado_por = (int)($_SESSION['idusuario'] ?? 0);
+
+        $stmtV = $conn->prepare('INSERT INTO versionamentos (versao, descricao, tipo, criado_por) VALUES (?, ?, ?, ?)');
+        if ($stmtV) {
+            $stmtV->bind_param('sssi', $version_final, $desc_final, $tipo_final, $criado_por);
+            if (!$stmtV->execute()) {
+                $errMsg = 'Versão atualizada, mas falhou ao registrar no banco.';
+            }
+            $stmtV->close();
+        } else {
+            $errMsg = 'Versão atualizada, mas falhou ao preparar registro no banco.';
+        }
+    }
+}
+
+$redirect = '../index.php?ok=' . urlencode($okMsg);
+if ($errMsg !== '') {
+    $redirect .= '&err=' . urlencode($errMsg);
+}
+
+header('Location: ' . $redirect);
 exit();

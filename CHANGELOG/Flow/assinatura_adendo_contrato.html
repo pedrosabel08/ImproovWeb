@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Automatiza&ccedil;&atilde;o&colon; Contratos e Adendos &lpar;ZapSign&rpar;</title>
+            <style>
+/* From extension vscode.github */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+.vscode-dark img[src$=\#gh-light-mode-only],
+.vscode-light img[src$=\#gh-dark-mode-only],
+.vscode-high-contrast:not(.vscode-high-contrast-light) img[src$=\#gh-light-mode-only],
+.vscode-high-contrast-light img[src$=\#gh-dark-mode-only] {
+	display: none;
+}
+
+</style>
+            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex/dist/katex.min.css">
+<link href="https://cdn.jsdelivr.net/npm/katex-copytex@latest/dist/katex-copytex.min.css" rel="stylesheet" type="text/css">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css">
+<style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+        </style>
+        <style>
+.task-list-item {
+    list-style-type: none;
+}
+
+.task-list-item-checkbox {
+    margin-left: -20px;
+    vertical-align: middle;
+    pointer-events: none;
+}
+</style>
+<style>
+:root {
+  --color-note: #0969da;
+  --color-tip: #1a7f37;
+  --color-warning: #9a6700;
+  --color-severe: #bc4c00;
+  --color-caution: #d1242f;
+  --color-important: #8250df;
+}
+
+</style>
+<style>
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-note: #2f81f7;
+    --color-tip: #3fb950;
+    --color-warning: #d29922;
+    --color-severe: #db6d28;
+    --color-caution: #f85149;
+    --color-important: #a371f7;
+  }
+}
+
+</style>
+<style>
+.markdown-alert {
+  padding: 0.5rem 1rem;
+  margin-bottom: 16px;
+  color: inherit;
+  border-left: .25em solid #888;
+}
+
+.markdown-alert>:first-child {
+  margin-top: 0
+}
+
+.markdown-alert>:last-child {
+  margin-bottom: 0
+}
+
+.markdown-alert .markdown-alert-title {
+  display: flex;
+  font-weight: 500;
+  align-items: center;
+  line-height: 1
+}
+
+.markdown-alert .markdown-alert-title .octicon {
+  margin-right: 0.5rem;
+  display: inline-block;
+  overflow: visible !important;
+  vertical-align: text-bottom;
+  fill: currentColor;
+}
+
+.markdown-alert.markdown-alert-note {
+  border-left-color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-note .markdown-alert-title {
+  color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-important {
+  border-left-color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-important .markdown-alert-title {
+  color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-warning {
+  border-left-color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-warning .markdown-alert-title {
+  color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-tip {
+  border-left-color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-tip .markdown-alert-title {
+  color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-caution {
+  border-left-color: var(--color-caution);
+}
+
+.markdown-alert.markdown-alert-caution .markdown-alert-title {
+  color: var(--color-caution);
+}
+
+</style>
+        
+        </head>
+        <body class="vscode-body vscode-light">
+            <h1 id="automatização-contratos-e-adendos-zapsign">Automatização: Contratos e Adendos (ZapSign)</h1>
+<blockquote>
+<p>Resumo das decisões, fluxo e próximos passos para automatizar criação e envio
+de contratos e adendos via ZapSign, conforme conversa.</p>
+</blockquote>
+<h2 id="objetivo">Objetivo</h2>
+<ul>
+<li>Automatizar geração e envio de contratos e adendos por e-mail via ZapSign.</li>
+<li>Acompanhar status (enviado, aguardando assinatura, assinado, recusado).</li>
+<li>Bloquear acesso ao sistema enquanto contrato do colaborador não estiver assinado.</li>
+<li>Tornar o processo de adendo mensal rastreável e reduzir trabalho manual do financeiro.</li>
+</ul>
+<h2 id="decisões-tomadas-essenciais">Decisões tomadas (essenciais)</h2>
+<ul>
+<li>Canal de envio: <strong>somente e-mail</strong>.</li>
+<li>Documento a enviar: <strong>PDF gerado pelo sistema</strong> (manter gerador atual, upload para ZapSign).</li>
+<li>Assinantes: <strong>empresa + colaborador</strong> (ordem recomendada: empresa assina primeiro).</li>
+<li>No momento não há valores de tarefas automatizados — o MVP terá preenchimento manual.</li>
+</ul>
+<h2 id="entidades-principais">Entidades principais</h2>
+<ul>
+<li>Template de Documento: tipo (<code>CONTRATO</code>, <code>ADENDO</code>), versão, mapeamento de campos.</li>
+<li>Documento (instância): <code>document_id</code>, <code>colaborador_id</code>, <code>competencia</code> (adendo), <code>status</code>, snapshot dos campos, <code>zap_sign_id</code>, timestamps.</li>
+<li>Aprovação: <code>aprovador_id</code>, <code>data</code>, <code>obs</code>.</li>
+<li>Logs/Eventos: webhook events e histórico de ações.</li>
+</ul>
+<h2 id="fluxo--contrato-recomendado-simples">Fluxo — Contrato (recomendado, simples)</h2>
+<ol>
+<li>Cadastro/atualização do colaborador com dados mínimos (nome, CPF, e-mail).</li>
+<li>Gerar contrato (PDF) automaticamente ao criar/atualizar colaborador ou via ação.</li>
+<li>Enviar para assinatura via ZapSign (empresa primeiro, depois colaborador).</li>
+<li>Receber evento do webhook e marcar <code>assinado</code> quando ambos assinarem.</li>
+<li>Bloquear acesso ao sistema para usuários sem contrato assinado (liberações: logout, suporte, atualização de cadastro, tela de assinatura).</li>
+</ol>
+<h2 id="fluxo--adendo-mensal-com-conferência">Fluxo — Adendo (mensal, com conferência)</h2>
+<ol>
+<li>Rotina no dia 1º: criar lote <code>Adendo - competência</code> e gerar rascunhos <code>ADENDO</code> para cada colaborador ativo.</li>
+<li>Tela de conferência (usuário/gestor): preencher/ajustar valor total do mês (MVP) e observar.</li>
+<li>Ao aprovar, sistema gera PDF do adendo e envia via ZapSign para assinatura (empresa + colaborador).</li>
+<li>Webhook atualiza status (<code>aguardando_assinatura</code> → <code>assinado</code>).</li>
+<li>(Opcional) Recolher nota fiscal anexada; quando <code>assinado + nota anexada</code> ⇒ sinalizar <code>liberado para pagamento</code>.</li>
+</ol>
+<h2 id="integração-com-zapsign-módulos-mínimos">Integração com ZapSign (módulos mínimos)</h2>
+<ul>
+<li>Client/Service PHP:
+<ul>
+<li><code>createDocument($pdfPath, $signatarios, $order)</code> → retorna <code>zap_document_id</code>.</li>
+<li><code>getDocumentStatus($zap_document_id)</code> → status para reconciliação.</li>
+<li><code>downloadSignedPdf($zap_document_id)</code> → armazenar prova no sistema.</li>
+</ul>
+</li>
+<li>Webhook endpoint (público): receber eventos de assinatura/recusa, validar e atualizar documento.</li>
+<li>Polling/fallback: job que reconcilia documentos <code>aguardando_assinatura</code> caso webhook falhe.</li>
+</ul>
+<h2 id="pontos-críticos--riscos">Pontos críticos / Riscos</h2>
+<ul>
+<li>Webhook exige URL pública (produção) — teste local com ngrok/forwarding apenas para homolog.</li>
+<li>Segurança: tokens da API fora do repositório, acesso restrito a PDFs assinados, logs de auditoria.</li>
+<li>Versão do contrato: alterações futuras devem manter histórico (quem assinou qual versão).</li>
+<li>Dados pessoais (CPF) — atenção à LGPD para armazenamento e acesso.</li>
+</ul>
+<h2 id="mvp-sugerido-prioridades">MVP sugerido (prioridades)</h2>
+<ol>
+<li>Contrato end-to-end: gerar PDF → enviar ZapSign → webhook atualiza → bloquear acesso enquanto não assinado.</li>
+<li>Adendo (MVP manual): criar rascunhos no dia 1, tela de conferência para preenchimento rápido, aprovação e envio automático para assinatura, painel de acompanhamento.</li>
+<li>Evolução: automatizar origem dos valores (tarefas/imagens), anexar notas fiscais automaticamente.</li>
+</ol>
+<h2 id="tela--ux-mínima-necessária">Tela / UX mínima necessária</h2>
+<ul>
+<li>Painel <code>Adendos</code>: lista por competência, status (rascunho, pendente aprovação, enviado, assinado).</li>
+<li>Formulário de conferência por colaborador (campo <code>valor_total</code>, observações).</li>
+<li>Página <code>Contrato pendente</code> exibida ao usuário não-assinado com botão <code>Assinar agora</code>.</li>
+<li>Painel <code>Assinaturas</code> para financeiro/gestor: filtros por competência, quem assinou, baixar PDF assinado.</li>
+</ul>
+<h2 id="perguntas-ainda-abertas">Perguntas ainda abertas</h2>
+<ul>
+<li>Confirmar se o valor do adendo por colaborador é um único total por mês (A) ou soma de várias linhas (B).
+<ul>
+<li>Se for (A) → MVP muito rápido.</li>
+<li>Se for (B) → tela de conferência precisa linhas + total.</li>
+</ul>
+</li>
+</ul>
+<h2 id="próximos-passos-técnicos-curto-prazo">Próximos passos técnicos (curto prazo)</h2>
+<ul>
+<li>Implementar endpoint de webhook e handlers de evento.</li>
+<li>Implementar serviço PHP para criar documento no ZapSign (usar o PDF atual).</li>
+<li>Implementar rotina diária para criar rascunhos de adendo (job/cron).</li>
+<li>Implementar checagem no <code>verifica_acesso.php</code> para bloquear funcionalidades sem contrato assinado.</li>
+</ul>
+<hr>
+<p>Gerado a partir da conversa em 2026-01-20.</p>
+
+            <script async src="https://cdn.jsdelivr.net/npm/katex-copytex@latest/dist/katex-copytex.min.js"></script>
+            
+        </body>
+        </html>

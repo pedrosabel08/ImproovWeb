@@ -3,8 +3,7 @@
 /**
  * Version manager for SemVer-based releases.
  *
- * Storage (authoritative): cache/deploy_version.json
- * Fallback: cache/deploy_version.txt
+ * Storage (authoritative): database table versionamentos
  */
 
 function improov_is_semver(string $value): bool
@@ -45,44 +44,24 @@ function improov_bump_semver(string $current, string $type): string
     return $major . '.' . $minor . '.' . $patch;
 }
 
-function improov_version_paths(string $rootDir): array
-{
-    $cacheDir = rtrim($rootDir, '/\\') . DIRECTORY_SEPARATOR . 'cache';
-    return [
-        'cache_dir' => $cacheDir,
-        'json' => $cacheDir . DIRECTORY_SEPARATOR . 'deploy_version.json',
-        'txt' => $cacheDir . DIRECTORY_SEPARATOR . 'deploy_version.txt',
-    ];
-}
-
 function improov_read_versions(string $rootDir): array
 {
-    $paths = improov_version_paths($rootDir);
-
     $app = 'dev';
     $asset = 'dev';
 
-    if (is_file($paths['json'])) {
-        $raw = @file_get_contents($paths['json']);
-        if ($raw !== false) {
-            $data = json_decode($raw, true);
-            if (is_array($data)) {
-                $av = isset($data['app_version']) ? trim((string)$data['app_version']) : '';
-                $sv = isset($data['asset_version']) ? trim((string)$data['asset_version']) : '';
-                if ($av !== '') $app = $av;
-                if ($sv !== '') $asset = $sv;
+    if (is_file(__DIR__ . '/db_version.php')) {
+        require_once __DIR__ . '/db_version.php';
+        $conn = improov_db_version_connect();
+        if ($conn instanceof mysqli) {
+            $res = $conn->query("SELECT versao FROM versionamentos ORDER BY criado_em DESC, id DESC LIMIT 1");
+            if ($res && ($row = $res->fetch_assoc())) {
+                $dbVersion = trim((string)($row['versao'] ?? ''));
+                if ($dbVersion !== '') {
+                    $app = $dbVersion;
+                    $asset = $dbVersion;
+                }
             }
-        }
-    }
-
-    if ($app === 'dev' && is_file($paths['txt'])) {
-        $raw = @file_get_contents($paths['txt']);
-        if ($raw !== false) {
-            $trim = trim($raw);
-            if ($trim !== '') {
-                $app = $trim;
-                $asset = $trim;
-            }
+            $conn->close();
         }
     }
 
@@ -98,32 +77,7 @@ function improov_read_versions(string $rootDir): array
 
 function improov_write_versions(string $rootDir, string $appVersion, string $assetVersion): bool
 {
-    $paths = improov_version_paths($rootDir);
-
-    if (!is_dir($paths['cache_dir'])) {
-        if (!mkdir($paths['cache_dir'], 0777, true) && !is_dir($paths['cache_dir'])) {
-            return false;
-        }
-    }
-
-    $payload = [
-        'app_version' => $appVersion,
-        'asset_version' => $assetVersion,
-        'updated_at' => date('c'),
-    ];
-
-    $json = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
-    if ($json === false) {
-        return false;
-    }
-
-    if (file_put_contents($paths['json'], $json . "\n") === false) {
-        return false;
-    }
-
-    // Keep txt for backward compatibility (some scripts/tools might read it).
-    @file_put_contents($paths['txt'], $assetVersion . "\n");
-
+    // No file storage. Database is the single source of truth.
     return true;
 }
 

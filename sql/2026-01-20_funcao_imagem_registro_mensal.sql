@@ -40,7 +40,7 @@ AFTER UPDATE ON funcao_imagem
 FOR EACH ROW
 BEGIN
     DECLARE _img_status INT DEFAULT NULL;
-    DECLARE _obs VARCHAR(100) DEFAULT NULL;
+    DECLARE _obs VARCHAR(100) DEFAULT '';
 
     IF (NEW.status <> OLD.status)
        AND (NEW.status IN ('Em aprovação', 'Finalizado', 'Aprovado com ajustes', 'Aprovado')) THEN
@@ -61,6 +61,11 @@ BEGIN
             SET _obs = '';
         END IF;
 
+        -- Segurança: em alguns cenários (var não inicializada/ambiente), garanta NOT NULL
+        IF _obs IS NULL THEN
+            SET _obs = '';
+        END IF;
+
         INSERT IGNORE INTO funcao_imagem_registro_mensal (
             funcao_imagem_id,
             colaborador_id,
@@ -77,7 +82,7 @@ BEGIN
             NEW.imagem_id,
             NEW.funcao_id,
             NEW.status,
-            _obs,
+            IFNULL(_obs, ''),
             NOW(),
             YEAR(NOW()),
             MONTH(NOW())

@@ -1233,7 +1233,8 @@ span#obras_finalizadas {
     display: none;
 }
 
-.form-edicao .buttons {
+.form-edicao .buttons,
+#handoffComercialForm .buttons {
     padding: 1rem 0;
     display: flex;
     justify-content: space-between;
@@ -1259,7 +1260,8 @@ form#form-add .funcao {
 
 #saveChangesBtn,
 #salvar,
-.buttons-form-add {
+.buttons-form-add,
+#handoffComercialForm .buttons button {
     background-color: #119111;
     text-align: center;
     color: #ffffff;
@@ -1272,7 +1274,8 @@ form#form-add .funcao {
 
 #saveChangesBtn:hover,
 #salvar:hover,
-.buttons-form-add:hover {
+.buttons-form-add:hover,
+#handoffComercialForm .buttons button:hover {
     background-color: #0c6b0c;
     cursor: pointer;
 }

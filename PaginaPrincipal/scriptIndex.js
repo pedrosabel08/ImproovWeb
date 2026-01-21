@@ -151,13 +151,7 @@ function processarDados(data) {
             const parentBox = document.getElementById(colunaId)?.closest('.kanban-box');
             const parentId = parentBox ? parentBox.id : null;
             const parentTitle = parentBox ? parentBox.querySelector('.title span')?.textContent : null;
-            console.log('[criarCard] idfuncao_imagem=', item.idfuncao_imagem,
-                'rawStatus=', rawStatus,
-                'computedStatus=', status,
-                'colunaId=', colunaId,
-                'parentId=', parentId,
-                'parentTitle=', parentTitle
-            );
+
         } catch (e) { console.error('criarCard debug error', e); }
         const coluna = document.getElementById(colunaId)?.querySelector('.content');
         if (!coluna) return;
@@ -1483,7 +1477,11 @@ const mindmapNotifications = document.getElementById('mindmap-notifications');
 const closeMindmap = document.getElementById('closeMindmap');
 
 function openMindmapModal() {
-    if (mindmapModal) mindmapModal.style.display = 'flex';
+    if (!mindmapModal) return;
+    mindmapModal.classList.remove('mindmap-exit');
+    mindmapModal.style.display = 'flex';
+    // trigger enter animation
+    requestAnimationFrame(() => mindmapModal.classList.add('mindmap-enter'));
 }
 
 function resetMindmapModal() {
@@ -1491,11 +1489,23 @@ function resetMindmapModal() {
     mindmapContent.innerHTML = '';
     if (mindmapNotifications) mindmapNotifications.innerHTML = '';
     mindmapContent.classList.remove('mindmap-blurred-mode');
+    mindmapContent.classList.remove('mindmap-has-notifications');
 }
 
 function closeMindmapModal() {
-    if (mindmapModal) mindmapModal.style.display = 'none';
-    resetMindmapModal();
+    if (!mindmapModal) return;
+    // play exit animation, then hide and reset
+    mindmapModal.classList.remove('mindmap-enter');
+    mindmapModal.classList.add('mindmap-exit');
+    const onAnimEnd = (e) => {
+        if (e.animationName && e.animationName.includes('mindmapFadeOut')) {
+            mindmapModal.style.display = 'none';
+            mindmapModal.classList.remove('mindmap-exit');
+            mindmapModal.removeEventListener('animationend', onAnimEnd);
+            resetMindmapModal();
+        }
+    };
+    mindmapModal.addEventListener('animationend', onAnimEnd);
 }
 
 if (closeMindmap) {
@@ -1510,7 +1520,12 @@ if (mindmapModal) {
 
 if (mindmapContent) {
     mindmapContent.addEventListener('click', (e) => {
-        if (e.target.closest('.mindmap-card') || e.target.closest('.mindmap-header') || e.target.closest('.mindmap-notifications')) {
+        if (
+            e.target.closest('.mindmap-card') ||
+            e.target.closest('.mindmap-header') ||
+            e.target.closest('.notificacoes-container') ||
+            e.target.closest('.mindmap-notifications-card')
+        ) {
             return;
         }
         closeMindmapModal();
@@ -1652,13 +1667,14 @@ function abrirSidebar(idFuncao, idImagem) {
 
             const funcao = data.funcoes && data.funcoes[0] ? data.funcoes[0] : {};
 
+            let pendingNotifications = null;
             if (data.notificacoes && data.notificacoes.length > 0) {
                 const notificacoesDiv = document.createElement('div');
                 notificacoesDiv.className = 'notificacoes-container';
                 notificacoesDiv.innerHTML = `<h3>Notificações</h3>`;
 
-                // blur map while notifications are unread
-                if (mindmapContent) mindmapContent.classList.add('mindmap-blurred-mode');
+                // blur other cards while notifications exist
+                if (mindmapContent) mindmapContent.classList.add('mindmap-has-notifications');
 
                 data.notificacoes.forEach(notif => {
                     const notifEl = document.createElement('div');
@@ -1697,10 +1713,10 @@ function abrirSidebar(idFuncao, idImagem) {
 
                                     // if there are no more notifications, remove sidebar blur
                                     try {
-                                        if (!notificacoesDiv.querySelector('.func-notif')) {
-                                            if (mindmapContent) mindmapContent.classList.remove('mindmap-blurred-mode');
-                                            notificacoesDiv.remove();
-                                        }
+                                            if (!notificacoesDiv.querySelector('.func-notif')) {
+                                                notificacoesDiv.remove();
+                                                if (mindmapContent) mindmapContent.classList.remove('mindmap-has-notifications');
+                                            }
                                     } catch (e) {
                                         console.error('Erro ao atualizar blur do mapa:', e);
                                     }
@@ -1751,7 +1767,7 @@ function abrirSidebar(idFuncao, idImagem) {
                     notificacoesDiv.appendChild(notifEl);
                 });
 
-                if (mindmapNotifications) mindmapNotifications.appendChild(notificacoesDiv);
+                pendingNotifications = notificacoesDiv;
             }
 
             function getFuncaoStatusColor(status) {
@@ -1773,6 +1789,28 @@ function abrirSidebar(idFuncao, idImagem) {
                     case 'ajuste':
                     case 'hold':
                         return '#dc3545';
+                    default:
+                        return '#777';
+                }
+            }
+
+            function getImagemStatusColor(status) {
+                const s = String(status || '').toLowerCase();
+                switch (s) {
+                    case 'p00':
+                        return '#c2ff1cff';
+                    case 'r00':
+                        return '#1cf4ff';
+                    case 'r01':
+                        return '#ff9800';
+                    case 'r02':
+                        return '#ff3c00';
+                    case 'r03':
+                    case 'r04':
+                    case 'r05':
+                        return '#dc3545';
+                    case 'ef':
+                        return '#0dff00';
                     default:
                         return '#777';
                 }
@@ -1804,20 +1842,34 @@ function abrirSidebar(idFuncao, idImagem) {
 
             const center = document.createElement('div');
             center.className = 'mindmap-card mindmap-center';
+            center.style.setProperty('--anim-delay', '0s');
             center.innerHTML = `
                 <div class="mindmap-center-title">Núcleo principal</div>
-                <div class="mindmap-main">${funcao.imagem_nome || '-'}</div>
+                <div class="mindmap-main">${funcao.imagem_nome || '-'} - <span class="mindmap-status" style="font-size: 1rem; background:${getImagemStatusColor(data.status_imagem.nome_status)};">${data.status_imagem.nome_status || '-'}</span></div>
                 <div class="mindmap-meta">
                     <div><strong>Função:</strong> ${funcao.nome_funcao || '-'}</div>
                     <div><strong>Status:</strong> <span class="mindmap-status" style="background:${getFuncaoStatusColor(funcao.status)};">${funcao.status || '-'}</span></div>
                     <div><strong>Prazo:</strong> ${funcao.prazo ? formatarData(funcao.prazo) : '-'}</div>
+                    <div><strong>Observação:</strong> ${funcao.observacao || '-'}</div>
                 </div>
             `;
             centerSlot.appendChild(center);
 
+            // Redraw connectors when clicking the center card (but not when clicking its drawer headers)
+            center.addEventListener('click', (e) => {
+                if (e.target.closest('.mindmap-center-drawer-title')) return;
+                requestAnimationFrame(drawMindmapLines);
+            });
+
+            let mindmapNodeIndex = 0;
+
             function createNode(title, className, options = {}, parent = null) {
                 const node = document.createElement('div');
                 node.className = `mindmap-card mindmap-node ${className}`;
+                const delay = 0.06 * mindmapNodeIndex + 0.1;
+                node.style.setProperty('--anim-delay', `${delay}s`);
+                node.dataset.animDelay = String(delay);
+                mindmapNodeIndex += 1;
 
                 const header = document.createElement('div');
                 header.className = 'mindmap-node-title';
@@ -1845,6 +1897,11 @@ function abrirSidebar(idFuncao, idImagem) {
                     node.classList.add('mindmap-drawer');
                     header.addEventListener('click', () => {
                         node.classList.toggle('drawer-collapsed');
+                    });
+
+                    // trigger redraw of connectors only when the node itself is clicked (not the header)
+                    node.addEventListener('click', (e) => {
+                        if (e.target.closest('.mindmap-node-title')) return;
                         requestAnimationFrame(drawMindmapLines);
                     });
                 }
@@ -1865,6 +1922,11 @@ function abrirSidebar(idFuncao, idImagem) {
             const arquivosTipo = arquivosTipoAll.filter(it => !isAnguloDefinido(it));
 
             // Arquivos (3 núcleos à esquerda)
+            if (pendingNotifications) {
+                const notifBody = createNode('Notificações', 'mindmap-notifications-card mindmap-notifications-focus', {}, topSlot);
+                notifBody.appendChild(pendingNotifications);
+            }
+
             const arquivosImagemBody = createNode('Arquivos da imagem', 'mindmap-files-image', {}, leftSlot);
             const arquivosTipoBody = createNode('Arquivos do tipo de imagem', 'mindmap-files-type', {}, leftSlot);
             const arquivosAnterioresBody = createNode('Processos anteriores', 'mindmap-files-previous', {}, leftSlot);
@@ -2320,10 +2382,54 @@ function abrirSidebar(idFuncao, idImagem) {
             renderAnguloDefinido(anguloItems, anguloBody) ||
                 anguloBody.appendChild(Object.assign(document.createElement('div'), { className: 'mindmap-empty', textContent: 'Sem ângulo definido' }));
 
-            // Colaboradores
-            const colabsBody = createNode('Colaboradores', 'mindmap-colabs', {}, rightSlot);
+            // Colaboradores/Logs — elementos expandíveis dentro do núcleo principal
+            const centerDrawers = [];
+            function createCenterDrawer(title) {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'mindmap-center-drawer drawer-collapsed';
+
+                const header = document.createElement('div');
+                header.className = 'mindmap-center-drawer-title';
+
+                const titleSpan = document.createElement('span');
+                titleSpan.textContent = title;
+
+                const toggle = document.createElement('span');
+                toggle.className = 'mindmap-center-drawer-toggle';
+                toggle.innerHTML = '&#9662;';
+
+                header.appendChild(titleSpan);
+                header.appendChild(toggle);
+
+                const body = document.createElement('div');
+                body.className = 'mindmap-center-drawer-body';
+
+                wrapper.appendChild(header);
+                wrapper.appendChild(body);
+
+                centerDrawers.push(wrapper);
+
+                header.addEventListener('click', () => {
+                    const willOpen = wrapper.classList.contains('drawer-collapsed');
+                    if (willOpen) {
+                        centerDrawers.forEach(other => {
+                            if (other !== wrapper) {
+                                other.classList.add('drawer-collapsed');
+                            }
+                        });
+                    }
+                    wrapper.classList.toggle('drawer-collapsed');
+                });
+
+                return { wrapper, body };
+            }
+
+            const { wrapper: colabsDrawer, body: colabsBody } = createCenterDrawer('Colaboradores');
+            center.appendChild(colabsDrawer);
+
             if (data.colaboradores && data.colaboradores.length > 0) {
                 const ul = document.createElement('ul');
+                ul.className = 'mindmap-colabs-list';
                 data.colaboradores.forEach(col => {
                     let funcoes = col.funcoes || '';
                     if (funcoes) {
@@ -2345,8 +2451,10 @@ function abrirSidebar(idFuncao, idImagem) {
                 colabsBody.appendChild(empty);
             }
 
-            // Logs
-            const logsBody = createNode('Logs', 'mindmap-logs', {}, rightSlot);
+            // Logs — elemento expandível dentro do núcleo principal
+            const { wrapper: logsDrawer, body: logsBody } = createCenterDrawer('Logs');
+            center.appendChild(logsDrawer);
+
             const logDiv = document.createElement('div');
             logDiv.classList.add('log-alteracoes');
             if (data.log_alteracoes && data.log_alteracoes.length > 0) {
@@ -2415,7 +2523,7 @@ function abrirSidebar(idFuncao, idImagem) {
                 marker.setAttribute('orient', 'auto');
                 const arrowPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
                 arrowPath.setAttribute('d', 'M0,0 L8,4 L0,8 Z');
-                arrowPath.setAttribute('fill', '#777');
+                arrowPath.setAttribute('fill', '#3b3b3b');
                 marker.appendChild(arrowPath);
                 defs.appendChild(marker);
                 svg.appendChild(defs);
@@ -2440,47 +2548,30 @@ function abrirSidebar(idFuncao, idImagem) {
                     y: centerRect.top - canvasRect.top + centerRect.height
                 };
 
-                const nodes = canvas.querySelectorAll('.mindmap-node');
+                const centerPoint = {
+                    x: centerRect.left - canvasRect.left + centerRect.width / 2,
+                    y: centerRect.top - canvasRect.top + centerRect.height / 2
+                };
+
+                const nodes = Array.from(canvas.querySelectorAll('.mindmap-node'));
                 nodes.forEach(node => {
                     const rect = node.getBoundingClientRect();
-                    const nodeCenterY = rect.top - canvasRect.top + rect.height / 2;
-                    const nodeCenterX = rect.left - canvasRect.left + rect.width / 2;
+                    const end = {
+                        x: rect.left - canvasRect.left + rect.width / 2,
+                        y: rect.top - canvasRect.top + rect.height / 2
+                    };
 
-                    let start;
-                    let end;
-
-                    if (rect.right <= centerRect.left) {
-                        start = startLeft;
-                        end = { x: rect.right - canvasRect.left, y: nodeCenterY };
-                    } else if (rect.left >= centerRect.right) {
-                        start = startRight;
-                        end = { x: rect.left - canvasRect.left, y: nodeCenterY };
-                    } else if (rect.bottom <= centerRect.top) {
-                        start = startTop;
-                        end = { x: nodeCenterX, y: rect.bottom - canvasRect.top };
-                    } else if (rect.top >= centerRect.bottom) {
-                        start = startBottom;
-                        end = { x: nodeCenterX, y: rect.top - canvasRect.top };
-                    } else {
-                        return;
-                    }
-
-                    let d = '';
-                    if (start === startLeft || start === startRight) {
-                        const midX = (start.x + end.x) / 2;
-                        d = `M ${start.x} ${start.y} L ${midX} ${start.y} L ${midX} ${end.y} L ${end.x} ${end.y}`;
-                    } else {
-                        const midY = (start.y + end.y) / 2;
-                        d = `M ${start.x} ${start.y} L ${start.x} ${midY} L ${end.x} ${midY} L ${end.x} ${end.y}`;
-                    }
-
-                    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                    path.setAttribute('d', d);
-                    path.setAttribute('stroke', '#9e9e9e');
-                    path.setAttribute('stroke-width', '2');
-                    path.setAttribute('fill', 'none');
-                    path.setAttribute('marker-end', 'url(#arrowhead)');
-                    svg.appendChild(path);
+                    const delay = node.dataset.animDelay ? `${node.dataset.animDelay}s` : '0s';
+                    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    line.setAttribute('x1', centerPoint.x);
+                    line.setAttribute('y1', centerPoint.y);
+                    line.setAttribute('x2', end.x);
+                    line.setAttribute('y2', end.y);
+                    line.setAttribute('stroke', '#3b3b3b');
+                    line.setAttribute('stroke-width', '3');
+                    line.setAttribute('marker-end', 'url(#arrowhead)');
+                    line.style.setProperty('--anim-delay', delay);
+                    svg.appendChild(line);
                 });
 
                 canvas.appendChild(svg);
@@ -2818,16 +2909,33 @@ document.getElementById('salvarModal').addEventListener('click', () => {
                         abrirSidebar(dados.cardId, dados.imagem_id)
                             .then((data) => {
                                 // ensure notifications container exists
-                                let notificacoesDiv = mindmapNotifications?.querySelector('.notificacoes-container');
+                                let notificacoesDiv = mindmapContent?.querySelector('.notificacoes-container');
                                 if (!notificacoesDiv) {
                                     notificacoesDiv = document.createElement('div');
                                     notificacoesDiv.className = 'notificacoes-container';
                                     notificacoesDiv.innerHTML = `<h3>Notificações</h3>`;
-                                    mindmapNotifications?.appendChild(notificacoesDiv);
+                                    const topSlot = mindmapContent?.querySelector('.slot-top .slot-inner');
+                                    if (topSlot) {
+                                        let notifBody = topSlot.querySelector('.mindmap-notifications-card .mindmap-node-body');
+                                        if (!notifBody) {
+                                            const card = document.createElement('div');
+                                            card.className = 'mindmap-card mindmap-node mindmap-notifications-card mindmap-notifications-focus';
+                                            const header = document.createElement('div');
+                                            header.className = 'mindmap-node-title';
+                                            header.textContent = 'Notificações';
+                                            const body = document.createElement('div');
+                                            body.className = 'mindmap-node-body';
+                                            card.appendChild(header);
+                                            card.appendChild(body);
+                                            topSlot.appendChild(card);
+                                            notifBody = body;
+                                        }
+                                        notifBody.appendChild(notificacoesDiv);
+                                    }
                                 }
 
-                                // enable blur mode so the notification stands out
-                                if (mindmapContent) mindmapContent.classList.add('mindmap-blurred-mode');
+                                // blur other cards while notifications exist
+                                if (mindmapContent) mindmapContent.classList.add('mindmap-has-notifications');
 
                                 // build reminder message using function name from fetched data if available
                                 const funcName = (data && data.funcoes && data.funcoes[0] && data.funcoes[0].nome_funcao) ? data.funcoes[0].nome_funcao : '';
@@ -2858,7 +2966,7 @@ document.getElementById('salvarModal').addEventListener('click', () => {
                                     try {
                                         reminder.remove();
                                         if (!notificacoesDiv.querySelector('.func-notif')) {
-                                            if (mindmapContent) mindmapContent.classList.remove('mindmap-blurred-mode');
+                                            if (mindmapContent) mindmapContent.classList.remove('mindmap-has-notifications');
                                             notificacoesDiv.remove();
                                         }
                                     } catch (e) { console.error('Erro ao remover lembrete:', e); }

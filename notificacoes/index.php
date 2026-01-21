@@ -18,19 +18,6 @@ $tableReady = true;
 
 $usuarios = getAllUsuarios($conn);
 
-$previewId = isset($_GET['preview']) ? (int)$_GET['preview'] : null;
-$previewRow = null;
-if ($previewId) {
-    $stmtP = $conn->prepare('SELECT * FROM notificacoes WHERE id = ?');
-    if ($stmtP) {
-        $stmtP->bind_param('i', $previewId);
-        $stmtP->execute();
-        $resP = $stmtP->get_result();
-        $previewRow = $resP ? $resP->fetch_assoc() : null;
-        $stmtP->close();
-    }
-}
-
 $editId = isset($_GET['edit']) ? (int)$_GET['edit'] : null;
 $editRow = null;
 $editTargets = [];
@@ -102,6 +89,21 @@ if ($res === false) {
 } else {
     while ($row = $res->fetch_assoc()) {
         $notificacoes[] = $row;
+    }
+}
+
+$versionLogs = [];
+$versionTableReady = true;
+$sqlVer = "SELECT id, versao, descricao, tipo, criado_em, criado_por
+           FROM versionamentos
+           ORDER BY criado_em DESC
+           LIMIT 20";
+$resVer = $conn->query($sqlVer);
+if ($resVer === false) {
+    $versionTableReady = false;
+} else {
+    while ($row = $resVer->fetch_assoc()) {
+        $versionLogs[] = $row;
     }
 }
 
@@ -221,24 +223,6 @@ if ($res === false) {
             </table>
         </div>
 
-        <?php if ($previewRow): ?>
-            <?php
-            $pTipo = $previewRow['tipo'] ?? 'info';
-            $pSegLabel = $segmentacaoLabel($previewRow['segmentacao_tipo'] ?? 'geral');
-            $pCtaLabel = $previewRow['cta_label'] ?? '';
-            $pCtaUrl = $previewRow['cta_url'] ?? '';
-            $pArquivoPath = $previewRow['arquivo_path'] ?? '';
-            ?>
-            <div class="card">
-                <h2 style="margin:0 0 12px 0; font-size: 16px;">Preview do modal (após criar/atualizar)</h2>
-                <div class="small" style="margin-bottom: 12px;">Este preview aparece apenas após salvar.</div>
-                <button class="btn" type="button" id="btnOpenPreview">Abrir preview do modal</button>
-            </div>
-        <?php endif; ?>
-
-        <div class="small">
-            Próxima etapa: exibir notificações para usuários (banner/toast/modal) + segmentação.
-        </div>
     </div>
 
     <!-- Modal Criar/Editar -->
@@ -248,7 +232,7 @@ if ($res === false) {
             <div class="modal__header">
                 <div>
                     <div class="modal__title"><?= $editRow ? 'Editar notificação' : 'Adicionar notificação' ?></div>
-                    <div class="small">Formulário + Preview</div>
+                    <div class="small">Formulário e versionamento</div>
                 </div>
                 <div class="inline">
                     <?php if ($editRow): ?>
@@ -258,12 +242,18 @@ if ($res === false) {
                 </div>
             </div>
 
-            <div class="modal__cols">
+            <div class="modal__cols modal__cols--single">
                 <div class="modal__col">
-                    <form method="POST" action="<?= $editRow ? 'actions/update.php' : 'actions/create.php' ?>" enctype="multipart/form-data">
-                        <?php if ($editRow): ?>
-                            <input type="hidden" name="id" value="<?= (int)$editRow['id'] ?>" />
-                        <?php endif; ?>
+                    <div class="tabs">
+                        <button class="tab is-active" type="button" data-tab-target="notif">Notificação</button>
+                        <button class="tab" type="button" data-tab-target="version">Versionamento</button>
+                    </div>
+
+                    <div class="tab-panel is-active" data-tab-panel="notif">
+                        <form method="POST" action="<?= $editRow ? 'actions/update.php' : 'actions/create.php' ?>" enctype="multipart/form-data">
+                            <?php if ($editRow): ?>
+                                <input type="hidden" name="id" value="<?= (int)$editRow['id'] ?>" />
+                            <?php endif; ?>
 
                         <div class="grid">
                             <div class="row">
@@ -410,29 +400,78 @@ if ($res === false) {
                             <div class="small">O arquivo será salvo em uploads/notificacao.</div>
                         </div>
 
-                        <div class="inline">
-                            <button class="btn primary" type="submit"><?= $editRow ? 'Salvar' : 'Criar' ?></button>
-                        </div>
-                    </form>
-                </div>
+                            <div class="inline">
+                                <button class="btn primary" type="submit"><?= $editRow ? 'Salvar' : 'Criar' ?></button>
+                            </div>
+                        </form>
+                    </div>
 
-                <div class="modal__col">
-                    <div class="preview">
-                        <div class="preview__title">Preview</div>
-                        <div class="preview__hint small">Simulação do banner acima (visual apenas).</div>
+                    <div class="tab-panel" data-tab-panel="version">
+                        <form method="POST" action="actions/version_bump.php">
+                            <div class="row">
+                                <label>Versão atual</label>
+                                <div class="small"><b><?= h(defined('APP_VERSION') ? APP_VERSION : 'dev') ?></b></div>
+                            </div>
 
-                        <div class="preview__banner" id="previewBanner">
-                            <div class="preview__badge" id="previewBadge">info</div>
-                            <div>
-                                <div class="preview__bannerTitle" id="previewTitle">Título</div>
-                                <div class="preview__bannerText" id="previewText">Mensagem</div>
-                                <div class="preview__cta" id="previewCta" style="display:none;">
-                                    <a href="#" onclick="return false;" id="previewCtaLink">Abrir</a>
+                            <div class="grid-3">
+                                <div class="row">
+                                    <label>Tipo de atualização</label>
+                                    <select id="f_version_type" name="version_type">
+                                        <option value="patch">Pequena (patch)</option>
+                                        <option value="minor">Média (minor)</option>
+                                        <option value="major">Grande (major)</option>
+                                        <option value="manual">Manual</option>
+                                    </select>
+                                </div>
+                                <div class="row">
+                                    <label>Versão manual (opcional)</label>
+                                    <input id="f_version_manual" type="text" name="version_manual" placeholder="1.2.3" disabled />
+                                    <div class="small">Use apenas no modo Manual.</div>
                                 </div>
                             </div>
-                        </div>
 
-                        <div class="preview__meta small" id="previewMeta"></div>
+                            <div class="row">
+                                <label>Descrição da versão</label>
+                                <textarea id="f_version_desc" name="version_desc" maxlength="2000" placeholder="Descreva as mudanças desta versão..."></textarea>
+                            </div>
+
+                            <div class="inline">
+                                <button class="btn primary" type="submit">Registrar versão</button>
+                            </div>
+                        </form>
+
+                        <div class="card" style="margin: 16px 0 0 0;">
+                            <h3 style="margin:0 0 10px 0; font-size: 14px;">Últimos registros</h3>
+                            <?php if (!$versionTableReady): ?>
+                                <div class="alert err">Tabela <b>versionamentos</b> não encontrada. Rode o SQL em <b>sql/2026-01-19_versionamentos.sql</b>.</div>
+                            <?php else: ?>
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Data</th>
+                                            <th>Versão</th>
+                                            <th>Tipo</th>
+                                            <th>Descrição</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php if (empty($versionLogs)): ?>
+                                            <tr>
+                                                <td colspan="4" class="small">Nenhum registro ainda.</td>
+                                            </tr>
+                                        <?php endif; ?>
+                                        <?php foreach ($versionLogs as $v): ?>
+                                            <tr>
+                                                <td class="small"><?= h($v['criado_em'] ?? '-') ?></td>
+                                                <td><span class="badge"><?= h($v['versao'] ?? '-') ?></span></td>
+                                                <td class="small"><?= h($v['tipo'] ?? '-') ?></td>
+                                                <td class="small"><?= nl2br(h($v['descricao'] ?? '')) ?></td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            <?php endif; ?>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -467,75 +506,9 @@ if ($res === false) {
         </div>
     </div>
 
-    <?php if ($previewRow): ?>
-        <?php
-        $pTipo = $previewRow['tipo'] ?? 'info';
-        $pSegLabel = $segmentacaoLabel($previewRow['segmentacao_tipo'] ?? 'geral');
-        $pCtaLabel = $previewRow['cta_label'] ?? '';
-        $pCtaUrl = $previewRow['cta_url'] ?? '';
-        $pArquivoPath = $previewRow['arquivo_path'] ?? '';
-        ?>
-        <!-- Modal Preview (após salvar) -->
-        <div class="modal modal-preview" id="previewModal" aria-hidden="true" data-tipo="<?= h($pTipo) ?>">
-            <div class="modal__overlay" data-close-preview="1"></div>
-            <div class="modal__panel modal__panel--narrow">
-                <div class="modal__header">
-                    <div>
-                        <div class="modal__title">Preview do modal</div>
-                        <div class="small">Visualização real do canal Modal</div>
-                    </div>
-                    <button class="btn" type="button" data-close-preview="1">Fechar</button>
-                </div>
-                <div class="modal-preview__content" data-tipo="<?= h($pTipo) ?>">
-                    <div class="modal-preview__title"><?= h($previewRow['titulo'] ?? '') ?></div>
-                    <div class="modal-preview__text"><?= nl2br(h($previewRow['mensagem'] ?? '')) ?></div>
-                    <div class="modal-preview__meta small">Segmentação: <?= h($pSegLabel) ?></div>
-
-                    <?php if ($pCtaLabel && $pCtaUrl): ?>
-                        <div class="modal-preview__actions">
-                            <a class="btn primary" href="<?= h($pCtaUrl) ?>" target="_blank" rel="noopener noreferrer"><?= h($pCtaLabel) ?></a>
-                        </div>
-                    <?php endif; ?>
-
-                    <?php if ((int)($previewRow['exige_confirmacao'] ?? 0) === 1): ?>
-                        <div class="modal-preview__actions">
-                            <button class="btn primary">Li e entendi</button>
-                        </div>
-                    <?php endif; ?>
-
-                    <?php if ($pArquivoPath): ?>
-                        <?php
-                        $pExt = strtolower(pathinfo($pArquivoPath, PATHINFO_EXTENSION));
-                        $pIsPdf = $pExt === 'pdf';
-                        $pIsImg = in_array($pExt, ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg'], true);
-                        ?>
-
-                        <?php if ($pIsPdf): ?>
-                            <div class="modal-preview__pdf" data-pdf-url="../<?= h($pArquivoPath) ?>">
-                                <div class="small" style="margin-bottom: 8px;">PDF anexado</div>
-                                <canvas class="modal-preview__canvas"></canvas>
-                            </div>
-                        <?php elseif ($pIsImg): ?>
-                            <div class="modal-preview__img" data-img-url="../<?= h($pArquivoPath) ?>">
-                                <div class="small" style="margin-bottom: 8px;">Imagem anexada</div>
-                                <img class="modal-preview__img-el" alt="Imagem anexada" />
-                            </div>
-                        <?php else: ?>
-                            <div class="small" style="margin-top: 10px;">Arquivo anexado: <a href="../<?= h($pArquivoPath) ?>" target="_blank" rel="noopener noreferrer"><?= h($previewRow['arquivo_nome'] ?? 'Arquivo') ?></a></div>
-                        <?php endif; ?>
-                    <?php endif; ?>
-                </div>
-            </div>
-        </div>
-    <?php endif; ?>
-
     <script>
         window.__editOpen = <?= $editRow ? 'true' : 'false' ?>;
-        window.__previewOpen = <?= $previewRow ? 'true' : 'false' ?>;
     </script>
-    <script src="<?php echo asset_url('../assets/pdfjs/pdf.min.js'); ?>"></script>
-    window.__previewOpen = <?= $previewRow ? 'true' : 'false' ?>;
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.js" integrity="sha512-2LIYaQTk12F6Q4jqZsPjoQxGByfK4l4iLwG1g9nC5o2nCxfC2uZz7G9gYIzo0WlF1lboS2k0H9rB2bx6qD0XyA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script src="<?php echo asset_url('script.js'); ?>"></script>
     <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
 </body>

@@ -2114,7 +2114,7 @@ const BRIEFING_ARQUIVOS = (function () {
                             suffix.disabled = true;
                             obs.disabled = true;
                             sendBtn.disabled = true;
-                            
+
                             try {
                                 // Hide the pending overlay modal so only the progress dialog stays visible.
                                 if (pendingModal && typeof pendingModal.hide === 'function') {
@@ -3524,7 +3524,9 @@ function mostrarFiltroColaborador(funcaoSelecionada) {
         } else {
             colaboradorFilters[funcaoSelecionada] = select.value;
         }
+        __centerTableAfterFilter = true;
         filtrarTabela();
+        __centerTableAfterFilter = false;
     });
 
     tdAlvo.appendChild(select);
@@ -3540,7 +3542,9 @@ function filtrarPorColaborador(funcao, colaborador) {
         colaboradorFilters[funcao] = colaborador;
     }
     try {
+        __centerTableAfterFilter = true;
         filtrarTabela();
+        __centerTableAfterFilter = false;
     } catch (e) {
         console.warn('filtrarTabela falhou ao ser chamada:', e);
     }
@@ -3678,6 +3682,8 @@ function applyStatusImagem(cell, status, descricao = '') {
 
 
 
+let __centerTableAfterFilter = false;
+
 function filtrarTabela() {
     // Read multi-select values (if single select, fall back to value)
     const tipoImagemEl = document.getElementById("tipo_imagem");
@@ -3793,7 +3799,9 @@ function filtrarTabela() {
     const antecipadas = document.getElementById('antecipadas')
     antecipadas.textContent = `Antecipadas: ${antecipadasFiltradas}`;
 
-    // Centraliza a tabela na tela após aplicar o filtro
+    // Centraliza a tabela na tela após aplicar o filtro (somente quando usuário muda filtro)
+    if (!__centerTableAfterFilter) return;
+
     requestAnimationFrame(() => {
         const tabelaEl = document.getElementById('tabela-obra');
         if (!tabelaEl) return;
@@ -3823,10 +3831,17 @@ function filtrarTabela() {
 }
 
 // Adiciona evento para filtrar sempre que o filtro mudar
-document.getElementById("tipo_imagem").addEventListener("change", filtrarTabela);
-document.getElementById("antecipada_obra").addEventListener("change", filtrarTabela);
-document.getElementById("imagem_status_filtro").addEventListener("change", filtrarTabela);
-document.getElementById("imagem_status_etapa_filtro").addEventListener("change", filtrarTabela);
+function handleFilterChange(e) {
+    const isUser = !!(e && (e.isTrusted || (e.originalEvent && e.originalEvent.isTrusted)));
+    __centerTableAfterFilter = isUser;
+    filtrarTabela();
+    __centerTableAfterFilter = false;
+}
+
+document.getElementById("tipo_imagem").addEventListener("change", handleFilterChange);
+document.getElementById("antecipada_obra").addEventListener("change", handleFilterChange);
+document.getElementById("imagem_status_filtro").addEventListener("change", handleFilterChange);
+document.getElementById("imagem_status_etapa_filtro").addEventListener("change", handleFilterChange);
 
 // Inicializa Select2 para uma melhor UX com múltiplas seleções (aguarda jQuery + Select2 carregados)
 function initSelect2Filters() {
@@ -3839,10 +3854,10 @@ function initSelect2Filters() {
             $('#imagem_status_filtro').select2({ placeholder: 'Status imagem', allowClear: true, width: 'resolve' });
 
             // quando Select2 muda, dispara filtrarTabela
-            $('#tipo_imagem').on('change', filtrarTabela);
-            $('#antecipada_obra').on('change', filtrarTabela);
-            $('#imagem_status_etapa_filtro').on('change', filtrarTabela);
-            $('#imagem_status_filtro').on('change', filtrarTabela);
+            $('#tipo_imagem').on('change', handleFilterChange);
+            $('#antecipada_obra').on('change', handleFilterChange);
+            $('#imagem_status_etapa_filtro').on('change', handleFilterChange);
+            $('#imagem_status_filtro').on('change', handleFilterChange);
         }
     } catch (e) {
         console.warn('Select2 init failed or not available', e);
@@ -7955,12 +7970,12 @@ if (markInactiveBtn) {
             }).then(function (resp) { return resp.json(); })
                 .then(function (json) {
                     if (json && json.success) {
-                                var msg = newStatus === 1 ? 'Obra marcada como inativa.' : 'Obra marcada como ativa.';
-                                // Atualiza texto do botão antes de recarregar para feedback imediato
-                                setMarkBtnLabelByStatus(newStatus === 1 ? 1 : 0);
-                                alert(msg + ' A página será recarregada.');
-                                window.location.reload();
-                            } else {
+                        var msg = newStatus === 1 ? 'Obra marcada como inativa.' : 'Obra marcada como ativa.';
+                        // Atualiza texto do botão antes de recarregar para feedback imediato
+                        setMarkBtnLabelByStatus(newStatus === 1 ? 1 : 0);
+                        alert(msg + ' A página será recarregada.');
+                        window.location.reload();
+                    } else {
                         alert('Erro: ' + (json && json.message ? json.message : 'Resposta inválida'));
                     }
                 }).catch(function (err) {

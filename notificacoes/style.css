@@ -225,7 +225,8 @@ textarea {
     background: var(--panel);
     border: 1px solid var(--border);
     border-radius: 12px;
-    overflow: hidden;
+    overflow: auto;
+    max-height: calc(90vh);
 }
 
 .modal__panel--narrow {
@@ -454,4 +455,19 @@ textarea {
     .notif-wall {
         grid-template-columns: 1fr;
     }
+}
+
+
+/* Scrollbar dark */
+::-webkit-scrollbar {
+    background: #232323;
+    width: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #444;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #666;
 }

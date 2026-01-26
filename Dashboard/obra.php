@@ -2221,6 +2221,75 @@ $conn->close();
                 }
             }, 450);
         });
+
+        // Fix `.filtros-select` below the header only while the table is visible.
+        document.addEventListener('DOMContentLoaded', () => {
+            const filtros = document.querySelector('.filtros-select');
+            const table = document.querySelector('#tabela-obra');
+            const header = document.querySelector('header');
+            const scrollRoot = document.querySelector('.container') || window;
+            if (!filtros || !table) return;
+
+            const parent = filtros.parentElement;
+            let placeholder = parent.querySelector('.filtros-placeholder');
+            if (!placeholder) {
+                placeholder = document.createElement('div');
+                placeholder.className = 'filtros-placeholder';
+                parent.insertBefore(placeholder, filtros);
+            }
+
+            let cachedWidth = 0;
+            let cachedHeight = 0;
+
+            function updateFixed() {
+                const headerHeight = header ? header.getBoundingClientRect().height : 80;
+                const topOffset = headerHeight + 10;
+
+                const tableRect = table.getBoundingClientRect();
+                const filtrosRect = filtros.getBoundingClientRect();
+
+                // cache size while in normal flow
+                if (!filtros.classList.contains('fixed')) {
+                    cachedWidth = filtrosRect.width;
+                    cachedHeight = filtrosRect.height;
+                }
+
+                const startGap = 200;
+                const bottomGap = 50;
+                const shouldFix = tableRect.top <= topOffset + startGap && tableRect.bottom > topOffset + filtrosRect.height + bottomGap;
+
+                if (shouldFix) {
+                    placeholder.style.display = 'block';
+                    placeholder.style.width = (cachedWidth || filtrosRect.width) + 'px';
+                    placeholder.style.height = (cachedHeight || filtrosRect.height) + 'px';
+                    placeholder.style.flex = '0 0 auto';
+
+                    const placeholderRect = placeholder.getBoundingClientRect();
+                    filtros.classList.add('fixed');
+                    filtros.style.top = topOffset + 'px';
+                    filtros.style.left = placeholderRect.left + 'px';
+                    // filtros.style.width = placeholderRect.width + 'px';
+                } else {
+                    filtros.classList.remove('fixed');
+                    filtros.style.top = '';
+                    filtros.style.left = '';
+                    filtros.style.width = '';
+                    placeholder.style.display = 'none';
+                }
+            }
+
+            if (scrollRoot === window) {
+                window.addEventListener('scroll', updateFixed, { passive: true });
+            } else {
+                scrollRoot.addEventListener('scroll', updateFixed, { passive: true });
+            }
+            window.addEventListener('resize', updateFixed);
+
+            const ro = new ResizeObserver(updateFixed);
+            ro.observe(document.body);
+            ro.observe(table);
+            updateFixed();
+        });
     </script>
 
 </body>

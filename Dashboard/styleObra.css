@@ -1079,6 +1079,21 @@ a {
     margin-right: 15px;
 }
 
+/* Fixed filters container (JS toggles this class) */
+.filtros-select.fixed {
+    position: fixed;
+    z-index: 1200;
+    background-color: var(--card-bg);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+    border-radius: 6px;
+    padding: 6px 8px;
+}
+
+/* Placeholder used to preserve layout when fixed */
+.filtros-placeholder {
+    display: none;
+}
+
 .tabela {
     display: flex;
     justify-content: center;

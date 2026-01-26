@@ -989,7 +989,8 @@ form#task-form button {
 
 .mindmap-files-image,
 .mindmap-files-previous,
-.mindmap-logs {
+.mindmap-logs,
+.mindmap-angle {
     margin: 0 auto;
 }
 

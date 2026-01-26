@@ -3792,6 +3792,34 @@ function filtrarTabela() {
     imagens_totais.textContent = `Total de imagens: ${imagensFiltradas}`
     const antecipadas = document.getElementById('antecipadas')
     antecipadas.textContent = `Antecipadas: ${antecipadasFiltradas}`;
+
+    // Centraliza a tabela na tela após aplicar o filtro
+    requestAnimationFrame(() => {
+        const tabelaEl = document.getElementById('tabela-obra');
+        if (!tabelaEl) return;
+
+        const scrollRoot = document.querySelector('.container');
+        if (scrollRoot) {
+            const containerRect = scrollRoot.getBoundingClientRect();
+            const tableRect = tabelaEl.getBoundingClientRect();
+
+            const containerCenter = containerRect.top + (containerRect.height / 2);
+            const tableCenter = tableRect.top + (tableRect.height / 2);
+            const delta = tableCenter - containerCenter;
+
+            if (Math.abs(delta) > 1) {
+                scrollRoot.scrollTop += delta;
+            }
+        } else {
+            const tableRect = tabelaEl.getBoundingClientRect();
+            const viewportCenter = window.innerHeight / 2;
+            const tableCenter = tableRect.top + (tableRect.height / 2);
+            const delta = tableCenter - viewportCenter;
+            if (Math.abs(delta) > 1) {
+                window.scrollBy({ top: delta, left: 0 });
+            }
+        }
+    });
 }
 
 // Adiciona evento para filtrar sempre que o filtro mudar

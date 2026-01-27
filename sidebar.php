@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/config/version.php';
+require_once __DIR__ . '/Contratos/access_gate.php';
 
 $__reqUri = $_SERVER['REQUEST_URI'] ?? '';
 $__basePath = (strpos($__reqUri, '/flow/ImproovWeb/') !== false || preg_match('~^/flow/ImproovWeb(?:/|$)~', $__reqUri))
@@ -65,6 +66,7 @@ $__basePath = (strpos($__reqUri, '/flow/ImproovWeb/') !== false || preg_match('~
                     <label for="">Financeiro</label>
                     <li><a title="Tela de custos" href="https://improov.com.br/flow/ImproovWeb/Custos"><i class="fa-solid fa-desktop"></i><span> Tela Custos</span></a></li>
                     <li><a title="Pagamento" href="https://improov.com.br/flow/ImproovWeb/Pagamento"><i class="fas fa-money-bill-wave"></i><span> Pagamento</span></a></li>
+                    <li><a title="Contratos" href="https://improov.com.br/flow/ImproovWeb/Contratos/contratos.php"><i class="fa-solid fa-file-contract"></i><span> Contratos</span></a></li>
 
                 </ul>
             <?php endif; ?>

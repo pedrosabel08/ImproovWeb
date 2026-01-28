@@ -115,8 +115,8 @@ function sanitize_text(string $s): string
     $s = trim($s);
     if ($s === '') return '';
     $s = remove_accents($s);
-    // Regra: apenas '/' vira '_' (mantém separação); demais caracteres especiais são removidos
-    $s = str_replace('/', '_', $s);
+    // Regra: remove '/' (caractere especial); demais caracteres especiais são removidos
+    $s = str_replace('/', '-', $s);
     $s = preg_replace('/[^A-Za-z0-9 \._\-]/', '', $s);
     // Normaliza espaços e underscores
     $s = preg_replace('/\s+/', ' ', $s);
@@ -147,12 +147,12 @@ function detect_tipo_imagem(string $imagem_nome): string
         if (strpos($s, $kw) !== false) return 'Fachada';
     }
 
-    foreach (['living', 'suite', 'suíte', 'teraco', 'terraço', 'duplex', 'quarto', 'sacada', 'varanda'] as $kw) {
+    foreach (['living', 'suite', 'suíte', 'teraco', 'terraço', 'duplex', 'quarto', 'sacada', 'varanda', 'apartamentos'] as $kw) {
         $kwN = normalize_for_search($kw);
         if (strpos($s, $kwN) !== false) return 'Unidade';
     }
 
-    foreach (['academia', 'hall de entrada', 'salao de jogos', 'salon de jogos', 'salao de festas', 'salon de festas', 'saloes de festas', 'festas', 'jogos', 'coworking', 'lavanderia', 'gourmet', 'interno', 'grill', 'garagem', 'brinquedoteca', 'bistro', 'cinema', 'sauna', 'sala de massagem', 'espaco kids', 'pizza', 'grab and go'] as $kw) {
+    foreach (['academia', 'hall de entrada', 'salao de jogos', 'salon de jogos', 'salao de festas', 'salon de festas', 'saloes de festas', 'festas', 'jogos', 'coworking', 'lavanderia', 'gourmet', 'interno', 'grill', 'garagem', 'brinquedoteca', 'bistro', 'cinema', 'sauna', 'sala de massagem', 'espaco kids', 'pizza', 'grab and go', 'bwc', 'home market', 'lobby', 'espaço pet', 'fitness', 'espaco pet', 'pub', 'sports bar'] as $kw) {
         if (strpos($s, $kw) !== false) return 'Imagem Interna';
     }
 

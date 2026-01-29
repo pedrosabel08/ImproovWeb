@@ -1,6 +1,6 @@
 <?php
 require_once 'config/version.php';
-require_once __DIR__ . '/Contratos/access_gate.php';
+// require_once __DIR__ . '/Contratos/access_gate.php';
 
 // Prevent caching of user-specific pages (helps avoid reverse-proxy serving other's HTML)
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');

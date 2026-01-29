@@ -45,7 +45,8 @@ body {
 
 .btn-primario,
 .btn-secundario,
-.btn-terciario {
+.btn-terciario,
+.btn-quaternario {
     border: 0;
     padding: 8px 12px;
     border-radius: 8px;
@@ -69,6 +70,11 @@ body {
     color: #0f172a;
 }
 
+.btn-quaternario {
+    background: #16a34a;
+    color: #fff;
+}
+
 .status-badge {
     display: inline-block;
     padding: 4px 8px;
@@ -83,6 +89,16 @@ body {
 
 .status-enviado {
     background: #fde68a;
+    color: #92400e;
+}
+
+.status-gerado {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.status-visualizado {
+    background: #fef3c7;
     color: #92400e;
 }
 

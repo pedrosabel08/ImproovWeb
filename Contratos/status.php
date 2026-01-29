@@ -12,6 +12,7 @@ if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
 }
 
 include __DIR__ . '/../conexao.php';
+include __DIR__ . '/../conexaoMain.php';
 
 $colaboradorId = isset($_GET['colaborador_id']) ? (int)$_GET['colaborador_id'] : 0;
 $competencia = isset($_GET['competencia']) ? trim((string)$_GET['competencia']) : null;
@@ -45,14 +46,21 @@ if (!$row) {
         'success' => true,
         'competencia' => null,
         'status' => 'nao_gerado',
-        'zapsign_doc_token' => null
+        'zapsign_doc_token' => null,
+        'arquivo_nome' => null,
+        'download_url' => null
     ]);
     exit;
 }
+
+$arquivoNome = $row['arquivo_nome'] ?? null;
+$downloadUrl = $arquivoNome ? ('./download.php?arquivo=' . rawurlencode($arquivoNome)) : null;
 
 echo json_encode([
     'success' => true,
     'competencia' => $row['competencia'],
     'status' => $row['status'],
-    'zapsign_doc_token' => $row['zapsign_doc_token']
+    'zapsign_doc_token' => $row['zapsign_doc_token'],
+    'arquivo_nome' => $arquivoNome,
+    'download_url' => $downloadUrl
 ]);

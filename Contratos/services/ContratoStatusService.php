@@ -27,6 +27,36 @@ class ContratoStatusService
         }
     }
 
+    public function atualizarStatusPorArquivoNome(string $arquivoNome, string $status, ?string $assinadoEm = null, ?string $docToken = null): void
+    {
+        if ($docToken) {
+            $sql = "UPDATE contratos SET status = ?, assinado_em = ?, zapsign_doc_token = ? WHERE arquivo_nome = ?";
+            $stmt = $this->conn->prepare($sql);
+            if (!$stmt) {
+                throw new RuntimeException('Falha ao preparar status: ' . $this->conn->error);
+            }
+            $stmt->bind_param('ssss', $status, $assinadoEm, $docToken, $arquivoNome);
+            $stmt->execute();
+            $stmt->close();
+
+            if ($status === 'assinado') {
+                $this->liberarAcessoPorToken($docToken);
+            } else {
+                $this->bloquearAcessoPorToken($docToken);
+            }
+            return;
+        }
+
+        $sql = "UPDATE contratos SET status = ?, assinado_em = ? WHERE arquivo_nome = ?";
+        $stmt = $this->conn->prepare($sql);
+        if (!$stmt) {
+            throw new RuntimeException('Falha ao preparar status: ' . $this->conn->error);
+        }
+        $stmt->bind_param('sss', $status, $assinadoEm, $arquivoNome);
+        $stmt->execute();
+        $stmt->close();
+    }
+
     private function liberarAcessoPorToken(string $docToken): void
     {
         $sql = "UPDATE colaborador c 

@@ -13,15 +13,15 @@ class ContratoDataService
     {
         $sql = "SELECT 
                 c.idcolaborador,
-                c.nome_colaborador,
                 c.telefone,
                 u.idusuario,
                 u.email,
+                u.nome_usuario as nome_colaborador,
                 iu.cnpj,
                 iu.nome_empresarial,
                 iu.estado_civil,
                 iu.cpf,
-                e.rua, e.bairro, e.numero, e.complemento, e.cep,
+                e.rua, e.bairro, e.numero, e.complemento, e.cep, e.localidade, e.uf,
                 ec.rua_cnpj, ec.numero_cnpj, ec.bairro_cnpj, ec.localidade_cnpj, ec.uf_cnpj, ec.cep_cnpj
             FROM colaborador c
             LEFT JOIN usuario u ON u.idcolaborador = c.idcolaborador
@@ -51,7 +51,7 @@ class ContratoDataService
 
     public function getColaboradorFuncoes(int $colaboradorId): array
     {
-        $sql = "SELECT DISTINCT f.idfuncao, f.nome_funcao
+        $sql = "SELECT DISTINCT f.idfuncao, f.nome_funcao, fc.nivel_finalizacao
             FROM funcao_colaborador fc
             JOIN funcao f ON f.idfuncao = fc.funcao_id
             WHERE fc.colaborador_id = ?

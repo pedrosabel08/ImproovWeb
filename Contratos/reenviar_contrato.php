@@ -18,7 +18,7 @@ if (!isset($_SESSION['nivel_acesso']) || (int)$_SESSION['nivel_acesso'] !== 1) {
 }
 
 include __DIR__ . '/../conexao.php';
-require_once __DIR__ . '/services/ZapSignConfig.php';
+include __DIR__ . '/../conexaoMain.php';
 
 $raw = file_get_contents('php://input');
 $data = json_decode($raw, true);
@@ -35,38 +35,30 @@ if (!$colaboradorId) {
     exit;
 }
 
-$zapsignToken = ZapSignConfig::getToken();
-$zapsignTemplateId = ZapSignConfig::getTemplateId();
-
-if ($zapsignToken === '' || $zapsignTemplateId === '') {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Configuração ZapSign ausente.']);
-    exit;
-}
-
 require_once __DIR__ . '/services/ContratoDataService.php';
 require_once __DIR__ . '/services/ContratoDateService.php';
 require_once __DIR__ . '/services/ContratoQualificacaoService.php';
+require_once __DIR__ . '/services/Clausula1Service.php';
 require_once __DIR__ . '/services/Clausula17Service.php';
-require_once __DIR__ . '/services/ZapSignClient.php';
-require_once __DIR__ . '/services/ContratoService.php';
+require_once __DIR__ . '/services/ContratoPdfService.php';
+require_once __DIR__ . '/services/ContratoLocalService.php';
 
 $conn = conectarBanco();
 
 try {
-    $zapApiUrl = ZapSignConfig::getApiUrl();
-    $service = new ContratoService(
+    $pdfDir = __DIR__ . '/gerados';
+    $service = new ContratoLocalService(
         $conn,
         new ContratoDataService($conn),
         new ContratoDateService(),
         new ContratoQualificacaoService(),
+        new Clausula1Service(),
         new Clausula17Service(),
-        new ZapSignClient($zapsignToken, $zapApiUrl),
-        $zapsignTemplateId,
-        ZapSignConfig::isSandbox()
+        new ContratoPdfService($pdfDir)
     );
 
     $resp = $service->gerarContrato($colaboradorId, $competencia);
+    $resp['download_url'] = './download.php?arquivo=' . rawurlencode($resp['arquivo_nome']);
     echo json_encode($resp);
 } catch (Throwable $e) {
     http_response_code(500);

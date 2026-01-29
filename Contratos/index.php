@@ -35,6 +35,15 @@ if ($result) {
     }
 }
 
+$colaboradores = obterColaboradores($conn);
+$status_imagens = obterStatusImagens($conn);
+$funcoes = obterFuncoes($conn);
+$imagens = obterImagens($conn);
+$status_etapa = obterStatus($conn);
+$obras = obterObras($conn);
+$obras_inativas = obterObras($conn, 1);
+$clientes = obterClientes($conn);
+
 $conn->close();
 ?>
 <!DOCTYPE html>
@@ -71,6 +80,7 @@ $conn->close();
                             <td class="acoes">
                                 <button class="btn-primario gerar">Gerar contrato</button>
                                 <button class="btn-secundario reenviar">Reenviar</button>
+                                <button class="btn-quaternario baixar" disabled>Baixar</button>
                                 <button class="btn-terciario status">Visualizar status</button>
                             </td>
                         </tr>

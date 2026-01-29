@@ -44,7 +44,7 @@ class ContratoService
         $funcoes = $this->dataService->getColaboradorFuncoes($colaboradorId);
 
         $qualificacao = $this->qualificacaoService->buildQualificacaoCompleta($colab);
-        $clausula = $this->clausula17Service->buildClausula17($funcoes);
+        $clausula = $this->clausula17Service->buildClausula17($funcoes, $colaboradorId);
         $datas = $this->dateService->getInicioFimPrazo();
 
         $payload = [

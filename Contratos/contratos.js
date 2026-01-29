@@ -22,9 +22,24 @@ document.addEventListener('DOMContentLoaded', () => {
     function atualizarLinha(row, data) {
         const competenciaCell = row.querySelector('.competencia');
         const statusCell = row.querySelector('.status');
+        const btnBaixar = row.querySelector('.baixar');
 
         competenciaCell.textContent = data.competencia || '-';
         statusCell.innerHTML = `<span class="status-badge status-${data.status}">${data.status}</span>`;
+
+        if (btnBaixar) {
+            if (data.download_url) {
+                btnBaixar.disabled = false;
+                btnBaixar.dataset.url = data.download_url;
+            } else {
+                btnBaixar.disabled = true;
+                btnBaixar.dataset.url = '';
+            }
+        }
+
+        if (data.arquivo_nome) {
+            row.dataset.arquivoNome = data.arquivo_nome;
+        }
     }
 
     document.querySelectorAll('.gerar').forEach(btn => {
@@ -42,10 +57,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!resp.ok || !data.success) {
                     alert(data.message || 'Erro ao gerar contrato.');
                 } else {
-                    alert('Contrato enviado com sucesso.');
+                    alert('Contrato gerado com sucesso.');
                     const statusResp = await fetch(`./status.php?colaborador_id=${colabId}`);
                     const statusData = await statusResp.json();
                     atualizarLinha(row, statusData);
+                    if (data.download_url) {
+                        window.open(data.download_url, '_blank');
+                    }
                 }
             } catch (e) {
                 alert('Erro de rede ao gerar contrato.');
@@ -70,15 +88,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!resp.ok || !data.success) {
                     alert(data.message || 'Erro ao reenviar contrato.');
                 } else {
-                    alert('Contrato reenviado.');
+                    alert('Contrato gerado novamente.');
                     const statusResp = await fetch(`./status.php?colaborador_id=${colabId}`);
                     const statusData = await statusResp.json();
                     atualizarLinha(row, statusData);
+                    if (data.download_url) {
+                        window.open(data.download_url, '_blank');
+                    }
                 }
             } catch (e) {
                 alert('Erro de rede ao reenviar contrato.');
             } finally {
                 btn.disabled = false;
+            }
+        });
+    });
+
+    document.querySelectorAll('.baixar').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const url = btn.dataset.url;
+            if (url) {
+                window.open(url, '_blank');
             }
         });
     });
@@ -90,7 +120,7 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const resp = await fetch(`./status.php?colaborador_id=${colabId}`);
                 const data = await resp.json();
-                alert(`Status: ${data.status}\nCompetência: ${data.competencia || '-'}\nToken: ${data.zapsign_doc_token || '-'}`);
+                alert(`Status: ${data.status}\nCompetência: ${data.competencia || '-'}\nArquivo: ${data.arquivo_nome || '-'}\nToken: ${data.zapsign_doc_token || '-'}`);
             } catch (e) {
                 alert('Erro ao consultar status.');
             }

@@ -1,0 +1,7 @@
+﻿{
+  "event": "document.signed",
+  "document": {
+    "token": "TEST_TOKEN_123",
+    "signed_at": "2026-01-28T10:00:00Z"
+  }
+}

@@ -1,0 +1,443 @@
+<!doctype html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="utf-8" />
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Open+Sans:ital,wght@0,300..800;1,300..800&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap');
+
+        /* Local Roboto embedding for PDF (Dompdf embeds local TTF referenced via file://) */
+        @font-face {
+            font-family: 'Roboto';
+            src: url('../fonts/Roboto-Regular.ttf') format('truetype');
+            font-weight: 400;
+            font-style: normal;
+        }
+        @font-face {
+            font-family: 'Roboto';
+            src: url('../fonts/Roboto-Bold.ttf') format('truetype');
+            font-weight: 700;
+            font-style: normal;
+        }
+
+        @page {
+            margin: 7mm;
+        }
+
+        body {
+            font-family: "Roboto", DejaVu Sans, sans-serif;
+            font-size: 10px;
+            color: #111;
+            line-height: 1.35;
+        }
+
+        h1 {
+            font-size: 12px;
+            margin: 0 0 10px 0;
+            text-align: center;
+            letter-spacing: 0.3px;
+        }
+
+        h2 {
+            font-size: 11px;
+            margin: 10px 0 6px 0;
+            text-transform: uppercase;
+            page-break-after: avoid;
+            break-after: avoid;
+        }
+
+        p {
+            margin: 0 0 6px 0;
+            text-align: justify;
+            page-break-inside: avoid;
+            break-inside: avoid;
+            orphans: 3;
+            widows: 3;
+        }
+        p.paragrafo {
+            /* Remove all vertical gap between cláusula 17 paragraphs */
+            margin: 0;
+            padding: 0;
+            line-height: 1.18;
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
+        p.paragrafo + p.paragrafo {
+            margin-top: 0;
+        }
+
+        .section {
+            margin-top: 6px;
+            /* Allow page breaks inside sections so long clauses (e.g. cláusula 17)
+               can split across pages. Paragraphs and headings already have
+               break-avoid rules to prevent mid-paragraph breaks. */
+            page-break-inside: auto;
+            break-inside: auto;
+        }
+
+        .list {
+            margin: 0 0 8px 14px;
+            padding: 0;
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
+
+        .lista-seta {
+
+            padding: 0;
+        }
+
+        .lista-seta-row {
+            display: flex;
+            align-items: flex-start;
+            /* gap: 6px; */
+            margin: 0;
+        }
+
+        .lista-seta-bullet {
+            font-weight: 800;
+            /* line-height: 1.2; */
+            padding-right: 20px;
+            margin-bottom: 3px;
+        }
+
+        .lista-seta-text {
+            line-height: 1;
+        }
+
+        .lista-seta-sub {
+            display: inline-block;
+            line-height: 1.0;
+            margin-bottom: 5px; /* baixo e recuo para alinhar com texto das linhas */
+        }
+
+        .titulo-funcao {
+            font-weight: 700;
+            text-decoration: underline;
+        }
+
+        .list li {
+            margin: 0 0 2px 0;
+        }
+
+        .signature {
+            margin-top: 16px;
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
+
+        .signature .line {
+            margin-top: 50px;
+        }
+
+        /* .mono {
+            font-family: DejaVu Sans Mono, monospace;
+        } */
+
+        .day {
+            text-align: right;
+            font-weight: bold;
+        }
+
+        .signature {
+            text-align: center;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>CONTRATO DE PRESTAÇÃO DE SERVIÇOS</h1>
+
+    <p>De um lado <strong>{{contratante_nome}}</strong>, CNPJ: {{contratante_cnpj}}, com endereço/sede na Rua Bahia, nº 988, Sala
+        503, Bairro do
+        Salto, Blumenau/SC, CEP 89031-001; se seguir denominado simplesmente parte <strong>CONTRATANTE</strong>, neste
+        ato representada
+        por <strong>DIOGO JOSE POFFO</strong> nacionalidade: brasileira, estado civil: divorciado, inscrito no CPF sob o
+        nº
+        036.698.519-17, residente e domiciliado na Avenida Senador Atílio Fontana, nº 2101 apto 308 Edifício Caravelas,
+        Bairro Balneário Pereque, Porto Belo/SC, CEP 88210-000, doravante denominada parte  <strong>CONTRATANTE</strong>.
+    </p>
+
+    <p>{{dados_colaborador}}</p>
+
+    <p><strong>
+            As partes acima identificadas têm, entre si, justo e acertado o presente Contrato de Prestação de Serviços,
+            que
+            se regerá pelas cláusulas seguintes e pelas condições de preço, forma e termo de pagamento descritas no
+            presente:
+        </strong></p>
+
+    <h2><strong>I. DISPOSIÇÕES PRELIMINARES</strong></h2>
+    <p>Resolvem, pela presente forma de direito livremente pactuada, em vista das avenças e compromissos recíprocos
+        estabelecidos abaixo, ajustar o quanto segue:</p>
+
+    <h2><strong>II. DO OBJETO</strong></h2>
+    <div class="section">
+        {{clausula_primeira}}
+    </div>
+
+    <h2><strong>III. DA EXECUÇÃO DOS SERVIÇOS</strong></h2>
+    <p><strong>Cláusula 2ª.</strong> A parte CONTRATADA deverá prestar os serviços solicitados pela parte CONTRATANTE
+        conforme
+        descritivo, especificações e previstos neste contrato.</p>
+    <p><strong>Cláusula 3ª.</strong> Os serviços objeto deste contrato serão executados pela parte CONTRATADA, com total
+        autonomia,
+        liberdade de horário, sem pessoalidade e sem qualquer subordinação a parte CONTRATANTE.</p>
+    <p><strong>Cláusula 4ª.</strong> Considerando que os clientes da parte CONTRATANTE estão incluídos alguns como
+        empresas de grande
+        porte entre outras e que estas exigem o cumprimento, de diversas normas de conduta, confidencialidade e sigilo,
+        a parte CONTRATADA declara ter ciência da necessidade de contribuir para o cumprimento dessas regras, inclusive
+        se adequando ao que for necessário.</p>
+    <p><strong>Cláusula 5ª.</strong> À parte CONTRATADA é conferida a liberdade de atuação dos serviços que lhe forem
+        confiados por força
+        deste instrumento, devendo atuar com independência e autônima técnica, porém alinhada às diretrizes dos clientes
+        da parte CONTRATANTE, que por suas características os fluxos de trabalho devem ser adotados e rigorosamente
+        respeitados.</p>
+    <p><strong>Cláusula 6ª.</strong> Obriga-se a parte CONTRATADA a manter sigilosas, mesmo após o fim deste contrato,
+        as informações
+        privilegiadas de qualquer natureza que teve acesso em virtude da execução destes serviços.</p>
+    <p><strong>Parágrafo único.</strong> A parte CONTRATADA compromete-se, salvo autorização EXPRESSA da parte
+        CONTRATANTE a manter o
+        mais absoluto sigilo a respeito do projeto objeto do presente contrato, sigilo este, escrito ou verbal, bem como
+        não utilizar como portifólio físico ou digital, não revelar, reproduzir, copiar, fazer prints, repassar, vender,
+        alugar, comercializar, dar, doar, divulgar por qualquer meio, incluindo mídias sociais como Whatsapp, Instagram,
+        Facebook, Telegram e etc.; (e todo tipo de mídia social capaz de repassar informação), distribuir, utilizar e/ou
+        dar conhecimento, em hipótese alguma, a TERCEIROS ou em proveito próprio ou alheio, dados, informações obtidos,
+        bem como, toda informação, imagem e conhecimento do projeto.</p>
+
+    <h2><strong>IV. DAS OBRIGAÇÕES DA CONTRATADA</strong></h2>
+    <p><strong>Cláusula 7ª.</strong> - É dever da parte CONTRATADA fornecer todo e qualquer material, equipamento e
+        maquinário necessário
+        para a perfeita execução do objeto do presente instrumento.</p>
+    <p><strong>Cláusula 8ª.</strong> A parte CONTRATADA se obriga a utilizar técnicas condizentes com os serviços a
+        serem prestados,
+        efetuando todos os esforços para a sua consecução.</p>
+    <p><strong>Cláusula 9ª.</strong> A parte CONTRATADA se compromete a utilizar quaisquer informações e/ou documentos
+        obtidos da
+        CONTRATANTE, ou proporcionados por ela, para fins de cumprimento deste contrato e, exclusivamente, para as
+        atividades estipuladas no objeto.</p>
+    <p><strong>Cláusula 10ª.</strong> A parte CONTRATADA se obriga a manter o sigilo referente às informações recebidas
+        da CONTRATANTE,
+        sendo vedada sua divulgação a qualquer título, sob pena de responder pelas perdas e danos.</p>
+    <p><strong>Cláusula 11ª.</strong> A parte CONTRATADA se obriga a, quando ocorrer mudança de endereço, comunicar à
+        CONTRATANTE, sob
+        pena de, em não o fazendo, reputarem-se como eficazes eventuais comunicações e/ou notificações para o endereço
+        constante no preâmbulo deste contrato.</p>
+    <p><strong>Cláusula 12ª.</strong> A parte CONTRATADA se obriga a atender toda e qualquer exigência decorrente de
+        ordem técnica ou de
+        serviços emanada da CONTRATANTE, alterando, se necessário, cronograma de serviços.</p>
+    <p><strong>Cláusula 13ª.</strong> A CONTRATADA assume ampla e integralmente a responsabilidade pelos serviços
+        executados, e se for o
+        caso, materiais e equipamentos fornecidos, garantindo-os quanto aos vícios de qualidade que os tornem impróprios
+        ou inadequados ao uso ou fins a que se destinam, ao tempo em que assegura à CONTRATANTE a retenção dos
+        pagamentos como forma de garantia.</p>
+    <p><strong>Cláusula 14ª.</strong> A CONTRATADA se responsabiliza por todo e qualquer dano decorrente de negligência,
+        imprudência ou
+        imperícia, ação ou omissão causados por seus empregados, prepostos ou contratados, respondendo por todos os
+        custos daí decorrentes.</p>
+
+    <h2><strong>V. DA VIGÊNCIA DO CONTRATO</strong></h2>
+    <p><strong>Cláusula 15ª.</strong> O presente contrato terá prazo de <strong>{{dias_vigencia}}</strong>, com início em
+        <strong>{{inicio_vigencia}}</strong> e término
+        dia <strong>{{termino_vigencia}}</strong>.</p>
+    <p><strong>Parágrafo primeiro.</strong> Ao final deste prazo, o contrato poderá ser renovado, por igual ou inferior
+        período de tempo.
+    </p>
+
+    <h2><strong>VI – DO PRAZO DE ENTREGA DO SERVIÇO</strong></h2>
+    <p><strong>Cláusula 16ª.</strong> A parte CONTRATADA deverá realizar os serviços dentro do prazo estabelecido entre
+        as partes, sendo
+        sua responsabilidade comunicar a impossibilidade de cumprimento, bem como motivos para tal e novo prazo
+        previsto, estando em sua competência a capacidade para tal avaliação.</p>
+    <p><strong>Parágrafo primeiro.</strong> Caso à parte CONTRATADA não venha comunicar a impossibilidade de execução do
+        serviço dentro
+        do prazo estabelecido, ou venha a abandonar sem prévio aviso a parte CONTRATANTE, configurar-se-á quebra de
+        contrato, podendo a parte CONTRATANTE demandar indenização material e/ou moral, e/ou ressarcimento de todas as
+        perdas, danos causados, lucros cessantes, danos diretos e indiretos, direitos autorais, e quaisquer outros
+        prejuízos patrimoniais ou morais que surjam em decorrência deste descumprimento, bem como as de responsabilidade
+        civil e criminal, tudo apurado em regular processo judicial.</p>
+    <p><strong>Parágrafo segundo.</strong> Os prazos de entrega dos serviços contratados serão estabelecidos pelas
+        partes via aditivo
+        contratual, uma vez que os prazos serão de acordo com cada etapa de desenvolvimento das imagens.</p>
+
+    <div class="section">
+        {{clausula_dezessete}}
+    </div>
+
+    <h2><strong>VIII. DA FISCALIZAÇÃO</strong></h2>
+    <p><strong>Cláusula 19ª.</strong> A parte CONTRATANTE tem amplos poderes para acompanhar, controlar e exigir
+        perfeição técnica na
+        execução do objeto ora contratado, não caracterizando tais atos, em hipótese alguma, subordinação entre a parte
+        CONTRATADA e a parte CONTRATANTE.</p>
+    <p><strong>Cláusula 20ª.</strong> Se a parte CONTRATANTE julgar insatisfatória, no todo ou em parte, qualquer
+        execução da parte
+        CONTRATADA, fica está obrigada a corrigi-la, desfazê-la ou refazê-la, sem ônus para parte CONTRATANTE, sob pena
+        de esta proceder à correção às apensas daquela, sem prejuízo das sanções previstas nesse contrato na hipótese de
+        inadimplemento contratual, assim como perda e danos.</p>
+    <p><strong>Cláusula 21ª.</strong> A realização da fiscalização prevista nessa sessão não eximirá a parte CONTRATADA
+        de qualquer
+        responsabilidade ou obrigação prevista neste contrato.</p>
+
+    <h2><strong>IX. DA NATUREZA JURÍDICA</strong></h2>
+    <p><strong>Cláusula 22ª.</strong> Do presente contrato não decorre qualquer vínculo trabalhista e/ou previdenciário
+        entre a parte
+        CONTRATADA e a parte CONTRATANTE, tampouco entre seus clientes atuais e futuros e a parte CONTRATADA.</p>
+    <p><strong>Cláusula 23ª.</strong> Fica estabelecido entre as partes que os serviços contratados, objeto do presente
+        contrato, serão
+        executados pela parte CONTRATADA, sob sua inteira responsabilidade e autonomia, não gerando, portanto, qualquer
+        vínculo de exclusividade da parte CONTRATADA perante a parte CONTRATANTE.</p>
+    <p><strong>Parágrafo primeiro.</strong> A parte CONTRATADA atuará sem exclusividade, podendo exercer suas atividades
+        para outra
+        empresa, desde que cumpra com o estabelecido nas obrigações previstas no presente termo.</p>
+    <p><strong>Parágrafo segundo.</strong> A não observância de quaisquer das disposições de confidencialidade
+        estabelecidas e/ou
+        violação das obrigações previstas no presente contrato, sujeitará a parte CONTRATADA, ao pagamento de multa,
+        indenização material e/ou moral, e/ou ressarcimento de todas as perdas, danos causados, lucros cessantes, danos
+        diretos e indiretos, direitos autorais, e quaisquer outros prejuízos patrimoniais ou morais que surjam em
+        decorrência deste descumprimento, bem como as de responsabilidade civil e criminal, tudo apurado em regular
+        processo judicial.</p>
+
+    <h2><strong>X. OUTROS AJUSTES</strong></h2>
+    <p><strong>Cláusula 24ª.</strong> A parte CONTRATADA declara ter ciência do conteúdo da Lei Geral de Proteção de
+        Dados (Lei
+        13.709/2018) e assume compromisso de respeitar as regras nela previstas, bem como adequar-se ao que for
+        necessário.</p>
+    <p><strong>Cláusula 25ª.</strong> Os serviços prestados pela parte CONTRATADA englobam todos os procedimentos que
+        lhe forem
+        atribuídos, devendo realizar os estudos e pesquisas adequadas, elaborar projetos, devendo atuar com autonomia e
+        independência, segundo sua convicção, sempre atendendo as regras e condições comuns estabelecidas.</p>
+    <p><strong>Parágrafo único.</strong> Sem prejuízo do descrito no “caput” desta cláusula, deverá a parte CONTRATADA
+        respeitar as
+        regras e diretrizes impostas pelos clientes no que concerne os projetos, inclusive normas de conduta de
+        confidencialidade, pelas razões já expostas.</p>
+    <p><strong>Cláusula 26ª.</strong> A parte CONTRATADA não poderá fazer uso do nome da empresa CONTRATANTE de forma
+        indevida ou não
+        autorizada, reconhecendo que os clientes têm vínculo direto e exclusivo com a parte CONTRATANTE.</p>
+    <p><strong>Cláusula 27ª.</strong> A parte CONTRATADA obriga-se a expender todos os esforços e diligências
+        necessárias ao bom
+        desempenho profissional na elaboração dos projetos que lhe forem confiados, devendo manter absoluto sigilo sobre
+        as informações que tiver conhecimento, respondendo ilimitadamente pelos danos causados diretamente aos clientes,
+        nas hipóteses de dolo ou culpa e por ação ou omissão, no exercício de seus atos.</p>
+    <p><strong>Cláusula 28ª.</strong> A parte CONTRATADA reconhece que o uso e divulgação indevida de quaisquer
+        informações obtidas por
+        conta dos trabalhos objeto deste contrato podem implicar em violação à Lei de Proteção de Dados (Lei
+        13.709/2018), além de acarretar perda de vantagem competitiva, de participação de mercado, de clientes, de
+        negócios em potencial ou de receitas, ou de outro modo ter impacto negativo sobre os trabalhos da parte
+        CONTRATANTE.</p>
+    <p><strong>Parágrafo único.</strong> Salvo expressa e previamente autorizado pelas partes por escrito, a parte
+        CONTRATADA, manterá a
+        confidencialidade das informações que teve acesso, não divulgando, permitindo a divulgação ou utilizando em
+        benefício próprio quaisquer das informações que teve acesso, mesmo após a rescisão do presente instrumento.</p>
+    <p><strong>Cláusula 29ª.</strong> O não exercício de qualquer direito ou faculdade estabelecidos no presente
+        contrato constituirá ato
+        de mera liberalidade, não inovando ou criando direitos e precedentes a serem invocados por qualquer das partes.
+    </p>
+    <p><strong>Cláusula 30ª.</strong> Se alguma cláusula ou condição deste contrato, por qualquer motivo, for declarada
+        inválida, tal
+        decisão não afetará a validade das obrigações e direitos remanescentes, que continuarão em pleno vigor e efeito,
+        salvo se, a critério das partes, este evento provocar alteração substancial nos termos pactuados, hipótese na
+        qual poderão entender pela rescisão do presente instrumento.</p>
+    <p><strong>Cláusula 31ª.</strong> Qualquer modificação nos termos deste contrato deverá ser formalizada por escrito
+        pelas partes.</p>
+    <p><strong>Cláusula 32ª.</strong> É vedada a qualquer das partes a cessão e/ou transferência direta ou indireta
+        deste contrato a
+        terceiros, seja total ou parcialmente, sem prévia anuência da outra parte, por escrito.</p>
+    <p><strong>Cláusula 33ª.</strong> Fica estabelecido entre as partes que os arquivos matrizes de desenvolvimento,
+        quais sejam, blocos,
+        modelos, configurações de iluminação e arquivos de pós-produção pertencem exclusivamente a parte CONTRATANTE, e
+        que não poderão ser utilizados pela parte CONTRATADA, publicados de forma integral ou parcial, sendo vedada a
+        sua divulgação à terceiros, quanto qualquer outra utilização pela parte CONTRATADA.</p>
+    <p><strong>Cláusula 34ª.</strong> Caso a parte CONTRATANTE necessite dos arquivos descritos na cláusula primeira,
+        objeto deste
+        contrato, fica obrigada a parte CONTRATADA a fornecê-los de forma integral, sem quaisquer falhas, dentro do
+        prazo de 48 (quarenta e oito horas) horas, sob pena de multa diária no valor de R$ 500,00 (quinhentos reais) por
+        quebra de contrato, podendo a parte CONTRATANTE demandar indenização material e/ou moral, e/ou ressarcimento de
+        todas as perdas, danos causados, lucros cessantes, danos diretos e indiretos, direitos autorais, e quaisquer
+        outros prejuízos patrimoniais ou morais que surjam em decorrência deste descumprimento, bem como as de
+        responsabilidade civil e criminal, tudo apurado em regular processo judicial.</p>
+    <p><strong>Parágrafo único.</strong> A parte CONTRATADA reconhece que uso ou a divulgação indevida do projeto
+        implicarão em violação
+        de confidencialidade, e sem prejuízo das demais penalidades específicas estabelecidas, caso a parte CONTRATADA
+        venha a descumprir o estabelecido neste termo dará ensejo, de pleno direito, à resolução de todos os contratos
+        celebrados entre elas, como também caracteriza crime de concorrência desleal, tipificado no artigo 195, incisos
+        XI e XII da Lei 9.279/96 (Lei da Propriedade Industrial), sem prejuízo de eventual responsabilização por
+        violação de segredo profissional, conforme artigo 154 do Código Penal.</p>
+
+    <h2><strong>XI. NON COMPETE</strong></h2>
+    <p><strong>Cláusula 35ª.</strong> Durante a vigência deste instrumento e pelo período adicional de 24 (vinte e
+        quatro) meses após sua
+        rescisão, fica a Contratada impedida de contratar, solicitar, induzir, recrutar ou incentivar qualquer
+        colaborador e/ou parceiro da Contratante, direta ou indiretamente, para si ou para terceiros, sob pena de
+        aplicação da multa.</p>
+    <p><strong>Cláusula 36ª.</strong> Durante a vigência deste instrumento e pelo período adicional de 24 (vinte e
+        quatro) meses após sua
+        rescisão, fica a parte CONTRATADA impedida de contratar ou negociar com os clientes da parte CONTRATANTE que
+        estiveram envolvidos com a presente contratação, sob qualquer forma, direta ou indiretamente, para si ou para
+        terceiros, sob pena de aplicação da multa.</p>
+
+    <h2><strong>XII. DAS DISPOSIÇÕES GERAIS</strong></h2>
+    <p><strong>Cláusula 37ª.</strong> Conflito de Interesses. A parte CONTRATADA declara que a execução de todos os
+        termos deste Contrato
+        não viola e não violará qualquer outro contrato que tenha celebrado, ou venha a celebrar, com qualquer terceiro.
+        Da mesma forma, a Contratada concorda em não celebrar qualquer acordo escrito ou oral conflitante com as
+        disposições deste instrumento.</p>
+    <p><strong>Cláusula 38ª.</strong> A relação entre as partes versa única e exclusivamente sobre o objeto do presente
+        instrumento, não
+        podendo, em nenhuma circunstância, ser interpretada como relação de associação, sociedade, parceria, consórcio,
+        joint venture, distribuição ou concessão comercial, agência, representação, comissão ou qualquer outra que não a
+        expressamente declarada neste contrato.</p>
+    <p><strong>Cláusula 39ª.</strong> A parte CONTRATADA assume integralmente toda a responsabilidade pelo uso único e
+        exclusivo para o
+        cumprimento do escopo do contrato de todo e qualquer software e/ou aplicativos, bem como todo e qualquer
+        instrumento tecnológico, eventualmente disponibilizados pela Contratante para a prestação de serviços
+        exclusivamente para o cumprimento do objeto estabelecido no formulário contratual vinculado ao presente, bem
+        como responsabiliza-se pela guarda e uso adequado da senha e usuário de acesso aos mesmos.</p>
+
+    <h2><strong>XIII. DA RESCISÃO</strong></h2>
+    <p><strong>Cláusula 40ª.</strong> Poderá o presente instrumento ser rescindido por qualquer uma das partes, em
+        qualquer momento, não
+        obstante a outra parte deverá ser avisada previamente por escrito, no prazo de 10 dias.</p>
+    <p><strong>Parágrafo primeiro.</strong> Fica acordado entre as partes que o presente instrumento só poderá ser
+        rescindido após a
+        parte CONTRATADA efetuar a entrega total de todos as imagens/serviços aqui contratados, sob pena de multa no
+        valor correspondente da perda e dano que vier a ter em caso de rescisão deste instrumento.</p>
+    <p><strong>Parágrafo segundo.</strong> Fica ciente a parte CONTRATADA que a finalização do serviço contratado irá
+        depender da
+        aprovação final da parte CONTRATANTE, uma vez que o presente serviço poderá sofrer revisões que sejam
+        necessárias conforme aprovação do cliente, para sua entrega final.</p>
+    <p><strong>Cláusula 41ª.</strong> Caso o CONTRATANTE já tenha realizado o pagamento do serviço, e mesmo assim
+        requisite a rescisão
+        imotivada do presente contrato, terá o valor da quantia paga devolvida.</p>
+    <p><strong>Cláusula 42ª.</strong> Caso seja o CONTRATADO quem requeira a rescisão imotivada, deverá devolver a
+        quantia que se refere
+        aos serviços por ele não prestados ao CONTRATANTE.</p>
+    <p><strong>Cláusula 43ª.</strong> Quando da rescisão do presente contrato a parte CONTRATADA não poderá em hipótese
+        alguma levar ou
+        manter como clientes, àqueles já cadastrados com a parte CONTRATANTE ou que vier a ser cadastrado, com exceção
+        dos clientes que a parte CONTRATADA tiver prospectado, sob pena de indenizar a parte CONTRATANTE pelos prejuízos
+        sofridos.</p>
+
+    <h2><strong>XIV. DO FORO</strong></h2>
+    <p><strong>Cláusula 44ª.</strong> Para dirimir quaisquer controvérsias oriundas do presente CONTRATO, as partes
+        elegem o foro da
+        comarca de Blumenau/SC.</p>
+
+    <p>E, assim, para que produza seus efeitos legais e jurídicos, por estarem juntas e contratadas, confirmamos, via
+        assinatura eletrônica, nos moldes do art. 10 da MO 2.200/01 em vigor no Brasil, que estamos de acordo com o
+        presente CONTRATO DE PRESTAÇÃO DE SERVIÇOS, e por estar plenamente cientes dos termos, reafirmamos o nosso dever
+        de observar e fazer cumprir as cláusulas aqui estabelecidas, em vista de que possamos acessar a via do contrato
+        através do endereço https://zapsign.com.br e gerar versão impressa do mesmo, considerado o fato de já tê-lo
+        recebido por e-mail.</p>
+
+    <p class="day">Blumenau, {{dia_atual}}.</p>
+
+    <div class="signature">
+        <div class="line">________________________________________</div>
+        <div>{{contratante_nome}}</div>
+        <div class="line">________________________________________</div>
+        <div>{{colaborador_contratado}}</div>
+    </div>
+</body>
+
+</html>

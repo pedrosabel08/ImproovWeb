@@ -180,15 +180,15 @@ function buscarTarefas(mostrarAlerta = true) {
 function filtrarFuncoesPorColaborador(id) {
     switch (id) {
         case 21:
-            return ['Finalização', 'Pós-produção', 'Modelagem', 'Composição', 'Caderno', 'Filtro de assets']; // Todas
+            return ['Finalização', 'Pós-produção', 'Modelagem', 'Composição', 'Caderno', 'Filtro de assets', 'Finalização P00']; // Todas
         case 9:
-            return ['Finalização', 'Pós-produção'];
+            return ['Finalização', 'Pós-produção', 'Finalização P00'];
         case 1:
-            return ['Modelagem', 'Composição', 'Caderno', 'Filtro de assets']; // Todas menos finalização e pós-produção
+            return ['Modelagem', 'Composição', 'Caderno', 'Filtro de assets', 'Finalização P00']; // Todas menos finalização e pós-produção
         case 19:
             return ['Modelagem', 'Composição'];
         default:
-            return ['Finalização', 'Pós-produção', 'Modelagem', 'Composição', 'Caderno', 'Filtro de assets']; // Todas
+            return ['Finalização', 'Pós-produção', 'Modelagem', 'Composição', 'Caderno', 'Filtro de assets', 'Finalização P00']; // Todas
     }
 }
 

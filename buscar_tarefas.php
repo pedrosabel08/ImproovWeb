@@ -16,9 +16,9 @@ if (!$idusuario) {
 
 // Definir condições para o SELECT com base no ID do usuário
 if ($idusuario == 1 || $idusuario == 2) {
-    $sql = "SELECT  f.idfuncao_imagem,
+        $sql = "SELECT  f.idfuncao_imagem,
             f.funcao_id, 
-            fun.nome_funcao, 
+            CASE WHEN f.funcao_id = 4 AND i.status_id = 1 THEN 'Finalização P00' ELSE fun.nome_funcao END AS nome_funcao, 
             f.status, 
             f.prazo,
             f.imagem_id, 
@@ -36,7 +36,7 @@ if ($idusuario == 1 || $idusuario == 2) {
     $sql = "SELECT 
         f.idfuncao_imagem,
         f.funcao_id, 
-        fun.nome_funcao, 
+        CASE WHEN f.funcao_id = 4 AND i.status_id = 1 THEN 'Finalização P00' ELSE fun.nome_funcao END AS nome_funcao, 
         f.status, 
         f.imagem_id, 
         i.imagem_nome, 
@@ -47,13 +47,13 @@ if ($idusuario == 1 || $idusuario == 2) {
     LEFT JOIN funcao fun ON fun.idfuncao = f.funcao_id
     LEFT JOIN colaborador c ON c.idcolaborador = f.colaborador_id
     LEFT JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
-    WHERE f.funcao_id IN (1, 2, 3, 4, 5, 6, 7, 8, 9)
-      AND f.status = 'Em aprovação'";
+        WHERE f.funcao_id IN (1, 2, 3, 4, 5, 6, 7, 8, 9)
+            AND f.status = 'Em aprovação'";
 } else {
     $sql = "SELECT 
     f.idfuncao_imagem,
     f.funcao_id, 
-    fun.nome_funcao, 
+    CASE WHEN f.funcao_id = 4 AND i.status_id = 1 THEN 'Finalização P00' ELSE fun.nome_funcao END AS nome_funcao, 
     f.status, 
     f.imagem_id, 
     i.imagem_nome, 
@@ -64,9 +64,9 @@ if ($idusuario == 1 || $idusuario == 2) {
     LEFT JOIN funcao fun ON fun.idfuncao = f.funcao_id
     LEFT JOIN colaborador c ON c.idcolaborador = f.colaborador_id
     LEFT JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
-    WHERE f.funcao_id IN (1, 2, 3, 4, 5, 6, 7, 8, 9)
-      AND f.status = 'Ajuste'
-      AND c.idcolaborador = ?";
+        WHERE f.funcao_id IN (1, 2, 3, 4, 5, 6, 7, 8, 9)
+            AND f.status = 'Ajuste'
+            AND c.idcolaborador = ?";
 
     // Preparar a consulta
     $stmt = $conn->prepare($sql);
@@ -90,6 +90,8 @@ $tarefas = [];
 while ($row = $result->fetch_assoc()) {
     $tarefas[] = $row;
 }
+
+
 
 // Buscar notificações do colaborador logado
 $notificacoes = [];

@@ -22,7 +22,7 @@ class ContratoDataService
                 iu.estado_civil,
                 iu.cpf,
                 e.rua, e.bairro, e.numero, e.complemento, e.cep, e.localidade, e.uf,
-                ec.rua_cnpj, ec.numero_cnpj, ec.bairro_cnpj, ec.localidade_cnpj, ec.uf_cnpj, ec.cep_cnpj
+                ec.rua_cnpj, ec.numero_cnpj, ec.bairro_cnpj, ec.localidade_cnpj, ec.uf_cnpj, ec.cep_cnpj, ec.complemento_cnpj
             FROM colaborador c
             LEFT JOIN usuario u ON u.idcolaborador = c.idcolaborador
             LEFT JOIN informacoes_usuario iu ON iu.usuario_id = u.idusuario

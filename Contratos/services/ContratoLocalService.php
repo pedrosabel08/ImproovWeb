@@ -52,14 +52,21 @@ class ContratoLocalService
         $listaImagens = $this->buildListaImagensHtml($funcoes);
 
         $qualificacaoEsc = $this->escapeHtml($qualificacao);
-        $nomeColaborador = (string)($colab['nome_empresarial'] ?: $colab['nome_colaborador'] ?: '');
-        if ($nomeColaborador !== '') {
-            $nomeColaboradorEsc = $this->escapeHtml($nomeColaborador);
-            $qualificacaoEsc = str_replace(
-                $nomeColaboradorEsc,
-                '<strong>' . $nomeColaboradorEsc . '</strong>',
-                $qualificacaoEsc
-            );
+        // Destacar ambos `nome_empresarial` e `nome_colaborador` quando presentes
+        $nomesParaDestacar = [];
+        $nomeEmpresarial = isset($colab['nome_empresarial']) ? (string)$colab['nome_empresarial'] : '';
+        $nomeColaborador = isset($colab['nome_colaborador']) ? (string)$colab['nome_colaborador'] : '';
+        if ($nomeEmpresarial !== '') $nomesParaDestacar[] = $nomeEmpresarial;
+        if ($nomeColaborador !== '') $nomesParaDestacar[] = $nomeColaborador;
+        $nomesParaDestacar = array_unique($nomesParaDestacar);
+        // Escapar e ordenar por comprimento decrescente para evitar substituições parciais
+        $nomesEsc = array_map([$this, 'escapeHtml'], $nomesParaDestacar);
+        usort($nomesEsc, function ($a, $b) {
+            return mb_strlen($b, 'UTF-8') <=> mb_strlen($a, 'UTF-8');
+        });
+        foreach ($nomesEsc as $nEsc) {
+            if ($nEsc === '') continue;
+            $qualificacaoEsc = str_replace($nEsc, '<strong>' . $nEsc . '</strong>', $qualificacaoEsc);
         }
         $qualificacaoEsc = preg_replace('/\bCONTRATADA\b/u', '<strong>CONTRATADA</strong>', $qualificacaoEsc) ?? $qualificacaoEsc;
 
@@ -122,6 +129,7 @@ class ContratoLocalService
             'success' => true,
             'competencia' => $competencia,
             'arquivo_nome' => $nomeArquivo,
+            'arquivo_path' => $pdf['file_path'],
         ];
     }
 

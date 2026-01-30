@@ -9,13 +9,17 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     async function carregarStatus() {
-        const rows = document.querySelectorAll('#contratos-table tbody tr');
+        const rows = Array.from(document.querySelectorAll('#contratos-table tbody tr'));
+        const ids = rows.map(r => r.dataset.colaboradorId).filter(Boolean);
+        if (ids.length === 0) return;
+        const resp = await fetch(`./status.php?colaborador_ids=${ids.join(',')}`, { credentials: 'same-origin' });
+        if (!resp.ok) return;
+        const data = await resp.json();
+        if (!data.success || !data.items) return;
         for (const row of rows) {
             const colabId = row.dataset.colaboradorId;
-            const resp = await fetch(`./status.php?colaborador_id=${colabId}`, { credentials: 'same-origin' });
-            if (!resp.ok) continue;
-            const data = await resp.json();
-            atualizarLinha(row, data);
+            const item = data.items[colabId] || { status: 'nao_gerado' };
+            atualizarLinha(row, item);
         }
     }
 

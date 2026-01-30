@@ -46,7 +46,19 @@ require_once __DIR__ . '/services/ContratoLocalService.php';
 $conn = conectarBanco();
 
 try {
-    $pdfDir = __DIR__ . '/gerados';
+    // Criar pasta por mês/ano de vigência (ex: gerados/2026_01_Janeiro)
+    $competenciaForDir = $competencia ?: (new DateTimeImmutable('now', new DateTimeZone('America/Sao_Paulo')))->format('Y-m');
+    $dt = DateTimeImmutable::createFromFormat('Y-m', $competenciaForDir) ?: DateTimeImmutable::createFromFormat('Y-m-d', $competenciaForDir) ?: new DateTimeImmutable('now', new DateTimeZone('America/Sao_Paulo'));
+    $meses = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+    $mesNome = $meses[(int)$dt->format('m')];
+    $pdfDir = __DIR__ . '/gerados/' . $dt->format('Y') . '_' . $dt->format('m') . '_' . $mesNome;
+    if (!is_dir($pdfDir)) {
+        if (!mkdir($pdfDir, 0775, true) && !is_dir($pdfDir)) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => 'Não foi possível criar pasta para PDFs: ' . $pdfDir]);
+            exit;
+        }
+    }
     $service = new ContratoLocalService(
         $conn,
         new ContratoDataService($conn),
@@ -58,11 +70,26 @@ try {
     );
 
     $resp = $service->gerarContrato($colaboradorId, $competencia);
-    $resp['download_url'] = './download.php?arquivo=' . rawurlencode($resp['arquivo_nome']);
+    // Calcular caminho relativo dentro de gerados/ para download seguro
+    $baseGerados = realpath(__DIR__ . '/gerados');
+    $arquivoPath = $resp['arquivo_path'] ?? '';
+    if ($baseGerados && $arquivoPath) {
+        $rel = ltrim(str_replace($baseGerados, '', realpath($arquivoPath) ?: $arquivoPath), DIRECTORY_SEPARATOR);
+        $resp['download_url'] = './download.php?arquivo=' . rawurlencode($rel);
+    } else {
+        $resp['download_url'] = './download.php?arquivo=' . rawurlencode(basename($resp['arquivo_nome'] ?? ''));
+    }
     echo json_encode($resp);
 } catch (Throwable $e) {
     http_response_code(500);
-    echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    $resp = [
+        'success' => false,
+        'message' => $e->getMessage(),
+        'file' => $e->getFile(),
+        'line' => $e->getLine(),
+        'trace' => $e->getTraceAsString(),
+    ];
+    echo json_encode($resp);
 }
 
 $conn->close();

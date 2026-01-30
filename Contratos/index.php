@@ -26,16 +26,18 @@ $sql = "SELECT c.idcolaborador, c.nome_colaborador, u.email
         FROM colaborador c
         LEFT JOIN usuario u ON u.idcolaborador = c.idcolaborador
         WHERE c.ativo = 1
+          AND (c.cargo_id IS NULL OR c.cargo_id NOT IN (9, 11, 12))
         ORDER BY c.nome_colaborador";
 $result = $conn->query($sql);
+if (!$result) {
+    die('Query error: ' . $conn->error);
+}
 $colaboradores = [];
-if ($result) {
-    while ($row = $result->fetch_assoc()) {
-        $colaboradores[] = $row;
-    }
+while ($row = $result->fetch_assoc()) {
+    $colaboradores[] = $row;
 }
 
-$colaboradores = obterColaboradores($conn);
+// $colaboradores = obterColaboradores($conn);
 $status_imagens = obterStatusImagens($conn);
 $funcoes = obterFuncoes($conn);
 $imagens = obterImagens($conn);
@@ -54,6 +56,8 @@ $conn->close();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="<?php echo asset_url('../css/styleSidebar.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset_url('./style.css'); ?>">
+    <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
+        type="image/x-icon">
     <title>Contratos</title>
 </head>
 

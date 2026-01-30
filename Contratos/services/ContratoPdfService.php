@@ -34,12 +34,24 @@ class ContratoPdfService
         $templateDir = realpath(dirname($this->templatePath)) ?: dirname($this->templatePath);
         $fontCacheDir = $contratosRoot . DIRECTORY_SEPARATOR . 'cache' . DIRECTORY_SEPARATOR . 'dompdf';
         $this->ensureDir($fontCacheDir);
+        // Se não for gravável, tentar fallback para temp dir
+        if (!is_writable($fontCacheDir)) {
+            $fallback = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'improov_dompdf';
+            $this->ensureDir($fallback);
+            if (is_writable($fallback)) {
+                $fontCacheDir = $fallback;
+            } else {
+                throw new RuntimeException('Dompdf font cache não gravável: ' . $fontCacheDir);
+            }
+        }
 
         $options = new Options();
-        $options->set('isRemoteEnabled', true);
+        // Evita downloads externos (ex.: Google Fonts) e reduz o tempo de geração
+        $options->set('isRemoteEnabled', false);
         $options->set('chroot', $contratosRoot);
         $options->set('defaultFont', 'Roboto');
-        $options->set('isFontSubsettingEnabled', true);
+        // Subsetting pode aumentar tempo; desabilitar prioriza performance
+        $options->set('isFontSubsettingEnabled', false);
         $options->set('fontDir', $fontCacheDir);
         $options->set('fontCache', $fontCacheDir);
         $options->set('tempDir', $fontCacheDir);
@@ -50,8 +62,23 @@ class ContratoPdfService
         $dompdf->loadHtml($html, 'UTF-8');
         $dompdf->render();
 
+        // Garantir que o diretório de saída seja gravável; fallback para temp dir se necessário
+        if (!is_dir($this->outputDir)) {
+            $this->ensureOutputDir();
+        }
+        if (!is_writable($this->outputDir)) {
+            $fallbackOut = sys_get_temp_dir();
+            if (!is_writable($fallbackOut)) {
+                throw new RuntimeException('Diretório de saída de PDFs não gravável: ' . $this->outputDir);
+            }
+            $this->outputDir = $fallbackOut;
+        }
+
         $filePath = $this->outputDir . DIRECTORY_SEPARATOR . $nomeArquivo;
-        file_put_contents($filePath, $dompdf->output());
+        $bytes = file_put_contents($filePath, $dompdf->output());
+        if ($bytes === false) {
+            throw new RuntimeException('Falha ao gravar PDF em: ' . $filePath);
+        }
 
         return [
             'file_name' => $nomeArquivo,

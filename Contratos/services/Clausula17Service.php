@@ -11,13 +11,13 @@ class Clausula17Service
         if ($colaboradorId === 16) {
             $trechos = [];
             $trechos[] = '<strong>VII. DO PREÇO E DAS CONDIÇÕES DE PAGAMENTO</strong>';
-            $trechos[] = '<strong>Cláusula 17ª.</strong> Em contrapartida à efetiva execução do objeto do presente contrato, a CONTRATANTE pagará à parte CONTRATADA o valor gradual de acordo com a quantidade de imagens virtuais entregues com suas respectivas imagens conforme exposto na tabela abaixo:';
+            $trechos[] = '<strong>Cláusula 17ª.</strong> Em contrapartida à efetiva execução do objeto do presente contrato, a CONTRATANTE pagará à parte CONTRATADA o valor gradual de acordo com a quantidade de imagens virtuais entregues com suas respectivas imagens conforme exposto na tabela abaixo:<br>';
             $linhas = [];
             $linhas[] = '<span class="titulo-funcao">Modelagem de fachada:</span>';
             $linhas[] = '<span>Valor fixo de R$ 1.000,00 (Mil reais) por modelagem de fachada de ambiente virtual desenvolvido.</span>';
-            $trechos[] = implode("\n\n", $linhas);
+            $trechos[] = implode("\n", $linhas);
             $trechos[] = $this->buildParagrafos(false);
-            $texto = implode("\n\n", $trechos);
+            $texto = implode("\n", $trechos);
 
             return [
                 'texto' => $texto,
@@ -28,13 +28,13 @@ class Clausula17Service
         if ($colaboradorId === 13) {
             $trechos = [];
             $trechos[] = '<strong>VII. DO PREÇO E DAS CONDIÇÕES DE PAGAMENTO</strong>';
-            $trechos[] = '<strong>Cláusula 17ª.</strong> Em contrapartida à efetiva execução do objeto do presente contrato, a CONTRATANTE pagará à parte CONTRATADA o valor gradual de acordo com a quantidade de imagens virtuais entregues com suas respectivas imagens conforme exposto na tabela abaixo:';
+            $trechos[] = '<strong>Cláusula 17ª.</strong> Em contrapartida à efetiva execução do objeto do presente contrato, a CONTRATANTE pagará à parte CONTRATADA o valor gradual de acordo com a quantidade de imagens virtuais entregues com suas respectivas imagens conforme exposto na tabela abaixo:<br>';
             $linhas = [];
             $linhas[] = '<span class="titulo-funcao">Animação:</span>';
             $linhas[] = '<span>Valor fixo de R$ 175,00 (Cento e setenta e cinco reais) por cena de animação preview entregue e R$ 175,00 (cento e setenta e cinco reais) por cena de animação renderizada e finalizada com pós-produção.</span>';
-            $trechos[] = implode("\n\n", $linhas);
+            $trechos[] = implode("\n", $linhas);
             $trechos[] = $this->buildParagrafos(false);
-            $texto = implode("\n\n", $trechos);
+            $texto = implode("\n", $trechos);
 
             return [
                 'texto' => $texto,
@@ -51,6 +51,7 @@ class Clausula17Service
         $temPosProducao = $this->hasFuncao($funcoesNomes, ['pós-produção', 'pos-producao', 'pos producao', 'pos-produção']);
         $temModelagem = $this->hasFuncao($funcoesNomes, ['modelagem']);
         $temComposicao = $this->hasFuncao($funcoesNomes, ['composição', 'composicao']);
+        $temAlteracao = $this->hasFuncao($funcoesNomes, ['alteração', 'alteracao']);
         $temCaderno = $this->hasFuncao($funcoesNomes, ['caderno']);
         $nivelFinalizacao = $this->getNivelFinalizacao($funcoes);
         $finalizacaoInfo = $this->getFinalizacaoInfo($nivelFinalizacao);
@@ -60,7 +61,7 @@ class Clausula17Service
 
         $trechos = [];
         $trechos[] = '<strong>VII. DO PREÇO E DAS CONDIÇÕES DE PAGAMENTO</strong>';
-        $trechos[] = '<strong>Cláusula 17ª.</strong> Em contrapartida à efetiva execução do objeto do presente contrato, a CONTRATANTE pagará à parte CONTRATADA o valor gradual de acordo com a quantidade de imagens virtuais entregues com suas respectivas imagens conforme exposto na tabela abaixo:';
+        $trechos[] = '<strong>Cláusula 17ª.</strong> Em contrapartida à efetiva execução do objeto do presente contrato, a CONTRATANTE pagará à parte CONTRATADA o valor gradual de acordo com a quantidade de imagens virtuais entregues com suas respectivas imagens conforme exposto na tabela abaixo:<br>';
 
         $linhas = [];
         if ($temPosProducao) {
@@ -72,7 +73,7 @@ class Clausula17Service
             $linhas[] = '<span>Valor fixo de R$ 50,00 (Cinquenta reais) por desenvolvimento de caderno de interiores e R$ 20,00 (vinte reais) pela separação de assets para a produção dos interiores dos ambientes virtuais.</span>';
         }
 
-        if ($temModelagem && $temComposicao) {
+        if (($temModelagem && $temComposicao) || $temAlteracao) {
             $linhas[] = '<span class="titulo-funcao">Modelagem e composição:</span>';
             $linhas[] = '<span>Valor fixo de R$ 50,00 (Cinquenta reais) por modelagem e R$ 50,00 (Cinquenta reais) por composição por ambiente.</span>';
         } else {
@@ -97,12 +98,12 @@ class Clausula17Service
         }
 
         if (!empty($linhas)) {
-            $trechos[] = implode("\n\n", $linhas);
+            $trechos[] = implode("\n", $linhas);
         }
 
         $trechos[] = $this->buildParagrafos($temFinalizacaoEfetiva);
 
-        $texto = implode("\n\n", $trechos);
+        $texto = implode("\n", $trechos);
 
         return [
             'texto' => $texto,
@@ -216,7 +217,7 @@ class Clausula17Service
     private function buildParagrafos(bool $temFinalizacao): string
     {
         if ($temFinalizacao) {
-            return implode("\n\n", [
+            return implode("\n", [
                 '<p class="paragrafo"><strong>Parágrafo primeiro. </strong> As imagens que estiverem com status P00 finalizado será pago 50% do valor da imagem de acordo com a tabela de valores do nível da parte CONTRATADA.</p>',
                 '<p class="paragrafo"><strong>Parágrafo segundo.</strong> Para recebimento dos valores descritos acima a parte CONTRATADA deverá fazer a entrega das imagens P00 (ângulos) R00 (imagem prévia) dentro do prazo de cada etapa do serviço que será estipulado entre as partes e deverá ter a aprovação final do cliente.</p>',
                 '<p class="paragrafo"><strong>Parágrafo terceiro.</strong> Em caso de entrega das imagens e pagamento dos valores referente aos serviços aqui prestados, fica ciente a parte CONTRATADA que a imagem deverá seguir o processo até ser aprovada pelo cliente da parte CONTRATANTE, a parte CONTRATADA deverá fazer todas as revisões necessárias até a entrega final da imagem em alta resolução conforme as especificações de cada trabalho e a entrega dos arquivos correspondentes.</p>',
@@ -225,7 +226,7 @@ class Clausula17Service
             ]);
         }
 
-        return implode("\n\n", [
+        return implode("\n", [
             '<p class="paragrafo"><strong>Parágrafo primeiro.</strong> Para recebimento dos valores descritos acima parte CONTRATANTE deverá fazer a entrega das imagens dentro do prazo de cada etapa do serviço que será estipulado entre as partes e deverá ter a aprovação final do cliente.</p>',
             '<p class="paragrafo"><strong>Parágrafo segundo.</strong> Em caso de entrega das imagens e pagamento dos valores referente aos serviços aqui prestados, fica ciente a parte CONTRATADA que a imagem deverá seguir o processo até ser aprovada pelo cliente da parte CONTRATANTE, a parte CONTRATADA deverá fazer todas as revisões necessárias até a entrega final da imagem em alta resolução conforme as especificações de cada trabalho e a entrega dos arquivos correspondentes.</p>',
             '<p class="paragrafo"><strong>Parágrafo terceiro.</strong> O pagamento da prestação de serviço será feito no 5º (quinto) dia útil do mês subsequente a contratação.</p>',

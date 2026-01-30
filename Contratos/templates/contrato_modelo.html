@@ -4,9 +4,7 @@
 <head>
     <meta charset="utf-8" />
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Open+Sans:ital,wght@0,300..800;1,300..800&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap');
-
-        /* Local Roboto embedding for PDF (Dompdf embeds local TTF referenced via file://) */
+        /* Fontes locais (evita buscar Google Fonts e reduz tempo de geração no Dompdf) */
         @font-face {
             font-family: 'Roboto';
             src: url('../fonts/Roboto-Regular.ttf') format('truetype');
@@ -57,6 +55,7 @@
         p.paragrafo {
             /* Remove all vertical gap between cláusula 17 paragraphs */
             margin: 0;
+            margin-top: 20px;
             padding: 0;
             line-height: 1.18;
             page-break-inside: avoid;

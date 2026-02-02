@@ -8,18 +8,12 @@ $idusuario = $_GET['idusuario'] ?? 0;
 // Consulta para pegar as informações do usuário
 $sql_usuario = "SELECT 
                     u.*,
-                    iu.*,
-                    e.*,
-                    ec.*,
+                    c.nome_colaborador,
                     CONCAT(UPPER(LEFT(SUBSTRING_INDEX(u.nome_usuario, ' ', 1), 1)), LOWER(SUBSTRING(SUBSTRING_INDEX(u.nome_usuario, ' ', 1), 2))) AS primeiro_nome_formatado
                 FROM 
                     usuario u
                 LEFT JOIN 
-                    informacoes_usuario iu ON u.idusuario = iu.usuario_id
-                LEFT JOIN 
-                    endereco e ON u.idusuario = e.usuario_id
-                LEFT JOIN 
-                    endereco_cnpj ec ON u.idusuario = ec.usuario_id
+                    colaborador c ON u.idcolaborador = c.idcolaborador
                 WHERE 
                     u.idusuario = ? 
                 GROUP BY

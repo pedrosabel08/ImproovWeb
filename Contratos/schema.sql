@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS contratos (
     competencia VARCHAR(7) NOT NULL, -- formato YYYY-MM
     status ENUM('nao_gerado','gerado','visualizado','enviado','assinado','recusado','expirado') NOT NULL DEFAULT 'nao_gerado',
     zapsign_doc_token VARCHAR(191) DEFAULT NULL,
+    sign_url VARCHAR(255) DEFAULT NULL,
     data_envio DATETIME DEFAULT NULL,
     data_inicio DATE DEFAULT NULL,
     data_fim DATE DEFAULT NULL,
@@ -28,7 +29,8 @@ ALTER TABLE contratos
 -- Migração para base já existente
 ALTER TABLE contratos
     ADD COLUMN IF NOT EXISTS arquivo_nome VARCHAR(255) DEFAULT NULL,
-    ADD COLUMN IF NOT EXISTS arquivo_path VARCHAR(255) DEFAULT NULL;
+    ADD COLUMN IF NOT EXISTS arquivo_path VARCHAR(255) DEFAULT NULL,
+    ADD COLUMN IF NOT EXISTS sign_url VARCHAR(255) DEFAULT NULL;
 
 -- Atualizar enum de status (ajuste conforme a sua versão do MySQL)
 -- Exemplo compatível com MySQL 8:

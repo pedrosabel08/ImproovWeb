@@ -131,7 +131,7 @@ class Clausula17Service
         foreach ($funcoes as $f) {
             $nome = mb_strtolower(trim($f['nome_funcao'] ?? ''), 'UTF-8');
             if ($nome === 'finalização' || $nome === 'finalizacao') {
-                $nivel = isset($f['nivel_finalizacao']) ? (int)$f['nivel_finalizacao'] : null;
+                $nivel = isset($f['nivel_finalizacao']) ? (int) $f['nivel_finalizacao'] : null;
                 if ($nivel && in_array($nivel, [1, 2, 3], true)) {
                     return $nivel;
                 }
@@ -200,11 +200,13 @@ class Clausula17Service
         // Se vier outro nível, mantemos o título vindo do nível para não perder a informação.
 
         $html = [];
+        $html[] = '<p>';
         $html[] = '<span class="titulo-funcao">Animação:</span>';
         $html[] = '<span>Até 9 cenas: R$ 130,00 por cena</span>';
         $html[] = '<span>A partir de 10 cenas: R$ 140,00 por cena</span>';
         $html[] = '<span>A partir de 20 cenas: R$ 150,00 por cena</span>';
         $html[] = '<span>A partir de 30 cenas: R$ 160,00 por cena</span>';
+        $html[] = '</p>';
 
         return implode("\n", $html);
     }
@@ -217,7 +219,7 @@ class Clausula17Service
     private function buildParagrafos(bool $temFinalizacao): string
     {
         if ($temFinalizacao) {
-            return implode("\n", [
+            return implode("<br>", [
                 '<p class="paragrafo"><strong>Parágrafo primeiro. </strong> As imagens que estiverem com status P00 finalizado será pago 50% do valor da imagem de acordo com a tabela de valores do nível da parte CONTRATADA.</p>',
                 '<p class="paragrafo"><strong>Parágrafo segundo.</strong> Para recebimento dos valores descritos acima a parte CONTRATADA deverá fazer a entrega das imagens P00 (ângulos) R00 (imagem prévia) dentro do prazo de cada etapa do serviço que será estipulado entre as partes e deverá ter a aprovação final do cliente.</p>',
                 '<p class="paragrafo"><strong>Parágrafo terceiro.</strong> Em caso de entrega das imagens e pagamento dos valores referente aos serviços aqui prestados, fica ciente a parte CONTRATADA que a imagem deverá seguir o processo até ser aprovada pelo cliente da parte CONTRATANTE, a parte CONTRATADA deverá fazer todas as revisões necessárias até a entrega final da imagem em alta resolução conforme as especificações de cada trabalho e a entrega dos arquivos correspondentes.</p>',
@@ -226,7 +228,7 @@ class Clausula17Service
             ]);
         }
 
-        return implode("\n", [
+        return implode("<br>", [
             '<p class="paragrafo"><strong>Parágrafo primeiro.</strong> Para recebimento dos valores descritos acima parte CONTRATANTE deverá fazer a entrega das imagens dentro do prazo de cada etapa do serviço que será estipulado entre as partes e deverá ter a aprovação final do cliente.</p>',
             '<p class="paragrafo"><strong>Parágrafo segundo.</strong> Em caso de entrega das imagens e pagamento dos valores referente aos serviços aqui prestados, fica ciente a parte CONTRATADA que a imagem deverá seguir o processo até ser aprovada pelo cliente da parte CONTRATANTE, a parte CONTRATADA deverá fazer todas as revisões necessárias até a entrega final da imagem em alta resolução conforme as especificações de cada trabalho e a entrega dos arquivos correspondentes.</p>',
             '<p class="paragrafo"><strong>Parágrafo terceiro.</strong> O pagamento da prestação de serviço será feito no 5º (quinto) dia útil do mês subsequente a contratação.</p>',

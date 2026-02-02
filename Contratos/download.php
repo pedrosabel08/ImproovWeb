@@ -37,9 +37,30 @@ if ($realRequested === false || strpos($realRequested, $baseDir) !== 0 || !is_fi
 
 $path = $realRequested;
 
+$arquivo = basename($path);
+$arquivoEncoded = rawurlencode($arquivo);
+
+$raw = isset($_GET['raw']) ? (int)$_GET['raw'] : 0;
+if ($raw !== 1) {
+    $safeTitle = htmlspecialchars(pathinfo($arquivo, PATHINFO_FILENAME), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    $self = basename($_SERVER['PHP_SELF']);
+    $iframeSrc = $self . '?arquivo=' . rawurlencode($rawArquivo) . '&raw=1';
+    header_remove('Content-Type');
+    header('Content-Type: text/html; charset=utf-8');
+    echo '<!doctype html><html lang="pt-br"><head>';
+    echo '<meta charset="utf-8" />';
+    echo '<meta name="viewport" content="width=device-width, initial-scale=1" />';
+    echo '<title>' . $safeTitle . '</title>';
+    echo '<style>html,body{height:100%;margin:0}iframe{border:0;width:100%;height:100%}</style>';
+    echo '</head><body>';
+    echo '<iframe src="' . $iframeSrc . '" title="' . $safeTitle . '"></iframe>';
+    echo '</body></html>';
+    exit;
+}
+
 header_remove('Content-Type');
 header('Content-Type: application/pdf');
-header('Content-Disposition: inline; filename="' . $arquivo . '"');
+header('Content-Disposition: inline; filename="' . $arquivo . '"; filename*=UTF-8\'\'' . $arquivoEncoded);
 header('Content-Length: ' . filesize($path));
 readfile($path);
 exit;

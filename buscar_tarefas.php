@@ -135,6 +135,6 @@ if ($notificacao_modulo_stmt) {
 // Resposta combinada
 echo json_encode([
     'tarefas' => $tarefas,
-    'notificacoes' => $notificacoes,
+    // 'notificacoes' => $notificacoes,
     'notificacoes_modulo' => $notificacoes_modulo
 ]);

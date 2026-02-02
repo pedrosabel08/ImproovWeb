@@ -33,6 +33,71 @@ if (!is_array($data)) {
 require_once __DIR__ . '/../conexaoMain.php';
 require_once __DIR__ . '/services/ContratoStatusService.php';
 
+function logContratoAction(mysqli $conn, array $data): void
+{
+	$sql = "INSERT INTO log_contratos (contrato_id, colaborador_id, zapsign_doc_token, status, acao, origem, ip, detalhe) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+	$stmt = $conn->prepare($sql);
+	if (!$stmt) {
+		return;
+	}
+	$contratoId = $data['contrato_id'] ?? null;
+	$colaboradorId = $data['colaborador_id'] ?? null;
+	$token = $data['zapsign_doc_token'] ?? null;
+	$status = $data['status'] ?? null;
+	$acao = $data['acao'] ?? 'webhook_event';
+	$origem = $data['origem'] ?? 'webhook';
+	$ip = $data['ip'] ?? ($_SERVER['REMOTE_ADDR'] ?? null);
+	$detalhe = $data['detalhe'] ?? null;
+
+	$stmt->bind_param(
+		'iissssss',
+		$contratoId,
+		$colaboradorId,
+		$token,
+		$status,
+		$acao,
+		$origem,
+		$ip,
+		$detalhe
+	);
+	$stmt->execute();
+	$stmt->close();
+}
+
+function resolveContratoId(mysqli $conn, string $docToken, string $docName): array
+{
+	$contratoId = null;
+	$colaboradorId = null;
+	if ($docToken !== '') {
+		$stmt = $conn->prepare('SELECT id, colaborador_id FROM contratos WHERE zapsign_doc_token = ? LIMIT 1');
+		if ($stmt) {
+			$stmt->bind_param('s', $docToken);
+			$stmt->execute();
+			$res = $stmt->get_result();
+			if ($res && ($row = $res->fetch_assoc())) {
+				$contratoId = (int)$row['id'];
+				$colaboradorId = isset($row['colaborador_id']) ? (int)$row['colaborador_id'] : null;
+			}
+			$stmt->close();
+		}
+	}
+	if ($contratoId === null && $docName !== '') {
+		$stmt = $conn->prepare('SELECT id, colaborador_id FROM contratos WHERE arquivo_nome = ? LIMIT 1');
+		if ($stmt) {
+			$stmt->bind_param('s', $docName);
+			$stmt->execute();
+			$res = $stmt->get_result();
+			if ($res && ($row = $res->fetch_assoc())) {
+				$contratoId = (int)$row['id'];
+				$colaboradorId = isset($row['colaborador_id']) ? (int)$row['colaborador_id'] : null;
+			}
+			$stmt->close();
+		}
+	}
+
+	return [$contratoId, $colaboradorId];
+}
+
 // --- Small dotenv loader (no external dependency) ---
 function load_dotenv_simple(string $path): void
 {
@@ -188,6 +253,13 @@ if ($wrote === false && isset($_GET['debug']) && $_GET['debug'] === '1') {
 
 try {
 	$conn = conectarBanco();
+	[$contratoIdResolved, $colaboradorIdResolved] = resolveContratoId($conn, $docToken, $docName);
+	$detalheBase = json_encode([
+		'event' => $event,
+		'status_inferido' => $status,
+		'doc_name' => $docName,
+		'sign_url' => $signUrl ?: null
+	], JSON_UNESCAPED_UNICODE);
 
 	function updateSignUrl(mysqli $conn, string $docToken, string $docName, bool $matchByName, string $signUrl): void
 	{
@@ -265,12 +337,30 @@ try {
 	}
 
 	if ($currentStatus === null) {
+		logContratoAction($conn, [
+			'contrato_id' => $contratoIdResolved,
+			'colaborador_id' => $colaboradorIdResolved,
+			'zapsign_doc_token' => $docToken,
+			'status' => $status,
+			'acao' => $event ?: 'webhook_event',
+			'origem' => 'webhook',
+			'detalhe' => $detalheBase
+		]);
 		$conn->close();
 		echo json_encode(['ok' => true, 'ignored' => true, 'reason' => 'token_not_found', 'status' => $status]);
 		exit;
 	}
 
 	if (!$status) {
+		logContratoAction($conn, [
+			'contrato_id' => $contratoIdResolved,
+			'colaborador_id' => $colaboradorIdResolved,
+			'zapsign_doc_token' => $docToken,
+			'status' => null,
+			'acao' => $event ?: 'webhook_event',
+			'origem' => 'webhook',
+			'detalhe' => $detalheBase
+		]);
 		updateSignUrl($conn, $docToken, $docName, $matchByName, $signUrl);
 		$conn->close();
 		echo json_encode(['ok' => true, 'updated' => 'sign_url']);
@@ -280,6 +370,15 @@ try {
 	$curP = $precedence[$currentStatus] ?? 0;
 	$newP = $precedence[$status] ?? 0;
 	if ($newP <= $curP) {
+		logContratoAction($conn, [
+			'contrato_id' => $contratoIdResolved,
+			'colaborador_id' => $colaboradorIdResolved,
+			'zapsign_doc_token' => $docToken,
+			'status' => $status,
+			'acao' => $event ?: 'webhook_event',
+			'origem' => 'webhook',
+			'detalhe' => $detalheBase
+		]);
 		updateSignUrl($conn, $docToken, $docName, $matchByName, $signUrl);
 		$conn->close();
 		echo json_encode(['ok' => true, 'ignored' => true, 'reason' => 'status_precedence', 'current' => $currentStatus, 'incoming' => $status]);
@@ -293,6 +392,15 @@ try {
 	} else {
 		$service->atualizarStatusPorToken($docToken, $status, $signedAt);
 	}
+	logContratoAction($conn, [
+		'contrato_id' => $contratoIdResolved,
+		'colaborador_id' => $colaboradorIdResolved,
+		'zapsign_doc_token' => $docToken,
+		'status' => $status,
+		'acao' => $event ?: 'webhook_event',
+		'origem' => 'webhook',
+		'detalhe' => $detalheBase
+	]);
 	$conn->close();
 
 	echo json_encode(['ok' => true, 'status' => $status]);

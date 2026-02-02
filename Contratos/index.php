@@ -80,7 +80,7 @@ $conn->close();
                         <tr data-colaborador-id="<?= (int)$colab['idcolaborador']; ?>">
                             <td><?= htmlspecialchars($colab['nome_colaborador']); ?></td>
                             <td class="competencia">-</td>
-                            <td class="status">nao_gerado</td>
+                            <td class="status">não gerado</td>
                             <td class="acoes">
                                 <button class="btn-primario gerar">Gerar contrato</button>
                                 <button class="btn-secundario reenviar">Reenviar</button>

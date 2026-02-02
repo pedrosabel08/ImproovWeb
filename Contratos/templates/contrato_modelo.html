@@ -45,7 +45,7 @@
         }
 
         p {
-            margin: 0 0 6px 0;
+            margin: 0 0 2px 0 !important;
             text-align: justify;
             page-break-inside: avoid;
             break-inside: avoid;
@@ -53,16 +53,15 @@
             widows: 3;
         }
         p.paragrafo {
-            /* Remove all vertical gap between cláusula 17 paragraphs */
-            margin: 0;
-            margin-top: 20px;
-            padding: 0;
-            line-height: 1.18;
+            /* Reduz o espaço entre os parágrafos da cláusula 17 */
+            margin: 0 0 2px 0 !important;
+            padding: 0 !important;
+            line-height: 1.08 !important;
             page-break-inside: avoid;
             break-inside: avoid;
         }
         p.paragrafo + p.paragrafo {
-            margin-top: 0;
+            margin-top: 0 !important;
         }
 
         .section {

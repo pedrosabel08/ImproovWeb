@@ -2,6 +2,6 @@
     "require": {
         "phpseclib/phpseclib": "^3.0",
         "predis/predis": "^3.3",
-        "dompdf/dompdf": "2.0"
+        "dompdf/dompdf": "^3.1"
     }
 }

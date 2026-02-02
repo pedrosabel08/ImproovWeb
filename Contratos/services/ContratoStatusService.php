@@ -57,6 +57,42 @@ class ContratoStatusService
         $stmt->close();
     }
 
+    public function atualizarSignUrlPorToken(string $docToken, string $signUrl): void
+    {
+        $sql = "UPDATE contratos SET sign_url = ? WHERE zapsign_doc_token = ?";
+        $stmt = $this->conn->prepare($sql);
+        if (!$stmt) {
+            throw new RuntimeException('Falha ao preparar sign_url: ' . $this->conn->error);
+        }
+        $stmt->bind_param('ss', $signUrl, $docToken);
+        $stmt->execute();
+        $stmt->close();
+    }
+
+    public function atualizarSignUrlPorArquivoNome(string $arquivoNome, string $signUrl, ?string $docToken = null): void
+    {
+        if ($docToken) {
+            $sql = "UPDATE contratos SET sign_url = ?, zapsign_doc_token = ? WHERE arquivo_nome = ?";
+            $stmt = $this->conn->prepare($sql);
+            if (!$stmt) {
+                throw new RuntimeException('Falha ao preparar sign_url: ' . $this->conn->error);
+            }
+            $stmt->bind_param('sss', $signUrl, $docToken, $arquivoNome);
+            $stmt->execute();
+            $stmt->close();
+            return;
+        }
+
+        $sql = "UPDATE contratos SET sign_url = ? WHERE arquivo_nome = ?";
+        $stmt = $this->conn->prepare($sql);
+        if (!$stmt) {
+            throw new RuntimeException('Falha ao preparar sign_url: ' . $this->conn->error);
+        }
+        $stmt->bind_param('ss', $signUrl, $arquivoNome);
+        $stmt->execute();
+        $stmt->close();
+    }
+
     private function liberarAcessoPorToken(string $docToken): void
     {
         $sql = "UPDATE colaborador c 

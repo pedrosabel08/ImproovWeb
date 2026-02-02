@@ -33,10 +33,23 @@ if (!is_array($data)) {
 require_once __DIR__ . '/../conexaoMain.php';
 require_once __DIR__ . '/services/ContratoStatusService.php';
 
-$event = $data['event'] ?? $data['type'] ?? $data['event_type'] ?? '';
+$event = $data['event'] ?? $data['type'] ?? $data['event_type'] ?? $data['event_name'] ?? $data['action'] ?? '';
 $docToken = $data['document']['token'] ?? $data['doc_token'] ?? $data['document_token'] ?? $data['token'] ?? '';
 $docName = $data['document']['name'] ?? $data['document']['filename'] ?? $data['name'] ?? $data['document_name'] ?? '';
 $signedAt = $data['document']['signed_at'] ?? $data['signed_at'] ?? null;
+
+$signUrl = '';
+$signers = $data['signers'] ?? ($data['document']['signers'] ?? []);
+if (is_array($signers)) {
+	foreach ($signers as $signer) {
+		if (!is_array($signer)) continue;
+		$url = $signer['sign_url'] ?? $signer['url'] ?? $signer['signer_url'] ?? '';
+		if (is_string($url) && trim($url) !== '') {
+			$signUrl = trim($url);
+			break;
+		}
+	}
+}
 
 if (!$event || !$docToken) {
 	http_response_code(422);
@@ -48,6 +61,7 @@ function inferStatusFromEvent(string $event): ?string
 {
 	$e = strtolower(trim($event));
 	if ($e === '') return null;
+	if (strpos($e, 'created') !== false || strpos($e, 'criado') !== false || strpos($e, 'doc_created') !== false || strpos($e, 'document.created') !== false || strpos($e, 'document_created') !== false) return 'enviado';
 	if (strpos($e, 'signed') !== false || strpos($e, 'assinado') !== false) return 'assinado';
 	if (strpos($e, 'refus') !== false || strpos($e, 'recus') !== false) return 'recusado';
 	if (strpos($e, 'expire') !== false || strpos($e, 'expir') !== false) return 'expirado';
@@ -57,7 +71,8 @@ function inferStatusFromEvent(string $event): ?string
 }
 
 $status = inferStatusFromEvent($event);
-if (!$status) {
+
+if (!$status && !$signUrl) {
 	echo json_encode(['ok' => true, 'ignored' => true, 'reason' => 'unknown_event', 'event' => $event]);
 	exit;
 }
@@ -91,6 +106,42 @@ if ($wrote === false && isset($_GET['debug']) && $_GET['debug'] === '1') {
 
 try {
 	$conn = conectarBanco();
+
+	function updateSignUrl(mysqli $conn, string $docToken, string $docName, bool $matchByName, string $signUrl): void
+	{
+		if ($signUrl === '') return;
+		if ($matchByName && $docName !== '') {
+			if ($docToken !== '') {
+				$sql = "UPDATE contratos SET sign_url = ?, zapsign_doc_token = ? WHERE arquivo_nome = ?";
+				$stmt = $conn->prepare($sql);
+				if (!$stmt) {
+					throw new RuntimeException('Falha ao preparar sign_url: ' . $conn->error);
+				}
+				$stmt->bind_param('sss', $signUrl, $docToken, $docName);
+			} else {
+				$sql = "UPDATE contratos SET sign_url = ? WHERE arquivo_nome = ?";
+				$stmt = $conn->prepare($sql);
+				if (!$stmt) {
+					throw new RuntimeException('Falha ao preparar sign_url: ' . $conn->error);
+				}
+				$stmt->bind_param('ss', $signUrl, $docName);
+			}
+			$stmt->execute();
+			$stmt->close();
+			return;
+		}
+
+		if ($docToken !== '') {
+			$sql = "UPDATE contratos SET sign_url = ? WHERE zapsign_doc_token = ?";
+			$stmt = $conn->prepare($sql);
+			if (!$stmt) {
+				throw new RuntimeException('Falha ao preparar sign_url: ' . $conn->error);
+			}
+			$stmt->bind_param('ss', $signUrl, $docToken);
+			$stmt->execute();
+			$stmt->close();
+		}
+	}
 
 	// Prevent downgrading statuses (e.g., a "visualized" event after signed).
 	$precedence = [
@@ -137,15 +188,24 @@ try {
 		exit;
 	}
 
+	if (!$status) {
+		updateSignUrl($conn, $docToken, $docName, $matchByName, $signUrl);
+		$conn->close();
+		echo json_encode(['ok' => true, 'updated' => 'sign_url']);
+		exit;
+	}
+
 	$curP = $precedence[$currentStatus] ?? 0;
 	$newP = $precedence[$status] ?? 0;
 	if ($newP <= $curP) {
+		updateSignUrl($conn, $docToken, $docName, $matchByName, $signUrl);
 		$conn->close();
 		echo json_encode(['ok' => true, 'ignored' => true, 'reason' => 'status_precedence', 'current' => $currentStatus, 'incoming' => $status]);
 		exit;
 	}
 
 	$service = new ContratoStatusService($conn);
+	updateSignUrl($conn, $docToken, $docName, $matchByName, $signUrl);
 	if ($matchByName && $docName !== '') {
 		$service->atualizarStatusPorArquivoNome($docName, $status, $signedAt, $docToken ?: null);
 	} else {

@@ -62,6 +62,16 @@ class ContratoPdfService
         $dompdf->loadHtml($html, 'UTF-8');
         $dompdf->render();
 
+        // Definir título do PDF (aparece no viewer)
+        $tituloPdf = pathinfo($nomeArquivo, PATHINFO_FILENAME);
+        $canvas = $dompdf->getCanvas();
+        if ($canvas && method_exists($canvas, 'get_cpdf')) {
+            $cpdf = $canvas->get_cpdf();
+            if ($cpdf && method_exists($cpdf, 'setTitle')) {
+                $cpdf->setTitle($tituloPdf);
+            }
+        }
+
         // Garantir que o diretório de saída seja gravável; fallback para temp dir se necessário
         if (!is_dir($this->outputDir)) {
             $this->ensureOutputDir();

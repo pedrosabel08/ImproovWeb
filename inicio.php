@@ -84,6 +84,27 @@ include 'conexaoMain.php';
 
 $conn = conectarBanco();
 
+$contratoPendente = false;
+$contratoSignUrl = '';
+$contratoStatus = '';
+$sql_contrato = "SELECT status, sign_url FROM contratos WHERE colaborador_id = ? ORDER BY competencia DESC, id DESC LIMIT 1";
+$stmt_contrato = $conn->prepare($sql_contrato);
+if ($stmt_contrato) {
+    $stmt_contrato->bind_param("i", $idcolaborador);
+    $stmt_contrato->execute();
+    $res_contrato = $stmt_contrato->get_result();
+    if ($res_contrato && ($row_contrato = $res_contrato->fetch_assoc())) {
+        $contratoStatus = (string)($row_contrato['status'] ?? '');
+        $contratoSignUrl = (string)($row_contrato['sign_url'] ?? '');
+
+        $statusNorm = strtolower(trim($contratoStatus));
+        if ($statusNorm !== 'assinado' && trim($contratoSignUrl) !== '') {
+            $contratoPendente = true;
+        }
+    }
+    $stmt_contrato->close();
+}
+
 $clientes = obterClientes($conn);
 $obras = obterObras($conn);
 $colaboradores = obterColaboradores($conn);
@@ -105,7 +126,8 @@ $conn->close();
     <link rel="stylesheet" href="<?php echo asset_url('css/styleSidebar.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset_url('css/modalNotificacoes.css'); ?>">
     <link href="https://cdn.jsdelivr.net/npm/remixicon/fonts/remixicon.css" rel="stylesheet">
-    <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s" type="image/x-icon">
+    <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
+        type="image/x-icon">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
@@ -142,7 +164,8 @@ $conn->close();
                     <div class="nav-right">
                         <!-- Mini calendar (semana) -->
 
-                        <div id="mini-calendar-container" style="display:inline-block; vertical-align: middle; margin-right:8px;">
+                        <div id="mini-calendar-container"
+                            style="display:inline-block; vertical-align: middle; margin-right:8px;">
                             <div id="mini-calendar" style="width:350px; height:80px;"></div>
                         </div>
                         <select name="idcolab" id="idcolab">
@@ -286,7 +309,8 @@ $conn->close();
             </div>
 
             <div class="modal-item statusAnterior">
-                <h4>A função anterior está <span class="aprovadaComAjustes">Aprovada com ajustes</span>, verifique no Flow Review!</h4>
+                <h4>A função anterior está <span class="aprovadaComAjustes">Aprovada com ajustes</span>, verifique no
+                    Flow Review!</h4>
             </div>
             <div class="modal-item modalUploads">
 
@@ -440,7 +464,8 @@ $conn->close();
         <div class="modal-content" style="width:90vw; max-width:1100px; height:80vh; padding:12px;">
             <div id="calendarFull" style="width:100%; height:100%;"></div>
             <div style="display:flex;justify-content:flex-end;margin-top:8px;">
-                <button id="closeFullCalendar" class="btn" style="background:#ef4444;color:#fff;border:none;padding:6px 12px;border-radius:6px;">Fechar</button>
+                <button id="closeFullCalendar" class="btn"
+                    style="background:#ef4444;color:#fff;border:none;padding:6px 12px;border-radius:6px;">Fechar</button>
             </div>
         </div>
     </div>
@@ -487,11 +512,96 @@ $conn->close();
     <div id="modalIframeChangelog" class="modal" style="display:none;">
         <div class="modal-content" style="width:90vw;max-width: 50vw;height: 40vh;position:relative;">
             <!-- <button onclick="fecharModalIframe()" style="position:absolute;top:10px;right:10px;z-index:2;">Fechar</button> -->
-            <iframe id="iframeChangelog" src="CHANGELOG/Flow/suporte.html" frameborder="0" style="width:100%;height:100%;border:none;"></iframe>
+            <iframe id="iframeChangelog" src="CHANGELOG/Flow/suporte.html" frameborder="0"
+                style="width:100%;height:100%;border:none;"></iframe>
         </div>
     </div>
 
-    <div id="loading" style="display:none; position:fixed; top:50%; left:50%;
+    <style>
+        /* Modal do contrato (escondido por padrão; JS abre quando necessário) */
+        #contrato-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.45);
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        #contrato-modal .contrato-box {
+            background: #fff;
+            padding: 20px 24px;
+            border-radius: 10px;
+            max-width: 480px;
+            width: 92%;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            text-align: left;
+            color: #111;
+        }
+
+        #contrato-modal .contrato-msg {
+            margin: 0 0 12px 0;
+            text-align: center;
+            color: #222;
+        }
+
+        #contrato-modal .contrato-note {
+            margin: 0 0 14px 0;
+            text-align: center;
+            font-weight: 600;
+            color: #444;
+        }
+
+        #contrato-modal .contrato-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        #contrato-modal .btn-primary {
+            background: #2563eb;
+            color: #fff;
+            padding: 10px 14px;
+            border-radius: 6px;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        #contrato-modal .btn-secondary {
+            background: #f3f4f6;
+            color: #111;
+            border: none;
+            padding: 10px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        @media (max-width: 480px) {
+            #contrato-modal .contrato-box {
+                padding: 16px 18px;
+            }
+        }
+    </style>
+
+    <div id="contrato-modal">
+        <div class="contrato-box" role="dialog" aria-modal="true" aria-labelledby="contrato-title">
+            <h3 id="contrato-title">Contrato disponível para assinatura</h3>
+            <p class="contrato-msg">Olá! Para continuar produzindo e usando todas as funcionalidades do sistema, é
+                necessário assinar o contrato abaixo.</p>
+            <p class="contrato-note">Se você não assinar, as áreas ficarão restritas até a assinatura.</p>
+            <div class="contrato-actions">
+                <a id="contrato-sign-url" class="btn-primary" href="#" target="_blank" rel="noopener"
+                    role="button">Assinar agora</a>
+                <button id="contrato-modal-close" class="btn-secondary" type="button">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="loading"
+        style="display:none; position:fixed; top:50%; left:50%;
  transform:translate(-50%,-50%); background:#fff; padding:20px; border-radius:8px; box-shadow:0 0 10px rgba(0,0,0,.3);">
         <i class="ri-loader-4-line ri-spin"></i> Carregando...
     </div>
@@ -530,7 +640,7 @@ $conn->close();
         }
 
         ['click', 'touchstart', 'keydown'].forEach(eventType => {
-            window.addEventListener(eventType, function(event) {
+            window.addEventListener(eventType, function (event) {
                 // Fecha os modais ao clicar fora ou pressionar Esc
                 if (eventType === 'keydown' && event.key !== 'Escape') return;
 
@@ -563,6 +673,23 @@ $conn->close();
 
         const idColaborador = <?php echo json_encode($idcolaborador); ?>;
         localStorage.setItem('idcolaborador', idColaborador);
+
+        const contratoPendente = <?php echo json_encode($contratoPendente); ?>;
+        const contratoSignUrl = <?php echo json_encode($contratoSignUrl); ?>;
+        if (contratoPendente && contratoSignUrl) {
+            const modal = document.getElementById('contrato-modal');
+            const link = document.getElementById('contrato-sign-url');
+            link.href = contratoSignUrl;
+            modal.style.display = 'flex';
+
+            const closeBtn = document.getElementById('contrato-modal-close');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', () => { modal.style.display = 'none'; });
+            }
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) modal.style.display = 'none';
+            });
+        }
     </script>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>

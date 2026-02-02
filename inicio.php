@@ -225,6 +225,14 @@ $conn->close();
                     <div class="content">
                     </div>
                 </div>
+                <div class="kanban-box" id="aprovado-ajustes">
+                    <div class="header" style="background-color: #ae90ffff;">
+                        <div class="title"><i class="fa-solid fa-exclamation-circle"></i><span>Aprovado com ajustes</span></div>
+                        <span class="task-count"></span>
+                    </div>
+                    <div class="content">
+                    </div>
+                </div>
                 <div class="kanban-box" id="aprovado">
                     <div class="header" style="background-color: #37ff34a3;">
                         <div class="title"><i class="fa-solid fa-check"></i><span>Aprovado</span></div>

@@ -112,10 +112,19 @@ function processarDados(data) {
         'HOLD': 'hold'
     };
 
+    // Ensure standard columns are reset
     Object.values(statusMap).forEach(colId => {
         const col = document.getElementById(colId);
         if (col) {
-            // ensure column is visible before we re-populate and recount
+            col.style.display = '';
+            col.querySelector('.content').innerHTML = '';
+        }
+    });
+    // Extra column for "Aprovado com ajustes"
+    const extraCols = ['aprovado-ajustes'];
+    extraCols.forEach(colId => {
+        const col = document.getElementById(colId);
+        if (col) {
             col.style.display = '';
             col.querySelector('.content').innerHTML = '';
         }
@@ -132,12 +141,18 @@ function processarDados(data) {
         else if (s === 'em andamento' || s === 'em-andamento') status = 'Em andamento';
         else if (s === 'aprovado') status = 'Aprovado';
         else if (s === 'aprovado com ajustes' || s === 'aprovado_com_ajustes') {
-            // Se já existe arquivo associado à função, mostramos visualmente como Finalizado
-            // mas NÃO alteramos o status no banco (isso é responsabilidade do backend).
-            if (item.requires_file_upload == 0) {
-                status = 'Finalizado';
-            } else {
+            // Para Finalização (funcao_id=4), manter como "Aprovado com ajustes" sempre.
+            const fid = Number(item.funcao_id || item.funcaoId || 0);
+            if (fid === 4) {
                 status = 'Aprovado com ajustes';
+            } else {
+                // Se já existe arquivo associado à função, mostramos visualmente como Finalizado
+                // mas NÃO alteramos o status no banco (isso é responsabilidade do backend).
+                if (item.requires_file_upload == 0) {
+                    status = 'Finalizado';
+                } else {
+                    status = 'Aprovado com ajustes';
+                }
             }
         }
         else if (s === 'finalizado') status = 'Finalizado';
@@ -145,7 +160,22 @@ function processarDados(data) {
         else if (s === 'hold') status = 'HOLD';
         else status = rawStatus || 'Não iniciado';
 
-        const colunaId = statusMap[status];
+        // default mapping
+        let colunaId = statusMap[status];
+        // special-case: 'Aprovado com ajustes' should go to its own column
+        // but ONLY for função finalização (funcao_id == 4). Otherwise fall back to 'aprovado'.
+        if (status === 'Aprovado com ajustes') {
+            try {
+                const fid = Number(item.funcao_id || item.funcaoId || 0);
+                if (fid === 4) {
+                    colunaId = 'aprovado-ajustes';
+                } else {
+                    colunaId = 'aprovado';
+                }
+            } catch (e) {
+                colunaId = 'aprovado';
+            }
+        }
         // DEBUG: log status mapping for troubleshooting (use console.log to ensure visibility)
         try {
             const parentBox = document.getElementById(colunaId)?.closest('.kanban-box');
@@ -1439,32 +1469,23 @@ const statusMap = {
 
 // Atualiza contagem de tarefas
 function atualizarTaskCount() {
-    Object.keys(statusMap).forEach(status => {
-        const col = document.getElementById(statusMap[status]);
-        if (!col) return;
+    const boxes = document.querySelectorAll('.kanban-box');
+    boxes.forEach(box => {
+        const content = box.querySelector('.content');
+        if (!content) return;
 
-        let count = 0;
+        const cards = Array.from(content.querySelectorAll('.kanban-card')).filter(n => {
+            const style = window.getComputedStyle(n);
+            return style.display !== 'none' && n.offsetParent !== null;
+        });
 
-        // Para as colunas de aprovação, contamos especificamente cards cujo data-status
-        // é 'Aprovado' ou 'Aprovado com ajustes' (visíveis). Isso garante que, mesmo
-        // quando "Aprovado com ajustes" for mostrado visualmente como Finalizado,
-        // a coluna "aprovado" será escondida quando não houver itens com esses status.
-        if (status === 'Aprovado' || status === 'Aprovado com ajustes') {
-            const nodes = document.querySelectorAll('.kanban-card[data-status="Aprovado"], .kanban-card[data-status="Aprovado com ajustes"]');
-            count = Array.from(nodes).filter(n => {
-                const style = window.getComputedStyle(n);
-                return style.display !== 'none' && n.offsetParent !== null;
-            }).length;
-        } else {
-            count = col.querySelectorAll('.kanban-card:not([style*="display: none"])').length;
-        }
-
-        const badge = col.querySelector('.task-count');
+        const count = cards.length;
+        const badge = box.querySelector('.task-count');
         if (badge) badge.textContent = count;
 
-        // Esconder colunas de 'ajuste' e 'aprovado' quando vazias
-        if (statusMap[status] === 'ajuste' || statusMap[status] === 'aprovado') {
-            col.style.display = count === 0 ? 'none' : '';
+        // Esconder colunas vazias (ajuste, aprovado, aprovado-ajustes)
+        if (['ajuste', 'aprovado', 'aprovado-ajustes'].includes(box.id)) {
+            box.style.display = count === 0 ? 'none' : '';
         }
     });
 }
@@ -2650,6 +2671,9 @@ const statusMapInvertido = {
     'to-do': 'Não iniciado',
     'in-progress': 'Em andamento',
     'in-review': 'Em aprovação',
+    'ajuste': 'Ajuste',
+    'aprovado': 'Aprovado',
+    'aprovado-ajustes': 'Aprovado com ajustes',
     'done': 'Finalizado'
 };
 
@@ -2827,6 +2851,8 @@ document.getElementById('salvarModal').addEventListener('click', () => {
         'in-progress': 'Em andamento',
         'in-review': 'Em aprovação',
         'ajuste': 'Ajuste',
+        'aprovado': 'Aprovado',
+        'aprovado-ajustes': 'Aprovado com ajustes',
         'done': 'Finalizado'
     };
 

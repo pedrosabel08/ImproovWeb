@@ -7,13 +7,32 @@
     <title>Login</title>
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
     <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
         type="image/x-icon">
     <style>
+        :root {
+            --brand: #1f5eff;
+            --brand-dark: #0d3fd9;
+            --ink: #0f172a;
+            --muted: #64748b;
+            --field: #f8fafc;
+            --stroke: #e2e8f0;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            color: var(--ink);
+        }
+
         .container {
-            max-width: 600px;
+            width: min(92vw, 420px);
             margin: auto;
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(226, 232, 240, 0.7);
+            box-shadow: 0 24px 80px rgba(15, 23, 42, 0.18);
         }
 
         .video-bg {
@@ -24,7 +43,160 @@
             height: 100%;
             object-fit: cover;
             z-index: -1;
-            filter: blur(2px);
+            filter: blur(2px) saturate(1.1);
+        }
+
+        .login-title {
+            font-size: 1.6rem;
+            font-weight: 700;
+        }
+
+        .login-subtitle {
+            color: var(--muted);
+            font-size: 0.95rem;
+        }
+
+        .field {
+            position: relative;
+        }
+
+        .field input {
+            width: 100%;
+            padding: 1.15rem 3rem 0.95rem 1rem;
+            background: var(--field);
+            border: 1px solid var(--stroke);
+            border-radius: 14px;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        /* Hide browser-native password reveal / clear buttons (Edge/IE and WebKit variations) */
+        input::-ms-reveal,
+        input::-ms-clear {
+            display: none;
+            width: 0;
+            height: 0;
+        }
+
+        input::-webkit-credentials-auto-fill-button,
+        input::-webkit-textfield-decoration-container,
+        input::-webkit-textfield-decoration-button {
+            display: none !important;
+        }
+
+        /* Remove default inner appearance that can show native controls */
+        .field input {
+            -webkit-appearance: none;
+            appearance: none;
+        }
+ 
+        .field input:focus {
+            border-color: var(--brand);
+            /* box-shadow: 0 0 0 4px rgba(31, 94, 255, 0.15); */
+            background: #fff;
+        }
+
+        .field input:invalid:not(:focus):not(:placeholder-shown) {
+            border-color: #ef4444;
+            box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.12);
+            background: #fff;
+        }
+
+        .field label {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--muted);
+            font-size: 0.95rem;
+            pointer-events: none;
+            transition: all 0.2s ease;
+            background: transparent;
+            padding: 0 0.25rem;
+            line-height: 1;
+        }
+
+        .field input:focus + label,
+        .field input:not(:placeholder-shown) + label {
+            top: 4.5px;
+            font-size: 0.75rem;
+            color: var(--brand);
+            background: var(--field);
+            padding: 0 0.35rem;
+            /* border-radius: 999px; */
+        }
+
+        .field input:invalid:not(:focus):not(:placeholder-shown) + label {
+            color: #ef4444;
+        }
+
+        .field-error {
+            display: none;
+            margin-top: 0.35rem;
+            font-size: 0.75rem;
+            color: #ef4444;
+        }
+
+        .field input:invalid:not(:focus):not(:placeholder-shown) ~ .field-error {
+            display: block;
+        }
+
+        .toggle-password {
+            position: absolute;
+            right: 0.85rem;
+            top: 50%;
+            transform: translateY(-50%);
+            border: none;
+            background: transparent;
+            color: var(--muted);
+            font-size: 0.85rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .toggle-password:hover {
+            color: var(--brand);
+        }
+
+        /* Show closed-eye by default, open-eye when password is visible */
+        .toggle-password .fa-eye {
+            display: none;
+        }
+
+        .toggle-password .fa-eye-slash {
+            display: inline-block;
+        }
+
+        .toggle-password.is-visible .fa-eye {
+            display: inline-block;
+        }
+
+        .toggle-password.is-visible .fa-eye-slash {
+            display: none;
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 0.9rem 1rem;
+            border-radius: 14px;
+            background: var(--brand);
+            color: #fff;
+            font-weight: 600;
+            transition: background 0.2s ease, transform 0.2s ease;
+        }
+
+        .login-btn:hover {
+            background: var(--brand-dark);
+            transform: translateY(-1px);
+        }
+
+        .login-footer {
+            text-align: center;
+            color: var(--muted);
+            font-size: 0.85rem;
         }
     </style>
 </head>
@@ -32,39 +204,66 @@
 <body class="flex items-center justify-center min-h-screen">
     <div class="image">
         <video id="video-bg" autoplay muted loop class="video-bg" playsinline>
-            <source src="assets/11 MSA_SQU_Psicina.mp4" type="video/mp4">
+            <source src="https://improov.com.br/flow/ImproovWeb/assets/11%20MSA_SQU_Psicina.mp4" type="video/mp4">
             Seu navegador não suporta a tag de vídeo.
         </video>
     </div>
-    <div class="container bg-white p-8 rounded-lg shadow-lg">
-        <img src="gif/assinatura_preto.gif" alt="">
+    <div class="container p-8 rounded-2xl">
+        <div class="flex flex-col items-center gap-3 mb-6">
+            <img src="gif/assinatura_preto.gif" alt="Logo" class="w-28 h-auto">
+            <div class="text-center">
+                <h1 class="login-title">Bem-vindo de volta</h1>
+                <p class="login-subtitle">Acesse sua conta com segurança</p>
+            </div>
+        </div>
 
-        <form action="login.php" method="post" class="space-y-4">
-            <div>
-                <label for="login" class="block text-sm font-medium text-gray-700">Login:</label>
-                <input type="text" id="login" name="login" required
-                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+        <form action="login.php" method="post" class="space-y-5" autocomplete="on">
+            <div class="field">
+                <input type="text" id="login" name="login" required placeholder=" ">
+                <label for="login">Login</label>
+                <span class="field-error">Esse campo é obrigatório</span>
             </div>
 
-            <div>
-                <label for="senha" class="block text-sm font-medium text-gray-700">Senha:</label>
-                <input type="password" id="senha" name="senha" required
-                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
-            </div>
-
-            <div>
-                <button type="submit"
-                    class="w-full px-4 py-2 bg-blue-600 text-white font-semibold rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
-                    Entrar
+            <div class="field">
+                <input type="password" id="senha" name="senha" required placeholder=" " autocomplete="new-password" autocapitalize="off" spellcheck="false">
+                <label for="senha">Senha</label>
+                <button type="button" class="toggle-password" aria-label="Mostrar senha" data-target="senha">
+                    <i class="fa-regular fa-eye" aria-hidden="true"></i>
+                    <i class="fa-regular fa-eye-slash" aria-hidden="true"></i>
                 </button>
+                <span class="field-error">Esse campo é obrigatório</span>
+            </div>
+
+            <div>
+                <button type="submit" class="login-btn">Entrar</button>
             </div>
         </form>
+
+        <div class="login-footer mt-6">
+            Precisa de ajuda? Fale com o suporte.
+        </div>
     </div>
 
 
     <!-- CDN do Toastify JS -->
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="./script/scriptLogin.js"></script>
+    <script>
+        const toggleBtn = document.querySelector('.toggle-password');
+        const senhaInput = document.getElementById('senha');
+
+        if (toggleBtn && senhaInput) {
+            toggleBtn.addEventListener('click', () => {
+                const wasPassword = senhaInput.type === 'password';
+                // toggle the input type
+                senhaInput.type = wasPassword ? 'text' : 'password';
+                const nowVisible = senhaInput.type === 'text';
+                // set class according to visibility (open eye when visible)
+                toggleBtn.classList.toggle('is-visible', nowVisible);
+                toggleBtn.setAttribute('aria-label', nowVisible ? 'Ocultar senha' : 'Mostrar senha');
+            });
+        }
+    </script>
 </body>
 
 </html>

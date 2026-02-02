@@ -63,19 +63,20 @@ document.querySelector('form').addEventListener('submit', function (e) {
         });
 });
 
-// Lista de vídeos disponíveis
+// Lista de vídeos disponíveis (URLs absolutas apontando para o domínio central)
+const videoBase = 'https://improov.com.br/flow/ImproovWeb/assets';
 const videos = [
-    "assets/11 MSA_SQU_Psicina.mp4",
-    "assets/6. AYA_CAS_Piscina_Horizontal.mp4",
-    "assets/AYA_KAR_Rooftop.mp4"
+    `${videoBase}/11 MSA_SQU_Psicina.mp4`,
+    `${videoBase}/6. AYA_CAS_Piscina_Horizontal.mp4`,
+    `${videoBase}/AYA_KAR_Rooftop.mp4`
     // Adicione mais caminhos conforme necessário
 ];
 
 // Sorteia um índice aleatório
 const sorteado = Math.floor(Math.random() * videos.length);
 
-// Seleciona o elemento video e altera o src
+// Seleciona o elemento video e altera o src (usa encodeURI para arquivos com espaços)
 const video = document.getElementById('video-bg');
 const source = video.querySelector('source');
-source.src = videos[sorteado];
+source.src = encodeURI(videos[sorteado]);
 video.load(); // recarrega o vídeo sorteado

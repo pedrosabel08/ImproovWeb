@@ -13,9 +13,9 @@ if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
     exit();
 }
 
-if (!isset($_SESSION['nivel_acesso']) || (int)$_SESSION['nivel_acesso'] !== 1) {
+if (!isset($_SESSION['nivel_acesso']) || (int) $_SESSION['nivel_acesso'] !== 1) {
     http_response_code(403);
-    echo 'Acesso negado.';
+    header("Location: ../index.html");
     exit();
 }
 
@@ -77,7 +77,7 @@ $conn->close();
                 </thead>
                 <tbody>
                     <?php foreach ($colaboradores as $colab): ?>
-                        <tr data-colaborador-id="<?= (int)$colab['idcolaborador']; ?>">
+                        <tr data-colaborador-id="<?= (int) $colab['idcolaborador']; ?>">
                             <td><?= htmlspecialchars($colab['nome_colaborador']); ?></td>
                             <td class="competencia">-</td>
                             <td class="status">não gerado</td>

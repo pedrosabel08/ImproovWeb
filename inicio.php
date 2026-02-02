@@ -98,7 +98,8 @@ if ($stmt_contrato) {
         $contratoSignUrl = (string)($row_contrato['sign_url'] ?? '');
 
         $statusNorm = strtolower(trim($contratoStatus));
-        if ($statusNorm !== 'assinado' && trim($contratoSignUrl) !== '') {
+        $statusPendente = in_array($statusNorm, ['enviado', 'criado'], true);
+        if ($statusPendente && trim($contratoSignUrl) !== '') {
             $contratoPendente = true;
         }
     }
@@ -219,6 +220,14 @@ $conn->close();
                 <div class="kanban-box" id="ajuste">
                     <div class="header" style="background-color: #fd5353bf;">
                         <div class="title"><i class="ri-error-warning-line"></i><span>Em ajuste</span></div>
+                        <span class="task-count"></span>
+                    </div>
+                    <div class="content">
+                    </div>
+                </div>
+                <div class="kanban-box" id="aprovado-ajustes">
+                    <div class="header" style="background-color: #ae90ffff;">
+                        <div class="title"><i class="fa-solid fa-exclamation-circle"></i><span>Aprovado com ajustes</span></div>
                         <span class="task-count"></span>
                     </div>
                     <div class="content">
@@ -595,7 +604,7 @@ $conn->close();
             <div class="contrato-actions">
                 <a id="contrato-sign-url" class="btn-primary" href="#" target="_blank" rel="noopener"
                     role="button">Assinar agora</a>
-                <button id="contrato-modal-close" class="btn-secondary" type="button">Fechar</button>
+                <!-- <button id="contrato-modal-close" class="btn-secondary" type="button">Fechar</button> -->
             </div>
         </div>
     </div>
@@ -686,9 +695,9 @@ $conn->close();
             if (closeBtn) {
                 closeBtn.addEventListener('click', () => { modal.style.display = 'none'; });
             }
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) modal.style.display = 'none';
-            });
+            // modal.addEventListener('click', (e) => {
+            //     if (e.target === modal) modal.style.display = 'none';
+            // });
         }
     </script>
 

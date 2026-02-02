@@ -36,3 +36,27 @@ ALTER TABLE contratos
 -- Exemplo compatível com MySQL 8:
 ALTER TABLE contratos
     MODIFY COLUMN status ENUM('nao_gerado','gerado','visualizado','enviado','assinado','recusado','expirado') NOT NULL DEFAULT 'nao_gerado';
+
+-- Tabela de log das ações do contrato
+CREATE TABLE IF NOT EXISTS log_contratos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    contrato_id INT DEFAULT NULL,
+    colaborador_id INT DEFAULT NULL,
+    zapsign_doc_token VARCHAR(191) DEFAULT NULL,
+    status VARCHAR(50) DEFAULT NULL,
+    acao VARCHAR(50) NOT NULL,
+    origem VARCHAR(50) DEFAULT NULL,
+    ip VARCHAR(45) DEFAULT NULL,
+    detalhe TEXT DEFAULT NULL,
+    ocorrido_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_log_contrato (contrato_id),
+    INDEX idx_log_colaborador (colaborador_id),
+    INDEX idx_log_token (zapsign_doc_token),
+    INDEX idx_log_status (status)
+);
+
+ALTER TABLE log_contratos
+    ADD CONSTRAINT fk_log_contratos_contrato
+    FOREIGN KEY (contrato_id) REFERENCES contratos(id)
+    ON DELETE SET NULL;

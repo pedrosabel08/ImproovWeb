@@ -694,9 +694,11 @@ function abrirModalNotificacaoModulo(notificacao, onClose) {
                         <input type="checkbox" id="notiConfirmCheck">
                         <span>Li e entendi</span>
                     </label>
+                    <button type="button" id="notiConfirmClose" class="btn-noti" style="display:none;">Fechar</button>
                 `;
 
                 const chk = confirmEl.querySelector('#notiConfirmCheck');
+                const closeAfterConfirm = confirmEl.querySelector('#notiConfirmClose');
                 if (chk) {
                     chk.addEventListener('change', (e) => {
                         const checked = e.target.checked;
@@ -706,13 +708,22 @@ function abrirModalNotificacaoModulo(notificacao, onClose) {
                                 closeBtn.disabled = false;
                                 closeBtn.classList.remove('disabled');
                             }
+                            if (closeAfterConfirm) closeAfterConfirm.style.display = '';
                         } else {
                             modal.setAttribute('data-block-close', '1');
                             if (closeBtn) {
                                 closeBtn.disabled = true;
                                 closeBtn.classList.add('disabled');
                             }
+                            if (closeAfterConfirm) closeAfterConfirm.style.display = 'none';
                         }
+                    });
+                }
+                if (closeAfterConfirm) {
+                    closeAfterConfirm.addEventListener('click', () => {
+                        confirmarNotificacaoModulo(notificacao.id, () => {
+                            fecharModalNotificacaoModulo(onClose);
+                        });
                     });
                 }
             }

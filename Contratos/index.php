@@ -13,7 +13,7 @@ if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
     exit();
 }
 
-if (!isset($_SESSION['nivel_acesso']) || (int) $_SESSION['nivel_acesso'] !== 1) {
+if (!isset($_SESSION['nivel_acesso']) || ((int) $_SESSION['nivel_acesso'] !== 1 && (int) $_SESSION['nivel_acesso'] !== 5)) {
     http_response_code(403);
     header("Location: ../index.html");
     exit();
@@ -26,7 +26,7 @@ $sql = "SELECT c.idcolaborador, c.nome_colaborador, u.email
         FROM colaborador c
         LEFT JOIN usuario u ON u.idcolaborador = c.idcolaborador
         WHERE c.ativo = 1
-          AND (c.cargo_id IS NULL OR c.cargo_id NOT IN (9, 11, 12))
+          AND (c.cargo_id IS NULL OR c.cargo_id NOT IN (9, 11, 12, 13))
         ORDER BY c.nome_colaborador";
 $result = $conn->query($sql);
 if (!$result) {

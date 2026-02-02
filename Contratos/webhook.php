@@ -33,6 +33,135 @@ if (!is_array($data)) {
 require_once __DIR__ . '/../conexaoMain.php';
 require_once __DIR__ . '/services/ContratoStatusService.php';
 
+function logContratoAction(mysqli $conn, array $data): void
+{
+	$sql = "INSERT INTO log_contratos (contrato_id, colaborador_id, zapsign_doc_token, status, acao, origem, ip, detalhe) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+	$stmt = $conn->prepare($sql);
+	if (!$stmt) {
+		return;
+	}
+	$contratoId = $data['contrato_id'] ?? null;
+	$colaboradorId = $data['colaborador_id'] ?? null;
+	$token = $data['zapsign_doc_token'] ?? null;
+	$status = $data['status'] ?? null;
+	$acao = $data['acao'] ?? 'webhook_event';
+	$origem = $data['origem'] ?? 'webhook';
+	$ip = $data['ip'] ?? ($_SERVER['REMOTE_ADDR'] ?? null);
+	$detalhe = $data['detalhe'] ?? null;
+
+	$stmt->bind_param(
+		'iissssss',
+		$contratoId,
+		$colaboradorId,
+		$token,
+		$status,
+		$acao,
+		$origem,
+		$ip,
+		$detalhe
+	);
+	$stmt->execute();
+	$stmt->close();
+}
+
+function resolveContratoId(mysqli $conn, string $docToken, string $docName): array
+{
+	$contratoId = null;
+	$colaboradorId = null;
+	if ($docToken !== '') {
+		$stmt = $conn->prepare('SELECT id, colaborador_id FROM contratos WHERE zapsign_doc_token = ? LIMIT 1');
+		if ($stmt) {
+			$stmt->bind_param('s', $docToken);
+			$stmt->execute();
+			$res = $stmt->get_result();
+			if ($res && ($row = $res->fetch_assoc())) {
+				$contratoId = (int)$row['id'];
+				$colaboradorId = isset($row['colaborador_id']) ? (int)$row['colaborador_id'] : null;
+			}
+			$stmt->close();
+		}
+	}
+	if ($contratoId === null && $docName !== '') {
+		$stmt = $conn->prepare('SELECT id, colaborador_id FROM contratos WHERE arquivo_nome = ? LIMIT 1');
+		if ($stmt) {
+			$stmt->bind_param('s', $docName);
+			$stmt->execute();
+			$res = $stmt->get_result();
+			if ($res && ($row = $res->fetch_assoc())) {
+				$contratoId = (int)$row['id'];
+				$colaboradorId = isset($row['colaborador_id']) ? (int)$row['colaborador_id'] : null;
+			}
+			$stmt->close();
+		}
+	}
+
+	return [$contratoId, $colaboradorId];
+}
+
+// --- Small dotenv loader (no external dependency) ---
+function load_dotenv_simple(string $path): void
+{
+	if (!file_exists($path)) return;
+	$lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+	foreach ($lines as $line) {
+		$line = trim($line);
+		if ($line === '' || $line[0] === '#') continue;
+		if (strpos($line, '=') === false) continue;
+		list($k, $v) = array_map('trim', explode('=', $line, 2));
+		$v = trim($v, "\"'");
+		putenv("{$k}={$v}");
+		$_ENV[$k] = $v;
+		$_SERVER[$k] = $v;
+	}
+}
+
+function slack_send_webhook(?string $webhookUrl, string $text): bool
+{
+	if (!$webhookUrl) return false;
+	$payload = json_encode(['text' => $text], JSON_UNESCAPED_UNICODE);
+	$ch = curl_init($webhookUrl);
+	curl_setopt($ch, CURLOPT_POST, true);
+	curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+	curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+	$res = curl_exec($ch);
+	$err = curl_error($ch);
+	$code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+	curl_close($ch);
+	return !($res === false || $code < 200 || $code >= 300 || $err);
+}
+
+function extractSignerName(array $data): string
+{
+	$signer = $data['signer'] ?? null;
+	if (is_array($signer)) {
+		$name = trim((string)($signer['name'] ?? $signer['full_name'] ?? $signer['email'] ?? ''));
+		if ($name !== '') return $name;
+	}
+
+	$signers = $data['signers'] ?? ($data['document']['signers'] ?? null);
+	if (is_array($signers)) {
+		// prefer signed signer
+		foreach ($signers as $s) {
+			if (!is_array($s)) continue;
+			$status = strtolower((string)($s['status'] ?? $s['state'] ?? ''));
+			$hasSigned = !empty($s['signed_at']) || $status === 'signed';
+			if ($hasSigned) {
+				$name = trim((string)($s['name'] ?? $s['full_name'] ?? $s['email'] ?? ''));
+				if ($name !== '') return $name;
+			}
+		}
+		// fallback: first signer with name/email
+		foreach ($signers as $s) {
+			if (!is_array($s)) continue;
+			$name = trim((string)($s['name'] ?? $s['full_name'] ?? $s['email'] ?? ''));
+			if ($name !== '') return $name;
+		}
+	}
+
+	return 'Alguém';
+}
+
 $event = $data['event'] ?? $data['type'] ?? $data['event_type'] ?? $data['event_name'] ?? $data['action'] ?? '';
 $docToken = $data['document']['token'] ?? $data['doc_token'] ?? $data['document_token'] ?? $data['token'] ?? '';
 $docName = $data['document']['name'] ?? $data['document']['filename'] ?? $data['name'] ?? $data['document_name'] ?? '';
@@ -72,6 +201,24 @@ function inferStatusFromEvent(string $event): ?string
 
 $status = inferStatusFromEvent($event);
 
+// Load env from project root and get Slack webhook for contratos
+load_dotenv_simple(__DIR__ . '/../.env');
+$SLACK_WEBHOOK_CONTRATOS_URL = getenv('SLACK_WEBHOOK_CONTRATOS_URL') ?: ($_ENV['SLACK_WEBHOOK_CONTRATOS_URL'] ?? null);
+
+$notifyStatuses = ['enviado', 'visualizado', 'assinado'];
+$shouldNotify = $status && in_array($status, $notifyStatuses, true);
+if ($shouldNotify) {
+	$person = extractSignerName($data);
+	if ($status === 'enviado') {
+		$text = sprintf('O financeiro criou o contrato de %s para esse mês.', $person);
+	} elseif ($status === 'visualizado') {
+		$text = sprintf('%s visualizou o contrato desse mês.', $person);
+	} else {
+		$text = sprintf('%s assinou o contrato desse mês.', $person);
+	}
+	slack_send_webhook($SLACK_WEBHOOK_CONTRATOS_URL, $text);
+}
+
 if (!$status && !$signUrl) {
 	echo json_encode(['ok' => true, 'ignored' => true, 'reason' => 'unknown_event', 'event' => $event]);
 	exit;
@@ -106,6 +253,13 @@ if ($wrote === false && isset($_GET['debug']) && $_GET['debug'] === '1') {
 
 try {
 	$conn = conectarBanco();
+	[$contratoIdResolved, $colaboradorIdResolved] = resolveContratoId($conn, $docToken, $docName);
+	$detalheBase = json_encode([
+		'event' => $event,
+		'status_inferido' => $status,
+		'doc_name' => $docName,
+		'sign_url' => $signUrl ?: null
+	], JSON_UNESCAPED_UNICODE);
 
 	function updateSignUrl(mysqli $conn, string $docToken, string $docName, bool $matchByName, string $signUrl): void
 	{
@@ -183,12 +337,30 @@ try {
 	}
 
 	if ($currentStatus === null) {
+		logContratoAction($conn, [
+			'contrato_id' => $contratoIdResolved,
+			'colaborador_id' => $colaboradorIdResolved,
+			'zapsign_doc_token' => $docToken,
+			'status' => $status,
+			'acao' => $event ?: 'webhook_event',
+			'origem' => 'webhook',
+			'detalhe' => $detalheBase
+		]);
 		$conn->close();
 		echo json_encode(['ok' => true, 'ignored' => true, 'reason' => 'token_not_found', 'status' => $status]);
 		exit;
 	}
 
 	if (!$status) {
+		logContratoAction($conn, [
+			'contrato_id' => $contratoIdResolved,
+			'colaborador_id' => $colaboradorIdResolved,
+			'zapsign_doc_token' => $docToken,
+			'status' => null,
+			'acao' => $event ?: 'webhook_event',
+			'origem' => 'webhook',
+			'detalhe' => $detalheBase
+		]);
 		updateSignUrl($conn, $docToken, $docName, $matchByName, $signUrl);
 		$conn->close();
 		echo json_encode(['ok' => true, 'updated' => 'sign_url']);
@@ -198,6 +370,15 @@ try {
 	$curP = $precedence[$currentStatus] ?? 0;
 	$newP = $precedence[$status] ?? 0;
 	if ($newP <= $curP) {
+		logContratoAction($conn, [
+			'contrato_id' => $contratoIdResolved,
+			'colaborador_id' => $colaboradorIdResolved,
+			'zapsign_doc_token' => $docToken,
+			'status' => $status,
+			'acao' => $event ?: 'webhook_event',
+			'origem' => 'webhook',
+			'detalhe' => $detalheBase
+		]);
 		updateSignUrl($conn, $docToken, $docName, $matchByName, $signUrl);
 		$conn->close();
 		echo json_encode(['ok' => true, 'ignored' => true, 'reason' => 'status_precedence', 'current' => $currentStatus, 'incoming' => $status]);
@@ -211,6 +392,15 @@ try {
 	} else {
 		$service->atualizarStatusPorToken($docToken, $status, $signedAt);
 	}
+	logContratoAction($conn, [
+		'contrato_id' => $contratoIdResolved,
+		'colaborador_id' => $colaboradorIdResolved,
+		'zapsign_doc_token' => $docToken,
+		'status' => $status,
+		'acao' => $event ?: 'webhook_event',
+		'origem' => 'webhook',
+		'detalhe' => $detalheBase
+	]);
 	$conn->close();
 
 	echo json_encode(['ok' => true, 'status' => $status]);

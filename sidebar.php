@@ -51,16 +51,17 @@ $__basePath = (strpos($__reqUri, '/flow/ImproovWeb/') !== false || preg_match('~
                 <?php endif; ?>
             </ul>
 
-            <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1)): ?>
+            <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 5)): ?>
 
                 <ul class="division">
                     <label for="">Gerencial</label>
                     <li><a title="Tela Gerencial" href="https://improov.com.br/flow/ImproovWeb/TelaGerencial"><i class="fa-solid fa-desktop"></i><span> Tela Gerencial</span></a></li>
                     <li><a title="Flow Track" href="https://improov.com.br/flow/ImproovWeb/FlowTrack"><i class="fa-solid fa-desktop"></i><span> Flow Track</span></a></li>
+                    <li><a title="Flow Track" href="https://improov.com.br/flow/ImproovWeb/Colaborador"><i class="fa-solid fa-user"></i><span> Colaboradores</span></a></li>
                 </ul>
             <?php endif; ?>
 
-            <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1)): ?>
+                <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 5)): ?>
 
                 <ul class="division">
                     <label for="">Financeiro</label>

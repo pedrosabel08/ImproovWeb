@@ -11,7 +11,7 @@ if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
     exit;
 }
 
-if (!isset($_SESSION['nivel_acesso']) || (int)$_SESSION['nivel_acesso'] !== 1) {
+if (!isset($_SESSION['nivel_acesso']) || ((int)$_SESSION['nivel_acesso'] !== 1 && (int)$_SESSION['nivel_acesso'] !== 5)) {
     http_response_code(403);
     echo json_encode(['success' => false, 'message' => 'Sem permissão.']);
     exit;
@@ -45,6 +45,50 @@ require_once __DIR__ . '/services/ContratoLocalService.php';
 
 $conn = conectarBanco();
 
+function logContratoAction(mysqli $conn, array $data): void
+{
+    $sql = "INSERT INTO log_contratos (contrato_id, colaborador_id, zapsign_doc_token, status, acao, origem, ip, detalhe) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        return;
+    }
+    $contratoId = $data['contrato_id'] ?? null;
+    $colaboradorId = $data['colaborador_id'] ?? null;
+    $token = $data['zapsign_doc_token'] ?? null;
+    $status = $data['status'] ?? null;
+    $acao = $data['acao'] ?? 'gerar_contrato';
+    $origem = $data['origem'] ?? 'app';
+    $ip = $data['ip'] ?? ($_SERVER['REMOTE_ADDR'] ?? null);
+    $detalhe = $data['detalhe'] ?? null;
+
+    $stmt->bind_param(
+        'iissssss',
+        $contratoId,
+        $colaboradorId,
+        $token,
+        $status,
+        $acao,
+        $origem,
+        $ip,
+        $detalhe
+    );
+    $stmt->execute();
+    $stmt->close();
+}
+
+function buscarContratoId(mysqli $conn, int $colaboradorId, string $competencia): ?int
+{
+    $sql = "SELECT id FROM contratos WHERE colaborador_id = ? AND competencia = ? LIMIT 1";
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) return null;
+    $stmt->bind_param('is', $colaboradorId, $competencia);
+    $stmt->execute();
+    $res = $stmt->get_result();
+    $row = $res ? $res->fetch_assoc() : null;
+    $stmt->close();
+    return $row ? (int)$row['id'] : null;
+}
+
 try {
     // Criar pasta por mês/ano de vigência (ex: gerados/2026_01_Janeiro)
     $competenciaForDir = $competencia ?: (new DateTimeImmutable('now', new DateTimeZone('America/Sao_Paulo')))->format('Y-m');
@@ -70,6 +114,23 @@ try {
     );
 
     $resp = $service->gerarContrato($colaboradorId, $competencia);
+    $competenciaEfetiva = $resp['competencia'] ?? $competencia;
+    if ($competenciaEfetiva) {
+        $contratoId = buscarContratoId($conn, $colaboradorId, $competenciaEfetiva);
+        $detalhe = json_encode([
+            'competencia' => $competenciaEfetiva,
+            'arquivo_nome' => $resp['arquivo_nome'] ?? null,
+            'arquivo_path' => $resp['arquivo_path'] ?? null
+        ], JSON_UNESCAPED_UNICODE);
+        logContratoAction($conn, [
+            'contrato_id' => $contratoId,
+            'colaborador_id' => $colaboradorId,
+            'status' => 'gerado',
+            'acao' => 'gerar_contrato',
+            'origem' => 'app',
+            'detalhe' => $detalhe
+        ]);
+    }
     // Calcular caminho relativo dentro de gerados/ para download seguro
     $baseGerados = realpath(__DIR__ . '/gerados');
     $arquivoPath = $resp['arquivo_path'] ?? '';

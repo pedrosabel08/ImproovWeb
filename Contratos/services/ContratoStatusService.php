@@ -22,7 +22,7 @@ class ContratoStatusService
 
         if ($status === 'assinado') {
             $this->liberarAcessoPorToken($docToken);
-        } else {
+        } elseif (in_array($status, ['recusado', 'expirado'], true)) {
             $this->bloquearAcessoPorToken($docToken);
         }
     }
@@ -41,7 +41,7 @@ class ContratoStatusService
 
             if ($status === 'assinado') {
                 $this->liberarAcessoPorToken($docToken);
-            } else {
+            } elseif (in_array($status, ['recusado', 'expirado'], true)) {
                 $this->bloquearAcessoPorToken($docToken);
             }
             return;

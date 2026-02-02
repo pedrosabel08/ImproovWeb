@@ -33,6 +33,70 @@ if (!is_array($data)) {
 require_once __DIR__ . '/../conexaoMain.php';
 require_once __DIR__ . '/services/ContratoStatusService.php';
 
+// --- Small dotenv loader (no external dependency) ---
+function load_dotenv_simple(string $path): void
+{
+	if (!file_exists($path)) return;
+	$lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+	foreach ($lines as $line) {
+		$line = trim($line);
+		if ($line === '' || $line[0] === '#') continue;
+		if (strpos($line, '=') === false) continue;
+		list($k, $v) = array_map('trim', explode('=', $line, 2));
+		$v = trim($v, "\"'");
+		putenv("{$k}={$v}");
+		$_ENV[$k] = $v;
+		$_SERVER[$k] = $v;
+	}
+}
+
+function slack_send_webhook(?string $webhookUrl, string $text): bool
+{
+	if (!$webhookUrl) return false;
+	$payload = json_encode(['text' => $text], JSON_UNESCAPED_UNICODE);
+	$ch = curl_init($webhookUrl);
+	curl_setopt($ch, CURLOPT_POST, true);
+	curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+	curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+	$res = curl_exec($ch);
+	$err = curl_error($ch);
+	$code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+	curl_close($ch);
+	return !($res === false || $code < 200 || $code >= 300 || $err);
+}
+
+function extractSignerName(array $data): string
+{
+	$signer = $data['signer'] ?? null;
+	if (is_array($signer)) {
+		$name = trim((string)($signer['name'] ?? $signer['full_name'] ?? $signer['email'] ?? ''));
+		if ($name !== '') return $name;
+	}
+
+	$signers = $data['signers'] ?? ($data['document']['signers'] ?? null);
+	if (is_array($signers)) {
+		// prefer signed signer
+		foreach ($signers as $s) {
+			if (!is_array($s)) continue;
+			$status = strtolower((string)($s['status'] ?? $s['state'] ?? ''));
+			$hasSigned = !empty($s['signed_at']) || $status === 'signed';
+			if ($hasSigned) {
+				$name = trim((string)($s['name'] ?? $s['full_name'] ?? $s['email'] ?? ''));
+				if ($name !== '') return $name;
+			}
+		}
+		// fallback: first signer with name/email
+		foreach ($signers as $s) {
+			if (!is_array($s)) continue;
+			$name = trim((string)($s['name'] ?? $s['full_name'] ?? $s['email'] ?? ''));
+			if ($name !== '') return $name;
+		}
+	}
+
+	return 'Alguém';
+}
+
 $event = $data['event'] ?? $data['type'] ?? $data['event_type'] ?? $data['event_name'] ?? $data['action'] ?? '';
 $docToken = $data['document']['token'] ?? $data['doc_token'] ?? $data['document_token'] ?? $data['token'] ?? '';
 $docName = $data['document']['name'] ?? $data['document']['filename'] ?? $data['name'] ?? $data['document_name'] ?? '';
@@ -71,6 +135,24 @@ function inferStatusFromEvent(string $event): ?string
 }
 
 $status = inferStatusFromEvent($event);
+
+// Load env from project root and get Slack webhook for contratos
+load_dotenv_simple(__DIR__ . '/../.env');
+$SLACK_WEBHOOK_CONTRATOS_URL = getenv('SLACK_WEBHOOK_CONTRATOS_URL') ?: ($_ENV['SLACK_WEBHOOK_CONTRATOS_URL'] ?? null);
+
+$notifyStatuses = ['enviado', 'visualizado', 'assinado'];
+$shouldNotify = $status && in_array($status, $notifyStatuses, true);
+if ($shouldNotify) {
+	$person = extractSignerName($data);
+	if ($status === 'enviado') {
+		$text = sprintf('O financeiro criou o contrato de %s para esse mês.', $person);
+	} elseif ($status === 'visualizado') {
+		$text = sprintf('%s visualizou o contrato desse mês.', $person);
+	} else {
+		$text = sprintf('%s assinou o contrato desse mês.', $person);
+	}
+	slack_send_webhook($SLACK_WEBHOOK_CONTRATOS_URL, $text);
+}
 
 if (!$status && !$signUrl) {
 	echo json_encode(['ok' => true, 'ignored' => true, 'reason' => 'unknown_event', 'event' => $event]);

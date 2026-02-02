@@ -11,7 +11,7 @@ if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
     exit;
 }
 
-if (!isset($_SESSION['nivel_acesso']) || (int)$_SESSION['nivel_acesso'] !== 1) {
+if (!isset($_SESSION['nivel_acesso']) || ((int)$_SESSION['nivel_acesso'] !== 1 && (int)$_SESSION['nivel_acesso'] !== 5)) {
     http_response_code(403);
     echo json_encode(['success' => false, 'message' => 'Sem permissão.']);
     exit;

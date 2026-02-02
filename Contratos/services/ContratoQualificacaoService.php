@@ -38,7 +38,7 @@ class ContratoQualificacaoService
     private function montarEnderecoPessoa(string $rua, string $numero, string $complemento, string $bairro, string $localidade, string $uf, string $cep): string
     {
         $parts = [];
-        if ($rua !== '') $parts[] = $rua;
+        if ($rua !== '') $parts[] = $this->normalizeRua($rua);
         if ($numero !== '') $parts[] = 'nº ' . $numero;
         if ($complemento !== '') $parts[] = $complemento;
         if ($bairro !== '') $parts[] = 'Bairro ' . $bairro;
@@ -51,7 +51,7 @@ class ContratoQualificacaoService
     private function montarEnderecoCnpj(string $rua, string $numero, string $complemento, string $bairro, string $localidade, string $uf, string $cep): string
     {
         // normalizar entradas
-        $rua = trim($rua);
+        $rua = $this->normalizeRua(trim($rua));
         $numero = trim($numero);
         $complemento = trim($complemento);
         $bairro = trim($bairro);
@@ -124,5 +124,31 @@ class ContratoQualificacaoService
             return $cep;
         }
         return substr($digits, 0, 5) . '-' . substr($digits, 5, 3);
+    }
+
+    private function normalizeRua(string $rua): string
+    {
+        $rua = trim($rua);
+        if ($rua === '') return $rua;
+
+        $prefixes = [
+            'rua', 'r.', 'r',
+            'avenida', 'av.', 'av',
+            'travessa', 'tv.', 'tv',
+            'alameda', 'al.', 'al',
+            'estrada', 'est.', 'est',
+            'rodovia', 'rod.', 'rod',
+            'praça', 'praca', 'pça', 'pca',
+            'largo', 'via',
+        ];
+
+        $lower = mb_strtolower($rua, 'UTF-8');
+        foreach ($prefixes as $p) {
+            if (strpos($lower, $p . ' ') === 0 || $lower === $p) {
+                return $rua;
+            }
+        }
+
+        return 'Rua ' . $rua;
     }
 }

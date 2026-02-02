@@ -21,6 +21,6 @@ if ($result->num_rows > 0) {
     }
     echo json_encode($usuarios);
 } else {
-    echo "0 results";
+    echo json_encode([]);
 }
 $conn->close();

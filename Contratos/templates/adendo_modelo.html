@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="utf-8" />
+    <style>
+        /* Fontes locais (evita buscar Google Fonts e reduz tempo de geração no Dompdf) */
+        @font-face {
+            font-family: 'Roboto';
+            src: url('../fonts/Roboto-Regular.ttf') format('truetype');
+            font-weight: 400;
+            font-style: normal;
+        }
+        @font-face {
+            font-family: 'Roboto';
+            src: url('../fonts/Roboto-Bold.ttf') format('truetype');
+            font-weight: 700;
+            font-style: normal;
+        }
+
+        @page {
+            margin: 7mm;
+        }
+
+        body {
+            font-family: "Roboto", DejaVu Sans, sans-serif;
+            font-size: 10px;
+            color: #111;
+            line-height: 1.35;
+        }
+
+        h1 {
+            font-size: 12px;
+            margin: 0 0 10px 0;
+            text-align: center;
+            letter-spacing: 0.3px;
+        }
+
+        h2 {
+            font-size: 11px;
+            margin: 10px 0 6px 0;
+            text-transform: uppercase;
+            page-break-after: avoid;
+            break-after: avoid;
+        }
+        
+        p {
+            margin: 0 0 2px 0 !important;
+            text-align: justify;
+            page-break-inside: avoid;
+            break-inside: avoid;
+            orphans: 3;
+            widows: 3;
+        }
+
+        .section {
+            margin-top: 6px;
+            page-break-inside: auto;
+            break-inside: auto;
+        }
+
+        .tabela {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 30px 0 30px 0;
+            font-size: 9.5px;
+        }
+
+        .tabela th,
+        .tabela td {
+            border: 1px solid #111;
+            padding: 4px 6px;
+            vertical-align: top;
+        }
+
+        .tabela th {
+            text-transform: uppercase;
+            background: #f1f1f1;
+            text-align: left;
+        }
+
+        .cell-center {
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        .cell-right {
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        .signature-grid {
+            margin-top: 18px;
+            width: 100%;
+        }
+
+        .signature-grid td {
+            width: 50%;
+            text-align: center;
+            vertical-align: top;
+            padding-top: 30px;
+        }
+
+        .signature-line {
+            margin: 0 auto 6px auto;
+            border-top: 1px solid #111;
+            width: 85%;
+            height: 1px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>{{titulo_adendo}}</h1>
+
+    <p>De um lado <strong>{{contratante_nome}}</strong>, CNPJ: {{contratante_cnpj}}, com endereço/sede na Rua Bahia, nº 988,
+        Sala 503, Bairro do Salto, Blumenau/SC, CEP 89031-001; se seguir denominado simplesmente parte
+        <strong>CONTRATANTE</strong>, neste ato representada por <strong>DIOGO JOSE POFFO</strong> nacionalidade: brasileira,
+        estado civil: divorciado, inscrito no CPF sob o nº 036.698.519-17, residente e domiciliado na Avenida Senador Atílio
+        Fontana, nº 2101 apto 308 Edifício Caravelas, Bairro Balneário Pereque, Porto Belo/SC, CEP 88210-000, doravante
+        denominada parte <strong>CONTRATANTE</strong>.</p>
+
+    <p>{{dados_colaborador}}</p>
+
+    <p><strong>Os denominados têm, entre si, justo e acertado, promover o TERMO ADITIVO, nos seguintes termos e condições.</strong></p>
+
+    <h2><strong>DO OBJETO</strong></h2>
+    <p><strong>Cláusula 1ª.</strong> O presente termo aditivo tem por escopo dar quitação aos valores devidos pelo CONTRATANTE ao CONTRATADO
+        pela elaboração e desenvolvimento dos seguintes serviços que não eram parte inicial do contrato de prestação de serviços firmado em
+        {{competencia_mes_nome}} {{competencia_ano}}:</p>
+
+    <div class="section">
+        {{tabela_servicos}}
+    </div>
+
+    <p><strong>Cláusula 2ª.</strong> O CONTRATADO declara que no dia {{data_pagamento}} recebeu do CONTRATANTE o valor de R$ {{valor_total}}
+        ({{valor_total_extenso}}), pela entrega dos serviços acima referidos, e dá a mais ampla, geral e irrestrita quitação à dívida,
+        renunciando seu direito de cobrança relativos a tais valores.</p>
+
+    <p>E, assim, para que produza seus efeitos legais e jurídicos, por estarem juntas e contratadas, confirmamos, via assinatura eletrônica,
+        nos moldes do art. 10 da MO 2.200/01 em vigor no Brasil, que estamos de acordo com o presente CONTRATO DE PRESTAÇÃO DE SERVIÇOS, e por estar plenamente cientes dos termos,
+        reafirmamos o nosso dever de observar e fazer cumprir as cláusulas aqui estabelecidas, em vista de que possamos acessar a via do contrato através do endereço
+        https://zapsign.com.br e gerar versão impressa do mesmo, considerado o fato de já tê-lo recebido por e-mail.</p>
+
+    <p>Blumenau/SC, {{data_pagamento}}.</p>
+
+    <table class="signature-grid">
+        <tr>
+            <td>
+                <div class="signature-line"></div>
+                <div><strong>{{contratante_nome}}</strong></div>
+                <div>CNPJ: {{contratante_cnpj}}</div>
+                <div>DIOGO JOSÉ POFFO</div>
+                <div>CPF: 036.698.519-17</div>
+            </td>
+            <td>
+                <div class="signature-line"></div>
+                <div><strong>{{contratado_nome}}</strong></div>
+                <div>CNPJ: {{contratado_cnpj}}</div>
+                <div>{{contratado_nome}}</div>
+            </td>
+        </tr>
+    </table>
+</body>
+
+</html>

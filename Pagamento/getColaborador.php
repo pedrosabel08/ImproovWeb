@@ -129,6 +129,121 @@ if ($colaboradorId == 1) {
     if ($mesNumero && $ano) {
         $sql .= " AND YEAR(ac.data) = ? AND MONTH(ac.data) = ?";
     }
+} elseif ($colaboradorId == 8) {
+    $sql = "SELECT 
+    fi.colaborador_id,
+    'funcao_imagem' AS origem,
+    fi.idfuncao_imagem AS identificador,
+    fi.imagem_id,
+    ico.imagem_nome,
+    fi.funcao_id,
+    CASE 
+        WHEN fi.funcao_id = 4 THEN 
+                CASE 
+                    WHEN EXISTS (
+                        SELECT 1 
+                        FROM funcao_imagem fi_sub
+                        JOIN funcao f_sub ON fi_sub.funcao_id = f_sub.idfuncao
+                        WHERE fi_sub.imagem_id = fi.imagem_id 
+                        AND f_sub.nome_funcao = 'Pré-Finalização'
+                    ) OR ico.status_id = 1
+                    THEN 'Finalização Parcial'
+                    ELSE 'Finalização Completa'
+                END 
+        ELSE f.nome_funcao 
+    END AS nome_funcao,
+    fi.status,
+    fi.prazo,
+    fi.pagamento,
+    fi.valor,
+    fi.data_pagamento,
+    CASE WHEN fi.funcao_id = 4 THEN (
+        SELECT COUNT(1)
+        FROM pagamento_itens pi
+        JOIN funcao_imagem fi_pi ON pi.origem = 'funcao_imagem' AND pi.origem_id = fi_pi.idfuncao_imagem
+        WHERE fi_pi.imagem_id = fi.imagem_id AND fi_pi.funcao_id = 4 AND pi.observacao = 'Finalização Parcial'
+    ) ELSE 0 END AS pago_parcial_count,
+    CASE WHEN fi.funcao_id = 4 THEN (
+        SELECT COUNT(1)
+        FROM pagamento_itens pi
+        JOIN funcao_imagem fi_pi ON pi.origem = 'funcao_imagem' AND pi.origem_id = fi_pi.idfuncao_imagem
+        WHERE fi_pi.imagem_id = fi.imagem_id AND fi_pi.funcao_id = 4 AND pi.observacao = 'Pago Completa'
+    ) ELSE 0 END AS pago_completa_count
+FROM 
+    funcao_imagem fi
+JOIN 
+    imagens_cliente_obra ico ON fi.imagem_id = ico.idimagens_cliente_obra
+JOIN 
+    obra o ON ico.obra_id = o.idobra
+JOIN 
+    funcao f ON fi.funcao_id = f.idfuncao
+WHERE 
+    fi.colaborador_id = ?
+    AND (fi.status = 'Finalizado' OR fi.status = 'Em aprovação' OR fi.status = 'Ajuste' OR fi.status = 'Aprovado com ajustes' OR fi.status = 'Aprovado')";
+
+    if ($mesNumero && $ano) {
+        $sql .= " AND YEAR(fi.prazo) = ? AND MONTH(fi.prazo) = ?";
+    }
+
+    $sql .= " 
+UNION ALL
+SELECT 
+    fi.colaborador_id,
+    'funcao_imagem' AS origem,
+    fi.idfuncao_imagem AS identificador,
+    fi.imagem_id,
+    ico.imagem_nome,
+    fi.funcao_id,
+    CASE 
+        WHEN fi.funcao_id = 4 THEN 
+                CASE 
+                    WHEN EXISTS (
+                        SELECT 1 
+                        FROM funcao_imagem fi_sub
+                        JOIN funcao f_sub ON fi_sub.funcao_id = f_sub.idfuncao
+                        WHERE fi_sub.imagem_id = fi.imagem_id 
+                        AND f_sub.nome_funcao = 'Pré-Finalização'
+                    ) OR ico.status_id = 1
+                    THEN CONCAT('Finalização Parcial - ', c.nome_colaborador)
+                    ELSE CONCAT('Finalização Completa - ', c.nome_colaborador)
+                END 
+        ELSE f.nome_funcao 
+    END AS nome_funcao,
+    fi.status,
+    fi.prazo,
+    fi.pagamento,
+    fi.valor,
+    fi.data_pagamento,
+    CASE WHEN fi.funcao_id = 4 THEN (
+        SELECT COUNT(1)
+        FROM pagamento_itens pi
+        JOIN funcao_imagem fi_pi ON pi.origem = 'funcao_imagem' AND pi.origem_id = fi_pi.idfuncao_imagem
+        WHERE fi_pi.imagem_id = fi.imagem_id AND fi_pi.funcao_id = 4 AND pi.observacao = 'Finalização Parcial'
+    ) ELSE 0 END AS pago_parcial_count,
+    CASE WHEN fi.funcao_id = 4 THEN (
+        SELECT COUNT(1)
+        FROM pagamento_itens pi
+        JOIN funcao_imagem fi_pi ON pi.origem = 'funcao_imagem' AND pi.origem_id = fi_pi.idfuncao_imagem
+        WHERE fi_pi.imagem_id = fi.imagem_id AND fi_pi.funcao_id = 4 AND pi.observacao = 'Pago Completa'
+    ) ELSE 0 END AS pago_completa_count
+FROM 
+    funcao_imagem fi
+JOIN 
+    imagens_cliente_obra ico ON fi.imagem_id = ico.idimagens_cliente_obra
+JOIN 
+    obra o ON ico.obra_id = o.idobra
+JOIN 
+    funcao f ON fi.funcao_id = f.idfuncao
+JOIN 
+    colaborador c ON c.idcolaborador = fi.colaborador_id
+WHERE 
+    fi.colaborador_id IN (23, 40)
+    AND fi.funcao_id = 4
+    AND (fi.status = 'Finalizado' OR fi.status = 'Em aprovação' OR fi.status = 'Ajuste' OR fi.status = 'Aprovado com ajustes' OR fi.status = 'Aprovado')";
+
+    if ($mesNumero && $ano) {
+        $sql .= " AND YEAR(fi.prazo) = ? AND MONTH(fi.prazo) = ?";
+    }
 } elseif (in_array($colaboradorId, [13, 20, 23, 37])) {
     $sql = "SELECT 
     fi.colaborador_id,
@@ -294,6 +409,12 @@ if (in_array($colaboradorId, [1, 13, 20, 23, 37])) {
         $stmt->bind_param('iiiiii',   $colaboradorId, $ano, $mesNumero, $colaboradorId, $ano, $mesNumero);
     } else {
         $stmt->bind_param('ii', $colaboradorId, $colaboradorId);
+    }
+} elseif ($colaboradorId == 8) {
+    if ($mesNumero && $ano) {
+        $stmt->bind_param('iiiii', $colaboradorId, $ano, $mesNumero, $ano, $mesNumero);
+    } else {
+        $stmt->bind_param('i', $colaboradorId);
     }
 } else {
     if ($mesNumero && $ano) {

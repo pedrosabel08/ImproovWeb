@@ -244,7 +244,7 @@ WHERE
     if ($mesNumero && $ano) {
         $sql .= " AND YEAR(fi.prazo) = ? AND MONTH(fi.prazo) = ?";
     }
-} elseif (in_array($colaboradorId, [13, 20, 23, 37])) {
+} elseif (in_array($colaboradorId, [13, 20, 23, 37, 39])) {
     $sql = "SELECT 
     fi.colaborador_id,
     'funcao_imagem' AS origem,
@@ -404,7 +404,7 @@ error_log("Parâmetros: " . json_encode([$colaboradorId, $ano, $mesNumero]));
 
 // Bind de parâmetros conforme necessário
 // include collaborator 37 in the same bind pattern so UNION queries receive the correct params
-if (in_array($colaboradorId, [1, 13, 20, 23, 37])) {
+if (in_array($colaboradorId, [1, 13, 20, 23, 37, 39])) {
     if ($mesNumero && $ano) {
         $stmt->bind_param('iiiiii',   $colaboradorId, $ano, $mesNumero, $colaboradorId, $ano, $mesNumero);
     } else {

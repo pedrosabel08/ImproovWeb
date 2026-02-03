@@ -22,7 +22,7 @@ class AdendoLocalService
         $this->pdfService = $pdfService;
     }
 
-    public function gerarAdendo(int $colaboradorId, int $mes, int $ano, float $valorFixo): array
+    public function gerarAdendo(int $colaboradorId, int $mes, int $ano, float $valorFixo, array $funcoesFiltro = [], array $extrasInput = [], array $itensInput = []): array
     {
         $colab = $this->dataService->getColaboradorContratoData($colaboradorId);
         $competencia = sprintf('%04d-%02d', $ano, $mes);
@@ -37,12 +37,15 @@ class AdendoLocalService
 
         [$contratanteNome, $contratanteCnpj] = $this->getContratanteInfo($colaboradorId, $colab);
 
-        $itens = $this->getAdendoItens($colaboradorId, $mes, $ano);
+        $itens = !empty($itensInput) ? $this->normalizeItensInput($itensInput) : $this->getAdendoItens($colaboradorId, $mes, $ano);
+        if (!empty($funcoesFiltro)) {
+            $itens = $this->filterItensByFuncoes($itens, $funcoesFiltro);
+        }
         $nomeColaborador = (string)($colab['nome_colaborador'] ?? '');
         $showValor = !$this->isColaboradorSemValor($nomeColaborador);
 
         $rows = $this->buildRows($itens, $showValor);
-        $extras = [];
+        $extras = $this->normalizeExtras($extrasInput);
 
         if ($colaboradorId === 1) {
             $extras[] = [
@@ -50,10 +53,14 @@ class AdendoLocalService
                 'valor' => 3000.00,
             ];
             $tabelaHtml = $this->buildExtrasTabelaHtml($extras);
-            $totalValor = 3000.00;
+            $totalValor = $this->sumExtras($extras);
         } else {
             $tabelaHtml = $this->buildTabelaHtml($rows, $showValor);
             $totalValor = $this->sumRows($rows);
+            if (!empty($extras)) {
+                $tabelaHtml .= '<br>' . $this->buildExtrasTabelaHtml($extras);
+                $totalValor += $this->sumExtras($extras);
+            }
         }
         $totalComFixo = $totalValor + $valorFixo;
         $totalFormatado = $this->formatCurrency($totalComFixo);
@@ -124,10 +131,27 @@ class AdendoLocalService
 
             $imagem = (string)($item['imagem_nome'] ?? '');
             $funcao = (string)($item['nome_funcao'] ?? '');
+            $colabRef = trim((string)($item['colaborador_ref'] ?? ''));
+            if ($colabRef !== '' && preg_match('/finaliza[cç][aã]o\s+completa/i', $funcao) && !preg_match('/[\-–—]/u', $funcao)) {
+                $funcao = 'Finalização Completa - ' . $colabRef;
+            }
             $valor = (float)($item['valor'] ?? 0);
+            $fromPayload = !empty($item['from_payload']);
 
             if ($pagoParcial) {
-                $funcao = 'Finalização completa com pagamento final';
+                // Para funções com colaborador (ex.: "Finalização Completa - Vitor"), manter o rótulo original
+                    // limpar rótulos como "(Pago parcial)" e normalizar
+                    $funcaoClean = preg_replace('/\s*\((?=.*pago\s*parcial)[^)]*\)\s*/i', '', $funcao);
+                    $funcaoClean = trim($funcaoClean);
+                    // Se já vier com traço seguido de nome, manter assim. Use original raw value as fallback.
+                    $hasDashClean = preg_match('/[\-–—]\s*\S+/u', $funcaoClean) === 1;
+                    $hasDashOriginal = preg_match('/[\-–—]\s*\S+/u', (string)($item['nome_funcao'] ?? '')) === 1;
+                    if ($hasDashClean || $hasDashOriginal) {
+                        $funcao = $funcaoClean;
+                    } else {
+                        // Caso contrário usamos o rótulo padrão para pagamento final
+                        $funcao = 'Finalização completa com pagamento final';
+                    }
             }
 
             $funcao = $this->applyAnimacaoRename($funcao, $valor);
@@ -214,6 +238,15 @@ class AdendoLocalService
         return $total;
     }
 
+    private function sumExtras(array $extras): float
+    {
+        $total = 0.0;
+        foreach ($extras as $extra) {
+            $total += isset($extra['valor']) ? (float)$extra['valor'] : 0.0;
+        }
+        return $total;
+    }
+
     private function buildExtrasTabelaHtml(array $extras): string
     {
         if (!$extras) {
@@ -233,6 +266,49 @@ class AdendoLocalService
         }
         $html .= '</tbody></table>';
         return $html;
+    }
+
+    private function normalizeExtras(array $extrasInput): array
+    {
+        $out = [];
+        foreach ($extrasInput as $extra) {
+            if (!is_array($extra)) continue;
+            $categoria = trim((string)($extra['categoria'] ?? ''));
+            $valorRaw = (string)($extra['valor'] ?? '0');
+            $valor = (float)str_replace(',', '.', $valorRaw);
+            if ($categoria === '' || !is_numeric($valorRaw)) continue;
+            $out[] = [
+                'categoria' => $categoria,
+                'valor' => $valor,
+            ];
+        }
+        return $out;
+    }
+
+    private function normalizeItensInput(array $itensInput): array
+    {
+        $out = [];
+        foreach ($itensInput as $item) {
+            if (!is_array($item)) continue;
+            $imagem = trim((string)($item['imagem_nome'] ?? ''));
+            $funcao = trim((string)($item['nome_funcao'] ?? ''));
+            $valorRaw = (string)($item['valor'] ?? '0');
+            $valor = (float)str_replace(',', '.', $valorRaw);
+            $dataPagamento = $item['data_pagamento'] ?? null;
+            $pagoParcial = isset($item['pago_parcial_count']) ? (int)$item['pago_parcial_count'] : 0;
+            $pagoCompleta = isset($item['pago_completa_count']) ? (int)$item['pago_completa_count'] : 0;
+            $out[] = [
+                'imagem_nome' => $imagem,
+                'nome_funcao' => $funcao,
+                'valor' => $valor,
+                'data_pagamento' => $dataPagamento,
+                'pago_parcial_count' => $pagoParcial,
+                'pago_completa_count' => $pagoCompleta,
+                'colaborador_ref' => null,
+                'from_payload' => true,
+            ];
+        }
+        return $out;
     }
 
     private function getQuintoDiaUtilProximoMes(int $mes, int $ano): DateTimeImmutable
@@ -291,8 +367,17 @@ class AdendoLocalService
         fi.status,
         fi.prazo,
         fi.pagamento,
-        fi.valor,
-        fi.data_pagamento,
+                fi.valor,
+                fi.data_pagamento,
+                (
+                        SELECT c_ref.nome_colaborador
+                        FROM funcao_imagem fi_ref
+                        JOIN colaborador c_ref ON c_ref.idcolaborador = fi_ref.colaborador_id
+                        WHERE fi_ref.imagem_id = fi.imagem_id
+                            AND fi_ref.funcao_id = 4
+                            AND fi_ref.colaborador_id IN (23, 40)
+                        LIMIT 1
+                ) AS colaborador_ref,
         CASE WHEN fi.funcao_id = 4 THEN (
             SELECT COUNT(1)
             FROM pagamento_itens pi
@@ -369,6 +454,7 @@ class AdendoLocalService
         fi.pagamento,
         fi.valor,
         fi.data_pagamento,
+        NULL AS colaborador_ref,
         CASE WHEN fi.funcao_id = 4 THEN (
             SELECT COUNT(1)
             FROM pagamento_itens pi
@@ -421,6 +507,7 @@ class AdendoLocalService
         fi.pagamento,
         fi.valor,
         fi.data_pagamento,
+        c.nome_colaborador AS colaborador_ref,
         CASE WHEN fi.funcao_id = 4 THEN (
             SELECT COUNT(1)
             FROM pagamento_itens pi
@@ -605,6 +692,39 @@ ORDER BY obra_id, imagem_nome";
         }
         $stmt->close();
         return $funcoes;
+    }
+
+    private function filterItensByFuncoes(array $itens, array $funcoesFiltro): array
+    {
+        $normFiltro = [];
+        foreach ($funcoesFiltro as $f) {
+            $nf = $this->normalizeFuncao((string)$f);
+            if ($nf !== '') $normFiltro[$nf] = true;
+        }
+        if (!$normFiltro) return $itens;
+
+        $out = [];
+        foreach ($itens as $item) {
+            $nome = (string)($item['nome_funcao'] ?? '');
+            $norm = $this->normalizeFuncao($nome);
+            if (isset($normFiltro[$norm])) {
+                $out[] = $item;
+            }
+        }
+        return $out;
+    }
+
+    private function normalizeFuncao(string $funcao): string
+    {
+        $funcao = preg_replace('/\s*-\s*.*/', '', $funcao);
+        $funcao = preg_replace('/Pago\s*Parcial/i', '', $funcao);
+        $funcao = preg_replace('/Pago\s*Completa/i', '', $funcao);
+        $funcao = trim($funcao);
+        $funcao = mb_strtolower($funcao, 'UTF-8');
+        $funcao = iconv('UTF-8', 'ASCII//TRANSLIT', $funcao);
+        $funcao = preg_replace('/[^a-z0-9\s]/', '', $funcao);
+        $funcao = preg_replace('/\s+/', ' ', $funcao);
+        return trim($funcao);
     }
 
     private function boldNamesInQualificacao(string $qualificacaoEsc, array $colab): string

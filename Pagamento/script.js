@@ -325,8 +325,16 @@ document.addEventListener('DOMContentLoaded', function () {
                             row.classList.add('checked');
                         }
 
+                        const normalizeFuncao = (s) => (s || '')
+                            .toString()
+                            .replace(/\s*-\s*.*/g, '')
+                            .trim()
+                            .toLowerCase()
+                            .normalize('NFD')
+                            .replace(/[\u0300-\u036f]/g, '');
+                        const nomeFuncaoBase = normalizeFuncao(item.nome_funcao);
                         document.querySelectorAll('.tipo-imagem input[type="checkbox"]').forEach(funcaoCheckbox => {
-                            if (funcaoCheckbox.name === item.nome_funcao) {
+                            if (normalizeFuncao(funcaoCheckbox.name) === nomeFuncaoBase) {
                                 funcaoCheckbox.checked = true;
                             }
                         });
@@ -529,7 +537,13 @@ function contarLinhasTabela() {
         const linha = linhas[i];
         if (linha.style.display === 'none') continue; // apenas linhas visíveis
         const funcaoCell = linha.cells[2];
-        const funcaoText = funcaoCell ? (funcaoCell.textContent || funcaoCell.innerText).trim() : '';
+        let funcaoText = funcaoCell ? (funcaoCell.textContent || funcaoCell.innerText).trim() : '';
+        if (!funcaoText) continue;
+        funcaoText = funcaoText
+            .replace(/Pago\s*Parcial/ig, '')
+            .replace(/Pago\s*Completa/ig, '')
+            .replace(/\s*-\s*.*/g, '')
+            .trim();
         if (!funcaoText) continue;
         mapaContagem[funcaoText] = (mapaContagem[funcaoText] || 0) + 1;
     }
@@ -576,15 +590,29 @@ function filtrarTabela() {
 
     // Obter todas as checkboxes marcadas
     const checkboxes = document.querySelectorAll('.tipo-imagem input[type="checkbox"]:checked');
-    const funcoesSelecionadas = Array.from(checkboxes).map(checkbox => checkbox.name);
+    const normalize = (s) => (s || '')
+        .toString()
+        .replace(/\s*-\s*.*/g, '')
+        .trim()
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+    const funcoesSelecionadas = Array.from(checkboxes).map(checkbox => normalize(checkbox.name));
 
     for (let i = 0; i < linhas.length; i++) {
         const linha = linhas[i];
         const funcaoCell = linha.cells[2];
 
         if (funcaoCell) {
-            const funcaoText = funcaoCell.textContent || funcaoCell.innerText;
-            if (funcoesSelecionadas.length === 0 || funcoesSelecionadas.includes(funcaoText)) {
+            let funcaoText = (funcaoCell.textContent || funcaoCell.innerText || '').toString();
+            // remove rótulos de badge que são anexados ao texto da função
+            funcaoText = funcaoText
+                .replace(/Pago\s*Parcial/ig, '')
+                .replace(/Pago\s*Completa/ig, '')
+                .replace(/\s*-\s*.*/g, '')
+                .trim();
+            const funcaoNorm = normalize(funcaoText);
+            if (funcoesSelecionadas.length === 0 || funcoesSelecionadas.includes(funcaoNorm)) {
                 linha.style.display = "";
             } else {
                 linha.style.display = "none";
@@ -624,9 +652,56 @@ document.getElementById('generate-adendo').addEventListener('click', async funct
         return;
     }
 
+    // Bônus/extras opcionais
+    const extras = [];
+    let addBonus = confirm('Deseja adicionar bônus/extra no adendo?');
+    while (addBonus) {
+        const categoria = prompt('Categoria do bônus/extra:');
+        if (!categoria || !categoria.trim()) {
+            alert('Categoria inválida.');
+        } else {
+            const valorExtraRaw = prompt('Valor do bônus/extra (somente número):');
+            const valorExtra = valorExtraRaw ? parseFloat(valorExtraRaw.replace(',', '.')) : NaN;
+            if (!valorExtraRaw || isNaN(valorExtra)) {
+                alert('Valor inválido.');
+            } else {
+                extras.push({ categoria: categoria.trim(), valor: valorExtra });
+            }
+        }
+        addBonus = confirm('Adicionar outro bônus/extra?');
+    }
+
     const btn = this;
     btn.disabled = true;
     try {
+        const funcoesSelecionadas = Array.from(document.querySelectorAll('.tipo-imagem input[type="checkbox"]:checked'))
+            .map(cb => cb.name)
+            .filter(Boolean);
+        const itens = Array.from(document.querySelectorAll('#tabela-faturamento tbody tr'))
+            .filter(tr => tr.offsetParent !== null)
+            .map(tr => {
+                const cells = tr.querySelectorAll('td');
+                const imagem = cells[0]?.textContent?.trim() || '';
+                const checkbox = tr.querySelector('.pagamento-checkbox');
+                // Prefer the visible cell text (cleaned from badges) because data attributes may be stale
+                let funcaoRaw = cells[2]?.textContent || '';
+                // Remove badge texts like 'Pago Parcial' or 'Pago' that are appended visually
+                funcaoRaw = funcaoRaw.replace(/Pago\s*Parcial/ig, '').replace(/Pago\s*Completa/ig, '').replace(/Pago/ig, '').trim();
+                const funcao = (funcaoRaw || (checkbox?.getAttribute('data-funcao-name') || '')).trim();
+                const valorRaw = cells[3]?.textContent?.trim() || '0';
+                const valor = parseFloat(valorRaw.replace(/[^0-9,.-]+/g, '').replace(/\./g, '').replace(',', '.')) || 0;
+                const dataPagamento = cells[5]?.textContent?.trim() || null;
+                const pagoParcialCount = checkbox ? parseInt(checkbox.getAttribute('data-pago-parcial-count') || '0', 10) : 0;
+                const pagoCompletaCount = checkbox ? parseInt(checkbox.getAttribute('data-pago-completa-count') || '0', 10) : 0;
+                return {
+                    imagem_nome: imagem,
+                    nome_funcao: funcao,
+                    valor: valor,
+                    data_pagamento: dataPagamento,
+                    pago_parcial_count: pagoParcialCount,
+                    pago_completa_count: pagoCompletaCount
+                };
+            });
         const res = await fetch('gerar_adendo.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -634,7 +709,10 @@ document.getElementById('generate-adendo').addEventListener('click', async funct
                 colaborador_id: colaboradorId,
                 mes: mes,
                 ano: ano,
-                valor_fixo: valorFixo
+                valor_fixo: valorFixo,
+                funcoes: funcoesSelecionadas,
+                extras: extras,
+                itens: itens
             })
         });
         const data = await res.json();

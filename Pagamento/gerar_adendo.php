@@ -24,6 +24,9 @@ $colaboradorId = isset($data['colaborador_id']) ? (int)$data['colaborador_id'] :
 $mes = isset($data['mes']) ? (int)$data['mes'] : 0;
 $ano = isset($data['ano']) ? (int)$data['ano'] : 0;
 $valorFixo = isset($data['valor_fixo']) ? (float)str_replace(',', '.', (string)$data['valor_fixo']) : 0.0;
+$funcoes = isset($data['funcoes']) && is_array($data['funcoes']) ? $data['funcoes'] : [];
+$extras = isset($data['extras']) && is_array($data['extras']) ? $data['extras'] : [];
+$itens = isset($data['itens']) && is_array($data['itens']) ? $data['itens'] : [];
 
 if (!$colaboradorId || $mes < 1 || $mes > 12 || $ano < 2000) {
     http_response_code(422);
@@ -63,7 +66,7 @@ try {
         new ContratoPdfService($pdfDir, $templatePath)
     );
 
-    $resp = $service->gerarAdendo($colaboradorId, $mes, $ano, $valorFixo);
+    $resp = $service->gerarAdendo($colaboradorId, $mes, $ano, $valorFixo, $funcoes, $extras, $itens);
 
     $baseGerados = realpath(__DIR__ . '/../Contratos/gerados');
     $arquivoPath = $resp['arquivo_path'] ?? '';

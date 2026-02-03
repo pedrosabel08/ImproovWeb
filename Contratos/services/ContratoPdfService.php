@@ -84,16 +84,53 @@ class ContratoPdfService
             $this->outputDir = $fallbackOut;
         }
 
-        $filePath = $this->outputDir . DIRECTORY_SEPARATOR . $nomeArquivo;
-        $bytes = file_put_contents($filePath, $dompdf->output());
+        $filePath = $this->getAvailableFilePath($nomeArquivo);
+        $bytes = $this->writeWithRetry($filePath, $dompdf->output());
         if ($bytes === false) {
             throw new RuntimeException('Falha ao gravar PDF em: ' . $filePath);
         }
 
         return [
-            'file_name' => $nomeArquivo,
+            'file_name' => basename($filePath),
             'file_path' => $filePath,
         ];
+    }
+
+    private function getAvailableFilePath(string $nomeArquivo): string
+    {
+        $basePath = $this->outputDir . DIRECTORY_SEPARATOR . $nomeArquivo;
+        if (!file_exists($basePath)) {
+            return $basePath;
+        }
+
+        $info = pathinfo($basePath);
+        $dir = $info['dirname'] ?? $this->outputDir;
+        $name = $info['filename'] ?? 'arquivo';
+        $ext = isset($info['extension']) ? ('.' . $info['extension']) : '';
+
+        for ($i = 1; $i <= 50; $i++) {
+            $candidate = $dir . DIRECTORY_SEPARATOR . $name . '_' . $i . $ext;
+            if (!file_exists($candidate)) {
+                return $candidate;
+            }
+        }
+
+        // fallback: timestamp
+        return $dir . DIRECTORY_SEPARATOR . $name . '_' . time() . $ext;
+    }
+
+    private function writeWithRetry(string $filePath, string $content)
+    {
+        $attempts = 3;
+        for ($i = 0; $i < $attempts; $i++) {
+            $bytes = @file_put_contents($filePath, $content, LOCK_EX);
+            if ($bytes !== false) {
+                return $bytes;
+            }
+            // small backoff to avoid temporary lock issues
+            usleep(150000); // 150ms
+        }
+        return false;
     }
 
     private function ensureOutputDir(): void

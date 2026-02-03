@@ -596,415 +596,63 @@ function filtrarTabela() {
 }
 
 // Função para converter números para texto
-document.getElementById('generate-adendo').addEventListener('click', function () {
+document.getElementById('generate-adendo').addEventListener('click', async function () {
     const colaboradorId = (() => {
         const el = document.getElementById('colaborador');
         const v = el ? parseInt(el.value, 10) : NaN;
         return Number.isFinite(v) ? v : null;
     })();
 
-    const nomeColaborador = document.getElementById("nomeColaborador").textContent.trim();
-    const cnpjColaborador = document.getElementById("cnpjColaborador").textContent.trim();
-    const enderecoColaborador = document.getElementById("enderecoColaborador").textContent.trim();
-    const cpfColaborador = document.getElementById("cpfColaborador").textContent.trim();
-    const estadoCivil = document.getElementById("estadoCivil").textContent.trim();
-    const enderecoCNPJ = document.getElementById("enderecoCNPJ").textContent.trim();
-    const nomeEmpresarial = document.getElementById("nomeEmpresarial").textContent.trim();
-    const cep = document.getElementById("cep").textContent.trim();
-    const cepCNPJ = document.getElementById("cepCNPJ").textContent.trim();
-
-
-
-    const today = new Date();
-    today.setDate(today.getDate() + 1); // Adiciona 1 dia
-    const day = String(today.getDate()).padStart(2, '0');
-
-    // Obtém o número do mês (0 = Janeiro, 11 = Dezembro)
-    const currentMonthIndex = today.getMonth();
-
-    // Calcula o índice do mês anterior
-    const previousMonthIndex = currentMonthIndex === 0 ? 11 : currentMonthIndex - 1;
-
-    // Lista dos nomes dos meses
-    const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
-
-    // Nome do mês atual e anterior
-    const currentMonthName = monthNames[currentMonthIndex].toUpperCase();
-    const previousMonthName = monthNames[previousMonthIndex].toUpperCase();
-
-    const year = today.getFullYear();
-    const prevYear = today.getFullYear() - 1;
-
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    doc.setFont("helvetica");
-    doc.setFontSize(10);
-
-    let y = 30; // Posição inicial
-    const maxHeight = 260; // Limite para a altura
-
-    // Função para adicionar texto com verificação de página
-    function addTextWithPageCheck(text, margin = 0, boldWords = []) {
-        const lines = doc.splitTextToSize(text, 170); // Divide o texto em linhas conforme a largura disponível
-        lines.forEach((line, lineIndex) => {
-            if (y + 8 > maxHeight) {
-                doc.addPage(); // Adiciona nova página se necessário
-                y = 20; // Reinicia a posição vertical
-            }
-
-            let x = 20; // Margem inicial
-            const words = line.split(/(\s+)/); // Divide a linha em palavras mantendo os espaços
-            const lineWidth = doc.getTextWidth(line);
-
-            // Verifica se não é a última linha para justificar
-            const justify = lineIndex < lines.length - 1 && words.length > 1
-                ? (170 - lineWidth) / (words.length - 1)
-                : 0;
-
-            words.forEach((word, wordIndex) => {
-                const cleanWord = word.replace(/[.,/()-]/g, ""); // Remove pontuação para comparação
-
-                // Define negrito se a palavra estiver na lista
-                if (
-                    boldWords.some(
-                        (boldWord) =>
-                            boldWord.replace(/[.,/()-]/g, "").toLowerCase() === cleanWord.toLowerCase()
-                    )
-                ) {
-                    doc.setFont(undefined, "bold");
-                } else {
-                    doc.setFont(undefined, "normal");
-                }
-
-                // Adiciona a palavra ao PDF
-                doc.text(word.trim(), x, y);
-                x += doc.getTextWidth(word) + (wordIndex < words.length - 1 ? justify : 0); // Adiciona espaço de justificação
-            });
-
-            y += 8; // Move para a próxima linha
-        });
-
-        y += margin; // Adiciona margem após o texto
-    }
-
-
-    doc.setFont("helvetica", "bold"); // Define a fonte para negrito
-    doc.setFontSize(16); // Aumenta o tamanho da fonte
-
-    // Calcula a posição x para centralizar o texto
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const text = `ADENDO CONTRATUAL - ${previousMonthName} ${prevYear}`;
-    const textWidth = doc.getTextWidth(text);
-    const x = (pageWidth - textWidth) / 2; // Centraliza o texto
-
-    doc.text(text, x, y); // Adiciona o texto na posição calculada
-    y += 20; // Espaço após o título
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10); // Tamanho padrão para o corpo do texto
-
-    let textoAnima = '';
-    let cnpjAnima = '';
-
-    const normalizeName = (s) => (s || '')
-        .toString()
-        .trim()
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '');
-
-    const nomeColaboradorNormalized = normalizeName(nomeColaborador);
-    const colaboradoresAnimaIds = [13];
-    const colaboradoresAnimaNomes = ['andre luis tavares'];
-    const isAnima = (colaboradorId !== null && colaboradoresAnimaIds.includes(colaboradorId))
-        || colaboradoresAnimaNomes.includes(nomeColaboradorNormalized);
-
-    if (isAnima) {
-        textoAnima = 'STELLAR ANIMA';
-        cnpjAnima = '45.284.934/0001-30';
-    } else {
-        textoAnima = 'IMPROOV';
-        cnpjAnima = '37.066.879/0001-84';
-    }
-
-    // Parte 1: Texto do contrato
-    // Definição das variáveis de texto
-    let text1 = `De um lado ${textoAnima} LTDA., CNPJ: ${cnpjAnima}, com endereço/sede na RUA BAHIA, 988, SALA 503, BAIRRO DO SALTO, BLUMENAU, SC, CEP 89.031-001;Se seguir denominado simplesmente parte CONTRATANTE, neste ato representado por DIOGO JOSÉ POFFO, nacionalidade: brasileira, estado civil: divorciado, inscrito no CPF sob o nº. 036.698.519-17, residente e domiciliado na Avenida Senador Atílio Fontana, nº 2101 apt. 308 Edifício Caravelas, bairro Balneário Pereque – Porto Belo/SC – CEP 88210-000, doravante denominada parte CONTRATANTE.`;
-
-    let text2 = `De outro, ${nomeEmpresarial} ,CNPJ: ${cnpjColaborador}, com endereço/sede na ${enderecoColaborador}, CEP: ${cep} ; se seguir denominado simplesmente parte CONTRATADA; neste ato representado por ${nomeColaborador}, brasileiro(a), ${estadoCivil}, inscrito(a) no CPF sob  o nº. ${cpfColaborador}, residente e domiciliado na ${enderecoCNPJ} e CEP: ${cepCNPJ} doravante denominada parte CONTRATADA.`;
-
-    let text3 = "Os denominados têm, entre si, justo e acertado, promover o TERMO ADITIVO, nos seguintes termos e condições.";
-
-    let text4 = "DO OBJETO";
-    let text5 = "Cláusula 1ª - O presente termo aditivo tem por escopo dar quitação aos valores devidos pelo CONTRATANTE  ao CONTRATADO  pela elaboração e desenvolvimento dos seguintes serviços que não eram parte inicial do contrato de prestação de serviços firmado em " + `${previousMonthName}:`;
-
-    const nomeEmpresarialWords = nomeEmpresarial.split(" ");
-    const nomeColaboradorWords = nomeColaborador.split(" ");
-
-
-    // Adicionando os textos ao PDF
-    addTextWithPageCheck(text1, 10, ["STELLAR", "ANIMA", "IMPROOV", "LTDA", "DIOGO", "JOSÉ", "POFFO", "37.066.879/0001-84", "45.284.934/0001-30", "036.698.519-17", "CONTRATANTE", "CONTRATADO"]);
-    addTextWithPageCheck(text2, 10, ["CONTRATADA", "CONTRATATO", ...nomeEmpresarialWords, cnpjColaborador, ...nomeColaboradorWords, cpfColaborador]);
-    addTextWithPageCheck(text3, 10, ["TERMO", "ADITIVO"]);
-    addTextWithPageCheck(text4, 0, ["DO OBJETO"]);
-    addTextWithPageCheck(text5, 10, ["Cláusula", "1ª", "CONTRATANTE", "CONTRATADO", previousMonthName]);
-
-
-    // Parte 2: Lista de tarefas/tabela
-    const table = document.getElementById('tabela-faturamento');
-    if (!table) {
-        alert('Tabela de faturamento não encontrada. Carregue o colaborador antes de gerar o adendo.');
+    if (!colaboradorId) {
+        alert('Selecione um colaborador antes de gerar o adendo.');
         return;
     }
-    // por padrão incluímos colunas 0 (nome), 2 (função) e 3 (valor)
-    let selectedColumnIndexes = [0, 2, 3];
-    // se for colaborador específico, remover a coluna de valor (índice 3)
-    const colaboradoresSemValor = ['anderson roberto de souza', 'pedro henrique munhoz da silva'];
-    if (colaboradoresSemValor.includes(nomeColaboradorNormalized)) {
-        selectedColumnIndexes = [0, 2];
+
+    const mesEl = document.getElementById('mes');
+    const anoEl = document.getElementById('ano');
+    const mes = mesEl ? parseInt(mesEl.value, 10) : NaN;
+    const ano = anoEl ? parseInt(anoEl.value, 10) : NaN;
+
+    if (!Number.isFinite(mes) || !Number.isFinite(ano)) {
+        alert('Selecione mês e ano antes de gerar o adendo.');
+        return;
     }
-    const dataPagamentoColumnIndex = 5;
-    const headers = [];
-    const rows = [];
-    let totalValor = 0; // Inicializa o total em 0
-
-    let totalLinhas = 0;
-    let rowNumber = 1; // Variável para a numeração das linhas
-
-    // Adiciona a coluna de numeração no cabeçalho
-    headers.unshift('No.'); // Adiciona "No." como o título da nova coluna
-
-    table.querySelectorAll('thead tr th').forEach((header, index) => {
-        if (selectedColumnIndexes.includes(index)) {
-            headers.push(header.innerText);
-        }
-    });
-
-    table.querySelectorAll('tbody tr').forEach(row => {
-        const cells = row.querySelectorAll('td');
-        // Detecta se a célula de função contém a marca 'Pago Parcial' (case-insensitive)
-        const funcaoTextoRawPreview = (cells[2]?.innerText || '').trim();
-        const hasPagoParcialPreview = funcaoTextoRawPreview.toLowerCase().indexOf('pago parcial') !== -1;
-        // Normaliza a célula de data para lidar com NBSP e strings vazias
-        const rawDataPagamento = (cells[dataPagamentoColumnIndex]?.innerText || '').replace(/\u00A0/g, ' ').trim();
-
-        const isDataPagamentoEmpty = (() => {
-            const v = (rawDataPagamento || '').trim();
-            if (v === '') return true;
-            if (v === '-' || v === '—') return true;
-            const lower = v.toLowerCase();
-            if (lower === 'null' || lower === 'undefined') return true;
-            return false;
-        })();
-
-        const incluirLinha = ((rawDataPagamento === '0000-00-00' || isDataPagamentoEmpty) || hasPagoParcialPreview)
-            && row.style.display !== 'none';
-
-        if (incluirLinha) {
-            // if (row.style.display !== 'none') {
-
-            const rowData = [];
-
-            // Adiciona a numeração à primeira coluna de cada linha
-            rowData.push(rowNumber);
-
-            cells.forEach((cell, index) => {
-                if (selectedColumnIndexes.includes(index)) {
-                    rowData.push(cell.innerText.trim());
-                }
-            });
-
-            // Se a linha tiver indicador de "Pago Parcial", substitui o texto da função
-            if (hasPagoParcialPreview) {
-                // função ocupa a posição 2 no rowData: [No., nome, função, valor]
-                if (rowData.length >= 3) {
-                    rowData[2] = 'Finalização completa com pagamento final';
-                }
-            }
-
-            const valorColumnIndex = 3; // Substitua pelo índice da coluna com os valores
-            const valor = parseFloat(cells[valorColumnIndex]?.innerText.trim().replace('R$ ', '').replace(/\./g, '').replace(',', '.') || 0);
-            totalValor += valor; // Soma o valor da linha ao total
-
-            // Se a função for "Animação" (comparação normalize para ignorar acentos) e o valor for 125,
-            // alterar o nome da função para "Variação de proporção" no rowData.
-            const funcaoCellIndex = 2; // índice da coluna função no table (conforme usada acima)
-            const funcaoTextoRaw = cells[funcaoCellIndex]?.innerText.trim() || '';
-            // Normaliza removendo acentos para comparação segura
-            const funcaoTextoNormalized = funcaoTextoRaw.normalize ? funcaoTextoRaw.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').toLowerCase() : funcaoTextoRaw.toLowerCase();
-            // compara sem acentos com 'animacao'
-            const isAnimacao = funcaoTextoNormalized.indexOf('animacao') !== -1 || funcaoTextoNormalized.indexOf('anima') !== -1;
-            if (isAnimacao && Math.abs((valor || 0) - 125) < 0.01) {
-                // rowData layout: [No., coluna0, coluna2(funcao), coluna3(valor)] => função está em rowData[2]
-                if (rowData.length >= 3) {
-                    rowData[2] = 'Variação de proporção';
-                }
-            } else if (isAnimacao && Math.abs((valor || 0) - 175) < 0.01) {
-                // Se for animacao com valor 175, renomear para Pós-Produção
-                if (rowData.length >= 3) {
-                    rowData[2] = 'Pós-Produção';
-                }
-            }
-
-            if (rowData.length) {
-                rows.push(rowData);
-            }
-            rowNumber++; // Incrementa o número da linha
-        }
-    });
-
-    // totalValorExtenso = `${numeroPorExtenso(totalValor)} reais`;
-    // totalValorExtenso = `Mil novecentos e vinte reais`;
-
-
-    // Adiciona a tabela ao documento PDF
-    if (rows.length > 0) {
-        const hasValorColumn = selectedColumnIndexes.includes(3);
-        // Fixar larguras para evitar "texto na vertical" quando o AutoTable comprime colunas.
-        // Page width útil (A4 retrato): 210 - 20 - 20 = 170
-        const columnStyles = hasValorColumn
-            ? {
-                0: { cellWidth: 10, halign: 'center' }, // No.
-                1: { cellWidth: 90 },                 // Nome da Imagem
-                2: { cellWidth: 50 },                 // Função
-                3: { cellWidth: 20, halign: 'right' } // Valor (R$)
-            }
-            : {
-                0: { cellWidth: 10, halign: 'center' },
-                1: { cellWidth: 110 },
-                2: { cellWidth: 50 }
-            };
-
-        doc.autoTable({
-            head: [headers],
-            body: rows,
-            startY: y,
-            theme: 'grid',
-            headStyles: { fillColor: [0, 0, 0], textColor: [255, 255, 255], halign: 'center' },
-            bodyStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0] },
-            margin: { top: 10, left: 20, right: 20 },
-            styles: { fontSize: 10, cellPadding: 2, overflow: 'linebreak' },
-            columnStyles
-        });
-        y = doc.lastAutoTable.finalY + 20; // Atualiza a posição Y após a tabela
-
-    }
-
-    // // Dados da nova tabela
-    // // const novaTabelaHeaders = ['Extra', 'Valor'];
-    // const novaTabelaHeaders = ['Categoria', 'Valor'];
-    // const novaTabelaBody = [
-    //     // ['Atendimento', '3000,00'],
-    //     // ['Bônus', '350,00'],
-    //     ['Reembolso almoço', '76,00'],
-    //     // ['Desconto de imagem: 5. HAA_HOR Fachada Fora', '-350,00'],
-    //     // ['Gasolina', '342,00'],
-    //     // ['Diaria Drone', '700,00'],
-    //     // ['Outros', '490,00']
-    // ];
-
-    // // Adiciona nova tabela ao PDF
-    // doc.autoTable({
-    //     head: [novaTabelaHeaders],
-    //     body: novaTabelaBody,
-    //     startY: y, // Posiciona abaixo da tabela anterior
-    //     theme: 'grid',
-    //     headStyles: { fillColor: [0, 0, 0], textColor: [255, 255, 255] },
-    //     bodyStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0] },
-    //     margin: { top: 10, left: 20, right: 20 },
-    //     styles: { fontSize: 10, cellPadding: 2 }
-    // });
-
-    // Atualiza a posição Y para futuras adições no PDF (caso necessário)
-    y = doc.lastAutoTable.finalY + 20;
 
     const valorFixo = prompt("Digite o valor fixo (somente número):");
-    const totalValorExtenso = prompt(`Digite o valor por extenso: (totalValor = ${totalValor})`);
-
     if (!valorFixo || isNaN(valorFixo)) {
         alert("Por favor, insira um valor numérico válido.");
         return;
     }
 
-    const novoTotal = parseFloat(totalValor) + parseFloat(valorFixo);
-
-
-    // Parte 3: Segunda parte do contrato
-    let text6 = `Cláusula 2ª - O CONTRATADO  declara que no dia ${day} de ${currentMonthName} de ${year}, recebeu do CONTRATANTE o valor de R$ ${novoTotal},00 (${totalValorExtenso}), pela entrega dos serviços acima referidos, e dá a mais ampla, geral e irrestrita quitação à dívida, renunciando seu direito de cobrança relativos a tais valores. `;
-    // let text6 = `O CONTRATADO declara que o contrato se extingue diante deste dando a mais ampla, geral e irrestrita quitação à qualquer dívida, renunciando seu direito de cobrança relativos a quaisquer valores referentes a este contrato. `;
-
-    let text7 = `E, assim, para que produza seus efeitos legais e jurídicos, por estarem juntas e contratadas, confirmamos, via assinatura eletrônica, nos moldes do art. 10 da MO 2.200/01 em vigor no Brasil, que estamos de acordo com o presente CONTRATO DE PRESTAÇÃO DE SERVIÇOS, e por estar plenamente cientes dos termos, reafirmamos o nosso dever de observar e fazer cumprir as cláusulas aqui estabelecidas, em vista de que possamos acessar a via do contrato através do endereço https://zapsign.com.br e gerar versão impressa do mesmo, considerado o fato de já tê-lo recebido por e-mail.`;
-
-    let text8 = `Blumenau/SC, ${day} de ${currentMonthName} de ${year}.`;
-
-    addTextWithPageCheck(text6, 10, ["Cláusula", "2ª", "CONTRATADO", "CONTRATANTE"]);
-    addTextWithPageCheck(text7, 10);
-    addTextWithPageCheck(text8, 10);
-
-    function checkAndAddPageIfNeeded(doc, positionY) {
-        if (positionY + 40 > maxHeight) { // Verifica se o espaço restante na página é suficiente
-            doc.addPage(); // Se não for suficiente, adiciona uma nova página
-            positionY = 20; // Reseta a posição Y para o topo da página
+    const btn = this;
+    btn.disabled = true;
+    try {
+        const res = await fetch('gerar_adendo.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                colaborador_id: colaboradorId,
+                mes: mes,
+                ano: ano,
+                valor_fixo: valorFixo
+            })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+            alert(data.message || 'Erro ao gerar adendo.');
+            return;
         }
-        return positionY; // Retorna a posição Y ajustada
+        if (data.download_url) {
+            window.open(data.download_url, '_blank');
+        } else {
+            alert('Adendo gerado com sucesso.');
+        }
+    } catch (e) {
+        console.error('Erro ao gerar adendo', e);
+        alert('Erro ao gerar adendo.');
+    } finally {
+        btn.disabled = false;
     }
-
-    // Parte 4: Assinaturas
-    y += 20; // Espaço antes das assinaturas
-
-    // Assinatura da IMPROOV LTDA.
-    y = checkAndAddPageIfNeeded(doc, y); // Verifica se há espaço para a assinatura
-    const xEmpresa = 20; // Posição inicial para a IMPROOV LTDA.
-    const xNovaColuna = 105; // Posição da nova coluna, à direita da IMPROOV LTDA.
-
-    // Primeira assinatura: IMPROOV LTDA.
-    doc.text("_________________________", xEmpresa, y);  // Linha para assinatura
-    doc.text(`${textoAnima} LTDA.`, xEmpresa, y + 8); // Nome da empresa
-    doc.text(`CNPJ: ${cnpjAnima}`, xEmpresa, y + 18); // CNPJ da empresa
-    doc.text("DIOGO JOSÉ POFFO", xEmpresa, y + 28); // Nome do responsável
-    doc.text("CPF: 036.698.519-17", xEmpresa, y + 38); // CPF do responsável
-
-    // Nova coluna à direita da assinatura IMPROOV LTDA.
-    y = checkAndAddPageIfNeeded(doc, y); // Verifica se há espaço para a assinatura
-    doc.text("_________________________", xNovaColuna, y); // Linha de assinatura na nova coluna
-    doc.text(nomeEmpresarial, xNovaColuna, y + 8); // Nome na nova coluna
-    doc.text("CNPJ: " + cnpjColaborador, xNovaColuna, y + 18); // CNPJ do colaborador
-    doc.text(`${nomeColaborador}`, xNovaColuna, y + 28); // Nome empresarial
-    doc.text("CPF: " + cpfColaborador, xNovaColuna, y + 38); // CPF do colaborador
-
-    y += 40; // Espaço após a assinatura de IMPROOV LTDA.
-
-    y += 40;
-    // // Assinaturas das testemunhas (lado a lado)
-    // const xTestemunha1 = 20;    // Posição para a primeira testemunha
-    // const xTestemunha2 = 105;   // Posição para a segunda testemunha (ajustada para segunda coluna)
-
-    // // Testemunha 1
-    // y = checkAndAddPageIfNeeded(doc, y); // Verifica se há espaço para a assinatura
-    // doc.text("_________________________", xTestemunha1, y); // Linha de assinatura
-    // doc.text("Testemunha 1", xTestemunha1, y + 8); // Nome da testemunha 1
-    // doc.text("Nome completo:", xTestemunha1, y + 18); // Detalhes de testemunha 1
-    // doc.text("CPF:", xTestemunha1, y + 28); // CPF de testemunha 1
-
-    // // Testemunha 2 (na posição horizontal diferente, criando a coluna)
-    // y = checkAndAddPageIfNeeded(doc, y); // Verifica se há espaço para a assinatura
-    // doc.text("_________________________", xTestemunha2, y); // Linha de assinatura
-    // doc.text("Testemunha 2", xTestemunha2, y + 8); // Nome da testemunha 2
-    // doc.text("Nome completo:", xTestemunha2, y + 18); // Detalhes de testemunha 2
-    // doc.text("CPF:", xTestemunha2, y + 28); // CPF de testemunha 2
-
-
-
-    const adendo = `
-        Valor total atualizado: R$ ${novoTotal},00<br>
-        Valor por extenso: ${totalValorExtenso} reais
-    `;
-
-
-    // Gerar o PDF
-    doc.save(`ADENDO_CONTRATUAL_${nomeColaborador}_${previousMonthName}_${year}.pdf`);
-
-    console.log(adendo)
 });
 
 

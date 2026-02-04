@@ -28,6 +28,11 @@ class AdendoLocalService
         $competencia = sprintf('%04d-%02d', $ano, $mes);
         $competenciaInfo = $this->dateService->getCompetenciaInfo($competencia);
 
+        $existente = $this->getAdendoByCompetencia($colaboradorId, $competencia);
+        if ($existente && in_array($existente['status'], ['assinado', 'recusado', 'expirado'], true)) {
+            throw new RuntimeException('Adendo já finalizado para esta competência.');
+        }
+
         $nomeArquivoBase = 'ADENDO_CONTRATUAL_' . ($colab['nome_colaborador'] ?? 'COLABORADOR') . '_' . $competenciaInfo['mes_nome'] . '_' . $competenciaInfo['ano'];
         $nomeArquivo = $this->sanitizeFileName($nomeArquivoBase) . '.pdf';
 
@@ -89,6 +94,26 @@ class AdendoLocalService
 
         $pdf = $this->pdfService->gerarPdf($nomeArquivo, $placeholders);
 
+        $payload = [
+            'ARQUIVO_NOME' => $nomeArquivo,
+            'COMPETENCIA' => $competencia,
+            'VALOR_FIXO' => $valorFixo,
+            'VALOR_TOTAL' => $totalComFixo,
+        ];
+        $payloadJson = json_encode($payload, JSON_UNESCAPED_UNICODE);
+        $now = (new DateTimeImmutable('now', new DateTimeZone('America/Sao_Paulo')))->format('Y-m-d H:i:s');
+
+        $this->salvarAdendo(
+            $existente ? (int)$existente['id'] : null,
+            $colaboradorId,
+            $competencia,
+            'gerado',
+            $now,
+            $payloadJson,
+            $nomeArquivo,
+            $pdf['file_path']
+        );
+
         return [
             'success' => true,
             'competencia' => $competencia,
@@ -107,6 +132,50 @@ class AdendoLocalService
             $contratanteCnpj = '45.284.934/0001-30';
         }
         return [$contratanteNome, $contratanteCnpj];
+    }
+
+    private function getAdendoByCompetencia(int $colaboradorId, string $competencia): ?array
+    {
+        $sql = "SELECT * FROM adendos WHERE colaborador_id = ? AND competencia = ? LIMIT 1";
+        $stmt = $this->conn->prepare($sql);
+        if (!$stmt) {
+            throw new RuntimeException('Falha ao preparar adendo: ' . $this->conn->error);
+        }
+        $stmt->bind_param('is', $colaboradorId, $competencia);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        $row = $res ? $res->fetch_assoc() : null;
+        $stmt->close();
+        return $row ?: null;
+    }
+
+    private function salvarAdendo(
+        ?int $id,
+        int $colaboradorId,
+        string $competencia,
+        string $status,
+        string $dataEnvio,
+        string $payload,
+        string $arquivoNome,
+        string $arquivoPath
+    ): void {
+        if ($id) {
+            $sql = "UPDATE adendos SET status = ?, data_envio = ?, payload_enviado = ?, arquivo_nome = ?, arquivo_path = ? WHERE id = ?";
+            $stmt = $this->conn->prepare($sql);
+            if (!$stmt) {
+                throw new RuntimeException('Falha ao atualizar adendo: ' . $this->conn->error);
+            }
+            $stmt->bind_param('sssssi', $status, $dataEnvio, $payload, $arquivoNome, $arquivoPath, $id);
+        } else {
+            $sql = "INSERT INTO adendos (colaborador_id, competencia, status, data_envio, payload_enviado, arquivo_nome, arquivo_path) VALUES (?, ?, ?, ?, ?, ?, ?)";
+            $stmt = $this->conn->prepare($sql);
+            if (!$stmt) {
+                throw new RuntimeException('Falha ao inserir adendo: ' . $this->conn->error);
+            }
+            $stmt->bind_param('issssss', $colaboradorId, $competencia, $status, $dataEnvio, $payload, $arquivoNome, $arquivoPath);
+        }
+        $stmt->execute();
+        $stmt->close();
     }
 
     private function isColaboradorSemValor(string $nome): bool

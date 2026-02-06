@@ -195,7 +195,7 @@ class AdendoLocalService
         if (!$isAnimacao) return $funcao;
 
         if (abs($valor - 125) < 0.01) {
-            return 'Variação de proporção';
+            return 'Pós-Produção';
         }
         if (abs($valor - 175) < 0.01) {
             return 'Pós-Produção';

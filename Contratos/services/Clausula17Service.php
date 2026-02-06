@@ -14,7 +14,7 @@ class Clausula17Service
             $trechos[] = '<strong>Cláusula 17ª.</strong> Em contrapartida à efetiva execução do objeto do presente contrato, a CONTRATANTE pagará à parte CONTRATADA o valor gradual de acordo com a quantidade de imagens virtuais entregues com suas respectivas imagens conforme exposto na tabela abaixo:<br>';
             $linhas = [];
             $linhas[] = '<span class="titulo-funcao">Modelagem de fachada:</span>';
-            $linhas[] = '<span>Valor fixo de R$ 1.000,00 (Mil reais) por modelagem de fachada de ambiente virtual desenvolvido.</span>';
+            $linhas[] = '<span>Valor fixo de R$ 1.000,00 (Mil reais) por modelagem de fachada de ambiente virtual desenvolvido.</span><br>';
             $trechos[] = implode("\n", $linhas);
             $trechos[] = $this->buildParagrafos(false);
             $texto = implode("\n", $trechos);
@@ -31,7 +31,37 @@ class Clausula17Service
             $trechos[] = '<strong>Cláusula 17ª.</strong> Em contrapartida à efetiva execução do objeto do presente contrato, a CONTRATANTE pagará à parte CONTRATADA o valor gradual de acordo com a quantidade de imagens virtuais entregues com suas respectivas imagens conforme exposto na tabela abaixo:<br>';
             $linhas = [];
             $linhas[] = '<span class="titulo-funcao">Animação:</span>';
-            $linhas[] = '<span>Valor fixo de R$ 175,00 (Cento e setenta e cinco reais) por cena de animação preview entregue e R$ 175,00 (cento e setenta e cinco reais) por cena de animação renderizada e finalizada com pós-produção.</span>';
+            $linhas[] = '<span>Valor fixo de R$ 175,00 (Cento e setenta e cinco reais) por cena de animação preview entregue e R$ 175,00 (cento e setenta e cinco reais) por cena de animação renderizada e finalizada com pós-produção.</span><br>';
+            $trechos[] = implode("\n", $linhas);
+            $trechos[] = $this->buildParagrafos(false);
+            $texto = implode("\n", $trechos);
+
+            return [
+                'texto' => $texto,
+                'funcoes' => [],
+            ];
+        }
+        // Exceção: colaborador 39 — usar bloco de finalização, porém com "cenas" (sem referência a prévias / R0)
+        if ($colaboradorId === 39) {
+            $trechos = [];
+            $trechos[] = '<strong>VII. DO PREÇO E DAS CONDIÇÕES DE PAGAMENTO</strong>';
+            $trechos[] = '<strong>Cláusula 17ª.</strong> Em contrapartida à efetiva execução do objeto do presente contrato, a CONTRATANTE pagará à parte CONTRATADA o valor gradual de acordo com a quantidade de imagens virtuais entregues com suas respectivas imagens conforme exposto na tabela abaixo:<br>';
+
+            $finalizacaoInfo = $this->getFinalizacaoInfo($this->getNivelFinalizacao($funcoes));
+            $valor = $finalizacaoInfo['valor'] ?? 'valor a definir';
+            $titulo = $finalizacaoInfo['titulo'] ?? '';
+
+            $linhas = [];
+            $linhas[] = '<p>';
+            $linhas[] = '<span class="titulo-funcao">Animação:</span>';
+            $linhas[] = '<span class="lista-seta-bullet">›</span><span class="lista-seta-text">Produção mínima esperada de 20 cenas finalizadas;</span>';
+            $linhas[] = '<span class="lista-seta-bullet">›</span><span class="lista-seta-text">Pagamento de ' . $this->escapeHtmlInline($valor) . ' por cena produzida e finalizada;</span>';
+            $linhas[] = '<span class="lista-seta-bullet">›</span><span class="lista-seta-text">Bônus quando produzir de 21 a 30 cenas finalizadas;</span>';
+            $linhas[] = '<span class="lista-seta-sub">Pagamento normal das cenas produzidas + pagamento de ' . self::BONUS_21_30 . ' cena' . (self::BONUS_21_30 > 1 ? 's' : '') . ' como bônus.</span>';
+            $linhas[] = '<span class="lista-seta-bullet">›</span><span class="lista-seta-text">Bônus quando produzir acima de 31 cenas finalizadas;</span>';
+            $linhas[] = '<span class="lista-seta-sub">Pagamento normal das cenas produzidas + pagamento de ' . self::BONUS_31_PLUS . ' cenas como bônus.</span>';
+            $linhas[] = '</p>';
+
             $trechos[] = implode("\n", $linhas);
             $trechos[] = $this->buildParagrafos(false);
             $texto = implode("\n", $trechos);
@@ -130,13 +160,24 @@ class Clausula17Service
     {
         foreach ($funcoes as $f) {
             $nome = mb_strtolower(trim($f['nome_funcao'] ?? ''), 'UTF-8');
-            if ($nome === 'finalização' || $nome === 'finalizacao') {
-                $nivel = isset($f['nivel_finalizacao']) ? (int) $f['nivel_finalizacao'] : null;
+
+            if (in_array($nome, ['finalização', 'finalizacao', 'animação', 'animacao'], true)) {
+                $nivel = null;
+
+                if (isset($f['nivel_finalizacao'])) {
+                    $nivel = (int) $f['nivel_finalizacao'];
+                } elseif (isset($f['nivel_animacao'])) {
+                    $nivel = (int) $f['nivel_animacao'];
+                } elseif (isset($f['nivel'])) {
+                    $nivel = (int) $f['nivel'];
+                }
+
                 if ($nivel && in_array($nivel, [1, 2, 3], true)) {
                     return $nivel;
                 }
             }
         }
+
         return null;
     }
 

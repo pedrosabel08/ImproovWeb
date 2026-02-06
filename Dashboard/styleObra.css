@@ -675,7 +675,7 @@ a {
     display: none;
 }
 
-@media (max-width: 1500px) {
+@media (max-width: 1560px) {
     .arquivos-head-row {
         display: none;
     }
@@ -753,7 +753,7 @@ a {
     }
 
     /* On small screens (including iPad) hide the inline quickAccess and show hamburger */
-    @media (max-width: 1500px) {
+    @media (max-width: 1560px) {
         #quickAccess {
             display: none !important;
         }
@@ -764,9 +764,9 @@ a {
     }
 
     /* Slight tweak for very small devices */
-    @media (max-width: 420px) {
+    @media (max-width: 430px) {
         .quick-mobile-menu {
-            width: 100%;
+            width: 86%;
         }
     }
 
@@ -1784,6 +1784,17 @@ table#tabela-logs tbody tr:hover {
 
 #fotograficoBtn {
     background-color: #946ffa;
+}
+
+/* Ensure the obra title doesn't wrap and scales responsively */
+#nomenclatura {
+    font-size: clamp(1.25rem, 1.2rem + 2.0vw, 2.4rem);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1;
+    max-width: 100%;
+    display: block;
 }
 
 #importTxtBtn {

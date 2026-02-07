@@ -183,8 +183,10 @@ $conn->close();
                 </div>
             </div>
             <div class="sidebar-direita">
-                
-                <div id="approval_info" style="display:none;margin-bottom:10px;padding:8px;border-radius:6px;background:#f5f7fa;font-size:14px;color:#222"></div>
+
+                <div id="approval_info"
+                    style="display:none;margin-bottom:10px;padding:8px;border-radius:6px;background:#f5f7fa;font-size:14px;color:#222">
+                </div>
                 <button id="submit_decision">Enviar aprovação</button>
 
                 <!-- Modal -->
@@ -207,6 +209,9 @@ $conn->close();
         </div>
     </div>
     <ul id="menuContexto">
+        <li id="menuAprovarAngulo" onclick="aprovarAngulo()">Aprovar ângulo <span>✅</span></li>
+        <li id="menuPedirAjusteAngulo" onclick="pedirAjusteAngulo()">Pedir ajuste <span>✏️</span></li>
+        <li id="menuSubstituirAngulo" onclick="substituirAngulo()">Substituir ângulo <span>⬆️</span></li>
         <li onclick="excluirImagem()">Excluir <span>🗑️</span></li>
     </ul>
     <div id="comentarioModal" class="modal" style="display: none;">

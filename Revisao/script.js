@@ -516,9 +516,11 @@ const modalComment = document.getElementById('modalComment');
 const idusuario = parseInt(localStorage.getItem('idusuario')); // Obtém o idusuario do localStorage
 
 let funcaoImagemId = null; // armazenado globalmente
+let currentFuncaoContext = null; // {imagem_id, funcao_imagem_id, colaborador_id, nome_funcao, nome_status, imagem_nome}
 
 
 function historyAJAX(idfuncao_imagem) {
+    funcaoImagemId = idfuncao_imagem;
     fetch(`historico.php?ajid=${idfuncao_imagem}`)
         .then(response => response.json())
         .then(response => {
@@ -559,6 +561,8 @@ function historyAJAX(idfuncao_imagem) {
 
             const { historico, imagens, pdf } = response;
             const item = historico[0];
+
+            currentFuncaoContext = item || null;
 
             const hasPdfPreferido = !!(pdf && pdf.id);
             const pdfRawUrl = hasPdfPreferido
@@ -744,6 +748,20 @@ function historyAJAX(idfuncao_imagem) {
                         const wrapper = document.createElement('div');
                         wrapper.className = 'imageWrapper';
 
+                        // Estado do ângulo (para P00 + Finalização)
+                        const anguloLiberada = (img.angulo_liberada == 1 || img.angulo_liberada === '1');
+                        const anguloSugerida = (img.angulo_sugerida == 1 || img.angulo_sugerida === '1');
+                        if (anguloLiberada) {
+                            wrapper.style.outline = '2px solid #2e7d32';
+                            wrapper.style.outlineOffset = '2px';
+                        } else if (anguloSugerida) {
+                            wrapper.style.outline = '2px solid #ef6c00';
+                            wrapper.style.outlineOffset = '2px';
+                        } else {
+                            // pendente
+                            wrapper.style.outline = '2px solid transparent';
+                        }
+
                         const imgElement = document.createElement('img');
                         // thumbnail for gallery thumbnails; clicking opens full image via mostrarImagemCompleta
                         const fullImageUrl = `https://improov.com.br/flow/ImproovWeb/${encodeURI(img.imagem)}`;
@@ -758,6 +776,7 @@ function historyAJAX(idfuncao_imagem) {
 
                         imgElement.addEventListener('contextmenu', (event) => {
                             event.preventDefault();
+                            ap_imagem_id = img.id;
                             abrirMenuContexto(event.pageX, event.pageY, img.id, fullImageUrl);
                         });
 
@@ -942,6 +961,121 @@ function abrirMenuContexto(x, y, id, src) {
     menu.style.top = `${y}px`;
     menu.style.left = `${x}px`;
     menu.style.display = 'block';
+
+    // Mostra/oculta opções de ângulo apenas para P00 + Finalização
+    try {
+        const isP00 = (currentFuncaoContext && currentFuncaoContext.nome_status === 'P00');
+        const isFinalizacao = (currentFuncaoContext && String(currentFuncaoContext.nome_funcao || '').toLowerCase() === 'finalização');
+        const showAngleMenu = !!(isP00 && isFinalizacao);
+
+        const m1 = document.getElementById('menuAprovarAngulo');
+        const m2 = document.getElementById('menuPedirAjusteAngulo');
+        const m3 = document.getElementById('menuSubstituirAngulo');
+        if (m1) m1.style.display = showAngleMenu ? 'flex' : 'none';
+        if (m2) m2.style.display = showAngleMenu ? 'flex' : 'none';
+        if (m3) m3.style.display = showAngleMenu ? 'flex' : 'none';
+    } catch (e) {
+        // ignore
+    }
+}
+
+async function aprovarAngulo() {
+    const menu = document.getElementById('menuContexto');
+    const historico_id = parseInt(menu.getAttribute('data-id') || '0', 10);
+    if (!historico_id || !currentFuncaoContext) return;
+
+    try {
+        const res = await fetch('atualizar_angulo.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                acao: 'aprovar',
+                imagem_id: parseInt(currentFuncaoContext.imagem_id, 10),
+                funcao_imagem_id: parseInt(currentFuncaoContext.funcao_imagem_id, 10),
+                historico_id
+            })
+        });
+        const data = await res.json();
+        if (!data.success) {
+            alert(data.message || 'Erro ao aprovar ângulo.');
+        }
+    } catch (e) {
+        console.error(e);
+        alert('Erro ao aprovar ângulo.');
+    }
+
+    menu.style.display = 'none';
+    historyAJAX(funcaoImagemId);
+}
+
+async function pedirAjusteAngulo() {
+    const menu = document.getElementById('menuContexto');
+    const historico_id = parseInt(menu.getAttribute('data-id') || '0', 10);
+    if (!historico_id || !currentFuncaoContext) return;
+
+    const motivo = prompt('Descreva o motivo do ajuste para este ângulo:');
+    if (!motivo) {
+        menu.style.display = 'none';
+        return;
+    }
+
+    try {
+        const res = await fetch('atualizar_angulo.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                acao: 'ajuste',
+                motivo,
+                imagem_id: parseInt(currentFuncaoContext.imagem_id, 10),
+                funcao_imagem_id: parseInt(currentFuncaoContext.funcao_imagem_id, 10),
+                historico_id
+            })
+        });
+        const data = await res.json();
+        if (!data.success) {
+            alert(data.message || 'Erro ao solicitar ajuste.');
+        }
+    } catch (e) {
+        console.error(e);
+        alert('Erro ao solicitar ajuste.');
+    }
+
+    menu.style.display = 'none';
+    historyAJAX(funcaoImagemId);
+}
+
+function substituirAngulo() {
+    const menu = document.getElementById('menuContexto');
+    const historico_id = parseInt(menu.getAttribute('data-id') || '0', 10);
+    if (!historico_id || !currentFuncaoContext) return;
+
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = async () => {
+        const file = input.files && input.files[0];
+        if (!file) return;
+
+        const fd = new FormData();
+        fd.append('historico_id', String(historico_id));
+        fd.append('imagem', file);
+
+        try {
+            const res = await fetch('substituir_angulo.php', { method: 'POST', body: fd });
+            const data = await res.json();
+            if (!data.success) {
+                alert(data.message || 'Erro ao substituir ângulo.');
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Erro ao substituir ângulo.');
+        }
+
+        historyAJAX(funcaoImagemId);
+    };
+
+    menu.style.display = 'none';
+    input.click();
 }
 
 function excluirImagem() {

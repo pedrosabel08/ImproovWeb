@@ -71,17 +71,21 @@ if ($_SERVER["REQUEST_METHOD"] == "GET") {
         $info = ($infoRes && $infoRes->num_rows > 0) ? $infoRes->fetch_assoc() : null;
 
         if ($info) {
-            $statusUlt = mb_strtolower((string)($info['status_ultimo'] ?? ''), 'UTF-8');
-            $statusAtual = mb_strtolower((string)($info['status_atual'] ?? ''), 'UTF-8');
+            $statusUlt = mb_strtolower((string) ($info['status_ultimo'] ?? ''), 'UTF-8');
+            $statusAtual = mb_strtolower((string) ($info['status_atual'] ?? ''), 'UTF-8');
 
             $funcaoId = isset($info['funcao_id']) ? intval($info['funcao_id']) : 0;
             $isCadernoOuFiltro = in_array($funcaoId, [1, 8], true);
 
             $possibleStatuses = [
-                'em aprovação', 'em aprovacao',
-                'ajuste', 'ajustes',
-                'aprovado com ajustes', 'aprovado com ajuste',
-                'aprovado_com_ajustes', 'aprovado_com_ajuste'
+                'em aprovação',
+                'em aprovacao',
+                'ajuste',
+                'ajustes',
+                'aprovado com ajustes',
+                'aprovado com ajuste',
+                'aprovado_com_ajustes',
+                'aprovado_com_ajuste'
             ];
             $isEmAprovacao = in_array(trim($statusUlt), $possibleStatuses, true) || in_array(trim($statusAtual), $possibleStatuses, true);
 
@@ -105,15 +109,22 @@ if ($_SERVER["REQUEST_METHOD"] == "GET") {
     }
 
     // Query para buscar imagens associadas
+    // Para P00 + Finalização, também retorna o estado do ângulo (angulos_imagens)
+    // Observação: usamos agregação MAX para evitar problemas com ONLY_FULL_GROUP_BY.
     $sqlImagens = "SELECT 
     hi.*,
     COUNT(ci.id) AS comment_count,
     CASE 
         WHEN COUNT(ci.id) > 0 THEN true
         ELSE false
-    END AS has_comments
+    END AS has_comments,
+    MAX(COALESCE(ai.liberada, 0)) AS angulo_liberada,
+    MAX(COALESCE(ai.sugerida, 0)) AS angulo_sugerida,
+    MAX(COALESCE(ai.motivo_sugerida, '')) AS angulo_motivo
 FROM historico_aprovacoes_imagens hi
 LEFT JOIN comentarios_imagem ci ON ci.ap_imagem_id = hi.id
+LEFT JOIN funcao_imagem fimg ON fimg.idfuncao_imagem = hi.funcao_imagem_id
+LEFT JOIN angulos_imagens ai ON ai.historico_id = hi.id AND ai.imagem_id = fimg.imagem_id
 WHERE hi.funcao_imagem_id = $idFuncaoSelecionada
 GROUP BY hi.id ORDER BY has_comments DESC, comment_count DESC";
 

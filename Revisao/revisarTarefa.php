@@ -58,7 +58,8 @@ function enviarNotificacaoSlack($slackUserId, $mensagem, &$log)
  */
 function normalize_name($s)
 {
-    if (!$s) return '';
+    if (!$s)
+        return '';
     // tenta transliterar acentos
     $s = iconv('UTF-8', 'ASCII//TRANSLIT', $s);
     $s = strtolower($s);
@@ -117,6 +118,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         default:
             echo json_encode(['success' => false, 'message' => 'Tipo de revisão inválido.']);
             exit;
+    }
+
+    // Para P00 + Finalização, só permite aprovar a função se TODOS os ângulos estiverem liberados.
+    if (in_array($status, ['Aprovado', 'Aprovado com ajustes'], true) && $imagem_id) {
+        $isFinalizacao = (mb_strtolower((string) $nome_funcao, 'UTF-8') === 'finalização');
+        if ($isFinalizacao) {
+            $status_nome_atual = null;
+            $stmtSt = $conn->prepare("SELECT s.nome_status
+                FROM imagens_cliente_obra i
+                JOIN status_imagem s ON s.idstatus = i.status_id
+                WHERE i.idimagens_cliente_obra = ?
+                LIMIT 1");
+            if ($stmtSt) {
+                $stmtSt->bind_param("i", $imagem_id);
+                $stmtSt->execute();
+                $stmtSt->bind_result($status_nome_atual);
+                $stmtSt->fetch();
+                $stmtSt->close();
+            }
+
+            if ($status_nome_atual === 'P00') {
+                $total = 0;
+                $aprovados = 0;
+                $sql = "SELECT
+                        COUNT(*) AS total,
+                        SUM(CASE WHEN ai.liberada = 1 AND ai.sugerida = 0 THEN 1 ELSE 0 END) AS aprovados
+                    FROM historico_aprovacoes_imagens hi
+                    LEFT JOIN angulos_imagens ai
+                        ON ai.historico_id = hi.id AND ai.imagem_id = ?
+                    WHERE hi.funcao_imagem_id = ?";
+                if ($chk = $conn->prepare($sql)) {
+                    $chk->bind_param('ii', $imagem_id, $idfuncao_imagem);
+                    $chk->execute();
+                    $res = $chk->get_result();
+                    if ($res && ($row = $res->fetch_assoc())) {
+                        $total = (int) ($row['total'] ?? 0);
+                        $aprovados = (int) ($row['aprovados'] ?? 0);
+                    }
+                    $chk->close();
+                }
+
+                if ($total <= 0) {
+                    echo json_encode(['success' => false, 'message' => 'Nenhum ângulo importado para aprovação (P00).']);
+                    exit;
+                }
+                if ($aprovados < $total) {
+                    echo json_encode(['success' => false, 'message' => "Ainda existem ângulos pendentes/ajuste ($aprovados/$total)."]);
+                    exit;
+                }
+            }
+        }
     }
 
     if ($tipoRevisao === "ajuste") {
@@ -199,28 +251,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     @$conn->query("CREATE INDEX idx_angulos_entrega_item ON angulos_imagens(entrega_item_id)");
                                 }
 
-                                // Remove vínculos anteriores deste item (reaprovações repetem a lista)
-                                if ($del = $conn->prepare("DELETE FROM angulos_imagens WHERE entrega_item_id = ?")) {
-                                    $del->bind_param("i", $entrega_item_id);
-                                    $del->execute();
-                                    $del->close();
+                                // Para P00: não sobrescreve decisões de ângulo.
+                                // Apenas vincula entrega_item_id aos ângulos existentes dessa função.
+                                if (
+                                    $upAi = $conn->prepare("UPDATE angulos_imagens ai
+                                    JOIN historico_aprovacoes_imagens hi ON hi.id = ai.historico_id
+                                    SET ai.entrega_item_id = ?
+                                    WHERE ai.imagem_id = ? AND hi.funcao_imagem_id = ?")
+                                ) {
+                                    $upAi->bind_param('iii', $entrega_item_id, $imagem_id, $idfuncao_imagem);
+                                    $upAi->execute();
+                                    $upAi->close();
                                 }
-
-                                // Busca TODOS os históricos de imagem desta função
-                                $stmtHistAll = $conn->prepare("SELECT id FROM historico_aprovacoes_imagens WHERE funcao_imagem_id = ? ORDER BY id ASC");
-                                $stmtHistAll->bind_param("i", $idfuncao_imagem);
-                                $stmtHistAll->execute();
-                                $rsAll = $stmtHistAll->get_result();
-                                $inserted = 0;
-                                if ($ins = $conn->prepare("INSERT INTO angulos_imagens (liberada, sugerida, motivo_sugerida, imagem_id, historico_id, entrega_item_id) VALUES (1, 0, '', ?, ?, ?)")) {
-                                    while ($rowH = $rsAll->fetch_assoc()) {
-                                        $hid = intval($rowH['id']);
-                                        $ins->bind_param("iii", $imagem_id, $hid, $entrega_item_id);
-                                        if ($ins->execute()) $inserted++;
-                                    }
-                                    $ins->close();
-                                }
-                                $stmtHistAll->close();
 
                                 // Atualiza o status do item da entrega para pendente de envio ao cliente
                                 if ($up = $conn->prepare("UPDATE entregas_itens SET status = 'Entrega pendente' WHERE id = ?")) {
@@ -229,7 +271,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     $up->close();
                                 }
 
-                                $resultadoFinal['logs'][] = "P00: $inserted ângulo(s) liberado(s) em angulos_imagens para entrega_item_id=$entrega_item_id.";
+                                $resultadoFinal['logs'][] = "P00: entrega_item_id=$entrega_item_id vinculado aos ângulos (sem sobrescrever status).";
                             } else {
                                 // Fluxo padrão (R00..EF): usa o último historico para preencher entregas_itens.historico_id
                                 $stmtHistImg = $conn->prepare("SELECT id FROM historico_aprovacoes_imagens WHERE funcao_imagem_id = ? ORDER BY id DESC LIMIT 1");
@@ -435,11 +477,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         foreach ($responseData['members'] as $member) {
             // collect candidate name fields from Slack member object
             $candidates = [];
-            if (isset($member['real_name'])) $candidates[] = $member['real_name'];
-            if (isset($member['profile']['real_name_normalized'])) $candidates[] = $member['profile']['real_name_normalized'];
-            if (isset($member['profile']['display_name'])) $candidates[] = $member['profile']['display_name'];
-            if (isset($member['profile']['display_name_normalized'])) $candidates[] = $member['profile']['display_name_normalized'];
-            if (isset($member['profile']['email'])) $candidates[] = $member['profile']['email'];
+            if (isset($member['real_name']))
+                $candidates[] = $member['real_name'];
+            if (isset($member['profile']['real_name_normalized']))
+                $candidates[] = $member['profile']['real_name_normalized'];
+            if (isset($member['profile']['display_name']))
+                $candidates[] = $member['profile']['display_name'];
+            if (isset($member['profile']['display_name_normalized']))
+                $candidates[] = $member['profile']['display_name_normalized'];
+            if (isset($member['profile']['email']))
+                $candidates[] = $member['profile']['email'];
 
             // normalize candidate values
             $normalizedCandidates = array_map('normalize_name', $candidates);
@@ -449,7 +496,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             // compare normalized versions and collect matches (do not stop at first)
             foreach ($normalizedTargets as $t) {
-                if ($t === '') continue;
+                if ($t === '')
+                    continue;
                 if (in_array($t, $normalizedCandidates, true)) {
                     $userIDs[] = $member['id'];
                     $resultadoFinal['logs'][] = 'Match encontrado: ' . $member['id'] . ' para alvo: ' . $t;
@@ -488,16 +536,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $tokens = array_filter(explode(' ', $t));
                 foreach ($responseData['members'] as $member) {
                     $candidates = [];
-                    if (isset($member['real_name'])) $candidates[] = $member['real_name'];
-                    if (isset($member['profile']['real_name_normalized'])) $candidates[] = $member['profile']['real_name_normalized'];
-                    if (isset($member['profile']['display_name'])) $candidates[] = $member['profile']['display_name'];
-                    if (isset($member['profile']['display_name_normalized'])) $candidates[] = $member['profile']['display_name_normalized'];
-                    if (isset($member['profile']['email'])) $candidates[] = $member['profile']['email'];
+                    if (isset($member['real_name']))
+                        $candidates[] = $member['real_name'];
+                    if (isset($member['profile']['real_name_normalized']))
+                        $candidates[] = $member['profile']['real_name_normalized'];
+                    if (isset($member['profile']['display_name']))
+                        $candidates[] = $member['profile']['display_name'];
+                    if (isset($member['profile']['display_name_normalized']))
+                        $candidates[] = $member['profile']['display_name_normalized'];
+                    if (isset($member['profile']['email']))
+                        $candidates[] = $member['profile']['email'];
                     $normalizedCandidates = array_map('normalize_name', $candidates);
                     $candidateStr = implode(' ', $normalizedCandidates);
                     $allTokensPresent = true;
                     foreach ($tokens as $tok) {
-                        if ($tok === '') continue;
+                        if ($tok === '')
+                            continue;
                         if (strpos($candidateStr, $tok) === false) {
                             $allTokensPresent = false;
                             break;

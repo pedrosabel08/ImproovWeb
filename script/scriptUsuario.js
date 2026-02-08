@@ -8,6 +8,8 @@ function buscaEndereco(cep) {
                 if (data.bairro != null) {
                     document.getElementById('bairro').value = data.bairro;
                     document.getElementById('rua').value = data.logradouro;
+                    document.getElementById('uf').value = data.uf;
+                    document.getElementById('localidade').value = data.localidade;
                 }
             }
         });
@@ -77,3 +79,31 @@ document.getElementById("userForm").addEventListener("submit", function (e) {
             }).showToast();
         });
 });
+
+// Preview para o input de thumb
+const thumbInput = document.getElementById('thumb');
+if (thumbInput) {
+    thumbInput.addEventListener('change', function (e) {
+        const file = this.files && this.files[0];
+        const preview = document.getElementById('avatarPreview');
+        if (file && preview) {
+            const reader = new FileReader();
+            reader.onload = function (ev) {
+                if (preview.tagName.toLowerCase() === 'img') {
+                    preview.src = ev.target.result;
+                } else {
+                    // replace inner HTML with img
+                    preview.innerHTML = '';
+                    const img = document.createElement('img');
+                    img.src = ev.target.result;
+                    img.style.width = '84px';
+                    img.style.height = '84px';
+                    img.style.borderRadius = '50%';
+                    preview.parentNode.replaceChild(img, preview);
+                    img.id = 'avatarPreview';
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+}

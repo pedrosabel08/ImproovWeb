@@ -2398,6 +2398,124 @@ span.aprovadaComAjustes {
   z-index: 2;
 }
 
+/* ===== Perfil do colaborador no header ===== */
+.perfil-colaborador {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #ffffff;
+  padding: 8px 12px;
+  border-radius: 12px;
+  box-shadow: 0 8px 20px rgba(16, 24, 40, 0.06);
+  border: 1px solid rgba(15, 23, 42, 0.04);
+  cursor: pointer;
+  transition:
+    transform 120ms ease,
+    box-shadow 120ms ease;
+  position: relative;
+  min-width: 180px;
+}
+
+.perfil-colaborador .left {
+  flex: 0 0 auto;
+}
+
+.perfil-colaborador .left img#thumb-colab {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 4px 12px rgba(2, 6, 23, 0.06);
+  display: block;
+}
+
+/* Fallback avatar when there is no photo: show initial */
+.perfil-colaborador .left #thumb-colab.avatar-initial {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: #fff;
+  font-size: 16px;
+  background: linear-gradient(135deg, #6ee7b7 0%, #60a5fa 100%);
+  box-shadow: 0 4px 12px rgba(2, 6, 23, 0.06);
+  user-select: none;
+}
+
+.perfil-colaborador .left #thumb-colab.avatar-initial[data-bg] {
+  background: attr(
+    data-bg color,
+    linear-gradient(135deg, #6ee7b7 0%, #60a5fa 100%)
+  );
+}
+
+.perfil-colaborador .right {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.perfil-colaborador #nome-colab {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.perfil-colaborador #funcao-colab {
+  font-size: 12px;
+  color: #667085;
+  margin-top: 2px;
+  text-transform: capitalize;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* small chevron to indicate clickability */
+/* .perfil-colaborador::after {
+  content: "";
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid rgba(99, 102, 241, 0.85);
+  opacity: 0.9;
+} */
+
+.perfil-colaborador:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 38px rgba(2, 6, 23, 0.1);
+}
+
+@media (max-width: 600px) {
+  .perfil-colaborador {
+    padding: 6px 8px;
+    border-radius: 10px;
+  }
+  .perfil-colaborador .left img#thumb-colab {
+    width: 36px;
+    height: 36px;
+  }
+  .perfil-colaborador #nome-colab {
+    font-size: 13px;
+  }
+  .perfil-colaborador #funcao-colab {
+    display: none;
+  }
+}
+
 .notificacoes-container h3 {
   margin: 0 0 8px 0;
   font-size: 14px;

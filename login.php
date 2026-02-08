@@ -30,7 +30,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $login = htmlspecialchars(trim($_POST['login']));
     $senha = htmlspecialchars(trim($_POST['senha']));
 
-    $sql = "SELECT idusuario, nome_usuario, nivel_acesso, idcolaborador FROM usuario WHERE login = ? AND senha = ? AND ativo = 1";
+    $sql = "SELECT idusuario, nome_usuario, nivel_acesso, idcolaborador, c.nome as cargo_colaborador FROM usuario u LEFT JOIN usuario_cargo uc ON uc.usuario_id = u.idusuario LEFT JOIN cargo c ON uc.cargo_id = c.id WHERE login = ? AND senha = ? AND ativo = 1";
     $stmt = $conn->prepare($sql);
     $stmt->bind_param("ss", $login, $senha);
     $stmt->execute();
@@ -44,6 +44,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $_SESSION['nome_usuario'] = $row['nome_usuario'];
         $_SESSION['nivel_acesso'] = $row['nivel_acesso'];
         $_SESSION['idcolaborador'] = $row['idcolaborador'];
+        $_SESSION['cargo_colaborador'] = $row['cargo_colaborador'];
         $_SESSION['logado'] = true;
 
         // Regenerar o ID de sessão após login bem-sucedido para garantir unicidade

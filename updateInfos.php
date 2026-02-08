@@ -124,6 +124,66 @@ if (isset($_SESSION['idusuario'])) {
     }
     $stmtInformacoes->close();
 
+    // Handle uploaded thumbnail (campo 'thumb')
+    if (!empty($_FILES['thumb']) && isset($_FILES['thumb']['error']) && $_FILES['thumb']['error'] === UPLOAD_ERR_OK) {
+        $file = $_FILES['thumb'];
+        $maxSize = 5 * 1024 * 1024; // 5MB
+        if ($file['size'] > $maxSize) {
+            // ignore file but log
+            @file_put_contents($logFile, date('Y-m-d H:i:s') . " | Thumb too large: {$file['size']}\n", FILE_APPEND | LOCK_EX);
+        } else {
+            $finfo = new finfo(FILEINFO_MIME_TYPE);
+            $mime = $finfo->file($file['tmp_name']);
+            $allowed = [
+                'image/jpeg' => 'jpg',
+                'image/png'  => 'png',
+                'image/webp' => 'webp',
+                'image/gif'  => 'gif'
+            ];
+            if (!isset($allowed[$mime])) {
+                @file_put_contents($logFile, date('Y-m-d H:i:s') . " | Thumb invalid mime: $mime\n", FILE_APPEND | LOCK_EX);
+            } else {
+                $ext = $allowed[$mime];
+                $uploadDir = __DIR__ . '/uploads/colaboradores';
+                if (!is_dir($uploadDir)) {
+                    @mkdir($uploadDir, 0755, true);
+                }
+                $safeBase = preg_replace('/[^A-Za-z0-9_-]/', '', pathinfo($file['name'], PATHINFO_FILENAME));
+                $filename = $usuario_id . '_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+                $dest = $uploadDir . '/' . $filename;
+                if (@move_uploaded_file($file['tmp_name'], $dest)) {
+                    $thumbPath = 'uploads/colaboradores/' . $filename;
+                    // attempt to update DB; if column missing, try to add it
+                    $updateThumbSql = "UPDATE informacoes_usuario SET thumb = ? WHERE usuario_id = ?";
+                    $stmtThumb = $conn->prepare($updateThumbSql);
+                    if ($stmtThumb === false) {
+                        // try to add column and prepare again
+                        $alter = "ALTER TABLE informacoes_usuario ADD COLUMN thumb VARCHAR(255) DEFAULT NULL";
+                        if ($conn->query($alter) === false) {
+                            @file_put_contents($logFile, date('Y-m-d H:i:s') . ' | Failed to add thumb column: ' . $conn->error . PHP_EOL, FILE_APPEND | LOCK_EX);
+                        }
+                        $stmtThumb = $conn->prepare($updateThumbSql);
+                    }
+                    if ($stmtThumb !== false) {
+                        if ($stmtThumb->bind_param('si', $thumbPath, $usuario_id) !== false) {
+                            if ($stmtThumb->execute() === false) {
+                                @file_put_contents($logFile, date('Y-m-d H:i:s') . ' | Failed to update thumb: ' . $stmtThumb->error . PHP_EOL, FILE_APPEND | LOCK_EX);
+                            } else {
+                                // set session so header/avatar updates immediately
+                                if (session_status() !== PHP_SESSION_ACTIVE) session_start();
+                                $_SESSION['foto_colaborador'] = $thumbPath;
+                                $response['thumb'] = $thumbPath;
+                            }
+                        }
+                        $stmtThumb->close();
+                    }
+                } else {
+                    @file_put_contents($logFile, date('Y-m-d H:i:s') . " | move_uploaded_file failed\n", FILE_APPEND | LOCK_EX);
+                }
+            }
+        }
+    }
+
     // Atualizando o endereço (tabela endereco)
     $queryEndereco = "INSERT INTO endereco (usuario_id, rua, numero, bairro, complemento, cep)
         VALUES (?, ?, ?, ?, ?, ?)

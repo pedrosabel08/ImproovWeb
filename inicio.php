@@ -94,8 +94,8 @@ if ($stmt_contrato) {
     $stmt_contrato->execute();
     $res_contrato = $stmt_contrato->get_result();
     if ($res_contrato && ($row_contrato = $res_contrato->fetch_assoc())) {
-        $contratoStatus = (string)($row_contrato['status'] ?? '');
-        $contratoSignUrl = (string)($row_contrato['sign_url'] ?? '');
+        $contratoStatus = (string) ($row_contrato['status'] ?? '');
+        $contratoSignUrl = (string) ($row_contrato['sign_url'] ?? '');
 
         $statusNorm = strtolower(trim($contratoStatus));
         $statusPendente = in_array($statusNorm, ['enviado', 'criado'], true);
@@ -152,7 +152,27 @@ $conn->close();
         <main>
             <header>
                 <div class="top">
-                    <h3 id="saudacao"></h3>
+                    <!-- <h3 id="saudacao"></h3> -->
+                    <a class="perfil-colaborador" href="infos.php" aria-label="Abrir perfil">
+                        <div class="left">
+                            <?php
+                            $foto_colab = trim((string)($_SESSION['foto_colaborador'] ?? ''));
+                            $nome_colab = trim((string)($_SESSION['nome_usuario'] ?? ''));
+                            $initial = '';
+                            if ($nome_colab !== '') {
+                                $initial = mb_strtoupper(mb_substr($nome_colab, 0, 1, 'UTF-8'));
+                            }
+                            if ($foto_colab !== ''): ?>
+                                <img src="<?php echo htmlspecialchars($foto_colab); ?>" alt="<?php echo htmlspecialchars($nome_colab); ?>" id="thumb-colab">
+                            <?php else: ?>
+                                <div id="thumb-colab" class="avatar-initial"><?php echo htmlspecialchars($initial); ?></div>
+                            <?php endif; ?>
+                        </div>
+                        <div class="right">
+                            <h4 id="nome-colab"><?php echo htmlspecialchars($nome_colab); ?></h4>
+                            <span id="funcao-colab"><?php echo htmlspecialchars($_SESSION['cargo_colaborador'] ?? ''); ?></span>
+                        </div>
+                    </a>
                     <img id="gif" src="gif/assinatura_preto.gif" alt="Assinatura" style="width: 200px;">
                 </div>
                 <nav>
@@ -227,7 +247,8 @@ $conn->close();
                 </div>
                 <div class="kanban-box" id="aprovado-ajustes">
                     <div class="header" style="background-color: #ae90ffff;">
-                        <div class="title"><i class="fa-solid fa-exclamation-circle"></i><span>Aprovado com ajustes</span></div>
+                        <div class="title"><i class="fa-solid fa-exclamation-circle"></i><span>Aprovado com
+                                ajustes</span></div>
                         <span class="task-count"></span>
                     </div>
                     <div class="content">

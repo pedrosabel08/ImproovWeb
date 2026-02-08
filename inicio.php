@@ -186,7 +186,7 @@ $conn->close();
                         <!-- Mini calendar (semana) -->
 
                         <div id="mini-calendar-container"
-                            style="display:inline-block; vertical-align: middle; margin-right:8px;">
+                            style="display:none; vertical-align: middle; margin-right:8px;">
                             <div id="mini-calendar" style="width:350px; height:80px;"></div>
                         </div>
                         <select name="idcolab" id="idcolab">

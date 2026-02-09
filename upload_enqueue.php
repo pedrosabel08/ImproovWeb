@@ -53,6 +53,31 @@ if (!is_dir($stagingDir)) {
 // Garantir permissões amplas para que o serviço (systemd) consiga mover/excluir
 @chmod($stagingDir, 0777);
 
+// --- helpers: avoid race with worker claiming meta file ---
+// If the worker already claimed `id.json` (renamed to `id.json.processing.*`),
+// a later file_put_contents on the old path would recreate `id.json` and leave
+// a dangling job that will fail with "Arquivo staged não encontrado".
+function _resolve_current_meta_path(string $metaFile): string
+{
+    if (is_file($metaFile)) return $metaFile;
+    $candidates = glob($metaFile . '.processing*') ?: [];
+    if (empty($candidates)) return $metaFile;
+
+    // pick the most recently modified processing file
+    usort($candidates, function ($a, $b) {
+        return (@filemtime($b) ?: 0) <=> (@filemtime($a) ?: 0);
+    });
+    return $candidates[0];
+}
+
+function _write_meta_safely(string $metaFile, array $meta): void
+{
+    $target = _resolve_current_meta_path($metaFile);
+    @file_put_contents($target, json_encode($meta, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
+    // Ensure worker can rename/remove
+    @chmod($target, 0666);
+}
+
 // Helpers necessários para montar nome_final como no uploadFinal.php
 if (!function_exists('removerTodosAcentos')) {
     function removerTodosAcentos($str)
@@ -112,9 +137,7 @@ for ($i = 0; $i < $total; $i++) {
     }
 
     $metaFile = "$stagingDir/{$id}.json";
-    file_put_contents($metaFile, json_encode($meta, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
-    // Permitir que o worker consiga renomear/remover o JSON
-    @chmod($metaFile, 0666);
+    _write_meta_safely($metaFile, $meta);
 
     // prepara resultado SFTP por arquivo (será retornado ao cliente)
     $sftpResult = [
@@ -146,7 +169,7 @@ for ($i = 0; $i < $total; $i++) {
                 $remotePath = rtrim($remoteDir, '/') . '/' . basename($destFile);
                 if ($sftp->put($remotePath, $destFile, \phpseclib3\Net\SFTP::SOURCE_LOCAL_FILE)) {
                     $meta['remote_staged_path'] = $remotePath;
-                    file_put_contents($metaFile, json_encode($meta, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
+                    _write_meta_safely($metaFile, $meta);
                     $sftpResult['success'] = true;
                     $sftpResult['remote_path'] = $remotePath;
                 } else {
@@ -202,7 +225,7 @@ for ($i = 0; $i < $total; $i++) {
 
         if (!empty($logIds)) {
             $meta['log_ids'] = $logIds;
-            file_put_contents($metaFile, json_encode($meta, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
+            _write_meta_safely($metaFile, $meta);
             // Se inserimos logs vinculados a funções, limpar a flag de pendência de upload
             try {
                 if (!empty($dataIdFuncoes)) {

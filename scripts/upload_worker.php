@@ -359,30 +359,43 @@ function create_log_entries_if_missing(string $metaPath, array &$meta, string $r
     if (!isset($conn)) return;
     if (!empty($meta['log_ids'])) return;
 
+    // Ensure connection is still alive before inserts
+    if (function_exists('ensure_db_connection_local')) {
+        ensure_db_connection_local();
+    }
+
     $createIds = [];
     $dataIdFuncoes = $meta['dataIdFuncoes'] ?? [];
     $colaborador_id = $meta['post']['idcolaborador'] ?? null;
+
+    // allow caller to set initial status; default to enfileirado
+    $status = $meta['log_status'] ?? 'enfileirado';
 
     if (empty($dataIdFuncoes)) {
         // insert a single row with funcao_imagem_id = NULL
         $q = $conn->prepare("INSERT INTO arquivo_log (funcao_imagem_id, caminho, nome_arquivo, tamanho, tipo, colaborador_id, status) VALUES (NULL,?,?,?,?,?,?)");
         if ($q) {
-            $status = 'enfileirado';
-            $q->bind_param('ssisss', $remote_path, $nome_final, $tamanho, $tipo, $colaborador_id, $status);
+            $colaborador_id_int = $colaborador_id !== null ? (int) $colaborador_id : null;
+            $q->bind_param('ssisis', $remote_path, $nome_final, $tamanho, $tipo, $colaborador_id_int, $status);
             $q->execute();
             $createIds[] = $q->insert_id;
             $q->close();
+        } else {
+            error_log('[upload_worker] DB: failed to prepare INSERT (NULL funcao_imagem_id): ' . ($conn->error ?? ''));
         }
     } else {
         $stmt = $conn->prepare("INSERT INTO arquivo_log (funcao_imagem_id, caminho, nome_arquivo, tamanho, tipo, colaborador_id, status) VALUES (?,?,?,?,?,?,?)");
         if ($stmt) {
-            $status = 'enfileirado';
             foreach ($dataIdFuncoes as $fid) {
-                $stmt->bind_param('ississs', $fid, $remote_path, $nome_final, $tamanho, $tipo, $colaborador_id, $status);
+                $fid_int = (int) $fid;
+                $colaborador_id_int = $colaborador_id !== null ? (int) $colaborador_id : null;
+                $stmt->bind_param('issisis', $fid_int, $remote_path, $nome_final, $tamanho, $tipo, $colaborador_id_int, $status);
                 $stmt->execute();
                 $createIds[] = $stmt->insert_id;
             }
             $stmt->close();
+        } else {
+            error_log('[upload_worker] DB: failed to prepare INSERT (with funcao_imagem_id): ' . ($conn->error ?? ''));
         }
     }
 
@@ -396,14 +409,40 @@ function update_log_entries_status(array $logIds = null, string $status = '', $c
 {
     global $conn;
     if (!isset($conn) || empty($logIds)) return;
+
+    // Ensure connection is still alive before updates
+    if (function_exists('ensure_db_connection_local')) {
+        ensure_db_connection_local();
+    }
+
+    // Bind tamanho as string so NULL truly stays NULL (and COALESCE keeps old value).
     $sql = "UPDATE arquivo_log SET status = ?, caminho = COALESCE(?, caminho), nome_arquivo = COALESCE(?, nome_arquivo), tamanho = COALESCE(?, tamanho), tipo = COALESCE(?, tipo) WHERE id = ?";
     $stmt = $conn->prepare($sql);
-    if (!$stmt) return;
+    if (!$stmt) {
+        error_log('[upload_worker] DB: failed to prepare UPDATE arquivo_log: ' . ($conn->error ?? ''));
+        return;
+    }
+    $tamanhoParam = ($tamanho === null) ? null : (string) $tamanho;
     foreach ($logIds as $id) {
-        $stmt->bind_param('sssisi', $status, $caminho, $nome_arquivo, $tamanho, $tipo, $id);
-        $stmt->execute();
+        $idInt = (int) $id;
+        $stmt->bind_param('sssssi', $status, $caminho, $nome_arquivo, $tamanhoParam, $tipo, $idInt);
+        try {
+            $stmt->execute();
+        } catch (Exception $e) {
+            error_log('[upload_worker] DB: UPDATE arquivo_log execute failed id=' . $idInt . ' err=' . $e->getMessage());
+        }
     }
     $stmt->close();
+}
+
+// Remove any duplicate meta json recreated after claim (race in enqueue)
+function cleanup_duplicate_meta_files(string $baseDir, string $jobId, string $processingMeta): void
+{
+    $original = rtrim($baseDir, '/\\') . DIRECTORY_SEPARATOR . $jobId . '.json';
+    if (is_file($original) && realpath($original) !== realpath($processingMeta)) {
+        @unlink($original);
+        error_log('[upload_worker] removed duplicate meta file: ' . $original);
+    }
 }
 
 function send_slack_notification_for_colaborador($colaborador_id, array $meta, $remote_path = null, $nome_final = null, $ok = true)
@@ -620,6 +659,37 @@ do {
 
         $staged = $meta['staged_path'] ?? null;
         if (!$staged || !file_exists($staged)) {
+            // If we already uploaded previously and persisted result, we can still update DB.
+            $persistedOk = !empty($meta['uploaded_remote']) && !empty($meta['windows_path']) && !empty($meta['nome_final']) && !empty($meta['tipo']);
+            if ($persistedOk) {
+                echo "Arquivo staged não encontrado, mas upload já foi concluído anteriormente. Tentando apenas atualizar DB.\n";
+
+                $jobId = $meta['id'] ?? pathinfo($processingMeta, PATHINFO_FILENAME);
+                cleanup_duplicate_meta_files($baseDir, $jobId, $processingMeta);
+
+                ensure_db_connection_local();
+                create_arquivo_log_table_if_missing();
+
+                // Ensure log rows exist and finalize
+                $meta['log_status'] = 'concluido';
+                try {
+                    create_log_entries_if_missing($processingMeta, $meta, $meta['windows_path'], $meta['nome_final'], $meta['tamanho_final'] ?? null, $meta['tipo']);
+                } catch (Exception $_) {
+                }
+                if (!empty($meta['log_ids'])) {
+                    update_log_entries_status($meta['log_ids'], 'concluido', $meta['windows_path'], $meta['nome_final'], $meta['tamanho_final'] ?? null, $meta['tipo']);
+                    $meta['db_updated'] = true;
+                    writeMeta($processingMeta, $meta);
+                    // cleanup meta
+                    @unlink($processingMeta);
+                    cleanup_duplicate_meta_files($baseDir, $jobId, $processingMeta);
+                    echo "DB atualizado e job finalizado (sem staged).\n";
+                } else {
+                    error_log('[upload_worker] could not finalize: missing log_ids even after insert; keeping meta for retry');
+                }
+                continue;
+            }
+
             echo "Arquivo staged não encontrado: $staged\n";
             rename($processingMeta, $failedDir . '/' . basename($processingMeta));
             continue;
@@ -633,12 +703,22 @@ do {
         $tipo = in_array(strtolower($ext), ['pdf']) ? 'PDF' : 'IMG';
 
         $jobId = $meta['id'] ?? pathinfo($processingMeta, PATHINFO_FILENAME);
+        cleanup_duplicate_meta_files($baseDir, $jobId, $processingMeta);
         publishProgress($redis, $jobId, 0, 'claimed', 'Job claimed by worker');
-        // update DB status to 'processando'
+        // Ensure DB rows exist and update status to 'processando'
         ensure_db_connection_local();
         create_arquivo_log_table_if_missing();
+        $meta['log_status'] = 'processando';
+        $tamanhoStaged = @filesize($staged) ?: null;
+        $nomeInicial = $meta['original_name'] ?? basename($staged);
+        try {
+            create_log_entries_if_missing($processingMeta, $meta, $staged, $nomeInicial, $tamanhoStaged, $tipo);
+        } catch (Exception $_) {
+        }
         if (!empty($meta['log_ids'])) {
             update_log_entries_status($meta['log_ids'], 'processando', null, null, null, null);
+        } else {
+            error_log('[upload_worker] warning: missing log_ids; DB updates will be skipped until fixed');
         }
 
         // extract post fields
@@ -783,6 +863,13 @@ do {
         $remote_path = $remote_dir . '/' . $nome_final;
         $windows_path = to_windows_access_path($remote_path);
 
+        // Persist computed destinations early (helps recovery if process is interrupted)
+        $meta['remote_path'] = $remote_path;
+        $meta['windows_path'] = $windows_path;
+        $meta['nome_final'] = $nome_final;
+        $meta['tipo'] = $tipo;
+        writeMeta($processingMeta, $meta);
+
         // retry loop with exponential backoff
         $maxAttempts = 5;
         $ok = false;
@@ -821,6 +908,34 @@ do {
             // calcular tamanho final antes de remover o arquivo local
             $tamanho_final = @filesize($staged) ?: null;
 
+            // Persist success result before DB update / cleanup
+            $meta['uploaded_remote'] = true;
+            $meta['upload_success_at'] = date('c');
+            $meta['tamanho_final'] = $tamanho_final;
+            $meta['db_updated'] = false;
+            writeMeta($processingMeta, $meta);
+
+            // final DB update and Slack notify (status: concluido) BEFORE cleanup
+            ensure_db_connection_local();
+            if (empty($meta['log_ids'])) {
+                // If enqueue failed to insert, create now.
+                $meta['log_status'] = 'concluido';
+                try {
+                    create_log_entries_if_missing($processingMeta, $meta, $windows_path, $nome_final, $tamanho_final ?: null, $tipo);
+                } catch (Exception $_) {
+                }
+            }
+            if (!empty($meta['log_ids'])) {
+                // salva caminho acessível no Windows (Z:\) no banco
+                update_log_entries_status($meta['log_ids'], 'concluido', $windows_path, $nome_final, $tamanho_final ?: null, $tipo);
+                $meta['db_updated'] = true;
+                writeMeta($processingMeta, $meta);
+            } else {
+                error_log('[upload_worker] ERROR: upload ok but could not determine log_ids; keeping meta for manual recovery');
+                // do not cleanup; allow retry
+                continue;
+            }
+
             // remover o arquivo staged para evitar acumulo no VPS; se falhar, mover para `sent` como fallback
             if (file_exists($staged)) {
                 if (!@unlink($staged)) {
@@ -837,13 +952,10 @@ do {
                 }
             }
 
+            // Remove any duplicate original meta left behind by old race conditions
+            cleanup_duplicate_meta_files($baseDir, $jobId, $processingMeta);
+
             publishProgress($redis, $jobId, 100, 'done', 'Finalizado e removido localmente');
-            // final DB update and Slack notify (status: concluido)
-            ensure_db_connection_local();
-            if (!empty($meta['log_ids'])) {
-                // salva caminho acessível no Windows (Z:\) no banco
-                update_log_entries_status($meta['log_ids'], 'concluido', $windows_path, $nome_final, $tamanho_final ?: null, $tipo);
-            }
             // send slack to collaborator if present
             $colab = $meta['post']['idcolaborador'] ?? null;
             if ($colab) {

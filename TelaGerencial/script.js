@@ -218,7 +218,7 @@ function buscarDadosFuncao() {
                 const tr = document.createElement("tr");
                 tr.innerHTML = `
             <td>${linha.nome_funcao}</td>
-            <td>${linha.quantidade - linha.pagas}</td>
+            <td>${linha.quantidade}</td>
                         <td>${linha.mes_anterior ?? 0}</td>
                         <td>${linha.recorde_producao ?? 0}</td>
           `;
@@ -281,6 +281,10 @@ function gerarRelatorio() {
                 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
                 <style>
                     body{font-family:'Inter', Arial,Helvetica,sans-serif;margin:20px;color:#111}
+                    /* reduzir fonte apenas dentro do relatório gerado */
+                    #report-root{font-size:13px}
+                    /* garantir que tabelas no relatório herdem o tamanho reduzido */
+                    #report-root table, #report-root th, #report-root td { font-size:13px }
                     h2{margin-bottom:6px}
                     table{margin-bottom:18px;border-collapse:collapse;width:100%}
                     th{background:#eee;text-align:left;padding:6px}
@@ -297,7 +301,6 @@ function gerarRelatorio() {
                     ${tabelaFuncaoHtml || '<p>Sem dados</p>'}
                     <h3>Imagens entregues por mês</h3>
                     ${tabelaEntregasHtml || '<p>Sem dados</p>'}
-                    <p style="margin-top:20px;font-size:12px;color:#666">Gerado pelo sistema</p>
                 </div>
 
                 <!-- libs via CDN -->

@@ -5,16 +5,35 @@ include '../conexao.php';
 $mes = isset($_GET['mes']) ? (int) $_GET['mes'] : (int) date('m');
 $ano = isset($_GET['ano']) ? (int) $_GET['ano'] : (int) date('Y');
 
+// Calcula mês/ano anterior (ex.: jan/2026 -> dez/2025)
+$mesAnterior = ($mes === 1) ? 12 : ($mes - 1);
+$anoAnterior = ($mes === 1) ? ($ano - 1) : $ano;
+
+// Se solicitado, troca o mês/ano para o anterior
+if (!empty($_GET['mes_anterior'])) {
+    $mes = $mesAnterior;
+    $ano = $anoAnterior;
+}
+
 // 1. Total de produção por função no mês atual
 $sqlTotal = "SELECT 
     f.nome_funcao, 
     COUNT(*) AS total_mes
 FROM funcao_imagem fi
 JOIN funcao f ON f.idfuncao = fi.funcao_id
-WHERE MONTH(fi.prazo) = ? AND YEAR(fi.prazo) = ? AND fi.valor > 1 AND fi.funcao_id = 4
+WHERE (
+    EXISTS (
+        SELECT 1
+        FROM log_alteracoes la
+        WHERE la.funcao_imagem_id = fi.idfuncao_imagem
+          AND MONTH(la.data) = ?
+          AND YEAR(la.data) = ?
+    )
+    OR (MONTH(fi.prazo) = ? AND YEAR(fi.prazo) = ?)
+) AND fi.valor > 1 AND fi.funcao_id = 4
 GROUP BY f.nome_funcao";
 $stmtTotal = $conn->prepare($sqlTotal);
-$stmtTotal->bind_param("ii", $mes, $ano);
+$stmtTotal->bind_param("iiii", $mes, $ano, $mes, $ano);
 $stmtTotal->execute();
 $resTotal = $stmtTotal->get_result();
 $dadosTotais = $resTotal->fetch_all(MYSQLI_ASSOC);
@@ -51,10 +70,19 @@ $sqlContrib = "SELECT
 FROM funcao_imagem fi
 JOIN colaborador c ON c.idcolaborador = fi.colaborador_id
 JOIN funcao f ON f.idfuncao = fi.funcao_id
-WHERE MONTH(fi.prazo) = ? AND YEAR(fi.prazo) = ? AND fi.valor > 1 AND fi.funcao_id = 4
+WHERE (
+    EXISTS (
+        SELECT 1
+        FROM log_alteracoes la
+        WHERE la.funcao_imagem_id = fi.idfuncao_imagem
+          AND MONTH(la.data) = ?
+          AND YEAR(la.data) = ?
+    )
+    OR (MONTH(fi.prazo) = ? AND YEAR(fi.prazo) = ?)
+) AND fi.valor > 1 AND fi.funcao_id = 4
 GROUP BY f.nome_funcao, c.nome_colaborador";
 $stmtContrib = $conn->prepare($sqlContrib);
-$stmtContrib->bind_param("ii", $mes, $ano);
+$stmtContrib->bind_param("iiii", $mes, $ano, $mes, $ano);
 $stmtContrib->execute();
 $resContrib = $stmtContrib->get_result();
 $contribuicoes = $resContrib->fetch_all(MYSQLI_ASSOC);

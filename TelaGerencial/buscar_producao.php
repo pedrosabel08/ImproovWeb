@@ -40,14 +40,23 @@ FROM (
   JOIN colaborador c ON c.idcolaborador = fi.colaborador_id
   JOIN funcao f ON f.idfuncao = fi.funcao_id
   LEFT JOIN imagens_cliente_obra i ON fi.imagem_id = i.idimagens_cliente_obra
-  WHERE MONTH(fi.prazo) = ? AND YEAR(fi.prazo) = ? AND fi.colaborador_id NOT IN (21, 15, 9)
+  WHERE (
+    EXISTS (
+      SELECT 1
+      FROM log_alteracoes la
+      WHERE la.funcao_imagem_id = fi.idfuncao_imagem
+        AND MONTH(la.data) = ?
+        AND YEAR(la.data) = ?
+    )
+    OR (MONTH(fi.prazo) = ? AND YEAR(fi.prazo) = ?)
+  ) AND fi.colaborador_id NOT IN (21, 15)
 ) AS t
 GROUP BY t.funcao_id, t.nome_funcao, t.nome_colaborador
 ORDER BY
   FIELD(t.nome_funcao, 'Caderno', 'Filtro de assets', 'Modelagem', 'Composição', 'Pré-finalização', 'Finalização Parcial','Finalização Completa','Finalização de Planta Humanizada', 'Pós-produção', 'Alteração'),
   t.nome_colaborador;";
 $stmt = $conn->prepare($sql); // Usa a conexão do arquivo conexao.php
-$stmt->bind_param("ii", $mes, $anoSelecionado);
+$stmt->bind_param("iiii", $mes, $anoSelecionado, $mes, $anoSelecionado);
 $stmt->execute();
 $result = $stmt->get_result();
 $dadosMesAtual = $result->fetch_all(MYSQLI_ASSOC);
@@ -193,9 +202,10 @@ foreach ($dadosMesAtual as $linha) {
   $chave = $colaborador . '_' . $nomeFuncao;
 
   $linha['mes_anterior'] = $anteriorIndexado[$chave] ?? 0;
-  $recorde = $recordeIndexado[$chave] ?? 0;
   $quantidadeAtual = isset($linha['quantidade']) ? (int)$linha['quantidade'] : 0;
-  $linha['recorde_producao'] = max((int)$recorde, $quantidadeAtual);
+  // Pegue o maior entre: recorde histórico, mês anterior e mês atual
+  $recorde = $recordeIndexado[$chave] ?? 0;
+  $linha['recorde_producao'] = max((int)$recorde, (int)($linha['mes_anterior'] ?? 0), $quantidadeAtual);
 
   $resultado[] = $linha;
 }

@@ -6,6 +6,16 @@ include '../conexao.php';
 $mes = isset($_GET['mes']) ? intval($_GET['mes']) : date('n');
 $ano = isset($_GET['ano']) ? intval($_GET['ano']) : date('Y');
 
+// Calcula mês/ano anterior (ex.: jan/2026 -> dez/2025)
+$mesAnterior = ($mes === 1) ? 12 : ($mes - 1);
+$anoAnterior = ($mes === 1) ? ($ano - 1) : $ano;
+
+// Se solicitado, troca o mês/ano para o anterior
+if (!empty($_GET['mes_anterior'])) {
+    $mes = $mesAnterior;
+    $ano = $anoAnterior;
+}
+
 try {
     $sql = "SELECT si.nome_status, COUNT(*) as quantidade,
         SUM(CASE WHEN LOWER(i.tipo_imagem) = 'planta humanizada' THEN 1 ELSE 0 END) AS quantidade_ph

@@ -36,14 +36,23 @@ if ($mes) {
     FROM funcao_imagem fi
     JOIN funcao f ON f.idfuncao = fi.funcao_id
     JOIN imagens_cliente_obra ico ON fi.imagem_id = ico.idimagens_cliente_obra
-    WHERE MONTH(fi.prazo) = ? AND YEAR(fi.prazo) = ? AND (fi.status <> 'Não iniciado' OR fi.status IS NULL)
+    WHERE (
+        EXISTS (
+          SELECT 1
+          FROM log_alteracoes la
+          WHERE la.funcao_imagem_id = fi.idfuncao_imagem
+            AND MONTH(la.data) = ?
+            AND YEAR(la.data) = ?
+        )
+        OR (MONTH(fi.prazo) = ? AND YEAR(fi.prazo) = ?)
+      ) AND (fi.status <> 'Não iniciado' OR fi.status IS NULL) AND ico.obra_id <> 74
   ) AS t
   GROUP BY t.nome_funcao
   ORDER BY
       FIELD(t.nome_funcao, 'Caderno', 'Filtro de assets', 'Modelagem', 'Composição', 'Pré-finalização', 'Finalização Parcial','Finalização Completa','Finalização de Planta Humanizada', 'Pós-produção', 'Alteração'),
     funcao_order";
   $stmt = $conn->prepare($sql);
-  $stmt->bind_param("ii", $mes, $anoSelecionado);
+  $stmt->bind_param("iiii", $mes, $anoSelecionado, $mes, $anoSelecionado);
 } elseif ($data) {
   // Filtro por dia específico - calcular nome_funcao por linha e agregar externamente
   $sql = "SELECT COUNT(*) AS quantidade, t.nome_funcao, MIN(t.funcao_id) AS funcao_order
@@ -61,7 +70,15 @@ if ($mes) {
       FROM funcao_imagem fi
       JOIN funcao f ON f.idfuncao = fi.funcao_id
       JOIN imagens_cliente_obra ico ON fi.imagem_id = ico.idimagens_cliente_obra
-      WHERE DATE(fi.prazo) = ? AND (fi.status <> 'Não iniciado' OR fi.status IS NULL)
+      WHERE (
+          EXISTS (
+            SELECT 1
+            FROM log_alteracoes la
+            WHERE la.funcao_imagem_id = fi.idfuncao_imagem
+              AND DATE(la.data) = ?
+          )
+          OR DATE(fi.prazo) = ?
+        ) AND (fi.status <> 'Não iniciado' OR fi.status IS NULL) AND ico.obra_id <> 74 OR (fi.colaborador_id = 21)
     ) AS t
     GROUP BY t.nome_funcao
     ORDER BY
@@ -69,7 +86,7 @@ if ($mes) {
       funcao_order";
 
   $stmt = $conn->prepare($sql);
-  $stmt->bind_param("s", $data);
+  $stmt->bind_param("ss", $data, $data);
 } elseif ($inicio && $fim) {
   // Filtro por intervalo de semana - calcular nome_funcao por linha e agregar externamente
   $sql = "SELECT COUNT(*) AS quantidade, t.nome_funcao, MIN(t.funcao_id) AS funcao_order
@@ -87,14 +104,22 @@ if ($mes) {
       FROM funcao_imagem fi
       JOIN funcao f ON f.idfuncao = fi.funcao_id
       JOIN imagens_cliente_obra ico ON fi.imagem_id = ico.idimagens_cliente_obra
-      WHERE DATE(fi.prazo) BETWEEN ? AND ? AND (fi.status <> 'Não iniciado' OR fi.status IS NULL)
+      WHERE (
+          EXISTS (
+            SELECT 1
+            FROM log_alteracoes la
+            WHERE la.funcao_imagem_id = fi.idfuncao_imagem
+              AND DATE(la.data) BETWEEN ? AND ?
+          )
+          OR DATE(fi.prazo) BETWEEN ? AND ?
+        ) AND (fi.status <> 'Não iniciado' OR fi.status IS NULL) AND ico.obra_id <> 74
     ) AS t
     GROUP BY t.nome_funcao
     ORDER BY
       FIELD(t.nome_funcao, 'Caderno', 'Filtro de assets', 'Modelagem', 'Composição', 'Pré-finalização', 'Finalização Parcial','Finalização Completa','Finalização de Planta Humanizada', 'Pós-produção', 'Alteração'),
       funcao_order";
   $stmt = $conn->prepare($sql);
-  $stmt->bind_param("ss", $inicio, $fim);
+  $stmt->bind_param("ssss", $inicio, $fim, $inicio, $fim);
 } else {
   // Caso nenhum parâmetro válido seja enviado
   echo json_encode(["error" => "Parâmetros inválidos"]);

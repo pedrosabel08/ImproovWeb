@@ -10,6 +10,17 @@ $logFile = $logDir . '/updateInfos.log';
 if (!is_dir($logDir)) {
     @mkdir($logDir, 0755, true);
 }
+
+// Enable error logging to the same log file for easier diagnosis (no display to users)
+ini_set('display_errors', '0');
+ini_set('log_errors', '1');
+ini_set('error_log', $logFile);
+error_reporting(E_ALL);
+
+// DEBUG: write a start entry so we know the script was hit
+if (!is_dir($logDir)) {
+    @mkdir($logDir, 0755, true);
+}
 $startEntry = date('Y-m-d H:i:s') . ' | START | user: ' . (isset($_SESSION['idusuario']) ? $_SESSION['idusuario'] : 'n/a') . ' | colaborador: ' . (isset($_SESSION['idcolaborador']) ? $_SESSION['idcolaborador'] : 'n/a') . ' | post: ' . json_encode($_POST ?? []) . PHP_EOL;
 file_put_contents($logFile, $startEntry, FILE_APPEND | LOCK_EX);
 
@@ -95,6 +106,8 @@ if (isset($_SESSION['idusuario'])) {
     if ($stmtUsuario->execute() === false) {
         respond_and_exit($conn, $response, 'Erro ao executar query Usuario', $stmtUsuario->error);
     }
+    // Log success for usuario update
+    @file_put_contents($logFile, date('Y-m-d H:i:s') . ' | Usuario updated OK | user: ' . $usuario_id . PHP_EOL, FILE_APPEND | LOCK_EX);
     $stmtUsuario->close();
 
     // Atualizando informações do usuário (tabela informacoes_usuario)
@@ -122,6 +135,8 @@ if (isset($_SESSION['idusuario'])) {
     if ($stmtInformacoes->execute() === false) {
         respond_and_exit($conn, $response, 'Erro ao executar query Informacoes', $stmtInformacoes->error);
     }
+    // Log success for informacoes update
+    @file_put_contents($logFile, date('Y-m-d H:i:s') . ' | Informacoes updated OK | user: ' . $usuario_id . PHP_EOL, FILE_APPEND | LOCK_EX);
     $stmtInformacoes->close();
 
     // Handle uploaded thumbnail (campo 'thumb')
@@ -132,8 +147,13 @@ if (isset($_SESSION['idusuario'])) {
             // ignore file but log
             @file_put_contents($logFile, date('Y-m-d H:i:s') . " | Thumb too large: {$file['size']}\n", FILE_APPEND | LOCK_EX);
         } else {
-            $finfo = new finfo(FILEINFO_MIME_TYPE);
-            $mime = $finfo->file($file['tmp_name']);
+            if (class_exists('finfo')) {
+                $finfo = new finfo(FILEINFO_MIME_TYPE);
+                $mime = $finfo->file($file['tmp_name']);
+            } else {
+                $mime = mime_content_type($file['tmp_name']) ?: '';
+                @file_put_contents($logFile, date('Y-m-d H:i:s') . " | finfo class not available, used mime_content_type: $mime\n", FILE_APPEND | LOCK_EX);
+            }
             $allowed = [
                 'image/jpeg' => 'jpg',
                 'image/png'  => 'png',
@@ -149,7 +169,14 @@ if (isset($_SESSION['idusuario'])) {
                     @mkdir($uploadDir, 0755, true);
                 }
                 $safeBase = preg_replace('/[^A-Za-z0-9_-]/', '', pathinfo($file['name'], PATHINFO_FILENAME));
-                $filename = $usuario_id . '_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+                $randomSuffix = '';
+                if (function_exists('random_bytes')) {
+                    $randomSuffix = bin2hex(random_bytes(4));
+                } else {
+                    $randomSuffix = substr(md5(uniqid((string)mt_rand(), true)), 0, 8);
+                    @file_put_contents($logFile, date('Y-m-d H:i:s') . " | random_bytes not available, used md5 fallback\n", FILE_APPEND | LOCK_EX);
+                }
+                $filename = $usuario_id . '_' . time() . '_' . $randomSuffix . '.' . $ext;
                 $dest = $uploadDir . '/' . $filename;
                 if (@move_uploaded_file($file['tmp_name'], $dest)) {
                     $thumbPath = 'uploads/colaboradores/' . $filename;
@@ -173,6 +200,7 @@ if (isset($_SESSION['idusuario'])) {
                                 if (session_status() !== PHP_SESSION_ACTIVE) session_start();
                                 $_SESSION['foto_colaborador'] = $thumbPath;
                                 $response['thumb'] = $thumbPath;
+                                @file_put_contents($logFile, date('Y-m-d H:i:s') . ' | Thumb updated OK | path: ' . $thumbPath . PHP_EOL, FILE_APPEND | LOCK_EX);
                             }
                         }
                         $stmtThumb->close();
@@ -206,33 +234,74 @@ if (isset($_SESSION['idusuario'])) {
     if ($stmtEndereco->execute() === false) {
         respond_and_exit($conn, $response, 'Erro ao executar query Endereco', $stmtEndereco->error);
     }
+    @file_put_contents($logFile, date('Y-m-d H:i:s') . ' | Endereco updated OK | user: ' . $usuario_id . PHP_EOL, FILE_APPEND | LOCK_EX);
     $stmtEndereco->close();
 
     // Atualizando o endereço do CNPJ (tabela endereco_cnpj)
-    $queryEnderecoCnpj = "INSERT INTO endereco_cnpj (usuario_id, rua_cnpj, numero_cnpj, bairro_cnpj, complemento_cnpj, cep_cnpj, uf_cnpj, localidade_cnpj)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        ON DUPLICATE KEY UPDATE
-            rua_cnpj = VALUES(rua_cnpj),
-            numero_cnpj = VALUES(numero_cnpj),
-            bairro_cnpj = VALUES(bairro_cnpj),
-            complemento_cnpj = VALUES(complemento_cnpj),
-            cep_cnpj = VALUES(cep_cnpj),
-            uf_cnpj = VALUES(uf_cnpj),
-            localidade_cnpj = VALUES(localidade_cnpj);
-    ";
+    @file_put_contents($logFile, date('Y-m-d H:i:s') . ' | Preparing EnderecoCnpj with values: rua_cnpj=' . $rua_cnpj . ' numero_cnpj=' . $numero_cnpj . ' bairro_cnpj=' . $bairro_cnpj . ' cep_cnpj=' . $cep_cnpj . '\n', FILE_APPEND | LOCK_EX);
 
-    // Aqui bind_param deve ter 6 elementos: "issssss" (6 strings)
-    $stmtEnderecoCnpj = $conn->prepare($queryEnderecoCnpj);
-    if ($stmtEnderecoCnpj === false) {
-        respond_and_exit($conn, $response, 'Erro ao preparar query EnderecoCnpj', $conn->error);
+    // If no CNPJ-related data was provided, skip this block to avoid inserting empty strings into integer columns
+    $cnpjFields = [
+        $cnpj,
+        $rua_cnpj,
+        $numero_cnpj,
+        $bairro_cnpj,
+        $complemento_cnpj,
+        $cep_cnpj,
+        $uf_cnpj,
+        $localidade_cnpj,
+        $nome_empresarial,
+        $nome_fantasia
+    ];
+    $hasCnpjData = false;
+    foreach ($cnpjFields as $f) {
+        if (is_string($f) && trim($f) !== '') {
+            $hasCnpjData = true;
+            break;
+        }
+        if (is_numeric($f) && $f !== 0) {
+            $hasCnpjData = true;
+            break;
+        }
     }
-    if ($stmtEnderecoCnpj->bind_param("isssssss", $usuario_id, $rua_cnpj, $numero_cnpj, $bairro_cnpj, $complemento_cnpj, $cep_cnpj, $uf_cnpj, $localidade_cnpj) === false) {
-        respond_and_exit($conn, $response, 'Erro ao bind_param EnderecoCnpj', $stmtEnderecoCnpj->error);
+
+    if ($hasCnpjData) {
+        // Ensure numero_cnpj is numeric (avoid empty string which triggers MySQL strict-mode errors)
+        if (!is_numeric($numero_cnpj) || trim((string)$numero_cnpj) === '') {
+            $numero_cnpj = 0;
+        } else {
+            $numero_cnpj = (int)$numero_cnpj;
+        }
+
+        $queryEnderecoCnpj = "INSERT INTO endereco_cnpj (usuario_id, rua_cnpj, numero_cnpj, bairro_cnpj, complemento_cnpj, cep_cnpj, uf_cnpj, localidade_cnpj)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE
+                rua_cnpj = VALUES(rua_cnpj),
+                numero_cnpj = VALUES(numero_cnpj),
+                bairro_cnpj = VALUES(bairro_cnpj),
+                complemento_cnpj = VALUES(complemento_cnpj),
+                cep_cnpj = VALUES(cep_cnpj),
+                uf_cnpj = VALUES(uf_cnpj),
+                localidade_cnpj = VALUES(localidade_cnpj);
+        ";
+
+        $stmtEnderecoCnpj = $conn->prepare($queryEnderecoCnpj);
+        if ($stmtEnderecoCnpj === false) {
+            respond_and_exit($conn, $response, 'Erro ao preparar query EnderecoCnpj', $conn->error);
+        }
+        if ($stmtEnderecoCnpj->bind_param("isssssss", $usuario_id, $rua_cnpj, $numero_cnpj, $bairro_cnpj, $complemento_cnpj, $cep_cnpj, $uf_cnpj, $localidade_cnpj) === false) {
+            respond_and_exit($conn, $response, 'Erro ao bind_param EnderecoCnpj', $stmtEnderecoCnpj->error);
+        }
+        if ($stmtEnderecoCnpj->execute() === false) {
+            respond_and_exit($conn, $response, 'Erro ao executar query EnderecoCnpj', $stmtEnderecoCnpj->error);
+        }
+        @file_put_contents($logFile, date('Y-m-d H:i:s') . ' | EnderecoCnpj updated OK | user: ' . $usuario_id . PHP_EOL, FILE_APPEND | LOCK_EX);
+        $stmtEnderecoCnpj->close();
+    } else {
+        @file_put_contents($logFile, date('Y-m-d H:i:s') . ' | Skipping EnderecoCnpj: no CNPJ data provided\n', FILE_APPEND | LOCK_EX);
     }
-    if ($stmtEnderecoCnpj->execute() === false) {
-        respond_and_exit($conn, $response, 'Erro ao executar query EnderecoCnpj', $stmtEnderecoCnpj->error);
-    }
-    $stmtEnderecoCnpj->close();
+
+    @file_put_contents($logFile, date('Y-m-d H:i:s') . ' | Preparing PerfilColaborador with values: colab=' . $colaborador_id . ' horario=' . $horario_disponivel . ' modalidade=' . $modalidade . ' camisa=' . $tamanho_camisa . ' calcado=' . $tamanho_calcado . '\n', FILE_APPEND | LOCK_EX);
 
     $sql = "INSERT INTO perfil_colaborador (
         colaborador_id, 
@@ -267,6 +336,7 @@ if (isset($_SESSION['idusuario'])) {
     if ($stmt->execute() === false) {
         respond_and_exit($conn, $response, 'Erro ao executar query PerfilColaborador', $stmt->error);
     }
+    @file_put_contents($logFile, date('Y-m-d H:i:s') . ' | PerfilColaborador updated OK | colab: ' . $colaborador_id . PHP_EOL, FILE_APPEND | LOCK_EX);
     $stmt->close();
 
     $response["success"] = true;
@@ -279,5 +349,6 @@ if (isset($_SESSION['idusuario'])) {
 $conn->close();
 
 // Retorna a resposta como JSON
+@file_put_contents($logFile, date('Y-m-d H:i:s') . ' | Final response: ' . json_encode($response) . PHP_EOL, FILE_APPEND | LOCK_EX);
 header('Content-Type: application/json');
 echo json_encode($response);

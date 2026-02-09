@@ -682,21 +682,21 @@ $conn->close();
 
         const nome_user = <?php echo json_encode($nome_usuario); ?>;
 
-        function obterSaudacao() {
-            const agora = new Date();
-            const hora = agora.getHours();
+        // function obterSaudacao() {
+        //     const agora = new Date();
+        //     const hora = agora.getHours();
 
-            if (hora < 12) {
-                return "Bom dia";
-            } else if (hora < 18) {
-                return "Boa tarde";
-            } else {
-                return "Boa noite";
-            }
-        }
+        //     if (hora < 12) {
+        //         return "Bom dia";
+        //     } else if (hora < 18) {
+        //         return "Boa tarde";
+        //     } else {
+        //         return "Boa noite";
+        //     }
+        // }
 
-        const saudacao = document.getElementById('saudacao');
-        saudacao.textContent = obterSaudacao() + ", " + nome_user + "!";
+        // const saudacao = document.getElementById('saudacao');
+        // saudacao.textContent = obterSaudacao() + ", " + nome_user + "!";
 
         const idUsuario = <?php echo json_encode($idusuario); ?>;
         localStorage.setItem('idusuario', idUsuario);

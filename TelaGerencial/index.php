@@ -8,9 +8,10 @@ foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWe
 }
 unset($__root, $__p);
 
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 include '../conexao.php'; // Inclui o arquivo de conexão com mysqli
-include '../conexaoMain.php';
 
 $idusuario = $_SESSION['idusuario'];
 $tela_atual = basename($_SERVER['PHP_SELF']);
@@ -23,8 +24,8 @@ if (session_status() === PHP_SESSION_ACTIVE) {
     session_write_close();
 }
 
-// Initialize DB connection before using it (was causing undefined $conn)
-$conn = conectarBanco();
+// // Initialize DB connection before using it (was causing undefined $conn)
+// $conn = conectarBanco();
 
 // Use MySQL NOW() so the database records its own current timestamp
 $sql2 = "UPDATE logs_usuarios 
@@ -43,6 +44,9 @@ if (!$stmt2->execute()) {
     die("Erro no execute: " . $stmt2->error);
 }
 $stmt2->close();
+
+include '../conexaoMain.php';
+
 
 $clientes = obterClientes($conn);
 $obras = obterObras($conn);
@@ -120,6 +124,8 @@ $conn->close();
                     <th>Colaborador</th>
                     <th>Função</th>
                     <th>Quantidade</th>
+                    <th>Pagas</th>
+                    <th>Não pagas</th>
                     <th>Mês anterior</th>
                     <th>Recorde de produção</th>
                 </tr>
@@ -183,6 +189,8 @@ $conn->close();
                     <tr>
                         <th>Processo</th>
                         <th>Quantidade</th>
+                        <th>Pagas</th>
+                        <th>Não pagas</th>
                         <th>Mês anterior</th>
                         <th>Recorde de produção</th>
                     </tr>
@@ -190,6 +198,17 @@ $conn->close();
                 <tbody>
                 </tbody>
             </table>
+        </div>
+    </div>
+
+
+    <div id="modalImagensOverlay" class="imagens-overlay" aria-hidden="true">
+        <div class="imagens-panel" role="dialog" aria-modal="true" aria-labelledby="imagensTitulo">
+            <div class="imagens-header">
+                <h3 id="imagensTitulo"></h3>
+                <button id="fecharModalImagens" type="button" class="imagens-fechar">Fechar</button>
+            </div>
+            <div id="imagensBody" class="imagens-body"></div>
         </div>
     </div>
 

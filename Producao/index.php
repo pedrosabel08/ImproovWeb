@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../config/session_bootstrap.php';
 $__root = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/\\');
 foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWeb/config/version.php'] as $__p) {
     if ($__p && is_file($__p)) {
@@ -25,6 +26,7 @@ session_start();
     <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s" type="image/x-icon">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script defer src="<?php echo asset_url('script.js'); ?>"></script>
+    <link rel="stylesheet" href="<?php echo asset_url('../css/modalSessao.css'); ?>">
 </head>
 
 <body>
@@ -150,6 +152,7 @@ session_start();
     <footer>
         <small>MVP com dados fictícios. Integração posterior: tabelas entrega, entregas_itens e funcao_imagem.</small>
     </footer>
+    <script src="<?php echo asset_url('../script/controleSessao.js'); ?>"></script>
 </body>
 
 </html>

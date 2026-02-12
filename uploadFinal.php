@@ -1,5 +1,6 @@
 <?php
 
+require_once __DIR__ . '/config/session_bootstrap.php';
 session_start();
 
 header("Access-Control-Allow-Origin: https://improov.com.br");

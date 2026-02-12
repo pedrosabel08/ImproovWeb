@@ -1,29 +1,29 @@
 <?php
-$tempoSessao = 3600; // 1 hora
+header('Content-Type: application/json; charset=utf-8');
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
+header('Expires: Tue, 01 Jan 2000 00:00:00 GMT');
+header('Vary: Cookie');
 
-// Detecta se a conexão é segura (HTTPS) para definir o flag 'secure' corretamente
-$isSecure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443);
+if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(204);
+    exit;
+}
 
-session_set_cookie_params([
-    'lifetime' => $tempoSessao,
-    'path' => '/',
-    'secure' => $isSecure,
-    'httponly' => true,
-    'samesite' => 'Lax' // ou 'Strict' se não estiver usando links externos
+require_once __DIR__ . '/config/session_bootstrap.php';
+
+if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
+    http_response_code(401);
+    echo json_encode(['ok' => false, 'message' => 'Sessão inexistente ou expirada.']);
+    exit;
+}
+
+// Use an explicit timezone to avoid server timezone mismatches.
+$tz = new DateTimeZone('America/Sao_Paulo');
+$dt = new DateTime('now', $tz);
+$_SESSION['ultimo_renovado'] = $dt->format('Y-m-d H:i:s P');
+echo json_encode([
+    'ok' => true,
+    'message' => 'Sessão renovada',
+    'renovado_em' => $_SESSION['ultimo_renovado'],
 ]);
-
-session_start();
-
-// Salva o momento em que a sessão foi renovada
-$_SESSION['ultimo_renovado'] = date('H:i:s');
-
-// Renova o cookie de sessão estendendo a validade
-setcookie(session_name(), session_id(), [
-    'expires' => time() + $tempoSessao,
-    'path' => '/',
-    'secure' => $isSecure,
-    'httponly' => true,
-    'samesite' => 'Lax'
-]);
-
-echo 'Sessão renovada às ' . $_SESSION['ultimo_renovado'];

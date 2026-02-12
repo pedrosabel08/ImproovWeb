@@ -1,8 +1,15 @@
 <?php
+require_once __DIR__ . '/config/session_bootstrap.php';
 header('Content-Type: application/json');
 header("Access-Control-Allow-Origin: *"); // Allows all domains
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type");
+
+// Handle preflight quickly
+if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(204);
+    exit;
+}
 
 // Prevent caching (important on hosts that use reverse proxies/CDN caching)
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
@@ -16,12 +23,26 @@ $tempoSessao = 3600; // 1h
 ini_set('session.use_strict_mode', 1);
 ini_set('session.use_only_cookies', 1);
 ini_set('session.cookie_httponly', 1);
-// If your site is served over HTTPS, enable this as well:
-// ini_set('session.cookie_secure', 1);
+// Align cookie + server-side session lifetime. IMPORTANT: this must run on every request
+// that starts a session, otherwise GC may still clean sessions using the default value.
+ini_set('session.gc_maxlifetime', (string)$tempoSessao);
+ini_set('session.cookie_lifetime', (string)$tempoSessao);
 
-session_set_cookie_params($tempoSessao);
-ini_set('session.gc_maxlifetime', $tempoSessao);
-session_start();
+// Detect HTTPS to set the cookie secure flag correctly
+$isSecure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+    || (isset($_SERVER['SERVER_PORT']) && (int)$_SERVER['SERVER_PORT'] === 443);
+
+session_set_cookie_params([
+    'lifetime' => $tempoSessao,
+    'path' => '/',
+    'secure' => $isSecure,
+    'httponly' => true,
+    'samesite' => 'Lax',
+]);
+
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 include 'conexao.php';
 
@@ -51,6 +72,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         // Regenerar o ID de sessão após login bem-sucedido para garantir unicidade
         // e prevenir session fixation. O `true` faz com que o id antigo seja removido.
         session_regenerate_id(true);
+
+        // Controlar expiração por inatividade e/ou tempo absoluto
+        $nowTs = time();
+        $_SESSION['login_ts'] = $nowTs;
+        $_SESSION['last_activity_ts'] = $nowTs;
 
         // Atualizar último acesso
         $updateSql = "UPDATE usuario SET ultimo_acesso = NOW() WHERE idusuario = ?";

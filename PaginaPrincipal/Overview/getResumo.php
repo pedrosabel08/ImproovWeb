@@ -1,4 +1,5 @@
 <?php
+require_once dirname(__DIR__, 2) . '/config/session_bootstrap.php';
 session_start();
 include '../../conexao.php';
 header('Content-Type: application/json; charset=utf-8');

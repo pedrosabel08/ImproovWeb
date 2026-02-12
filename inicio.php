@@ -2,22 +2,13 @@
 require_once 'config/version.php';
 // require_once __DIR__ . '/Contratos/access_gate.php';
 
+require_once __DIR__ . '/config/session_bootstrap.php';
+
 // Prevent caching of user-specific pages (helps avoid reverse-proxy serving other's HTML)
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 header('Expires: Tue, 01 Jan 2000 00:00:00 GMT');
 header('Vary: Cookie');
-
-// Harden session settings
-ini_set('session.use_strict_mode', 1);
-ini_set('session.use_only_cookies', 1);
-ini_set('session.cookie_httponly', 1);
-// If using HTTPS in production, enable the secure flag:
-// ini_set('session.cookie_secure', 1);
-
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
 
 include 'conexao.php';
 
@@ -126,6 +117,8 @@ $conn->close();
     <link rel="stylesheet" href="<?php echo asset_url('PaginaPrincipal/styleIndex.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset_url('css/styleSidebar.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset_url('css/modalNotificacoes.css'); ?>">
+    <link rel="stylesheet" href="<?php echo asset_url('css/modalSessao.css'); ?>">
+
     <link href="https://cdn.jsdelivr.net/npm/remixicon/fonts/remixicon.css" rel="stylesheet">
     <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
         type="image/x-icon">
@@ -651,6 +644,16 @@ $conn->close();
         </div>
     </div>
 
+    <div id="modalSessao" class="modal-sessao">
+        <div class="modal-conteudo">
+            <h2>Sessão Expirada</h2>
+            <p>Sua sessão expirou. Deseja continuar?</p>
+            <button onclick="renovarSessao()">Continuar Sessão</button>
+            <button onclick="sair()">Sair</button>
+        </div>
+    </div>
+
+
 
     <script>
         function abrirModalIframe() {
@@ -670,7 +673,7 @@ $conn->close();
         }
 
         ['click', 'touchstart', 'keydown'].forEach(eventType => {
-            window.addEventListener(eventType, function (event) {
+            window.addEventListener(eventType, function(event) {
                 // Fecha os modais ao clicar fora ou pressionar Esc
                 if (eventType === 'keydown' && event.key !== 'Escape') return;
 
@@ -714,7 +717,9 @@ $conn->close();
 
             const closeBtn = document.getElementById('contrato-modal-close');
             if (closeBtn) {
-                closeBtn.addEventListener('click', () => { modal.style.display = 'none'; });
+                closeBtn.addEventListener('click', () => {
+                    modal.style.display = 'none';
+                });
             }
             // modal.addEventListener('click', (e) => {
             //     if (e.target === modal) modal.style.display = 'none';
@@ -733,6 +738,8 @@ $conn->close();
     <script src="<?php echo asset_url('script/notificacoes.js'); ?>"></script>
     <script src="<?php echo asset_url('PaginaPrincipal/scriptIndex.js'); ?>"></script>
     <script src="<?php echo asset_url('./script/sidebar.js'); ?>"></script>
+    <script src="<?php echo asset_url('./script/controleSessao.js'); ?>"></script>
+
 
 </body>
 

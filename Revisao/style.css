@@ -988,6 +988,8 @@ p.imagem_nome {
 
 /* PDF.js viewer (canvas) */
 .pdf-toolbar {
+    width: 100%;
+    box-sizing: border-box;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -1030,6 +1032,7 @@ p.imagem_nome {
 
 .pdf-canvas-wrap {
     width: 100%;
+    box-sizing: border-box;
     overflow: auto;
     padding: 10px;
     border-radius: 10px;
@@ -1041,6 +1044,7 @@ p.imagem_nome {
 .pdf-page-layer {
     position: relative;
     display: inline-block;
+    max-width: 100%;
 }
 
 .pdf-comment-layer {
@@ -1053,6 +1057,7 @@ p.imagem_nome {
     margin: 0 auto;
     background: #fff;
     border-radius: 8px;
+    max-width: 100%;
 }
 
 .image_wrapper img {

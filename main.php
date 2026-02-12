@@ -9,7 +9,7 @@ foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWe
 unset($__root, $__p);
 
 header('Content-Type: text/html; charset=utf-8');
-session_start();
+require_once __DIR__ . '/config/session_bootstrap.php';
 
 // Verificar se o usuário está logado
 if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {

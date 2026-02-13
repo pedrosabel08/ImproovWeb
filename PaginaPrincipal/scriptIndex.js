@@ -47,6 +47,50 @@ function sftpToPublicUrl(rawPath) {
     return null;
 }
 
+let holdTooltipEl = null;
+
+function getHoldTooltipEl() {
+    if (holdTooltipEl && document.body.contains(holdTooltipEl)) {
+        return holdTooltipEl;
+    }
+
+    holdTooltipEl = document.createElement('div');
+    holdTooltipEl.id = 'hold-tooltip';
+    holdTooltipEl.style.position = 'fixed';
+    holdTooltipEl.style.display = 'none';
+    holdTooltipEl.style.pointerEvents = 'none';
+    holdTooltipEl.style.zIndex = '99999';
+    holdTooltipEl.style.background = 'rgba(0, 0, 0, 0.85)';
+    holdTooltipEl.style.color = '#fff';
+    holdTooltipEl.style.padding = '6px 10px';
+    holdTooltipEl.style.borderRadius = '6px';
+    holdTooltipEl.style.fontSize = '12px';
+    holdTooltipEl.style.whiteSpace = 'nowrap';
+    holdTooltipEl.style.boxShadow = '0 2px 8px rgba(0,0,0,0.25)';
+    document.body.appendChild(holdTooltipEl);
+
+    return holdTooltipEl;
+}
+
+function showHoldTooltip(event, text = 'Imagem em HOLD.') {
+    const el = getHoldTooltipEl();
+    el.textContent = text;
+    el.style.display = 'block';
+    moveHoldTooltip(event);
+}
+
+function moveHoldTooltip(event) {
+    const el = getHoldTooltipEl();
+    el.style.left = `${event.clientX}px`;
+    el.style.top = `${event.clientY - 30}px`;
+}
+
+function hideHoldTooltip() {
+    if (holdTooltipEl) {
+        holdTooltipEl.style.display = 'none';
+    }
+}
+
 
 function carregarDados(colaborador_id) {
 
@@ -232,15 +276,24 @@ function processarDados(data) {
 
         // Bolinha só no "Não iniciado"
         let bolinhaHTML = "";
-        let liberado = "1"; // padrão liberado
+        let liberado = String(item.liberada) === 'false' || Number(item.liberada) === 0 ? "0" : "1";
 
         // Cria card
         const card = document.createElement('div');
         card.className = `kanban-card ${tipoClasse}`; // só a classe base
+        let cardEmHold = false;
 
         if (tipo === 'imagem') {
             // lógica específica para imagem
-            if (status === "Não iniciado") {
+            const nomeStatusImagem = (item.nome_status || '').toString().trim().toLowerCase();
+            const imagemStatusId = Number(item.imagem_status_id || 0);
+            const imagemEmHold = (nomeStatusImagem === 'hold') || (imagemStatusId === 7);
+
+            if (imagemEmHold) {
+                bolinhaHTML = `<span class="bolinha vermelho" data-status-anterior="${item.status_funcao_anterior || ''}"></span>`;
+                liberado = "0";
+                cardEmHold = true;
+            } else if (status === "Não iniciado") {
                 const statusAnterior = item.status_funcao_anterior || "";
                 if (["Aprovado", "Finalizado", "Aprovado com ajustes"].includes(statusAnterior)) {
                     bolinhaHTML = `<span class="bolinha verde" data-status-anterior="${statusAnterior}"></span>`;
@@ -287,6 +340,20 @@ function processarDados(data) {
         // adiciona bloqueado se necessário
         if (liberado === "0") {
             card.classList.add("bloqueado");
+        }
+
+        if (cardEmHold) {
+            card.addEventListener('mouseenter', (event) => {
+                showHoldTooltip(event, 'Imagem em HOLD');
+            });
+
+            card.addEventListener('mousemove', (event) => {
+                moveHoldTooltip(event);
+            });
+
+            card.addEventListener('mouseleave', () => {
+                hideHoldTooltip();
+            });
         }
 
         function isAtrasada(prazoStr) {

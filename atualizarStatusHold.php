@@ -14,7 +14,7 @@ $imagemId = intval($data["imagem_id"]); // Garantir que seja um número inteiro
 $obra_id = intval($data["obra_id"]); // Garantir que seja um número inteiro
 
 // 1️⃣ Buscar os valores já cadastrados
-$sqlExistentes = "SELECT descricao FROM status_hold WHERE imagem_id = ?";
+$sqlExistentes = "SELECT justificativa FROM status_hold WHERE imagem_id = ?";
 $stmt = $conn->prepare($sqlExistentes);
 $stmt->bind_param("i", $imagemId);
 $stmt->execute();
@@ -22,7 +22,7 @@ $result = $stmt->get_result();
 
 $valoresExistentes = [];
 while ($row = $result->fetch_assoc()) {
-    $valoresExistentes[] = $row["descricao"];
+    $valoresExistentes[] = $row["justificativa"];
 }
 $stmt->close();
 

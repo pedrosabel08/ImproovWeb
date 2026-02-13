@@ -9,7 +9,7 @@ foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWe
 }
 unset($__root, $__p);
 
-session_start();
+// session_start();
 $nome_usuario = $_SESSION['nome_usuario'];
 
 include '../conexaoMain.php';

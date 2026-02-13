@@ -19,30 +19,6 @@ header('Expires: Tue, 01 Jan 2000 00:00:00 GMT');
 header('Vary: Cookie');
 
 $tempoSessao = 3600; // 1h
-// Harden session behavior
-ini_set('session.use_strict_mode', 1);
-ini_set('session.use_only_cookies', 1);
-ini_set('session.cookie_httponly', 1);
-// Align cookie + server-side session lifetime. IMPORTANT: this must run on every request
-// that starts a session, otherwise GC may still clean sessions using the default value.
-ini_set('session.gc_maxlifetime', (string)$tempoSessao);
-ini_set('session.cookie_lifetime', (string)$tempoSessao);
-
-// Detect HTTPS to set the cookie secure flag correctly
-$isSecure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
-    || (isset($_SERVER['SERVER_PORT']) && (int)$_SERVER['SERVER_PORT'] === 443);
-
-session_set_cookie_params([
-    'lifetime' => $tempoSessao,
-    'path' => '/',
-    'secure' => $isSecure,
-    'httponly' => true,
-    'samesite' => 'Lax',
-]);
-
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
 
 include 'conexao.php';
 
@@ -59,6 +35,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     if ($result->num_rows > 0) {
         $row = $result->fetch_assoc();
+
+        // Sempre iniciar uma sessão nova no login, mesmo se já existir sessão ativa.
+        $_SESSION = [];
+        session_regenerate_id(true);
 
         // Iniciar sessão e armazenar dados do usuário
         $_SESSION['idusuario'] = $row['idusuario'];

@@ -84,7 +84,9 @@ function ensure_remote_project_folder(string $nomenclatura): void
     $cmd[] = 'if [ -d ' . escapeshellarg($dest) . ' ]; then echo "DEST_EXISTS"; exit 2; fi';
     $cmd[] = 'if [ ! -d ' . escapeshellarg($templateBase) . ' ]; then echo "TEMPLATE_MISSING"; exit 3; fi';
     $cmd[] = 'mkdir -p ' . escapeshellarg($dest);
-    $cmd[] = 'cp -a ' . escapeshellarg($templateBase . '/.') . ' ' . escapeshellarg($dest . '/');
+    // Use recursive copy without preserving original timestamps so copied files
+    // receive the timestamp of the copy operation (creation time).
+    $cmd[] = 'cp -r ' . escapeshellarg($templateBase . '/.') . ' ' . escapeshellarg($dest . '/');
     $cmd[] = 'echo "OK"';
     $out = $ssh->exec(implode('; ', $cmd));
 

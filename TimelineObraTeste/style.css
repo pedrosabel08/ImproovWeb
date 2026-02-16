@@ -1,0 +1,270 @@
+@import url("https://fonts.googleapis.com/css2?family=Open+Sans:wght@300..800&display=swap");
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: "Open Sans", sans-serif;
+}
+
+body {
+  background: #f5f7fb;
+  color: #1f2a37;
+  display: grid;
+  grid-template-columns: 60px 1fr;
+}
+
+main {
+  grid-column: 2;
+  padding: 30px 32px 60px;
+}
+
+.page-header {
+  margin-bottom: 18px;
+}
+
+.page-header h1 {
+  font-size: 26px;
+  font-weight: 700;
+}
+
+.page-header p {
+  margin-top: 6px;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+  margin-bottom: 16px;
+}
+
+.filters-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-group label {
+  font-size: 13px;
+  color: #475569;
+  font-weight: 600;
+}
+
+.form-group select {
+  padding: 11px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 14px;
+  background: #fff;
+  outline: none;
+}
+
+.form-group select:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.meta-row {
+  margin-top: 12px;
+  font-size: 13px;
+  color: #475569;
+}
+
+.empty-state {
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+  padding: 28px;
+  text-align: center;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.timeline-head,
+.timeline-row {
+  display: grid;
+  grid-template-columns: minmax(280px, 320px) 1fr;
+  gap: 10px;
+}
+
+.timeline-head {
+  display: none;
+}
+
+.timeline-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.status-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.status-group-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+
+.row-label {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 56px;
+}
+
+.row-label strong {
+  font-size: 13px;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.row-label span {
+  font-size: 12px;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.head-label {
+  justify-content: center;
+  align-items: flex-start;
+  font-weight: 700;
+}
+
+.axis-scroll,
+.lane-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  cursor: grab;
+  user-select: none;
+}
+
+.axis-scroll.dragging,
+.lane-scroll.dragging {
+  cursor: grabbing;
+}
+
+.axis-track,
+.lane {
+  position: relative;
+  min-height: 56px;
+}
+
+.axis-inner {
+  display: flex;
+  min-height: 56px;
+}
+
+.axis-tick {
+  border-right: 1px solid #edf2f7;
+  position: relative;
+}
+
+.axis-tick.axis-major {
+  border-right-color: #93c5fd;
+}
+
+.axis-tick.axis-major span {
+  position: absolute;
+  left: 4px;
+  top: 4px;
+  font-size: 11px;
+  color: #1d4ed8;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.92);
+  padding: 2px 4px;
+  border-radius: 6px;
+}
+
+.lane {
+  min-height: 56px;
+  background-image: repeating-linear-gradient(
+    to right,
+    #ffffff 0,
+    #ffffff 25px,
+    #f8fafc 25px,
+    #f8fafc 26px
+  );
+}
+
+.timeline-bar {
+  position: absolute;
+  top: 7px;
+  height: 52px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  border: 1px solid #1e40af;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 5px 8px;
+  overflow: visible;
+  box-shadow: 0 6px 14px rgba(30, 64, 175, 0.28);
+}
+
+.timeline-bar span,
+.timeline-bar small {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.1;
+}
+
+.timeline-bar span {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.timeline-bar small {
+  font-size: 10px;
+  opacity: 0.95;
+}
+
+@media (max-width: 1100px) {
+  .filters-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .timeline-head,
+  .timeline-row {
+    grid-template-columns: 1fr;
+  }
+
+  .row-label {
+    min-height: auto;
+  }
+}

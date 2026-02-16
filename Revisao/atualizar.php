@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../config/session_bootstrap.php';
 session_start();
 include '../conexao.php'; // Conexão com o banco de dados
 
@@ -190,7 +191,7 @@ try {
               SELECT i2.obra_id
               FROM imagens_cliente_obra i2
               JOIN funcao_imagem f2 ON f2.imagem_id = i2.idimagens_cliente_obra
-              WHERE f2.colaborador_id IN (8, 40)
+              WHERE f2.colaborador_id IN (8, 40, 23)
           )
         ORDER BY data_aprovacao DESC";
     } else {

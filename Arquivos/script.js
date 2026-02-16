@@ -157,12 +157,12 @@ const labelSufixo = document.getElementById('labelSufixo');
 
 // Mapping of suffix options per file type
 const SUFIXOS = {
-    'DWG': ['TERREO', 'LAZER', 'COBERTURA', 'MEZANINO', 'CORTES', 'GERAL', 'TIPO', 'GARAGEM', 'FACHADA', 'DUPLEX', 'ROOFTOP', 'LOGO', 'ACABAMENTOS', 'ESQUADRIA', 'ARQUITETONICO', 'REFERENCIA', 'IMPLANTACAO', 'SUBSOLO', 'G1', 'G2', 'G3', 'DUPLEX_SUPERIOR', 'DUPLEX_INFERIOR'],
-    'PDF': ['DOCUMENTACAO', 'RELATORIO', 'LOGO', 'ARQUITETONICO', 'REFERENCIA', 'ESQUADRIA', 'ACABAMENTOS', 'TIPOLOGIA', 'IMPLANTACAO', 'SUBSOLO', 'G1', 'G2', 'G3', 'DUPLEX_SUPERIOR', 'DUPLEX_INFERIOR', 'TERREO', 'LAZER', 'COBERTURA', 'MEZANINO', 'CORTES', 'GERAL', 'TIPO', 'GARAGEM', 'FACHADA'],
-    'SKP': ['MODELAGEM', 'REFERENCIA'],
-    'IMG': ['FACHADA', 'INTERNA', 'EXTERNA', 'UNIDADE', 'LOGO', 'REFERENCIAS'],
+    'DWG': ['TERREO', 'LAZER', 'COBERTURA', 'MEZANINO', 'CORTES', 'GERAL', 'TIPO', 'GARAGEM', 'FACHADA', 'DUPLEX', 'ROOFTOP', 'LOGO', 'ACABAMENTOS', 'ESQUADRIA', 'ARQUITETONICO', 'REFERENCIA', 'IMPLANTACAO', 'SUBSOLO', 'G1', 'G2', 'G3', 'DUPLEX_SUPERIOR', 'DUPLEX_INFERIOR', 'TOON', 'DIFERENCIADO', 'CAIXA_AGUA', 'CASA_MAQUINA'],
+    'PDF': ['DOCUMENTACAO', 'RELATORIO', 'LOGO', 'ARQUITETONICO', 'REFERENCIA', 'ESQUADRIA', 'ACABAMENTOS', 'TIPOLOGIA', 'IMPLANTACAO', 'SUBSOLO', 'G1', 'G2', 'G3', 'DUPLEX_SUPERIOR', 'DUPLEX_INFERIOR', 'TERREO', 'LAZER', 'COBERTURA', 'MEZANINO', 'CORTES', 'GERAL', 'TIPO', 'GARAGEM', 'FACHADA', 'TOON', 'DIFERENCIADO'],
+    'SKP': ['MODELAGEM', 'REFERENCIA', 'TOON', 'DIFERENCIADO'],
+    'IMG': ['FACHADA', 'INTERNA', 'EXTERNA', 'UNIDADE', 'LOGO', 'REFERENCIAS', 'GERAL', 'TOON', 'DIFERENCIADO'],
     'IFC': ['BIM'],
-    'Outros': ['Geral']
+    'Outros': ['Geral', 'TOON', 'DIFERENCIADO']
 };
 
 tipoArquivoSelect.addEventListener('change', async () => {
@@ -188,9 +188,9 @@ tipoArquivoSelect.addEventListener('change', async () => {
         });
 
 
-    arquivoFile.style.display = 'none';
-    arquivoFile.required = false;
-    arquivoFile.disabled = true;
+        arquivoFile.style.display = 'none';
+        arquivoFile.required = false;
+        arquivoFile.disabled = true;
 
         const imagens = await res.json();
         imagens.forEach(img => {
@@ -382,7 +382,7 @@ document.getElementById("uploadForm").addEventListener("submit", async function 
         let totalBytes = 0;
         for (let [k, v] of formData.entries()) {
             if (v instanceof File) {
-                fileNames.push(v.name + ' (' + Math.round(v.size/1024) + ' KB)');
+                fileNames.push(v.name + ' (' + Math.round(v.size / 1024) + ' KB)');
                 totalBytes += v.size;
             }
         }
@@ -398,7 +398,7 @@ document.getElementById("uploadForm").addEventListener("submit", async function 
                 <div id="swal-upload-progress" style="width:100%;background:#eee;border-radius:6px;overflow:hidden;height:14px">
                     <div id="swal-upload-bar" style="width:0%;height:100%;background:#3085d6"></div>
                 </div>
-                <div id="swal-upload-info" style="margin-top:6px;font-size:13px;color:#666">0% - 0 KB de ${Math.round(totalBytes/1024)} KB</div>
+                <div id="swal-upload-info" style="margin-top:6px;font-size:13px;color:#666">0% - 0 KB de ${Math.round(totalBytes / 1024)} KB</div>
             </div>`;
 
         let xhr = new XMLHttpRequest();
@@ -448,7 +448,7 @@ document.getElementById("uploadForm").addEventListener("submit", async function 
 
                         if (bar) bar.style.width = percent + '%';
                         if (info) {
-                            info.textContent = `${percent.toFixed(2)}% - ${Math.round(e.loaded/1024)} KB de ${Math.round(e.total/1024)} KB — Tempo: ${elapsed.toFixed(1)}s — Velocidade: ${speed.toFixed(2)} MB/s — Estimativa: ${estimatedTime.toFixed(1)}s`;
+                            info.textContent = `${percent.toFixed(2)}% - ${Math.round(e.loaded / 1024)} KB de ${Math.round(e.total / 1024)} KB — Tempo: ${elapsed.toFixed(1)}s — Velocidade: ${speed.toFixed(2)} MB/s — Estimativa: ${estimatedTime.toFixed(1)}s`;
                         }
                     }
                 };
@@ -486,7 +486,7 @@ document.getElementById("uploadForm").addEventListener("submit", async function 
         ]);
 
         if (race.type === 'swal' && race.res && race.res.dismiss === Swal.DismissReason.cancel) {
-            try { xhr.abort(); } catch (e) {}
+            try { xhr.abort(); } catch (e) { }
             Swal.close();
             throw new Error('Envio cancelado pelo usuário');
         }
@@ -509,7 +509,7 @@ document.getElementById("uploadForm").addEventListener("submit", async function 
                     duration: 3000,
                     close: true,
                     gravity: "top",
-                    position: "right",
+                    position: "center",
                     backgroundColor: "green",
                     stopOnFocus: true,
                 }).showToast();
@@ -529,7 +529,7 @@ document.getElementById("uploadForm").addEventListener("submit", async function 
                     duration: 5000,
                     close: true,
                     gravity: "top",
-                    position: "right",
+                    position: "center",
                     backgroundColor: "red",
                     stopOnFocus: true,
                 }).showToast();
@@ -544,7 +544,7 @@ document.getElementById("uploadForm").addEventListener("submit", async function 
             duration: 5000,
             close: true,
             gravity: "top",
-            position: "right",
+            position: "center",
             backgroundColor: "red",
             stopOnFocus: true,
         }).showToast();

@@ -3,7 +3,7 @@
 * {
     padding: 0;
     margin: 0;
-    font-family: "Open Sans", sans-serif;
+    font-family: "Inter", sans-serif;
 }
 
 body {
@@ -81,4 +81,100 @@ th {
 tfoot td {
     font-weight: bold;
     background-color: #f9f9f9;
+}
+
+.colab-link {
+    background: transparent;
+    border: none;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+    text-decoration: underline;
+    padding: 0;
+}
+
+.imagens-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.25);
+    display: none;
+    z-index: 9999;
+}
+
+.imagens-overlay.open {
+    display: block;
+}
+
+.imagens-panel {
+    position: absolute;
+    top: 0;
+    right: 0;
+    height: 100%;
+    width: 420px;
+    max-width: 92vw;
+    background: #fff;
+    border-left: 1px solid #ccc;
+    box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
+    display: flex;
+    flex-direction: column;
+}
+
+.imagens-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+    border-bottom: 1px solid #eee;
+}
+
+.imagens-header h3 {
+    margin: 0;
+    font-size: 16px;
+    color: #333;
+    text-align: left;
+}
+
+.imagens-fechar {
+    padding: 6px 10px;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.imagens-body {
+    padding: 12px 14px;
+    overflow: auto;
+    text-align: left;
+}
+
+.imagens-body ul {
+    list-style: none;
+    padding-left: 0;
+}
+
+.imagens-body li {
+    padding: 6px 0;
+    border-bottom: 1px solid #f2f2f2;
+    font-size: 13px;
+    color: #333;
+}
+
+.imagem-status {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+}
+
+.status-pago {
+    background: #e6f7ea;
+    color: #167f2d;
+    border: 1px solid #c6ecca;
+}
+
+.status-nao {
+    background: #fff4e6;
+    color: #a65a00;
+    border: 1px solid #ffdca8;
 }

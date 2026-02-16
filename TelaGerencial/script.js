@@ -51,21 +51,107 @@ function buscarDados() {
             tabela.innerHTML = ''; // limpa
 
             dados.forEach(linha => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-            <td>${linha.nome_colaborador}</td>
-            <td>${linha.nome_funcao}</td>
-            <td>${linha.quantidade}</td>
-            <td>${linha.mes_anterior}</td>
-            <td>${linha.recorde_producao}</td>
-          `;
-                tabela.appendChild(tr);
+
+                // if (linha.nao_pagas > 0) {
+                    const tr = document.createElement('tr');
+
+                    const tdColab = document.createElement('td');
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'colab-link';
+                    btn.textContent = linha.nome_colaborador;
+                    btn.addEventListener('click', () => abrirModalImagens(linha));
+                    tdColab.appendChild(btn);
+
+                    const tdFuncao = document.createElement('td');
+                    tdFuncao.textContent = linha.nome_funcao;
+
+                    const tdQtd = document.createElement('td');
+                    tdQtd.textContent = linha.quantidade;
+
+                    const tdPagas = document.createElement('td');
+                    tdPagas.textContent = linha.pagas;
+
+                    const tdNaoPagas = document.createElement('td');
+                    tdNaoPagas.textContent = linha.nao_pagas;
+
+                    const tdAnterior = document.createElement('td');
+                    tdAnterior.textContent = linha.mes_anterior;
+
+                    const tdRecorde = document.createElement('td');
+                    tdRecorde.textContent = linha.recorde_producao;
+
+                    tr.appendChild(tdColab);
+                    tr.appendChild(tdFuncao);
+                    tr.appendChild(tdQtd);
+                    tr.appendChild(tdPagas);
+                    tr.appendChild(tdNaoPagas);
+                    tr.appendChild(tdAnterior);
+                    tr.appendChild(tdRecorde);
+                    tabela.appendChild(tr);
+                // }
             });
         })
         .catch(error => {
             console.error('Erro ao buscar dados:', error);
         });
 }
+
+function abrirModalImagens(linha) {
+    const overlay = document.getElementById('modalImagensOverlay');
+    const titulo = document.getElementById('imagensTitulo');
+    const body = document.getElementById('imagensBody');
+    if (!overlay || !titulo || !body) return;
+
+    const nomeColab = linha?.nome_colaborador ?? '';
+    const nomeFuncao = linha?.nome_funcao ?? '';
+    titulo.textContent = `${nomeColab} - ${nomeFuncao}`;
+
+    const imagens = Array.isArray(linha?.imagens) ? linha.imagens : [];
+    if (imagens.length === 0) {
+        body.innerHTML = '<p>Nenhuma imagem encontrada para este item.</p>';
+    } else {
+        const ul = document.createElement('ul');
+        imagens.forEach(img => {
+            const li = document.createElement('li');
+            const nome = document.createElement('span');
+            nome.textContent = img?.imagem_nome ?? '';
+            const status = document.createElement('span');
+            status.className = 'imagem-status ' + ((img?.pago && parseInt(img.pago) === 1) ? 'status-pago' : 'status-nao');
+            status.textContent = (img?.pago && parseInt(img.pago) === 1) ? 'Pago' : 'Não pago';
+            li.appendChild(nome);
+            li.appendChild(document.createTextNode(' '));
+            li.appendChild(status);
+            ul.appendChild(li);
+        });
+        body.innerHTML = '';
+        body.appendChild(ul);
+    }
+
+    overlay.classList.add('open');
+    overlay.setAttribute('aria-hidden', 'false');
+}
+
+function fecharModalImagens() {
+    const overlay = document.getElementById('modalImagensOverlay');
+    if (!overlay) return;
+    overlay.classList.remove('open');
+    overlay.setAttribute('aria-hidden', 'true');
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    const overlay = document.getElementById('modalImagensOverlay');
+    const btnFechar = document.getElementById('fecharModalImagens');
+    if (btnFechar) btnFechar.addEventListener('click', fecharModalImagens);
+    if (overlay) {
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) fecharModalImagens();
+        });
+    }
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') fecharModalImagens();
+    });
+});
 
 // Tabela de valores por função
 const valoresPorFuncao = {
@@ -125,6 +211,8 @@ function buscarDadosPorDiaAnterior() {
                 tr.innerHTML = `
                     <td>${linha.nome_funcao}</td>
                     <td>${linha.quantidade}</td>
+                    <td>${linha.pagas}</td>
+                    <td>${linha.nao_pagas}</td>
                     <td>R$ ${estimativa.toFixed(2).replace('.', ',')}</td>
                 `;
                 tabela.appendChild(tr);
@@ -175,6 +263,8 @@ function buscarDadosPorSemana() {
                 tr.innerHTML = `
                     <td>${linha.nome_funcao}</td>
                     <td>${linha.quantidade}</td>
+                    <td>${linha.pagas}</td>
+                    <td>${linha.nao_pagas}</td>
                     <td>R$ ${estimativa.toFixed(2).replace('.', ',')}</td>
                 `;
                 tabela.appendChild(tr);
@@ -217,10 +307,12 @@ function buscarDadosFuncao() {
 
                 const tr = document.createElement("tr");
                 tr.innerHTML = `
-            <td>${linha.nome_funcao}</td>
-            <td>${linha.quantidade}</td>
-                        <td>${linha.mes_anterior ?? 0}</td>
-                        <td>${linha.recorde_producao ?? 0}</td>
+                    <td>${linha.nome_funcao}</td>
+                    <td>${linha.quantidade}</td>
+                    <td>${linha.pagas}</td>
+                    <td>${linha.nao_pagas}</td>
+                    <td>${linha.mes_anterior ?? 0}</td>
+                    <td>${linha.recorde_producao ?? 0}</td>
           `;
                 tabela.appendChild(tr);
 
@@ -245,13 +337,40 @@ document.addEventListener('DOMContentLoaded', function () {
     if (btn) btn.addEventListener('click', gerarRelatorio);
 });
 
-function coletarTabelaHtml(tableSelector) {
+function coletarTabelaHtml(tableSelector, options = {}) {
     const table = document.querySelector(tableSelector);
     if (!table) return '';
-    const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent.trim());
-    const rows = Array.from(table.querySelectorAll('tbody tr')).map(tr =>
+
+    const headersAll = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent.trim());
+    const rowsAll = Array.from(table.querySelectorAll('tbody tr')).map(tr =>
         Array.from(tr.querySelectorAll('td')).map(td => td.textContent.trim())
     );
+
+    let includeIndexes = null;
+
+    if (Array.isArray(options.includeIndexes)) {
+        includeIndexes = options.includeIndexes.slice();
+    }
+
+    if (options.includeHeaderRegex instanceof RegExp) {
+        const idxByHeader = headersAll
+            .map((h, idx) => ({ h, idx }))
+            .filter(x => options.includeHeaderRegex.test(x.h))
+            .map(x => x.idx);
+
+        includeIndexes = Array.isArray(includeIndexes) ? includeIndexes.concat(idxByHeader) : idxByHeader;
+    }
+
+    if (Array.isArray(includeIndexes)) {
+        includeIndexes = Array.from(new Set(includeIndexes))
+            .filter(i => Number.isInteger(i) && i >= 0 && i < headersAll.length)
+            .sort((a, b) => a - b);
+    }
+
+    const headers = includeIndexes ? includeIndexes.map(i => headersAll[i]) : headersAll;
+    const rows = includeIndexes
+        ? rowsAll.map(r => includeIndexes.map(i => (r[i] ?? '')))
+        : rowsAll;
 
     let html = '<table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;width:100%;">';
     html += '<thead><tr>' + headers.map(h => `<th style="background:#eee;text-align:left;">${h}</th>`).join('') + '</tr></thead>';
@@ -268,9 +387,32 @@ function gerarRelatorio() {
     const now = new Date();
     const header = `<h2>Relatório - Tela Gerencial</h2><p>Mês/ano selecionado: <strong>${mes}${ano ? '/' + ano : ''}</strong> — gerado em ${now.toLocaleString()}</p>`;
 
-    const tabelaProducaoHtml = coletarTabelaHtml('#tabelaProducao');
-    const tabelaFuncaoHtml = coletarTabelaHtml('#tabelaFuncao');
-    const tabelaEntregasHtml = coletarTabelaHtml('#tabelaEntregas');
+    // No relatório, manter apenas colunas de identificação + "Quantidade" (antes 'Não pagas'),
+    // além de mês anterior e recorde ao lado da quantidade.
+    const headerRegex = /(?:N[aã]o|Não)\s*pagas|m[eê]s\s*anterior|recorde/i;
+    let tabelaProducaoHtml = coletarTabelaHtml('#tabelaProducao', {
+        includeIndexes: [0, 1],
+        includeHeaderRegex: headerRegex
+    });
+    let tabelaFuncaoHtml = coletarTabelaHtml('#tabelaFuncao', {
+        includeIndexes: [0],
+        includeHeaderRegex: headerRegex
+    });
+    let tabelaEntregasHtml = coletarTabelaHtml('#tabelaEntregas');
+
+    // Renomeia o cabeçalho "Não pagas" para "Quantidade" apenas no HTML de exportação
+    try {
+        tabelaProducaoHtml = (tabelaProducaoHtml || '')
+            .replace(/<th[^>]*>\s*(?:N[aã]o|Não)\s*pagas\s*<\/th>/i, '<th>Quantidade</th>')
+            .replace(/<th[^>]*>\s*m[eê]s\s*anterior\s*<\/th>/i, '<th>Mês anterior</th>')
+            .replace(/<th[^>]*>\s*recorde(?:\s*produc(?:a|ã)o)?\s*<\/th>/i, '<th>Recorde</th>');
+    } catch (e) { /* ignore se for null/undefined */ }
+    try {
+        tabelaFuncaoHtml = (tabelaFuncaoHtml || '')
+            .replace(/<th[^>]*>\s*(?:N[aã]o|Não)\s*pagas\s*<\/th>/i, '<th>Quantidade</th>')
+            .replace(/<th[^>]*>\s*m[eê]s\s*anterior\s*<\/th>/i, '<th>Mês anterior</th>')
+            .replace(/<th[^>]*>\s*recorde(?:\s*produc(?:a|ã)o)?\s*<\/th>/i, '<th>Recorde</th>');
+    } catch (e) { /* ignore se for null/undefined */ }
 
     const safeFileMonth = (mes || '').replace(/\s+/g, '_');
     const content = `

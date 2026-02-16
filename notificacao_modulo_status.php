@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/config/session_bootstrap.php';
 header('Content-Type: application/json');
 
 // CORS: allow requests from the browser origin and handle preflight.

@@ -2,11 +2,27 @@
 require_once __DIR__ . '/config/version.php';
 // require_once __DIR__ . '/Contratos/access_gate.php';
 
+// Expose session policy to frontend (no headers needed; assumes session already started in the page)
+$__idleSeconds = defined('IMPROOV_SESSION_IDLE_SECONDS') ? (int)IMPROOV_SESSION_IDLE_SECONDS : 30 * 60;
+$__idleWarnSeconds = defined('IMPROOV_SESSION_IDLE_WARN_SECONDS') ? (int)IMPROOV_SESSION_IDLE_WARN_SECONDS : 25 * 60;
+$__absSeconds = defined('IMPROOV_SESSION_ABSOLUTE_SECONDS') ? (int)IMPROOV_SESSION_ABSOLUTE_SECONDS : 60 * 60;
+$__absWarnSeconds = defined('IMPROOV_SESSION_ABSOLUTE_WARN_SECONDS') ? (int)IMPROOV_SESSION_ABSOLUTE_WARN_SECONDS : 55 * 60;
+$__loginTs = isset($_SESSION['login_ts']) ? (int)$_SESSION['login_ts'] : null;
+
 $__reqUri = $_SERVER['REQUEST_URI'] ?? '';
 $__basePath = (strpos($__reqUri, '/flow/ImproovWeb/') !== false || preg_match('~^/flow/ImproovWeb(?:/|$)~', $__reqUri))
     ? '/flow/ImproovWeb/'
     : '/ImproovWeb/';
 ?>
+<script>
+    // Session policy provided by PHP
+    window.IMPROOV_SESSION_IDLE_MS = <?php echo json_encode($__idleSeconds * 1000); ?>;
+    window.IMPROOV_SESSION_IDLE_WARN_MS = <?php echo json_encode($__idleWarnSeconds * 1000); ?>;
+    window.IMPROOV_SESSION_ABSOLUTE_MS = <?php echo json_encode($__absSeconds * 1000); ?>;
+    window.IMPROOV_SESSION_ABSOLUTE_WARN_MS = <?php echo json_encode($__absWarnSeconds * 1000); ?>;
+    window.IMPROOV_LOGIN_TS = <?php echo json_encode($__loginTs); ?>; // seconds since epoch
+    window.IMPROOV_APP_BASE = <?php echo json_encode(rtrim($__basePath, '/')); ?>;
+</script>
 <!DOCTYPE html>
 <html lang="pt-br">
 

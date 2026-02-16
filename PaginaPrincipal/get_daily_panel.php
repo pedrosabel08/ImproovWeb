@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../config/session_bootstrap.php';
 header('Content-Type: application/json; charset=utf-8');
 // Retorna os dados para o painel diário: mostrar?, contagens e últimas telas
 if (session_status() === PHP_SESSION_NONE) session_start();

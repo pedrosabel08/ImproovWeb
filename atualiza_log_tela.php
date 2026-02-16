@@ -2,6 +2,7 @@
 // Atualiza o log de tela e insere histórico em logs_usuarios_historico
 // Uso: include_once 'atualiza_log_tela.php'; ou chamado via AJAX recebendo POST { title, url }
 
+require_once __DIR__ . '/config/session_bootstrap.php';
 include 'conexao.php';
 
 // Evita produzir saída

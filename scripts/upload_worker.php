@@ -29,6 +29,19 @@ $ftp_port = 2222;
 // Slack webhook URL: set in environment `SLACK_WEBHOOK_URL`
 // Example: setx SLACK_WEBHOOK_URL "https://hooks.slack.com/services/..../..../.."
 
+function worker_log(string $message, string $level = 'INFO'): void
+{
+    $ts = date('Y-m-d H:i:s');
+    echo "[{$ts}] [{$level}] {$message}\n\n";
+}
+
+function append_failed_log(string $failedDir, string $processingMeta, string $message): void
+{
+    $ts = date('c');
+    $line = "[{$ts}] {$message}\n\n";
+    @file_put_contents($failedDir . '/' . basename($processingMeta) . '.err', $line, FILE_APPEND);
+}
+
 
 function enviarArquivoSFTP($host, $usuario, $senha, $arquivoLocal, $arquivoRemoto, $porta = 2222, callable $onProgress = null)
 {
@@ -154,6 +167,10 @@ function ensure_remote_dir_recursive(SFTP $sftp, string $dir): bool
 // Resolve hostname up front and provide a safe connector that won't fatal on DNS
 function resolve_hostname_safe(string $host): ?string
 {
+    // If host is already a valid IP, use it directly.
+    if (filter_var($host, FILTER_VALIDATE_IP)) {
+        return $host;
+    }
     $ip = @gethostbyname($host);
     if (!$ip || $ip === $host) {
         error_log("[upload_worker] DNS resolution failed for host: {$host}");
@@ -162,24 +179,40 @@ function resolve_hostname_safe(string $host): ?string
     return $ip;
 }
 
-function sftp_connect_safe(string $host, int $port, string $user, string $pass): ?SFTP
+function sftp_connect_safe(string $host, int $port, string $user, string $pass, ?string &$error = null): ?SFTP
 {
+    $error = null;
     $ip = resolve_hostname_safe($host);
-    if ($ip === null) return null;
+    if ($ip === null) {
+        $error = 'Falha ao resolver host SFTP';
+        return null;
+    }
     try {
         $sftp = new SFTP($ip, $port);
         if (!$sftp->login($user, $pass)) {
             error_log('[upload_worker] SFTP login failed');
+            $error = 'Falha no login SFTP';
             return null;
         }
         return $sftp;
     } catch (UnableToConnectException $e) {
         error_log('[upload_worker] SFTP connect error: ' . $e->getMessage());
+        $error = 'Falha de conexão SFTP: ' . $e->getMessage();
         return null;
     } catch (Exception $e) {
         error_log('[upload_worker] SFTP generic error: ' . $e->getMessage());
+        $error = 'Erro SFTP: ' . $e->getMessage();
         return null;
     }
+}
+
+function normalize_nomenclatura_worker(string $value): string
+{
+    $value = trim($value);
+    // remove control chars and non-breaking spaces that may come from form copy/paste
+    $value = str_replace("\xC2\xA0", ' ', $value);
+    $value = preg_replace('/[\x00-\x1F\x7F]/u', '', $value);
+    return trim($value);
 }
 
 // Converte caminho do NAS Linux para caminho acessível no Windows (Z:\)
@@ -236,7 +269,7 @@ if (function_exists('pcntl_signal') && defined('SIGTERM') && defined('SIGINT')) 
     });
 } else {
     // pcntl not available: worker will not respond to SIGTERM gracefully.
-    echo "Warning: pcntl extension not available; graceful shutdown disabled.\n";
+    worker_log('pcntl extension not available; graceful shutdown disabled.', 'WARN');
 }
 
 // helper to claim a job by renaming the meta file atomically
@@ -604,7 +637,7 @@ do {
             sleep($sleepWhenIdle);
             continue;
         }
-        echo "Nenhum item na fila.\n";
+        worker_log('Nenhum item na fila.');
         break;
     }
 
@@ -629,20 +662,20 @@ do {
                     }
                 }
             }
-            echo "Retomando job em processing: $processingMeta\n";
+            worker_log("Retomando job em processing: {$processingMeta}");
         } else {
-            echo "Tentando claim: $metaFile\n";
+            worker_log("Tentando claim: {$metaFile}");
             $processingMeta = claimJob($metaFile);
             if (!$processingMeta) {
-                echo "Falha ao claim (outro worker talvez esteja processando): $metaFile\n";
+                worker_log("Falha ao claim (outro worker talvez esteja processando): {$metaFile}", 'WARN');
                 continue;
             }
         }
 
-        echo "Processando $processingMeta\n";
+        worker_log("Processando {$processingMeta}");
         $meta = json_decode(file_get_contents($processingMeta), true);
         if (!$meta) {
-            echo "Erro ao ler metadados: $processingMeta\n";
+            worker_log("Erro ao ler metadados: {$processingMeta}", 'ERROR');
             rename($processingMeta, $failedDir . '/' . basename($processingMeta));
             continue;
         }
@@ -662,7 +695,7 @@ do {
             // If we already uploaded previously and persisted result, we can still update DB.
             $persistedOk = !empty($meta['uploaded_remote']) && !empty($meta['windows_path']) && !empty($meta['nome_final']) && !empty($meta['tipo']);
             if ($persistedOk) {
-                echo "Arquivo staged não encontrado, mas upload já foi concluído anteriormente. Tentando apenas atualizar DB.\n";
+                worker_log('Arquivo staged não encontrado, mas upload já foi concluído anteriormente. Tentando apenas atualizar DB.', 'WARN');
 
                 $jobId = $meta['id'] ?? pathinfo($processingMeta, PATHINFO_FILENAME);
                 cleanup_duplicate_meta_files($baseDir, $jobId, $processingMeta);
@@ -683,14 +716,14 @@ do {
                     // cleanup meta
                     @unlink($processingMeta);
                     cleanup_duplicate_meta_files($baseDir, $jobId, $processingMeta);
-                    echo "DB atualizado e job finalizado (sem staged).\n";
+                    worker_log('DB atualizado e job finalizado (sem staged).');
                 } else {
                     error_log('[upload_worker] could not finalize: missing log_ids even after insert; keeping meta for retry');
                 }
                 continue;
             }
 
-            echo "Arquivo staged não encontrado: $staged\n";
+            worker_log("Arquivo staged não encontrado: {$staged}", 'ERROR');
             rename($processingMeta, $failedDir . '/' . basename($processingMeta));
             continue;
         }
@@ -722,7 +755,7 @@ do {
         }
 
         // extract post fields
-        $nomenclatura = $meta['post']['nomenclatura'] ?? '';
+        $nomenclatura = normalize_nomenclatura_worker((string)($meta['post']['nomenclatura'] ?? ''));
         $nome_funcao = $meta['post']['nome_funcao'] ?? '';
         $numeroImagem = $meta['post']['numeroImagem'] ?? '';
         $primeiraPalavra = $meta['post']['primeiraPalavra'] ?? '';
@@ -735,7 +768,7 @@ do {
 
         $pasta_funcao = mapFuncaoParaPasta($nome_funcao);
         if (!$pasta_funcao) {
-            echo "Função sem pasta mapeada: $nome_funcao\n";
+            worker_log("Função sem pasta mapeada: {$nome_funcao}", 'ERROR');
             rename($staged, $failedDir . '/' . basename($staged));
             rename($processingMeta, $failedDir . '/' . basename($processingMeta));
             continue;
@@ -743,9 +776,16 @@ do {
 
         $clientes_base = ['/mnt/clientes/2024', '/mnt/clientes/2025', '/mnt/clientes/2026'];
         $upload_ok = '';
+        $sftpConnError = '';
+        $attemptedDestinos = [];
         foreach ($clientes_base as $base) {
             $destino_base = $base . '/' . $nomenclatura . '/' . $pasta_funcao;
-            $sftp = sftp_connect_safe($ftp_host, $ftp_port, $ftp_user, $ftp_pass);
+            $attemptedDestinos[] = $destino_base;
+            $connErr = null;
+            $sftp = sftp_connect_safe($ftp_host, $ftp_port, $ftp_user, $ftp_pass, $connErr);
+            if (!$sftp && $connErr && !$sftpConnError) {
+                $sftpConnError = $connErr;
+            }
             if ($sftp && @$sftp->is_dir($destino_base)) {
                 $upload_ok = $destino_base;
                 break;
@@ -753,8 +793,13 @@ do {
         }
 
         if (!$upload_ok) {
-            echo "Destino não encontrado para nomenclatura: $nomenclatura\n";
-            file_put_contents($failedDir . '/' . basename($processingMeta) . '.err', date('c') . " - destino não encontrado\n", FILE_APPEND);
+            $notFoundMsg = "Destino não encontrado para nomenclatura: $nomenclatura";
+            if ($sftpConnError) {
+                $notFoundMsg .= " (possível erro de conexão: {$sftpConnError})";
+            }
+            worker_log($notFoundMsg, 'ERROR');
+            error_log('[upload_worker] destinos testados: ' . implode(' | ', $attemptedDestinos));
+            append_failed_log($failedDir, $processingMeta, $notFoundMsg . ' | destinos testados: ' . implode(' | ', $attemptedDestinos));
             rename($staged, $failedDir . '/' . basename($staged));
             rename($processingMeta, $failedDir . '/' . basename($processingMeta));
             // Update DB and publish failure
@@ -820,8 +865,8 @@ do {
         $sftpPrep = new SFTP($ftp_host, $ftp_port);
         if (!$sftpPrep->login($ftp_user, $ftp_pass)) {
             $lastMsg = 'Falha na autenticação SFTP ao preparar diretórios.';
-            echo $lastMsg . "\n";
-            file_put_contents($failedDir . '/' . basename($processingMeta) . '.err', date('c') . " - $lastMsg\n", FILE_APPEND);
+            worker_log($lastMsg, 'ERROR');
+            append_failed_log($failedDir, $processingMeta, $lastMsg);
             rename($staged, $failedDir . '/' . basename($staged));
             rename($processingMeta, $failedDir . '/' . basename($processingMeta));
             publishProgress($redis, $jobId, 0, 'failed', $lastMsg);
@@ -841,8 +886,8 @@ do {
         }
         if (!ensure_remote_dir_recursive($sftpPrep, $remote_dir)) {
             $lastMsg = 'Não foi possível criar/verificar diretórios remotos: ' . $remote_dir;
-            echo $lastMsg . "\n";
-            file_put_contents($failedDir . '/' . basename($processingMeta) . '.err', date('c') . " - $lastMsg\n", FILE_APPEND);
+            worker_log($lastMsg, 'ERROR');
+            append_failed_log($failedDir, $processingMeta, $lastMsg);
             rename($staged, $failedDir . '/' . basename($staged));
             rename($processingMeta, $failedDir . '/' . basename($processingMeta));
             publishProgress($redis, $jobId, 0, 'failed', $lastMsg);
@@ -904,7 +949,8 @@ do {
 
         // after retry loop: finalize
         if ($ok) {
-            echo "Enviado com sucesso: $remote_path\n";
+            $enviadoEm = date('Y-m-d H:i:s');
+            worker_log("Enviado com sucesso em {$enviadoEm}: {$remote_path}", 'SUCCESS');
             // calcular tamanho final antes de remover o arquivo local
             $tamanho_final = @filesize($staged) ?: null;
 
@@ -965,8 +1011,15 @@ do {
                 }
             }
         } else {
-            echo "Falha ao enviar (todas tentativas ou erro irreversível): $lastMsg\n";
-            file_put_contents($failedDir . '/' . basename($processingMeta) . '.err', date('c') . " - $lastMsg\n", FILE_APPEND);
+            $detalheErro = "Falha ao enviar (todas tentativas ou erro irreversível): {$lastMsg}";
+            if (!empty($remote_path)) {
+                $detalheErro .= " | destino remoto: {$remote_path}";
+            }
+            if (!empty($meta['attempts'])) {
+                $detalheErro .= " | tentativas: {$meta['attempts']}";
+            }
+            worker_log($detalheErro, 'ERROR');
+            append_failed_log($failedDir, $processingMeta, $detalheErro);
             rename($staged, $failedDir . '/' . basename($staged));
             rename($processingMeta, $failedDir . '/' . basename($processingMeta));
             publishProgress($redis, $jobId, 0, 'failed', $lastMsg);
@@ -989,4 +1042,4 @@ do {
     if (!$shutdown) sleep($sleepWhenIdle);
 } while (!$shutdown);
 
-echo "Worker finalizado.\n";
+worker_log('Worker finalizado.');

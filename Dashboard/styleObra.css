@@ -1807,6 +1807,9 @@ table#tabela-logs tbody tr:hover {
     color: black;
     font-weight: bold;
     display: none;
+    font-size: 0.85rem;
+    border-radius: 8px;
+    padding: 3px 5px;
 }
 
 .buttons button:hover {
@@ -2224,7 +2227,6 @@ i.fa-info {
 }
 
 #copyColumn {
-    margin-left: 20px;
     cursor: pointer;
 }
 
@@ -2831,34 +2833,64 @@ ul.file-list {
     gap: 5px;
 }
 
+.buttons-actions {
+    display: flex;
+    width: max-content;
+    margin-left: 20px;
+    gap: 10px;
+}
+
 #acoesModal {
     display: none;
-    position: absolute;
-    background: white;
-    border: 1px solid #ccc;
-    padding: 8px;
-    width: 220px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    position: fixed;
+    background: var(--card-bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px;
+    width: 290px;
+    box-shadow: 0 8px 24px var(--shadow);
     z-index: 1000;
     font-size: 0.9rem;
 }
 
 #acoesModal input,
 #acoesModal select {
+    background: transparent;
+    color: var(--text);
     border: none;
-    border-bottom: 1px solid;
+    border-bottom: 1px solid var(--border);
+    padding: 4px 2px;
+    min-width: 120px;
+    font-size: 0.88rem;
 }
 
-.modal-row {
+#acoesModal input:focus,
+#acoesModal select:focus {
+    outline: none;
+    border-bottom-color: var(--cor-secundaria);
+}
+
+#acoesModal .modal-row {
     cursor: pointer;
-    padding: 5px;
-    border-bottom: 1px solid #eee;
+    padding: 7px 6px;
+    border-bottom: 1px solid var(--border);
     display: flex;
     justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    border-radius: 6px;
+    transition: background-color 0.2s ease;
 }
 
-.modal-row:hover {
-    background: #f8f8f8;
+#acoesModal .modal-row:last-child {
+    border-bottom: none;
+    justify-content: center;
+    font-weight: 600;
+}
+
+#acoesModal .modal-row:hover {
+    background: var(--bg);
 }
 
 #batch_actions:hover,

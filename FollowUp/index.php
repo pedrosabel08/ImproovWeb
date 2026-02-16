@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../config/session_bootstrap.php';
 $__root = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/\\');
 foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWeb/config/version.php'] as $__p) {
     if ($__p && is_file($__p)) {
@@ -44,6 +45,7 @@ $conn->close();
     <link rel="stylesheet" href="<?php echo asset_url('../css/styleSidebar.css'); ?>">
     <!-- Use the project's standard base styles -->
     <!-- <link rel="stylesheet" href="<?php echo asset_url('../css/stylePadrao.css'); ?>"> -->
+    <link rel="stylesheet" href="<?php echo asset_url('../css/modalSessao.css'); ?>">
 </head>
 
 <body>
@@ -128,6 +130,7 @@ $conn->close();
 
     <script src="<?php echo asset_url('script.js'); ?>"></script>
     <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
+    <script src="<?php echo asset_url('../script/controleSessao.js'); ?>"></script>
 </body>
 
 </html>

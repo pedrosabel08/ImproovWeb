@@ -1,5 +1,5 @@
 <?php
-session_start();
+require_once __DIR__ . '/config/session_bootstrap.php';
 
 include_once __DIR__ . '/conexao.php';
 
@@ -8,7 +8,8 @@ function verificaNivelAcesso($nivelExato)
 {
     // Verifica se o usuário está logado e se possui um nível de acesso
     if (!isset($_SESSION['logado']) || !$_SESSION['logado'] || !isset($_SESSION['nivel_acesso'])) {
-        header("Location: login.php"); // Redireciona para a página de login
+        $base = improov_app_base_path();
+        header('Location: ' . $base . '/index.html');
         exit;
     }
 

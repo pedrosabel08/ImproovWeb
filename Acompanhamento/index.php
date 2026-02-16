@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../config/session_bootstrap.php';
 $__root = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/\\');
 foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWeb/config/version.php'] as $__p) {
     if ($__p && is_file($__p)) {
@@ -25,6 +26,7 @@ session_start();
     <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
         type="image/x-icon">
     <script src="<?php echo asset_url('script.js'); ?>" defer></script>
+    <link rel="stylesheet" href="<?php echo asset_url('../css/modalSessao.css'); ?>">
 </head>
 
 <body>
@@ -108,6 +110,7 @@ session_start();
             </table>
         </div>
     </main>
+    <script src="<?php echo asset_url('../script/controleSessao.js'); ?>"></script>
 </body>
 
 </html>

@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/config/session_bootstrap.php';
 include 'conexao.php';
 session_start(); // Certifique-se de iniciar a sessão
 

@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../config/session_bootstrap.php';
 session_start();
 
 if (!isset($_SESSION['idusuario'])) {
@@ -121,7 +122,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Para P00 + Finalização, só permite aprovar a função se TODOS os ângulos estiverem liberados.
-    if (in_array($status, ['Aprovado', 'Aprovado com ajustes'], true) && $imagem_id) {
+    if (in_array($status, ['Aprovado'], true) && $imagem_id) {
         $isFinalizacao = (mb_strtolower((string) $nome_funcao, 'UTF-8') === 'finalização');
         if ($isFinalizacao) {
             $status_nome_atual = null;
@@ -337,14 +338,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (
         (
             in_array(mb_strtolower($nome_funcao, 'UTF-8'), ['pós-produção', 'alteração']) &&
-            in_array($status, ['Aprovado', 'Aprovado com ajustes'])
+            in_array($status, ['Aprovado'])
         )
         ||
         (
             // 🔸 Nova condição: finalização de planta humanizada
             mb_strtolower($nome_funcao, 'UTF-8') === 'finalização' &&
             stripos($tipo_imagem_nome, 'humanizada') !== false &&
-            in_array($status, ['Aprovado', 'Aprovado com ajustes'])
+            in_array($status, ['Aprovado'])
         )
     ) {
         $stmtArquivo = $conn->prepare("SELECT nome_arquivo FROM historico_aprovacoes_imagens WHERE funcao_imagem_id = ? ORDER BY id DESC LIMIT 1");

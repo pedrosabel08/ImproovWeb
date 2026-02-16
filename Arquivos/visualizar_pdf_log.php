@@ -3,6 +3,7 @@
 // Busca o arquivo pelo id no banco, valida sessão e faz streaming do PDF.
 
 // Evita corromper o streaming do PDF com warnings/notices.
+require_once __DIR__ . '/../config/session_bootstrap.php';
 @ini_set('display_errors', '0');
 @ini_set('html_errors', '0');
 @ini_set('log_errors', '1');

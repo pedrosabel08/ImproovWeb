@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../config/session_bootstrap.php';
 $__root = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/\\');
 foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWeb/config/version.php'] as $__p) {
     if ($__p && is_file($__p)) {
@@ -89,6 +90,7 @@ if ($result_imagens->num_rows > 0) {
     <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
         type="image/x-icon">
     <title>Lista Arquitetura</title>
+    <link rel="stylesheet" href="<?php echo asset_url('../css/modalSessao.css'); ?>">
 </head>
 
 <header>
@@ -277,6 +279,7 @@ if ($result_imagens->num_rows > 0) {
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="<?php echo asset_url('script.js'); ?>"></script>
 
+    <script src="<?php echo asset_url('../script/controleSessao.js'); ?>"></script>
 </body>
 
 </html>

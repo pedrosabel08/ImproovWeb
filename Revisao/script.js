@@ -1179,6 +1179,16 @@ const pdfViewerState = {
     title: 'PDF'
 };
 
+// Cache para comentários de PDF (evita buscar por página)
+const pdfCommentsCache = {
+    logId: null,
+    comentarios: null,
+    fetchedAt: 0
+};
+
+// Quando um comentário de outra página for clicado, guardamos aqui para focar após render
+let pendingPdfFocusCommentId = null;
+
 // Para o botão de download funcionar tanto para JPG quanto para PDF.
 let currentDownloadUrl = null;
 
@@ -1197,7 +1207,19 @@ async function renderizarPaginaPdf() {
         const page = await pdfViewerState.doc.getPage(pdfViewerState.page);
         const viewport1 = page.getViewport({ scale: 1 });
 
-        const availableWidth = Math.max(320, canvasWrap.clientWidth || imageWrapper?.clientWidth || 800);
+        // Largura útil do container (desconta padding do canvasWrap)
+        let wrapWidth = (canvasWrap && canvasWrap.getBoundingClientRect)
+            ? canvasWrap.getBoundingClientRect().width
+            : (canvasWrap?.clientWidth || imageWrapper?.clientWidth || 800);
+
+        if (canvasWrap) {
+            const cs = window.getComputedStyle(canvasWrap);
+            const padL = parseFloat(cs.paddingLeft || '0') || 0;
+            const padR = parseFloat(cs.paddingRight || '0') || 0;
+            wrapWidth = wrapWidth - padL - padR;
+        }
+
+        const availableWidth = Math.max(320, wrapWidth || 800);
         const scale = availableWidth / viewport1.width;
         const viewport = page.getViewport({ scale });
         const outputScale = window.devicePixelRatio || 1;
@@ -1225,7 +1247,9 @@ async function renderizarPaginaPdf() {
     }
 
     if (pdfViewerState.logId) {
-        renderComments({ arquivo_log_id: pdfViewerState.logId, pagina: pdfViewerState.page });
+        const focusId = pendingPdfFocusCommentId;
+        pendingPdfFocusCommentId = null;
+        renderComments({ arquivo_log_id: pdfViewerState.logId, pagina: pdfViewerState.page, focus_comment_id: focusId });
     }
 }
 
@@ -1533,6 +1557,11 @@ document.getElementById('enviarComentario').onclick = async () => {
 
             // Atualiza comentários
             if (pdfViewerState.logId) {
+                // Invalida cache e recarrega comentários do PDF (todos)
+                if (pdfViewerState.logId) {
+                    pdfCommentsCache.logId = null;
+                    pdfCommentsCache.comentarios = null;
+                }
                 renderComments({ arquivo_log_id: pdfViewerState.logId, pagina: pdfViewerState.page });
             } else {
                 renderComments(ap_imagem_id);
@@ -1593,14 +1622,32 @@ async function renderComments(id) {
     const markerContainer = isPdf
         ? (document.getElementById('pdf_comment_layer') || imagemCompletaDiv)
         : imagemCompletaDiv;
-    const url = isPdf
-        ? `buscar_comentarios.php?arquivo_log_id=${encodeURIComponent(String(id.arquivo_log_id))}&pagina=${encodeURIComponent(String(id.pagina || 1))}`
-        : `buscar_comentarios.php?id=${encodeURIComponent(String(id))}`;
 
-    const response = await fetch(url);
-    const comentarios = await response.json();
+    // No PDF: não busca por página; busca tudo uma vez e filtra no front
+    let comentarios = [];
+    if (isPdf) {
+        const logId = String(id.arquivo_log_id);
+        const shouldFetch = (!pdfCommentsCache.comentarios || pdfCommentsCache.logId !== logId);
 
-    imagemCompletaDiv.querySelectorAll('.comment').forEach(c => c.remove());
+        if (shouldFetch) {
+            const urlAll = `buscar_comentarios.php?arquivo_log_id=${encodeURIComponent(logId)}`;
+            const response = await fetch(urlAll);
+            const all = await response.json();
+            pdfCommentsCache.logId = logId;
+            pdfCommentsCache.comentarios = Array.isArray(all) ? all : [];
+            pdfCommentsCache.fetchedAt = Date.now();
+        }
+
+        comentarios = pdfCommentsCache.comentarios || [];
+    } else {
+        const url = `buscar_comentarios.php?id=${encodeURIComponent(String(id))}`;
+        const response = await fetch(url);
+        const data = await response.json();
+        comentarios = Array.isArray(data) ? data : [];
+    }
+
+    // Remove marcadores anteriores
+    markerContainer.querySelectorAll('.comment').forEach(c => c.remove());
 
     // Oculta a sidebar-direita se não houver comentários
     if (comentarios.length === 0) {
@@ -1618,6 +1665,9 @@ async function renderComments(id) {
         }
     });
 
+    // No PDF: lista mostra todos; marcadores mostram só a página atual
+    const paginaAtual = isPdf ? parseInt(String(id.pagina || 1), 10) : null;
+
     comentarios.forEach(comentario => {
         const commentCard = document.createElement('div');
         commentCard.classList.add('comment-card');
@@ -1625,9 +1675,11 @@ async function renderComments(id) {
 
         const header = document.createElement('div');
         header.classList.add('comment-header');
+        const pageInfo = (isPdf && comentario.pagina) ? `<div class="comment-page">Pág. ${comentario.pagina}</div>` : '';
         header.innerHTML = `
             <div class="comment-number">${comentario.numero_comentario}</div>
             <div class="comment-user">${comentario.nome_responsavel}</div>
+            ${pageInfo}
         `;
 
         const commentBody = document.createElement('div');
@@ -1716,7 +1768,20 @@ async function renderComments(id) {
             }
         });
 
-        commentCard.addEventListener('click', () => {
+        commentCard.addEventListener('click', async () => {
+            // No PDF, ao clicar em um comentário: ir para a página correspondente
+            if (isPdf && comentario.pagina) {
+                const targetPage = parseInt(String(comentario.pagina), 10);
+                if (Number.isFinite(targetPage) && targetPage >= 1 && targetPage <= (pdfViewerState.pages || targetPage)) {
+                    if (pdfViewerState.page !== targetPage) {
+                        pendingPdfFocusCommentId = comentario.id;
+                        pdfViewerState.page = targetPage;
+                        await renderizarPaginaPdf();
+                        return;
+                    }
+                }
+            }
+
             // Remove o highlight de todas as bolinhas
             document.querySelectorAll('.comment.highlight').forEach(n => n.classList.remove('highlight'));
 
@@ -1760,7 +1825,15 @@ async function renderComments(id) {
             }
         });
 
-        markerContainer.appendChild(commentDiv);
+        // Marcadores: no PDF, só da página atual
+        if (!isPdf) {
+            markerContainer.appendChild(commentDiv);
+        } else {
+            const paginaDoComentario = parseInt(String(comentario.pagina || ''), 10);
+            if (Number.isFinite(paginaDoComentario) && paginaDoComentario === paginaAtual) {
+                markerContainer.appendChild(commentDiv);
+            }
+        }
         comentariosDiv.appendChild(commentCard);
 
         if (comentario.respostas && comentario.respostas.length > 0) {
@@ -1769,6 +1842,17 @@ async function renderComments(id) {
             });
         }
     });
+
+    // Se veio um foco pendente (após mudar página), destaca no painel
+    if (isPdf && id && id.focus_comment_id) {
+        const focusId = String(id.focus_comment_id);
+        const number = document.querySelector(`.comment-card[data-id="${focusId}"] .comment-number`);
+        if (number) {
+            document.querySelectorAll('.comment-number').forEach(n => n.classList.remove('highlight'));
+            number.classList.add('highlight');
+            number.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }
 }
 
 // Função para enviar resposta pro backend
@@ -1830,6 +1914,12 @@ async function updateComment(commentId, novoTexto) {
                 position: "left"
             }).showToast();
         }
+
+        // Se estiver em PDF, invalida cache para refletir texto atualizado
+        if (pdfViewerState.logId) {
+            pdfCommentsCache.logId = null;
+            pdfCommentsCache.comentarios = null;
+        }
     } catch (error) {
         console.error('Erro ao atualizar comentário:', error);
         alert('Ocorreu um erro ao tentar atualizar o comentário.');
@@ -1856,6 +1946,8 @@ async function deleteComment(commentId) {
                 position: "left"
             }).showToast();
             if (pdfViewerState.logId) {
+                pdfCommentsCache.logId = null;
+                pdfCommentsCache.comentarios = null;
                 renderComments({ arquivo_log_id: pdfViewerState.logId, pagina: pdfViewerState.page });
             } else {
                 renderComments(ap_imagem_id);

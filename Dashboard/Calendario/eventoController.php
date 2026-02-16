@@ -1,4 +1,5 @@
 <?php
+require_once dirname(__DIR__, 2) . '/config/session_bootstrap.php';
 include '../../conexao.php';
 session_start();
 

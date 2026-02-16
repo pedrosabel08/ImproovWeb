@@ -3,6 +3,7 @@
 // Busca o arquivo pelo id no banco, valida sessão e abre em um iframe.
 
 // Prevent caching of user-specific pages
+require_once __DIR__ . '/../config/session_bootstrap.php';
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 header('Expires: Tue, 01 Jan 2000 00:00:00 GMT');

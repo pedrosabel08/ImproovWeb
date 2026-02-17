@@ -17,14 +17,22 @@ $sql = "SELECT
     fi.prazo,
     f.nome_funcao,
     fi.observacao,
-    pc.prioridade,
+    COALESCE(pc.prioridade, 3) AS prioridade,
     fi.idfuncao_imagem,
     fi.funcao_id,
     ico.obra_id,
     o.nomenclatura,
     ico.prazo AS imagem_prazo,
+    ico.substatus_id AS imagem_status_id,
     ico.idimagens_cliente_obra AS idimagem,
     si.nome_status,
+    (
+        SELECT sh.justificativa
+        FROM status_hold sh
+        WHERE sh.imagem_id = ico.idimagens_cliente_obra
+        ORDER BY sh.id DESC
+        LIMIT 1
+    ) AS hold_justificativa_recente,
     fi.file_uploaded_at,
     fi.requires_file_upload,
     TIMESTAMPDIFF(
@@ -76,10 +84,10 @@ $sql = "SELECT
         ) AS ultima_imagem
 FROM funcao_imagem fi
 JOIN imagens_cliente_obra ico ON fi.imagem_id = ico.idimagens_cliente_obra
-JOIN status_imagem si ON ico.status_id = si.idstatus
+LEFT JOIN status_imagem si ON ico.substatus_id = si.idstatus
 JOIN obra o ON o.idobra = ico.obra_id
 JOIN funcao f ON fi.funcao_id = f.idfuncao
-JOIN prioridade_funcao pc ON fi.idfuncao_imagem = pc.funcao_imagem_id
+LEFT JOIN prioridade_funcao pc ON fi.idfuncao_imagem = pc.funcao_imagem_id
 WHERE fi.colaborador_id = ?
   AND o.status_obra = 0
 ORDER BY  notificacoes_nao_lidas DESC, prioridade ASC, prazo DESC, imagem_id, obra_id,
@@ -316,14 +324,22 @@ foreach ($funcoes as $funcao) {
     $funcaoAtualId = $funcao['funcao_id'];
     $imagemId      = $funcao['imagem_id'];
     $indiceAtual   = array_search($funcaoAtualId, $ordemIds);
+    $nomeStatusImagem = isset($funcao['nome_status']) ? trim($funcao['nome_status']) : '';
+    $nomeStatusImagemLower = function_exists('mb_strtolower') ? mb_strtolower($nomeStatusImagem) : strtolower($nomeStatusImagem);
+    $imagemStatusId = isset($funcao['imagem_status_id']) ? intval($funcao['imagem_status_id']) : null;
+    $imagemEmHold = ($nomeStatusImagemLower === 'hold') || ($imagemStatusId === 7);
 
     $statusAnterior   = null;
     $liberada         = false;
     $funcaoAnteriorId = null;
     $prazoAnterior    = null;
 
+    // HOLD da imagem é universal: bloqueia todas as funções da imagem
+    if ($imagemEmHold) {
+        $liberada = false;
+    }
     // Se for Alteração (funcao_id == 6), sempre libera
-    if ($funcaoAtualId == 6) {
+    elseif ($funcaoAtualId == 6) {
         $liberada = true;
     }
     // Se esta é a primeira função REAL da imagem, libera sempre
@@ -334,7 +350,7 @@ foreach ($funcoes as $funcao) {
     elseif ($indiceAtual !== false && $indiceAtual > 0 && isset($todasFuncoes[$imagemId])) {
         for ($i = $indiceAtual - 1; $i >= 0; $i--) {
             $funcaoAnteriorId = $ordemIds[$i];
-                if (isset($todasFuncoes[$imagemId][$funcaoAnteriorId])) {
+            if (isset($todasFuncoes[$imagemId][$funcaoAnteriorId])) {
                 $rowAnterior    = $todasFuncoes[$imagemId][$funcaoAnteriorId];
                 $statusAnterior = $rowAnterior['status'];
                 $prazoAnterior  = $rowAnterior['prazo'];
@@ -343,11 +359,16 @@ foreach ($funcoes as $funcao) {
                 // or its colaborador_id equals 15
                 $prevCollabId = isset($rowAnterior['colaborador_id']) ? intval($rowAnterior['colaborador_id']) : null;
                 $prevCollabName = isset($rowAnterior['nome_colaborador']) ? $rowAnterior['nome_colaborador'] : '';
-                $prevCollabNameLower = (function($s){ return function_exists('mb_strtolower') ? mb_strtolower($s) : strtolower($s); })($prevCollabName);
+                $prevCollabNameLower = (function ($s) {
+                    return function_exists('mb_strtolower') ? mb_strtolower($s) : strtolower($s);
+                })($prevCollabName);
 
-                if (in_array($statusAnterior, ['Finalizado', 'Aprovado', 'Aprovado com ajustes'])
+                $naoSeAplica = function_exists('mb_strtolower') ? mb_strtolower('Não se aplica') : strtolower('Não se aplica');
+
+                if (
+                    in_array($statusAnterior, ['Finalizado', 'Aprovado', 'Aprovado com ajustes'])
                     || $prevCollabId === 15
-                    || $prevCollabNameLower === mb_strtolower('Não se aplica')
+                    || $prevCollabNameLower === $naoSeAplica
                 ) {
                     $liberada = true;
                 }
@@ -370,6 +391,9 @@ foreach ($funcoes as $funcao) {
         'prioridade'                 => $funcao['prioridade'],
         'funcao_id'                  => $funcao['funcao_id'],
         'nome_status'                  => $funcao['nome_status'],
+        'hold_justificativa_recente' => $funcao['hold_justificativa_recente'] ?? null,
+        'justificativa'              => $funcao['hold_justificativa_recente'] ?? null,
+        'descricao'                  => $funcao['hold_justificativa_recente'] ?? null,
         'status_funcao_anterior'     => $statusAnterior,
         'prazo_funcao_anterior'      => $prazoAnterior,
         'liberada'                   => $liberada,
@@ -377,6 +401,7 @@ foreach ($funcoes as $funcao) {
         'obra_id'                    => $funcao['obra_id'],
         'nomenclatura'               => $funcao['nomenclatura'],
         'idfuncao_imagem'            => $funcao['idfuncao_imagem'],
+        'imagem_status_id'           => isset($funcao['imagem_status_id']) ? intval($funcao['imagem_status_id']) : null,
         'tempo_em_andamento'         => $funcao['tempo_em_andamento'],
         'imagem_prazo'               => $funcao['imagem_prazo'],
         'comentarios_ultima_versao'  => $funcao['comentarios_ultima_versao'],

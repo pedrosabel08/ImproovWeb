@@ -214,13 +214,25 @@ $sqlImagens = "SELECT
         MAX(CASE WHEN fi.funcao_id = 6 THEN fi.status END) AS alteracao_status,
         MAX(CASE WHEN fi.funcao_id = 7 THEN c.nome_colaborador END) AS planta_colaborador,
         MAX(CASE WHEN fi.funcao_id = 7 THEN fi.status END) AS planta_status,
-    GROUP_CONCAT(DISTINCT sh.justificativa ORDER BY sh.justificativa SEPARATOR ', ') AS descricao
+        (
+            SELECT sh2.justificativa
+            FROM status_hold sh2
+            WHERE sh2.imagem_id = ico.idimagens_cliente_obra
+            ORDER BY sh2.id DESC
+            LIMIT 1
+        ) AS hold_justificativa_recente,
+        (
+            SELECT sh3.justificativa
+            FROM status_hold sh3
+            WHERE sh3.imagem_id = ico.idimagens_cliente_obra
+            ORDER BY sh3.id DESC
+            LIMIT 1
+        ) AS descricao
     FROM imagens_cliente_obra ico
     LEFT JOIN funcao_imagem fi ON fi.imagem_id = ico.idimagens_cliente_obra
     LEFT JOIN colaborador c ON fi.colaborador_id = c.idcolaborador
     LEFT JOIN status_imagem s ON ico.status_id = s.idstatus
     LEFT JOIN substatus_imagem su ON su.id = ico.substatus_id
-    LEFT JOIN status_hold sh ON sh.imagem_id = ico.idimagens_cliente_obra
     WHERE ico.obra_id = ?
     GROUP BY ico.idimagens_cliente_obra
     ORDER BY FIELD(ico.tipo_imagem, 'Fachada', 'Imagem Interna', 'Unidade', 'Imagem Externa', 'Planta Humanizada'), ico.idimagens_cliente_obra

@@ -7,7 +7,7 @@ $imagem_id = $_POST['imagem_id'] ?? null;
 $status = $_POST['status'] ?? null;
 
 if ($imagem_id && $status) {
-    $stmt = $conn->prepare("DELETE FROM status_hold WHERE imagem_id = ? AND descricao = ?");
+    $stmt = $conn->prepare("DELETE FROM status_hold WHERE imagem_id = ? AND justificativa = ?");
     $stmt->bind_param("is", $imagem_id, $status);
 
     if ($stmt->execute()) {

@@ -775,39 +775,91 @@ function alterarStatus(imagemId) {
         return;
     }
 
-    const formData = new FormData();
-    formData.append("imagem_id", imagemId);
-    formData.append("status_id", statusId);
+    solicitarJustificativaHoldIfNeeded(Number(statusId))
+        .then((holdJustificativa) => {
+            if (holdJustificativa === null) return;
 
-    fetch("../alterarStatus.php", {
-        method: "POST",
-        body: formData
-    })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                Toastify({
-                    text: "Status alterado com sucesso!",
-                    duration: 3000,
-                    gravity: "top",
-                    position: "right",
-                    backgroundColor: "#4caf50", // Cor de sucesso
-                }).showToast();
-
-                const modalStatus = document.getElementById("modal_status");
-                modalStatus.style.display = "none";
-                infosObra(obraId);
-            } else {
-                Toastify({
-                    text: "Erro ao alterar status.",
-                    duration: 3000,
-                    gravity: "top",
-                    position: "right",
-                    backgroundColor: "#f44336", // Cor de erro
-                }).showToast();
+            const formData = new FormData();
+            formData.append("imagem_id", imagemId);
+            formData.append("status_id", statusId);
+            if (Number(statusId) === 7) {
+                formData.append("hold_justificativa", holdJustificativa);
             }
+
+            return fetch("../alterarStatus.php", {
+                method: "POST",
+                body: formData
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        Toastify({
+                            text: "Status alterado com sucesso!",
+                            duration: 3000,
+                            gravity: "top",
+                            position: "right",
+                            backgroundColor: "#4caf50",
+                        }).showToast();
+
+                        const modalStatus = document.getElementById("modal_status");
+                        modalStatus.style.display = "none";
+                        infosObra(obraId);
+                    } else {
+                        Toastify({
+                            text: data.error || "Erro ao alterar status.",
+                            duration: 3000,
+                            gravity: "top",
+                            position: "right",
+                            backgroundColor: "#f44336",
+                        }).showToast();
+                    }
+                });
         })
         .catch(error => console.error("Erro ao alterar o status:", error));
+}
+
+function solicitarJustificativaHoldIfNeeded(statusId) {
+    if (Number(statusId) !== 7) {
+        return Promise.resolve('');
+    }
+
+    if (typeof Swal !== 'undefined' && Swal.fire) {
+        return Swal.fire({
+            title: 'Motivo do HOLD',
+            input: 'text',
+            inputLabel: 'Informe o motivo do HOLD',
+            inputPlaceholder: 'Digite a justificativa',
+            showCancelButton: true,
+            confirmButtonText: 'Salvar',
+            cancelButtonText: 'Cancelar',
+            allowOutsideClick: false,
+            inputValidator: (value) => {
+                if (!value || !value.trim()) {
+                    return 'A justificativa é obrigatória.';
+                }
+                if (value.trim().length > 100) {
+                    return 'A justificativa deve ter no máximo 100 caracteres.';
+                }
+            }
+        }).then(result => {
+            if (!result.isConfirmed) return null;
+            return result.value.trim();
+        });
+    }
+
+    const resposta = window.prompt('Informe o motivo do HOLD (obrigatório):', '');
+    if (resposta === null) return Promise.resolve(null);
+    const texto = resposta.trim();
+    if (!texto) {
+        alert('A justificativa é obrigatória.');
+        return Promise.resolve(null);
+    }
+    if (texto.length > 100) {
+        alert('A justificativa deve ter no máximo 100 caracteres.');
+        return Promise.resolve(null);
+    }
+
+    return Promise.resolve(texto);
 }
 
 
@@ -2709,12 +2761,13 @@ function infosObra(obraId) {
                 row.setAttribute('tipo-imagem', item.tipo_imagem)
                 row.classList.add(tipoClassName(item.tipo_imagem));
                 row.setAttribute('status', item.imagem_status)
+                const holdMotivo = item.hold_justificativa_recente || item.descricao || '';
 
                 var cellStatus = document.createElement('td');
                 cellStatus.textContent = item.imagem_status;
                 row.appendChild(cellStatus);
                 if (!(item.imagem_status === 'EF' && item.imagem_sub_status === 'EF')) {
-                    applyStatusImagem(cellStatus, item.imagem_status, item.descricao);
+                    applyStatusImagem(cellStatus, item.imagem_status, holdMotivo);
                 } else {
                     cellStatus.style.backgroundColor = '';
                     cellStatus.style.color = '';
@@ -2753,14 +2806,21 @@ function infosObra(obraId) {
                 cellSubStatus.textContent = item.imagem_sub_status;
                 row.appendChild(cellSubStatus);
                 if (!(item.imagem_status === 'EF' && item.imagem_sub_status === 'EF')) {
-                    applyStatusImagem(cellSubStatus, item.imagem_sub_status, item.descricao);
+                    applyStatusImagem(cellSubStatus, item.imagem_sub_status, holdMotivo);
                 } else {
                     cellSubStatus.style.backgroundColor = '';
                     cellSubStatus.style.color = '';
                 }
 
                 cellSubStatus.addEventListener('mouseenter', (event) => {
-                    tooltip.textContent = item.nome_completo;
+                    const isHoldSubstatus = String(item.imagem_sub_status || '').trim().toUpperCase() === 'HOLD';
+                    if (isHoldSubstatus) {
+                        tooltip.textContent = (holdMotivo && String(holdMotivo).trim())
+                            ? `Motivo: ${holdMotivo}`
+                            : 'Motivo do HOLD não informado.';
+                    } else {
+                        tooltip.textContent = item.nome_completo;
+                    }
                     tooltip.style.display = 'block';
                     tooltip.style.left = event.clientX + 'px';
                     tooltip.style.top = event.clientY - 30 + 'px';
@@ -3627,23 +3687,21 @@ function applyStatusImagem(cell, status, descricao = '') {
         case 'HOLD':
             cell.style.backgroundColor = '#ff0000';
             cell.classList.add('tool'); // Adiciona a classe tooltip
-            if (descricao) {
-                cell.addEventListener('mouseenter', (event) => {
-                    tooltip.textContent = descricao;
-                    tooltip.style.display = 'block';
-                    tooltip.style.left = event.clientX + 'px';
-                    tooltip.style.top = event.clientY - 30 + 'px';
-                });
+            cell.addEventListener('mouseenter', (event) => {
+                tooltip.textContent = (descricao && String(descricao).trim()) ? descricao : 'HOLD sem justificativa cadastrada.';
+                tooltip.style.display = 'block';
+                tooltip.style.left = event.clientX + 'px';
+                tooltip.style.top = event.clientY - 30 + 'px';
+            });
 
-                cell.addEventListener('mouseleave', () => {
-                    tooltip.style.display = 'none';
-                });
+            cell.addEventListener('mouseleave', () => {
+                tooltip.style.display = 'none';
+            });
 
-                cell.addEventListener('mousemove', (event) => {
-                    tooltip.style.left = event.clientX + 'px';
-                    tooltip.style.top = event.clientY - 30 + 'px';
-                });
-            }
+            cell.addEventListener('mousemove', (event) => {
+                tooltip.style.left = event.clientX + 'px';
+                tooltip.style.top = event.clientY - 30 + 'px';
+            });
             break;
         case 'TEA':
             cell.style.backgroundColor = '#f7eb07';
@@ -7585,122 +7643,118 @@ document.getElementById("btnAtualizar").addEventListener("click", function () {
         return;
     }
 
-    // Mostra os dados que serão atualizados
-    let preview = `IDs selecionados:\n${idsSelecionados.join(', ')}\n\nCampos a atualizar:\n`;
-    for (const [col, val] of Object.entries(dadosAtualizar)) {
-        preview += `${col}: ${val}\n`;
-    }
+    solicitarJustificativaHoldIfNeeded(Number(dadosAtualizar.substatus_id || 0))
+        .then((holdJustificativa) => {
+            if (holdJustificativa === null) return;
 
-    // Confirmação
-    if (!confirm(preview + "\nDeseja continuar com a atualização?")) {
-        return; // Para se o usuário cancelar
-    }
-
-
-    // Envia via AJAX para PHP
-    // If the user selected função/colaborador or other funcao-imagem fields, use insereFuncao.php per image
-    // NOTE: removed 'status' and 'status_id' from this list so that updating only the etapa/status
-    // does not trigger insereFuncao.php. Etapa/status updates should go through the batch_actions flow.
-    const funcaoFields = ["funcao_id", "colaborador_id"];
-    const hasFuncaoFields = Object.keys(dadosAtualizar).some(k => funcaoFields.includes(k));
-
-    if (hasFuncaoFields) {
-        // Build the data to send to insereFuncao.php
-        const toSend = {};
-        funcaoFields.forEach(f => {
-            if (dadosAtualizar[f] !== undefined) toSend[f] = dadosAtualizar[f];
-        });
-
-        // Perform one request per selected image
-        const promises = idsSelecionados.map(id => {
-            const fd = new FormData();
-            fd.append('imagem_id', id);
-            for (const [k, v] of Object.entries(toSend)) {
-                fd.append(k, v);
+            let preview = `IDs selecionados:\n${idsSelecionados.join(', ')}\n\nCampos a atualizar:\n`;
+            for (const [col, val] of Object.entries(dadosAtualizar)) {
+                preview += `${col}: ${val}\n`;
+            }
+            if (Number(dadosAtualizar.substatus_id || 0) === 7) {
+                preview += `hold_justificativa: ${holdJustificativa}\n`;
             }
 
-            return fetch('../insereFuncao.php', {
-                method: 'POST',
-                body: fd
-            }).then(r => r.json());
-        });
-
-        Promise.all(promises).then(results => {
-            const failed = results.filter(r => r.error);
-            if (failed.length === 0) {
-                Toastify({ text: "Funções atribuídas com sucesso!", duration: 3000, gravity: "top", position: "right", backgroundColor: 'linear-gradient(to right, #00b09b, #96c93d)' }).showToast();
-
-                // Cleanup UI similar to previous flow
-                const headerRow = document.querySelector("#tabela-obra thead tr:nth-child(2)");
-                if (headerRow && headerRow.firstChild) {
-                    headerRow.removeChild(headerRow.firstChild);
-                }
-                document.querySelectorAll("#tabela-obra tbody tr").forEach(row => {
-                    if (row.firstChild) row.removeChild(row.firstChild);
-                });
-                document.getElementById("acoesBtn").style.display = "none";
-                document.getElementById("acoesModal").style.display = "none";
-                batchMode = false;
-                infosObra(obraId);
-            } else {
-                Toastify({ text: "Algumas atualizações falharam.", duration: 4000, gravity: "top", position: "right", backgroundColor: 'linear-gradient(to right, #b00000ff, #e97171ff)' }).showToast();
+            if (!confirm(preview + "\nDeseja continuar com a atualização?")) {
+                return;
             }
-        }).catch(err => {
-            console.error(err);
-            Toastify({ text: "Erro interno ao executar atualizações.", duration: 3000, gravity: "top", position: "right", backgroundColor: 'linear-gradient(to right, #b00000ff, #e97171ff)' }).showToast();
-        });
 
-        return; // already handled via insereFuncao.php
-    }
 
-    // Fallback: previous batch_actions behavior
-    fetch("batch_actions.php", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ ids: idsSelecionados, campos: dadosAtualizar })
-    })
-        .then(res => res.json())
-        .then(res => {
-            if (res.sucesso) {
-                Toastify({
-                    text: "Imagens atualizadas com sucesso!",
-                    duration: 3000,
-                    gravity: "top",
-                    position: "right",
-                    backgroundColor: 'linear-gradient(to right, #00b09b, #96c93d)', // sucesso padrão
-                }).showToast();
+            const funcaoFields = ["funcao_id", "colaborador_id"];
+            const hasFuncaoFields = Object.keys(dadosAtualizar).some(k => funcaoFields.includes(k));
 
-                const headerRow = document.querySelector("#tabela-obra thead tr:nth-child(2)");
-                if (headerRow && headerRow.firstChild) {
-                    headerRow.removeChild(headerRow.firstChild);
-                }
-
-                // Remove a primeira coluna de cada linha do tbody
-                document.querySelectorAll("#tabela-obra tbody tr").forEach(row => {
-                    if (row.firstChild) row.removeChild(row.firstChild);
+            if (hasFuncaoFields) {
+                const toSend = {};
+                funcaoFields.forEach(f => {
+                    if (dadosAtualizar[f] !== undefined) toSend[f] = dadosAtualizar[f];
                 });
 
-                // Esconde o botão Ações
-                document.getElementById("acoesBtn").style.display = "none";
-                document.getElementById("acoesModal").style.display = "none";
+                const promises = idsSelecionados.map(id => {
+                    const fd = new FormData();
+                    fd.append('imagem_id', id);
+                    for (const [k, v] of Object.entries(toSend)) {
+                        fd.append(k, v);
+                    }
 
-                // Reset batchMode
-                batchMode = false;
+                    return fetch('../insereFuncao.php', {
+                        method: 'POST',
+                        body: fd
+                    }).then(r => r.json());
+                });
 
-                infosObra(obraId); // Recarrega a tabela
+                Promise.all(promises).then(results => {
+                    const failed = results.filter(r => r.error);
+                    if (failed.length === 0) {
+                        Toastify({ text: "Funções atribuídas com sucesso!", duration: 3000, gravity: "top", position: "right", backgroundColor: 'linear-gradient(to right, #00b09b, #96c93d)' }).showToast();
 
-            } else {
-                Toastify({
-                    text: "Erro ao atualizar as imagens." + res.mensagem,
-                    duration: 3000,
-                    gravity: "top",
-                    position: "right",
-                    backgroundColor: 'linear-gradient(to right, #b00000ff, #e97171ff)' // sucesso padrão
-                }).showToast();                // Remove a coluna de checkboxes do header            }
-                document.getElementById("acoesModal").style.display = "none";
+                        const headerRow = document.querySelector("#tabela-obra thead tr:nth-child(2)");
+                        if (headerRow && headerRow.firstChild) {
+                            headerRow.removeChild(headerRow.firstChild);
+                        }
+                        document.querySelectorAll("#tabela-obra tbody tr").forEach(row => {
+                            if (row.firstChild) row.removeChild(row.firstChild);
+                        });
+                        document.getElementById("acoesBtn").style.display = "none";
+                        document.getElementById("acoesModal").style.display = "none";
+                        batchMode = false;
+                        infosObra(obraId);
+                    } else {
+                        Toastify({ text: "Algumas atualizações falharam.", duration: 4000, gravity: "top", position: "right", backgroundColor: 'linear-gradient(to right, #b00000ff, #e97171ff)' }).showToast();
+                    }
+                }).catch(err => {
+                    console.error(err);
+                    Toastify({ text: "Erro interno ao executar atualizações.", duration: 3000, gravity: "top", position: "right", backgroundColor: 'linear-gradient(to right, #b00000ff, #e97171ff)' }).showToast();
+                });
+
+                return;
             }
+
+            fetch("batch_actions.php", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ ids: idsSelecionados, campos: dadosAtualizar, hold_justificativa: holdJustificativa })
+            })
+                .then(res => res.json())
+                .then(res => {
+                    if (res.sucesso) {
+                        Toastify({
+                            text: "Imagens atualizadas com sucesso!",
+                            duration: 3000,
+                            gravity: "top",
+                            position: "right",
+                            backgroundColor: 'linear-gradient(to right, #00b09b, #96c93d)',
+                        }).showToast();
+
+                        const headerRow = document.querySelector("#tabela-obra thead tr:nth-child(2)");
+                        if (headerRow && headerRow.firstChild) {
+                            headerRow.removeChild(headerRow.firstChild);
+                        }
+
+                        document.querySelectorAll("#tabela-obra tbody tr").forEach(row => {
+                            if (row.firstChild) row.removeChild(row.firstChild);
+                        });
+
+                        document.getElementById("acoesBtn").style.display = "none";
+                        document.getElementById("acoesModal").style.display = "none";
+
+                        batchMode = false;
+
+                        infosObra(obraId);
+
+                    } else {
+                        Toastify({
+                            text: "Erro ao atualizar as imagens." + res.mensagem,
+                            duration: 3000,
+                            gravity: "top",
+                            position: "right",
+                            backgroundColor: 'linear-gradient(to right, #b00000ff, #e97171ff)'
+                        }).showToast();
+                        document.getElementById("acoesModal").style.display = "none";
+                    }
+                })
+                .catch(err => console.error(err));
         })
         .catch(err => console.error(err));
 });

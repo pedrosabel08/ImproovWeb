@@ -65,7 +65,7 @@ function getHoldTooltipEl() {
     holdTooltipEl.style.padding = '6px 10px';
     holdTooltipEl.style.borderRadius = '6px';
     holdTooltipEl.style.fontSize = '12px';
-    holdTooltipEl.style.whiteSpace = 'nowrap';
+    holdTooltipEl.style.whiteSpace = 'pre-line';
     holdTooltipEl.style.boxShadow = '0 2px 8px rgba(0,0,0,0.25)';
     document.body.appendChild(holdTooltipEl);
 
@@ -343,8 +343,13 @@ function processarDados(data) {
         }
 
         if (cardEmHold) {
+            const holdMotivo = (item.hold_justificativa_recente || item.descricao || item.justificativa || '').toString().trim();
+            const holdTexto = holdMotivo
+                ? `Imagem em HOLD\nMotivo: ${holdMotivo}`
+                : 'Imagem em HOLD\nMotivo: não informado';
+
             card.addEventListener('mouseenter', (event) => {
-                showHoldTooltip(event, 'Imagem em HOLD');
+                showHoldTooltip(event, holdTexto);
             });
 
             card.addEventListener('mousemove', (event) => {
@@ -1801,10 +1806,10 @@ function abrirSidebar(idFuncao, idImagem) {
 
                                     // if there are no more notifications, remove sidebar blur
                                     try {
-                                            if (!notificacoesDiv.querySelector('.func-notif')) {
-                                                notificacoesDiv.remove();
-                                                if (mindmapContent) mindmapContent.classList.remove('mindmap-has-notifications');
-                                            }
+                                        if (!notificacoesDiv.querySelector('.func-notif')) {
+                                            notificacoesDiv.remove();
+                                            if (mindmapContent) mindmapContent.classList.remove('mindmap-has-notifications');
+                                        }
                                     } catch (e) {
                                         console.error('Erro ao atualizar blur do mapa:', e);
                                     }

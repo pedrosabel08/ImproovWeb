@@ -1,6 +1,5 @@
 <?php
 require_once __DIR__ . '/../config/session_bootstrap.php';
-session_start();
 
 if (!isset($_SESSION['idusuario'])) {
     echo json_encode(['success' => false, 'message' => 'Usuário não autenticado.']);

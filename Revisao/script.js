@@ -683,7 +683,21 @@ function historyAJAX(idfuncao_imagem) {
 
             const titulo = document.getElementById('funcao_nome');
             titulo.textContent = `${item.colaborador_nome} - ${item.nome_funcao}`;
-            document.getElementById("imagem_nome").textContent = `${item.imagem_nome} (${item.nome_status})`;
+            const imagemNomeHeader = document.getElementById("imagem_nome");
+            const dataEnvioHeader = document.getElementById("header_data_envio");
+            const statusInicial = item?.nome_status_envio || item?.nome_status || 'Sem status';
+            imagemNomeHeader.textContent = `${item.imagem_nome} (${statusInicial})`;
+
+            const atualizarDataHeader = (dataValor) => {
+                if (!dataEnvioHeader) return;
+                if (!dataValor) {
+                    dataEnvioHeader.textContent = '';
+                    return;
+                }
+                dataEnvioHeader.textContent = `Enviado em: ${formatarDataHora(dataValor)}`;
+            };
+
+            atualizarDataHeader(item?.data_aprovacao || null);
 
             const imageContainer = document.getElementById('imagens');
             imageContainer.innerHTML = '';
@@ -734,6 +748,13 @@ function historyAJAX(idfuncao_imagem) {
                 if (imagensDoIndice && imagensDoIndice.length > 0) {
                     imagensDoIndice.sort((a, b) => new Date(b.data_envio) - new Date(a.data_envio));
                     const maisRecente = imagensDoIndice[0];
+
+                    if (maisRecente) {
+                        const statusEnvio = maisRecente.nome_status_envio || item?.nome_status || 'Sem status';
+                        imagemNomeHeader.textContent = `${item.imagem_nome} (${statusEnvio})`;
+                        atualizarDataHeader(maisRecente.data_aprovacao || maisRecente.data_envio || item?.data_aprovacao || null);
+                    }
+
                     if (maisRecente) {
                         if (hasPdfPreferido && !pdfShownOnce && pdfRawUrl) {
                             const nome = (pdf && pdf.nome_arquivo) ? pdf.nome_arquivo : (item?.nome_funcao || 'PDF');

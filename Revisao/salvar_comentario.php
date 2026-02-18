@@ -1,7 +1,6 @@
 <?php
 require_once __DIR__ . '/../config/session_bootstrap.php';
 include '../conexao.php';
-session_start();
 
 function tableHasColumn(mysqli $conn, string $table, string $column): bool {
     $sql = "SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ? LIMIT 1";

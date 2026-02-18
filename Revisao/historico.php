@@ -113,6 +113,44 @@ if ($_SERVER["REQUEST_METHOD"] == "GET") {
     // Observação: usamos agregação MAX para evitar problemas com ONLY_FULL_GROUP_BY.
     $sqlImagens = "SELECT 
     hi.*,
+    COALESCE(
+        (
+            SELECT hs.idstatus
+            FROM historico_imagens him
+            INNER JOIN status_imagem hs ON hs.idstatus = him.status_id
+            WHERE him.imagem_id = fimg.imagem_id
+              AND him.data_movimento <= hi.data_envio
+            ORDER BY him.data_movimento DESC, him.idhistorico DESC
+            LIMIT 1
+        ),
+        (
+            SELECT hs2.idstatus
+            FROM historico_imagens him2
+            INNER JOIN status_imagem hs2 ON hs2.idstatus = him2.status_id
+            WHERE him2.imagem_id = fimg.imagem_id
+            ORDER BY him2.data_movimento DESC, him2.idhistorico DESC
+            LIMIT 1
+        )
+    ) AS status_id_envio,
+    COALESCE(
+        (
+            SELECT hs.nome_status
+            FROM historico_imagens him
+            INNER JOIN status_imagem hs ON hs.idstatus = him.status_id
+            WHERE him.imagem_id = fimg.imagem_id
+              AND him.data_movimento <= hi.data_envio
+            ORDER BY him.data_movimento DESC, him.idhistorico DESC
+            LIMIT 1
+        ),
+        (
+            SELECT hs2.nome_status
+            FROM historico_imagens him2
+            INNER JOIN status_imagem hs2 ON hs2.idstatus = him2.status_id
+            WHERE him2.imagem_id = fimg.imagem_id
+            ORDER BY him2.data_movimento DESC, him2.idhistorico DESC
+            LIMIT 1
+        )
+    ) AS nome_status_envio,
     COUNT(ci.id) AS comment_count,
     CASE 
         WHEN COUNT(ci.id) > 0 THEN true

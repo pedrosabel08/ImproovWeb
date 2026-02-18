@@ -9,7 +9,7 @@ foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWe
 }
 unset($__root, $__p);
 
-session_start();
+// session_start();
 
 // Verificar se o usuário está logado
 if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
@@ -153,6 +153,7 @@ $conn->close();
                 </div>
 
             </div>
+            <div id="header_data_envio" class="header-data-envio"></div>
             <!-- <div>
                 <button id="add-imagem" class="tooltip" data-tooltip="Adicionar imagem" style="transform: translateX(-90%);">+</button>
             </div> -->

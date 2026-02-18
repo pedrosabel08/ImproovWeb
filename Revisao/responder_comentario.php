@@ -2,7 +2,6 @@
 require_once __DIR__ . '/../config/session_bootstrap.php';
 include '../conexao.php';
 $data = json_decode(file_get_contents("php://input"), true);
-session_start();
 
 $comentario_id = $data['comentario_id'];
 $texto = $data['texto'];

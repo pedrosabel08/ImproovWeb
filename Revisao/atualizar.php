@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . '/../config/session_bootstrap.php';
-session_start();
+
 include '../conexao.php'; // Conexão com o banco de dados
 
 // Verifique se o usuário está autenticado

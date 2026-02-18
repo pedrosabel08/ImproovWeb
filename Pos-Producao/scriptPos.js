@@ -297,7 +297,7 @@ document.addEventListener("DOMContentLoaded", function () {
                             },
                             { title: "Status", field: "status_pos", headerFilter: "list", headerFilterParams: { values: { 1: "Não começou", 0: "Finalizado" } }, formatter: cell => { let val = cell.getValue(); let txt = val == 1 ? "Não começou" : "Finalizado"; let cor = val == 1 ? "red" : "green"; return `<span style="background:${cor};color:white;padding:4px 6px;border-radius:4px;font-size:12px">${txt}</span>`; } },
                             { title: "Revisão", field: "nome_status", headerFilter: "list", headerFilterParams: { values: listaValores("nome_status") } },
-                            { title: "Responsável", field: "nome_responsavel", headerFilter: "list", headerFilterParams: { values: listaValores("nome_responsavel") } },
+                            // { title: "Responsável", field: "nome_responsavel", headerFilter: "list", headerFilterParams: { values: listaValores("nome_responsavel") } },
                         ],
 
                     });

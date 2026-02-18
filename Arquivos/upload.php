@@ -119,6 +119,15 @@ function send_slack_token_message($token, $channel, $text, &$log)
     return true;
 }
 
+function safe_lower_text($text)
+{
+    $value = trim((string) $text);
+    if (function_exists('mb_strtolower')) {
+        return mb_strtolower($value, 'UTF-8');
+    }
+    return strtolower($value);
+}
+
 /**
  * Resolve a human-readable Slack identifier (username, display name or email) to a Slack user ID using users.list.
  * Returns the user ID (e.g. U1234...) or null if not found.
@@ -146,7 +155,7 @@ function resolve_slack_user_id($token, $identifier, &$log)
         return null;
     }
 
-    $needle = mb_strtolower(trim($identifier), 'UTF-8');
+    $needle = safe_lower_text($identifier);
     foreach ($json['members'] as $m) {
         // skip bots and deleted
         if (!empty($m['deleted']) || !empty($m['is_bot']))
@@ -161,7 +170,7 @@ function resolve_slack_user_id($token, $identifier, &$log)
         if (!empty($m['profile']['email']))
             $candidates[] = $m['profile']['email'];
         foreach ($candidates as $cand) {
-            if (mb_strtolower($cand, 'UTF-8') === $needle) {
+            if (safe_lower_text($cand) === $needle) {
                 return $m['id'];
             }
         }
@@ -1203,7 +1212,7 @@ if (!empty($arquivosPorImagem) && $refsSkpModo === 'porImagem') {
                                                 $nomeSlack = trim($rowSlack['nome_slack']);
                                                 if ($nomeSlack) {
                                                     // prefer token-based chat.postMessage when FLOW_TOKEN is set
-                                                    $text = "[IMPROOV] $notifMsg2: $nome_imagem\nAcesse: https://improov.com.br/sistema/inicio.php";
+                                                    $text = "$notifMsg2: $nome_imagem\nAcesse: https://improov.com.br/flow/ImproovWeb/inicio.php";
                                                     if (!empty($FLOW_TOKEN)) {
                                                         $ok = send_slack_token_message($FLOW_TOKEN, $nomeSlack, $text, $log);
                                                         if (!$ok) {
@@ -1222,7 +1231,7 @@ if (!empty($arquivosPorImagem) && $refsSkpModo === 'porImagem') {
                                         } else {
                                             $log[] = "Falha ao preparar select nome_slack: " . $conn->error;
                                         }
-                                    } catch (Exception $e) {
+                                    } catch (Throwable $e) {
                                         $log[] = "Erro ao enviar Slack: " . $e->getMessage();
                                     }
                                 } else {

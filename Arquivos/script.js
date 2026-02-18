@@ -157,12 +157,12 @@ const labelSufixo = document.getElementById('labelSufixo');
 
 // Mapping of suffix options per file type
 const SUFIXOS = {
-    'DWG': ['TERREO', 'LAZER', 'COBERTURA', 'MEZANINO', 'CORTES', 'GERAL', 'TIPO', 'GARAGEM', 'FACHADA', 'DUPLEX', 'ROOFTOP', 'LOGO', 'ACABAMENTOS', 'ESQUADRIA', 'ARQUITETONICO', 'REFERENCIA', 'IMPLANTACAO', 'SUBSOLO', 'G1', 'G2', 'G3', 'DUPLEX_SUPERIOR', 'DUPLEX_INFERIOR', 'TOON', 'DIFERENCIADO', 'CAIXA_AGUA', 'CASA_MAQUINA'],
-    'PDF': ['DOCUMENTACAO', 'RELATORIO', 'LOGO', 'ARQUITETONICO', 'REFERENCIA', 'ESQUADRIA', 'ACABAMENTOS', 'TIPOLOGIA', 'IMPLANTACAO', 'SUBSOLO', 'G1', 'G2', 'G3', 'DUPLEX_SUPERIOR', 'DUPLEX_INFERIOR', 'TERREO', 'LAZER', 'COBERTURA', 'MEZANINO', 'CORTES', 'GERAL', 'TIPO', 'GARAGEM', 'FACHADA', 'TOON', 'DIFERENCIADO'],
-    'SKP': ['MODELAGEM', 'REFERENCIA', 'TOON', 'DIFERENCIADO'],
-    'IMG': ['FACHADA', 'INTERNA', 'EXTERNA', 'UNIDADE', 'LOGO', 'REFERENCIAS', 'GERAL', 'TOON', 'DIFERENCIADO'],
+    'DWG': ['TERREO', 'LAZER', 'COBERTURA', 'MEZANINO', 'CORTES', 'GERAL', 'TIPO', 'GARAGEM', 'FACHADA', 'DUPLEX', 'ROOFTOP', 'LOGO', 'ACABAMENTOS', 'ESQUADRIA', 'ARQUITETONICO', 'REFERENCIA', 'IMPLANTACAO', 'SUBSOLO', 'G1', 'G2', 'G3', 'DUPLEX_SUPERIOR', 'DUPLEX_INFERIOR', 'TOON', 'DIFERENCIADO', 'CAIXA_AGUA', 'CASA_MAQUINA', 'PENTHOUSE'],
+    'PDF': ['DOCUMENTACAO', 'RELATORIO', 'LOGO', 'ARQUITETONICO', 'REFERENCIA', 'ESQUADRIA', 'ACABAMENTOS', 'TIPOLOGIA', 'IMPLANTACAO', 'SUBSOLO', 'G1', 'G2', 'G3', 'DUPLEX_SUPERIOR', 'DUPLEX_INFERIOR', 'TERREO', 'LAZER', 'COBERTURA', 'MEZANINO', 'CORTES', 'GERAL', 'TIPO', 'GARAGEM', 'FACHADA', 'TOON', 'DIFERENCIADO', 'PENTHOUSE'],
+    'SKP': ['MODELAGEM', 'REFERENCIA', 'TOON', 'DIFERENCIADO', 'PENTHOUSE'],
+    'IMG': ['FACHADA', 'INTERNA', 'EXTERNA', 'UNIDADE', 'LOGO', 'REFERENCIAS', 'GERAL', 'TOON', 'DIFERENCIADO', 'PENTHOUSE'],
     'IFC': ['BIM'],
-    'Outros': ['Geral', 'TOON', 'DIFERENCIADO']
+    'Outros': ['Geral', 'TOON', 'DIFERENCIADO', 'PENTHOUSE']
 };
 
 tipoArquivoSelect.addEventListener('change', async () => {
@@ -467,11 +467,29 @@ document.getElementById("uploadForm").addEventListener("submit", async function 
         // Prepare a promise that resolves when upload completes (or errors/aborts)
         const uploadPromise = new Promise((resolve, reject) => {
             xhr.onload = function () {
+                const rawResponse = xhr.responseText || '';
+
+                if (xhr.status < 200 || xhr.status >= 300) {
+                    let serverMessage = '';
+                    try {
+                        const json = JSON.parse(rawResponse);
+                        if (Array.isArray(json.errors) && json.errors.length > 0) {
+                            serverMessage = json.errors.join(' | ');
+                        } else if (json.error) {
+                            serverMessage = String(json.error);
+                        }
+                    } catch (e) {
+                        serverMessage = rawResponse.slice(0, 300);
+                    }
+
+                    return reject(new Error(`Erro ${xhr.status} no upload.${serverMessage ? ' ' + serverMessage : ''}`));
+                }
+
                 try {
-                    const json = JSON.parse(xhr.responseText || '{}');
+                    const json = JSON.parse(rawResponse || '{}');
                     resolve(json);
                 } catch (err) {
-                    reject(new Error('Resposta inválida do servidor'));
+                    reject(new Error('Resposta inválida do servidor (JSON).'));
                 }
             };
             xhr.onerror = function () { reject(new Error('Erro na requisição')); };

@@ -90,6 +90,62 @@ if (!function_exists('removerTodosAcentos')) {
     }
 }
 
+if (!function_exists('normalizeRevisaoUploadEnqueue')) {
+    function normalizeRevisaoUploadEnqueue($value): ?string
+    {
+        if (is_array($value)) {
+            $value = reset($value);
+        }
+        $v = strtoupper(trim((string)$value));
+        if ($v === '' || $v === 'NULL' || $v === 'UNDEFINED' || $v === 'NAN') {
+            return null;
+        }
+        if (!preg_match('/^R\d{2}$/', $v)) {
+            return null;
+        }
+        return $v;
+    }
+}
+
+if (!function_exists('resolveRevisaoFromDbUploadEnqueue')) {
+    function resolveRevisaoFromDbUploadEnqueue(array $dataIdFuncoes): string
+    {
+        if (empty($dataIdFuncoes)) {
+            return 'R00';
+        }
+
+        if (!isset($GLOBALS['conn'])) {
+            @require_once __DIR__ . '/conexao.php';
+        }
+        if (!isset($GLOBALS['conn'])) {
+            return 'R00';
+        }
+
+        $connLocal = $GLOBALS['conn'];
+        $stmt = $connLocal->prepare("select si.nome_status as status_nome from status_imagem si join imagens_cliente_obra i on i.status_id = si.idstatus join funcao_imagem fi on fi.imagem_id = i.idimagens_cliente_obra where fi.idfuncao_imagem = ? LIMIT 1");
+        if (!$stmt) {
+            return 'R00';
+        }
+
+        foreach ($dataIdFuncoes as $fid) {
+            $fidInt = (int)$fid;
+            $stmt->bind_param('i', $fidInt);
+            if (@$stmt->execute()) {
+                $res = $stmt->get_result();
+                $row = $res ? $res->fetch_assoc() : null;
+                $rev = normalizeRevisaoUploadEnqueue($row['status_nome'] ?? null);
+                if ($rev !== null) {
+                    $stmt->close();
+                    return $rev;
+                }
+            }
+        }
+
+        $stmt->close();
+        return 'R00';
+    }
+}
+
 $arquivos = $_FILES['arquivo_final'];
 $total = is_array($arquivos['name']) ? count($arquivos['name']) : 1;
 $results = [];
@@ -272,7 +328,6 @@ for ($i = 0; $i < $total; $i++) {
         $nomenclatura = $_POST['nomenclatura'] ?? '';
         $primeiraPalavra = $_POST['primeiraPalavra'] ?? '';
         $nome_imagem = $_POST['nome_imagem'] ?? '';
-        $nomeStatus = $_POST['status_nome'] ?? '';
         $extLower = strtolower($ext);
 
         // dataIdFuncoes pode estar enviado como JSON ou string única
@@ -294,7 +349,7 @@ for ($i = 0; $i < $total; $i++) {
             $primeiraPalavra_clean = removerTodosAcentos($primeiraPalavra);
             $nome_imagem_clean = removerTodosAcentos($nome_imagem);
             $nome_base = "{$numeroImagem}.{$nomenclatura_clean}-{$primeiraPalavra_clean}-{$tipoCalc}-{$processo}";
-            $revisao = $nomeStatus ?: 'R00';
+            $revisao = resolveRevisaoFromDbUploadEnqueue($dataIdFuncoes);
             // Regras especiais: Pós-Produção e Planta Humanizada usam padrão diferente
             $funcao_normalizada = mb_strtolower($nome_funcao, 'UTF-8');
             if ($funcao_normalizada === 'pós-produção' || $funcao_normalizada === 'pos-producao' || $funcao_normalizada === 'planta humanizada') {

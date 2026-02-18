@@ -117,6 +117,71 @@ function ensure_db_connection()
     }
 }
 
+function normalize_revisao_upload($value)
+{
+    if (is_array($value)) {
+        $value = reset($value);
+    }
+    $v = strtoupper(trim((string)$value));
+    if ($v === '' || $v === 'NULL' || $v === 'UNDEFINED' || $v === 'NAN') {
+        return null;
+    }
+    if (!preg_match('/^R\d{2}$/', $v)) {
+        return null;
+    }
+    return $v;
+}
+
+function resolve_revisao_from_db_upload(array $dataIdFuncoes)
+{
+    global $conn;
+    if (empty($dataIdFuncoes)) {
+        return null;
+    }
+
+    ensure_db_connection();
+    if (!isset($conn)) {
+        return null;
+    }
+
+    $stmt = $conn->prepare("select si.nome_status as status_nome from status_imagem si join imagens_cliente_obra i on i.status_id = si.idstatus join funcao_imagem fi on fi.imagem_id = i.idimagens_cliente_obra where fi.idfuncao_imagem = ? LIMIT 1");
+    if (!$stmt) {
+        return null;
+    }
+
+    foreach ($dataIdFuncoes as $fid) {
+        $fidInt = (int)$fid;
+        $stmt->bind_param('i', $fidInt);
+        if (@$stmt->execute()) {
+            $res = $stmt->get_result();
+            $row = $res ? $res->fetch_assoc() : null;
+            $dbRevisao = normalize_revisao_upload($row['status_nome'] ?? null);
+            if ($dbRevisao !== null) {
+                $stmt->close();
+                return $dbRevisao;
+            }
+        }
+    }
+
+    $stmt->close();
+    return null;
+}
+
+function resolve_revisao_upload($postedStatus, array $dataIdFuncoes)
+{
+    $fromDb = resolve_revisao_from_db_upload($dataIdFuncoes);
+    if ($fromDb !== null) {
+        return $fromDb;
+    }
+
+    $fromPost = normalize_revisao_upload($postedStatus);
+    if ($fromPost !== null) {
+        return $fromPost;
+    }
+
+    return 'R00';
+}
+
 
 // Log do array $_FILES
 // file_put_contents(__DIR__ . '/debug_files.txt', print_r($_FILES, true));
@@ -309,7 +374,7 @@ for ($i = 0; $i < $total; $i++) {
     $maiorRevisao = -1;
     $arquivo_antigo = '';
     $padrao = "/^" . preg_quote($nome_base, '/') . "-R(\d{2})\." . preg_quote($extensao, '/') . "$/i";
-    $revisao = $nomeStatus;
+    $revisao = resolve_revisao_upload($nomeStatus, $dataIdFuncoes);
 
     $sftp = new SFTP($ftp_host, $ftp_port);
     if (!$sftp->login($ftp_user, $ftp_pass)) {
@@ -382,7 +447,7 @@ for ($i = 0; $i < $total; $i++) {
 
     // === BLOCO ESPECIAL PARA PÓS-PRODUÇÃO E PLANTA HUMANIZADA ===
     $funcao_normalizada = mb_strtolower($nome_funcao, 'UTF-8');
-    if ($funcao_normalizada === 'pós-produção' || $funcao_normalizada === 'planta humanizada') {
+    if ($funcao_normalizada === 'pós-produção' || $funcao_normalizada === 'pos-producao' || $funcao_normalizada === 'pos-produção' || $funcao_normalizada === 'planta humanizada') {
         $nome_final = "{$nome_imagem}_{$revisao}.{$extensao}";
         $pasta_revisao = $revisao;
 

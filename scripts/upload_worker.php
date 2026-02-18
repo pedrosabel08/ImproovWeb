@@ -215,6 +215,67 @@ function normalize_nomenclatura_worker(string $value): string
     return trim($value);
 }
 
+function normalize_revisao_worker($value): ?string
+{
+    if (is_array($value)) {
+        $value = reset($value);
+    }
+    $v = strtoupper(trim((string)$value));
+    if ($v === '' || $v === 'NULL' || $v === 'UNDEFINED' || $v === 'NAN') {
+        return null;
+    }
+    if (!preg_match('/^R\d{2}$/', $v)) {
+        return null;
+    }
+    return $v;
+}
+
+function resolve_revisao_from_db_worker(array $dataIdFuncoes): ?string
+{
+    global $conn;
+    if (empty($dataIdFuncoes)) {
+        return null;
+    }
+
+    if (function_exists('ensure_db_connection_local')) {
+        ensure_db_connection_local();
+    }
+    if (!isset($conn)) {
+        return null;
+    }
+
+    $stmt = $conn->prepare("select si.nome_status as status_nome from status_imagem si join imagens_cliente_obra i on i.status_id = si.idstatus join funcao_imagem fi on fi.imagem_id = i.idimagens_cliente_obra where fi.idfuncao_imagem = ? LIMIT 1");
+    if (!$stmt) {
+        return null;
+    }
+
+    foreach ($dataIdFuncoes as $fid) {
+        $fidInt = (int)$fid;
+        $stmt->bind_param('i', $fidInt);
+        if (@$stmt->execute()) {
+            $res = $stmt->get_result();
+            $row = $res ? $res->fetch_assoc() : null;
+            $dbRevisao = normalize_revisao_worker($row['status_nome'] ?? null);
+            if ($dbRevisao !== null) {
+                $stmt->close();
+                return $dbRevisao;
+            }
+        }
+    }
+
+    $stmt->close();
+    return null;
+}
+
+function resolve_revisao_worker(array $dataIdFuncoes): string
+{
+    $fromDb = resolve_revisao_from_db_worker($dataIdFuncoes);
+    if ($fromDb !== null) {
+        return $fromDb;
+    }
+    return 'R00';
+}
+
 // Converte caminho do NAS Linux para caminho acessível no Windows (Z:\)
 function to_windows_access_path(string $path): string
 {
@@ -760,7 +821,6 @@ do {
         $numeroImagem = $meta['post']['numeroImagem'] ?? '';
         $primeiraPalavra = $meta['post']['primeiraPalavra'] ?? '';
         $nome_imagem = $meta['post']['nome_imagem'] ?? '';
-        $nomeStatus = $meta['post']['status_nome'] ?? '';
         // Normalizar componentes do nome do arquivo removendo acentos
         $nomenclatura_clean = removerTodosAcentos_worker($nomenclatura);
         $primeiraPalavra_clean = removerTodosAcentos_worker($primeiraPalavra);
@@ -828,7 +888,7 @@ do {
         $semAcento = removerTodosAcentos_worker($nome_funcao);
         $processo = strtoupper(mb_substr($semAcento, 0, 3, 'UTF-8'));
         $nome_base = "{$numeroImagem}.{$nomenclatura_clean}-{$primeiraPalavra_clean}-{$tipo}-{$processo}";
-        $revisao = $nomeStatus ?: 'R00';
+        $revisao = resolve_revisao_worker($meta['dataIdFuncoes'] ?? []);
         $remote_dir = $upload_ok;
         $nome_final = "{$nome_base}-{$revisao}.{$ext}";
 

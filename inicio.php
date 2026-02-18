@@ -409,7 +409,7 @@ $conn->close();
         </div>
     </div>
 
-    <div class="modal" id="modalDaily">
+    <div class="modal" id="modalDaily" style="display:none;">
         <div class="modal-content" style="width: 500px;">
             <h1>Daily meet Assíncrono</h1>
             <form id="dailyForm">
@@ -428,7 +428,7 @@ $conn->close();
     </div>
 
     <!-- Painel 'O que fazer agora' (mostra uma vez por dia) -->
-    <div class="modal" id="dailyPanelModal">
+    <div class="modal" id="dailyPanelModal" style="display:none;">
         <div class="modal-content">
             <h2>O que fazer agora?</h2>
             <p>Resumo rápido das suas prioridades para hoje.</p>

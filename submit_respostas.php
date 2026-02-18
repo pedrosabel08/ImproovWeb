@@ -56,7 +56,7 @@ if (!isset($conn) || !$conn) {
     exit;
 }
 
-session_start();
+// session_start();
 
 // Verifique se os dados foram enviados
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {

@@ -282,12 +282,13 @@ function processarDados(data) {
         const card = document.createElement('div');
         card.className = `kanban-card ${tipoClasse}`; // só a classe base
         let cardEmHold = false;
+        let imagemEmHold = false;
 
         if (tipo === 'imagem') {
             // lógica específica para imagem
             const nomeStatusImagem = (item.nome_status || '').toString().trim().toLowerCase();
             const imagemStatusId = Number(item.imagem_status_id || 0);
-            const imagemEmHold = (nomeStatusImagem === 'hold') || (imagemStatusId === 7);
+            imagemEmHold = (nomeStatusImagem === 'hold') || (imagemStatusId === 7);
 
             if (imagemEmHold) {
                 bolinhaHTML = `<span class="bolinha vermelho" data-status-anterior="${item.status_funcao_anterior || ''}"></span>`;
@@ -320,8 +321,10 @@ function processarDados(data) {
             card.setAttribute('data-id-imagem', `${item.imagem_id}`);
             card.setAttribute('data-id-funcao', `${item.funcao_id}`);
             card.setAttribute('liberado', liberado);
+            card.dataset.liberado = liberado;
             card.setAttribute('data-nome_status', `${item.nome_status}`); // para filtro
             card.setAttribute('data-prazo', `${item.prazo}`); // para filtro
+            card.dataset.imagemEmHold = imagemEmHold ? '1' : '0';
 
         } else {
             // lógica para tarefas criadas
@@ -334,11 +337,15 @@ function processarDados(data) {
             card.dataset.status = item.status;
             card.dataset.prioridade = item.prioridade;
             card.setAttribute('liberado', '1');  // sempre liberado
+            card.dataset.liberado = '1';
+            card.dataset.imagemEmHold = '0';
         }
 
 
+        const holdMovel = (tipo === 'imagem' && status === 'HOLD' && !cardEmHold);
+
         // adiciona bloqueado se necessário
-        if (liberado === "0") {
+        if (liberado === "0" && !holdMovel) {
             card.classList.add("bloqueado");
         }
 
@@ -527,6 +534,11 @@ document.getElementById('modalDaily').style.display = 'none';
 // checkDailyAccess agora retorna uma Promise
 function checkDailyAccess() {
     return new Promise((resolve, reject) => {
+        const modalDaily = document.getElementById('modalDaily');
+        const dailyForm = document.getElementById('dailyForm');
+
+        if (modalDaily) modalDaily.style.display = 'none';
+
         fetch('verifica_respostas.php', {
             method: 'POST',
             headers: {
@@ -538,12 +550,18 @@ function checkDailyAccess() {
             .then(data => {
                 if (data.hasResponses) {
                     // Se já respondeu, segue para checkRender
+                    if (modalDaily) modalDaily.style.display = 'none';
                     resolve();
                 } else {
                     // Se não respondeu, exibe modal e interrompe fluxo (não resolve ainda)
-                    document.getElementById('modalDaily').style.display = 'flex';
+                    if (!dailyForm) {
+                        reject();
+                        return;
+                    }
+
+                    if (modalDaily) modalDaily.style.display = 'flex';
                     // Resolve apenas após o envio do formulário
-                    document.getElementById('dailyForm').addEventListener('submit', function onSubmit(e) {
+                    dailyForm.addEventListener('submit', function onSubmit(e) {
                         e.preventDefault();
                         this.removeEventListener('submit', onSubmit); // evita múltiplas submissões
 
@@ -556,25 +574,19 @@ function checkDailyAccess() {
                             .then(response => response.json())
                             .then(data => {
                                 if (data.success) {
-                                    document.getElementById('modalDaily').style.display = 'none';
+                                    if (modalDaily) modalDaily.style.display = 'none';
                                     Swal.fire({
                                         icon: 'success',
                                         text: 'Respostas enviadas com sucesso!',
                                         showConfirmButton: false,
                                         timer: 1200
                                     }).then(() => {
-                                        // Após fechar o toast, primeiro verifica funções em andamento
-                                        // para garantir que o prompt de HOLD seja exibido imediatamente
-                                        // mesmo que o resumo abra em seguida.
                                         if (typeof checkFuncoesEmAndamento === 'function') {
                                             checkFuncoesEmAndamento(idColaborador)
                                                 .catch(err => console.error('Erro ao checar funções em andamento após Daily:', err))
-                                            // .finally(() => {
-                                            //     mostrarResumoInteligente().then(() => resolve()).catch(() => resolve());
-                                            // });
+                                                .finally(() => resolve());
                                         } else {
-                                            // fallback se a função não existir por algum motivo
-                                            // mostrarResumoInteligente().then(() => resolve()).catch(() => resolve());
+                                            resolve();
                                         }
                                     });
                                 } else {
@@ -3228,14 +3240,17 @@ colunas.forEach(col => {
         group: 'kanban',
         animation: 150,
         ghostClass: 'sortable-ghost',
-        filter: ".bloqueado",      // não deixa arrastar cards bloqueados
         touchStartThreshold: 10, // move 10px antes de iniciar o drag
         onMove: function (evt) {
             const fromId = evt.from.closest('.kanban-box')?.id;
             const toId = evt.to.closest('.kanban-box')?.id;
             const dragged = evt.dragged;
+            const imagemEmHold = dragged?.dataset?.imagemEmHold === "1";
+            const holdMovel = fromId === "hold" && !imagemEmHold;
 
-            if (dragged.classList.contains("bloqueado")) return false;
+            if (imagemEmHold) return false;
+
+            if (dragged.classList.contains("bloqueado") && !holdMovel) return false;
 
             if (toId === "ajuste") return false;
 
@@ -3251,8 +3266,16 @@ colunas.forEach(col => {
             const deColuna = evt.from.closest('.kanban-box');
             const novaColuna = evt.to.closest('.kanban-box');
             const novoIndex = evt.newIndex;
+            const imagemEmHold = card?.dataset?.imagemEmHold === "1";
+            const holdMovel = deColuna?.id === "hold" && !imagemEmHold;
 
-            if (card.dataset.liberado === "0") {
+            if (imagemEmHold) {
+                evt.from.appendChild(card);
+                alert("Esta função não pode ser movida porque a imagem está em HOLD.");
+                return;
+            }
+
+            if (card.dataset.liberado === "0" && !holdMovel) {
                 evt.from.appendChild(card);
                 alert("Esta função ainda não foi liberada.");
                 return;
@@ -3545,7 +3568,6 @@ function enviarArquivo() {
     const descricaoMatch = campoNomeImagem.match(/^\d+\.\s*[A-Z0-9_]+\s+([^\s]+)/i);
     const primeiraPalavra = descricaoMatch ? descricaoMatch[1] : '';
     formData.append('primeiraPalavra', primeiraPalavra);
-    formData.append('status_nome', nome_status);
     formData.append('idcolaborador', colaborador_id);
 
     // Progresso visual da fase 1 (HTTP enqueue)

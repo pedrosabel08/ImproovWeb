@@ -6441,72 +6441,67 @@ formPosProducao.addEventListener('submit', function (e) {
 document.getElementById("addRevisao").addEventListener("click", function (event) {
     event.preventDefault();
 
-    // Captura os valores
     const imagemId = document.getElementById("imagem_id").value;
     const selectStatus = document.getElementById("opcao_status").value;
     const opcaoAlteracao = document.getElementById("opcao_alteracao").value;
     const obraId = localStorage.getItem("obraId");
     const nomenclatura = document.getElementById('nomenclatura').textContent;
 
-    // // Verifica se opcao_alteracao está preenchido
-    // if (!opcaoAlteracao.trim()) {
-    //     alert("Por favor, selecione uma opção antes de enviar.");
-    //     return; // Interrompe a execução se estiver vazio
-    // }
+    solicitarDadosRevisaoModal(opcaoAlteracao || '').then((dadosModal) => {
+        if (!dadosModal) {
+            return;
+        }
 
-    // Configuração do AJAX
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", "addRevisao.php", true);
-    xhr.setRequestHeader("Content-Type", "application/json");
+        fetch("addRevisao.php", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                imagem_id: imagemId,
+                colaborador_id: dadosModal.colaborador_id,
+                obra_id: obraId,
+                status_id: selectStatus,
+                nomenclatura: nomenclatura,
+                data_recebimento: dadosModal.data_recebimento
+            })
+        })
+            .then(res => res.json())
+            .then(response => {
+                if (response.status === "erro") {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Erro ao adicionar revisão',
+                        text: response.message
+                    }).then(() => {
+                        if ((response.message || '').includes("Sessão expirada")) {
+                            window.location.href = "../index.html";
+                        }
+                    });
+                    return;
+                }
 
-    // Define o que fazer após a resposta
-    xhr.onload = function () {
-        if (xhr.status === 200) {
-            const response = JSON.parse(xhr.responseText);
-            const idRenderAdicionado = response.idrender;
-
-            if (response.status === "erro") {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Erro ao adicionar render',
-                    text: response.message
-                }).then(() => {
-                    if (response.message.includes("Sessão expirada")) {
-                        window.location.href = "../index.html"; // redireciona imediatamente ao clicar em OK
-                    }
-                });
-                return;
-
-            } else if (response.status === "sucesso") {
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Alteração enviada!',
-                    text: 'Sua solicitação de alteração foi enviada com sucesso.',
-                    confirmButtonText: 'OK'
-                });
-            } else {
+                if (response.status === "sucesso") {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Alteração enviada!',
+                        text: 'Sua solicitação de alteração foi enviada com sucesso.',
+                        confirmButtonText: 'OK'
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Erro ao enviar',
+                        text: 'Tente novamente ou avise a NASA.'
+                    });
+                }
+            })
+            .catch(() => {
                 Swal.fire({
                     icon: 'error',
                     title: 'Erro ao enviar',
-                    text: 'Tente novamente ou avise a NASA.'
+                    text: 'Falha na comunicação com o servidor.'
                 });
-            }
-        }
-    };
-
-    // Dados a serem enviados como JSON
-    const data = {
-        imagem_id: imagemId,
-        colaborador_id: opcaoAlteracao,
-        obra_id: obraId,
-        status_id: selectStatus,
-        nomenclatura: nomenclatura
-    };
-
-    console.log(data);
-
-    // Envia os dados como JSON
-    xhr.send(JSON.stringify(data));
+            });
+    });
 });
 
 // Atualiza o campo quando o botão for clicado
@@ -7538,6 +7533,65 @@ function verificarSelecao() {
     document.getElementById("acoesBtn").style.display = selecionados.length > 0 ? "inline-block" : "none";
 }
 
+function obterIdsSelecionadosBatch() {
+    const idsSelecionados = [];
+    document.querySelectorAll("#tabela-obra tbody tr").forEach(row => {
+        const cb = row.querySelector("input[type='checkbox']");
+        if (cb && cb.checked) {
+            idsSelecionados.push(row.getAttribute("data-id"));
+        }
+    });
+    return idsSelecionados;
+}
+
+async function solicitarDadosRevisaoModal(colaboradorDefault = '') {
+    const opcoesOriginais = document.getElementById("opcao_alteracao");
+    const selectOptions = [`<option value="">Ninguém</option>`];
+
+    if (opcoesOriginais) {
+        Array.from(opcoesOriginais.options).forEach(option => {
+            const valor = option.value ?? '';
+            const texto = option.textContent ?? '';
+            const selected = colaboradorDefault !== '' && String(colaboradorDefault) === String(valor) ? 'selected' : '';
+            selectOptions.push(`<option value="${valor}" ${selected}>${texto}</option>`);
+        });
+    }
+
+    const hoje = new Date().toISOString().slice(0, 10);
+    const result = await Swal.fire({
+        title: 'Adicionar revisão',
+        html: `
+            <div style="display:flex;flex-direction:column;gap:10px;text-align:left;">
+                <label for="swal_data_recebimento">Data de recebimento</label>
+                <input id="swal_data_recebimento" type="date" class="swal2-input" style="margin:0;" value="${hoje}">
+                <label for="swal_colaborador">Colaborador (opcional)</label>
+                <select id="swal_colaborador" class="swal2-select" style="width:100%;margin:0;">
+                    ${selectOptions.join('')}
+                </select>
+            </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: 'Confirmar',
+        cancelButtonText: 'Cancelar',
+        preConfirm: () => {
+            const dataRecebimento = document.getElementById('swal_data_recebimento').value;
+            const colaboradorId = document.getElementById('swal_colaborador').value;
+
+            if (!dataRecebimento) {
+                Swal.showValidationMessage('Informe a data de recebimento.');
+                return false;
+            }
+
+            return {
+                data_recebimento: dataRecebimento,
+                colaborador_id: colaboradorId || ''
+            };
+        }
+    });
+
+    return result.isConfirmed ? result.value : null;
+}
+
 const acoesBtn = document.getElementById("acoesBtn");
 const acoesModal = document.getElementById("acoesModal");
 let acoesModalAnchor = null;
@@ -7630,13 +7684,7 @@ document.getElementById("btnAtualizar").addEventListener("click", function () {
     });
 
     // Pega os IDs das linhas selecionadas (checkbox ativo)
-    let idsSelecionados = [];
-    document.querySelectorAll("#tabela-obra tbody tr").forEach(row => {
-        const cb = row.querySelector("input[type='checkbox']");
-        if (cb && cb.checked) {
-            idsSelecionados.push(row.getAttribute("data-id")); // certifique-se de ter o atributo data-id
-        }
-    });
+    const idsSelecionados = obterIdsSelecionadosBatch();
 
     if (idsSelecionados.length === 0) {
         alert("Nenhuma linha selecionada!");
@@ -7661,13 +7709,16 @@ document.getElementById("btnAtualizar").addEventListener("click", function () {
 
 
             const funcaoFields = ["funcao_id", "colaborador_id"];
-            const hasFuncaoFields = Object.keys(dadosAtualizar).some(k => funcaoFields.includes(k));
+            const toSend = {};
+            funcaoFields.forEach(f => {
+                const valor = dadosAtualizar[f];
+                if (valor !== undefined && valor !== null && String(valor).trim() !== '') {
+                    toSend[f] = valor;
+                }
+            });
+            const hasFuncaoFields = Object.keys(toSend).length > 0;
 
             if (hasFuncaoFields) {
-                const toSend = {};
-                funcaoFields.forEach(f => {
-                    if (dadosAtualizar[f] !== undefined) toSend[f] = dadosAtualizar[f];
-                });
 
                 const promises = idsSelecionados.map(id => {
                     const fd = new FormData();
@@ -7757,6 +7808,70 @@ document.getElementById("btnAtualizar").addEventListener("click", function () {
                 .catch(err => console.error(err));
         })
         .catch(err => console.error(err));
+});
+
+document.getElementById("btnBatchRevisao")?.addEventListener("click", async function () {
+    const idsSelecionados = obterIdsSelecionadosBatch();
+
+    if (idsSelecionados.length === 0) {
+        Toastify({
+            text: "Selecione ao menos uma imagem.",
+            duration: 3000,
+            gravity: "top",
+            position: "right",
+            backgroundColor: "linear-gradient(to right, #b00000ff, #e97171ff)"
+        }).showToast();
+        return;
+    }
+
+    const dadosModal = await solicitarDadosRevisaoModal('');
+    if (!dadosModal) {
+        return;
+    }
+
+    fetch("addRevisaoBatch.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            ids: idsSelecionados,
+            data_recebimento: dadosModal.data_recebimento,
+            colaborador_id: dadosModal.colaborador_id
+        })
+    })
+        .then(res => res.json())
+        .then(res => {
+            if (res.status === "sucesso") {
+                Toastify({
+                    text: "Revisões adicionadas com sucesso!",
+                    duration: 3000,
+                    gravity: "top",
+                    position: "right",
+                    backgroundColor: 'linear-gradient(to right, #00b09b, #96c93d)'
+                }).showToast();
+
+                document.getElementById("acoesModal").style.display = "none";
+                infosObra(obraId);
+                return;
+            }
+
+            Toastify({
+                text: `Erro ao adicionar revisões: ${res.message || 'falha desconhecida'}`,
+                duration: 3500,
+                gravity: "top",
+                position: "right",
+                backgroundColor: 'linear-gradient(to right, #b00000ff, #e97171ff)'
+            }).showToast();
+        })
+        .catch((err) => {
+            console.error(err);
+            Toastify({
+                text: "Erro interno ao adicionar revisões.",
+                duration: 3000,
+                gravity: "top",
+                position: "right",
+                backgroundColor: 'linear-gradient(to right, #b00000ff, #e97171ff)'
+            }).showToast();
+        });
 });
 
 let pdfDoc = null,

@@ -11,15 +11,46 @@ function emptyToNull($value)
     return ($value !== '' && $value !== null) ? $value : null;
 }
 
+function intToNull($value)
+{
+    if ($value === '' || $value === null) {
+        return null;
+    }
+    if (!is_numeric($value)) {
+        return null;
+    }
+    return (int)$value;
+}
+
 $data = $_POST;
 
-$imagem_id = isset($data['imagem_id']) ? (int)$data['imagem_id'] : null;
-$funcao_id = isset($data['funcao_id']) ? (int)$data['funcao_id'] : null;
-$colaborador_id = isset($data['colaborador_id']) ? (int)$data['colaborador_id'] : null;
-$prazo = isset($data['prazo']) ? emptyToNull($data['prazo']) : null;
-$status = isset($data['status']) ? emptyToNull($data['status']) : null;
-$observacao = isset($data['observacao']) ? emptyToNull($data['observacao']) : null;
-$status_id = isset($data['status_id']) ? (int)$data['status_id'] : null;
+$imagem_id = isset($data['imagem_id']) ? intToNull($data['imagem_id']) : null;
+
+$funcao_id = isset($data['funcao_id'])
+    ? intToNull($data['funcao_id'])
+    : null;
+
+$colaborador_id = isset($data['colaborador_id'])
+    ? intToNull($data['colaborador_id'])
+    : (isset($data['alteracao_id']) ? intToNull($data['alteracao_id']) : null);
+
+$prazo = isset($data['prazo'])
+    ? emptyToNull($data['prazo'])
+    : (isset($data['prazo_alteracao']) ? emptyToNull($data['prazo_alteracao']) : null);
+
+$status = isset($data['status'])
+    ? emptyToNull($data['status'])
+    : (isset($data['status_alteracao']) ? emptyToNull($data['status_alteracao']) : null);
+
+$observacao = isset($data['observacao'])
+    ? emptyToNull($data['observacao'])
+    : (isset($data['obs_alteracao']) ? emptyToNull($data['obs_alteracao']) : null);
+
+$status_id = isset($data['status_id']) ? intToNull($data['status_id']) : null;
+
+if ($funcao_id === null && (isset($data['status_alteracao']) || isset($data['prazo_alteracao']) || isset($data['obs_alteracao']) || isset($data['alteracao_id']))) {
+    $funcao_id = 6;
+}
 
 if (!$imagem_id) {
     echo json_encode(['error' => 'Parâmetro imagem_id é obrigatório']);

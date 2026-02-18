@@ -1,16 +1,66 @@
 <?php
 require_once __DIR__ . '/../config/session_bootstrap.php';
 include '../conexao.php';
-session_start();
 
 $data = json_decode(file_get_contents("php://input"), true);
 
-if ($data && isset($data['imagem_id'])) {
+function adicionarDiasUteis($dataInicial, $diasUteis)
+{
+    $diasAdicionados = 0;
+    $data = strtotime($dataInicial);
+    $feriadosFixos = ['01-01', '04-21', '05-01', '09-07', '10-12', '11-02', '11-15', '12-25'];
+
+    while ($diasAdicionados < $diasUteis) {
+        $data = strtotime("+1 day", $data);
+        $diaSemana = date('N', $data);
+        $mesDia = date('m-d', $data);
+        $ano = date('Y', $data);
+
+        if ($diaSemana >= 6) {
+            continue;
+        }
+        if (in_array($mesDia, $feriadosFixos, true)) {
+            continue;
+        }
+        if (in_array(date('Y-m-d', $data), feriadosMoveis($ano), true)) {
+            continue;
+        }
+
+        $diasAdicionados++;
+    }
+
+    return date('Y-m-d', $data);
+}
+
+function feriadosMoveis($ano)
+{
+    $pascoa = easter_date($ano);
+    return [
+        date('Y-m-d', $pascoa),
+        date('Y-m-d', strtotime('-2 days', $pascoa)),
+        date('Y-m-d', strtotime('+60 days', $pascoa)),
+        date('Y-m-d', strtotime('+47 days', $pascoa)),
+        date('Y-m-d', strtotime('-48 days', $pascoa)),
+        date('Y-m-d', strtotime('-49 days', $pascoa)),
+    ];
+}
+
+if ($data && isset($data['imagem_id']) && !empty($data['data_recebimento'])) {
     $imagem_id = $data['imagem_id'];
-    $colaborador_id = $data['colaborador_id'] ?? null;
+    $colaborador_id = isset($data['colaborador_id']) && $data['colaborador_id'] !== '' ? (int)$data['colaborador_id'] : null;
     $responsavel_id = $_SESSION['idcolaborador'] ?? null;
     $obra_id = $data['obra_id'] ?? null;
     $nomenclatura = $data['nomenclatura'] ?? null;
+    $data_recebimento = $data['data_recebimento'];
+
+    $dataObj = DateTime::createFromFormat('Y-m-d', $data_recebimento);
+    if (!$dataObj || $dataObj->format('Y-m-d') !== $data_recebimento) {
+        echo json_encode([
+            'status' => 'erro',
+            'message' => 'Data de recebimento inválida.'
+        ]);
+        exit;
+    }
 
     $conn->begin_transaction();
 
@@ -32,6 +82,13 @@ if ($data && isset($data['imagem_id'])) {
             $stmtFuncao->execute();
             $funcao_id = $conn->insert_id;
             $stmtFuncao->close();
+        }
+
+        if ($colaborador_id !== null) {
+            $stmtColab = $conn->prepare("UPDATE funcao_imagem SET colaborador_id = ? WHERE idfuncao_imagem = ?");
+            $stmtColab->bind_param("ii", $colaborador_id, $funcao_id);
+            $stmtColab->execute();
+            $stmtColab->close();
         }
 
         // 2. Conta quantas alterações já existem para essa função
@@ -61,47 +118,11 @@ if ($data && isset($data['imagem_id'])) {
                 break; // R05+
         }
 
-        // 4. Calcula novo prazo (7 dias úteis)
-        function adicionarDiasUteis($dataInicial, $diasUteis)
-        {
-            $diasAdicionados = 0;
-            $data = strtotime($dataInicial);
-            $feriadosFixos = ['01-01', '04-21', '05-01', '09-07', '10-12', '11-02', '11-15', '12-25'];
-
-            while ($diasAdicionados < $diasUteis) {
-                $data = strtotime("+1 day", $data);
-                $diaSemana = date('N', $data);
-                $mesDia = date('m-d', $data);
-                $ano = date('Y', $data);
-
-                if ($diaSemana >= 6) continue;
-                if (in_array($mesDia, $feriadosFixos)) continue;
-                if (in_array(date('Y-m-d', $data), feriadosMoveis($ano))) continue;
-
-                $diasAdicionados++;
-            }
-
-            return date('Y-m-d', $data);
-        }
-
-        function feriadosMoveis($ano)
-        {
-            $pascoa = easter_date($ano);
-            return [
-                date('Y-m-d', $pascoa),
-                date('Y-m-d', strtotime('-2 days', $pascoa)), // Sexta-feira Santa
-                date('Y-m-d', strtotime('+60 days', $pascoa)), // Corpus Christi
-                date('Y-m-d', strtotime('+47 days', $pascoa)), // Ascensão
-                date('Y-m-d', strtotime('-48 days', $pascoa)), // Carnaval
-                date('Y-m-d', strtotime('-49 days', $pascoa)), // Segunda de Carnaval
-            ];
-        }
-
-        $dataAtual = date('Y-m-d');
-        $novoPrazo = adicionarDiasUteis($dataAtual, 7);
+        // 4. Calcula novo prazo (7 dias úteis) a partir da data informada
+        $novoPrazo = adicionarDiasUteis($data_recebimento, 7);
 
         // 5. Atualiza a imagem com o novo status e prazo
-        $stmtUpdate = $conn->prepare("UPDATE imagens_cliente_obra SET status_id = ?, prazo = ?, recebimento_arquivos = NOW() WHERE idimagens_cliente_obra = ?");
+        $stmtUpdate = $conn->prepare("UPDATE imagens_cliente_obra SET status_id = ?, prazo = ? WHERE idimagens_cliente_obra = ?");
         $stmtUpdate->bind_param("isi", $novo_status, $novoPrazo, $imagem_id);
         $stmtUpdate->execute();
         $stmtUpdate->close();
@@ -124,8 +145,8 @@ if ($data && isset($data['imagem_id'])) {
         $stmtEvento->close();
 
         // 7. Insere a alteração na tabela alteracoes
-        $stmtAlt = $conn->prepare("INSERT INTO alteracoes (funcao_id, data_recebimento, status_id) VALUES (?, NOW(), ?)");
-        $stmtAlt->bind_param("ii", $funcao_id, $novo_status);
+        $stmtAlt = $conn->prepare("INSERT INTO alteracoes (funcao_id, data_recebimento, status_id) VALUES (?, ?, ?)");
+        $stmtAlt->bind_param("isi", $funcao_id, $data_recebimento, $novo_status);
         $stmtAlt->execute();
         $stmtAlt->close();
 
@@ -146,7 +167,7 @@ if ($data && isset($data['imagem_id'])) {
 } else {
     echo json_encode([
         'status' => 'erro',
-        'message' => 'Dados incompletos ou inválidos.'
+        'message' => 'Dados incompletos ou inválidos. Informe imagem_id e data_recebimento.'
     ]);
 }
 

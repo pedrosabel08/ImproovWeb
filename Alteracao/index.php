@@ -48,7 +48,7 @@ $conn->close();
     <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
         type="image/x-icon">
     <meta charset="UTF-8">
-    <title>Kanban de Alterações por Obra</title>
+    <title>Tela de Alterações</title>
 
 </head>
 
@@ -62,18 +62,54 @@ $conn->close();
         <div class="header">
             <h2>Tela de alterações</h2>
         </div>
+        <div class="filters" id="filtros-alteracao">
+            <div class="filter-item">
+                <label for="filtro-status">Status</label>
+                <select id="filtro-status">
+                    <option value="">Todos</option>
+                    <option value="Não iniciado">Não iniciado</option>
+                    <option value="Em andamento">Em andamento</option>
+                    <option value="Em aprovação">Em aprovação</option>
+                    <option value="Finalizado">Finalizado</option>
+                </select>
+            </div>
+            <div class="filter-item">
+                <label for="filtro-obra">Obra</label>
+                <select id="filtro-obra">
+                    <option value="">Todas</option>
+                </select>
+            </div>
+            <div class="filter-item">
+                <label for="filtro-colaborador">Colaborador</label>
+                <select id="filtro-colaborador">
+                    <option value="">Todos</option>
+                </select>
+            </div>
+            <div class="filter-item filter-search">
+                <label for="filtro-busca">Buscar</label>
+                <input type="text" id="filtro-busca" placeholder="Imagem, obra ou colaborador">
+            </div>
+            <div class="filter-actions">
+                <button type="button" id="btn-aplicar-filtros">Aplicar</button>
+                <button type="button" id="btn-limpar-filtros">Limpar</button>
+            </div>
+        </div>
         <div class="kanban-board" id="kanban-board">
-            <div class="kanban-column" id="kanban-nãoiniciado">
-                <div class="kanban-title">Não iniciado</div>
+            <div class="kanban-column" data-status="Não iniciado">
+                <div class="kanban-title">Não iniciado <span class="count" id="count-nao-iniciado">0</span></div>
+                <div class="kanban-cards" id="kanban-nao-iniciado"></div>
             </div>
-            <div class="kanban-column" id="kanban-emandamento">
-                <div class="kanban-title">Em andamento</div>
+            <div class="kanban-column" data-status="Em andamento">
+                <div class="kanban-title">Em andamento <span class="count" id="count-em-andamento">0</span></div>
+                <div class="kanban-cards" id="kanban-em-andamento"></div>
             </div>
-            <div class="kanban-column" id="kanban-emaprovação">
-                <div class="kanban-title">Em aprovação</div>
+            <div class="kanban-column" data-status="Em aprovação">
+                <div class="kanban-title">Em aprovação <span class="count" id="count-em-aprovacao">0</span></div>
+                <div class="kanban-cards" id="kanban-em-aprovacao"></div>
             </div>
-            <div class="kanban-column" id="kanban-finalizado">
-                <div class="kanban-title">Finalizado</div>
+            <div class="kanban-column" data-status="Finalizado">
+                <div class="kanban-title">Finalizado <span class="count" id="count-finalizado">0</span></div>
+                <div class="kanban-cards" id="kanban-finalizado"></div>
             </div>
         </div>
     </div>
@@ -91,6 +127,7 @@ $conn->close();
                         </div>
                         <div class="opcoes" id="opcoes">
                             <select name="alteracao_id" id="opcao_alteracao">
+                                <option value="">Ninguém</option>
                                 <?php foreach ($colaboradores as $colab): ?>
                                     <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
                                         <?= htmlspecialchars($colab['nome_colaborador']); ?>
@@ -159,8 +196,12 @@ $conn->close();
     <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
     <script src="<?php echo asset_url('../script/notificacoes.js'); ?>"></script>
     <script src="<?php echo asset_url('../script/controleSessao.js'); ?>"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.3/Sortable.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script>
+        window.ALTERACAO_LOGGED_COLAB_ID = <?= json_encode($_SESSION['idcolaborador'] ?? null); ?>;
+    </script>
 
 </body>
 

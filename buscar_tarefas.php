@@ -4,7 +4,7 @@ header("Access-Control-Allow-Origin: *"); // ou especificar o domínio
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization");
 
-session_start();
+// session_start();
 include 'conexao.php'; // Inclua a conexão com o banco de dados.
 
 $idusuario = $_GET['idusuario']; // ID do usuário logado.

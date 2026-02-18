@@ -48,7 +48,6 @@ $__basePath = (strpos($__reqUri, '/flow/ImproovWeb/') !== false || preg_match('~
                 <label for="">Insights</label>
                 <li><a title="Página Principal" href="https://improov.com.br/flow/ImproovWeb/inicio.php"><i class="fas fa-home"></i><span> Página Principal</span></a></li>
                 <li><a title="Lista Pós-Produção" href="https://improov.com.br/flow/ImproovWeb/Pos-Producao"><i class="fas fa-list"></i><span> Lista Pós-Produção</span></a></li>
-                <!-- <li><a title="Lista Alteração" href="https://improov.com.br/flow/ImproovWeb/Alteracao"><i class="fa-solid fa-user-pen"></i><span> Lista Alteração</span></a></li> -->
                 <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 3)): ?>
                     <li><a title="Recebimento de arquivos" href="https://improov.com.br/flow/ImproovWeb/Arquivos"><i class="fas fa-file"></i><span> Arquivos</span></a></li>
                     <!-- <li><a title="Infos Cliente" href="https://improov.com.br/flow/ImproovWeb/infoCliente"><i class="fas fa-chart-line"></i><span> Infos Cliente</span></a></li> -->
@@ -58,6 +57,7 @@ $__basePath = (strpos($__reqUri, '/flow/ImproovWeb/') !== false || preg_match('~
                 <?php endif; ?>
 
                 <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1)): ?>
+                    <li><a title="Lista Alteração" href="https://improov.com.br/flow/ImproovWeb/Alteracao"><i class="fa-solid fa-user-pen"></i><span> Lista Alteração</span></a></li>
                     <!-- <li><a title="Obras" href="https://improov.com.br/flow/ImproovWeb/Obras"><i class="fas fa-building"></i><span> Obras</span></a></li> -->
                     <li><a title="Dashboard" href="https://improov.com.br/flow/ImproovWeb/Dashboard"><i class="fa-solid fa-chart-line"></i><span> Dashboard</span></a></li>
                     <li><a title="Projetos" href="https://improov.com.br/flow/ImproovWeb/Projetos"><i class="fa-solid fa-diagram-project"></i><span> Projetos</span></a></li>
@@ -77,7 +77,7 @@ $__basePath = (strpos($__reqUri, '/flow/ImproovWeb/') !== false || preg_match('~
                 </ul>
             <?php endif; ?>
 
-                <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 5)): ?>
+            <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 5)): ?>
 
                 <ul class="division">
                     <label for="">Financeiro</label>
@@ -166,49 +166,49 @@ $__basePath = (strpos($__reqUri, '/flow/ImproovWeb/') !== false || preg_match('~
 
             // Do mesmo jeito que seu script/sidebar.js:
             // se estiver em /flow/ImproovWeb/ usa essa base, senão usa /ImproovWeb/
-            var basePath = (window.location.pathname.includes('/flow/ImproovWeb/') || window.location.pathname.includes('/flow/ImproovWeb'))
-                ? '/flow/ImproovWeb/'
-                : '/ImproovWeb/';
+            var basePath = (window.location.pathname.includes('/flow/ImproovWeb/') || window.location.pathname.includes('/flow/ImproovWeb')) ?
+                '/flow/ImproovWeb/' :
+                '/ImproovWeb/';
 
             var endpoint = window.location.origin + basePath + 'system_version.php';
 
             fetch(endpoint, {
-                method: 'GET',
-                cache: 'no-store',
-                credentials: 'same-origin',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            })
-            .then(function(resp) {
-                if (!resp.ok) throw new Error('bad');
-                return resp.json();
-            })
-            .then(function(data) {
-                if (!data || !data.ok || !data.version) return;
+                    method: 'GET',
+                    cache: 'no-store',
+                    credentials: 'same-origin',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(function(resp) {
+                    if (!resp.ok) throw new Error('bad');
+                    return resp.json();
+                })
+                .then(function(data) {
+                    if (!data || !data.ok || !data.version) return;
 
-                var current = String(data.version);
-                var saved = localStorage.getItem(storageKey);
+                    var current = String(data.version);
+                    var saved = localStorage.getItem(storageKey);
 
-                // Primeira vez no navegador: salva e segue
-                if (!saved) {
-                    localStorage.setItem(storageKey, current);
-                    return;
-                }
+                    // Primeira vez no navegador: salva e segue
+                    if (!saved) {
+                        localStorage.setItem(storageKey, current);
+                        return;
+                    }
 
-                // Se mudou: atualiza e força reload
-                if (saved !== current) {
-                    localStorage.setItem(storageKey, current);
-                    sessionStorage.setItem(reloadGuardKey, '1');
+                    // Se mudou: atualiza e força reload
+                    if (saved !== current) {
+                        localStorage.setItem(storageKey, current);
+                        sessionStorage.setItem(reloadGuardKey, '1');
 
-                    var url = new URL(window.location.href);
-                    url.searchParams.set('_v', current);
-                    window.location.replace(url.toString());
-                }
-            })
-            .catch(function() {
-                // Se falhar, não quebra a navegação
-            });
+                        var url = new URL(window.location.href);
+                        url.searchParams.set('_v', current);
+                        window.location.replace(url.toString());
+                    }
+                })
+                .catch(function() {
+                    // Se falhar, não quebra a navegação
+                });
         } catch (e) {
             // noop
         }
@@ -226,9 +226,9 @@ $__basePath = (strpos($__reqUri, '/flow/ImproovWeb/') !== false || preg_match('~
 
             // envia de forma assíncrona; o endpoint ignora se usuário não autenticado
             // usa o caminho absoluto para evitar requests relativos incorretos
-            const basePath = (window.location.pathname.includes('/flow/ImproovWeb/') || window.location.pathname.includes('/flow/ImproovWeb'))
-                ? '/flow/ImproovWeb/'
-                : '/ImproovWeb/';
+            const basePath = (window.location.pathname.includes('/flow/ImproovWeb/') || window.location.pathname.includes('/flow/ImproovWeb')) ?
+                '/flow/ImproovWeb/' :
+                '/ImproovWeb/';
             const endpoint = window.location.origin + basePath + 'atualiza_log_tela.php';
             fetch(endpoint, {
                 method: 'POST',

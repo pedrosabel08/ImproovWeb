@@ -532,6 +532,7 @@ $conn->close();
                     </div>
                 </div>
                 <div style="text-align: center; padding-top: 5px;">
+                    <button id="btnBatchRevisao" type="button" style="margin-right: 8px;">+ Revisão</button>
                     <button id="btnAtualizar">✓ Atualizar</button>
                 </div>
             </div>

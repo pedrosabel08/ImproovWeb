@@ -29,17 +29,22 @@ if (!isset($_POST['dataIdFuncoes'])) {
 
 $dataIdFuncoes = json_decode($_POST['dataIdFuncoes'], true);
 $funcao_imagem_id = $dataIdFuncoes[0] ?? null;
+$indice_envio_forcado = isset($_POST['indice_envio']) ? (int)$_POST['indice_envio'] : 0;
 
 if (!$funcao_imagem_id) {
     echo json_encode(["error" => "ID da função inválido."]);
     exit;
 }
 
-// Descobre próximo índice de envio
-$query = $pdo->prepare("SELECT MAX(indice_envio) AS max_indice FROM historico_aprovacoes_imagens WHERE funcao_imagem_id = :funcao_imagem_id");
-$query->execute([':funcao_imagem_id' => $funcao_imagem_id]);
-$result = $query->fetch(PDO::FETCH_ASSOC);
-$indice_envio = ($result['max_indice'] ?? 0) + 1;
+// Mantém o mesmo índice de envio quando informado (botão +), senão cria novo envio
+if ($indice_envio_forcado > 0) {
+    $indice_envio = $indice_envio_forcado;
+} else {
+    $query = $pdo->prepare("SELECT MAX(indice_envio) AS max_indice FROM historico_aprovacoes_imagens WHERE funcao_imagem_id = :funcao_imagem_id");
+    $query->execute([':funcao_imagem_id' => $funcao_imagem_id]);
+    $result = $query->fetch(PDO::FETCH_ASSOC);
+    $indice_envio = ($result['max_indice'] ?? 0) + 1;
+}
 
 // Cria pasta se necessário
 function uploadImagem($imagem, $destino)

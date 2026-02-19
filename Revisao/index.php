@@ -166,7 +166,9 @@ $conn->close();
                 <div id="sidebarTabulator" class="sidebar-min"></div>
             </div>
             <nav>
+                <div id="comentario-geral-envio" class="comentario-geral-envio hidden"></div>
                 <div id="imagens"></div>
+                <button id="add-angulo-btn" class="tooltip" data-tooltip="Adicionar ângulos">+</button>
             </nav>
             <div id="imagem_completa">
                 <div class="nav-select">
@@ -190,16 +192,16 @@ $conn->close();
                 <div id="approval_info"
                     style="display:none;margin-bottom:10px;padding:8px;border-radius:6px;background:#f5f7fa;font-size:14px;color:#222">
                 </div>
-                <button id="submit_decision">Enviar aprovação</button>
+                <button id="submit_decision">Escolher ângulo</button>
 
                 <!-- Modal -->
                 <div id="decisionModal" class="modal-decision hidden">
                     <div class="modal-content-decision">
                         <span class="close">&times;</span>
-                        <label><input type="radio" name="decision" value="aprovado"> Aprovado</label><br>
-                        <label><input type="radio" name="decision" value="aprovado_com_ajustes"> Aprovado com
-                            ajustes</label><br>
-                        <label><input type="radio" name="decision" value="ajuste"> Ajuste</label><br>
+                        <label><input type="radio" name="decision" value="aprovado"> Escolhido</label><br>
+                        <label><input type="radio" name="decision" value="aprovado_com_ajustes"> Escolhido com
+                            Ajustes</label><br>
+                        <label><input type="radio" name="decision" value="ajuste"> Ajustes</label><br>
 
                         <div class="modal-footer">
                             <button id="cancelBtn" class="cancel-btn">Cancel</button>
@@ -212,9 +214,6 @@ $conn->close();
         </div>
     </div>
     <ul id="menuContexto">
-        <li id="menuAprovarAngulo" onclick="aprovarAngulo()">Aprovar ângulo <span>✅</span></li>
-        <li id="menuPedirAjusteAngulo" onclick="pedirAjusteAngulo()">Pedir ajuste <span>✏️</span></li>
-        <li id="menuSubstituirAngulo" onclick="substituirAngulo()">Substituir ângulo <span>⬆️</span></li>
         <li onclick="excluirImagem()">Excluir <span>🗑️</span></li>
     </ul>
     <div id="comentarioModal" class="modal" style="display: none;">

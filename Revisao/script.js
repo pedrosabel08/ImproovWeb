@@ -517,6 +517,93 @@ const idusuario = parseInt(localStorage.getItem('idusuario')); // Obtém o idusu
 
 let funcaoImagemId = null; // armazenado globalmente
 let currentFuncaoContext = null; // {imagem_id, funcao_imagem_id, colaborador_id, nome_funcao, nome_status, imagem_nome}
+let currentIndiceEnvio = null;
+
+function isP00FinalizacaoContext(context) {
+    const isP00 = String(context?.nome_status || '').toLowerCase() === 'p00';
+    const nomeFuncao = String(context?.nome_funcao || '').toLowerCase();
+    return isP00 && nomeFuncao === 'finalização';
+}
+
+async function atualizarAnguloEscolhido(acao, observacao = '') {
+    if (!currentFuncaoContext || !ap_imagem_id) {
+        alert('Selecione um ângulo para continuar.');
+        return;
+    }
+
+    const payload = {
+        acao,
+        observacao,
+        imagem_id: parseInt(currentFuncaoContext.imagem_id, 10),
+        funcao_imagem_id: parseInt(currentFuncaoContext.funcao_imagem_id, 10),
+        historico_id: parseInt(ap_imagem_id, 10)
+    };
+
+    try {
+        const res = await fetch('atualizar_angulo.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!data.success) {
+            alert(data.message || 'Erro ao atualizar ângulo.');
+            return;
+        }
+        historyAJAX(funcaoImagemId);
+    } catch (e) {
+        console.error(e);
+        alert('Erro ao atualizar ângulo.');
+    }
+}
+
+async function abrirModalEscolhaAngulo() {
+    const escolha = await Swal.fire({
+        title: 'Escolher ângulo',
+        input: 'select',
+        inputOptions: {
+            ajustes: 'Ajustes',
+            escolhido_com_ajustes: 'Escolhido com Ajustes',
+            escolhido: 'Escolhido'
+        },
+        inputPlaceholder: 'Selecione uma opção',
+        showCancelButton: true,
+        confirmButtonText: 'Confirmar',
+        cancelButtonText: 'Cancelar'
+    });
+
+    if (!escolha.isConfirmed || !escolha.value) {
+        return;
+    }
+
+    const acao = escolha.value;
+    if (acao === 'ajustes' || acao === 'escolhido_com_ajustes') {
+        const obsResult = await Swal.fire({
+            title: 'Observação geral do ângulo',
+            input: 'textarea',
+            inputPlaceholder: 'Descreva a observação geral...',
+            inputAttributes: { 'aria-label': 'Observação geral do ângulo' },
+            showCancelButton: true,
+            confirmButtonText: 'Enviar',
+            cancelButtonText: 'Cancelar',
+            inputValidator: (value) => {
+                if (!value || !value.trim()) {
+                    return 'A observação é obrigatória para esta opção.';
+                }
+                return null;
+            }
+        });
+
+        if (!obsResult.isConfirmed) {
+            return;
+        }
+
+        await atualizarAnguloEscolhido(acao, String(obsResult.value || '').trim());
+        return;
+    }
+
+    await atualizarAnguloEscolhido(acao, '');
+}
 
 
 function historyAJAX(idfuncao_imagem) {
@@ -530,6 +617,11 @@ function historyAJAX(idfuncao_imagem) {
 
             const comentariosDiv = document.querySelector(".comentarios");
             comentariosDiv.innerHTML = '';
+            const comentarioGeralEnvio = document.getElementById('comentario-geral-envio');
+            if (comentarioGeralEnvio) {
+                comentarioGeralEnvio.classList.add('hidden');
+                comentarioGeralEnvio.innerHTML = '';
+            }
 
             const container_aprovacao = document.querySelector('.container-aprovacao');
             container_aprovacao.classList.remove('hidden');
@@ -547,6 +639,7 @@ function historyAJAX(idfuncao_imagem) {
 
             // Clona e substitui botões para evitar múltiplos event listeners
             const btnOpen = replaceElementById("submit_decision");
+            const addAnguloBtn = replaceElementById("add-angulo-btn");
             const modal = document.getElementById("decisionModal");
             const btnClose = replaceElementByClass("close");
             const cancelBtn = replaceElementById("cancelBtn");
@@ -601,85 +694,81 @@ function historyAJAX(idfuncao_imagem) {
                 console.error('Erro ao preencher approval_info', e);
             }
 
+            const isFlowAngulo = isP00FinalizacaoContext(item) && Array.isArray(imagens) && imagens.length > 0;
+
             if ([1, 2, 9, 20, 3].includes(idusuario)) {
-                btnOpen.addEventListener("click", () => {
-                    modal.classList.remove("hidden");
-                });
-
-                btnClose.addEventListener("click", () => {
-                    modal.classList.add("hidden");
-                    btnConfirm.classList.add("hidden");
-                });
-
-                cancelBtn.addEventListener("click", () => {
-                    modal.classList.add("hidden");
-                    btnConfirm.classList.add("hidden");
-                    radios.forEach(r => r.checked = false);
-                });
-
-                radios.forEach(radio => {
-                    radio.addEventListener("change", () => {
-                        btnConfirm.classList.remove("hidden");
+                if (isFlowAngulo) {
+                    btnOpen.textContent = 'Escolher ângulo';
+                    btnOpen.style.display = 'flex';
+                    modal.classList.add('hidden');
+                    btnOpen.addEventListener('click', () => {
+                        abrirModalEscolhaAngulo();
                     });
-                });
+                } else {
+                    btnOpen.textContent = 'Enviar aprovação';
+                    const labels = document.querySelectorAll('#decisionModal label');
+                    if (labels[0]) labels[0].innerHTML = '<input type="radio" name="decision" value="aprovado"> Aprovado';
+                    if (labels[1]) labels[1].innerHTML = '<input type="radio" name="decision" value="aprovado_com_ajustes"> Aprovado com ajustes';
+                    if (labels[2]) labels[2].innerHTML = '<input type="radio" name="decision" value="ajuste"> Ajuste';
 
-                btnConfirm.addEventListener("click", () => {
-                    const selected = Array.from(radios).find(r => r.checked)?.value;
-                    if (!selected) return;
+                    document.querySelectorAll('input[name="decision"]').forEach(radio => {
+                        const clone = radio.cloneNode(true);
+                        radio.replaceWith(clone);
+                    });
+                    const updatedRadios = document.querySelectorAll('input[name="decision"]');
 
-                    // Supondo que status_imagem está disponível no escopo
-                    // if (item.nome_status === "P00" && selected === "aprovado") {
-                    //     if (confirm("Você deseja liberar esse ângulo?")) {
-                    //         let sugerida = false;
-                    //         let motivo = "";
+                    btnOpen.addEventListener("click", () => {
+                        modal.classList.remove("hidden");
+                    });
 
-                    //         if (confirm("Essa imagem é a sugerida?")) {
-                    //             sugerida = true;
-                    //             motivo = prompt("Descreva o porquê essa imagem é a sugerida:");
-                    //         }
+                    btnClose.addEventListener("click", () => {
+                        modal.classList.add("hidden");
+                        btnConfirm.classList.add("hidden");
+                    });
 
-                    //         // Envia para o backend (exemplo)
-                    //         fetch('liberar_angulo.php', {
-                    //             method: 'POST',
-                    //             headers: { 'Content-Type': 'application/json' },
-                    //             body: JSON.stringify({
-                    //                 imagem_id: item.imagem_id,
-                    //                 historico_id: ap_imagem_id,
-                    //                 liberada: true,
-                    //                 sugerida: sugerida,
-                    //                 motivo_sugerida: motivo
-                    //             })
-                    //         })
-                    //             .then(r => r.json())
-                    //             .then(res => {
-                    //                 if (res.success) {
-                    //                     alert("Imagem atualizada com sucesso!");
-                    //                 } else {
-                    //                     alert("Erro ao atualizar imagem: " + res.message);
-                    //                 }
-                    //             });
-                    //     } else {
-                    //         return; // Não continua se não liberar
-                    //     }
-                    // }
+                    cancelBtn.addEventListener("click", () => {
+                        modal.classList.add("hidden");
+                        btnConfirm.classList.add("hidden");
+                        updatedRadios.forEach(r => r.checked = false);
+                    });
 
-                    revisarTarefa(
-                        item.funcao_imagem_id,
-                        item.colaborador_nome,
-                        item.imagem_nome,
-                        item.nome_funcao,
-                        item.colaborador_id,
-                        item.imagem_id,
-                        selected
-                    );
+                    updatedRadios.forEach(radio => {
+                        radio.addEventListener("change", () => {
+                            btnConfirm.classList.remove("hidden");
+                        });
+                    });
 
-                    modal.classList.add("hidden");
-                    btnConfirm.classList.add("hidden");
-                    radios.forEach(r => r.checked = false);
-                });
+                    btnConfirm.addEventListener("click", () => {
+                        const selected = Array.from(updatedRadios).find(r => r.checked)?.value;
+                        if (!selected) return;
+
+                        revisarTarefa(
+                            item.funcao_imagem_id,
+                            item.colaborador_nome,
+                            item.imagem_nome,
+                            item.nome_funcao,
+                            item.colaborador_id,
+                            item.imagem_id,
+                            selected
+                        );
+
+                        modal.classList.add("hidden");
+                        btnConfirm.classList.add("hidden");
+                        updatedRadios.forEach(r => r.checked = false);
+                    });
+                }
             } else {
                 btnOpen.style.display = "none";
             }
+
+            // addAnguloBtn.style.display = 'inline-flex';
+            addAnguloBtn.addEventListener('click', () => {
+                if (!currentFuncaoContext || !funcaoImagemId || !currentIndiceEnvio) {
+                    alert('Selecione um envio para adicionar novos ângulos.');
+                    return;
+                }
+                document.getElementById('imagem-modal').style.display = 'block';
+            });
 
             const titulo = document.getElementById('funcao_nome');
             titulo.textContent = `${item.colaborador_nome} - ${item.nome_funcao}`;
@@ -741,9 +830,23 @@ function historyAJAX(idfuncao_imagem) {
 
             indiceSelect.addEventListener('change', () => {
                 const indiceSelecionado = indiceSelect.value;
+                currentIndiceEnvio = indiceSelecionado ? parseInt(indiceSelecionado, 10) : null;
                 imageContainer.innerHTML = '';
 
                 const imagensDoIndice = imagensAgrupadas[indiceSelecionado];
+
+                const textoGeral = Array.isArray(imagensDoIndice)
+                    ? String((imagensDoIndice.find(img => String(img.angulo_motivo || '').trim())?.angulo_motivo) || '').trim()
+                    : '';
+                if (comentarioGeralEnvio) {
+                    if (textoGeral) {
+                        comentarioGeralEnvio.innerHTML = `<span class="label">Comentário geral</span><span>${escapeHtml(textoGeral)}</span>`;
+                        comentarioGeralEnvio.classList.remove('hidden');
+                    } else {
+                        comentarioGeralEnvio.classList.add('hidden');
+                        comentarioGeralEnvio.innerHTML = '';
+                    }
+                }
 
                 if (imagensDoIndice && imagensDoIndice.length > 0) {
                     imagensDoIndice.sort((a, b) => new Date(b.data_envio) - new Date(a.data_envio));
@@ -942,7 +1045,7 @@ document.getElementById('input-imagens').addEventListener('change', function () 
 document.getElementById('btn-enviar-imagens').addEventListener('click', () => {
     const input = document.getElementById('input-imagens');
     const arquivos = input.files;
-    if (arquivos.length === 0 || !funcaoImagemId) return;
+    if (arquivos.length === 0 || !funcaoImagemId || !currentIndiceEnvio) return;
 
     const formData = new FormData();
     for (let i = 0; i < arquivos.length; i++) {
@@ -950,8 +1053,9 @@ document.getElementById('btn-enviar-imagens').addEventListener('click', () => {
     }
 
     formData.append('dataIdFuncoes', JSON.stringify([funcaoImagemId]));
+    formData.append('indice_envio', String(currentIndiceEnvio));
 
-    fetch('../uploadArquivos.php', {
+    fetch('upload.php', {
         method: 'POST',
         body: formData
     })
@@ -962,6 +1066,7 @@ document.getElementById('btn-enviar-imagens').addEventListener('click', () => {
                 document.getElementById('imagem-modal').style.display = 'none';
                 document.getElementById('input-imagens').value = '';
                 document.getElementById('preview').innerHTML = '';
+                historyAJAX(funcaoImagemId);
             } else {
                 alert(res.error || 'Erro ao enviar imagens.');
             }
@@ -982,121 +1087,6 @@ function abrirMenuContexto(x, y, id, src) {
     menu.style.top = `${y}px`;
     menu.style.left = `${x}px`;
     menu.style.display = 'block';
-
-    // Mostra/oculta opções de ângulo apenas para P00 + Finalização
-    try {
-        const isP00 = (currentFuncaoContext && currentFuncaoContext.nome_status === 'P00');
-        const isFinalizacao = (currentFuncaoContext && String(currentFuncaoContext.nome_funcao || '').toLowerCase() === 'finalização');
-        const showAngleMenu = !!(isP00 && isFinalizacao);
-
-        const m1 = document.getElementById('menuAprovarAngulo');
-        const m2 = document.getElementById('menuPedirAjusteAngulo');
-        const m3 = document.getElementById('menuSubstituirAngulo');
-        if (m1) m1.style.display = showAngleMenu ? 'flex' : 'none';
-        if (m2) m2.style.display = showAngleMenu ? 'flex' : 'none';
-        if (m3) m3.style.display = showAngleMenu ? 'flex' : 'none';
-    } catch (e) {
-        // ignore
-    }
-}
-
-async function aprovarAngulo() {
-    const menu = document.getElementById('menuContexto');
-    const historico_id = parseInt(menu.getAttribute('data-id') || '0', 10);
-    if (!historico_id || !currentFuncaoContext) return;
-
-    try {
-        const res = await fetch('atualizar_angulo.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                acao: 'aprovar',
-                imagem_id: parseInt(currentFuncaoContext.imagem_id, 10),
-                funcao_imagem_id: parseInt(currentFuncaoContext.funcao_imagem_id, 10),
-                historico_id
-            })
-        });
-        const data = await res.json();
-        if (!data.success) {
-            alert(data.message || 'Erro ao aprovar ângulo.');
-        }
-    } catch (e) {
-        console.error(e);
-        alert('Erro ao aprovar ângulo.');
-    }
-
-    menu.style.display = 'none';
-    historyAJAX(funcaoImagemId);
-}
-
-async function pedirAjusteAngulo() {
-    const menu = document.getElementById('menuContexto');
-    const historico_id = parseInt(menu.getAttribute('data-id') || '0', 10);
-    if (!historico_id || !currentFuncaoContext) return;
-
-    const motivo = prompt('Descreva o motivo do ajuste para este ângulo:');
-    if (!motivo) {
-        menu.style.display = 'none';
-        return;
-    }
-
-    try {
-        const res = await fetch('atualizar_angulo.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                acao: 'ajuste',
-                motivo,
-                imagem_id: parseInt(currentFuncaoContext.imagem_id, 10),
-                funcao_imagem_id: parseInt(currentFuncaoContext.funcao_imagem_id, 10),
-                historico_id
-            })
-        });
-        const data = await res.json();
-        if (!data.success) {
-            alert(data.message || 'Erro ao solicitar ajuste.');
-        }
-    } catch (e) {
-        console.error(e);
-        alert('Erro ao solicitar ajuste.');
-    }
-
-    menu.style.display = 'none';
-    historyAJAX(funcaoImagemId);
-}
-
-function substituirAngulo() {
-    const menu = document.getElementById('menuContexto');
-    const historico_id = parseInt(menu.getAttribute('data-id') || '0', 10);
-    if (!historico_id || !currentFuncaoContext) return;
-
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.onchange = async () => {
-        const file = input.files && input.files[0];
-        if (!file) return;
-
-        const fd = new FormData();
-        fd.append('historico_id', String(historico_id));
-        fd.append('imagem', file);
-
-        try {
-            const res = await fetch('substituir_angulo.php', { method: 'POST', body: fd });
-            const data = await res.json();
-            if (!data.success) {
-                alert(data.message || 'Erro ao substituir ângulo.');
-            }
-        } catch (e) {
-            console.error(e);
-            alert('Erro ao substituir ângulo.');
-        }
-
-        historyAJAX(funcaoImagemId);
-    };
-
-    menu.style.display = 'none';
-    input.click();
 }
 
 function excluirImagem() {

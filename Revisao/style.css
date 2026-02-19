@@ -103,6 +103,27 @@ a {
     background-color: #ccc;
 }
 
+.comentario-geral-envio {
+    width: calc(100% - 12px);
+    margin: 6px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border-left: 4px solid #1a3a8f;
+    background: #f3f6ff;
+    color: #12213f;
+    font-size: 13px;
+    line-height: 1.4;
+    position: sticky;
+    top: 6px;
+    z-index: 2;
+}
+
+.comentario-geral-envio .label {
+    display: block;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
 .container {
     width: 90%;
     max-width: 1200px;
@@ -377,11 +398,15 @@ a {
     transform: translate(-50%, -50%);
 }
 
-nav {
+.imagens nav {
     margin: 0 auto;
     max-height: 60vh;
     overflow: auto;
     padding-right: 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
 }
 
 .image {
@@ -415,6 +440,24 @@ nav {
     grid-column: 2;
     flex-direction: column;
     gap: 10px;
+}
+
+#add-angulo-btn {
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 50%;
+    background-color: #2f7f32;
+    color: #fff;
+    font-size: 24px;
+    font-weight: 700;
+    cursor: pointer;
+    line-height: 1;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+#add-angulo-btn:hover {
+    filter: brightness(1.1);
 }
 
 
@@ -1510,13 +1553,13 @@ nav.breadcrumb-nav a {
 
 #submit_decision {
     display: flex;
-    background-color: #ab1c1c;
+    background-color: #0a4a9b;
     font-size: 12px;
     font-weight: bold;
     padding: 6px;
     border-radius: 6px;
     color: white;
-    box-shadow: 0 4px 6px #370000;
+    box-shadow: 0 4px 6px #042a57;
     height: max-content;
     margin: 0 auto;
 }

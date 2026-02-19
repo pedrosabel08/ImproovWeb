@@ -2765,6 +2765,7 @@ function infosObra(obraId) {
 
                 var cellStatus = document.createElement('td');
                 cellStatus.textContent = item.imagem_status;
+                cellStatus.setAttribute('data-field', 'status_etapa');
                 row.appendChild(cellStatus);
                 if (!(item.imagem_status === 'EF' && item.imagem_sub_status === 'EF')) {
                     applyStatusImagem(cellStatus, item.imagem_status, holdMotivo);
@@ -2776,6 +2777,7 @@ function infosObra(obraId) {
                 var cellNomeImagem = document.createElement('td');
                 cellNomeImagem.textContent = displayImageName(item.imagem_nome);
                 cellNomeImagem.setAttribute('antecipada', item.antecipada);
+                cellNomeImagem.setAttribute('data-field', 'nome_imagem');
                 row.appendChild(cellNomeImagem);
 
                 cellNomeImagem.addEventListener('mouseenter', (event) => {
@@ -2804,6 +2806,7 @@ function infosObra(obraId) {
 
                 var cellSubStatus = document.createElement('td');
                 cellSubStatus.textContent = item.imagem_sub_status;
+                cellSubStatus.setAttribute('data-field', 'status_imagem');
                 row.appendChild(cellSubStatus);
                 if (!(item.imagem_status === 'EF' && item.imagem_sub_status === 'EF')) {
                     applyStatusImagem(cellSubStatus, item.imagem_sub_status, holdMotivo);
@@ -2846,6 +2849,7 @@ function infosObra(obraId) {
                     prazoText = formatarDataDiaMes(item.prazo);
                 }
                 cellPrazo.textContent = prazoText;
+                cellPrazo.setAttribute('data-field', 'prazo');
                 row.appendChild(cellPrazo);
 
                 var colunas = [
@@ -2870,6 +2874,8 @@ function infosObra(obraId) {
                     cellColaborador.textContent = colaborador;
                     // Armazena o status como atributo para debug/estilos futuros
                     cellColaborador.setAttribute('data-status', status);
+                    cellColaborador.setAttribute('data-funcao', coluna.col);
+                    cellColaborador.classList.add('func-cell', `func-${coluna.col}`);
 
                     cellColaborador.addEventListener('mouseenter', (event) => {
                         // Mostra colaborador + status no tooltip
@@ -3518,78 +3524,454 @@ var colunas = [
 
 // guarda filtros ativos por função: { caderno: 'Nome', modelagem: 'Outro', ... }
 var colaboradorFilters = {};
+// guarda filtros de status ativos por função: { finalizacao: ['em andamento', 'hold'], ... }
+var statusFilters = {};
 
-function mostrarFiltroColaborador(funcaoSelecionada) {
-    const linhaPorcentagem = document.getElementById('linha-porcentagem');
-    if (!linhaPorcentagem) return;
+const __funcFilterUI = {
+    menuEl: null,
+    activeFunc: null,
+    activeHeader: null,
+    initialized: false
+};
 
-    const indexFuncao = colunas.findIndex(c => c.col === funcaoSelecionada);
-    if (indexFuncao === -1) return;
+function normalizeFilterValue(value) {
+    if (value === null || value === undefined) return '';
+    return String(value).trim().toLowerCase();
+}
 
-    // novo índice da célula do colaborador (após Etapa, Imagem, Status, Prazo)
-    const indexTd = 4 + indexFuncao;
+function getFunctionHeaders() {
+    const headerRow = document.querySelector('#tabela-obra thead tr:nth-child(2)');
+    if (!headerRow) return [];
 
-    // limpa tudo da linha primeiro
-    // garante que a linha tenha tds suficientes (um por th do header)
-    const headerCols = document.querySelectorAll('#tabela-obra thead tr:nth-child(2) th').length || 0;
-    while (linhaPorcentagem.children.length < headerCols) {
-        const td = document.createElement('td');
-        linhaPorcentagem.appendChild(td);
-    }
-    // limpa conteúdo anterior
-    linhaPorcentagem.querySelectorAll('td').forEach(td => td.textContent = '');
-
-    const tdAlvo = linhaPorcentagem.children[indexTd];
-    if (!tdAlvo) return;
-
-    // limpa qualquer select anterior
-    tdAlvo.innerHTML = '';
-
-    // criar select
-    const select = document.createElement('select');
-    const colaboradoresSet = new Set();
-
-    // percorre os dados carregados para esta obra (apenas colaboradores desta função na obra)
-    (dadosImagens || []).forEach(item => {
-        const colaborador = item[`${funcaoSelecionada}_colaborador`];
-        if (colaborador && colaborador !== '-' && colaborador !== 'Não se aplica') {
-            colaboradoresSet.add(colaborador);
+    return Array.from(headerRow.querySelectorAll('th')).filter(th => {
+        if (th.dataset.funcao) return true;
+        const onclick = th.getAttribute('onclick') || '';
+        const m = onclick.match(/mostrarFiltroColaborador\('([^']+)'\)/);
+        if (m && m[1]) {
+            th.dataset.funcao = m[1];
+            return true;
         }
+        return false;
+    });
+}
+
+function getFunctionHeaderByFunc(funcao) {
+    return getFunctionHeaders().find(th => th.dataset.funcao === funcao) || null;
+}
+
+function getFunctionRows() {
+    return Array.from(document.querySelectorAll('#tabela-obra tbody tr'));
+}
+
+function getFunctionCell(row, funcao) {
+    if (!row) return null;
+    return row.querySelector(`td[data-funcao="${funcao}"]`);
+}
+
+function readGlobalFilters() {
+    const tipoImagemEl = document.getElementById('tipo_imagem');
+    const antecipadaEl = document.getElementById('antecipada_obra');
+    const statusEtapaEl = document.getElementById('imagem_status_etapa_filtro');
+    const statusEl = document.getElementById('imagem_status_filtro');
+
+    const tipoImagemFiltro = tipoImagemEl
+        ? (tipoImagemEl.multiple
+            ? Array.from(tipoImagemEl.selectedOptions).map(o => normalizeFilterValue(o.value)).filter(v => v !== '')
+            : (tipoImagemEl.value ? [normalizeFilterValue(tipoImagemEl.value)] : []))
+        : [];
+
+    const antecipadaFiltro = antecipadaEl
+        ? (antecipadaEl.multiple
+            ? Array.from(antecipadaEl.selectedOptions).map(o => String(o.value)).filter(v => v !== '')
+            : (antecipadaEl.value ? [String(antecipadaEl.value)] : []))
+        : [];
+
+    const statusEtapaImagemFiltro = statusEtapaEl
+        ? (statusEtapaEl.multiple
+            ? Array.from(statusEtapaEl.selectedOptions).map(o => String(o.value)).filter(v => v !== '')
+            : (statusEtapaEl.value ? [String(statusEtapaEl.value)] : []))
+        : [];
+
+    const statusImagemFiltro = statusEl
+        ? (statusEl.multiple
+            ? Array.from(statusEl.selectedOptions).map(o => String(o.value)).filter(v => v !== '')
+            : (statusEl.value ? [String(statusEl.value)] : []))
+        : [];
+
+    return {
+        tipoImagemFiltro,
+        antecipadaFiltro,
+        statusEtapaImagemFiltro,
+        statusImagemFiltro
+    };
+}
+
+function rowMatchesGlobalFilters(row, globals) {
+    const tipoImagemColuna = normalizeFilterValue(row.getAttribute('tipo-imagem') || '');
+    const antecipadaTd = row.querySelector('td[antecipada]');
+    const isAntecipada = antecipadaTd ? antecipadaTd.getAttribute('antecipada') === '1' : false;
+    const statusEtapaColuna = row.querySelector('td[data-field="status_etapa"]')?.textContent.trim() || '';
+    const statusColuna = row.querySelector('td[data-field="status_imagem"]')?.textContent.trim() || '';
+
+    if (globals.tipoImagemFiltro.length > 0 && !globals.tipoImagemFiltro.includes('0')) {
+        if (!tipoImagemColuna || !globals.tipoImagemFiltro.some(v => v === tipoImagemColuna)) return false;
+    }
+
+    if (globals.antecipadaFiltro.length > 0 && !globals.antecipadaFiltro.includes('')) {
+        if (!globals.antecipadaFiltro.some(v => (v === '1' && isAntecipada) || (v !== '1' && !isAntecipada))) return false;
+    }
+
+    if (globals.statusImagemFiltro.length > 0 && !globals.statusImagemFiltro.includes('0')) {
+        if (!globals.statusImagemFiltro.some(v => v === statusColuna)) return false;
+    }
+
+    if (globals.statusEtapaImagemFiltro.length > 0 && !globals.statusEtapaImagemFiltro.includes('0')) {
+        if (!globals.statusEtapaImagemFiltro.some(v => v === statusEtapaColuna)) return false;
+    }
+
+    return true;
+}
+
+function rowMatchesFunctionFilters(row, opts = {}) {
+    const ignoreStatusFunc = opts.ignoreStatusFunc || null;
+
+    for (const func of Object.keys(colaboradorFilters)) {
+        const colaboradorSel = colaboradorFilters[func];
+        if (!colaboradorSel) continue;
+        const cell = getFunctionCell(row, func);
+        const nomeCol = cell ? cell.textContent.trim() : '';
+        if (nomeCol !== colaboradorSel) return false;
+    }
+
+    for (const func of Object.keys(statusFilters)) {
+        if (ignoreStatusFunc && func === ignoreStatusFunc) continue;
+        const selectedStatuses = Array.isArray(statusFilters[func]) ? statusFilters[func] : [];
+        if (!selectedStatuses.length) continue;
+
+        const cell = getFunctionCell(row, func);
+        const statusCell = normalizeFilterValue(cell ? cell.getAttribute('data-status') : '');
+        if (!statusCell || !selectedStatuses.includes(statusCell)) return false;
+    }
+
+    return true;
+}
+
+function rowMatchesAllFilters(row, globals, opts = {}) {
+    return rowMatchesGlobalFilters(row, globals) && rowMatchesFunctionFilters(row, opts);
+}
+
+function getCollaboratorOptionsForFunction(funcao) {
+    const set = new Set();
+    getFunctionRows().forEach(row => {
+        const cell = getFunctionCell(row, funcao);
+        const nome = cell ? cell.textContent.trim() : '';
+        if (!nome || nome === '-' || normalizeFilterValue(nome) === 'não se aplica') return;
+        set.add(nome);
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+}
+
+function getStatusOptionsForFunction(funcao) {
+    const map = new Map();
+    getFunctionRows().forEach(row => {
+        const cell = getFunctionCell(row, funcao);
+        const raw = cell ? String(cell.getAttribute('data-status') || '').trim() : '';
+        const key = normalizeFilterValue(raw);
+        if (!key || key === '-' || key === 'não se aplica') return;
+        if (!map.has(key)) map.set(key, raw);
+    });
+    return Array.from(map.entries())
+        .map(([key, label]) => ({ key, label }))
+        .sort((a, b) => a.label.localeCompare(b.label, 'pt-BR'));
+}
+
+function getStatusCountsForFunction(funcao) {
+    const counts = {};
+    const globals = readGlobalFilters();
+
+    getFunctionRows().forEach(row => {
+        if (!rowMatchesAllFilters(row, globals, { ignoreStatusFunc: funcao })) return;
+        const cell = getFunctionCell(row, funcao);
+        const statusKey = normalizeFilterValue(cell ? (cell.getAttribute('data-status') || '') : '');
+        if (!statusKey || statusKey === '-' || statusKey === 'não se aplica') return;
+        counts[statusKey] = (counts[statusKey] || 0) + 1;
     });
 
-    // opção "Todos"
-    const optionTodos = document.createElement('option');
-    optionTodos.value = '';
-    optionTodos.textContent = 'Todos';
-    select.appendChild(optionTodos);
+    return counts;
+}
 
-    // adiciona cada colaborador
-    Array.from(colaboradoresSet).sort().forEach(colab => {
-        const option = document.createElement('option');
-        option.value = colab;
-        option.textContent = colab;
-        select.appendChild(option);
+function updateFunctionHeaderIndicators() {
+    getFunctionHeaders().forEach(th => {
+        const func = th.dataset.funcao;
+        const hasColab = !!colaboradorFilters[func];
+        const hasStatus = Array.isArray(statusFilters[func]) && statusFilters[func].length > 0;
+        th.classList.toggle('func-filter-active', hasColab || hasStatus);
     });
+}
 
-    // restaura seleção se já houver filtro ativo para essa função
-    if (colaboradorFilters[funcaoSelecionada]) {
-        select.value = colaboradorFilters[funcaoSelecionada];
+function ensureFunctionFilterMenu() {
+    if (__funcFilterUI.menuEl) return __funcFilterUI.menuEl;
+
+    const menu = document.createElement('div');
+    menu.id = 'funcFilterMenu';
+    menu.className = 'func-filter-menu';
+    menu.style.display = 'none';
+    document.body.appendChild(menu);
+    __funcFilterUI.menuEl = menu;
+    return menu;
+}
+
+function positionFunctionFilterMenu() {
+    const menu = __funcFilterUI.menuEl;
+    const header = __funcFilterUI.activeHeader;
+    if (!menu || !header || menu.style.display === 'none') return;
+
+    const rect = header.getBoundingClientRect();
+    const margin = 8;
+    const preferredWidth = Math.max(420, Math.min(560, window.innerWidth - 24));
+
+    menu.style.width = preferredWidth + 'px';
+
+    const menuRect = menu.getBoundingClientRect();
+    let left = rect.left;
+    if (left + menuRect.width > window.innerWidth - margin) {
+        left = window.innerWidth - menuRect.width - margin;
+    }
+    if (left < margin) left = margin;
+
+    let top = rect.bottom + 6;
+    if (top + menuRect.height > window.innerHeight - margin) {
+        top = Math.max(margin, rect.top - menuRect.height - 6);
     }
 
-    // evento de filtro
-    select.addEventListener('change', () => {
-        // atualiza o estado do filtro por colaborador e reaplica todos os filtros
-        if (!select.value) {
-            delete colaboradorFilters[funcaoSelecionada];
-        } else {
-            colaboradorFilters[funcaoSelecionada] = select.value;
-        }
+    menu.style.left = left + 'px';
+    menu.style.top = top + 'px';
+}
+
+function closeFunctionFilterMenu() {
+    if (!__funcFilterUI.menuEl) return;
+    __funcFilterUI.menuEl.style.display = 'none';
+    if (__funcFilterUI.activeHeader) {
+        __funcFilterUI.activeHeader.classList.remove('func-filter-open');
+    }
+    __funcFilterUI.activeHeader = null;
+    __funcFilterUI.activeFunc = null;
+}
+
+function renderFunctionFilterMenu(funcao) {
+    const menu = ensureFunctionFilterMenu();
+    menu.innerHTML = '';
+
+    const header = getFunctionHeaderByFunc(funcao);
+    const title = header ? header.textContent.trim() : funcao;
+    const collaborators = getCollaboratorOptionsForFunction(funcao);
+    const statusOptions = getStatusOptionsForFunction(funcao);
+    const statusCounts = getStatusCountsForFunction(funcao);
+    const selectedColab = colaboradorFilters[funcao] || '';
+    const selectedStatus = new Set(Array.isArray(statusFilters[funcao]) ? statusFilters[funcao] : []);
+
+    const top = document.createElement('div');
+    top.className = 'func-filter-menu-top';
+    top.textContent = title;
+    menu.appendChild(top);
+
+    const body = document.createElement('div');
+    body.className = 'func-filter-menu-body';
+
+    const left = document.createElement('div');
+    left.className = 'func-filter-col';
+    const leftTitle = document.createElement('div');
+    leftTitle.className = 'func-filter-col-title';
+    leftTitle.textContent = 'Colaboradores';
+    left.appendChild(leftTitle);
+
+    const allColab = document.createElement('label');
+    allColab.className = 'func-filter-item';
+    allColab.innerHTML = `<input type="radio" name="func-colab-${funcao}" value="" ${!selectedColab ? 'checked' : ''}> <span>Todos</span>`;
+    left.appendChild(allColab);
+
+    collaborators.forEach(nome => {
+        const item = document.createElement('label');
+        item.className = 'func-filter-item';
+        const input = document.createElement('input');
+        input.type = 'radio';
+        input.name = `func-colab-${funcao}`;
+        input.value = nome;
+        input.checked = selectedColab === nome;
+        const span = document.createElement('span');
+        span.textContent = nome;
+        item.appendChild(input);
+        item.appendChild(span);
+        left.appendChild(item);
+    });
+
+    const right = document.createElement('div');
+    right.className = 'func-filter-col';
+    const rightTitle = document.createElement('div');
+    rightTitle.className = 'func-filter-col-title';
+    rightTitle.textContent = 'Status';
+    right.appendChild(rightTitle);
+
+    const allStatus = document.createElement('label');
+    allStatus.className = 'func-filter-item';
+    allStatus.innerHTML = `<input type="checkbox" value="__all__" ${selectedStatus.size === 0 ? 'checked' : ''}> <span>Todos</span>`;
+    right.appendChild(allStatus);
+
+    statusOptions.forEach(status => {
+        const item = document.createElement('label');
+        item.className = 'func-filter-item';
+
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.value = status.key;
+        input.checked = selectedStatus.has(status.key);
+
+        const text = document.createElement('span');
+        text.className = 'func-filter-label';
+        text.textContent = status.label;
+
+        const count = document.createElement('span');
+        count.className = 'func-filter-count';
+        count.textContent = String(statusCounts[status.key] || 0);
+
+        item.appendChild(input);
+        item.appendChild(text);
+        item.appendChild(count);
+        right.appendChild(item);
+    });
+
+    body.appendChild(left);
+    body.appendChild(right);
+    menu.appendChild(body);
+
+    const footer = document.createElement('div');
+    footer.className = 'func-filter-menu-footer';
+    const clearBtn = document.createElement('button');
+    clearBtn.type = 'button';
+    clearBtn.className = 'func-filter-clear';
+    clearBtn.textContent = 'Limpar';
+    clearBtn.addEventListener('click', () => {
+        delete colaboradorFilters[funcao];
+        delete statusFilters[funcao];
         __centerTableAfterFilter = true;
         filtrarTabela();
         __centerTableAfterFilter = false;
+        renderFunctionFilterMenu(funcao);
+        updateFunctionHeaderIndicators();
+        positionFunctionFilterMenu();
+    });
+    footer.appendChild(clearBtn);
+    menu.appendChild(footer);
+
+    menu.querySelectorAll(`input[name="func-colab-${funcao}"]`).forEach(input => {
+        input.addEventListener('change', () => {
+            const value = input.value || '';
+            if (!value) delete colaboradorFilters[funcao];
+            else colaboradorFilters[funcao] = value;
+
+            __centerTableAfterFilter = true;
+            filtrarTabela();
+            __centerTableAfterFilter = false;
+            renderFunctionFilterMenu(funcao);
+            updateFunctionHeaderIndicators();
+            positionFunctionFilterMenu();
+        });
     });
 
-    tdAlvo.appendChild(select);
+    right.querySelectorAll('input[type="checkbox"]').forEach(input => {
+        input.addEventListener('change', () => {
+            if (input.value === '__all__') {
+                delete statusFilters[funcao];
+            } else {
+                const selected = new Set(Array.isArray(statusFilters[funcao]) ? statusFilters[funcao] : []);
+                if (input.checked) selected.add(input.value);
+                else selected.delete(input.value);
+                if (selected.size > 0) statusFilters[funcao] = Array.from(selected);
+                else delete statusFilters[funcao];
+            }
+
+            __centerTableAfterFilter = true;
+            filtrarTabela();
+            __centerTableAfterFilter = false;
+            renderFunctionFilterMenu(funcao);
+            updateFunctionHeaderIndicators();
+            positionFunctionFilterMenu();
+        });
+    });
+}
+
+function openFunctionFilterMenu(funcao, anchorHeader = null) {
+    const header = anchorHeader || getFunctionHeaderByFunc(funcao);
+    if (!header) return;
+
+    ensureFunctionFilterMenu();
+
+    if (__funcFilterUI.activeFunc === funcao && __funcFilterUI.menuEl.style.display !== 'none') {
+        closeFunctionFilterMenu();
+        return;
+    }
+
+    if (__funcFilterUI.activeHeader) {
+        __funcFilterUI.activeHeader.classList.remove('func-filter-open');
+    }
+
+    __funcFilterUI.activeFunc = funcao;
+    __funcFilterUI.activeHeader = header;
+    header.classList.add('func-filter-open');
+
+    renderFunctionFilterMenu(funcao);
+    __funcFilterUI.menuEl.style.display = 'block';
+    positionFunctionFilterMenu();
+}
+
+function initFunctionHeaderFilters() {
+    if (__funcFilterUI.initialized) return;
+    __funcFilterUI.initialized = true;
+
+    const line = document.getElementById('linha-porcentagem');
+    if (line) {
+        line.innerHTML = '';
+        line.style.display = 'none';
+    }
+
+    getFunctionHeaders().forEach(th => {
+        if (th.dataset.filterBound === '1') return;
+        th.dataset.filterBound = '1';
+        th.classList.add('func-filter-header');
+        th.removeAttribute('onclick');
+        th.addEventListener('click', (ev) => {
+            ev.preventDefault();
+            ev.stopPropagation();
+            const func = th.dataset.funcao;
+            if (!func) return;
+            openFunctionFilterMenu(func, th);
+        });
+    });
+
+    const container = document.querySelector('.container');
+    if (container) {
+        container.addEventListener('scroll', positionFunctionFilterMenu, { passive: true });
+    }
+    window.addEventListener('scroll', positionFunctionFilterMenu, { passive: true });
+    window.addEventListener('resize', positionFunctionFilterMenu);
+
+    document.addEventListener('click', (ev) => {
+        const menu = __funcFilterUI.menuEl;
+        if (!menu || menu.style.display === 'none') return;
+        const inMenu = menu.contains(ev.target);
+        const inHeader = __funcFilterUI.activeHeader && __funcFilterUI.activeHeader.contains(ev.target);
+        if (!inMenu && !inHeader) closeFunctionFilterMenu();
+    });
+
+    document.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Escape') closeFunctionFilterMenu();
+    });
+
+    updateFunctionHeaderIndicators();
+}
+
+function mostrarFiltroColaborador(funcaoSelecionada) {
+    openFunctionFilterMenu(funcaoSelecionada);
 }
 
 
@@ -3605,10 +3987,17 @@ function filtrarPorColaborador(funcao, colaborador) {
         __centerTableAfterFilter = true;
         filtrarTabela();
         __centerTableAfterFilter = false;
+        updateFunctionHeaderIndicators();
+        if (__funcFilterUI.activeFunc === funcao && __funcFilterUI.menuEl && __funcFilterUI.menuEl.style.display !== 'none') {
+            renderFunctionFilterMenu(funcao);
+            positionFunctionFilterMenu();
+        }
     } catch (e) {
         console.warn('filtrarTabela falhou ao ser chamada:', e);
     }
 }
+
+initFunctionHeaderFilters();
 
 
 
@@ -3743,106 +4132,20 @@ function applyStatusImagem(cell, status, descricao = '') {
 let __centerTableAfterFilter = false;
 
 function filtrarTabela() {
-    // Read multi-select values (if single select, fall back to value)
-    const tipoImagemEl = document.getElementById("tipo_imagem");
-    let tipoImagemFiltro = [];
-    if (tipoImagemEl) {
-        if (tipoImagemEl.multiple) {
-            tipoImagemFiltro = Array.from(tipoImagemEl.selectedOptions).map(o => o.value.toLowerCase()).filter(v => v !== "");
-        } else if (tipoImagemEl.value) {
-            tipoImagemFiltro = [tipoImagemEl.value.toLowerCase()];
-        }
-    }
-
-    const antecipadaEl = document.getElementById("antecipada_obra");
-    let antecipadaFiltro = [];
-    if (antecipadaEl) {
-        if (antecipadaEl.multiple) {
-            antecipadaFiltro = Array.from(antecipadaEl.selectedOptions).map(o => o.value).filter(v => v !== "");
-        } else if (antecipadaEl.value) {
-            antecipadaFiltro = [antecipadaEl.value];
-        }
-    }
-
-    const statusEtapaEl = document.getElementById("imagem_status_etapa_filtro");
-    let statusEtapaImagemFiltro = [];
-    if (statusEtapaEl) {
-        if (statusEtapaEl.multiple) {
-            statusEtapaImagemFiltro = Array.from(statusEtapaEl.selectedOptions).map(o => o.value).filter(v => v !== "");
-        } else if (statusEtapaEl.value) {
-            statusEtapaImagemFiltro = [statusEtapaEl.value];
-        }
-    }
-
-    const statusEl = document.getElementById("imagem_status_filtro");
-    let statusImagemFiltro = [];
-    if (statusEl) {
-        if (statusEl.multiple) {
-            statusImagemFiltro = Array.from(statusEl.selectedOptions).map(o => o.value).filter(v => v !== "");
-        } else if (statusEl.value) {
-            statusImagemFiltro = [statusEl.value];
-        }
-    }
     var tabela = document.getElementById("tabela-obra");
+    if (!tabela) return;
     var tbody = tabela.getElementsByTagName("tbody")[0];
+    if (!tbody) return;
     var linhas = tbody.getElementsByTagName("tr");
+    const globals = readGlobalFilters();
 
     let imagensFiltradas = 0;
     let antecipadasFiltradas = 0;
 
     for (var i = 0; i < linhas.length; i++) {
-        var tipoImagemColuna = (linhas[i].getAttribute("tipo-imagem") || "").toLowerCase();
         var antecipadaTd = linhas[i].querySelector('td[antecipada]');
         var isAntecipada = antecipadaTd ? antecipadaTd.getAttribute("antecipada") === '1' : false;
-        var statusEtapaColuna = linhas[i].querySelector("td:nth-child(1)") ? linhas[i].querySelector("td:nth-child(1)").textContent.trim() : ""; // ajuste se necessário
-        var statusColuna = linhas[i].querySelector("td:nth-child(3)") ? linhas[i].querySelector("td:nth-child(3)").textContent.trim() : ""; // ajuste se necessário
-        var mostrarLinha = true;
-
-        // tipo_imagem: if tipoImagemFiltro is empty or contains '0' treat as no filter
-        if (tipoImagemFiltro.length > 0 && !tipoImagemFiltro.includes('0')) {
-            // row passes if any selected tipo matches
-            if (!tipoImagemColuna || !tipoImagemFiltro.some(v => v === tipoImagemColuna)) {
-                mostrarLinha = false;
-            }
-        }
-
-        // antecipada: if any antecipada option selected, row must match at least one
-        if (antecipadaFiltro.length > 0 && !antecipadaFiltro.includes('')) {
-            // antecipadaFiltro contains strings like '1'
-            if (!antecipadaFiltro.some(v => (v === '1' && isAntecipada) || (v !== '1' && !isAntecipada))) {
-                mostrarLinha = false;
-            }
-        }
-
-        // Filtra pelo status da imagem (imagem_status_filtro)
-        if (statusImagemFiltro.length > 0 && !statusImagemFiltro.includes('0')) {
-            if (!statusImagemFiltro.some(v => v === statusColuna)) {
-                mostrarLinha = false;
-            }
-        }
-
-        // Filtra pelo status da etapa (imagem_status_etapa_filtro)
-        if (statusEtapaImagemFiltro.length > 0 && !statusEtapaImagemFiltro.includes('0')) {
-            if (!statusEtapaImagemFiltro.some(v => v === statusEtapaColuna)) {
-                mostrarLinha = false;
-            }
-        }
-
-        // Filtra pelos colaboradores se houver filtros ativos (um por função)
-        if (mostrarLinha && Object.keys(colaboradorFilters).length > 0) {
-            for (const func in colaboradorFilters) {
-                if (!colaboradorFilters.hasOwnProperty(func)) continue;
-                const colaboradorSel = colaboradorFilters[func];
-                if (!colaboradorSel) continue;
-                const colIdx = 4 + colunas.findIndex(c => c.col === func);
-                const cell = linhas[i].children[colIdx];
-                const nomeCol = cell ? cell.textContent.trim() : '';
-                if (nomeCol !== colaboradorSel) {
-                    mostrarLinha = false;
-                    break;
-                }
-            }
-        }
+        var mostrarLinha = rowMatchesAllFilters(linhas[i], globals);
 
         if (mostrarLinha) {
             imagensFiltradas++;
@@ -3856,6 +4159,12 @@ function filtrarTabela() {
     imagens_totais.textContent = `Total de imagens: ${imagensFiltradas}`
     const antecipadas = document.getElementById('antecipadas')
     antecipadas.textContent = `Antecipadas: ${antecipadasFiltradas}`;
+
+    updateFunctionHeaderIndicators();
+    if (__funcFilterUI.activeFunc && __funcFilterUI.menuEl && __funcFilterUI.menuEl.style.display !== 'none') {
+        renderFunctionFilterMenu(__funcFilterUI.activeFunc);
+        positionFunctionFilterMenu();
+    }
 
     // Centraliza a tabela na tela após aplicar o filtro (somente quando usuário muda filtro)
     if (!__centerTableAfterFilter) return;

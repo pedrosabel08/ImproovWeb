@@ -3149,6 +3149,115 @@ tr#linha-porcentagem td select {
     border-bottom: 1px solid;
 }
 
+tr#linha-porcentagem {
+    display: none;
+}
+
+#tabela-obra thead th.func-filter-header {
+    cursor: pointer;
+    position: relative;
+    user-select: none;
+}
+
+#tabela-obra thead th.func-filter-header::after {
+    content: "▾";
+    font-size: 10px;
+    margin-left: 6px;
+    opacity: 0.5;
+}
+
+#tabela-obra thead th.func-filter-header.func-filter-active {
+    box-shadow: inset 0 -2px 0 var(--cor-secundaria);
+}
+
+#tabela-obra thead th.func-filter-header.func-filter-open::after {
+    opacity: 1;
+}
+
+.func-filter-menu {
+    position: fixed;
+    z-index: 1300;
+    background: var(--card-bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
+    padding: 10px;
+    max-height: min(72vh, 520px);
+    overflow: auto;
+}
+
+.func-filter-menu-top {
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.func-filter-menu-body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.func-filter-col {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.func-filter-col-title {
+    font-size: 12px;
+    font-weight: 700;
+    opacity: 0.8;
+    margin-bottom: 2px;
+}
+
+.func-filter-item {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    padding: 4px 6px;
+    border-radius: 6px;
+}
+
+.func-filter-item:hover {
+    background: rgba(0, 0, 0, 0.05);
+}
+
+.func-filter-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.func-filter-count {
+    min-width: 22px;
+    text-align: center;
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: 999px;
+    padding: 2px 6px;
+    background: rgba(0, 80, 171, 0.12);
+    color: var(--cor-secundaria);
+}
+
+.func-filter-menu-footer {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 10px;
+}
+
+.func-filter-clear {
+    background: var(--cor-secundaria);
+    color: #fff;
+    border-radius: 8px;
+    padding: 4px 10px;
+    font-size: 12px;
+}
+
 
 /* Styles for compact actions menu */
 .actions-menu {

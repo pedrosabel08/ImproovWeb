@@ -9,11 +9,11 @@ if (!$obra_id || !$status_id) {
     exit;
 }
 
-// Ajuste conforme sua estrutura real de imagens
 $stmt = $conn->prepare("SELECT idimagens_cliente_obra AS id, imagem_nome AS nome, antecipada
         FROM imagens_cliente_obra ico
         WHERE ico.obra_id = ?
             AND ico.status_id = ?
+            AND (ico.substatus_id IS NULL OR ico.substatus_id <> 7)
             AND NOT EXISTS (
                     SELECT 1
                     FROM entregas_itens ei

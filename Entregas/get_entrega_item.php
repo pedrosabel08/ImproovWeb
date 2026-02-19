@@ -29,20 +29,38 @@ try {
     $entrega = $res->fetch_assoc();
 
     // buscar itens da entrega
-    // Prioriza itens com substatus RVW ou DRV que ainda não foram entregues (assumindo status 'Entregue')
+    // Prioriza explicitamente substatus RVW, depois DRV, depois pendentes
     $sql2 = "SELECT ei.id, ei.imagem_id, i.imagem_nome AS nome, ei.status, ss.nome_substatus
              FROM entregas_itens ei
              INNER JOIN imagens_cliente_obra i ON ei.imagem_id = i.idimagens_cliente_obra
              INNER JOIN substatus_imagem ss ON ss.id = i.substatus_id
              WHERE ei.entrega_id = ?
-             ORDER BY (
-                 CASE
-                     WHEN ei.status LIKE '%Pendente%' THEN 1
-                     WHEN ss.nome_substatus IN ('RVW','DRV') THEN 1
-                     ELSE 0
-                 END
-             ) DESC,
-             FIELD(ei.status, 'Pendente', 'Parcial', 'Entregue com atraso', 'Entregue no prazo', 'Entrega antecipada') ASC,
+             ORDER BY
+             CASE
+                 WHEN LOWER(TRIM(ei.status)) = 'entrega pendente' OR UPPER(TRIM(ss.nome_substatus)) = 'RVW' THEN 1
+                 WHEN UPPER(TRIM(ss.nome_substatus)) = 'DRV' THEN 2
+                 WHEN LOWER(TRIM(ei.status)) LIKE '%pendente%' THEN 3
+                 ELSE 4
+             END ASC,
+             CASE
+                 WHEN LOWER(TRIM(ei.status)) = 'entrega pendente' OR UPPER(TRIM(ss.nome_substatus)) = 'RVW'
+                     THEN CAST(SUBSTRING_INDEX(i.imagem_nome, '.', 1) AS UNSIGNED)
+                 ELSE NULL
+             END ASC,
+             CASE
+                 WHEN LOWER(TRIM(ei.status)) = 'entrega pendente' OR UPPER(TRIM(ss.nome_substatus)) = 'RVW'
+                     THEN i.imagem_nome
+                 ELSE NULL
+             END ASC,
+             CASE
+                 WHEN LOWER(TRIM(ei.status)) = 'entrega pendente' THEN 1
+                 WHEN LOWER(TRIM(ei.status)) = 'pendente' THEN 2
+                 WHEN LOWER(TRIM(ei.status)) = 'parcial' THEN 3
+                 WHEN LOWER(TRIM(ei.status)) = 'entregue com atraso' THEN 4
+                 WHEN LOWER(TRIM(ei.status)) = 'entregue no prazo' THEN 5
+                 WHEN LOWER(TRIM(ei.status)) = 'entrega antecipada' THEN 6
+                 ELSE 99
+             END ASC,
              ei.id ASC";
     $stmt2 = $conn->prepare($sql2);
     $stmt2->bind_param("i", $entrega_id);

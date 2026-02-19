@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config/session_bootstrap.php';
 require_once __DIR__ . '/../vendor/autoload.php';
+require_once __DIR__ . '/../config/secure_env.php';
 
 use phpseclib3\Net\SFTP;
 
@@ -185,17 +186,34 @@ load_dotenv(__DIR__ . '/../.env');
 $SLACK_WEBHOOK_URL = getenv('SLACK_WEBHOOK_URL') ?: null;
 $FLOW_TOKEN = getenv('FLOW_TOKEN') ?: null;
 
-$host = "imp-nas.ddns.net";
-$port = 2222;
-$username = "flow";
-$password = "flow@2025";
+try {
+    $sftpCfg = improov_sftp_config();
+    $ftpCfg = improov_ftp_config();
+} catch (RuntimeException $e) {
+    http_response_code(500);
+    $envProbe = [
+        'IMPROOV_SFTP_HOST' => getenv('IMPROOV_SFTP_HOST'),
+        'IMPROOV_SFTP_PORT' => getenv('IMPROOV_SFTP_PORT'),
+        'IMPROOV_SFTP_USER' => getenv('IMPROOV_SFTP_USER'),
+        'IMPROOV_SFTP_PASS' => getenv('IMPROOV_SFTP_PASS') ? '***SET***' : null,
+        'NAS_IP' => getenv('NAS_IP'),
+        'NAS_HOST' => getenv('NAS_HOST'),
+    ];
+    echo json_encode(['errors' => ['Configuração de credenciais ausente no ambiente'], 'env' => $envProbe]);
+    exit;
+}
+
+$host = $sftpCfg['host'];
+$port = $sftpCfg['port'];
+$username = $sftpCfg['user'];
+$password = $sftpCfg['pass'];
 
 // ---------- Dados FTP ----------
-$ftp_host = "72.60.137.192";
-$ftp_port = 21; // porta padrão FTP
-$ftp_user = "improov";
-$ftp_pass = "Impr00v@";
-$ftp_base = "/web/improov.com.br/public_html/flow/ImproovWeb/uploads/angulo_definido/";
+$ftp_host = $ftpCfg['host'];
+$ftp_port = $ftpCfg['port'];
+$ftp_user = $ftpCfg['user'];
+$ftp_pass = $ftpCfg['pass'];
+$ftp_base = $ftpCfg['base'];
 // Variáveis do log
 $log = [];
 $success = [];

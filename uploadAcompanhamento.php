@@ -8,6 +8,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 require __DIR__ . '/vendor/autoload.php';
+require_once __DIR__ . '/config/secure_env.php';
 include 'conexao.php';
 
 use phpseclib3\Net\SFTP;
@@ -15,10 +16,17 @@ use phpseclib3\Exception\UnableToConnectException;
 
 header('Content-Type: application/json');
 
-$ftp_user = "flow";
-$ftp_pass = "flow@2025";
-$ftp_host = "imp-nas.ddns.net";
-$ftp_port = 2222;
+try {
+    $sftpCfg = improov_sftp_config();
+} catch (RuntimeException $e) {
+    echo json_encode(['error' => 'Configuração SFTP ausente no ambiente']);
+    exit;
+}
+
+$ftp_user = $sftpCfg['user'];
+$ftp_pass = $sftpCfg['pass'];
+$ftp_host = $sftpCfg['host'];
+$ftp_port = $sftpCfg['port'];
 
 $nomenclatura = $_POST['nomenclatura'] ?? 'TES_TES';
 $tipo_imagem = $_POST['tipo_imagem'] ?? '';

@@ -1,10 +1,17 @@
 <?php
+require_once __DIR__ . '/config/secure_env.php';
 // Dados FTP
-$ftp_host = "ftp.improov.com.br";
-$ftp_port = 21; // FTP padrão
-$ftp_user = "improov";
-$ftp_pass = "Impr00v";
-$ftp_dir  = "/www/sistema/uploads/"; // pasta remota
+try {
+    $ftpCfg = improov_ftp_config();
+} catch (RuntimeException $e) {
+    die('Configuração FTP ausente no ambiente.');
+}
+
+$ftp_host = $ftpCfg['host'];
+$ftp_port = $ftpCfg['port'];
+$ftp_user = $ftpCfg['user'];
+$ftp_pass = $ftpCfg['pass'];
+$ftp_dir  = $ftpCfg['base'];
 
 // Conectar ao servidor FTP
 $conn_id = ftp_connect($ftp_host, $ftp_port, 10); // timeout 10s

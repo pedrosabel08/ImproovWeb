@@ -4,6 +4,7 @@
 
 require __DIR__ . '/../vendor/autoload.php';
 require __DIR__ . '/../conexao.php';
+require_once __DIR__ . '/../config/secure_env.php';
 
 use phpseclib3\Net\SFTP;
 use phpseclib3\Exception\UnableToConnectException;
@@ -16,15 +17,17 @@ $failedDir = __DIR__ . '/../uploads/failed';
 if (!is_dir($processedDir)) mkdir($processedDir, 0777, true);
 if (!is_dir($failedDir)) mkdir($failedDir, 0777, true);
 
-// Config SFTP (pode ajustar conforme necessário)
-$ftp_user = "flow";
-$ftp_pass = "flow@2025";
-// Load environment and prefer NAS_IP or NAS_HOST to avoid DNS issues
-load_dotenv_if_present();
-$__envNasIp = getenv('NAS_IP') ?: null;
-$__envNasHost = getenv('NAS_HOST') ?: null;
-$ftp_host = $__envNasIp ?: ($__envNasHost ?: "imp-nas.ddns.net");
-$ftp_port = 2222;
+// Config SFTP
+try {
+    $sftpCfg = improov_sftp_config();
+} catch (RuntimeException $e) {
+    worker_log('Configuração SFTP ausente no ambiente.', 'ERROR');
+    exit(1);
+}
+$ftp_user = $sftpCfg['user'];
+$ftp_pass = $sftpCfg['pass'];
+$ftp_host = $sftpCfg['host'];
+$ftp_port = $sftpCfg['port'];
 
 // Slack webhook URL: set in environment `SLACK_WEBHOOK_URL`
 // Example: setx SLACK_WEBHOOK_URL "https://hooks.slack.com/services/..../..../.."

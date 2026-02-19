@@ -1,13 +1,20 @@
 <?php
 require __DIR__ . '/../vendor/autoload.php'; // ajuste o caminho se necessário
+require_once __DIR__ . '/../config/secure_env.php';
 
 use phpseclib3\Net\SFTP;
 
 // Configurações SFTP
-$host = 'imp-nas.ddns.net';
-$usuario = 'flow';
-$senha = 'flow@2025';
-$porta = 2222;
+try {
+    $sftpCfg = improov_sftp_config();
+} catch (RuntimeException $e) {
+    http_response_code(500);
+    exit('Configuração SFTP ausente no ambiente.');
+}
+$host = $sftpCfg['host'];
+$usuario = $sftpCfg['user'];
+$senha = $sftpCfg['pass'];
+$porta = $sftpCfg['port'];
 
 // Recebe nomenclatura e nome do arquivo por GET
 $nomenclatura = $_GET['nomenclatura'] ?? '';

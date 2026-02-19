@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../config/session_bootstrap.php';
+require_once __DIR__ . '/../config/secure_env.php';
 
 if (!isset($_SESSION['idusuario'])) {
     echo json_encode(['success' => false, 'message' => 'Usuário não autenticado.']);
@@ -399,55 +400,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $resultadoFinal['logs'][] = "Falha ao inserir a imagem no banco.";
             }
 
-            $ftp_host = 'imp-nas.ddns.net';
-            $ftp_user = 'flow';
-            $ftp_pass = 'flow@2025';
-            $ftp_port = 2222;
-            $bases = ['/mnt/clientes/2024', '/mnt/clientes/2025', '/mnt/clientes/2026'];
-            $enviado = false;
+            try {
+                $sftpCfg = improov_sftp_config();
+            } catch (RuntimeException $e) {
+                $resultadoFinal['logs'][] = 'config_sftp_ausente';
+                $sftpCfg = null;
+            }
+            if ($sftpCfg === null) {
+                $resultadoFinal['sftp_enviado'] = false;
+            } else {
+                $ftp_host = $sftpCfg['host'];
+                $ftp_user = $sftpCfg['user'];
+                $ftp_pass = $sftpCfg['pass'];
+                $ftp_port = $sftpCfg['port'];
+                $bases = ['/mnt/clientes/2024', '/mnt/clientes/2025', '/mnt/clientes/2026'];
+                $enviado = false;
 
-            foreach ($bases as $base) {
-                $sftp = new SFTP($ftp_host, $ftp_port);
-                if (!$sftp->login($ftp_user, $ftp_pass)) {
-                    $resultadoFinal['logs'][] = "Falha ao conectar no host $ftp_host:$ftp_port para base $base.";
-                    continue;
-                }
-                $resultadoFinal['logs'][] = "Conectado ao host $ftp_host para base $base.";
-
-                // Extrai a revisão do nome do arquivo, ex: "_P00", "_P01", etc.
-                preg_match_all('/_[A-Z0-9]{2,3}/i', $nome_arquivo, $matches);
-                $revisao = isset($matches[0]) && count($matches[0]) > 0
-                    ? strtoupper(str_replace('_', '', end($matches[0])))
-                    : 'P00'; // padrão se nada for encontrado
-
-                $finalizacaoDir = "$base/$nomenclatura/04.Finalizacao";
-
-                if (!$sftp->is_dir($finalizacaoDir)) {
-                    $resultadoFinal['logs'][] = "Diretório $finalizacaoDir não existe.";
-                    continue;
-                }
-
-                $revisaoDir = "$finalizacaoDir/$revisao";
-                if (!$sftp->is_dir($revisaoDir)) {
-                    if ($sftp->mkdir($revisaoDir, -1, true)) {
-                        $resultadoFinal['logs'][] = "Diretório $revisaoDir criado com sucesso.";
-                    } else {
-                        $resultadoFinal['logs'][] = "Falha ao criar diretório $revisaoDir.";
+                foreach ($bases as $base) {
+                    $sftp = new SFTP($ftp_host, $ftp_port);
+                    if (!$sftp->login($ftp_user, $ftp_pass)) {
+                        $resultadoFinal['logs'][] = "Falha ao conectar no host $ftp_host:$ftp_port para base $base.";
                         continue;
+                    }
+                    $resultadoFinal['logs'][] = "Conectado ao host $ftp_host para base $base.";
+
+                    // Extrai a revisão do nome do arquivo, ex: "_P00", "_P01", etc.
+                    preg_match_all('/_[A-Z0-9]{2,3}/i', $nome_arquivo, $matches);
+                    $revisao = isset($matches[0]) && count($matches[0]) > 0
+                        ? strtoupper(str_replace('_', '', end($matches[0])))
+                        : 'P00'; // padrão se nada for encontrado
+
+                    $finalizacaoDir = "$base/$nomenclatura/04.Finalizacao";
+
+                    if (!$sftp->is_dir($finalizacaoDir)) {
+                        $resultadoFinal['logs'][] = "Diretório $finalizacaoDir não existe.";
+                        continue;
+                    }
+
+                    $revisaoDir = "$finalizacaoDir/$revisao";
+                    if (!$sftp->is_dir($revisaoDir)) {
+                        if ($sftp->mkdir($revisaoDir, -1, true)) {
+                            $resultadoFinal['logs'][] = "Diretório $revisaoDir criado com sucesso.";
+                        } else {
+                            $resultadoFinal['logs'][] = "Falha ao criar diretório $revisaoDir.";
+                            continue;
+                        }
+                    }
+
+                    $remote_path = "$revisaoDir/$nome_arquivo";
+                    if ($sftp->put($remote_path, $caminho_local, SFTP::SOURCE_LOCAL_FILE)) {
+                        $resultadoFinal['logs'][] = "Arquivo enviado com sucesso para $remote_path.";
+                        $enviado = true;
+                        break;
+                    } else {
+                        $resultadoFinal['logs'][] = "Falha ao enviar arquivo para $remote_path.";
                     }
                 }
 
-                $remote_path = "$revisaoDir/$nome_arquivo";
-                if ($sftp->put($remote_path, $caminho_local, SFTP::SOURCE_LOCAL_FILE)) {
-                    $resultadoFinal['logs'][] = "Arquivo enviado com sucesso para $remote_path.";
-                    $enviado = true;
-                    break;
-                } else {
-                    $resultadoFinal['logs'][] = "Falha ao enviar arquivo para $remote_path.";
-                }
+                $resultadoFinal['sftp_enviado'] = $enviado;
             }
-
-            $resultadoFinal['sftp_enviado'] = $enviado;
         } else {
             $resultadoFinal['logs'][] = "Arquivo com base '$nome_arquivo_base' não encontrado em $uploadDir.";
         }

@@ -1,5 +1,6 @@
 <?php
 require '../vendor/autoload.php';
+require_once __DIR__ . '/../config/secure_env.php';
 
 use phpseclib3\Net\SFTP;
 use phpseclib3\Exception\UnableToConnectException;
@@ -38,10 +39,15 @@ function enviarArquivoSFTP($host, $usuario, $senha, $arquivoLocal, $arquivoRemot
 }
 
 // Exemplo de uso:
-echo enviarArquivoSFTP(
-    "imp-nas.ddns.net",
-    "flow",
-    "flow@2025",
-    "../assets/teste.pdf",
-    "/mnt/clientes/2025/ROM_MAE/02.Projetos/teste2.pdf"
-);
+try {
+    $sftpCfg = improov_sftp_config();
+    echo enviarArquivoSFTP(
+        $sftpCfg['host'],
+        $sftpCfg['user'],
+        $sftpCfg['pass'],
+        "../assets/teste.pdf",
+        "/mnt/clientes/2025/ROM_MAE/02.Projetos/teste2.pdf"
+    );
+} catch (RuntimeException $e) {
+    echo 'Configuração SFTP ausente no ambiente.';
+}

@@ -124,13 +124,20 @@ if (!function_exists('ftp_connect')) {
 }
 
 require 'conexao.php';
+require_once __DIR__ . '/config/secure_env.php';
 
 // ---------- Dados FTP ----------
-$ftp_host = "72.60.137.192";
-$ftp_port = 21; // porta padrão FTP
-$ftp_user = "improov";
-$ftp_pass = "Impr00v@";
-$ftp_base = "/web/improov.com.br/public_html/flow/ImproovWeb/uploads/"; // pasta remota já existente
+try {
+    $ftpCfg = improov_ftp_config();
+} catch (RuntimeException $e) {
+    json_error('Configuração FTP ausente no ambiente.', 500);
+}
+
+$ftp_host = $ftpCfg['host'];
+$ftp_port = $ftpCfg['port'];
+$ftp_user = $ftpCfg['user'];
+$ftp_pass = $ftpCfg['pass'];
+$ftp_base = $ftpCfg['base'];
 
 // ---------- Funções utilitárias ----------
 function removerTodosAcentos($str)

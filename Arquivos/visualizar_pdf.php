@@ -153,10 +153,19 @@ function stream_pdf_from_source($row, $download = false)
 
     // 2) Fallback: fetch via SFTP (NAS)
     require_once __DIR__ . '/../vendor/autoload.php';
-    $host = getenv('IMPROOV_SFTP_HOST') ?: 'imp-nas.ddns.net';
-    $port = (int)(getenv('IMPROOV_SFTP_PORT') ?: 2222);
-    $username = getenv('IMPROOV_SFTP_USER') ?: 'flow';
-    $password = getenv('IMPROOV_SFTP_PASS') ?: 'flow@2025';
+    require_once __DIR__ . '/../config/secure_env.php';
+    try {
+        $cfg = improov_sftp_config();
+    } catch (RuntimeException $e) {
+        http_response_code(500);
+        echo 'Configuração SFTP ausente.';
+        exit;
+    }
+
+    $host = $cfg['host'];
+    $port = (int) $cfg['port'];
+    $username = $cfg['user'];
+    $password = $cfg['pass'];
 
     $sftp = new \phpseclib3\Net\SFTP($host, $port);
     if (!$sftp->login($username, $password)) {

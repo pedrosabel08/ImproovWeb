@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../config/session_bootstrap.php';
+require_once __DIR__ . '/../config/secure_env.php';
 session_start();
 header('Content-Type: application/json');
 
@@ -121,10 +122,17 @@ if (!is_array($names)) {
 }
 
 // ---- SFTP config (NAS) ----
-$host = "imp-nas.ddns.net";
-$port = 2222;
-$username = "flow";
-$password = "flow@2025";
+try {
+    $sftpCfg = improov_sftp_config();
+} catch (RuntimeException $e) {
+    echo json_encode(['errors' => ['Configuração SFTP ausente no ambiente.'], 'success' => []]);
+    exit;
+}
+
+$host = $sftpCfg['host'];
+$port = $sftpCfg['port'];
+$username = $sftpCfg['user'];
+$password = $sftpCfg['pass'];
 
 $SFTP_BASE_DIR = '/mnt/exchange/_SIRE';
 

@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/config/session_bootstrap.php';
+require_once __DIR__ . '/config/secure_env.php';
 session_start();
 
 header("Access-Control-Allow-Origin: https://improov.com.br");
@@ -221,10 +222,17 @@ $caminhoAtual = ''; // garante que existe
 
 
 // Dados SFTP
-$ftp_user = "flow";
-$ftp_pass = "flow@2025";
-$ftp_host = "imp-nas.ddns.net";
-$ftp_port = 2222;
+try {
+    $sftpCfg = improov_sftp_config();
+} catch (RuntimeException $e) {
+    echo json_encode(['error' => 'Configuração SFTP ausente no ambiente.']);
+    exit;
+}
+
+$ftp_user = $sftpCfg['user'];
+$ftp_pass = $sftpCfg['pass'];
+$ftp_host = $sftpCfg['host'];
+$ftp_port = $sftpCfg['port'];
 
 // Recebe dados do POST
 $nome_funcao = $_POST['nome_funcao'] ?? '';

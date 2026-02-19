@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../config/session_bootstrap.php';
+require_once __DIR__ . '/../config/secure_env.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -436,12 +437,25 @@ function carregar_config_sftp_vps(&$logs)
         $logs[] = 'sftp_json_not_found';
     }
 
+    try {
+        $vpsCfg = improov_sftp_config('IMPROOV_VPS_SFTP');
+        return [
+            'host' => (string)$vpsCfg['host'],
+            'port' => (int)$vpsCfg['port'],
+            'username' => (string)$vpsCfg['user'],
+            'password' => (string)$vpsCfg['pass'],
+            'remotePath' => rtrim((string)improov_env('IMPROOV_VPS_SFTP_REMOTE_PATH'), '/'),
+        ];
+    } catch (RuntimeException $e) {
+        $logs[] = 'vps_sftp_env_missing';
+    }
+
     return [
-        'host' => '72.60.137.192',
+        'host' => '',
         'port' => 22,
-        'username' => 'root',
-        'password' => 'Impr00v@2025',
-        'remotePath' => '/home/improov/web/improov.com.br/public_html/flow/ImproovWeb',
+        'username' => '',
+        'password' => '',
+        'remotePath' => '',
     ];
 }
 
@@ -465,6 +479,10 @@ function ensure_sftp_dir_recursive($sftp, $path, &$logs)
 function enviar_angulo_para_vps($localPath, $nomenclatura, $categoriaDir, $tipoImagem, $nomeImagemDir, $fileName, &$logs)
 {
     $cfg = carregar_config_sftp_vps($logs);
+    if (empty($cfg['host']) || empty($cfg['username']) || empty($cfg['password']) || empty($cfg['remotePath'])) {
+        $logs[] = 'vps_sftp_config_invalid';
+        return ['remote' => false, 'local' => false];
+    }
 
     $targetDirRel = '/uploads/angulo_definido/' . sanitize_dir_name((string)$nomenclatura) . '/' . $categoriaDir . '/' . $tipoImagem . '/IMG/' . $nomeImagemDir;
     $localFallbackOk = false;
@@ -633,10 +651,16 @@ function inserir_angulo_servidor_clientes($conn, $imagem_id, $historico_id, $pat
         return false;
     }
 
-    $host = 'imp-nas.ddns.net';
-    $port = 2222;
-    $user = 'flow';
-    $pass = 'flow@2025';
+    try {
+        $sftpCfg = improov_sftp_config();
+    } catch (RuntimeException $e) {
+        $logs[] = 'sftp_env_missing';
+        return false;
+    }
+    $host = $sftpCfg['host'];
+    $port = (int)$sftpCfg['port'];
+    $user = $sftpCfg['user'];
+    $pass = $sftpCfg['pass'];
 
     $sftp = new phpseclib3\Net\SFTP($host, $port);
     if (!$sftp->login($user, $pass)) {

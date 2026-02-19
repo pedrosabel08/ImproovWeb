@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config/session_bootstrap.php';
 require_once __DIR__ . '/../vendor/autoload.php';
+require_once __DIR__ . '/../config/secure_env.php';
 
 use phpseclib3\Net\SFTP;
 
@@ -37,10 +38,18 @@ $remotePath = $row['path'];
 $downloadName = $row['original_name'] ?: ($row['stored_name'] ?: 'arquivo');
 $mime = $row['mime'] ?: 'application/octet-stream';
 
-$host = "imp-nas.ddns.net";
-$port = 2222;
-$username = "flow";
-$password = "flow@2025";
+try {
+    $sftpCfg = improov_sftp_config();
+} catch (RuntimeException $e) {
+    http_response_code(500);
+    echo 'Configuração SFTP ausente.';
+    exit;
+}
+
+$host = $sftpCfg['host'];
+$port = $sftpCfg['port'];
+$username = $sftpCfg['user'];
+$password = $sftpCfg['pass'];
 
 $sftp = new SFTP($host, $port);
 if (!$sftp->login($username, $password)) {

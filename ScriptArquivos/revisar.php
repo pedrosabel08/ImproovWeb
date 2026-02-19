@@ -1,14 +1,25 @@
 <?php
 require 'conexao.php';
 require 'vendor/autoload.php';
+require_once __DIR__ . '/../config/secure_env.php';
 
 use phpseclib3\Net\SFTP;
 
 // Config SFTP
-$ftp_user = "flow";
-$ftp_pass = "flow@2025";
-$ftp_host = "imp-nas.ddns.net";
-$ftp_port = 2222;
+try {
+    $sftpCfg = improov_sftp_config();
+} catch (RuntimeException $e) {
+    echo json_encode([
+        'success' => false,
+        'log' => [],
+        'error' => 'Configuração SFTP ausente no ambiente.'
+    ]);
+    exit;
+}
+$ftp_user = $sftpCfg['user'];
+$ftp_pass = $sftpCfg['pass'];
+$ftp_host = $sftpCfg['host'];
+$ftp_port = $sftpCfg['port'];
 
 // Pasta base do projeto (sem a subpasta final)
 $inputBase = "/mnt/clientes/2025/TES_TES/05.Exchange/01.Input";

@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../config/session_bootstrap.php';
+require_once __DIR__ . '/../config/secure_env.php';
 header('Content-Type: application/json; charset=utf-8');
 
 session_start();
@@ -53,11 +54,12 @@ function table_has_column(mysqli $conn, string $table, string $column): bool
 
 function ensure_remote_project_folder(string $nomenclatura): void
 {
-    // Dados SFTP/SSH (mesmos do uploadFinal.php)
-    $ftp_user = 'flow';
-    $ftp_pass = 'flow@2025';
-    $ftp_host = 'imp-nas.ddns.net';
-    $ftp_port = 2222;
+    // Dados SFTP/SSH
+    $sftpCfg = improov_sftp_config();
+    $ftp_user = $sftpCfg['user'];
+    $ftp_pass = $sftpCfg['pass'];
+    $ftp_host = $sftpCfg['host'];
+    $ftp_port = $sftpCfg['port'];
 
     $templateBase = '/mnt/clientes/00.Cliente_Padrao';
     $year = date('Y');

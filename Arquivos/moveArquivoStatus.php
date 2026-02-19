@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config/session_bootstrap.php';
 require_once __DIR__ . '/../vendor/autoload.php';
+require_once __DIR__ . '/../config/secure_env.php';
 use phpseclib3\Net\SFTP;
 
 session_start();
@@ -23,11 +24,18 @@ if (!$input || !isset($input['idarquivo']) || !isset($input['action'])) {
 $id = intval($input['idarquivo']);
 $action = $input['action']; // 'antigo' or 'atualizado'
 
-// SFTP credentials (same as upload.php)
-$host = "imp-nas.ddns.net";
-$port = 2222;
-$username = "flow";
-$password = "flow@2025";
+try {
+    $sftpCfg = improov_sftp_config();
+} catch (RuntimeException $e) {
+    http_response_code(500);
+    echo json_encode(['success' => false, 'error' => 'Configuração SFTP ausente']);
+    exit;
+}
+
+$host = $sftpCfg['host'];
+$port = $sftpCfg['port'];
+$username = $sftpCfg['user'];
+$password = $sftpCfg['pass'];
 
 $q = $conn->prepare("SELECT idarquivo, caminho, nome_interno, status FROM arquivos WHERE idarquivo = ? LIMIT 1");
 $q->bind_param('i', $id);

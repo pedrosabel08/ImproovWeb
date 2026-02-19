@@ -4,6 +4,7 @@
 // Ele salva o arquivo enviado em `uploads/staging` e grava um arquivo .json com metadados.
 
 header('Content-Type: application/json');
+require_once __DIR__ . '/config/secure_env.php';
 
 // CORS: permite origens confiáveis (inclui localhost para testes locais)
 // Allowed origins list for stricter control
@@ -209,10 +210,11 @@ for ($i = 0; $i < $total; $i++) {
             require_once __DIR__ . '/vendor/autoload.php';
         }
         if (class_exists('\\phpseclib3\\Net\\SFTP')) {
-            $sftpHost = 'imp-nas.ddns.net';
-            $sftpUser = 'flow';
-            $sftpPass = 'flow@2025';
-            $sftpPort = 2222;
+            $sftpCfg = improov_sftp_config();
+            $sftpHost = $sftpCfg['host'];
+            $sftpUser = $sftpCfg['user'];
+            $sftpPass = $sftpCfg['pass'];
+            $sftpPort = $sftpCfg['port'];
             $remoteDir = '/uploads/staging';
 
             $sftp = new \phpseclib3\Net\SFTP($sftpHost, $sftpPort);

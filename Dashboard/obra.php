@@ -630,7 +630,7 @@ $conn->close();
                             <th onclick="mostrarFiltroColaborador('filtro')">Filtro de assets</th>
                             <th onclick="mostrarFiltroColaborador('modelagem')">Modelagem</th>
                             <th onclick="mostrarFiltroColaborador('composicao')">Composição</th>
-                            <th onclick="mostrarFiltroColaborador('pre')">Pré-Finalização</th>
+                            <!-- <th onclick="mostrarFiltroColaborador('pre')">Pré-Finalização</th> -->
                             <th onclick="mostrarFiltroColaborador('finalizacao')">Finalização</th>
                             <th onclick="mostrarFiltroColaborador('pos_producao')">Pós-Produção</th>
                             <th onclick="mostrarFiltroColaborador('alteracao')">Alteração</th>
@@ -1087,7 +1087,7 @@ $conn->close();
                         </div>
                     </div>
                 </div>
-                <div class="funcao_comp">
+                <div class="funcao_comp" style="display: none;">
                     <div class="funcao">
                         <div class="titulo">
                             <p id="pre">Pré-Finalização</p>
@@ -1211,7 +1211,7 @@ $conn->close();
                         </div>
                     </div>
                 </div>
-                <div class="funcao_comp">
+                <div class="funcao_comp" style="display: none;">
                     <div class="funcao">
                         <div class="titulo">
                             <p id="planta">Planta Humanizada</p>
@@ -2183,7 +2183,7 @@ $conn->close();
 
     <script>
         // Project root for building root-relative URLs in scripts
-        (function () {
+        (function() {
             const path = String(window.location.pathname || '');
             const useFlow = path.includes('/flow/');
             window.PROJECT_ROOT = useFlow ? '/flow/ImproovWeb' : '/ImproovWeb';
@@ -2281,9 +2281,13 @@ $conn->close();
             }
 
             if (scrollRoot === window) {
-                window.addEventListener('scroll', updateFixed, { passive: true });
+                window.addEventListener('scroll', updateFixed, {
+                    passive: true
+                });
             } else {
-                scrollRoot.addEventListener('scroll', updateFixed, { passive: true });
+                scrollRoot.addEventListener('scroll', updateFixed, {
+                    passive: true
+                });
             }
             window.addEventListener('resize', updateFixed);
 

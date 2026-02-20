@@ -2857,7 +2857,7 @@ function infosObra(obraId) {
                     { col: 'filtro', label: 'Filtro' },
                     { col: 'modelagem', label: 'Modelagem' },
                     { col: 'composicao', label: 'Composição' },
-                    { col: 'pre', label: 'Pré-Finalização' },
+                    // { col: 'pre', label: 'Pré-Finalização' },
                     { col: 'finalizacao', label: 'Finalização' },
                     { col: 'pos_producao', label: 'Pós Produção' },
                     { col: 'alteracao', label: 'Alteração' },

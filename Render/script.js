@@ -1,8 +1,16 @@
 let allRenders = [];
 
+function renderObraFilter() {
+    const obras = [...new Set(allRenders.map(r => r.obra_nomenclatura).filter(Boolean))].sort();
+    $('#filterObra').html('<option value="">Todas as Obras</option>');
+    obras.forEach(nome => {
+        $('#filterObra').append(`<option value="${nome}">${nome}</option>`);
+    });
+}
+
 function renderCollaboratorFilter() {
     // Extrai nomes únicos dos colaboradores
-    const colaboradores = [...new Set(allRenders.map(r => r.nome_colaborador).filter(Boolean))];
+    const colaboradores = [...new Set(allRenders.map(r => r.nome_colaborador).filter(Boolean))].sort();
     $('#filterColaborador').html('<option value="">Todos os Responsáveis</option>');
     colaboradores.forEach(nome => {
         $('#filterColaborador').append(`<option value="${nome}">${nome}</option>`);
@@ -10,9 +18,8 @@ function renderCollaboratorFilter() {
 }
 
 function renderStatusFilter() {
-    // Extrai nomes únicos dos colaboradores
-    const status = [...new Set(allRenders.map(r => r.status).filter(Boolean))];
-    $('#filterStatus').html('<option value="">Todos os Responsáveis</option>');
+    const status = [...new Set(allRenders.map(r => r.status).filter(Boolean))].sort();
+    $('#filterStatus').html('<option value="">Todos os Status</option>');
     status.forEach(nome => {
         $('#filterStatus').append(`<option value="${nome}">${nome}</option>`);
     });
@@ -70,6 +77,7 @@ function renderCards(renders) {
                     <p class="render-card-responsavel">Responsável: ${render.nome_colaborador}</p>
                     <p class="render-card-prazo">Prazo: ${formatarData(render.data)}</p>
                     <p class="render-card-status">Status: ${render.nome_status}</p>
+                    <p class="render-card-obra">Obra: ${render.obra_nomenclatura}</p>
                     <p class="render-status-badge ${statusBadgeClass}">${render.status}</p>
                 </div>
             </div>
@@ -94,8 +102,9 @@ function loadRenders() {
         success: function (response) {
             if (response.status === 'sucesso') {
                 allRenders = response.renders;
+                renderObraFilter();         // Alimenta o select de obra
                 renderCollaboratorFilter(); // Alimenta o select de colaborador
-                renderStatusFilter(); // Alimenta o select de colaborador
+                renderStatusFilter();       // Alimenta o select de status
                 renderCards(allRenders);
             }
         }
@@ -105,9 +114,11 @@ function loadRenders() {
 function filterRenders() {
     const status = $('#filterStatus').val();
     const colaborador = $('#filterColaborador').val();
+    const obra = $('#filterObra').val();
     const filtered = allRenders.filter(r =>
         (status === '' || r.status === status) &&
-        (colaborador === '' || r.nome_colaborador === colaborador)
+        (colaborador === '' || r.nome_colaborador === colaborador) &&
+        (obra === '' || r.nome_obra === obra)
     );
     renderCards(filtered);
 }
@@ -115,6 +126,7 @@ function filterRenders() {
 // Eventos dos filtros
 $('#filterStatus').on('change', filterRenders);
 $('#filterColaborador').on('change', filterRenders);
+$('#filterObra').on('change', filterRenders);
 
 
 // Função para abrir o modal e carregar os dados para edição

@@ -9,7 +9,7 @@ foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWe
 }
 unset($__root, $__p);
 
-session_start();
+// session_start();
 
 // Verificar se o usuário está logado
 if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
@@ -99,18 +99,28 @@ $conn->close();
         <header style="position: relative;">
             <img src="../gif/assinatura_preto.gif" alt="" style="width: 200px;">
         </header>
-        <button id="startTutorial" style="position: fixed;top: 1rem;right: 1rem;font-size: 24px;color: darkblue;"
+        <!-- <button id="startTutorial" style="position: fixed;top: 1rem;right: 1rem;font-size: 24px;color: darkblue;"
             onmouseover="document.getElementById('tooltipTutorial').style.display='block'; this.style.color='#007bff'; this.style.cursor='pointer';"
             onmouseout="document.getElementById('tooltipTutorial').style.display='none'; this.style.color='darkblue';">
             <i class="fa-solid fa-circle-info"></i>
-        </button>
+        </button> -->
         <span id="tooltipTutorial"
             style="display:none;position:fixed;top:3.5rem;right:1rem;background:#222;color:#fff;padding:6px 12px;border-radius:4px;font-size:14px;z-index:100;">
             Suporte
         </span>
         <div id="filters">
-            <select id="filterStatus"></select>
-            <select id="filterColaborador"></select>
+            <div class="filter-group">
+                <label for="filterObra"><i class="fa-solid fa-building"></i> Obra</label>
+                <select id="filterObra"></select>
+            </div>
+            <div class="filter-group">
+                <label for="filterStatus"><i class="fa-solid fa-circle-dot"></i> Status</label>
+                <select id="filterStatus"></select>
+            </div>
+            <div class="filter-group">
+                <label for="filterColaborador"><i class="fa-solid fa-user"></i> Responsável</label>
+                <select id="filterColaborador"></select>
+            </div>
         </div>
         <div id="renderGrid" class="render-grid">
             <!-- Os cards serão carregados aqui via AJAX -->

@@ -11,6 +11,8 @@ if (isset($_GET['action'])) {
     c.nome_colaborador, 
     s.nome_status, 
     i.imagem_nome,
+    o.nome_obra,
+    o.nomenclatura AS obra_nomenclatura,
     r.*
 FROM 
     render_alta r
@@ -20,6 +22,8 @@ LEFT JOIN
     colaborador c ON r.responsavel_id = c.idcolaborador
 LEFT JOIN 
     status_imagem s ON r.status_id = s.idstatus
+LEFT JOIN
+    obra o ON i.obra_id = o.idobra
 WHERE 
     (
         r.status != 'Arquivado'
@@ -183,7 +187,7 @@ if (isset($_POST['action'])) {
 
                                     if ($funcaoImagemId) {
                                         // garantir que apareça na revisão
-                                        if ($stUpFi = $conn->prepare("UPDATE funcao_imagem SET status = 'Em aprovação' WHERE idfuncao_imagem = ?")) {
+                                        if ($stUpFi = $conn->prepare("UPDATE funcao_imagem SET status = 'Em aprovação', requires_file_upload = 1, file_uploaded_at = NULL WHERE idfuncao_imagem = ?")) {
                                             $stUpFi->bind_param('i', $funcaoImagemId);
                                             $stUpFi->execute();
                                             $stUpFi->close();

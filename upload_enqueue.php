@@ -284,37 +284,6 @@ for ($i = 0; $i < $total; $i++) {
         if (!empty($logIds)) {
             $meta['log_ids'] = $logIds;
             _write_meta_safely($metaFile, $meta);
-            // Se inserimos logs vinculados a funções, limpar a flag de pendência de upload
-            try {
-                if (!empty($dataIdFuncoes)) {
-                    $upd = $conn->prepare("UPDATE funcao_imagem SET requires_file_upload = 0, file_uploaded_at = NOW() WHERE idfuncao_imagem = ?");
-                    if ($upd) {
-                        foreach ($dataIdFuncoes as $fid) {
-                            $fidInt = (int)$fid;
-                            $colIdInt = isset($colaborador_id) ? (int)$colaborador_id : 0;
-                            $upd->bind_param('i', $fidInt);
-                            @$upd->execute();
-                            // após limpar a pendência, se a função estiver aprovada (com ou sem ajustes), marca como Finalizado
-                            try {
-                                // Apenas finaliza automaticamente quando a função estava 'Aprovado'.
-                                // 'Aprovado com ajustes' será tratado visualmente no frontend quando houver arquivo,
-                                // sem alterar o status da função no banco.
-                                $updFinal = $conn->prepare("UPDATE funcao_imagem SET status = 'Finalizado' WHERE idfuncao_imagem = ? AND status = 'Aprovado'");
-                                if ($updFinal) {
-                                    $updFinal->bind_param('i', $fidInt);
-                                    @$updFinal->execute();
-                                    $updFinal->close();
-                                }
-                            } catch (Exception $e) {
-                                // não bloquear o enqueue por falha nesta atualização
-                            }
-                        }
-                            $upd->close();
-                    }
-                }
-            } catch (Exception $e) {
-                // não interromper o enqueue por falha na atualização
-            }
         }
     } catch (Exception $e) {
         // ignore DB failures at enqueue to avoid blocking; worker will try again
@@ -376,7 +345,7 @@ for ($i = 0; $i < $total; $i++) {
         if (!empty($dataIdFuncoes) && in_array($func_lower, ['caderno', 'filtro de assets'])) {
             foreach ($dataIdFuncoes as $fid) {
                 $fidInt = (int)$fid;
-                $stmt = $conn->prepare("UPDATE funcao_imagem SET status = 'Em aprovação' WHERE idfuncao_imagem = ?");
+                $stmt = $conn->prepare("UPDATE funcao_imagem SET status = 'Em aprovação', requires_file_upload = 1, file_uploaded_at = NULL WHERE idfuncao_imagem = ?");
                 if ($stmt) {
                     $stmt->bind_param('i', $fidInt);
                     @$stmt->execute();

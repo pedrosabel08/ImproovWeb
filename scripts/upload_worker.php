@@ -532,6 +532,50 @@ function update_log_entries_status(array $logIds = null, string $status = '', $c
     $stmt->close();
 }
 
+function mark_funcao_upload_quitado(array $meta): void
+{
+    global $conn;
+    if (!isset($conn)) return;
+
+    $dataIdFuncoes = $meta['dataIdFuncoes'] ?? [];
+    if (!is_array($dataIdFuncoes) || empty($dataIdFuncoes)) {
+        $raw = $meta['post']['dataIdFuncoes'] ?? null;
+        if (is_string($raw) && $raw !== '') {
+            $decoded = json_decode($raw, true);
+            if (is_array($decoded)) {
+                $dataIdFuncoes = $decoded;
+            } else {
+                $dataIdFuncoes = [$raw];
+            }
+        }
+    }
+
+    if (!is_array($dataIdFuncoes) || empty($dataIdFuncoes)) return;
+
+    $upd = $conn->prepare("UPDATE funcao_imagem SET requires_file_upload = 0, file_uploaded_at = NOW() WHERE idfuncao_imagem = ?");
+    if (!$upd) return;
+
+    $updFinal = $conn->prepare("UPDATE funcao_imagem SET status = 'Finalizado' WHERE idfuncao_imagem = ? AND status = 'Aprovado'");
+
+    foreach ($dataIdFuncoes as $fid) {
+        $fidInt = (int) $fid;
+        if ($fidInt <= 0) continue;
+
+        $upd->bind_param('i', $fidInt);
+        @$upd->execute();
+
+        if ($updFinal) {
+            $updFinal->bind_param('i', $fidInt);
+            @$updFinal->execute();
+        }
+    }
+
+    $upd->close();
+    if ($updFinal) {
+        $updFinal->close();
+    }
+}
+
 // Remove any duplicate meta json recreated after claim (race in enqueue)
 function cleanup_duplicate_meta_files(string $baseDir, string $jobId, string $processingMeta): void
 {
@@ -775,6 +819,7 @@ do {
                 }
                 if (!empty($meta['log_ids'])) {
                     update_log_entries_status($meta['log_ids'], 'concluido', $meta['windows_path'], $meta['nome_final'], $meta['tamanho_final'] ?? null, $meta['tipo']);
+                    mark_funcao_upload_quitado($meta);
                     $meta['db_updated'] = true;
                     writeMeta($processingMeta, $meta);
                     // cleanup meta
@@ -1037,6 +1082,7 @@ do {
             if (!empty($meta['log_ids'])) {
                 // salva caminho acessível no Windows (Z:\) no banco
                 update_log_entries_status($meta['log_ids'], 'concluido', $windows_path, $nome_final, $tamanho_final ?: null, $tipo);
+                mark_funcao_upload_quitado($meta);
                 $meta['db_updated'] = true;
                 writeMeta($processingMeta, $meta);
             } else {

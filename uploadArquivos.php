@@ -1,6 +1,8 @@
 <?php
 header('Content-Type: application/json');
 
+use phpseclib3\Net\SFTP;
+
 ini_set('display_errors', '0');
 ini_set('log_errors', '1');
 error_reporting(E_ALL);
@@ -119,25 +121,60 @@ register_shutdown_function(function () {
     ], $eid);
 });
 
-if (!function_exists('ftp_connect')) {
-    json_error('Extensão FTP do PHP não está habilitada no servidor.', 500);
-}
-
 require 'conexao.php';
 require_once __DIR__ . '/config/secure_env.php';
 
-// ---------- Dados FTP ----------
+$vendorAutoload = __DIR__ . '/vendor/autoload.php';
+if (!is_file($vendorAutoload)) {
+    json_error('Dependência ausente: vendor/autoload.php não encontrada no servidor.', 500);
+}
+require_once $vendorAutoload;
+
+// ---------- Dados SFTP VPS ----------
 try {
-    $ftpCfg = improov_ftp_config();
+    $ftpCfg = improov_sftp_config('IMPROOV_VPS_SFTP');
+    $ftpBaseEnv = improov_env('IMPROOV_VPS_SFTP_REMOTE_PATH');
 } catch (RuntimeException $e) {
-    json_error('Configuração FTP ausente no ambiente.', 500);
+    json_error('Configuração SFTP VPS ausente no ambiente.', 500);
 }
 
 $ftp_host = $ftpCfg['host'];
 $ftp_port = $ftpCfg['port'];
 $ftp_user = $ftpCfg['user'];
 $ftp_pass = $ftpCfg['pass'];
-$ftp_base = $ftpCfg['base'];
+$ftp_base = $ftpBaseEnv;
+
+$ftp_host = trim((string)$ftp_host);
+$ftp_user = trim((string)$ftp_user);
+$ftp_pass = trim((string)$ftp_pass);
+$ftp_base = trim((string)$ftp_base);
+
+$missingFtpEnv = [];
+if ($ftp_host === '') {
+    $missingFtpEnv[] = 'IMPROOV_VPS_SFTP_HOST';
+}
+if ($ftp_user === '') {
+    $missingFtpEnv[] = 'IMPROOV_VPS_SFTP_USER';
+}
+if ($ftp_pass === '') {
+    $missingFtpEnv[] = 'IMPROOV_VPS_SFTP_PASS';
+}
+if ($ftp_base === '') {
+    $missingFtpEnv[] = 'IMPROOV_VPS_SFTP_REMOTE_PATH';
+}
+
+if (!empty($missingFtpEnv)) {
+    json_error('Configuração SFTP VPS incompleta no ambiente.', 500, [
+        'missing_env' => $missingFtpEnv,
+        'sftp_port' => $ftp_port,
+    ]);
+}
+
+$ftp_base = rtrim(str_replace('\\', '/', $ftp_base), '/');
+if (substr($ftp_base, -8) !== '/uploads') {
+    $ftp_base .= '/uploads';
+}
+$ftp_base .= '/';
 
 // ---------- Funções utilitárias ----------
 function removerTodosAcentos($str)
@@ -169,37 +206,38 @@ function getProcesso($nomeFuncao)
     return substr($semAcento, 0, 3);
 }
 
-function enviarArquivoFTP($conn_ftp, $arquivoLocal, $arquivoRemoto)
+function ensureSftpDirRecursive(SFTP $sftp, string $path): bool
 {
-    // Ativa modo passivo
-    ftp_pasv($conn_ftp, true);
+    $path = trim(str_replace('\\', '/', $path));
+    if ($path === '' || $path === '/') {
+        return true;
+    }
 
-    // tentativa direta
-    if (@ftp_put($conn_ftp, $arquivoRemoto, $arquivoLocal, FTP_BINARY)) {
+    $parts = array_values(array_filter(explode('/', trim($path, '/')), 'strlen'));
+    $current = '';
+    foreach ($parts as $part) {
+        $current .= '/' . $part;
+        if (!$sftp->is_dir($current)) {
+            if (!$sftp->mkdir($current)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+function enviarArquivoSFTP(SFTP $sftp, string $arquivoLocal, string $arquivoRemoto): array
+{
+    $remoteDir = dirname($arquivoRemoto);
+    if (!ensureSftpDirRecursive($sftp, $remoteDir)) {
+        return [false, "⚠ Erro ao preparar diretório remoto no SFTP: $remoteDir"];
+    }
+
+    if ($sftp->put($arquivoRemoto, $arquivoLocal, SFTP::SOURCE_LOCAL_FILE)) {
         return [true, $arquivoRemoto];
     }
 
-    // coleta informações de debug
-    $pwd = @ftp_pwd($conn_ftp);
-    $remoteDir = dirname($arquivoRemoto);
-    $remoteFile = basename($arquivoRemoto);
-    $remoteDir = rtrim(str_replace('\\', '/', $remoteDir), '/');
-    $nlist = @ftp_nlist($conn_ftp, $remoteDir);
-    $raw = @ftp_rawlist($conn_ftp, $remoteDir);
-
-    // tenta mudar para o diretório remoto e enviar apenas o nome do arquivo (fallback)
-    if (@ftp_chdir($conn_ftp, $remoteDir)) {
-        if (@ftp_put($conn_ftp, $remoteFile, $arquivoLocal, FTP_BINARY)) {
-            // volta ao diretório original
-            if ($pwd) @ftp_chdir($conn_ftp, $pwd);
-            return [true, $remoteDir . '/' . $remoteFile];
-        } else {
-            if ($pwd) @ftp_chdir($conn_ftp, $pwd);
-            return [false, "⚠ Erro ao enviar via FTP (put em cwd): $remoteDir/$remoteFile. pwd=$pwd, nlist=" . json_encode($nlist) . ", raw=" . json_encode($raw)];
-        }
-    }
-
-    return [false, "⚠ Erro ao enviar via FTP: $arquivoRemoto (pwd=$pwd, nlist=" . json_encode($nlist) . ", raw=" . json_encode($raw) . ")"];
+    return [false, "⚠ Erro ao enviar via SFTP: $arquivoRemoto"];
 }
 
 // ---------- Parâmetros ----------
@@ -236,19 +274,18 @@ $status_nome = $result2 ? $result2['nome_status'] : null; // evita erro se não 
 $status_nome_sanitizado = sanitizeFilename((string)($status_nome ?? ''));
 $stmt2->close();
 
-// ---------- Conexão FTP ----------
-$conn_ftp = ftp_connect($ftp_host, $ftp_port, 10); // timeout 10s
-if (!$conn_ftp) {
-    json_error('Não foi possível conectar ao servidor FTP.', 500);
+// ---------- Conexão SFTP ----------
+try {
+    $conn_ftp = new SFTP($ftp_host, (int)$ftp_port, 10);
+} catch (Throwable $e) {
+    json_error('Não foi possível conectar ao servidor SFTP.', 500, ['detail' => $e->getMessage()]);
 }
-if (!ftp_login($conn_ftp, $ftp_user, $ftp_pass)) {
-    ftp_close($conn_ftp);
-    json_error('Falha na autenticação FTP.', 500);
+if (!$conn_ftp->login($ftp_user, $ftp_pass)) {
+    json_error('Falha na autenticação SFTP.', 500);
 }
 
 // ---------- Upload das imagens ----------
 if (!isset($_FILES['imagens'])) {
-    ftp_close($conn_ftp);
     json_error('Nenhuma imagem recebida', 400);
 }
 
@@ -261,7 +298,6 @@ $nomeImagemSanitizado = sanitizeFilename($nome_imagem);
 $sqlTipoImagem = "SELECT tipo_imagem FROM imagens_cliente_obra WHERE idimagens_cliente_obra = $idimagem";
 $resultTipo = $conn->query($sqlTipoImagem);
 if ($resultTipo === false) {
-    ftp_close($conn_ftp);
     json_error('Erro ao consultar tipo_imagem no banco.', 500, ['mysql_error' => $conn->error]);
 }
 $tipoImagem = $resultTipo->fetch_assoc()['tipo_imagem'] ?? '';
@@ -277,7 +313,6 @@ for ($i = 0; $i < $totalImagens; $i++) {
     ];
 
     if ($imagemAtual['error'] !== UPLOAD_ERR_OK) {
-        ftp_close($conn_ftp);
         json_error("Erro no upload temporário da imagem {$imagemAtual['name']}", 400);
     }
 
@@ -294,9 +329,8 @@ for ($i = 0; $i < $totalImagens; $i++) {
     $extensao = pathinfo($imagemAtual['name'], PATHINFO_EXTENSION);
     $arquivoRemoto = $ftp_base . $nomeFinalSemExt . "." . $extensao;
 
-    list($ok, $msg) = enviarArquivoFTP($conn_ftp, $imagemAtual['tmp_name'], $arquivoRemoto);
+    list($ok, $msg) = enviarArquivoSFTP($conn_ftp, $imagemAtual['tmp_name'], $arquivoRemoto);
     if (!$ok) {
-        ftp_close($conn_ftp);
         json_error((string)$msg, 500);
     }
 
@@ -310,19 +344,18 @@ for ($i = 0; $i < $totalImagens; $i++) {
     if ($stmt->execute()) {
         $imagensEnviadas[] = $caminhoBanco;
     } else {
-        ftp_close($conn_ftp);
         json_error('Erro ao salvar no banco: ' . $stmt->error, 500);
     }
     $stmt->close();
 }
 
-// Fecha conexão FTP
-ftp_close($conn_ftp);
+// Fecha conexão SFTP
+unset($conn_ftp);
 
 // ---------- Atualiza status ----------
 $hoje = date('Y-m-d');
 $stmt = $conn->prepare("UPDATE funcao_imagem 
-                        SET status = 'Em aprovação', prazo = ? 
+                        SET status = 'Em aprovação', prazo = ?, requires_file_upload = 1, file_uploaded_at = NULL 
                         WHERE idfuncao_imagem = ?");
 $stmt->bind_param("si", $hoje, $idFuncaoImagem);
 if (!$stmt->execute()) {
@@ -331,7 +364,7 @@ if (!$stmt->execute()) {
 $stmt->close();
 
 echo json_encode([
-    "success"      => "Imagens enviadas com sucesso via FTP!",
+    "success"      => "Imagens enviadas com sucesso via SFTP!",
     "indice_envio" => $indice_envio,
     "imagens"      => $imagensEnviadas
 ]);

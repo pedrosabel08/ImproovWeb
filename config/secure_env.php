@@ -102,6 +102,15 @@ if (!function_exists('improov_ftp_config')) {
     function improov_ftp_config($prefix = 'IMPROOV_FTP')
     {
         improov_load_env_once();
+
+        $read = static function ($key) {
+            $value = getenv($key);
+            if ($value === false) {
+                return '';
+            }
+            return trim((string)$value);
+        };
+
         $host = getenv($prefix . '_HOST');
         if ($host === false) {
             $host = '';
@@ -116,6 +125,27 @@ if (!function_exists('improov_ftp_config')) {
             $pass = '';
         }
         $base = improov_env($prefix . '_BASE', '');
+
+        $host = trim((string)$host);
+        $user = trim((string)$user);
+        $pass = trim((string)$pass);
+        $base = trim((string)$base);
+
+        if ($host === '') {
+            $host = $read('IMPROOV_SFTP_HOST');
+        }
+        if ($user === '') {
+            $user = $read('IMPROOV_SFTP_USER');
+        }
+        if ($pass === '') {
+            $pass = $read('IMPROOV_SFTP_PASS');
+        }
+        if ($base === '') {
+            $base = $read('IMPROOV_SFTP_REMOTE_PATH');
+            if ($base === '') {
+                $base = $read('IMPROOV_VPS_SFTP_REMOTE_PATH');
+            }
+        }
 
         return [
             'host' => $host,

@@ -220,8 +220,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Atualiza o contador ao carregar a página
     atualizarContadorTarefas();
-    // Também buscar notificações do módulo ao carregar para enfileirar e mostrar modais imediatamente
-    buscarTarefas(true).catch(() => { });
+    // Também buscar notificações do módulo ao carregar para enfileirar (não mostrar modal na recarga)
+    buscarTarefas(false).catch(() => { });
     // avisoUltimoDiaUtil()
     if (!isInicio) {
         agendarProximaExecucao();

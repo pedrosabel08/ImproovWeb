@@ -47,51 +47,6 @@ function sftpToPublicUrl(rawPath) {
     return null;
 }
 
-let holdTooltipEl = null;
-
-function getHoldTooltipEl() {
-    if (holdTooltipEl && document.body.contains(holdTooltipEl)) {
-        return holdTooltipEl;
-    }
-
-    holdTooltipEl = document.createElement('div');
-    holdTooltipEl.id = 'hold-tooltip';
-    holdTooltipEl.style.position = 'fixed';
-    holdTooltipEl.style.display = 'none';
-    holdTooltipEl.style.pointerEvents = 'none';
-    holdTooltipEl.style.zIndex = '99999';
-    holdTooltipEl.style.background = 'rgba(0, 0, 0, 0.85)';
-    holdTooltipEl.style.color = '#fff';
-    holdTooltipEl.style.padding = '6px 10px';
-    holdTooltipEl.style.borderRadius = '6px';
-    holdTooltipEl.style.fontSize = '12px';
-    holdTooltipEl.style.whiteSpace = 'pre-line';
-    holdTooltipEl.style.boxShadow = '0 2px 8px rgba(0,0,0,0.25)';
-    document.body.appendChild(holdTooltipEl);
-
-    return holdTooltipEl;
-}
-
-function showHoldTooltip(event, text = 'Imagem em HOLD.') {
-    const el = getHoldTooltipEl();
-    el.textContent = text;
-    el.style.display = 'block';
-    moveHoldTooltip(event);
-}
-
-function moveHoldTooltip(event) {
-    const el = getHoldTooltipEl();
-    el.style.left = `${event.clientX}px`;
-    el.style.top = `${event.clientY - 30}px`;
-}
-
-function hideHoldTooltip() {
-    if (holdTooltipEl) {
-        holdTooltipEl.style.display = 'none';
-    }
-}
-
-
 function carregarDados(colaborador_id) {
 
     let url = `PaginaPrincipal/getFuncoesPorColaborador.php?colaborador_id=${colaborador_id}`;
@@ -143,6 +98,83 @@ function carregarDados(colaborador_id) {
     xhr.open("GET", url, true);
     xhr.send();
 }
+
+let ultimoResumoPendencia = '';
+
+function abrirModalUploadFinalPendente(card) {
+    if (!card || !cardModal) return;
+
+    cardSelecionado = card;
+    idfuncao_imagem = card.getAttribute("data-id");
+    idimagem = card.getAttribute("data-id-imagem");
+    titulo = card.querySelector("h5")?.innerText || "";
+    subtitulo = card.getAttribute("data-funcao_nome");
+    obra = card.getAttribute("data-obra_nome");
+    nome_status = card.getAttribute("data-nome_status");
+
+    modalPrazo.value = card.dataset.prazo || '';
+    modalObs.value = card.dataset.observacao || '';
+
+    imagensSelecionadas = [];
+    arquivosFinais = [];
+    renderizarLista(imagensSelecionadas, 'fileListPrevia');
+    renderizarLista(arquivosFinais, 'fileListFinal');
+
+    document.querySelector('.modalPrazo').style.display = 'none';
+    document.querySelector('.modalObs').style.display = 'none';
+    document.querySelector('.modalUploads').style.display = 'flex';
+    document.querySelector('.buttons').style.display = 'none';
+    document.querySelector('.statusAnterior').style.display = 'none';
+
+    const etapaPreviaEl = document.getElementById('etapaPrevia');
+    const etapaFinalEl = document.getElementById('etapaFinal');
+    if (etapaPreviaEl) etapaPreviaEl.style.display = 'none';
+    if (etapaFinalEl) etapaFinalEl.style.display = '';
+
+    configurarDropzone("drop-area-previa", "fileElemPrevia", "fileListPrevia", imagensSelecionadas);
+    configurarDropzone("drop-area-final", "fileElemFinal", "fileListFinal", arquivosFinais);
+
+    cardModal.classList.add('active');
+    card.classList.add('selected');
+
+    const modalWidth = cardModal.offsetWidth || 400;
+    const modalHeight = cardModal.offsetHeight || 560;
+    const left = Math.max(10, Math.round((window.innerWidth - modalWidth) / 2));
+    const top = Math.max(10, Math.round((window.innerHeight - modalHeight) / 2));
+    cardModal.style.left = `${left}px`;
+    cardModal.style.top = `${top}px`;
+}
+
+function alertarPendenciasSeNecessario(data) {
+    const funcoes = (data && Array.isArray(data.funcoes)) ? data.funcoes : [];
+    const pendentes = funcoes.filter(item => Number(item.requires_file_upload || 0) === 1);
+    const quantidade = pendentes.length;
+
+    if (quantidade <= 0) {
+        ultimoResumoPendencia = '';
+        return;
+    }
+
+    const chave = `${colaborador_id}:${quantidade}`;
+    if (ultimoResumoPendencia === chave) return;
+    ultimoResumoPendencia = chave;
+
+    Swal.fire({
+        icon: 'warning',
+        title: 'Arquivo pendente',
+        html: `Você tem <b>${quantidade}</b> card(s) com arquivo pendente.`,
+        showCancelButton: true,
+        confirmButtonText: 'Enviar agora',
+        cancelButtonText: 'Depois'
+    }).then((result) => {
+        if (!result.isConfirmed) return;
+        const primeiroCardPendente = document.querySelector('.kanban-card.tarefa-imagem[data-requires-file-upload="1"]');
+        if (primeiroCardPendente) {
+            abrirModalUploadFinalPendente(primeiroCardPendente);
+        }
+    });
+}
+
 // extrai a lógica do fetch para uma função reutilizável
 function processarDados(data) {
     const statusMap = {
@@ -281,8 +313,13 @@ function processarDados(data) {
         // Cria card
         const card = document.createElement('div');
         card.className = `kanban-card ${tipoClasse}`; // só a classe base
+        const hasPendingFile = (tipo === 'imagem' && Number(item.requires_file_upload || 0) === 1);
         let cardEmHold = false;
         let imagemEmHold = false;
+
+        if (hasPendingFile) {
+            card.classList.add('arquivo-pendente');
+        }
 
         if (tipo === 'imagem') {
             // lógica específica para imagem
@@ -325,6 +362,7 @@ function processarDados(data) {
             card.setAttribute('data-nome_status', `${item.nome_status}`); // para filtro
             card.setAttribute('data-prazo', `${item.prazo}`); // para filtro
             card.dataset.imagemEmHold = imagemEmHold ? '1' : '0';
+            card.dataset.requiresFileUpload = String(Number(item.requires_file_upload || 0));
 
         } else {
             // lógica para tarefas criadas
@@ -339,6 +377,7 @@ function processarDados(data) {
             card.setAttribute('liberado', '1');  // sempre liberado
             card.dataset.liberado = '1';
             card.dataset.imagemEmHold = '0';
+            card.dataset.requiresFileUpload = '0';
         }
 
 
@@ -428,6 +467,7 @@ function processarDados(data) {
         }
 
         card.innerHTML = `
+                    ${hasPendingFile ? `<div class="pending-file-ribbon"><i class="ri-alert-line"></i> Arquivo pendente</div>` : ''}
                     <div class="header-kanban">
                         <span class="priority ${item.prioridade || 'medium'}">
                             ${item.prioridade || 'Medium'}
@@ -484,6 +524,29 @@ function processarDados(data) {
                 abrirSidebarTarefaCriada(idTarefa);
 
             } else if (card.classList.contains('tarefa-imagem')) {
+                if (card.dataset.requiresFileUpload === '1') {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Arquivo pendente',
+                        text: 'Este card possui arquivo pendente. Deseja enviar o arquivo final agora?',
+                        showCancelButton: true,
+                        showDenyButton: true,
+                        confirmButtonText: 'Enviar arquivo',
+                        denyButtonText: 'Ver detalhes',
+                        cancelButtonText: 'Fechar'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            abrirModalUploadFinalPendente(card);
+                            return;
+                        }
+                        if (result.isDenied) {
+                            const idFuncao = card.dataset.id;
+                            const idImagem = card.dataset.idImagem;
+                            abrirSidebar(idFuncao, idImagem);
+                        }
+                    });
+                    return;
+                }
                 const idFuncao = card.dataset.id;
                 const idImagem = card.dataset.idImagem;
                 abrirSidebar(idFuncao, idImagem);
@@ -520,7 +583,8 @@ function processarDados(data) {
 
     atualizarTaskCount();
 
-    preencherFiltros()
+    preencherFiltros();
+    alertarPendenciasSeNecessario(data);
 
 
 
@@ -2998,6 +3062,31 @@ document.getElementById('salvarModal').addEventListener('click', () => {
             url: "insereFuncao.php",
             data: dados,
             success: function (response) {
+                let payload = response;
+                if (typeof payload === 'string') {
+                    try {
+                        payload = JSON.parse(payload);
+                    } catch (e) {
+                        payload = { success: true };
+                    }
+                }
+
+                if (payload && (payload.error || payload.success === false)) {
+                    Toastify({
+                        text: payload.message || "Não foi possível atualizar o status.",
+                        duration: 4500,
+                        close: true,
+                        gravity: "top",
+                        position: "left",
+                        backgroundColor: "red",
+                        stopOnFocus: true,
+                    }).showToast();
+                    cardModal.classList.remove('active');
+                    cardSelecionado = null;
+                    carregarDados(colaborador_id);
+                    return;
+                }
+
                 Toastify({
                     text: "Dados salvos com sucesso!",
                     duration: 3000,
@@ -3246,9 +3335,12 @@ colunas.forEach(col => {
             const toId = evt.to.closest('.kanban-box')?.id;
             const dragged = evt.dragged;
             const imagemEmHold = dragged?.dataset?.imagemEmHold === "1";
+            const requiresFileUpload = dragged?.dataset?.requiresFileUpload === "1";
             const holdMovel = fromId === "hold" && !imagemEmHold;
 
             if (imagemEmHold) return false;
+
+            if (toId === "in-progress" && requiresFileUpload) return false;
 
             if (dragged.classList.contains("bloqueado") && !holdMovel) return false;
 
@@ -3267,6 +3359,7 @@ colunas.forEach(col => {
             const novaColuna = evt.to.closest('.kanban-box');
             const novoIndex = evt.newIndex;
             const imagemEmHold = card?.dataset?.imagemEmHold === "1";
+            const requiresFileUpload = card?.dataset?.requiresFileUpload === "1";
             const holdMovel = deColuna?.id === "hold" && !imagemEmHold;
 
             if (imagemEmHold) {
@@ -3281,10 +3374,36 @@ colunas.forEach(col => {
                 return;
             }
 
+            if (novaColuna?.id === "in-progress" && requiresFileUpload) {
+                evt.from.appendChild(card);
+                alert("Existe arquivo pendente da etapa anterior. Envie o arquivo final antes de mover para Em andamento.");
+                return;
+            }
+
+            // Se houver pendências ao mover para 'Em andamento', apenas avisamos
+            // e impedimos a abertura do modal de card (cardModal). O movimento continua.
+            let bloquearAberturaModal = false;
+            if (novaColuna?.id === "in-progress") {
+                const qtdPendentes = document.querySelectorAll('.kanban-card.tarefa-imagem[data-requires-file-upload="1"]').length;
+                if (qtdPendentes > 0) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Atenção',
+                        text: `Existem ${qtdPendentes} card(s) com arquivo pendente.`
+                    });
+                    bloquearAberturaModal = true;
+                }
+            }
+
             console.log(`Card movido de ${deColuna.id} para ${novaColuna.id}, índice: ${novoIndex}`);
 
-            // Só abre modal se mudou de coluna
+            // Só abre modal se mudou de coluna e não estivermos bloqueando a abertura
             if (deColuna.id !== novaColuna.id) {
+                if (typeof bloquearAberturaModal !== 'undefined' && bloquearAberturaModal) {
+                    // Não abre o cardModal por enquanto — apenas mantém o card movido.
+                    card.classList.remove('selected');
+                    return;
+                }
                 cardSelecionado = card;
 
                 idfuncao_imagem = card.getAttribute("data-id");
@@ -3644,6 +3763,7 @@ function enviarArquivo() {
                     });
                     cardModal.classList.remove('active');
                     cardSelecionado = null;
+                    carregarDados(colaborador_id);
 
                     // Assinar progresso em tempo real (opcional)
                     try {
@@ -3851,29 +3971,201 @@ document.querySelectorAll('.dropbtn').forEach(btn => {
 })();
 
 
-// Toggle between Kanban and Lista (tabela)
+// ─────────────────────────────────────────────────────────────────
+//  Visão Geral (Overview) – carrega uma vez por sessão de página
+// ─────────────────────────────────────────────────────────────────
+let _overviewLoaded = false;
+
+async function carregarOverview() {
+    if (_overviewLoaded) return;
+    _overviewLoaded = true;
+
+    // ── Banner + Calendar ──────────────────────────────────────────
+    let entregas = [];
+    try {
+        const res = await fetch('Entregas/listar_entregas.php');
+        entregas = await res.json();
+        if (!Array.isArray(entregas)) entregas = [];
+    } catch (e) {
+        console.error('carregarOverview: erro ao buscar entregas', e);
+    }
+
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    const em15 = new Date(hoje);
+    em15.setDate(em15.getDate() + 15);
+
+    const atrasadas = entregas.filter(e => e.kanban_status === 'atrasada');
+    const proximas = entregas.filter(e => {
+        if (e.kanban_status === 'concluida' || e.kanban_status === 'atrasada') return false;
+        const dp = new Date(e.data_prevista + 'T00:00:00');
+        return dp >= hoje && dp <= em15;
+    });
+
+    function _fmtDt(str) {
+        if (!str) return '';
+        const [, m, d] = str.split('-');
+        return `${d}/${m}`;
+    }
+
+    const listAtrasadas = document.getElementById('banner-atrasadas-list');
+    if (listAtrasadas) {
+        if (atrasadas.length === 0) {
+            listAtrasadas.innerHTML = '<p class="banner-empty">Nenhuma entrega atrasada ✓</p>';
+        } else {
+            listAtrasadas.innerHTML = atrasadas.map(e => `
+                <div class="banner-item banner-item-atrasada">
+                    <span class="banner-item-obra">${e.nomenclatura}</span>
+                    <span class="banner-item-etapa">${e.nome_etapa}</span>
+                    <span class="banner-item-data">${_fmtDt(e.data_prevista)}</span>
+                </div>`).join('');
+        }
+    }
+
+    const listProximas = document.getElementById('banner-proximas-list');
+    if (listProximas) {
+        if (proximas.length === 0) {
+            listProximas.innerHTML = '<p class="banner-empty">Sem entregas nos próximos 15 dias</p>';
+        } else {
+            listProximas.innerHTML = proximas.map(e => {
+                const dp = new Date(e.data_prevista + 'T00:00:00');
+                const diff = Math.round((dp - hoje) / 86400000);
+                return `
+                <div class="banner-item banner-item-proxima">
+                    <span class="banner-item-obra">${e.nomenclatura}</span>
+                    <span class="banner-item-etapa">${e.nome_etapa}</span>
+                    <span class="banner-item-data">${diff === 0 ? 'Hoje' : diff + 'd'}</span>
+                </div>`;
+            }).join('');
+        }
+    }
+
+    // ── Calendar ───────────────────────────────────────────────────
+    const calendarEl = document.getElementById('overview-calendar');
+    if (calendarEl && window.FullCalendar) {
+        const eventos = entregas.map(e => ({
+            id: e.id,
+            title: `${e.nomenclatura} – ${e.nome_etapa}`,
+            start: e.data_prevista,
+            allDay: true,
+            backgroundColor: e.kanban_status === 'atrasada' ? '#ef4444' :
+                e.kanban_status === 'parcial' ? '#f59e0b' :
+                    e.kanban_status === 'concluida' ? '#22c55e' : '#3b82f6',
+            borderColor: 'transparent',
+            textColor: '#fff',
+        }));
+
+        const overviewCal = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth',
+            locale: 'pt-br',
+            height: 'auto',
+            weekends: true,
+            headerToolbar: { left: 'prev', center: 'title', right: 'next' },
+            events: eventos,
+        });
+        overviewCal.render();
+    }
+
+    // ── Dashboard de produção ──────────────────────────────────────
+    const now = new Date();
+    const mes = now.getMonth() + 1;
+    const ano = now.getFullYear();
+    const mesesNomes = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+        'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+
+    const labelEl = document.getElementById('overview-mes-label');
+    if (labelEl) labelEl.textContent = `${mesesNomes[mes - 1]} ${ano}`;
+
+    const tbody = document.getElementById('overview-prod-tbody');
+    try {
+        const resProd = await fetch(`TelaGerencial/buscar_producao_funcao.php?mes=${mes}&ano=${ano}`);
+        const dadosProd = await resProd.json();
+
+        if (!dadosProd || dadosProd.error || !dadosProd.length) {
+            if (tbody) tbody.innerHTML = '<tr><td colspan="3" class="overview-loading">Sem dados para este mês</td></tr>';
+            return;
+        }
+
+        if (tbody) {
+            tbody.innerHTML = dadosProd.map(row => {
+                const qtd = parseInt(row.quantidade) || 0;
+                const recorde = parseInt(row.recorde_producao) || qtd;
+                const pct = recorde > 0 ? Math.min(100, Math.round((qtd / recorde) * 100)) : 0;
+                return `
+                    <tr>
+                        <td class="prod-funcao">${row.nome_funcao}</td>
+                        <td class="prod-qtd">
+                            <div class="prod-bar-wrap">
+                                <div class="prod-bar-track">
+                                    <div class="prod-bar" style="width:${pct}%"></div>
+                                </div>
+                                <span>${qtd}</span>
+                            </div>
+                        </td>
+                        <td class="prod-recorde">${recorde}</td>
+                    </tr>`;
+            }).join('');
+        }
+    } catch (e) {
+        console.error('carregarOverview: erro ao buscar produção', e);
+        if (tbody) tbody.innerHTML = '<tr><td colspan="3" class="overview-loading">Erro ao carregar dados</td></tr>';
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────
+//  Toggle entre Visão Geral, Kanban e Lista
+// ─────────────────────────────────────────────────────────────────
 (function () {
+    const btnOverview = document.getElementById('overviewBtn');
     const btnKanban = document.getElementById('kanbanBtn');
     const btnLista = document.getElementById('listBtn');
+    const overviewSec = document.getElementById('overview-section');
     const kanbanSec = document.getElementById('kanban-section');
     const listSec = document.getElementById('list-section');
+    const navRight = document.querySelector('main nav .nav-right');
 
     if (!btnKanban || !btnLista || !kanbanSec || !listSec) return;
 
+    const isGestorView = [1, 9, 21].includes(colaborador_id);
+
+    function showOverview() {
+        if (kanbanSec) kanbanSec.style.display = 'none';
+        if (listSec) listSec.style.display = 'none';
+        if (overviewSec) overviewSec.style.display = 'block';
+        if (btnOverview) btnOverview.classList.add('active');
+        btnKanban.classList.remove('active');
+        btnLista.classList.remove('active');
+        if (navRight) navRight.style.visibility = 'hidden';
+        carregarOverview();
+    }
+
     function showKanban() {
+        if (overviewSec) overviewSec.style.display = 'none';
         listSec.style.display = 'none';
         kanbanSec.style.display = 'flex';
         btnKanban.classList.add('active');
         btnLista.classList.remove('active');
+        if (btnOverview) btnOverview.classList.remove('active');
+        if (navRight) navRight.style.visibility = 'visible';
     }
 
     function showLista() {
+        if (overviewSec) overviewSec.style.display = 'none';
         kanbanSec.style.display = 'none';
         listSec.style.display = 'block';
         btnLista.classList.add('active');
         btnKanban.classList.remove('active');
+        if (btnOverview) btnOverview.classList.remove('active');
+        if (navRight) navRight.style.visibility = 'visible';
     }
 
+    // Mostrar botão e ativar overview por padrão para gestores
+    if (isGestorView && btnOverview) {
+        btnOverview.style.display = 'flex';
+        showOverview();
+    }
+
+    if (btnOverview) btnOverview.addEventListener('click', showOverview);
     btnKanban.addEventListener('click', showKanban);
     btnLista.addEventListener('click', showLista);
 })();

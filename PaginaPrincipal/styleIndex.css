@@ -42,7 +42,7 @@ main header {
 }
 
 /* Header layout for pages that place actions inside the header (e.g., Entregas/index.php) */
-.container > header {
+.container>header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -241,27 +241,15 @@ main .kanban .kanban-box {
 }
 
 /* Cada filtro com uma cor diferente */
-.list-section
-  .tabulator
-  .tabulator-col:nth-child(1)
-  .tabulator-header-filter
-  input {
+.list-section .tabulator .tabulator-col:nth-child(1) .tabulator-header-filter input {
   border-left: 4px solid var(--cor-secundaria);
 }
 
-.list-section
-  .tabulator
-  .tabulator-col:nth-child(2)
-  .tabulator-header-filter
-  input {
+.list-section .tabulator .tabulator-col:nth-child(2) .tabulator-header-filter input {
   border-left: 4px solid var(--cor-referencias);
 }
 
-.list-section
-  .tabulator
-  .tabulator-col:nth-child(3)
-  .tabulator-header-filter
-  select {
+.list-section .tabulator .tabulator-col:nth-child(3) .tabulator-header-filter select {
   border-left: 4px solid var(--cor-principal);
 }
 
@@ -390,6 +378,30 @@ main .kanban div .header .task-count {
   margin-bottom: 10px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   font-size: 0.75rem;
+  position: relative;
+}
+
+.kanban-card.arquivo-pendente {
+  border-left: 4px solid #ff9800;
+  background-color: #000;
+  color: #fff;
+}
+
+.kanban-card .pending-file-ribbon {
+  position: absolute;
+  left: -1px;
+  top: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #ff9800;
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 0 8px 8px 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  z-index: 2;
 }
 
 .kanban-card.tarefa-criada {
@@ -798,14 +810,10 @@ form#task-form button {
   width: 100%;
   height: 100%;
   display: grid;
-  grid-template-columns: minmax(var(--side-min), 1fr) var(--center-size) minmax(
-      var(--side-min),
-      1fr
-    );
-  grid-template-rows: minmax(var(--top-min), 1fr) var(--center-size) minmax(
-      var(--bottom-min),
-      1fr
-    );
+  grid-template-columns: minmax(var(--side-min), 1fr) var(--center-size) minmax(var(--side-min),
+      1fr);
+  grid-template-rows: minmax(var(--top-min), 1fr) var(--center-size) minmax(var(--bottom-min),
+      1fr);
   gap: var(--slot-gap);
 }
 
@@ -2445,10 +2453,8 @@ span.aprovadaComAjustes {
 }
 
 .perfil-colaborador .left #thumb-colab.avatar-initial[data-bg] {
-  background: attr(
-    data-bg color,
-    linear-gradient(135deg, #6ee7b7 0%, #60a5fa 100%)
-  );
+  background: attr(data-bg color,
+      linear-gradient(135deg, #6ee7b7 0%, #60a5fa 100%));
 }
 
 .perfil-colaborador .right {
@@ -2503,13 +2509,16 @@ span.aprovadaComAjustes {
     padding: 6px 8px;
     border-radius: 10px;
   }
+
   .perfil-colaborador .left img#thumb-colab {
     width: 36px;
     height: 36px;
   }
+
   .perfil-colaborador #nome-colab {
     font-size: 13px;
   }
+
   .perfil-colaborador #funcao-colab {
     display: none;
   }
@@ -2564,7 +2573,7 @@ span.aprovadaComAjustes {
 }
 
 /* when sidebar has notifications, blur all children except the notifications container */
-#sidebar-content.sidebar-blurred-mode > *:not(.notificacoes-container) {
+#sidebar-content.sidebar-blurred-mode>*:not(.notificacoes-container) {
   filter: blur(3px);
   pointer-events: none;
   user-select: none;
@@ -2572,7 +2581,7 @@ span.aprovadaComAjustes {
 }
 
 /* ================= Seções internas ================= */
-.sidebar-content > div {
+.sidebar-content>div {
   margin-bottom: 25px;
 }
 
@@ -3252,5 +3261,291 @@ img.thumb {
 @media (max-width: 480px) {
   #contrato-modal .contrato-box {
     padding: 16px 18px;
+  }
+}
+
+/* =========================================
+   Visão Geral (Overview) — inicio.php
+   ========================================= */
+
+.overview-section {
+  padding: 20px;
+}
+
+.overview-grid {
+  display: grid;
+  grid-template-columns: 1fr 38%;
+  gap: 20px;
+  align-items: start;
+}
+
+/* ── Left column ── */
+.overview-left {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Banner */
+.overview-banner {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.banner-col {
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  min-height: 140px;
+  max-height: 240px;
+}
+
+.banner-col-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  font-weight: 700;
+  font-size: 0.82rem;
+}
+
+.banner-atrasadas .banner-col-header {
+  background: #ef4444;
+  color: #fff;
+}
+
+.banner-proximas .banner-col-header {
+  background: #3b82f6;
+  color: #fff;
+}
+
+.banner-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.banner-empty {
+  color: #9ca3af;
+  font-size: 0.8rem;
+  text-align: center;
+  margin: auto;
+  padding: 12px 0;
+}
+
+.banner-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 0.79rem;
+  background: #f9fafb;
+  border-left: 3px solid transparent;
+}
+
+.banner-item-atrasada {
+  border-left-color: #ef4444;
+}
+
+.banner-item-proxima {
+  border-left-color: #3b82f6;
+}
+
+.banner-item-obra {
+  font-weight: 600;
+  color: #111827;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.banner-item-etapa {
+  color: #6b7280;
+  font-size: 0.74rem;
+  flex-shrink: 0;
+}
+
+.banner-item-data {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #374151;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* Calendar */
+.overview-calendar-wrap {
+  background: #fff;
+  border-radius: 10px;
+  padding: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* ── Right column (dashboard) ── */
+.overview-right {
+  background: #fff;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  position: sticky;
+  top: 20px;
+}
+
+.overview-dashboard-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.overview-dashboard-header i {
+  font-size: 1.3rem;
+  color: #3b82f6;
+}
+
+.overview-dashboard-header h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.overview-prod-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.overview-prod-table thead th {
+  text-align: left;
+  padding: 8px 10px;
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6b7280;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.overview-prod-table tbody tr {
+  border-bottom: 1px solid #f3f4f6;
+  transition: background 0.15s;
+}
+
+.overview-prod-table tbody tr:hover {
+  background: #f9fafb;
+}
+
+.overview-prod-table td {
+  padding: 9px 10px;
+  vertical-align: middle;
+}
+
+.prod-funcao {
+  font-weight: 600;
+  color: #1f2937;
+  white-space: nowrap;
+}
+
+.prod-qtd {
+  width: 55%;
+}
+
+.prod-bar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.prod-bar-track {
+  flex: 1;
+  height: 8px;
+  background: #e5e7eb;
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.prod-bar {
+  height: 8px;
+  background: linear-gradient(90deg, #3b82f6, #2563eb);
+  border-radius: 99px;
+  transition: width 0.6s ease;
+}
+
+.prod-bar-wrap>span {
+  font-weight: 700;
+  color: #111827;
+  min-width: 26px;
+  text-align: right;
+}
+
+.prod-recorde {
+  text-align: right;
+  color: #9ca3af;
+  font-size: 0.8rem;
+}
+
+.overview-loading {
+  text-align: center;
+  color: #9ca3af;
+  padding: 20px !important;
+  font-style: italic;
+}
+
+/* ── Responsive ── */
+
+/* Tablet: shrink left column */
+@media (max-width: 1100px) {
+  .overview-grid {
+    grid-template-columns: 44% 1fr;
+  }
+}
+
+/* Small tablet: 50/50 */
+@media (max-width: 900px) {
+  .overview-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .overview-right {
+    position: static;
+  }
+}
+
+/* Mobile: single column — Banner → Calendário → Dashboard */
+@media (max-width: 680px) {
+  .overview-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* overview-left (contains banner + calendar) renders before overview-right (dashboard) by default DOM order,
+     which gives exactly: banner → calendar → dashboard — no order reordering needed */
+
+  .overview-banner {
+    grid-template-columns: 1fr;
+  }
+
+  .banner-col {
+    max-height: 220px;
+  }
+
+  .overview-right {
+    position: static;
+  }
+}
+
+@media (max-width: 480px) {
+  .overview-section {
+    padding: 12px 8px;
   }
 }

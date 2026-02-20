@@ -170,6 +170,7 @@ $conn->close();
                 </div>
                 <nav>
                     <div class="nav-left">
+                        <button id="overviewBtn" style="display:none;"><i class="ri-dashboard-line"></i><span>Visão Geral</span></button>
                         <button id="kanbanBtn" class="active"><i class="ri-kanban-view"></i><span>Kanban</span></button>
                         <button id="listBtn"><i class="ri-list-check"></i><span>Lista</span></button>
                         <!-- <button id="activities"><i class="fa-solid fa-chart-line"><span></i>Activity</span></button> -->
@@ -270,6 +271,62 @@ $conn->close();
             <div id="list-section" class="list-section" style="display:none; padding: 20px;">
                 <div id="tarefas-table"></div>
             </div>
+
+            <!-- Visão Geral – restrito a colaboradores 1, 9, 21 -->
+            <div id="overview-section" class="overview-section" style="display:none;">
+                <div class="overview-grid">
+
+                    <!-- Coluna esquerda: banner + calendário -->
+                    <div class="overview-left">
+
+                        <div class="overview-banner">
+                            <div class="banner-col banner-atrasadas">
+                                <div class="banner-col-header">
+                                    <i class="ri-alarm-warning-line"></i>
+                                    <span>Entregas Atrasadas</span>
+                                </div>
+                                <div id="banner-atrasadas-list" class="banner-list"></div>
+                            </div>
+                            <div class="banner-col banner-proximas">
+                                <div class="banner-col-header">
+                                    <i class="ri-calendar-event-line"></i>
+                                    <span>Próximas (15 dias)</span>
+                                </div>
+                                <div id="banner-proximas-list" class="banner-list"></div>
+                            </div>
+                        </div>
+
+                        <div class="overview-calendar-wrap">
+                            <div id="overview-calendar"></div>
+                        </div>
+
+                    </div>
+
+                    <!-- Coluna direita: dashboard de produção -->
+                    <div class="overview-right">
+                        <div class="overview-dashboard-header">
+                            <i class="ri-bar-chart-grouped-line"></i>
+                            <h3>Produção — <span id="overview-mes-label"></span></h3>
+                        </div>
+                        <table class="overview-prod-table">
+                            <thead>
+                                <tr>
+                                    <th>Função</th>
+                                    <th>Quantidade</th>
+                                    <th>Recorde</th>
+                                </tr>
+                            </thead>
+                            <tbody id="overview-prod-tbody">
+                                <tr>
+                                    <td colspan="3" class="overview-loading">Carregando...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                </div>
+            </div>
+
         </main>
     </div>
 

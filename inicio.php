@@ -149,28 +149,31 @@ $conn->close();
                     <a class="perfil-colaborador" href="infos.php" aria-label="Abrir perfil">
                         <div class="left">
                             <?php
-                            $foto_colab = trim((string)($_SESSION['foto_colaborador'] ?? ''));
-                            $nome_colab = trim((string)($_SESSION['nome_usuario'] ?? ''));
+                            $foto_colab = trim((string) ($_SESSION['foto_colaborador'] ?? ''));
+                            $nome_colab = trim((string) ($_SESSION['nome_usuario'] ?? ''));
                             $initial = '';
                             if ($nome_colab !== '') {
                                 $initial = mb_strtoupper(mb_substr($nome_colab, 0, 1, 'UTF-8'));
                             }
                             if ($foto_colab !== ''): ?>
-                                <img src="<?php echo htmlspecialchars($foto_colab); ?>" alt="<?php echo htmlspecialchars($nome_colab); ?>" id="thumb-colab">
+                                <img src="<?php echo htmlspecialchars($foto_colab); ?>"
+                                    alt="<?php echo htmlspecialchars($nome_colab); ?>" id="thumb-colab">
                             <?php else: ?>
                                 <div id="thumb-colab" class="avatar-initial"><?php echo htmlspecialchars($initial); ?></div>
                             <?php endif; ?>
                         </div>
                         <div class="right">
                             <h4 id="nome-colab"><?php echo htmlspecialchars($nome_colab); ?></h4>
-                            <span id="funcao-colab"><?php echo htmlspecialchars($_SESSION['cargo_colaborador'] ?? ''); ?></span>
+                            <span
+                                id="funcao-colab"><?php echo htmlspecialchars($_SESSION['cargo_colaborador'] ?? ''); ?></span>
                         </div>
                     </a>
                     <img id="gif" src="gif/assinatura_preto.gif" alt="Assinatura" style="width: 200px;">
                 </div>
                 <nav>
                     <div class="nav-left">
-                        <button id="overviewBtn" style="display:none;"><i class="ri-dashboard-line"></i><span>Visão Geral</span></button>
+                        <button id="overviewBtn" style="display:none;"><i class="ri-dashboard-line"></i><span>Visão
+                                Geral</span></button>
                         <button id="kanbanBtn" class="active"><i class="ri-kanban-view"></i><span>Kanban</span></button>
                         <button id="listBtn"><i class="ri-list-check"></i><span>Lista</span></button>
                         <!-- <button id="activities"><i class="fa-solid fa-chart-line"><span></i>Activity</span></button> -->
@@ -555,6 +558,69 @@ $conn->close();
         </div>
     </div>
 
+    <!-- Modal para listar imagens da obra (abre ao clicar em obra no calendário / banners) -->
+    <div id="obraImagesModal" class="modal" style="display:none;">
+        <div class="modal-content obra-modal-content">
+            <!-- Header -->
+            <div class="obra-modal-header">
+                <h3 id="obraImagesTitle" style="margin:0;">Imagens da Obra</h3>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <button id="obraImagesExpand" title="Abrir obra (expandir)"
+                        style="background:none;border:0;cursor:pointer;font-size:18px;">
+                        <i class="fas fa-external-link-alt"></i>
+                    </button>
+                    <button id="obraImagesClose" title="Fechar"
+                        style="background:none;border:0;cursor:pointer;font-size:18px;margin-left:6px;">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filtros -->
+            <div class="obra-modal-filters">
+                <select id="modal_tipo_imagem">
+                    <option value="0">Tipo imagem</option>
+                </select>
+                <select id="modal_antecipada">
+                    <option value="">Antecipada</option>
+                    <option value="1">Sim</option>
+                    <option value="0">Não</option>
+                </select>
+                <select id="modal_status_etapa">
+                    <option value="">Etapa</option>
+                </select>
+                <select id="modal_status_imagem">
+                    <option value="">Status</option>
+                </select>
+                <button id="modalClearFilters" title="Limpar filtros"
+                    style="padding:4px 10px;font-size:12px;cursor:pointer;">Limpar</button>
+                <span id="modal-imagens-totais" style="font-size:12px; color:#666; margin-left:auto;"></span>
+            </div>
+
+            <!-- Tabela -->
+            <div id="obraImagesTableWrap" class="obra-modal-table-wrap">
+                <table id="modal-tabela-obra">
+                    <thead>
+                        <tr>
+                            <th>Etapa</th>
+                            <th>Imagem</th>
+                            <th>Status</th>
+                            <th style="max-width:15px;">Prazo</th>
+                            <th data-funcao="caderno" class="modal-func-header">Caderno</th>
+                            <th data-funcao="filtro" class="modal-func-header">Filtro de assets</th>
+                            <th data-funcao="modelagem" class="modal-func-header">Modelagem</th>
+                            <th data-funcao="composicao" class="modal-func-header">Composição</th>
+                            <th data-funcao="finalizacao" class="modal-func-header">Finalização</th>
+                            <th data-funcao="pos_producao" class="modal-func-header">Pós-Produção</th>
+                            <th data-funcao="alteracao" class="modal-func-header">Alteração</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     <!-- Popover unificado -->
     <div id="popover-tarefas" class="popover oculto">
         <!-- Tarefas -->
@@ -735,7 +801,7 @@ $conn->close();
         }
 
         ['click', 'touchstart', 'keydown'].forEach(eventType => {
-            window.addEventListener(eventType, function(event) {
+            window.addEventListener(eventType, function (event) {
                 // Fecha os modais ao clicar fora ou pressionar Esc
                 if (eventType === 'keydown' && event.key !== 'Escape') return;
 

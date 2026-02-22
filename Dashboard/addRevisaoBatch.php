@@ -95,6 +95,8 @@ $mapaStatus = [
 
 $conn->begin_transaction();
 
+$statusPorImagem = []; // collect novo_status per imagem_id
+
 try {
     $stmtObra = $conn->prepare('SELECT obra_id, imagem_nome FROM imagens_cliente_obra WHERE idimagens_cliente_obra = ?');
     $stmtCheckFuncao = $conn->prepare('SELECT idfuncao_imagem FROM funcao_imagem WHERE imagem_id = ? AND funcao_id = 6');
@@ -143,6 +145,8 @@ try {
 
         $novoStatus = proximoStatusPorContagem($totalAlteracoes);
 
+        $statusPorImagem[] = ['imagem_id' => $imagemId, 'novo_status' => $novoStatus];
+
         $stmtUpdateImagem->bind_param('isi', $novoStatus, $novoPrazo, $imagemId);
         $stmtUpdateImagem->execute();
 
@@ -166,7 +170,7 @@ try {
     $stmtInsertAlt->close();
 
     $conn->commit();
-    echo json_encode(['status' => 'sucesso', 'message' => 'Revisões adicionadas com sucesso.']);
+    echo json_encode(['status' => 'sucesso', 'message' => 'Revisões adicionadas com sucesso.', 'novo_prazo' => $novoPrazo, 'status_por_imagem' => $statusPorImagem]);
 } catch (Throwable $e) {
     $conn->rollback();
     echo json_encode(['status' => 'erro', 'message' => $e->getMessage()]);

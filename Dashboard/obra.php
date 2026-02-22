@@ -1242,46 +1242,24 @@ $conn->close();
                         </div>
                     </div>
                 </div>
-                <div class="funcao status_select" id="status_funcao" style="margin-bottom: 15px;width: max-content;">
-                    <p id="status">Status</p>
-                    <select name="status_id" id="opcao_status">
-                        <?php foreach ($status_imagens as $status): ?>
-                            <option value="<?= htmlspecialchars($status['idstatus']); ?>">
-                                <?= htmlspecialchars($status['nome_status']); ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                    <select name="status_hold" id="status_hold" multiple style="width: 200px;">
-                        <option value="Paisagismo">Paisagismo</option>
-                        <option value="Mood">Mood</option>
-                        <option value="Interiores">Interiores</option>
-                        <option value="Luminotécnico">Luminotécnico</option>
-                        <option value="Arquitetônico">Arquitetônico</option>
-                        <option value="Definição de unidade">Definição de unidade</option>
-                        <option value="Aguardando aprovações">Aguardando aprovações</option>
-                        <option value="Aguardando arquivos">Aguardando arquivos</option>
-                    </select>
-                </div>
-                <div class="funcao render_add" id="status_funcao" style="width: 200px; margin-bottom: 15px;">
-                    <div class="render">
-                        <p id="render_alta">Render</p>
-                        <button id="addRender" class="buttons-form-add"
-                            style=" padding: 3px 10px; font-size: 13px; background-color: steelblue;">Adicionar
-                            render</button>
-                        <label class="switch">
-                            <input type="checkbox" id="notificar">
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-                </div>
-                <div class="funcao revisao_add" id="status_funcao" style="width: 200px; margin-bottom: 15px;">
-                    <div class="revisao">
-                        <p id="revisao">Revisao</p>
-                        <button id="addRevisao" class="buttons-form-add"
-                            style=" padding: 3px 10px; font-size: 13px; background-color: steelgreen;">Adicionar
-                            revisão</button>
-                    </div>
-                </div>
+                <!-- Etapa / Render / Revisão movidos para #modal_status -->
+                <select name="status_id" id="opcao_status" style="display:none;">
+                    <?php foreach ($status_imagens as $status): ?>
+                        <option value="<?= htmlspecialchars($status['idstatus']); ?>">
+                            <?= htmlspecialchars($status['nome_status']); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <select name="status_hold" id="status_hold" multiple style="display:none;">
+                    <option value="Paisagismo">Paisagismo</option>
+                    <option value="Mood">Mood</option>
+                    <option value="Interiores">Interiores</option>
+                    <option value="Luminotécnico">Luminotécnico</option>
+                    <option value="Arquitetônico">Arquitetônico</option>
+                    <option value="Definição de unidade">Definição de unidade</option>
+                    <option value="Aguardando aprovações">Aguardando aprovações</option>
+                    <option value="Aguardando arquivos">Aguardando arquivos</option>
+                </select>
                 <div class="buttons">
                     <button type="button" id="btnAnterior" style="background: white; color: black"><i
                             class="fa-solid fa-angle-left"></i></button>
@@ -1567,6 +1545,36 @@ $conn->close();
             </select>
             <button type="button" id="alterar_status"
                 onclick="alterarStatus(this.getAttribute('data-imagemid'))">✅</button>
+
+            <hr style="margin: 8px 0; border: none; border-top: 1px solid #ddd;">
+
+            <label for="opcao_status_ms" style="font-size: 14px;">Etapa</label>
+            <select id="opcao_status_ms" name="status_id_ms"
+                style="width: max-content; text-align: center; margin: auto;">
+                <?php foreach ($status_imagens as $status): ?>
+                    <option value="<?= htmlspecialchars($status['idstatus']); ?>">
+                        <?= htmlspecialchars($status['nome_status']); ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+            <button type="button" id="alterar_etapa_ms"
+                style="padding: 3px 10px; font-size: 13px; background-color: #2196F3; color: #fff; border: none; border-radius: 4px; cursor: pointer;">Salvar
+                etapa</button>
+
+            <hr style="margin: 8px 0; border: none; border-top: 1px solid #ddd;">
+
+            <div style="display: flex; flex-direction: column; gap: 6px; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <button type="button" id="addRenderMs" class="buttons-form-add"
+                        style="padding: 3px 10px; font-size: 13px; background-color: steelblue;">Render</button>
+                    <label class="switch" style="margin: 0;">
+                        <input type="checkbox" id="notificarMs">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <button type="button" id="addRevisaoMs" class="buttons-form-add"
+                    style="padding: 3px 10px; font-size: 13px; background-color: seagreen; color:#fff;">Revisão</button>
+            </div>
         </div>
     </div>
 
@@ -2183,7 +2191,7 @@ $conn->close();
 
     <script>
         // Project root for building root-relative URLs in scripts
-        (function() {
+        (function () {
             const path = String(window.location.pathname || '');
             const useFlow = path.includes('/flow/');
             window.PROJECT_ROOT = useFlow ? '/flow/ImproovWeb' : '/ImproovWeb';

@@ -155,7 +155,9 @@ if ($data && isset($data['imagem_id']) && !empty($data['data_recebimento'])) {
 
         echo json_encode([
             'status' => 'sucesso',
-            'message' => "Imagem ID '$imagem_id' registrada com status '$novo_status'. Descrição: '$descricao'"
+            'message' => "Imagem ID '$imagem_id' registrada com status '$novo_status'. Descrição: '$descricao'",
+            'novo_status' => $novo_status,
+            'novo_prazo' => $novoPrazo
         ]);
     } catch (Exception $e) {
         $conn->rollback();

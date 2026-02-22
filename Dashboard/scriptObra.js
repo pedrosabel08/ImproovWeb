@@ -1141,6 +1141,11 @@ function atualizarModal(idImagem) {
       if (response.status_id !== null) {
         statusSelect.value = response.status_id;
       }
+      // Sync modal_status etapa select
+      const statusMs = document.getElementById("opcao_status_ms");
+      if (statusMs && response.status_id !== null) {
+        statusMs.value = response.status_id;
+      }
 
       // Carrega informações adicionais da imagem na coluna direita
       try {
@@ -7467,7 +7472,7 @@ document.getElementById("copyColumn").addEventListener("click", function () {
 
 document
   .getElementById("addRender")
-  .addEventListener("click", function (event) {
+  ?.addEventListener("click", function (event) {
     event.preventDefault();
 
     var linhaSelecionada = document.querySelector(".linha-tabela.selecionada");
@@ -7500,7 +7505,7 @@ document
       return;
     }
 
-    const notificar = document.getElementById("notificar").checked;
+    const notificar = document.getElementById("notificar")?.checked || false;
 
     const xhr = new XMLHttpRequest();
     xhr.open("POST", "../addRender.php", true);
@@ -7689,7 +7694,7 @@ formPosProducao.addEventListener("submit", function (e) {
 
 document
   .getElementById("addRevisao")
-  .addEventListener("click", function (event) {
+  ?.addEventListener("click", function (event) {
     event.preventDefault();
 
     const imagemId = document.getElementById("imagem_id").value;
@@ -7737,6 +7742,16 @@ document
               text: "Sua solicitação de alteração foi enviada com sucesso.",
               confirmButtonText: "OK",
             });
+
+            // Auto-insert into Entregas
+            if (response.novo_status && response.novo_prazo) {
+              inserirImagemNaEntrega(
+                obraId,
+                response.novo_status,
+                response.novo_prazo,
+                [imagemId],
+              );
+            }
           } else {
             Swal.fire({
               icon: "error",
@@ -9201,7 +9216,7 @@ document
       }),
     })
       .then((res) => res.json())
-      .then((res) => {
+      .then(async (res) => {
         if (res.status === "sucesso") {
           Toastify({
             text: "Revisões adicionadas com sucesso!",
@@ -9210,6 +9225,25 @@ document
             position: "right",
             backgroundColor: "linear-gradient(to right, #00b09b, #96c93d)",
           }).showToast();
+
+          // Auto-insert into Entregas — group images by novo_status
+          if (res.status_por_imagem && res.novo_prazo) {
+            const currentObraId = localStorage.getItem("obraId");
+            const grouped = {};
+            res.status_por_imagem.forEach((item) => {
+              const key = item.novo_status;
+              if (!grouped[key]) grouped[key] = [];
+              grouped[key].push(item.imagem_id);
+            });
+            for (const [statusId, imgIds] of Object.entries(grouped)) {
+              await inserirImagemNaEntrega(
+                currentObraId,
+                Number(statusId),
+                res.novo_prazo,
+                imgIds,
+              );
+            }
+          }
 
           document.getElementById("acoesModal").style.display = "none";
           infosObra(obraId);
@@ -9234,6 +9268,411 @@ document
           backgroundColor: "linear-gradient(to right, #b00000ff, #e97171ff)",
         }).showToast();
       });
+  });
+
+// ===== ENTREGAS AUTO-INSERT HELPER =====
+/**
+ * After a revision is added, auto-inserts the image(s) into the Entregas table.
+ * - If an entrega with the same status_id already exists for this obra: ask the user
+ *   whether to add to the existing one or create a new one.
+ * - If none exists: creates automatically and shows an alert.
+ *
+ * @param {string|number} obraId
+ * @param {number} novoStatusId - The new status_id assigned to the image(s)
+ * @param {string} novoPrazo - The computed deadline (YYYY-MM-DD)
+ * @param {number[]} imagemIds - Array of imagem IDs to add
+ */
+async function inserirImagemNaEntrega(
+  obraId,
+  novoStatusId,
+  novoPrazo,
+  imagemIds,
+) {
+  if (!obraId || !novoStatusId || !imagemIds || imagemIds.length === 0) return;
+
+  try {
+    // 1. Fetch existing entregas for this obra
+    const resEntregas = await fetch(
+      `../Entregas/listar_entregas.php?obra_id=${obraId}`,
+    );
+    const entregas = await resEntregas.json();
+
+    // 2. Find entregas with matching status_id that are not fully concluded
+    const matching = entregas.filter(
+      (e) =>
+        e.status_id === Number(novoStatusId) && e.kanban_status !== "concluida",
+    );
+
+    if (matching.length > 0) {
+      // Ask the user: add to existing or create new?
+      const entregaExistente = matching[0];
+      const result = await Swal.fire({
+        icon: "question",
+        title: "Entrega existente encontrada",
+        html: `Já existe uma entrega para a etapa <b>${entregaExistente.nome_etapa}</b> com ${entregaExistente.total_itens} imagens.<br>Deseja adicionar a essa entrega ou criar uma nova?`,
+        showCancelButton: true,
+        showDenyButton: true,
+        confirmButtonText: "Adicionar à existente",
+        denyButtonText: "Criar nova",
+        cancelButtonText: "Não adicionar",
+        confirmButtonColor: "#2196F3",
+        denyButtonColor: "#4caf50",
+      });
+
+      if (result.isConfirmed) {
+        // Add to existing entrega
+        const addRes = await fetch("../Entregas/add_imagem_entrega_id.php", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            entrega_id: entregaExistente.id,
+            imagem_ids: imagemIds.map(Number),
+          }),
+        });
+        const addData = await addRes.json();
+        if (addData.success) {
+          Toastify({
+            text: `${addData.added_count} imagem(ns) adicionada(s) à entrega existente.`,
+            duration: 3000,
+            gravity: "top",
+            position: "right",
+            backgroundColor: "#4caf50",
+          }).showToast();
+        } else {
+          Toastify({
+            text: "Erro ao adicionar à entrega: " + (addData.error || ""),
+            duration: 3000,
+            gravity: "top",
+            position: "right",
+            backgroundColor: "#f44336",
+          }).showToast();
+        }
+      } else if (result.isDenied) {
+        // Create new entrega
+        await criarNovaEntrega(obraId, novoStatusId, novoPrazo, imagemIds);
+      }
+      // If cancelled, do nothing
+    } else {
+      // No matching entrega — create automatically
+      await criarNovaEntrega(obraId, novoStatusId, novoPrazo, imagemIds);
+      Swal.fire({
+        icon: "info",
+        title: "Entrega criada",
+        text: "Uma nova entrega foi criada automaticamente para esta revisão.",
+        timer: 3000,
+        showConfirmButton: true,
+        confirmButtonText: "OK",
+      });
+    }
+  } catch (err) {
+    console.error("Erro ao inserir imagem na entrega:", err);
+    Toastify({
+      text: "Erro ao inserir na entrega.",
+      duration: 3000,
+      gravity: "top",
+      position: "right",
+      backgroundColor: "#f44336",
+    }).showToast();
+  }
+}
+
+async function criarNovaEntrega(obraId, statusId, prazo, imagemIds) {
+  const formData = new FormData();
+  formData.append("obra_id", obraId);
+  formData.append("status_id", statusId);
+  formData.append("prazo", prazo);
+  formData.append("observacoes", "Criada automaticamente via revisão");
+  imagemIds.forEach((id) => formData.append("imagem_ids[]", id));
+
+  const res = await fetch("../Entregas/save_entrega.php", {
+    method: "POST",
+    body: formData,
+  });
+  const data = await res.json();
+  if (!data.success) {
+    Toastify({
+      text: "Erro ao criar entrega: " + (data.msg || ""),
+      duration: 3000,
+      gravity: "top",
+      position: "right",
+      backgroundColor: "#f44336",
+    }).showToast();
+  }
+  return data;
+}
+
+// ===== MODAL_STATUS: Etapa / Render / Revisão =====
+
+// Keep opcao_status (hidden) in sync with opcao_status_ms
+document
+  .getElementById("opcao_status_ms")
+  ?.addEventListener("change", function () {
+    document.getElementById("opcao_status").value = this.value;
+  });
+
+// Alterar Etapa from modal_status
+document
+  .getElementById("alterar_etapa_ms")
+  ?.addEventListener("click", function () {
+    const imagemId = document
+      .getElementById("alterar_status")
+      ?.getAttribute("data-imagemid");
+    if (!imagemId) {
+      Toastify({
+        text: "Nenhuma imagem selecionada",
+        duration: 3000,
+        gravity: "top",
+        position: "right",
+        backgroundColor: "red",
+      }).showToast();
+      return;
+    }
+    const novaEtapa = document.getElementById("opcao_status_ms").value;
+    if (!novaEtapa) return;
+
+    // Sync hidden opcao_status
+    document.getElementById("opcao_status").value = novaEtapa;
+
+    const formData = new FormData();
+    formData.append("imagem_id", imagemId);
+    formData.append("status_id", novaEtapa);
+
+    fetch("alterarEtapa.php", {
+      method: "POST",
+      body: formData,
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success) {
+          Toastify({
+            text: "Etapa alterada com sucesso!",
+            duration: 3000,
+            gravity: "top",
+            position: "right",
+            backgroundColor: "#4caf50",
+          }).showToast();
+          infosObra(obraId);
+        } else {
+          Toastify({
+            text: data.error || "Erro ao alterar etapa.",
+            duration: 3000,
+            gravity: "top",
+            position: "right",
+            backgroundColor: "#f44336",
+          }).showToast();
+        }
+      })
+      .catch((err) => console.error("Erro ao alterar etapa:", err));
+  });
+
+// Render from modal_status
+document
+  .getElementById("addRenderMs")
+  ?.addEventListener("click", function (event) {
+    event.preventDefault();
+
+    const imagemId = document
+      .getElementById("alterar_status")
+      ?.getAttribute("data-imagemid");
+    if (!imagemId) {
+      Toastify({
+        text: "Nenhuma imagem selecionada",
+        duration: 3000,
+        gravity: "top",
+        position: "right",
+        backgroundColor: "red",
+      }).showToast();
+      return;
+    }
+
+    const statusId = document.getElementById("opcao_status_ms").value;
+    const statusPermitidos = ["2", "3", "4", "5", "6", "14", "15"];
+    if (!statusPermitidos.includes(statusId)) {
+      Swal.fire({
+        icon: "error",
+        title: "Status inválido",
+        text: "Este status não é permitido. Selecione um status válido.",
+      });
+      return;
+    }
+
+    const notificar = document.getElementById("notificarMs").checked;
+
+    // Sync hidden opcao_status
+    document.getElementById("opcao_status").value = statusId;
+
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", "../addRender.php", true);
+    xhr.setRequestHeader("Content-Type", "application/json");
+
+    xhr.onload = function () {
+      if (xhr.status === 200) {
+        const response = JSON.parse(xhr.responseText);
+        if (response.status === "erro") {
+          Swal.fire({
+            icon: "error",
+            title: "Erro ao adicionar render",
+            text: response.message,
+          }).then(() => {
+            if (response.message.includes("Sessão expirada"))
+              window.location.href = "../index.html";
+          });
+          return;
+        }
+        if (response.status === "sucesso") {
+          if (!notificar) {
+            Swal.fire({
+              icon: "success",
+              title: "Render adicionado!",
+              text: "Agora você pode preencher os dados da pós-produção.",
+              confirmButtonText: "Continuar",
+            }).then(() => {
+              const modal = document.getElementById("modal_pos");
+              modal.classList.remove("hidden");
+              const obra = localStorage.getItem("obraId");
+              if (obra) document.getElementById("opcao_obra_pos").value = obra;
+              document.getElementById("imagem_id_pos").value = imagemId;
+              document.getElementById("opcao_status_pos").value = statusId;
+              document.getElementById("render_id_pos").value =
+                response.idrender;
+              // Hide modal_status
+              const modalStatus = document.getElementById("modal_status");
+              modalStatus.style.display = "none";
+              statusModalAnchor = null;
+            });
+          } else {
+            Swal.fire({
+              icon: "success",
+              title: "Notificação enviada!",
+              text:
+                response.mensagem_notificacao ||
+                "Notificação enviada com sucesso.",
+              confirmButtonText: "OK",
+            });
+          }
+        }
+      }
+    };
+
+    const payload = {
+      imagem_id: imagemId,
+      status_id: statusId,
+      notificar: notificar ? "1" : "0",
+    };
+
+    // Try to resolve finalizador from the loaded modal data
+    const linhaSel = document.querySelector(".linha-tabela.selecionada");
+    if (linhaSel) {
+      const alteracaoEl = document.getElementById("opcao_alteracao");
+      const finalEl = document.getElementById("opcao_final");
+      const opcaoAlt = alteracaoEl ? alteracaoEl.value : "";
+      payload.finalizador =
+        opcaoAlt.trim() !== "" ? opcaoAlt : finalEl ? finalEl.value : "";
+      if (notificar) {
+        const altPEl = document.getElementById("alteracao");
+        const finPEl = document.getElementById("final");
+        const dataIdFuncao =
+          (altPEl ? altPEl.getAttribute("data-id-funcao") : null) ||
+          (finPEl ? finPEl.getAttribute("data-id-funcao") : null);
+        if (dataIdFuncao) payload.data_id_funcao = dataIdFuncao;
+      }
+    }
+
+    xhr.send(JSON.stringify(payload));
+  });
+
+// Revisão from modal_status
+document
+  .getElementById("addRevisaoMs")
+  ?.addEventListener("click", async function (event) {
+    event.preventDefault();
+
+    const imagemId = document
+      .getElementById("alterar_status")
+      ?.getAttribute("data-imagemid");
+    if (!imagemId) {
+      Toastify({
+        text: "Nenhuma imagem selecionada",
+        duration: 3000,
+        gravity: "top",
+        position: "right",
+        backgroundColor: "red",
+      }).showToast();
+      return;
+    }
+
+    const currentObraId = localStorage.getItem("obraId");
+    const nomenclatura =
+      document.getElementById("nomenclatura")?.textContent || "";
+
+    // Get default colaborador from the loaded modal if available
+    const opcaoAlteracao = document.getElementById("opcao_alteracao");
+    const defaultColab = opcaoAlteracao ? opcaoAlteracao.value : "";
+
+    const dadosModal = await solicitarDadosRevisaoModal(defaultColab);
+    if (!dadosModal) return;
+
+    try {
+      const res = await fetch("addRevisao.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          imagem_id: imagemId,
+          colaborador_id: dadosModal.colaborador_id,
+          obra_id: currentObraId,
+          status_id: document.getElementById("opcao_status_ms").value,
+          nomenclatura: nomenclatura,
+          data_recebimento: dadosModal.data_recebimento,
+        }),
+      });
+      const response = await res.json();
+
+      if (response.status === "erro") {
+        Swal.fire({
+          icon: "error",
+          title: "Erro ao adicionar revisão",
+          text: response.message,
+        }).then(() => {
+          if ((response.message || "").includes("Sessão expirada"))
+            window.location.href = "../index.html";
+        });
+        return;
+      }
+
+      if (response.status === "sucesso") {
+        Swal.fire({
+          icon: "success",
+          title: "Alteração enviada!",
+          text: "Sua solicitação de alteração foi enviada com sucesso.",
+          confirmButtonText: "OK",
+        });
+
+        // Auto-insert into Entregas
+        if (response.novo_status && response.novo_prazo) {
+          await inserirImagemNaEntrega(
+            currentObraId,
+            response.novo_status,
+            response.novo_prazo,
+            [imagemId],
+          );
+        }
+
+        // Sync opcao_status and modal_status select
+        if (response.novo_status) {
+          document.getElementById("opcao_status").value = response.novo_status;
+          document.getElementById("opcao_status_ms").value =
+            response.novo_status;
+        }
+
+        infosObra(obraId);
+      }
+    } catch (err) {
+      Swal.fire({
+        icon: "error",
+        title: "Erro ao enviar",
+        text: "Falha na comunicação com o servidor.",
+      });
+    }
   });
 
 let pdfDoc = null,

@@ -12,6 +12,7 @@ if ($obra_id !== null) {
 $sql = "SELECT 
     e.id,
     e.obra_id,
+    e.status_id,
     e.data_prevista,
     e.data_conclusao,
     e.status,
@@ -68,6 +69,7 @@ while ($row = $res->fetch_assoc()) {
         'obra_id' => $row['obra_id'],
         'data_prevista' => $row['data_prevista'],
         'status' => $row['status'],
+        'status_id' => intval($row['status_id'] ?? 0),
         'observacoes' => $row['observacoes'],
         'nome_etapa' => $row['nome_etapa'],
         'nomenclatura' => $row['nomenclatura'],

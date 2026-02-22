@@ -2817,7 +2817,7 @@ ul.file-list {
 }
 
 #modal_status .modal-content {
-    width: 120px;
+    width: 200px;
     max-height: 80%;
     overflow-y: auto;
     background-color: #fff;

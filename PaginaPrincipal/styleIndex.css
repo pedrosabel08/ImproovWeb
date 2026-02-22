@@ -22,9 +22,49 @@ body {
 }
 
 .container {
-  min-height: 100vh;
+  height: 100vh;
   width: 100%;
   grid-column: 2;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Layout helpers to prevent page vertical scroll
+   - make main a column flex container so header stays fixed height
+   - allow the page "views" (kanban, list, overview) to scroll internally
+   - `min-height: 0` on flex children avoids overflow issues in Firefox
+*/
+.container > main {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.container > main > header {
+  flex: 0 0 auto;
+}
+
+.container > main > .kanban,
+.container > main > #list-section,
+.container > main > #overview-section {
+  flex: 1 1 auto;
+  overflow: auto;
+  min-height: 0;
+}
+
+/* Prevent kanban columns from using viewport-based max-heights which
+   caused the whole page to grow and scroll. Let internal column content
+   scroll instead. */
+main .kanban .kanban-box {
+  max-height: none;
+  height: auto;
+}
+
+main .kanban .kanban-box .content {
+  max-height: none;
+  min-height: 0;
 }
 
 .hidden {
@@ -42,7 +82,7 @@ main header {
 }
 
 /* Header layout for pages that place actions inside the header (e.g., Entregas/index.php) */
-.container>header {
+.container > header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -241,15 +281,27 @@ main .kanban .kanban-box {
 }
 
 /* Cada filtro com uma cor diferente */
-.list-section .tabulator .tabulator-col:nth-child(1) .tabulator-header-filter input {
+.list-section
+  .tabulator
+  .tabulator-col:nth-child(1)
+  .tabulator-header-filter
+  input {
   border-left: 4px solid var(--cor-secundaria);
 }
 
-.list-section .tabulator .tabulator-col:nth-child(2) .tabulator-header-filter input {
+.list-section
+  .tabulator
+  .tabulator-col:nth-child(2)
+  .tabulator-header-filter
+  input {
   border-left: 4px solid var(--cor-referencias);
 }
 
-.list-section .tabulator .tabulator-col:nth-child(3) .tabulator-header-filter select {
+.list-section
+  .tabulator
+  .tabulator-col:nth-child(3)
+  .tabulator-header-filter
+  select {
   border-left: 4px solid var(--cor-principal);
 }
 
@@ -810,10 +862,14 @@ form#task-form button {
   width: 100%;
   height: 100%;
   display: grid;
-  grid-template-columns: minmax(var(--side-min), 1fr) var(--center-size) minmax(var(--side-min),
-      1fr);
-  grid-template-rows: minmax(var(--top-min), 1fr) var(--center-size) minmax(var(--bottom-min),
-      1fr);
+  grid-template-columns: minmax(var(--side-min), 1fr) var(--center-size) minmax(
+      var(--side-min),
+      1fr
+    );
+  grid-template-rows: minmax(var(--top-min), 1fr) var(--center-size) minmax(
+      var(--bottom-min),
+      1fr
+    );
   gap: var(--slot-gap);
 }
 
@@ -2453,8 +2509,10 @@ span.aprovadaComAjustes {
 }
 
 .perfil-colaborador .left #thumb-colab.avatar-initial[data-bg] {
-  background: attr(data-bg color,
-      linear-gradient(135deg, #6ee7b7 0%, #60a5fa 100%));
+  background: attr(
+    data-bg color,
+    linear-gradient(135deg, #6ee7b7 0%, #60a5fa 100%)
+  );
 }
 
 .perfil-colaborador .right {
@@ -2573,7 +2631,7 @@ span.aprovadaComAjustes {
 }
 
 /* when sidebar has notifications, blur all children except the notifications container */
-#sidebar-content.sidebar-blurred-mode>*:not(.notificacoes-container) {
+#sidebar-content.sidebar-blurred-mode > *:not(.notificacoes-container) {
   filter: blur(3px);
   pointer-events: none;
   user-select: none;
@@ -2581,7 +2639,7 @@ span.aprovadaComAjustes {
 }
 
 /* ================= Seções internas ================= */
-.sidebar-content>div {
+.sidebar-content > div {
   margin-bottom: 25px;
 }
 
@@ -3266,77 +3324,121 @@ img.thumb {
 
 /* =========================================
    Visão Geral (Overview) — inicio.php
+   Layout: indicadores compactos no topo +
+           calendário (60%) | dashboard (40%)
    ========================================= */
 
 .overview-section {
-  padding: 20px;
-}
-
-.overview-grid {
-  display: grid;
-  grid-template-columns: 1fr 38%;
-  gap: 20px;
-  align-items: start;
-}
-
-/* ── Left column ── */
-.overview-left {
+  padding: 16px 20px;
+  height: 100%;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
+  overflow: hidden;
 }
 
-/* Banner */
-.overview-banner {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+/* ── ① Faixa topo: indicadores compactos ── */
+.overview-indicators {
+  flex: 0 0 auto;
+  display: flex;
   gap: 12px;
 }
 
-.banner-col {
-  border-radius: 10px;
-  overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  display: flex;
-  flex-direction: column;
-  min-height: 140px;
-  max-height: 240px;
-}
-
-.banner-col-header {
+.indicator-card {
+  flex: 1;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  font-weight: 700;
-  font-size: 0.82rem;
-}
-
-.banner-atrasadas .banner-col-header {
-  background: #ef4444;
-  color: #fff;
-}
-
-.banner-proximas .banner-col-header {
-  background: #3b82f6;
-  color: #fff;
-}
-
-.banner-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 8px;
+  gap: 10px;
+  padding: 10px 16px;
+  border-radius: 10px;
   background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  cursor: pointer;
+  position: relative;
+  transition:
+    box-shadow 0.2s,
+    transform 0.15s;
+  user-select: none;
+}
+
+.indicator-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.indicator-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.indicator-atrasadas .indicator-icon {
+  background: #fef2f2;
+  color: #ef4444;
+}
+
+.indicator-proximas .indicator-icon {
+  background: #eff6ff;
+  color: #3b82f6;
+}
+
+.indicator-info {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 1px;
+}
+
+.indicator-count {
+  font-size: 1.25rem;
+  font-weight: 800;
+  line-height: 1;
+  color: #111827;
+}
+
+.indicator-label {
+  font-size: 0.72rem;
+  color: #6b7280;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* Dropdown que aparece ao clicar no indicator-card */
+.indicator-dropdown {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  min-width: 280px;
+  max-height: 260px;
+  overflow-y: auto;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+  z-index: 50;
+  padding: 6px;
+}
+
+.indicator-card.open .indicator-dropdown {
+  display: block;
+}
+
+/* ── Banner list items (reutilizados dentro do dropdown) ── */
+.banner-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .banner-empty {
   color: #9ca3af;
   font-size: 0.8rem;
   text-align: center;
-  margin: auto;
   padding: 12px 0;
 }
 
@@ -3355,7 +3457,6 @@ img.thumb {
 .banner-item-atrasada {
   border-left-color: #ef4444;
 }
-
 .banner-item-proxima {
   border-left-color: #3b82f6;
 }
@@ -3383,25 +3484,71 @@ img.thumb {
   white-space: nowrap;
 }
 
-/* Calendar */
+/* ── ② Corpo principal: calendário + dashboard ── */
+.overview-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1fr 38%;
+  gap: 16px;
+  overflow: hidden;
+  padding-top: 15px;
+}
+
+/* ── Calendário ── */
 .overview-calendar-wrap {
   background: #fff;
   border-radius: 10px;
   padding: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
 
-/* ── Right column (dashboard) ── */
+.overview-calendar-wrap #overview-calendar {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* FullCalendar constraints */
+.overview-calendar-wrap #overview-calendar .fc {
+  flex: 1 1 auto;
+  height: 100% !important;
+  min-height: 0 !important;
+  display: flex;
+  flex-direction: column;
+}
+
+.overview-calendar-wrap #overview-calendar .fc .fc-view-harness {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.overview-calendar-wrap #overview-calendar .fc .fc-scroller {
+  overflow: auto !important;
+  min-height: 0 !important;
+}
+
+/* ── Dashboard (coluna direita) ── */
 .overview-right {
   background: #fff;
   border-radius: 10px;
   padding: 20px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  position: sticky;
-  top: 20px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0; /* allow grid child to shrink below content size */
+  overflow: hidden; /* clip any content that exceeds container */
+  overflow-y: auto;
 }
 
 .overview-dashboard-header {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -3425,6 +3572,7 @@ img.thumb {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.85rem;
+  table-layout: fixed; /* force columns to respect container width */
 }
 
 .overview-prod-table thead th {
@@ -3455,6 +3603,8 @@ img.thumb {
   font-weight: 600;
   color: #1f2937;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .prod-qtd {
@@ -3482,7 +3632,7 @@ img.thumb {
   transition: width 0.6s ease;
 }
 
-.prod-bar-wrap>span {
+.prod-bar-wrap > span {
   font-weight: 700;
   color: #111827;
   min-width: 26px;
@@ -3504,48 +3654,121 @@ img.thumb {
 
 /* ── Responsive ── */
 
-/* Tablet: shrink left column */
+/* Tablet */
 @media (max-width: 1100px) {
-  .overview-grid {
-    grid-template-columns: 44% 1fr;
+  .overview-body {
+    grid-template-columns: 1fr 42%;
   }
 }
 
-/* Small tablet: 50/50 */
+/* Small tablet: side by side still but 50/50 */
 @media (max-width: 900px) {
-  .overview-grid {
+  .overview-body {
     grid-template-columns: 1fr 1fr;
   }
 
   .overview-right {
-    position: static;
+    padding: 14px;
+  }
+
+  .overview-prod-table {
+    font-size: 0.78rem;
+  }
+
+  .overview-prod-table thead th {
+    padding: 6px 6px;
+    font-size: 0.68rem;
+  }
+
+  .overview-prod-table td {
+    padding: 6px 6px;
+  }
+
+  .prod-funcao {
+    font-size: 0.76rem;
   }
 }
 
-/* Mobile: single column — Banner → Calendário → Dashboard */
+/* Mobile: single column stacked */
 @media (max-width: 680px) {
-  .overview-grid {
-    grid-template-columns: 1fr;
+  .overview-section {
+    padding: 12px 8px;
+    overflow-y: auto;
   }
 
-  /* overview-left (contains banner + calendar) renders before overview-right (dashboard) by default DOM order,
-     which gives exactly: banner → calendar → dashboard — no order reordering needed */
-
-  .overview-banner {
-    grid-template-columns: 1fr;
+  .overview-indicators {
+    flex-direction: row;
+    gap: 8px;
   }
 
-  .banner-col {
-    max-height: 220px;
+  .indicator-card {
+    padding: 8px 12px;
+  }
+
+  .indicator-count {
+    font-size: 1.1rem;
+  }
+
+  .indicator-dropdown {
+    min-width: 220px;
+  }
+
+  .overview-body {
+    grid-template-columns: 1fr;
+    overflow: visible;
+  }
+
+  .overview-calendar-wrap {
+    min-height: 350px;
   }
 
   .overview-right {
-    position: static;
+    padding: 12px;
+  }
+
+  .overview-prod-table {
+    font-size: 0.75rem;
+  }
+
+  .overview-prod-table thead th {
+    padding: 5px 4px;
+    font-size: 0.65rem;
+  }
+
+  .overview-prod-table td {
+    padding: 5px 4px;
+  }
+
+  .prod-bar-track {
+    height: 6px;
+  }
+
+  .prod-bar {
+    height: 6px;
   }
 }
 
 @media (max-width: 480px) {
   .overview-section {
-    padding: 12px 8px;
+    padding: 8px 6px;
+  }
+
+  .indicator-card {
+    padding: 6px 10px;
+    gap: 6px;
+  }
+
+  .indicator-icon {
+    width: 28px;
+    height: 28px;
+    font-size: 0.9rem;
+  }
+
+  .indicator-count {
+    font-size: 1rem;
+  }
+
+  .indicator-label {
+    font-size: 0.65rem;
   }
 }

@@ -4040,6 +4040,28 @@ async function carregarOverview() {
         }
     }
 
+    // ── Atualizar contadores dos indicadores compactos ──
+    const cntAtrasadas = document.getElementById('indicator-atrasadas-count');
+    if (cntAtrasadas) cntAtrasadas.textContent = atrasadas.length;
+    const cntProximas = document.getElementById('indicator-proximas-count');
+    if (cntProximas) cntProximas.textContent = proximas.length;
+
+    // ── Toggle dropdown dos indicator-cards ──
+    document.querySelectorAll('.indicator-card').forEach(card => {
+        card.addEventListener('click', (e) => {
+            // Fecha outros abertos
+            document.querySelectorAll('.indicator-card.open').forEach(c => {
+                if (c !== card) c.classList.remove('open');
+            });
+            card.classList.toggle('open');
+            e.stopPropagation();
+        });
+    });
+    // Fechar ao clicar fora
+    document.addEventListener('click', () => {
+        document.querySelectorAll('.indicator-card.open').forEach(c => c.classList.remove('open'));
+    });
+
     // ── Calendar ───────────────────────────────────────────────────
     const calendarEl = document.getElementById('overview-calendar');
     if (calendarEl && window.FullCalendar) {
@@ -4058,7 +4080,7 @@ async function carregarOverview() {
         const overviewCal = new FullCalendar.Calendar(calendarEl, {
             initialView: 'dayGridMonth',
             locale: 'pt-br',
-            height: 'auto',
+            height: '100%',
             weekends: true,
             headerToolbar: { left: 'prev', center: 'title', right: 'next' },
             events: eventos,

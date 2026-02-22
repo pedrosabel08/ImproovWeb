@@ -274,35 +274,40 @@ $conn->close();
 
             <!-- Visão Geral – restrito a colaboradores 1, 9, 21 -->
             <div id="overview-section" class="overview-section" style="display:none;">
-                <div class="overview-grid">
 
-                    <!-- Coluna esquerda: banner + calendário -->
-                    <div class="overview-left">
-
-                        <div class="overview-banner">
-                            <div class="banner-col banner-atrasadas">
-                                <div class="banner-col-header">
-                                    <i class="ri-alarm-warning-line"></i>
-                                    <span>Entregas Atrasadas</span>
-                                </div>
-                                <div id="banner-atrasadas-list" class="banner-list"></div>
-                            </div>
-                            <div class="banner-col banner-proximas">
-                                <div class="banner-col-header">
-                                    <i class="ri-calendar-event-line"></i>
-                                    <span>Próximas (15 dias)</span>
-                                </div>
-                                <div id="banner-proximas-list" class="banner-list"></div>
-                            </div>
+                <!-- ① Faixa topo: indicadores compactos -->
+                <div class="overview-indicators">
+                    <div class="indicator-card indicator-atrasadas">
+                        <div class="indicator-icon"><i class="ri-alarm-warning-line"></i></div>
+                        <div class="indicator-info">
+                            <span class="indicator-count" id="indicator-atrasadas-count">0</span>
+                            <span class="indicator-label">Atrasadas</span>
                         </div>
-
-                        <div class="overview-calendar-wrap">
-                            <div id="overview-calendar"></div>
+                        <div class="indicator-dropdown" id="dropdown-atrasadas">
+                            <div id="banner-atrasadas-list" class="banner-list"></div>
                         </div>
+                    </div>
+                    <div class="indicator-card indicator-proximas">
+                        <div class="indicator-icon"><i class="ri-calendar-event-line"></i></div>
+                        <div class="indicator-info">
+                            <span class="indicator-count" id="indicator-proximas-count">0</span>
+                            <span class="indicator-label">Próximas (15d)</span>
+                        </div>
+                        <div class="indicator-dropdown" id="dropdown-proximas">
+                            <div id="banner-proximas-list" class="banner-list"></div>
+                        </div>
+                    </div>
+                </div>
 
+                <!-- ② Corpo principal: calendário + dashboard -->
+                <div class="overview-body">
+
+                    <!-- Calendário (foco) -->
+                    <div class="overview-calendar-wrap">
+                        <div id="overview-calendar"></div>
                     </div>
 
-                    <!-- Coluna direita: dashboard de produção -->
+                    <!-- Dashboard de produção -->
                     <div class="overview-right">
                         <div class="overview-dashboard-header">
                             <i class="ri-bar-chart-grouped-line"></i>

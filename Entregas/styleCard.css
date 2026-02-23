@@ -157,6 +157,10 @@
 }
 
 /* ===== STATUS-SPECIFIC CARD STYLES ===== */
+.card-entrega.status-P00 {
+    border-left: 5px solid var(--status-P00);
+}
+
 .card-entrega.status-R00 {
     border-left: 5px solid var(--status-R00);
 }
@@ -168,6 +172,9 @@
 .card-entrega.status-R02 {
     border-left: 5px solid var(--status-R02);
 }
+.card-entrega.status-R03 {
+    border-left: 5px solid var(--status-R03);
+}
 
 .card-entrega.status-EF {
     border-left: 5px solid var(--status-EF);
@@ -178,9 +185,11 @@
 }
 
 /* Slightly lift colored cards to help visual separation */
+.card-entrega.status-P00:hover,
 .card-entrega.status-R00:hover,
 .card-entrega.status-R01:hover,
 .card-entrega.status-R02:hover,
+.card-entrega.status-R03:hover,
 .card-entrega.status-EF:hover {
     transform: translateY(-3px) scale(1.02);
 }

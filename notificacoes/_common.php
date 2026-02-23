@@ -62,7 +62,7 @@ function toDatetimeLocalValue($mysqlDatetime)
 function getAllUsuarios($conn)
 {
     $usuarios = [];
-    $res = $conn->query("SELECT idusuario, nome_usuario, ativo, idcolaborador FROM usuario WHERE ativo = 1 ORDER BY nome_usuario ASC");
+    $res = $conn->query("SELECT u.idusuario, u.nome_usuario, c.ativo, u.idcolaborador FROM usuario u JOIN colaborador c ON u.idcolaborador = c.idcolaborador WHERE c.ativo = 1 ORDER BY u.nome_usuario ASC");
     if ($res) {
         while ($row = $res->fetch_assoc()) {
             $usuarios[] = $row;

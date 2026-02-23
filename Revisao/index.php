@@ -172,10 +172,13 @@ $conn->close();
             </nav>
             <div id="imagem_completa">
                 <div class="nav-select">
-                    <!-- <select id="commentTypeSelect" style="margin-right:8px;">
-                        <option value="ponto">Comentário (ponto)</option>
-                        <option value="livre">Rabiscar (livre)</option>
-                    </select> -->
+                    <div class="drawing-tools" id="drawing-tools">
+                        <button id="tool-ponto" class="draw-tool-btn active" title="Comentário (ponto)"><i class="fa-solid fa-location-dot"></i></button>
+                        <button id="tool-rect" class="draw-tool-btn" title="Retângulo"><i class="fa-regular fa-square"></i></button>
+                        <button id="tool-circle" class="draw-tool-btn" title="Círculo"><i class="fa-regular fa-circle"></i></button>
+                        <button id="tool-freehand" class="draw-tool-btn" title="Desenho livre"><i class="fa-solid fa-pencil"></i></button>
+                        <input type="color" id="draw-color" value="#000000" title="Cor do desenho" style="width:32px;height:32px;border:none;background:none;cursor:pointer;padding:0;">
+                    </div>
                     <select id="indiceSelect"></select>
                     <div class="buttons">
                         <button id="reset-zoom"><i class="fa-solid fa-compress"></i></button>
@@ -192,20 +195,25 @@ $conn->close();
                 <div id="approval_info"
                     style="display:none;margin-bottom:10px;padding:8px;border-radius:6px;background:#f5f7fa;font-size:14px;color:#222">
                 </div>
-                <button id="submit_decision">Escolher ângulo</button>
+
+                <div class="angulo-actions-group">
+                    <span class="angulo-actions-group-label">Decisão do ângulo</span>
+                    <button id="submit_decision"><i class="fa-solid fa-check"></i> Escolher ângulo</button>
+                    <button id="submit_ajustes_funcao"><i class="fa-solid fa-rotate-left"></i> Enviar para Ajustes</button>
+                </div>
 
                 <!-- Modal -->
                 <div id="decisionModal" class="modal-decision hidden">
                     <div class="modal-content-decision">
                         <span class="close">&times;</span>
-                        <label><input type="radio" name="decision" value="aprovado"> Escolhido</label><br>
-                        <label><input type="radio" name="decision" value="aprovado_com_ajustes"> Escolhido com
-                            Ajustes</label><br>
-                        <label><input type="radio" name="decision" value="ajuste"> Ajustes</label><br>
+                        <div class="modal-decision-title">Enviar aprovação</div>
+                        <label><input type="radio" name="decision" value="aprovado"> Aprovado</label>
+                        <label><input type="radio" name="decision" value="aprovado_com_ajustes"> Aprovado com Ajustes</label>
+                        <label><input type="radio" name="decision" value="ajuste"> Ajuste</label>
 
                         <div class="modal-footer">
-                            <button id="cancelBtn" class="cancel-btn">Cancel</button>
-                            <button id="confirmBtn" class="confirm-btn">Confirm</button>
+                            <button id="cancelBtn" class="cancel-btn">Cancelar</button>
+                            <button id="confirmBtn" class="confirm-btn hidden">Confirmar</button>
                         </div>
                     </div>
                 </div>

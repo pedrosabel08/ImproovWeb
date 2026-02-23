@@ -21,6 +21,24 @@ function ensurePdfCommentColumns(mysqli $conn): void {
     }
 }
 
+function ensureShapeColumns(mysqli $conn): void {
+    // coordenadas finais para formas geométricas (rect/circle)
+    if (!tableHasColumn($conn, 'comentarios_imagem', 'x2')) {
+        @ $conn->query("ALTER TABLE comentarios_imagem ADD COLUMN x2 DOUBLE NULL");
+    }
+    if (!tableHasColumn($conn, 'comentarios_imagem', 'y2')) {
+        @ $conn->query("ALTER TABLE comentarios_imagem ADD COLUMN y2 DOUBLE NULL");
+    }
+    // caminho SVG para freehand
+    if (!tableHasColumn($conn, 'comentarios_imagem', 'path_data')) {
+        @ $conn->query("ALTER TABLE comentarios_imagem ADD COLUMN path_data LONGTEXT NULL");
+    }
+    // cor do desenho
+    if (!tableHasColumn($conn, 'comentarios_imagem', 'cor')) {
+        @ $conn->query("ALTER TABLE comentarios_imagem ADD COLUMN cor VARCHAR(20) NULL");
+    }
+}
+
 // Agora os dados vêm de $_POST e $_FILES
 $ap_imagem_id = (isset($_POST['ap_imagem_id']) && $_POST['ap_imagem_id'] !== '') ? intval($_POST['ap_imagem_id']) : null;
 $arquivo_log_id = (isset($_POST['arquivo_log_id']) && $_POST['arquivo_log_id'] !== '') ? intval($_POST['arquivo_log_id']) : null;
@@ -28,10 +46,17 @@ $pagina = (isset($_POST['pagina']) && $_POST['pagina'] !== '') ? intval($_POST['
 
 $x = isset($_POST['x']) ? floatval($_POST['x']) : 0.0;
 $y = isset($_POST['y']) ? floatval($_POST['y']) : 0.0;
+$x2 = (isset($_POST['x2']) && $_POST['x2'] !== '') ? floatval($_POST['x2']) : null;
+$y2 = (isset($_POST['y2']) && $_POST['y2'] !== '') ? floatval($_POST['y2']) : null;
 $texto = $_POST['texto'] ?? '';
 $responsavel = $_SESSION['idcolaborador'];
-// tipo do comentário: 'ponto' ou 'livre' (default 'ponto')
-$tipo = isset($_POST['tipo']) ? $_POST['tipo'] : 'ponto';
+// tipo do comentário: 'ponto', 'rect', 'circle' ou 'freehand' (default 'ponto')
+$tipo = isset($_POST['tipo']) && in_array($_POST['tipo'], ['ponto','rect','circle','freehand']) ? $_POST['tipo'] : 'ponto';
+$path_data = (isset($_POST['path_data']) && $_POST['path_data'] !== '') ? $_POST['path_data'] : null;
+$cor = (isset($_POST['cor']) && preg_match('/^#[0-9a-fA-F]{6}$/', $_POST['cor'])) ? $_POST['cor'] : '#f59e0b';
+
+// Garante colunas de forma geométrica
+ensureShapeColumns($conn);
 
 if (!$ap_imagem_id && !$arquivo_log_id) {
     http_response_code(400);
@@ -108,17 +133,17 @@ $numero_comentario = $result->fetch_assoc()['proximo_numero'];
 // 2. Inserir comentário
 if ($arquivo_log_id) {
     $stmt = $conn->prepare(
-        "INSERT INTO comentarios_imagem (arquivo_log_id, pagina, numero_comentario, x, y, texto, imagem, tipo, responsavel_id, data)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())"
+        "INSERT INTO comentarios_imagem (arquivo_log_id, pagina, numero_comentario, x, y, x2, y2, texto, imagem, tipo, responsavel_id, path_data, cor, data)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())"
     );
-    $stmt->bind_param('iiiddsssi', $arquivo_log_id, $pagina, $numero_comentario, $x, $y, $texto, $imagem_path, $tipo, $responsavel);
+    $stmt->bind_param('iiiddddsssiss', $arquivo_log_id, $pagina, $numero_comentario, $x, $y, $x2, $y2, $texto, $imagem_path, $tipo, $responsavel, $path_data, $cor);
     $stmt->execute();
 } else {
     $stmt = $conn->prepare(
-        "INSERT INTO comentarios_imagem (ap_imagem_id, numero_comentario, x, y, texto, imagem, tipo, responsavel_id, data)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())"
+        "INSERT INTO comentarios_imagem (ap_imagem_id, numero_comentario, x, y, x2, y2, texto, imagem, tipo, responsavel_id, path_data, cor, data)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())"
     );
-    $stmt->bind_param('iiddsssi', $ap_imagem_id, $numero_comentario, $x, $y, $texto, $imagem_path, $tipo, $responsavel);
+    $stmt->bind_param('iiddddsssiss', $ap_imagem_id, $numero_comentario, $x, $y, $x2, $y2, $texto, $imagem_path, $tipo, $responsavel, $path_data, $cor);
     $stmt->execute();
 }
 

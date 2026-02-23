@@ -31,7 +31,8 @@ if ($_SERVER["REQUEST_METHOD"] == "GET") {
         i.imagem_nome, 
         fun.nome_funcao,
         s.nome_status,
-        i.idimagens_cliente_obra AS imagem_id
+        i.idimagens_cliente_obra AS imagem_id,
+        o.nomenclatura
     FROM historico_aprovacoes h
     LEFT JOIN colaborador c ON h.colaborador_id = c.idcolaborador
     LEFT JOIN colaborador c2 ON h.responsavel = c2.idcolaborador
@@ -39,6 +40,7 @@ if ($_SERVER["REQUEST_METHOD"] == "GET") {
     LEFT JOIN funcao fun ON fun.idfuncao = f.funcao_id
     LEFT JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
     LEFT JOIN status_imagem s ON i.status_id = s.idstatus
+    LEFT JOIN obra o ON o.idobra = i.obra_id
     WHERE h.funcao_imagem_id = $idFuncaoSelecionada";
 
     $resultHistorico = $conn->query($sqlHistorico);

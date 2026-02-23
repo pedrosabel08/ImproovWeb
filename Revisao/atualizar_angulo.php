@@ -782,11 +782,6 @@ if (!$imagem_id || !$funcao_imagem_id || !$historico_id || $acao === '') {
     exit;
 }
 
-if (in_array($acao, ['ajustes', 'escolhido_com_ajustes'], true) && $observacao === '') {
-    echo json_encode(['success' => false, 'message' => 'A observação geral é obrigatória para esta opção.']);
-    exit;
-}
-
 $responsavelColab = isset($_SESSION['idcolaborador']) ? (int)$_SESSION['idcolaborador'] : 0;
 if ($responsavelColab <= 0 && isset($_SESSION['idusuario'])) {
     $idusuarioSess = (int)$_SESSION['idusuario'];

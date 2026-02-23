@@ -1773,6 +1773,69 @@ const statusMap = {
   "Aprovado com ajustes": "aprovado",
 };
 
+// ===== Calendar: map event status to colors defined in CSS (styleCard.css) =====
+function resolveEventStatusCode(event) {
+  // Try common property names that might carry status code/value
+  if (!event) return null;
+  const candidates = [
+    event.status_code,
+    event.statusId,
+    event.status_id,
+    event.status,
+    event.tipo_evento,
+    event.tipo || event.type,
+    event.className,
+  ];
+  for (const c of candidates) {
+    if (!c) continue;
+    const s = String(c).trim();
+    // If already a short code like P00, R01, EF, return it
+    const m = s.match(/^(P\d{2}|R\d{2}|EF|UNKNOWN|P00|R00|R01|R02|R03)$/i);
+    if (m) return m[0].toUpperCase();
+    // Try to find codes inside the string
+    const m2 = s.match(/(P\d{2}|R\d{2}|EF)/i);
+    if (m2) return m2[0].toUpperCase();
+  }
+  return null;
+}
+
+function getCssColorForStatusCode(code) {
+  if (!code) return null;
+  const varName = `--status-${code}`;
+  try {
+    const css = getComputedStyle(document.documentElement).getPropertyValue(
+      varName,
+    );
+    if (css && css.trim()) return css.trim();
+  } catch (e) {
+    // ignore
+  }
+  // fallback to default
+  try {
+    const def = getComputedStyle(document.documentElement).getPropertyValue(
+      "--status-default",
+    );
+    return def && def.trim() ? def.trim() : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function applyColorsToEvents(arr) {
+  if (!Array.isArray(arr)) return;
+  for (const ev of arr) {
+    const code =
+      resolveEventStatusCode(ev) || ev.status_code || ev.status || ev.status_id;
+    const color = getCssColorForStatusCode(code);
+    if (color) {
+      ev.backgroundColor = color;
+      ev.borderColor = color;
+      // pick appropriate text color (light text on dark backgrounds)
+      ev.textColor = "#ffffff";
+    }
+  }
+}
+
 // Atualiza contagem de tarefas
 function atualizarTaskCount() {
   const boxes = document.querySelectorAll(".kanban-box");
@@ -4427,7 +4490,8 @@ async function carregarOverview() {
         const obraId = item.dataset.obraId || item.getAttribute("data-obra-id");
         const nome =
           item.querySelector(".banner-item-obra")?.textContent || "Obra";
-        const etapa = item.querySelector(".banner-item-etapa")?.textContent?.trim() || "";
+        const etapa =
+          item.querySelector(".banner-item-etapa")?.textContent?.trim() || "";
         if (obraId) openObraImagesModal(Number(obraId), nome, etapa);
       });
     }
@@ -4458,7 +4522,8 @@ async function carregarOverview() {
         const obraId = item.dataset.obraId || item.getAttribute("data-obra-id");
         const nome =
           item.querySelector(".banner-item-obra")?.textContent || "Obra";
-        const etapa = item.querySelector(".banner-item-etapa")?.textContent?.trim() || "";
+        const etapa =
+          item.querySelector(".banner-item-etapa")?.textContent?.trim() || "";
         if (obraId) openObraImagesModal(Number(obraId), nome, etapa);
       });
     }
@@ -4528,7 +4593,8 @@ async function carregarOverview() {
         const titulo = info.event.title || "";
         // Extrai etapa do título (formato: "NOMENCLATURA – ETAPA")
         const etapaParts = titulo.split("–");
-        const etapaFromTitle = etapaParts.length > 1 ? etapaParts[etapaParts.length - 1].trim() : "";
+        const etapaFromTitle =
+          etapaParts.length > 1 ? etapaParts[etapaParts.length - 1].trim() : "";
         if (obraId) {
           openObraImagesModal(Number(obraId), titulo, etapaFromTitle);
         } else {
@@ -4912,7 +4978,12 @@ async function openObraImagesModal(obraId, obraNome, etapaInicial) {
   modalStatusFilters = {};
 
   // Reset global filter selects
-  ["modal_tipo_imagem", "modal_antecipada", "modal_status_etapa", "modal_status_imagem"].forEach(id => {
+  [
+    "modal_tipo_imagem",
+    "modal_antecipada",
+    "modal_status_etapa",
+    "modal_status_imagem",
+  ].forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.selectedIndex = 0;
   });
@@ -5125,7 +5196,9 @@ async function loadObraImages(obraId, etapaInicial) {
     });
     // Pré-seleciona a etapa se fornecida (ex: "R00" vindo do banner/calendário)
     if (etapaInicial) {
-      const match = Array.from(statusEtapaSel.options).find(o => o.value === etapaInicial);
+      const match = Array.from(statusEtapaSel.options).find(
+        (o) => o.value === etapaInicial,
+      );
       if (match) statusEtapaSel.value = etapaInicial;
     }
   }

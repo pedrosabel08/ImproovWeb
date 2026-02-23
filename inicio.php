@@ -142,7 +142,7 @@ $conn->close();
 
     ?>
     <div class="container">
-        <main>
+        <main class="main_inicio">
             <header>
                 <div class="top">
                     <!-- <h3 id="saudacao"></h3> -->

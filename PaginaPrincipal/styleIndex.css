@@ -35,20 +35,20 @@ body {
    - allow the page "views" (kanban, list, overview) to scroll internally
    - `min-height: 0` on flex children avoids overflow issues in Firefox
 */
-.container > main {
+.container > main.main_inicio {
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 
-.container > main > header {
+.container > main.main_inicio > header {
   flex: 0 0 auto;
 }
 
-.container > main > .kanban,
-.container > main > #list-section,
-.container > main > #overview-section {
+.container > main.main_inicio > .kanban,
+.container > main.main_inicio > #list-section,
+.container > main.main_inicio > #overview-section {
   flex: 1 1 auto;
   overflow: auto;
   min-height: 0;
@@ -3811,7 +3811,7 @@ img.thumb {
   border-radius: 6px;
   border: 1px solid var(--border, #ccc);
   background: var(--card-bg, #fff);
-  color: var(--text, #333);
+  color: var(--text, #fff);
   min-width: 100px;
 }
 
@@ -3896,7 +3896,7 @@ img.thumb {
   position: fixed;
   z-index: 1300;
   background: var(--card-bg, #fff);
-  color: var(--text, #333);
+  color: var(--text, #fff);
   border: 1px solid var(--border, #ccc);
   border-radius: 10px;
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
@@ -3976,4 +3976,12 @@ img.thumb {
   padding: 4px 10px;
   font-size: 12px;
   cursor: pointer;
+}
+
+.fc-toolbar-title::first-letter {
+  text-transform: uppercase;
+}
+
+.fc .fc-toolbar-title {
+  color: #333;
 }

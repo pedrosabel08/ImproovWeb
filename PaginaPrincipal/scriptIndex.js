@@ -183,16 +183,8 @@ function alertarPendenciasSeNecessario(data) {
     title: "Arquivo pendente",
     html: `Você tem <b>${quantidade}</b> card(s) com arquivo pendente.`,
     showCancelButton: true,
-    confirmButtonText: "Enviar agora",
-    cancelButtonText: "Depois",
-  }).then((result) => {
-    if (!result.isConfirmed) return;
-    const primeiroCardPendente = document.querySelector(
-      '.kanban-card.tarefa-imagem[data-requires-file-upload="1"]',
-    );
-    if (primeiroCardPendente) {
-      abrirModalUploadFinalPendente(primeiroCardPendente);
-    }
+    showConfirmButton: false,
+    cancelButtonText: "OK",
   });
 }
 

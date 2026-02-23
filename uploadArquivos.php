@@ -241,27 +241,70 @@ function enviarArquivoSFTP(SFTP $sftp, string $arquivoLocal, string $arquivoRemo
 }
 
 // ---------- Parâmetros ----------
-$dataIdFuncoes = (int)($_POST['dataIdFuncoes'] ?? 0);
+// Aceita dataIdFuncoes como int simples OU JSON array [id]
+$_dataIdFuncoesRaw = $_POST['dataIdFuncoes'] ?? 0;
+if (is_string($_dataIdFuncoesRaw) && strpos($_dataIdFuncoesRaw, '[') !== false) {
+    $_dataIdFuncoesArr = json_decode($_dataIdFuncoesRaw, true);
+    $dataIdFuncoes = (int)(is_array($_dataIdFuncoesArr) ? ($_dataIdFuncoesArr[0] ?? 0) : 0);
+} else {
+    $dataIdFuncoes = (int)$_dataIdFuncoesRaw;
+}
+
 $numeroImagem  = preg_replace('/\D/', '', $_POST['numeroImagem'] ?? '');
 $nomenclatura  = preg_replace('/[^a-zA-Z0-9_\-]/', '', $_POST['nomenclatura'] ?? '');
 $nomeFuncao    = $_POST['nome_funcao'] ?? '';
 $nome_imagem   = $_POST['nome_imagem'] ?? '';
 $idimagem      = (int)($_POST['idimagem'] ?? 0);
+// Se informado, usa o índice de envio forçado (adiciona ângulos ao envio atual)
+$indice_envio_forcado = isset($_POST['indice_envio_forcado']) ? (int)$_POST['indice_envio_forcado'] : 0;
 
-if (!$dataIdFuncoes || !$numeroImagem || !$nomenclatura || !$nomeFuncao) {
+if (!$dataIdFuncoes || !$nomeFuncao) {
     json_error('Parâmetros insuficientes', 400);
+}
+
+// Se nomenclatura ou numeroImagem não foram enviados, tenta buscar no banco via idimagem
+if ($idimagem > 0 && ($nomenclatura === '' || $numeroImagem === '')) {
+    $stLookup = $conn->prepare(
+        "SELECT i.imagem_nome, o.nomenclatura
+         FROM imagens_cliente_obra i
+         LEFT JOIN obra o ON o.idobra = i.obra_id
+         WHERE i.idimagens_cliente_obra = ?
+         LIMIT 1"
+    );
+    if ($stLookup) {
+        $stLookup->bind_param('i', $idimagem);
+        $stLookup->execute();
+        $rowLookup = $stLookup->get_result()->fetch_assoc();
+        $stLookup->close();
+        if ($rowLookup) {
+            if ($nomenclatura === '' && !empty($rowLookup['nomenclatura'])) {
+                $nomenclatura = preg_replace('/[^a-zA-Z0-9_\-]/', '', $rowLookup['nomenclatura']);
+            }
+            if ($numeroImagem === '' && !empty($rowLookup['imagem_nome'])) {
+                $numeroImagem = preg_replace('/\D/', '', explode('.', $rowLookup['imagem_nome'])[0] ?? '');
+            }
+            if ($nome_imagem === '' && !empty($rowLookup['imagem_nome'])) {
+                $nome_imagem = $rowLookup['imagem_nome'];
+            }
+        }
+    }
 }
 
 $idFuncaoImagem = $dataIdFuncoes;
 $processo = getProcesso($nomeFuncao);
 
 // ---------- Índice de envio ----------
-$stmt = $conn->prepare("SELECT MAX(indice_envio) AS max_indice FROM historico_aprovacoes_imagens WHERE funcao_imagem_id = ?");
-$stmt->bind_param("i", $idFuncaoImagem);
-$stmt->execute();
-$result = $stmt->get_result()->fetch_assoc();
-$indice_envio = ($result['max_indice'] ?? 0) + 1;
-$stmt->close();
+if ($indice_envio_forcado > 0) {
+    // Mantém o índice atual (adicionar ângulos ao mesmo envio)
+    $indice_envio = $indice_envio_forcado;
+} else {
+    $stmt = $conn->prepare("SELECT MAX(indice_envio) AS max_indice FROM historico_aprovacoes_imagens WHERE funcao_imagem_id = ?");
+    $stmt->bind_param("i", $idFuncaoImagem);
+    $stmt->execute();
+    $result = $stmt->get_result()->fetch_assoc();
+    $indice_envio = ($result['max_indice'] ?? 0) + 1;
+    $stmt->close();
+}
 
 // ---------- Status nome ----------
 $stmt2 = $conn->prepare("SELECT s.nome_status FROM status_imagem s
@@ -294,6 +337,19 @@ $totalImagens = count($imagens['name']);
 $imagensEnviadas = [];
 $nomeImagemSanitizado = sanitizeFilename($nome_imagem);
 
+// Quando adicionando ao índice existente, começa a numeração após as imagens já presentes
+$previaOffset = 0;
+if ($indice_envio_forcado > 0) {
+    $stCount = $conn->prepare("SELECT COUNT(*) AS qtd FROM historico_aprovacoes_imagens WHERE funcao_imagem_id = ? AND indice_envio = ?");
+    if ($stCount) {
+        $stCount->bind_param("ii", $idFuncaoImagem, $indice_envio);
+        $stCount->execute();
+        $rowCount = $stCount->get_result()->fetch_assoc();
+        $previaOffset = (int)($rowCount['qtd'] ?? 0);
+        $stCount->close();
+    }
+}
+
 
 $sqlTipoImagem = "SELECT tipo_imagem FROM imagens_cliente_obra WHERE idimagens_cliente_obra = $idimagem";
 $resultTipo = $conn->query($sqlTipoImagem);
@@ -304,7 +360,7 @@ $tipoImagem = $resultTipo->fetch_assoc()['tipo_imagem'] ?? '';
 
 
 for ($i = 0; $i < $totalImagens; $i++) {
-    $numeroPrevia = $i + 1;
+    $numeroPrevia = $previaOffset + $i + 1;
 
     $imagemAtual = [
         'name'     => $imagens['name'][$i],
@@ -352,7 +408,7 @@ for ($i = 0; $i < $totalImagens; $i++) {
 // Fecha conexão SFTP
 unset($conn_ftp);
 
-// ---------- Atualiza status ----------
+// ---------- Atualiza status para Em aprovação (sempre, inclusive ao adicionar ângulos) ----------
 $hoje = date('Y-m-d');
 $stmt = $conn->prepare("UPDATE funcao_imagem 
                         SET status = 'Em aprovação', prazo = ?, requires_file_upload = 1, file_uploaded_at = NULL 

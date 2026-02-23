@@ -535,11 +535,18 @@ function update_log_entries_status(array $logIds = null, string $status = '', $c
 function mark_funcao_upload_quitado(array $meta): void
 {
     global $conn;
-    if (!isset($conn)) return;
+
+    ensure_db_connection_local();
+
+    if (!isset($conn)) {
+        error_log('[upload_worker] mark_funcao_upload_quitado: $conn not set, skipping.');
+        return;
+    }
 
     $dataIdFuncoes = $meta['dataIdFuncoes'] ?? [];
     if (!is_array($dataIdFuncoes) || empty($dataIdFuncoes)) {
         $raw = $meta['post']['dataIdFuncoes'] ?? null;
+        error_log('[upload_worker] mark_funcao_upload_quitado: dataIdFuncoes vazio no topo do meta, tentando post.dataIdFuncoes: ' . json_encode($raw));
         if (is_string($raw) && $raw !== '') {
             $decoded = json_decode($raw, true);
             if (is_array($decoded)) {
@@ -550,23 +557,45 @@ function mark_funcao_upload_quitado(array $meta): void
         }
     }
 
-    if (!is_array($dataIdFuncoes) || empty($dataIdFuncoes)) return;
+    if (!is_array($dataIdFuncoes) || empty($dataIdFuncoes)) {
+        error_log('[upload_worker] mark_funcao_upload_quitado: dataIdFuncoes vazio após fallback, não é possível atualizar funcao_imagem.');
+        return;
+    }
+
+    error_log('[upload_worker] mark_funcao_upload_quitado: atualizando funcao_imagem para ids: ' . implode(',', $dataIdFuncoes));
 
     $upd = $conn->prepare("UPDATE funcao_imagem SET requires_file_upload = 0, file_uploaded_at = NOW() WHERE idfuncao_imagem = ?");
-    if (!$upd) return;
+    if (!$upd) {
+        error_log('[upload_worker] mark_funcao_upload_quitado: falha ao preparar UPDATE requires_file_upload: ' . ($conn->error ?? 'sem detalhe'));
+        return;
+    }
 
     $updFinal = $conn->prepare("UPDATE funcao_imagem SET status = 'Finalizado' WHERE idfuncao_imagem = ? AND status = 'Aprovado'");
+    if (!$updFinal) {
+        error_log('[upload_worker] mark_funcao_upload_quitado: falha ao preparar UPDATE status Finalizado: ' . ($conn->error ?? 'sem detalhe'));
+    }
 
     foreach ($dataIdFuncoes as $fid) {
         $fidInt = (int) $fid;
-        if ($fidInt <= 0) continue;
+        if ($fidInt <= 0) {
+            error_log("[upload_worker] mark_funcao_upload_quitado: fid inválido ignorado: {$fid}");
+            continue;
+        }
 
         $upd->bind_param('i', $fidInt);
-        @$upd->execute();
+        if (!$upd->execute()) {
+            error_log("[upload_worker] mark_funcao_upload_quitado: erro ao executar UPDATE requires_file_upload para id={$fidInt}: " . ($upd->error ?? 'sem detalhe'));
+        } else {
+            error_log("[upload_worker] mark_funcao_upload_quitado: requires_file_upload=0 aplicado para id={$fidInt}, affected_rows={$upd->affected_rows}");
+        }
 
         if ($updFinal) {
             $updFinal->bind_param('i', $fidInt);
-            @$updFinal->execute();
+            if (!$updFinal->execute()) {
+                error_log("[upload_worker] mark_funcao_upload_quitado: erro ao executar UPDATE status Finalizado para id={$fidInt}: " . ($updFinal->error ?? 'sem detalhe'));
+            } else {
+                error_log("[upload_worker] mark_funcao_upload_quitado: status Finalizado aplicado para id={$fidInt}, affected_rows={$updFinal->affected_rows}");
+            }
         }
     }
 

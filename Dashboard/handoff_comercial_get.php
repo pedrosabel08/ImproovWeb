@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . '/../config/session_bootstrap.php';
-session_start();
+// session_start();
 header('Content-Type: application/json');
 
 if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {

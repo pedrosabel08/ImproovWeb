@@ -10691,6 +10691,17 @@ if (closeBtn) closeBtn.addEventListener("click", closeModal);
           ? obraId
           : localStorage.getItem("obraId");
       if (!idObra) return;
+      // show this alert only for specific collaborators (1,9,21)
+      const colaboradorId = localStorage.getItem("idcolaborador"); // implemente essa função ou defina a variável
+
+      if (
+        !(
+          colaboradorId === "1" ||
+          colaboradorId === "9" ||
+          colaboradorId === "21"
+        )
+      )
+        return;
       const js = await fetchHandoff();
       const missing = js && js.success && !js.data;
       if (!missing) return;

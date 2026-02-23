@@ -118,7 +118,7 @@ function filterRenders() {
     const filtered = allRenders.filter(r =>
         (status === '' || r.status === status) &&
         (colaborador === '' || r.nome_colaborador === colaborador) &&
-        (obra === '' || r.nome_obra === obra)
+        (obra === '' || r.obra_nomenclatura === obra)
     );
     renderCards(filtered);
 }

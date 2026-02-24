@@ -516,8 +516,8 @@ a {
   position: absolute;
   cursor: pointer;
   padding: 5px;
-  background-color: #f59e0b;
-  color: #000;
+  background-color: #000000;
+  color: #fff;
   border-radius: 5px;
   font-size: 12px;
   transition: all 0.3s ease-in-out;
@@ -683,6 +683,17 @@ body::-webkit-scrollbar-track {
   border-radius: 8px;
   margin: 6px 0; /* ensure space from container edges so outline is visible */
   box-sizing: border-box;
+}
+
+/* Prevent touch scrolling when interacting with the drawing area
+   so touch/pointer events are delivered to the canvas/image for drawing */
+#image_wrapper,
+.image_wrapper,
+.pdf-page-layer,
+.pdf-canvas,
+.pdf-comment-layer {
+  touch-action: none;
+  -ms-touch-action: none;
 }
 
 .notification-dot {

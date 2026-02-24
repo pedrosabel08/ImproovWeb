@@ -30,8 +30,8 @@ try {
             o.nomenclatura,
             o.idobra,
             s.nome_status,
-            (SELECT MAX(hi.data_envio)
-             FROM historico_aprovacoes_imagens hi
+            (SELECT MAX(hi.data_aprovacao)
+             FROM historico_aprovacoes hi
              WHERE hi.funcao_imagem_id = f.idfuncao_imagem) AS data_aprovacao,
             (SELECT h.status_novo
              FROM historico_aprovacoes h

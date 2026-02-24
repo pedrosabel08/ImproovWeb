@@ -8,6 +8,45 @@ document.addEventListener("DOMContentLoaded", function () {
       // Depois filtra pela obra
       filtrarTarefasPorObra(obraNome);
     });
+
+    // support pointer events (touch / pen) for PDF drawing
+    pageLayer.addEventListener("pointerdown", function (event) {
+      if (event.pointerType === "mouse" && event.button !== 0) return;
+      if (event.ctrlKey) return;
+      if (drawingTool === "ponto") return;
+      if (!pdfViewerState.logId) return;
+      event.stopPropagation();
+      isDrawing = true;
+      dragMoved = false;
+      const rect = canvas.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+      drawStartX = ((event.clientX - rect.left) / rect.width) * 100;
+      drawStartY = ((event.clientY - rect.top) / rect.height) * 100;
+      drawStartClientX = event.clientX;
+      drawStartClientY = event.clientY;
+      shapeX2 = drawStartX;
+      shapeY2 = drawStartY;
+      currentDrawRef = canvas;
+      const container =
+        document.getElementById("pdf_comment_layer") || pageLayer;
+      if (drawingTool === "freehand") {
+        freehandPoints = [[drawStartX, drawStartY]];
+        const svg = createFreehandPreviewSvg(drawStartX, drawStartY);
+        container.appendChild(svg);
+        freehandSvgPreview = svg;
+        freehandPolylineEl = svg.querySelector("polyline");
+        freehandDrawContainer = container;
+      } else {
+        const preview = document.createElement("div");
+        preview.id = "drawing-preview";
+        preview.className = `drawing-preview drawing-preview-${drawingTool}`;
+        preview.style.left = `${drawStartX}%`;
+        preview.style.top = `${drawStartY}%`;
+        preview.style.width = "0";
+        preview.style.height = "0";
+        container.appendChild(preview);
+      }
+    });
   } else {
     fetchObrasETarefas();
   }
@@ -1920,6 +1959,41 @@ function mostrarImagemCompleta(src, id) {
       imageWrapper.appendChild(preview);
     }
   });
+
+  // support pointer events (touch / pen) for image drawing
+  imgElement.addEventListener("pointerdown", function (event) {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    if (event.ctrlKey) return;
+    if (drawingTool === "ponto") return;
+    event.stopPropagation();
+    isDrawing = true;
+    dragMoved = false;
+    const rect = imgElement.getBoundingClientRect();
+    drawStartX = ((event.clientX - rect.left) / rect.width) * 100;
+    drawStartY = ((event.clientY - rect.top) / rect.height) * 100;
+    drawStartClientX = event.clientX;
+    drawStartClientY = event.clientY;
+    shapeX2 = drawStartX;
+    shapeY2 = drawStartY;
+    currentDrawRef = imgElement;
+    if (drawingTool === "freehand") {
+      freehandPoints = [[drawStartX, drawStartY]];
+      const svg = createFreehandPreviewSvg(drawStartX, drawStartY);
+      imageWrapper.appendChild(svg);
+      freehandSvgPreview = svg;
+      freehandPolylineEl = svg.querySelector("polyline");
+      freehandDrawContainer = imageWrapper;
+    } else {
+      const preview = document.createElement("div");
+      preview.id = "drawing-preview";
+      preview.className = `drawing-preview drawing-preview-${drawingTool}`;
+      preview.style.left = `${drawStartX}%`;
+      preview.style.top = `${drawStartY}%`;
+      preview.style.width = "0";
+      preview.style.height = "0";
+      imageWrapper.appendChild(preview);
+    }
+  });
 }
 
 function ajustarNavSelectAoTamanhoDaImagem() {
@@ -2113,7 +2187,7 @@ let drawingColor =
   window._initialDrawingColor &&
   /^#[0-9a-fA-F]{6}$/.test(window._initialDrawingColor)
     ? window._initialDrawingColor
-    : "#f59e0b"; // cor selecionada pelo usuário
+    : "#000000"; // cor selecionada pelo usuário
 let isDrawing = false;
 let drawStartX = 0; // % relativo ao elemento de referência
 let drawStartY = 0;
@@ -2392,7 +2466,7 @@ async function renderComments(id) {
     let commentDiv = document.createElement("div");
     const isShape = comentario.tipo === "rect" || comentario.tipo === "circle";
     const isFreehand = comentario.tipo === "freehand";
-    const cor = comentario.cor || "#f59e0b";
+    const cor = comentario.cor || "#000000";
     const corR = parseInt(cor.slice(1, 3), 16);
     const corG = parseInt(cor.slice(3, 5), 16);
     const corB = parseInt(cor.slice(5, 7), 16);
@@ -2895,18 +2969,22 @@ imageWrapper.addEventListener("mousedown", (e) => {
   }
 });
 
-document.addEventListener("mousemove", (e) => {
+function handlePointerMove(e) {
+  // normalize event for touch (use clientX/Y)
+  const clientX = e.clientX;
+  const clientY = e.clientY;
+
   // --- Desenho de forma geométrica ---
   if (isDrawing && currentDrawRef) {
     const ref = currentDrawRef.getBoundingClientRect();
     if (ref.width && ref.height) {
       const newX = Math.max(
         0,
-        Math.min(100, ((e.clientX - ref.left) / ref.width) * 100),
+        Math.min(100, ((clientX - ref.left) / ref.width) * 100),
       );
       const newY = Math.max(
         0,
-        Math.min(100, ((e.clientY - ref.top) / ref.height) * 100),
+        Math.min(100, ((clientY - ref.top) / ref.height) * 100),
       );
       if (drawingTool === "freehand") {
         freehandPoints.push([newX, newY]);
@@ -2938,10 +3016,10 @@ document.addEventListener("mousemove", (e) => {
   if (!isDragging) return;
   imageWrapper.style.cursor = "grabbing"; // mão fechada
 
-  e.preventDefault();
+  if (e.cancelable) e.preventDefault();
 
-  const dx = e.clientX - startX;
-  const dy = e.clientY - startY;
+  const dx = clientX - startX;
+  const dy = clientY - startY;
 
   // Marcar que houve movimento significativo
   if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
@@ -2952,9 +3030,16 @@ document.addEventListener("mousemove", (e) => {
   currentTranslateY = dy;
 
   applyTransforms();
-});
+}
 
-document.addEventListener("mouseup", (e) => {
+document.addEventListener("mousemove", handlePointerMove, { passive: false });
+document.addEventListener("pointermove", handlePointerMove, { passive: false });
+
+function handlePointerUp(e) {
+  // use client coords
+  const clientX = e.clientX;
+  const clientY = e.clientY;
+
   // --- Finaliza desenho de forma ---
   if (isDrawing) {
     isDrawing = false;
@@ -2968,9 +3053,19 @@ document.addEventListener("mouseup", (e) => {
     }
     currentDrawRef = null;
 
-    const dx = Math.abs(drawStartClientX - e.clientX);
-    const dy = Math.abs(drawStartClientY - e.clientY);
-    if (dx > 8 || dy > 8) {
+    const dx = Math.abs(drawStartClientX - clientX);
+    const dy = Math.abs(drawStartClientY - clientY);
+
+    // Considera finalização válida se houve arraste significativo em pixels
+    // ou se estamos no modo freehand e coletamos mais de um ponto
+    const isSignificant =
+      dx > 8 ||
+      dy > 8 ||
+      (drawingTool === "freehand" &&
+        Array.isArray(freehandPoints) &&
+        freehandPoints.length > 1);
+
+    if (isSignificant) {
       if (drawingTool === "freehand") {
         relativeX = freehandPoints[0]?.[0] ?? drawStartX;
         relativeY = freehandPoints[0]?.[1] ?? drawStartY;
@@ -2997,7 +3092,10 @@ document.addEventListener("mouseup", (e) => {
     imageWrapper.classList.remove("grabbing");
     imageWrapper.style.transition = "transform 0.1s ease-out";
   }
-});
+}
+
+document.addEventListener("mouseup", handlePointerUp);
+document.addEventListener("pointerup", handlePointerUp);
 
 // Initialize transforms
 applyTransforms();

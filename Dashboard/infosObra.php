@@ -196,6 +196,7 @@ $sqlImagens = "SELECT
         ico.prazo,
         ico.tipo_imagem,
         ico.antecipada,
+        ico.status_id,
         MAX(CASE WHEN fi.funcao_id = 1 THEN c.nome_colaborador END) AS caderno_colaborador,
         MAX(CASE WHEN fi.funcao_id = 1 THEN fi.status END) AS caderno_status,
         MAX(CASE WHEN fi.funcao_id = 8 THEN c.nome_colaborador END) AS filtro_colaborador,

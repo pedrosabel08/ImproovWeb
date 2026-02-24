@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/config/session_bootstrap.php';
 include 'conexao.php';
-session_start();
+// session_start();
 header('Content-Type: application/json');
 
 if (!isset($_SESSION['idcolaborador'])) {
@@ -140,9 +140,23 @@ try {
 
     $conn->commit();
 
+    // Busca o finalizador responsável pela imagem (funcao_id 6 primeiro, depois 4)
+    $finalizador_resp = null;
+    $stmt_fz = $conn->prepare(
+        "SELECT colaborador_id FROM funcao_imagem WHERE imagem_id = ? AND funcao_id IN (6, 4) ORDER BY FIELD(funcao_id, 6, 4) LIMIT 1"
+    );
+    if ($stmt_fz) {
+        $stmt_fz->bind_param("i", $imagem_id);
+        $stmt_fz->execute();
+        $stmt_fz->bind_result($finalizador_resp);
+        $stmt_fz->fetch();
+        $stmt_fz->close();
+    }
+
     $response['status'] = 'sucesso';
     $response['message'] = 'Render criado e status atualizado com sucesso.';
     $response['notificado'] = false;
+    $response['finalizador'] = $finalizador_resp;
 } catch (Exception $e) {
     $conn->rollback();
     $response = ['status' => 'erro', 'message' => 'Erro ao executar as consultas: ' . $e->getMessage()];

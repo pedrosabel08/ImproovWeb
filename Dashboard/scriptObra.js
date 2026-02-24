@@ -3203,6 +3203,7 @@ function infosObra(obraId) {
         var row = document.createElement("tr");
         row.classList.add("linha-tabela");
         row.setAttribute("data-id", item.imagem_id);
+        row.setAttribute("data-status-id", item.status_id ?? "");
         row.setAttribute("tipo-imagem", item.tipo_imagem);
         row.classList.add(tipoClassName(item.tipo_imagem));
         row.setAttribute("status", item.imagem_status);
@@ -7475,8 +7476,9 @@ document
   ?.addEventListener("click", function (event) {
     event.preventDefault();
 
-    var linhaSelecionada = document.querySelector(".linha-tabela.selecionada");
-    if (!linhaSelecionada) {
+    // Pega a imagem_id da linha que recebeu o clique direito (já gravada no input hidden)
+    var idImagemSelecionada = document.getElementById("imagem_id")?.value;
+    if (!idImagemSelecionada) {
       Toastify({
         text: "Nenhuma imagem selecionada",
         duration: 3000,
@@ -7489,9 +7491,18 @@ document
       return;
     }
 
-    var idImagemSelecionada = linhaSelecionada.getAttribute("data-id");
+    // Localiza a linha correspondente para ler o status_id
+    var linhaAlvo = document.querySelector(
+      `.linha-tabela[data-id="${idImagemSelecionada}"]`,
+    );
+    var statusId = linhaAlvo ? linhaAlvo.getAttribute("data-status-id") : "";
 
-    const statusId = document.getElementById("opcao_status").value;
+    console.log(
+      "Imagem selecionada:",
+      idImagemSelecionada,
+      "Status ID:",
+      statusId,
+    );
 
     // Lista de status permitidos
     const statusPermitidos = ["2", "3", "4", "5", "6", "14", "15"];
@@ -7539,11 +7550,10 @@ document
               const modal = document.getElementById("modal_pos");
               modal.classList.remove("hidden");
 
-              // Preenche os selects com os valores salvos/localizados
-              const finalizador = localStorage.getItem("idcolaborador");
+              // Preenche opcao_finalizador: prefere o responsável retornado pelo servidor (funcao_id 6/4)
+              const finalizador = response.finalizador || localStorage.getItem("idcolaborador");
               if (finalizador) {
-                document.getElementById("opcao_finalizador").value =
-                  finalizador;
+                document.getElementById("opcao_finalizador").value = finalizador;
               }
 
               const obra = localStorage.getItem("obraId");
@@ -7554,10 +7564,9 @@ document
               document.getElementById("imagem_id_pos").value =
                 idImagemSelecionada;
 
-              const statusSelecionado = document.getElementById("opcao_status");
-              if (statusSelecionado) {
-                const statusValue = statusSelecionado.value;
-                document.getElementById("opcao_status_pos").value = statusValue;
+              // statusId já lido da linha (data-status-id)
+              if (statusId) {
+                document.getElementById("opcao_status_pos").value = statusId;
               }
 
               const pos = document.getElementById("opcao_pos").value;
@@ -7868,24 +7877,48 @@ function notificarEventosDaSemana(eventos) {
   fimSemana.setDate(inicioSemana.getDate() + 6); // Sábado
   fimSemana.setHours(23, 59, 59, 999);
 
-  function parseDateLocal(dateStr) {
-    const [ano, mes, dia] = dateStr.split("-");
-    return new Date(ano, mes - 1, dia); // mês é 0-based
+  function parseDateLocal(dateInput) {
+    if (!dateInput) return null;
+    // If already a Date
+    if (dateInput instanceof Date)
+      return isNaN(dateInput.getTime()) ? null : dateInput;
+    // If object with date-like props (from fullcalendar extProps)
+    if (typeof dateInput === "object" && dateInput.date) {
+      const d = new Date(dateInput.date);
+      return isNaN(d.getTime()) ? null : d;
+    }
+    // If string, try several formats
+    if (typeof dateInput === "string") {
+      // YYYY-MM-DD
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
+        const [ano, mes, dia] = dateInput.split("-");
+        const d = new Date(
+          parseInt(ano, 10),
+          parseInt(mes, 10) - 1,
+          parseInt(dia, 10),
+        );
+        return isNaN(d.getTime()) ? null : d;
+      }
+      // ISO or other parsable string
+      const d2 = new Date(dateInput);
+      return isNaN(d2.getTime()) ? null : d2;
+    }
+    return null;
   }
 
   const eventosSemana = eventos.filter((evento) => {
-    const dataReferencia = evento.end
-      ? parseDateLocal(evento.end)
-      : parseDateLocal(evento.start);
+    const raw = evento.end || evento.start || null;
+    const dataReferencia = parseDateLocal(raw);
+    if (!dataReferencia) return false; // skip events without a valid date
     return dataReferencia >= inicioSemana && dataReferencia <= fimSemana;
   });
 
   if (eventosSemana.length > 0) {
     const listaEventos = eventosSemana
       .map((ev) => {
-        const dataLocal = ev.end
-          ? parseDateLocal(ev.end)
-          : parseDateLocal(ev.start);
+        const raw = ev.end || ev.start || null;
+        const dataLocal = parseDateLocal(raw);
+        if (!dataLocal) return "";
         return `<li><strong>${ev.title}</strong> em ${dataLocal.toLocaleDateString()}</li>`;
       })
       .join("");
@@ -9465,16 +9498,20 @@ document
       .catch((err) => console.error("Erro ao alterar etapa:", err));
   });
 
-// Render from modal_status
+// Render from modal_status (mirror addRender behavior: prefer hidden #imagem_id and row data-status-id)
 document
   .getElementById("addRenderMs")
   ?.addEventListener("click", function (event) {
     event.preventDefault();
 
-    const imagemId = document
+    // Prefer image id saved by right-click into hidden #imagem_id; fallback to alterar_status data attribute
+    const hiddenImagem = document.getElementById("imagem_id")?.value;
+    const fallbackImagem = document
       .getElementById("alterar_status")
       ?.getAttribute("data-imagemid");
-    if (!imagemId) {
+    const idImagemSelecionada = hiddenImagem || fallbackImagem;
+
+    if (!idImagemSelecionada) {
       Toastify({
         text: "Nenhuma imagem selecionada",
         duration: 3000,
@@ -9485,9 +9522,22 @@ document
       return;
     }
 
-    const statusId = document.getElementById("opcao_status_ms").value;
+    // Try to read status from the table row's data-status-id (right-clicked row). Fallback to modal select.
+    const linhaAlvo = document.querySelector(
+      `.linha-tabela[data-id="${idImagemSelecionada}"]`,
+    );
+    const statusFromRow = linhaAlvo
+      ? linhaAlvo.getAttribute("data-status-id")
+      : null;
+    const statusId =
+      statusFromRow || document.getElementById("opcao_status_ms").value;
+
     const statusPermitidos = ["2", "3", "4", "5", "6", "14", "15"];
-    if (!statusPermitidos.includes(statusId)) {
+
+    console.log("Status selecionado para render:", statusId);
+    console.log("Imagem selecionada:", linhaAlvo);
+
+    if (!statusPermitidos.includes(String(statusId))) {
       Swal.fire({
         icon: "error",
         title: "Status inválido",
@@ -9531,10 +9581,18 @@ document
               modal.classList.remove("hidden");
               const obra = localStorage.getItem("obraId");
               if (obra) document.getElementById("opcao_obra_pos").value = obra;
-              document.getElementById("imagem_id_pos").value = imagemId;
+
+              // Preenche opcao_finalizador: prefere o responsável retornado pelo servidor (funcao_id 6/4)
+              const finalizadorMs = response.finalizador || localStorage.getItem("idcolaborador");
+              if (finalizadorMs) {
+                document.getElementById("opcao_finalizador").value = finalizadorMs;
+              }
+
+              // Use the resolved image id and status id
+              document.getElementById("imagem_id_pos").value = idImagemSelecionada;
               document.getElementById("opcao_status_pos").value = statusId;
-              document.getElementById("render_id_pos").value =
-                response.idrender;
+              document.getElementById("render_id_pos").value = response.idrender;
+
               // Hide modal_status
               const modalStatus = document.getElementById("modal_status");
               modalStatus.style.display = "none";
@@ -9554,28 +9612,31 @@ document
       }
     };
 
+    // Decide finalizador: prefer opcao_alteracao if filled, else opcao_final
+    const opcaoAlt = document.getElementById("opcao_alteracao")
+      ? document.getElementById("opcao_alteracao").value
+      : "";
+    const opcaoFinal = document.getElementById("opcao_final")
+      ? document.getElementById("opcao_final").value
+      : "";
+
     const payload = {
-      imagem_id: imagemId,
+      imagem_id: idImagemSelecionada,
       status_id: statusId,
       notificar: notificar ? "1" : "0",
+      finalizador: opcaoAlt.trim() !== "" ? opcaoAlt : opcaoFinal,
     };
 
-    // Try to resolve finalizador from the loaded modal data
-    const linhaSel = document.querySelector(".linha-tabela.selecionada");
-    if (linhaSel) {
-      const alteracaoEl = document.getElementById("opcao_alteracao");
-      const finalEl = document.getElementById("opcao_final");
-      const opcaoAlt = alteracaoEl ? alteracaoEl.value : "";
-      payload.finalizador =
-        opcaoAlt.trim() !== "" ? opcaoAlt : finalEl ? finalEl.value : "";
-      if (notificar) {
-        const altPEl = document.getElementById("alteracao");
-        const finPEl = document.getElementById("final");
-        const dataIdFuncao =
-          (altPEl ? altPEl.getAttribute("data-id-funcao") : null) ||
-          (finPEl ? finPEl.getAttribute("data-id-funcao") : null);
-        if (dataIdFuncao) payload.data_id_funcao = dataIdFuncao;
-      }
+    // If notifying, include data_id_funcao from #alteracao or #final (prioritize alteracao)
+    if (notificar) {
+      const alteracaoEl = document.getElementById("alteracao");
+      const finalEl = document.getElementById("final");
+      const alteracaoFunc = alteracaoEl
+        ? alteracaoEl.getAttribute("data-id-funcao")
+        : null;
+      const finalFunc = finalEl ? finalEl.getAttribute("data-id-funcao") : null;
+      const dataIdFuncao = alteracaoFunc || finalFunc || null;
+      if (dataIdFuncao) payload.data_id_funcao = dataIdFuncao;
     }
 
     xhr.send(JSON.stringify(payload));

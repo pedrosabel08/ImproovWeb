@@ -259,6 +259,54 @@ if (isset($_POST['action'])) {
                                         }
                                     }
                                 }
+                                else {
+                                    // Quando não for P00: marcar a função de finalização como Finalizado
+                                    $funcaoImagemId = null;
+                                    $chosenFuncaoId = null;
+
+                                    // Preferências: tentar funcao_id = 6, depois funcao_id = 4 (prioridade alterada)
+                                    $tryIds = [6, 4];
+                                    foreach ($tryIds as $fid) {
+                                        if ($stFi = $conn->prepare("SELECT idfuncao_imagem, funcao_id FROM funcao_imagem WHERE imagem_id = ? AND funcao_id = ? LIMIT 1")) {
+                                            $stFi->bind_param('ii', $imagem_id, $fid);
+                                            $stFi->execute();
+                                            $rowFi = $stFi->get_result()->fetch_assoc();
+                                            $stFi->close();
+                                            if ($rowFi) {
+                                                $funcaoImagemId = intval($rowFi['idfuncao_imagem']);
+                                                $chosenFuncaoId = intval($rowFi['funcao_id']);
+                                                break;
+                                            }
+                                        }
+                                    }
+
+                                    // Fallback por nome da função (começa com 'finaliza') se não encontrou por id
+                                    if (!$funcaoImagemId) {
+                                        if ($stFi2 = $conn->prepare("SELECT fi.idfuncao_imagem, fi.funcao_id FROM funcao_imagem fi JOIN funcao f ON f.idfuncao = fi.funcao_id WHERE fi.imagem_id = ? AND LOWER(f.nome_funcao) LIKE 'finaliza%' LIMIT 1")) {
+                                            $stFi2->bind_param('i', $imagem_id);
+                                            $stFi2->execute();
+                                            $rowFi2 = $stFi2->get_result()->fetch_assoc();
+                                            if ($rowFi2) {
+                                                $funcaoImagemId = intval($rowFi2['idfuncao_imagem']);
+                                                $chosenFuncaoId = intval($rowFi2['funcao_id']);
+                                            }
+                                            $stFi2->close();
+                                        }
+                                    }
+
+                                    if ($funcaoImagemId) {
+                                        if ($stUpd = $conn->prepare("UPDATE funcao_imagem SET status = 'Finalizado', prazo = NOW(), requires_file_upload = 1, file_uploaded_at = NULL WHERE idfuncao_imagem = ?")) {
+                                            $stUpd->bind_param('i', $funcaoImagemId);
+                                            $stUpd->execute();
+                                            $stUpd->close();
+                                            $logs[] = 'finalizacao.marked_finalizado.idfuncao_imagem=' . $funcaoImagemId . '.funcao_id=' . $chosenFuncaoId;
+                                        } else {
+                                            $logs[] = 'finalizacao.update_prepare_error: ' . $conn->error;
+                                        }
+                                    } else {
+                                        $logs[] = 'finalizacao.not_found_for_imagem_id=' . $imagem_id;
+                                    }
+                                }
                             }
                         }
                     }

@@ -1,0 +1,512 @@
+/* ============================================================
+   Mapa de Compatibilização de Planta — style.css
+   ============================================================ */
+
+/* ---- Reset & Base ---- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", Arial, sans-serif;
+  background: #f0f2f5;
+  color: #222;
+  overflow-x: hidden;
+}
+
+/* ---- Layout principal ---- */
+.mc-layout {
+  display: flex;
+  height: 100vh;
+  /* deixa espaço para a sidebar do sistema */
+  padding-left: 64px; /* largura da sidebar mini */
+}
+
+/* ---- Sidebar lateral do módulo ---- */
+.mc-sidebar {
+  width: 280px;
+  min-width: 240px;
+  max-width: 300px;
+  background: #fff;
+  border-right: 1px solid #e0e0e0;
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+.mc-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #2c3e50;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 2px solid #3498db;
+  padding-bottom: 10px;
+}
+
+/* ---- Campos de formulário ---- */
+.mc-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.mc-field-group label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #555;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.mc-field-group select,
+.mc-field-group input[type="text"] {
+  padding: 8px 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 13px;
+  background: #fafafa;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.mc-field-group select:focus,
+.mc-field-group input[type="text"]:focus {
+  border-color: #3498db;
+  background: #fff;
+}
+
+/* ---- Info da planta ---- */
+.mc-planta-info {
+  background: #ebf5fb;
+  border: 1px solid #aed6f1;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: #1a5276;
+}
+.mc-planta-info span {
+  font-weight: 600;
+}
+
+/* ---- Barra de progresso ---- */
+.mc-progresso-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.mc-progresso-wrap label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #555;
+}
+.mc-progress-bar {
+  height: 10px;
+  background: #e0e0e0;
+  border-radius: 5px;
+  overflow: hidden;
+}
+.mc-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #2ecc71, #27ae60);
+  border-radius: 5px;
+  transition: width 0.5s ease;
+  width: 0%;
+}
+#progressoTexto {
+  font-size: 11px;
+  color: #666;
+  text-align: right;
+}
+
+/* ---- Aviso informativo ---- */
+.mc-aviso {
+  background: #fef9e7;
+  border: 1px solid #f9ca24;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: #7d6608;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.mc-aviso i {
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+/* ---- Ações ---- */
+.mc-acoes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ---- Instrução modo edição ---- */
+.mc-instrucao {
+  background: #eaf4fe;
+  border: 1px solid #aed6f1;
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #154360;
+}
+.mc-instrucao p {
+  margin: 0 0 6px;
+}
+.mc-instrucao p:last-of-type {
+  margin-bottom: 8px;
+}
+
+/* ---- Zoom ---- */
+.mc-zoom-controls {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin-top: auto;
+}
+.mc-zoom-controls button {
+  width: 34px;
+  height: 34px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 14px;
+  color: #444;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+.mc-zoom-controls button:hover {
+  background: #f0f0f0;
+  border-color: #aaa;
+}
+
+/* ---- Botões ---- */
+.mc-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.2s,
+    opacity 0.2s,
+    transform 0.1s;
+}
+.mc-btn:active {
+  transform: scale(0.97);
+}
+.mc-btn-primary {
+  background: #3498db;
+  color: #fff;
+}
+.mc-btn-primary:hover {
+  background: #2980b9;
+}
+.mc-btn-secondary {
+  background: #ecf0f1;
+  color: #2c3e50;
+  border: 1px solid #ccc;
+}
+.mc-btn-secondary:hover {
+  background: #dde1e4;
+}
+.mc-btn-danger {
+  background: #e74c3c;
+  color: #fff;
+}
+.mc-btn-danger:hover {
+  background: #c0392b;
+}
+.mc-btn.active {
+  background: #e67e22;
+  color: #fff;
+}
+
+/* ---- .hidden ---- */
+.hidden {
+  display: none !important;
+}
+
+/* ---- Área principal ---- */
+.mc-main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+  background: #f0f2f5;
+}
+
+/* ---- Estado vazio ---- */
+.mc-empty {
+  text-align: center;
+  color: #aaa;
+}
+.mc-empty i {
+  font-size: 64px;
+  margin-bottom: 16px;
+  display: block;
+}
+.mc-empty p {
+  font-size: 15px;
+}
+
+/* ---- Outer container (permite pan sem overflow) ---- */
+.mc-planta-outer {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+  cursor: grab;
+  user-select: none;
+}
+.mc-planta-outer.editing {
+  cursor: crosshair;
+}
+.mc-planta-outer:active {
+  cursor: grabbing;
+}
+
+/* ---- Wrapper interno (recebe transform para zoom/pan) ---- */
+.mc-planta-wrapper {
+  position: relative;
+  display: inline-block;
+  transform-origin: 0 0;
+  transition: transform 0.1s ease-out;
+}
+
+/* ---- Imagem da planta ---- */
+.mc-planta-img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* ---- SVG overlay ---- */
+.mc-planta-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* ---- Polígonos de marcação ---- */
+.mc-poligono {
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.mc-poligono:hover {
+  opacity: 0.8;
+}
+
+/* ---- Preview de desenho (polígono em construção) ---- */
+.mc-preview-circle {
+  fill: rgba(52, 152, 219, 0.9);
+  stroke: #fff;
+  stroke-width: 0.4;
+  cursor: pointer;
+}
+.mc-preview-circle.primeiro {
+  fill: rgba(231, 76, 60, 0.9);
+}
+.mc-preview-line {
+  stroke: #3498db;
+  stroke-width: 0.35;
+  stroke-dasharray: 1.5 1;
+  fill: none;
+}
+.mc-preview-poly {
+  fill: rgba(52, 152, 219, 0.15);
+  stroke: #3498db;
+  stroke-width: 0.35;
+  stroke-dasharray: 1.5 1;
+}
+
+/* ---- Tooltip ---- */
+.mc-tooltip {
+  position: fixed;
+  z-index: 9999;
+  background: rgba(20, 20, 20, 0.88);
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.6;
+  pointer-events: none;
+  max-width: 220px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  transition: opacity 0.15s;
+}
+.mc-tooltip .tt-ambiente {
+  font-weight: 700;
+  font-size: 13px;
+}
+.mc-tooltip .tt-status {
+  margin-top: 3px;
+}
+.mc-tooltip .tt-badge {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 5px;
+  vertical-align: middle;
+}
+.badge-verde {
+  background: #2ecc71;
+}
+.badge-amarelo {
+  background: #f1c40f;
+}
+.badge-branco {
+  background: #ecf0f1;
+  border: 1px solid #bbb;
+}
+
+/* ---- Modal ---- */
+.mc-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: mcFadeIn 0.15s ease;
+}
+@keyframes mcFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.mc-modal-content {
+  background: #fff;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+}
+.mc-modal-header {
+  background: #2c3e50;
+  color: #fff;
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.mc-modal-header h3 {
+  margin: 0;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.mc-modal-close {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 22px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 4px;
+}
+.mc-modal-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.mc-modal-footer {
+  padding: 12px 20px;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  border-top: 1px solid #f0f0f0;
+  background: #fafafa;
+}
+.mc-imagem-info {
+  font-size: 12px;
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  padding: 8px 10px;
+  color: #495057;
+}
+.required {
+  color: #e74c3c;
+}
+
+/* ---- Legenda de cores ---- */
+.mc-legenda {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  align-items: center;
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid #eee;
+}
+.mc-legenda-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.mc-legenda-cor {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+}
+
+/* ---- Responsividade ---- */
+@media (max-width: 768px) {
+  .mc-layout {
+    flex-direction: column;
+    padding-left: 0;
+    padding-top: 56px; /* sidebar top */
+  }
+  .mc-sidebar {
+    width: 100%;
+    max-width: 100%;
+    border-right: none;
+    border-bottom: 1px solid #e0e0e0;
+    padding: 12px;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 10px;
+    overflow-y: visible;
+  }
+  .mc-title {
+    width: 100%;
+  }
+  .mc-main {
+    height: calc(100vh - 200px);
+  }
+}

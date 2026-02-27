@@ -1,20 +1,15 @@
 <?php
+require_once __DIR__ . '/../config/session_bootstrap.php';
 include '../conexao.php';
 $data = json_decode(file_get_contents("php://input"), true);
-require_once __DIR__ . '/auth_cookie.php';
 
-$comentario_id = isset($data['comentario_id']) ? intval($data['comentario_id']) : 0;
-$texto = isset($data['texto']) ? $data['texto'] : '';
-$usuario_id = $flow_user_id;
-$nome_usuario = $flow_user_name;
+$comentario_id = $data['comentario_id'];
+$texto = $data['texto'];
+$responsavel = $_SESSION['idcolaborador'];
 
-if ($comentario_id <= 0 || $texto === '' || empty($usuario_id)) {
-    echo json_encode(["erro" => "Parâmetros inválidos ou não autorizado"]);
-    exit();
-}
 
-$stmt = $conn->prepare("INSERT INTO respostas_reeview (comentario_id, texto, usuario_id) VALUES (?, ?, ?)");
-$stmt->bind_param('isi', $comentario_id, $texto, $usuario_id);
+$stmt = $conn->prepare("INSERT INTO respostas_comentario (comentario_id, texto, responsavel) VALUES (?, ?, ?)");
+$stmt->bind_param('isi', $comentario_id, $texto, $responsavel);
 $stmt->execute();
 
 if ($stmt->affected_rows > 0) {
@@ -22,7 +17,7 @@ if ($stmt->affected_rows > 0) {
         "id" => $stmt->insert_id,
         "texto" => $texto,
         "data" => date("Y-m-d H:i:s"),
-        "nome_usuario" => $nome_usuario,
+        "nome_responsavel" => $_SESSION['nome_colaborador'],
     ]);
 } else {
     echo json_encode(["erro" => "Erro ao salvar resposta"]);

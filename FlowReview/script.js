@@ -1,314 +1,162 @@
-// ================= NOVO FLUXO INICIAL =================
-// Ao carregar a página buscamos entregas da obra fixa (74) e agrupamos versões por imagem.
-// Mostramos automaticamente a primeira imagem (última versão) e thumbnails das versões.
-// On load: ensure authentication first, then initialize the app.
-document.addEventListener('DOMContentLoaded', async function () {
-    try {
-        const auth = await checkAuth();
-        if (!auth.authenticated) {
-            showAuthOverlay();
-            attachAuthHandlers();
-        } else {
-            try { localStorage.setItem('idusuario', String(auth.idusuario || '')); } catch (e) { }
-            hideAuthOverlay();
-            carregarImagensAgrupadas();
-        }
-    } catch (e) {
-        console.error('Auth check failed:', e);
-        // fallback: show auth UI so the user can login
-        showAuthOverlay();
-        attachAuthHandlers();
-    }
+document.addEventListener("DOMContentLoaded", function () {
+  const params = new URLSearchParams(window.location.search);
+  const obraNome = params.get("obra_nome");
+
+  if (obraNome) {
+    // Primeiro carrega as tarefas
+    fetchObrasETarefas().then(() => {
+      // Depois filtra pela obra
+      filtrarTarefasPorObra(obraNome);
+    });
+
+    // support pointer events (touch / pen) for PDF drawing
+    pageLayer.addEventListener("pointerdown", function (event) {
+      if (event.pointerType === "mouse" && event.button !== 0) return;
+      if (event.ctrlKey) return;
+      if (drawingTool === "ponto") return;
+      if (!pdfViewerState.logId) return;
+      event.stopPropagation();
+      isDrawing = true;
+      dragMoved = false;
+      const rect = canvas.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+      drawStartX = ((event.clientX - rect.left) / rect.width) * 100;
+      drawStartY = ((event.clientY - rect.top) / rect.height) * 100;
+      drawStartClientX = event.clientX;
+      drawStartClientY = event.clientY;
+      shapeX2 = drawStartX;
+      shapeY2 = drawStartY;
+      currentDrawRef = canvas;
+      const container =
+        document.getElementById("pdf_comment_layer") || pageLayer;
+      if (drawingTool === "freehand") {
+        freehandPoints = [[drawStartX, drawStartY]];
+        const svg = createFreehandPreviewSvg(drawStartX, drawStartY);
+        container.appendChild(svg);
+        freehandSvgPreview = svg;
+        freehandPolylineEl = svg.querySelector("polyline");
+        freehandDrawContainer = container;
+      } else {
+        const preview = document.createElement("div");
+        preview.id = "drawing-preview";
+        preview.className = `drawing-preview drawing-preview-${drawingTool}`;
+        preview.style.left = `${drawStartX}%`;
+        preview.style.top = `${drawStartY}%`;
+        preview.style.width = "0";
+        preview.style.height = "0";
+        container.appendChild(preview);
+      }
+    });
+  } else {
+    fetchObrasETarefas();
+  }
+  // carrega painel de métricas (acima do select de funções)
+  if (typeof loadMetrics === "function") loadMetrics();
 });
 
-async function checkAuth() {
-    try {
-        const r = await fetch('auth_check.php', { credentials: 'same-origin' });
-        if (!r.ok) throw new Error('Auth check failed');
-        return await r.json();
-    } catch (e) {
-        console.error('checkAuth error', e);
-        return { authenticated: false };
-    }
-}
+function revisarTarefa(
+  idfuncao_imagem,
+  nome_colaborador,
+  imagem_nome,
+  nome_funcao,
+  colaborador_id,
+  imagem_id,
+  tipoRevisao,
+) {
+  const idcolaborador = localStorage.getItem("idcolaborador");
 
-function showAuthOverlay() {
-    const overlay = document.querySelector('.auth-page');
-    if (overlay) overlay.style.display = 'flex';
-}
+  let actionText = "";
+  switch (tipoRevisao) {
+    case "aprovado":
+      actionText = "aprovar esta tarefa";
+      break;
+    case "ajuste":
+      actionText = "marcar esta tarefa como necessitando de ajustes";
+      break;
+    case "aprovado_com_ajustes":
+      actionText = "aprovar com ajustes";
+      break;
+  }
 
-function hideAuthOverlay() {
-    const overlay = document.querySelector('.auth-page');
-    if (overlay) overlay.style.display = 'none';
-}
+  if (confirm(`Você tem certeza de que deseja ${actionText}?`)) {
+    fetch("revisarTarefa.php", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        idfuncao_imagem,
+        nome_colaborador,
+        imagem_nome,
+        nome_funcao,
+        colaborador_id,
+        responsavel: idcolaborador,
+        imagem_id,
+        tipoRevisao,
+      }),
+    })
+      .then((response) => {
+        if (!response.ok) throw new Error("Erro ao atualizar a tarefa.");
+        return response.json();
+      })
+      .then((data) => {
+        console.log("Resposta do servidor:", data);
 
-function attachAuthHandlers() {
-    // tab buttons
-    const showLogin = document.getElementById('showLogin');
-    const showRegister = document.getElementById('showRegister');
-    if (showLogin) showLogin.addEventListener('click', () => { document.getElementById('loginBox').style.display = ''; document.getElementById('registerBox').style.display = 'none'; });
-    if (showRegister) showRegister.addEventListener('click', () => { document.getElementById('loginBox').style.display = 'none'; document.getElementById('registerBox').style.display = ''; });
+        let message = "";
+        let bgColor = "";
 
-    // login form
-    const loginForm = document.getElementById('loginForm');
-    if (loginForm) {
-        loginForm.addEventListener('submit', async function (e) {
-            e.preventDefault();
-            const fd = new FormData(loginForm);
-            try {
-                const resp = await fetch(loginForm.action, { method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }, credentials: 'same-origin' });
-                const json = await resp.json();
-                if (json.success) {
-                    if (json.idusuario) localStorage.setItem('idusuario', String(json.idusuario));
-                    Toastify({ text: 'Login realizado com sucesso', duration: 2500, backgroundColor: 'green', close: true, gravity: 'top', position: 'right' }).showToast();
-                    hideAuthOverlay();
-                    carregarImagensAgrupadas();
-                } else {
-                    Toastify({ text: json.message || 'Credenciais inválidas', duration: 4000, backgroundColor: 'red', close: true, gravity: 'top', position: 'right' }).showToast();
-                }
-            } catch (err) {
-                console.error('login error', err);
-                Toastify({ text: 'Erro ao contatar o servidor. Tente novamente.', duration: 4000, backgroundColor: 'red', close: true, gravity: 'top', position: 'right' }).showToast();
-            }
-        });
-    }
-
-    // register form
-    const registerForm = document.getElementById('registerForm');
-    if (registerForm) {
-        registerForm.addEventListener('submit', async function (e) {
-            e.preventDefault();
-            const fd = new FormData(registerForm);
-            try {
-                const resp = await fetch(registerForm.action, { method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }, credentials: 'same-origin' });
-                const json = await resp.json();
-                if (json.success) {
-                    if (json.idusuario) localStorage.setItem('idusuario', String(json.idusuario));
-                    Toastify({ text: 'Conta criada e logado', duration: 2500, backgroundColor: 'green', close: true, gravity: 'top', position: 'right' }).showToast();
-                    hideAuthOverlay();
-                    carregarImagensAgrupadas();
-                } else {
-                    Toastify({ text: json.message || 'Falha ao registrar', duration: 4000, backgroundColor: 'red', close: true, gravity: 'top', position: 'right' }).showToast();
-                }
-            } catch (err) {
-                console.error('register error', err);
-                Toastify({ text: 'Erro ao contatar o servidor. Tente novamente.', duration: 4000, backgroundColor: 'red', close: true, gravity: 'top', position: 'right' }).showToast();
-            }
-        });
-    }
-}
-
-// Lê token da query string (ex: ?token=...)
-function getTokenFromUrl() {
-    try {
-        // 1) Querystring fallback: ?token=...
-        const params = new URLSearchParams(window.location.search);
-        const q = params.get('token');
-        if (q && q !== '') return q;
-
-        // 2) Path-based token support for URLs like:
-        //    /sistema/FlowReview/<token>
-        //    /sistema/FlowReview/token/<token>
-        const path = window.location.pathname || '';
-        const parts = path.split('/').filter(Boolean); // remove empty segments
-        // find 'FlowReview' segment
-        const idx = parts.indexOf('FlowReview');
-        if (idx === -1) return null;
-        const next = parts[idx + 1];
-        if (!next) return null;
-        if (next === 'token') return parts[idx + 2] || null;
-        return next;
-    } catch (e) {
-        return null;
-    }
-}
-
-let imagensAgrupadasGlobal = []; // [{ imagem_id, preview_url, versoes:[...], totalVersoes }]
-
-async function carregarImagensAgrupadas() {
-    try {
-        const dados = await fetchEntregasObraFixa(); // { entregas: [...] }
-        imagensAgrupadasGlobal = agruparPorImagem(dados.entregas || []);
-        exibirGridImagens(imagensAgrupadasGlobal);
-        if (imagensAgrupadasGlobal.length > 0) {
-            historyAJAX(imagensAgrupadasGlobal[0].imagem_id);
+        switch (tipoRevisao) {
+          case "aprovado":
+            message = "Tarefa aprovada com sucesso!";
+            bgColor = "green";
+            break;
+          case "ajuste":
+            message = "Tarefa marcada como necessitando de ajustes!";
+            bgColor = "orange";
+            break;
+          case "aprovado_com_ajustes":
+            message = "Tarefa aprovada com ajustes!";
+            bgColor = "blue";
+            break;
         }
-    } catch (e) {
-        console.error('Erro ao carregar imagens agrupadas:', e);
-    }
+
+        Toastify({
+          text: data.success
+            ? message
+            : "Falha ao atualizar a tarefa: " + data.message,
+          duration: 3000,
+          backgroundColor: data.success ? bgColor : "red",
+          close: true,
+          gravity: "top",
+          position: "right",
+        }).showToast();
+
+        if (data.success) {
+          const obraSelecionada = document.getElementById("filtro_obra").value;
+
+          filtrarTarefasPorObra(obraSelecionada);
+        }
+      })
+      .catch((error) => {
+        console.error("Erro:", error);
+        Toastify({
+          text: "Ocorreu um erro ao processar a solicitação. " + error.message,
+          duration: 3000,
+          backgroundColor: "red",
+          close: true,
+          gravity: "top",
+          position: "right",
+        }).showToast();
+      });
+  }
+
+  event.stopPropagation();
 }
 
-async function fetchEntregasObraFixa() {
-    const token = getTokenFromUrl();
-    const url = token ? `atualizar.php?token=${encodeURIComponent(token)}` : 'atualizar.php';
-    const r = await fetch(url, { credentials: 'same-origin' });
-    if (!r.ok) throw new Error('Falha ao buscar entregas');
-    return await r.json();
+// Função para alternar a visibilidade dos detalhes da tarefa
+function toggleTaskDetails(taskElement) {
+  taskElement.classList.toggle("open");
 }
-
-function agruparPorImagem(entregas) {
-    const mapa = new Map();
-    entregas.forEach(ent => {
-        const identrega = ent.identrega;
-        const nomeEtapa = ent.nome_etapa;
-        (ent.itens || []).forEach(item => {
-            const imagemId = item.imagem_id;
-            if (!imagemId) return;
-            if (!mapa.has(imagemId)) {
-                mapa.set(imagemId, {
-                    imagem_id: imagemId,
-                    versoes: [],
-                    funcao_imagem_ids: new Set(),
-                    nome_funcao: item.nome_funcao || '',
-                    nome_colaborador: item.nome_colaborador || '',
-                    nome_status_imagem: item.nome_status_imagem || ''
-                });
-            }
-            const grupo = mapa.get(imagemId);
-            grupo.versoes.push({
-                entrega_id: identrega,
-                entrega_item_id: item.id,
-                nome_etapa: nomeEtapa,
-                historico_imagem_id: item.historico_imagem_id,
-                nome_arquivo: item.nome_arquivo,
-                imagem_nome: item.imagem_nome,
-                indice_envio: item.indice_envio || 0,
-                data_envio: item.data_envio,
-                imagem_url: item.imagem,
-                idfuncao_imagem: item.idfuncao_imagem,
-                colaborador_id: item.colaborador_id,
-                nome_funcao: item.nome_funcao,
-                entrega_item_status: item.entrega_item_status,
-                angulos_count: item.angulos_count,
-                carrossel_angulos: item.carrossel_angulos
-            });
-            if (item.idfuncao_imagem) grupo.funcao_imagem_ids.add(item.idfuncao_imagem);
-        });
-    });
-    const resultado = [];
-    mapa.forEach(grupo => {
-        grupo.versoes.sort((a, b) => {
-            const da = a.data_envio ? new Date(a.data_envio) : null;
-            const db = b.data_envio ? new Date(b.data_envio) : null;
-            if (da && db && da.getTime() !== db.getTime()) return db - da;
-            return b.entrega_id - a.entrega_id;
-        });
-        grupo.preview_url = (grupo.versoes[0] && grupo.versoes[0].imagem_url) || null;
-        grupo.totalVersoes = grupo.versoes.length;
-        resultado.push(grupo);
-    });
-    return resultado;
-}
-
-function exibirGridImagens(imagens) {
-    const container = document.querySelector('.containerObra');
-    if (!container) return;
-    container.innerHTML = '';
-    if (imagens.length === 0) {
-        container.innerHTML = '<p style="text-align:center;color:#888;">Nenhuma imagem encontrada.</p>';
-        return;
-    }
-    imagens.forEach(img => {
-        const card = document.createElement('div');
-        card.className = 'imagem-card';
-        card.innerHTML = `
-                    <div class="imagem-thumb">
-                        ${img.preview_url ? `<img src="${img.preview_url}" alt="Imagem ${img.imagem_id}" class="imagem-preview">` : '<span class="sem-preview">Sem preview</span>'}
-                    </div>
-                    <div class="imagem-card-body">
-                        <div class="imagem-card-title">Imagem #${img.imagem_id}</div>
-                        <div class="imagem-card-funcao">${img.nome_funcao || 'Função não definida'}</div>
-                        <div class="imagem-card-colaborador">${img.nome_colaborador || ''}</div>
-                        <div class="imagem-card-versoes">Versões: ${img.totalVersoes}</div>
-                    </div>
-                `;
-        card.addEventListener('click', () => historyAJAX(img.imagem_id));
-        container.appendChild(card);
-    });
-}
-
-// Modal de versões removido (uso direto)
-function abrirModalVersoes() { /* placeholder */ }
-// ================= FIM NOVO FLUXO INICIAL =================
-
-function revisarTarefa(idfuncao_imagem, nome_colaborador, imagem_nome, nome_funcao, colaborador_id, tipoRevisao) {
-    const idcolaborador = localStorage.getItem('idcolaborador');
-
-    let actionText = "";
-    switch (tipoRevisao) {
-        case "aprovado":
-            actionText = "aprovar esta tarefa";
-            break;
-        case "ajuste":
-            actionText = "marcar esta tarefa como necessitando de ajustes";
-            break;
-        case "aprovado_com_ajustes":
-            actionText = "aprovar com ajustes";
-            break;
-    }
-
-    if (confirm(`Você tem certeza de que deseja ${actionText}?`)) {
-        fetch('revisarTarefa.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                idfuncao_imagem,
-                nome_colaborador,
-                imagem_nome,
-                nome_funcao,
-                colaborador_id,
-                responsavel: idcolaborador,
-                tipoRevisao
-            }),
-        })
-            .then(response => {
-                if (!response.ok) throw new Error("Erro ao atualizar a tarefa.");
-                return response.json();
-            })
-            .then(data => {
-                let message = "";
-                let bgColor = "";
-                switch (tipoRevisao) {
-                    case "aprovado":
-                        message = "Tarefa aprovada com sucesso!";
-                        bgColor = "green";
-                        break;
-                    case "ajuste":
-                        message = "Tarefa marcada como necessitando de ajustes!";
-                        bgColor = "orange";
-                        break;
-                    case "aprovado_com_ajustes":
-                        message = "Tarefa aprovada com ajustes!";
-                        bgColor = "blue";
-                        break;
-                }
-                Toastify({
-                    text: data.success ? message : "Falha ao atualizar a tarefa: " + data.message,
-                    duration: 3000,
-                    backgroundColor: data.success ? bgColor : "red",
-                    close: true,
-                    gravity: "top",
-                    position: "right"
-                }).showToast();
-            })
-            .catch(error => {
-                console.error("Erro:", error);
-                Toastify({
-                    text: "Ocorreu um erro ao processar a solicitação. " + error.message,
-                    duration: 3000,
-                    backgroundColor: "red",
-                    close: true,
-                    gravity: "top",
-                    position: "right"
-                }).showToast();
-            });
-    }
-    event.stopPropagation();
-}
-
-function toggleTaskDetails(taskElement) { taskElement.classList.toggle('open'); }
 
 let dadosTarefas = [];
 let todasAsObras = new Set();
@@ -317,1344 +165,2248 @@ let todasAsFuncoes = new Set();
 let funcaoGlobalSelecionada = null;
 
 async function fetchObrasETarefas() {
-    try {
-        const token = getTokenFromUrl();
-        const url = token ? `atualizar.php?token=${encodeURIComponent(token)}` : 'atualizar.php';
-        const response = await fetch(url);
-        if (!response.ok) throw new Error("Erro ao buscar tarefas");
-        const json = await response.json();
-        const plano = [];
-        if (json && json.entregas) {
-            json.entregas.forEach(ent => {
-                (ent.itens || []).forEach(item => {
-                    plano.push({
-                        nome_obra: 'Obra 74',
-                        imagem: item.imagem,
-                        imagem_id: item.imagem_id,
-                        idfuncao_imagem: item.idfuncao_imagem,
-                        nome_colaborador: item.nome_colaborador,
-                        nome_funcao: item.nome_funcao,
-                        nome_status: item.nome_status_imagem,
-                        data_aprovacao: item.data_envio,
-                        nomenclatura: `Imagem ${item.imagem_id}`,
-                        status_novo: item.nome_status_imagem
-                    });
-                });
-            });
-        }
-        dadosTarefas = plano;
-        todasAsObras = new Set(plano.map(t => t.nome_obra));
-        todosOsColaboradores = new Set(plano.map(t => t.nome_colaborador));
-        todasAsFuncoes = new Set(plano.map(t => t.nome_funcao));
-        const filtroSelect = document.getElementById('filtroFuncao');
-        if (filtroSelect) filtroSelect.style.display = 'none';
-    } catch (error) {
-        console.error(error);
-    }
+  try {
+    const response = await fetch(`atualizar.php`);
+    if (!response.ok) throw new Error("Erro ao buscar tarefas");
+
+    dadosTarefas = await response.json();
+
+    todasAsObras = new Set(dadosTarefas.map((t) => t.nome_obra));
+    todosOsColaboradores = new Set(dadosTarefas.map((t) => t.nome_colaborador));
+    todasAsFuncoes = new Set(dadosTarefas.map((t) => t.nome_funcao)); // ou o nome do campo correspondente
+
+    exibirCardsDeObra(dadosTarefas); // Mostra os cards
+
+    const filtroSelect = document.getElementById("filtroFuncao");
+    filtroSelect.style.display = "block"; // Exibe o filtro de função
+    filtroSelect.innerHTML = '<option value="">Todas as funções</option>';
+
+    todasAsFuncoes.forEach((funcao) => {
+      const option = document.createElement("option");
+      option.value = funcao;
+      option.textContent = funcao;
+      filtroSelect.appendChild(option);
+    });
+
+    document
+      .getElementById("filtroFuncao")
+      .addEventListener("change", (event) => {
+        funcaoGlobalSelecionada = event.target.value || null;
+
+        const tarefasFiltradas = funcaoGlobalSelecionada
+          ? dadosTarefas.filter(
+              (t) => t.nome_funcao === funcaoGlobalSelecionada,
+            )
+          : dadosTarefas;
+
+        exibirCardsDeObra(tarefasFiltradas);
+      });
+  } catch (error) {
+    console.error(error);
+  }
 }
 
-async function buscarMencoesDoUsuario() { const r = await fetch('buscar_mencoes.php'); return await r.json(); }
+// Carrega métricas agregadas por função e renderiza no painel
+async function loadMetrics() {
+  try {
+    const res = await fetch("getMetrics.php");
+    if (!res.ok) throw new Error("Erro ao buscar métricas");
+    const data = await res.json();
+
+    const panel = document.getElementById("metrics-panel");
+    if (!panel) return;
+    panel.innerHTML = "";
+
+    const grid = document.createElement("div");
+    grid.style.display = "flex";
+    grid.style.gap = "8px";
+    grid.style.flexWrap = "wrap";
+
+    data.forEach((row) => {
+      const card = document.createElement("div");
+      card.className = "metrics-card";
+      card.style.padding = "8px 10px";
+      card.style.background = "#f5f7fa";
+      card.style.border = "1px solid #e0e6ef";
+      card.style.borderRadius = "6px";
+      card.style.minWidth = "160px";
+      card.style.boxSizing = "border-box";
+
+      const title = document.createElement("div");
+      title.textContent = row.nome_funcao || "-";
+      title.style.fontWeight = "600";
+      title.style.marginBottom = "6px";
+
+      const avg = document.createElement("div");
+      avg.textContent = `Média (h): ${row.media_horas_em_aprovacao !== null ? row.media_horas_em_aprovacao : "-"} `;
+      avg.style.color = "#333";
+
+      const total = document.createElement("div");
+      total.textContent = `Total: ${row.total_tarefas}`;
+      total.style.color = "#666";
+
+      card.appendChild(title);
+      card.appendChild(avg);
+      card.appendChild(total);
+
+      grid.appendChild(card);
+    });
+
+    panel.appendChild(grid);
+  } catch (err) {
+    console.error("Erro ao carregar métricas:", err);
+  }
+}
+
+async function buscarMencoesDoUsuario() {
+  const response = await fetch("buscar_mencoes.php");
+  return await response.json();
+}
 
 async function exibirCardsDeObra(tarefas) {
-    const mencoes = await buscarMencoesDoUsuario();
-    if (mencoes.total_mencoes > 0) {
-        Swal.fire({
-            title: '📣 Você foi mencionado!',
-            text: `Há ${mencoes.total_mencoes} menção(ões) nas tarefas.`,
-            icon: 'info', confirmButtonText: 'Ver cards'
-        });
+  const mencoes = await buscarMencoesDoUsuario();
+
+  // if (mencoes.total_mencoes > 0) {
+  //     Swal.fire({
+  //         title: '📣 Você foi mencionado!',
+  //         text: `Há ${mencoes.total_mencoes} menção(ões) nas tarefas.`,
+  //         icon: 'info',
+  //         confirmButtonText: 'Ver cards'
+  //     });
+  // }
+
+  const container = document.querySelector(".containerObra");
+  container.innerHTML = "";
+
+  if (!Array.isArray(tarefas) || tarefas.length === 0) {
+    container.innerHTML =
+      '<p style="text-align: center; color: #888; margin-top: 24px;">Não há tarefas de revisão no momento.</p>';
+    return;
+  }
+
+  const obrasMap = new Map();
+  tarefas.forEach((tarefa) => {
+    if (!obrasMap.has(tarefa.nome_obra)) {
+      obrasMap.set(tarefa.nome_obra, []);
     }
-    const container = document.querySelector('.containerObra');
-    container.innerHTML = '';
-    const obrasMap = new Map();
-    tarefas.forEach(t => { if (!obrasMap.has(t.nome_obra)) obrasMap.set(t.nome_obra, []); obrasMap.get(t.nome_obra).push(t); });
-    obrasMap.forEach((tarefasDaObra, nome_obra) => {
-        tarefasDaObra.sort((a, b) => new Date(b.data_aprovacao) - new Date(a.data_aprovacao));
-        const tarefaComImagem = tarefasDaObra.find(t => t.imagem);
-        const imagemPreview = tarefaComImagem ? `https://improov.com.br/flow/ImproovWeb/${tarefaComImagem.imagem}` : '../assets/logo.jpg';
-        const mencoesNaObra = mencoes.mencoes_por_obra[nome_obra] || 0;
-        const card = document.createElement('div'); card.classList.add('obra-card');
-        card.innerHTML = `
-          ${mencoesNaObra > 0 ? `<div class="mencao-badge">${mencoesNaObra}</div>` : ''}
-          <div class="obra-img-preview"><img src="${imagemPreview}" alt="Imagem da obra ${nome_obra}"></div>
-          <div class="obra-info"><h3>${tarefasDaObra[0].nomenclatura}</h3><p>${tarefasDaObra.length} aprovações</p></div>
-        `;
-        card.addEventListener('click', () => filtrarTarefasPorObra(nome_obra));
-        container.appendChild(card);
+    obrasMap.get(tarefa.nome_obra).push(tarefa);
+  });
+
+  obrasMap.forEach((tarefasDaObra, nome_obra) => {
+    tarefasDaObra.sort(
+      (a, b) => new Date(b.data_aprovacao) - new Date(a.data_aprovacao),
+    );
+    const tarefaComImagem = tarefasDaObra.find((t) => t.imagem);
+    // Use thumbnail for obra preview to reduce load
+    const imagemPreview = tarefaComImagem
+      ? `https://improov.com.br/flow/ImproovWeb/thumb.php?path=${encodeURIComponent(tarefaComImagem.imagem)}&w=450&q=85`
+      : "../assets/logo.jpg";
+
+    const mencoesNaObra = mencoes.mencoes_por_obra[nome_obra] || 0;
+
+    const card = document.createElement("div");
+    card.classList.add("obra-card");
+
+    card.innerHTML = `
+        ${mencoesNaObra > 0 ? `<div class="mencao-badge">${mencoesNaObra}</div>` : ""}
+        <div class="obra-img-preview">
+            <img src="${imagemPreview}" alt="Imagem da obra ${nome_obra}">
+        </div>
+        <div class="obra-info">
+            <h3>${tarefasDaObra[0].nomenclatura}</h3>
+            <p>${tarefasDaObra.length} aprovações</p>
+        </div>
+    `;
+
+    card.addEventListener("click", () => {
+      filtrarTarefasPorObra(nome_obra);
     });
+
+    container.appendChild(card);
+  });
 }
 
 function filtrarTarefasPorObra(obraSelecionada) {
-    document.getElementById('filtro_obra').value = obraSelecionada;
-    const tarefasDaObra = dadosTarefas.filter(t => t.nome_obra === obraSelecionada);
-    atualizarFiltrosDinamicos(tarefasDaObra);
-    const colaboradorSelecionado = document.getElementById('filtro_colaborador').value;
-    if (tarefasDaObra.length > 0) {
-        const nomeObra = tarefasDaObra[0].nome_obra;
-        const nomenclatura = tarefasDaObra[0].nomenclatura;
-        document.querySelectorAll('.obra_nav').forEach(link => { link.href = `https://improov.com.br/flow/ImproovWeb/Revisao/index.php?obra_nome=${nomeObra}`; link.textContent = nomenclatura; });
+  document.getElementById("filtro_obra").value = obraSelecionada;
+
+  // Filtra todas as tarefas da obra
+  const tarefasDaObra = dadosTarefas.filter(
+    (t) => t.nome_obra === obraSelecionada,
+  );
+
+  // Atualiza os filtros dinamicamente com base nessa obra
+  atualizarFiltrosDinamicos(tarefasDaObra);
+
+  // Captura os novos valores dos selects após atualização
+  const colaboradorSelecionado =
+    document.getElementById("filtro_colaborador").value;
+  let funcaoSelecionada = document.getElementById("nome_funcao").value;
+
+  // Se houver filtro global ativo, aplica e reflete visualmente
+  if (funcaoGlobalSelecionada) {
+    funcaoSelecionada = funcaoGlobalSelecionada;
+
+    const selectFuncao = document.getElementById("nome_funcao");
+    const opcoes = Array.from(selectFuncao.options).map((opt) => opt.value);
+    if (opcoes.includes(funcaoGlobalSelecionada)) {
+      selectFuncao.value = funcaoGlobalSelecionada;
     }
-    const tarefasFiltradas = tarefasDaObra.filter(t => !colaboradorSelecionado || t.nome_colaborador === colaboradorSelecionado);
-    exibirTarefas(tarefasFiltradas, tarefasDaObra);
+  }
+
+  if (tarefasDaObra.length > 0) {
+    const obraId = tarefasDaObra[0].idobra; // ajuste se o campo for diferente
+    const nomeObra = tarefasDaObra[0].nome_obra;
+    const nomenclatura = tarefasDaObra[0].nomenclatura;
+
+    const obraNavLinks = document.querySelectorAll(".obra_nav");
+
+    obraNavLinks.forEach((link) => {
+      link.href = `https://improov.com.br/flow/ImproovWeb/Revisao/index.php?obra_nome=${nomeObra}`;
+      link.textContent = nomenclatura;
+    });
+  }
+
+  // Aplica os filtros adicionais (colaborador e função)
+  const tarefasFiltradas = tarefasDaObra.filter((t) => {
+    const matchColaborador =
+      !colaboradorSelecionado || t.nome_colaborador === colaboradorSelecionado;
+    const matchFuncao =
+      funcaoSelecionada === "Todos" || t.nome_funcao === funcaoSelecionada;
+    return matchColaborador && matchFuncao;
+  });
+
+  // Exibe as tarefas filtradas
+  exibirTarefas(tarefasFiltradas, tarefasDaObra);
 }
 
 function atualizarSelectColaborador(tarefas) {
-    const selectColaborador = document.getElementById('filtro_colaborador');
-    const valorAnterior = selectColaborador.value;
-    const colaboradores = [...new Set(tarefas.map(t => t.nome_colaborador))];
-    selectColaborador.innerHTML = '<option value="">Todos</option>';
-    colaboradores.forEach(colab => { const option = document.createElement('option'); option.value = colab; option.textContent = colab; selectColaborador.appendChild(option); });
-    if ([...selectColaborador.options].some(o => o.value === valorAnterior)) selectColaborador.value = valorAnterior;
+  const selectColaborador = document.getElementById("filtro_colaborador");
+  const valorAnterior = selectColaborador.value;
+
+  const colaboradores = [...new Set(tarefas.map((t) => t.nome_colaborador))];
+
+  selectColaborador.innerHTML = '<option value="">Todos</option>';
+  colaboradores.forEach((colab) => {
+    const option = document.createElement("option");
+    option.value = colab;
+    option.textContent = colab;
+    selectColaborador.appendChild(option);
+  });
+
+  if ([...selectColaborador.options].some((o) => o.value === valorAnterior)) {
+    selectColaborador.value = valorAnterior;
+  }
 }
 
-function atualizarSelectFuncao() { }
+function atualizarSelectFuncao(tarefas) {
+  const selectFuncao = document.getElementById("nome_funcao");
+  const valorAnterior = selectFuncao.value;
 
+  const funcoes = [...new Set(tarefas.map((t) => t.nome_funcao))];
+
+  selectFuncao.innerHTML = '<option value="Todos">Todos</option>';
+  funcoes.forEach((funcao) => {
+    const option = document.createElement("option");
+    option.value = funcao;
+    option.textContent = funcao;
+    selectFuncao.appendChild(option);
+  });
+
+  if ([...selectFuncao.options].some((o) => o.value === valorAnterior)) {
+    selectFuncao.value = valorAnterior;
+  }
+}
+
+// Eventos para os filtros
 function atualizarFiltrosDinamicos(tarefas) {
-    const selectColaborador = document.getElementById('filtro_colaborador');
-    const valorAnteriorColaborador = selectColaborador.value;
-    const colaboradores = [...new Set(tarefas.map(t => t.nome_colaborador))];
-    selectColaborador.innerHTML = '<option value="">Todos</option>';
-    colaboradores.forEach(col => { const o = document.createElement('option'); o.value = col; o.textContent = col; selectColaborador.appendChild(o); });
-    if ([...selectColaborador.options].some(o => o.value === valorAnteriorColaborador)) selectColaborador.value = valorAnteriorColaborador;
+  const selectColaborador = document.getElementById("filtro_colaborador");
+  const selectFuncao = document.getElementById("nome_funcao");
+
+  // Salva os valores antes de atualizar
+  const valorAnteriorColaborador = selectColaborador.value;
+  const valorAnteriorFuncao = selectFuncao.value;
+
+  const colaboradores = [...new Set(tarefas.map((t) => t.nome_colaborador))];
+  const funcoes = [...new Set(tarefas.map((t) => t.nome_funcao))];
+
+  // Atualiza select de colaborador
+  selectColaborador.innerHTML = '<option value="">Todos</option>';
+  colaboradores.forEach((colaborador) => {
+    const option = document.createElement("option");
+    option.value = colaborador;
+    option.textContent = colaborador;
+    selectColaborador.appendChild(option);
+  });
+
+  // Atualiza select de função
+  selectFuncao.innerHTML = '<option value="Todos">Todos</option>';
+  funcoes.forEach((funcao) => {
+    const option = document.createElement("option");
+    option.value = funcao;
+    option.textContent = funcao;
+    selectFuncao.appendChild(option);
+  });
+
+  // Reatribui os valores anteriores (se ainda existirem nas opções)
+  if (
+    [...selectColaborador.options].some(
+      (o) => o.value === valorAnteriorColaborador,
+    )
+  ) {
+    selectColaborador.value = valorAnteriorColaborador;
+  }
+
+  if ([...selectFuncao.options].some((o) => o.value === valorAnteriorFuncao)) {
+    selectFuncao.value = valorAnteriorFuncao;
+  }
 }
 
-document.getElementById('filtro_colaborador').addEventListener('change', () => {
-    const obraSelecionada = document.getElementById('filtro_obra').value;
-    const colaboradorSelecionado = document.getElementById('filtro_colaborador').value;
-    const tarefasDaObra = dadosTarefas.filter(t => t.nome_obra === obraSelecionada);
-    const tarefasFiltradas = tarefasDaObra.filter(t => !colaboradorSelecionado || t.nome_colaborador === colaboradorSelecionado);
-    atualizarSelectColaborador(tarefasFiltradas);
-    filtrarTarefasPorObra(obraSelecionada);
+document.getElementById("filtro_colaborador").addEventListener("change", () => {
+  const obraSelecionada = document.getElementById("filtro_obra").value;
+  const colaboradorSelecionado =
+    document.getElementById("filtro_colaborador").value;
+
+  const tarefasDaObra = dadosTarefas.filter(
+    (t) => t.nome_obra === obraSelecionada,
+  );
+  const tarefasFiltradas = tarefasDaObra.filter(
+    (t) =>
+      !colaboradorSelecionado || t.nome_colaborador === colaboradorSelecionado,
+  );
+
+  atualizarSelectFuncao(tarefasFiltradas); // atualiza o outro filtro com base nesse
+
+  filtrarTarefasPorObra(obraSelecionada);
 });
 
+document.getElementById("nome_funcao").addEventListener("change", () => {
+  const obraSelecionada = document.getElementById("filtro_obra").value;
+  const funcaoSelecionada = document.getElementById("nome_funcao").value;
+
+  const tarefasDaObra = dadosTarefas.filter(
+    (t) => t.nome_obra === obraSelecionada,
+  );
+  const tarefasFiltradas = tarefasDaObra.filter(
+    (t) => funcaoSelecionada === "Todos" || t.nome_funcao === funcaoSelecionada,
+  );
+
+  atualizarSelectColaborador(tarefasFiltradas); // atualiza o outro filtro com base nesse
+
+  filtrarTarefasPorObra(obraSelecionada);
+});
+
+// Função para exibir as tarefas e abastecer os filtros
 function exibirTarefas(tarefas, tarefasCompletas) {
-    const container = document.querySelector('.containerObra');
-    container.style.display = 'none';
-    document.getElementById('filtroFuncao').style.display = 'none';
-    const tarefasObra = document.querySelector('.tarefasObra');
-    tarefasObra.classList.remove('hidden');
-    const tarefasImagensObra = document.querySelector('.tarefasImagensObra');
-    tarefasImagensObra.innerHTML = '';
-    exibirSidebarTabulator(tarefasCompletas);
-    if (tarefas.length > 0) {
-        tarefas.forEach(tarefa => {
-            const taskItem = document.createElement('div');
-            taskItem.classList.add('task-item');
-            taskItem.setAttribute('onclick', `historyAJAX(${tarefa.imagem_id})`);
-            const imagemPreview = tarefa.imagem ? `https://improov.com.br/flow/ImproovWeb/${tarefa.imagem}` : '../assets/logo.jpg';
-            const color = tarefa.status_novo === 'Em aprovação' ? '#000a59' : tarefa.status_novo === 'Ajuste' ? '#590000' : tarefa.status_novo === 'Aprovado com ajustes' ? '#2e0059ff' : 'transparent';
-            const bgColor = tarefa.status_novo === 'Em aprovação' ? '#90c2ff' : tarefa.status_novo === 'Ajuste' ? '#ff5050' : tarefa.status_novo === 'Aprovado com ajustes' ? '#ae90ffff' : 'transparent';
-            taskItem.innerHTML = `
-              <div class="task-info">
-                <div class="image-wrapper"><img src="${imagemPreview}" alt="Imagem da obra ${tarefa.nome_obra}" class="task-image" onerror="this.onerror=null;this.src='../assets/logo.jpg';"></div>
-                <h3 class="nome_funcao">${tarefa.nome_status || tarefa.status_novo}</h3><span class="colaborador">${tarefa.nome_colaborador}</span>
-                <p class="imagem_nome" data-obra="${tarefa.nome_obra}">${tarefa.imagem_nome}</p>
-                <p class="data_aprovacao">${formatarDataHora(tarefa.data_aprovacao)}</p>
-                <p id="status_funcao" style="color:${color};background-color:${bgColor}">${tarefa.nome_status || tarefa.status_novo}</p>
-              </div>`;
-            tarefasImagensObra.appendChild(taskItem);
-        });
-    } else {
-        container.innerHTML = '<p style="text-align:center;color:#888;">Não há tarefas de revisão no momento.</p>';
-    }
-}
-
-function formatarData(data) { const [ano, mes, dia] = data.split('-'); return `${dia}/${mes}/${ano}`; }
-function formatarDataHora(data) { const d = new Date(data); const dia = String(d.getDate()).padStart(2, '0'); const mes = String(d.getMonth() + 1).padStart(2, '0'); const ano = d.getFullYear(); const h = String(d.getHours()).padStart(2, '0'); const m = String(d.getMinutes()).padStart(2, '0'); return `${dia}/${mes}/${ano} ${h}:${m}`; }
-
-const idusuario = parseInt(localStorage.getItem('idusuario'));
-let funcaoImagemId = null;
-let ap_imagem_id = null;
-let versoesAtuaisDaImagem = []; // armazenar versões da imagem atualmente aberta
-let entregaItemIdAtual = null; // entrega_itens.id da versão atualmente aberta
-let imagemTemDecisao = false; // flag: existe decisão para a versão atualmente exibida
-
-function construirLabelVersao(v) {
-    console.log(v);
-    const envio = (v.indice_envio !== undefined && v.indice_envio !== null) ? `${v.nome_etapa}` : 'Envio ?';
-    const data = v.data_envio ? new Date(v.data_envio) : null;
-    const dataFmt = data ? `${String(data.getDate()).padStart(2, '0')}/${String(data.getMonth() + 1).padStart(2, '0')}/${data.getFullYear()}` : '';
-    return `${envio}`;
-}
-
-function historyAJAX(imagemId) {
-    const grupo = imagensAgrupadasGlobal.find(g => g.imagem_id == imagemId);
-    if (!grupo) return;
-
-    const main = document.querySelector('.main');
-    if (main) main.classList.add('hidden');
-    const container_aprovacao = document.querySelector('.container-aprovacao');
-    if (container_aprovacao) container_aprovacao.classList.remove('hidden');
-
-    const imageContainer = document.getElementById('imagens');
-    if (imageContainer) imageContainer.innerHTML = '';
-
-    const indiceSelect = document.getElementById('indiceSelect');
-    if (indiceSelect) indiceSelect.style.display = 'none';
-
-    // 1) Carrega a imagem atual (última versão deste grupo)
-    const versoesOrdenadas = (grupo.versoes || []).slice().sort((a, b) => {
-        const da = a.data_envio ? new Date(a.data_envio) : 0;
-        const db = b.data_envio ? new Date(b.data_envio) : 0;
-        if (db - da !== 0) return db - da;
-        return (b.entrega_id || 0) - (a.entrega_id || 0);
-    });
-
-    let entregaReferencia = null;
-    if (versoesOrdenadas[0]) {
-        const v0 = versoesOrdenadas[0];
-        entregaReferencia = v0.entrega_id || null;
-        mostrarImagemCompleta(
-            v0.imagem_url,
-            v0.historico_imagem_id,
-            v0.imagem_nome || '',
-            v0.entrega_item_id || null
-        );
-    }
-
-    // Armazena versões correntes e constrói/select de versões
-    versoesAtuaisDaImagem = versoesOrdenadas;
-    const selectVersoes = document.getElementById('indiceSelect');
-    if (selectVersoes) {
-        selectVersoes.innerHTML = '';
-        // Mostrar novamente o select
-        selectVersoes.style.display = 'block';
-        versoesOrdenadas.forEach((v, idx) => {
-            const opt = document.createElement('option');
-            opt.value = v.historico_imagem_id;
-            opt.textContent = idx === 0 ? construirLabelVersao(v) : construirLabelVersao(v);
-            selectVersoes.appendChild(opt);
-        });
-        // Evento de mudança: mostrar versão selecionada
-        selectVersoes.onchange = function () {
-            const idHist = this.value;
-            const versao = versoesAtuaisDaImagem.find(v => String(v.historico_imagem_id) === String(idHist));
-            if (versao) {
-                mostrarImagemCompleta(
-                    versao.imagem_url,
-                    versao.historico_imagem_id,
-                    versao.imagem_nome || '',
-                    versao.entrega_item_id || null
-                );
-            }
-        };
-    }
-
-    // 2) Preenche a sidebar ESQUERDA com TODAS as imagens da mesma entrega
-    //    (ex.: outras imagens 1871, 1872, 1873 que compõem a entrega)
-    if (imageContainer) {
-        // Filtra grupos que possuam ao menos uma versão com o mesmo entrega_id
-        let gruposDaEntrega = imagensAgrupadasGlobal;
-        if (entregaReferencia !== null) {
-            gruposDaEntrega = imagensAgrupadasGlobal.filter(gr =>
-                (gr.versoes || []).some(v => (v.entrega_id || null) === entregaReferencia)
-            );
-        }
-
-        // Ordena por imagem_id para uma navegação previsível
-        gruposDaEntrega.sort((a, b) => Number(a.imagem_id) - Number(b.imagem_id));
-
-        gruposDaEntrega.forEach(gr => {
-            // Última versão geral do grupo (já estão ordenadas em agruparPorImagem)
-            const ultimaVersao = (gr.versoes && gr.versoes[0]) ? gr.versoes[0] : null;
-            if (!ultimaVersao) return;
-
-            const wrapper = document.createElement('div');
-            wrapper.className = 'imageWrapper';
-
-            const imgThumb = document.createElement('img');
-            imgThumb.src = ultimaVersao.imagem_url;
-            imgThumb.alt = ultimaVersao.nome_arquivo || ultimaVersao.imagem_url;
-            imgThumb.className = 'image';
-            imgThumb.setAttribute('data-id', ultimaVersao.historico_imagem_id);
-            imgThumb.addEventListener('click', () => {
-                // Recarrega o painel principal com esta imagem (sempre última versão)
-                historyAJAX(gr.imagem_id);
-            });
-            wrapper.appendChild(imgThumb);
-
-            const caption = document.createElement('div');
-            caption.className = 'thumb-caption';
-            caption.textContent = (ultimaVersao.imagem_nome || `Imagem ${gr.imagem_id}`);
-            wrapper.appendChild(caption);
-
-            // Destaque visual do item atualmente aberto
-            if (gr.imagem_id == imagemId) {
-                wrapper.classList.add('selected');
-            }
-
-            imageContainer.appendChild(wrapper);
-        });
-    }
-}
-
-// Comentários / interação
-let relativeX = 0, relativeY = 0;
-function mostrarImagemCompleta(src, id, imagem_nome = '') {
-    let entrega_item_id = null;
-    if (arguments.length >= 4) {
-        entrega_item_id = arguments[3];
-    }
-    ap_imagem_id = id;
-    entregaItemIdAtual = entrega_item_id || entregaItemIdAtual;
-    const imageWrapper = document.getElementById('image_wrapper');
-    const sidebar = document.querySelector('.sidebar-direita');
-    if (sidebar) sidebar.style.display = 'flex';
-    while (imageWrapper.firstChild) imageWrapper.removeChild(imageWrapper.firstChild);
-    const container = document.createElement('div');
-    container.className = 'imagem-completa-container';
-    const imgElement = document.createElement('img');
-    imgElement.id = 'imagem_atual';
-    imgElement.src = src;
-    container.appendChild(imgElement);
-    imageWrapper.appendChild(container);
-    // document.querySelector('#imagem_atual').scrollIntoView({ behavior: 'smooth' });
-    renderComments(id);
-    renderDecisions(id, entregaItemIdAtual);
-    ajustarNavSelectAoTamanhoDaImagem();
-
-    // Carregar carrossel de ângulos se condição P00 entregue (historico_id nulo + flag carrossel_angulos)
-    // Detecta a versão corrente no array versoesAtuaisDaImagem
-    const versaoCorrente = versoesAtuaisDaImagem.find(v => String(v.historico_imagem_id) === String(id)) || versoesAtuaisDaImagem[0];
-    // Decide whether to load the angles carousel.
-    // Primary condition: backend-provided flag `carrossel_angulos`.
-    // Fallbacks: if there are angles (`angulos_count>0`), no historico (P00 flow),
-    // and either the image-status (`nome_status_imagem`) OR the entrega step (`nome_etapa`) is 'P00',
-    // then also load the carousel. This covers cases where backend didn't set the flag.
-    const hasAngles = versaoCorrente && Number(versaoCorrente.angulos_count) > 0;
-    const isNoHistorico = versaoCorrente && !versaoCorrente.historico_imagem_id;
-    const statusIsP00 = versaoCorrente && (versaoCorrente.nome_status_imagem === 'P00' || versaoCorrente.nome_etapa === 'P00');
-    const shouldLoadCarousel = versaoCorrente && (versaoCorrente.carrossel_angulos || (hasAngles && isNoHistorico && statusIsP00));
-
-    const imagemCompletaContainer = document.getElementById('imagem_completa') || imageWrapper;
-    // Only load the carousel when the stricter condition `shouldLoadCarousel` is met.
-    // Previous code triggered on any non-zero `angulos_count`, which caused the
-    // carousel and approved-angle info to appear on images that shouldn't have it.
-    if (shouldLoadCarousel && entregaItemIdAtual) {
-        try {
-            const submitBtn = document.getElementById('submit_decision');
-            if (submitBtn) submitBtn.style.display = 'none';
-        } catch (e) { /* ignore */ }
-        carregarCarrosselAngulos(entregaItemIdAtual, imagemCompletaContainer, imgElement);
-    } else {
-        // Ensure any existing carousel, approval info or related actions are removed when not applicable
-        try {
-            const old = document.getElementById('carrossel-angulos');
-            if (old) old.remove();
-        } catch (e) { }
-        try {
-            document.querySelectorAll('.angle-decision-info').forEach(el => el.remove());
-        } catch (e) { }
-        try {
-            document.querySelectorAll('.carrossel-actions').forEach(el => el.remove());
-        } catch (e) { }
-        try { document.body.classList.remove('has-angle-carousel'); } catch (e) { }
-        // Restore submit button visibility for permitted users when no carousel present
-        try {
-            const submitBtn = document.getElementById('submit_decision');
-            if (submitBtn) {
-                const allowed = [1, 2, 3, 9, 20];
-                submitBtn.style.display = allowed.includes(idusuario) ? '' : 'none';
-            }
-        } catch (e) { }
-    }
-    imgElement.addEventListener('click', function (event) {
-        if (dragMoved || statusIsP00 || hasAngles) return;
-        // Se já existe decisão nesta versão, bloquear comentários e avisar
-        if (imagemTemDecisao) {
-            Toastify({
-                text: 'Comentário bloqueado: já existe uma decisão para esta versão.',
-                duration: 4000,
-                backgroundColor: 'orange',
-                close: true,
-                gravity: 'top',
-                position: 'right'
-            }).showToast();
-            return;
-        }
-        if (![1, 2, 9, 20, 3].includes(idusuario)) return;
-        const rect = imgElement.getBoundingClientRect(); relativeX = ((event.clientX - rect.left) / rect.width) * 100; relativeY = ((event.clientY - rect.top) / rect.height) * 100;
-        document.getElementById('comentarioTexto').value = '';
-        document.getElementById('imagemComentario').value = '';
-        document.getElementById('comentarioModal').style.display = 'flex';
-        mencionadosIds = [];
-    });
-    const nomeSpan = document.getElementById('imagem_nome'); if (nomeSpan) nomeSpan.textContent = imagem_nome;
-}
-
-// Busca ângulos e monta carrossel abaixo da imagem principal
-async function carregarCarrosselAngulos(entregaItemId, containerWrapper, mainImgEl) {
-    try {
-        const r = await fetch(`get_angulos_imagem.php?entrega_item_id=${encodeURIComponent(entregaItemId)}`);
-        const j = await r.json();
-        if (!j.success || !Array.isArray(j.angulos) || j.angulos.length === 0) {
-            try { document.body.classList.remove('has-angle-carousel'); } catch (e) { }
-            return;
-        }
-
-        // mark that a carousel with angles is present so CSS can hide the submit button
-        try { document.body.classList.add('has-angle-carousel'); } catch (e) { }
-
-        // Remove carrossel antigo, se houver
-        let old = document.getElementById('carrossel-angulos');
-        if (old) old.remove();
-
-        // Estrutura principal
-        const carrossel = document.createElement('div');
-        carrossel.id = 'carrossel-angulos';
-        carrossel.className = 'carrossel-angulos';
-
-        const header = document.createElement('div');
-        header.className = 'carrossel-header';
-        header.textContent = `Ângulos disponíveis (${j.angulos.length})`;
-        carrossel.appendChild(header);
-
-        // Viewport (esconde overflow) e faixa (flex)
-        const viewport = document.createElement('div');
-        viewport.className = 'carrossel-viewport';
-
-        const faixa = document.createElement('div');
-        faixa.id = 'carrossel-faixa';
-        faixa.className = 'carrossel-faixa';
-
-        // Monta thumbs e controla seleção
-        const thumbs = [];
-        let currentIndex = 0;
-        // currently selected angle id (when carrossel of ângulos is present)
-        window.selectedAngleId = null;
-        // refazer button reference (created only when no angle is chosen)
-        let refazerBtn = null;
-
-        // elemento de info sobre ângulo aprovado (criado se houver ângulo decidido)
-        let angleDecisionInfoBox = null;
-
-        // Detecta ângulo decidido (aprovado) se houver
-        const decidedAngle = j.angulos.find(a => String(a.decisao).toLowerCase() === 'aprovado');
-        let decidedIndex = null;
-
-        function selectThumb(i) {
-            if (i < 0) i = 0;
-            if (i >= thumbs.length) i = thumbs.length - 1;
-            currentIndex = i;
-            const t = thumbs[i];
-            if (!t) return;
-            // aplica destaque via classe
-            thumbs.forEach(x => x.classList.remove('selected-thumb'));
-            t.classList.add('selected-thumb');
-            // ensure the selected thumb is visible/centered in the viewport
-            try { t.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' }); } catch (e) { /* ignore */ }
-            // track selected angle id globally so decision submit can include it
-            try { window.selectedAngleId = t.dataset.anguloId ? String(t.dataset.anguloId) : null; } catch (e) { window.selectedAngleId = null; }
-            // atualiza imagem principal se existir url
-            const imgEl = t.querySelector('img');
-            if (imgEl && imgEl.dataset.preview) {
-                // always resolve the current main image element by id in case it was re-created
-                const currentMain = document.getElementById('imagem_atual') || mainImgEl;
-                try { currentMain.src = imgEl.dataset.preview; } catch (e) { /* ignore */ }
-            }
-            // Atualiza visibilidade da caixa de info do ângulo aprovado (se existir)
-            try {
-                if (angleDecisionInfoBox && decidedIndex !== null) {
-                    const isDecided = (i === decidedIndex);
-                    angleDecisionInfoBox.style.display = isDecided ? 'block' : 'none';
-                }
-
-                // HIDE submit_decision whenever any angle is selected.
-                // If no angle is selected, restore visibility based on permission list.
-                // Consider an angle 'selected' if there's a selectedAngleId OR
-                // if there is a decidedIndex (approved angle) and the current
-                // thumb equals that decided index (we already set angle info display above).
-                const anyAngleSelected = (typeof window.selectedAngleId === 'string' && window.selectedAngleId !== '') || (decidedIndex !== null && i === decidedIndex);
-                const submitBtnLocal = document.getElementById('submit_decision');
-                if (submitBtnLocal) {
-                    if (anyAngleSelected) {
-                        submitBtnLocal.style.display = 'none';
-                    } else {
-                        const allowed = [1, 2, 3, 9, 20];
-                        submitBtnLocal.style.display = allowed.includes(idusuario) ? '' : 'none';
-                    }
-                }
-
-                // Toggle the "Refazer ângulos" button: show only when no angle is selected
-                if (refazerBtn) {
-                    try { refazerBtn.style.display = anyAngleSelected ? 'none' : ''; } catch (e) { }
-                }
-            } catch (err) { /* ignore UI toggle errors */ }
-        }
-
-        // track last explicit thumb click to avoid pointerup logic overriding it
-        let lastClickedIndex = null;
-
-        j.angulos.forEach((ang, idx) => {
-            const thumb = document.createElement('div');
-            thumb.className = 'carrossel-thumb';
-            thumb.dataset.anguloId = ang.angulo_id;
-
-            if (String(ang.decisao).toLowerCase() === 'aprovado') {
-                thumb.classList.add('aprovado');
-                decidedIndex = idx;
-            }
-
-            const img = document.createElement('img');
-            img.src = ang.preview_url || '';
-            img.alt = `Ângulo ${ang.angulo_id}`;
-            img.className = 'carrossel-thumb-img';
-            img.loading = 'lazy';
-            // guardar preview em dataset para uso após seleção
-            img.dataset.preview = ang.preview_url || '';
-
-            const label = document.createElement('div');
-            label.textContent = idx + 1;
-            label.className = 'carrossel-thumb-label';
-
-            thumb.appendChild(img);
-            thumb.appendChild(label);
-
-            // Ensure we set lastClickedIndex on pointerdown so it happens
-            // before the parent 'pointerup' handler (pointerup runs before click).
-            thumb.addEventListener('pointerdown', (e) => {
-                lastClickedIndex = idx;
-            });
-
-            thumb.addEventListener('click', (e) => {
-                e.stopPropagation();
-                // select the thumb (click may arrive after pointerup)
-                selectThumb(idx);
-                // clear after a short delay to allow pointerup logic to read lastClickedIndex
-                setTimeout(() => { lastClickedIndex = null; }, 300);
-            });
-
-            faixa.appendChild(thumb);
-            thumbs.push(thumb);
-        });
-
-        // Se houver ângulo decidido, destaque-o (chosen) e dim nos demais.
-        // A caixa com as informações do ângulo aprovado será criada aqui, mas
-        // exibida somente quando o thumb correspondente estiver selecionado.
-        if (decidedIndex !== null && thumbs[decidedIndex]) {
-            // destaque visual: adicionar classe chosen a aprovado e dim aos demais
-            thumbs.forEach((t, i) => {
-                if (i === decidedIndex) {
-                    t.classList.add('chosen-angle');
-                    t.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                } else {
-                    t.classList.add('dimmed-thumb');
-                }
-            });
-
-            // Cria a caixa de info do ângulo aprovado (mas não a mostra até selection)
-            try {
-                const ang = j.angulos[decidedIndex];
-                angleDecisionInfoBox = document.createElement('div');
-                angleDecisionInfoBox.className = 'angle-decision-info';
-                const who = ang.nome_usuario || ang.usuario || ang.usuario_nome || '';
-                const obs = ang.observacao || ang.motivo_sugerida || '';
-                angleDecisionInfoBox.innerHTML = `
-                    <div class="angle-decision-title">Ângulo aprovado</div>
-                    <div class="angle-decision-who">Aprovado por: <strong>${who}</strong></div>
-                    ${obs ? `<div class="angle-decision-obs">Observação: ${obs}</div>` : ''}
-                `;
-                // inicialmente escondida; selectThumb irá revelar se for o escolhido
-                angleDecisionInfoBox.style.display = 'none';
-
-                // Helper: try to place the info box immediately after the submit button
-                function placeInfoBoxNearSubmit() {
-                    const sb = document.getElementById('submit_decision');
-                    if (sb) {
-                        try { sb.style.display = 'none'; } catch (e) { }
-                        try { sb.insertAdjacentElement('afterend', angleDecisionInfoBox); } catch (e) { containerWrapper.appendChild(angleDecisionInfoBox); }
-                        return true;
-                    }
-                    return false;
-                }
-
-                // Try immediate placement; if not present, append to container and watch for the button
-                if (!placeInfoBoxNearSubmit()) {
-                    containerWrapper.appendChild(angleDecisionInfoBox);
-                    const mo = new MutationObserver((mutations, observer) => {
-                        if (placeInfoBoxNearSubmit()) {
-                            observer.disconnect();
-                        }
-                    });
-                    mo.observe(document.body, { childList: true, subtree: true });
-                    // safety disconnect after a short period
-                    setTimeout(() => mo.disconnect(), 5000);
-                }
-            } catch (e) { /* ignore UI fallback failures */ }
-
-            // NOTE: selection will occur after the carrossel is appended to DOM
-
-
-        } else {
-            if (thumbs.length > 0) selectThumb(0);
-        }
-
-        // If there is NO decided/approved angle, create the "Refazer ângulos" button.
-        if (decidedIndex === null) {
-            try {
-                const actionsDiv = document.createElement('div');
-                actionsDiv.className = 'carrossel-actions';
-                refazerBtn = document.createElement('button');
-                refazerBtn.type = 'button';
-                refazerBtn.className = 'refazer-angulos-btn';
-                refazerBtn.textContent = 'Refazer ângulos';
-                refazerBtn.title = 'Solicitar refazer dos ângulos para esta imagem';
-                refazerBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    ensureRefazerModal();
-                    const modal = document.getElementById('refazerAngulosModal');
-                    const ta = document.getElementById('refazerObservacao');
-                    if (ta) ta.value = '';
-                    if (modal) {
-                        modal.dataset.entregaItemId = String(entregaItemId || entregaItemIdAtual || '');
-                        modal.style.display = 'flex';
-                    }
-                });
-                actionsDiv.appendChild(refazerBtn);
-                try { header.insertAdjacentElement('afterend', actionsDiv); } catch (e) { carrossel.appendChild(actionsDiv); }
-            } catch (e) { /* ignore UI errors */ }
-        }
-
-        viewport.appendChild(faixa);
-        carrossel.appendChild(viewport);
-
-        // Setas: colocadas ao lado da imagem completa (dentro do containerWrapper)
-        const btnLeft = document.createElement('button');
-        btnLeft.type = 'button';
-        btnLeft.className = 'carrossel-btn carrossel-left';
-        btnLeft.innerHTML = '&#9664;';
-        btnLeft.title = 'Anterior';
-
-        const btnRight = document.createElement('button');
-        btnRight.type = 'button';
-        btnRight.className = 'carrossel-btn carrossel-right';
-        btnRight.innerHTML = '&#9654;';
-        btnRight.title = 'Próximo';
-
-        // Append buttons to the image container so they overlay the main image
-        try {
-            containerWrapper.style.position = containerWrapper.style.position || 'relative';
-            containerWrapper.appendChild(btnLeft);
-            containerWrapper.appendChild(btnRight);
-        } catch (err) {
-            // fallback: append to carrossel
-            carrossel.appendChild(btnLeft);
-            carrossel.appendChild(btnRight);
-        }
-
-        // Scroll helpers
-        const scrollAmount = 160; // pixels per click
-        btnLeft.addEventListener('click', () => { selectThumb(currentIndex - 1); });
-        btnRight.addEventListener('click', () => { selectThumb(currentIndex + 1); });
-
-        // Drag to scroll on faixa
-        let isDown = false, startX = 0, scrollLeft = 0;
-        let movedDuringDrag = false;
-        faixa.addEventListener('pointerdown', (e) => {
-            isDown = true;
-            movedDuringDrag = false;
-            faixa.setPointerCapture(e.pointerId);
-            startX = e.clientX;
-            scrollLeft = viewport.scrollLeft;
-            faixa.style.cursor = 'grabbing';
-        });
-        faixa.addEventListener('pointermove', (e) => {
-            if (!isDown) return;
-            const dx = e.clientX - startX;
-            if (Math.abs(dx) > 6) movedDuringDrag = true;
-            viewport.scrollLeft = scrollLeft - dx;
-        });
-        faixa.addEventListener('pointerup', (e) => {
-            isDown = false;
-            try { faixa.releasePointerCapture(e.pointerId); } catch (err) { }
-            faixa.style.cursor = 'grab';
-            // Only re-evaluate nearest thumb when user actually dragged.
-            if (!movedDuringDrag) {
-                // If the user clicked a thumb recently, respect that click.
-                if (lastClickedIndex !== null) {
-                    try { selectThumb(lastClickedIndex, true); } catch (err) { /* ignore */ }
-                    lastClickedIndex = null;
-                    movedDuringDrag = false;
-                    return;
-                }
-                movedDuringDrag = false;
-                return;
-            }
-            // após drag, seleciona thumb mais próxima do centro do viewport
-            try {
-                const center = viewport.scrollLeft + (viewport.clientWidth / 2);
-                let best = 0;
-                let bestDist = Infinity;
-                thumbs.forEach((t, idx) => {
-                    const thumbCenter = (t.offsetLeft + (t.offsetWidth / 2));
-                    const dist = Math.abs(thumbCenter - center);
-                    if (dist < bestDist) { bestDist = dist; best = idx; }
-                });
-                selectThumb(best, true);
-            } catch (err) { /* ignore */ }
-            movedDuringDrag = false;
-        });
-        faixa.addEventListener('pointerleave', () => { isDown = false; movedDuringDrag = false; faixa.style.cursor = 'grab'; });
-
-        // Keyboard navigation when hovering carrossel
-        carrossel.tabIndex = 0;
-        carrossel.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowLeft') selectThumb(currentIndex - 1);
-            if (e.key === 'ArrowRight') selectThumb(currentIndex + 1);
-        });
-
-        containerWrapper.appendChild(carrossel);
-
-        // After the carrossel is in the DOM, select the decided thumb (or first)
-        try {
-            if (decidedIndex !== null && thumbs[decidedIndex]) {
-                selectThumb(decidedIndex);
-            } else if (thumbs.length > 0) {
-                selectThumb(0);
-            }
-        } catch (e) { /* ignore selection errors */ }
-    } catch (e) {
-        console.error('Falha ao carregar carrossel de ângulos', e);
-    }
-}
-
-// Ensure the "Refazer ângulos" modal exists and wire handlers
-function ensureRefazerModal() {
-    if (document.getElementById('refazerAngulosModal')) return;
-    const modal = document.createElement('div');
-    modal.id = 'refazerAngulosModal';
-    modal.className = 'refazer-angulos-modal';
-    // default hidden; visibility toggled with `style.display` by callers
-    modal.style.display = 'none';
-
-    modal.innerHTML = `
-        <div class="refazer-angulos-panel">
-            <h3 class="refazer-angulos-title">Solicitar refazer dos ângulos</h3>
-            <p class="refazer-angulos-desc">Explique por que deseja refazer os ângulos (opcional):</p>
-            <textarea id="refazerObservacao" class="refazer-angulos-textarea"></textarea>
-            <div class="refazer-angulos-actions">
-                <button id="refazerCancelar" type="button" class="refazer-angulos-cancel">Cancelar</button>
-                <button id="refazerEnviar" type="button" class="refazer-angulos-send">Enviar solicitação</button>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(modal);
-
-    document.getElementById('refazerCancelar').addEventListener('click', () => {
-        modal.style.display = 'none';
-    });
-
-    document.getElementById('refazerEnviar').addEventListener('click', async () => {
-        const ta = document.getElementById('refazerObservacao');
-        const observacao = String(ta.value || '').trim();
-        const entregaId = modal.dataset.entregaItemId || entregaItemIdAtual || '';
-        if (!entregaId) {
-            Toastify({ text: 'ID da entrega não disponível.', duration: 3000, backgroundColor: 'red', close: true, gravity: 'top', position: 'right' }).showToast();
-            return;
-        }
-        try {
-            const resp = await fetch('solicitar_refazer_angulos.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ entrega_item_id: entregaId, observacao: observacao, idusuario: idusuario || null })
-            });
-            const j = await resp.json();
-            if (j.success) {
-                Toastify({ text: j.message || 'Solicitação enviada. A gestão será notificada.', duration: 4000, backgroundColor: 'green', close: true, gravity: 'top', position: 'right' }).showToast();
-                modal.style.display = 'none';
-            } else {
-                Toastify({ text: j.message || 'Falha ao enviar solicitação.', duration: 4000, backgroundColor: 'red', close: true, gravity: 'top', position: 'right' }).showToast();
-            }
-        } catch (err) {
-            console.error('Erro ao solicitar refazer ângulos:', err);
-            Toastify({ text: 'Erro na comunicação. Tente novamente.', duration: 4000, backgroundColor: 'red', close: true, gravity: 'top', position: 'right' }).showToast();
-        }
-    });
-}
-
-async function renderDecisions(historicoId, entregaItemId) {
-    try {
-        const cont = document.getElementById('decisoes');
-        if (!cont) return;
-        // começar oculto; só mostraremos se houver decisões
-        cont.innerHTML = '';
-        cont.style.display = 'none';
-        const params = new URLSearchParams();
-        if (historicoId) params.append('historico_imagem_id', historicoId);
-        if (entregaItemId) params.append('entrega_item_id', entregaItemId);
-        const r = await fetch(`buscar_decisoes.php?${params.toString()}`);
-        const j = await r.json();
-        if (!j.success) {
-            cont.innerHTML = '<div class="decisoes-empty">Erro ao carregar decisões.</div>';
-            return;
-        }
-        const list = j.decisoes || [];
-        if (list.length === 0) {
-            // sem decisões: nada a exibir (mantém o contêiner oculto)
-            cont.innerHTML = '';
-            cont.style.display = 'none';
-            // Atualiza estado e reabilita botão/inputs de comentário
-            imagemTemDecisao = false;
-            const btnOpen = document.getElementById('submit_decision');
-            if (btnOpen) {
-                // Mostrar botão apenas para usuários permitidos (IDs padrão)
-                const allowed = [1, 2, 3, 9, 20];
-                btnOpen.style.display = allowed.includes(idusuario) ? '' : 'none';
-            }
-            const enviarBtn = document.getElementById('enviarComentario');
-            if (enviarBtn) enviarBtn.disabled = false;
-            return;
-        }
-        const wrap = document.createElement('div');
-        wrap.className = 'decisoes-list';
-        list.forEach(d => {
-            const item = document.createElement('div');
-            item.className = 'decisao-item';
-            const date = new Date(d.created_at);
-            const dateStr = `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
-            const label = d.decisao === 'aprovado' ? 'Aprovado' : d.decisao === 'aprovado_com_ajustes' ? 'Aprovado com ajustes' : 'Ajuste';
-            item.innerHTML = `
-                <div class="decisao-header"><strong>${d.usuario_nome}</strong> • <span class="decisao-label decisao-${d.decisao}">${label}</span></div>
-                <div class="decisao-date">${dateStr}</div>
+  const container = document.querySelector(".containerObra");
+  container.style.display = "none"; // Esconde o container de obras
+
+  const containerMain = document.querySelector(".container-main");
+  // containerMain.classList.add('expanded');
+
+  const filtroFuncao = document.getElementById("filtroFuncao");
+  filtroFuncao.style.display = "none"; // Esconde o filtro de função
+
+  const tarefasObra = document.querySelector(".tarefasObra");
+  tarefasObra.classList.remove("hidden");
+
+  const tarefasImagensObra = document.querySelector(".tarefasImagensObra");
+
+  tarefasImagensObra.innerHTML = ""; // Limpa as tarefas anteriores
+
+  exibirSidebarTabulator(tarefasCompletas);
+
+  if (tarefas.length > 0) {
+    tarefas.forEach((tarefa) => {
+      const taskItem = document.createElement("div");
+      taskItem.classList.add("task-item");
+      taskItem.setAttribute(
+        "onclick",
+        `historyAJAX(${tarefa.idfuncao_imagem}, '${tarefa.nome_funcao}', '${tarefa.imagem_nome}', '${tarefa.nome_colaborador}')`,
+      );
+
+      // use thumbnail for task list previews; full image used only in mostrarImagemCompleta
+      const imagemPreview = tarefa.imagem
+        ? `https://improov.com.br/flow/ImproovWeb/thumb.php?path=${encodeURIComponent(tarefa.imagem)}&w=450&q=85`
+        : "../assets/logo.jpg";
+
+      // Define a cor de fundo com base no status
+      const color =
+        tarefa.status_novo === "Em aprovação"
+          ? "#000a59"
+          : tarefa.status_novo === "Ajuste"
+            ? "#590000"
+            : tarefa.status_novo === "Aprovado com ajustes"
+              ? "#2e0059ff"
+              : "transparent";
+      const bgColor =
+        tarefa.status_novo === "Em aprovação"
+          ? "#90c2ff"
+          : tarefa.status_novo === "Ajuste"
+            ? "#ff5050"
+            : tarefa.status_novo === "Aprovado com ajustes"
+              ? "#ae90ffff"
+              : "transparent";
+      taskItem.innerHTML = `
+                <div class="task-info">
+                  <div class="image-wrapper">
+                     <img src="${imagemPreview}" alt="Imagem da obra ${tarefa.nome_obra}" class="task-image" onerror="this.onerror=null;this.src='../assets/logo.jpg';">
+                </div>
+                    <h3 class="nome_funcao">${tarefa.nome_funcao}</h3><span class="colaborador">${tarefa.nome_colaborador}</span>
+                    <p class="imagem_nome" data-obra="${tarefa.nome_obra}">${tarefa.imagem_nome}</p>
+                    <p class="data_aprovacao">${formatarDataHora(tarefa.data_aprovacao)}</p>       
+                    <p id="status_funcao" style="color: ${color}; background-color: ${bgColor}">${tarefa.status_novo}</p>
+                </div>
             `;
-            wrap.appendChild(item);
-        });
-        // Há decisões: mostra o contêiner e adiciona o conteúdo
-        cont.style.display = 'block';
-        cont.appendChild(wrap);
-        // Atualiza estado e desabilita ações de comentário/decisão
-        imagemTemDecisao = true;
-        const btnOpen2 = document.getElementById('submit_decision');
-        if (btnOpen2) btnOpen2.style.display = 'none';
-        const enviarBtn2 = document.getElementById('enviarComentario');
-        if (enviarBtn2) enviarBtn2.disabled = true;
-    } catch (e) {
-        console.error('Erro ao renderizar decisões:', e);
+
+      tarefasImagensObra.appendChild(taskItem);
+    });
+  } else {
+    container.innerHTML =
+      '<p style="text-align: center; color: #888;">Não há tarefas de revisão no momento.</p>';
+  }
+}
+
+function formatarData(data) {
+  const [ano, mes, dia] = data.split("-"); // Divide a string no formato 'YYYY-MM-DD'
+  return `${dia}/${mes}/${ano}`; // Retorna o formato 'DD/MM/YYYY'
+}
+
+function formatarDataHora(data) {
+  const date = new Date(data); // Cria um objeto Date a partir da string datetime
+
+  const dia = String(date.getDate()).padStart(2, "0"); // Pega o dia e formata com 2 dígitos
+  const mes = String(date.getMonth() + 1).padStart(2, "0"); // Pega o mês e formata com 2 dígitos (mes começa do 0)
+  const ano = date.getFullYear(); // Pega o ano
+  const horas = String(date.getHours()).padStart(2, "0"); // Pega a hora e formata com 2 dígitos
+  const minutos = String(date.getMinutes()).padStart(2, "0"); // Pega os minutos e formata com 2 dígitos
+
+  return `${dia}/${mes}/${ano} ${horas}:${minutos}`; // Retorna o formato desejado
+}
+
+// Escapa texto para evitar injeção de HTML ao inserir conteúdo dinâmico
+function escapeHtml(unsafe) {
+  if (unsafe === null || unsafe === undefined) return "";
+  return String(unsafe)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+const modalComment = document.getElementById("modalComment");
+
+const idusuario = parseInt(localStorage.getItem("idusuario")); // Obtém o idusuario do localStorage
+
+let funcaoImagemId = null; // armazenado globalmente
+let currentFuncaoContext = null; // {imagem_id, funcao_imagem_id, colaborador_id, nome_funcao, nome_status, imagem_nome}
+let currentIndiceEnvio = null;
+
+function isP00FinalizacaoContext(context) {
+  const isP00 = String(context?.nome_status || "").toLowerCase() === "p00";
+  const nomeFuncao = String(context?.nome_funcao || "").toLowerCase();
+  return isP00 && nomeFuncao === "finalização";
+}
+
+async function atualizarAnguloEscolhido(acao, observacao = "") {
+  if (!currentFuncaoContext || !ap_imagem_id) {
+    alert("Selecione um ângulo para continuar.");
+    return;
+  }
+
+  const payload = {
+    acao,
+    observacao,
+    imagem_id: parseInt(currentFuncaoContext.imagem_id, 10),
+    funcao_imagem_id: parseInt(currentFuncaoContext.funcao_imagem_id, 10),
+    historico_id: parseInt(ap_imagem_id, 10),
+  };
+
+  try {
+    const res = await fetch("atualizar_angulo.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!data.success) {
+      alert(data.message || "Erro ao atualizar ângulo.");
+      return;
     }
+    historyAJAX(funcaoImagemId);
+  } catch (e) {
+    console.error(e);
+    alert("Erro ao atualizar ângulo.");
+  }
 }
 
+async function abrirModalEscolhaAngulo() {
+  if (!ap_imagem_id) {
+    Toastify({
+      text: "Selecione um ângulo na lista antes de continuar.",
+      duration: 3000,
+      backgroundColor: "orange",
+      close: true,
+      gravity: "top",
+      position: "right",
+    }).showToast();
+    return;
+  }
 
-function ajustarNavSelectAoTamanhoDaImagem() {
-    const img = document.getElementById('imagem_atual'); const navSelect = document.querySelector('.nav-select'); if (img && navSelect) { const apply = () => { navSelect.style.width = img.width + 'px'; }; img.onload = apply; if (img.complete) apply(); }
+  // Show the existing decision modal (positioned under the approval button)
+  const modal = document.getElementById("decisionModal");
+  if (!modal) {
+    Toastify({
+      text: "Modal de decisão não encontrado.",
+      duration: 3000,
+      backgroundColor: "red",
+      close: true,
+      gravity: "top",
+      position: "right",
+    }).showToast();
+    return;
+  }
+
+  // Configure radios for P00 flow (only two options)
+  const labels = modal.querySelectorAll("label");
+  if (labels && labels.length >= 3) {
+    labels[0].innerHTML =
+      '<input type="radio" name="decision" value="escolhido"> Escolhido';
+    labels[1].innerHTML =
+      '<input type="radio" name="decision" value="escolhido_com_ajustes"> Escolhido com Ajustes';
+    labels[2].innerHTML = ""; // hide third option in P00
+  }
+
+  // Reset confirm button listeners by replacing it
+  const btnConfirm = replaceElementById("confirmBtn");
+  const btnClose = modal.querySelector(".close") || null;
+  const cancelBtn = replaceElementById("cancelBtn");
+
+  btnConfirm.classList.remove("hidden");
+  btnConfirm.addEventListener("click", () => {
+    const selected = document.querySelector(
+      'input[name="decision"]:checked',
+    )?.value;
+    if (!selected) return;
+    if (!ap_imagem_id) {
+      Toastify({
+        text: "Selecione um ângulo antes.",
+        duration: 2000,
+        backgroundColor: "orange",
+        close: true,
+        gravity: "top",
+        position: "right",
+      }).showToast();
+      return;
+    }
+    atualizarAnguloEscolhido(selected);
+    modal.classList.add("hidden");
+  });
+
+  if (btnClose) {
+    btnClose.addEventListener("click", () => {
+      modal.classList.add("hidden");
+    });
+  }
+
+  // Position below the approval button and show
+  const trigger =
+    document.getElementById("submit_decision") ||
+    document.querySelector("#submit_decision");
+  positionDecisionModal(trigger, modal);
 }
 
-// (Restante do arquivo original: envio de imagens, comentários, zoom, etc.)
-// ================= NOVO FLUXO INICIAL =================
-// Agora ao carregar a página listamos diretamente TODAS as imagens da obra fixa (74)
-// exibindo sempre a última versão (última entrega) como preview. Versões podem ser
-// (Antiga implementação de historyAJAX removida - agora usamos versão local acima)
-// (nenhum bloco aqui)
+// Position the modal centered to the trigger button; prefer below, fallback to above.
+function positionDecisionModal(triggerEl, modalEl) {
+  if (!modalEl) return;
+  if (!triggerEl) {
+    // center on viewport
+    const vw = Math.max(
+      document.documentElement.clientWidth || 0,
+      window.innerWidth || 0,
+    );
+    modalEl.style.left = Math.round((vw - modalEl.offsetWidth) / 2) + "px";
+    modalEl.style.top =
+      Math.round(window.innerHeight / 2 - modalEl.offsetHeight / 2) + "px";
+    modalEl.classList.remove("hidden");
+    return;
+  }
 
-// Função para alternar a visibilidade dos detalhes da tarefa
-function toggleTaskDetails(taskElement) {
-    taskElement.classList.toggle('open');
+  // show to measure (remove hidden if present)
+  const wasHidden = modalEl.classList.contains("hidden");
+  modalEl.classList.remove("hidden");
+
+  // small timeout to ensure styles applied
+  window.setTimeout(() => {
+    const tr = triggerEl.getBoundingClientRect();
+    const mr = modalEl.getBoundingClientRect();
+
+    const spaceBelow = window.innerHeight - tr.bottom - 8;
+    const spaceAbove = tr.top - 8;
+
+    let top;
+    if (spaceBelow >= mr.height || spaceBelow >= 80) {
+      top = tr.bottom + 8; // place below
+      modalEl.style.transform = "translateY(0)";
+    } else {
+      top = Math.max(8, tr.top - mr.height - 8); // place above
+      modalEl.style.transform = "translateY(0)";
+    }
+
+    let left = tr.left + tr.width / 2 - mr.width / 2;
+    left = Math.max(8, Math.min(left, window.innerWidth - mr.width - 8));
+
+    modalEl.style.left = Math.round(left) + "px";
+    modalEl.style.top = Math.round(top) + "px";
+    modalEl.classList.remove("hidden");
+
+    // reposition on scroll/resize while visible
+    const handler = () => positionDecisionModal(triggerEl, modalEl);
+    // store for cleanup
+    if (modalEl._positionObserver) modalEl._positionObserver.disconnect();
+    const obs = new MutationObserver(() => {
+      if (modalEl.classList.contains("hidden")) {
+        window.removeEventListener("scroll", handler);
+        window.removeEventListener("resize", handler);
+        if (modalEl._positionObserver) {
+          modalEl._positionObserver.disconnect();
+          modalEl._positionObserver = null;
+        }
+      }
+    });
+    modalEl._positionObserver = obs;
+    obs.observe(modalEl, { attributes: true, attributeFilter: ["class"] });
+
+    window.addEventListener("scroll", handler, { passive: true });
+    window.addEventListener("resize", handler);
+  }, 8);
 }
 
-// (Removidos duplicados de variáveis globais já declaradas acima)
+async function enviarFuncaoParaAjustes() {
+  if (!currentFuncaoContext) {
+    Toastify({
+      text: "Contexto de função não disponível.",
+      duration: 3000,
+      backgroundColor: "orange",
+      close: true,
+      gravity: "top",
+      position: "right",
+    }).showToast();
+    return;
+  }
 
-// Função antiga mantida para evitar que outras partes que ainda a chamem quebrem.
-// Agora converte a estrutura {entregas:[...]} em uma lista plana compatível com o restante.
-// (Removida duplicata de fetchObrasETarefas)
+  const confirmResult = await Swal.fire({
+    title: "Enviar para Ajustes",
+    text: "Nenhum ângulo foi aprovado. Confirma o envio de toda a função para Ajustes?",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonText: "Sim, enviar para ajustes",
+    cancelButtonText: "Cancelar",
+    confirmButtonColor: "#c0392b",
+  });
 
-// (Removida duplicata de buscarMencoesDoUsuario)
+  if (!confirmResult.isConfirmed) return;
 
-// (Removida duplicata de exibirCardsDeObra)
+  const idcolaborador = localStorage.getItem("idcolaborador");
 
-// (Removida duplicata de filtrarTarefasPorObra)
+  try {
+    const res = await fetch("revisarTarefa.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        idfuncao_imagem: currentFuncaoContext.funcao_imagem_id,
+        nome_colaborador: currentFuncaoContext.colaborador_nome,
+        imagem_nome: currentFuncaoContext.imagem_nome,
+        nome_funcao: currentFuncaoContext.nome_funcao,
+        colaborador_id: currentFuncaoContext.colaborador_id,
+        responsavel: idcolaborador,
+        imagem_id: currentFuncaoContext.imagem_id,
+        tipoRevisao: "ajuste",
+      }),
+    });
+    const data = await res.json();
 
-// (Removida duplicata de atualizarSelectColaborador)
+    Toastify({
+      text: data.success
+        ? "Função enviada para Ajustes."
+        : "Erro: " + data.message,
+      duration: 3000,
+      backgroundColor: data.success ? "#e65c00" : "red",
+      close: true,
+      gravity: "top",
+      position: "right",
+    }).showToast();
 
-// (Removido: duplicata de historyAJAX)
+    if (data.success) {
+      historyAJAX(funcaoImagemId);
+    }
+  } catch (e) {
+    console.error(e);
+    Toastify({
+      text: "Erro ao enviar para ajustes.",
+      duration: 3000,
+      backgroundColor: "red",
+      close: true,
+      gravity: "top",
+      position: "right",
+    }).showToast();
+  }
+}
 
-// (Removidas duplicatas de formatarData/formatarDataHora)
+function historyAJAX(idfuncao_imagem) {
+  funcaoImagemId = idfuncao_imagem;
+  fetch(`historico.php?ajid=${idfuncao_imagem}`)
+    .then((response) => response.json())
+    .then((response) => {
+      console.log("Funcao Imagem:", idfuncao_imagem);
+      const main = document.querySelector(".main");
+      main.classList.add("hidden");
 
+      const comentariosDiv = document.querySelector(".comentarios");
+      comentariosDiv.innerHTML = "";
+      const comentarioGeralEnvio = document.getElementById(
+        "comentario-geral-envio",
+      );
+      if (comentarioGeralEnvio) {
+        comentarioGeralEnvio.classList.add("hidden");
+        comentarioGeralEnvio.innerHTML = "";
+      }
 
+      const container_aprovacao = document.querySelector(
+        ".container-aprovacao",
+      );
+      container_aprovacao.classList.remove("hidden");
 
-// REMOVIDO: duplicada antiga de historyAJAX baseada em historico2.php
-// const modalComment = document.getElementById('modalComment');
-// const idusuario = parseInt(localStorage.getItem('idusuario')); // Obtém o idusuario do localStorage
-// let funcaoImagemId = null; // armazenado globalmente
+      const sidebarDiv = document.getElementById("sidebarTabulator");
+      sidebarDiv.classList.remove("sidebar-expanded");
+      sidebarDiv.classList.add("sidebar-min");
+
+      const todasAsListas = sidebarDiv.querySelectorAll(".tarefas-lista");
+
+      // Fecha todos os grupos
+      todasAsListas.forEach((l) => {
+        l.style.display = "none";
+      });
+
+      // Clona e substitui botões para evitar múltiplos event listeners
+      const btnOpen = replaceElementById("submit_decision");
+      const btnAjustesFuncao = replaceElementById("submit_ajustes_funcao");
+      const addAnguloBtn = replaceElementById("add-angulo-btn");
+      const modal = document.getElementById("decisionModal");
+      const btnClose = replaceElementByClass("close");
+      const cancelBtn = replaceElementById("cancelBtn");
+      const btnConfirm = replaceElementById("confirmBtn");
+
+      // Clona e substitui radios
+      document.querySelectorAll('input[name="decision"]').forEach((radio) => {
+        const clone = radio.cloneNode(true);
+        radio.replaceWith(clone);
+      });
+      const radios = document.querySelectorAll('input[name="decision"]');
+
+      const { historico, imagens, pdf } = response;
+      const item = historico[0];
+
+      currentFuncaoContext = item || null;
+
+      const hasPdfPreferido = !!(pdf && pdf.id);
+      const pdfRawUrl = hasPdfPreferido
+        ? `../Arquivos/visualizar_pdf_log.php?idlog=${encodeURIComponent(String(pdf.id))}&raw=1`
+        : null;
+      const pdfDownloadUrl = hasPdfPreferido
+        ? `../Arquivos/visualizar_pdf_log.php?idlog=${encodeURIComponent(String(pdf.id))}&raw=1&download=1`
+        : null;
+      let pdfShownOnce = false;
+
+      // Preencher o container de aprovação (se houver um responsavel registrado)
+      try {
+        const approvalContainer = document.getElementById("approval_info");
+        if (approvalContainer) {
+          approvalContainer.style.display = "none";
+          if (Array.isArray(historico) && historico.length > 0) {
+            // procura o último registro com 'responsavel' preenchido
+            const reversed = [...historico].slice().reverse();
+            const approver =
+              reversed.find((h) => h.responsavel && h.responsavel !== "0") ||
+              null;
+            if (approver) {
+              const name = approver.responsavel_nome || "—";
+              const status = approver.status_novo || approver.status || "—";
+              const dt = approver.data_aprovacao || approver.data || null;
+              const fecha = dt ? formatarDataHora(new Date(dt)) : "";
+              if (status !== "Em aprovação") {
+                approvalContainer.innerHTML = `<div><strong>${escapeHtml(name)}</strong> — <span>${escapeHtml(status)} ${fecha ? '<br><small style="color:#666">' + escapeHtml(fecha) + "</small>" : ""}</div>`;
+                approvalContainer.style.display = "block";
+              }
+            } else {
+              approvalContainer.innerHTML = "";
+              approvalContainer.style.display = "none";
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Erro ao preencher approval_info", e);
+      }
+
+      const isFlowAngulo =
+        isP00FinalizacaoContext(item) &&
+        Array.isArray(imagens) &&
+        imagens.length > 0;
+
+      if ([1, 2, 9, 20, 3].includes(idusuario)) {
+        const actionsGroup = document.querySelector(".angulo-actions-group");
+        if (actionsGroup) actionsGroup.style.display = "";
+        const actionsGroupLabel = document.querySelector(
+          ".angulo-actions-group-label",
+        );
+        if (isFlowAngulo) {
+          if (actionsGroupLabel)
+            actionsGroupLabel.textContent = "Decisão do ângulo (P00)";
+          btnOpen.textContent = "Escolher ângulo";
+          btnOpen.style.display = "flex";
+          modal.classList.add("hidden");
+          btnOpen.addEventListener("click", () => {
+            abrirModalEscolhaAngulo();
+          });
+
+          btnAjustesFuncao.style.display = "flex";
+          btnAjustesFuncao.addEventListener("click", () => {
+            enviarFuncaoParaAjustes();
+          });
+        } else {
+          btnAjustesFuncao.style.display = "none";
+          if (actionsGroupLabel)
+            actionsGroupLabel.textContent = "Enviar Aprovação";
+          btnOpen.textContent = "Enviar aprovação";
+          const labels = document.querySelectorAll("#decisionModal label");
+          if (labels[0])
+            labels[0].innerHTML =
+              '<input type="radio" name="decision" value="aprovado"> Aprovado';
+          if (labels[1])
+            labels[1].innerHTML =
+              '<input type="radio" name="decision" value="aprovado_com_ajustes"> Aprovado com ajustes';
+          if (labels[2])
+            labels[2].innerHTML =
+              '<input type="radio" name="decision" value="ajuste"> Ajuste';
+
+          document
+            .querySelectorAll('input[name="decision"]')
+            .forEach((radio) => {
+              const clone = radio.cloneNode(true);
+              radio.replaceWith(clone);
+            });
+          const updatedRadios = document.querySelectorAll(
+            'input[name="decision"]',
+          );
+
+          btnOpen.addEventListener("click", () => {
+            // Position and show the decision modal relative to the trigger button
+            try {
+              positionDecisionModal(btnOpen, modal);
+            } catch (e) {
+              // fallback: just show if positioning fails
+              modal.classList.remove("hidden");
+            }
+          });
+
+          btnClose.addEventListener("click", () => {
+            modal.classList.add("hidden");
+            btnConfirm.classList.add("hidden");
+          });
+
+          cancelBtn.addEventListener("click", () => {
+            modal.classList.add("hidden");
+            btnConfirm.classList.add("hidden");
+            updatedRadios.forEach((r) => (r.checked = false));
+          });
+
+          updatedRadios.forEach((radio) => {
+            radio.addEventListener("change", () => {
+              btnConfirm.classList.remove("hidden");
+            });
+          });
+
+          btnConfirm.addEventListener("click", () => {
+            const selected = Array.from(updatedRadios).find(
+              (r) => r.checked,
+            )?.value;
+            if (!selected) return;
+
+            revisarTarefa(
+              item.funcao_imagem_id,
+              item.colaborador_nome,
+              item.imagem_nome,
+              item.nome_funcao,
+              item.colaborador_id,
+              item.imagem_id,
+              selected,
+            );
+
+            modal.classList.add("hidden");
+            btnConfirm.classList.add("hidden");
+            updatedRadios.forEach((r) => (r.checked = false));
+          });
+        }
+      } else {
+        btnOpen.style.display = "none";
+        btnAjustesFuncao.style.display = "none";
+        const actionsGroup = document.querySelector(".angulo-actions-group");
+        if (actionsGroup) actionsGroup.style.display = "none";
+      }
+
+      // addAnguloBtn.style.display = 'inline-flex';
+      addAnguloBtn.addEventListener("click", () => {
+        if (!currentFuncaoContext || !funcaoImagemId || !currentIndiceEnvio) {
+          alert("Selecione um envio para adicionar novos ângulos.");
+          return;
+        }
+        document.getElementById("imagem-modal").style.display = "block";
+      });
+
+      const titulo = document.getElementById("funcao_nome");
+      titulo.textContent = `${item.colaborador_nome} - ${item.nome_funcao}`;
+      const imagemNomeHeader = document.getElementById("imagem_nome");
+      const dataEnvioHeader = document.getElementById("header_data_envio");
+      const statusInicial =
+        item?.nome_status_envio || item?.nome_status || "Sem status";
+      imagemNomeHeader.textContent = `${item.imagem_nome} (${statusInicial})`;
+
+      const atualizarDataHeader = (dataValor) => {
+        if (!dataEnvioHeader) return;
+        if (!dataValor) {
+          dataEnvioHeader.textContent = "";
+          return;
+        }
+        dataEnvioHeader.textContent = `Enviado em: ${formatarDataHora(dataValor)}`;
+      };
+
+      atualizarDataHeader(item?.data_aprovacao || null);
+
+      const imageContainer = document.getElementById("imagens");
+      imageContainer.innerHTML = "";
+
+      // Clona e substitui select
+      let indiceSelect = document.getElementById("indiceSelect");
+      indiceSelect = indiceSelect.cloneNode(true);
+      document.getElementById("indiceSelect").replaceWith(indiceSelect);
+      indiceSelect.innerHTML = "";
+
+      const imagensAgrupadas = imagens.reduce((acc, img) => {
+        if (!acc[img.indice_envio]) acc[img.indice_envio] = [];
+        acc[img.indice_envio].push(img);
+        return acc;
+      }, {});
+
+      const indicesOrdenados = Object.keys(imagensAgrupadas).sort(
+        (a, b) => b - a,
+      );
+
+      if (indicesOrdenados.length === 0) {
+        indiceSelect.style.display = "none";
+
+        // Fallback: quando não há imagens/JPGs, mas existe um PDF preferido, mostra o PDF direto.
+        if (hasPdfPreferido && pdfRawUrl) {
+          const nome =
+            pdf && pdf.nome_arquivo
+              ? pdf.nome_arquivo
+              : item?.nome_funcao || "PDF";
+          mostrarPdfCompleto(pdfRawUrl, pdfDownloadUrl, nome, pdf.id);
+          pdfShownOnce = true;
+        }
+      } else {
+        indiceSelect.style.display = "block";
+
+        indicesOrdenados.forEach((indice) => {
+          const option = document.createElement("option");
+          option.value = indice;
+          option.textContent = `Envio ${indice}`;
+          indiceSelect.appendChild(option);
+        });
+
+        indiceSelect.value = indicesOrdenados[0];
+        indiceSelect.dispatchEvent(new Event("change"));
+      }
+
+      indiceSelect.addEventListener("change", () => {
+        const indiceSelecionado = indiceSelect.value;
+        currentIndiceEnvio = indiceSelecionado
+          ? parseInt(indiceSelecionado, 10)
+          : null;
+        imageContainer.innerHTML = "";
+
+        const imagensDoIndice = imagensAgrupadas[indiceSelecionado];
+
+        const textoGeral = Array.isArray(imagensDoIndice)
+          ? String(
+              imagensDoIndice.find((img) =>
+                String(img.angulo_motivo || "").trim(),
+              )?.angulo_motivo || "",
+            ).trim()
+          : "";
+        // if (comentarioGeralEnvio) {
+        //   if (textoGeral) {
+        //     comentarioGeralEnvio.innerHTML = `<span class="label">Comentário geral</span><span>${escapeHtml(textoGeral)}</span>`;
+        //     comentarioGeralEnvio.classList.remove("hidden");
+        //   } else {
+        //     comentarioGeralEnvio.classList.add("hidden");
+        //     comentarioGeralEnvio.innerHTML = "";
+        //   }
+        // }
+
+        if (imagensDoIndice && imagensDoIndice.length > 0) {
+          imagensDoIndice.sort(
+            (a, b) => new Date(b.data_envio) - new Date(a.data_envio),
+          );
+          const maisRecente = imagensDoIndice[0];
+
+          if (maisRecente) {
+            const statusEnvio =
+              maisRecente.nome_status_envio ||
+              item?.nome_status ||
+              "Sem status";
+            imagemNomeHeader.textContent = `${item.imagem_nome} (${statusEnvio})`;
+            atualizarDataHeader(
+              maisRecente.data_aprovacao ||
+                maisRecente.data_envio ||
+                item?.data_aprovacao ||
+                null,
+            );
+          }
+
+          if (maisRecente) {
+            if (hasPdfPreferido && !pdfShownOnce && pdfRawUrl) {
+              const nome =
+                pdf && pdf.nome_arquivo
+                  ? pdf.nome_arquivo
+                  : item?.nome_funcao || "PDF";
+              mostrarPdfCompleto(pdfRawUrl, pdfDownloadUrl, nome, pdf.id);
+              pdfShownOnce = true;
+            } else {
+              mostrarImagemCompleta(
+                `https://improov.com.br/flow/ImproovWeb/${maisRecente.imagem}`,
+                maisRecente.id,
+              );
+            }
+          }
+
+          imagensDoIndice.forEach((img) => {
+            const wrapper = document.createElement("div");
+            wrapper.className = "imageWrapper";
+
+            // Estado do ângulo (para P00 + Finalização)
+            const anguloLiberada =
+              img.angulo_liberada == 1 || img.angulo_liberada === "1";
+            const anguloSugerida =
+              img.angulo_sugerida == 1 || img.angulo_sugerida === "1";
+            if (anguloLiberada) {
+              wrapper.style.outline = "2px solid #2e7d32";
+              wrapper.style.outlineOffset = "2px";
+            } else if (anguloSugerida) {
+              wrapper.style.outline = "2px solid #ef6c00";
+              wrapper.style.outlineOffset = "2px";
+            } else {
+              // pendente
+              wrapper.style.outline = "2px solid transparent";
+            }
+
+            const imgElement = document.createElement("img");
+            // thumbnail for gallery thumbnails; clicking opens full image via mostrarImagemCompleta
+            const fullImageUrl = `https://improov.com.br/flow/ImproovWeb/${encodeURI(img.imagem)}`;
+            imgElement.src = `https://improov.com.br/flow/ImproovWeb/thumb.php?path=${encodeURIComponent(img.imagem)}&w=200&q=85`;
+            imgElement.alt = img.imagem;
+            imgElement.className = "image";
+            imgElement.setAttribute("data-id", img.id);
+
+            imgElement.addEventListener("click", () => {
+              mostrarImagemCompleta(fullImageUrl, img.id);
+            });
+
+            imgElement.addEventListener("contextmenu", (event) => {
+              event.preventDefault();
+              ap_imagem_id = img.id;
+              abrirMenuContexto(event.pageX, event.pageY, img.id, fullImageUrl);
+            });
+
+            if (img.has_comments == "1" || img.has_comments === 1) {
+              const notificationDot = document.createElement("div");
+              notificationDot.className = "notification-dot";
+              notificationDot.textContent = `${img.comment_count}`;
+              wrapper.appendChild(notificationDot);
+            }
+
+            wrapper.appendChild(imgElement);
+            imageContainer.appendChild(wrapper);
+          });
+        }
+      });
+
+      if (indicesOrdenados.length > 0) {
+        indiceSelect.value = indicesOrdenados[0];
+        indiceSelect.dispatchEvent(new Event("change"));
+      }
+    })
+    .catch((error) => console.error("Erro ao buscar dados:", error));
+}
 
 // Função utilitária para substituir elementos por ID
 function replaceElementById(id) {
-    const oldEl = document.getElementById(id);
-    const newEl = oldEl.cloneNode(true);
-    oldEl.replaceWith(newEl);
-    return newEl;
+  const oldEl = document.getElementById(id);
+  const newEl = oldEl.cloneNode(true);
+  oldEl.replaceWith(newEl);
+  return newEl;
 }
 
 // Função utilitária para substituir elementos por classe (única ocorrência)
 function replaceElementByClass(className) {
-    const oldEl = document.querySelector(`.${className}`);
-    const newEl = oldEl.cloneNode(true);
-    oldEl.replaceWith(newEl);
-    return newEl;
+  const oldEl = document.querySelector(`.${className}`);
+  const newEl = oldEl.cloneNode(true);
+  oldEl.replaceWith(newEl);
+  return newEl;
 }
 
 function exibirSidebarTabulator(tarefas) {
-    const sidebarDiv = document.getElementById('sidebarTabulator');
-    sidebarDiv.innerHTML = '';
+  const sidebarDiv = document.getElementById("sidebarTabulator");
+  sidebarDiv.innerHTML = "";
 
-    const tarefasPorFuncao = {};
+  const tarefasPorFuncao = {};
 
-    tarefas.forEach(t => {
-        if (!tarefasPorFuncao[t.nome_status]) {
-            tarefasPorFuncao[t.nome_status] = [];
-        }
-        tarefasPorFuncao[t.nome_status].push(t);
-    });
+  tarefas.forEach((t) => {
+    if (!tarefasPorFuncao[t.nome_funcao]) {
+      tarefasPorFuncao[t.nome_funcao] = [];
+    }
+    tarefasPorFuncao[t.nome_funcao].push(t);
+  });
 
-    Object.entries(tarefasPorFuncao).forEach(([funcao, tarefas]) => {
-        const grupoDiv = document.createElement('div');
-        grupoDiv.classList.add('grupo-funcao');
+  Object.entries(tarefasPorFuncao).forEach(([funcao, tarefas]) => {
+    const grupoDiv = document.createElement("div");
+    grupoDiv.classList.add("grupo-funcao");
 
-        const header = document.createElement('div');
-        header.classList.add('group-header');
-        header.dataset.grupo = funcao;
-        header.innerHTML = `
+    const header = document.createElement("div");
+    header.classList.add("group-header");
+    header.dataset.grupo = funcao;
+    header.innerHTML = `
       <span class="funcao-label">${funcao.slice(0, 3)}</span>
       <span class="funcao-completa"><b>${funcao}</b> (${tarefas.length} imagens)</span>
     `;
 
-        const lista = document.createElement('div');
-        lista.classList.add('tarefas-lista');
-        lista.style.display = 'none';
+    const lista = document.createElement("div");
+    lista.classList.add("tarefas-lista");
+    lista.style.display = "none";
 
-        tarefas.forEach(t => {
-            const tarefa = document.createElement('div');
-            tarefa.classList.add('tarefa-item');
-            const imgSrc = t.imagem ? `https://improov.com.br/flow/ImproovWeb/${t.imagem}` : '../assets/logo.jpg';
-            tarefa.innerHTML = `
+    console.log("Tarefas:", tarefas);
+    tarefas.forEach((t) => {
+      const color =
+        t.status_novo === "Em aprovação"
+          ? "#000a59"
+          : t.status_novo === "Ajuste"
+            ? "#590000"
+            : t.status_novo === "Aprovado com ajustes"
+              ? "#2e0059ff"
+              : "transparent";
+      const bgColor =
+        t.status_novo === "Em aprovação"
+          ? "#90c2ff"
+          : t.status_novo === "Ajuste"
+            ? "#ff5050"
+            : t.status_novo === "Aprovado com ajustes"
+              ? "#ae90ffff"
+              : "transparent";
+
+      const tarefa = document.createElement("div");
+      tarefa.classList.add("tarefa-item");
+      const imgSrc = t.imagem
+        ? `https://improov.com.br/flow/ImproovWeb/thumb.php?path=${encodeURIComponent(t.imagem)}&w=400&q=85`
+        : "../assets/logo.jpg";
+      tarefa.innerHTML = `
         <img src="${imgSrc}" class="tab-img" data-id="${t.idfuncao_imagem}" alt="${t.imagem_nome}">
+        <span id="status_tarefa" style="background-color: ${bgColor}; color: ${color}">${t.status_novo}</span>
         <span>${t.nome_colaborador} - ${t.imagem_nome}</span>
       `;
-            tarefa.addEventListener('click', () => historyAJAX(t.imagem_id));
-            lista.appendChild(tarefa);
-        });
-
-        // Comportamento inteligente ao clicar no header
-        header.addEventListener('click', () => {
-            const todasAsListas = sidebarDiv.querySelectorAll('.tarefas-lista');
-            const todasAsHeaders = sidebarDiv.querySelectorAll('.group-header');
-
-            const jaAberto = lista.style.display === 'block';
-
-            // Fecha todos os grupos
-            todasAsListas.forEach(l => {
-                l.style.display = 'none';
-            });
-            if (jaAberto) {
-                // Nenhum aberto: minimizar a sidebar
-                sidebarDiv.classList.add('sidebar-min');
-                sidebarDiv.classList.remove('sidebar-expanded');
-            } else {
-                // Abre o novo grupo e expande sidebar
-                lista.style.display = 'block';
-                sidebarDiv.classList.add('sidebar-expanded');
-                sidebarDiv.classList.remove('sidebar-min');
-            }
-        });
-
-        grupoDiv.appendChild(header);
-        grupoDiv.appendChild(lista);
-        sidebarDiv.appendChild(grupoDiv);
+      tarefa.addEventListener("click", () => historyAJAX(t.idfuncao_imagem));
+      lista.appendChild(tarefa);
     });
+
+    // Comportamento inteligente ao clicar no header
+    header.addEventListener("click", () => {
+      const todasAsListas = sidebarDiv.querySelectorAll(".tarefas-lista");
+      const todasAsHeaders = sidebarDiv.querySelectorAll(".group-header");
+
+      const jaAberto = lista.style.display === "block";
+
+      // Fecha todos os grupos
+      todasAsListas.forEach((l) => {
+        l.style.display = "none";
+      });
+      if (jaAberto) {
+        // Nenhum aberto: minimizar a sidebar
+        sidebarDiv.classList.add("sidebar-min");
+        sidebarDiv.classList.remove("sidebar-expanded");
+      } else {
+        // Abre o novo grupo e expande sidebar
+        lista.style.display = "block";
+        sidebarDiv.classList.add("sidebar-expanded");
+        sidebarDiv.classList.remove("sidebar-min");
+      }
+    });
+
+    grupoDiv.appendChild(header);
+    grupoDiv.appendChild(lista);
+    sidebarDiv.appendChild(grupoDiv);
+  });
 }
 
-document.querySelector('.close').addEventListener('click', () => {
-    document.getElementById('imagem-modal').style.display = 'none';
-    document.getElementById('input-imagens').value = '';
-    document.getElementById('preview').innerHTML = '';
+document.querySelector(".close").addEventListener("click", () => {
+  document.getElementById("imagem-modal").style.display = "none";
+  document.getElementById("input-imagens").value = "";
+  document.getElementById("preview").innerHTML = "";
 });
 
-document.getElementById('input-imagens').addEventListener('change', function () {
-    const preview = document.getElementById('preview');
-    preview.innerHTML = '';
+document
+  .getElementById("input-imagens")
+  .addEventListener("change", function () {
+    const preview = document.getElementById("preview");
+    preview.innerHTML = "";
 
     const arquivos = this.files;
 
     for (let i = 0; i < arquivos.length; i++) {
-        const reader = new FileReader();
-        reader.onload = function (e) {
-            const img = document.createElement('img');
-            img.src = e.target.result;
-            preview.appendChild(img);
-        };
-        reader.readAsDataURL(arquivos[i]);
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const img = document.createElement("img");
+        img.src = e.target.result;
+        preview.appendChild(img);
+      };
+      reader.readAsDataURL(arquivos[i]);
     }
-});
+  });
 
-document.getElementById('btn-enviar-imagens').addEventListener('click', () => {
-    const input = document.getElementById('input-imagens');
-    const arquivos = input.files;
-    if (arquivos.length === 0 || !funcaoImagemId) return;
+document.getElementById("btn-enviar-imagens").addEventListener("click", () => {
+  const input = document.getElementById("input-imagens");
+  const arquivos = input.files;
+  if (arquivos.length === 0 || !funcaoImagemId || !currentIndiceEnvio) return;
 
-    const formData = new FormData();
-    for (let i = 0; i < arquivos.length; i++) {
-        formData.append('imagens[]', arquivos[i]);
-    }
+  const formData = new FormData();
+  for (let i = 0; i < arquivos.length; i++) {
+    formData.append("imagens[]", arquivos[i]);
+  }
 
-    formData.append('dataIdFuncoes', JSON.stringify([funcaoImagemId]));
+  // Extrai numero e nomenclatura do nome da imagem (mesmo padrão do scriptIndex.js)
+  const imagemNome = currentFuncaoContext?.imagem_nome || "";
+  const numeroImagem = imagemNome.match(/^\d+/)?.[0] || "";
+  const nomenclaturaMatch = imagemNome.match(/^\d+\.\s*([A-Z0-9_]+)/i);
+  const nomenclatura =
+    currentFuncaoContext?.nomenclatura ||
+    (nomenclaturaMatch ? nomenclaturaMatch[1] : "");
 
-    fetch('../uploadArquivos.php', {
-        method: 'POST',
-        body: formData
+  formData.append("dataIdFuncoes", funcaoImagemId);
+  formData.append("idimagem", String(currentFuncaoContext?.imagem_id || 0));
+  formData.append("nome_funcao", currentFuncaoContext?.nome_funcao || "");
+  formData.append("nome_imagem", imagemNome);
+  formData.append("numeroImagem", numeroImagem);
+  formData.append("nomenclatura", nomenclatura);
+  // Passa o índice atual para adicionar ângulos ao mesmo envio
+  formData.append("indice_envio_forcado", String(currentIndiceEnvio));
+
+  fetch("../uploadArquivos.php", {
+    method: "POST",
+    body: formData,
+  })
+    .then((r) => r.json())
+    .then((res) => {
+      if (res.success) {
+        Toastify({
+          text: "Ângulos enviados com sucesso!",
+          duration: 3000,
+          backgroundColor: "green",
+          close: true,
+          gravity: "top",
+          position: "right",
+        }).showToast();
+        document.getElementById("imagem-modal").style.display = "none";
+        document.getElementById("input-imagens").value = "";
+        document.getElementById("preview").innerHTML = "";
+        historyAJAX(funcaoImagemId);
+      } else {
+        Toastify({
+          text: res.error || "Erro ao enviar ângulos.",
+          duration: 4000,
+          backgroundColor: "red",
+          close: true,
+          gravity: "top",
+          position: "right",
+        }).showToast();
+      }
     })
-        .then(r => r.json())
-        .then(res => {
-            if (res.success) {
-                alert(res.success);
-                document.getElementById('imagem-modal').style.display = 'none';
-                document.getElementById('input-imagens').value = '';
-                document.getElementById('preview').innerHTML = '';
-            } else {
-                alert(res.error || 'Erro ao enviar imagens.');
-            }
-        })
-        .catch(e => {
-            console.error(e);
-            alert('Erro na comunicação com o servidor.');
-        });
+    .catch((e) => {
+      console.error(e);
+      Toastify({
+        text: "Erro na comunicação com o servidor.",
+        duration: 3000,
+        backgroundColor: "red",
+        close: true,
+        gravity: "top",
+        position: "right",
+      }).showToast();
+    });
 });
 
 function abrirMenuContexto(x, y, id, src) {
-    const menu = document.getElementById('menuContexto');
+  const menu = document.getElementById("menuContexto");
 
-    // Coloca info da imagem (caso precise usar depois)
-    menu.setAttribute('data-id', id);
-    menu.setAttribute('data-src', src);
+  // Coloca info da imagem (caso precise usar depois)
+  menu.setAttribute("data-id", id);
+  menu.setAttribute("data-src", src);
 
-    menu.style.top = `${y}px`;
-    menu.style.left = `${x}px`;
-    menu.style.display = 'block';
+  menu.style.top = `${y}px`;
+  menu.style.left = `${x}px`;
+  menu.style.display = "block";
 }
 
 function excluirImagem() {
-    const menu = document.getElementById('menuContexto');
-    const idImagem = menu.getAttribute('data-id');
+  const menu = document.getElementById("menuContexto");
+  const idImagem = menu.getAttribute("data-id");
 
-    if (!idImagem) {
-        alert("ID da imagem não encontrado!");
-        return;
-    }
+  if (!idImagem) {
+    alert("ID da imagem não encontrado!");
+    return;
+  }
 
-    if (confirm("Tem certeza que deseja excluir esta imagem?")) {
-        fetch('excluir_imagem.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: `id=${idImagem}`
-        })
-            .then(response => response.text())
-            .then(data => {
-                console.log(data);
-                // Remove a imagem da tela também, se quiser
-                const imgElement = document.querySelector(`img[data-id='${idImagem}']`);
-                if (imgElement) {
-                    imgElement.parentElement.remove(); // Remove o wrapper da imagem
-                }
-                // Esconde o menu
-                menu.style.display = 'none';
-            })
-            .catch(error => {
-                console.error('Erro ao excluir imagem:', error);
-                alert("Erro ao excluir imagem.");
-            });
-    } else {
-        // Fecha o menu caso cancele
-        menu.style.display = 'none';
-    }
+  if (confirm("Tem certeza que deseja excluir esta imagem?")) {
+    fetch("excluir_imagem.php", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: `id=${idImagem}`,
+    })
+      .then((response) => response.text())
+      .then((data) => {
+        console.log(data);
+        // Remove a imagem da tela também, se quiser
+        const imgElement = document.querySelector(`img[data-id='${idImagem}']`);
+        if (imgElement) {
+          imgElement.parentElement.remove(); // Remove o wrapper da imagem
+        }
+        // Esconde o menu
+        menu.style.display = "none";
+      })
+      .catch((error) => {
+        console.error("Erro ao excluir imagem:", error);
+        alert("Erro ao excluir imagem.");
+      });
+  } else {
+    // Fecha o menu caso cancele
+    menu.style.display = "none";
+  }
 }
 
-document.addEventListener('click', (e) => {
-    const menu = document.getElementById('menuContexto');
-    if (!menu.contains(e.target)) {
-        menu.style.display = 'none';
-    }
+document.addEventListener("click", (e) => {
+  const menu = document.getElementById("menuContexto");
+  if (!menu.contains(e.target)) {
+    menu.style.display = "none";
+  }
 });
 
+let tribute; // variável global
 let mencionadosIds = []; // armazenar os IDs dos mencionados
 
-document.addEventListener('DOMContentLoaded', async () => {
-    // Removed user-lookup and Tribute initialization (buscar_usuarios.php)
+document.addEventListener("DOMContentLoaded", async () => {
+  try {
+    const response = await fetch("buscar_usuarios.php");
+    const users = await response.json();
 
-    // Modal: fechar
-    document.getElementById('fecharComentarioModal').onclick = () => {
-        document.getElementById('comentarioModal').style.display = 'none';
-    };
-
-    // Decisão: wiring do modal de aprovação
-    try {
-        const btnOpen = document.getElementById('submit_decision');
-        const modal = document.getElementById('decisionModal');
-        const btnClose = modal.querySelector('.close');
-        const cancelBtn = document.getElementById('cancelBtn');
-        const btnConfirm = document.getElementById('confirmBtn');
-        const radios = modal.querySelectorAll('input[name="decision"]');
-
-        // Controle de permissão: apenas alguns usuários
-        const USERS_PERMITIDOS_DECISAO = [1, 2, 3, 9, 20];
-        if (!USERS_PERMITIDOS_DECISAO.includes(idusuario)) {
-            if (btnOpen) btnOpen.style.display = 'none';
-        } else {
-            if (btnOpen) {
-                btnOpen.addEventListener('click', () => {
-                    // Para P00 a imagem pode não ter historico (ap_imagem_id null) —
-                    // permitir abrir o modal quando houver `entregaItemIdAtual` e
-                    // ou quando um ângulo estiver selecionado (`window.selectedAngleId`).
-                    if (!entregaItemIdAtual || (!ap_imagem_id && !window.selectedAngleId)) {
-                        Toastify({ text: 'Selecione uma imagem/versão válida antes.', duration: 3000, backgroundColor: 'orange', close: true, gravity: 'top', position: 'right' }).showToast();
-                        return;
-                    }
-                    modal.classList.remove('hidden');
-                });
-            }
-
-            if (btnClose) btnClose.addEventListener('click', () => {
-                modal.classList.add('hidden');
-                btnConfirm.classList.add('hidden');
-                radios.forEach(r => r.checked = false);
-            });
-            if (cancelBtn) cancelBtn.addEventListener('click', () => {
-                modal.classList.add('hidden');
-                btnConfirm.classList.add('hidden');
-                radios.forEach(r => r.checked = false);
-            });
-
-            radios.forEach(radio => {
-                radio.addEventListener('change', () => {
-                    btnConfirm.classList.remove('hidden');
-                });
-            });
-
-            if (btnConfirm) btnConfirm.addEventListener('click', async () => {
-                const selected = Array.from(radios).find(r => r.checked)?.value;
-                if (!selected) return;
-                try {
-                    // collect optional observation from modal (if present)
-                    const obsEl = modal.querySelector('#decisionObservation');
-                    const observacaoVal = obsEl ? (String(obsEl.value || '').trim() || null) : null;
-
-                    const resp = await fetch('salvar_decisao.php', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            entrega_item_id: entregaItemIdAtual,
-                            historico_imagem_id: ap_imagem_id,
-                            decisao: selected,
-                            angulo_id: window.selectedAngleId || null,
-                            observacao: observacaoVal
-                        })
-                    });
-                    const json = await resp.json();
-                    if (json.success) {
-                        Toastify({ text: 'Decisão registrada com sucesso!', duration: 3000, backgroundColor: 'green', close: true, gravity: 'top', position: 'right' }).showToast();
-                        renderDecisions(ap_imagem_id, entregaItemIdAtual);
-                    } else {
-                        Toastify({ text: json.message || 'Falha ao registrar decisão.', duration: 3000, backgroundColor: 'red', close: true, gravity: 'top', position: 'right' }).showToast();
-                    }
-                } catch (err) {
-                    console.error('Erro ao salvar decisão:', err);
-                    Toastify({ text: 'Erro ao salvar decisão.', duration: 3000, backgroundColor: 'red', close: true, gravity: 'top', position: 'right' }).showToast();
-                } finally {
-                    modal.classList.add('hidden');
-                    btnConfirm.classList.add('hidden');
-                    radios.forEach(r => r.checked = false);
-                }
-            });
+    tribute = new Tribute({
+      values: users.map((user) => ({
+        key: user.nome_colaborador,
+        value: user.nome_colaborador,
+        id: user.idcolaborador,
+      })),
+      selectTemplate: (item) => {
+        // Evita duplicados
+        if (!mencionadosIds.includes(item.original.id)) {
+          mencionadosIds.push(item.original.id);
         }
-    } catch (err) {
-        console.error('Erro ao inicializar modal de decisão:', err);
+        return `@${item.original.value}`; // Aparece só o nome no texto
+      },
+      menuItemTemplate: (item) => item.string,
+    });
+
+    tribute.attach(document.getElementById("comentarioTexto"));
+  } catch (error) {
+    console.error("Erro ao carregar usuários:", error);
+  }
+
+  // Modal: fechar
+  document.getElementById("fecharComentarioModal").onclick = () => {
+    document.getElementById("comentarioModal").style.display = "none";
+  };
+
+  // Toolbar de ferramentas de desenho
+  ["ponto", "rect", "circle", "freehand"].forEach((tool) => {
+    const btn = document.getElementById(`tool-${tool}`);
+    if (!btn) return;
+    btn.addEventListener("click", () => {
+      drawingTool = tool;
+      document
+        .querySelectorAll(".draw-tool-btn")
+        .forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      // cursor
+      const iw = document.getElementById("image_wrapper");
+      if (iw) iw.style.cursor = tool === "ponto" ? "" : "crosshair";
+      // also toggle a body class so CSS can override any image hover cursors
+      if (tool === "ponto") {
+        document.body.classList.remove("drawing-crosshair");
+      } else {
+        document.body.classList.add("drawing-crosshair");
+      }
+    });
+  });
+
+  // Color picker para ferramentas de desenho
+  const colorPickerEl = document.getElementById("draw-color");
+  if (colorPickerEl) {
+    // Initialize drawingColor from the input value so defaults match the UI
+    try {
+      if (typeof drawingColor === "undefined") {
+        // drawingColor declared later; safe-guard: set via property on window if needed
+        window._initialDrawingColor = colorPickerEl.value;
+      } else {
+        drawingColor = colorPickerEl.value;
+      }
+    } catch (e) {
+      // ignore
     }
+
+    colorPickerEl.addEventListener("input", (e) => {
+      drawingColor = e.target.value;
+    });
+    colorPickerEl.addEventListener("change", (e) => {
+      drawingColor = e.target.value;
+    });
+  }
+
+  // pdf.js worker (local)
+  try {
+    if (window.pdfjsLib && window.pdfjsLib.GlobalWorkerOptions) {
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+        "../assets/pdfjs/pdf.worker.min.js";
+    }
+  } catch (e) {
+    console.warn("pdf.js não carregou corretamente:", e);
+  }
 });
 
-// (Removidos duplicados de ap_imagem_id e mostrarImagemCompleta)
+let ap_imagem_id = null; // Variável para armazenar o ID da imagem atual
 
+// Estado do PDF (arquivo_log) quando em modo PDF
+const pdfViewerState = {
+  logId: null,
+  rawUrl: null,
+  doc: null,
+  page: 1,
+  pages: 0,
+  title: "PDF",
+};
 
-const btnDownload = document.getElementById('btn-download-imagem');
-if (btnDownload) {
-    btnDownload.addEventListener('click', function () {
-        const img = document.getElementById('imagem_atual');
-        if (img && img.src) {
-            const link = document.createElement('a');
-            link.href = img.src;
-            link.download = img.src.split('/').pop(); // nome do arquivo
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
+// Cache para comentários de PDF (evita buscar por página)
+const pdfCommentsCache = {
+  logId: null,
+  comentarios: null,
+  fetchedAt: 0,
+};
+
+// Quando um comentário de outra página for clicado, guardamos aqui para focar após render
+let pendingPdfFocusCommentId = null;
+
+// Para o botão de download funcionar tanto para JPG quanto para PDF.
+let currentDownloadUrl = null;
+
+async function renderizarPaginaPdf() {
+  const imageWrapper = document.getElementById("image_wrapper");
+  const canvas = document.getElementById("pdf_canvas");
+  const canvasWrap = document.getElementById("pdf_canvas_wrap");
+  const pageLayer = document.getElementById("pdf_page_layer");
+  const pageLabel = document.getElementById("pdf_page_label");
+  const btnPrev = document.getElementById("pdf_prev_page");
+  const btnNext = document.getElementById("pdf_next_page");
+
+  if (!canvas || !canvasWrap || !pdfViewerState.doc) return;
+
+  try {
+    const page = await pdfViewerState.doc.getPage(pdfViewerState.page);
+    const viewport1 = page.getViewport({ scale: 1 });
+
+    // Largura útil do container (desconta padding do canvasWrap)
+    let wrapWidth =
+      canvasWrap && canvasWrap.getBoundingClientRect
+        ? canvasWrap.getBoundingClientRect().width
+        : canvasWrap?.clientWidth || imageWrapper?.clientWidth || 800;
+
+    if (canvasWrap) {
+      const cs = window.getComputedStyle(canvasWrap);
+      const padL = parseFloat(cs.paddingLeft || "0") || 0;
+      const padR = parseFloat(cs.paddingRight || "0") || 0;
+      wrapWidth = wrapWidth - padL - padR;
+    }
+
+    const availableWidth = Math.max(320, wrapWidth || 800);
+    const scale = availableWidth / viewport1.width;
+    const viewport = page.getViewport({ scale });
+    const outputScale = window.devicePixelRatio || 1;
+
+    canvas.width = Math.floor(viewport.width * outputScale);
+    canvas.height = Math.floor(viewport.height * outputScale);
+    canvas.style.width = `${viewport.width}px`;
+    canvas.style.height = `${viewport.height}px`;
+
+    if (pageLayer) {
+      pageLayer.style.width = canvas.style.width;
+      pageLayer.style.height = canvas.style.height;
+    }
+
+    const ctx = canvas.getContext("2d");
+    ctx.setTransform(outputScale, 0, 0, outputScale, 0, 0);
+
+    await page.render({ canvasContext: ctx, viewport }).promise;
+
+    if (pageLabel)
+      pageLabel.textContent = `Página ${pdfViewerState.page}/${pdfViewerState.pages || "?"}`;
+    if (btnPrev) btnPrev.disabled = pdfViewerState.page <= 1;
+    if (btnNext)
+      btnNext.disabled = pdfViewerState.pages
+        ? pdfViewerState.page >= pdfViewerState.pages
+        : false;
+  } catch (e) {
+    console.error("Erro ao renderizar PDF:", e);
+  }
+
+  if (pdfViewerState.logId) {
+    const focusId = pendingPdfFocusCommentId;
+    pendingPdfFocusCommentId = null;
+    renderComments({
+      arquivo_log_id: pdfViewerState.logId,
+      pagina: pdfViewerState.page,
+      focus_comment_id: focusId,
     });
+  }
+}
+
+async function carregarPdf(rawUrl) {
+  if (!window.pdfjsLib) {
+    console.error("pdf.js não está disponível (window.pdfjsLib)");
+    return;
+  }
+
+  pdfViewerState.doc = null;
+  pdfViewerState.pages = 0;
+  pdfViewerState.page = 1;
+
+  try {
+    const loadingTask = window.pdfjsLib.getDocument(rawUrl);
+    pdfViewerState.doc = await loadingTask.promise;
+    pdfViewerState.pages = pdfViewerState.doc.numPages || 0;
+    pdfViewerState.page = 1;
+    await renderizarPaginaPdf();
+  } catch (e) {
+    console.error("Erro ao carregar PDF:", e);
+  }
+}
+
+function mostrarPdfCompleto(
+  rawUrl,
+  downloadUrl,
+  titulo = "PDF",
+  arquivoLogId = null,
+) {
+  ap_imagem_id = null;
+  currentDownloadUrl = downloadUrl || rawUrl || null;
+
+  pdfViewerState.logId = arquivoLogId ? String(arquivoLogId) : null;
+  pdfViewerState.rawUrl = rawUrl;
+  pdfViewerState.title = titulo || "PDF";
+  pdfViewerState.page = 1;
+
+  const imageWrapper = document.getElementById("image_wrapper");
+  const sidebar = document.querySelector(".sidebar-direita");
+  const imagem_completa = document.getElementById("imagem_completa");
+  if (sidebar) sidebar.style.display = "flex";
+
+  if (imageWrapper) {
+    imageWrapper.querySelectorAll(".comment").forEach((c) => c.remove());
+    while (imageWrapper.firstChild)
+      imageWrapper.removeChild(imageWrapper.firstChild);
+
+    imagem_completa.style.width = "90%";
+
+    imageWrapper.classList.add("pdf-mode");
+
+    const toolbar = document.createElement("div");
+    toolbar.className = "pdf-toolbar";
+
+    const titleEl = document.createElement("div");
+    titleEl.className = "pdf-title";
+    titleEl.textContent = pdfViewerState.title;
+
+    const controls = document.createElement("div");
+    controls.className = "pdf-controls";
+
+    const btnPrev = document.createElement("button");
+    btnPrev.id = "pdf_prev_page";
+    btnPrev.type = "button";
+    btnPrev.textContent = "◀";
+
+    const label = document.createElement("span");
+    label.id = "pdf_page_label";
+    label.textContent = "Página -/-";
+
+    const btnNext = document.createElement("button");
+    btnNext.id = "pdf_next_page";
+    btnNext.type = "button";
+    btnNext.textContent = "▶";
+
+    controls.appendChild(btnPrev);
+    controls.appendChild(label);
+    controls.appendChild(btnNext);
+
+    toolbar.appendChild(titleEl);
+    toolbar.appendChild(controls);
+
+    const wrap = document.createElement("div");
+    wrap.id = "pdf_canvas_wrap";
+    wrap.className = "pdf-canvas-wrap";
+
+    const pageLayer = document.createElement("div");
+    pageLayer.id = "pdf_page_layer";
+    pageLayer.className = "pdf-page-layer";
+
+    const canvas = document.createElement("canvas");
+    canvas.id = "pdf_canvas";
+    canvas.className = "pdf-canvas";
+
+    const overlay = document.createElement("div");
+    overlay.id = "pdf_comment_layer";
+    overlay.className = "pdf-comment-layer";
+
+    pageLayer.appendChild(canvas);
+    pageLayer.appendChild(overlay);
+    wrap.appendChild(pageLayer);
+
+    imageWrapper.appendChild(toolbar);
+    imageWrapper.appendChild(wrap);
+
+    // Clique no PDF para criar comentário (ponto)
+    pageLayer.addEventListener("click", function (event) {
+      if (dragMoved) return;
+      if (drawingTool !== "ponto") return; // formas tratadas por mousedown
+      if (!pdfViewerState.logId) return;
+
+      const rect = canvas.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+
+      relativeX = ((event.clientX - rect.left) / rect.width) * 100;
+      relativeY = ((event.clientY - rect.top) / rect.height) * 100;
+
+      document.getElementById("comentarioTexto").value = "";
+      document.getElementById("imagemComentario").value = "";
+      document.getElementById("comentarioModal").style.display = "flex";
+      mencionadosIds = [];
+    });
+
+    // Inicia desenho de forma no PDF
+    pageLayer.addEventListener("mousedown", function (event) {
+      if (event.button !== 0 || event.ctrlKey) return;
+      if (drawingTool === "ponto") return;
+      if (!pdfViewerState.logId) return;
+      event.stopPropagation();
+      isDrawing = true;
+      dragMoved = false;
+      const rect = canvas.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+      drawStartX = ((event.clientX - rect.left) / rect.width) * 100;
+      drawStartY = ((event.clientY - rect.top) / rect.height) * 100;
+      drawStartClientX = event.clientX;
+      drawStartClientY = event.clientY;
+      shapeX2 = drawStartX;
+      shapeY2 = drawStartY;
+      currentDrawRef = canvas;
+      const container =
+        document.getElementById("pdf_comment_layer") || pageLayer;
+      if (drawingTool === "freehand") {
+        freehandPoints = [[drawStartX, drawStartY]];
+        const svg = createFreehandPreviewSvg(drawStartX, drawStartY);
+        container.appendChild(svg);
+        freehandSvgPreview = svg;
+        freehandPolylineEl = svg.querySelector("polyline");
+        freehandDrawContainer = container;
+      } else {
+        const preview = document.createElement("div");
+        preview.id = "drawing-preview";
+        preview.className = `drawing-preview drawing-preview-${drawingTool}`;
+        preview.style.left = `${drawStartX}%`;
+        preview.style.top = `${drawStartY}%`;
+        preview.style.width = "0";
+        preview.style.height = "0";
+        container.appendChild(preview);
+      }
+    });
+
+    btnPrev.addEventListener("click", async () => {
+      if (!pdfViewerState.doc) return;
+      if (pdfViewerState.page <= 1) return;
+      pdfViewerState.page -= 1;
+      await renderizarPaginaPdf();
+    });
+
+    btnNext.addEventListener("click", async () => {
+      if (!pdfViewerState.doc) return;
+      if (pdfViewerState.pages && pdfViewerState.page >= pdfViewerState.pages)
+        return;
+      pdfViewerState.page += 1;
+      await renderizarPaginaPdf();
+    });
+  }
+
+  // Carrega e renderiza o PDF
+  carregarPdf(rawUrl);
+
+  // Tenta renderizar de novo no resize (ex: sidebar abre/fecha)
+  window.setTimeout(() => renderizarPaginaPdf(), 150);
+}
+
+// Mostra imagem e abre modal
+function mostrarImagemCompleta(src, id) {
+  closeCommentPopup();
+  ap_imagem_id = id;
+  currentDownloadUrl = src || null;
+
+  // Sai do modo PDF
+  pdfViewerState.logId = null;
+  pdfViewerState.rawUrl = null;
+  pdfViewerState.doc = null;
+  pdfViewerState.page = 1;
+  pdfViewerState.pages = 0;
+
+  const imageWrapper = document.getElementById("image_wrapper");
+  const sidebar = document.querySelector(".sidebar-direita");
+  sidebar.style.display = "flex";
+
+  imageWrapper.classList.remove("pdf-mode");
+
+  while (imageWrapper.firstChild) {
+    imageWrapper.removeChild(imageWrapper.firstChild);
+  }
+
+  const imgElement = document.createElement("img");
+  imgElement.id = "imagem_atual";
+  imgElement.src = src;
+  imgElement.style.width = "100%";
+
+  imageWrapper.appendChild(imgElement);
+  document
+    .querySelector("#imagem_atual")
+    .scrollIntoView({ behavior: "smooth" });
+  renderComments(id);
+  ajustarNavSelectAoTamanhoDaImagem();
+
+  imgElement.addEventListener("click", function (event) {
+    if (dragMoved) return;
+    if (drawingTool !== "ponto") return; // formas são tratadas por mousedown
+    // if (![1, 2, 9, 20, 3].includes(idusuario)) return;
+
+    const rect = imgElement.getBoundingClientRect();
+    relativeX = ((event.clientX - rect.left) / rect.width) * 100;
+    relativeY = ((event.clientY - rect.top) / rect.height) * 100;
+
+    document.getElementById("comentarioTexto").value = "";
+    document.getElementById("imagemComentario").value = "";
+    document.getElementById("comentarioModal").style.display = "flex";
+
+    // Limpa os mencionados quando abre um novo comentário
+    mencionadosIds = [];
+  });
+
+  // Inicia desenho de forma geométrica na imagem JPG
+  imgElement.addEventListener("mousedown", function (event) {
+    if (event.button !== 0 || event.ctrlKey) return;
+    if (drawingTool === "ponto") return;
+    event.stopPropagation();
+    isDrawing = true;
+    dragMoved = false;
+    const rect = imgElement.getBoundingClientRect();
+    drawStartX = ((event.clientX - rect.left) / rect.width) * 100;
+    drawStartY = ((event.clientY - rect.top) / rect.height) * 100;
+    drawStartClientX = event.clientX;
+    drawStartClientY = event.clientY;
+    shapeX2 = drawStartX;
+    shapeY2 = drawStartY;
+    currentDrawRef = imgElement;
+    if (drawingTool === "freehand") {
+      freehandPoints = [[drawStartX, drawStartY]];
+      const svg = createFreehandPreviewSvg(drawStartX, drawStartY);
+      imageWrapper.appendChild(svg);
+      freehandSvgPreview = svg;
+      freehandPolylineEl = svg.querySelector("polyline");
+      freehandDrawContainer = imageWrapper;
+    } else {
+      const preview = document.createElement("div");
+      preview.id = "drawing-preview";
+      preview.className = `drawing-preview drawing-preview-${drawingTool}`;
+      preview.style.left = `${drawStartX}%`;
+      preview.style.top = `${drawStartY}%`;
+      preview.style.width = "0";
+      preview.style.height = "0";
+      imageWrapper.appendChild(preview);
+    }
+  });
+
+  // support pointer events (touch / pen) for image drawing
+  imgElement.addEventListener("pointerdown", function (event) {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    if (event.ctrlKey) return;
+    if (drawingTool === "ponto") return;
+    event.stopPropagation();
+    isDrawing = true;
+    dragMoved = false;
+    const rect = imgElement.getBoundingClientRect();
+    drawStartX = ((event.clientX - rect.left) / rect.width) * 100;
+    drawStartY = ((event.clientY - rect.top) / rect.height) * 100;
+    drawStartClientX = event.clientX;
+    drawStartClientY = event.clientY;
+    shapeX2 = drawStartX;
+    shapeY2 = drawStartY;
+    currentDrawRef = imgElement;
+    if (drawingTool === "freehand") {
+      freehandPoints = [[drawStartX, drawStartY]];
+      const svg = createFreehandPreviewSvg(drawStartX, drawStartY);
+      imageWrapper.appendChild(svg);
+      freehandSvgPreview = svg;
+      freehandPolylineEl = svg.querySelector("polyline");
+      freehandDrawContainer = imageWrapper;
+    } else {
+      const preview = document.createElement("div");
+      preview.id = "drawing-preview";
+      preview.className = `drawing-preview drawing-preview-${drawingTool}`;
+      preview.style.left = `${drawStartX}%`;
+      preview.style.top = `${drawStartY}%`;
+      preview.style.width = "0";
+      preview.style.height = "0";
+      imageWrapper.appendChild(preview);
+    }
+  });
+}
+
+function ajustarNavSelectAoTamanhoDaImagem() {
+  const img = document.getElementById("imagem_atual");
+  const navSelect = document.querySelector(".nav-select");
+  if (img && navSelect) {
+    // Aguarda a imagem carregar para pegar o tamanho real
+    img.onload = function () {
+      navSelect.style.width = img.width + "px";
+    };
+    // Se a imagem já estiver carregada (cache)
+    if (img.complete) {
+      navSelect.style.width = img.width + "px";
+    }
+  }
+}
+
+const btnDownload = document.getElementById("btn-download-imagem");
+if (btnDownload) {
+  btnDownload.addEventListener("click", function () {
+    const url =
+      currentDownloadUrl || document.getElementById("imagem_atual")?.src || "";
+    if (!url) return;
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = url.split("/").pop() || "download";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  });
 }
 
 // Capturar colagem de imagem no campo de texto
-document.getElementById('comentarioTexto').addEventListener('paste', function (event) {
-    const items = (event.clipboardData || event.originalEvent.clipboardData).items;
+document
+  .getElementById("comentarioTexto")
+  .addEventListener("paste", function (event) {
+    const items = (event.clipboardData || event.originalEvent.clipboardData)
+      .items;
 
     for (let index in items) {
-        const item = items[index];
-        if (item.kind === 'file') {
-            const blob = item.getAsFile();
-            if (blob && blob.type.startsWith('image/')) {
-                const fileInput = document.getElementById('imagemComentario');
+      const item = items[index];
+      if (item.kind === "file") {
+        const blob = item.getAsFile();
+        if (blob && blob.type.startsWith("image/")) {
+          const fileInput = document.getElementById("imagemComentario");
 
-                // Cria um objeto DataTransfer para injetar o arquivo no input
-                const dataTransfer = new DataTransfer();
-                dataTransfer.items.add(new File([blob], 'imagem_colada.png', { type: blob.type }));
+          // Cria um objeto DataTransfer para injetar o arquivo no input
+          const dataTransfer = new DataTransfer();
+          dataTransfer.items.add(
+            new File([blob], "imagem_colada.png", { type: blob.type }),
+          );
 
-                fileInput.files = dataTransfer.files;
+          fileInput.files = dataTransfer.files;
 
-                Toastify({
-                    text: 'Imagem colada com sucesso!',
-                    duration: 3000,
-                    backgroundColor: 'linear-gradient(to right, #00b09b, #96c93d)',
-                    close: true,
-                    gravity: "top",
-                    position: "right"
-                }).showToast();
-            }
+          Toastify({
+            text: "Imagem colada com sucesso!",
+            duration: 3000,
+            backgroundColor: "linear-gradient(to right, #00b09b, #96c93d)",
+            close: true,
+            gravity: "top",
+            position: "right",
+          }).showToast();
         }
+      }
     }
-});
+  });
 
 // Função para enviar o comentário
-document.getElementById('enviarComentario').onclick = async () => {
-    const texto = document.getElementById('comentarioTexto').value.trim();
-    const imagemFile = document.getElementById('imagemComentario').files[0];
+document.getElementById("enviarComentario").onclick = async () => {
+  const texto = document.getElementById("comentarioTexto").value.trim();
+  const imagemFile = document.getElementById("imagemComentario").files[0];
 
-    if (!texto && !imagemFile) {
-        Toastify({
-            text: 'Escreva um comentário ou anexe uma imagem!',
-            duration: 3000,
-            backgroundColor: 'orange',
-            close: true,
-            gravity: "top",
-            position: "right"
-        }).showToast();
-        return;
-    }
+  if (!texto && !imagemFile) {
+    Toastify({
+      text: "Escreva um comentário ou anexe uma imagem!",
+      duration: 3000,
+      backgroundColor: "orange",
+      close: true,
+      gravity: "top",
+      position: "right",
+    }).showToast();
+    return;
+  }
 
-    const formData = new FormData();
-    formData.append('ap_imagem_id', ap_imagem_id);
-    formData.append('x', relativeX);
-    formData.append('y', relativeY);
-    formData.append('texto', texto);
+  const formData = new FormData();
+  if (pdfViewerState.logId) {
+    formData.append("arquivo_log_id", pdfViewerState.logId);
+    formData.append("pagina", String(pdfViewerState.page || 1));
+  } else {
+    formData.append("ap_imagem_id", ap_imagem_id);
+  }
+  formData.append("x", relativeX);
+  formData.append("y", relativeY);
+  formData.append("tipo", drawingTool);
+  formData.append("cor", drawingColor);
+  if (drawingTool === "freehand") {
+    formData.append("path_data", JSON.stringify(freehandPoints));
+  } else if (drawingTool !== "ponto") {
+    formData.append("x2", shapeX2);
+    formData.append("y2", shapeY2);
+  }
+  formData.append("texto", texto);
+  formData.append("mencionados", JSON.stringify(mencionadosIds));
 
-    if (imagemFile) {
-        formData.append('imagem', imagemFile);
-    }
+  if (imagemFile) {
+    formData.append("imagem", imagemFile);
+  }
 
-    try {
-        const response = await fetch('salvar_comentario.php', {
-            method: 'POST',
-            body: formData
-        });
+  try {
+    const response = await fetch("salvar_comentario.php", {
+      method: "POST",
+      body: formData,
+    });
 
-        const result = await response.json();
+    const result = await response.json();
 
-        document.getElementById('comentarioModal').style.display = 'none';
+    document.getElementById("comentarioModal").style.display = "none";
 
-        if (result.sucesso) {
-            Toastify({
-                text: 'Comentário adicionado com sucesso!',
-                duration: 3000,
-                backgroundColor: 'green',
-                close: true,
-                gravity: "top",
-                position: "left"
-            }).showToast();
+    if (result.sucesso) {
+      Toastify({
+        text: "Comentário adicionado com sucesso!",
+        duration: 3000,
+        backgroundColor: "green",
+        close: true,
+        gravity: "top",
+        position: "left",
+      }).showToast();
 
-            // Atualiza comentários
-            renderComments(ap_imagem_id);
-        } else {
-            Toastify({
-                text: result.mensagem || 'Erro ao salvar comentário!',
-                duration: 3000,
-                backgroundColor: 'red',
-                close: true,
-                gravity: "top",
-                position: "left"
-            }).showToast();
+      // Atualiza comentários
+      if (pdfViewerState.logId) {
+        // Invalida cache e recarrega comentários do PDF (todos)
+        if (pdfViewerState.logId) {
+          pdfCommentsCache.logId = null;
+          pdfCommentsCache.comentarios = null;
         }
-
-        // Limpa os mencionados depois do envio
-        mencionadosIds = [];
-
-    } catch (error) {
-        console.error('Erro na requisição:', error);
-        Toastify({
-            text: 'Erro de conexão! Tente novamente.',
-            duration: 3000,
-            backgroundColor: 'red',
-            close: true,
-            gravity: "top",
-            position: "left"
-        }).showToast();
+        renderComments({
+          arquivo_log_id: pdfViewerState.logId,
+          pagina: pdfViewerState.page,
+        });
+      } else {
+        renderComments(ap_imagem_id);
+      }
+    } else {
+      Toastify({
+        text: result.mensagem || "Erro ao salvar comentário!",
+        duration: 3000,
+        backgroundColor: "red",
+        close: true,
+        gravity: "top",
+        position: "left",
+      }).showToast();
     }
+
+    // Limpa os mencionados depois do envio
+    mencionadosIds = [];
+  } catch (error) {
+    console.error("Erro na requisição:", error);
+    Toastify({
+      text: "Erro de conexão! Tente novamente.",
+      duration: 3000,
+      backgroundColor: "red",
+      close: true,
+      gravity: "top",
+      position: "left",
+    }).showToast();
+  }
 };
 
 function addComment(x, y) {
-    const imagemCompletaDiv = document.getElementById("imagem_completa");
+  const imagemCompletaDiv = document.getElementById("imagem_completa");
 
-    // Cria o div do comentário
-    const commentDiv = document.createElement('div');
-    commentDiv.classList.add('comment');
-    commentDiv.style.left = `${x}%`;
-    commentDiv.style.top = `${y}%`;
+  // Cria o div do comentário
+  const commentDiv = document.createElement("div");
+  commentDiv.classList.add("comment");
+  commentDiv.style.left = `${x}%`;
+  commentDiv.style.top = `${y}%`;
 
-    imagemCompletaDiv.appendChild(commentDiv);
+  imagemCompletaDiv.appendChild(commentDiv);
 }
 
 const image = document.getElementById("imagem_atual");
 
-
 // ---- CONFIGURAÇÃO ---------------------------------------------------------
-const USERS_PERMITIDOS = [1, 2, 3, 9, 20];   // quem pode editar / excluir
+const USERS_PERMITIDOS = [1, 2, 3, 9, 20]; // quem pode editar / excluir
 // --------------------------------------------------------------------------
 
+// ---- Ferramenta de desenho (formas geométricas) --------------------------
+let drawingTool = "ponto"; // 'ponto' | 'rect' | 'circle' | 'freehand'
+let drawingColor =
+  window._initialDrawingColor &&
+  /^#[0-9a-fA-F]{6}$/.test(window._initialDrawingColor)
+    ? window._initialDrawingColor
+    : "#000000"; // cor selecionada pelo usuário
+let isDrawing = false;
+let drawStartX = 0; // % relativo ao elemento de referência
+let drawStartY = 0;
+let drawStartClientX = 0; // px (para calcular delta)
+let drawStartClientY = 0;
+let shapeX2 = 0; // coordenada final em %
+let shapeY2 = 0;
+let currentDrawRef = null; // elemento usado para calcular coords (img ou canvas)
+// Freehand especial
+let freehandPoints = []; // [[x%,y%], ...]
+let freehandSvgPreview = null;
+let freehandPolylineEl = null;
+let freehandDrawContainer = null;
+// ---------------------------------------------------------------------------
+
+function createFreehandPreviewSvg(startX, startY) {
+  const svgNS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(svgNS, "svg");
+  svg.id = "drawing-preview";
+  svg.setAttribute("viewBox", "0 0 100 100");
+  svg.setAttribute("preserveAspectRatio", "none");
+  svg.setAttribute("pointer-events", "none");
+  svg.style.cssText =
+    "position:absolute;top:0;left:0;width:100%;height:100%;overflow:visible;z-index:850;";
+  const poly = document.createElementNS(svgNS, "polyline");
+  poly.setAttribute("points", `${startX},${startY}`);
+  poly.setAttribute("fill", "none");
+  poly.setAttribute("stroke", drawingColor);
+  poly.setAttribute("stroke-width", "0.6");
+  poly.setAttribute("stroke-linecap", "round");
+  poly.setAttribute("stroke-linejoin", "round");
+  svg.appendChild(poly);
+  return svg;
+}
+
+// ---- Comment inline popup (shown when clicking a .comment marker) ---------
+let activeCommentPopup = null;
+
+function closeCommentPopup() {
+  if (activeCommentPopup) {
+    activeCommentPopup.remove();
+    activeCommentPopup = null;
+  }
+}
+
+function showCommentPopup(markerEl, comentarioId) {
+  closeCommentPopup();
+
+  const card = document.querySelector(
+    `.comment-card[data-id="${comentarioId}"]`,
+  );
+  if (!card) return;
+
+  const popup = document.createElement("div");
+  popup.className = "comment-popup";
+  popup.setAttribute("data-popup-id", String(comentarioId));
+
+  // Close button
+  const closeBtn = document.createElement("button");
+  closeBtn.className = "comment-popup-close";
+  closeBtn.innerHTML = "&#x2715;"; // ✕
+  closeBtn.title = "Fechar";
+  closeBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    closeCommentPopup();
+    document
+      .querySelectorAll(".comment-number")
+      .forEach((n) => n.classList.remove("highlight"));
+    document
+      .querySelectorAll(
+        ".comment.highlight, .comment-shape.highlight, .comment-freehand.highlight",
+      )
+      .forEach((n) => n.classList.remove("highlight"));
+    wrapper.classList.add("highlight");
+    const cardNum = document.querySelector(
+      `.comment-card[data-id="${comentario.id}"] .comment-number`,
+    );
+  });
+  popup.appendChild(closeBtn);
+
+  // Clone the card content
+  const clone = card.cloneNode(true);
+  // Remove interactive action buttons from clone to keep it read-only
+  clone
+    .querySelectorAll(".comment-resp, .comment-edit, .comment-delete")
+    .forEach((btn) => btn.remove());
+  popup.appendChild(clone);
+
+  document.body.appendChild(popup);
+  activeCommentPopup = popup;
+
+  // Position relative to marker (fixed coordinates)
+  const mr = markerEl.getBoundingClientRect();
+  const pr = popup.getBoundingClientRect();
+  const gap = 14;
+
+  const spaceRight = window.innerWidth - mr.right - gap;
+  const spaceLeft = mr.left - gap;
+
+  let left, arrowClass;
+  if (spaceRight >= pr.width || spaceRight >= spaceLeft) {
+    left = mr.right + gap;
+    arrowClass = "popup-right";
+  } else {
+    left = mr.left - gap - pr.width;
+    arrowClass = "popup-left";
+  }
+
+  let top = mr.top + mr.height / 2 - pr.height / 2;
+  top = Math.max(8, Math.min(top, window.innerHeight - pr.height - 8));
+
+  popup.classList.add(arrowClass);
+  popup.style.left = Math.round(left) + "px";
+  popup.style.top = Math.round(top) + "px";
+}
+
+// Close popup on click outside
+document.addEventListener("click", (e) => {
+  if (
+    activeCommentPopup &&
+    !activeCommentPopup.contains(e.target) &&
+    !e.target.classList.contains("comment")
+  ) {
+    closeCommentPopup();
+  }
+});
+// ---------------------------------------------------------------------------
+
 async function renderComments(id) {
-    // console.log('renderComments', id); // debug
-    const comentariosDiv = document.querySelector(".comentarios");
-    comentariosDiv.innerHTML = '';
-    const imagemCompletaDiv = document.getElementById("image_wrapper");
-    const response = await fetch(`buscar_comentarios.php?id=${id}`);
-    const comentarios = await response.json();
+  console.log("renderComments", id); // debug
+  const comentariosDiv = document.querySelector(".comentarios");
+  comentariosDiv.innerHTML = "";
+  const imagemCompletaDiv = document.getElementById("image_wrapper");
 
-    imagemCompletaDiv.querySelectorAll('.comment').forEach(c => c.remove());
+  const isPdf = typeof id === "object" && id && id.arquivo_log_id;
+  const markerContainer = isPdf
+    ? document.getElementById("pdf_comment_layer") || imagemCompletaDiv
+    : imagemCompletaDiv;
 
-    // Oculta a sidebar-direita se não houver comentários
-    if (comentarios.length === 0) {
-        comentariosDiv.style.display = 'none';
-    } else {
-        comentariosDiv.style.display = 'flex';
+  // No PDF: não busca por página; busca tudo uma vez e filtra no front
+  let comentarios = [];
+  if (isPdf) {
+    const logId = String(id.arquivo_log_id);
+    const shouldFetch =
+      !pdfCommentsCache.comentarios || pdfCommentsCache.logId !== logId;
+
+    if (shouldFetch) {
+      const urlAll = `buscar_comentarios.php?arquivo_log_id=${encodeURIComponent(logId)}`;
+      const response = await fetch(urlAll);
+      const all = await response.json();
+      pdfCommentsCache.logId = logId;
+      pdfCommentsCache.comentarios = Array.isArray(all) ? all : [];
+      pdfCommentsCache.fetchedAt = Date.now();
     }
 
-    // Mention support disabled: removed fetch to buscar_usuarios.php and Tribute setup
+    comentarios = pdfCommentsCache.comentarios || [];
+  } else {
+    const url = `buscar_comentarios.php?id=${encodeURIComponent(String(id))}`;
+    const response = await fetch(url);
+    const data = await response.json();
+    comentarios = Array.isArray(data) ? data : [];
+  }
 
-    comentarios.forEach(comentario => {
-        const commentCard = document.createElement('div');
-        commentCard.classList.add('comment-card');
-        commentCard.setAttribute('data-id', comentario.id);
+  // Remove marcadores anteriores (pontos, formas e freehand)
+  markerContainer
+    .querySelectorAll(".comment, .comment-shape, .comment-freehand")
+    .forEach((c) => c.remove());
 
-        const header = document.createElement('div');
-        header.classList.add('comment-header');
-        header.innerHTML = `
+  // Oculta a sidebar-direita se não houver comentários
+  if (comentarios.length === 0) {
+    comentariosDiv.style.display = "none";
+  } else {
+    comentariosDiv.style.display = "flex";
+  }
+
+  const users = await fetch("buscar_usuarios.php").then((res) => res.json());
+
+  const tribute = new Tribute({
+    values: users.map((user) => ({
+      key: user.nome_colaborador,
+      value: user.nome_colaborador,
+    })),
+    selectTemplate: function (item) {
+      return `@${item.original.value}`;
+    },
+  });
+
+  // No PDF: lista mostra todos; marcadores mostram só a página atual
+  const paginaAtual = isPdf ? parseInt(String(id.pagina || 1), 10) : null;
+
+  comentarios.forEach((comentario) => {
+    const commentCard = document.createElement("div");
+    commentCard.classList.add("comment-card");
+    commentCard.setAttribute("data-id", comentario.id);
+
+    const header = document.createElement("div");
+    header.classList.add("comment-header");
+    const pageInfo =
+      isPdf && comentario.pagina
+        ? `<div class="comment-page">Pág. ${comentario.pagina}</div>`
+        : "";
+    header.innerHTML = `
             <div class="comment-number">${comentario.numero_comentario}</div>
             <div class="comment-user">${comentario.nome_responsavel}</div>
+            ${pageInfo}
         `;
 
-        const commentBody = document.createElement('div');
-        commentBody.classList.add('comment-body');
+    const commentBody = document.createElement("div");
+    commentBody.classList.add("comment-body");
 
-        const p = document.createElement('p');
-        p.classList.add('comment-input');
-        p.textContent = comentario.texto;
+    const p = document.createElement("p");
+    p.classList.add("comment-input");
+    p.textContent = comentario.texto;
 
-        commentBody.appendChild(p);
+    commentBody.appendChild(p);
 
-        const footer = document.createElement('div');
-        footer.classList.add('comment-footer');
-        footer.innerHTML = `
+    const footer = document.createElement("div");
+    footer.classList.add("comment-footer");
+    footer.innerHTML = `
             <div class="comment-date">${comentario.data}</div>
             <div class="comment-actions">
                 <button class="comment-resp">&#8617</button>
@@ -1663,262 +2415,467 @@ async function renderComments(id) {
             </div>
         `;
 
-        const respostas = document.createElement('div');
-        respostas.classList.add('respostas-container');
-        respostas.id = `respostas-${comentario.id}`;
+    const respostas = document.createElement("div");
+    respostas.classList.add("respostas-container");
+    respostas.id = `respostas-${comentario.id}`;
 
-        commentCard.appendChild(header);
-        if (comentario.imagem) {
-            const imagemDiv = document.createElement('div');
-            imagemDiv.classList.add('comment-image');
-            imagemDiv.innerHTML = `
-                <img src="${comentario.imagem}" class="comment-img-thumb" onclick="abrirImagemModal('${comentario.imagem}')">
-            `;
-            commentCard.appendChild(imagemDiv);
+    commentCard.appendChild(header);
+    if (comentario.imagem) {
+      const imagemDiv = document.createElement("div");
+      imagemDiv.classList.add("comment-image");
+      const thumb = `https://improov.com.br/flow/ImproovWeb/thumb.php?path=${encodeURIComponent(comentario.imagem)}&w=200&q=85`;
+      imagemDiv.innerHTML = `
+                    <img src="${thumb}" class="comment-img-thumb" onclick="abrirImagemModal('${comentario.imagem}')">
+                `;
+      commentCard.appendChild(imagemDiv);
+    }
+    commentCard.appendChild(commentBody);
+    commentCard.appendChild(footer);
+    commentCard.appendChild(respostas);
+
+    // Permissões
+    if (!USERS_PERMITIDOS.includes(idusuario)) {
+      footer.querySelector(".comment-delete").style.display = "none";
+      footer.querySelector(".comment-edit").style.display = "none";
+    }
+
+    const editButton = footer.querySelector(".comment-edit");
+
+    editButton.addEventListener("click", () => {
+      p.contentEditable = true;
+      p.focus();
+
+      const handleKeyDown = async function (e) {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+
+          const novoTexto = p.textContent.trim();
+
+          p.contentEditable = false;
+
+          updateComment(comentario.id, novoTexto);
+
+          // Remove o listener pra não acumular
+          p.removeEventListener("keydown", handleKeyDown);
         }
-        commentCard.appendChild(commentBody);
-        commentCard.appendChild(footer);
-        commentCard.appendChild(respostas);
+      };
 
-        // Permissões
-        if (!USERS_PERMITIDOS.includes(idusuario)) {
-            footer.querySelector('.comment-delete').style.display = 'none';
-            footer.querySelector('.comment-edit').style.display = 'none';
-        }
-
-        const editButton = footer.querySelector('.comment-edit');
-
-        editButton.addEventListener('click', () => {
-            p.contentEditable = true;
-            p.focus();
-
-            const handleKeyDown = async function (e) {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-
-                    const novoTexto = p.textContent.trim();
-
-                    p.contentEditable = false;
-
-                    updateComment(comentario.id, novoTexto);
-
-                    // Remove o listener pra não acumular
-                    p.removeEventListener('keydown', handleKeyDown);
-                }
-            };
-
-            p.addEventListener('keydown', handleKeyDown);
-        });
-
-        const commentDiv = document.createElement('div');
-        commentDiv.classList.add('comment');
-        commentDiv.setAttribute('data-id', comentario.id);
-        commentDiv.innerText = comentario.numero_comentario;
-        commentDiv.style.left = `${comentario.x}%`;
-        commentDiv.style.top = `${comentario.y}%`;
-
-        commentDiv.addEventListener('click', () => {
-            document.querySelectorAll('.comment-number').forEach(n => n.classList.remove('highlight'));
-            const number = document.querySelector(`.comment-card[data-id="${comentario.id}"] .comment-number`);
-            if (number) {
-                number.classList.add('highlight');
-                number.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-        });
-
-        commentCard.addEventListener('click', () => {
-            // Remove o highlight de todas as bolinhas
-            document.querySelectorAll('.comment.highlight').forEach(n => n.classList.remove('highlight'));
-
-            // Pega a bolinha correspondente ao comentário
-            const number = document.querySelector(`.comment[data-id="${comentario.id}"]`);
-
-            if (number) {
-                number.classList.add('highlight');
-            }
-        });
-
-
-        const respButton = commentCard.querySelector('.comment-resp');
-
-        respButton.addEventListener('click', async () => {
-            const textoResposta = prompt("Digite sua resposta:");
-            if (textoResposta && textoResposta.trim() !== '') {
-                const respostaSalva = await salvarResposta(comentario.id, textoResposta);
-                if (respostaSalva) {
-                    adicionarRespostaDOM(comentario.id, respostaSalva);
-
-                    const mencoes = textoResposta.match(/@(\w+)/g);
-                    if (mencoes) {
-                        for (const mencao of mencoes) {
-                            const nome = mencao.replace('@', '');
-                            const colaborador = users.find(u => u.nome_colaborador === nome);
-                            if (colaborador) {
-                                await fetch('registrar_mencao.php', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({
-                                        comentario_id: comentario.id,
-                                        mencionado_id: colaborador.idcolaborador
-                                    })
-                                });
-                            }
-                        }
-                    }
-                }
-            }
-        });
-
-        imagemCompletaDiv.appendChild(commentDiv);
-        comentariosDiv.appendChild(commentCard);
-
-        if (comentario.respostas && comentario.respostas.length > 0) {
-            comentario.respostas.forEach(resposta => {
-                adicionarRespostaDOM(comentario.id, resposta);
-            });
-        }
+      p.addEventListener("keydown", handleKeyDown);
     });
+
+    let commentDiv = document.createElement("div");
+    const isShape = comentario.tipo === "rect" || comentario.tipo === "circle";
+    const isFreehand = comentario.tipo === "freehand";
+    const cor = comentario.cor || "#000000";
+    const corR = parseInt(cor.slice(1, 3), 16);
+    const corG = parseInt(cor.slice(3, 5), 16);
+    const corB = parseInt(cor.slice(5, 7), 16);
+
+    if (isFreehand) {
+      const svgNS = "http://www.w3.org/2000/svg";
+      let pts = [];
+      try {
+        pts = JSON.parse(comentario.path_data || "[]");
+      } catch (e) {}
+      if (pts.length >= 2) {
+        // Wrapper div covers the full image and acts as the commentDiv
+        const wrapper = document.createElement("div");
+        wrapper.classList.add("comment-freehand");
+        wrapper.style.cssText =
+          "position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:450;";
+
+        const svg = document.createElementNS(svgNS, "svg");
+        svg.setAttribute("viewBox", "0 0 100 100");
+        svg.setAttribute("preserveAspectRatio", "none");
+        svg.setAttribute("pointer-events", "none");
+        svg.style.cssText =
+          "position:absolute;top:0;left:0;width:100%;height:100%;overflow:visible;";
+
+        const ptStr = pts.map((p) => p.join(",")).join(" ");
+
+        const visible = document.createElementNS(svgNS, "polyline");
+        visible.setAttribute("points", ptStr);
+        visible.setAttribute("fill", "none");
+        visible.setAttribute("stroke", cor);
+        visible.setAttribute("stroke-width", "0.3");
+        visible.setAttribute("stroke-linecap", "round");
+        visible.setAttribute("stroke-linejoin", "round");
+        visible.setAttribute("pointer-events", "none");
+        svg.appendChild(visible);
+
+        const hit = document.createElementNS(svgNS, "polyline");
+        hit.setAttribute("points", ptStr);
+        hit.setAttribute("fill", "none");
+        hit.setAttribute("stroke", "transparent");
+        hit.setAttribute("stroke-width", "3");
+        hit.setAttribute("stroke-linecap", "round");
+        hit.setAttribute("pointer-events", "stroke");
+        hit.style.cursor = "pointer";
+        svg.appendChild(hit);
+
+        wrapper.appendChild(svg);
+
+        // Badge – same element as shape badges, no SVG distortion
+        const sp = pts[0];
+        const badge = document.createElement("span");
+        badge.className = "comment-shape-badge";
+        badge.textContent = String(comentario.numero_comentario);
+        badge.style.cssText = `position:absolute;left:${sp[0]}%;top:${sp[1]}%;transform:translate(-50%,-50%);background:${cor};border-color:rgba(0,0,0,0.25);color:#fff;pointer-events:none;`;
+        wrapper.appendChild(badge);
+
+        hit.addEventListener("click", (e) => {
+          e.stopPropagation();
+          document
+            .querySelectorAll(".comment-number")
+            .forEach((n) => n.classList.remove("highlight"));
+          document
+            .querySelectorAll(
+              ".comment.highlight, .comment-shape.highlight, .comment-freehand.highlight",
+            )
+            .forEach((n) => n.classList.remove("highlight"));
+          wrapper.classList.add("highlight");
+          const cardNum = document.querySelector(
+            `.comment-card[data-id="${comentario.id}"] .comment-number`,
+          );
+          if (cardNum) cardNum.classList.add("highlight");
+          showCommentPopup(hit, comentario.id);
+        });
+
+        commentDiv = wrapper;
+      }
+    } else if (isShape) {
+      commentDiv.classList.add("comment-shape");
+      commentDiv.classList.add(
+        comentario.tipo === "rect"
+          ? "comment-shape-rect"
+          : "comment-shape-circle",
+      );
+      const cx1 = parseFloat(comentario.x) || 0;
+      const cy1 = parseFloat(comentario.y) || 0;
+      const cx2 = comentario.x2 != null ? parseFloat(comentario.x2) : cx1 + 5;
+      const cy2 = comentario.y2 != null ? parseFloat(comentario.y2) : cy1 + 5;
+      commentDiv.style.left = `${Math.min(cx1, cx2)}%`;
+      commentDiv.style.top = `${Math.min(cy1, cy2)}%`;
+      commentDiv.style.width = `${Math.abs(cx2 - cx1)}%`;
+      commentDiv.style.height = `${Math.abs(cy2 - cy1)}%`;
+      commentDiv.style.borderColor = cor;
+      commentDiv.style.backgroundColor = `rgba(${corR},${corG},${corB},0.10)`;
+      const badge = document.createElement("span");
+      badge.className = "comment-shape-badge";
+      badge.textContent = comentario.numero_comentario;
+      badge.style.backgroundColor = cor;
+      badge.style.borderColor = cor;
+      badge.style.color = "#fff";
+      commentDiv.appendChild(badge);
+    } else {
+      commentDiv.classList.add("comment");
+      commentDiv.innerText = comentario.numero_comentario;
+      commentDiv.style.left = `${comentario.x}%`;
+      commentDiv.style.top = `${comentario.y}%`;
+      commentDiv.style.backgroundColor = cor;
+      commentDiv.style.color = "#fff";
+    }
+    commentDiv.setAttribute("data-id", comentario.id);
+
+    // Generic marker click (ponto + shapes; freehand uses SVG hit handler above)
+    if (!isFreehand) {
+      commentDiv.addEventListener("click", (e) => {
+        // No PDF, a bolinha fica em cima do canvas; evita abrir um novo comentário ao clicar nela.
+        if (e && typeof e.stopPropagation === "function") e.stopPropagation();
+
+        // Highlight marker and card number
+        document
+          .querySelectorAll(".comment-number")
+          .forEach((n) => n.classList.remove("highlight"));
+        document
+          .querySelectorAll(
+            ".comment.highlight, .comment-shape.highlight, .comment-freehand.highlight",
+          )
+          .forEach((n) => n.classList.remove("highlight"));
+        const number = document.querySelector(
+          `.comment-card[data-id="${comentario.id}"] .comment-number`,
+        );
+        if (number) number.classList.add("highlight");
+        commentDiv.classList.add("highlight");
+
+        // Show inline popup next to the marker
+        showCommentPopup(commentDiv, comentario.id);
+      });
+    }
+
+    commentCard.addEventListener("click", async () => {
+      // No PDF, ao clicar em um comentário: ir para a página correspondente
+      if (isPdf && comentario.pagina) {
+        const targetPage = parseInt(String(comentario.pagina), 10);
+        if (
+          Number.isFinite(targetPage) &&
+          targetPage >= 1 &&
+          targetPage <= (pdfViewerState.pages || targetPage)
+        ) {
+          if (pdfViewerState.page !== targetPage) {
+            pendingPdfFocusCommentId = comentario.id;
+            pdfViewerState.page = targetPage;
+            await renderizarPaginaPdf();
+            return;
+          }
+        }
+      }
+
+      // Remove o highlight de todas as bolinhas
+      document
+        .querySelectorAll(
+          ".comment.highlight, .comment-shape.highlight, .comment-freehand.highlight",
+        )
+        .forEach((n) => n.classList.remove("highlight"));
+
+      // Pega a bolinha correspondente ao comentário
+      const freehandEl = document.querySelector(
+        `.comment-freehand[data-id="${comentario.id}"]`,
+      );
+      const number = freehandEl
+        ? freehandEl
+        : document.querySelector(
+            `.comment[data-id="${comentario.id}"], .comment-shape[data-id="${comentario.id}"]`,
+          );
+
+      if (number) {
+        number.classList.add("highlight");
+        if (!number.classList.contains("comment-freehand")) {
+          number.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }
+    });
+
+    const respButton = commentCard.querySelector(".comment-resp");
+
+    respButton.addEventListener("click", async () => {
+      const textoResposta = prompt("Digite sua resposta:");
+      if (textoResposta && textoResposta.trim() !== "") {
+        const respostaSalva = await salvarResposta(
+          comentario.id,
+          textoResposta,
+        );
+        if (respostaSalva) {
+          adicionarRespostaDOM(comentario.id, respostaSalva);
+
+          const mencoes = textoResposta.match(/@(\w+)/g);
+          if (mencoes) {
+            for (const mencao of mencoes) {
+              const nome = mencao.replace("@", "");
+              const colaborador = users.find(
+                (u) => u.nome_colaborador === nome,
+              );
+              if (colaborador) {
+                await fetch("registrar_mencao.php", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    comentario_id: comentario.id,
+                    mencionado_id: colaborador.idcolaborador,
+                  }),
+                });
+              }
+            }
+          }
+        }
+      }
+    });
+
+    // Marcadores: no PDF, só da página atual
+    if (!isPdf) {
+      markerContainer.appendChild(commentDiv);
+    } else {
+      const paginaDoComentario = parseInt(String(comentario.pagina || ""), 10);
+      if (
+        Number.isFinite(paginaDoComentario) &&
+        paginaDoComentario === paginaAtual
+      ) {
+        markerContainer.appendChild(commentDiv);
+      }
+    }
+    comentariosDiv.appendChild(commentCard);
+
+    if (comentario.respostas && comentario.respostas.length > 0) {
+      comentario.respostas.forEach((resposta) => {
+        adicionarRespostaDOM(comentario.id, resposta);
+      });
+    }
+  });
+
+  // Se veio um foco pendente (após mudar página), destaca no painel
+  if (isPdf && id && id.focus_comment_id) {
+    const focusId = String(id.focus_comment_id);
+    const number = document.querySelector(
+      `.comment-card[data-id="${focusId}"] .comment-number`,
+    );
+    if (number) {
+      document
+        .querySelectorAll(".comment-number")
+        .forEach((n) => n.classList.remove("highlight"));
+      number.classList.add("highlight");
+      number.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }
 }
 
 // Função para enviar resposta pro backend
 async function salvarResposta(comentarioId, texto) {
-    const response = await fetch('responder_comentario.php', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            comentario_id: comentarioId,
-            texto: texto
-        })
-    });
-    return await response.json();
+  const response = await fetch("responder_comentario.php", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      comentario_id: comentarioId,
+      texto: texto,
+    }),
+  });
+  return await response.json();
 }
 
 // Função pra adicionar resposta no DOM
 function adicionarRespostaDOM(comentarioId, resposta) {
-    const container = document.getElementById(`respostas-${comentarioId}`);
-    const respostaDiv = document.createElement('div');
-    respostaDiv.classList.add('resposta');
-    respostaDiv.innerHTML = `
+  const container = document.getElementById(`respostas-${comentarioId}`);
+  const respostaDiv = document.createElement("div");
+  respostaDiv.classList.add("resposta");
+  respostaDiv.innerHTML = `
         <div class="resposta-nome"><span class="reply-icon">&#8617;</span>  ${resposta.nome_responsavel}</div>
         <div class="corpo-resposta">
             <div class="resposta-texto">${resposta.texto}</div>
             <div class="resposta-data">${resposta.data}</div>
         </div>
     `;
-    container.appendChild(respostaDiv);
+  container.appendChild(respostaDiv);
 }
 
 // Função para atualizar o comentário no banco de dados
 async function updateComment(commentId, novoTexto) {
-    try {
-        const response = await fetch('atualizar_comentario.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: commentId, texto: novoTexto })
-        });
+  try {
+    const response = await fetch("atualizar_comentario.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: commentId, texto: novoTexto }),
+    });
 
-        const result = await response.json();
-        if (result.sucesso) {
-            Toastify({
-                text: 'Comentário atualizado com sucesso!',
-                duration: 3000,
-                backgroundColor: 'green',
-                close: true,
-                gravity: "top",
-                position: "left"
-            }).showToast();
-        } else {
-            Toastify({
-                text: 'Erro ao atualizar comentário!',
-                duration: 3000,
-                backgroundColor: 'green',
-                close: true,
-                gravity: "top",
-                position: "left"
-            }).showToast();
-        }
-    } catch (error) {
-        console.error('Erro ao atualizar comentário:', error);
-        alert('Ocorreu um erro ao tentar atualizar o comentário.');
+    const result = await response.json();
+    if (result.sucesso) {
+      Toastify({
+        text: "Comentário atualizado com sucesso!",
+        duration: 3000,
+        backgroundColor: "green",
+        close: true,
+        gravity: "top",
+        position: "left",
+      }).showToast();
+    } else {
+      Toastify({
+        text: "Erro ao atualizar comentário!",
+        duration: 3000,
+        backgroundColor: "green",
+        close: true,
+        gravity: "top",
+        position: "left",
+      }).showToast();
     }
+
+    // Se estiver em PDF, invalida cache para refletir texto atualizado
+    if (pdfViewerState.logId) {
+      pdfCommentsCache.logId = null;
+      pdfCommentsCache.comentarios = null;
+    }
+  } catch (error) {
+    console.error("Erro ao atualizar comentário:", error);
+    alert("Ocorreu um erro ao tentar atualizar o comentário.");
+  }
 }
 
 // Função para excluir o comentário do banco de dados
 async function deleteComment(commentId) {
-    try {
-        const response = await fetch('excluir_comentario.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: commentId })
-        });
+  try {
+    const response = await fetch("excluir_comentario.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: commentId }),
+    });
 
-        const result = await response.json();
-        if (result.sucesso) {
-            Toastify({
-                text: 'Comentário excluído com sucesso!',
-                duration: 3000,
-                backgroundColor: 'green',
-                close: true,
-                gravity: "top",
-                position: "left"
-            }).showToast();
-            renderComments(ap_imagem_id); // Atualiza a lista de comentários
-        } else {
-            Toastify({
-                text: 'Erro ao excluir comentário!',
-                duration: 3000,
-                backgroundColor: 'green',
-                close: true,
-                gravity: "top",
-                position: "left"
-            }).showToast();
-        }
-    } catch (error) {
-        console.error('Erro ao excluir comentário:', error);
-        alert('Ocorreu um erro ao tentar excluir o comentário.');
+    const result = await response.json();
+    if (result.sucesso) {
+      Toastify({
+        text: "Comentário excluído com sucesso!",
+        duration: 3000,
+        backgroundColor: "green",
+        close: true,
+        gravity: "top",
+        position: "left",
+      }).showToast();
+      if (pdfViewerState.logId) {
+        pdfCommentsCache.logId = null;
+        pdfCommentsCache.comentarios = null;
+        renderComments({
+          arquivo_log_id: pdfViewerState.logId,
+          pagina: pdfViewerState.page,
+        });
+      } else {
+        renderComments(ap_imagem_id);
+      }
+    } else {
+      Toastify({
+        text: "Erro ao excluir comentário!",
+        duration: 3000,
+        backgroundColor: "green",
+        close: true,
+        gravity: "top",
+        position: "left",
+      }).showToast();
     }
+  } catch (error) {
+    console.error("Erro ao excluir comentário:", error);
+    alert("Ocorreu um erro ao tentar excluir o comentário.");
+  }
 }
 
 function abrirImagemModal(src) {
-    const modal = document.getElementById('modal-imagem');
-    const imagem = document.getElementById('imagem-ampliada');
-    imagem.src = src;
-    modal.style.display = 'flex';
+  const modal = document.getElementById("modal-imagem");
+  const imagem = document.getElementById("imagem-ampliada");
+  imagem.src = src;
+  modal.style.display = "flex";
 }
 
 function fecharImagemModal() {
-    const modal = document.getElementById('modal-imagem');
-    modal.style.display = 'none';
+  const modal = document.getElementById("modal-imagem");
+  modal.style.display = "none";
 }
 
-
-document.addEventListener('keydown', function (event) {
-    if (event.key === 'Escape') {
-        const comentarioModal = document.getElementById("comentarioModal");
-
-        if (comentarioModal.style.display === 'flex') {
-            comentarioModal.style.display = 'none';
-            return; // Interrompe aqui se o modal estava visível
-        }
-
-        const main = document.querySelector('.main');
-        main.classList.remove('hidden');
-
-        const container_aprovacao = document.querySelector('.container-aprovacao');
-        container_aprovacao.classList.add('hidden');
-
-        const imagemWrapperDiv = document.querySelector(".image_wrapper");
-        imagemWrapperDiv.innerHTML = '';
-
-        const comentariosDiv = document.querySelector(".comentarios");
-        comentariosDiv.innerHTML = '';
+document.addEventListener("keydown", function (event) {
+  if (event.key === "Escape") {
+    // Close inline comment popup first
+    if (activeCommentPopup) {
+      closeCommentPopup();
+      return;
     }
+
+    const comentarioModal = document.getElementById("comentarioModal");
+
+    if (comentarioModal.style.display === "flex") {
+      comentarioModal.style.display = "none";
+      return; // Interrompe aqui se o modal estava visível
+    }
+
+    const main = document.querySelector(".main");
+    main.classList.remove("hidden");
+
+    const container_aprovacao = document.querySelector(".container-aprovacao");
+    container_aprovacao.classList.add("hidden");
+
+    const imagemWrapperDiv = document.querySelector(".image_wrapper");
+    imagemWrapperDiv.innerHTML = "";
+
+    const comentariosDiv = document.querySelector(".comentarios");
+    comentariosDiv.innerHTML = "";
+  }
 });
 
-const imageWrapper = document.getElementById('image_wrapper');
-const comments = document.querySelectorAll('.comment');
+const imageWrapper = document.getElementById("image_wrapper");
 let currentZoom = 1;
 const zoomStep = 0.1;
 const maxZoom = 3;
@@ -1934,103 +2891,216 @@ let dragMoved = false;
 
 // Function to apply transforms (zoom and pan)
 function applyTransforms() {
-    imageWrapper.style.transform = `scale(${currentZoom}) translate(${currentTranslateX}px, ${currentTranslateY}px)`;
+  imageWrapper.style.transform = `scale(${currentZoom}) translate(${currentTranslateX}px, ${currentTranslateY}px)`;
 
-    // Adjust comment scaling based on the new currentZoom
-    comments.forEach(comment => {
+  // Adjust comment bubble scaling based on the new currentZoom
+  document.querySelectorAll("#image_wrapper .comment").forEach((comment) => {
+    comment.style.transform = `translate(-50%, -50%) scale(${1 / currentZoom})`;
+  });
 
-        comment.style.transform = `scale(${1 / currentZoom})`;
+  // Keep shape badges at a constant visual size regardless of zoom
+  document
+    .querySelectorAll("#image_wrapper .comment-shape-badge")
+    .forEach((badge) => {
+      badge.style.transform = `scale(${1 / currentZoom})`;
+      badge.style.transformOrigin = "top left";
     });
 }
 
 // --- Zoom functionality ---
-document.addEventListener('wheel', function (event) {
+document.addEventListener(
+  "wheel",
+  function (event) {
     if (event.ctrlKey) {
-        event.preventDefault(); // Prevent default browser zoom/scroll
+      event.preventDefault(); // Prevent default browser zoom/scroll
 
-        const oldZoom = currentZoom; // Store old zoom for potential pan adjustment (not used in your current code but good practice)
+      const oldZoom = currentZoom; // Store old zoom for potential pan adjustment (not used in your current code but good practice)
 
-        if (event.deltaY < 0) {
-            currentZoom += zoomStep;
-        } else {
-            currentZoom -= zoomStep;
-        }
+      if (event.deltaY < 0) {
+        currentZoom += zoomStep;
+      } else {
+        currentZoom -= zoomStep;
+      }
 
-        currentZoom = Math.max(minZoom, Math.min(maxZoom, currentZoom));
+      currentZoom = Math.max(minZoom, Math.min(maxZoom, currentZoom));
 
-        if (currentZoom === minZoom) {
-            // When zoomed out completely, reset pan to origin
-            currentTranslateX = 0;
-            currentTranslateY = 0;
-        }
+      if (currentZoom === minZoom) {
+        // When zoomed out completely, reset pan to origin
+        currentTranslateX = 0;
+        currentTranslateY = 0;
+      }
 
-        applyTransforms();
+      applyTransforms();
     }
-}, { passive: false });
+  },
+  { passive: false },
+);
 
-document.getElementById('btn-mais-zoom').addEventListener('click', function () {
-    currentZoom = Math.min(currentZoom + zoomStep, maxZoom);
-    applyTransforms();
+document.getElementById("btn-mais-zoom").addEventListener("click", function () {
+  currentZoom = Math.min(currentZoom + zoomStep, maxZoom);
+  applyTransforms();
 });
 
-document.getElementById('btn-menos-zoom').addEventListener('click', function () {
+document
+  .getElementById("btn-menos-zoom")
+  .addEventListener("click", function () {
     currentZoom = Math.max(currentZoom - zoomStep, minZoom);
     applyTransforms();
+  });
+
+document.getElementById("reset-zoom").addEventListener("click", function () {
+  currentZoom = 1;
+  currentTranslateX = 0; // reseta deslocamento horizontal
+  currentTranslateY = 0; // reseta deslocamento vertical
+  applyTransforms();
 });
 
-document.getElementById('reset-zoom').addEventListener('click', function () {
-    currentZoom = 1;
-    currentTranslateX = 0; // reseta deslocamento horizontal
-    currentTranslateY = 0; // reseta deslocamento vertical
-    applyTransforms();
+imageWrapper.addEventListener("mousedown", (e) => {
+  if (drawingTool !== "ponto") return; // deixa o handler de forma assumir o controle
+  if (e.button === 0 && !e.ctrlKey) {
+    isDragging = true;
+    dragMoved = false; // reset
+    imageWrapper.style.cursor = "grabbing"; // mão fechada
+
+    imageWrapper.classList.add("grabbing");
+    startX = e.clientX - currentTranslateX;
+    startY = e.clientY - currentTranslateY;
+    imageWrapper.style.transition = "none";
+  }
 });
 
-imageWrapper.addEventListener('mousedown', (e) => {
-    if (e.button === 0 && !e.ctrlKey) {
-        isDragging = true;
-        dragMoved = false; // reset
-        imageWrapper.style.cursor = 'grabbing'; // mão fechada
+function handlePointerMove(e) {
+  // normalize event for touch (use clientX/Y)
+  const clientX = e.clientX;
+  const clientY = e.clientY;
 
-        imageWrapper.classList.add('grabbing');
-        startX = e.clientX - currentTranslateX;
-        startY = e.clientY - currentTranslateY;
-        imageWrapper.style.transition = 'none';
+  // --- Desenho de forma geométrica ---
+  if (isDrawing && currentDrawRef) {
+    const ref = currentDrawRef.getBoundingClientRect();
+    if (ref.width && ref.height) {
+      const newX = Math.max(
+        0,
+        Math.min(100, ((clientX - ref.left) / ref.width) * 100),
+      );
+      const newY = Math.max(
+        0,
+        Math.min(100, ((clientY - ref.top) / ref.height) * 100),
+      );
+      if (drawingTool === "freehand") {
+        freehandPoints.push([newX, newY]);
+        if (freehandPolylineEl) {
+          freehandPolylineEl.setAttribute(
+            "points",
+            freehandPoints.map((p) => p.join(",")).join(" "),
+          );
+        }
+      } else {
+        shapeX2 = newX;
+        shapeY2 = newY;
+        const x1 = Math.min(drawStartX, shapeX2);
+        const y1 = Math.min(drawStartY, shapeY2);
+        const w = Math.abs(shapeX2 - drawStartX);
+        const h = Math.abs(shapeY2 - drawStartY);
+        const preview = document.getElementById("drawing-preview");
+        if (preview) {
+          preview.style.left = `${x1}%`;
+          preview.style.top = `${y1}%`;
+          preview.style.width = `${w}%`;
+          preview.style.height = `${h}%`;
+        }
+      }
     }
-});
+    return; // não faz pan enquanto desenha
+  }
 
-document.addEventListener('mousemove', (e) => {
-    if (!isDragging) return;
-    imageWrapper.style.cursor = 'grabbing'; // mão fechada
+  if (!isDragging) return;
+  imageWrapper.style.cursor = "grabbing"; // mão fechada
 
-    e.preventDefault();
+  if (e.cancelable) e.preventDefault();
 
-    const dx = e.clientX - startX;
-    const dy = e.clientY - startY;
+  const dx = clientX - startX;
+  const dy = clientY - startY;
 
-    // Marcar que houve movimento significativo
-    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
-        dragMoved = true;
+  // Marcar que houve movimento significativo
+  if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+    dragMoved = true;
+  }
+
+  currentTranslateX = dx;
+  currentTranslateY = dy;
+
+  applyTransforms();
+}
+
+document.addEventListener("mousemove", handlePointerMove, { passive: false });
+document.addEventListener("pointermove", handlePointerMove, { passive: false });
+
+function handlePointerUp(e) {
+  // use client coords
+  const clientX = e.clientX;
+  const clientY = e.clientY;
+
+  // --- Finaliza desenho de forma ---
+  if (isDrawing) {
+    isDrawing = false;
+    const preview = document.getElementById("drawing-preview");
+    if (preview) preview.remove();
+    if (freehandSvgPreview) {
+      freehandSvgPreview.remove();
+      freehandSvgPreview = null;
+      freehandPolylineEl = null;
+      freehandDrawContainer = null;
     }
+    currentDrawRef = null;
 
-    currentTranslateX = dx;
-    currentTranslateY = dy;
+    const dx = Math.abs(drawStartClientX - clientX);
+    const dy = Math.abs(drawStartClientY - clientY);
 
-    applyTransforms();
-});
+    // Considera finalização válida se houve arraste significativo em pixels
+    // ou se estamos no modo freehand e coletamos mais de um ponto
+    const isSignificant =
+      dx > 8 ||
+      dy > 8 ||
+      (drawingTool === "freehand" &&
+        Array.isArray(freehandPoints) &&
+        freehandPoints.length > 1);
 
-document.addEventListener('mouseup', (e) => {
-    if (isDragging) {
-        isDragging = false;
-        imageWrapper.style.cursor = 'grab'; // mão aberta
-        imageWrapper.classList.remove('grabbing');
-        imageWrapper.style.transition = 'transform 0.1s ease-out';
+    if (isSignificant) {
+      if (drawingTool === "freehand") {
+        relativeX = freehandPoints[0]?.[0] ?? drawStartX;
+        relativeY = freehandPoints[0]?.[1] ?? drawStartY;
+      } else {
+        // Normaliza para que x≤x2 e y≤y2
+        relativeX = Math.min(drawStartX, shapeX2);
+        relativeY = Math.min(drawStartY, shapeY2);
+        shapeX2 = Math.max(drawStartX, shapeX2);
+        shapeY2 = Math.max(drawStartY, shapeY2);
+      }
+
+      document.getElementById("comentarioTexto").value = "";
+      document.getElementById("imagemComentario").value = "";
+      document.getElementById("comentarioModal").style.display = "flex";
+      mencionadosIds = [];
     }
-});
+    imageWrapper.style.cursor = "crosshair !important";
+    return;
+  }
+
+  if (isDragging) {
+    isDragging = false;
+    imageWrapper.style.cursor = "grab"; // mão aberta
+    imageWrapper.classList.remove("grabbing");
+    imageWrapper.style.transition = "transform 0.1s ease-out";
+  }
+}
+
+document.addEventListener("mouseup", handlePointerUp);
+document.addEventListener("pointerup", handlePointerUp);
 
 // Initialize transforms
 applyTransforms();
 
-const id_revisao = document.getElementById('id_revisao');
+const id_revisao = document.getElementById("id_revisao");
 
 // function addObservacao(id) {
 //     const modal = document.getElementById('historico_modal');
@@ -2062,7 +3132,6 @@ const id_revisao = document.getElementById('id_revisao');
 //     }
 // });
 
-
 // const historico_modal = document.getElementById('historico_modal');
 // const historicoAdd = historico_modal.querySelector('.historico-add');
 
@@ -2082,7 +3151,6 @@ const id_revisao = document.getElementById('id_revisao');
 
 //     }
 // });
-
 
 // Captura o evento de envio do formulário
 // document.getElementById('adicionar_obs').addEventListener('submit', function (event) {
@@ -2147,3 +3215,82 @@ const id_revisao = document.getElementById('id_revisao');
 //     }
 // });
 
+// Fallback: floating tooltip appended to body to avoid stacking-context issues
+(function () {
+  let activeTooltip = null;
+
+  function createTooltip(text) {
+    const el = document.createElement("div");
+    el.className = "floating-tooltip";
+    el.textContent = text;
+    document.body.appendChild(el);
+    return el;
+  }
+
+  function showTooltipFor(target) {
+    if (!target) return;
+    const text = target.getAttribute("data-tooltip");
+    if (!text) return;
+    if (activeTooltip) hideTooltipFor(target);
+    activeTooltip = createTooltip(text);
+
+    function position() {
+      if (!activeTooltip) return;
+      const rect = target.getBoundingClientRect();
+      const ttRect = activeTooltip.getBoundingClientRect();
+      let left = rect.left + rect.width / 2 - ttRect.width / 2;
+      left = Math.max(8, Math.min(left, window.innerWidth - ttRect.width - 8));
+      let top = rect.top - ttRect.height - 8;
+      if (top < 8) top = rect.bottom + 8;
+      activeTooltip.style.left = Math.round(left) + "px";
+      activeTooltip.style.top = Math.round(top) + "px";
+    }
+
+    position();
+
+    const onScroll = () => position();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+
+    // store cleanup fn on element so we can remove listeners on hide
+    target._floatingTooltipCleanup = function () {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
+  }
+
+  function hideTooltipFor(target) {
+    if (activeTooltip) {
+      activeTooltip.remove();
+      activeTooltip = null;
+    }
+    if (target && target._floatingTooltipCleanup) {
+      try {
+        target._floatingTooltipCleanup();
+      } catch (e) {}
+      delete target._floatingTooltipCleanup;
+    }
+  }
+
+  // Delegated pointer handlers
+  document.addEventListener("pointerenter", function (e) {
+    const t = e.target.closest && e.target.closest(".tooltip");
+    if (t) showTooltipFor(t);
+  });
+
+  document.addEventListener("pointerleave", function (e) {
+    const t = e.target.closest && e.target.closest(".tooltip");
+    if (t) hideTooltipFor(t);
+  });
+
+  // Also handle focus for accessibility
+  document.addEventListener("focusin", function (e) {
+    const t = e.target.closest && e.target.closest(".tooltip");
+    if (t) showTooltipFor(t);
+  });
+
+  document.addEventListener("focusout", function (e) {
+    const t = e.target.closest && e.target.closest(".tooltip");
+    if (t) hideTooltipFor(t);
+  });
+})();

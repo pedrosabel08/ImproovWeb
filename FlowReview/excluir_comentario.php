@@ -4,7 +4,7 @@ $id = $data->id;
 
 include '../conexao.php';
 
-$sql = "DELETE FROM comentarios_review WHERE id = ?";
+$sql = "DELETE FROM comentarios_imagem WHERE id = ?";
 $stmt = $conn->prepare($sql);
 $stmt->bind_param('i', $id);
 $stmt->execute();

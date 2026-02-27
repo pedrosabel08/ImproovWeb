@@ -1,5 +1,4 @@
 <?php
-require_once __DIR__ . '/../config/session_bootstrap.php';
 $__root = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/\\');
 foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWeb/config/version.php'] as $__p) {
     if ($__p && is_file($__p)) {
@@ -9,54 +8,32 @@ foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWe
 }
 unset($__root, $__p);
 
-// session_start();
+// Cookie-only authentication: validate `flow_auth` cookie and expose `idusuario` to frontend.
+require_once __DIR__ . '/../conexao.php';
 
-// Verificar se o usuário está logado
-if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
-    // Se não estiver logado, redirecionar para a página de login
-    header("Location: ../index.html");
-    exit();
+$idusuario = null;
+if (isset($_COOKIE['flow_auth']) && !empty($_COOKIE['flow_auth'])) {
+    $token = $_COOKIE['flow_auth'];
+    $stmt = $conn->prepare("SELECT user_id, expires_at FROM login_tokens WHERE token_hash = SHA2(?, 256) LIMIT 1");
+    if ($stmt) {
+        $stmt->bind_param('s', $token);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($row = $result->fetch_assoc()) {
+            if (strtotime($row['expires_at']) > time()) {
+                // Token válido → define idusuario para uso no frontend
+                $idusuario = (int) $row['user_id'];
+
+                // Renovar cookie (estende validade por mais 2 dias)
+                $expires = time() + 86400 * 2;
+                $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+                setcookie("flow_auth", $token, $expires, "/", "", $secure, true);
+            }
+        }
+        $stmt->close();
+    }
 }
 
-$idusuario = $_SESSION['idusuario'];
-$tela_atual = basename($_SERVER['PHP_SELF']);
-// Use DB server time for ultima_atividade to avoid clock/timezone mismatches
-// $ultima_atividade = date('Y-m-d H:i:s');
-
-// We already extracted needed session values; close the session to release the lock
-// before performing heavier DB work below.
-if (session_status() === PHP_SESSION_ACTIVE) {
-    session_write_close();
-}
-
-// Carrega conexão com o banco antes de executar atualizações de logs
-include '../conexaoMain.php';
-$conn = conectarBanco();
-
-// Use MySQL NOW() so the database records its own current timestamp
-$sql2 = "UPDATE logs_usuarios 
-         SET tela_atual = ?, ultima_atividade = NOW()
-         WHERE usuario_id = ?";
-$stmt2 = $conn->prepare($sql2);
-
-if (!$stmt2) {
-    die("Erro no prepare: " . $conn->error);
-}
-
-// 'si' indica os tipos: string, integer
-$stmt2->bind_param("si", $tela_atual, $idusuario);
-
-if (!$stmt2->execute()) {
-    die("Erro no execute: " . $stmt2->error);
-}
-$stmt2->close();
-
-$clientes = obterClientes($conn);
-$obras = obterObras($conn);
-$obras_inativas = obterObras($conn, 1);
-$colaboradores = obterColaboradores($conn);
-
-$conn->close();
 ?>
 
 <!DOCTYPE html>
@@ -74,7 +51,7 @@ $conn->close();
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
 
-    <link rel="stylesheet" href="<?php echo asset_url('../css/styleSidebar.css'); ?>">
+    <!-- <link rel="stylesheet" href="<?php echo asset_url('../css/styleSidebar.css'); ?>"> -->
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
     <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
@@ -84,18 +61,72 @@ $conn->close();
 
 
     <title>Flow Review</title>
-    <link rel="stylesheet" href="<?php echo asset_url('../css/modalSessao.css'); ?>">
 </head>
 
 <body>
+    <?php if (empty($idusuario)): ?>
+        <div class="auth-page">
+            <main class="auth-card">
+                <h1>Entrar ou Registrar</h1>
+                <p class="muted">Acesse o Flow Review com sua conta</p>
 
-    <?php
+                <div class="auth-tabs">
+                    <button id="showLogin" class="button primary" style="margin-right:8px;">Entrar</button>
+                    <button id="showRegister" class="button ghost">Registrar</button>
+                </div>
 
-    include '../sidebar.php';
+                <div id="loginBox" style="margin-top:12px;">
+                    <form id="loginForm" action="auth_login.php" method="post" autocomplete="off">
+                        <label>E-mail
+                            <input type="email" name="email" required maxlength="150">
+                        </label>
+                        <label>Senha
+                            <input type="password" name="senha" required minlength="6">
+                        </label>
+                        <div class="actions">
+                            <button type="submit" class="button primary">Entrar</button>
+                        </div>
+                    </form>
+                </div>
 
-    ?>
+                <div id="registerBox" style="display:none; margin-top:12px;">
+                    <form id="registerForm" action="auth_register.php" method="post" autocomplete="off">
+                        <label>Nome
+                            <input type="text" name="nome_usuario" required maxlength="100">
+                        </label>
+                        <label>E-mail
+                            <input type="email" name="email" required maxlength="150">
+                        </label>
+                        <label>Senha
+                            <input type="password" name="senha" required minlength="6">
+                        </label>
+                        <label>Cargo
+                            <input type="text" name="cargo" required maxlength="80">
+                        </label>
+                        <div class="actions">
+                            <button type="submit" class="button primary">Criar conta</button>
+                        </div>
+                    </form>
+                </div>
 
+                <p style="margin-top:10px;font-size:12px;color:#6b7280;">Ao entrar, um cookie seguro será definido por 2
+                    dias.</p>
+            </main>
+        </div>
 
+        <!-- auth UI is controlled from script.js -->
+
+    <?php endif; ?>
+
+    <?php if (!empty($idusuario)): ?>
+        <script>
+            // make idusuario available to client-side code
+            try {
+                localStorage.setItem('idusuario', '<?php echo $idusuario; ?>');
+            } catch (e) {
+                /* ignore */ }
+        </script>
+    <?php endif; ?>
     <div class="main">
 
 
@@ -104,33 +135,21 @@ $conn->close();
             <select id="filtroFuncao" style="display: none;">
                 <option value="">Todas as funções</option>
             </select>
-            <div id="metrics-panel" style="margin-bottom:8px; display:none;">
-            </div>
-            <div class="containerObra">
-            </div>
+            <div class="containerObra"></div>
             <div class="tarefasObra hidden">
                 <div class="header">
                     <nav class="breadcrumb-nav">
-                        <a href="https://improov.com.br/flow/ImproovWeb/Revisao/index.php">Flow Review</a>
+                        <a href="https://improov.com.br/sistema/Revisao/index2.php">Flow Review</a>
                         <a id="obra_id_nav" class="obra_nav"
-                            href="https://improov.com.br/flow/ImproovWeb/Revisao/index.php?obra_id=''">Obra</a>
+                            href="https://improov.com.br/sistema/Revisao/index2.php?obra_id=57">Obra</a>
                     </nav>
                     <div class="filtros">
-                        <div>
-                            <label for="nome_funcao">Função:</label>
-                            <select name="nome_funcao" id="nome_funcao"></select>
-                        </div>
                         <div>
                             <label for="filtro_colaborador">Colaborador:</label>
                             <select name="filtro_colaborador" id="filtro_colaborador"></select>
                         </div>
                         <input type="hidden" name="filtro_obra" id="filtro_obra">
                     </div>
-                    <!-- 
-                    <div class="alternar">
-                        <button onclick="fetchObrasETarefas('Todos', 'Em aprovação')">Em aprovação</button>
-                        <button onclick="fetchObrasETarefas('Todos', 'Ajuste')">Ajuste</button>
-                    </div> -->
                 </div>
                 <div class="tarefasImagensObra"></div>
             </div>
@@ -139,24 +158,9 @@ $conn->close();
 
     <div class="container-aprovacao hidden">
         <header>
-            <nav class="breadcrumb-nav">
-                <a href="https://improov.com.br/flow/ImproovWeb/Revisao/index.php">Flow Review</a>
-                <a id="obra_id_nav" class="obra_nav"
-                    href="https://improov.com.br/flow/ImproovWeb/Revisao/index.php?obra_id=''">Obra</a>
-            </nav>
             <div class="task-info" id="task-info">
-                <h3 id="funcao_nome"></h3>
-                <h3 id="colaborador_nome"></h3>
-                <p id="imagem_nome"></p>
-                <div id="buttons-task">
-
-                </div>
-
+                <h3 id="imagem_nome"></h3>
             </div>
-            <div id="header_data_envio" class="header-data-envio"></div>
-            <!-- <div>
-                <button id="add-imagem" class="tooltip" data-tooltip="Adicionar imagem" style="transform: translateX(-90%);">+</button>
-            </div> -->
         </header>
 
 
@@ -166,19 +170,10 @@ $conn->close();
                 <div id="sidebarTabulator" class="sidebar-min"></div>
             </div>
             <nav>
-                <div id="comentario-geral-envio" class="comentario-geral-envio hidden"></div>
                 <div id="imagens"></div>
-                <button id="add-angulo-btn" class="tooltip" data-tooltip="Adicionar ângulos">+</button>
             </nav>
             <div id="imagem_completa">
                 <div class="nav-select">
-                    <div class="drawing-tools" id="drawing-tools">
-                        <button id="tool-ponto" class="draw-tool-btn active" title="Comentário (ponto)"><i class="fa-solid fa-location-dot"></i></button>
-                        <button id="tool-rect" class="draw-tool-btn" title="Retângulo"><i class="fa-regular fa-square"></i></button>
-                        <button id="tool-circle" class="draw-tool-btn" title="Círculo"><i class="fa-regular fa-circle"></i></button>
-                        <button id="tool-freehand" class="draw-tool-btn" title="Desenho livre"><i class="fa-solid fa-pencil"></i></button>
-                        <input type="color" id="draw-color" value="#000000" title="Cor do desenho" style="width:32px;height:32px;border:none;background:none;cursor:pointer;padding:0;">
-                    </div>
                     <select id="indiceSelect"></select>
                     <div class="buttons">
                         <button id="reset-zoom"><i class="fa-solid fa-compress"></i></button>
@@ -191,32 +186,28 @@ $conn->close();
                 </div>
             </div>
             <div class="sidebar-direita">
-
-                <div id="approval_info"
-                    style="display:none;margin-bottom:10px;padding:8px;border-radius:6px;background:#f5f7fa;font-size:14px;color:#222">
-                </div>
-
-                <div class="angulo-actions-group">
-                    <span class="angulo-actions-group-label">Decisão do ângulo</span>
-                    <button id="submit_decision"><i class="fa-solid fa-check"></i> Escolher ângulo</button>
-                    <button id="submit_ajustes_funcao"><i class="fa-solid fa-rotate-left"></i> Enviar para Ajustes</button>
-                </div>
+                <button id="submit_decision">Enviar aprovação</button>
 
                 <!-- Modal -->
                 <div id="decisionModal" class="modal-decision hidden">
                     <div class="modal-content-decision">
                         <span class="close">&times;</span>
-                        <div class="modal-decision-title">Enviar aprovação</div>
-                        <label><input type="radio" name="decision" value="aprovado"> Aprovado</label>
-                        <label><input type="radio" name="decision" value="aprovado_com_ajustes"> Aprovado com Ajustes</label>
-                        <label><input type="radio" name="decision" value="ajuste"> Ajuste</label>
+                        <label><input type="radio" name="decision" value="aprovado"> Aprovado</label><br>
+                        <label><input type="radio" name="decision" value="aprovado_com_ajustes"> Aprovado com
+                            ajustes</label><br>
+                        <label><input type="radio" name="decision" value="ajuste"> Ajuste</label><br>
+
+                        <div class="modal-observacao">
+                            <textarea id="decisionObservation" rows="3" placeholder="Observação (opcional)" style="width:100%; padding:6px; margin-top:8px;"></textarea>
+                        </div>
 
                         <div class="modal-footer">
-                            <button id="cancelBtn" class="cancel-btn">Cancelar</button>
-                            <button id="confirmBtn" class="confirm-btn hidden">Confirmar</button>
+                            <button id="cancelBtn" class="cancel-btn">Cancel</button>
+                            <button id="confirmBtn" class="confirm-btn">Confirm</button>
                         </div>
                     </div>
                 </div>
+                <div id="decisoes" class="decisoes"></div>
                 <div class="comentarios"></div>
             </div>
         </div>
@@ -262,13 +253,9 @@ $conn->close();
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://unpkg.com/tabulator-tables@5.5.0/dist/js/tabulator.min.js"></script>
 
-    <script src="<?php echo asset_url('../assets/pdfjs/pdf.min.js'); ?>"></script>
-
 
     <script src="<?php echo asset_url('script.js'); ?>"></script>
-    <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
 
-    <script src="<?php echo asset_url('../script/controleSessao.js'); ?>"></script>
 </body>
 
 </html>

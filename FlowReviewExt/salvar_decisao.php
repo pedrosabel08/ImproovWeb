@@ -48,8 +48,8 @@ try {
             $_SERVER[$k] = $v;
         }
     }
-    // tenta carregar .env a partir da raiz do projeto (um nível acima de FlowReview)
-    load_dotenv_simple(__DIR__ . '/../Revisao/.env');
+    // tenta carregar .env a partir da raiz do projeto (um nível acima de FlowReviewExt)
+    load_dotenv_simple(__DIR__ . '/../FlowReview/.env');
     $slackToken = $_ENV['SLACK_TOKEN'] ?? getenv('SLACK_TOKEN') ?? null;
     $slackChannel = 'C09V1SES7B2'; // Canal fixo solicitado
 
@@ -280,10 +280,10 @@ try {
         }
     }
     // Agora decide o tipo de mensagem e envia ao canal / DM conforme solicitado
-    // Monta link para FlowReview (ponto de conferência)
+    // Monta link para FlowReviewExt (ponto de conferência)
     $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
     $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-    $link = $scheme . '://' . $host . '/sistema/FlowReview/index.php?imagem_id=' . urlencode((string)($imagemId ?? ''));
+    $link = $scheme . '://' . $host . '/sistema/FlowReviewExt/index.php?imagem_id=' . urlencode((string)($imagemId ?? ''));
 
     // Se for decisão de ângulo, enviar DM ao finalizador e mensagem ao canal com responsável
     if ($angulo_id > 0) {

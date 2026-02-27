@@ -72,7 +72,7 @@ $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
 setcookie('flow_auth', $token, time() + 86400 * 2, '/', '', $secure, true);
 
 // Decide response type: if request expects JSON or is AJAX, return JSON so frontend can stay
-// on the same path (e.g. /FlowReview/<token>) and continue processing the token.
+// on the same path (e.g. /FlowReviewExt/<token>) and continue processing the token.
 $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
     || (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false);
 

@@ -46,7 +46,7 @@ a {
   display: flex;
   flex-direction: column;
   grid-column: 2;
-  overflow-x: auto;
+  overflow: hidden;
   background-color: #333;
   height: 100vh;
 }
@@ -422,9 +422,12 @@ a {
 
 .imagens {
   display: grid;
-  grid-template-columns: 60px 150px 1fr 250px;
+  grid-template-columns: 210px 150px 1fr 250px;
   justify-content: center;
-  align-items: flex-start;
+  align-items: stretch;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
   margin-top: 30px;
   padding: 0 10px;
 }
@@ -687,8 +690,9 @@ body::-webkit-scrollbar-track {
 
 /* Prevent touch scrolling when interacting with the drawing area
    so touch/pointer events are delivered to the canvas/image for drawing */
-#image_wrapper,
-.image_wrapper,
+/* touch-action: none only when actively drawing (class toggled by JS) */
+#image_wrapper.drawing-mode,
+.image_wrapper.drawing-mode,
 .pdf-page-layer,
 .pdf-canvas,
 .pdf-comment-layer {
@@ -984,9 +988,10 @@ h2#dataEnvio {
 .container-main {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
   position: relative;
-  /* importante */
 }
 
 .containerObra {
@@ -998,19 +1003,13 @@ h2#dataEnvio {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 30px;
-  /* margin-top: 40px; */
   padding: 0 50px;
-  max-height: 95%;
-  overflow-y: auto;
-  grid-column: 1;
+  padding-top: 20px;
+  padding-bottom: 20px;
 }
 
 .tarefasObra {
-  max-height: 95%;
-  overflow-y: auto;
   padding: 40px 0;
-  grid-column: 2;
-  grid-row: 1 / -1;
 }
 
 .tarefasImagensObra {
@@ -1036,6 +1035,7 @@ p#status_funcao,
 p.imagem_nome {
   display: -webkit-box;
   -webkit-line-clamp: 1;
+  line-clamp: 1;
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1480,14 +1480,14 @@ nav.breadcrumb-nav {
 
 nav.breadcrumb-nav a {
   text-decoration: none;
-  color: #333;
+  color: #fff;
   position: relative;
   margin-right: 10px;
 }
 
-.tarefasObra .header nav.breadcrumb-nav a {
+/* .tarefasObra .header nav.breadcrumb-nav a {
   color: white;
-}
+} */
 
 .breadcrumb-nav a::after {
   content: ">";
@@ -1509,86 +1509,159 @@ nav.breadcrumb-nav a {
 }
 
 .wrapper-sidebar {
-  display: grid;
-  /* margin-left: 10px; */
-  width: 100%;
-  max-height: 50vh;
-  padding-top: 35px;
+  display: flex;
+  flex-direction: column;
+  width: 210px;
+  min-width: 180px;
+  flex-shrink: 0;
+  background: var(--fr-bg, #1e1e1e);
+  border-right: 1px solid var(--fr-border, #3a3a3a);
+  overflow-y: auto;
+  padding: 8px 6px;
+  height: 100%;
 }
 
 #sidebarTabulator {
-  transition: width 0.3s ease;
-  overflow: hidden;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  z-index: 100;
-  max-height: 50vh;
-  overflow: auto;
+  gap: 4px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1;
 }
 
-/* .sidebar-min {
-  width: 55px !important;
-} */
-
 .sidebar-expanded {
-  width: 350px !important;
+  width: 210px;
+}
+
+.grupo-funcao {
+  border-radius: 6px;
+  overflow: visible;
 }
 
 .group-header {
   cursor: pointer;
-  background: #f1f1f1;
-  border-bottom: 1px solid #ccc;
-  font-size: 0.9rem;
-  padding: 5px 0;
-  text-align: center;
+  background: var(--fr-hover-bg, #2c2c2c);
+  border: 1px solid var(--fr-border, #3a3a3a);
+  border-radius: 6px;
+  font-size: 0.8rem;
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--fr-text, #e0e0e0);
+  transition: background 0.18s;
+  user-select: none;
 }
 
+.group-header:hover {
+  background: #383838;
+}
+
+.grupo-aberto > .group-header {
+  border-radius: 6px 6px 0 0;
+  background: #2a3d55;
+  border-color: var(--fr-accent, #4a90e2);
+}
+
+/* Always-visible full function name */
 .funcao-label {
-  display: inline;
-  text-transform: uppercase;
-  font-weight: bold;
+  display: none;
 }
 
 .funcao-completa {
-  display: none;
-  margin-left: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  overflow: hidden;
+  margin-left: 0;
 }
 
-.sidebar-expanded .funcao-label {
-  display: none;
+.fn-nome {
+  font-weight: 600;
+  font-size: 0.78rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--fr-brand-text, #fff);
 }
 
-.sidebar-expanded .funcao-completa {
-  display: inline;
+.fn-count {
+  font-size: 0.68rem;
+  color: var(--fr-muted, #999);
+}
+
+.funcao-chevron {
+  font-size: 10px;
+  color: var(--fr-muted, #999);
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+
+.grupo-aberto > .group-header .funcao-chevron {
+  transform: rotate(90deg);
 }
 
 .tarefas-lista {
-  padding: 10px;
-  background: #f9f9f9;
+  display: none;
+  flex-direction: column;
+  background: var(--fr-input-bg, #2a2a2a);
+  border: 1px solid var(--fr-border, #3a3a3a);
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  overflow: hidden;
 }
 
 .tarefa-item {
+  padding: 8px 10px;
   cursor: pointer;
-  margin-bottom: 10px;
   display: flex;
-  gap: 10px;
   flex-direction: column;
-  box-shadow: 0 2px 4px #d9d9d9;
+  gap: 4px;
+  border-bottom: 1px solid var(--fr-border, #3a3a3a);
+  transition: background 0.15s;
+  width: 100%;
+  height: fit-content;
+  margin: 0;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+.tarefa-item:last-child {
+  border-bottom: none;
+}
+
+.tarefa-item:hover {
+  background: var(--fr-hover-bg, #2c2c2c);
 }
 
 .tarefa-item img.tab-img {
-  object-fit: cover;
+  width: 100%;
+  height: 55px;
   border-radius: 4px;
+  object-fit: cover;
 }
 
-.tarefa-item span {
-  font-size: 12px;
+.tarefa-status {
+  font-size: 0.65rem;
+  padding: 2px 5px;
+  border-radius: 4px;
+  font-weight: 600;
+  display: inline-block;
+  width: fit-content;
+}
+
+.tarefa-label {
+  font-size: 0.68rem;
   display: -webkit-box;
   -webkit-line-clamp: 1;
+  line-clamp: 1;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  padding: 0 5px;
+  padding: 0;
+  color: var(--fr-text, #e0e0e0);
 }
 
 .submit-btn {
@@ -1789,6 +1862,100 @@ nav.breadcrumb-nav a {
 */
 
 @media (max-width: 768px) {
+  /* Reset container-aprovacao header — no more absolute positioning */
+  .container-aprovacao > header {
+    position: sticky;
+    top: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 12px;
+    min-height: auto;
+    z-index: 110;
+  }
+
+  nav.breadcrumb-nav {
+    position: static;
+    font-size: 12px;
+  }
+
+  .container-aprovacao #task-info {
+    position: static;
+    transform: none;
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .container-aprovacao #task-info h3 {
+    font-size: 13px;
+  }
+
+  .header-data-envio {
+    position: static;
+    transform: none;
+    font-size: 11px;
+    text-align: center;
+    min-width: auto;
+    white-space: normal;
+    width: 100%;
+    background: transparent;
+    backdrop-filter: none;
+    padding: 0;
+  }
+
+  /* nav-select: stack drawing tools above controls */
+  .nav-select {
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 4px 6px;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+
+  .drawing-tools {
+    order: 1;
+    flex: 0 0 auto;
+    display: flex;
+    gap: 4px;
+    align-items: center;
+  }
+
+  .draw-tool-btn {
+    width: 28px;
+    height: 28px;
+    font-size: 11px;
+    padding: 0;
+    border-radius: 5px;
+  }
+
+  #draw-color {
+    width: 26px !important;
+    height: 26px !important;
+  }
+
+  #indiceSelect {
+    order: 3;
+    flex: 1;
+    min-width: 80px;
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  .buttons {
+    order: 2;
+    flex: 0 0 auto;
+    padding-right: 0;
+    display: flex;
+    gap: 2px;
+  }
+
+  .buttons button {
+    width: 26px;
+    height: 26px;
+  }
+
   /* Stack everything in one column for mobile */
   .imagens {
     display: grid;
@@ -1796,14 +1963,76 @@ nav.breadcrumb-nav a {
     grid-template-rows: auto auto 1fr auto;
     gap: 10px;
     padding: 12px;
+    padding-bottom: 100px; /* space for fixed sidebarTabulator */
   }
 
-  /* Ensure each logical area occupies full width in order */
+  /* wrapper-sidebar hidden from flow — sidebarTabulator is fixed */
   .wrapper-sidebar {
     grid-column: 1;
     grid-row: 1;
     width: 100%;
+    height: 0;
+    overflow: visible;
+    padding: 0;
+    border-right: none;
+    background: transparent;
+    min-width: unset;
+  }
+
+  /* sidebarTabulator fixed at bottom, centered, horizontal layout */
+  #sidebarTabulator {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: max-content;
+    max-width: 100vw;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: visible;
+    z-index: 200;
+    background: var(--fr-bg, #1e1e1e);
+    border-top: 2px solid var(--fr-accent, #4a90e2);
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.5);
+    padding: 8px 12px;
+    gap: 6px;
+    flex: none;
     max-height: none;
+    border-radius: 12px 12px 0 0;
+  }
+
+  .grupo-funcao {
+    min-width: 100px;
+    max-width: 160px;
+    flex-shrink: 0;
+    overflow: visible;
+  }
+
+  .group-header {
+    white-space: nowrap;
+    border-radius: 6px;
+  }
+
+  .grupo-aberto > .group-header {
+    border-radius: 6px;
+  }
+
+  /* Drawer opens upward from the fixed bar */
+  .grupo-aberto > .tarefas-lista {
+    position: fixed;
+    bottom: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(92vw, 320px);
+    max-height: 45vh;
+    border-radius: 10px;
+    border: 1px solid var(--fr-accent, #4a90e2);
+    overflow-y: auto;
+    z-index: 201;
+    background: var(--fr-input-bg, #2a2a2a);
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
+    border-top: 1px solid var(--fr-border, #3a3a3a);
   }
 
   /* Thumbnails become a horizontal scroller */
@@ -1818,37 +2047,56 @@ nav.breadcrumb-nav a {
     padding-bottom: 6px;
     align-items: center;
     -webkit-overflow-scrolling: touch;
+    max-height: none;
   }
 
-  /* Make each thumb a horizontal item */
   #imagens .imageWrapper,
   #imagens .image-wrapper,
   #imagens .tab-img {
     flex: 0 0 auto;
   }
 
-  /* Slightly larger thumbnails on mobile for easier tapping */
   #imagens .imageWrapper {
     width: 110px;
     height: 70px;
   }
 
-  /* Main image area becomes full width and sits below thumbs */
+  /* Main image area: full width, scrollable */
   #imagem_completa {
     grid-column: 1;
     grid-row: 3;
     width: 100%;
     max-width: 100%;
     margin: 0 auto;
-    overflow: hidden;
+    overflow: visible;
+    max-height: none;
   }
 
-  #imagem_completa img,
+  /* Allow the image to scroll freely; only lock touch when drawing-mode is active */
+  #imagem_completa .image_wrapper {
+    overflow: visible;
+    touch-action: auto;
+    height: auto;
+  }
+
+  #imagem_completa .image_wrapper img,
   .image_wrapper img {
     width: 100%;
     height: auto;
     object-fit: contain;
-    max-height: 60vh;
+    max-height: none;
+  }
+
+  /* Add ângulos button row layout */
+  .imagens nav {
+    flex-direction: row;
+    justify-content: center;
+    padding-top: 0;
+    flex-wrap: wrap;
+  }
+
+  #add-angulo-btn {
+    margin: 0;
   }
 
   .sidebar-direita {
@@ -1859,7 +2107,6 @@ nav.breadcrumb-nav a {
     margin: 0 auto;
   }
 
-  /* Reduce caption font on small devices */
   .thumb-caption {
     font-size: 11px;
     padding: 4px 6px;
@@ -2137,4 +2384,402 @@ nav.breadcrumb-nav a {
 }
 .comment-freehand.highlight svg polyline:first-child {
   stroke: #2563eb !important;
+}
+
+/* =============================================================
+   FR-SIDEBAR  — Flow Review lateral filter panel
+   Follows MapaCompatibilizacao flex-row pattern.
+   Variables default to DARK theme (page bg is #333).
+   @media (prefers-color-scheme: light) overrides to light.
+   ============================================================= */
+
+:root {
+  --fr-bg: #1e1e1e;
+  --fr-border: #3a3a3a;
+  --fr-text: #e0e0e0;
+  --fr-muted: #999;
+  --fr-accent: #4a90e2;
+  --fr-input-bg: #2a2a2a;
+  --fr-input-border: #484848;
+  --fr-hover-bg: #2c2c2c;
+  --fr-divider: #3a3a3a;
+  --fr-brand-text: #ffffff;
+  --fr-label-color: #aaa;
+  --fr-select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 6'%3E%3Cpath fill='%23aaa' d='M0 0l6 6 6-6z'/%3E%3C/svg%3E");
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --fr-bg: #f4f5f7;
+    --fr-border: #d8dbe2;
+    --fr-text: #333;
+    --fr-muted: #666;
+    --fr-accent: #1a73e8;
+    --fr-input-bg: #ffffff;
+    --fr-input-border: #c0c4cc;
+    --fr-hover-bg: #e8eaf0;
+    --fr-divider: #dde0e8;
+    --fr-brand-text: #111;
+    --fr-label-color: #555;
+    --fr-select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 6'%3E%3Cpath fill='%23555' d='M0 0l6 6 6-6z'/%3E%3C/svg%3E");
+  }
+
+  /* Light-mode page adjustments */
+  .main,
+  .container-aprovacao {
+    background-color: #f0f2f5;
+  }
+
+  nav.breadcrumb-nav a {
+    color: #333;
+  }
+
+  .nav-select {
+    background-color: #f0f2f5;
+  }
+
+  .obra-card {
+    background: #e8eaf0;
+    color: #222;
+  }
+
+  .obra-card:hover {
+    background: #d0d4e0;
+  }
+
+  .obra-info p {
+    color: #444;
+  }
+
+  .task-item {
+    background-color: #fff;
+    border-color: #ddd;
+  }
+
+  .task-item:hover {
+    background-color: #eef4ff;
+  }
+
+  .comment-card {
+    background-color: #fefefe;
+    color: #222;
+    border: 1px solid #ddd;
+  }
+
+  .comment-actions button {
+    color: #333;
+  }
+
+  .comment-resp {
+    color: #333;
+  }
+
+  .sidebar-direita {
+    background-color: #f8f9fb;
+  }
+}
+
+/* ── Layout wrapper ─────────────────────────────────────── */
+.fr-layout {
+  display: flex;
+  flex-direction: row;
+  height: 100%;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ── Sidebar ────────────────────────────────────────────── */
+.fr-sidebar {
+  width: 230px;
+  min-width: 200px;
+  max-width: 260px;
+  flex-shrink: 0;
+  background: var(--fr-bg);
+  border-right: 1px solid var(--fr-border);
+  display: flex;
+  flex-direction: column;
+  padding: 20px 14px 24px;
+  gap: 0;
+  overflow-y: auto;
+  transition: width 0.25s ease;
+  z-index: 10;
+}
+
+.fr-sidebar-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  flex: 1;
+}
+
+/* ── Brand / title ──────────────────────────────────────── */
+.fr-sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0 8px;
+  color: var(--fr-brand-text);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.fr-sidebar-brand i {
+  font-size: 1.1rem;
+  color: var(--fr-accent);
+  flex-shrink: 0;
+}
+
+/* ── Divider ────────────────────────────────────────────── */
+.fr-divider {
+  height: 1px;
+  background: var(--fr-divider);
+  margin: 2px 0;
+}
+
+/* ── Section label ("Filtros") ──────────────────────────── */
+.fr-section-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--fr-muted);
+  padding: 4px 0 0;
+  margin: 0;
+}
+
+/* ── Filter group ───────────────────────────────────────── */
+.fr-filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fr-filter-group label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--fr-label-color);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.fr-filter-group label i {
+  font-size: 10px;
+  opacity: 0.75;
+}
+
+/* Selects inside sidebar */
+.fr-filter-group select,
+.fr-sidebar select {
+  width: 100%;
+  padding: 7px 28px 7px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--fr-input-border);
+  background-color: var(--fr-input-bg);
+  color: var(--fr-text);
+  font-size: 12px;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: var(--fr-select-arrow);
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 10px;
+  cursor: pointer;
+  transition: border-color 0.2s;
+  outline: none;
+}
+
+.fr-filter-group select:hover,
+.fr-sidebar select:hover {
+  border-color: var(--fr-accent);
+}
+
+.fr-filter-group select:focus,
+.fr-sidebar select:focus {
+  border-color: var(--fr-accent);
+  box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
+}
+
+/* ── Search input ───────────────────────────────────────── */
+.fr-input-wrap {
+  position: relative;
+}
+
+.fr-input-wrap .fr-input-icon {
+  position: absolute;
+  left: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--fr-muted);
+  font-size: 11px;
+  pointer-events: none;
+}
+
+.fr-input-wrap input[type="search"] {
+  width: 100%;
+  padding: 7px 10px 7px 28px;
+  border-radius: 6px;
+  border: 1px solid var(--fr-input-border);
+  background-color: var(--fr-input-bg);
+  color: var(--fr-text);
+  font-size: 12px;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+
+.fr-input-wrap input[type="search"]:hover {
+  border-color: var(--fr-accent);
+}
+
+.fr-input-wrap input[type="search"]:focus {
+  border-color: var(--fr-accent);
+  box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
+}
+
+/* Remove default search-cancel button */
+.fr-input-wrap input[type="search"]::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  width: 13px;
+  height: 13px;
+  background: var(--fr-muted);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 2l8 8M10 2l-8 8' stroke='%23fff' stroke-width='2'/%3E%3C/svg%3E")
+    center/contain no-repeat;
+  cursor: pointer;
+  position: relative;
+  right: 2px;
+}
+
+/* ── Back button ────────────────────────────────────────── */
+.fr-back-btn {
+  all: unset;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--fr-accent);
+  padding: 6px 8px;
+  border-radius: 6px;
+  transition:
+    background 0.18s,
+    color 0.18s;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.fr-back-btn:hover {
+  background: var(--fr-hover-bg);
+  color: var(--fr-brand-text);
+}
+
+.fr-back-btn i {
+  font-size: 11px;
+}
+
+/* ── Main content area ──────────────────────────────────── */
+.fr-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.fr-content .container-main {
+  flex: 1;
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* ── Responsive: mobile/tablet ──────────────────────────── */
+@media (max-width: 900px) {
+  .fr-layout {
+    flex-direction: column;
+  }
+
+  .fr-sidebar {
+    width: 100%;
+    max-width: 100%;
+    min-width: unset;
+    border-right: none;
+    border-bottom: 1px solid var(--fr-border);
+    flex-direction: row;
+    flex-wrap: wrap;
+    padding: 12px 14px;
+    gap: 10px;
+    overflow-y: visible;
+  }
+
+  .fr-sidebar-section {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .fr-sidebar-brand {
+    flex: 0 0 100%;
+    padding-bottom: 4px;
+  }
+
+  .fr-divider {
+    display: none;
+  }
+
+  .fr-section-label {
+    display: none;
+  }
+
+  .fr-filter-group {
+    flex: 1;
+    min-width: 140px;
+    max-width: 240px;
+  }
+
+  .fr-back-btn {
+    flex: 0 0 auto;
+  }
+
+  .fr-content {
+    min-height: 0;
+    flex: 1;
+    overflow-y: auto;
+  }
+
+  .containerObra {
+    grid-template-columns: repeat(2, 1fr) !important;
+    padding: 0 20px !important;
+  }
+}
+
+@media (max-width: 540px) {
+  .fr-sidebar-section {
+    gap: 8px;
+  }
+
+  .fr-filter-group {
+    min-width: 100%;
+    max-width: 100%;
+  }
+
+  .containerObra {
+    grid-template-columns: 1fr !important;
+    padding: 0 12px !important;
+  }
+
+  .tarefasImagensObra {
+    flex-direction: column !important;
+  }
+
+  .task-item {
+    width: 100% !important;
+  }
 }

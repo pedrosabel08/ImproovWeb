@@ -546,7 +546,7 @@ function infosObra(obraId) {
             if (data?.obra?.nome_obra && data?.aprovacaoObra && Object.keys(data.aprovacaoObra).length > 0) {
                 document.getElementById('altBtn').classList.remove('hidden');
                 document.getElementById('altBtn').onclick = function () {
-                    window.location.href = `https://improov.com.br/sistema/Revisao/index.php?obra_nome=${data.obra.nome_obra}`;
+                    window.location.href = `https://improov.com.br/sistema/FlowReview/index.php?obra_nome=${data.obra.nome_obra}`;
                 };
             } else {
                 document.getElementById('altBtn').classList.add('hidden');

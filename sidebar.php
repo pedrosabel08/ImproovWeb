@@ -98,7 +98,7 @@ $__basePath = (strpos($__reqUri, '/flow/ImproovWeb/') !== false || preg_match('~
                 <label for="">Ferramentas</label>
                 <!-- <li><a title="Filtro Colaborador" href="https://improov.com.br/flow/ImproovWeb/main.php#filtro-colab"><i class="fa-solid fa-user"></i><span>Filtro Colaborador</span></a></li> -->
                 <li><a title="Lista Render" href="https://improov.com.br/flow/ImproovWeb/Render"><i class="fas fa-list"></i><span> Lista Render</span></a></li>
-                <li><a title="Flow Review" href="https://improov.com.br/flow/ImproovWeb/Revisao"><i class="fas fa-check"></i><span> Flow Review</span></a></li>
+                <li><a title="Flow Review" href="https://improov.com.br/flow/ImproovWeb/FlowReview"><i class="fas fa-check"></i><span> Flow Review</span></a></li>
                 <?php if (isset($_SESSION['nivel_acesso']) && in_array($_SESSION['nivel_acesso'], [1, 2])): ?>
                     <li><a title="Mapa de Compatibilização" href="https://improov.com.br/flow/ImproovWeb/MapaCompatibilizacao"><i class="fa-solid fa-map"></i><span> Mapa Compatib.</span></a></li>
                 <?php endif; ?>

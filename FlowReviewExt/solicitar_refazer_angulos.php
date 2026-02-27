@@ -108,8 +108,8 @@ function load_dotenv_simple_local($path)
         $_SERVER[$k] = $v;
     }
 }
-// try to load .env from project root (one level above FlowReview)
-load_dotenv_simple_local(__DIR__ . '/../Revisao/.env');
+// try to load .env from project root (one level above FlowReviewExt)
+load_dotenv_simple_local(__DIR__ . '/../FlowReview/.env');
 $slackToken = $_ENV['SLACK_TOKEN'] ?? getenv('SLACK_TOKEN') ?? null;
 $slackChannel = 'C09V1SES7B2';
 

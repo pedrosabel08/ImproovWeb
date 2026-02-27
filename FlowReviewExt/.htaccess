@@ -1,5 +1,5 @@
 RewriteEngine On
-RewriteBase /sistema/FlowReview/
+RewriteBase /sistema/FlowReviewExt/
 
 # /UUID
 RewriteRule ^([0-9a-fA-F-]+)$ index.php?token=$1 [L,QSA]

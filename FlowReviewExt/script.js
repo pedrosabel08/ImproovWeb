@@ -107,12 +107,12 @@ function getTokenFromUrl() {
         if (q && q !== '') return q;
 
         // 2) Path-based token support for URLs like:
-        //    /sistema/FlowReview/<token>
-        //    /sistema/FlowReview/token/<token>
+        //    /sistema/FlowReviewExt/<token>
+        //    /sistema/FlowReviewExt/token/<token>
         const path = window.location.pathname || '';
         const parts = path.split('/').filter(Boolean); // remove empty segments
-        // find 'FlowReview' segment
-        const idx = parts.indexOf('FlowReview');
+        // find 'FlowReviewExt' segment
+        const idx = parts.indexOf('FlowReviewExt');
         if (idx === -1) return null;
         const next = parts[idx + 1];
         if (!next) return null;
@@ -392,7 +392,7 @@ function filtrarTarefasPorObra(obraSelecionada) {
     if (tarefasDaObra.length > 0) {
         const nomeObra = tarefasDaObra[0].nome_obra;
         const nomenclatura = tarefasDaObra[0].nomenclatura;
-        document.querySelectorAll('.obra_nav').forEach(link => { link.href = `https://improov.com.br/flow/ImproovWeb/Revisao/index.php?obra_nome=${nomeObra}`; link.textContent = nomenclatura; });
+        document.querySelectorAll('.obra_nav').forEach(link => { link.href = `https://improov.com.br/flow/ImproovWeb/FlowReview/index.php?obra_nome=${nomeObra}`; link.textContent = nomenclatura; });
     }
     const tarefasFiltradas = tarefasDaObra.filter(t => !colaboradorSelecionado || t.nome_colaborador === colaboradorSelecionado);
     exibirTarefas(tarefasFiltradas, tarefasDaObra);

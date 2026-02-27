@@ -1,17 +1,17 @@
 <?php
-require_once __DIR__ . '/Revisao/vendor/autoload.php'; // Instale via composer require omarusman/ics-parser
+require_once __DIR__ . '/FlowReview/vendor/autoload.php'; // Instale via composer require omarusman/ics-parser
 
 use ICal\ICal;
 
 use Dotenv\Dotenv;
 
-$envPath = __DIR__ . '/Revisao/.env';
+$envPath = __DIR__ . '/FlowReview/.env';
 
 if (!file_exists($envPath)) {
     die("Arquivo .env não encontrado em: $envPath");
 }
 
-$dotenv = Dotenv::createImmutable(__DIR__ . '/Revisao');
+$dotenv = Dotenv::createImmutable(__DIR__ . '/FlowReview');
 $dotenv->load();
 
 $webhookUrl = $_ENV['SLACK_WEBHOOK_URL'] ?? null;

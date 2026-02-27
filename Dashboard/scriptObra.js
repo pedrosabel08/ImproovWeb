@@ -3122,7 +3122,7 @@ function infosObra(obraId) {
       ) {
         document.getElementById("altBtn").classList.remove("hidden");
         document.getElementById("altBtn").onclick = function () {
-          window.location.href = `https://improov.com.br/flow/ImproovWeb/Revisao/index.php?obra_nome=${data.obra.nome_obra}`;
+          window.location.href = `https://improov.com.br/flow/ImproovWeb/FlowReview/index.php?obra_nome=${data.obra.nome_obra}`;
         };
       } else {
         document.getElementById("altBtn").classList.add("hidden");

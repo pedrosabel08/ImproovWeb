@@ -46,7 +46,7 @@ Observações:
 
 ## Validação (já implementada em `index.php`)
 
-No início de `FlowReview/index.php` há a lógica que, caso não exista sessão, verifica o cookie `flow_auth`, busca o hash no banco e, se válido e não-expirado, cria a sessão automaticamente. A função também renova o cookie por mais 2 dias.
+No início de `FlowReviewExt/index.php` há a lógica que, caso não exista sessão, verifica o cookie `flow_auth`, busca o hash no banco e, se válido e não-expirado, cria a sessão automaticamente. A função também renova o cookie por mais 2 dias.
 
 ## Próximos passos
 - Integrar emissão de token na página de login (onde ocorre a autenticação de `usuario_externo`).

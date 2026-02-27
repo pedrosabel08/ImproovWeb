@@ -177,33 +177,77 @@ async function fetchObrasETarefas() {
 
     exibirCardsDeObra(dadosTarefas); // Mostra os cards
 
-    const filtroSelect = document.getElementById("filtroFuncao");
-    filtroSelect.style.display = "block"; // Exibe o filtro de função
-    filtroSelect.innerHTML = '<option value="">Todas as funções</option>';
+    // ── Sidebar: mostrar seção de obras, ocultar tarefas ──
+    const secObrasEl = document.getElementById("fr-section-obras");
+    const secTarefasEl = document.getElementById("fr-section-tarefas");
+    if (secObrasEl) secObrasEl.classList.remove("hidden");
+    if (secTarefasEl) secTarefasEl.classList.add("hidden");
 
-    todasAsFuncoes.forEach((funcao) => {
-      const option = document.createElement("option");
-      option.value = funcao;
-      option.textContent = funcao;
-      filtroSelect.appendChild(option);
-    });
-
-    document
-      .getElementById("filtroFuncao")
-      .addEventListener("change", (event) => {
-        funcaoGlobalSelecionada = event.target.value || null;
-
-        const tarefasFiltradas = funcaoGlobalSelecionada
-          ? dadosTarefas.filter(
-              (t) => t.nome_funcao === funcaoGlobalSelecionada,
-            )
-          : dadosTarefas;
-
-        exibirCardsDeObra(tarefasFiltradas);
+    // Populate função filter na sidebar home
+    const frFuncaoHome = document.getElementById("fr-funcao-home");
+    if (frFuncaoHome) {
+      frFuncaoHome.innerHTML = '<option value="">Todas</option>';
+      [...todasAsFuncoes].sort().forEach((funcao) => {
+        const option = document.createElement("option");
+        option.value = funcao;
+        option.textContent = funcao;
+        frFuncaoHome.appendChild(option);
       });
+    }
+
+    // Populate colaborador filter na sidebar home
+    const frColabHome = document.getElementById("fr-colaborador-home");
+    if (frColabHome) {
+      frColabHome.innerHTML = '<option value="">Todos</option>';
+      [...todosOsColaboradores].sort().forEach((colab) => {
+        const option = document.createElement("option");
+        option.value = colab;
+        option.textContent = colab;
+        frColabHome.appendChild(option);
+      });
+    }
+
+    // Attach sidebar filter listeners only once
+    const searchInput = document.getElementById("fr-search-obra");
+    if (searchInput && !searchInput._frListenerAdded) {
+      searchInput._frListenerAdded = true;
+      searchInput.addEventListener("input", applyHomeFilters);
+      if (frFuncaoHome) {
+        frFuncaoHome.addEventListener("change", () => {
+          funcaoGlobalSelecionada = frFuncaoHome.value || null;
+          applyHomeFilters();
+        });
+      }
+      if (frColabHome) {
+        frColabHome.addEventListener("change", applyHomeFilters);
+      }
+    }
   } catch (error) {
     console.error(error);
   }
+}
+
+// Filtra os cards de obra com base nos filtros da sidebar home
+function applyHomeFilters() {
+  const searchVal = (document.getElementById("fr-search-obra")?.value || "")
+    .toLowerCase()
+    .trim();
+  const funcaoVal = document.getElementById("fr-funcao-home")?.value || "";
+  const colabVal = document.getElementById("fr-colaborador-home")?.value || "";
+
+  let filtradas = dadosTarefas;
+  if (funcaoVal)
+    filtradas = filtradas.filter((t) => t.nome_funcao === funcaoVal);
+  if (colabVal)
+    filtradas = filtradas.filter((t) => t.nome_colaborador === colabVal);
+  if (searchVal)
+    filtradas = filtradas.filter(
+      (t) =>
+        (t.nome_obra || "").toLowerCase().includes(searchVal) ||
+        (t.nomenclatura || "").toLowerCase().includes(searchVal),
+    );
+
+  exibirCardsDeObra(filtradas);
 }
 
 // Carrega métricas agregadas por função e renderiza no painel
@@ -329,6 +373,12 @@ async function exibirCardsDeObra(tarefas) {
 function filtrarTarefasPorObra(obraSelecionada) {
   document.getElementById("filtro_obra").value = obraSelecionada;
 
+  // ── Sidebar: mostrar seção de tarefas, ocultar obras ──
+  const secObras = document.getElementById("fr-section-obras");
+  const secTarefas = document.getElementById("fr-section-tarefas");
+  if (secObras) secObras.classList.add("hidden");
+  if (secTarefas) secTarefas.classList.remove("hidden");
+
   // Filtra todas as tarefas da obra
   const tarefasDaObra = dadosTarefas.filter(
     (t) => t.nome_obra === obraSelecionada,
@@ -361,7 +411,7 @@ function filtrarTarefasPorObra(obraSelecionada) {
     const obraNavLinks = document.querySelectorAll(".obra_nav");
 
     obraNavLinks.forEach((link) => {
-      link.href = `https://improov.com.br/flow/ImproovWeb/Revisao/index.php?obra_nome=${nomeObra}`;
+      link.href = `https://improov.com.br/flow/ImproovWeb/FlowReview/index.php?obra_nome=${nomeObra}`;
       link.textContent = nomenclatura;
     });
   }
@@ -503,9 +553,6 @@ function exibirTarefas(tarefas, tarefasCompletas) {
   const containerMain = document.querySelector(".container-main");
   // containerMain.classList.add('expanded');
 
-  const filtroFuncao = document.getElementById("filtroFuncao");
-  filtroFuncao.style.display = "none"; // Esconde o filtro de função
-
   const tarefasObra = document.querySelector(".tarefasObra");
   tarefasObra.classList.remove("hidden");
 
@@ -572,15 +619,30 @@ function formatarData(data) {
 }
 
 function formatarDataHora(data) {
-  const date = new Date(data); // Cria um objeto Date a partir da string datetime
+  const date = new Date(data);
 
-  const dia = String(date.getDate()).padStart(2, "0"); // Pega o dia e formata com 2 dígitos
-  const mes = String(date.getMonth() + 1).padStart(2, "0"); // Pega o mês e formata com 2 dígitos (mes começa do 0)
-  const ano = date.getFullYear(); // Pega o ano
-  const horas = String(date.getHours()).padStart(2, "0"); // Pega a hora e formata com 2 dígitos
-  const minutos = String(date.getMinutes()).padStart(2, "0"); // Pega os minutos e formata com 2 dígitos
+  const dia = String(date.getDate()).padStart(2, "0");
+  const mes = String(date.getMonth() + 1).padStart(2, "0");
+  const ano = date.getFullYear();
+  const horas = String(date.getHours()).padStart(2, "0");
+  const minutos = String(date.getMinutes()).padStart(2, "0");
+  const segundos = String(date.getSeconds()).padStart(2, "0");
 
-  return `${dia}/${mes}/${ano} ${horas}:${minutos}`; // Retorna o formato desejado
+  return `${dia}/${mes}/${ano} ${horas}:${minutos}:${segundos}`;
+}
+
+function formatarDataComentario(data) {
+  if (!data) return "";
+  // Normalise MySQL 'YYYY-MM-DD HH:MM:SS' for iOS Safari (needs 'T' separator)
+  const date = new Date(data.replace(" ", "T"));
+  if (isNaN(date.getTime())) return data;
+  const dia = String(date.getDate()).padStart(2, "0");
+  const mes = String(date.getMonth() + 1).padStart(2, "0");
+  const ano = date.getFullYear();
+  const horas = String(date.getHours()).padStart(2, "0");
+  const minutos = String(date.getMinutes()).padStart(2, "0");
+  const segundos = String(date.getSeconds()).padStart(2, "0");
+  return `${dia}/${mes}/${ano} ${horas}:${minutos}:${segundos}`;
 }
 
 // Escapa texto para evitar injeção de HTML ao inserir conteúdo dinâmico
@@ -1269,15 +1331,12 @@ function exibirSidebarTabulator(tarefas) {
   sidebarDiv.innerHTML = "";
 
   const tarefasPorFuncao = {};
-
   tarefas.forEach((t) => {
-    if (!tarefasPorFuncao[t.nome_funcao]) {
-      tarefasPorFuncao[t.nome_funcao] = [];
-    }
+    if (!tarefasPorFuncao[t.nome_funcao]) tarefasPorFuncao[t.nome_funcao] = [];
     tarefasPorFuncao[t.nome_funcao].push(t);
   });
 
-  Object.entries(tarefasPorFuncao).forEach(([funcao, tarefas]) => {
+  Object.entries(tarefasPorFuncao).forEach(([funcao, tarefasDaFuncao]) => {
     const grupoDiv = document.createElement("div");
     grupoDiv.classList.add("grupo-funcao");
 
@@ -1285,16 +1344,17 @@ function exibirSidebarTabulator(tarefas) {
     header.classList.add("group-header");
     header.dataset.grupo = funcao;
     header.innerHTML = `
-      <span class="funcao-label">${funcao.slice(0, 3)}</span>
-      <span class="funcao-completa"><b>${funcao}</b> (${tarefas.length} imagens)</span>
+      <span class="funcao-completa">
+        <span class="fn-nome">${funcao}</span>
+        <span class="fn-count">${tarefasDaFuncao.length} imagem${tarefasDaFuncao.length !== 1 ? "ns" : ""}</span>
+      </span>
+      <i class="fa-solid fa-chevron-right funcao-chevron"></i>
     `;
 
     const lista = document.createElement("div");
     lista.classList.add("tarefas-lista");
-    lista.style.display = "none";
 
-    console.log("Tarefas:", tarefas);
-    tarefas.forEach((t) => {
+    tarefasDaFuncao.forEach((t) => {
       const color =
         t.status_novo === "Em aprovação"
           ? "#000a59"
@@ -1319,33 +1379,24 @@ function exibirSidebarTabulator(tarefas) {
         : "../assets/logo.jpg";
       tarefa.innerHTML = `
         <img src="${imgSrc}" class="tab-img" data-id="${t.idfuncao_imagem}" alt="${t.imagem_nome}">
-        <span id="status_tarefa" style="background-color: ${bgColor}; color: ${color}">${t.status_novo}</span>
-        <span>${t.nome_colaborador} - ${t.imagem_nome}</span>
+        <span class="tarefa-status" style="background-color: ${bgColor}; color: ${color}">${t.status_novo}</span>
+        <span class="tarefa-label">${t.nome_colaborador} — ${t.imagem_nome}</span>
       `;
       tarefa.addEventListener("click", () => historyAJAX(t.idfuncao_imagem));
       lista.appendChild(tarefa);
     });
 
-    // Comportamento inteligente ao clicar no header
+    // Accordion toggle
     header.addEventListener("click", () => {
-      const todasAsListas = sidebarDiv.querySelectorAll(".tarefas-lista");
-      const todasAsHeaders = sidebarDiv.querySelectorAll(".group-header");
-
-      const jaAberto = lista.style.display === "block";
-
-      // Fecha todos os grupos
-      todasAsListas.forEach((l) => {
-        l.style.display = "none";
+      const isOpen = grupoDiv.classList.contains("grupo-aberto");
+      // Close all groups first
+      sidebarDiv.querySelectorAll(".grupo-funcao").forEach((g) => {
+        g.classList.remove("grupo-aberto");
+        g.querySelector(".tarefas-lista").style.display = "none";
       });
-      if (jaAberto) {
-        // Nenhum aberto: minimizar a sidebar
-        sidebarDiv.classList.add("sidebar-min");
-        sidebarDiv.classList.remove("sidebar-expanded");
-      } else {
-        // Abre o novo grupo e expande sidebar
+      if (!isOpen) {
+        grupoDiv.classList.add("grupo-aberto");
         lista.style.display = "block";
-        sidebarDiv.classList.add("sidebar-expanded");
-        sidebarDiv.classList.remove("sidebar-min");
       }
     });
 
@@ -1536,6 +1587,34 @@ document.addEventListener("DOMContentLoaded", async () => {
     console.error("Erro ao carregar usuários:", error);
   }
 
+  // ── Sidebar back button ──
+  const frBackBtn = document.getElementById("fr-back-btn");
+  if (frBackBtn) {
+    frBackBtn.addEventListener("click", () => {
+      // Restaura visão de obras
+      const secObras = document.getElementById("fr-section-obras");
+      const secTarefas = document.getElementById("fr-section-tarefas");
+      if (secObras) secObras.classList.remove("hidden");
+      if (secTarefas) secTarefas.classList.add("hidden");
+
+      // Esconde tarefas, mostra cards de obra
+      const tarefasObra = document.querySelector(".tarefasObra");
+      const containerObra = document.querySelector(".containerObra");
+      if (tarefasObra) tarefasObra.classList.add("hidden");
+      if (containerObra) containerObra.style.display = "";
+
+      // Limpa filtro de obra
+      const filtroObraEl = document.getElementById("filtro_obra");
+      if (filtroObraEl) filtroObraEl.value = "";
+
+      // Reseta filtro global de função
+      funcaoGlobalSelecionada = null;
+
+      // Reaplica filtros da sidebar home (limpos)
+      applyHomeFilters();
+    });
+  }
+
   // Modal: fechar
   document.getElementById("fecharComentarioModal").onclick = () => {
     document.getElementById("comentarioModal").style.display = "none";
@@ -1551,10 +1630,16 @@ document.addEventListener("DOMContentLoaded", async () => {
         .querySelectorAll(".draw-tool-btn")
         .forEach((b) => b.classList.remove("active"));
       btn.classList.add("active");
-      // cursor
+      // cursor + touch-action
       const iw = document.getElementById("image_wrapper");
-      if (iw) iw.style.cursor = tool === "ponto" ? "" : "crosshair";
-      // also toggle a body class so CSS can override any image hover cursors
+      if (iw) {
+        iw.style.cursor = tool === "ponto" ? "" : "crosshair";
+        if (tool === "ponto") {
+          iw.classList.remove("drawing-mode");
+        } else {
+          iw.classList.add("drawing-mode");
+        }
+      }
       if (tool === "ponto") {
         document.body.classList.remove("drawing-crosshair");
       } else {
@@ -2407,7 +2492,7 @@ async function renderComments(id) {
     const footer = document.createElement("div");
     footer.classList.add("comment-footer");
     footer.innerHTML = `
-            <div class="comment-date">${comentario.data}</div>
+            <div class="comment-date">${formatarDataComentario(comentario.data)}</div>
             <div class="comment-actions">
                 <button class="comment-resp">&#8617</button>
                 <button class="comment-edit">✏️</button>

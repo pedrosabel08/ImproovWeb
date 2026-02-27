@@ -97,52 +97,113 @@ $conn->close();
 
 
     <div class="main">
+        <div class="fr-layout">
 
+            <!-- ══ SIDEBAR LATERAL DE FILTROS ══ -->
+            <aside class="fr-sidebar" id="fr-sidebar">
 
-
-        <div class="container-main">
-            <select id="filtroFuncao" style="display: none;">
-                <option value="">Todas as funções</option>
-            </select>
-            <div id="metrics-panel" style="margin-bottom:8px; display:none;">
-            </div>
-            <div class="containerObra">
-            </div>
-            <div class="tarefasObra hidden">
-                <div class="header">
-                    <nav class="breadcrumb-nav">
-                        <a href="https://improov.com.br/flow/ImproovWeb/Revisao/index.php">Flow Review</a>
-                        <a id="obra_id_nav" class="obra_nav"
-                            href="https://improov.com.br/flow/ImproovWeb/Revisao/index.php?obra_id=''">Obra</a>
-                    </nav>
-                    <div class="filtros">
-                        <div>
-                            <label for="nome_funcao">Função:</label>
-                            <select name="nome_funcao" id="nome_funcao"></select>
-                        </div>
-                        <div>
-                            <label for="filtro_colaborador">Colaborador:</label>
-                            <select name="filtro_colaborador" id="filtro_colaborador"></select>
-                        </div>
-                        <input type="hidden" name="filtro_obra" id="filtro_obra">
+                <!-- Seção 1: visão geral (lista de obras) -->
+                <div class="fr-sidebar-section" id="fr-section-obras">
+                    <div class="fr-sidebar-brand">
+                        <i class="fa-solid fa-eye"></i>
+                        <span>Flow Review</span>
                     </div>
-                    <!-- 
-                    <div class="alternar">
-                        <button onclick="fetchObrasETarefas('Todos', 'Em aprovação')">Em aprovação</button>
-                        <button onclick="fetchObrasETarefas('Todos', 'Ajuste')">Ajuste</button>
-                    </div> -->
+                    <div class="fr-divider"></div>
+                    <p class="fr-section-label">Filtros</p>
+
+                    <div class="fr-filter-group">
+                        <label for="fr-search-obra">
+                            <i class="fa-solid fa-building"></i> Obra
+                        </label>
+                        <div class="fr-input-wrap">
+                            <i class="fa-solid fa-magnifying-glass fr-input-icon"></i>
+                            <input type="search" id="fr-search-obra" placeholder="Buscar obra…">
+                        </div>
+                    </div>
+
+                    <div class="fr-filter-group">
+                        <label for="fr-funcao-home">
+                            <i class="fa-solid fa-layer-group"></i> Função
+                        </label>
+                        <select id="fr-funcao-home">
+                            <option value="">Todas</option>
+                        </select>
+                    </div>
+
+                    <div class="fr-filter-group">
+                        <label for="fr-colaborador-home">
+                            <i class="fa-solid fa-user"></i> Colaborador
+                        </label>
+                        <select id="fr-colaborador-home">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
                 </div>
-                <div class="tarefasImagensObra"></div>
+
+                <!-- Seção 2: tarefas da obra selecionada -->
+                <div class="fr-sidebar-section hidden" id="fr-section-tarefas">
+                    <button class="fr-back-btn" id="fr-back-btn">
+                        <i class="fa-solid fa-arrow-left"></i> Voltar
+                    </button>
+                    <div class="fr-divider"></div>
+                    <p class="fr-section-label">Filtros</p>
+
+                    <div class="fr-filter-group">
+                        <label for="nome_funcao">
+                            <i class="fa-solid fa-layer-group"></i> Função
+                        </label>
+                        <select name="nome_funcao" id="nome_funcao">
+                            <option value="Todos">Todos</option>
+                        </select>
+                    </div>
+
+                    <div class="fr-filter-group">
+                        <label for="filtro_colaborador">
+                            <i class="fa-solid fa-user"></i> Colaborador
+                        </label>
+                        <select name="filtro_colaborador" id="filtro_colaborador">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
+
+                    <input type="hidden" name="filtro_obra" id="filtro_obra">
+                </div>
+
+            </aside>
+            <!-- ══ FIM SIDEBAR ══ -->
+
+            <!-- Conteúdo principal -->
+            <div class="fr-content">
+                <div class="container-main">
+                    <select id="filtroFuncao" style="display: none;">
+                        <option value="">Todas as funções</option>
+                    </select>
+                    <div id="metrics-panel" style="margin-bottom:8px; display:none;">
+                    </div>
+                    <div class="containerObra">
+                    </div>
+                    <div class="tarefasObra hidden">
+                        <div class="header">
+                            <nav class="breadcrumb-nav">
+                                <a href="https://improov.com.br/flow/ImproovWeb/FlowReview/index.php">Flow Review</a>
+                                <a id="obra_id_nav" class="obra_nav"
+                                    href="https://improov.com.br/flow/ImproovWeb/FlowReview/index.php?obra_id=''">Obra</a>
+                            </nav>
+                        </div>
+                        <div class="tarefasImagensObra"></div>
+                    </div>
+                </div>
             </div>
-        </div>
+
+        </div><!-- /.fr-layout -->
     </div>
 
     <div class="container-aprovacao hidden">
         <header>
             <nav class="breadcrumb-nav">
-                <a href="https://improov.com.br/flow/ImproovWeb/Revisao/index.php">Flow Review</a>
+                <a href="https://improov.com.br/flow/ImproovWeb/FlowReview/index.php">Flow Review</a>
                 <a id="obra_id_nav" class="obra_nav"
-                    href="https://improov.com.br/flow/ImproovWeb/Revisao/index.php?obra_id=''">Obra</a>
+                    href="https://improov.com.br/flow/ImproovWeb/FlowReview/index.php?obra_id=''">Obra</a>
             </nav>
             <div class="task-info" id="task-info">
                 <h3 id="funcao_nome"></h3>

@@ -370,7 +370,7 @@ document.addEventListener("click", function (event) {
 
 // Botão "Ir para Revisão"
 btnIr.addEventListener("click", function () {
-  window.open("https://improov.com.br/flow/ImproovWeb/Revisao", "_blank");
+  window.open("https://improov.com.br/flow/ImproovWeb/FlowReview", "_blank");
 });
 
 document.addEventListener("click", function (event) {

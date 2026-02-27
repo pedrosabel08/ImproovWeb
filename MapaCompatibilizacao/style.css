@@ -15,6 +15,8 @@ body {
   background: #f0f2f5;
   color: #222;
   overflow-x: hidden;
+  display: grid;
+  grid-template-columns: 60px 1fr; /* espaço para sidebar do sistema */
 }
 
 /* ---- Layout principal ---- */
@@ -22,7 +24,7 @@ body {
   display: flex;
   height: 100vh;
   /* deixa espaço para a sidebar do sistema */
-  padding-left: 64px; /* largura da sidebar mini */
+  padding: 1rem;
 }
 
 /* ---- Sidebar lateral do módulo ---- */
@@ -181,6 +183,7 @@ body {
   cursor: pointer;
   font-size: 14px;
   color: #444;
+  text-align: center;
   transition:
     background 0.15s,
     border-color 0.15s;
@@ -246,15 +249,57 @@ body {
 .mc-main {
   flex: 1;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
+  align-items: stretch;
   overflow: hidden;
   position: relative;
   background: #f0f2f5;
 }
 
+/* ---- Abas de plantas ---- */
+.mc-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 6px 10px 0;
+  background: #fff;
+  border-bottom: 2px solid #e0e0e0;
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+.mc-tab {
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid #ddd;
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  background: #f5f5f5;
+  color: #555;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+.mc-tab:hover {
+  background: #e8f4fd;
+  color: #2980b9;
+}
+.mc-tab.active {
+  background: #fff;
+  color: #2c3e50;
+  border-color: #3498db;
+  border-bottom: 2px solid #fff;
+  margin-bottom: -2px;
+}
+
 /* ---- Estado vazio ---- */
 .mc-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   text-align: center;
   color: #aaa;
 }
@@ -269,12 +314,13 @@ body {
 
 /* ---- Outer container (permite pan sem overflow) ---- */
 .mc-planta-outer {
-  width: 100%;
-  height: 100%;
+  flex: 1;
   overflow: hidden;
   position: relative;
   cursor: grab;
   user-select: none;
+  display: flex;
+  flex-direction: column;
 }
 .mc-planta-outer.editing {
   cursor: crosshair;
@@ -289,6 +335,49 @@ body {
   display: inline-block;
   transform-origin: 0 0;
   transition: transform 0.1s ease-out;
+}
+
+/* ---- Barra de navegação de páginas PDF ---- */
+.mc-pdf-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 6px 12px;
+  background: #f4f6f7;
+  border-bottom: 1px solid #dde1e4;
+  flex-shrink: 0;
+  font-size: 13px;
+  color: #2c3e50;
+}
+.mc-pdf-nav-btn {
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-size: 14px;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+.mc-pdf-nav-btn:hover:not(:disabled) {
+  background: #eaf4fe;
+  border-color: #3498db;
+}
+.mc-pdf-nav-btn:disabled {
+  opacity: 0.38;
+  cursor: default;
+}
+.mc-pdf-nav-info {
+  min-width: 110px;
+  text-align: center;
+  font-weight: 500;
+}
+.mc-pdf-canvas {
+  display: block;
+  max-width: 100%;
+  height: auto;
 }
 
 /* ---- Imagem da planta ---- */
@@ -477,6 +566,11 @@ body {
   display: flex;
   align-items: center;
   gap: 5px;
+  cursor: pointer;
+}
+.mc-legenda-item:hover {
+  opacity: 0.95;
+  transform: translateX(2px);
 }
 .mc-legenda-cor {
   width: 14px;
@@ -509,4 +603,270 @@ body {
   .mc-main {
     height: calc(100vh - 200px);
   }
+}
+
+/* ================================================================
+   WIZARD — GERENCIAR PLANTAS
+   ================================================================ */
+
+/* Modal do wizard (substitui mc-modal-large) */
+.mc-modal-wizard {
+  max-width: 520px;
+  width: 95vw;
+}
+
+/* Seção Unificar PDFs */
+.mc-wizard-unificar {
+  margin-top: 10px;
+  padding: 10px 14px;
+  background: #fff8e1;
+  border: 1px solid #f9e07d;
+  border-radius: 8px;
+}
+.mc-wizard-unificar-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #2c3e50;
+}
+.mc-wizard-unificar-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+/* Modal largo para o wizard */
+.mc-modal-large .mc-modal-content {
+  max-width: 840px;
+  width: 95vw;
+}
+
+.mc-wizard-desc {
+  font-size: 13px;
+  color: #555;
+  margin: 0 0 14px;
+}
+.mc-wizard-loading {
+  text-align: center;
+  color: #888;
+  padding: 20px;
+}
+
+/* Lista de plantas no step 1 */
+.mc-plantas-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 380px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.mc-wizard-plant-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.mc-wizard-plant-item:hover {
+  background: #eaf4fe;
+}
+.mc-wizard-plant-item input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.mc-wizard-plant-nome {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  color: #2c3e50;
+}
+.mc-wizard-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+.mc-wizard-badge.vinculada {
+  background: #d5f5e3;
+  color: #1e8449;
+}
+.mc-wizard-badge.nao-vinculada {
+  background: #fdebd0;
+  color: #935116;
+}
+
+/* Step 2: dois colunas */
+.mc-wizard-step2-body {
+  display: flex;
+  gap: 16px;
+  min-height: 420px;
+  overflow: hidden;
+}
+.mc-wizard-slots-col {
+  width: 220px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mc-wizard-slots-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #888;
+  letter-spacing: 0.04em;
+  margin: 0 0 4px;
+}
+.mc-wizard-slots {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+  flex: 1;
+}
+.mc-wizard-slot {
+  padding: 10px 12px;
+  background: #f4f6f7;
+  border: 2px solid #ccc;
+  border-radius: 8px;
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+.mc-wizard-slot:hover {
+  border-color: #3498db;
+  background: #eaf4fe;
+}
+.mc-wizard-slot.focused {
+  border-color: #3498db;
+  background: #d6eaf8;
+}
+.mc-wizard-slot-nome {
+  font-size: 12px;
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 4px;
+}
+.mc-wizard-slot-pagina {
+  font-size: 11px;
+  color: #888;
+}
+
+/* Coluna PDF */
+.mc-wizard-pdf-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.mc-pdf-dropzone {
+  border: 2px dashed #aaa;
+  border-radius: 10px;
+  padding: 32px 20px;
+  text-align: center;
+  color: #888;
+  cursor: pointer;
+  transition:
+    border-color 0.2s,
+    background 0.2s;
+  background: #fafafa;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.mc-pdf-dropzone i {
+  font-size: 36px;
+  color: #e74c3c;
+}
+.mc-pdf-dropzone p {
+  margin: 0;
+  font-size: 13px;
+}
+.mc-pdf-dropzone:hover,
+.mc-pdf-dropzone.drag-over {
+  border-color: #3498db;
+  background: #eaf4fe;
+}
+
+/* Grid de páginas do PDF */
+.mc-pdf-pages {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  overflow-y: auto;
+  padding: 4px;
+  align-content: flex-start;
+}
+.mc-pdf-page-thumb {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  border: 2px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 4px;
+  cursor: pointer;
+  background: #fff;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+.mc-pdf-page-thumb:hover {
+  border-color: #3498db;
+  box-shadow: 0 2px 8px rgba(52, 152, 219, 0.25);
+}
+.mc-pdf-page-thumb.selected {
+  border-color: #27ae60;
+  box-shadow: 0 2px 8px rgba(39, 174, 96, 0.3);
+}
+.mc-pdf-page-thumb canvas {
+  display: block;
+  max-width: 120px;
+  height: auto;
+  border-radius: 3px;
+}
+.mc-pdf-page-label {
+  font-size: 10px;
+  color: #666;
+}
+.mc-pdf-page-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: #27ae60;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 5px;
+  border-radius: 8px;
+  max-width: 90px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Progress bar no footer do wizard */
+.mc-wizard-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  margin-right: 8px;
 }

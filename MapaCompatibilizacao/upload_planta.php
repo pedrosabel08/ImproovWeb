@@ -53,22 +53,44 @@ if (!in_array($fileMime, $allowedMimes)) {
 // --- Conexão ---
 $conn = conectarBanco();
 
-// --- Calcular próxima versão ---
-$stmtVer = $conn->prepare(
-    "SELECT COALESCE(MAX(versao), 0) + 1 AS proxima_versao
-     FROM planta_compatibilizacao
-     WHERE obra_id = ?"
-);
-$stmtVer->bind_param('i', $obraId);
+// imagem_id opcional — se enviado, escopeia versão e inativação por (obra, imagem)
+$imagemId  = isset($_POST['imagem_id'])  ? (int) $_POST['imagem_id']  : null;
+$paginaPdf = isset($_POST['pagina_pdf']) ? (int) $_POST['pagina_pdf'] : null;
+if ($imagemId === 0) $imagemId = null;
+if ($paginaPdf === 0) $paginaPdf = null;
+
+// --- Calcular próxima versão (escopo: obra + imagem_id) ---
+if ($imagemId) {
+    $stmtVer = $conn->prepare(
+        "SELECT COALESCE(MAX(versao), 0) + 1 AS proxima_versao
+         FROM planta_compatibilizacao
+         WHERE obra_id = ? AND imagem_id = ?"
+    );
+    $stmtVer->bind_param('ii', $obraId, $imagemId);
+} else {
+    $stmtVer = $conn->prepare(
+        "SELECT COALESCE(MAX(versao), 0) + 1 AS proxima_versao
+         FROM planta_compatibilizacao
+         WHERE obra_id = ? AND imagem_id IS NULL"
+    );
+    $stmtVer->bind_param('i', $obraId);
+}
 $stmtVer->execute();
 $versao = (int) $stmtVer->get_result()->fetch_assoc()['proxima_versao'];
 $stmtVer->close();
 
-// --- Inativar versões anteriores ---
-$stmtInativa = $conn->prepare(
-    "UPDATE planta_compatibilizacao SET ativa = 0 WHERE obra_id = ? AND ativa = 1"
-);
-$stmtInativa->bind_param('i', $obraId);
+// --- Inativar versão anterior (escopo: obra + imagem_id) ---
+if ($imagemId) {
+    $stmtInativa = $conn->prepare(
+        "UPDATE planta_compatibilizacao SET ativa = 0 WHERE obra_id = ? AND imagem_id = ? AND ativa = 1"
+    );
+    $stmtInativa->bind_param('ii', $obraId, $imagemId);
+} else {
+    $stmtInativa = $conn->prepare(
+        "UPDATE planta_compatibilizacao SET ativa = 0 WHERE obra_id = ? AND imagem_id IS NULL AND ativa = 1"
+    );
+    $stmtInativa->bind_param('i', $obraId);
+}
 $stmtInativa->execute();
 $stmtInativa->close();
 
@@ -91,10 +113,11 @@ $relativePath = "uploads/plantas/{$obraId}/{$filename}";
 
 // --- Inserir novo registro ---
 $stmtInsert = $conn->prepare(
-    "INSERT INTO planta_compatibilizacao (obra_id, versao, imagem_path, ativa, criado_por)
-     VALUES (?, ?, ?, 1, ?)"
+    "INSERT INTO planta_compatibilizacao
+         (obra_id, imagem_id, pagina_pdf, versao, imagem_path, ativa, criado_por)
+     VALUES (?, ?, ?, ?, ?, 1, ?)"
 );
-$stmtInsert->bind_param('iisi', $obraId, $versao, $relativePath, $criadoPor);
+$stmtInsert->bind_param('iiissi', $obraId, $imagemId, $paginaPdf, $versao, $relativePath, $criadoPor);
 
 if (!$stmtInsert->execute()) {
     echo json_encode(['sucesso' => false, 'erro' => 'Erro ao salvar no banco: ' . $stmtInsert->error]);
@@ -108,8 +131,9 @@ $stmtInsert->close();
 $conn->close();
 
 echo json_encode([
-    'sucesso' => true,
-    'planta_id' => $plantaId,
-    'versao' => $versao,
+    'sucesso'    => true,
+    'planta_id'  => $plantaId,
+    'versao'     => $versao,
     'imagem_url' => $relativePath,
+    'imagem_id'  => $imagemId,
 ]);

@@ -43,6 +43,7 @@ $conn->close();
         const POD_EDITAR = <?= json_encode($podEditar) ?>;
         const ID_COLABORADOR = <?= json_encode($idColaborador) ?>;
         const BASE_URL = '<?= rtrim((strpos($_SERVER['REQUEST_URI'], '/flow/ImproovWeb/') !== false ? '/flow/ImproovWeb' : '/ImproovWeb'), '/') ?>/MapaCompatibilizacao';
+        window.IMPROOV_APP_BASE = '<?= strpos($_SERVER['REQUEST_URI'], '/flow/ImproovWeb/') !== false ? '/flow/ImproovWeb' : '/ImproovWeb' ?>';
     </script>
 
     <!-- ================================================================= LAYOUT -->
@@ -134,11 +135,25 @@ $conn->close();
                 <p>Selecione uma obra para visualizar o mapa.</p>
             </div>
 
+            <!-- Abas de plantas (visíveis quando há > 1 planta ativa) -->
+            <div id="mcTabs" class="mc-tabs hidden"></div>
+
             <!-- Container da planta -->
             <div id="plantaOuter" class="mc-planta-outer hidden">
+
+                <!-- Barra de navegação de páginas do PDF -->
+                <div id="pdfNav" class="mc-pdf-nav hidden">
+                    <button id="btnPdfPrev" class="mc-pdf-nav-btn" title="Página anterior">&#9664;</button>
+                    <span id="pdfPaginaInfo" class="mc-pdf-nav-info">Página 1&nbsp;/&nbsp;1</span>
+                    <button id="btnPdfNext" class="mc-pdf-nav-btn" title="Próxima página">&#9654;</button>
+                </div>
+
                 <!-- Wrapper que recebe transform (zoom/pan) -->
                 <div id="plantaWrapper" class="mc-planta-wrapper">
-                    <img id="plantaImg" class="mc-planta-img" src="" alt="Planta baixa">
+                    <!-- Canvas PDF (planta com arquivo_id) -->
+                    <canvas id="pdfCanvas" class="mc-planta-img mc-pdf-canvas" style="display:none"></canvas>
+                    <!-- Imagem legada (planta com imagem_path) -->
+                    <img id="plantaImg" class="mc-planta-img" src="" alt="Planta baixa" style="display:none">
                     <!-- SVG overlay: viewBox em 0–100 para coordenadas percentuais -->
                     <svg id="plantaSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"
                         preserveAspectRatio="none" class="mc-planta-svg">
@@ -150,6 +165,46 @@ $conn->close();
 
     <!-- ================================================================= TOOLTIP -->
     <div id="mcTooltip" class="mc-tooltip hidden"></div>
+
+    <!-- ================================================================= MODAL GERENCIAR PLANTAS (WIZARD) -->
+    <div id="modalGerenciarPlantas" class="mc-modal hidden" role="dialog" aria-modal="true">
+        <div class="mc-modal-content mc-modal-wizard">
+            <div class="mc-modal-header">
+                <h3><i class="fa-solid fa-layer-group"></i> Gerenciar Plantas</h3>
+                <button id="btnFecharWizard" class="mc-modal-close" aria-label="Fechar">&times;</button>
+            </div>
+
+            <!-- Único step: seleção dos PDFs -->
+            <div id="wizardStep1" class="mc-wizard-step">
+                <div class="mc-modal-body">
+                    <p class="mc-wizard-desc">
+                        Selecione o(s) PDF(s) de <strong>Planta Humanizada Arquitetônica</strong>
+                        cadastrados para esta obra:
+                    </p>
+                    <div id="listaPdfsObra" class="mc-plantas-lista">
+                        <p class="mc-wizard-loading"><i class="fa-solid fa-spinner fa-spin"></i> Carregando…</p>
+                    </div>
+
+                    <!-- Mostrado apenas quando 2+ PDFs selecionados -->
+                    <div id="wizardUnificarWrap" class="mc-wizard-unificar hidden">
+                        <label class="mc-wizard-unificar-label">
+                            <input type="checkbox" id="wizardUnificarCheck">
+                            <span>
+                                <strong>Unificar PDFs</strong> — exibir os arquivos selecionados
+                                em sequência como uma única planta.
+                            </span>
+                        </label>
+                    </div>
+                </div>
+                <div class="mc-modal-footer">
+                    <button id="btnWizardCancelar" class="mc-btn mc-btn-secondary">Cancelar</button>
+                    <button id="btnWizardCriar" class="mc-btn mc-btn-primary" disabled>
+                        <i class="fa-solid fa-plus"></i> Criar Planta
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- ================================================================= MODAL VÍNCULO -->
     <div id="modalVinculo" class="mc-modal hidden" role="dialog" aria-modal="true" aria-labelledby="modalVinculoTitulo">
@@ -215,8 +270,17 @@ $conn->close();
 
     <!-- ================================================================= SCRIPTS -->
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <!-- PDF.js para renderização client-side de PDF -->
+    <script src="../assets/pdfjs/pdf.min.js"></script>
+    <script>
+        if (window.pdfjsLib) {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = '../assets/pdfjs/pdf.worker.min.js';
+        }
+    </script>
     <script src="script.js"></script>
     <script src="../script/sidebar.js"></script>
+    <script src="../script/controleSessao.js"></script>
+    <script src="../script/notificacoes.js"></script>
 </body>
 
 </html>

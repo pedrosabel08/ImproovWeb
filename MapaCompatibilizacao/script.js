@@ -24,6 +24,11 @@ const emptyState = document.getElementById("emptyState");
 const plantaOuter = document.getElementById("plantaOuter");
 const plantaWrapper = document.getElementById("plantaWrapper");
 const plantaImg = document.getElementById("plantaImg");
+const pdfCanvas = document.getElementById("pdfCanvas");
+const pdfNavEl = document.getElementById("pdfNav");
+const btnPdfPrev = document.getElementById("btnPdfPrev");
+const btnPdfNext = document.getElementById("btnPdfNext");
+const pdfPaginaInfo = document.getElementById("pdfPaginaInfo");
 const plantaSvg = document.getElementById("plantaSvg");
 const tooltip = document.getElementById("mcTooltip");
 
@@ -37,6 +42,9 @@ const zoomControls = document.getElementById("zoomControls");
 const btnZoomIn = document.getElementById("btnZoomIn");
 const btnZoomOut = document.getElementById("btnZoomOut");
 const btnZoomReset = document.getElementById("btnZoomReset");
+
+// Modal gerenciar plantas (wizard)
+const modalGerenciarPlantas = document.getElementById("modalGerenciarPlantas");
 
 // Modal novo vínculo
 const modalVinculo = document.getElementById("modalVinculo");
@@ -61,9 +69,21 @@ const btnDeletarMarcacao = document.getElementById("btnDeletarMarcacao");
    ESTADO GLOBAL
    ============================================================ */
 let obraId = 0;
-let plantaAtiva = null; // { id, versao, imagem_url }
-let marcacoes = []; // array de marcações renderizadas
+let plantaAtiva = null; // planta seleccionada no momento
+let plantasObra = []; // todas as plantas ativas da obra
+let marcacoes = []; // marcações da planta selecionada
+let marcacoesPorPlanta = {}; // cache: planta_id → marcacoes[]
 let imagensCache = []; // cache das imagens da obra
+
+// --- PDF viewer ---
+let pdfVirtualPages = []; // [{doc, pageNum}] — documento servido por servir_planta_pdf.php
+let pdfTotalPaginas = 0;  // total de páginas
+let pdfPaginaAtual = 1; // página virtual ativa (1-indexed)
+let _pendingPlantaId = null; // ID da planta a selecionar após carregarMapa()
+
+// --- Wizard Gerenciar Plantas ---
+let wizardPdfs = []; // PDFs disponíveis (buscar_pdfs_obra.php)
+let wizardSelecionadas = new Set(); // Set(idarquivo)
 
 // --- Modo edição ---
 let editMode = false;
@@ -111,9 +131,16 @@ function applyTransform() {
   plantaWrapper.style.transform = `translate(${panX}px, ${panY}px) scale(${zoomLevel})`;
 }
 
+/** Elemento ativo para coordenadas: canvas PDF ou img legada */
+function getActiveImageEl() {
+  return pdfCanvas && pdfCanvas.style.display !== "none"
+    ? pdfCanvas
+    : plantaImg;
+}
+
 /** Converte coordenadas do evento em porcentagem relativa à imagem (considera zoom) */
 function clientToPercent(clientX, clientY) {
-  const rect = plantaImg.getBoundingClientRect();
+  const rect = getActiveImageEl().getBoundingClientRect();
   const x = Math.max(
     0,
     Math.min(100, ((clientX - rect.left) / rect.width) * 100),
@@ -127,7 +154,7 @@ function clientToPercent(clientX, clientY) {
 
 /** Converte coordenada % para pixels na tela (útil para detecção de proximidade) */
 function percentToClient(xPct, yPct) {
-  const rect = plantaImg.getBoundingClientRect();
+  const rect = getActiveImageEl().getBoundingClientRect();
   return {
     x: rect.left + (xPct / 100) * rect.width,
     y: rect.top + (yPct / 100) * rect.height,
@@ -190,15 +217,19 @@ if (btnZoomReset) btnZoomReset.addEventListener("click", resetZoom);
 selectObra.addEventListener("change", () => {
   obraId = parseInt(selectObra.value, 10) || 0;
   plantaAtiva = null;
+  plantasObra = [];
   marcacoes = [];
+  marcacoesPorPlanta = {};
   imagensCache = [];
   drawingPoints = [];
+  pdfVirtualPages = [];
+  pdfTotalPaginas = 0;
+  pdfPaginaAtual = 1;
   if (previewGroup) {
     previewGroup.remove();
     previewGroup = null;
   }
   resetZoom();
-
   if (!obraId) {
     showEmpty();
     return;
@@ -214,11 +245,15 @@ function showEmpty() {
   avisoNaoMarcadas.classList.add("hidden");
   zoomControls?.classList.add("hidden");
   btnToggleEdicao?.classList.add("hidden");
+  pdfNavEl?.classList.add("hidden");
+  document.getElementById("mcTabs")?.classList.add("hidden");
+  const lg = document.getElementById("mcLegenda");
+  if (lg) lg.remove();
   desativarEdicao();
 }
 
 /* ============================================================
-   CARREGAR MAPA (planta + marcações)
+   CARREGAR MAPA (multi-planta)
    ============================================================ */
 async function carregarMapa() {
   try {
@@ -232,53 +267,39 @@ async function carregarMapa() {
       return;
     }
 
-    marcacoes = data.marcacoes ?? [];
+    const plantas = data.plantas ?? [];
+    const todasMarcacoes = data.marcacoes ?? [];
 
-    if (!data.planta) {
+    // Cache por planta
+    marcacoesPorPlanta = {};
+    todasMarcacoes.forEach((m) => {
+      if (!marcacoesPorPlanta[m.planta_id])
+        marcacoesPorPlanta[m.planta_id] = [];
+      marcacoesPorPlanta[m.planta_id].push(m);
+    });
+
+    if (plantas.length === 0) {
       showEmpty();
       emptyState.querySelector("p").textContent =
-        "Nenhuma planta cadastrada para esta obra. Envie uma imagem para começar.";
-      emptyState.classList.remove("hidden");
-      if (btnToggleEdicao) btnToggleEdicao.classList.add("hidden");
-      if (POD_EDITAR) {
-        btnUploadPlanta?.classList.remove("hidden");
-      }
+        'Nenhuma planta cadastrada para esta obra. Clique em "Nova Planta" para começar.';
+      if (POD_EDITAR) btnUploadPlanta?.classList.remove("hidden");
       return;
     }
 
-    plantaAtiva = data.planta;
+    plantasObra = plantas;
 
-    // Carregar imagem — montar URL absoluta usando a base da aplicação
-    // evita perder o segmento /ImproovWeb quando o app não está na raiz do host
-    const appBase = (window.IMPROOV_APP_BASE || '').replace(/\/$/, '');
-    const imagePath = plantaAtiva.imagem_url.replace(/^\//, '');
-    plantaImg.src = `${location.origin}${appBase}/${imagePath}`;
-    plantaImg.onload = () => {
-      emptyState.classList.add("hidden");
-      plantaOuter.classList.remove("hidden");
-      zoomControls?.classList.remove("hidden");
-      if (POD_EDITAR) btnToggleEdicao?.classList.remove("hidden");
-      renderMarcacoes();
-    };
-    plantaImg.onerror = () => {
-      toast("Falha ao carregar imagem da planta.", false);
-      showEmpty();
-    };
+    // Renderizar abas
+    renderAbas();
 
-    // Info versão
+    const keepId =
+      _pendingPlantaId ||
+      (plantaAtiva && plantasObra.find((p) => p.id === plantaAtiva.id)
+        ? plantaAtiva.id
+        : plantasObra[0].id);
+    _pendingPlantaId = null;
+    await selecionarPlanta(keepId, false);
+
     plantaInfo.classList.remove("hidden");
-    plantaVersao.textContent = `Versão ${plantaAtiva.versao}`;
-
-    // Progresso
-    if (data.total_marcacoes > 0) {
-      progressoWrap.classList.remove("hidden");
-      progressoBar.style.width = `${data.percentual_conclusao}%`;
-      progressoTexto.textContent = `${data.finalizadas} / ${data.total_marcacoes} finalizadas (${data.percentual_conclusao}%)`;
-    } else {
-      progressoWrap.classList.add("hidden");
-    }
-
-    // Carregar imagens para o select (em paralelo, sem esperar)
     carregarImagens();
   } catch (err) {
     console.error(err);
@@ -286,6 +307,171 @@ async function carregarMapa() {
     showEmpty();
   }
 }
+
+/** Renderiza as abas de navegação entre plantas */
+function renderAbas() {
+  const mcTabs = document.getElementById("mcTabs");
+  if (!mcTabs) return;
+  mcTabs.innerHTML = "";
+
+  if (plantasObra.length <= 1) {
+    mcTabs.classList.add("hidden");
+    return;
+  }
+  mcTabs.classList.remove("hidden");
+
+  plantasObra.forEach((p) => {
+    const btn = document.createElement("button");
+    btn.className = "mc-tab" + (plantaAtiva?.id === p.id ? " active" : "");
+    const tabLabel = p.arquivo_nome || p.imagem_nome || `Planta v${p.versao}`;
+    btn.textContent = tabLabel;
+    btn.title = tabLabel;
+    btn.addEventListener("click", () => selecionarPlanta(p.id));
+    mcTabs.appendChild(btn);
+  });
+}
+
+/** Seleciona uma planta pela aba e carrega seu conteúdo (PDF nativo ou imagem legada) */
+async function selecionarPlanta(plantaId, atualizarAbas = true) {
+  plantaAtiva = plantasObra.find((p) => p.id === plantaId) || plantasObra[0];
+  if (!plantaAtiva) return;
+
+  marcacoes = marcacoesPorPlanta[plantaAtiva.id] || [];
+
+  // Progresso desta planta
+  const total = marcacoes.length;
+  const finalizadas = marcacoes.filter((m) => m.cor === "verde").length;
+  if (total > 0) {
+    progressoWrap.classList.remove("hidden");
+    const pct = Math.round((finalizadas / total) * 100);
+    progressoBar.style.width = `${pct}%`;
+    progressoTexto.textContent = `${finalizadas} / ${total} finalizadas (${pct}%)`;
+  } else {
+    progressoWrap.classList.add("hidden");
+  }
+
+  const tabLabel = plantaAtiva.arquivo_nome || plantaAtiva.imagem_nome;
+  plantaVersao.textContent = tabLabel
+    ? `${tabLabel} — v${plantaAtiva.versao}`
+    : `Versão ${plantaAtiva.versao}`;
+
+  if (atualizarAbas) renderAbas();
+
+  const usaPdf = !!(plantaAtiva.arquivo_id || plantaAtiva.arquivo_ids_json);
+  if (usaPdf) {
+    await carregarPdfPlanta();
+  } else {
+    await carregarImagemLegada();
+  }
+}
+
+/** Carrega o PDF da planta ativa via PDF.js — um único documento (1 arquivo ou merge server-side) */
+async function carregarPdfPlanta() {
+  if (!window.pdfjsLib) {
+    toast("PDF.js não carregado.", false);
+    return;
+  }
+
+  pdfVirtualPages = [];
+  pdfTotalPaginas = 0;
+  pdfPaginaAtual  = 1;
+
+  try {
+    // servir_planta_pdf.php faz o merge server-side quando necessário
+    const url = `${BASE_URL}/servir_planta_pdf.php?planta_id=${plantaAtiva.id}`;
+    const doc  = await pdfjsLib.getDocument({ url }).promise;
+
+    // Preencher virtual pages a partir do documento único
+    for (let pg = 1; pg <= doc.numPages; pg++) {
+      pdfVirtualPages.push({ doc, pageNum: pg });
+    }
+    pdfTotalPaginas = pdfVirtualPages.length;
+
+    plantaImg.style.display = "none";
+    pdfCanvas.style.display = "block";
+    pdfNavEl?.classList.toggle("hidden", pdfTotalPaginas <= 1);
+
+    emptyState.classList.add("hidden");
+    plantaOuter.classList.remove("hidden");
+    zoomControls?.classList.remove("hidden");
+    if (POD_EDITAR) btnToggleEdicao?.classList.remove("hidden");
+
+    await renderizarPaginaPDF(1);
+  } catch (err) {
+    console.error(err);
+    toast("Falha ao carregar PDF da planta.", false);
+    showEmpty();
+  }
+}
+
+/** Renderiza a página virtual N no pdfCanvas e atualiza as marcações */
+async function renderizarPaginaPDF(virtualPage) {
+  if (!pdfVirtualPages.length) return;
+  const idx = Math.max(
+    0,
+    Math.min(virtualPage - 1, pdfVirtualPages.length - 1),
+  );
+  const { doc, pageNum } = pdfVirtualPages[idx];
+  pdfPaginaAtual = idx + 1;
+
+  try {
+    const page = await doc.getPage(pageNum);
+    const viewport = page.getViewport({ scale: 2 }); // 2× para boa nitidez
+    pdfCanvas.width = viewport.width;
+    pdfCanvas.height = viewport.height;
+    const ctx = pdfCanvas.getContext("2d");
+    await page.render({ canvasContext: ctx, viewport }).promise;
+
+    if (pdfPaginaInfo)
+      pdfPaginaInfo.textContent = `Página ${pdfPaginaAtual} / ${pdfTotalPaginas}`;
+    if (btnPdfPrev) btnPdfPrev.disabled = pdfPaginaAtual <= 1;
+    if (btnPdfNext) btnPdfNext.disabled = pdfPaginaAtual >= pdfTotalPaginas;
+
+    renderMarcacoes();
+  } catch (err) {
+    console.error("Erro ao renderizar página PDF:", err);
+    toast("Erro ao renderizar página.", false);
+  }
+}
+
+/** Carrega imagem legada (imagem_path) para plantas sem arquivo_id */
+async function carregarImagemLegada() {
+  return new Promise((resolve) => {
+    pdfVirtualPages = [];
+    pdfTotalPaginas = 0;
+    pdfPaginaAtual = 1;
+    pdfCanvas.style.display = "none";
+    plantaImg.style.display = "block";
+    pdfNavEl?.classList.add("hidden");
+
+    const appBase = (window.IMPROOV_APP_BASE || "").replace(/\/$/, "");
+    const imagPath = plantaAtiva.imagem_url?.replace(/^\//, "") || "";
+    plantaImg.src = `${location.origin}${appBase}/${imagPath}`;
+    plantaImg.onload = () => {
+      emptyState.classList.add("hidden");
+      plantaOuter.classList.remove("hidden");
+      zoomControls?.classList.remove("hidden");
+      if (POD_EDITAR) btnToggleEdicao?.classList.remove("hidden");
+      renderMarcacoes();
+      resolve();
+    };
+    plantaImg.onerror = () => {
+      toast("Falha ao carregar imagem da planta.", false);
+      showEmpty();
+      resolve();
+    };
+  });
+}
+
+/* ============================================================
+   NAVEGAÇÃO DE PÁGINAS PDF
+   ============================================================ */
+btnPdfPrev?.addEventListener("click", () => {
+  if (pdfPaginaAtual > 1) renderizarPaginaPDF(pdfPaginaAtual - 1);
+});
+btnPdfNext?.addEventListener("click", () => {
+  if (pdfPaginaAtual < pdfTotalPaginas) renderizarPaginaPDF(pdfPaginaAtual + 1);
+});
 
 async function carregarImagens() {
   try {
@@ -339,7 +525,20 @@ function renderMarcacoes() {
   // Remove marcações antigas (mantém previewGroup se existir)
   plantaSvg.querySelectorAll(".mc-poligono").forEach((el) => el.remove());
 
+  // Remove legenda antiga
+  const oldLegenda = document.getElementById("mcLegenda");
+  if (oldLegenda) oldLegenda.remove();
+
   marcacoes.forEach((m) => {
+    // Filtrar marcações de outras páginas quando em modo PDF
+    if (
+      pdfVirtualPages.length > 0 &&
+      m.pagina_pdf !== null &&
+      m.pagina_pdf !== undefined &&
+      m.pagina_pdf !== pdfPaginaAtual
+    )
+      return;
+
     let pontos;
     try {
       pontos = JSON.parse(m.coordenadas_json);
@@ -367,31 +566,145 @@ function renderMarcacoes() {
       y: centro[1],
       "text-anchor": "middle",
       "dominant-baseline": "middle",
-      "font-size": "2.2",
+      "font-size": "1.6px",
       fill: "#1a252f",
       stroke: "#fff",
-      "stroke-width": "0.5",
+      "stroke-width": "0.35",
       "paint-order": "stroke",
       "pointer-events": "none",
+      // use the same font as the app
+      "font-family": "'Inter', Arial, sans-serif",
+      "font-weight": "600",
     });
     text.textContent = m.nome_ambiente;
     g.appendChild(text);
 
+    // compensate SVG non-uniform scaling (preserveAspectRatio="none") so
+    // text doesn't appear stretched: scale horizontally by svgHeight/svgWidth
+    try {
+      const r = plantaSvg.getBoundingClientRect();
+      if (r.width > 0 && r.height > 0) {
+        const comp = r.height / r.width; // scaleX compensation factor
+        // translate to center, scale horizontally, translate back
+        const tx = centro[0];
+        const ty = centro[1];
+        text.setAttribute(
+          "transform",
+          `translate(${tx},${ty}) scale(${comp},1) translate(${-tx},${-ty})`,
+        );
+      }
+    } catch (e) {
+      // ignore if measurement fails
+    }
+
+    // create a subtle rounded background behind the label for readability
+    // must append group to DOM first to measure text bbox
+    plantaSvg.appendChild(g);
+    try {
+      const bbox = text.getBBox();
+      const padX = 0.6;
+      const padY = 0.35;
+      const rect = svgNs("rect", {
+        x: bbox.x - padX,
+        y: bbox.y - padY,
+        width: Math.max(8, bbox.width + padX * 2),
+        height: bbox.height + padY * 2,
+        rx: "0.4",
+        ry: "0.4",
+        fill: "rgba(255,255,255,0.92)",
+        stroke: "rgba(0,0,0,0.05)",
+      });
+      // insert rect before text
+      g.insertBefore(rect, text);
+    } catch (err) {
+      // fallback: already appended text, nothing else to do
+    }
     // Interatividade
     g.addEventListener("mouseenter", (e) => mostrarTooltip(e, m));
     g.addEventListener("mousemove", (e) => moverTooltip(e));
     g.addEventListener("mouseleave", () => esconderTooltip());
-    if (POD_EDITAR) {
-      g.addEventListener("click", (e) => {
-        if (editMode) {
-          e.stopPropagation();
-          abrirModalEditar(m);
-        }
-      });
-    }
-
-    plantaSvg.appendChild(g);
+    // Abrir modal ao clicar na marcação quando o usuário tiver permissão
+    g.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (POD_EDITAR) {
+        abrirModalEditar(m, e.clientX, e.clientY);
+      }
+    });
   });
+
+  // depois de desenhar tudo, renderiza a legenda clicável
+  renderLegenda();
+}
+
+/** Foca / centraliza a planta na marcação (zoom + pan) */
+function focusOnMarcacao(m) {
+  let pontos;
+  try {
+    pontos = JSON.parse(m.coordenadas_json);
+  } catch {
+    return;
+  }
+  const centro = calcCentroide(pontos);
+
+  // coordenadas do centro na tela (considerando transform atual)
+  const centroClient = percentToClient(centro[0], centro[1]);
+
+  // escolher zoom alvo
+  const targetZoom = Math.min(3, Math.max(1.3, 2));
+
+  // zoom em torno do centro (mantém o centro no mesmo ponto da tela)
+  zoomAt(centroClient.x, centroClient.y, targetZoom / zoomLevel);
+
+  // reposicionar para colocar o centro no centro do viewport
+  const newCentro = percentToClient(centro[0], centro[1]);
+  const outer = plantaOuter.getBoundingClientRect();
+  const centerOutX = outer.left + outer.width / 2;
+  const centerOutY = outer.top + outer.height / 2;
+  const dx = centerOutX - newCentro.x;
+  const dy = centerOutY - newCentro.y;
+  panX += dx;
+  panY += dy;
+  applyTransform();
+}
+
+/** Renderiza legenda de ambientes abaixo da barra de progresso */
+function renderLegenda() {
+  // remove antiga
+  const existing = document.getElementById("mcLegenda");
+  if (existing) existing.remove();
+
+  if (!marcacoes || marcacoes.length === 0) return;
+
+  const legenda = document.createElement("div");
+  legenda.id = "mcLegenda";
+  legenda.className = "mc-legenda";
+
+  // criar item para cada marcação (use ordem original)
+  marcacoes.forEach((m) => {
+    const item = document.createElement("div");
+    item.className = "mc-legenda-item";
+    item.style.cursor = "pointer";
+    item.title = m.nome_ambiente;
+    item.addEventListener("click", () => focusOnMarcacao(m));
+
+    const corBox = document.createElement("span");
+    corBox.className = "mc-legenda-cor";
+    corBox.style.background = corParaStroke(m.cor);
+
+    const label = document.createElement("span");
+    label.style.fontSize = "13px";
+    label.style.color = "#1a252f";
+    label.textContent = m.nome_ambiente;
+
+    item.appendChild(corBox);
+    item.appendChild(label);
+    legenda.appendChild(item);
+  });
+
+  // inserir logo após a barra de progresso
+  if (progressoWrap && progressoWrap.parentNode) {
+    progressoWrap.parentNode.insertBefore(legenda, progressoWrap.nextSibling);
+  }
 }
 
 function calcCentroide(pontos) {
@@ -442,28 +755,24 @@ function escapeHtml(s) {
 }
 
 /* ============================================================
-   UPLOAD DE PLANTA
+   UPLOAD DE PLANTA — agora abre o wizard
    ============================================================ */
 btnUploadPlanta?.addEventListener("click", () => {
   if (!obraId) {
-    toast("Selecione uma obra antes de enviar a planta.", false);
+    toast("Selecione uma obra antes.", false);
     return;
   }
-  inputPlanta.click();
+  abrirWizard();
 });
 
+// input legado (imagem direta) — mantido por compatibilidade
 inputPlanta?.addEventListener("change", async () => {
   const file = inputPlanta.files[0];
   if (!file) return;
-
   const fd = new FormData();
   fd.append("obra_id", obraId);
   fd.append("planta", file);
-
   btnUploadPlanta.disabled = true;
-  btnUploadPlanta.innerHTML =
-    '<i class="fa-solid fa-spinner fa-spin"></i> Enviando…';
-
   try {
     const resp = await fetch(`${BASE_URL}/upload_planta.php`, {
       method: "POST",
@@ -471,17 +780,13 @@ inputPlanta?.addEventListener("change", async () => {
     });
     const data = await resp.json();
     if (data.sucesso) {
-      toast(`Planta v${data.versao} enviada com sucesso!`);
+      toast(`Planta v${data.versao} enviada!`);
       await carregarMapa();
-    } else {
-      toast(data.erro || "Erro ao enviar planta.", false);
-    }
+    } else toast(data.erro || "Erro ao enviar planta.", false);
   } catch {
-    toast("Falha de comunicação ao enviar planta.", false);
+    toast("Falha de comunicação.", false);
   } finally {
     btnUploadPlanta.disabled = false;
-    btnUploadPlanta.innerHTML =
-      '<i class="fa-solid fa-upload"></i> Nova Planta';
     inputPlanta.value = "";
   }
 });
@@ -649,6 +954,18 @@ function abrirModal(modal) {
 function fecharModalEl(modal) {
   modal.classList.add("hidden");
   document.body.style.overflow = "";
+  // cleanup any inline positioning applied to modalEditar
+  if (modal === modalEditar) {
+    try {
+      const content = modalEditar.querySelector(".mc-modal-content");
+      if (content) {
+        content.style.position = "";
+        content.style.left = "";
+        content.style.top = "";
+      }
+      modalEditar.style.alignItems = "";
+    } catch (e) {}
+  }
 }
 
 btnFecharModal?.addEventListener("click", () => {
@@ -697,6 +1014,7 @@ btnSalvarVinculo?.addEventListener("click", async () => {
     nome_ambiente: nome,
     imagem_id: imagemId,
     coordenadas_json: JSON.stringify(drawingPoints),
+    pagina_pdf: pdfVirtualPages.length > 0 ? pdfPaginaAtual : null,
   };
 
   btnSalvarVinculo.disabled = true;
@@ -725,12 +1043,67 @@ btnSalvarVinculo?.addEventListener("click", async () => {
 /* ============================================================
    MODAL EDITAR MARCAÇÃO
    ============================================================ */
-function abrirModalEditar(m) {
+function abrirModalEditar(m, clientX, clientY) {
   editarMarcacaoId.value = m.id;
   editarNomeAmbiente.value = m.nome_ambiente;
   popularSelectImagens(editarSelectImagem);
   editarSelectImagem.value = m.imagem_id ?? "";
+
+  // open modal first
   abrirModal(modalEditar);
+
+  // position modal content near the click / marker if coords provided
+  try {
+    const content = modalEditar.querySelector(".mc-modal-content");
+    if (!content) return;
+
+    // reset any previous inline positioning
+    content.style.position = "";
+    content.style.left = "";
+    content.style.top = "";
+    content.style.right = "";
+    content.style.transform = "";
+
+    // if no coords given, try to position at the centroid of the marker
+    let px = clientX,
+      py = clientY;
+    if (typeof px !== "number" || typeof py !== "number") {
+      const atual = marcacoes.find((mm) => mm.id === m.id);
+      if (atual) {
+        try {
+          const pts = JSON.parse(atual.coordenadas_json);
+          const centro = calcCentroide(pts);
+          const c = percentToClient(centro[0], centro[1]);
+          px = c.x;
+          py = c.y;
+        } catch (e) {}
+      }
+    }
+
+    // measure after visible
+    const rect = content.getBoundingClientRect();
+    const margin = 12;
+    let left = px + 90; // default to right side
+    let top = py - rect.height / 2;
+
+    // choose left side if not enough space on right
+    if (left + rect.width + margin > window.innerWidth) {
+      left = px - rect.width - 90;
+    }
+    // clamp top
+    if (top < margin) top = margin;
+    if (top + rect.height + margin > window.innerHeight)
+      top = window.innerHeight - rect.height - margin;
+
+    // apply absolute positioning
+    content.style.position = "absolute";
+    content.style.left = `${Math.max(8, left)}px`;
+    content.style.top = `${Math.max(8, top)}px`;
+    // ensure overlay still covers screen but the content sits where we want
+    modalEditar.style.alignItems = "flex-start";
+  } catch (err) {
+    // ignore positioning errors
+  }
 }
 
 btnFecharModalEditar?.addEventListener("click", () =>
@@ -762,6 +1135,7 @@ btnSalvarEditar?.addEventListener("click", async () => {
     nome_ambiente: nome,
     imagem_id: imagemId,
     coordenadas_json: atual.coordenadas_json,
+    pagina_pdf: pdfVirtualPages.length > 0 ? pdfPaginaAtual : null,
   };
 
   btnSalvarEditar.disabled = true;
@@ -808,6 +1182,184 @@ btnDeletarMarcacao?.addEventListener("click", async () => {
   } catch {
     toast("Falha de comunicação.", false);
   }
+});
+
+/* ============================================================
+   WIZARD — GERENCIAR PLANTAS (PDF NATIVO)
+   ============================================================ */
+
+/** Abre o wizard e carrega a lista de PDFs da obra */
+async function abrirWizard() {
+  wizardPdfs = [];
+  wizardSelecionadas = new Set();
+
+  // Reset visual
+  const lista = document.getElementById("listaPdfsObra");
+  if (lista)
+    lista.innerHTML =
+      '<p class="mc-wizard-loading"><i class="fa-solid fa-spinner fa-spin"></i> Carregando…</p>';
+  const btnCriar = document.getElementById("btnWizardCriar");
+  if (btnCriar) btnCriar.disabled = true;
+  const unificaWrap = document.getElementById("wizardUnificarWrap");
+  if (unificaWrap) unificaWrap.classList.add("hidden");
+  const unificaCheck = document.getElementById("wizardUnificarCheck");
+  if (unificaCheck) {
+    unificaCheck.checked = false;
+    unificaCheck.onchange = atualizarWizardState;
+  }
+
+  abrirModal(modalGerenciarPlantas);
+
+  try {
+    const resp = await fetch(
+      `${BASE_URL}/buscar_pdfs_obra.php?obra_id=${obraId}`,
+    );
+    const data = await resp.json();
+    if (!data.sucesso) {
+      toast(data.erro || "Erro ao carregar PDFs.", false);
+      fecharModalEl(modalGerenciarPlantas);
+      return;
+    }
+    wizardPdfs = data.pdfs || [];
+  } catch {
+    toast("Falha de comunicação.", false);
+    fecharModalEl(modalGerenciarPlantas);
+    return;
+  }
+  renderWizardPdfs();
+}
+
+/** Renderiza a lista de PDFs no modal */
+function renderWizardPdfs() {
+  const lista = document.getElementById("listaPdfsObra");
+  if (!lista) return;
+  lista.innerHTML = "";
+
+  if (wizardPdfs.length === 0) {
+    lista.innerHTML =
+      '<p style="color:#888;text-align:center;padding:20px">Nenhum PDF de Planta Humanizada Arquitetônica cadastrado para esta obra.</p>';
+    const btnCriar = document.getElementById("btnWizardCriar");
+    if (btnCriar) btnCriar.disabled = true;
+    return;
+  }
+
+  wizardPdfs.forEach((pdf) => {
+    const item = document.createElement("label");
+    item.className = "mc-wizard-plant-item";
+
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.value = pdf.id;
+    cb.checked = wizardSelecionadas.has(pdf.id);
+    cb.addEventListener("change", () => {
+      if (cb.checked) wizardSelecionadas.add(pdf.id);
+      else wizardSelecionadas.delete(pdf.id);
+      atualizarWizardState();
+    });
+
+    const nome = document.createElement("span");
+    nome.className = "mc-wizard-plant-nome";
+    nome.textContent = pdf.nome;
+
+    item.append(cb, nome);
+    lista.appendChild(item);
+  });
+
+  atualizarWizardState();
+}
+
+/** Atualiza botão e toggle "Unificar" conforme seleção */
+function atualizarWizardState() {
+  const n = wizardSelecionadas.size;
+  const unificaWrap = document.getElementById("wizardUnificarWrap");
+  const unificaCheck = document.getElementById("wizardUnificarCheck");
+  const btnCriar = document.getElementById("btnWizardCriar");
+
+  if (unificaWrap) unificaWrap.classList.toggle("hidden", n <= 1);
+  if (unificaCheck && n <= 1) unificaCheck.checked = false;
+
+  const podecriar = n === 1 || (n >= 2 && unificaCheck?.checked);
+  if (btnCriar) {
+    btnCriar.disabled = !podecriar;
+    if (n === 0) {
+      btnCriar.innerHTML = '<i class="fa-solid fa-plus"></i> Criar Planta';
+    } else if (n === 1) {
+      btnCriar.innerHTML =
+        '<i class="fa-solid fa-plus"></i> Criar Planta (1 PDF)';
+    } else {
+      const label = unificaCheck?.checked
+        ? "Criar Planta Unificada"
+        : "Criar Planta Unificada";
+      btnCriar.innerHTML = `<i class="fa-solid fa-layer-group"></i> ${label} (${n} PDFs)`;
+    }
+  }
+}
+
+/** Cria a planta com o(s) PDF(s) selecionado(s) */
+async function criarPlantaWizard() {
+  const n = wizardSelecionadas.size;
+  if (n === 0) {
+    toast("Selecione ao menos um PDF.", false);
+    return;
+  }
+
+  // Guarda extra: não permite múltiplos sem unificar marcado
+  if (n >= 2) {
+    const unificaCheck = document.getElementById("wizardUnificarCheck");
+    if (!unificaCheck?.checked) {
+      toast('Marque "Unificar PDFs" para usar múltiplos arquivos.', false);
+      return;
+    }
+  }
+
+  const ids = [...wizardSelecionadas];
+  const payload = { obra_id: obraId };
+  if (n === 1) {
+    payload.arquivo_id = ids[0];
+  } else {
+    payload.arquivo_ids_json = JSON.stringify(ids);
+  }
+
+  const btnCriar = document.getElementById("btnWizardCriar");
+  if (btnCriar) {
+    btnCriar.disabled = true;
+    btnCriar.textContent = n >= 2 ? "Unificando PDFs…" : "Criando planta…";
+  }
+
+  try {
+    const resp = await fetch(`${BASE_URL}/criar_planta_pdf.php`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await resp.json();
+    if (data.sucesso) {
+      toast(`Planta criada (v${data.versao})!`);
+      _pendingPlantaId = data.planta_id;
+      fecharModalEl(modalGerenciarPlantas);
+      await carregarMapa();
+    } else {
+      toast(data.erro || "Erro ao criar planta.", false);
+      if (btnCriar) { btnCriar.disabled = false; btnCriar.textContent = "Criar Planta"; }
+    }
+  } catch {
+    toast("Falha de comunicação.", false);
+    if (btnCriar) { btnCriar.disabled = false; btnCriar.textContent = "Criar Planta"; }
+  }
+}
+
+// ---------- Botões do wizard ----------
+document
+  .getElementById("btnFecharWizard")
+  ?.addEventListener("click", () => fecharModalEl(modalGerenciarPlantas));
+document
+  .getElementById("btnWizardCancelar")
+  ?.addEventListener("click", () => fecharModalEl(modalGerenciarPlantas));
+document
+  .getElementById("btnWizardCriar")
+  ?.addEventListener("click", criarPlantaWizard);
+modalGerenciarPlantas?.addEventListener("click", (e) => {
+  if (e.target === modalGerenciarPlantas) fecharModalEl(modalGerenciarPlantas);
 });
 
 /* ============================================================

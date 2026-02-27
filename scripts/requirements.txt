@@ -1,0 +1,8 @@
+# Dependências do diretório scripts/
+# Instale com:  pip install -r requirements.txt
+
+# merge_pdfs_obra.py
+pypdf>=4.0.0
+paramiko>=3.0.0
+mysql-connector-python>=8.0.0
+python-dotenv>=1.0.0

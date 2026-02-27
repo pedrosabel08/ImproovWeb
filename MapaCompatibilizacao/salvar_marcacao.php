@@ -9,6 +9,7 @@
  *   nome_ambiente    (string)
  *   imagem_id        (int|null)
  *   coordenadas_json (string JSON)
+ *   pagina_pdf       (int|null)  — página do PDF a que a marcação pertence
  */
 
 require_once __DIR__ . '/../config/session_bootstrap.php';
@@ -44,6 +45,9 @@ $imagemId = isset($input['imagem_id']) && $input['imagem_id'] !== '' && $input['
     ? (int) $input['imagem_id']
     : null;
 $coordenadas = isset($input['coordenadas_json']) ? $input['coordenadas_json'] : '';
+$paginaPdf   = isset($input['pagina_pdf']) && $input['pagina_pdf'] !== '' && $input['pagina_pdf'] !== null
+    ? (int) $input['pagina_pdf']
+    : null;
 $criadoPor = (int) ($_SESSION['idcolaborador'] ?? 0);
 
 // --- Validações ---
@@ -87,15 +91,16 @@ if (!$plantaExiste) {
 // --- Upsert ---
 $sql = "
     INSERT INTO planta_marcacoes
-        (planta_id, nome_ambiente, imagem_id, coordenadas_json, criado_por)
-    VALUES (?, ?, ?, ?, ?)
+        (planta_id, nome_ambiente, imagem_id, coordenadas_json, pagina_pdf, criado_por)
+    VALUES (?, ?, ?, ?, ?, ?)
     ON DUPLICATE KEY UPDATE
         imagem_id        = VALUES(imagem_id),
-        coordenadas_json = VALUES(coordenadas_json)
+        coordenadas_json = VALUES(coordenadas_json),
+        pagina_pdf       = VALUES(pagina_pdf)
 ";
 
 $stmtUpsert = $conn->prepare($sql);
-$stmtUpsert->bind_param('isisi', $plantaId, $nomeAmbiente, $imagemId, $coordenadas, $criadoPor);
+$stmtUpsert->bind_param('isisii', $plantaId, $nomeAmbiente, $imagemId, $coordenadas, $paginaPdf, $criadoPor);
 
 if (!$stmtUpsert->execute()) {
     $erro = $stmtUpsert->error;

@@ -1,16 +1,17 @@
 <?php
 /**
  * buscar_marcacoes.php
- * Retorna a planta ativa de uma obra com todas as suas marcações
- * e a cor calculada dinamicamente com base no status da funcao de Finalização.
+ * Retorna TODAS as plantas ativas de uma obra (suporte multi-planta)
+ * com todas as marcações de cada planta e a cor calculada dinamicamente.
  *
  * GET params:
  *   obra_id (int, obrigatório)
  *
- * Regra de cor (não salva no banco):
- *   funcao_imagem.status = 'Finalizado'  → "verde"
- *   funcao_imagem existe mas não Finalizado → "amarelo"
- *   sem imagem vinculada OU sem funcao_imagem de Finalização → "branco"
+ * Regra de cor:
+ *   sem imagem vinculada              → "branco"
+ *   funcao_imagem.status = Finalizado → "verde"
+ *   funcao_imagem existe mas não fin. → "amarelo"
+ *   imagem vinculada sem funcao fin.  → "amarelo" (Em andamento)
  */
 
 require_once __DIR__ . '/../config/session_bootstrap.php';
@@ -32,43 +33,61 @@ if ($obraId <= 0) {
 
 $conn = conectarBanco();
 
-// --- Buscar planta ativa ---
-$stmtPlanta = $conn->prepare(
-    "SELECT id, versao, imagem_path
-     FROM planta_compatibilizacao
-     WHERE obra_id = ? AND ativa = 1
-     LIMIT 1"
+// --- Buscar TODAS as plantas ativas da obra ---
+$stmtPlantas = $conn->prepare(
+    "SELECT pc.id, pc.versao, pc.imagem_path, pc.imagem_id,
+            pc.arquivo_id, pc.arquivo_ids_json, pc.pdf_unificado_path,
+            ico.imagem_nome,
+            a.nome_original AS arquivo_nome
+     FROM planta_compatibilizacao pc
+     LEFT JOIN imagens_cliente_obra ico
+            ON ico.idimagens_cliente_obra = pc.imagem_id
+     LEFT JOIN arquivos a
+            ON a.idarquivo = pc.arquivo_id
+     WHERE pc.obra_id = ? AND pc.ativa = 1
+     ORDER BY ico.imagem_nome ASC, pc.versao ASC"
 );
-$stmtPlanta->bind_param('i', $obraId);
-$stmtPlanta->execute();
-$planta = $stmtPlanta->get_result()->fetch_assoc();
-$stmtPlanta->close();
+$stmtPlantas->bind_param('i', $obraId);
+$stmtPlantas->execute();
+$plantasRows = $stmtPlantas->get_result()->fetch_all(MYSQLI_ASSOC);
+$stmtPlantas->close();
 
-if (!$planta) {
+if (empty($plantasRows)) {
     $conn->close();
-    echo json_encode([
-        'sucesso' => true,
-        'planta' => null,
-        'marcacoes' => [],
-        'total_marcacoes' => 0,
-        'finalizadas' => 0,
-        'percentual_conclusao' => 0,
-    ]);
+    echo json_encode(['sucesso' => true, 'plantas' => [], 'marcacoes' => []]);
     exit();
 }
 
-$plantaId = (int) $planta['id'];
+// Montar array de plantas com imagem_url
+$plantas = [];
+$plantaIds = [];
+foreach ($plantasRows as $p) {
+    $plantas[] = [
+        'id'               => (int) $p['id'],
+        'versao'           => (int) $p['versao'],
+        'imagem_url'       => $p['imagem_path'],
+        'imagem_id'        => $p['imagem_id'] ? (int) $p['imagem_id'] : null,
+        'imagem_nome'      => $p['imagem_nome'] ?? null,
+        'arquivo_id'          => $p['arquivo_id'] ? (int) $p['arquivo_id'] : null,
+        'arquivo_ids_json'    => $p['arquivo_ids_json'] ?? null,
+        'pdf_unificado_path'  => $p['pdf_unificado_path'] ?? null,
+        'arquivo_nome'        => $p['arquivo_nome'] ?? null,
+    ];
+    $plantaIds[] = (int) $p['id'];
+}
 
-// --- Buscar marcações com status da funcao de Finalização ---
-// Usa subquery correlacionada para evitar linhas duplicadas quando uma imagem
-// tem múltiplos registros em funcao_imagem.
+// --- Buscar marcações de todas as plantas ---
+$in    = implode(',', array_fill(0, count($plantaIds), '?'));
+$types = str_repeat('i', count($plantaIds));
+
 $sql = "
     SELECT
         pm.id,
+        pm.planta_id,
         pm.nome_ambiente,
         pm.imagem_id,
         pm.coordenadas_json,
-        pm.criado_por,
+        pm.pagina_pdf,
         pm.criado_em,
         ico.imagem_nome,
         (
@@ -83,64 +102,48 @@ $sql = "
     FROM planta_marcacoes pm
     LEFT JOIN imagens_cliente_obra ico
            ON ico.idimagens_cliente_obra = pm.imagem_id
-    WHERE pm.planta_id = ?
-    ORDER BY pm.criado_em ASC
+    WHERE pm.planta_id IN ($in)
+    ORDER BY pm.planta_id ASC, pm.criado_em ASC
 ";
 
-$stmtMarcacoes = $conn->prepare($sql);
-$stmtMarcacoes->bind_param('i', $plantaId);
-$stmtMarcacoes->execute();
-$rows = $stmtMarcacoes->get_result()->fetch_all(MYSQLI_ASSOC);
-$stmtMarcacoes->close();
+$stmtM = $conn->prepare($sql);
+$stmtM->bind_param($types, ...$plantaIds);
+$stmtM->execute();
+$rows = $stmtM->get_result()->fetch_all(MYSQLI_ASSOC);
+$stmtM->close();
 $conn->close();
 
 // --- Calcular cor para cada marcação ---
 $marcacoes = [];
-$finalizadas = 0;
-
 foreach ($rows as $row) {
-    $statusFinalizacao = $row['status_finalizacao'];
+    $sf = $row['status_finalizacao'];
 
     if (empty($row['imagem_id'])) {
-        $cor = 'branco';
-        $statusTexto = 'Sem imagem vinculada';
-    } elseif ($statusFinalizacao === 'Finalizado') {
-        $cor = 'verde';
-        $statusTexto = 'Finalizado';
-        $finalizadas++;
-    } elseif ($statusFinalizacao !== null) {
-        $cor = 'amarelo';
-        $statusTexto = $statusFinalizacao;
+        $cor = 'branco'; $statusTexto = 'Sem imagem vinculada';
+    } elseif ($sf === 'Finalizado') {
+        $cor = 'verde';  $statusTexto = 'Finalizado';
+    } elseif ($sf !== null) {
+        $cor = 'amarelo'; $statusTexto = $sf;
     } else {
-        // Imagem vinculada mas sem funcao de Finalização atribuída
-        $cor = 'amarelo';
-        $statusTexto = 'Em andamento';
+        $cor = 'amarelo'; $statusTexto = 'Em andamento';
     }
 
     $marcacoes[] = [
-        'id' => (int) $row['id'],
-        'nome_ambiente' => $row['nome_ambiente'],
-        'imagem_id' => $row['imagem_id'] ? (int) $row['imagem_id'] : null,
-        'imagem_nome' => $row['imagem_nome'],
+        'id'               => (int) $row['id'],
+        'planta_id'        => (int) $row['planta_id'],
+        'nome_ambiente'    => $row['nome_ambiente'],
+        'imagem_id'        => $row['imagem_id'] ? (int) $row['imagem_id'] : null,
+        'imagem_nome'      => $row['imagem_nome'],
         'coordenadas_json' => $row['coordenadas_json'],
-        'criado_em' => $row['criado_em'],
-        'cor' => $cor,
-        'status_texto' => $statusTexto,
+        'pagina_pdf'       => $row['pagina_pdf'] !== null ? (int) $row['pagina_pdf'] : null,
+        'criado_em'        => $row['criado_em'],
+        'cor'              => $cor,
+        'status_texto'     => $statusTexto,
     ];
 }
 
-$total = count($marcacoes);
-$percentual = $total > 0 ? round(($finalizadas / $total) * 100) : 0;
-
 echo json_encode([
-    'sucesso' => true,
-    'planta' => [
-        'id' => (int) $planta['id'],
-        'versao' => (int) $planta['versao'],
-        'imagem_url' => $planta['imagem_path'],
-    ],
+    'sucesso'   => true,
+    'plantas'   => $plantas,
     'marcacoes' => $marcacoes,
-    'total_marcacoes' => $total,
-    'finalizadas' => $finalizadas,
-    'percentual_conclusao' => $percentual,
 ]);

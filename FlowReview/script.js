@@ -10,43 +10,46 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     // support pointer events (touch / pen) for PDF drawing
-    pageLayer.addEventListener("pointerdown", function (event) {
-      if (event.pointerType === "mouse" && event.button !== 0) return;
-      if (event.ctrlKey) return;
-      if (drawingTool === "ponto") return;
-      if (!pdfViewerState.logId) return;
-      event.stopPropagation();
-      isDrawing = true;
-      dragMoved = false;
-      const rect = canvas.getBoundingClientRect();
-      if (!rect.width || !rect.height) return;
-      drawStartX = ((event.clientX - rect.left) / rect.width) * 100;
-      drawStartY = ((event.clientY - rect.top) / rect.height) * 100;
-      drawStartClientX = event.clientX;
-      drawStartClientY = event.clientY;
-      shapeX2 = drawStartX;
-      shapeY2 = drawStartY;
-      currentDrawRef = canvas;
-      const container =
-        document.getElementById("pdf_comment_layer") || pageLayer;
-      if (drawingTool === "freehand") {
-        freehandPoints = [[drawStartX, drawStartY]];
-        const svg = createFreehandPreviewSvg(drawStartX, drawStartY);
-        container.appendChild(svg);
-        freehandSvgPreview = svg;
-        freehandPolylineEl = svg.querySelector("polyline");
-        freehandDrawContainer = container;
-      } else {
-        const preview = document.createElement("div");
-        preview.id = "drawing-preview";
-        preview.className = `drawing-preview drawing-preview-${drawingTool}`;
-        preview.style.left = `${drawStartX}%`;
-        preview.style.top = `${drawStartY}%`;
-        preview.style.width = "0";
-        preview.style.height = "0";
-        container.appendChild(preview);
-      }
-    });
+    const pageLayer = document.querySelector(".pdf-page-layer");
+    if (pageLayer) {
+      pageLayer.addEventListener("pointerdown", function (event) {
+        if (event.pointerType === "mouse" && event.button !== 0) return;
+        if (event.ctrlKey) return;
+        if (drawingTool === "ponto") return;
+        if (!pdfViewerState.logId) return;
+        event.stopPropagation();
+        isDrawing = true;
+        dragMoved = false;
+        const rect = canvas.getBoundingClientRect();
+        if (!rect.width || !rect.height) return;
+        drawStartX = ((event.clientX - rect.left) / rect.width) * 100;
+        drawStartY = ((event.clientY - rect.top) / rect.height) * 100;
+        drawStartClientX = event.clientX;
+        drawStartClientY = event.clientY;
+        shapeX2 = drawStartX;
+        shapeY2 = drawStartY;
+        currentDrawRef = canvas;
+        const container =
+          document.getElementById("pdf_comment_layer") || pageLayer;
+        if (drawingTool === "freehand") {
+          freehandPoints = [[drawStartX, drawStartY]];
+          const svg = createFreehandPreviewSvg(drawStartX, drawStartY);
+          container.appendChild(svg);
+          freehandSvgPreview = svg;
+          freehandPolylineEl = svg.querySelector("polyline");
+          freehandDrawContainer = container;
+        } else {
+          const preview = document.createElement("div");
+          preview.id = "drawing-preview";
+          preview.className = `drawing-preview drawing-preview-${drawingTool}`;
+          preview.style.left = `${drawStartX}%`;
+          preview.style.top = `${drawStartY}%`;
+          preview.style.width = "0";
+          preview.style.height = "0";
+          container.appendChild(preview);
+        }
+      });
+    }
   } else {
     fetchObrasETarefas();
   }
@@ -163,6 +166,7 @@ let todasAsObras = new Set();
 let todosOsColaboradores = new Set();
 let todasAsFuncoes = new Set();
 let funcaoGlobalSelecionada = null;
+let colaboradorGlobalSelecionado = null;
 
 async function fetchObrasETarefas() {
   try {
@@ -219,7 +223,10 @@ async function fetchObrasETarefas() {
         });
       }
       if (frColabHome) {
-        frColabHome.addEventListener("change", applyHomeFilters);
+        frColabHome.addEventListener("change", () => {
+          colaboradorGlobalSelecionado = frColabHome.value || null;
+          applyHomeFilters();
+        });
       }
     }
   } catch (error) {
@@ -392,7 +399,7 @@ function filtrarTarefasPorObra(obraSelecionada) {
     document.getElementById("filtro_colaborador").value;
   let funcaoSelecionada = document.getElementById("nome_funcao").value;
 
-  // Se houver filtro global ativo, aplica e reflete visualmente
+  // Se houver filtro global ativo, aplica e reflete visualmente (apenas na entrada)
   if (funcaoGlobalSelecionada) {
     funcaoSelecionada = funcaoGlobalSelecionada;
 
@@ -401,6 +408,17 @@ function filtrarTarefasPorObra(obraSelecionada) {
     if (opcoes.includes(funcaoGlobalSelecionada)) {
       selectFuncao.value = funcaoGlobalSelecionada;
     }
+    funcaoGlobalSelecionada = null; // limpa após aplicar — permite o usuário trocar livremente
+  }
+
+  // Aplica filtro de colaborador da home (se houver), apenas na entrada
+  if (colaboradorGlobalSelecionado) {
+    const selectColab = document.getElementById("filtro_colaborador");
+    const opcoesColab = Array.from(selectColab.options).map((opt) => opt.value);
+    if (opcoesColab.includes(colaboradorGlobalSelecionado)) {
+      selectColab.value = colaboradorGlobalSelecionado;
+    }
+    colaboradorGlobalSelecionado = null;
   }
 
   if (tarefasDaObra.length > 0) {
@@ -940,15 +958,6 @@ function historyAJAX(idfuncao_imagem) {
       container_aprovacao.classList.remove("hidden");
 
       const sidebarDiv = document.getElementById("sidebarTabulator");
-      sidebarDiv.classList.remove("sidebar-expanded");
-      sidebarDiv.classList.add("sidebar-min");
-
-      const todasAsListas = sidebarDiv.querySelectorAll(".tarefas-lista");
-
-      // Fecha todos os grupos
-      todasAsListas.forEach((l) => {
-        l.style.display = "none";
-      });
 
       // Clona e substitui botões para evitar múltiplos event listeners
       const btnOpen = replaceElementById("submit_decision");
@@ -970,6 +979,16 @@ function historyAJAX(idfuncao_imagem) {
       const item = historico[0];
 
       currentFuncaoContext = item || null;
+
+      // Sincroniza sidebarTabulator com a função da tarefa aberta
+      const tarefaAtual = dadosTarefas.find(
+        (t) => t.idfuncao_imagem == idfuncao_imagem,
+      );
+      if (tarefaAtual && window._stabSetFuncao) {
+        window._stabSetFuncao(tarefaAtual.nome_funcao, idfuncao_imagem);
+      } else if (window._stabSetActive) {
+        window._stabSetActive(idfuncao_imagem);
+      }
 
       const hasPdfPreferido = !!(pdf && pdf.id);
       const pdfRawUrl = hasPdfPreferido
@@ -1330,31 +1349,79 @@ function exibirSidebarTabulator(tarefas) {
   const sidebarDiv = document.getElementById("sidebarTabulator");
   sidebarDiv.innerHTML = "";
 
-  const tarefasPorFuncao = {};
-  tarefas.forEach((t) => {
-    if (!tarefasPorFuncao[t.nome_funcao]) tarefasPorFuncao[t.nome_funcao] = [];
-    tarefasPorFuncao[t.nome_funcao].push(t);
-  });
+  // Listas únicas para os selects de filtro
+  const funcoes = [...new Set(tarefas.map((t) => t.nome_funcao))].sort();
+  const colabs = [...new Set(tarefas.map((t) => t.nome_colaborador))].sort();
 
-  Object.entries(tarefasPorFuncao).forEach(([funcao, tarefasDaFuncao]) => {
-    const grupoDiv = document.createElement("div");
-    grupoDiv.classList.add("grupo-funcao");
+  // Valor inicial dos filtros (baseado nos filtros da obra)
+  const initFuncao = document.getElementById("nome_funcao")?.value || "Todos";
+  const initColab = document.getElementById("filtro_colaborador")?.value || "";
 
-    const header = document.createElement("div");
-    header.classList.add("group-header");
-    header.dataset.grupo = funcao;
-    header.innerHTML = `
-      <span class="funcao-completa">
-        <span class="fn-nome">${funcao}</span>
-        <span class="fn-count">${tarefasDaFuncao.length} imagem${tarefasDaFuncao.length !== 1 ? "ns" : ""}</span>
-      </span>
-      <i class="fa-solid fa-chevron-right funcao-chevron"></i>
-    `;
+  // ── Painel de filtros (mesmo estilo da fr-sidebar) ─────────────────────────────
+  const filterDiv = document.createElement("div");
+  filterDiv.className = "stab-filters";
+  filterDiv.innerHTML = `
+    <p class="fr-section-label">Filtros</p>
+    <div class="stab-filter-group">
+      <label class="stab-filter-label">
+        <i class="fa-solid fa-magnifying-glass"></i> Buscar imagem
+      </label>
+      <div class="fr-input-wrap">
+        <i class="fa-solid fa-magnifying-glass fr-input-icon"></i>
+        <input type="search" id="stab-search" autocomplete="off" placeholder="Buscar imagem...">
+      </div>
+    </div>
+    <div class="stab-filter-group">
+      <label class="stab-filter-label" for="stab-funcao">
+        <i class="fa-solid fa-layer-group"></i> Fun\u00e7\u00e3o
+      </label>
+      <select id="stab-funcao">
+        <option value="Todos">Todas as fun\u00e7\u00f5es</option>
+        ${funcoes.map((f) => `<option value="${escapeHtml(f)}"${f === initFuncao ? " selected" : ""}>${escapeHtml(f)}</option>`).join("")}
+      </select>
+    </div>
+    <div class="stab-filter-group">
+      <label class="stab-filter-label" for="stab-colab">
+        <i class="fa-solid fa-user"></i> Colaborador
+      </label>
+      <select id="stab-colab">
+        <option value="">Todos</option>
+        ${colabs.map((c) => `<option value="${escapeHtml(c)}"${c === initColab ? " selected" : ""}>${escapeHtml(c)}</option>`).join("")}
+      </select>
+    </div>
+  `;
 
-    const lista = document.createElement("div");
-    lista.classList.add("tarefas-lista");
+  // ── Container de itens ───────────────────────────────────────────────
+  const itemsDiv = document.createElement("div");
+  itemsDiv.id = "stab-items";
+  itemsDiv.className = "stab-items";
 
-    tarefasDaFuncao.forEach((t) => {
+  function renderStabItems() {
+    const search = (document.getElementById("stab-search")?.value || "")
+      .toLowerCase()
+      .trim();
+    const funcao = document.getElementById("stab-funcao")?.value || "Todos";
+    const colab = document.getElementById("stab-colab")?.value || "";
+
+    const filtered = tarefas.filter((t) => {
+      const matchFuncao = funcao === "Todos" || t.nome_funcao === funcao;
+      const matchColab = !colab || t.nome_colaborador === colab;
+      const matchSearch =
+        !search ||
+        (t.imagem_nome || "").toLowerCase().includes(search) ||
+        (t.nome_colaborador || "").toLowerCase().includes(search) ||
+        (t.nome_funcao || "").toLowerCase().includes(search);
+      return matchFuncao && matchColab && matchSearch;
+    });
+
+    itemsDiv.innerHTML = "";
+    if (filtered.length === 0) {
+      itemsDiv.innerHTML =
+        '<p class="stab-empty">Nenhuma imagem encontrada.</p>';
+      return;
+    }
+
+    filtered.forEach((t) => {
       const color =
         t.status_novo === "Em aprovação"
           ? "#000a59"
@@ -1372,38 +1439,61 @@ function exibirSidebarTabulator(tarefas) {
               ? "#ae90ffff"
               : "transparent";
 
-      const tarefa = document.createElement("div");
-      tarefa.classList.add("tarefa-item");
+      const item = document.createElement("div");
+      item.className = "tarefa-item";
+      item.dataset.id = t.idfuncao_imagem;
       const imgSrc = t.imagem
         ? `https://improov.com.br/flow/ImproovWeb/thumb.php?path=${encodeURIComponent(t.imagem)}&w=400&q=85`
         : "../assets/logo.jpg";
-      tarefa.innerHTML = `
-        <img src="${imgSrc}" class="tab-img" data-id="${t.idfuncao_imagem}" alt="${t.imagem_nome}">
-        <span class="tarefa-status" style="background-color: ${bgColor}; color: ${color}">${t.status_novo}</span>
-        <span class="tarefa-label">${t.nome_colaborador} — ${t.imagem_nome}</span>
+      item.innerHTML = `
+        <img src="${imgSrc}" class="tab-img" alt="${escapeHtml(t.imagem_nome || "")}">
+        <span class="tarefa-status" style="background-color:${bgColor};color:${color}">${escapeHtml(t.status_novo || "")}</span>
+        <span class="tarefa-label">${escapeHtml(t.nome_colaborador || "")} — ${escapeHtml(t.imagem_nome || "")}</span>
       `;
-      tarefa.addEventListener("click", () => historyAJAX(t.idfuncao_imagem));
-      lista.appendChild(tarefa);
-    });
-
-    // Accordion toggle
-    header.addEventListener("click", () => {
-      const isOpen = grupoDiv.classList.contains("grupo-aberto");
-      // Close all groups first
-      sidebarDiv.querySelectorAll(".grupo-funcao").forEach((g) => {
-        g.classList.remove("grupo-aberto");
-        g.querySelector(".tarefas-lista").style.display = "none";
+      item.addEventListener("click", () => {
+        itemsDiv
+          .querySelectorAll(".tarefa-item")
+          .forEach((el) => el.classList.remove("active"));
+        item.classList.add("active");
+        historyAJAX(t.idfuncao_imagem);
       });
-      if (!isOpen) {
-        grupoDiv.classList.add("grupo-aberto");
-        lista.style.display = "block";
-      }
+      itemsDiv.appendChild(item);
     });
+  }
 
-    grupoDiv.appendChild(header);
-    grupoDiv.appendChild(lista);
-    sidebarDiv.appendChild(grupoDiv);
-  });
+  // Wire up filtros
+  filterDiv.addEventListener("input", renderStabItems);
+  filterDiv.addEventListener("change", renderStabItems);
+
+  sidebarDiv.appendChild(filterDiv);
+  sidebarDiv.appendChild(itemsDiv);
+
+  // Render inicial
+  renderStabItems();
+
+  // Expõe funções para historyAJAX sincronizar o item ativo
+  window._stabSetActive = function (idfuncao_imagem) {
+    const items = document.querySelectorAll("#stab-items .tarefa-item");
+    items.forEach((el) =>
+      el.classList.toggle("active", el.dataset.id == idfuncao_imagem),
+    );
+    const active = document.querySelector("#stab-items .tarefa-item.active");
+    if (active) active.scrollIntoView({ block: "nearest" });
+  };
+
+  window._stabSetFuncao = function (funcao, idfuncao_imagem) {
+    const sel = document.getElementById("stab-funcao");
+    if (sel && funcao) {
+      const opt = Array.from(sel.options).find((o) => o.value === funcao);
+      if (opt) sel.value = funcao;
+    }
+    renderStabItems();
+    if (idfuncao_imagem !== undefined) {
+      setTimeout(() => {
+        if (window._stabSetActive) window._stabSetActive(idfuncao_imagem);
+      }, 0);
+    }
+  };
 }
 
 document.querySelector(".close").addEventListener("click", () => {
@@ -1560,6 +1650,8 @@ document.addEventListener("click", (e) => {
 
 let tribute; // variável global
 let mencionadosIds = []; // armazenar os IDs dos mencionados
+let _editingCommentId = null; // ID do comentário em edição (null = novo comentário)
+let quillComentario = null; // instância do Quill no modal de comentário
 
 document.addEventListener("DOMContentLoaded", async () => {
   try {
@@ -1582,7 +1674,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       menuItemTemplate: (item) => item.string,
     });
 
-    tribute.attach(document.getElementById("comentarioTexto"));
+    // Tribute will be attached to the Quill editor root after Quill is initialized
   } catch (error) {
     console.error("Erro ao carregar usuários:", error);
   }
@@ -1607,17 +1699,143 @@ document.addEventListener("DOMContentLoaded", async () => {
       const filtroObraEl = document.getElementById("filtro_obra");
       if (filtroObraEl) filtroObraEl.value = "";
 
-      // Reseta filtro global de função
+      // Reseta filtros globais de entrada
       funcaoGlobalSelecionada = null;
+      colaboradorGlobalSelecionado = null;
 
       // Reaplica filtros da sidebar home (limpos)
       applyHomeFilters();
     });
   }
 
+  // Busca de função na sidebar (fr-section-tarefas)
+  const frSearchFuncao = document.getElementById("fr-search-funcao");
+  if (frSearchFuncao) {
+    frSearchFuncao.addEventListener("input", () => {
+      const val = frSearchFuncao.value.toLowerCase().trim();
+      const sel = document.getElementById("nome_funcao");
+      if (!sel) return;
+      Array.from(sel.options).forEach((opt) => {
+        if (opt.value === "Todos") {
+          opt.hidden = false;
+          opt.disabled = false;
+          return;
+        }
+        const matches = !val || opt.text.toLowerCase().includes(val);
+        opt.hidden = !matches;
+        opt.disabled = !matches;
+      });
+    });
+  }
+
+  // Toggle do sidebarTabulator (mobile/tablet)
+  const stabToggleBtn = document.getElementById("stab-toggle-btn");
+  const wrapperSidebarEl = document.getElementById("wrapper-sidebar");
+  if (stabToggleBtn && wrapperSidebarEl) {
+    stabToggleBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      wrapperSidebarEl.classList.toggle("stab-open");
+    });
+    document.addEventListener("click", (e) => {
+      if (
+        wrapperSidebarEl.classList.contains("stab-open") &&
+        !wrapperSidebarEl.contains(e.target) &&
+        e.target !== stabToggleBtn
+      ) {
+        wrapperSidebarEl.classList.remove("stab-open");
+      }
+    });
+  }
+
+  // Recolher sidebar esquerda (wrapper-sidebar)
+  const leftCollapseBtn = document.getElementById("left-collapse-btn");
+  if (leftCollapseBtn && wrapperSidebarEl) {
+    leftCollapseBtn.addEventListener("click", () => {
+      wrapperSidebarEl.classList.toggle("collapsed");
+      const icon = leftCollapseBtn.querySelector("i");
+      if (icon) {
+        icon.className = wrapperSidebarEl.classList.contains("collapsed")
+          ? "fa-solid fa-chevron-right"
+          : "fa-solid fa-chevron-left";
+      }
+      setTimeout(() => ajustarNavSelectAoTamanhoDaImagem(), 260);
+    });
+  }
+
+  // Recolher sidebar direita (.sidebar-direita)
+  const rightCollapseBtn = document.getElementById("right-collapse-btn");
+  if (rightCollapseBtn) {
+    rightCollapseBtn.addEventListener("click", () => {
+      const sd = document.querySelector(".sidebar-direita");
+      if (sd) {
+        sd.classList.toggle("collapsed");
+        const icon = rightCollapseBtn.querySelector("i");
+        if (icon) {
+          icon.className = sd.classList.contains("collapsed")
+            ? "fa-solid fa-chevron-left"
+            : "fa-solid fa-chevron-right";
+        }
+        setTimeout(() => ajustarNavSelectAoTamanhoDaImagem(), 260);
+      }
+    });
+  }
+
+  // Inicializa o editor Quill no modal de comentário
+  if (window.Quill) {
+    quillComentario = new Quill("#comentario-quill-editor", {
+      theme: "snow",
+      modules: {
+        toolbar: [
+          ["bold", "italic", "underline", "strike"],
+          [{ color: [] }, { background: [] }],
+          [{ list: "ordered" }, { list: "bullet" }],
+          ["link"],
+          ["clean"],
+        ],
+      },
+      placeholder: "Digite um comentário...",
+    });
+
+    // Anexa o Tribute ao editor Quill para menções (@)
+    if (tribute) tribute.attach(quillComentario.root);
+
+    // Captura colagem de imagem dentro do editor Quill
+    quillComentario.root.addEventListener("paste", function (event) {
+      const items = (event.clipboardData || event.originalEvent.clipboardData)
+        ?.items;
+      if (!items) return;
+      for (let index in items) {
+        const item = items[index];
+        if (item.kind === "file" && item.type.startsWith("image/")) {
+          const blob = item.getAsFile();
+          if (blob) {
+            const fileInput = document.getElementById("imagemComentario");
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(
+              new File([blob], "imagem_colada.png", { type: blob.type }),
+            );
+            fileInput.files = dataTransfer.files;
+            Toastify({
+              text: "Imagem colada com sucesso!",
+              duration: 3000,
+              backgroundColor: "linear-gradient(to right, #00b09b, #96c93d)",
+              close: true,
+              gravity: "top",
+              position: "right",
+            }).showToast();
+          }
+        }
+      }
+    });
+  }
+
   // Modal: fechar
   document.getElementById("fecharComentarioModal").onclick = () => {
     document.getElementById("comentarioModal").style.display = "none";
+    _editingCommentId = null;
+    if (quillComentario) quillComentario.setContents([]);
+    const modalTitle = document.querySelector("#comentarioModal h3");
+    if (modalTitle) modalTitle.textContent = "Novo Comentário";
   };
 
   // Toolbar de ferramentas de desenho
@@ -1892,7 +2110,10 @@ function mostrarPdfCompleto(
       relativeX = ((event.clientX - rect.left) / rect.width) * 100;
       relativeY = ((event.clientY - rect.top) / rect.height) * 100;
 
-      document.getElementById("comentarioTexto").value = "";
+      _editingCommentId = null;
+      if (quillComentario) quillComentario.setContents([]);
+      const _mtPdf = document.querySelector("#comentarioModal h3");
+      if (_mtPdf) _mtPdf.textContent = "Novo Comentário";
       document.getElementById("imagemComentario").value = "";
       document.getElementById("comentarioModal").style.display = "flex";
       mencionadosIds = [];
@@ -2003,7 +2224,10 @@ function mostrarImagemCompleta(src, id) {
     relativeX = ((event.clientX - rect.left) / rect.width) * 100;
     relativeY = ((event.clientY - rect.top) / rect.height) * 100;
 
-    document.getElementById("comentarioTexto").value = "";
+    _editingCommentId = null;
+    if (quillComentario) quillComentario.setContents([]);
+    const _mtImg = document.querySelector("#comentarioModal h3");
+    if (_mtImg) _mtImg.textContent = "Novo Comentário";
     document.getElementById("imagemComentario").value = "";
     document.getElementById("comentarioModal").style.display = "flex";
 
@@ -2082,6 +2306,10 @@ function mostrarImagemCompleta(src, id) {
 }
 
 function ajustarNavSelectAoTamanhoDaImagem() {
+  // On mobile/tablet (≤1024px) let CSS handle the nav-select width — setting
+  // an inline pixel value would cause the toolbar to overflow the viewport.
+  if (window.innerWidth <= 1024) return;
+
   const img = document.getElementById("imagem_atual");
   const navSelect = document.querySelector(".nav-select");
   if (img && navSelect) {
@@ -2112,47 +2340,54 @@ if (btnDownload) {
   });
 }
 
-// Capturar colagem de imagem no campo de texto
-document
-  .getElementById("comentarioTexto")
-  .addEventListener("paste", function (event) {
-    const items = (event.clipboardData || event.originalEvent.clipboardData)
-      .items;
+// Capturar colagem de imagem no campo de texto (fallback sem Quill)
+// Quill handles paste natively; only attach for non-Quill environments
+if (!window.Quill) {
+  document
+    .getElementById("comentarioTexto")
+    .addEventListener("paste", function (event) {
+      const items = (event.clipboardData || event.originalEvent.clipboardData)
+        .items;
 
-    for (let index in items) {
-      const item = items[index];
-      if (item.kind === "file") {
-        const blob = item.getAsFile();
-        if (blob && blob.type.startsWith("image/")) {
-          const fileInput = document.getElementById("imagemComentario");
+      for (let index in items) {
+        const item = items[index];
+        if (item.kind === "file") {
+          const blob = item.getAsFile();
+          if (blob && blob.type.startsWith("image/")) {
+            const fileInput = document.getElementById("imagemComentario");
 
-          // Cria um objeto DataTransfer para injetar o arquivo no input
-          const dataTransfer = new DataTransfer();
-          dataTransfer.items.add(
-            new File([blob], "imagem_colada.png", { type: blob.type }),
-          );
+            // Cria um objeto DataTransfer para injetar o arquivo no input
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(
+              new File([blob], "imagem_colada.png", { type: blob.type }),
+            );
 
-          fileInput.files = dataTransfer.files;
+            fileInput.files = dataTransfer.files;
 
-          Toastify({
-            text: "Imagem colada com sucesso!",
-            duration: 3000,
-            backgroundColor: "linear-gradient(to right, #00b09b, #96c93d)",
-            close: true,
-            gravity: "top",
-            position: "right",
-          }).showToast();
+            Toastify({
+              text: "Imagem colada com sucesso!",
+              duration: 3000,
+              backgroundColor: "linear-gradient(to right, #00b09b, #96c93d)",
+              close: true,
+              gravity: "top",
+              position: "right",
+            }).showToast();
+          }
         }
       }
-    }
-  });
+    });
+}
 
+// Capturar colagem de imagem dentro do Quill
 // Função para enviar o comentário
 document.getElementById("enviarComentario").onclick = async () => {
-  const texto = document.getElementById("comentarioTexto").value.trim();
+  const texto = quillComentario
+    ? quillComentario.root.innerHTML.trim()
+    : document.getElementById("comentarioTexto").value.trim();
+  const textoVazio = !texto || texto === "<p><br></p>";
   const imagemFile = document.getElementById("imagemComentario").files[0];
 
-  if (!texto && !imagemFile) {
+  if (textoVazio && !imagemFile) {
     Toastify({
       text: "Escreva um comentário ou anexe uma imagem!",
       duration: 3000,
@@ -2164,6 +2399,32 @@ document.getElementById("enviarComentario").onclick = async () => {
     return;
   }
 
+  // ── Modo edição ──────────────────────────────────────────────────────────
+  if (_editingCommentId !== null) {
+    const editId = _editingCommentId;
+    _editingCommentId = null;
+    document.getElementById("comentarioModal").style.display = "none";
+    if (quillComentario) quillComentario.setContents([]);
+    const modalTitle = document.querySelector("#comentarioModal h3");
+    if (modalTitle) modalTitle.textContent = "Novo Comentário";
+    mencionadosIds = [];
+
+    await updateComment(editId, textoVazio ? "" : texto);
+
+    if (pdfViewerState.logId) {
+      pdfCommentsCache.logId = null;
+      pdfCommentsCache.comentarios = null;
+      renderComments({
+        arquivo_log_id: pdfViewerState.logId,
+        pagina: pdfViewerState.page,
+      });
+    } else {
+      renderComments(ap_imagem_id);
+    }
+    return;
+  }
+
+  // ── Novo comentário ──────────────────────────────────────────────────────
   const formData = new FormData();
   if (pdfViewerState.logId) {
     formData.append("arquivo_log_id", pdfViewerState.logId);
@@ -2181,7 +2442,7 @@ document.getElementById("enviarComentario").onclick = async () => {
     formData.append("x2", shapeX2);
     formData.append("y2", shapeY2);
   }
-  formData.append("texto", texto);
+  formData.append("texto", textoVazio ? "" : texto);
   formData.append("mencionados", JSON.stringify(mencionadosIds));
 
   if (imagemFile) {
@@ -2197,6 +2458,7 @@ document.getElementById("enviarComentario").onclick = async () => {
     const result = await response.json();
 
     document.getElementById("comentarioModal").style.display = "none";
+    if (quillComentario) quillComentario.setContents([]);
 
     if (result.sucesso) {
       Toastify({
@@ -2485,7 +2747,7 @@ async function renderComments(id) {
 
     const p = document.createElement("p");
     p.classList.add("comment-input");
-    p.textContent = comentario.texto;
+    p.innerHTML = comentario.texto || "";
 
     commentBody.appendChild(p);
 
@@ -2526,26 +2788,25 @@ async function renderComments(id) {
 
     const editButton = footer.querySelector(".comment-edit");
 
-    editButton.addEventListener("click", () => {
-      p.contentEditable = true;
-      p.focus();
+    editButton.addEventListener("click", (e) => {
+      e.stopPropagation();
+      _editingCommentId = comentario.id;
 
-      const handleKeyDown = async function (e) {
-        if (e.key === "Enter" && !e.shiftKey) {
-          e.preventDefault();
+      // Preenche o Quill com o texto atual do comentário
+      if (quillComentario) {
+        quillComentario.root.innerHTML = comentario.texto || "";
+      }
 
-          const novoTexto = p.textContent.trim();
+      // Atualiza título do modal
+      const modalTitle = document.querySelector("#comentarioModal h3");
+      if (modalTitle) modalTitle.textContent = "Editar Comentário";
 
-          p.contentEditable = false;
+      // Limpa o input de imagem
+      document.getElementById("imagemComentario").value = "";
 
-          updateComment(comentario.id, novoTexto);
-
-          // Remove o listener pra não acumular
-          p.removeEventListener("keydown", handleKeyDown);
-        }
-      };
-
-      p.addEventListener("keydown", handleKeyDown);
+      // Abre o modal
+      document.getElementById("comentarioModal").style.display = "flex";
+      mencionadosIds = [];
     });
 
     let commentDiv = document.createElement("div");
@@ -3061,6 +3322,7 @@ function handlePointerMove(e) {
 
   // --- Desenho de forma geométrica ---
   if (isDrawing && currentDrawRef) {
+    if (e.cancelable) e.preventDefault(); // impede scroll/pan durante o desenho
     const ref = currentDrawRef.getBoundingClientRect();
     if (ref.width && ref.height) {
       const newX = Math.max(
@@ -3162,7 +3424,10 @@ function handlePointerUp(e) {
         shapeY2 = Math.max(drawStartY, shapeY2);
       }
 
-      document.getElementById("comentarioTexto").value = "";
+      _editingCommentId = null;
+      if (quillComentario) quillComentario.setContents([]);
+      const _mtFh = document.querySelector("#comentarioModal h3");
+      if (_mtFh) _mtFh.textContent = "Novo Comentário";
       document.getElementById("imagemComentario").value = "";
       document.getElementById("comentarioModal").style.display = "flex";
       mencionadosIds = [];

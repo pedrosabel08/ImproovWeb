@@ -152,6 +152,10 @@ $conn->close();
                         <label for="nome_funcao">
                             <i class="fa-solid fa-layer-group"></i> Função
                         </label>
+                        <div class="fr-input-wrap" style="margin-bottom:4px">
+                            <i class="fa-solid fa-magnifying-glass fr-input-icon"></i>
+                            <input type="search" id="fr-search-funcao" placeholder="Buscar função...">
+                        </div>
                         <select name="nome_funcao" id="nome_funcao">
                             <option value="Todos">Todos</option>
                         </select>
@@ -223,8 +227,15 @@ $conn->close();
 
 
         <div class="imagens">
-            <div class="wrapper-sidebar">
-                <div id="sidebarTabulator" class="sidebar-min"></div>
+            <button id="stab-toggle-btn" class="tooltip" data-tooltip="Ver tarefas" aria-label="Ver tarefas da função">
+                <i class="fa-solid fa-list"></i>
+            </button>
+            <div class="wrapper-sidebar" id="wrapper-sidebar">
+                <button class="sidebar-collapse-btn" id="left-collapse-btn" title="Recolher painel">
+                    <i class="fa-solid fa-chevron-left"></i>
+                </button>
+                <div class="stab-sheet-handle"></div>
+                <div id="sidebarTabulator"></div>
             </div>
             <nav>
                 <div id="comentario-geral-envio" class="comentario-geral-envio hidden"></div>
@@ -252,6 +263,9 @@ $conn->close();
                 </div>
             </div>
             <div class="sidebar-direita">
+                <button class="sidebar-collapse-btn sidebar-collapse-right" id="right-collapse-btn" title="Recolher painel">
+                    <i class="fa-solid fa-chevron-right"></i>
+                </button>
 
                 <div id="approval_info"
                     style="display:none;margin-bottom:10px;padding:8px;border-radius:6px;background:#f5f7fa;font-size:14px;color:#222">
@@ -288,8 +302,8 @@ $conn->close();
     <div id="comentarioModal" class="modal" style="display: none;">
         <div class="modal-content">
             <h3>Novo Comentário</h3>
-            <textarea id="comentarioTexto" rows="5" placeholder="Digite um comentário..."
-                style="width: calc(100% - 10px); padding: 5px;"></textarea>
+            <div id="comentario-quill-editor"></div>
+            <input type="hidden" id="comentarioTexto">
             <input type="file" id="imagemComentario" accept="image/*" />
             <div class="modal-actions">
                 <button id="enviarComentario" style="background-color: green;">Enviar</button>

@@ -294,18 +294,34 @@ function load_dotenv_simple(string $path): void
 
 function slack_send_webhook(?string $webhookUrl, string $text): bool
 {
-	if (!$webhookUrl) return false;
+	$logDir = __DIR__ . '/../logs';
+	$slackLog = (is_dir($logDir) && is_writable($logDir)) ? $logDir . '/slack_debug.log' : __DIR__ . '/slack_debug.log';
+
+	if (!$webhookUrl) {
+		@file_put_contents($slackLog, json_encode(['ts' => gmdate('c'), 'error' => 'webhookUrl_null']) . "\n", FILE_APPEND);
+		return false;
+	}
 	$payload = json_encode(['text' => $text], JSON_UNESCAPED_UNICODE);
 	$ch = curl_init($webhookUrl);
 	curl_setopt($ch, CURLOPT_POST, true);
 	curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
 	curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
 	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+	curl_setopt($ch, CURLOPT_TIMEOUT, 10);
 	$res = curl_exec($ch);
 	$err = curl_error($ch);
 	$code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 	curl_close($ch);
-	return !($res === false || $code < 200 || $code >= 300 || $err);
+	$ok = !($res === false || $code < 200 || $code >= 300 || $err);
+	@file_put_contents($slackLog, json_encode([
+		'ts'      => gmdate('c'),
+		'ok'      => $ok,
+		'http'    => $code,
+		'curl_err'=> $err ?: null,
+		'body'    => is_string($res) ? substr($res, 0, 200) : null,
+		'text'    => substr($text, 0, 100),
+	], JSON_UNESCAPED_UNICODE) . "\n", FILE_APPEND);
+	return $ok;
 }
 
 function extractSignerName(array $data): string

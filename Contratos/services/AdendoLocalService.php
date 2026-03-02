@@ -127,7 +127,7 @@ class AdendoLocalService
         $contratanteNome = 'IMPROOV LTDA.';
         $contratanteCnpj = '37.066.879/0001-84';
         $nome = $this->normalizeName((string)($colab['nome_colaborador'] ?? ''));
-        if ($colaboradorId === 13 || $nome === 'andre luis tavares') {
+        if ($colaboradorId === 13 || $nome === 'andre luis tavares' || $colaboradorId === 39 || $nome === 'diego strey veiga') {
             $contratanteNome = 'STELLAR ANIMA LTDA.';
             $contratanteCnpj = '45.284.934/0001-30';
         }

@@ -73,7 +73,7 @@ class ContratoLocalService
         // CONTRATANTE (default) + exceção colaborador_id=13
         $contratanteNome = 'IMPROOV LTDA.';
         $contratanteCnpj = '37.066.879/0001-84';
-        if ($colaboradorId === 13) {
+        if ($colaboradorId === 13 || $colaboradorId === 39) {
             $contratanteNome = 'STELLAR ANIMA LTDA.';
             $contratanteCnpj = '45.284.934/0001-30';
         }

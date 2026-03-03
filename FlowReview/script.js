@@ -158,6 +158,21 @@ function revisarTarefa(
         if (data.success) {
           const obraSelecionada = document.getElementById("filtro_obra").value;
 
+          // Atualiza o status_novo da tarefa no array em memória para reflectir
+          // imediatamente o novo badge na thumbnail da sidebar, sem round-trip extra.
+          const statusMap = {
+            aprovado: "Aprovado",
+            ajuste: "Ajuste",
+            aprovado_com_ajustes: "Aprovado com ajustes",
+          };
+          const novoStatus = statusMap[tipoRevisao];
+          if (novoStatus) {
+            const task = dadosTarefas.find(
+              (t) => t.idfuncao_imagem == idfuncao_imagem,
+            );
+            if (task) task.status_novo = novoStatus;
+          }
+
           filtrarTarefasPorObra(obraSelecionada);
         }
       })
@@ -939,6 +954,15 @@ async function enviarFuncaoParaAjustes() {
     }).showToast();
 
     if (data.success) {
+      // Atualiza o status_novo em memória para o badge na sidebar
+      const task = dadosTarefas.find(
+        (t) => t.idfuncao_imagem == currentFuncaoContext.funcao_imagem_id,
+      );
+      if (task) task.status_novo = "Ajuste";
+
+      const obraSelecionada = document.getElementById("filtro_obra").value;
+      if (obraSelecionada) filtrarTarefasPorObra(obraSelecionada);
+
       historyAJAX(funcaoImagemId);
     }
   } catch (e) {
@@ -1368,15 +1392,29 @@ function replaceElementByClass(className) {
 
 function exibirSidebarTabulator(tarefas) {
   const sidebarDiv = document.getElementById("sidebarTabulator");
+
+  // Preserva os valores dos filtros da sidebar antes de reconstruir o HTML
+  const prevSearch = document.getElementById("stab-search")?.value || "";
+  const prevFuncao = document.getElementById("stab-funcao")?.value ?? null;
+  const prevColab = document.getElementById("stab-colab")?.value ?? null;
+
   sidebarDiv.innerHTML = "";
 
   // Listas únicas para os selects de filtro
   const funcoes = [...new Set(tarefas.map((t) => t.nome_funcao))].sort();
   const colabs = [...new Set(tarefas.map((t) => t.nome_colaborador))].sort();
 
-  // Valor inicial dos filtros (baseado nos filtros da obra)
-  const initFuncao = document.getElementById("nome_funcao")?.value || "Todos";
-  const initColab = document.getElementById("filtro_colaborador")?.value || "";
+  // Valor inicial dos filtros:
+  // – usa o valor que já estava na sidebar (se existia), senão usa os selects principais
+  const initSearch = prevSearch;
+  const initFuncao =
+    prevFuncao !== null
+      ? prevFuncao
+      : document.getElementById("nome_funcao")?.value || "Todos";
+  const initColab =
+    prevColab !== null
+      ? prevColab
+      : document.getElementById("filtro_colaborador")?.value || "";
 
   // ── Painel de filtros (mesmo estilo da fr-sidebar) ─────────────────────────────
   const filterDiv = document.createElement("div");
@@ -1389,7 +1427,7 @@ function exibirSidebarTabulator(tarefas) {
       </label>
       <div class="fr-input-wrap">
         <i class="fa-solid fa-magnifying-glass fr-input-icon"></i>
-        <input type="search" id="stab-search" autocomplete="off" placeholder="Buscar imagem...">
+        <input type="search" id="stab-search" autocomplete="off" placeholder="Buscar imagem..." value="${escapeHtml(initSearch)}">
       </div>
     </div>
     <div class="stab-filter-group">
@@ -1450,7 +1488,9 @@ function exibirSidebarTabulator(tarefas) {
             ? "#590000"
             : t.status_novo === "Aprovado com ajustes"
               ? "#2e0059ff"
-              : "transparent";
+              : t.status_novo === "Aprovado"
+                ? "#155900"
+                : "transparent";
       const bgColor =
         t.status_novo === "Em aprovação"
           ? "#90c2ff"
@@ -1458,7 +1498,9 @@ function exibirSidebarTabulator(tarefas) {
             ? "#ff5050"
             : t.status_novo === "Aprovado com ajustes"
               ? "#ae90ffff"
-              : "transparent";
+              : t.status_novo === "Aprovado"
+                ? "#6ed64e"
+                : "transparent";
 
       const item = document.createElement("div");
       item.className = "tarefa-item";

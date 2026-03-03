@@ -53,10 +53,8 @@ class AdendoLocalService
         $extras = $this->normalizeExtras($extrasInput);
 
         if ($colaboradorId === 1) {
-            $extras[] = [
-                'categoria' => 'Acompanhamento',
-                'valor' => 3000.00,
-            ];
+            // Adendo do colaborador 1 sempre usa somente a tabela de extras: Acompanhamento R$3000
+            $extras = [['categoria' => 'Acompanhamento', 'valor' => 3000.00]];
             $tabelaHtml = $this->buildExtrasTabelaHtml($extras);
             $totalValor = $this->sumExtras($extras);
         } else {
@@ -195,6 +193,9 @@ class AdendoLocalService
         foreach ($itens as $item) {
             $dataPagamento = $this->normalizeDateValue($item['data_pagamento'] ?? null);
             $pagoParcial = $this->isPagoParcial($item);
+            // Finalização Parcial já paga parcialmente ainda não foi concluída — não entra no adendo
+            $isParcialJaPaga = $pagoParcial && stripos((string)($item['nome_funcao'] ?? ''), 'Parcial') !== false;
+            if ($isParcialJaPaga) continue;
             $incluirLinha = $dataPagamento === null || $dataPagamento === '0000-00-00' || $pagoParcial;
             if (!$incluirLinha) continue;
 
@@ -410,6 +411,8 @@ class AdendoLocalService
     private function getAdendoItens(int $colaboradorId, int $mesNumero, int $ano): array
     {
         $sql = '';
+        $fimMesDia = cal_days_in_month(CAL_GREGORIAN, $mesNumero, $ano);
+        $fimMesDataTime = sprintf('%04d-%02d-%02d 23:59:59', $ano, $mesNumero, $fimMesDia);
         if ($colaboradorId === 1) {
             $sql = "SELECT 
         fi.colaborador_id,
@@ -427,7 +430,7 @@ class AdendoLocalService
                             JOIN funcao f_sub ON fi_sub.funcao_id = f_sub.idfuncao
                             WHERE fi_sub.imagem_id = fi.imagem_id 
                             AND f_sub.nome_funcao = 'Pré-Finalização'
-                        ) OR ico.status_id = 1
+                        ) OR hi_snap.status_id = 1
                         THEN 'Finalização Parcial'
                         ELSE 'Finalização Completa'
                     END 
@@ -467,10 +470,30 @@ class AdendoLocalService
         obra o ON ico.obra_id = o.idobra
     JOIN 
         funcao f ON fi.funcao_id = f.idfuncao
+    LEFT JOIN (
+        SELECT h1.imagem_id, h1.status_id
+        FROM historico_imagens h1
+        INNER JOIN (
+            SELECT imagem_id, MAX(data_movimento) AS max_data
+            FROM historico_imagens
+            WHERE data_movimento <= ?
+            GROUP BY imagem_id
+        ) hm ON hm.imagem_id = h1.imagem_id AND hm.max_data = h1.data_movimento
+    ) hi_snap ON hi_snap.imagem_id = ico.idimagens_cliente_obra
     WHERE 
         fi.colaborador_id = ?
-        AND (fi.status = 'Finalizado' OR fi.status = 'Em aprovação' OR fi.status = 'Ajuste' OR fi.status = 'Aprovado com ajustes' OR fi.status = 'Aprovado')
-        AND YEAR(fi.prazo) = ? AND MONTH(fi.prazo) = ?
+        AND (
+            (
+                (fi.status = 'Finalizado' OR fi.status = 'Em aprovação' OR fi.status = 'Ajuste' OR fi.status = 'Aprovado com ajustes' OR fi.status = 'Aprovado')
+                AND (YEAR(fi.prazo) = ? AND MONTH(fi.prazo) = ?)
+            )
+            OR EXISTS (
+                SELECT 1 FROM log_alteracoes la
+                WHERE la.funcao_imagem_id = fi.idfuncao_imagem
+                  AND MONTH(la.data) = ? AND YEAR(la.data) = ?
+                  AND LOWER(TRIM(la.status_novo)) IN ('finalizado', 'em aprovação', 'ajuste', 'aprovado com ajustes', 'aprovado')
+            )
+        )
     UNION ALL
     SELECT 
         ac.colaborador_id,
@@ -485,6 +508,7 @@ class AdendoLocalService
         ac.pagamento,
         ac.valor,
         ac.data_pagamento,
+        NULL AS colaborador_ref,
         NULL AS pago_parcial_count,
         NULL AS pago_completa_count
     FROM 
@@ -512,7 +536,7 @@ class AdendoLocalService
                             JOIN funcao f_sub ON fi_sub.funcao_id = f_sub.idfuncao
                             WHERE fi_sub.imagem_id = fi.imagem_id 
                             AND f_sub.nome_funcao = 'Pré-Finalização'
-                        ) OR ico.status_id = 1
+                        ) OR hi_snap.status_id = 1
                         THEN 'Finalização Parcial'
                         ELSE 'Finalização Completa'
                     END 
@@ -544,10 +568,30 @@ class AdendoLocalService
         obra o ON ico.obra_id = o.idobra
     JOIN 
         funcao f ON fi.funcao_id = f.idfuncao
+    LEFT JOIN (
+        SELECT h1.imagem_id, h1.status_id
+        FROM historico_imagens h1
+        INNER JOIN (
+            SELECT imagem_id, MAX(data_movimento) AS max_data
+            FROM historico_imagens
+            WHERE data_movimento <= ?
+            GROUP BY imagem_id
+        ) hm ON hm.imagem_id = h1.imagem_id AND hm.max_data = h1.data_movimento
+    ) hi_snap ON hi_snap.imagem_id = ico.idimagens_cliente_obra
     WHERE 
         fi.colaborador_id = ?
-        AND (fi.status = 'Finalizado' OR fi.status = 'Em aprovação' OR fi.status = 'Ajuste' OR fi.status = 'Aprovado com ajustes' OR fi.status = 'Aprovado')
-        AND YEAR(fi.prazo) = ? AND MONTH(fi.prazo) = ?
+        AND (
+            (
+                (fi.status = 'Finalizado' OR fi.status = 'Em aprovação' OR fi.status = 'Ajuste' OR fi.status = 'Aprovado com ajustes' OR fi.status = 'Aprovado')
+                AND (YEAR(fi.prazo) = ? AND MONTH(fi.prazo) = ?)
+            )
+            OR EXISTS (
+                SELECT 1 FROM log_alteracoes la
+                WHERE la.funcao_imagem_id = fi.idfuncao_imagem
+                  AND MONTH(la.data) = ? AND YEAR(la.data) = ?
+                  AND LOWER(TRIM(la.status_novo)) IN ('finalizado', 'em aprovação', 'ajuste', 'aprovado com ajustes', 'aprovado')
+            )
+        )
     UNION ALL
     SELECT 
         fi.colaborador_id,
@@ -565,7 +609,7 @@ class AdendoLocalService
                             JOIN funcao f_sub ON fi_sub.funcao_id = f_sub.idfuncao
                             WHERE fi_sub.imagem_id = fi.imagem_id 
                             AND f_sub.nome_funcao = 'Pré-Finalização'
-                        ) OR ico.status_id = 1
+                        ) OR hi_snap.status_id = 1
                         THEN CONCAT('Finalização Parcial - ', c.nome_colaborador)
                         ELSE CONCAT('Finalização Completa - ', c.nome_colaborador)
                     END 
@@ -599,11 +643,40 @@ class AdendoLocalService
         funcao f ON fi.funcao_id = f.idfuncao
     JOIN 
         colaborador c ON c.idcolaborador = fi.colaborador_id
+    LEFT JOIN (
+        SELECT h1.imagem_id, h1.status_id
+        FROM historico_imagens h1
+        INNER JOIN (
+            SELECT imagem_id, MAX(data_movimento) AS max_data
+            FROM historico_imagens
+            WHERE data_movimento <= ?
+            GROUP BY imagem_id
+        ) hm ON hm.imagem_id = h1.imagem_id AND hm.max_data = h1.data_movimento
+    ) hi_snap ON hi_snap.imagem_id = ico.idimagens_cliente_obra
     WHERE 
         fi.colaborador_id IN (23, 40)
         AND fi.funcao_id = 4
-        AND (fi.status = 'Finalizado' OR fi.status = 'Em aprovação' OR fi.status = 'Ajuste' OR fi.status = 'Aprovado com ajustes' OR fi.status = 'Aprovado')
-        AND YEAR(fi.prazo) = ? AND MONTH(fi.prazo) = ?";
+        AND NOT (
+            EXISTS (
+                SELECT 1 FROM funcao_imagem fi_sub
+                JOIN funcao f_sub ON fi_sub.funcao_id = f_sub.idfuncao
+                WHERE fi_sub.imagem_id = fi.imagem_id
+                  AND f_sub.nome_funcao = 'Pré-Finalização'
+            )
+            OR hi_snap.status_id = 1
+        )
+        AND (
+            (
+                (fi.status = 'Finalizado' OR fi.status = 'Em aprovação' OR fi.status = 'Ajuste' OR fi.status = 'Aprovado com ajustes' OR fi.status = 'Aprovado')
+                AND (YEAR(fi.prazo) = ? AND MONTH(fi.prazo) = ?)
+            )
+            OR EXISTS (
+                SELECT 1 FROM log_alteracoes la
+                WHERE la.funcao_imagem_id = fi.idfuncao_imagem
+                  AND MONTH(la.data) = ? AND YEAR(la.data) = ?
+                  AND LOWER(TRIM(la.status_novo)) IN ('finalizado', 'em aprovação', 'ajuste', 'aprovado com ajustes', 'aprovado')
+            )
+        )";
         } elseif (in_array($colaboradorId, [13, 20, 23, 37], true)) {
             $sql = "SELECT 
     fi.colaborador_id,
@@ -621,7 +694,7 @@ class AdendoLocalService
                         JOIN funcao f_sub ON fi_sub.funcao_id = f_sub.idfuncao
                         WHERE fi_sub.imagem_id = fi.imagem_id 
                         AND f_sub.nome_funcao = 'Pré-Finalização'
-                    ) OR ico.status_id = 1
+                    ) OR hi_snap.status_id = 1
                     THEN 'Finalização Parcial'
                     ELSE 'Finalização Completa'
                 END 
@@ -653,10 +726,30 @@ JOIN
     obra o ON ico.obra_id = o.idobra
 JOIN 
     funcao f ON fi.funcao_id = f.idfuncao
+LEFT JOIN (
+    SELECT h1.imagem_id, h1.status_id
+    FROM historico_imagens h1
+    INNER JOIN (
+        SELECT imagem_id, MAX(data_movimento) AS max_data
+        FROM historico_imagens
+        WHERE data_movimento <= ?
+        GROUP BY imagem_id
+    ) hm ON hm.imagem_id = h1.imagem_id AND hm.max_data = h1.data_movimento
+) hi_snap ON hi_snap.imagem_id = ico.idimagens_cliente_obra
 WHERE 
     fi.colaborador_id = ?
-    AND (fi.status = 'Finalizado' OR fi.status = 'Em aprovação' OR fi.status = 'Ajuste' OR fi.status = 'Aprovado com ajustes' OR fi.status = 'Aprovado')
-    AND YEAR(fi.prazo) = ? AND MONTH(fi.prazo) = ?
+    AND (
+        (
+            (fi.status = 'Finalizado' OR fi.status = 'Em aprovação' OR fi.status = 'Ajuste' OR fi.status = 'Aprovado com ajustes' OR fi.status = 'Aprovado')
+            AND (YEAR(fi.prazo) = ? AND MONTH(fi.prazo) = ?)
+        )
+        OR EXISTS (
+            SELECT 1 FROM log_alteracoes la
+            WHERE la.funcao_imagem_id = fi.idfuncao_imagem
+              AND MONTH(la.data) = ? AND YEAR(la.data) = ?
+              AND LOWER(TRIM(la.status_novo)) IN ('finalizado', 'em aprovação', 'ajuste', 'aprovado com ajustes', 'aprovado')
+        )
+    )
 UNION ALL
 SELECT 
     an.colaborador_id,
@@ -698,7 +791,7 @@ ORDER BY obra_id, imagem_nome";
                             JOIN funcao f_sub ON fi_sub.funcao_id = f_sub.idfuncao
                             WHERE fi_sub.imagem_id = fi.imagem_id 
                             AND f_sub.nome_funcao = 'Pré-Finalização'
-                        ) OR ico.status_id = 1
+                        ) OR hi_snap.status_id = 1
                         THEN 'Finalização Parcial'
                         ELSE 'Finalização Completa'
                     END 
@@ -729,10 +822,30 @@ ORDER BY obra_id, imagem_nome";
         obra o ON ico.obra_id = o.idobra
     JOIN 
         funcao f ON fi.funcao_id = f.idfuncao
+    LEFT JOIN (
+        SELECT h1.imagem_id, h1.status_id
+        FROM historico_imagens h1
+        INNER JOIN (
+            SELECT imagem_id, MAX(data_movimento) AS max_data
+            FROM historico_imagens
+            WHERE data_movimento <= ?
+            GROUP BY imagem_id
+        ) hm ON hm.imagem_id = h1.imagem_id AND hm.max_data = h1.data_movimento
+    ) hi_snap ON hi_snap.imagem_id = ico.idimagens_cliente_obra
     WHERE 
         fi.colaborador_id = ?
-        AND (fi.status = 'Finalizado' OR fi.status = 'Em aprovação' OR fi.status = 'Ajuste' OR fi.status = 'Aprovado com ajustes' OR fi.status = 'Aprovado')
-        AND YEAR(fi.prazo) = ? AND MONTH(fi.prazo) = ?
+        AND (
+            (
+                (fi.status = 'Finalizado' OR fi.status = 'Em aprovação' OR fi.status = 'Ajuste' OR fi.status = 'Aprovado com ajustes' OR fi.status = 'Aprovado')
+                AND (YEAR(fi.prazo) = ? AND MONTH(fi.prazo) = ?)
+            )
+            OR EXISTS (
+                SELECT 1 FROM log_alteracoes la
+                WHERE la.funcao_imagem_id = fi.idfuncao_imagem
+                  AND MONTH(la.data) = ? AND YEAR(la.data) = ?
+                  AND LOWER(TRIM(la.status_novo)) IN ('finalizado', 'em aprovação', 'ajuste', 'aprovado com ajustes', 'aprovado')
+            )
+        )
     ORDER BY ico.obra_id, ico.idimagens_cliente_obra, fi.funcao_id";
         }
 
@@ -742,13 +855,20 @@ ORDER BY obra_id, imagem_nome";
         }
 
         if ($colaboradorId === 1) {
-            $stmt->bind_param('iiiiii', $colaboradorId, $ano, $mesNumero, $colaboradorId, $ano, $mesNumero);
+            // funcao_imagem: fimMesDataTime(hi_snap), colaboradorId, ano, mes, mes(log), ano(log)
+            // acompanhamento: colaboradorId, ano, mes
+            $stmt->bind_param('siiiiiiii', $fimMesDataTime, $colaboradorId, $ano, $mesNumero, $mesNumero, $ano, $colaboradorId, $ano, $mesNumero);
         } elseif ($colaboradorId === 8) {
-            $stmt->bind_param('iiiii', $colaboradorId, $ano, $mesNumero, $ano, $mesNumero);
+            // 1st UNION (colabId): fimMesDataTime(hi_snap), colaboradorId, ano, mes, mes(log), ano(log) = 6 params
+            // 2nd UNION (23,40):   fimMesDataTime(hi_snap), ano, mes, mes(log), ano(log) = 5 params
+            $stmt->bind_param('siiiiisiiii', $fimMesDataTime, $colaboradorId, $ano, $mesNumero, $mesNumero, $ano, $fimMesDataTime, $ano, $mesNumero, $mesNumero, $ano);
         } elseif (in_array($colaboradorId, [13, 20, 23, 37], true)) {
-            $stmt->bind_param('iiiiii', $colaboradorId, $ano, $mesNumero, $colaboradorId, $ano, $mesNumero);
+            // funcao_imagem: fimMesDataTime(hi_snap), colaboradorId, ano, mes, mes(log), ano(log)
+            // animacao: colaboradorId, ano, mes
+            $stmt->bind_param('siiiiiiiii', $fimMesDataTime, $colaboradorId, $ano, $mesNumero, $mesNumero, $ano, $colaboradorId, $ano, $mesNumero);
         } else {
-            $stmt->bind_param('iii', $colaboradorId, $ano, $mesNumero);
+            // funcao_imagem: fimMesDataTime(hi_snap), colaboradorId, ano, mes, mes(log), ano(log)
+            $stmt->bind_param('siiiiii', $fimMesDataTime, $colaboradorId, $ano, $mesNumero, $mesNumero, $ano);
         }
 
         $stmt->execute();

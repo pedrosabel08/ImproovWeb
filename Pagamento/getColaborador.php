@@ -7,6 +7,26 @@ $colaboradorId = intval($_GET['colaborador_id']);
 $mesNumero = isset($_GET['mes_id']) ? intval($_GET['mes_id']) : null;
 $ano = isset($_GET['ano']) ? intval($_GET['ano']) : null;
 
+if ($mesNumero && $ano) {
+    $fimMesDia = cal_days_in_month(CAL_GREGORIAN, $mesNumero, $ano);
+    $fimMesDataTime = sprintf('%04d-%02d-%02d 23:59:59', $ano, $mesNumero, $fimMesDia);
+    $snapJoin = "LEFT JOIN (
+        SELECT h1.imagem_id, h1.status_id
+        FROM historico_imagens h1
+        INNER JOIN (
+            SELECT imagem_id, MAX(data_movimento) AS max_data
+            FROM historico_imagens
+            WHERE data_movimento <= ?
+            GROUP BY imagem_id
+        ) hm ON hm.imagem_id = h1.imagem_id AND hm.max_data = h1.data_movimento
+    ) hi_snap ON hi_snap.imagem_id = ico.idimagens_cliente_obra";
+    $snapStatusCond = "hi_snap.status_id = 1";
+} else {
+    $fimMesDataTime = null;
+    $snapJoin = "";
+    $snapStatusCond = "ico.status_id = 1";
+}
+
 $dadosColaborador = [];
 
 // Primeira consulta: informações básicas do colaborador
@@ -62,7 +82,7 @@ if ($colaboradorId == 1) {
                             JOIN funcao f_sub ON fi_sub.funcao_id = f_sub.idfuncao
                             WHERE fi_sub.imagem_id = fi.imagem_id 
                             AND f_sub.nome_funcao = 'Pré-Finalização'
-                        ) OR ico.status_id = 1
+                        ) OR {$snapStatusCond}
                         THEN 'Finalização Parcial'
                         ELSE 'Finalização Completa'
                     END 
@@ -93,12 +113,25 @@ if ($colaboradorId == 1) {
         obra o ON ico.obra_id = o.idobra
     JOIN 
         funcao f ON fi.funcao_id = f.idfuncao
+    {$snapJoin}
     WHERE 
-        fi.colaborador_id = ?
-        AND (fi.status = 'Finalizado' OR fi.status = 'Em aprovação' OR fi.status = 'Ajuste' OR fi.status = 'Aprovado com ajustes' OR fi.status = 'Aprovado')";
+        fi.colaborador_id = ?";
 
     if ($mesNumero && $ano) {
-        $sql .= "AND YEAR(fi.prazo) = ? AND MONTH(fi.prazo) = ?";
+        $sql .= " AND (
+            (
+                (fi.status = 'Finalizado' OR fi.status = 'Em aprovação' OR fi.status = 'Ajuste' OR fi.status = 'Aprovado com ajustes' OR fi.status = 'Aprovado')
+                AND (YEAR(fi.prazo) = ? AND MONTH(fi.prazo) = ?)
+            )
+            OR EXISTS (
+                SELECT 1 FROM log_alteracoes la
+                WHERE la.funcao_imagem_id = fi.idfuncao_imagem
+                  AND MONTH(la.data) = ? AND YEAR(la.data) = ?
+                  AND LOWER(TRIM(la.status_novo)) IN ('finalizado', 'em aprovação', 'ajuste', 'aprovado com ajustes', 'aprovado')
+            )
+        )";
+    } else {
+        $sql .= " AND (fi.status = 'Finalizado' OR fi.status = 'Em aprovação' OR fi.status = 'Ajuste' OR fi.status = 'Aprovado com ajustes' OR fi.status = 'Aprovado')";
     }
 
     $sql .= " UNION ALL
@@ -146,7 +179,7 @@ if ($colaboradorId == 1) {
                         JOIN funcao f_sub ON fi_sub.funcao_id = f_sub.idfuncao
                         WHERE fi_sub.imagem_id = fi.imagem_id 
                         AND f_sub.nome_funcao = 'Pré-Finalização'
-                    ) OR ico.status_id = 1
+                    ) OR {$snapStatusCond}
                     THEN 'Finalização Parcial'
                     ELSE 'Finalização Completa'
                 END 
@@ -177,12 +210,25 @@ JOIN
     obra o ON ico.obra_id = o.idobra
 JOIN 
     funcao f ON fi.funcao_id = f.idfuncao
+{$snapJoin}
 WHERE 
-    fi.colaborador_id = ?
-    AND (fi.status = 'Finalizado' OR fi.status = 'Em aprovação' OR fi.status = 'Ajuste' OR fi.status = 'Aprovado com ajustes' OR fi.status = 'Aprovado')";
+    fi.colaborador_id = ?";
 
     if ($mesNumero && $ano) {
-        $sql .= " AND YEAR(fi.prazo) = ? AND MONTH(fi.prazo) = ?";
+        $sql .= " AND (
+            (
+                (fi.status = 'Finalizado' OR fi.status = 'Em aprovação' OR fi.status = 'Ajuste' OR fi.status = 'Aprovado com ajustes' OR fi.status = 'Aprovado')
+                AND (YEAR(fi.prazo) = ? AND MONTH(fi.prazo) = ?)
+            )
+            OR EXISTS (
+                SELECT 1 FROM log_alteracoes la
+                WHERE la.funcao_imagem_id = fi.idfuncao_imagem
+                  AND MONTH(la.data) = ? AND YEAR(la.data) = ?
+                  AND LOWER(TRIM(la.status_novo)) IN ('finalizado', 'em aprovação', 'ajuste', 'aprovado com ajustes', 'aprovado')
+            )
+        )";
+    } else {
+        $sql .= " AND (fi.status = 'Finalizado' OR fi.status = 'Em aprovação' OR fi.status = 'Ajuste' OR fi.status = 'Aprovado com ajustes' OR fi.status = 'Aprovado')";
     }
 
     $sql .= " 
@@ -203,7 +249,7 @@ SELECT
                         JOIN funcao f_sub ON fi_sub.funcao_id = f_sub.idfuncao
                         WHERE fi_sub.imagem_id = fi.imagem_id 
                         AND f_sub.nome_funcao = 'Pré-Finalização'
-                    ) OR ico.status_id = 1
+                    ) OR {$snapStatusCond}
                     THEN CONCAT('Finalização Parcial - ', c.nome_colaborador)
                     ELSE CONCAT('Finalização Completa - ', c.nome_colaborador)
                 END 
@@ -236,13 +282,35 @@ JOIN
     funcao f ON fi.funcao_id = f.idfuncao
 JOIN 
     colaborador c ON c.idcolaborador = fi.colaborador_id
+{$snapJoin}
 WHERE 
     fi.colaborador_id IN (23, 40)
     AND fi.funcao_id = 4
-    AND (fi.status = 'Finalizado' OR fi.status = 'Em aprovação' OR fi.status = 'Ajuste' OR fi.status = 'Aprovado com ajustes' OR fi.status = 'Aprovado')";
+    AND NOT (
+        EXISTS (
+            SELECT 1 FROM funcao_imagem fi_sub
+            JOIN funcao f_sub ON fi_sub.funcao_id = f_sub.idfuncao
+            WHERE fi_sub.imagem_id = fi.imagem_id
+              AND f_sub.nome_funcao = 'Pré-Finalização'
+        )
+        OR {$snapStatusCond}
+    )";
 
     if ($mesNumero && $ano) {
-        $sql .= " AND YEAR(fi.prazo) = ? AND MONTH(fi.prazo) = ?";
+        $sql .= " AND (
+            (
+                (fi.status = 'Finalizado' OR fi.status = 'Em aprovação' OR fi.status = 'Ajuste' OR fi.status = 'Aprovado com ajustes' OR fi.status = 'Aprovado')
+                AND (YEAR(fi.prazo) = ? AND MONTH(fi.prazo) = ?)
+            )
+            OR EXISTS (
+                SELECT 1 FROM log_alteracoes la
+                WHERE la.funcao_imagem_id = fi.idfuncao_imagem
+                  AND MONTH(la.data) = ? AND YEAR(la.data) = ?
+                  AND LOWER(TRIM(la.status_novo)) IN ('finalizado', 'em aprovação', 'ajuste', 'aprovado com ajustes', 'aprovado')
+            )
+        )";
+    } else {
+        $sql .= " AND (fi.status = 'Finalizado' OR fi.status = 'Em aprovação' OR fi.status = 'Ajuste' OR fi.status = 'Aprovado com ajustes' OR fi.status = 'Aprovado')";
     }
 } elseif (in_array($colaboradorId, [13, 20, 23, 37, 39])) {
     $sql = "SELECT 
@@ -261,7 +329,7 @@ WHERE
                         JOIN funcao f_sub ON fi_sub.funcao_id = f_sub.idfuncao
                         WHERE fi_sub.imagem_id = fi.imagem_id 
                         AND f_sub.nome_funcao = 'Pré-Finalização'
-                    ) OR ico.status_id = 1
+                    ) OR {$snapStatusCond}
                     THEN 'Finalização Parcial'
                     ELSE 'Finalização Completa'
                 END 
@@ -293,12 +361,25 @@ JOIN
     obra o ON ico.obra_id = o.idobra
 JOIN 
     funcao f ON fi.funcao_id = f.idfuncao
+{$snapJoin}
 WHERE 
-    fi.colaborador_id = ?
-    AND (fi.status = 'Finalizado' OR fi.status = 'Em aprovação' OR fi.status = 'Ajuste' OR fi.status = 'Aprovado com ajustes' OR fi.status = 'Aprovado')";
+    fi.colaborador_id = ?";
 
     if ($mesNumero && $ano) {
-        $sql .= " AND YEAR(fi.prazo) = ? AND MONTH(fi.prazo) = ?";
+        $sql .= " AND (
+            (
+                (fi.status = 'Finalizado' OR fi.status = 'Em aprovação' OR fi.status = 'Ajuste' OR fi.status = 'Aprovado com ajustes' OR fi.status = 'Aprovado')
+                AND (YEAR(fi.prazo) = ? AND MONTH(fi.prazo) = ?)
+            )
+            OR EXISTS (
+                SELECT 1 FROM log_alteracoes la
+                WHERE la.funcao_imagem_id = fi.idfuncao_imagem
+                  AND MONTH(la.data) = ? AND YEAR(la.data) = ?
+                  AND LOWER(TRIM(la.status_novo)) IN ('finalizado', 'em aprovação', 'ajuste', 'aprovado com ajustes', 'aprovado')
+            )
+        )";
+    } else {
+        $sql .= " AND (fi.status = 'Finalizado' OR fi.status = 'Em aprovação' OR fi.status = 'Ajuste' OR fi.status = 'Aprovado com ajustes' OR fi.status = 'Aprovado')";
     }
 
     $sql .= " 
@@ -350,7 +431,7 @@ WHERE
                             JOIN funcao f_sub ON fi_sub.funcao_id = f_sub.idfuncao
                             WHERE fi_sub.imagem_id = fi.imagem_id 
                             AND f_sub.nome_funcao = 'Pré-Finalização'
-                        ) OR ico.status_id = 1
+                        ) OR {$snapStatusCond}
                         THEN 'Finalização Parcial'
                         ELSE 'Finalização Completa'
                     END 
@@ -381,12 +462,25 @@ WHERE
         obra o ON ico.obra_id = o.idobra
     JOIN 
         funcao f ON fi.funcao_id = f.idfuncao
+    {$snapJoin}
     WHERE 
-        fi.colaborador_id = ?
-        AND (fi.status = 'Finalizado' OR fi.status = 'Em aprovação' OR fi.status = 'Ajuste' OR fi.status = 'Aprovado com ajustes' OR fi.status = 'Aprovado')";
+        fi.colaborador_id = ?";
 
     if ($mesNumero && $ano) {
-        $sql .= " AND YEAR(fi.prazo) = ? AND MONTH(fi.prazo) = ? ORDER BY ico.obra_id, ico.idimagens_cliente_obra, fi.funcao_id";
+        $sql .= " AND (
+            (
+                (fi.status = 'Finalizado' OR fi.status = 'Em aprovação' OR fi.status = 'Ajuste' OR fi.status = 'Aprovado com ajustes' OR fi.status = 'Aprovado')
+                AND (YEAR(fi.prazo) = ? AND MONTH(fi.prazo) = ?)
+            )
+            OR EXISTS (
+                SELECT 1 FROM log_alteracoes la
+                WHERE la.funcao_imagem_id = fi.idfuncao_imagem
+                  AND MONTH(la.data) = ? AND YEAR(la.data) = ?
+                  AND LOWER(TRIM(la.status_novo)) IN ('finalizado', 'em aprovação', 'ajuste', 'aprovado com ajustes', 'aprovado')
+            )
+        ) ORDER BY ico.obra_id, ico.idimagens_cliente_obra, fi.funcao_id";
+    } else {
+        $sql .= " AND (fi.status = 'Finalizado' OR fi.status = 'Em aprovação' OR fi.status = 'Ajuste' OR fi.status = 'Aprovado com ajustes' OR fi.status = 'Aprovado') ORDER BY ico.obra_id, ico.idimagens_cliente_obra, fi.funcao_id";
     }
 }
 
@@ -404,21 +498,32 @@ error_log("Parâmetros: " . json_encode([$colaboradorId, $ano, $mesNumero]));
 
 // Bind de parâmetros conforme necessário
 // include collaborator 37 in the same bind pattern so UNION queries receive the correct params
-if (in_array($colaboradorId, [1, 13, 20, 23, 37, 39])) {
+if ($colaboradorId == 1) {
     if ($mesNumero && $ano) {
-        $stmt->bind_param('iiiiii',   $colaboradorId, $ano, $mesNumero, $colaboradorId, $ano, $mesNumero);
+        // funcao_imagem: s(snap), i(colab), i(ano), i(mes), i(mes_log), i(ano_log) + acompanhamento: i(colab), i(ano), i(mes)
+        $stmt->bind_param('siiiiiiii', $fimMesDataTime, $colaboradorId, $ano, $mesNumero, $mesNumero, $ano, $colaboradorId, $ano, $mesNumero);
+    } else {
+        $stmt->bind_param('ii', $colaboradorId, $colaboradorId);
+    }
+} elseif (in_array($colaboradorId, [13, 20, 23, 37, 39])) {
+    if ($mesNumero && $ano) {
+        // funcao_imagem: s(snap), i(colab), i(ano), i(mes), i(mes_log), i(ano_log) + animacao: i(colab), i(ano), i(mes)
+        $stmt->bind_param('siiiiiiii', $fimMesDataTime, $colaboradorId, $ano, $mesNumero, $mesNumero, $ano, $colaboradorId, $ano, $mesNumero);
     } else {
         $stmt->bind_param('ii', $colaboradorId, $colaboradorId);
     }
 } elseif ($colaboradorId == 8) {
     if ($mesNumero && $ano) {
-        $stmt->bind_param('iiiii', $colaboradorId, $ano, $mesNumero, $ano, $mesNumero);
+        // 1st UNION: s(snap), i(colab), i(ano), i(mes), i(mes_log), i(ano_log)
+        // 2nd UNION (23,40): s(snap), i(ano), i(mes), i(mes_log), i(ano_log)
+        $stmt->bind_param('siiiiisiiii', $fimMesDataTime, $colaboradorId, $ano, $mesNumero, $mesNumero, $ano, $fimMesDataTime, $ano, $mesNumero, $mesNumero, $ano);
     } else {
         $stmt->bind_param('i', $colaboradorId);
     }
 } else {
     if ($mesNumero && $ano) {
-        $stmt->bind_param('iii', $colaboradorId, $ano, $mesNumero);
+        // funcao_imagem: s(snap), i(colab), i(ano), i(mes), i(mes_log), i(ano_log)
+        $stmt->bind_param('siiiii', $fimMesDataTime, $colaboradorId, $ano, $mesNumero, $mesNumero, $ano);
     } else {
         $stmt->bind_param('i', $colaboradorId);
     }

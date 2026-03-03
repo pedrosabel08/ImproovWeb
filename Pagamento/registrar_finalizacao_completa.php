@@ -1,4 +1,27 @@
 <?php
+/**
+ * registrar_finalizacao_completa.php
+ *
+ * Usage (HTTP POST only, JSON body):
+ * - ids (array[int])              : array of `idfuncao_imagem` to register as full payment (required)
+ * - data_pagamento (YYYY-MM-DD)  : optional payment date; defaults to today if omitted
+ * - usuario_id (int)             : id of the user performing the registration (optional, used for events)
+ *
+ * Parameters (summary):
+ * - ids            : array of integers, each an `idfuncao_imagem` to mark as 'Pago Completa'
+ * - data_pagamento : string date in YYYY-MM-DD (defaults to today when omitted)
+ * - usuario_id     : integer user id used for created events/descriptions
+ *
+ * Response JSON:
+ * - success: boolean
+ * - created: list of created items with pagamento_id
+ * - skipped: items skipped (duplicates or validation)
+ * - errors: list of errors
+ *
+ * Example:
+ * curl -X POST -H "Content-Type: application/json" -d '{"ids":[104017,104018],"data_pagamento":"2025-12-08","usuario_id":1}' \
+ *   http://yourhost/Pagamento/registrar_finalizacao_completa.php
+ */
 header('Content-Type: application/json; charset=utf-8');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {

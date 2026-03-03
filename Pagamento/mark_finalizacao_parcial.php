@@ -1,4 +1,30 @@
 <?php
+/**
+ * mark_finalizacao_parcial.php
+ *
+ * Usage (HTTP POST or GET):
+ * - idfuncao_imagem (int)         : ID of the `funcao_imagem` to mark as partial payment. OPTIONAL if using colaborador_id flow.
+ * - funcao_imagem_id (int)       : alias for idfuncao_imagem (accepted)
+ * - colaborador_id (int)         : collaborator id (used when no specific idfuncao_imagem supplied)
+ * - data_pagamento (YYYY-MM-DD)  : payment date (required)
+ * - observacao (string|null)     : custom observation text (optional). If omitted, defaults to 'Finalização Parcial'.
+ * - sem_observacao (bool|1|"1") : when true, do not add 'Finalização Parcial' observation (legacy fallback)
+ *
+ * Parameters (summary):
+ * - idfuncao_imagem / funcao_imagem_id : integer id of the funcao_imagem to mark (one of these or colaborador_id required)
+ * - colaborador_id                     : integer collaborator id (alternative to idfuncao_imagem)
+ * - data_pagamento                     : string date in YYYY-MM-DD (or DD/MM/YYYY) — required
+ * - observacao                         : optional string to store in pagamento_itens.observacao
+ * - sem_observacao                     : boolean/1 to suppress default observation text
+ *
+ * Examples:
+ * 1) Mark a single funcao_imagem via POST JSON:
+ *    curl -X POST -H "Content-Type: application/json" -d '{"idfuncao_imagem":104017,"data_pagamento":"2025-12-08"}' \
+ *      http://yourhost/Pagamento/mark_finalizacao_parcial.php
+ *
+ * 2) Mark by collaborator and date (will find all funcao_imagem with DATE(data_pagamento) = provided date):
+ *    GET /Pagamento/mark_finalizacao_parcial.php?colaborador_id=123&data_pagamento=2025-12-08
+ */
 header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/../conexao.php';
 

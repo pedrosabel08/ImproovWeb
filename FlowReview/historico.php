@@ -166,7 +166,7 @@ LEFT JOIN comentarios_imagem ci ON ci.ap_imagem_id = hi.id
 LEFT JOIN funcao_imagem fimg ON fimg.idfuncao_imagem = hi.funcao_imagem_id
 LEFT JOIN angulos_imagens ai ON ai.historico_id = hi.id AND ai.imagem_id = fimg.imagem_id
 WHERE hi.funcao_imagem_id = $idFuncaoSelecionada
-GROUP BY hi.id ORDER BY has_comments DESC, comment_count DESC";
+GROUP BY hi.id ORDER BY angulo_liberada DESC, has_comments DESC, comment_count DESC";
 
     $resultImagens = $conn->query($sqlImagens);
     $imagens = array();

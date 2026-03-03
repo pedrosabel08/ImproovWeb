@@ -1331,6 +1331,46 @@ p.imagem_nome {
   font-style: italic;
 }
 
+/* ── Positioned comment modal (appear near click point, no dark overlay) ── */
+#comentarioModal {
+  background: transparent !important;
+  pointer-events: none; /* transparent layer — doesn't block image interaction */
+  align-items: flex-start !important;
+  justify-content: flex-start !important;
+}
+
+#comentarioModal .modal-content {
+  pointer-events: all; /* the form IS clickable */
+  position: fixed !important; /* JS sets left/top dynamically */
+  width: 360px;
+  max-width: calc(100vw - 24px);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.36),
+    0 2px 8px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  z-index: 1001;
+}
+
+/* Preview dot rendered on the image before the comment is saved */
+.comment-preview {
+  background: rgba(255, 140, 0, 0.9) !important;
+  border: 2px dashed #fff !important;
+  pointer-events: none;
+  z-index: 950;
+  animation: comment-preview-pulse 0.6s ease-in-out infinite alternate;
+}
+
+@keyframes comment-preview-pulse {
+  from {
+    transform: translate(-50%, -50%) scale(1);
+    box-shadow: 0 0 0 0 rgba(255, 140, 0, 0.6);
+  }
+  to {
+    transform: translate(-50%, -50%) scale(1.28);
+    box-shadow: 0 0 0 7px rgba(255, 140, 0, 0);
+  }
+}
+
 .resposta-editor {
   border: 1px solid #ccc;
   padding: 10px;
@@ -1667,7 +1707,7 @@ nav.breadcrumb-nav a {
   border-right: 1px solid var(--fr-border, #3a3a3a);
   overflow: visible;
   padding: 8px 6px;
-  height: 100%;
+  height: max-content;
   position: relative;
   transition:
     width 0.25s ease,

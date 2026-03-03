@@ -1143,6 +1143,35 @@ form#task-form button {
   gap: 6px;
 }
 
+.btn-ir-flowreview {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 7px 13px;
+  border-radius: 8px;
+  background: #1a56db;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background 0.2s,
+    transform 0.1s;
+  border: none;
+}
+
+.btn-ir-flowreview:hover {
+  background: #1341b3;
+  transform: translateY(-1px);
+  color: #fff;
+}
+
+.btn-ir-flowreview i {
+  font-size: 12px;
+}
+
 @keyframes mindmapCardIn {
   from {
     opacity: 0;

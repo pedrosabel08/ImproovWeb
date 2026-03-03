@@ -7,6 +7,27 @@ document.addEventListener("DOMContentLoaded", function () {
     fetchObrasETarefas().then(() => {
       // Depois filtra pela obra
       filtrarTarefasPorObra(obraNome);
+
+      // Deep link from PaginaPrincipal kanban: auto-select specific function
+      const frGotoRaw = localStorage.getItem("fr_goto");
+      if (frGotoRaw) {
+        try {
+          const frGoto = JSON.parse(frGotoRaw);
+          localStorage.removeItem("fr_goto");
+          if (
+            frGoto.idfuncao_imagem &&
+            (!frGoto.nome_obra || frGoto.nome_obra === obraNome)
+          ) {
+            setTimeout(() => {
+              historyAJAX(frGoto.idfuncao_imagem);
+              if (window._stabSetActive)
+                window._stabSetActive(frGoto.idfuncao_imagem);
+            }, 400);
+          }
+        } catch (e) {
+          console.error("fr_goto parse error:", e);
+        }
+      }
     });
 
     // support pointer events (touch / pen) for PDF drawing
@@ -1141,7 +1162,7 @@ function historyAJAX(idfuncao_imagem) {
           alert("Selecione um envio para adicionar novos ângulos.");
           return;
         }
-        document.getElementById("imagem-modal").style.display = "block";
+        document.getElementById("imagem-modal").style.display = "flex";
       });
 
       const titulo = document.getElementById("funcao_nome");
@@ -1502,6 +1523,15 @@ document.querySelector(".close").addEventListener("click", () => {
   document.getElementById("preview").innerHTML = "";
 });
 
+// Close #imagem-modal when clicking on the dark overlay (outside the modal-content)
+document.getElementById("imagem-modal").addEventListener("click", (e) => {
+  if (e.target === document.getElementById("imagem-modal")) {
+    document.getElementById("imagem-modal").style.display = "none";
+    document.getElementById("input-imagens").value = "";
+    document.getElementById("preview").innerHTML = "";
+  }
+});
+
 document
   .getElementById("input-imagens")
   .addEventListener("change", function () {
@@ -1652,6 +1682,63 @@ let tribute; // variável global
 let mencionadosIds = []; // armazenar os IDs dos mencionados
 let _editingCommentId = null; // ID do comentário em edição (null = novo comentário)
 let quillComentario = null; // instância do Quill no modal de comentário
+
+// ── Comment modal near-click positioning ────────────────────────────────────
+let _commentPreviewMarker = null;
+
+function openCommentModalAtPoint(cx, cy) {
+  const modal = document.getElementById("comentarioModal");
+  const content = modal.querySelector(".modal-content");
+  if (!content) {
+    modal.style.display = "flex";
+    return;
+  }
+
+  // Show first so we can measure its size
+  modal.style.display = "flex";
+  const w = content.offsetWidth || 360;
+  const h = content.offsetHeight || 340;
+  const margin = 12;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+
+  // Prefer placing to the right of the click; fall back to left
+  let left = cx + 18;
+  if (left + w + margin > vw) left = cx - w - 18;
+  if (left < margin) left = margin;
+
+  // Prefer just below the click; fall back to above
+  let top = cy - 24;
+  if (top + h + margin > vh) top = vh - h - margin;
+  if (top < margin) top = margin;
+
+  content.style.left = Math.round(left) + "px";
+  content.style.top = Math.round(top) + "px";
+}
+
+function showCommentPreview() {
+  removeCommentPreview();
+  const imageWrapper = document.getElementById("image_wrapper");
+  if (!imageWrapper) return;
+  const marker = document.createElement("div");
+  marker.className = "comment comment-preview";
+  marker.id = "comment-preview-marker";
+  marker.style.left = relativeX + "%";
+  marker.style.top = relativeY + "%";
+  marker.textContent = "+";
+  imageWrapper.appendChild(marker);
+  _commentPreviewMarker = marker;
+}
+
+function removeCommentPreview() {
+  if (_commentPreviewMarker) {
+    _commentPreviewMarker.remove();
+    _commentPreviewMarker = null;
+  }
+  const stale = document.getElementById("comment-preview-marker");
+  if (stale) stale.remove();
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 document.addEventListener("DOMContentLoaded", async () => {
   try {
@@ -1832,6 +1919,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Modal: fechar
   document.getElementById("fecharComentarioModal").onclick = () => {
     document.getElementById("comentarioModal").style.display = "none";
+    removeCommentPreview();
     _editingCommentId = null;
     if (quillComentario) quillComentario.setContents([]);
     const modalTitle = document.querySelector("#comentarioModal h3");
@@ -2033,7 +2121,18 @@ function mostrarPdfCompleto(
   const imageWrapper = document.getElementById("image_wrapper");
   const sidebar = document.querySelector(".sidebar-direita");
   const imagem_completa = document.getElementById("imagem_completa");
-  if (sidebar) sidebar.style.display = "flex";
+  if (sidebar) {
+    sidebar.classList.remove("collapsed");
+    sidebar.style.display = "flex";
+    const rightIcon = document.querySelector("#right-collapse-btn i");
+    if (rightIcon) rightIcon.className = "fa-solid fa-chevron-right";
+  }
+  const wrapperSb = document.querySelector(".wrapper-sidebar");
+  if (wrapperSb) {
+    wrapperSb.classList.remove("collapsed");
+    const leftIcon = document.querySelector("#left-collapse-btn i");
+    if (leftIcon) leftIcon.className = "fa-solid fa-chevron-left";
+  }
 
   if (imageWrapper) {
     imageWrapper.querySelectorAll(".comment").forEach((c) => c.remove());
@@ -2115,7 +2214,9 @@ function mostrarPdfCompleto(
       const _mtPdf = document.querySelector("#comentarioModal h3");
       if (_mtPdf) _mtPdf.textContent = "Novo Comentário";
       document.getElementById("imagemComentario").value = "";
-      document.getElementById("comentarioModal").style.display = "flex";
+
+      showCommentPreview();
+      openCommentModalAtPoint(event.clientX, event.clientY);
       mencionadosIds = [];
     });
 
@@ -2194,8 +2295,21 @@ function mostrarImagemCompleta(src, id) {
   pdfViewerState.pages = 0;
 
   const imageWrapper = document.getElementById("image_wrapper");
+
+  // Garante que ambas as sidebars estejam expandidas ao trocar de imagem
   const sidebar = document.querySelector(".sidebar-direita");
-  sidebar.style.display = "flex";
+  if (sidebar) {
+    sidebar.classList.remove("collapsed");
+    sidebar.style.display = "flex";
+    const rightIcon = document.querySelector("#right-collapse-btn i");
+    if (rightIcon) rightIcon.className = "fa-solid fa-chevron-right";
+  }
+  const wrapperSb = document.querySelector(".wrapper-sidebar");
+  if (wrapperSb) {
+    wrapperSb.classList.remove("collapsed");
+    const leftIcon = document.querySelector("#left-collapse-btn i");
+    if (leftIcon) leftIcon.className = "fa-solid fa-chevron-left";
+  }
 
   imageWrapper.classList.remove("pdf-mode");
 
@@ -2229,7 +2343,9 @@ function mostrarImagemCompleta(src, id) {
     const _mtImg = document.querySelector("#comentarioModal h3");
     if (_mtImg) _mtImg.textContent = "Novo Comentário";
     document.getElementById("imagemComentario").value = "";
-    document.getElementById("comentarioModal").style.display = "flex";
+
+    showCommentPreview();
+    openCommentModalAtPoint(event.clientX, event.clientY);
 
     // Limpa os mencionados quando abre um novo comentário
     mencionadosIds = [];
@@ -2404,6 +2520,7 @@ document.getElementById("enviarComentario").onclick = async () => {
     const editId = _editingCommentId;
     _editingCommentId = null;
     document.getElementById("comentarioModal").style.display = "none";
+    removeCommentPreview();
     if (quillComentario) quillComentario.setContents([]);
     const modalTitle = document.querySelector("#comentarioModal h3");
     if (modalTitle) modalTitle.textContent = "Novo Comentário";
@@ -2458,6 +2575,7 @@ document.getElementById("enviarComentario").onclick = async () => {
     const result = await response.json();
 
     document.getElementById("comentarioModal").style.display = "none";
+    removeCommentPreview();
     if (quillComentario) quillComentario.setContents([]);
 
     if (result.sucesso) {
@@ -2804,8 +2922,8 @@ async function renderComments(id) {
       // Limpa o input de imagem
       document.getElementById("imagemComentario").value = "";
 
-      // Abre o modal
-      document.getElementById("comentarioModal").style.display = "flex";
+      // Abre o modal (centered when editing)
+      openCommentModalAtPoint(window.innerWidth / 2, window.innerHeight / 2);
       mencionadosIds = [];
     });
 
@@ -3200,24 +3318,36 @@ document.addEventListener("keydown", function (event) {
       return;
     }
 
+    // Close #imagem-modal (add ângulos)
+    const imagemModal = document.getElementById("imagem-modal");
+    if (imagemModal && imagemModal.style.display === "flex") {
+      imagemModal.style.display = "none";
+      const inputImagens = document.getElementById("input-imagens");
+      if (inputImagens) inputImagens.value = "";
+      const previewEl = document.getElementById("preview");
+      if (previewEl) previewEl.innerHTML = "";
+      return;
+    }
+
     const comentarioModal = document.getElementById("comentarioModal");
 
     if (comentarioModal.style.display === "flex") {
       comentarioModal.style.display = "none";
+      removeCommentPreview();
       return; // Interrompe aqui se o modal estava visível
     }
 
-    const main = document.querySelector(".main");
-    main.classList.remove("hidden");
+    // const main = document.querySelector(".main");
+    // main.classList.remove("hidden");
 
-    const container_aprovacao = document.querySelector(".container-aprovacao");
-    container_aprovacao.classList.add("hidden");
+    // const container_aprovacao = document.querySelector(".container-aprovacao");
+    // container_aprovacao.classList.add("hidden");
 
-    const imagemWrapperDiv = document.querySelector(".image_wrapper");
-    imagemWrapperDiv.innerHTML = "";
+    // const imagemWrapperDiv = document.querySelector(".image_wrapper");
+    // imagemWrapperDiv.innerHTML = "";
 
-    const comentariosDiv = document.querySelector(".comentarios");
-    comentariosDiv.innerHTML = "";
+    // const comentariosDiv = document.querySelector(".comentarios");
+    // comentariosDiv.innerHTML = "";
   }
 });
 
@@ -3429,7 +3559,10 @@ function handlePointerUp(e) {
       const _mtFh = document.querySelector("#comentarioModal h3");
       if (_mtFh) _mtFh.textContent = "Novo Comentário";
       document.getElementById("imagemComentario").value = "";
-      document.getElementById("comentarioModal").style.display = "flex";
+      openCommentModalAtPoint(
+        drawStartClientX || window.innerWidth / 2,
+        drawStartClientY || window.innerHeight / 2,
+      );
       mencionadosIds = [];
     }
     imageWrapper.style.cursor = "crosshair !important";

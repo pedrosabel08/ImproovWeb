@@ -407,6 +407,7 @@ function processarDados(data) {
       card.dataset.requiresFileUpload = String(
         Number(item.requires_file_upload || 0),
       );
+      card.dataset.nomeObraReal = item.nome_obra || "";
     } else {
       // lógica para tarefas criadas
       bolinhaHTML = "";
@@ -612,14 +613,14 @@ function processarDados(data) {
             if (result.isDenied) {
               const idFuncao = card.dataset.id;
               const idImagem = card.dataset.idImagem;
-              abrirSidebar(idFuncao, idImagem);
+              abrirSidebar(idFuncao, idImagem, card.dataset.nomeObraReal || "");
             }
           });
           return;
         }
         const idFuncao = card.dataset.id;
         const idImagem = card.dataset.idImagem;
-        abrirSidebar(idFuncao, idImagem);
+        abrirSidebar(idFuncao, idImagem, card.dataset.nomeObraReal || "");
       }
     });
 
@@ -2041,7 +2042,7 @@ function abrirSidebarTarefaCriada(idTarefa) {
     });
 }
 
-function abrirSidebar(idFuncao, idImagem) {
+function abrirSidebar(idFuncao, idImagem, nomeObra = "") {
   return fetch(
     `PaginaPrincipal/getInfosCard.php?idfuncao=${idFuncao}&imagem_id=${idImagem}`,
   )
@@ -2877,6 +2878,33 @@ function abrirSidebar(idFuncao, idImagem) {
             textContent: "Sem ângulo definido",
           }),
         );
+
+      // "Ir para o Flow Review" button — always visible in the Ângulo definido node
+      const nomeObraFinal = nomeObra || (funcao && funcao.nome_obra) || "";
+      const btnFlowReview = document.createElement("a");
+      btnFlowReview.className = "btn-ir-flowreview";
+      btnFlowReview.innerHTML = '<i class="fa-solid fa-arrow-up-right-from-square"></i> Ir para o Flow Review';
+      btnFlowReview.href = "#";
+      btnFlowReview.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        localStorage.setItem("fr_goto", JSON.stringify({
+          idfuncao_imagem: idFuncao,
+          nome_obra: nomeObraFinal
+        }));
+        // Derive ImproovWeb base dynamically so it works on both local and production
+        const _p = window.location.pathname;
+        const _si = _p.indexOf('/ImproovWeb');
+        const _imBase = _si !== -1
+          ? window.location.origin + _p.slice(0, _si + '/ImproovWeb'.length)
+          : 'https://improov.com.br/flow/ImproovWeb';
+        const base = `${_imBase}/FlowReview/index.php`;
+        const url = nomeObraFinal
+          ? `${base}?obra_nome=${encodeURIComponent(nomeObraFinal)}`
+          : base;
+        window.open(url, "_blank");
+      });
+      anguloBody.appendChild(btnFlowReview);
 
       // Colaboradores/Logs — elementos expandíveis dentro do núcleo principal
       const centerDrawers = [];

@@ -138,13 +138,24 @@ function sair() {
 }
 
 function getAppBasePath() {
-    // Se o sistema roda em subpasta (ex.: /flow/ImproovWeb/...), precisamos manter o prefixo.
-    // Se roda na raiz do domínio, retorna ''.
+    // Encontra /ImproovWeb no pathname atual (com ou sem barra final).
     const p = window.location.pathname || '';
-    const marker = '/ImproovWeb/';
-    const idx = p.indexOf(marker);
-    if (idx === -1) return '';
-    return p.slice(0, idx + '/ImproovWeb'.length);
+    const idx = p.indexOf('/ImproovWeb');
+    if (idx !== -1) {
+        return p.slice(0, idx + '/ImproovWeb'.length);
+    }
+    // Fallback: detecta via src de qualquer <script> carregado que contenha /ImproovWeb/
+    try {
+        const scripts = Array.from(document.querySelectorAll('script[src]'));
+        for (const s of scripts) {
+            const url = new URL(s.src, location.href);
+            const si = url.pathname.indexOf('/ImproovWeb/');
+            if (si !== -1) {
+                return url.pathname.slice(0, si + '/ImproovWeb'.length);
+            }
+        }
+    } catch (e) { /* ignore */ }
+    return '';
 }
 
 function scheduleNextCheck() {

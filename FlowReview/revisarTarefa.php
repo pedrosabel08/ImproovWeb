@@ -82,6 +82,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $colaborador_id = $data['colaborador_id'] ?? null;
     $responsavel = $data['responsavel'] ?? null;
     $imagem_id = $data['imagem_id'] ?? null;
+    // SFTP conflict resolution params (passed on 2nd call by the frontend)
+    $sftp_action = $data['sftp_action'] ?? null; // 'replace' | 'add' | null
+    $sftp_suffix = $data['sftp_suffix'] ?? null; // suffix string when action='add'
     // Pode conter múltiplos nomes que serão aceitos ao buscar o usuário no Slack
     $nome_colaboradores = ['Pedro Sabel', 'Andre L. de Souza'];
 
@@ -365,9 +368,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $uploadDir = dirname(__DIR__) . "/uploads/";
         $arquivosPossiveis = glob($uploadDir . $nome_arquivo_base . '.*'); // tenta encontrar qualquer extensão
 
+        // Fallback: arquivo não encontrado localmente → busca no VPS via SFTP
+        $arquivoTempVps = null;
+        if (empty($arquivosPossiveis)) {
+            try {
+                $vpsCfg    = improov_sftp_config('IMPROOV_VPS_SFTP');
+                $vpsBase   = rtrim((string)improov_env('IMPROOV_VPS_SFTP_REMOTE_PATH'), '/');
+                $vpsDir    = $vpsBase . '/uploads/';
+                $vsftp     = new SFTP($vpsCfg['host'], (int)$vpsCfg['port']);
+                if ($vsftp->login($vpsCfg['user'], $vpsCfg['pass'])) {
+                    $listaRemota = $vsftp->nlist($vpsDir);
+                    if (is_array($listaRemota)) {
+                        foreach ($listaRemota as $remoteFile) {
+                            if (pathinfo($remoteFile, PATHINFO_FILENAME) === $nome_arquivo_base) {
+                                $tempPath = sys_get_temp_dir() . DIRECTORY_SEPARATOR . $remoteFile;
+                                if ($vsftp->get($vpsDir . $remoteFile, $tempPath)) {
+                                    $arquivosPossiveis = [$tempPath];
+                                    $arquivoTempVps    = $tempPath;
+                                    $resultadoFinal['logs'][] = "Arquivo baixado do VPS: {$remoteFile}";
+                                } else {
+                                    $resultadoFinal['logs'][] = "Falha ao baixar '{$remoteFile}' do VPS.";
+                                }
+                                break;
+                            }
+                        }
+                    }
+                } else {
+                    $resultadoFinal['logs'][] = "Falha ao conectar no VPS SFTP para buscar uploads.";
+                }
+            } catch (RuntimeException $e) {
+                $resultadoFinal['logs'][] = "VPS SFTP config ausente: " . $e->getMessage();
+            }
+        }
+
         if (!empty($arquivosPossiveis)) {
             $caminho_local = $arquivosPossiveis[0];
-            $nome_arquivo = basename($caminho_local); // nome final com extensão
+            $nome_arquivo_original = basename($caminho_local); // nome original com possível índice
+            // Remove índices numéricos finais antes da extensão: ex. _EF_5_1.jpg → _EF.jpg
+            $nome_arquivo = preg_replace('/(_\d+)+(\.([^.]+))$/', '$2', $nome_arquivo_original);
+            if ($nome_arquivo === $nome_arquivo_original) {
+                // Não havia índice – mantém o original
+                $nome_arquivo = $nome_arquivo_original;
+            }
 
             $reviewDir = $uploadDir . "review/";
             if (!is_dir($reviewDir)) {
@@ -447,7 +489,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         }
                     }
 
-                    $remote_path = "$revisaoDir/$nome_arquivo";
+                    // Se o usuário pediu para adicionar com sufixo, ajusta o nome final
+                    $nome_arquivo_sftp = $nome_arquivo;
+                    if ($sftp_action === 'add' && !empty($sftp_suffix)) {
+                        $ext_sftp  = pathinfo($nome_arquivo_sftp, PATHINFO_EXTENSION);
+                        $base_sftp = pathinfo($nome_arquivo_sftp, PATHINFO_FILENAME);
+                        $nome_arquivo_sftp = $base_sftp . '_' . $sftp_suffix . '.' . $ext_sftp;
+                    }
+
+                    $remote_path = "$revisaoDir/$nome_arquivo_sftp";
+
+                    // Verifica se já existe um arquivo com o mesmo nome no servidor
+                    if ($sftp_action === null && $sftp->stat($remote_path) !== false) {
+                        $resultadoFinal['sftp_conflict']       = true;
+                        $resultadoFinal['sftp_nome_arquivo']   = $nome_arquivo_sftp;
+                        $resultadoFinal['sftp_remote_path']    = $remote_path;
+                        $resultadoFinal['sftp_caminho_local']  = $caminho_local;
+                        $resultadoFinal['logs'][] = "Conflito SFTP: arquivo $remote_path já existe.";
+                        $enviado = false; // não sinaliza como enviado; frontend resolverá
+                        break;
+                    }
+
                     if ($sftp->put($remote_path, $caminho_local, SFTP::SOURCE_LOCAL_FILE)) {
                         $resultadoFinal['logs'][] = "Arquivo enviado com sucesso para $remote_path.";
                         $enviado = true;
@@ -460,7 +522,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $resultadoFinal['sftp_enviado'] = $enviado;
             }
         } else {
-            $resultadoFinal['logs'][] = "Arquivo com base '$nome_arquivo_base' não encontrado em $uploadDir.";
+            $resultadoFinal['logs'][] = "Arquivo com base '$nome_arquivo_base' não encontrado em $uploadDir nem no VPS.";
+        }
+
+        // Remove arquivo temporário baixado do VPS (se existir)
+        if ($arquivoTempVps && is_file($arquivoTempVps)) {
+            @unlink($arquivoTempVps);
         }
     }
 

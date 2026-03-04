@@ -78,7 +78,7 @@ document.addEventListener("DOMContentLoaded", function () {
   if (typeof loadMetrics === "function") loadMetrics();
 });
 
-function revisarTarefa(
+async function revisarTarefa(
   idfuncao_imagem,
   nome_colaborador,
   imagem_nome,
@@ -87,6 +87,8 @@ function revisarTarefa(
   imagem_id,
   tipoRevisao,
 ) {
+  event.stopPropagation();
+
   const idcolaborador = localStorage.getItem("idcolaborador");
 
   let actionText = "";
@@ -102,12 +104,75 @@ function revisarTarefa(
       break;
   }
 
-  if (confirm(`Você tem certeza de que deseja ${actionText}?`)) {
-    fetch("revisarTarefa.php", {
+  const { isConfirmed } = await Swal.fire({
+    title: "Confirmar ação",
+    text: `Você tem certeza de que deseja ${actionText}?`,
+    icon: "question",
+    showCancelButton: true,
+    confirmButtonText: "Sim, confirmar",
+    cancelButtonText: "Cancelar",
+    confirmButtonColor: "#2ecc71",
+  });
+
+  if (!isConfirmed) return;
+
+  // ── Etapas de progresso exibidas ao usuário ─────────────────────────────
+  const etapas = [
+    {
+      titulo: "Salvando revisão…",
+      detalhe: "Atualizando status no banco de dados.",
+    },
+    {
+      titulo: "Verificando arquivo…",
+      detalhe: "Buscando arquivo de upload no servidor.",
+    },
+    {
+      titulo: "Enviando para o servidor…",
+      detalhe: "Transferindo arquivo via SFTP. Pode levar alguns instantes.",
+    },
+    {
+      titulo: "Notificando colaboradores…",
+      detalhe: "Enviando mensagem no Slack.",
+    },
+    { titulo: "Finalizando…", detalhe: "Quase pronto!" },
+  ];
+  let etapaIdx = 0;
+
+  Swal.fire({
+    title: etapas[0].titulo,
+    html: `<p style="margin:0;color:#555">${etapas[0].detalhe}</p>
+           <div id="fr-progress-bar" style="margin-top:14px;height:6px;border-radius:3px;background:#eee;overflow:hidden">
+             <div id="fr-progress-fill" style="height:100%;width:0%;background:#2ecc71;transition:width 2.8s ease"></div>
+           </div>`,
+    allowOutsideClick: false,
+    allowEscapeKey: false,
+    showConfirmButton: false,
+    didOpen: () => {
+      Swal.showLoading();
+      // Arranca a barra no próximo tick para a transição CSS funcionar
+      requestAnimationFrame(() => {
+        const fill = document.getElementById("fr-progress-fill");
+        if (fill) fill.style.width = "20%";
+      });
+    },
+  });
+
+  const avancarEtapa = setInterval(() => {
+    etapaIdx = Math.min(etapaIdx + 1, etapas.length - 1);
+    const pct = Math.round(((etapaIdx + 1) / etapas.length) * 85); // vai até 85% enquanto aguarda
+    Swal.update({
+      title: etapas[etapaIdx].titulo,
+      html: `<p style="margin:0;color:#555">${etapas[etapaIdx].detalhe}</p>
+             <div id="fr-progress-bar" style="margin-top:14px;height:6px;border-radius:3px;background:#eee;overflow:hidden">
+               <div id="fr-progress-fill" style="height:100%;width:${pct}%;background:#2ecc71;transition:width 2.8s ease"></div>
+             </div>`,
+    });
+  }, 3000);
+
+  try {
+    const response = await fetch("revisarTarefa.php", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         idfuncao_imagem,
         nome_colaborador,
@@ -118,78 +183,243 @@ function revisarTarefa(
         imagem_id,
         tipoRevisao,
       }),
-    })
-      .then((response) => {
-        if (!response.ok) throw new Error("Erro ao atualizar a tarefa.");
-        return response.json();
-      })
-      .then((data) => {
-        console.log("Resposta do servidor:", data);
+    });
 
-        let message = "";
-        let bgColor = "";
+    clearInterval(avancarEtapa);
 
-        switch (tipoRevisao) {
-          case "aprovado":
-            message = "Tarefa aprovada com sucesso!";
-            bgColor = "green";
-            break;
-          case "ajuste":
-            message = "Tarefa marcada como necessitando de ajustes!";
-            bgColor = "orange";
-            break;
-          case "aprovado_com_ajustes":
-            message = "Tarefa aprovada com ajustes!";
-            bgColor = "blue";
-            break;
-        }
+    if (!response.ok) throw new Error("Erro ao atualizar a tarefa.");
+    const data = await response.json();
+    // console.log("Resposta do servidor:", data);
 
-        Toastify({
-          text: data.success
-            ? message
-            : "Falha ao atualizar a tarefa: " + data.message,
-          duration: 3000,
-          backgroundColor: data.success ? bgColor : "red",
-          close: true,
-          gravity: "top",
-          position: "right",
-        }).showToast();
+    // Barra a 100% antes de fechar
+    Swal.update({
+      title: data.success ? "Concluído!" : "Ocorreu um erro",
+      html: `<p style="margin:0;color:#555">${data.success ? "Revisão registrada com sucesso." : data.message || "Falha ao atualizar a tarefa."}</p>
+             <div style="margin-top:14px;height:6px;border-radius:3px;background:#eee;overflow:hidden">
+               <div style="height:100%;width:100%;background:${data.success ? "#2ecc71" : "#e74c3c"};transition:width 0.4s ease"></div>
+             </div>`,
+    });
+    await new Promise((r) => setTimeout(r, 700));
+    Swal.close();
 
-        if (data.success) {
-          const obraSelecionada = document.getElementById("filtro_obra").value;
+    let message = "";
+    let bgColor = "";
+    switch (tipoRevisao) {
+      case "aprovado":
+        message = "Tarefa aprovada com sucesso!";
+        bgColor = "green";
+        break;
+      case "ajuste":
+        message = "Tarefa marcada como necessitando de ajustes!";
+        bgColor = "orange";
+        break;
+      case "aprovado_com_ajustes":
+        message = "Tarefa aprovada com ajustes!";
+        bgColor = "blue";
+        break;
+    }
 
-          // Atualiza o status_novo da tarefa no array em memória para reflectir
-          // imediatamente o novo badge na thumbnail da sidebar, sem round-trip extra.
-          const statusMap = {
-            aprovado: "Aprovado",
-            ajuste: "Ajuste",
-            aprovado_com_ajustes: "Aprovado com ajustes",
-          };
-          const novoStatus = statusMap[tipoRevisao];
-          if (novoStatus) {
-            const task = dadosTarefas.find(
-              (t) => t.idfuncao_imagem == idfuncao_imagem,
-            );
-            if (task) task.status_novo = novoStatus;
-          }
+    Toastify({
+      text: data.success
+        ? message
+        : "Falha ao atualizar a tarefa: " + data.message,
+      duration: 3000,
+      backgroundColor: data.success ? bgColor : "red",
+      close: true,
+      gravity: "top",
+      position: "right",
+    }).showToast();
 
-          filtrarTarefasPorObra(obraSelecionada);
-        }
-      })
-      .catch((error) => {
-        console.error("Erro:", error);
-        Toastify({
-          text: "Ocorreu um erro ao processar a solicitação. " + error.message,
-          duration: 3000,
-          backgroundColor: "red",
-          close: true,
-          gravity: "top",
-          position: "right",
-        }).showToast();
-      });
+    if (data.success) {
+      const obraSelecionada = document.getElementById("filtro_obra").value;
+
+      const statusMap = {
+        aprovado: "Aprovado",
+        ajuste: "Ajuste",
+        aprovado_com_ajustes: "Aprovado com ajustes",
+      };
+      const novoStatus = statusMap[tipoRevisao];
+      if (novoStatus) {
+        const task = dadosTarefas.find(
+          (t) => t.idfuncao_imagem == idfuncao_imagem,
+        );
+        if (task) task.status_novo = novoStatus;
+      }
+
+      filtrarTarefasPorObra(obraSelecionada);
+
+      // ── Conflito SFTP: arquivo já existe no servidor ──────────────────
+      if (data.sftp_conflict) {
+        resolverConflitoSftp(
+          data.sftp_nome_arquivo,
+          idfuncao_imagem,
+          imagem_id,
+        );
+      }
+    }
+  } catch (error) {
+    clearInterval(avancarEtapa);
+    Swal.close();
+    console.error("Erro:", error);
+    Toastify({
+      text: "Ocorreu um erro ao processar a solicitação. " + error.message,
+      duration: 3000,
+      backgroundColor: "red",
+      close: true,
+      gravity: "top",
+      position: "right",
+    }).showToast();
+  }
+}
+
+/**
+ * Exibe um diálogo SweetAlert quando o arquivo SFTP já existe no servidor,
+ * permitindo ao usuário substituir ou adicionar com um nome diferente.
+ *
+ * @param {string} nomeArquivo      – Nome limpo do arquivo (sem índice)
+ * @param {number} idfuncao_imagem  – ID da função de imagem aprovada
+ * @param {number} imagem_id        – ID da imagem
+ */
+async function resolverConflitoSftp(nomeArquivo, idfuncao_imagem, imagem_id) {
+  const { isConfirmed: confirmedReplace, isDenied: confirmedAdd } =
+    await Swal.fire({
+      title: "Arquivo já existe no servidor",
+      html: `O arquivo <strong>${nomeArquivo}</strong> já existe no destino.<br>Deseja substituí-lo ou enviá-lo com outro nome?`,
+      icon: "warning",
+      showCancelButton: true,
+      cancelButtonText: "Cancelar",
+      confirmButtonText: "Substituir",
+      showDenyButton: true,
+      denyButtonText: "Adicionar",
+      confirmButtonColor: "#c0392b",
+      denyButtonColor: "#2980b9",
+      reverseButtons: true,
+    });
+
+  if (!confirmedReplace && !confirmedAdd) return; // cancelado
+
+  let sftp_action = null;
+  let sftp_suffix = null;
+
+  if (confirmedReplace) {
+    sftp_action = "replace";
+  } else if (confirmedAdd) {
+    const baseSemExt = nomeArquivo.replace(/(\.[^.]+)$/, "");
+    const ext = nomeArquivo.match(/(\.[^.]+)$/)?.[1] ?? "";
+    const { value: sufixo, isConfirmed } = await Swal.fire({
+      title: "Novo sufixo para o arquivo",
+      html: `O arquivo será salvo como <code>${baseSemExt}_<em>SUFIXO</em>${ext}</code>`,
+      input: "text",
+      inputLabel: "Ex: Normal, Completa, Cropada",
+      inputPlaceholder: "Digite o sufixo desejado",
+      showCancelButton: true,
+      cancelButtonText: "Cancelar",
+      confirmButtonText: "Confirmar",
+      inputValidator: (v) =>
+        !v.trim() ? "Por favor, informe um sufixo." : null,
+    });
+
+    if (!isConfirmed || !sufixo) return;
+    sftp_action = "add";
+    sftp_suffix = sufixo.trim();
   }
 
-  event.stopPropagation();
+  // ── Progresso do upload SFTP ─────────────────────────────────────────────
+  const etapasSftp = [
+    {
+      titulo: "Conectando ao servidor…",
+      detalhe: "Estabelecendo conexão SFTP.",
+    },
+    {
+      titulo: "Baixando arquivo do VPS…",
+      detalhe: "Buscando o arquivo de origem. Pode levar alguns segundos.",
+    },
+    {
+      titulo: "Enviando para o destino…",
+      detalhe: "Transferindo para o servidor final.",
+    },
+    { titulo: "Finalizando envio…", detalhe: "Quase pronto!" },
+  ];
+  let sftpIdx = 0;
+
+  Swal.fire({
+    title: etapasSftp[0].titulo,
+    html: `<p style="margin:0;color:#555">${etapasSftp[0].detalhe}</p>
+           <div style="margin-top:14px;height:6px;border-radius:3px;background:#eee;overflow:hidden">
+             <div id="sftp-progress-fill" style="height:100%;width:0%;background:#2980b9;transition:width 2.8s ease"></div>
+           </div>`,
+    allowOutsideClick: false,
+    allowEscapeKey: false,
+    showConfirmButton: false,
+    didOpen: () => {
+      Swal.showLoading();
+      requestAnimationFrame(() => {
+        const fill = document.getElementById("sftp-progress-fill");
+        if (fill) fill.style.width = "20%";
+      });
+    },
+  });
+
+  const avancarSftp = setInterval(() => {
+    sftpIdx = Math.min(sftpIdx + 1, etapasSftp.length - 1);
+    const pct = Math.round(((sftpIdx + 1) / etapasSftp.length) * 85);
+    Swal.update({
+      title: etapasSftp[sftpIdx].titulo,
+      html: `<p style="margin:0;color:#555">${etapasSftp[sftpIdx].detalhe}</p>
+             <div style="margin-top:14px;height:6px;border-radius:3px;background:#eee;overflow:hidden">
+               <div id="sftp-progress-fill" style="height:100%;width:${pct}%;background:#2980b9;transition:width 2.8s ease"></div>
+             </div>`,
+    });
+  }, 3500);
+
+  try {
+    const res = await fetch("sftp_upload.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        idfuncao_imagem,
+        imagem_id,
+        sftp_action,
+        sftp_suffix,
+      }),
+    });
+    const result = await res.json();
+
+    clearInterval(avancarSftp);
+
+    Swal.update({
+      title: result.success ? "Arquivo enviado!" : "Falha no envio",
+      html: `<p style="margin:0;color:#555">${result.success ? "Arquivo transferido com sucesso." : result.message || "Falha desconhecida."}</p>
+             <div style="margin-top:14px;height:6px;border-radius:3px;background:#eee;overflow:hidden">
+               <div style="height:100%;width:100%;background:${result.success ? "#2ecc71" : "#e74c3c"};transition:width 0.4s ease"></div>
+             </div>`,
+    });
+    await new Promise((r) => setTimeout(r, 700));
+    Swal.close();
+
+    Toastify({
+      text: result.success
+        ? "Arquivo enviado ao servidor com sucesso!"
+        : "Erro ao enviar arquivo: " + (result.message || "falha desconhecida"),
+      duration: 4000,
+      backgroundColor: result.success ? "green" : "red",
+      close: true,
+      gravity: "top",
+      position: "right",
+    }).showToast();
+  } catch (e) {
+    clearInterval(avancarSftp);
+    Swal.close();
+    console.error("Erro ao resolver conflito SFTP:", e);
+    Toastify({
+      text: "Erro ao enviar arquivo ao servidor.",
+      duration: 3000,
+      backgroundColor: "red",
+      close: true,
+      gravity: "top",
+      position: "right",
+    }).showToast();
+  }
 }
 
 // Função para alternar a visibilidade dos detalhes da tarefa
@@ -983,7 +1213,7 @@ function historyAJAX(idfuncao_imagem) {
   fetch(`historico.php?ajid=${idfuncao_imagem}`)
     .then((response) => response.json())
     .then((response) => {
-      console.log("Funcao Imagem:", idfuncao_imagem);
+      // console.log("Funcao Imagem:", idfuncao_imagem);
       const main = document.querySelector(".main");
       main.classList.add("hidden");
 
@@ -1694,7 +1924,7 @@ function excluirImagem() {
     })
       .then((response) => response.text())
       .then((data) => {
-        console.log(data);
+        // console.log(data);
         // Remove a imagem da tela também, se quiser
         const imgElement = document.querySelector(`img[data-id='${idImagem}']`);
         if (imgElement) {
@@ -2824,7 +3054,7 @@ document.addEventListener("click", (e) => {
 // ---------------------------------------------------------------------------
 
 async function renderComments(id) {
-  console.log("renderComments", id); // debug
+  // console.log("renderComments", id); // debug
   const comentariosDiv = document.querySelector(".comentarios");
   comentariosDiv.innerHTML = "";
   const imagemCompletaDiv = document.getElementById("image_wrapper");

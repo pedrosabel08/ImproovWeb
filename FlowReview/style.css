@@ -49,6 +49,7 @@ a {
   overflow: auto;
   background-color: #333;
   max-height: 100vh;
+  min-height: 100vh;
 }
 
 .contagem {

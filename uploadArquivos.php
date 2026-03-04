@@ -317,6 +317,16 @@ $status_nome = $result2 ? $result2['nome_status'] : null; // evita erro se não 
 $status_nome_sanitizado = sanitizeFilename((string)($status_nome ?? ''));
 $stmt2->close();
 
+// ---------- Status nome ----------
+$stmt2 = $conn->prepare("SELECT fi.status AS funcao_status FROM funcao_imagem fi
+                         WHERE fi.idfuncao_imagem = ?");
+$stmt2->bind_param("i", $idFuncaoImagem);
+$stmt2->execute();
+$result2 = $stmt2->get_result()->fetch_assoc();
+$funcao_status = $result2 ? $result2['funcao_status'] : null; // evita erro se não encontrar
+$funcao_status_sanitizado = sanitizeFilename((string)($funcao_status ?? ''));
+$stmt2->close();
+
 // ---------- Conexão SFTP ----------
 try {
     $conn_ftp = new SFTP($ftp_host, (int)$ftp_port, 10);
@@ -418,6 +428,31 @@ if (!$stmt->execute()) {
     json_error('Erro ao atualizar status/prazo: ' . $stmt->error, 500);
 }
 $stmt->close();
+
+// ---------- Notificação Slack: pós refeita ----------
+// Disparada quando o colaborador re-envia arquivos de Pós-Produção após um Ajuste
+// ou quando a função estava em "Em aprovação" (opção B solicitada).
+$nomeFuncaoKeyFinal = strtolower(removerTodosAcentos($nomeFuncao));
+$funcao_status_norm = strtolower(removerTodosAcentos((string)($funcao_status ?? '')));
+if ($nomeFuncaoKeyFinal === 'pos-producao' && in_array($funcao_status_norm, ['ajuste', 'em aprovacao'], true)) {
+    $slackWebhookPos = improov_env('SLACK_WEBHOOK_POS_URL', null);
+    if ($slackWebhookPos) {
+        $nomeImagemNotif = $nome_imagem ?: $nomeImagemSanitizado ?: 'Imagem';
+        $slackMsg = ['text' => "Pós refeita para a imagem {$nomeImagemNotif}."];
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $slackWebhookPos);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($slackMsg));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+        $slackResp = curl_exec($ch);
+        if (curl_errno($ch)) {
+            error_log('[uploadArquivos.php] Slack pós-refeita error: ' . curl_error($ch));
+        }
+        curl_close($ch);
+    }
+}
 
 echo json_encode([
     "success"      => "Imagens enviadas com sucesso via SFTP!",

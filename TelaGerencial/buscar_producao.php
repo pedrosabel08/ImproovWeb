@@ -236,6 +236,7 @@ FROM (
     )
   )
   AND fi.colaborador_id NOT IN (21, 15)
+  AND NOT (fi.funcao_id = 4 AND fi.colaborador_id IN (7, 34))
 ) AS t
 GROUP BY t.funcao_id, t.nome_funcao, t.nome_colaborador
 ORDER BY
@@ -318,6 +319,7 @@ FROM (
     )
   )
   AND fi.colaborador_id NOT IN (21, 15)
+  AND NOT (fi.funcao_id = 4 AND fi.colaborador_id IN (7, 34))
 ) AS t
 GROUP BY t.nome_funcao, t.nome_colaborador;";
 $stmtAnterior = $conn->prepare($sqlAnterior);
@@ -360,7 +362,6 @@ FROM (
       WHEN fi.funcao_id = 4 THEN 'Finalização Completa'
       ELSE f.nome_funcao
     END AS nome_funcao,
-    YEAR(fi.prazo) AS ano,
     MONTH(fi.prazo) AS mes,
     COUNT(*) AS qtd_mes
   FROM funcao_imagem fi
@@ -382,6 +383,7 @@ FROM (
       )
     )
     AND fi.colaborador_id NOT IN (21, 15)
+    AND NOT (fi.funcao_id = 4 AND fi.colaborador_id IN (7, 34))
   GROUP BY c.nome_colaborador,
     CASE
       WHEN fi.funcao_id = 4 AND LOWER(i.tipo_imagem) = 'planta humanizada' THEN 'Finalização de Planta Humanizada'

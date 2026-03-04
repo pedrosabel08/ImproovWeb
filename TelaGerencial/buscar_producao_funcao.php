@@ -236,6 +236,7 @@ if ($mes) {
         )
       )
       AND fi.colaborador_id NOT IN (21, 15)
+      AND NOT (fi.funcao_id = 4 AND fi.colaborador_id IN (7, 34))
   ) AS t
   GROUP BY t.nome_funcao
   ORDER BY
@@ -407,6 +408,7 @@ if ($mes) {
           )
         )
         AND fi.colaborador_id NOT IN (21, 15)
+        AND NOT (fi.funcao_id = 4 AND fi.colaborador_id IN (7, 34))
     ) AS t
     GROUP BY t.nome_funcao";
   $stmtAnterior = $conn->prepare($sqlAnterior);
@@ -449,6 +451,7 @@ if ($mes) {
             fi.status = 'Finalizado' OR fi.status = 'Em aprovação' OR fi.status = 'Ajuste' OR fi.status = 'Aprovado com ajustes' OR fi.status = 'Aprovado'
           )
           AND fi.colaborador_id NOT IN (21, 15)
+          AND NOT (fi.funcao_id = 4 AND fi.colaborador_id IN (7, 34))
       ) AS t
       GROUP BY t.nome_funcao, YEAR(t.prazo), MONTH(t.prazo)
     ) AS s

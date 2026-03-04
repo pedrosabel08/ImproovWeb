@@ -548,12 +548,50 @@ function coletarTabelaHtml(tableSelector, options = {}) {
       .sort((a, b) => a - b);
   }
 
-  const headers = includeIndexes
-    ? includeIndexes.map((i) => headersAll[i])
-    : headersAll;
-  const rows = includeIndexes
-    ? rowsAll.map((r) => includeIndexes.map((i) => r[i] ?? ""))
-    : rowsAll;
+  // Normalize export indexes: if includeIndexes not set, export all columns
+  const exportIndexes = Array.isArray(includeIndexes)
+    ? includeIndexes
+    : headersAll.map((_, idx) => idx);
+
+  const headers = exportIndexes.map((i) => headersAll[i]);
+  const rows = rowsAll.map((r) => exportIndexes.map((i) => r[i] ?? ""));
+
+  // Special case: when exporting the column "Não pagas" (which we later rename
+  // to "Quantidade"), for rows whose função is "Alteração" we want to show
+  // the total `quantidade` (original column) instead of the "Não pagas" value.
+  const idxFuncao = headersAll.findIndex(
+    (h) => /fun[cç]?(?:[ãa]o|ao)?/i.test(h) || /funç/i.test(h),
+  );
+  const idxNaoPagas = headersAll.findIndex((h) =>
+    /(?:N[aã]o|Não)\s*pagas/i.test(h),
+  );
+  const idxQuantidade = headersAll.findIndex((h) => /quantidade/i.test(h));
+  // For robustness, allow fixed column positions for the função table where
+  // headers might not match expected text. Default detection via headers is
+  // attempted first; if it fails or we're exporting `#tabelaFuncao`, fall
+  // back to known positions: funcao=0, quantidade=1, nao_pagas=3.
+  let useIdxFuncao = idxFuncao;
+  let useIdxQuantidade = idxQuantidade;
+  let useIdxNaoPagas = idxNaoPagas;
+  const tableId = table.getAttribute("id") || "";
+  if (tableSelector === "#tabelaFuncao" || tableId === "tabelaFuncao") {
+    useIdxFuncao = 0;
+    useIdxQuantidade = 1;
+    useIdxNaoPagas = 3;
+  }
+
+  if (useIdxNaoPagas !== -1 && useIdxQuantidade !== -1 && useIdxFuncao !== -1) {
+    const posNaoPagasInExport = exportIndexes.indexOf(useIdxNaoPagas);
+    if (posNaoPagasInExport !== -1) {
+      rowsAll.forEach((origRow, rowIndex) => {
+        const funcaoVal = (origRow[useIdxFuncao] || "").trim();
+        if (/altera[cç][aã]o|alteracao/i.test(funcaoVal)) {
+          rows[rowIndex][posNaoPagasInExport] =
+            origRow[useIdxQuantidade] ?? rows[rowIndex][posNaoPagasInExport];
+        }
+      });
+    }
+  }
 
   let html =
     '<table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;width:100%;">';
@@ -588,6 +626,9 @@ function gerarRelatorio() {
     includeIndexes: [0, 1],
     includeHeaderRegex: headerRegex,
   });
+  // Include the função name (index 0) plus matching headers so the
+  // "Não pagas" -> "Quantidade" substitution for 'Alteração' is applied
+  // while preserving the função column in the export.
   let tabelaFuncaoHtml = coletarTabelaHtml("#tabelaFuncao", {
     includeIndexes: [0],
     includeHeaderRegex: headerRegex,

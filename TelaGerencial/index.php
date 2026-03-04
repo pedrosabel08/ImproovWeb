@@ -9,10 +9,14 @@ foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWe
 }
 unset($__root, $__p);
 
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
+// session_start();
+
+// Verificar se o usuário está logado
+if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
+    // Se não estiver logado, redirecionar para a página de login
+    header("Location: ../index.html");
+    exit();
 }
-include '../conexao.php'; // Inclui o arquivo de conexão com mysqli
 
 $idusuario = $_SESSION['idusuario'];
 $tela_atual = basename($_SERVER['PHP_SELF']);
@@ -25,8 +29,9 @@ if (session_status() === PHP_SESSION_ACTIVE) {
     session_write_close();
 }
 
-// // Initialize DB connection before using it (was causing undefined $conn)
-// $conn = conectarBanco();
+// Carrega conexão com o banco antes de executar atualizações de logs
+include '../conexaoMain.php';
+$conn = conectarBanco();
 
 // Use MySQL NOW() so the database records its own current timestamp
 $sql2 = "UPDATE logs_usuarios 
@@ -46,19 +51,13 @@ if (!$stmt2->execute()) {
 }
 $stmt2->close();
 
-include '../conexaoMain.php';
-
-
 $clientes = obterClientes($conn);
 $obras = obterObras($conn);
 $obras_inativas = obterObras($conn, 1);
 $colaboradores = obterColaboradores($conn);
-$status_imagens = obterStatusImagens($conn);
-$funcoes = obterFuncoes($conn);
 
 $conn->close();
 ?>
-
 
 
 <!DOCTYPE html>
@@ -83,15 +82,9 @@ $conn->close();
     <div class="container">
         <header>
             <img src="../gif/assinatura_preto.gif" alt="" style="width: 200px;">
-        </header>
-
-        <div class="select">
-
-            <h2>Total Produção por colaborador</h2>
-
             <div class="filtros-linha">
                 <label for="mes">Mês:</label>
-                <select id="mes" onchange="buscarDados(); buscarEntregasMes();">
+                <select id="mes" onchange="refreshAll()">
                     <option value="01">Janeiro</option>
                     <option value="02">Fevereiro</option>
                     <option value="03">Março</option>
@@ -105,9 +98,8 @@ $conn->close();
                     <option value="11">Novembro</option>
                     <option value="12">Dezembro</option>
                 </select>
-
                 <label for="ano">Ano:</label>
-                <select id="ano" onchange="buscarDados(); buscarEntregasMes();">
+                <select id="ano" onchange="refreshAll()">
                     <?php
                     $anoAtual = (int) date('Y');
                     for ($a = $anoAtual; $a >= $anoAtual - 10; $a--) {
@@ -115,91 +107,102 @@ $conn->close();
                     }
                     ?>
                 </select>
+                <button id="gerar-relatorio">Gerar relatório</button>
+            </div>
+        </header>
 
-                <button id="gerar-relatorio" style="margin-left:12px;">Gerar relatório</button>
+        <!-- Cards de resumo -->
+        <div class="dashboard-cards">
+            <div class="card">
+                <div class="card-title">Total produção</div>
+                <div id="totalProducao" class="card-value">—</div>
+            </div>
+            <div class="card card-green">
+                <div class="card-title">Pagas</div>
+                <div id="totalPagas" class="card-value">—</div>
+            </div>
+            <div class="card card-orange">
+                <div class="card-title">Não pagas</div>
+                <div id="totalNaoPagas" class="card-value">—</div>
+            </div>
+            <div class="card card-blue">
+                <div class="card-title">Período</div>
+                <div id="cardPeriodo" class="card-value card-value--sm">—</div>
             </div>
         </div>
 
-        <table id="tabelaProducao">
-            <thead>
-                <tr>
-                    <th>Colaborador</th>
-                    <th>Função</th>
-                    <th>Quantidade</th>
-                    <th>Pagas</th>
-                    <th>Não pagas</th>
-                    <th>Mês anterior</th>
-                    <th>Recorde de produção</th>
-                </tr>
-            </thead>
-            <tbody>
-                <!-- Dados virão via AJAX -->
-            </tbody>
-        </table>
-
-        <div class="select">
-
-            <!-- <select name="tipo" id="tipo" onchange="filtrarPorTipo()">
-                <option value="mes_tipo" selected>Mês</option>
-            
-            <!-- Tabela de entregas por mês -->
-            <h3 style="margin-top:18px;">Imagens entregues por mês <span id="mes_atual"></span></h3>
-            <table id="tabelaEntregas">
-                <thead>
-                    <tr>
-                        <th>Mês</th>
-                        <th>Quantidade de imagens entregues</th>
-                        <th>Quantidade de plantas entregues</th>
-                    </tr>
-                </thead>
-                <tbody>
-                </tbody>
-            </table>
-
-            <h2 id="total_producao">Total de produção por função <span id="mesSelecionadoFuncao">---</span></h2>
-
-            <div class="filtros-linha">
-                <label id="labelMesFuncao" for="mesFuncao">Mês:</label>
-                <select id="mesFuncao" onchange="buscarDadosFuncao()">
-                    <option value="1">Janeiro</option>
-                    <option value="2">Fevereiro</option>
-                    <option value="3">Março</option>
-                    <option value="4">Abril</option>
-                    <option value="5">Maio</option>
-                    <option value="6">Junho</option>
-                    <option value="7">Julho</option>
-                    <option value="8">Agosto</option>
-                    <option value="9">Setembro</option>
-                    <option value="10">Outubro</option>
-                    <option value="11">Novembro</option>
-                    <option value="12">Dezembro</option>
-                </select>
-
-                <label id="labelAnoFuncao" for="anoFuncao">Ano:</label>
-                <select id="anoFuncao" onchange="buscarDadosFuncao()">
-                    <?php
-                    $anoAtual = (int) date('Y');
-                    for ($a = $anoAtual; $a >= $anoAtual - 10; $a--) {
-                        echo '<option value="' . $a . '">' . $a . '</option>';
-                    }
-                    ?>
-                </select>
+        <!-- Gráficos -->
+        <!-- <div class="dashboard-charts">
+            <div class="chart-card">
+                <h4>Produção por colaborador</h4>
+                <canvas id="chartColaborador" role="img" aria-label="Produção por colaborador"></canvas>
             </div>
+            <div class="chart-card">
+                <h4>Produção por função</h4>
+                <canvas id="chartFuncao" role="img" aria-label="Produção por função"></canvas>
+            </div>
+            <div class="chart-card">
+                <h4>Entregas por status</h4>
+                <canvas id="chartEntregas" role="img" aria-label="Entregas por status"></canvas>
+            </div>
+        </div> -->
 
-            <table id="tabelaFuncao">
-                <thead>
-                    <tr>
-                        <th>Processo</th>
-                        <th>Quantidade</th>
-                        <th>Pagas</th>
-                        <th>Não pagas</th>
-                        <th>Mês anterior</th>
-                        <th>Recorde de produção</th>
-                    </tr>
-                </thead>
-                <tbody>
-                </tbody>
-            </table>
+        <!-- Tabela de colaboradores — largura total -->
+        <div class="section-block">
+            <h2 class="section-title">Produção por colaborador</h2>
+            <div class="table-scroll">
+                <table id="tabelaProducao">
+                    <thead>
+                        <tr>
+                            <th>Colaborador</th>
+                            <th id="thFuncaoProducao">Função</th>
+                            <th>Quantidade</th>
+                            <th>Pagas</th>
+                            <th>Não pagas</th>
+                            <th>Mês anterior</th>
+                            <th>Recorde</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Grade 2 colunas: entregas + função -->
+        <div class="tables-grid">
+            <div class="table-section">
+                <h3 class="section-title">Imagens entregues <span id="mes_atual"></span></h3>
+                <div class="table-scroll">
+                    <table id="tabelaEntregas">
+                        <thead>
+                            <tr>
+                                <th>Status</th>
+                                <th>Imagens entregues</th>
+                                <th>Plantas entregues</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="table-section">
+                <h3 class="section-title">Produção por função</h3>
+                <div class="table-scroll">
+                    <table id="tabelaFuncao">
+                        <thead>
+                            <tr>
+                                <th>Processo</th>
+                                <th>Quantidade</th>
+                                <th>Pagas</th>
+                                <th>Não pagas</th>
+                                <th>Mês anterior</th>
+                                <th>Recorde</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -215,6 +218,7 @@ $conn->close();
     </div>
 
 
+    <script src="<?php echo asset_url('dashboard-utils.js'); ?>"></script>
     <script src="<?php echo asset_url('script.js'); ?>"></script>
     <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
     <script src="<?php echo asset_url('../script/controleSessao.js'); ?>"></script>

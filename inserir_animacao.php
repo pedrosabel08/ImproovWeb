@@ -7,40 +7,18 @@ $imagens = [
     // ARS_VIE (obra_id = 55, cliente_id = 32)
     // (these were already present; including full list provided)
     // ======================
-    ['nome' => 'ARS_VIE_Piscina Externa', 'obra_id' => 55, 'cliente_id' => 32, 'colaborador_id' => 13],
-    ['nome' => '34. ARS_VIE Living Apto tipo 1_Torre 1_Angulo01_GERAL_IMM_001', 'obra_id' => 55, 'cliente_id' => 32, 'colaborador_id' => 13],
-    ['nome' => '31.ARS_VIE_Sauna_seca', 'obra_id' => 55, 'cliente_id' => 32, 'colaborador_id' => 13],
-    ['nome' => '29. ARS_VIE Piscina aquecida', 'obra_id' => 55, 'cliente_id' => 32, 'colaborador_id' => 13],
-
-
-
-    ['nome' => '16.JON_LIN_Loft_unidade_16_angulo_1', 'obra_id' => 73, 'cliente_id' => 45, 'colaborador_id' => 13],
-    ['nome' => '17.JON_LIN-Loft Ângulo_2', 'obra_id' => 73, 'cliente_id' => 45, 'colaborador_id' => 13],
-    ['nome' => 'JON_LIN_Brinquedoteca', 'obra_id' => 73, 'cliente_id' => 45, 'colaborador_id' => 13],
-    ['nome' => 'JON_LIN_Espaço Beauty', 'obra_id' => 73, 'cliente_id' => 45, 'colaborador_id' => 13],
-    ['nome' => 'JON_LIN_Petstore', 'obra_id' => 73, 'cliente_id' => 45, 'colaborador_id' => 13],
-    // ======================
-    // RDO_VAL (obra_id = 70, cliente_id = 3)
-    // ======================
-    ['nome' => '1.RDO_VAL_Fotomontagem_aerea_com_insercao_do_empreendimento_em_terreno_real_angulo_1_EF', 'obra_id' => 70, 'cliente_id' => 3, 'colaborador_id' => 13],
-    ['nome' => '7.RDO_VAL_Embasamento_mostrando_mall_e_calcadas_1_da_Rua_A_EF', 'obra_id' => 70, 'cliente_id' => 3, 'colaborador_id' => 13],
-    ['nome' => '9.RDO_VAL_Corredor_do_mall_EF', 'obra_id' => 70, 'cliente_id' => 3, 'colaborador_id' => 13],
-    ['nome' => '9.RDO_VAL_Corredor_do_mall_Detalhe', 'obra_id' => 70, 'cliente_id' => 3, 'colaborador_id' => 13],
-    ['nome' => '13.RDO_VAL Piscina coberta Geral', 'obra_id' => 70, 'cliente_id' => 3, 'colaborador_id' => 13],
-    ['nome' => '13.RDO_VAL Piscina coberta Detalhe 1', 'obra_id' => 70, 'cliente_id' => 3, 'colaborador_id' => 13],
-    ['nome' => '13.RDO_VAL Piscina coberta Detalhe 2', 'obra_id' => 70, 'cliente_id' => 3, 'colaborador_id' => 13],
-    ['nome' => '20.RDO_VAL_Salao_de_festas_1_EF', 'obra_id' => 70, 'cliente_id' => 3, 'colaborador_id' => 13],
-    ['nome' => 'RDO_VAL_Tracking_0019', 'obra_id' => 70, 'cliente_id' => 3, 'colaborador_id' => 13],
-    ['nome' => 'RDO_VAL_Playground', 'obra_id' => 70, 'cliente_id' => 3, 'colaborador_id' => 13],
-    ['nome' => 'RDO_VAL_Brinquedoteca', 'obra_id' => 70, 'cliente_id' => 3, 'colaborador_id' => 13],
-    ['nome' => 'RDO_VAL_Brinquedoteca', 'obra_id' => 70, 'cliente_id' => 3, 'colaborador_id' => 13],
-    ['nome' => '4.RDO_VAL_Fotomontagem_aerea_com_insercao_do_empreendimento_em_terreno_real_angulo_4_EF', 'obra_id' => 70, 'cliente_id' => 3, 'colaborador_id' => 13],
-    ['nome' => '6.RDO_VAL_Fachada_no_angulo_do_observador_da_rua_2_EF', 'obra_id' => 70, 'cliente_id' => 3, 'colaborador_id' => 13],
-
+    ['nome' => '15.ROM_MAE_Quiosque_da_piscina', 'obra_id' => 63, 'cliente_id' => 41, 'colaborador_id' => 39],
+    ['nome' => '10.ROM_MAE_Piscina', 'obra_id' => 63, 'cliente_id' => 41, 'colaborador_id' => 39],
+    ['nome' => '1.CEG_RES_Fachada_embasamento_CAM_02', 'obra_id' => 76, 'cliente_id' => 47, 'colaborador_id' => 39],
+    ['nome' => '1.CEG_RES_Fachada_embasamento_CAM_01', 'obra_id' => 76, 'cliente_id' => 47, 'colaborador_id' => 39],
+    ['nome' => '13.CEG_RES_Piscina_Adulto_e_infantil', 'obra_id' => 76, 'cliente_id' => 47, 'colaborador_id' => 39],
+    ['nome' => '12.CEG_RES_Piscina_Vista', 'obra_id' => 76, 'cliente_id' => 47, 'colaborador_id' => 39],
+    ['nome' => '10.CEG_RES_Gourmet_Externo', 'obra_id' => 76, 'cliente_id' => 47, 'colaborador_id' => 39],
+    ['nome' => 'JON_LIN_Palco', 'obra_id' => 73, 'cliente_id' => 40, 'colaborador_id' => 39],
 ];
 
 $status = 'Finalizado';
-$data = '2026-01-31';
+$data = '2026-02-28';
 
 foreach ($imagens as $img) {
     // Inserir na tabela imagem_animacao
@@ -61,3 +39,10 @@ foreach ($imagens as $img) {
 }
 
 echo "Processo concluído.";
+
+
+
+
+
+
+

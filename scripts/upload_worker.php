@@ -146,8 +146,27 @@ function removerTodosAcentos_worker($str)
 function sanitizeFilename_worker($str)
 {
     $str = removerTodosAcentos_worker($str);
-    $str = preg_replace('/[\/\\:*?"<>|]/', '', $str);
+    // normalize common problematic symbols (degree, ordinal indicators)
+    $str = str_replace(['°', 'º', 'ª'], 'o', $str);
+
+    // try transliteration to ASCII to avoid non-ASCII characters that may
+    // cause SMB/Windows to create short (8.3) names when viewed via Z:\\.
+    $trans = @iconv('UTF-8', 'ASCII//TRANSLIT', $str);
+    if ($trans !== false) $str = $trans;
+
+    // remove characters invalid for filenames and keep a small safe set
+    $str = preg_replace('/[\/\\:\*\?"<>\|]/', '', $str);
+    // remove other non-printable/control chars
+    $str = preg_replace('/[\x00-\x1F\x7F]/u', '', $str);
+    // allow letters, numbers, dot, dash, underscore and spaces (we'll normalize spaces)
+    $str = preg_replace('/[^\w\s\.\-]/u', '', $str);
+    // collapse whitespace to single underscore
     $str = preg_replace('/\s+/', '_', $str);
+    // trim leading/trailing dots/underscores/dashes/spaces
+    $str = trim($str, " ._-\t\n\r\0\x0B");
+    // limit length to avoid issues on some filesystems/clients
+    if (strlen($str) > 120) $str = substr($str, 0, 120);
+    if ($str === '') $str = 'unnamed';
     return $str;
 }
 
@@ -231,6 +250,25 @@ function normalize_revisao_worker($value): ?string
         return null;
     }
     return $v;
+}
+
+// Corrige double-encoding: string UTF-8 cujos bytes foram interpretados como Latin-1
+// e depois reenviados como UTF-8 (ex: "FinalizaÃ§Ã£o" -> "Finalização").
+function fix_mojibake_worker($s)
+{
+    if (!is_string($s) || $s === '') return $s;
+    // Strategy: decode UTF-8 -> Latin-1 bytes; if the result is itself valid UTF-8
+    // (and not pure ASCII, which would be a no-op anyway), the original was double-encoded.
+    $decoded = mb_convert_encoding($s, 'ISO-8859-1', 'UTF-8');
+    if ($decoded !== false && $decoded !== $s && mb_check_encoding($decoded, 'UTF-8')) {
+        return $decoded;
+    }
+    // Fallback: try to convert raw Latin-1 bytes to UTF-8 when string is not valid UTF-8
+    if (!mb_check_encoding($s, 'UTF-8')) {
+        $try = @iconv('ISO-8859-1', 'UTF-8//TRANSLIT', $s);
+        if ($try !== false) return $try;
+    }
+    return $s;
 }
 
 function resolve_revisao_from_db_worker(array $dataIdFuncoes): ?string
@@ -898,6 +936,11 @@ do {
         $numeroImagem = $meta['post']['numeroImagem'] ?? '';
         $primeiraPalavra = $meta['post']['primeiraPalavra'] ?? '';
         $nome_imagem = $meta['post']['nome_imagem'] ?? '';
+
+        // Fix common mojibake in incoming POST fields (client may have wrong encoding)
+        $nome_funcao = fix_mojibake_worker($nome_funcao);
+        $nome_imagem = fix_mojibake_worker($nome_imagem);
+        $primeiraPalavra = fix_mojibake_worker($primeiraPalavra);
         // Normalizar componentes do nome do arquivo removendo acentos
         $nomenclatura_clean = removerTodosAcentos_worker($nomenclatura);
         $primeiraPalavra_clean = removerTodosAcentos_worker($primeiraPalavra);
@@ -999,6 +1042,14 @@ do {
         }
 
         // Garantir diretórios remotos existentes
+        // Sanitize each remote dir component to avoid characters that cause
+        // Windows/SMB to present 8.3 shortnames (e.g. names with degree symbol).
+        $parts = explode('/', trim($remote_dir, '/'));
+        foreach ($parts as &$p) {
+            $p = sanitizeFilename_worker($p);
+        }
+        $remote_dir = '/' . implode('/', $parts);
+
         $sftpPrep = new SFTP($ftp_host, $ftp_port);
         if (!$sftpPrep->login($ftp_user, $ftp_pass)) {
             $lastMsg = 'Falha na autenticação SFTP ao preparar diretórios.';

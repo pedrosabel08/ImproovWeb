@@ -91,6 +91,43 @@ if (!function_exists('removerTodosAcentos')) {
     }
 }
 
+if (!function_exists('sanitizeFilename_enqueue')) {
+    function sanitizeFilename_enqueue($str)
+    {
+        $str = removerTodosAcentos($str);
+        $str = str_replace(['°', 'º', 'ª'], 'o', $str);
+        $trans = @iconv('UTF-8', 'ASCII//TRANSLIT', $str);
+        if ($trans !== false) $str = $trans;
+        $str = preg_replace('/[\/\\:\*\?"<>\|]/', '', $str);
+        $str = preg_replace('/[\x00-\x1F\x7F]/u', '', $str);
+        $str = preg_replace('/[^\w\s\.\-]/u', '', $str);
+        $str = preg_replace('/\s+/', '_', $str);
+        $str = trim($str, " ._-\t\n\r\0\x0B");
+        if (strlen($str) > 120) $str = substr($str, 0, 120);
+        if ($str === '') $str = 'unnamed';
+        return $str;
+    }
+}
+
+if (!function_exists('fix_mojibake_enqueue')) {
+    function fix_mojibake_enqueue($s)
+    {
+        if (!is_string($s) || $s === '') return $s;
+        // Detect double-encoding: UTF-8 bytes treated as Latin-1, re-sent as UTF-8.
+        // Decode UTF-8 -> Latin-1 bytes; if result is still valid UTF-8, it was double-encoded.
+        $decoded = mb_convert_encoding($s, 'ISO-8859-1', 'UTF-8');
+        if ($decoded !== false && $decoded !== $s && mb_check_encoding($decoded, 'UTF-8')) {
+            return $decoded;
+        }
+        // Fallback: convert raw Latin-1 to UTF-8 when string is not valid UTF-8
+        if (!mb_check_encoding($s, 'UTF-8')) {
+            $try = @iconv('ISO-8859-1', 'UTF-8//TRANSLIT', $s);
+            if ($try !== false) return $try;
+        }
+        return $s;
+    }
+}
+
 if (!function_exists('normalizeRevisaoUploadEnqueue')) {
     function normalizeRevisaoUploadEnqueue($value): ?string
     {
@@ -299,6 +336,12 @@ for ($i = 0; $i < $total; $i++) {
         $nomenclatura = $_POST['nomenclatura'] ?? '';
         $primeiraPalavra = $_POST['primeiraPalavra'] ?? '';
         $nome_imagem = $_POST['nome_imagem'] ?? '';
+
+        // fix mojibake from client browsers that post Latin1 bytes
+        $nome_funcao = fix_mojibake_enqueue($nome_funcao);
+        $nome_imagem = fix_mojibake_enqueue($nome_imagem);
+        $nomenclatura = fix_mojibake_enqueue($nomenclatura);
+        $primeiraPalavra = fix_mojibake_enqueue($primeiraPalavra);
         $extLower = strtolower($ext);
 
         // dataIdFuncoes pode estar enviado como JSON ou string única
@@ -315,10 +358,10 @@ for ($i = 0; $i < $total; $i++) {
             $tipoCalc = 'PDF';
             $semAcento = removerTodosAcentos($nome_funcao);
             $processo = strtoupper(mb_substr($semAcento, 0, 3, 'UTF-8'));
-            // Normalizar componentes para remover acentos no nome do arquivo
-            $nomenclatura_clean = removerTodosAcentos($nomenclatura);
-            $primeiraPalavra_clean = removerTodosAcentos($primeiraPalavra);
-            $nome_imagem_clean = removerTodosAcentos($nome_imagem);
+            // Normalizar componentes para remover acentos e outros símbolos no nome do arquivo
+            $nomenclatura_clean = sanitizeFilename_enqueue($nomenclatura);
+            $primeiraPalavra_clean = sanitizeFilename_enqueue($primeiraPalavra);
+            $nome_imagem_clean = sanitizeFilename_enqueue($nome_imagem);
             $nome_base = "{$numeroImagem}.{$nomenclatura_clean}-{$primeiraPalavra_clean}-{$tipoCalc}-{$processo}";
             $revisao = resolveRevisaoFromDbUploadEnqueue($dataIdFuncoes);
             // Regras especiais: Pós-Produção e Planta Humanizada usam padrão diferente

@@ -941,6 +941,7 @@ do {
         $nome_funcao = fix_mojibake_worker($nome_funcao);
         $nome_imagem = fix_mojibake_worker($nome_imagem);
         $primeiraPalavra = fix_mojibake_worker($primeiraPalavra);
+        error_log("[upload_worker] decoded fields: nome_funcao={$nome_funcao} | nome_imagem={$nome_imagem} | primeiraPalavra={$primeiraPalavra}");
         // Normalizar componentes do nome do arquivo removendo acentos
         $nomenclatura_clean = removerTodosAcentos_worker($nomenclatura);
         $primeiraPalavra_clean = removerTodosAcentos_worker($primeiraPalavra);

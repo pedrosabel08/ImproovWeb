@@ -92,10 +92,20 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
     $logAlteracoes = [];
     if ($idFuncaoImagem > 0) {
         // Fetch logs in DESC order for the UI display (most recent first)
+        // Also fetch the image status name that was active at the time of the log
         $sqlLog = "SELECT la.idlog, la.funcao_imagem_id, la.status_anterior, la.status_novo, la.data,
-                   la.colaborador_id, c.nome_colaborador AS responsavel
+                   la.colaborador_id, c.nome_colaborador AS responsavel,
+                   fi.imagem_id,
+                   s_im.nome_status AS imagem_status_at_update
             FROM log_alteracoes la
             LEFT JOIN colaborador c ON la.colaborador_id = c.idcolaborador
+            LEFT JOIN funcao_imagem fi ON la.funcao_imagem_id = fi.idfuncao_imagem
+            LEFT JOIN historico_imagens hi ON hi.imagem_id = fi.imagem_id
+                AND hi.data_movimento = (
+                    SELECT MAX(h2.data_movimento) FROM historico_imagens h2
+                    WHERE h2.imagem_id = fi.imagem_id AND h2.data_movimento <= la.data
+                )
+            LEFT JOIN status_imagem s_im ON s_im.idstatus = hi.status_id
             WHERE la.funcao_imagem_id = $idFuncaoImagem
             ORDER BY la.data DESC
         ";

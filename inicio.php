@@ -131,6 +131,9 @@ $conn->close();
     <!-- Tabulator (List view table) -->
     <link href="https://cdn.jsdelivr.net/npm/tabulator-tables@6.2.5/dist/css/tabulator.min.css" rel="stylesheet">
 
+    <!-- Collaborator personal dashboard -->
+    <link rel="stylesheet" href="<?php echo asset_url('PaginaPrincipal/styleColabDashboard.css'); ?>">
+
     <title>Improov+Flow</title>
 </head>
 
@@ -172,7 +175,7 @@ $conn->close();
                 </div>
                 <nav>
                     <div class="nav-left">
-                        <button id="overviewBtn" style="display:none;"><i class="ri-dashboard-line"></i><span>Visão
+                        <button id="overviewBtn"><i class="ri-dashboard-line"></i><span>Visão
                                 Geral</span></button>
                         <button id="kanbanBtn" class="active"><i class="ri-kanban-view"></i><span>Kanban</span></button>
                         <button id="listBtn"><i class="ri-list-check"></i><span>Lista</span></button>
@@ -275,65 +278,159 @@ $conn->close();
                 <div id="tarefas-table"></div>
             </div>
 
-            <!-- Visão Geral – restrito a colaboradores 1, 9, 21 -->
+            <!-- Visão Geral -->
             <div id="overview-section" class="overview-section" style="display:none;">
 
-                <!-- ① Faixa topo: indicadores compactos -->
-                <div class="overview-indicators">
-                    <div class="indicator-card indicator-atrasadas">
-                        <div class="indicator-icon"><i class="ri-alarm-warning-line"></i></div>
-                        <div class="indicator-info">
-                            <span class="indicator-count" id="indicator-atrasadas-count">0</span>
-                            <span class="indicator-label">Atrasadas</span>
+                <!-- ── Manager view ── -->
+                <div id="overview-gestor">
+
+                    <!-- ① Faixa topo: indicadores compactos -->
+                    <div class="overview-indicators">
+                        <div class="indicator-card indicator-atrasadas">
+                            <div class="indicator-icon"><i class="ri-alarm-warning-line"></i></div>
+                            <div class="indicator-info">
+                                <span class="indicator-count" id="indicator-atrasadas-count">0</span>
+                                <span class="indicator-label">Atrasadas</span>
+                            </div>
+                            <div class="indicator-dropdown" id="dropdown-atrasadas">
+                                <div id="banner-atrasadas-list" class="banner-list"></div>
+                            </div>
                         </div>
-                        <div class="indicator-dropdown" id="dropdown-atrasadas">
-                            <div id="banner-atrasadas-list" class="banner-list"></div>
+                        <div class="indicator-card indicator-proximas">
+                            <div class="indicator-icon"><i class="ri-calendar-event-line"></i></div>
+                            <div class="indicator-info">
+                                <span class="indicator-count" id="indicator-proximas-count">0</span>
+                                <span class="indicator-label">Próximas (15d)</span>
+                            </div>
+                            <div class="indicator-dropdown" id="dropdown-proximas">
+                                <div id="banner-proximas-list" class="banner-list"></div>
+                            </div>
                         </div>
                     </div>
-                    <div class="indicator-card indicator-proximas">
-                        <div class="indicator-icon"><i class="ri-calendar-event-line"></i></div>
-                        <div class="indicator-info">
-                            <span class="indicator-count" id="indicator-proximas-count">0</span>
-                            <span class="indicator-label">Próximas (15d)</span>
+
+                    <!-- ② Corpo principal: calendário + dashboard -->
+                    <div class="overview-body">
+
+                        <!-- Calendário (foco) -->
+                        <div class="overview-calendar-wrap">
+                            <div id="overview-calendar"></div>
                         </div>
-                        <div class="indicator-dropdown" id="dropdown-proximas">
-                            <div id="banner-proximas-list" class="banner-list"></div>
+
+                        <!-- Dashboard de produção -->
+                        <div class="overview-right">
+                            <div class="overview-dashboard-header">
+                                <i class="ri-bar-chart-grouped-line"></i>
+                                <h3>Produção — <span id="overview-mes-label"></span></h3>
+                            </div>
+                            <table class="overview-prod-table">
+                                <thead>
+                                    <tr>
+                                        <th>Função</th>
+                                        <th>Quantidade</th>
+                                        <th>Recorde</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="overview-prod-tbody">
+                                    <tr>
+                                        <td colspan="3" class="overview-loading">Carregando...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                    </div>
+                </div><!-- /#overview-gestor -->
+
+                <!-- ── Collaborator personal dashboard ── -->
+                <div id="overview-colab" style="display:none;">
+
+                    <!-- Header + month selector -->
+                    <div class="colab-dash-header">
+                        <div class="colab-dash-title">
+                            <i class="ri-bar-chart-line"></i>
+                            <h2>Meu Painel — <span id="colab-mes-nome"></span></h2>
+                        </div>
+                        <select id="colab-mes-seletor" class="mes-select">
+                            <option value="">Carregando...</option>
+                        </select>
+                    </div>
+
+                    <!-- KPI cards -->
+                    <div class="kpi-grid">
+                        <!-- <div class="kpi-card kpi-finalizadas">
+                            <div class="kpi-icon"><i class="ri-check-double-line"></i></div>
+                            <div class="kpi-body">
+                                <div class="kpi-value" id="colab-kpi-finalizadas">—</div>
+                                <div class="kpi-label">Finalizadas</div>
+                            </div>
+                        </div> -->
+                        <div class="kpi-card kpi-novas">
+                            <div class="kpi-icon"><i class="ri-add-circle-line"></i></div>
+                            <div class="kpi-body">
+                                <div class="kpi-value" id="colab-kpi-novas">—</div>
+                                <div class="kpi-label">Novas no mês</div>
+                            </div>
+                        </div>
+                        <div class="kpi-card kpi-valor">
+                            <div class="kpi-icon"><i class="ri-money-dollar-circle-line"></i></div>
+                            <div class="kpi-body">
+                                <div class="kpi-value" id="colab-kpi-valor">—</div>
+                                <div class="kpi-label">Valor a receber</div>
+                            </div>
+                        </div>
+                        <div class="kpi-card kpi-ajustes">
+                            <div class="kpi-icon"><i class="ri-repeat-line"></i></div>
+                            <div class="kpi-body">
+                                <div class="kpi-value" id="colab-kpi-ajustes">—</div>
+                                <div class="kpi-label">Média de ajustes</div>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- ② Corpo principal: calendário + dashboard -->
-                <div class="overview-body">
-
-                    <!-- Calendário (foco) -->
-                    <div class="overview-calendar-wrap">
-                        <div id="overview-calendar"></div>
-                    </div>
-
-                    <!-- Dashboard de produção -->
-                    <div class="overview-right">
-                        <div class="overview-dashboard-header">
-                            <i class="ri-bar-chart-grouped-line"></i>
-                            <h3>Produção — <span id="overview-mes-label"></span></h3>
+                    <!-- Por etapa -->
+                    <div class="dashboard-section">
+                        <div class="section-header">
+                            <h2><i class="ri-layout-grid-line"></i> Por etapa</h2>
+                            <span class="count-badge" id="colab-etapas-count">0</span>
                         </div>
-                        <table class="overview-prod-table">
-                            <thead>
-                                <tr>
-                                    <th>Função</th>
-                                    <th>Quantidade</th>
-                                    <th>Recorde</th>
-                                </tr>
-                            </thead>
-                            <tbody id="overview-prod-tbody">
-                                <tr>
-                                    <td colspan="3" class="overview-loading">Carregando...</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                        <div class="etapas-grid" id="colab-etapas-grid">
+                            <div class="etapa-skeleton"></div>
+                            <div class="etapa-skeleton"></div>
+                            <div class="etapa-skeleton"></div>
+                            <div class="etapa-skeleton"></div>
+                        </div>
                     </div>
 
-                </div>
-            </div>
+                    <!-- Tarefas do mês -->
+                    <div class="dashboard-section">
+                        <div class="section-header">
+                            <h2><i class="ri-list-check-3"></i> Tarefas do mês</h2>
+                            <span class="count-badge" id="colab-tarefas-count">0</span>
+                        </div>
+                        <div class="tasks-wrap">
+                            <table class="tasks-table">
+                                <thead>
+                                    <tr>
+                                        <th>Imagem</th>
+                                        <th>Etapa</th>
+                                        <th>Status</th>
+                                        <th class="col-right">Valor</th>
+                                        <th class="col-center">Pago</th>
+                                        <th class="col-center">Ajustes</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="colab-tasks-body">
+                                    <tr>
+                                        <td colspan="6" class="empty-row">Carregando...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div><!-- /#overview-colab -->
+
+            </div><!-- /#overview-section -->
 
         </main>
     </div>
@@ -801,7 +898,7 @@ $conn->close();
         }
 
         ['click', 'touchstart', 'keydown'].forEach(eventType => {
-            window.addEventListener(eventType, function (event) {
+            window.addEventListener(eventType, function(event) {
                 // Fecha os modais ao clicar fora ou pressionar Esc
                 if (eventType === 'keydown' && event.key !== 'Escape') return;
 
@@ -835,6 +932,12 @@ $conn->close();
         const idColaborador = <?php echo json_encode($idcolaborador); ?>;
         localStorage.setItem('idcolaborador', idColaborador);
 
+        window.PAINEL = {
+            isGestor: <?php echo in_array((int)($_SESSION['nivel_acesso'] ?? 0), [1, 5]) ? 'true' : 'false'; ?>,
+            colaboradorId: <?php echo intval($idcolaborador); ?>,
+            nomeUsuario: <?php echo json_encode($nome_usuario); ?>
+        };
+
         const contratoPendente = <?php echo json_encode($contratoPendente); ?>;
         const contratoSignUrl = <?php echo json_encode($contratoSignUrl); ?>;
         if (contratoPendente && contratoSignUrl) {
@@ -865,6 +968,7 @@ $conn->close();
     <script src="<?php echo asset_url('assets/pdfjs/pdf.min.js'); ?>"></script>
     <script src="<?php echo asset_url('script/notificacoes.js'); ?>"></script>
     <script src="<?php echo asset_url('PaginaPrincipal/scriptIndex.js'); ?>"></script>
+    <script src="<?php echo asset_url('PaginaPrincipal/scriptColabDashboard.js'); ?>"></script>
     <script src="<?php echo asset_url('./script/sidebar.js'); ?>"></script>
     <script src="<?php echo asset_url('./script/controleSessao.js'); ?>"></script>
 

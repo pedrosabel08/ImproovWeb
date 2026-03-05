@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/../config/session_bootstrap.php';
 header('Content-Type: application/json');
-session_start();
+// session_start();
 include '../conexao.php';
 
 $id = isset($_POST['id']) ? intval($_POST['id']) : 0;

@@ -817,6 +817,20 @@ function checkRenderItems(idColaborador) {
   });
 }
 
+function formatarDataComentario(data) {
+  if (!data) return "";
+  // Normalise MySQL 'YYYY-MM-DD HH:MM:SS' for iOS Safari (needs 'T' separator)
+  const date = new Date(data.replace(" ", "T"));
+  if (isNaN(date.getTime())) return data;
+  const dia = String(date.getDate()).padStart(2, "0");
+  const mes = String(date.getMonth() + 1).padStart(2, "0");
+  const ano = date.getFullYear();
+  const horas = String(date.getHours()).padStart(2, "0");
+  const minutos = String(date.getMinutes()).padStart(2, "0");
+  const segundos = String(date.getSeconds()).padStart(2, "0");
+  return `${dia}/${mes}/${ano} ${horas}:${minutos}:${segundos}`;
+}
+
 // --- Resumo inteligente & nav toggles ---
 function mostrarResumoInteligente() {
   return new Promise((resolve, reject) => {
@@ -2883,21 +2897,26 @@ function abrirSidebar(idFuncao, idImagem, nomeObra = "") {
       const nomeObraFinal = nomeObra || (funcao && funcao.nome_obra) || "";
       const btnFlowReview = document.createElement("a");
       btnFlowReview.className = "btn-ir-flowreview";
-      btnFlowReview.innerHTML = '<i class="fa-solid fa-arrow-up-right-from-square"></i> Ir para o Flow Review';
+      btnFlowReview.innerHTML =
+        '<i class="fa-solid fa-arrow-up-right-from-square"></i> Ir para o Flow Review';
       btnFlowReview.href = "#";
       btnFlowReview.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
-        localStorage.setItem("fr_goto", JSON.stringify({
-          idfuncao_imagem: idFuncao,
-          nome_obra: nomeObraFinal
-        }));
+        localStorage.setItem(
+          "fr_goto",
+          JSON.stringify({
+            idfuncao_imagem: idFuncao,
+            nome_obra: nomeObraFinal,
+          }),
+        );
         // Derive ImproovWeb base dynamically so it works on both local and production
         const _p = window.location.pathname;
-        const _si = _p.indexOf('/ImproovWeb');
-        const _imBase = _si !== -1
-          ? window.location.origin + _p.slice(0, _si + '/ImproovWeb'.length)
-          : 'https://improov.com.br/flow/ImproovWeb';
+        const _si = _p.indexOf("/ImproovWeb");
+        const _imBase =
+          _si !== -1
+            ? window.location.origin + _p.slice(0, _si + "/ImproovWeb".length)
+            : "https://improov.com.br/flow/ImproovWeb";
         const base = `${_imBase}/FlowReview/index.php`;
         const url = nomeObraFinal
           ? `${base}?obra_nome=${encodeURIComponent(nomeObraFinal)}`
@@ -3018,7 +3037,7 @@ function abrirSidebar(idFuncao, idImagem, nomeObra = "") {
           li.style.paddingLeft = "10px";
           li.style.marginBottom = "10px";
 
-          li.innerHTML = `<strong>${log.data}</strong> ${log.status_anterior} → <em>${log.status_novo}</em> (${log.responsavel})`;
+          li.innerHTML = `<strong>${formatarDataComentario(log.data)}</strong> ${log.imagem_status_at_update ? `(${log.imagem_status_at_update})` : ""} ${log.status_anterior} → <em>${log.status_novo}</em> (${log.responsavel})`;
           logDiv.appendChild(li);
         });
       } else {
@@ -4711,7 +4730,14 @@ async function carregarOverview() {
 
   if (!btnKanban || !btnLista || !kanbanSec || !listSec) return;
 
-  const isGestorView = [1, 9, 21].includes(colaborador_id);
+  // Use PHP-injected role flag; fall back to collaborator-ID whitelist
+  const isGestorView = window.PAINEL
+    ? window.PAINEL.isGestor
+    : [1, 9, 21].includes(colaborador_id);
+
+  // Sub-panels inside #overview-section
+  const gestorPanel = document.getElementById("overview-gestor");
+  const colabPanel = document.getElementById("overview-colab");
 
   function showOverview() {
     if (kanbanSec) kanbanSec.style.display = "none";
@@ -4721,7 +4747,20 @@ async function carregarOverview() {
     btnKanban.classList.remove("active");
     btnLista.classList.remove("active");
     if (navRight) navRight.style.visibility = "hidden";
-    carregarOverview();
+
+    if (isGestorView) {
+      // Manager: show calendar + production table
+      if (gestorPanel) gestorPanel.style.display = "block";
+      if (colabPanel) colabPanel.style.display = "none";
+      carregarOverview();
+    } else {
+      // Collaborator: show personal dashboard
+      if (gestorPanel) gestorPanel.style.display = "none";
+      if (colabPanel) colabPanel.style.display = "block";
+      if (typeof window.initColabDashboard === "function") {
+        window.initColabDashboard();
+      }
+    }
   }
 
   function showKanban() {
@@ -4744,9 +4783,9 @@ async function carregarOverview() {
     if (navRight) navRight.style.visibility = "visible";
   }
 
-  // Mostrar botão e ativar overview por padrão para gestores
-  if (isGestorView && btnOverview) {
-    btnOverview.style.display = "flex";
+  // Always show the Visão Geral button; gestors start on overview, others on kanban
+  if (btnOverview) btnOverview.style.display = "flex";
+  if (isGestorView) {
     showOverview();
   }
 

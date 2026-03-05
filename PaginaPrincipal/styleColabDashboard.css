@@ -1,0 +1,440 @@
+/*
+ * Collaborator Inline Dashboard — scoped under #overview-colab
+ * Loaded by inicio.php only; all rules prefixed to avoid conflicts.
+ */
+
+/* ── CSS variables (mirrors Overview/style.css) ─────────────── */
+#overview-colab {
+  --cd-bg: #0f1724;
+  --cd-card: #0b1220;
+  --cd-muted: #94a3b8;
+  --cd-accent: #6ee7b7;
+  --cd-blue: #60a5fa;
+  --cd-danger: #fb7185;
+  --cd-green: #4ade80;
+  --cd-orange: #ff9b00;
+  --cd-yellow: #fbbf24;
+
+  padding: 20px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  color: #e6eef8;
+  font-family:
+    "Inter",
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Header bar ─────────────────────────────────────────────── */
+#overview-colab .colab-dash-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+#overview-colab .colab-dash-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#overview-colab .colab-dash-title i {
+  font-size: 22px;
+  color: var(--cd-accent);
+}
+
+#overview-colab .colab-dash-title h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: #e6eef8;
+}
+
+#overview-colab .mes-select {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  color: #e6eef8;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  outline: none;
+  appearance: none;
+  padding: 7px 30px 7px 12px;
+  border-radius: 8px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  transition: border-color 0.15s;
+}
+
+#overview-colab .mes-select:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+#overview-colab .mes-select option {
+  background: #0f1724;
+}
+
+/* ── KPI Grid ───────────────────────────────────────────────── */
+#overview-colab .kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+#overview-colab .kpi-card {
+  background: var(--cd-card);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 14px;
+  padding: 18px 20px;
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  box-shadow: 0 4px 16px rgba(2, 6, 23, 0.5);
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+#overview-colab .kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(2, 6, 23, 0.7);
+}
+
+#overview-colab .kpi-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+#overview-colab .kpi-body {
+  min-width: 0;
+}
+
+#overview-colab .kpi-value {
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1;
+  margin-bottom: 4px;
+  letter-spacing: -0.5px;
+}
+
+#overview-colab .kpi-label {
+  font-size: 12px;
+  color: var(--cd-muted);
+  font-weight: 500;
+}
+
+/* Per-card colors */
+#overview-colab .kpi-novas .kpi-icon {
+  background: rgba(96, 165, 250, 0.12);
+  color: var(--cd-blue);
+}
+#overview-colab .kpi-novas .kpi-value {
+  color: var(--cd-blue);
+}
+
+#overview-colab .kpi-valor .kpi-icon {
+  background: rgba(74, 222, 128, 0.1);
+  color: var(--cd-green);
+}
+#overview-colab .kpi-valor .kpi-value {
+  color: var(--cd-green);
+}
+
+#overview-colab .kpi-ajustes .kpi-icon {
+  background: rgba(251, 113, 133, 0.12);
+  color: var(--cd-danger);
+}
+#overview-colab .kpi-ajustes .kpi-value {
+  color: var(--cd-danger);
+}
+
+/* Loading shimmer */
+#overview-colab .kpi-loading {
+  display: inline-block;
+  width: 60px;
+  height: 28px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  animation: cdShimmer 1.4s infinite;
+}
+
+/* ── Section card ───────────────────────────────────────────── */
+#overview-colab .dashboard-section {
+  background: var(--cd-card);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 14px;
+  padding: 18px 20px;
+  margin-bottom: 18px;
+  box-shadow: 0 4px 16px rgba(2, 6, 23, 0.4);
+}
+
+#overview-colab .section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+#overview-colab .section-header h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #e6eef8;
+}
+
+#overview-colab .section-header h2 i {
+  color: var(--cd-accent);
+  font-size: 17px;
+}
+
+#overview-colab .count-badge {
+  background: rgba(110, 231, 183, 0.1);
+  color: var(--cd-accent);
+  border: 1px solid rgba(110, 231, 183, 0.2);
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+#overview-colab .count-danger {
+  background: rgba(251, 113, 133, 0.1);
+  color: var(--cd-danger);
+  border-color: rgba(251, 113, 133, 0.2);
+}
+
+/* ── Etapas grid ─────────────────────────────────────────────── */
+#overview-colab .etapas-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
+  gap: 12px;
+}
+
+#overview-colab .etapa-card {
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+#overview-colab .etapa-nome {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--cd-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+#overview-colab .etapa-total {
+  font-size: 30px;
+  font-weight: 800;
+  color: var(--cd-blue);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+#overview-colab .etapa-tempo {
+  font-size: 12px;
+  color: var(--cd-muted);
+}
+
+#overview-colab .etapa-skeleton {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 10px;
+  height: 90px;
+  animation: cdShimmer 1.4s infinite;
+}
+
+/* ── Tasks table ─────────────────────────────────────────────── */
+#overview-colab .tasks-wrap {
+  overflow-x: auto;
+}
+
+#overview-colab .tasks-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+#overview-colab .tasks-table th {
+  color: var(--cd-muted);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  text-align: left;
+  white-space: nowrap;
+}
+
+#overview-colab .tasks-table td {
+  padding: 10px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  vertical-align: middle;
+}
+
+#overview-colab .tasks-table tbody tr:hover td {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+#overview-colab .col-right {
+  text-align: right !important;
+}
+#overview-colab .col-center {
+  text-align: center !important;
+}
+
+#overview-colab .empty-row {
+  text-align: center;
+  color: var(--cd-muted);
+  padding: 28px !important;
+}
+
+/* ── Status badges ───────────────────────────────────────────── */
+#overview-colab .status-badge {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+#overview-colab .status-finalizado {
+  background: rgba(110, 231, 183, 0.12);
+  color: var(--cd-accent);
+}
+#overview-colab .status-andamento {
+  background: rgba(96, 165, 250, 0.12);
+  color: var(--cd-blue);
+}
+#overview-colab .status-aprovacao {
+  background: rgba(250, 204, 21, 0.12);
+  color: var(--cd-yellow);
+}
+#overview-colab .status-ajuste {
+  background: rgba(255, 155, 0, 0.12);
+  color: var(--cd-orange);
+}
+#overview-colab .status-aprovado {
+  background: rgba(110, 231, 183, 0.08);
+  color: #86efac;
+}
+#overview-colab .status-aprovado-ajuste {
+  background: rgba(167, 139, 250, 0.12);
+  color: #a78bfa;
+}
+#overview-colab .status-default {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--cd-muted);
+}
+
+/* ── Value / Paid cells ─────────────────────────────────────── */
+#overview-colab .valor-pendente {
+  color: var(--cd-green);
+  font-weight: 600;
+  font-size: 13px;
+}
+#overview-colab .valor-pago {
+  color: var(--cd-muted);
+  font-size: 13px;
+}
+
+#overview-colab .icone-pago {
+  color: var(--cd-accent);
+  font-size: 16px;
+}
+#overview-colab .icone-pago-parcial {
+  color: var(--cd-yellow);
+  font-size: 16px;
+}
+#overview-colab .icone-pendente {
+  color: var(--cd-orange);
+  font-size: 16px;
+}
+
+/* ── Pago cell layout ───────────────────────────────────── */
+#overview-colab .pago-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+/* ── Pago badges ─────────────────────────────────────────── */
+#overview-colab .pago-badge {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+}
+#overview-colab .pago-badge-completo {
+  background: rgba(110, 231, 183, 0.12);
+  color: var(--cd-accent);
+}
+#overview-colab .pago-badge-parcial {
+  background: rgba(251, 191, 36, 0.12);
+  color: var(--cd-yellow);
+}
+
+/* ── Adjustments cell ─────────────────────────────────────────── */
+#overview-colab .ajuste-zero {
+  color: var(--cd-muted);
+}
+#overview-colab .ajuste-um {
+  color: var(--cd-yellow);
+  font-weight: 600;
+}
+#overview-colab .ajuste-mais {
+  color: var(--cd-danger);
+  font-weight: 700;
+}
+
+/* ── Shimmer animation ───────────────────────────────────────── */
+@keyframes cdShimmer {
+  0% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.6;
+  }
+}
+
+/* ── Responsive ──────────────────────────────────────────────── */
+@media (max-width: 1100px) {
+  #overview-colab .kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 680px) {
+  #overview-colab .kpi-grid {
+    grid-template-columns: 1fr;
+  }
+}

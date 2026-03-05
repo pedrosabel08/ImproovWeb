@@ -2249,10 +2249,10 @@ h1 {
 }
 
 /* Top gif size */
-#gif {
+/* #gif {
   width: 200px;
   height: auto;
-}
+} */
 
 /* Mini calendar container styling */
 #mini-calendar-container {
@@ -3150,7 +3150,7 @@ img.thumb {
   background: #fff;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
   font-size: var(--node-body-size);
-  max-height: 40vh;
+  max-height: 25vh;
   overflow: auto;
   position: absolute;
   left: 50%;
@@ -3159,7 +3159,7 @@ img.thumb {
   z-index: 60;
   text-align: left;
   color: black;
-  width: min(720px, 95%);
+  width: max-content;
 }
 
 .mindmap-center-drawer.drawer-collapsed .mindmap-center-drawer-body {

@@ -1,6 +1,10 @@
 <?php
+require_once dirname(__DIR__, 2) . '/config/session_bootstrap.php';
+session_start();
 include '../../conexao.php';
 header('Content-Type: application/json');
+
+$colaboradorId = intval($_SESSION['idcolaborador'] ?? 0);
 
 $response = [];
 
@@ -10,9 +14,8 @@ $response = [];
 $sqlTaxa = "WITH funcoes_finalizadas AS (
     SELECT idfuncao_imagem
     FROM funcao_imagem
-    WHERE colaborador_id = 20
+    WHERE colaborador_id = {$colaboradorId}
       AND status = 'Finalizado'
-      " . (24 == 24 ? "AND funcao_id = 4" : "") . "
 ),
 hist_por_funcao AS (
     SELECT
@@ -59,7 +62,7 @@ $sqlTempo = "WITH eventos_trabalho AS (
     JOIN funcao f ON f.idfuncao = fi.funcao_id
     JOIN imagens_cliente_obra ico ON fi.imagem_id = ico.idimagens_cliente_obra
     JOIN obra o ON o.idobra = ico.obra_id
-    WHERE l.colaborador_id = 20
+    WHERE l.colaborador_id = {$colaboradorId}
       AND o.status_obra = 0
 )
 SELECT 
@@ -84,7 +87,7 @@ $response['tempo_medio_conclusao'] = $resultTempo ? $resultTempo->fetch_all(MYSQ
 // ===============================
 $sqlFinalizadas = "SELECT f.nome_funcao, COUNT(DISTINCT fi.idfuncao_imagem) AS total_finalizadas FROM funcao_imagem fi
 JOIN funcao f ON f.idfuncao = fi.funcao_id
-WHERE colaborador_id = 20
+WHERE colaborador_id = {$colaboradorId}
 AND YEAR(fi.prazo) = YEAR(CURDATE())
 AND MONTH(fi.prazo) = MONTH(CURDATE())
 AND fi.status = 'Finalizado'

@@ -1,6 +1,10 @@
 <?php
+require_once dirname(__DIR__, 2) . '/config/session_bootstrap.php';
+session_start();
 include '../../conexao.php';
 header('Content-Type: application/json');
+
+$colaboradorId = intval($_SESSION['idcolaborador'] ?? 0);
 
 $response = [];
 
@@ -22,7 +26,7 @@ LEFT JOIN colaborador u
     ON u.idcolaborador = fi.colaborador_id
 LEFT JOIN imagens_cliente_obra i
     ON i.idimagens_cliente_obra = fi.imagem_id
-WHERE fi.status = 'Ajuste' AND fi.colaborador_id = 35
+WHERE fi.status = 'Ajuste' AND fi.colaborador_id = {$colaboradorId}
   AND c.data = (
       SELECT MAX(c2.data)
       FROM comentarios_imagem c2

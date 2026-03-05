@@ -11,211 +11,179 @@ unset($__root, $__p);
 
 session_start();
 
-include '../../conexao.php';
-include '../../conexaoMain.php';
-// if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
-//     header("Location: ../index.html");
-//     exit();
-// }
+$nivelAcesso   = intval($_SESSION['nivel_acesso']   ?? 0);
+$colaboradorId = intval($_SESSION['idcolaborador']  ?? 0);
+$nomeUsuario   = htmlspecialchars($_SESSION['nome_usuario'] ?? 'Colaborador', ENT_QUOTES);
+$isGestor      = in_array($nivelAcesso, [1, 5]);
 
-
-
-$conn = conectarBanco();
-
-$clientes = obterClientes($conn);
-$obras = obterObras($conn);
-$obras_inativas = obterObras($conn, 1);
-$colaboradores = obterColaboradores($conn);
-$status_imagens = obterStatusImagens($conn);
-$funcoes = obterFuncoes($conn);
-
-$conn->close();
+$mesAtual = (int) date('m');
+$anoAtual = (int) date('Y');
+$mesesPt  = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+$mesLabel = $mesesPt[$mesAtual] . ' ' . $anoAtual;
 ?>
-
-
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meu Painel · <?php echo $mesLabel; ?></title>
     <link rel="stylesheet" href="<?php echo asset_url('style.css'); ?>">
-    <!-- Global standard styles (variables, resets) -->
     <link rel="stylesheet" href="<?php echo asset_url('../../css/stylePadrao.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset_url('../../css/styleSidebar.css'); ?>">
-    <link href="https://cdn.jsdelivr.net/npm/remixicon/fonts/remixicon.css" rel="stylesheet">
-    <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
-        type="image/x-icon">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
-    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
-    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-
-    <title>Painel de Produção</title>
     <link rel="stylesheet" href="<?php echo asset_url('../../css/modalSessao.css'); ?>">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon/fonts/remixicon.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s" type="image/x-icon">
 </head>
 
 <body>
 
-    <?php
+    <?php include '../../sidebar.php'; ?>
 
-    include '../../sidebar.php';
+    <!-- Dados da sessão para o JS -->
+    <script>
+        window.PAINEL = {
+            colaboradorId: <?php echo $colaboradorId; ?>,
+            nivelAcesso: <?php echo $nivelAcesso; ?>,
+            nomeUsuario: <?php echo json_encode($nomeUsuario, JSON_UNESCAPED_UNICODE); ?>,
+            isGestor: <?php echo $isGestor ? 'true' : 'false'; ?>,
+            mesAtual: <?php echo $mesAtual; ?>,
+            anoAtual: <?php echo $anoAtual; ?>
+        };
+    </script>
 
-    ?>
-
-    <div class="container">
+    <?php if ($isGestor): ?>
+        <!-- ======================================================
+     Visão do GESTOR  (nivel_acesso 1 ou 5)
+     Este painel é para colaboradores. Redirecione para a
+     sua visão gerencial.
+====================================================== -->
+        <div class="container" id="gestor-view">
             <header>
                 <div class="brand">
                     <div class="logo">OV</div>
                     <div>
-                        <h1>Overview do Colaborador</h1>
-                        <p class="sub">Resumo rápido das suas tarefas, atualizações e feedbacks</p>
+                        <h1>Visão Geral</h1>
+                        <p class="sub">Esta página é o painel individual dos colaboradores</p>
                     </div>
                 </div>
-                <div style="text-align:right">
-                    <div class="pill">Olá, Pedro</div>
+            </header>
+            <div class="card" style="text-align:center;padding:40px 20px">
+                <div style="font-size:40px;margin-bottom:12px">📊</div>
+                <div style="font-size:18px;font-weight:700;margin-bottom:8px">Você é um gestor</div>
+                <p style="color:var(--muted);margin-bottom:20px">Este painel é destinado aos colaboradores para acompanhar a produção pessoal.<br>Acesse a visão gerencial pela barra lateral.</p>
+                <a href="../" class="btn primary-link">Voltar ao início</a>
+            </div>
+        </div>
+
+    <?php else: ?>
+        <!-- ======================================================
+     Visão do COLABORADOR
+====================================================== -->
+        <div class="container" id="colab-dashboard">
+
+            <!-- Header -->
+            <header>
+                <div class="brand">
+                    <div class="logo">MP</div>
+                    <div>
+                        <h1>Meu Painel de Produção</h1>
+                        <p class="sub">Sua produção mensal, valor a receber e desempenho por etapa</p>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <div class="pill user-pill">Olá, <?php echo $nomeUsuario; ?></div>
+                    <select id="mes-seletor" class="pill mes-select" aria-label="Selecionar mês">
+                        <option value="<?php echo $anoAtual . '-' . str_pad($mesAtual, 2, '0', STR_PAD_LEFT); ?>">
+                            <?php echo $mesLabel; ?>
+                        </option>
+                    </select>
                 </div>
             </header>
 
-            <!-- Metrics -->
-            <section class="metrics" aria-label="Métricas principais">
-                <div class="card">
-                    <div class="metric-value" id="pct-completed">--%</div>
-                    <div class="metric-label">% tarefas concluídas (mês)</div>
-                    <div class="delta" id="pct-completed-delta">&nbsp;</div>
+            <!-- KPI Cards -->
+            <section class="kpi-grid" aria-label="Indicadores do mês">
+                <div class="kpi-card kpi-novas">
+                    <div class="kpi-icon"><i class="ri-file-add-line"></i></div>
+                    <div class="kpi-body">
+                        <div class="kpi-value" id="kpi-novas">–</div>
+                        <div class="kpi-label">Novas no mês</div>
+                    </div>
                 </div>
-
-                <div class="card">
-                    <div class="metric-value" id="avg-time">-- dias</div>
-                    <div class="metric-label">Tempo médio de conclusão</div>
-                    <div class="delta" id="avg-time-delta">&nbsp;</div>
+                <div class="kpi-card kpi-valor">
+                    <div class="kpi-icon"><i class="ri-money-dollar-circle-line"></i></div>
+                    <div class="kpi-body">
+                        <div class="kpi-value" id="kpi-valor">–</div>
+                        <div class="kpi-label">Valor a receber</div>
+                    </div>
                 </div>
-
-                <div class="card">
-                    <div class="metric-value" id="approval-rate">--%</div>
-                    <div class="metric-label">Taxa de aprovação</div>
-                    <div class="delta" id="approval-delta">&nbsp;</div>
-                </div>
-
-                <div class="card">
-                    <div class="metric-value" id="due-today">0</div>
-                    <div class="metric-label">Tarefas com prazo hoje</div>
-                    <div class="delta" id="due-delta">&nbsp;</div>
+                <div class="kpi-card kpi-ajustes">
+                    <div class="kpi-icon"><i class="ri-loop-left-line"></i></div>
+                    <div class="kpi-body">
+                        <div class="kpi-value" id="kpi-ajustes">–</div>
+                        <div class="kpi-label">Média de ajustes / tarefa</div>
+                    </div>
                 </div>
             </section>
 
-            <main>
-                <section>
-                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-                        <h2 style="margin:0;font-size:16px">Novidades / Atualizações</h2>
-                        <div style="display:flex;gap:8px;align-items:center">
-                            <select id="feed-filter" class="pill" aria-label="Filtro do feed">
-                                <option value="all">Tudo</option>
-                                <option value="my">Minhas tarefas</option>
-                                <option value="action">Ação necessária</option>
-                            </select>
-                            <button id="mark-read" class="btn">Marcar tudo como lido</button>
-                        </div>
-                    </div>
-
-                    <div class="feed" id="updates-list" aria-live="polite">
-                        <!-- example/mock updates -->
-                        <div class="feed-item">
-                            <div class="avatar">PB</div>
-                            <div class="content">
-                                <div class="meta"><strong>Pedro</strong> · <span>2h</span></div>
-                                <div class="title" style="font-weight:700;margin-top:6px">Atualização no projeto Slack Web Redesign</div>
-                                <div class="body" style="margin-top:6px;color:var(--muted)">Nova versão enviada para revisão. Comentários no arquivo principal.</div>
-                                <div class="actions">
-                                    <button class="btn">Comentar</button>
-                                    <button class="btn">Ver tarefa</button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="feed-item">
-                            <div class="avatar">AR</div>
-                            <div class="content">
-                                <div class="meta"><strong>Ana</strong> · <span>1d</span></div>
-                                <div class="title" style="font-weight:700;margin-top:6px">Feedback: ajustes nas imagens de loja</div>
-                                <div class="body" style="margin-top:6px;color:var(--muted)">Pequenas correções solicitadas no banner principal. Ver detalhes no comentário.</div>
-                                <div class="actions">
-                                    <button class="btn">Marcar como lido</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <aside class="right-col">
-                    <div class="mini">
-                        <div style="display:flex;justify-content:space-between;align-items:center">
-                            <div>
-                                <div class="tiny">Próxima ação</div>
-                                <div style="font-weight:700">Revisar implantação lojas</div>
-                                <div class="tiny">Prazo: 2025-10-16</div>
-                            </div>
-                            <div>
-                                <button class="primary" id="go-to-next">Ir</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div>
-                        <h3 style="margin:8px 0 6px 0">Últimos feedbacks</h3>
-                        <div class="feedback" id="feedback-list">
-                            <!-- feedbacks -->
-                        </div>
-                    </div>
-
-                    <div style="margin-top:6px">
-                        <h3 style="margin:8px 0 6px 0">Atalhos</h3>
-                        <div style="display:flex;gap:8px">
-                            <button class="btn" id="create-task">Criar tarefa</button>
-                            <button class="btn" id="request-review">Pedir revisão</button>
-                        </div>
-                    </div>
-                </aside>
-            </main>
-
-            <footer>
-                <small>Este é um MVP demonstrativo — os dados são mockados. Use os botões para testar
-                    interações.</small>
-            </footer>
-        </div>
-
-        <!-- Task panel (simulated navigation target) -->
-        <div id="task-panel" role="dialog" aria-modal="false">
-            <h3>Tarefa</h3>
-            <div id="task-details">Carregando...</div>
-            <div style="margin-top:10px;text-align:right">
-                <button class="btn" id="close-task">Fechar</button>
-            </div>
-        </div>
-
-        <!-- Comment modal -->
-        <div class="modal-backdrop" id="modal-backdrop" role="dialog" aria-modal="true">
-            <div class="modal" role="document" aria-labelledby="modal-title">
-                <h2 id="modal-title">Comentários</h2>
-                <div id="modal-update-info" class="tiny">—</div>
-
-                <div class="comments" id="modal-comments">
-                    <!-- comments -->
+            <!-- Etapas -->
+            <section class="dashboard-section">
+                <div class="section-header">
+                    <h2><i class="ri-bar-chart-2-line"></i> Desempenho por etapa</h2>
                 </div>
-
-                <div style="display:flex;gap:8px;margin-top:12px">
-                    <input id="comment-input" placeholder="Adicionar comentário..."
-                        style="flex:1;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);background:transparent;color:inherit" />
-                    <button class="primary" id="send-comment">Enviar</button>
-                    <button class="btn" id="close-modal">Fechar</button>
+                <div class="etapas-grid" id="etapas-grid">
+                    <div class="etapa-skeleton"></div>
+                    <div class="etapa-skeleton"></div>
+                    <div class="etapa-skeleton"></div>
                 </div>
-            </div>
-        </div>
+            </section>
 
-        <script src="<?php echo asset_url('script.js'); ?>"></script>
-        <script src="<?php echo asset_url('../../script/sidebar.js'); ?>"></script>
-        <script src="<?php echo asset_url('../../script/controleSessao.js'); ?>"></script>
+            <!-- Tabela de tarefas -->
+            <section class="dashboard-section">
+                <div class="section-header">
+                    <h2><i class="ri-task-line"></i> Tarefas do mês</h2>
+                    <span class="count-badge" id="tasks-count">–</span>
+                </div>
+                <div class="tasks-wrap">
+                    <table class="tasks-table">
+                        <thead>
+                            <tr>
+                                <th>Imagem</th>
+                                <th>Obra</th>
+                                <th>Etapa</th>
+                                <th>Status</th>
+                                <th class="col-right">Valor</th>
+                                <th class="col-center">Pago?</th>
+                                <th class="col-center">Ajustes</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tasks-body">
+                            <tr>
+                                <td colspan="7" class="empty-row">Carregando...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Feedbacks / ajustes pendentes -->
+            <section class="dashboard-section">
+                <div class="section-header">
+                    <h2><i class="ri-feedback-line"></i> Feedbacks pendentes de ajuste</h2>
+                    <span class="count-badge count-danger" id="feedbacks-count">–</span>
+                </div>
+                <div class="feedback-grid" id="feedback-list">
+                    <div class="empty-row" style="padding:16px;color:var(--muted)">Carregando...</div>
+                </div>
+            </section>
+
+        </div><!-- /#colab-dashboard -->
+    <?php endif; ?>
+
+    <script src="<?php echo asset_url('script.js'); ?>"></script>
+    <script src="<?php echo asset_url('../../script/sidebar.js'); ?>"></script>
+    <script src="<?php echo asset_url('../../script/controleSessao.js'); ?>"></script>
 </body>
 
 </html>

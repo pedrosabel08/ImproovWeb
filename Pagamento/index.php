@@ -2,10 +2,10 @@
 require_once __DIR__ . '/../config/session_bootstrap.php';
 $__root = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/\\');
 foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWeb/config/version.php'] as $__p) {
-    if ($__p && is_file($__p)) {
-        require_once $__p;
-        break;
-    }
+	if ($__p && is_file($__p)) {
+		require_once $__p;
+		break;
+	}
 }
 unset($__root, $__p);
 
@@ -77,7 +77,7 @@ $conn->close();
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 	<title>Tela de pagamento</title>
-    <link rel="stylesheet" href="<?php echo asset_url('../css/modalSessao.css'); ?>">
+	<link rel="stylesheet" href="<?php echo asset_url('../css/modalSessao.css'); ?>">
 </head>
 
 <body>
@@ -89,7 +89,7 @@ $conn->close();
 	?>
 
 	<main>
-		<section id="resumo-pagamentos" style="margin-bottom: 20px;">
+		<section id="resumo-pagamentos" style="margin-bottom: 20px; display: none;">
 			<h2 style="margin: 10px 0;">Resumo por colaborador (MVP)</h2>
 			<div class="resumo-filtro">
 				<label>Referência:</label>
@@ -210,13 +210,25 @@ $conn->close();
 				</div>
 
 				<div id="valores">
-					<div class="total-valor">
-						<p>Total (R$):</p>
-						<span id="totalValor">0,00</span>
-					</div>
-					<div class="total-tarefas">
-						<p>Total:</p>
-						<span id="total-imagens">0</span>
+					<div class="totals-columns" style="display:flex;gap:12px;align-items:center">
+						<div class="total-tarefas">
+							<p>Total:</p>
+							<span id="total-imagens">0</span>
+							<p style="margin-top:6px">Total (R$):</p>
+							<span id="totalValor">0,00</span>
+						</div>
+						<div class="total-pagas">
+							<p>Imagens Pagas:</p>
+							<span id="total-imagens-pagas">0</span>
+							<p style="margin-top:6px">Valor Pago (R$):</p>
+							<span id="totalValorPago">0,00</span>
+						</div>
+						<div class="total-nao-pagas">
+							<p>Imagens Não Pagas:</p>
+							<span id="total-imagens-nao-pagas">0</span>
+							<p style="margin-top:6px">Valor Não Pago (R$):</p>
+							<span id="totalValorNaoPago">0,00</span>
+						</div>
 					</div>
 					<button id="generate-adendo">Gerar Adendo</button>
 					<button id="generate-lista">Gerar Lista</button>
@@ -259,7 +271,7 @@ $conn->close();
 	<script src="<?php echo asset_url('script.js'); ?>"></script>
 	<script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
 
-    <script src="<?php echo asset_url('../script/controleSessao.js'); ?>"></script>
+	<script src="<?php echo asset_url('../script/controleSessao.js'); ?>"></script>
 </body>
 
 </html>

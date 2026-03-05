@@ -1,149 +1,147 @@
-@import url('https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,200..1000;1,200..1000&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&family=Open+Sans:ital,wght@0,300..800;1,300..800&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,200..1000;1,200..1000&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&family=Open+Sans:ital,wght@0,300..800;1,300..800&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap");
 
 :root {
-	--bg: #0f1115;
-	--panel: #1b1d22;
-	--card: #141519;
-	--text: #e6eef2;
-	--muted: #9aa3a8;
-	--accent: #00adb5;
-	--danger: #ff4b2b;
-	--border: #26282c;
-	--hover: #212325;
-	--table-head: #28363a;
-	--table-cell-border: #2c003e;
-	--webkit-scrollbar-thumb: #686767;
-
+  --bg: #0f1115;
+  --panel: #1b1d22;
+  --card: #141519;
+  --text: #e6eef2;
+  --muted: #9aa3a8;
+  --accent: #00adb5;
+  --danger: #ff4b2b;
+  --border: #26282c;
+  --hover: #212325;
+  --table-head: #28363a;
+  --table-cell-border: #2c003e;
+  --webkit-scrollbar-thumb: #686767;
 }
 
 /* Light theme (apply via <body class="theme-light">) */
 body.theme-light {
-	--bg: #f8fafc;
-	--panel: #ffffff;
-	--card: #ffffff;
-	--text: #0f1720;
-	--muted: #4b5563;
-	--accent: #0b7285;
-	--danger: #c53030;
-	--border: #e6e9ee;
-	--hover: #f1f5f9;
-	--table-head: #f3f6f9;
-	--table-cell-border: #d1d5db;
+  --bg: #f8fafc;
+  --panel: #ffffff;
+  --card: #ffffff;
+  --text: #0f1720;
+  --muted: #4b5563;
+  --accent: #0b7285;
+  --danger: #c53030;
+  --border: #e6e9ee;
+  --hover: #f1f5f9;
+  --table-head: #f3f6f9;
+  --table-cell-border: #d1d5db;
 }
 
 /* Respect user's OS/browser preference for light theme */
 @media (prefers-color-scheme: light) {
-	:root {
-		--bg: #f8fafc;
-		--panel: #ffffff;
-		--card: #ffffff;
-		--text: #0f1720;
-		--muted: #4b5563;
-		--accent: #0b7285;
-		--danger: #c53030;
-		--border: #e6e9ee;
-		--hover: #f1f5f9;
-		--table-head: #f3f6f9;
-		--table-cell-border: #d1d5db;
-		--webkit-scrollbar-thumb: #686767;
-	}
+  :root {
+    --bg: #f8fafc;
+    --panel: #ffffff;
+    --card: #ffffff;
+    --text: #0f1720;
+    --muted: #4b5563;
+    --accent: #0b7285;
+    --danger: #c53030;
+    --border: #e6e9ee;
+    --hover: #f1f5f9;
+    --table-head: #f3f6f9;
+    --table-cell-border: #d1d5db;
+    --webkit-scrollbar-thumb: #686767;
+  }
 }
 
 * {
-	padding: 0;
-	margin: 0;
-	font-family: "Inter", sans-serif;
-	box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+  font-family: "Inter", sans-serif;
+  box-sizing: border-box;
 }
 
 /* ===== SCROLLBAR ===== */
 ::-webkit-scrollbar {
-	width: 4px;
+  width: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
-	background: var(--webkit-scrollbar-thumb);
+  background: var(--webkit-scrollbar-thumb);
 }
 
-
 body {
-	background-color: var(--bg);
-	color: var(--text);
-	display: grid;
-	grid-template-columns: 60px 1fr;
-	text-align: justify;
+  background-color: var(--bg);
+  color: var(--text);
+  display: grid;
+  grid-template-columns: 60px 1fr;
+  text-align: justify;
 }
 
 button,
 a {
-	all: unset;
+  all: unset;
 }
 
 header {
-	padding: 1rem;
-	display: flex;
-	align-items: flex-start;
-	justify-content: space-between;
-	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
-	background: linear-gradient(90deg, #1a1a2e 0%, #3e4a70 50%, #2b2b3b 100%);
-	color: white;
+  padding: 1rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+  background: linear-gradient(90deg, #1a1a2e 0%, #3e4a70 50%, #2b2b3b 100%);
+  color: white;
 }
 
-
 header p {
-	text-transform: capitalize;
+  text-transform: capitalize;
 }
 
 main {
-	display: grid;
-	grid-template-rows: auto 1fr;
-	gap: 40px;
-	margin: 40px;
-	grid-column: 2;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 40px;
+  margin: 40px;
+  grid-column: 2;
 }
 
 .filtro {
-	/* grid layout for filters: responsive columns */
-	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-	gap: 18px;
-	align-items: start;
+  /* grid layout for filters: responsive columns */
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 18px;
+  align-items: start;
 }
 
 .filtro h2 {
-	font-size: 0.8rem;
-	color: var(--text);
-	margin-bottom: 6px;
+  font-size: 0.8rem;
+  color: var(--text);
+  margin-bottom: 6px;
 }
 
-.filtro select, .resumo-filtro select {
-	padding: 4px 6px;
-	font-size: 0.8rem;
-	border-radius: 8px;
-	background: var(--panel);
-	border: 1px solid var(--border);
-	color: var(--text);
+.filtro select,
+.resumo-filtro select {
+  padding: 4px 6px;
+  font-size: 0.8rem;
+  border-radius: 8px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--text);
 }
 
 /* Checkbox label (custom) */
 .checkbox-label {
-	display: inline-flex;
-	align-items: center;
-	gap: 8px;
-	cursor: pointer;
-	color: var(--text);
-	user-select: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  color: var(--text);
+  user-select: none;
 }
 
 .checkbox-label input[type="checkbox"] {
-	width: 12px;
-	height: 12px;
-	border: 1px solid var(--border);
-	border-radius: 4px;
-	display: inline-block;
-	position: relative;
-	background: transparent;
+  width: 12px;
+  height: 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  display: inline-block;
+  position: relative;
+  background: transparent;
 }
 
 /* .checkbox-label input[type="checkbox"]:checked {
@@ -152,403 +150,459 @@ main {
 } */
 
 .checkbox-label input[type="checkbox"]:focus {
-	outline: 2px solid rgba(0, 0, 0, 0.12);
+  outline: 2px solid rgba(0, 0, 0, 0.12);
 }
 
 .checkbox-label span {
-	font-size: 0.95rem;
+  font-size: 0.95rem;
 }
 
 /* Buttons standardization */
 .btn {
-	display: inline-flex;
-	align-items: center;
-	gap: 8px;
-	padding: 8px 12px;
-	background: var(--panel);
-	color: var(--text);
-	border: 1px solid var(--border);
-	border-radius: 18px;
-	cursor: pointer;
-	transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  cursor: pointer;
+  transition: all 0.15s ease;
 }
 
 .btn:hover {
-	transform: translateY(-1px);
+  transform: translateY(-1px);
 }
 
 .btn-primary {
-	background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 60%, black));
-	color: #fff;
-	border-color: transparent;
+  background: linear-gradient(
+    90deg,
+    var(--accent),
+    color-mix(in srgb, var(--accent) 60%, black)
+  );
+  color: #fff;
+  border-color: transparent;
 }
 
 .btn-ghost {
-	background: transparent;
-	border: 1px solid var(--border);
+  background: transparent;
+  border: 1px solid var(--border);
 }
 
 .btn[disabled] {
-	opacity: 0.5;
-	cursor: not-allowed;
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* make small inputs consistent */
 .buttons input[type="text"],
 #valor {
-	background: var(--panel);
-	border: 1px solid var(--border);
-	color: var(--text);
-	padding: 6px 8px;
-	border-radius: 8px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 6px 8px;
+  border-radius: 8px;
 }
 
 .tabela {
-	max-height: 100vh;
-	overflow-y: auto;
-	width: 100%;
-	margin: 0;
-	padding: 0;
-	/* remove padding so sticky header aligns to top of scroll container */
+  max-height: 100vh;
+  overflow-y: auto;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  /* remove padding so sticky header aligns to top of scroll container */
 }
 
 .menu-buttons {
-	margin: 15px 0;
+  margin: 15px 0;
 }
 
 button,
 a {
-	cursor: pointer;
+  cursor: pointer;
 }
 
 .buttons button {
-	background-color: #000000;
-	color: white;
-	padding: 3px 6px;
-	transition: 0.3s all ease;
-	border-radius: 10px;
-	font-size: 0.9rem;
-
+  background-color: #000000;
+  color: white;
+  padding: 3px 6px;
+  transition: 0.3s all ease;
+  border-radius: 10px;
+  font-size: 0.9rem;
 }
 
 .buttons input {
-	padding: 3px 5px;
+  padding: 3px 5px;
 }
 
 .buttons button:hover {
-	background-color: #FF5833;
-	cursor: pointer;
+  background-color: #ff5833;
+  cursor: pointer;
 }
 
 #confirmar-pagamento:disabled {
-	background-color: #cccccc;
-	color: #666666;
-	cursor: not-allowed;
-	opacity: 0.6;
+  background-color: #cccccc;
+  color: #666666;
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 #valores {
-	display: flex;
-	padding: 2rem;
-	gap: 50px;
-	text-align: center;
-	align-items: center;
+  display: flex;
+  padding: 2rem;
+  gap: 50px;
+  text-align: center;
+  align-items: center;
 }
 
 #valores span {
-	font-weight: bold;
+  font-weight: bold;
 }
 
 table {
-	width: 100%;
-	border-collapse: collapse;
+  width: 100%;
+  border-collapse: collapse;
 }
 
 /* Table visual improvements */
 table thead {
-	background: var(--panel);
-	/* solid background for sticky header */
+  background: var(--panel);
+  /* solid background for sticky header */
 }
 
 table th {
-	color: var(--text);
-	padding: 10px 8px;
-	font-weight: 600;
-	border-bottom: 1px solid var(--border);
-	text-align: center;
-	position: sticky;
-	top: 0;
-	/* sticks to top of the .tabela scroll container */
-	z-index: 8;
-	background: var(--panel);
-	box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06);
+  color: var(--text);
+  padding: 10px 8px;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border);
+  text-align: center;
+  position: sticky;
+  top: 0;
+  /* sticks to top of the .tabela scroll container */
+  z-index: 8;
+  background: var(--panel);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06);
 }
 
 table td {
-	text-align: center;
-	padding: 10px 8px;
-	color: var(--text);
-	vertical-align: middle;
+  text-align: center;
+  padding: 10px 8px;
+  color: var(--text);
+  vertical-align: middle;
 }
 
 tbody {
-	font-size: 14px;
+  font-size: 14px;
 }
-
 
 /* hover and selection */
 tbody tr:hover td {
-	background: var(--hover);
-	color: var(--text);
+  background: var(--hover);
+  color: var(--text);
 }
 
 .row-selected td {
-	background: linear-gradient(90deg, rgba(0, 173, 181, 0.12), rgba(0, 173, 181, 0.06));
-	color: var(--text);
+  background: linear-gradient(
+    90deg,
+    rgba(0, 173, 181, 0.12),
+    rgba(0, 173, 181, 0.06)
+  );
+  color: var(--text);
 }
 
 /* compact and responsive table container */
 .tabela {
-	max-height: calc(100vh - 220px);
-	overflow: auto;
-	width: 100%;
-	margin: 0;
-	background: transparent;
-	border-radius: 8px;
-	padding: 0;
-	/* keep padding 0 so sticky header aligns */
+  max-height: calc(100vh - 220px);
+  overflow: auto;
+  width: 100%;
+  margin: 0;
+  background: transparent;
+  border-radius: 8px;
+  padding: 0;
+  /* keep padding 0 so sticky header aligns */
 }
 
 /* checkbox column narrower */
 .tabela td.checkbox,
 .tabela th.checkbox {
-	width: 48px;
+  width: 48px;
 }
 
 /* make important numeric columns stand out */
 .tabela td.numeric {
-	font-weight: 700;
-	color: var(--text);
+  font-weight: 700;
+  color: var(--text);
 }
 
 #graficos-tarefas {
-	display: grid;
-	grid-template-columns: 2fr 1fr;
-	gap: 20px;
-	padding: 20px;
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 20px;
+  padding: 20px;
 }
 
 #graficos-tarefas canvas {
-	background-color: #fff;
-	border-radius: 10px;
-	padding: 20px;
-	box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+  background-color: #fff;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 .checked {
-	background-color: #3f734b;
+  background-color: #3f734b;
 }
 
 #valores button {
-	background-color: #000000;
-	color: rgb(255, 255, 255);
-	padding: 3px 6px;
-	transition: 0.3s all ease;
-	border-radius: 10px;
-	font-size: 0.9rem;
+  background-color: #000000;
+  color: rgb(255, 255, 255);
+  padding: 3px 6px;
+  transition: 0.3s all ease;
+  border-radius: 10px;
+  font-size: 0.9rem;
 }
 
 #valores button:hover {
-	background-color: #FF5833;
-	cursor: pointer;
+  background-color: #ff5833;
+  cursor: pointer;
 }
 
 button#generate-pdf:hover {
-	font-weight: bold;
+  font-weight: bold;
 }
 
 .tipo-imagem div {
-	display: flex;
-	align-items: center;
-	gap: 5px;
-	margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 10px;
 }
 
-
 .hidden {
-	display: none;
+  display: none;
 }
 
 #menu {
-	background-color: #f1f1f1;
-	border-radius: 10px;
-	position: absolute;
-	left: 10px;
-	z-index: 1;
-	margin-top: 30px;
-	min-width: 10rem;
-	padding: .5rem 0;
-	transition: .3s all ease;
-	animation: fadeIn .5s ease-in-out forwards;
+  background-color: #f1f1f1;
+  border-radius: 10px;
+  position: absolute;
+  left: 10px;
+  z-index: 1;
+  margin-top: 30px;
+  min-width: 10rem;
+  padding: 0.5rem 0;
+  transition: 0.3s all ease;
+  animation: fadeIn 0.5s ease-in-out forwards;
 }
 
 #menu a {
-	display: block;
-	padding: 5px;
-	text-decoration: none;
-	color: black;
-	font-size: 1rem;
-	padding: .25rem 1.5rem;
-	border-radius: 2px;
-	transition: .3s all ease;
-	text-align: center;
-	cursor: pointer;
+  display: block;
+  padding: 5px;
+  text-decoration: none;
+  color: black;
+  font-size: 1rem;
+  padding: 0.25rem 1.5rem;
+  border-radius: 2px;
+  transition: 0.3s all ease;
+  text-align: center;
+  cursor: pointer;
 }
 
 #menu a#tab-imagens {
-	font-weight: bold;
+  font-weight: bold;
 }
 
 #menu a i {
-	margin-right: 10px;
+  margin-right: 10px;
 }
 
 #menu a:hover {
-	background-color: #ccc;
+  background-color: #ccc;
 }
 
-
 @keyframes fadeIn {
-	0% {
-		opacity: 0;
-		transform: translateX(-20px);
-	}
+  0% {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
 
-	100% {
-		opacity: 1;
-		transform: translateX(0);
-	}
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 /* --- Pagamentos: status badges and action buttons --- */
 .badge {
-	display: inline-block;
-	padding: 4px 8px;
-	border-radius: 12px;
-	color: white;
-	font-weight: 700;
-	font-size: 0.8rem;
-	min-width: 86px;
-	text-align: center;
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 12px;
+  color: white;
+  font-weight: 700;
+  font-size: 0.8rem;
+  min-width: 86px;
+  text-align: center;
 }
 
 /* gray */
 .status-pendente_envio {
-	background: #6b7280;
+  background: #6b7280;
 }
 
 /* amber */
 .status-aguardando_retorno {
-	background: #f59e0b;
-	color: #111827;
+  background: #f59e0b;
+  color: #111827;
 }
 
 /* blue */
 .status-validado {
-	background: #3b82f6;
+  background: #3b82f6;
 }
 
 /* purple */
 .status-adendo_gerado {
-	background: #7c3aed;
+  background: #7c3aed;
 }
 
 /* green */
 .status-pago {
-	background: #16a34a;
+  background: #16a34a;
 }
 
 /* gray */
 .status-desconhecido {
-	background: #9ca3af;
+  background: #9ca3af;
 }
 
-
-
 .action-btn {
-	display: inline-flex;
-	align-items: center;
-	gap: 6px;
-	padding: 6px 10px;
-	border-radius: 12px;
-	font-size: 0.85rem;
-	cursor: pointer;
-	border: 1px solid rgba(0, 0, 0, 0.08);
-	background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0));
-	color: var(--text);
-	width: max-content;
-	margin: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.03),
+    rgba(255, 255, 255, 0)
+  );
+  color: var(--text);
+  width: max-content;
+  margin: auto;
 }
 
 .action-btn.send {
-	background-color: #ffb300;
-	color: #111;
+  background-color: #ffb300;
+  color: #111;
 }
 
 .action-btn.validate {
-	background-color: #3b82f6;
-	color: #fff;
+  background-color: #3b82f6;
+  color: #fff;
 }
 
 .action-btn.adendo {
-	background-color: #7c3aed;
-	color: #fff;
+  background-color: #7c3aed;
+  color: #fff;
 }
 
 .action-btn.pay {
-	background-color: #10b981;
-	color: #fff;
+  background-color: #10b981;
+  color: #fff;
 }
 
 .action-btn.small {
-	padding: 4px 8px;
-	font-size: 0.75rem;
-	border-radius: 10px;
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  border-radius: 10px;
 }
 
 .action-btn[disabled] {
-	opacity: 0.5;
-	cursor: not-allowed;
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* tipo count appended to labels */
 .checkbox-label .tipo-count {
-	display: inline-block;
-	margin-left: 8px;
-	background: rgba(255, 255, 255, 0.04);
-	padding: 2px 6px;
-	border-radius: 10px;
-	font-weight: 600;
-	color: var(--muted);
-	font-size: 0.85rem;
+  display: inline-block;
+  margin-left: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-weight: 600;
+  color: var(--muted);
+  font-size: 0.85rem;
 }
 
 /* compact resumo actions layout */
 #tabela-resumo td.action-group {
-	display: grid;
-	justify-content: center;
-	align-items: center;
-	grid-template-columns: 2fr 1fr;
+  display: grid;
+  justify-content: center;
+  align-items: center;
+  grid-template-columns: 2fr 1fr;
 }
 
 /* responsive tweaks */
 @media (max-width: 900px) {
-	.tipo-imagem {
-		grid-template-columns: repeat(2, 1fr);
-	}
+  .tipo-imagem {
+    grid-template-columns: repeat(2, 1fr);
+  }
 
-	.status-badge {
-		min-width: 70px;
-		font-size: 0.75rem;
-	}
+  .status-badge {
+    min-width: 70px;
+    font-size: 0.75rem;
+  }
+}
+
+/* Totals cards (paid / unpaid / total) */
+.totals-columns {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.totals-columns > div {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.02),
+    rgba(255, 255, 255, 0.01)
+  );
+  border: 1px solid var(--border);
+  padding: 10px 14px;
+  border-radius: 10px;
+  min-width: 140px;
+  box-shadow: 0 6px 18px rgba(2, 6, 23, 0.35);
+}
+.totals-columns p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.totals-columns span {
+  display: block;
+  margin-top: 6px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* Paid / unpaid colour accents */
+#total-imagens-pagas,
+#totalValorPago {
+  color: #10b981; /* green */
+}
+#total-imagens-nao-pagas,
+#totalValorNaoPago {
+  color: #ff6b6b; /* red */
+}
+
+@media (max-width: 700px) {
+  .totals-columns {
+    flex-wrap: wrap;
+  }
+  .totals-columns > div {
+    flex: 1 1 45%;
+  }
 }

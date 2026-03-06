@@ -99,8 +99,13 @@ function enviarArquivoSFTP($host, $usuario, $senha, $arquivoLocal, $arquivoRemot
             fclose($localHandle);
             $sftp->fclose($remoteHandle);
 
-            // basic verification: if we reached total size consider OK
+            // Verify remote file size to catch silent partial transfers
             if ($totalSize > 0 && $sent >= $totalSize) {
+                $remoteStat = @$sftp->stat($arquivoRemoto);
+                $remoteSize = is_array($remoteStat) ? (int)($remoteStat['size'] ?? -1) : -1;
+                if ($remoteSize !== (int) $totalSize) {
+                    return [false, "Upload incompleto: local={$totalSize} bytes, remoto={$remoteSize} bytes"];
+                }
                 return [true, 'OK'];
             }
 
@@ -116,9 +121,17 @@ function enviarArquivoSFTP($host, $usuario, $senha, $arquivoLocal, $arquivoRemot
                 }
             }
             if ($sftp->put($arquivoRemoto, $arquivoLocal, SFTP::SOURCE_LOCAL_FILE)) {
+                // Verify remote file size to catch silent partial transfers (phpseclib
+                // can return true from put() even when the connection dropped mid-stream).
+                $localSize = filesize($arquivoLocal);
+                $remoteStat = @$sftp->stat($arquivoRemoto);
+                $remoteSize = is_array($remoteStat) ? (int)($remoteStat['size'] ?? -1) : -1;
+                if ($localSize > 0 && $remoteSize !== (int) $localSize) {
+                    return [false, "Upload incompleto: local={$localSize} bytes, remoto={$remoteSize} bytes"];
+                }
                 if ($onProgress) {
                     try {
-                        $onProgress(filesize($arquivoLocal), filesize($arquivoLocal));
+                        $onProgress($localSize, $localSize);
                     } catch (Exception $e) {
                     }
                 }
@@ -246,7 +259,8 @@ function normalize_revisao_worker($value): ?string
     if ($v === '' || $v === 'NULL' || $v === 'UNDEFINED' || $v === 'NAN') {
         return null;
     }
-    if (!preg_match('/^R\d{2}$/', $v)) {
+    // Accept any short alphanumeric revision/status code (e.g. R00, R01, EF, EP, EA)
+    if (!preg_match('/^[A-Z][A-Z0-9]{1,3}$/', $v)) {
         return null;
     }
     return $v;
@@ -959,24 +973,47 @@ do {
         $upload_ok = '';
         $sftpConnError = '';
         $attemptedDestinos = [];
-        foreach ($clientes_base as $base) {
-            $destino_base = $base . '/' . $nomenclatura . '/' . $pasta_funcao;
-            $attemptedDestinos[] = $destino_base;
-            $connErr = null;
-            $sftp = sftp_connect_safe($ftp_host, $ftp_port, $ftp_user, $ftp_pass, $connErr);
-            if (!$sftp && $connErr && !$sftpConnError) {
-                $sftpConnError = $connErr;
-            }
-            if ($sftp && @$sftp->is_dir($destino_base)) {
-                $upload_ok = $destino_base;
-                break;
+        // Connect once and reuse across all base-year directories to avoid
+        // opening 3 separate TCP connections and to distinguish a network error
+        // (Error 101 ENETUNREACHABLE — transient, should retry) from a directory
+        // simply not existing (permanent, should fail).
+        $sftpDiscover = sftp_connect_safe($ftp_host, $ftp_port, $ftp_user, $ftp_pass, $sftpConnError);
+        if ($sftpDiscover) {
+            foreach ($clientes_base as $base) {
+                $destino_base = $base . '/' . $nomenclatura . '/' . $pasta_funcao;
+                $attemptedDestinos[] = $destino_base;
+                if (@$sftpDiscover->is_dir($destino_base)) {
+                    $upload_ok = $destino_base;
+                    break;
+                }
             }
         }
 
         if (!$upload_ok) {
+            // SFTP connection failed (e.g. Error 101 ENETUNREACHABLE): this is a
+            // transient network issue, NOT a permanent "directory not found" error.
+            // Keep the job in-place and retry with exponential backoff.
+            if (!$sftpDiscover && $sftpConnError) {
+                $meta['attempts']++;
+                $maxNetworkRetries = 10;
+                if ($meta['attempts'] < $maxNetworkRetries) {
+                    $delaySec = min(120, 10 * $meta['attempts']); // 10s, 20s … up to 120s
+                    worker_log("SFTP inacessível (tentativa {$meta['attempts']}/{$maxNetworkRetries}): {$sftpConnError}. Aguardando {$delaySec}s.", 'WARN');
+                    error_log("[upload_worker] network retry: job {$jobId} attempt {$meta['attempts']}, delay {$delaySec}s");
+                    writeMeta($processingMeta, $meta);
+                    publishProgress($redis, $jobId, 0, 'retry', "SFTP inacessível (tentativa {$meta['attempts']}): {$sftpConnError}");
+                    if (!empty($meta['log_ids'])) {
+                        update_log_entries_status($meta['log_ids'], 'aguardando_rede', null, null, null, null);
+                    }
+                    sleep($delaySec);
+                    continue; // leave processing meta in place; picked up next cycle
+                }
+                // exhausted network retries — fall through to permanent failure below
+            }
+
             $notFoundMsg = "Destino não encontrado para nomenclatura: $nomenclatura";
             if ($sftpConnError) {
-                $notFoundMsg .= " (possível erro de conexão: {$sftpConnError})";
+                $notFoundMsg .= " (erro de conexão: {$sftpConnError})";
             }
             worker_log($notFoundMsg, 'ERROR');
             error_log('[upload_worker] destinos testados: ' . implode(' | ', $attemptedDestinos));
@@ -1051,9 +1088,28 @@ do {
         }
         $remote_dir = '/' . implode('/', $parts);
 
-        $sftpPrep = new SFTP($ftp_host, $ftp_port);
-        if (!$sftpPrep->login($ftp_user, $ftp_pass)) {
-            $lastMsg = 'Falha na autenticação SFTP ao preparar diretórios.';
+        $connErrPrep = null;
+        $sftpPrep = sftp_connect_safe($ftp_host, $ftp_port, $ftp_user, $ftp_pass, $connErrPrep);
+        if (!$sftpPrep) {
+            $lastMsg = $connErrPrep ?: 'Falha ao conectar SFTP para preparar diretórios.';
+            // Distinguish network errors (transient) from auth failures (permanent)
+            $isPrepNetErr = (bool) preg_match('/Error 10[019]|Network is unreachable|Cannot connect|Connection refused|connection timed out/i', $lastMsg);
+            if ($isPrepNetErr) {
+                $meta['network_retry_count'] = ($meta['network_retry_count'] ?? 0) + 1;
+                $maxNetworkCycles = 50;
+                if ($meta['network_retry_count'] <= $maxNetworkCycles) {
+                    $meta['attempts'] = 0;
+                    $meta['network_queued_at'] = date('c');
+                    writeMeta($processingMeta, $meta);
+                    worker_log("SFTP inacessível ao preparar dirs (ciclo {$meta['network_retry_count']}/{$maxNetworkCycles}): {$lastMsg}", 'WARN');
+                    publishProgress($redis, $jobId, 0, 'queued', "Aguardando rede: {$lastMsg}");
+                    if (!empty($meta['log_ids'])) {
+                        update_log_entries_status($meta['log_ids'], 'aguardando_rede', null, null, null, null);
+                    }
+                    sleep(30);
+                    continue;
+                }
+            }
             worker_log($lastMsg, 'ERROR');
             append_failed_log($failedDir, $processingMeta, $lastMsg);
             rename($staged, $failedDir . '/' . basename($staged));
@@ -1063,7 +1119,6 @@ do {
             if (!empty($meta['log_ids'])) {
                 update_log_entries_status($meta['log_ids'], 'falha', null, null, null, null);
             }
-            // Slack failure notification
             $colab = $meta['post']['idcolaborador'] ?? null;
             if ($colab) {
                 try {
@@ -1104,10 +1159,11 @@ do {
         $meta['tipo'] = $tipo;
         writeMeta($processingMeta, $meta);
 
-        // retry loop with exponential backoff
+        // retry loop with exponential backoff between attempts
         $maxAttempts = 5;
         $ok = false;
         $lastMsg = '';
+        $isNetworkError = false;
         while ($meta['attempts'] < $maxAttempts && !$ok && !$shutdown) {
             $meta['attempts']++;
             writeMeta($processingMeta, $meta);
@@ -1125,18 +1181,51 @@ do {
                 }
             });
 
+            // Detect transient network errors (ENETUNREACHABLE=101, ECONNREFUSED=111, etc.)
+            $isNetworkError = (bool) preg_match('/Error 10[019]|Network is unreachable|Cannot connect|Connection refused|connection timed out/i', $msg);
+
             if ($ok) {
                 publishProgress($redis, $jobId, 100, 'done', 'Enviado com sucesso');
                 // defer final DB update to finalize block below
             } else {
                 publishProgress($redis, $jobId, min(95, 10 + $meta['attempts'] * 15), 'retry', $msg);
-                // retry state is transient; no DB write
+                // Sleep between retries so we don't hammer a temporarily unreachable host.
+                // Network errors get a longer delay; other errors get a shorter one.
+                if ($meta['attempts'] < $maxAttempts && !$shutdown) {
+                    $delaySec = $isNetworkError
+                        ? min(120, 20 * $meta['attempts'])  // 20s, 40s, 60s, 80s
+                        : min(30,  5  * $meta['attempts']);  //  5s, 10s, 15s, 20s
+                    worker_log("Tentativa {$meta['attempts']}/{$maxAttempts} falhou: {$msg}. Aguardando {$delaySec}s.", 'WARN');
+                    sleep($delaySec);
+                }
             }
             $lastMsg = $msg;
             if ($ok) break;
         }
 
         // after retry loop: finalize
+        // Network errors are transient — keep job in queue instead of moving to failed.
+        if (!$ok && $isNetworkError) {
+            $meta['network_retry_count'] = ($meta['network_retry_count'] ?? 0) + 1;
+            $maxNetworkCycles = 50; // guard against permanent network down
+            if ($meta['network_retry_count'] <= $maxNetworkCycles) {
+                // Reset upload attempts so the next daemon cycle gets a fresh shot.
+                $meta['attempts'] = 0;
+                $meta['network_queued_at'] = date('c');
+                writeMeta($processingMeta, $meta);
+                worker_log("Rede inacessível (ciclo de rede {$meta['network_retry_count']}/{$maxNetworkCycles}); job mantido na fila: {$lastMsg}", 'WARN');
+                error_log("[upload_worker] network cycle {$meta['network_retry_count']}: keeping job {$jobId} in queue");
+                publishProgress($redis, $jobId, 0, 'queued', "Aguardando rede (ciclo {$meta['network_retry_count']}): {$lastMsg}");
+                if (!empty($meta['log_ids'])) {
+                    update_log_entries_status($meta['log_ids'], 'aguardando_rede', null, null, null, null);
+                }
+                sleep(30); // brief pause before processing next job in this cycle
+                continue;  // leave .processing file in place; daemon will retry
+            }
+            // exhausted network cycles — fall through to permanent failure
+            worker_log("Rede inacessível por {$maxNetworkCycles} ciclos consecutivos; marcando como falha permanente.", 'ERROR');
+        }
+
         if ($ok) {
             $enviadoEm = date('Y-m-d H:i:s');
             worker_log("Enviado com sucesso em {$enviadoEm}: {$remote_path}", 'SUCCESS');

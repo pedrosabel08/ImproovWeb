@@ -138,7 +138,8 @@ if (!function_exists('normalizeRevisaoUploadEnqueue')) {
         if ($v === '' || $v === 'NULL' || $v === 'UNDEFINED' || $v === 'NAN') {
             return null;
         }
-        if (!preg_match('/^R\d{2}$/', $v)) {
+        // Accept any short alphanumeric revision/status code (e.g. R00, R01, EF, EP, EA)
+        if (!preg_match('/^[A-Z][A-Z0-9]{1,3}$/', $v)) {
             return null;
         }
         return $v;
@@ -232,52 +233,6 @@ for ($i = 0; $i < $total; $i++) {
 
     $metaFile = "$stagingDir/{$id}.json";
     _write_meta_safely($metaFile, $meta);
-
-    // prepara resultado SFTP por arquivo (será retornado ao cliente)
-    $sftpResult = [
-        'attempted' => false,
-        'success' => false,
-        'remote_path' => null,
-        'error' => null
-    ];
-
-    // Tenta enviar o arquivo enfileirado para o VPS via SFTP (se phpseclib disponível).
-    try {
-        if (file_exists(__DIR__ . '/vendor/autoload.php')) {
-            require_once __DIR__ . '/vendor/autoload.php';
-        }
-        if (class_exists('\\phpseclib3\\Net\\SFTP')) {
-            $sftpCfg = improov_sftp_config();
-            $sftpHost = $sftpCfg['host'];
-            $sftpUser = $sftpCfg['user'];
-            $sftpPass = $sftpCfg['pass'];
-            $sftpPort = $sftpCfg['port'];
-            $remoteDir = '/uploads/staging';
-
-            $sftp = new \phpseclib3\Net\SFTP($sftpHost, $sftpPort);
-            $sftpResult['attempted'] = true;
-            if ($sftp->login($sftpUser, $sftpPass)) {
-                // tenta criar diretório remoto
-                if (!$sftp->is_dir($remoteDir)) {
-                    @$sftp->mkdir($remoteDir, -1, true);
-                }
-                $remotePath = rtrim($remoteDir, '/') . '/' . basename($destFile);
-                if ($sftp->put($remotePath, $destFile, \phpseclib3\Net\SFTP::SOURCE_LOCAL_FILE)) {
-                    $meta['remote_staged_path'] = $remotePath;
-                    _write_meta_safely($metaFile, $meta);
-                    $sftpResult['success'] = true;
-                    $sftpResult['remote_path'] = $remotePath;
-                } else {
-                    $sftpResult['error'] = 'failed_to_put_remote_file';
-                }
-            } else {
-                $sftpResult['error'] = 'sftp_auth_failed';
-            }
-        }
-    } catch (Exception $e) {
-        $sftpResult['attempted'] = true;
-        $sftpResult['error'] = $e->getMessage();
-    }
 
     // Insert initial log row into arquivo_log with status 'enfileirado' (use existing table schema)
     try {
@@ -417,7 +372,7 @@ for ($i = 0; $i < $total; $i++) {
         // ignore Redis failures here - enqueue still works
     }
 
-    $results[] = ['arquivo' => $originalName, 'status' => 'enfileirado', 'id' => $id, 'meta' => $metaFile, 'sftp' => $sftpResult];
+    $results[] = ['arquivo' => $originalName, 'status' => 'enfileirado', 'id' => $id, 'meta' => $metaFile];
 }
 
 echo json_encode($results);

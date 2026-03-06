@@ -1938,7 +1938,7 @@ if (mindmapContent) {
 // - openPdfViewerModal({ rawUrl, downloadUrl, titulo })
 function openPdfViewerModal(idarquivoOrOptions, titulo = "PDF") {
   const baseViewerUrl =
-    "https://improov.com.br/flow/ImproovWeb/Arquivos/visualizar_pdf.php";
+    "https://improov.com.br/flow/ImproovWeb/FlowDrive/visualizar_pdf.php";
 
   let rawUrl = "";
   let downloadUrl = "";
@@ -2755,7 +2755,7 @@ function abrirSidebar(idFuncao, idImagem, nomeObra = "") {
                         e.stopPropagation();
 
                         const base =
-                          "https://improov.com.br/flow/ImproovWeb/Arquivos/visualizar_pdf_log.php";
+                          "https://improov.com.br/flow/ImproovWeb/FlowDrive/visualizar_pdf_log.php";
                         openPdfViewerModal({
                           rawUrl: `${base}?idlog=${encodeURIComponent(idlog)}&raw=1`,
                           downloadUrl: `${base}?idlog=${encodeURIComponent(idlog)}&raw=1&download=1`,

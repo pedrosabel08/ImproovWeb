@@ -11,6 +11,10 @@
  *   sftp_suffix      string  – sufixo a acrescentar ao nome quando sftp_action='add'
  */
 
+header('Content-Type: application/json; charset=utf-8');
+ini_set('display_errors', '0');
+error_reporting(E_ALL);
+
 require_once __DIR__ . '/../config/session_bootstrap.php';
 require_once __DIR__ . '/../config/secure_env.php';
 
@@ -30,10 +34,11 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 $data            = json_decode(file_get_contents('php://input'), true);
-$idfuncao_imagem = $data['idfuncao_imagem'] ?? null;
-$imagem_id       = $data['imagem_id']       ?? null;
-$sftp_action     = $data['sftp_action']     ?? null; // 'replace' | 'add'
-$sftp_suffix     = $data['sftp_suffix']     ?? null;
+$idfuncao_imagem  = $data['idfuncao_imagem']  ?? null;
+$imagem_id        = $data['imagem_id']        ?? null;
+$sftp_action      = $data['sftp_action']      ?? null; // 'replace' | 'add'
+$sftp_suffix      = $data['sftp_suffix']      ?? null;
+$sftp_remote_path = $data['sftp_remote_path'] ?? null; // caminho exato do conflito
 
 if (!$idfuncao_imagem || !$sftp_action) {
     echo json_encode(['success' => false, 'message' => 'Parâmetros insuficientes.']);
@@ -153,39 +158,73 @@ $revisao = isset($matchesRev[0]) && count($matchesRev[0]) > 0
     ? strtoupper(str_replace('_', '', end($matchesRev[0])))
     : 'P00';
 
-foreach ($bases as $base) {
-    $sftp = new SFTP($ftp_host, $ftp_port);
-    if (!$sftp->login($ftp_user, $ftp_pass)) {
-        $result['logs'][] = "Falha ao conectar em $ftp_host:$ftp_port para base $base.";
-        continue;
+if (!empty($sftp_remote_path)) {
+    // ── Caminho exato conhecido (vem do conflito detectado em revisarTarefa.php) ──
+    $resolved_path = $sftp_remote_path;
+    if ($sftp_action === 'add' && !empty($sftp_suffix)) {
+        $ext_r  = pathinfo($resolved_path, PATHINFO_EXTENSION);
+        $base_r = pathinfo($resolved_path, PATHINFO_FILENAME);
+        $resolved_path = dirname($resolved_path) . '/' . $base_r . '_' . $sftp_suffix . '.' . $ext_r;
     }
-    $result['logs'][] = "Conectado a $ftp_host para base $base.";
-
-    $finalizacaoDir = "$base/$nomenclatura/04.Finalizacao";
-    if (!$sftp->is_dir($finalizacaoDir)) {
-        $result['logs'][] = "Diretório $finalizacaoDir não existe.";
-        continue;
+    try {
+        $sftp = new SFTP($ftp_host, $ftp_port);
+        if (!$sftp->login($ftp_user, $ftp_pass)) {
+            $result['logs'][] = "Falha ao autenticar no SFTP.";
+        } elseif ($sftp->put($resolved_path, $caminho_local, SFTP::SOURCE_LOCAL_FILE)) {
+            $result['logs'][]       = "Arquivo enviado com sucesso para $resolved_path.";
+            $result['success']      = true;
+            $result['sftp_enviado'] = true;
+            $enviado                = true;
+        } else {
+            $result['logs'][] = "Falha ao enviar arquivo para $resolved_path.";
+        }
+    } catch (Throwable $e) {
+        $result['logs'][] = "SFTP error: " . $e->getMessage();
     }
-
-    $revisaoDir = "$finalizacaoDir/$revisao";
-    if (!$sftp->is_dir($revisaoDir)) {
-        if (!$sftp->mkdir($revisaoDir, -1, true)) {
-            $result['logs'][] = "Falha ao criar diretório $revisaoDir.";
+} else {
+    foreach ($bases as $base) {
+        try {
+            $sftp = new SFTP($ftp_host, $ftp_port);
+            if (!$sftp->login($ftp_user, $ftp_pass)) {
+                $result['logs'][] = "Falha ao conectar em $ftp_host:$ftp_port para base $base.";
+                continue;
+            }
+            $result['logs'][] = "Conectado a $ftp_host para base $base.";
+        } catch (Throwable $e) {
+            $result['logs'][] = "SFTP connection error for base $base: " . $e->getMessage();
             continue;
         }
-        $result['logs'][] = "Diretório $revisaoDir criado.";
-    }
 
-    $remote_path = "$revisaoDir/$nome_arquivo_sftp";
+        $finalizacaoDir = "$base/$nomenclatura/04.Finalizacao";
+        if (!$sftp->is_dir($finalizacaoDir)) {
+            $result['logs'][] = "Diretório $finalizacaoDir não existe.";
+            continue;
+        }
 
-    if ($sftp->put($remote_path, $caminho_local, SFTP::SOURCE_LOCAL_FILE)) {
-        $result['logs'][]      = "Arquivo enviado com sucesso para $remote_path.";
-        $result['success']     = true;
-        $result['sftp_enviado'] = true;
-        $enviado               = true;
-        break;
-    } else {
-        $result['logs'][] = "Falha ao enviar para $remote_path.";
+        $revisaoDir = "$finalizacaoDir/$revisao";
+        if (!$sftp->is_dir($revisaoDir)) {
+            if (!$sftp->mkdir($revisaoDir, -1, true)) {
+                $result['logs'][] = "Falha ao criar diretório $revisaoDir.";
+                continue;
+            }
+            $result['logs'][] = "Diretório $revisaoDir criado.";
+        }
+
+        $remote_path = "$revisaoDir/$nome_arquivo_sftp";
+
+        try {
+            if ($sftp->put($remote_path, $caminho_local, SFTP::SOURCE_LOCAL_FILE)) {
+                $result['logs'][]       = "Arquivo enviado com sucesso para $remote_path.";
+                $result['success']      = true;
+                $result['sftp_enviado'] = true;
+                $enviado                = true;
+                break;
+            } else {
+                $result['logs'][] = "Falha ao enviar para $remote_path.";
+            }
+        } catch (Throwable $e) {
+            $result['logs'][] = "SFTP put error for $remote_path: " . $e->getMessage();
+        }
     }
 }
 

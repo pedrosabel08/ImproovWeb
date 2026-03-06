@@ -264,7 +264,7 @@ class AdendoLocalService
         $isAnimacao = strpos($norm, 'animacao') !== false || strpos($norm, 'anima') !== false;
         if (!$isAnimacao) return $funcao;
 
-        if (abs($valor - 125) < 0.01) {
+        if (abs($valor - 100) < 0.01) {
             return 'Pós-Produção';
         }
         if (abs($valor - 175) < 0.01) {

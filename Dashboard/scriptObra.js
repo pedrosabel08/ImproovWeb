@@ -1636,7 +1636,7 @@ const BRIEFING_ARQUIVOS = (function () {
   ];
   const TIPOS_ARQUIVO = ["PDF", "IMG", "SKP", "DWG", "IFC", "Outros"];
 
-  // Opções de sufixo (mesma lógica do Arquivos/script.js)
+  // Opções de sufixo (mesma lógica do FlowDrive/script.js)
   const SUFIXOS = {
     DWG: [
       "TERREO",
@@ -2467,7 +2467,7 @@ const BRIEFING_ARQUIVOS = (function () {
                 return;
               }
 
-              // monta payload multipart compatível com Arquivos/upload.php
+              // monta payload multipart compatível com FlowDrive/upload.php
               const formData = new FormData();
               formData.append("obra_id", obraIdNow);
               formData.append("tipo_categoria", categoriaIdNow);
@@ -2538,7 +2538,7 @@ const BRIEFING_ARQUIVOS = (function () {
                   const xhr = new XMLHttpRequest();
                   const start = Date.now();
 
-                  xhr.open("POST", "../Arquivos/upload.php", true);
+                  xhr.open("POST", "../FlowDrive/upload.php", true);
                   xhr.withCredentials = true;
 
                   xhr.upload.onprogress = function (e) {
@@ -5711,7 +5711,7 @@ function carregarArquivosObra(obraId) {
   if (!lista) return;
   lista.innerHTML =
     '<div class="arquivos-loading">Carregando arquivos...</div>';
-  fetch(`../Arquivos/getArquivos.php?obra_id=${encodeURIComponent(obraId)}`)
+  fetch(`../FlowDrive/getArquivos.php?obra_id=${encodeURIComponent(obraId)}`)
     .then((r) => r.json())
     .then((data) => {
       if (!Array.isArray(data) || data.length === 0) {
@@ -5848,7 +5848,7 @@ tipoArquivoSelect.addEventListener("change", async () => {
 
     if (!obraId || tipoImagemIds.length === 0) return;
 
-    const res = await fetch("../Arquivos/getImagensObra.php", {
+    const res = await fetch("../FlowDrive/getImagensObra.php", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ obra_id: obraId, tipo_imagem: tipoImagemIds }),
@@ -5954,7 +5954,7 @@ document
         let imagemId = imagemIdMatch[1];
 
         // Checa se existe para cada imagem que realmente tem arquivo
-        const checkRes = await fetch("../Arquivos/checkArquivoExistente.php", {
+        const checkRes = await fetch("../FlowDrive/checkArquivoExistente.php", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -5985,7 +5985,7 @@ document
       }
     } else {
       // Checagem padrão para outros tipos
-      const checkRes = await fetch("../Arquivos/checkArquivoExistente.php", {
+      const checkRes = await fetch("../FlowDrive/checkArquivoExistente.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -6038,7 +6038,7 @@ document
     }
     try {
       const response = await fetch(
-        "https://improov/ImproovWeb/Arquivos/upload.php",
+        "https://improov/ImproovWeb/FlowDrive/upload.php",
         {
           method: "POST",
           body: formData,
@@ -6210,7 +6210,7 @@ if (uploadFormImagem) {
 
     try {
       const response = await fetch(
-        "https://improov/ImproovWeb/Arquivos/upload.php",
+        "https://improov/ImproovWeb/FlowDrive/upload.php",
         { method: "POST", body: formData },
       );
       const result = await response.json();

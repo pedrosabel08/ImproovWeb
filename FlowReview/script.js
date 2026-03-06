@@ -254,6 +254,7 @@ async function revisarTarefa(
           data.sftp_nome_arquivo,
           idfuncao_imagem,
           imagem_id,
+          data.sftp_remote_path ?? null,
         );
       }
     }
@@ -280,7 +281,7 @@ async function revisarTarefa(
  * @param {number} idfuncao_imagem  – ID da função de imagem aprovada
  * @param {number} imagem_id        – ID da imagem
  */
-async function resolverConflitoSftp(nomeArquivo, idfuncao_imagem, imagem_id) {
+async function resolverConflitoSftp(nomeArquivo, idfuncao_imagem, imagem_id, sftp_remote_path = null) {
   const { isConfirmed: confirmedReplace, isDenied: confirmedAdd } =
     await Swal.fire({
       title: "Arquivo já existe no servidor",
@@ -381,6 +382,7 @@ async function resolverConflitoSftp(nomeArquivo, idfuncao_imagem, imagem_id) {
         imagem_id,
         sftp_action,
         sftp_suffix,
+        sftp_remote_path,
       }),
     });
     const result = await res.json();
@@ -1267,10 +1269,10 @@ function historyAJAX(idfuncao_imagem) {
 
       const hasPdfPreferido = !!(pdf && pdf.id);
       const pdfRawUrl = hasPdfPreferido
-        ? `../Arquivos/visualizar_pdf_log.php?idlog=${encodeURIComponent(String(pdf.id))}&raw=1`
+        ? `../FlowDrive/visualizar_pdf_log.php?idlog=${encodeURIComponent(String(pdf.id))}&raw=1`
         : null;
       const pdfDownloadUrl = hasPdfPreferido
-        ? `../Arquivos/visualizar_pdf_log.php?idlog=${encodeURIComponent(String(pdf.id))}&raw=1&download=1`
+        ? `../FlowDrive/visualizar_pdf_log.php?idlog=${encodeURIComponent(String(pdf.id))}&raw=1&download=1`
         : null;
       let pdfShownOnce = false;
 

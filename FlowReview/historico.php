@@ -34,9 +34,9 @@ if ($_SERVER["REQUEST_METHOD"] == "GET") {
         i.idimagens_cliente_obra AS imagem_id,
         o.nomenclatura
     FROM historico_aprovacoes h
-    LEFT JOIN colaborador c ON h.colaborador_id = c.idcolaborador
-    LEFT JOIN colaborador c2 ON h.responsavel = c2.idcolaborador
     LEFT JOIN funcao_imagem f ON f.idfuncao_imagem = h.funcao_imagem_id
+    LEFT JOIN colaborador c ON f.colaborador_id = c.idcolaborador
+    LEFT JOIN colaborador c2 ON h.responsavel = c2.idcolaborador
     LEFT JOIN funcao fun ON fun.idfuncao = f.funcao_id
     LEFT JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
     LEFT JOIN status_imagem s ON i.status_id = s.idstatus

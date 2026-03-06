@@ -39,6 +39,9 @@ function enviarNotificacaoSlack($slackUserId, $mensagem, &$log)
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($slackMessage));
+    curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
 
     $response = curl_exec($ch);
     if (curl_errno($ch)) {
@@ -50,8 +53,8 @@ function enviarNotificacaoSlack($slackUserId, $mensagem, &$log)
     $responseData = json_decode($response, true);
     curl_close($ch);
 
-    if (!$responseData['ok']) {
-        $log[] = 'Erro ao enviar mensagem para o Slack: ' . $responseData['error'];
+    if (!is_array($responseData) || empty($responseData['ok'])) {
+        $log[] = 'Erro ao enviar mensagem para o Slack: ' . ($responseData['error'] ?? ('resposta inválida: ' . substr((string)$response, 0, 200)));
         return false;
     }
 
@@ -89,8 +92,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $responsavel = $data['responsavel'] ?? null;
         $imagem_id = $data['imagem_id'] ?? null;
         // SFTP conflict resolution params (passed on 2nd call by the frontend)
-        $sftp_action = $data['sftp_action'] ?? null; // 'replace' | 'add' | null
-        $sftp_suffix = $data['sftp_suffix'] ?? null; // suffix string when action='add'
+        $sftp_action      = $data['sftp_action']      ?? null; // 'replace' | 'add' | null
+        $sftp_suffix      = $data['sftp_suffix']      ?? null; // suffix string when action='add'
+        $sftp_remote_path = $data['sftp_remote_path'] ?? null; // exact remote path returned on conflict
         // Pode conter múltiplos nomes que serão aceitos ao buscar o usuário no Slack
         $nome_colaboradores = ['Pedro Sabel', 'Andre L. de Souza'];
 
@@ -468,6 +472,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     if (!is_file($caminho_local)) {
                         $resultadoFinal['logs'][] = "Arquivo local não encontrado: $caminho_local";
                         $resultadoFinal['sftp_enviado'] = false;
+                    } elseif (in_array($sftp_action, ['replace', 'add'], true) && !empty($sftp_remote_path)) {
+                        // ── Resolução de conflito: usa o caminho exato devolvido na 1ª chamada ──
+                        $resolved_path = $sftp_remote_path;
+                        if ($sftp_action === 'add' && !empty($sftp_suffix)) {
+                            $ext_r  = pathinfo($resolved_path, PATHINFO_EXTENSION);
+                            $base_r = pathinfo($resolved_path, PATHINFO_FILENAME);
+                            $resolved_path = dirname($resolved_path) . '/' . $base_r . '_' . $sftp_suffix . '.' . $ext_r;
+                        }
+                        try {
+                            $sftp = new SFTP($ftp_host, $ftp_port);
+                            if (!$sftp->login($ftp_user, $ftp_pass)) {
+                                $resultadoFinal['logs'][] = "Falha ao autenticar no SFTP para resolução de conflito.";
+                            } else {
+                                if ($sftp->put($resolved_path, $caminho_local, SFTP::SOURCE_LOCAL_FILE)) {
+                                    $resultadoFinal['logs'][] = "Arquivo enviado com sucesso para $resolved_path.";
+                                    $enviado = true;
+                                } else {
+                                    $resultadoFinal['logs'][] = "Falha ao enviar arquivo para $resolved_path.";
+                                }
+                            }
+                        } catch (Throwable $e) {
+                            $resultadoFinal['logs'][] = "SFTP put error (resolução conflito): " . $e->getMessage();
+                        }
                     } else {
                         foreach ($bases as $base) {
                             try {
@@ -505,22 +532,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 }
                             }
 
-                            // Se o usuário pediu para adicionar com sufixo, ajusta o nome final
-                            $nome_arquivo_sftp = $nome_arquivo;
-                            if ($sftp_action === 'add' && !empty($sftp_suffix)) {
-                                $ext_sftp  = pathinfo($nome_arquivo_sftp, PATHINFO_EXTENSION);
-                                $base_sftp = pathinfo($nome_arquivo_sftp, PATHINFO_FILENAME);
-                                $nome_arquivo_sftp = $base_sftp . '_' . $sftp_suffix . '.' . $ext_sftp;
-                            }
-
-                            $remote_path = "$revisaoDir/$nome_arquivo_sftp";
+                            $remote_path = "$revisaoDir/$nome_arquivo";
 
                             // Verifica se já existe um arquivo com o mesmo nome no servidor
-                            if ($sftp_action === null && $sftp->stat($remote_path) !== false) {
-                                $resultadoFinal['sftp_conflict']       = true;
-                                $resultadoFinal['sftp_nome_arquivo']   = $nome_arquivo_sftp;
-                                $resultadoFinal['sftp_remote_path']    = $remote_path;
-                                $resultadoFinal['sftp_caminho_local']  = $caminho_local;
+                            if ($sftp->stat($remote_path) !== false) {
+                                $resultadoFinal['sftp_conflict']      = true;
+                                $resultadoFinal['sftp_nome_arquivo']  = $nome_arquivo;
+                                $resultadoFinal['sftp_remote_path']   = $remote_path;
+                                $resultadoFinal['sftp_caminho_local'] = $caminho_local;
                                 $resultadoFinal['logs'][] = "Conflito SFTP: arquivo $remote_path já existe.";
                                 $enviado = false; // não sinaliza como enviado; frontend resolverá
                                 break;
@@ -551,130 +570,103 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        // Slack envio final
-        $userID = null;
-        $ch = curl_init("https://slack.com/api/users.list");
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            "Authorization: Bearer {$slackToken}",
-            "Content-Type: application/json",
-        ]);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        $response = curl_exec($ch);
-        curl_close($ch);
-
-        $responseData = json_decode($response, true);
-        // Verifica se a resposta é válida
-        if (!isset($responseData['ok']) || !$responseData['ok']) {
-            $resultadoFinal['logs'][] = "Erro na API do Slack: " . ($responseData['error'] ?? 'Resposta inválida');
-        } elseif (!isset($responseData['members']) || !is_array($responseData['members'])) {
-            $resultadoFinal['logs'][] = "API do Slack não retornou 'members'. Resposta: " . json_encode($responseData);
+        // Slack envio final — só na 1ª chamada (não reenvia na resolução de conflito SFTP)
+        if ($sftp_action !== null) {
+            $resultadoFinal['logs'][] = 'Slack: notificação pulada (resolução de conflito SFTP).';
         } else {
-            // Normalize target names for comparison
-            $normalizedTargets = array_map('normalize_name', (array) $nome_colaboradores);
-            $userIDs = [];
-            foreach ($responseData['members'] as $member) {
-                // collect candidate name fields from Slack member object
-                $candidates = [];
-                if (isset($member['real_name']))
-                    $candidates[] = $member['real_name'];
-                if (isset($member['profile']['real_name_normalized']))
-                    $candidates[] = $member['profile']['real_name_normalized'];
-                if (isset($member['profile']['display_name']))
-                    $candidates[] = $member['profile']['display_name'];
-                if (isset($member['profile']['display_name_normalized']))
-                    $candidates[] = $member['profile']['display_name_normalized'];
-                if (isset($member['profile']['email']))
-                    $candidates[] = $member['profile']['email'];
+        // Slack envio final — busca paginada de usuários e envia notificação
+        $normalizedTargets = array_map('normalize_name', $nome_colaboradores);
+        $slackFoundIDs = [];
+        $slackCursor   = null;
+        $slackPage     = 0;
 
-                // normalize candidate values
+        do {
+            $slackPage++;
+            $slackUrl = 'https://slack.com/api/users.list?limit=200';
+            if ($slackCursor) {
+                $slackUrl .= '&cursor=' . urlencode($slackCursor);
+            }
+
+            $chList = curl_init($slackUrl);
+            curl_setopt($chList, CURLOPT_HTTPHEADER, ["Authorization: Bearer {$slackToken}"]);
+            curl_setopt($chList, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($chList, CURLOPT_CONNECTTIMEOUT, 8);
+            curl_setopt($chList, CURLOPT_TIMEOUT, 10);
+            curl_setopt($chList, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($chList, CURLOPT_SSL_VERIFYHOST, false);
+
+            $slackRaw = curl_exec($chList);
+            if (curl_errno($chList)) {
+                $resultadoFinal['logs'][] = 'Erro curl users.list (p.' . $slackPage . '): ' . curl_error($chList);
+                curl_close($chList);
+                break;
+            }
+            curl_close($chList);
+
+            $slackData = json_decode($slackRaw, true);
+            if (!is_array($slackData) || empty($slackData['ok'])) {
+                $resultadoFinal['logs'][] = 'Erro API Slack users.list: ' . ($slackData['error'] ?? ('resposta inválida: ' . substr((string)$slackRaw, 0, 300)));
+                break;
+            }
+
+            foreach ($slackData['members'] as $member) {
+                if (!empty($member['deleted']) || !empty($member['is_bot'])) {
+                    continue;
+                }
+                $candidates = array_values(array_filter([
+                    $member['real_name'] ?? null,
+                    $member['profile']['real_name_normalized'] ?? null,
+                    $member['profile']['display_name'] ?? null,
+                    $member['profile']['display_name_normalized'] ?? null,
+                ]));
                 $normalizedCandidates = array_map('normalize_name', $candidates);
+                $candidateStr = implode(' ', $normalizedCandidates);
 
-                // add debug log of what we're comparing (only a few entries to avoid huge logs)
-                $resultadoFinal['logs'][] = 'Checando membro Slack: id=' . ($member['id'] ?? 'n/a') . ' nomes=[' . implode(',', array_slice($candidates, 0, 3)) . ']';
-
-                // compare normalized versions and collect matches (do not stop at first)
                 foreach ($normalizedTargets as $t) {
-                    if ($t === '')
+                    if ($t === '' || isset($slackFoundIDs[$member['id']])) {
                         continue;
+                    }
+                    // Exact match
                     if (in_array($t, $normalizedCandidates, true)) {
-                        $userIDs[] = $member['id'];
-                        $resultadoFinal['logs'][] = 'Match encontrado: ' . $member['id'] . ' para alvo: ' . $t;
-                        // don't break outer loop; allow other members to be matched too
-                        break;
+                        $slackFoundIDs[$member['id']] = true;
+                        $resultadoFinal['logs'][] = 'Slack match exato: ' . $member['id'] . ' (' . implode(', ', array_slice($candidates, 0, 2)) . ') → ' . $t;
+                        continue;
                     }
-                }
-            }
-            // remove duplicates
-            $userIDs = array_values(array_unique($userIDs));
-
-            // Fallback: if some target names did not match exactly, try token-subset matching
-            $matchedTargets = [];
-            foreach ($userIDs as $uid) {
-                // try to find which target(s) matched this uid by checking logged matches
-                // (we logged 'Match encontrado: <id> para alvo: <t>')
-                foreach ($resultadoFinal['logs'] as $logLine) {
-                    if (strpos($logLine, 'Match encontrado: ' . $uid . ' para alvo:') !== false) {
-                        // extract alvo value
-                        $parts = explode('para alvo: ', $logLine);
-                        if (isset($parts[1])) {
-                            $matchedTargets[] = trim($parts[1]);
-                        }
-                    }
-                }
-            }
-            $matchedTargets = array_values(array_unique($matchedTargets));
-
-            $unmatchedTargets = array_filter($normalizedTargets, function ($t) use ($matchedTargets) {
-                return $t !== '' && !in_array($t, $matchedTargets, true);
-            });
-
-            if (!empty($unmatchedTargets)) {
-                $resultadoFinal['logs'][] = 'Tentando fallback de correspondência (token match) para: ' . implode(', ', $unmatchedTargets);
-                foreach ($unmatchedTargets as $t) {
-                    $tokens = array_filter(explode(' ', $t));
-                    foreach ($responseData['members'] as $member) {
-                        $candidates = [];
-                        if (isset($member['real_name']))
-                            $candidates[] = $member['real_name'];
-                        if (isset($member['profile']['real_name_normalized']))
-                            $candidates[] = $member['profile']['real_name_normalized'];
-                        if (isset($member['profile']['display_name']))
-                            $candidates[] = $member['profile']['display_name'];
-                        if (isset($member['profile']['display_name_normalized']))
-                            $candidates[] = $member['profile']['display_name_normalized'];
-                        if (isset($member['profile']['email']))
-                            $candidates[] = $member['profile']['email'];
-                        $normalizedCandidates = array_map('normalize_name', $candidates);
-                        $candidateStr = implode(' ', $normalizedCandidates);
-                        $allTokensPresent = true;
+                    // Token-subset fallback (tokens >= 3 chars)
+                    $tokens = array_values(array_filter(explode(' ', $t), fn($tok) => strlen($tok) >= 3));
+                    if (!empty($tokens)) {
+                        $allPresent = true;
                         foreach ($tokens as $tok) {
-                            if ($tok === '')
-                                continue;
                             if (strpos($candidateStr, $tok) === false) {
-                                $allTokensPresent = false;
+                                $allPresent = false;
                                 break;
                             }
                         }
-                        if ($allTokensPresent) {
-                            $userIDs[] = $member['id'];
-                            $resultadoFinal['logs'][] = 'Fallback match encontrado: ' . $member['id'] . ' para alvo tokenizado: ' . $t;
-                            // found this target, move to next target
-                            break;
+                        if ($allPresent) {
+                            $slackFoundIDs[$member['id']] = true;
+                            $resultadoFinal['logs'][] = 'Slack match token: ' . $member['id'] . ' (' . implode(', ', array_slice($candidates, 0, 2)) . ') → ' . $t;
                         }
                     }
                 }
-                // dedupe again
-                $userIDs = array_values(array_unique($userIDs));
             }
-        }
 
-        if (!empty($userIDs)) {
-            foreach ($userIDs as $uid) {
+            $slackCursor = $slackData['response_metadata']['next_cursor'] ?? null;
+        } while (
+            !empty($slackCursor) &&
+            count($slackFoundIDs) < count($nome_colaboradores) &&
+            $slackPage < 10
+        );
+
+        $slackFoundIDs = array_keys($slackFoundIDs);
+
+        if (!empty($slackFoundIDs)) {
+            foreach ($slackFoundIDs as $uid) {
                 enviarNotificacaoSlack($uid, $mensagemSlack, $resultadoFinal['logs']);
             }
         } else {
-            $resultadoFinal['logs'][] = "Usuário(s) " . implode(', ', $nome_colaboradores) . " não encontrado(s) no Slack.";
+            $resultadoFinal['logs'][] = 'Usuário(s) ' . implode(', ', $nome_colaboradores) . ' não encontrado(s) no Slack.';
         }
+        } // fim do bloco Slack (if $sftp_action === null)
     } catch (Throwable $e) {
         http_response_code(500);
         $resultadoFinal['success'] = false;

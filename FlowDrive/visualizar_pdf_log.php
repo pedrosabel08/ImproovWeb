@@ -1,14 +1,12 @@
 <?php
-// Visualizador de PDF para registros do arquivo_log (Processos anteriores).
-// Busca o arquivo pelo id no banco, valida sessão e faz streaming do PDF.
+// Visualizador de PDF para registros do arquivo_log.
+// Busca o arquivo pelo id no banco e faz streaming do PDF.
 
-// Evita corromper o streaming do PDF com warnings/notices.
 require_once __DIR__ . '/../config/session_bootstrap.php';
 @ini_set('display_errors', '0');
 @ini_set('html_errors', '0');
 @ini_set('log_errors', '1');
 
-// Prevent caching of user-specific pages
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 header('Expires: Tue, 01 Jan 2000 00:00:00 GMT');
@@ -17,269 +15,227 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Improve robustness for long downloads and background aborts
 @ignore_user_abort(true);
-@set_time_limit(60);
+@set_time_limit(120);
 
-// Simple file logging to help diagnose intermittent failures
+// Logging simples para diagnostico
 $__vpl_logfile = __DIR__ . '/visualizar_pdf_log.log';
-function __vpl_write_log($msg)
+function vpl_log($msg)
 {
     global $__vpl_logfile;
-    $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-    $line = '[' . date('c') . '] ' . $ip . ' - ' . trim((string) $msg) . PHP_EOL;
-    @file_put_contents($__vpl_logfile, $line, FILE_APPEND | LOCK_EX);
+    $ip = $_SERVER['REMOTE_ADDR'] ?? 'desconhecido';
+    @file_put_contents(
+        $__vpl_logfile,
+        '[' . date('c') . '] ' . $ip . ' - ' . trim((string) $msg) . PHP_EOL,
+        FILE_APPEND | LOCK_EX
+    );
 }
-
-// if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
-//     header('Location: ../index.html');
-//     exit;
-// }
 
 include '../conexao.php';
 
 $idlog = isset($_GET['idlog']) ? intval($_GET['idlog']) : 0;
 if ($idlog <= 0) {
     http_response_code(400);
-    __vpl_write_log('invalid idlog: ' . var_export($_GET, true));
-    echo 'Parâmetro idlog inválido.';
+    header('Content-Type: text/plain; charset=UTF-8');
+    echo 'Parametro invalido.';
     exit;
 }
 
 $stmt = $conn->prepare("SELECT id, tipo, caminho, nome_arquivo FROM arquivo_log WHERE id = ? LIMIT 1");
 if (!$stmt) {
     http_response_code(500);
-    echo 'Erro interno (prepare).';
+    echo 'Erro interno.';
     exit;
 }
 $stmt->bind_param('i', $idlog);
 $stmt->execute();
-$res = $stmt->get_result();
-
-if (!$res || $res->num_rows === 0) {
-    http_response_code(404);
-    __vpl_write_log('arquivo nao encontrado for id=' . $idlog);
-    echo 'Arquivo não encontrado.';
-    exit;
-}
-
-$row = $res->fetch_assoc();
+$row = $stmt->get_result()->fetch_assoc();
 $stmt->close();
 $conn->close();
 
-function normalize_path_slashes($path)
+if (!$row) {
+    http_response_code(404);
+    header('Content-Type: text/plain; charset=UTF-8');
+    echo 'Registro nao encontrado.';
+    exit;
+}
+
+if (strtoupper(trim($row['tipo'] ?? '')) !== 'PDF') {
+    http_response_code(400);
+    header('Content-Type: text/plain; charset=UTF-8');
+    echo 'Este arquivo nao e um PDF.';
+    exit;
+}
+
+/**
+ * Converte caminho Windows (Z:\...) para caminho Linux no NAS (/mnt/clientes/...).
+ * Z:\2026\CIB_OCE\02.Projetos\file.pdf  =>  /mnt/clientes/2026/CIB_OCE/02.Projetos/file.pdf
+ */
+function vpl_map_path(string $raw): string
 {
-    $p = str_replace('\\', '/', (string) $path);
+    $p = str_replace('\\', '/', $raw);
     $p = preg_replace('#/+#', '/', $p);
+    if (preg_match('#^[A-Za-z]:/#', $p)) {
+        $p = '/mnt/clientes/' . ltrim(substr($p, 3), '/');
+    }
     return $p;
 }
 
-function build_candidate_paths($rawPath)
+function vpl_safe_filename(string $name): string
 {
-    $raw = (string) $rawPath;
-    $norm = normalize_path_slashes($raw);
-
-    $candidates = [];
-    if ($raw !== '') $candidates[] = $raw;
-    if ($norm !== '' && $norm !== $raw) $candidates[] = $norm;
-
-    // Map common Windows drive path (Z:\...) to NAS mount (/mnt/clientes/...)
-    // Example: Z:\2025\ABF_ALM\... -> /mnt/clientes/2025/ABF_ALM/...
-    if (preg_match('#^[A-Za-z]:/#', $norm)) {
-        $rest = substr($norm, 3); // drop "Z:/"
-        $mapped = '/mnt/clientes/' . ltrim($rest, '/');
-        $candidates[] = $mapped;
-    }
-
-    // De-duplicate
-    $out = [];
-    foreach ($candidates as $c) {
-        $c = trim((string) $c);
-        if ($c === '') continue;
-        if (!in_array($c, $out, true)) $out[] = $c;
-    }
-    return $out;
-}
-
-function safe_filename($name)
-{
-    $name = (string) $name;
     $name = preg_replace('/[\r\n\t]+/', ' ', $name);
     $name = preg_replace('/[^A-Za-z0-9._\-\s\(\)\[\]]+/', '_', $name);
     $name = trim($name);
     return $name !== '' ? $name : 'arquivo.pdf';
 }
 
-function stream_pdf_from_caminho($row, $download = false)
-{
-    $tipo = strtoupper(trim($row['tipo'] ?? ''));
-    if ($tipo !== 'PDF') {
-        http_response_code(400);
-        header('Content-Type: text/plain; charset=UTF-8');
-        echo 'Este arquivo não é um PDF.';
-        exit;
-    }
+// -----------------------------------------------------------------------------
+// Streaming do PDF (raw=1)
+// -----------------------------------------------------------------------------
+if ((isset($_GET['raw']) ? (int) $_GET['raw'] : 0) === 1) {
+    $download = (isset($_GET['download']) ? (int) $_GET['download'] : 0) === 1;
 
-    $nome = $row['nome_arquivo'] ?: ('ArquivoLog_' . (int) ($row['id'] ?? 0));
-    $filename = safe_filename($nome);
+    $nome     = $row['nome_arquivo'] ?: ('ArquivoLog_' . $row['id']);
+    $filename = vpl_safe_filename($nome);
     if (!preg_match('/\.pdf$/i', $filename)) {
         $filename .= '.pdf';
     }
 
-    $rawCaminho = $row['caminho'] ?? '';
-    $candidates = build_candidate_paths($rawCaminho);
-    if (count($candidates) === 0) {
-        http_response_code(500);
-        __vpl_write_log('no candidates for caminho=' . var_export($rawCaminho, true));
-        header('Content-Type: text/plain; charset=UTF-8');
-        echo 'Caminho do arquivo não encontrado.';
+    $path = vpl_map_path((string) ($row['caminho'] ?? ''));
+    vpl_log('caminho mapeado: ' . $path);
+
+    // 1. Arquivo local -----------------------------------------------------------
+    if (@is_file($path) && @is_readable($path)) {
+        $size = @filesize($path);
+        vpl_log('servindo arquivo local: ' . $path . ' tamanho=' . $size);
+        while (ob_get_level() > 0) @ob_end_clean();
+        header('X-Content-Type-Options: nosniff');
+        header('Content-Type: application/pdf');
+        header('Content-Disposition: ' . ($download ? 'attachment' : 'inline') . '; filename="' . $filename . '"');
+        header('Cache-Control: private, no-store');
+        if ($size !== false) header('Content-Length: ' . $size);
+        readfile($path);
         exit;
     }
 
-    // 1) Try local filesystem first
-    foreach ($candidates as $p) {
-        $isFile = @is_file($p);
-        $isReadable = @is_readable($p);
-        __vpl_write_log('checking local candidate: ' . $p . ' is_file=' . ($isFile ? '1' : '0') . ' is_readable=' . ($isReadable ? '1' : '0'));
-        if ($isFile && $isReadable) {
-            // clear any buffered output before sending binary
-            while (ob_get_level() > 0) {
-                @ob_end_clean();
-            }
-            header('X-Content-Type-Options: nosniff');
-            header('Content-Type: application/pdf');
-            header('Content-Disposition: ' . ($download ? 'attachment' : 'inline') . '; filename="' . $filename . '"');
-            header('Cache-Control: private, no-store, no-cache, must-revalidate, max-age=0');
-            header('Pragma: no-cache');
+    vpl_log('arquivo local nao encontrado, buscando via SFTP: ' . $path);
 
-            $size = @filesize($p);
-            if ($size !== false) {
-                header('Content-Length: ' . $size);
-            }
-            $ok = @readfile($p);
-            if ($ok === false) {
-                __vpl_write_log('readfile failed for ' . $p);
-            } else {
-                __vpl_write_log('served local file ' . $p . ' size=' . ($size !== false ? $size : 'unknown'));
-            }
-            exit;
-        }
-    }
-
-    // 2) Fallback: fetch via SFTP (NAS)
-    require_once __DIR__ . '/../vendor/autoload.php';
+    // Configuracao SFTP
     require_once __DIR__ . '/../config/secure_env.php';
     try {
         $cfg = improov_sftp_config();
-    } catch (RuntimeException $e) {
-        __vpl_write_log('improov_sftp_config exception: ' . $e->getMessage());
+    } catch (\Exception $e) {
+        vpl_log('erro na configuracao SFTP: ' . $e->getMessage());
         http_response_code(500);
         header('Content-Type: text/plain; charset=UTF-8');
-        echo 'Configuração SFTP ausente.';
+        echo 'Configuracao SFTP ausente. Contate o administrador.';
         exit;
     }
 
-    $host = $cfg['host'];
-    $port = (int) $cfg['port'];
-    $username = $cfg['user'];
-    $password = $cfg['pass'];
+    $host     = $cfg['host'];
+    $port     = (int) $cfg['port'];
+    $sftpUser = $cfg['user'];
+    $sftpPass = $cfg['pass'];
 
-    $sftp = new \phpseclib3\Net\SFTP($host, $port);
-    // try login with a small retry to handle transient network issues
-    $loginOk = false;
-    for ($attempt = 1; $attempt <= 2; $attempt++) {
-        if ($sftp->login($username, $password)) {
-            $loginOk = true;
-            __vpl_write_log('sftp login success on attempt ' . $attempt . ' host=' . $host . ' user=' . $username);
-            break;
-        }
-        __vpl_write_log('sftp login failed on attempt ' . $attempt . ' host=' . $host . ' user=' . $username);
-        if ($attempt === 1) {
-            usleep(200000); // 200ms before retry
-        }
-    }
-    if (!$loginOk) {
-        http_response_code(502);
-        header('Content-Type: text/plain; charset=UTF-8');
-        echo 'Falha ao conectar no servidor de arquivos.';
-        exit;
-    }
+    $data = null;
 
-    $data = false;
-    $usedPath = '';
-    // try each candidate, with one retry per path to mitigate transient SFTP hiccups
-    foreach ($candidates as $p) {
-        $p = normalize_path_slashes($p);
-        __vpl_write_log('sftp get attempt for path: ' . $p);
-        $try = $sftp->get($p);
-        if ($try === false) {
-            // retry once
-            __vpl_write_log('sftp get failed, retrying: ' . $p);
-            usleep(150000);
-            $try = $sftp->get($p);
+    // 2. curl SFTP (metodo principal — libcurl nativo, sem phpseclib/libsodium) --
+    if (function_exists('curl_init') && defined('CURLSSH_AUTH_PASSWORD')) {
+        $url = "sftp://{$host}:{$port}{$path}";
+        vpl_log('tentativa curl SFTP: ' . $url);
+        $ch = curl_init();
+        curl_setopt_array($ch, [
+            CURLOPT_URL             => $url,
+            CURLOPT_USERPWD         => "{$sftpUser}:{$sftpPass}",
+            CURLOPT_SSH_AUTH_TYPES  => CURLSSH_AUTH_PASSWORD,
+            CURLOPT_RETURNTRANSFER  => true,
+            CURLOPT_TIMEOUT         => 120,
+            CURLOPT_CONNECTTIMEOUT  => 10,
+            // NAS interno — dispensa verificacao de chave do host
+            CURLOPT_SSL_VERIFYPEER  => false,
+            CURLOPT_SSL_VERIFYHOST  => 0,
+        ]);
+        $result  = curl_exec($ch);
+        $curlErr = curl_error($ch);
+        curl_close($ch);
+        if ($result !== false && $curlErr === '' && strlen((string) $result) > 0) {
+            $data = $result;
+            vpl_log('curl SFTP sucesso: ' . $path . ' bytes=' . strlen($data));
+        } else {
+            vpl_log('curl SFTP falhou: ' . ($curlErr ?: 'resposta vazia'));
         }
-        if ($try !== false) {
-            $data = $try;
-            $usedPath = $p;
-            __vpl_write_log('sftp get success for: ' . $p . ' bytes=' . strlen($try));
-            break;
-        }
-        __vpl_write_log('sftp get ultimately failed for: ' . $p);
+    } else {
+        vpl_log('curl SFTP indisponivel (extensao curl ou CURLSSH_AUTH_PASSWORD ausente)');
     }
 
-    if ($data === false) {
-        __vpl_write_log('no data returned from sftp for id=' . ($row['id'] ?? 'unknown'));
+    // 3. Fallback: phpseclib3 forcando OpenSSL_GCM (evita libsodium) -----------
+    if ($data === null) {
+        vpl_log('fallback phpseclib3 com OpenSSL_GCM...');
+        try {
+            require_once __DIR__ . '/../vendor/autoload.php';
+            // Forca o motor OpenSSL_GCM para cifras AES-GCM — o NAS nao suporta
+            // CBC, mas o motor padrao (libsodium) falha em arquivos grandes sobre VPN.
+            // setCryptoEngine e estatico e afeta todas as instancias na requisicao.
+            if (method_exists('\phpseclib3\Net\SSH2', 'setCryptoEngine')) {
+                \phpseclib3\Net\SSH2::setCryptoEngine(
+                    \phpseclib3\Crypt\Common\SymmetricKey::ENGINE_OPENSSL_GCM
+                );
+            }
+            $sftp = new \phpseclib3\Net\SFTP($host, $port);
+            $sftp->setTimeout(90);
+            // Sem restricao de algoritmos — deixa o servidor negociar GCM normalmente
+            if (!$sftp->login($sftpUser, $sftpPass)) {
+                vpl_log('phpseclib3: falha no login');
+            } else {
+                vpl_log('phpseclib3: login OK, buscando: ' . $path);
+                $result = $sftp->get($path);
+                if ($result !== false && strlen((string) $result) > 0) {
+                    $data = $result;
+                    vpl_log('phpseclib3: sucesso: ' . $path . ' bytes=' . strlen($data));
+                } else {
+                    vpl_log('phpseclib3: get retornou falso/vazio para: ' . $path);
+                }
+            }
+        } catch (\Exception $e) {
+            vpl_log('phpseclib3: excecao: ' . $e->getMessage());
+        }
+    }
+
+    if ($data === null) {
+        vpl_log('arquivo nao encontrado para id=' . $idlog . ' caminho=' . $path);
         http_response_code(404);
         header('Content-Type: text/plain; charset=UTF-8');
-        echo 'Arquivo PDF não encontrado no servidor.';
+        echo 'Arquivo PDF nao encontrado no servidor.';
         exit;
     }
 
-    // Basic sanity check to avoid returning non-PDF bytes as application/pdf
-    // Some files may have a few leading whitespace bytes, so search a small prefix.
-    $prefix = substr($data, 0, 1024);
-    if (strpos($prefix, '%PDF-') === false) {
-        __vpl_write_log('invalid pdf prefix for usedPath=' . $usedPath . ' prefix=' . substr($prefix, 0, 200));
+    if (strpos(substr((string) $data, 0, 1024), '%PDF-') === false) {
+        vpl_log('conteudo invalido (nao e PDF) para: ' . $path);
         http_response_code(502);
         header('Content-Type: text/plain; charset=UTF-8');
-        echo 'Resposta inválida ao buscar PDF (' . $usedPath . ').';
+        echo 'Resposta invalida recebida do servidor de arquivos.';
         exit;
     }
 
-    while (ob_get_level() > 0) {
-        @ob_end_clean();
-    }
+    while (ob_get_level() > 0) @ob_end_clean();
     header('X-Content-Type-Options: nosniff');
     header('Content-Type: application/pdf');
     header('Content-Disposition: ' . ($download ? 'attachment' : 'inline') . '; filename="' . $filename . '"');
-    header('Cache-Control: private, no-store, no-cache, must-revalidate, max-age=0');
-    header('Pragma: no-cache');
+    header('Cache-Control: private, no-store');
     header('Content-Length: ' . strlen($data));
     echo $data;
-    __vpl_write_log('streamed sftp data for ' . $usedPath . ' bytes=' . strlen($data));
+    vpl_log('PDF enviado: ' . $path . ' bytes=' . strlen($data));
     exit;
 }
 
-$raw = isset($_GET['raw']) ? (int) $_GET['raw'] : 0;
-if ($raw === 1) {
-    $download = isset($_GET['download']) ? (int) $_GET['download'] : 0;
-    stream_pdf_from_caminho($row, $download === 1);
-}
-
-// Default: simple wrapper page with iframe
-$tipo = strtoupper(trim($row['tipo'] ?? ''));
-if ($tipo !== 'PDF') {
-    http_response_code(400);
-    echo 'Este arquivo não é um PDF.';
-    exit;
-}
-
-$nome = $row['nome_arquivo'] ?: ('ArquivoLog #' . $idlog);
-$safeNome = htmlspecialchars($nome, ENT_QUOTES, 'UTF-8');
-$self = basename($_SERVER['PHP_SELF']);
-$iframeSrc = $self . '?idlog=' . urlencode((string) $idlog) . '&raw=1';
+// -----------------------------------------------------------------------------
+// Pagina HTML com iframe para visualizacao
+// -----------------------------------------------------------------------------
+$nome         = $row['nome_arquivo'] ?: ('ArquivoLog #' . $idlog);
+$safeNome     = htmlspecialchars($nome, ENT_QUOTES, 'UTF-8');
+$self         = basename($_SERVER['PHP_SELF']);
+$iframeSrc    = $self . '?idlog=' . urlencode((string) $idlog) . '&raw=1';
 $downloadHref = $self . '?idlog=' . urlencode((string) $idlog) . '&raw=1&download=1';
-
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -357,6 +313,63 @@ $downloadHref = $self . '?idlog=' . urlencode((string) $idlog) . '&raw=1&downloa
     <div class="frame-wrap">
         <iframe src="<?php echo htmlspecialchars($iframeSrc, ENT_QUOTES, 'UTF-8'); ?>" title="<?php echo $safeNome; ?>"></iframe>
     </div>
+    <!-- Overlay de carregamento do PDF (exibe enquanto o iframe carrega) -->
+    <div id="vpl-pdf-loading" class="vpl-pdf-loading" aria-hidden="true">
+        <div class="vpl-pdf-loading-box">
+            <div class="vpl-pdf-loading-title">PDF sendo carregado…</div>
+            <div class="vpl-pdf-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100">
+                <div class="vpl-pdf-progress-fill" style="width:0%"></div>
+            </div>
+        </div>
+    </div>
 </body>
 
 </html>
+
+<style>
+/* Styles mínimos para o overlay de carregamento (isolados para evitar conflitos) */
+.vpl-pdf-loading{position:fixed;left:0;top:52px;right:0;bottom:0;display:flex;align-items:center;justify-content:center;background:rgba(11,18,32,0.6);z-index:9999}
+.vpl-pdf-loading[aria-hidden="true"]{display:none}
+.vpl-pdf-loading-box{background:#0b1220;border:1px solid rgba(255,255,255,0.06);padding:18px 22px;border-radius:10px;color:#e6eef8;min-width:280px;max-width:480px;box-shadow:0 6px 18px rgba(0,0,0,0.45);text-align:left}
+.vpl-pdf-loading-title{font-size:14px;margin-bottom:10px}
+.vpl-pdf-progress{height:8px;background:#1f2937;border-radius:6px;overflow:hidden}
+.vpl-pdf-progress-fill{height:100%;background:linear-gradient(90deg,#2563eb,#06b6d4);width:0;transition:width .3s ease}
+</style>
+
+<script>
+(function(){
+    var iframe = document.querySelector('iframe');
+    var overlay = document.getElementById('vpl-pdf-loading');
+    var fill = overlay && overlay.querySelector('.vpl-pdf-progress-fill');
+    if (!iframe || !overlay || !fill) return;
+
+    var progress = 0;
+    overlay.setAttribute('aria-hidden','false');
+
+    // anima progress até 90% enquanto carrega
+    var ticker = setInterval(function(){
+        if (progress < 90) {
+            progress += Math.ceil(Math.random()*6);
+            if (progress > 90) progress = 90;
+            fill.style.width = progress + '%';
+        }
+    }, 300);
+
+    // quando iframe terminar de carregar, completa e remove overlay
+    iframe.addEventListener('load', function(){
+        clearInterval(ticker);
+        fill.style.width = '100%';
+        setTimeout(function(){
+            overlay.setAttribute('aria-hidden','true');
+        }, 350);
+    });
+
+    // fallback: timeout para remover overlay caso algo falhe (20s)
+    setTimeout(function(){
+        if (overlay.getAttribute('aria-hidden') === 'false') {
+            clearInterval(ticker);
+            overlay.setAttribute('aria-hidden','true');
+        }
+    }, 20000);
+})();
+</script>

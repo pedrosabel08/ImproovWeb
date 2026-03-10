@@ -2360,6 +2360,7 @@ async function renderizarPaginaPdf() {
 async function carregarPdf(rawUrl) {
   if (!window.pdfjsLib) {
     console.error("pdf.js não está disponível (window.pdfjsLib)");
+    _vplFecharLoadingPdf();
     return;
   }
 
@@ -2375,7 +2376,19 @@ async function carregarPdf(rawUrl) {
     await renderizarPaginaPdf();
   } catch (e) {
     console.error("Erro ao carregar PDF:", e);
+  } finally {
+    _vplFecharLoadingPdf();
   }
+}
+
+function _vplFecharLoadingPdf() {
+  if (window._vplPdfTicker) {
+    clearInterval(window._vplPdfTicker);
+    window._vplPdfTicker = null;
+  }
+  const bar = document.getElementById('vpl-pdf-bar');
+  if (bar) bar.style.width = '100%';
+  setTimeout(() => { if (window.Swal) Swal.close(); }, 300);
 }
 
 function mostrarPdfCompleto(
@@ -2545,6 +2558,29 @@ function mostrarPdfCompleto(
         return;
       pdfViewerState.page += 1;
       await renderizarPaginaPdf();
+    });
+  }
+
+  // Overlay de carregamento (SweetAlert2) — fecha quando carregarPdf concluir
+  if (window.Swal) {
+    let _vplProgress = 0;
+    Swal.fire({
+      title: 'PDF sendo carregado…',
+      html: `<p style="margin:0;color:#888">Buscando arquivo no servidor. Pode levar alguns instantes.</p>
+             <div style="margin-top:14px;height:6px;border-radius:3px;background:#eee;overflow:hidden">
+               <div id="vpl-pdf-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#2563eb,#06b6d4);transition:width .4s ease"></div>
+             </div>`,
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+      showConfirmButton: false,
+      didOpen: () => {
+        window._vplPdfTicker = setInterval(() => {
+          _vplProgress += Math.ceil(Math.random() * 6);
+          if (_vplProgress > 88) _vplProgress = 88;
+          const bar = document.getElementById('vpl-pdf-bar');
+          if (bar) bar.style.width = _vplProgress + '%';
+        }, 350);
+      },
     });
   }
 

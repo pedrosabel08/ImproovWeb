@@ -12,6 +12,8 @@
   let _loaded = false;
   let _currentMes = null;
   let _currentAno = null;
+  let _currentColabId = null;
+  let _listenersWired = false;
 
   /* ── Entry point (called by scriptIndex.js) ─────────────────── */
   window.initColabDashboard = function () {
@@ -19,15 +21,33 @@
     _currentMes = _currentMes || String(d.getMonth() + 1).padStart(2, "0");
     _currentAno = _currentAno || String(d.getFullYear());
 
-    // Wire up month selector (once)
-    if (!_loaded) {
-      const sel = document.getElementById("colab-mes-seletor");
-      if (sel) {
-        sel.addEventListener("change", function () {
+    // Wire up selectors once
+    if (!_listenersWired) {
+      _listenersWired = true;
+
+      const mesSel = document.getElementById("colab-mes-seletor");
+      if (mesSel) {
+        mesSel.addEventListener("change", function () {
           const [ano, mes] = this.value.split("-");
           _currentAno = ano;
           _currentMes = mes;
-          _loaded = false; // force reload on month change
+          _loaded = false;
+          _loadData();
+        });
+      }
+
+      const colabSel = document.getElementById("colab-colab-seletor");
+      if (colabSel) {
+        colabSel.addEventListener("change", function () {
+          _currentColabId = this.value ? parseInt(this.value, 10) : null;
+          _loaded = false;
+          _currentMes = null;
+          _currentAno = null;
+          const dd = new Date();
+          _currentMes = String(dd.getMonth() + 1).padStart(2, "0");
+          _currentAno = String(dd.getFullYear());
+          const ms = document.getElementById("colab-mes-seletor");
+          if (ms) ms.innerHTML = '<option value="">Carregando...</option>';
           _loadData();
         });
       }
@@ -38,7 +58,8 @@
 
   /* ── Data fetch ──────────────────────────────────────────────── */
   function _loadData() {
-    const url = `PaginaPrincipal/Overview/getDashboardColaborador.php?mes=${_currentMes}&ano=${_currentAno}`;
+    let url = `PaginaPrincipal/Overview/getDashboardColaborador.php?mes=${_currentMes}&ano=${_currentAno}`;
+    if (_currentColabId) url += `&colaborador_id=${_currentColabId}`;
 
     _setLoadingState(true);
 

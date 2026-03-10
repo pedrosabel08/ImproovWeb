@@ -165,7 +165,7 @@ main nav .nav-left button.active {
 }
 
 /* Bordar inferior apenas no ativo */
-.nav-left button.active::after {
+/* .nav-left button.active::after {
   content: "";
   position: absolute;
   left: 10%;
@@ -174,7 +174,7 @@ main nav .nav-left button.active {
   height: 2px;
   background-color: var(--cor-secundaria);
   border-radius: 2px;
-}
+} */
 
 main nav .nav-left button,
 main nav .nav-right button {

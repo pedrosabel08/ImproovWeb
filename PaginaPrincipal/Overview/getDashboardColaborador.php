@@ -11,7 +11,15 @@ if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
     exit();
 }
 
+$nivelAcesso   = intval($_SESSION['nivel_acesso'] ?? 0);
+$isGestor      = in_array($nivelAcesso, [1, 5]);
 $colaboradorId = intval($_SESSION['idcolaborador'] ?? 0);
+
+// Gestores podem consultar qualquer colaborador via GET param
+if ($isGestor && isset($_GET['colaborador_id']) && intval($_GET['colaborador_id']) > 0) {
+    $colaboradorId = intval($_GET['colaborador_id']);
+}
+
 if ($colaboradorId === 0) {
     echo json_encode(['error' => 'Colaborador não identificado na sessão']);
     exit();

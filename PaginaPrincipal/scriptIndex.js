@@ -4721,12 +4721,13 @@ async function carregarOverview() {
 // ─────────────────────────────────────────────────────────────────
 (function () {
   const btnOverview = document.getElementById("overviewBtn");
-  const btnKanban = document.getElementById("kanbanBtn");
-  const btnLista = document.getElementById("listBtn");
+  const btnPainel   = document.getElementById("painelBtn");
+  const btnKanban   = document.getElementById("kanbanBtn");
+  const btnLista    = document.getElementById("listBtn");
   const overviewSec = document.getElementById("overview-section");
-  const kanbanSec = document.getElementById("kanban-section");
-  const listSec = document.getElementById("list-section");
-  const navRight = document.querySelector("main nav .nav-right");
+  const kanbanSec   = document.getElementById("kanban-section");
+  const listSec     = document.getElementById("list-section");
+  const navRight    = document.querySelector("main nav .nav-right");
 
   if (!btnKanban || !btnLista || !kanbanSec || !listSec) return;
 
@@ -4737,59 +4738,70 @@ async function carregarOverview() {
 
   // Sub-panels inside #overview-section
   const gestorPanel = document.getElementById("overview-gestor");
-  const colabPanel = document.getElementById("overview-colab");
+  const colabPanel  = document.getElementById("overview-colab");
 
-  function showOverview() {
-    if (kanbanSec) kanbanSec.style.display = "none";
-    if (listSec) listSec.style.display = "none";
-    if (overviewSec) overviewSec.style.display = "block";
-    if (btnOverview) btnOverview.classList.add("active");
+  function hideSections() {
+    if (kanbanSec)   kanbanSec.style.display   = "none";
+    if (listSec)     listSec.style.display     = "none";
+    if (overviewSec) overviewSec.style.display = "none";
+  }
+
+  function clearActive() {
+    if (btnOverview) btnOverview.classList.remove("active");
+    if (btnPainel)   btnPainel.classList.remove("active");
     btnKanban.classList.remove("active");
     btnLista.classList.remove("active");
-    if (navRight) navRight.style.visibility = "hidden";
+  }
 
-    if (isGestorView) {
-      // Manager: show calendar + production table
-      if (gestorPanel) gestorPanel.style.display = "block";
-      if (colabPanel) colabPanel.style.display = "none";
-      carregarOverview();
-    } else {
-      // Collaborator: show personal dashboard
-      if (gestorPanel) gestorPanel.style.display = "none";
-      if (colabPanel) colabPanel.style.display = "block";
-      if (typeof window.initColabDashboard === "function") {
-        window.initColabDashboard();
-      }
+  // ── Visão Geral (gestor-only: calendar + indicators) ──────────
+  function showOverview() {
+    hideSections();
+    if (overviewSec) overviewSec.style.display = "block";
+    if (gestorPanel) gestorPanel.style.display = "block";
+    if (colabPanel)  colabPanel.style.display  = "none";
+    if (navRight) navRight.style.visibility = "hidden";
+    clearActive();
+    if (btnOverview) btnOverview.classList.add("active");
+    carregarOverview();
+  }
+
+  // ── Painel de Produção (everyone: individual production) ───────
+  function showPainel() {
+    hideSections();
+    if (overviewSec) overviewSec.style.display = "block";
+    if (gestorPanel) gestorPanel.style.display = "none";
+    if (colabPanel)  colabPanel.style.display  = "block";
+    if (navRight) navRight.style.visibility = "hidden";
+    clearActive();
+    if (btnPainel) btnPainel.classList.add("active");
+    if (typeof window.initColabDashboard === "function") {
+      window.initColabDashboard();
     }
   }
 
   function showKanban() {
-    if (overviewSec) overviewSec.style.display = "none";
-    listSec.style.display = "none";
+    hideSections();
     kanbanSec.style.display = "flex";
-    btnKanban.classList.add("active");
-    btnLista.classList.remove("active");
-    if (btnOverview) btnOverview.classList.remove("active");
     if (navRight) navRight.style.visibility = "visible";
+    clearActive();
+    btnKanban.classList.add("active");
   }
 
   function showLista() {
-    if (overviewSec) overviewSec.style.display = "none";
-    kanbanSec.style.display = "none";
+    hideSections();
     listSec.style.display = "block";
-    btnLista.classList.add("active");
-    btnKanban.classList.remove("active");
-    if (btnOverview) btnOverview.classList.remove("active");
     if (navRight) navRight.style.visibility = "visible";
+    clearActive();
+    btnLista.classList.add("active");
   }
 
-  // Always show the Visão Geral button; gestors start on overview, others on kanban
-  if (btnOverview) btnOverview.style.display = "flex";
+  // Gestores iniciam na Visão Geral; demais no Kanban
   if (isGestorView) {
     showOverview();
   }
 
   if (btnOverview) btnOverview.addEventListener("click", showOverview);
+  if (btnPainel)   btnPainel.addEventListener("click", showPainel);
   btnKanban.addEventListener("click", showKanban);
   btnLista.addEventListener("click", showLista);
 })();

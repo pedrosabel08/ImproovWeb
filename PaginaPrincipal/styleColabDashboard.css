@@ -40,6 +40,13 @@
   gap: 10px;
 }
 
+#overview-colab .colab-dash-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 #overview-colab .colab-dash-title {
   display: flex;
   align-items: center;

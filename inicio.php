@@ -175,8 +175,10 @@ $conn->close();
                 </div>
                 <nav>
                     <div class="nav-left">
-                        <button id="overviewBtn"><i class="ri-dashboard-line"></i><span>Visão
-                                Geral</span></button>
+                        <?php if (in_array((int)($_SESSION['nivel_acesso'] ?? 0), [1, 5])): ?>
+                            <button id="overviewBtn"><i class="ri-dashboard-line"></i><span>Visão Geral</span></button>
+                        <?php endif; ?>
+                        <button id="painelBtn"><i class="ri-bar-chart-line"></i><span>Painel de Produção</span></button>
                         <button id="kanbanBtn" class="active"><i class="ri-kanban-view"></i><span>Kanban</span></button>
                         <button id="listBtn"><i class="ri-list-check"></i><span>Lista</span></button>
                         <!-- <button id="activities"><i class="fa-solid fa-chart-line"><span></i>Activity</span></button> -->
@@ -348,11 +350,23 @@ $conn->close();
                     <div class="colab-dash-header">
                         <div class="colab-dash-title">
                             <i class="ri-bar-chart-line"></i>
-                            <h2>Meu Painel — <span id="colab-mes-nome"></span></h2>
+                            <h2>Painel de Produção — <span id="colab-mes-nome"></span></h2>
                         </div>
-                        <select id="colab-mes-seletor" class="mes-select">
-                            <option value="">Carregando...</option>
-                        </select>
+                        <div class="colab-dash-controls">
+                            <?php if (in_array((int)($_SESSION['nivel_acesso'] ?? 0), [1, 5])): ?>
+                                <select id="colab-colab-seletor" class="mes-select">
+                                    <option value="">Selecione um colaborador</option>
+                                    <?php foreach ($colaboradores as $colab): ?>
+                                        <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                            <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            <?php endif; ?>
+                            <select id="colab-mes-seletor" class="mes-select">
+                                <option value="">Carregando...</option>
+                            </select>
+                        </div>
                     </div>
 
                     <!-- KPI cards -->

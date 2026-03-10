@@ -20,12 +20,19 @@ use Dotenv\Dotenv;
 
 $dotenv = Dotenv::createImmutable(__DIR__);
 $dotenv->load();
-$slackToken = $_ENV['SLACK_TOKEN'] ?? null;
+// Prefer getenv() (root .env / secure_env.php); fallback to $_ENV
+$slackToken = getenv('SLACK_TOKEN') ?: ($_ENV['SLACK_TOKEN'] ?? null);
+$slackTokenPresent = !empty($slackToken);
 
 function enviarNotificacaoSlack($slackUserId, $mensagem, &$log)
 {
     global $slackToken;
+    global $slackTokenPresent;
 
+    if (!$slackTokenPresent) {
+        $log[] = 'Slack token ausente — notificação ignorada.';
+        return false;
+    }
     $slackMessage = [
         "channel" => $slackUserId,
         "text" => $mensagem,
@@ -39,7 +46,9 @@ function enviarNotificacaoSlack($slackUserId, $mensagem, &$log)
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($slackMessage));
-    curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+    // timeouts: short connect, slightly longer total
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
     curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
 
@@ -574,98 +583,103 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($sftp_action !== null) {
             $resultadoFinal['logs'][] = 'Slack: notificação pulada (resolução de conflito SFTP).';
         } else {
-        // Slack envio final — busca paginada de usuários e envia notificação
-        $normalizedTargets = array_map('normalize_name', $nome_colaboradores);
-        $slackFoundIDs = [];
-        $slackCursor   = null;
-        $slackPage     = 0;
+            // Slack envio final — busca paginada de usuários e envia notificação
+            $normalizedTargets = array_map('normalize_name', $nome_colaboradores);
+            $slackFoundIDs = [];
+            $slackCursor   = null;
+            $slackPage     = 0;
 
-        do {
-            $slackPage++;
-            $slackUrl = 'https://slack.com/api/users.list?limit=200';
-            if ($slackCursor) {
-                $slackUrl .= '&cursor=' . urlencode($slackCursor);
-            }
-
-            $chList = curl_init($slackUrl);
-            curl_setopt($chList, CURLOPT_HTTPHEADER, ["Authorization: Bearer {$slackToken}"]);
-            curl_setopt($chList, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($chList, CURLOPT_CONNECTTIMEOUT, 8);
-            curl_setopt($chList, CURLOPT_TIMEOUT, 10);
-            curl_setopt($chList, CURLOPT_SSL_VERIFYPEER, false);
-            curl_setopt($chList, CURLOPT_SSL_VERIFYHOST, false);
-
-            $slackRaw = curl_exec($chList);
-            if (curl_errno($chList)) {
-                $resultadoFinal['logs'][] = 'Erro curl users.list (p.' . $slackPage . '): ' . curl_error($chList);
-                curl_close($chList);
-                break;
-            }
-            curl_close($chList);
-
-            $slackData = json_decode($slackRaw, true);
-            if (!is_array($slackData) || empty($slackData['ok'])) {
-                $resultadoFinal['logs'][] = 'Erro API Slack users.list: ' . ($slackData['error'] ?? ('resposta inválida: ' . substr((string)$slackRaw, 0, 300)));
-                break;
-            }
-
-            foreach ($slackData['members'] as $member) {
-                if (!empty($member['deleted']) || !empty($member['is_bot'])) {
-                    continue;
+            do {
+                $slackPage++;
+                $slackUrl = 'https://slack.com/api/users.list?limit=200';
+                if ($slackCursor) {
+                    $slackUrl .= '&cursor=' . urlencode($slackCursor);
                 }
-                $candidates = array_values(array_filter([
-                    $member['real_name'] ?? null,
-                    $member['profile']['real_name_normalized'] ?? null,
-                    $member['profile']['display_name'] ?? null,
-                    $member['profile']['display_name_normalized'] ?? null,
-                ]));
-                $normalizedCandidates = array_map('normalize_name', $candidates);
-                $candidateStr = implode(' ', $normalizedCandidates);
 
-                foreach ($normalizedTargets as $t) {
-                    if ($t === '' || isset($slackFoundIDs[$member['id']])) {
+                $chList = curl_init($slackUrl);
+                curl_setopt($chList, CURLOPT_HTTPHEADER, ["Authorization: Bearer {$slackToken}"]);
+                curl_setopt($chList, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($chList, CURLOPT_CONNECTTIMEOUT, 5);
+                curl_setopt($chList, CURLOPT_TIMEOUT, 8);
+                curl_setopt($chList, CURLOPT_SSL_VERIFYPEER, false);
+                curl_setopt($chList, CURLOPT_SSL_VERIFYHOST, false);
+
+                $slackRaw = curl_exec($chList);
+                if (curl_errno($chList)) {
+                    $err = curl_error($chList);
+                    if (stripos($err, 'Resolving timed out') !== false || stripos($err, 'Could not resolve host') !== false) {
+                        $resultadoFinal['logs'][] = 'Erro curl users.list (p.' . $slackPage . '): ' . $err . ' — verifique DNS/rotas de saída do servidor.';
+                    } else {
+                        $resultadoFinal['logs'][] = 'Erro curl users.list (p.' . $slackPage . '): ' . $err;
+                    }
+                    curl_close($chList);
+                    break;
+                }
+                curl_close($chList);
+
+                $slackData = json_decode($slackRaw, true);
+                if (!is_array($slackData) || empty($slackData['ok'])) {
+                    $resultadoFinal['logs'][] = 'Erro API Slack users.list: ' . ($slackData['error'] ?? ('resposta inválida: ' . substr((string)$slackRaw, 0, 300)));
+                    break;
+                }
+
+                foreach ($slackData['members'] as $member) {
+                    if (!empty($member['deleted']) || !empty($member['is_bot'])) {
                         continue;
                     }
-                    // Exact match
-                    if (in_array($t, $normalizedCandidates, true)) {
-                        $slackFoundIDs[$member['id']] = true;
-                        $resultadoFinal['logs'][] = 'Slack match exato: ' . $member['id'] . ' (' . implode(', ', array_slice($candidates, 0, 2)) . ') → ' . $t;
-                        continue;
-                    }
-                    // Token-subset fallback (tokens >= 3 chars)
-                    $tokens = array_values(array_filter(explode(' ', $t), fn($tok) => strlen($tok) >= 3));
-                    if (!empty($tokens)) {
-                        $allPresent = true;
-                        foreach ($tokens as $tok) {
-                            if (strpos($candidateStr, $tok) === false) {
-                                $allPresent = false;
-                                break;
+                    $candidates = array_values(array_filter([
+                        $member['real_name'] ?? null,
+                        $member['profile']['real_name_normalized'] ?? null,
+                        $member['profile']['display_name'] ?? null,
+                        $member['profile']['display_name_normalized'] ?? null,
+                    ]));
+                    $normalizedCandidates = array_map('normalize_name', $candidates);
+                    $candidateStr = implode(' ', $normalizedCandidates);
+
+                    foreach ($normalizedTargets as $t) {
+                        if ($t === '' || isset($slackFoundIDs[$member['id']])) {
+                            continue;
+                        }
+                        // Exact match
+                        if (in_array($t, $normalizedCandidates, true)) {
+                            $slackFoundIDs[$member['id']] = true;
+                            $resultadoFinal['logs'][] = 'Slack match exato: ' . $member['id'] . ' (' . implode(', ', array_slice($candidates, 0, 2)) . ') → ' . $t;
+                            continue;
+                        }
+                        // Token-subset fallback (tokens >= 3 chars)
+                        $tokens = array_values(array_filter(explode(' ', $t), fn($tok) => strlen($tok) >= 3));
+                        if (!empty($tokens)) {
+                            $allPresent = true;
+                            foreach ($tokens as $tok) {
+                                if (strpos($candidateStr, $tok) === false) {
+                                    $allPresent = false;
+                                    break;
+                                }
+                            }
+                            if ($allPresent) {
+                                $slackFoundIDs[$member['id']] = true;
+                                $resultadoFinal['logs'][] = 'Slack match token: ' . $member['id'] . ' (' . implode(', ', array_slice($candidates, 0, 2)) . ') → ' . $t;
                             }
                         }
-                        if ($allPresent) {
-                            $slackFoundIDs[$member['id']] = true;
-                            $resultadoFinal['logs'][] = 'Slack match token: ' . $member['id'] . ' (' . implode(', ', array_slice($candidates, 0, 2)) . ') → ' . $t;
-                        }
                     }
                 }
+
+                $slackCursor = $slackData['response_metadata']['next_cursor'] ?? null;
+            } while (
+                !empty($slackCursor) &&
+                count($slackFoundIDs) < count($nome_colaboradores) &&
+                $slackPage < 10
+            );
+
+            $slackFoundIDs = array_keys($slackFoundIDs);
+
+            if (!empty($slackFoundIDs)) {
+                foreach ($slackFoundIDs as $uid) {
+                    enviarNotificacaoSlack($uid, $mensagemSlack, $resultadoFinal['logs']);
+                }
+            } else {
+                $resultadoFinal['logs'][] = 'Usuário(s) ' . implode(', ', $nome_colaboradores) . ' não encontrado(s) no Slack.';
             }
-
-            $slackCursor = $slackData['response_metadata']['next_cursor'] ?? null;
-        } while (
-            !empty($slackCursor) &&
-            count($slackFoundIDs) < count($nome_colaboradores) &&
-            $slackPage < 10
-        );
-
-        $slackFoundIDs = array_keys($slackFoundIDs);
-
-        if (!empty($slackFoundIDs)) {
-            foreach ($slackFoundIDs as $uid) {
-                enviarNotificacaoSlack($uid, $mensagemSlack, $resultadoFinal['logs']);
-            }
-        } else {
-            $resultadoFinal['logs'][] = 'Usuário(s) ' . implode(', ', $nome_colaboradores) . ' não encontrado(s) no Slack.';
-        }
         } // fim do bloco Slack (if $sftp_action === null)
     } catch (Throwable $e) {
         http_response_code(500);

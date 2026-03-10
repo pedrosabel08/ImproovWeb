@@ -2716,17 +2716,43 @@ function ajustarNavSelectAoTamanhoDaImagem() {
 
 const btnDownload = document.getElementById("btn-download-imagem");
 if (btnDownload) {
-  btnDownload.addEventListener("click", function () {
+  btnDownload.addEventListener("click", async function () {
     const url =
       currentDownloadUrl || document.getElementById("imagem_atual")?.src || "";
     if (!url) return;
 
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = url.split("/").pop() || "download";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const isIOS = /iP(ad|hone|od)/.test(navigator.userAgent);
+
+    // iOS Safari: download attribute is not supported — open in new tab instead
+    if (isIOS) {
+      window.open(url, "_blank");
+      return;
+    }
+
+    try {
+      // Try fetching the resource as a blob (works reliably in Safari desktop)
+      const resp = await fetch(url, { mode: "cors" });
+      const blob = await resp.blob();
+      const blobUrl = URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = url.split("/").pop() || "download";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // Revoke object URL shortly after
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1500);
+    } catch (err) {
+      // Fallback: open in a new tab (e.g., when CORS blocks fetch)
+      const link = document.createElement("a");
+      link.href = url;
+      link.target = "_blank";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
   });
 }
 

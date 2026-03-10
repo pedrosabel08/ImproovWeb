@@ -85,7 +85,7 @@ $sql = "SELECT
         ) AS ultima_imagem
 FROM funcao_imagem fi
 JOIN imagens_cliente_obra ico ON fi.imagem_id = ico.idimagens_cliente_obra
-LEFT JOIN status_imagem si ON ico.substatus_id = si.idstatus
+LEFT JOIN status_imagem si ON ico.status_id = si.idstatus
 JOIN obra o ON o.idobra = ico.obra_id
 JOIN funcao f ON fi.funcao_id = f.idfuncao
 LEFT JOIN prioridade_funcao pc ON fi.idfuncao_imagem = pc.funcao_imagem_id

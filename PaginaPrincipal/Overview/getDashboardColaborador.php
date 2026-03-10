@@ -99,13 +99,37 @@ $stmtN->close();
 
 // -- 1b. Valor a receber (inclui Finalização Completa pago parcial)
 $sqlValor = "
-    SELECT COALESCE(SUM(fi.valor), 0) AS valor
+    SELECT COALESCE(SUM(
+        CASE
+            -- Finalização Parcial (imagem ainda não aprovada / tem Pós-Finalização) -> 50%
+            WHEN fi.funcao_id = 4 AND (
+                EXISTS (
+                    SELECT 1 FROM funcao_imagem fi_sv
+                    JOIN funcao f_sv ON fi_sv.funcao_id = f_sv.idfuncao
+                    WHERE fi_sv.imagem_id = fi.imagem_id AND f_sv.nome_funcao = 'Pré-Finalização'
+                ) OR {$snapStatusCond}
+            ) THEN fi.valor * 0.5
+            -- Finalização paga parcialmente (50% já pago, 50% restante)
+            WHEN fi.funcao_id = 4 AND fi.pagamento = 1 AND (
+                SELECT COUNT(1) FROM pagamento_itens pi_np
+                JOIN funcao_imagem fi_np ON pi_np.origem = 'funcao_imagem' AND pi_np.origem_id = fi_np.idfuncao_imagem
+                WHERE fi_np.imagem_id = fi.imagem_id AND fi_np.funcao_id = 4 AND pi_np.observacao = 'Finalização Parcial'
+            ) > 0 AND (
+                SELECT COUNT(1) FROM pagamento_itens pi_nc
+                JOIN funcao_imagem fi_nc ON pi_nc.origem = 'funcao_imagem' AND pi_nc.origem_id = fi_nc.idfuncao_imagem
+                WHERE fi_nc.imagem_id = fi.imagem_id AND fi_nc.funcao_id = 4 AND pi_nc.observacao = 'Pago Completa'
+            ) = 0 THEN fi.valor * 0.5
+            ELSE fi.valor
+        END
+    ), 0) AS valor
     FROM funcao_imagem fi
+    JOIN imagens_cliente_obra ico ON ico.idimagens_cliente_obra = fi.imagem_id
+    {$snapJoin}
     WHERE {$monthFilterWhere}
       AND {$naoPagaCond}
 ";
 $stmtV = $conn->prepare($sqlValor);
-$stmtV->bind_param('iiiii', $colaboradorId, $ano, $mes, $mes, $ano);
+$stmtV->bind_param('siiiii', $fimMesDataTime, $colaboradorId, $ano, $mes, $mes, $ano);
 $stmtV->execute();
 $valorAReceber = floatval($stmtV->get_result()->fetch_assoc()['valor'] ?? 0);
 $stmtV->close();
@@ -212,7 +236,25 @@ $sqlTarefas = "
         ELSE f.nome_funcao END                       AS nome_funcao,
         fi.funcao_id,
         fi.status,
-        fi.valor,
+        CASE
+            WHEN fi.funcao_id = 4 AND (
+                EXISTS (
+                    SELECT 1 FROM funcao_imagem fi_sv
+                    JOIN funcao f_sv ON fi_sv.funcao_id = f_sv.idfuncao
+                    WHERE fi_sv.imagem_id = fi.imagem_id AND f_sv.nome_funcao = 'Pré-Finalização'
+                ) OR {$snapStatusCond}
+            ) THEN fi.valor * 0.5
+            WHEN fi.funcao_id = 4 AND fi.pagamento = 1 AND (
+                SELECT COUNT(1) FROM pagamento_itens pi_np
+                JOIN funcao_imagem fi_np ON pi_np.origem = 'funcao_imagem' AND pi_np.origem_id = fi_np.idfuncao_imagem
+                WHERE fi_np.imagem_id = fi.imagem_id AND fi_np.funcao_id = 4 AND pi_np.observacao = 'Finalização Parcial'
+            ) > 0 AND (
+                SELECT COUNT(1) FROM pagamento_itens pi_nc
+                JOIN funcao_imagem fi_nc ON pi_nc.origem = 'funcao_imagem' AND pi_nc.origem_id = fi_nc.idfuncao_imagem
+                WHERE fi_nc.imagem_id = fi.imagem_id AND fi_nc.funcao_id = 4 AND pi_nc.observacao = 'Pago Completa'
+            ) = 0 THEN fi.valor * 0.5
+            ELSE fi.valor
+        END                                          AS valor,
         fi.pagamento,
         fi.prazo,
         COALESCE(aj.qtd_ajustes, 0)                 AS qtd_ajustes,

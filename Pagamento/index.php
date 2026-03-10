@@ -204,7 +204,6 @@ $conn->close();
 			<div class="menu-buttons">
 				<div class="buttons">
 					<button id="marcar-todos">Marcar/Desmarcar Todos</button>
-					<button id="confirmar-pagamento">Confirmar Pagamento</button>
 					<button id="adicionar-valor">Adicionar valor</button>
 					<input type="text" id="valor" placeholder="R$ 0,00">
 				</div>
@@ -235,22 +234,44 @@ $conn->close();
 					<button id="generate-excel" onclick="exportToExcel()">Exportar para Excel</button>
 				</div>
 			</div>
+
 			<div id="info-colaborador" style="display: none;"></div>
+
+			<!-- Tabela: A Pagar -->
+			<h3 style="margin:14px 0 6px;font-size:15px;color:#333">A Pagar</h3>
 			<div class="tabela">
-				<table id="tabela-faturamento">
+				<table id="tabela-a-pagar">
 					<thead>
 						<tr>
 							<th>Nome da Imagem</th>
 							<th>Status</th>
 							<th>Função</th>
 							<th>Valor (R$)</th>
+							<th></th>
+							<th>Data Pgt</th>						<th>Ações</th>						</tr>
+					</thead>
+					<tbody></tbody>
+				</table>
+			</div>
+			<div style="margin:8px 0 24px">
+				<button id="confirmar-pagamento">Confirmar Pagamento</button>
+			</div>
+
+			<!-- Tabela: Já Pago -->
+			<h3 style="margin:14px 0 6px;font-size:15px;color:#333">Já Pago</h3>
+			<div class="tabela">
+				<table id="tabela-pago">
+					<thead>
+						<tr>
+							<th>Nome da Imagem</th>
 							<th>Status</th>
+							<th>Função</th>
+							<th>Valor (R$)</th>
+							<th></th>
 							<th>Data Pgt</th>
 						</tr>
 					</thead>
-					<tbody>
-
-					</tbody>
+					<tbody></tbody>
 				</table>
 			</div>
 		</section>

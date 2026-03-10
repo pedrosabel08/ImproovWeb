@@ -259,9 +259,11 @@ document.addEventListener("DOMContentLoaded", function () {
                         `;
           }
 
-          // Atualiza a tabela
-          var tabela = document.querySelector("#tabela-faturamento tbody");
-          tabela.innerHTML = "";
+          // Atualiza as duas tabelas
+          var tabelaAPagar = document.querySelector("#tabela-a-pagar tbody");
+          var tabelaPago   = document.querySelector("#tabela-pago tbody");
+          tabelaAPagar.innerHTML = "";
+          tabelaPago.innerHTML   = "";
           let totalValor = 0;
 
           document
@@ -333,7 +335,9 @@ document.addEventListener("DOMContentLoaded", function () {
               cellNomeImagem.textContent = item.imagem_nome;
               cellFuncao.textContent = item.nome_funcao;
               cellStatusFuncao.textContent = item.status;
-              cellValor.textContent = item.valor;
+              // Mostra valor_exibido (50% para Finalização Parcial/pago-parcial)
+              const valorParaMostrar = item.valor_exibido != null ? item.valor_exibido : item.valor;
+              cellValor.textContent = valorParaMostrar;
               cellData.textContent = item.data_pagamento
                 ? item.data_pagamento
                 : "";
@@ -371,7 +375,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 cellFuncao.appendChild(badge);
               }
 
-              totalValor += parseFloat(item.valor) || 0;
+              totalValor += parseFloat(valorParaMostrar) || 0;
             } else if (item.origem === "acompanhamento") {
               cellNomeImagem.textContent = item.imagem_nome;
               cellFuncao.textContent = "Acompanhamento";
@@ -399,7 +403,62 @@ document.addEventListener("DOMContentLoaded", function () {
             row.appendChild(cellCheckbox);
             row.appendChild(cellData);
 
-            tabela.appendChild(row);
+            // Roteia para a tabela correta de acordo com status de pagamento
+            const normIt = (s) => (s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim();
+            const fnNormIt = normIt(item.nome_funcao || "");
+            const pagoParcIt = parseInt(item.pago_parcial_count || 0, 10);
+            const pagoCompIt = parseInt(item.pago_completa_count || 0, 10);
+            const isFinalizacaoCompleta = fnNormIt.includes("finalizacao") && fnNormIt.includes("completa");
+            const jaFoiPago = item.pagamento == 1 &&
+              !(isFinalizacaoCompleta && pagoParcIt > 0 && pagoCompIt === 0);
+
+            // Coluna de Ações — botão de pagamento individual (só para linhas não pagas)
+            var cellAcoes = document.createElement("td");
+            if (!jaFoiPago) {
+              const btnPagar = document.createElement("button");
+              btnPagar.textContent = "Pagar";
+              btnPagar.className = "btn-pagar-linha";
+              btnPagar.addEventListener("click", function () {
+                const colaboradorId = parseInt(
+                  document.getElementById("colaborador").value, 10
+                );
+                const mes = document.getElementById("mes").value;
+                const ano = document.getElementById("ano").value;
+                const ids = [{
+                  id: parseInt(checkbox.getAttribute("data-id"), 10),
+                  origem: checkbox.getAttribute("data-origem"),
+                  funcao_id: parseInt(checkbox.getAttribute("funcao"), 10),
+                  funcao_name: checkbox.getAttribute("data-funcao-name") || ""
+                }];
+                fetch("updatePagamento.php", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ ids, colaborador_id: colaboradorId, mes, ano })
+                })
+                .then(r => r.json())
+                .then(resp => {
+                  if (resp.success) {
+                    fetch("insertHistorico.php", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ ids, colaborador_id: colaboradorId })
+                    })
+                    .then(r => r.json())
+                    .then(() => carregarDadosColab())
+                    .catch(() => carregarDadosColab());
+                  } else {
+                    alert("Erro ao registrar pagamento.");
+                  }
+                })
+                .catch(err => {
+                  console.error("Erro ao pagar linha:", err);
+                  alert("Erro ao registrar pagamento.");
+                });
+              });
+              cellAcoes.appendChild(btnPagar);
+            }
+            row.appendChild(cellAcoes);
+            (jaFoiPago ? tabelaPago : tabelaAPagar).appendChild(row);
 
             if (checkbox.checked) {
               row.classList.add("checked");
@@ -424,12 +483,98 @@ document.addEventListener("DOMContentLoaded", function () {
           });
 
           contarLinhasTabela();
+
+          // ─── Painel de divergências de valor ────────────────────────────
+          const divergentes = (data.funcoes || []).filter(
+            (f) => f.tem_divergencia && f.origem === "funcao_imagem"
+          );
+
+          let painelDiv = document.getElementById("painel-divergencias");
+          if (!painelDiv) {
+            painelDiv = document.createElement("div");
+            painelDiv.id = "painel-divergencias";
+            const tabelaFat = document.getElementById("tabela-a-pagar");
+            if (tabelaFat && tabelaFat.parentNode) {
+              tabelaFat.parentNode.insertBefore(painelDiv, tabelaFat);
+            }
+          }
+
+          if (divergentes.length === 0) {
+            painelDiv.innerHTML = "";
+            painelDiv.style.display = "none";
+          } else {
+            const linhas = divergentes
+              .map(
+                (f) => `
+              <tr>
+                <td style="padding:4px 8px">${f.imagem_nome || ""}</td>
+                <td style="padding:4px 8px">${f.nome_funcao || ""}</td>
+                <td style="padding:4px 8px;color:#c0392b;font-weight:600">${currencyBRL(f.valor)}</td>
+                <td style="padding:4px 8px;color:#27ae60;font-weight:600">${currencyBRL(f.valor_esperado)}</td>
+              </tr>`
+              )
+              .join("");
+
+            painelDiv.style.display = "";
+            painelDiv.innerHTML = `
+              <div style="background:#fff8e1;border:1px solid #f0ad4e;border-radius:6px;padding:12px 16px;margin-bottom:14px">
+                <strong style="color:#8a6000">&#9888; ${divergentes.length} tarefa(s) com valor diferente do esperado</strong>
+                <table style="width:100%;margin-top:8px;border-collapse:collapse;font-size:13px">
+                  <thead>
+                    <tr style="background:#ffe082">
+                      <th style="padding:4px 8px;text-align:left">Imagem</th>
+                      <th style="padding:4px 8px;text-align:left">Função</th>
+                      <th style="padding:4px 8px;text-align:left">Valor atual</th>
+                      <th style="padding:4px 8px;text-align:left">Valor esperado</th>
+                    </tr>
+                  </thead>
+                  <tbody>${linhas}</tbody>
+                </table>
+                <button id="btn-corrigir-valores"
+                  style="margin-top:10px;padding:6px 16px;background:#e67e22;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px">
+                  Corrigir valores automaticamente
+                </button>
+              </div>`;
+
+            document
+              .getElementById("btn-corrigir-valores")
+              .addEventListener("click", async () => {
+                const itens = divergentes.map((f) => ({
+                  id: f.identificador,
+                  valor_novo: f.valor_esperado,
+                }));
+                if (
+                  !confirm(
+                    `Atualizar ${itens.length} tarefa(s) para os valores esperados?`
+                  )
+                )
+                  return;
+                try {
+                  const res = await fetch("corrigirValores.php", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ itens }),
+                  });
+                  const json = await res.json();
+                  if (json.success) {
+                    alert(`${json.atualizados} tarefa(s) corrigida(s) com sucesso!`);
+                    carregarDadosColab();
+                  } else {
+                    alert("Erro: " + (json.error || "desconhecido"));
+                  }
+                } catch (e) {
+                  alert("Erro ao corrigir valores");
+                }
+              });
+          }
+          // ────────────────────────────────────────────────────────────────
         })
         .catch((error) => {
           console.error("Erro ao carregar dados do colaborador:", error);
         });
     } else {
-      document.querySelector("#tabela-faturamento tbody").innerHTML = "";
+      document.querySelector("#tabela-a-pagar tbody").innerHTML = "";
+      document.querySelector("#tabela-pago tbody").innerHTML = "";
       var totalValorLabel = document.getElementById("totalValor");
       totalValorLabel.textContent = "Total: R$ 0,00";
     }
@@ -481,46 +626,14 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById("colaborador").value,
         10,
       );
-      // Apenas checkboxes visíveis e marcadas
-      var checkboxes = Array.from(
-        document.querySelectorAll(".pagamento-checkbox:checked"),
-      )
-        .filter((cb) => cb.closest("tr").offsetParent !== null)
-        // Do not re-register items already paid, except when it is a Finalização Completa with a previous pagamento parcial.
-        .filter((cb) => {
-          if (cb.disabled === true) return false;
-
-          const isPago = cb.getAttribute("pagamento") === "1";
-          if (!isPago) return true;
-
-          const parcialCount =
-            parseInt(cb.getAttribute("data-pago-parcial-count") || "0", 10) ||
-            0;
-          const completaCount =
-            parseInt(cb.getAttribute("data-pago-completa-count") || "0", 10) ||
-            0;
-          const rawName = (cb.getAttribute("data-funcao-name") || "")
-            .toString()
-            .trim();
-          const norm = (s) =>
-            (s || "")
-              .toString()
-              .trim()
-              .toLowerCase()
-              .normalize("NFD")
-              .replace(/[\u0300-\u036f]/g, "");
-          const funcaoName = norm(rawName);
-
-          const needsPagoCompleta =
-            completaCount === 0 &&
-            parcialCount > 0 &&
-            funcaoName === norm("Finalização Completa");
-          return needsPagoCompleta;
-        });
-      var ids = checkboxes.map((cb) => ({
-        id: parseInt(cb.getAttribute("data-id"), 10),
-        origem: cb.getAttribute("data-origem"), // Coletando o atributo origem
-        funcao_id: parseInt(cb.getAttribute("funcao"), 10), // Coletando o atributo funcao_id
+// Confirma TODAS as tarefas visíveis na tabela "A Pagar" (independente de checkbox)
+        var checkboxes = Array.from(
+          document.querySelectorAll("#tabela-a-pagar .pagamento-checkbox"),
+        ).filter((cb) => !cb.disabled && cb.closest("tr").offsetParent !== null);
+        var ids = checkboxes.map((cb) => ({
+          id: parseInt(cb.getAttribute("data-id"), 10),
+          origem: cb.getAttribute("data-origem"),
+          funcao_id: parseInt(cb.getAttribute("funcao"), 10),
         funcao_name: cb.getAttribute("data-funcao-name") || "",
       }));
 
@@ -575,7 +688,7 @@ document.addEventListener("DOMContentLoaded", function () {
             console.error("Erro ao confirmar pagamentos:", error);
           });
       } else {
-        alert("Selecione pelo menos uma imagem para confirmar o pagamento.");
+        alert("Não há tarefas pendentes para confirmar.");
       }
     });
 
@@ -624,12 +737,12 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 function contarLinhasTabela() {
-  const tabela = document.getElementById("tabela-faturamento");
-  const tbody = tabela.getElementsByTagName("tbody")[0];
-  const linhas = tbody.getElementsByTagName("tr");
+  const linhas = Array.from(document.querySelectorAll(
+    "#tabela-a-pagar tbody tr, #tabela-pago tbody tr"
+  ));
   let totalImagens = 0;
   let totalValor = 0;
-  // Mantém o comportamento anterior: contar imagens visíveis e somar valores
+  // Conta imagens visíveis e soma valores
   for (let i = 0; i < linhas.length; i++) {
     const linha = linhas[i];
     if (linha.style.display !== "none") {
@@ -694,7 +807,7 @@ function contarLinhasTabela() {
         .replace(/\p{Diacritic}/gu, "")
         .trim();
       if (
-        fnorm.includes("finalizacao completa") &&
+        (fnorm.includes("finalizacao") && fnorm.includes("completa")) &&
         pagoParcialCount > 0 &&
         pagoCompletaCount === 0
       ) {
@@ -782,9 +895,6 @@ function contarLinhasTabela() {
 }
 
 function filtrarTabela() {
-  const tabela = document.querySelector("#tabela-faturamento tbody");
-  const linhas = tabela.getElementsByTagName("tr");
-
   // Obter todas as checkboxes marcadas
   const checkboxes = document.querySelectorAll(
     '.tipo-imagem input[type="checkbox"]:checked',
@@ -801,33 +911,37 @@ function filtrarTabela() {
     normalize(checkbox.name),
   );
 
-  for (let i = 0; i < linhas.length; i++) {
-    const linha = linhas[i];
-    const funcaoCell = linha.cells[2];
-
-    if (funcaoCell) {
-      let funcaoText = (
-        funcaoCell.textContent ||
-        funcaoCell.innerText ||
-        ""
-      ).toString();
-      // remove rótulos de badge que são anexados ao texto da função
-      funcaoText = funcaoText
-        .replace(/Pago\s*Parcial/gi, "")
-        .replace(/Pago\s*Completa/gi, "")
-        .replace(/\s*-\s*.*/g, "")
-        .trim();
-      const funcaoNorm = normalize(funcaoText);
-      if (
-        funcoesSelecionadas.length === 0 ||
-        funcoesSelecionadas.includes(funcaoNorm)
-      ) {
-        linha.style.display = "";
-      } else {
-        linha.style.display = "none";
+  ["#tabela-a-pagar tbody", "#tabela-pago tbody"].forEach((sel) => {
+    const tbody = document.querySelector(sel);
+    if (!tbody) return;
+    const linhas = tbody.getElementsByTagName("tr");
+    for (let i = 0; i < linhas.length; i++) {
+      const linha = linhas[i];
+      const funcaoCell = linha.cells[2];
+      if (funcaoCell) {
+        let funcaoText = (
+          funcaoCell.textContent ||
+          funcaoCell.innerText ||
+          ""
+        ).toString();
+        // remove rótulos de badge que são anexados ao texto da função
+        funcaoText = funcaoText
+          .replace(/Pago\s*Parcial/gi, "")
+          .replace(/Pago\s*Completa/gi, "")
+          .replace(/\s*-\s*.*/g, "")
+          .trim();
+        const funcaoNorm = normalize(funcaoText);
+        if (
+          funcoesSelecionadas.length === 0 ||
+          funcoesSelecionadas.includes(funcaoNorm)
+        ) {
+          linha.style.display = "";
+        } else {
+          linha.style.display = "none";
+        }
       }
     }
-  }
+  });
 
   contarLinhasTabela();
 }
@@ -895,7 +1009,7 @@ document
         .map((cb) => cb.name)
         .filter(Boolean);
       const itens = Array.from(
-        document.querySelectorAll("#tabela-faturamento tbody tr"),
+        document.querySelectorAll("#tabela-a-pagar tbody tr, #tabela-pago tbody tr"),
       )
         .filter((tr) => tr.offsetParent !== null)
         .map((tr) => {
@@ -1014,7 +1128,11 @@ document
           currentY += 10;
 
           // ==== Agrupamento por função ====
-          const table = document.getElementById("tabela-faturamento");
+          const allTableRows = [
+            ...document.querySelectorAll("#tabela-a-pagar tbody tr"),
+            ...document.querySelectorAll("#tabela-pago tbody tr"),
+          ];
+          const tableHeaderThs = document.querySelectorAll("#tabela-a-pagar thead tr th");
           const selectedColumnIndexes = [0, 1, 2]; // colunas que vão para o PDF
           const funcaoColumnIndex = 2; // Ajuste para o índice da coluna "função"
           const dataPagamentoColumnIndex = 5;
@@ -1023,13 +1141,13 @@ document
           const rows = [];
           const agrupamentoFuncoes = {};
 
-          table.querySelectorAll("thead tr th").forEach((header, index) => {
+          tableHeaderThs.forEach((header, index) => {
             if (selectedColumnIndexes.includes(index)) {
               headers.push(header.innerText);
             }
           });
 
-          table.querySelectorAll("tbody tr").forEach((row) => {
+          allTableRows.forEach((row) => {
             const cells = row.querySelectorAll("td");
             const cell = cells[dataPagamentoColumnIndex];
 
@@ -1193,15 +1311,24 @@ function numeroPorExtenso(num) {
 }
 
 function exportToExcel() {
-  // Seleciona a tabela HTML
-  var tabela = document.getElementById("tabela-faturamento");
+  // Combina as duas tabelas em uma planilha
+  const headerRow = document.querySelector("#tabela-a-pagar thead tr");
+  const allRows = [
+    ...document.querySelectorAll("#tabela-a-pagar tbody tr"),
+    ...document.querySelectorAll("#tabela-pago tbody tr"),
+  ];
 
-  // Converte a tabela para uma planilha usando SheetJS
-  var planilha = XLSX.utils.table_to_sheet(tabela);
+  const wsData = [];
+  if (headerRow) {
+    wsData.push(Array.from(headerRow.cells).map((th) => th.textContent.trim()));
+  }
+  allRows.forEach((row) => {
+    wsData.push(Array.from(row.cells).map((td) => td.textContent.trim()));
+  });
 
-  // Cria um novo workbook e adiciona a planilha
+  var ws = XLSX.utils.aoa_to_sheet(wsData);
   var wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, planilha, "Dados");
+  XLSX.utils.book_append_sheet(wb, ws, "Dados");
 
   // Pega as informações do colaborador, mês e ano
   const colaborador =

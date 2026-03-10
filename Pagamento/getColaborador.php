@@ -553,6 +553,92 @@ foreach ($funcoes as $f) {
     $countsByOrigem[$orig]++;
 }
 
+// ─── Pós-processamento: valor_exibido, valor_esperado, tem_divergencia ────────
+// Coleta IDs de colaboradores presentes nos resultados (para colabs 8 que vê outros)
+$colabIdsNaLista = array_values(array_unique(array_filter(
+    array_map(fn($f) => isset($f['colaborador_id']) ? (int)$f['colaborador_id'] : 0, $funcoes)
+)));
+
+$fcMap = []; // "colabId_funcaoId" => valor (de funcao_colaborador)
+if (!empty($colabIdsNaLista)) {
+    $inPlaceholders = implode(',', array_fill(0, count($colabIdsNaLista), '?'));
+    $stmtFc = $conn->prepare(
+        "SELECT colaborador_id, funcao_id, valor FROM funcao_colaborador WHERE colaborador_id IN ($inPlaceholders)"
+    );
+    $stmtFc->bind_param(str_repeat('i', count($colabIdsNaLista)), ...$colabIdsNaLista);
+    $stmtFc->execute();
+    $resFc = $stmtFc->get_result();
+    while ($rowFc = $resFc->fetch_assoc()) {
+        $fcKey = ((int)$rowFc['colaborador_id']) . '_' . ((int)$rowFc['funcao_id']);
+        $fcMap[$fcKey] = $rowFc['valor'] !== null ? (float)$rowFc['valor'] : null;
+    }
+    $stmtFc->close();
+}
+
+foreach ($funcoes as &$f) {
+    $colabId  = isset($f['colaborador_id']) ? (int)$f['colaborador_id'] : 0;
+    $funcId   = isset($f['funcao_id'])      ? (int)$f['funcao_id']      : 0;
+    $nomeFn   = $f['nome_funcao'] ?? '';
+    $pagoParc = (int)($f['pago_parcial_count']  ?? 0);
+    $pagoComp = (int)($f['pago_completa_count'] ?? 0);
+
+    // Colaboradores 24 e 12 fazem Finalização em imagens de Planta Humanizada — diferenciar label
+    if (in_array($colabId, [24, 12]) && $funcId === 4) {
+        $f['nome_funcao'] = str_replace('Finalização', 'Finalização PH', $f['nome_funcao'] ?? '');
+        $nomeFn = $f['nome_funcao'];
+    }
+
+    $valorBruto = $f['valor'] !== null ? (float)$f['valor'] : null;
+    $tarifado   = $fcMap[$colabId . '_' . $funcId] ?? null;  // valor cheio em funcao_colaborador
+
+    // Colaboradores 24 e 12 fazem Finalização em Planta Humanizada:
+    // preço calculado pelo nome da imagem (mesma lógica de insereFuncao.php)
+    if (in_array($colabId, [24, 12]) && $funcId === 4) {
+        $imgNomeLower = mb_strtolower($f['imagem_nome'] ?? '', 'UTF-8');
+        if (str_contains($imgNomeLower, 'lazer') || str_contains($imgNomeLower, 'implanta')) {
+            $tarifado = 200.00;
+        } elseif (str_contains($imgNomeLower, 'pavimento') && (str_contains($imgNomeLower, 'repeti') || str_contains($imgNomeLower, 'varia'))) {
+            $tarifado = 80.00;
+        } elseif (str_contains($imgNomeLower, 'pavimento') || str_contains($imgNomeLower, 'garagem')) {
+            $tarifado = 150.00;
+        } elseif (str_contains($imgNomeLower, 'varia')) {
+            $tarifado = 80.00;
+        } else {
+            $tarifado = 130.00;
+        }
+    }
+
+    // valor_esperado = sempre o valor CHEIO de funcao_colaborador
+    // O banco deve guardar o valor inteiro; o 50% é só exibição.
+    $valorEsperado = $tarifado;
+
+    // valor_exibido: 50% para Finalização Parcial ou pago-parcial aguardando 2ª parcela
+    $valorExibido = $valorBruto;
+    if ($tarifado !== null && $funcId === 4) {
+        $ehParcial     = stripos($nomeFn, 'Parcial') !== false;
+        $pagoSoParcial = $pagoParc > 0 && $pagoComp === 0;
+
+        if ($ehParcial || $pagoSoParcial) {
+            $valorExibido = round($tarifado * 0.5, 2);
+        } else {
+            $valorExibido = $tarifado;
+        }
+    } elseif ($tarifado !== null) {
+        $valorExibido = $tarifado;
+    }
+
+    $f['valor_tarifado']  = $tarifado;       // valor cheio de funcao_colaborador
+    $f['valor_esperado']  = $valorEsperado;  // o que deve estar salvo em fi.valor (sempre cheio)
+    $f['valor_exibido']   = $valorExibido;   // o que a tabela mostra (50% quando parcial)
+    $f['tem_divergencia'] = (
+        $valorEsperado !== null
+        && $valorBruto  !== null
+        && abs($valorBruto - $valorEsperado) >= 0.01
+    );
+}
+unset($f);
+// ──────────────────────────────────────────────────────────────────────────────
+
 $response = [
     "dadosColaborador" => $dadosColaborador,
     "funcoes" => $funcoes,

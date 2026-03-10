@@ -433,6 +433,20 @@ button#generate-pdf:hover {
 }
 
 /* --- Pagamentos: status badges and action buttons --- */
+.btn-pagar-linha {
+  padding: 3px 10px;
+  font-size: 12px;
+  background: #16a34a;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-pagar-linha:hover {
+  background: #15803d;
+}
+
 .badge {
   display: inline-block;
   padding: 4px 8px;

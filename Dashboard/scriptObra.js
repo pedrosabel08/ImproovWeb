@@ -5197,7 +5197,7 @@ document
     function enviarFormulario() {
       $.ajax({
         type: "POST",
-        url: "https://www.improov.com.br/flow/ImproovWeb/insereFuncao2.php",
+        url: "../insereFuncao2.php",
         data: dados,
         success: function (response) {
           Toastify({

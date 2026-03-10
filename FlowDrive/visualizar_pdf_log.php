@@ -17,6 +17,20 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// Improve robustness for long downloads and background aborts
+@ignore_user_abort(true);
+@set_time_limit(60);
+
+// Simple file logging to help diagnose intermittent failures
+$__vpl_logfile = __DIR__ . '/visualizar_pdf_log.log';
+function __vpl_write_log($msg)
+{
+    global $__vpl_logfile;
+    $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    $line = '[' . date('c') . '] ' . $ip . ' - ' . trim((string) $msg) . PHP_EOL;
+    @file_put_contents($__vpl_logfile, $line, FILE_APPEND | LOCK_EX);
+}
+
 // if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
 //     header('Location: ../index.html');
 //     exit;
@@ -27,6 +41,7 @@ include '../conexao.php';
 $idlog = isset($_GET['idlog']) ? intval($_GET['idlog']) : 0;
 if ($idlog <= 0) {
     http_response_code(400);
+    __vpl_write_log('invalid idlog: ' . var_export($_GET, true));
     echo 'Parâmetro idlog inválido.';
     exit;
 }
@@ -43,6 +58,7 @@ $res = $stmt->get_result();
 
 if (!$res || $res->num_rows === 0) {
     http_response_code(404);
+    __vpl_write_log('arquivo nao encontrado for id=' . $idlog);
     echo 'Arquivo não encontrado.';
     exit;
 }
@@ -114,6 +130,7 @@ function stream_pdf_from_caminho($row, $download = false)
     $candidates = build_candidate_paths($rawCaminho);
     if (count($candidates) === 0) {
         http_response_code(500);
+        __vpl_write_log('no candidates for caminho=' . var_export($rawCaminho, true));
         header('Content-Type: text/plain; charset=UTF-8');
         echo 'Caminho do arquivo não encontrado.';
         exit;
@@ -121,7 +138,10 @@ function stream_pdf_from_caminho($row, $download = false)
 
     // 1) Try local filesystem first
     foreach ($candidates as $p) {
-        if (@is_file($p) && @is_readable($p)) {
+        $isFile = @is_file($p);
+        $isReadable = @is_readable($p);
+        __vpl_write_log('checking local candidate: ' . $p . ' is_file=' . ($isFile ? '1' : '0') . ' is_readable=' . ($isReadable ? '1' : '0'));
+        if ($isFile && $isReadable) {
             // clear any buffered output before sending binary
             while (ob_get_level() > 0) {
                 @ob_end_clean();
@@ -136,7 +156,12 @@ function stream_pdf_from_caminho($row, $download = false)
             if ($size !== false) {
                 header('Content-Length: ' . $size);
             }
-            @readfile($p);
+            $ok = @readfile($p);
+            if ($ok === false) {
+                __vpl_write_log('readfile failed for ' . $p);
+            } else {
+                __vpl_write_log('served local file ' . $p . ' size=' . ($size !== false ? $size : 'unknown'));
+            }
             exit;
         }
     }
@@ -147,6 +172,7 @@ function stream_pdf_from_caminho($row, $download = false)
     try {
         $cfg = improov_sftp_config();
     } catch (RuntimeException $e) {
+        __vpl_write_log('improov_sftp_config exception: ' . $e->getMessage());
         http_response_code(500);
         header('Content-Type: text/plain; charset=UTF-8');
         echo 'Configuração SFTP ausente.';
@@ -159,7 +185,20 @@ function stream_pdf_from_caminho($row, $download = false)
     $password = $cfg['pass'];
 
     $sftp = new \phpseclib3\Net\SFTP($host, $port);
-    if (!$sftp->login($username, $password)) {
+    // try login with a small retry to handle transient network issues
+    $loginOk = false;
+    for ($attempt = 1; $attempt <= 2; $attempt++) {
+        if ($sftp->login($username, $password)) {
+            $loginOk = true;
+            __vpl_write_log('sftp login success on attempt ' . $attempt . ' host=' . $host . ' user=' . $username);
+            break;
+        }
+        __vpl_write_log('sftp login failed on attempt ' . $attempt . ' host=' . $host . ' user=' . $username);
+        if ($attempt === 1) {
+            usleep(200000); // 200ms before retry
+        }
+    }
+    if (!$loginOk) {
         http_response_code(502);
         header('Content-Type: text/plain; charset=UTF-8');
         echo 'Falha ao conectar no servidor de arquivos.';
@@ -168,17 +207,28 @@ function stream_pdf_from_caminho($row, $download = false)
 
     $data = false;
     $usedPath = '';
+    // try each candidate, with one retry per path to mitigate transient SFTP hiccups
     foreach ($candidates as $p) {
         $p = normalize_path_slashes($p);
+        __vpl_write_log('sftp get attempt for path: ' . $p);
         $try = $sftp->get($p);
+        if ($try === false) {
+            // retry once
+            __vpl_write_log('sftp get failed, retrying: ' . $p);
+            usleep(150000);
+            $try = $sftp->get($p);
+        }
         if ($try !== false) {
             $data = $try;
             $usedPath = $p;
+            __vpl_write_log('sftp get success for: ' . $p . ' bytes=' . strlen($try));
             break;
         }
+        __vpl_write_log('sftp get ultimately failed for: ' . $p);
     }
 
     if ($data === false) {
+        __vpl_write_log('no data returned from sftp for id=' . ($row['id'] ?? 'unknown'));
         http_response_code(404);
         header('Content-Type: text/plain; charset=UTF-8');
         echo 'Arquivo PDF não encontrado no servidor.';
@@ -189,6 +239,7 @@ function stream_pdf_from_caminho($row, $download = false)
     // Some files may have a few leading whitespace bytes, so search a small prefix.
     $prefix = substr($data, 0, 1024);
     if (strpos($prefix, '%PDF-') === false) {
+        __vpl_write_log('invalid pdf prefix for usedPath=' . $usedPath . ' prefix=' . substr($prefix, 0, 200));
         http_response_code(502);
         header('Content-Type: text/plain; charset=UTF-8');
         echo 'Resposta inválida ao buscar PDF (' . $usedPath . ').';
@@ -205,6 +256,7 @@ function stream_pdf_from_caminho($row, $download = false)
     header('Pragma: no-cache');
     header('Content-Length: ' . strlen($data));
     echo $data;
+    __vpl_write_log('streamed sftp data for ' . $usedPath . ' bytes=' . strlen($data));
     exit;
 }
 

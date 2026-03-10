@@ -841,6 +841,30 @@ function renderPerFileSufixos(files, sufixosOptions) {
   container.innerHTML = '<div class="pf-header">Sufixo por arquivo</div>';
   container.style.display = "";
 
+  // ── "Apply to all" row ──────────────────────────────────────────
+  const applyAllRow = document.createElement("div");
+  applyAllRow.className = "pf-apply-all-row";
+  applyAllRow.innerHTML = `
+    <select id="sufixo_apply_all" class="sufixo-apply-all-select" style="width:100%"></select>
+    <button type="button" id="btnApplyAllSufixo" class="btn-apply-all" title="Aplicar para todos">
+      <i class="ri-check-double-line"></i> Aplicar para todos
+    </button>`;
+  container.appendChild(applyAllRow);
+  initSufixoSelect2("#sufixo_apply_all", sufixosOptions);
+
+  document.getElementById("btnApplyAllSufixo")?.addEventListener("click", () => {
+    const applyVal = $("#sufixo_apply_all").val();
+    if (!applyVal) return;
+    container.querySelectorAll(".sufixo-select2").forEach((el) => {
+      const $el = $(el);
+      // If option doesn't exist yet, add it (tags mode)
+      if (!$el.find(`option[value="${applyVal}"]`).length) {
+        $el.append(new Option(applyVal, applyVal, true, true));
+      }
+      $el.val(applyVal).trigger("change");
+    });
+  });
+
   Array.from(files).forEach((file, i) => {
     const uid = `sufixo_pf_${i}`;
     const row = document.createElement("div");

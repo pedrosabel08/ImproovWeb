@@ -30,6 +30,77 @@ header("Access-Control-Allow-Origin: https://improov.com.br");
 header("Access-Control-Allow-Methods: POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type");
 
+// --- Debug logging helpers (appends to FlowDrive/upload_debug.log) ---
+$UPLOAD_DEBUG_LOG = __DIR__ . '/upload_debug.log';
+ini_set('log_errors', '1');
+ini_set('display_errors', '0');
+error_reporting(E_ALL);
+
+function upload_debug_write($msg)
+{
+    global $UPLOAD_DEBUG_LOG;
+    $time = date('Y-m-d H:i:s');
+    $entry = "[{$time}] " . (string)$msg . PHP_EOL;
+    @file_put_contents($UPLOAD_DEBUG_LOG, $entry, FILE_APPEND | LOCK_EX);
+}
+
+// Log uncaught exceptions as JSON + file
+set_exception_handler(function ($e) {
+    upload_debug_write("Uncaught exception: " . $e->getMessage() . " in " . $e->getFile() . ":" . $e->getLine());
+    upload_debug_write("Stack: " . $e->getTraceAsString());
+    if (!headers_sent()) http_response_code(500);
+    echo json_encode(['errors' => ['Internal server error'], 'log' => []]);
+    exit;
+});
+
+// On fatal errors (shutdown), write diagnostic info
+register_shutdown_function(function () {
+    $err = error_get_last();
+    if ($err && in_array($err['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR], true)) {
+        $msg = "Fatal error: " . ($err['message'] ?? '') . " in " . ($err['file'] ?? '') . ':' . ($err['line'] ?? '0');
+        upload_debug_write($msg);
+        // minimal summary of POST/FILES (no file contents)
+        $post = @json_encode($_POST);
+        $files = [];
+        foreach ($_FILES ?? [] as $k => $f) {
+            if (is_array($f['name'])) {
+                // multiple files input
+                $arr = [];
+                foreach ($f['name'] as $i => $n) {
+                    $arr[] = ['name' => $n, 'size' => $f['size'][$i] ?? null, 'error' => $f['error'][$i] ?? null];
+                }
+                $files[$k] = $arr;
+            } else {
+                $files[$k] = ['name' => $f['name'] ?? null, 'size' => $f['size'] ?? null, 'error' => $f['error'] ?? null];
+            }
+        }
+        upload_debug_write('REQUEST SUMMARY: REMOTE_ADDR=' . ($_SERVER['REMOTE_ADDR'] ?? '-') . ' URI=' . ($_SERVER['REQUEST_URI'] ?? '-'));
+        upload_debug_write('POST: ' . $post);
+        upload_debug_write('FILES: ' . @json_encode($files));
+        // Try to return a JSON error if possible
+        if (!headers_sent()) header('Content-Type: application/json');
+        echo json_encode(['errors' => [$msg]]);
+    }
+});
+
+// Initial quick trace of invocation
+upload_debug_write("upload.php invoked by " . ($_SERVER['REMOTE_ADDR'] ?? 'CLI') . " - METHOD=" . ($_SERVER['REQUEST_METHOD'] ?? ''));
+upload_debug_write('Initial POST keys: ' . json_encode(array_keys($_POST ?? []))); {
+    $fileSummary = [];
+    foreach ($_FILES ?? [] as $k => $f) {
+        if (is_array($f['name'])) {
+            $arr = [];
+            foreach ($f['name'] as $i => $n) {
+                $arr[] = ['name' => $n, 'size' => $f['size'][$i] ?? null, 'error' => $f['error'][$i] ?? null];
+            }
+            $fileSummary[$k] = $arr;
+        } else {
+            $fileSummary[$k] = ['name' => $f['name'] ?? null, 'size' => $f['size'] ?? null, 'error' => $f['error'] ?? null];
+        }
+    }
+    upload_debug_write('Initial FILES summary: ' . @json_encode($fileSummary));
+}
+
 // --- Small dotenv loader (no external dependency) ---
 function load_dotenv($path)
 {
@@ -179,6 +250,18 @@ function resolve_slack_user_id($token, $identifier, &$log)
     return null;
 }
 
+// Mask a secret for safe logging: show first and last char when possible, otherwise indicate set/empty
+function mask_env($val)
+{
+    if ($val === null || $val === '')
+        return '(empty)';
+    $s = (string)$val;
+    $len = strlen($s);
+    if ($len <= 2)
+        return '***SET***';
+    return substr($s, 0, 1) . str_repeat('*', max(3, $len - 2)) . substr($s, -1);
+}
+
 // Load .env (if present) from project root
 load_dotenv(__DIR__ . '/../.env');
 
@@ -203,10 +286,27 @@ try {
     exit;
 }
 
+// Variáveis do log
+$log = [];
+$success = [];
+$errors = [];
+
+
 $host = $sftpCfg['host'];
 $port = $sftpCfg['port'];
 $username = $sftpCfg['user'];
 $password = $sftpCfg['pass'];
+
+// Log resolved SFTP configuration (mask password) so we can verify correct values
+$envHost = getenv('IMPROOV_SFTP_HOST');
+$envPort = getenv('IMPROOV_SFTP_PORT');
+$envUser = getenv('IMPROOV_SFTP_USER');
+$envPass = getenv('IMPROOV_SFTP_PASS');
+$maskedPass = mask_env($password);
+$maskedEnvPass = mask_env($envPass);
+if (!isset($log) || !is_array($log)) $log = [];
+$log[] = "SFTP config resolved: host={$host}, port={$port}, user={$username}, pass={$maskedPass} (env host={$envHost}, env user={$envUser}, env pass={$maskedEnvPass})";
+upload_debug_write("SFTP config resolved: host={$host}, port={$port}, user={$username}, pass={$maskedPass} (env host={$envHost}, env user={$envUser}, env pass={$maskedEnvPass})");
 
 // ---------- Dados FTP ----------
 $ftp_host = $ftpCfg['host'];
@@ -214,10 +314,6 @@ $ftp_port = $ftpCfg['port'];
 $ftp_user = $ftpCfg['user'];
 $ftp_pass = $ftpCfg['pass'];
 $ftp_base = $ftpCfg['base'];
-// Variáveis do log
-$log = [];
-$success = [];
-$errors = [];
 
 // Agrupamento para acompanhamento inteligente: chave = "categoria|tipo_arquivo"
 $acompGroups = [];
@@ -284,12 +380,48 @@ $arquivosPorImagem = $_FILES['arquivos_por_imagem'] ?? [];
 // Observações por imagem (nome: observacoes_por_imagem[<id>])
 $observacoesPorImagem = $_POST['observacoes_por_imagem'] ?? [];
 
-$sftp = new SFTP($host, $port);
-if (!$sftp->login($username, $password)) {
-    echo json_encode(['errors' => ["Erro ao conectar no servidor SFTP."], 'log' => $log]);
+$sftp = null;
+$maxAttempts = 4;
+$connected = false;
+// Try multiple times with exponential backoff to mitigate intermittent network issues
+for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+    // Log DNS resolution attempt
+    $resolved = @gethostbyname($host);
+    upload_debug_write("SFTP attempt #{$attempt}: resolving {$host} => {$resolved}");
+
+    try {
+        $sftp = new SFTP($host, $port);
+        $logged = $sftp->login($username, $password);
+        if ($logged) {
+            $log[] = "Conectado no servidor SFTP (attempt {$attempt}).";
+            upload_debug_write("SFTP connected on attempt {$attempt} to {$host}:{$port}");
+            $connected = true;
+            break;
+        } else {
+            upload_debug_write("SFTP login returned false on attempt {$attempt} for {$host}:{$port}");
+        }
+    } catch (Throwable $e) {
+        upload_debug_write("SFTP connection exception (attempt {$attempt}): " . $e->getMessage());
+        upload_debug_write("Trace: " . $e->getTraceAsString());
+    }
+
+    // if not last attempt, wait with backoff
+    if ($attempt < $maxAttempts) {
+        $wait = pow(2, $attempt - 1); // 1,2,4...
+        upload_debug_write("SFTP will retry in {$wait}s (attempt {$attempt} of {$maxAttempts})");
+        // sleep modestly to avoid long-running requests; combine sleep and usleep for fractions if needed
+        sleep((int)$wait);
+    }
+}
+
+if (!$connected) {
+    $msg = "Erro ao conectar no SFTP após {$maxAttempts} tentativas.";
+    upload_debug_write($msg);
+    $log[] = $msg;
+    if (!headers_sent()) header('Content-Type: application/json');
+    echo json_encode(['errors' => [$msg], 'log' => $log]);
     exit;
 }
-$log[] = "Conectado no servidor SFTP.";
 
 // Helper: tenta enviar via SFTP e registra erros detalhados; faz fallback para enviar o conteúdo do arquivo
 function sftpPutWithFallback($sftp, $remotePath, $localFile, &$log, &$errors)

@@ -6,6 +6,18 @@ header('Access-Control-Allow-Headers: Content-Type');
 
 include 'conexao.php';
 
+// Simple file logger for debugging (insereFuncao2)
+function write_log_insere_funcao2($msg)
+{
+    $logdir = __DIR__ . '/logs';
+    if (!is_dir($logdir)) {
+        @mkdir($logdir, 0755, true);
+    }
+    $file = $logdir . '/insereFuncao2.log';
+    $line = date('[Y-m-d H:i:s]') . ' ' . $msg . PHP_EOL;
+    @file_put_contents($file, $line, FILE_APPEND | LOCK_EX);
+}
+
 function emptyToNull($value)
 {
     return ($value !== '' && $value !== null) ? $value : null;
@@ -48,11 +60,33 @@ try {
     $update_image_status->execute();
     $update_image_status->close();
 
+    // Busca o nome da imagem (para calcular valor de Planta Humanizada)
+    $imagem_nome_atual = null;
+    $stmtImgNome = $conn->prepare("SELECT imagem_nome FROM imagens_cliente_obra WHERE idimagens_cliente_obra = ? LIMIT 1");
+    $stmtImgNome->bind_param('i', $imagem_id);
+    $stmtImgNome->execute();
+    $stmtImgNome->bind_result($imagem_nome_atual);
+    $stmtImgNome->fetch();
+    $stmtImgNome->close();
+
+    // Prepara busca de valor por colaborador/função
+    $stmtValor = $conn->prepare("SELECT valor FROM funcao_colaborador WHERE colaborador_id = ? AND funcao_id = ? LIMIT 1");
+    if ($stmtValor === false) {
+        write_log_insere_funcao2("Prepare stmtValor failed: " . $conn->error);
+        throw new Exception('Erro no prepare stmtValor: ' . $conn->error);
+    }
+
     // Prepara statement de insert/update
-    $stmt = $conn->prepare("INSERT INTO funcao_imagem (imagem_id, colaborador_id, funcao_id, prazo, status, observacao)
-                            VALUES (?, ?, ?, ?, ?, ?)
-                            ON DUPLICATE KEY UPDATE colaborador_id = VALUES(colaborador_id), prazo = VALUES(prazo), 
-                            status = VALUES(status), observacao = VALUES(observacao)");
+    $insertSql = "INSERT INTO funcao_imagem (imagem_id, colaborador_id, funcao_id, prazo, status, observacao, valor)
+                            VALUES (?, ?, ?, ?, ?, ?, ?)
+                            ON DUPLICATE KEY UPDATE colaborador_id = VALUES(colaborador_id), prazo = VALUES(prazo),
+                            status = VALUES(status), observacao = VALUES(observacao),
+                            valor = VALUES(valor)";
+    $stmt = $conn->prepare($insertSql);
+    if ($stmt === false) {
+        write_log_insere_funcao2("Prepare insert stmt failed: " . $conn->error . " -- SQL: " . $insertSql);
+        throw new Exception('Erro no prepare insert: ' . $conn->error);
+    }
 
     foreach ($funcao_ids as $funcao => $funcao_id) {
         $parametro = $funcao_parametros[$funcao];
@@ -75,12 +109,60 @@ try {
                 throw new Exception("Colaborador ID $colaborador_id não encontrado na tabela colaborador. parametro_id = {$parametro}_id");
             }
 
-            $stmt->bind_param("iiisss", $imagem_id, $colaborador_id, $funcao_id, $prazo, $status, $obs);
-            $stmt->execute();
+            // Determina valor da função para este colaborador
+            $valorFuncao = null;
+            if ($funcao_id == 7) {
+                // Planta Humanizada: derivar do nome da imagem
+                if ($imagem_nome_atual !== null) {
+                    $n = mb_strtolower($imagem_nome_atual, 'UTF-8');
+                    if (str_contains($n, 'lazer') || str_contains($n, 'implanta')) {
+                        $valorFuncao = 200.00;
+                    } elseif (str_contains($n, 'pavimento') && (str_contains($n, 'repeti') || str_contains($n, 'varia'))) {
+                        $valorFuncao = 80.00;
+                    } elseif (str_contains($n, 'pavimento') || str_contains($n, 'garagem')) {
+                        $valorFuncao = 150.00;
+                    } elseif (str_contains($n, 'varia')) {
+                        $valorFuncao = 80.00;
+                    } else {
+                        $valorFuncao = 130.00;
+                    }
+                }
+            } else {
+                $stmtValor->bind_param('ii', $colaborador_id, $funcao_id);
+                if ($stmtValor->execute() === false) {
+                    write_log_insere_funcao2("stmtValor execute failed: " . $stmtValor->error . " | colaborador_id=" . $colaborador_id . " funcao_id=" . $funcao_id);
+                } else {
+                    $resultValor = $stmtValor->get_result();
+                    $rowValor = $resultValor->fetch_assoc();
+                    if ($rowValor === null) {
+                        write_log_insere_funcao2("stmtValor: NO ROW FOUND in funcao_colaborador for colaborador_id=" . $colaborador_id . " funcao_id=" . $funcao_id);
+                    } elseif ($rowValor['valor'] === null) {
+                        write_log_insere_funcao2("stmtValor: ROW FOUND but valor=NULL in funcao_colaborador for colaborador_id=" . $colaborador_id . " funcao_id=" . $funcao_id);
+                    } else {
+                        $valorFuncao = (float)$rowValor['valor'];
+                    }
+                    $resultValor->free();
+                }
+            }
+
+            write_log_insere_funcao2("Detected valorFuncao=" . var_export($valorFuncao, true) . " for colaborador_id=" . $colaborador_id . " funcao_id=" . $funcao_id);
+
+            $bound = $stmt->bind_param("iiisssd", $imagem_id, $colaborador_id, $funcao_id, $prazo, $status, $obs, $valorFuncao);
+            if ($bound === false) {
+                write_log_insere_funcao2("bind_param failed (insert): " . $stmt->error . " | tipos=iiisssd | valores=" . json_encode([$imagem_id, $colaborador_id, $funcao_id, $prazo, $status, $obs, $valorFuncao]));
+                throw new Exception('Erro no bind_param (insert): ' . $stmt->error);
+            }
+
+            $execOk = $stmt->execute();
+            write_log_insere_funcao2("EXECUTE insert: ok=" . ($execOk ? '1' : '0') . " | stmt_error=" . $stmt->error . " | affected_rows=" . $stmt->affected_rows);
+            if ($execOk === false) {
+                throw new Exception('Erro no execute insert: ' . $stmt->error);
+            }
         }
     }
 
     $stmt->close();
+    $stmtValor->close();
 
     $conn->commit();
     echo json_encode([

@@ -6,6 +6,18 @@ header('Access-Control-Allow-Headers: Content-Type');
 
 include 'conexao.php';
 
+// Simple file logger for debugging
+function write_log_insere_funcao($msg)
+{
+    $logdir = __DIR__ . '/logs';
+    if (!is_dir($logdir)) {
+        @mkdir($logdir, 0755, true);
+    }
+    $file = $logdir . '/insereFuncao.log';
+    $line = date('[Y-m-d H:i:s]') . ' ' . $msg . PHP_EOL;
+    @file_put_contents($file, $line, FILE_APPEND | LOCK_EX);
+}
+
 function emptyToNull($value)
 {
     return ($value !== '' && $value !== null) ? $value : null;
@@ -106,26 +118,111 @@ try {
         $updates[] = 'observacao = VALUES(observacao)';
     }
 
+    // ─── Auto-populate valor a partir de funcao_colaborador ───────────────
+    $valorFuncao = null;
+    if ($colaborador_id !== null && $funcao_id !== null) {
+        if ($funcao_id == 7) {
+            // Planta Humanizada: valor derivado do nome da imagem
+            $stmtImg = $conn->prepare(
+                "SELECT imagem_nome FROM imagens_cliente_obra WHERE idimagens_cliente_obra = ? LIMIT 1"
+            );
+            $stmtImg->bind_param('i', $imagem_id);
+            $stmtImg->execute();
+            $stmtImg->bind_result($nomeImagem);
+            $stmtImg->fetch();
+            $stmtImg->close();
+            if ($nomeImagem !== null) {
+                $n = mb_strtolower($nomeImagem, 'UTF-8');
+                if (str_contains($n, 'lazer') || str_contains($n, 'implanta')) {
+                    $valorFuncao = 200.00;
+                } elseif (str_contains($n, 'pavimento') && (str_contains($n, 'repeti') || str_contains($n, 'varia'))) {
+                    $valorFuncao = 80.00;
+                } elseif (str_contains($n, 'pavimento') || str_contains($n, 'garagem')) {
+                    $valorFuncao = 150.00;
+                } elseif (str_contains($n, 'varia')) {
+                    $valorFuncao = 80.00;
+                } else {
+                    $valorFuncao = 130.00; // Apto individual padrão
+                }
+            }
+        } else {
+            // Demais funções: buscar valor configurado em funcao_colaborador
+            $stmtValor = $conn->prepare(
+                "SELECT valor FROM funcao_colaborador WHERE colaborador_id = ? AND funcao_id = ? LIMIT 1"
+            );
+            $stmtValor->bind_param('ii', $colaborador_id, $funcao_id);
+            $stmtValor->execute();
+            $stmtValor->bind_result($valorFuncao);
+            $stmtValor->fetch();
+            $stmtValor->close();
+        }
+    }
+    if ($valorFuncao !== null) {
+        $campos[] = 'valor';
+        $valores[] = (float)$valorFuncao;
+        // Atualiza valor sempre que o colaborador for enviado na requisição (troca de colaborador reflete nova tarifa)
+        $updates[] = 'valor = VALUES(valor)';
+    }
+    // ──────────────────────────────────────────────────────────────────────
+
     $sql = "INSERT INTO funcao_imagem (" . implode(',', $campos) . ") VALUES (" . implode(',', array_fill(0, count($valores), '?')) . ")";
     if (!empty($updates)) {
         $sql .= " ON DUPLICATE KEY UPDATE " . implode(',', $updates);
     }
 
     $stmt = $conn->prepare($sql);
+    if ($stmt === false) {
+        write_log_insere_funcao("Prepare failed: " . $conn->error . " -- SQL: " . $sql);
+        throw new Exception('Erro no prepare: ' . $conn->error);
+    }
 
     // Monta tipos de bind_param
     $tipos = '';
     foreach ($valores as $v) {
-        $tipos .= is_int($v) ? 'i' : 's';
+        if (is_int($v)) {
+            $tipos .= 'i';
+        } elseif (is_float($v)) {
+            $tipos .= 'd';
+        } else {
+            $tipos .= 's';
+        }
     }
 
-    $stmt->bind_param($tipos, ...$valores);
-    $stmt->execute();
+    $bound = $stmt->bind_param($tipos, ...$valores);
+    if ($bound === false) {
+        write_log_insere_funcao("bind_param failed: " . $stmt->error . " | tipos=" . $tipos . " | valores=" . json_encode($valores));
+        throw new Exception('Erro no bind_param: ' . $stmt->error);
+    }
+
+    $execOk = $stmt->execute();
+    write_log_insere_funcao(
+        "EXECUTE: ok=" . ($execOk ? '1' : '0') .
+            " | SQL=" . $sql .
+            " | tipos=" . $tipos .
+            " | valores=" . json_encode($valores) .
+            " | affected_rows=" . $stmt->affected_rows .
+            " | stmt_error=" . $stmt->error .
+            " | conn_error=" . $conn->error
+    );
+
+    if ($execOk === false) {
+        $stmt->close();
+        throw new Exception('Erro no execute: ' . $stmt->error);
+    }
+
     $stmt->close();
 
     $conn->commit();
     echo json_encode(['success' => 'Dados inseridos/atualizados com sucesso!']);
 } catch (Exception $e) {
+    // Log exception details for debugging
+    write_log_insere_funcao("EXCEPTION: " . $e->getMessage() .
+        " | SQL=" . ($sql ?? 'N/A') .
+        " | tipos=" . ($tipos ?? 'N/A') .
+        " | valores=" . (isset($valores) ? json_encode($valores) : 'N/A') .
+        " | conn_error=" . $conn->error
+    );
+
     $conn->rollback();
     echo json_encode(['error' => 'Erro ao executar a transação: ' . $e->getMessage()]);
 }

@@ -177,7 +177,7 @@ try {
     // inclusive quando já estava parcial e recebe novas imagens.
     if ($novo_status === 'Parcial') {
         // Usar contagem pela entrega + contagem por obra para refletir entregas acumuladas
-        $assunto = 'Entrega parcialmente concluída ('. $entregues_obra . ' de ' . $total_obra . ' imagens entregues) com status ' . $status_nome;
+        $assunto = 'Entrega parcialmente concluída (' . $entregues_obra . ' de ' . $total_obra . ' imagens entregues) com status ' . $status_nome;
         $tipo = 'entrega';
         $status_acomp = 'pendente';
         $data_today = date('Y-m-d');
@@ -206,7 +206,7 @@ try {
     }
 
     // Evento de entrega concluída
-    $concluido_set = array('Entregue no prazo','Entregue com atraso','Entrega antecipada');
+    $concluido_set = array('Entregue no prazo', 'Entregue com atraso', 'Entrega antecipada');
     if (in_array($novo_status, $concluido_set) && !in_array($old_status, $concluido_set)) {
         $assunto = 'Entrega ' . $status_nome . ' concluída na obra ' . $obra_nome;
         $tipo = 'entrega';
@@ -218,12 +218,12 @@ try {
             $findPendingAcompStmt->bind_param('i', $obra_id);
             $findPendingAcompStmt->execute();
             $rFind = $findPendingAcompStmt->get_result()->fetch_assoc();
-                if ($rFind && isset($rFind['idacompanhamento_email'])) {
-                    $acomp_id = intval($rFind['idacompanhamento_email']);
-                    if ($updateAcompStmt) {
-                        $updateAcompStmt->bind_param('ssii', $assunto, $data_today, $entrega_id, $acomp_id);
-                        $updateAcompStmt->execute();
-                    }
+            if ($rFind && isset($rFind['idacompanhamento_email'])) {
+                $acomp_id = intval($rFind['idacompanhamento_email']);
+                if ($updateAcompStmt) {
+                    $updateAcompStmt->bind_param('ssii', $assunto, $data_today, $entrega_id, $acomp_id);
+                    $updateAcompStmt->execute();
+                }
             } else {
                 if ($insertAcompStmt) $insertAcompStmt->bind_param('issiiss', $obra_id, $assunto, $data_today, $next_ordem, $entrega_id, $tipo, $status_acomp);
                 if ($insertAcompStmt) $insertAcompStmt->execute();
@@ -269,59 +269,11 @@ try {
 
     $conn->commit();
 
-    // === Envio de e-mail com resumo da entrega (teste) ===
-    // Se existir token do Mailtrap, usa a API de envio; caso contrário, usa PHPMailer/SMTP ou mail().
-    $mail_log = '';
-    $mailtrap_token = getenv('MAILTRAP_API_TOKEN') ?: null;
-    $to = 'giovanasabel24@gmail.com';
-    $subject = "Resumo de entrega - {$obra_nome}";
-    $link = (isset($_SERVER['HTTP_HOST']) ? (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https://' : 'http://') . $_SERVER['HTTP_HOST'] : '') . 
-            "/ImproovWeb/Entregas/?entrega_id={$entrega_id}";
-    $html_body = "<p>Olá,</p><p>Foram postadas <strong>{$entregues}</strong> imagens da obra <strong>{$obra_nome}</strong> com status <strong>{$status_nome}</strong>.</p><p>Consulte a entrega aqui: <a href=\"{$link}\">{$link}</a></p><p>Atenciosamente,<br>Equipe</p>";
-
-    if ($mailtrap_token) {
-        // Envia via Mailtrap Send API
-        $payload = [
-            'from' => ['email' => getenv('MAIL_FROM') ?: 'hello@demomailtrap.co', 'name' => getenv('MAIL_FROM_NAME') ?: 'Improov'],
-            'to' => [['email' => $to]],
-            'subject' => $subject,
-            'html' => $html_body,
-            'text' => strip_tags(str_replace(['<br>', '<br/>', '<p>','</p>'], "\n", $html_body)),
-            'category' => 'Entrega'
-        ];
-
-        $ch = curl_init('https://send.api.mailtrap.io/api/send');
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Authorization: Bearer ' . $mailtrap_token,
-            'Content-Type: application/json'
-        ]);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
-
-        $resp = curl_exec($ch);
-        if (curl_errno($ch)) {
-            $mail_log = 'Curl error: ' . curl_error($ch);
-        } else {
-            $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            if ($http_code >= 200 && $http_code < 300) {
-                $mail_log = 'Email enviado via Mailtrap API para ' . $to;
-            } else {
-                $mail_log = 'Mailtrap API retornou HTTP ' . $http_code . ' resposta: ' . substr($resp, 0, 1000);
-            }
-        }
-        curl_close($ch);
-    } else {
-        // Apenas Mailtrap suportado para testes locais; se não houver token, não envia.
-        $mail_log = 'MAILTRAP_API_TOKEN não definido — email não enviado.';
-    }
-
     echo json_encode([
         'success' => true,
         'novo_status' => $novo_status,
         'total_imagens' => $total,
-        'entregues' => $entregues,
-        'mail_log' => $mail_log ?? 'mail não executado'
+        'entregues' => $entregues
     ]);
 } catch (Exception $e) {
     $conn->rollback();

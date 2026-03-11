@@ -7,39 +7,9 @@ error_reporting(E_ALL);
 
 header('Content-Type: application/json');
 
-// Verifica se o autoload do composer existe
-$autoload = __DIR__ . '/Revisao/vendor/autoload.php';
-if (file_exists($autoload)) {
-    require_once $autoload; // Instale via composer quando necessário
-} else {
-    error_log("submit_respostas.php: autoload não encontrado em: $autoload");
-    http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Erro interno: dependências ausentes (vendor/autoload.php).']);
-    exit;
-}
+require_once __DIR__ . '/config/secure_env.php';
 
-use ICal\ICal;
-use Dotenv\Dotenv;
-
-$envPath = __DIR__ . '/Revisao/.env';
-if (!file_exists($envPath)) {
-    error_log("submit_respostas.php: .env não encontrado em: $envPath");
-    http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Erro interno: arquivo .env não encontrado.']);
-    exit;
-}
-
-try {
-    $dotenv = Dotenv::createImmutable(__DIR__ . '/Revisao');
-    $dotenv->load();
-} catch (Exception $e) {
-    error_log('submit_respostas.php: Dotenv erro: ' . $e->getMessage());
-    http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Erro interno ao carregar variáveis de ambiente.']);
-    exit;
-}
-
-$slack_webhook_url = $_ENV['SLACK_WEBHOOK_DAILY_URL'] ?? null;
+$slack_webhook_url = improov_env('SLACK_WEBHOOK_DAILY_URL', null);
 if (!$slack_webhook_url) {
     error_log('submit_respostas.php: SLACK_WEBHOOK_DAILY_URL ausente no .env');
     http_response_code(500);

@@ -473,7 +473,7 @@ if ($mes) {
     $recordeVal = $recordeIndexado[$nomeFuncao] ?? 0;
 
     $linha['mes_anterior'] = $mesAnteriorVal;
-    $linha['recorde_producao'] = max($recordeVal, $quantidadeAtual);
+    $linha['recorde_producao'] = max($recordeVal, $mesAnteriorVal, $quantidadeAtual);
   }
   unset($linha);
 } else {

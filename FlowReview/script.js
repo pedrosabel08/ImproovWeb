@@ -2369,7 +2369,12 @@ async function carregarPdf(rawUrl) {
   pdfViewerState.page = 1;
 
   try {
-    const loadingTask = window.pdfjsLib.getDocument(rawUrl);
+    const loadingTask = window.pdfjsLib.getDocument({
+      url: rawUrl,
+      disableRange: false,
+      disableStream: false,
+      rangeChunkSize: 65536,
+    });
     pdfViewerState.doc = await loadingTask.promise;
     pdfViewerState.pages = pdfViewerState.doc.numPages || 0;
     pdfViewerState.page = 1;

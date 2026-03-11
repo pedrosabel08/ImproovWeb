@@ -112,7 +112,7 @@ if ((isset($_GET['raw']) ? (int) $_GET['raw'] : 0) === 1) {
         header('X-Content-Type-Options: nosniff');
         header('Content-Type: application/pdf');
         header('Content-Disposition: ' . ($download ? 'attachment' : 'inline') . '; filename="' . $filename . '"');
-        header('Cache-Control: private, no-store');
+        header($download ? 'Cache-Control: private, no-store' : 'Cache-Control: private, max-age=300');
         if ($size !== false) header('Content-Length: ' . $size);
         readfile($path);
         exit;
@@ -221,7 +221,7 @@ if ((isset($_GET['raw']) ? (int) $_GET['raw'] : 0) === 1) {
     header('X-Content-Type-Options: nosniff');
     header('Content-Type: application/pdf');
     header('Content-Disposition: ' . ($download ? 'attachment' : 'inline') . '; filename="' . $filename . '"');
-    header('Cache-Control: private, no-store');
+    header($download ? 'Cache-Control: private, no-store' : 'Cache-Control: private, max-age=300');
     header('Content-Length: ' . strlen($data));
     echo $data;
     vpl_log('PDF enviado: ' . $path . ' bytes=' . strlen($data));

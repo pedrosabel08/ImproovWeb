@@ -1,0 +1,1530 @@
+<!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>&#x1f4cb; Pipeline de Produ&ccedil;&atilde;o de Imagens &mdash; Improov</title>
+            <style>
+/* From extension vscode.github */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+.vscode-dark img[src$=\#gh-light-mode-only],
+.vscode-light img[src$=\#gh-dark-mode-only],
+.vscode-high-contrast:not(.vscode-high-contrast-light) img[src$=\#gh-light-mode-only],
+.vscode-high-contrast-light img[src$=\#gh-dark-mode-only] {
+	display: none;
+}
+
+</style>
+            
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css">
+<style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+        </style>
+        <style>
+.task-list-item {
+    list-style-type: none;
+}
+
+.task-list-item-checkbox {
+    margin-left: -20px;
+    vertical-align: middle;
+    pointer-events: none;
+}
+</style>
+<style>
+:root {
+  --color-note: #0969da;
+  --color-tip: #1a7f37;
+  --color-warning: #9a6700;
+  --color-severe: #bc4c00;
+  --color-caution: #d1242f;
+  --color-important: #8250df;
+}
+
+</style>
+<style>
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-note: #2f81f7;
+    --color-tip: #3fb950;
+    --color-warning: #d29922;
+    --color-severe: #db6d28;
+    --color-caution: #f85149;
+    --color-important: #a371f7;
+  }
+}
+
+</style>
+<style>
+.markdown-alert {
+  padding: 0.5rem 1rem;
+  margin-bottom: 16px;
+  color: inherit;
+  border-left: .25em solid #888;
+}
+
+.markdown-alert>:first-child {
+  margin-top: 0
+}
+
+.markdown-alert>:last-child {
+  margin-bottom: 0
+}
+
+.markdown-alert .markdown-alert-title {
+  display: flex;
+  font-weight: 500;
+  align-items: center;
+  line-height: 1
+}
+
+.markdown-alert .markdown-alert-title .octicon {
+  margin-right: 0.5rem;
+  display: inline-block;
+  overflow: visible !important;
+  vertical-align: text-bottom;
+  fill: currentColor;
+}
+
+.markdown-alert.markdown-alert-note {
+  border-left-color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-note .markdown-alert-title {
+  color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-important {
+  border-left-color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-important .markdown-alert-title {
+  color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-warning {
+  border-left-color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-warning .markdown-alert-title {
+  color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-tip {
+  border-left-color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-tip .markdown-alert-title {
+  color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-caution {
+  border-left-color: var(--color-caution);
+}
+
+.markdown-alert.markdown-alert-caution .markdown-alert-title {
+  color: var(--color-caution);
+}
+
+</style>
+        
+        </head>
+        <body class="vscode-body vscode-light">
+            <h1 id="-pipeline-de-produção-de-imagens--improov">📋 Pipeline de Produção de Imagens — Improov</h1>
+<blockquote>
+<p>Documento de análise completa do fluxo de produção de imagens no sistema Improov, baseado no mapeamento do repositório.</p>
+</blockquote>
+<hr>
+<h2 id="1-visão-geral-do-pipeline-de-produção">1. Visão Geral do Pipeline de Produção</h2>
+<p>O sistema Improov gerencia o ciclo de vida completo de imagens de visualização arquitetônica (renders), desde a <strong>concepção inicial</strong> até a <strong>entrega final ao cliente</strong>. O pipeline é composto por etapas sequenciais associadas a funções específicas de produção, com mecanismos automatizados de upload de arquivos, aprovação interna e revisão externa pelo cliente.</p>
+<h3 id="fluxo-macroscópico">Fluxo macroscópico</h3>
+<pre><code>[Fotográfico / Referências]
+         │
+         ▼
+    [P00 — Caderno &amp; Ângulos]
+         │
+         ▼ (aprovação interna FlowReview)
+    [R00 — Prévia]
+         │
+         ▼ (ciclo de revisões)
+    [R01, R02, R03... — Alterações]
+         │
+         ▼ (aprovação final cliente FlowReviewExt)
+    [EF — Entrega Final]
+</code></pre>
+<p>Cada etapa envolve uma ou mais <strong>funções de produção</strong> (Caderno, Modelagem, Composição, Finalização, Pós-Produção, Alteração). Todas as funções seguem o mesmo mecanismo:</p>
+<ol>
+<li>Colaborador executa a função</li>
+<li>Gera um arquivo (<code>.max</code>, <code>.psb</code>, <code>.pdf</code>, <code>.jpg</code>, <code>.exr</code>)</li>
+<li>Envia o arquivo via <strong>Worker de Upload</strong> (SFTP automático para NAS)</li>
+<li>Envia prévia para aprovação via <strong>Flow Review</strong></li>
+<li>Após aprovação, o status da imagem avança para a próxima etapa</li>
+</ol>
+<hr>
+<h2 id="2-estrutura-das-etapas-da-imagem">2. Estrutura das Etapas da Imagem</h2>
+<p>As etapas são representadas na tabela <code>status_imagem</code> e associadas a cada imagem em <code>imagens_cliente_obra.status_id</code>.</p>
+<h3 id="p00--projeto-inicial-escolha-de-ângulos">P00 — Projeto Inicial (Escolha de Ângulos)</h3>
+<p><strong>Objetivo:</strong> Definir os ângulos da imagem que serão produzidos.</p>
+<p><strong>Funções envolvidas:</strong></p>
+<ul>
+<li><strong>Caderno</strong> — briefing e documentação do projeto (PDF)</li>
+<li><strong>Filtro de assets</strong> — seleção dos elementos 3D a usar</li>
+<li><strong>Modelagem / Composição</strong> — construção da cena 3D</li>
+<li><strong>Finalização Parcial</strong> — renderização prévia dos ângulos candidatos</li>
+</ul>
+<p><strong>Fluxo específico (P00):</strong></p>
+<ol>
+<li>Função Finalização aprovada com status P00 → sistema detecta ângulos disponíveis</li>
+<li>Ângulos são registrados na tabela <code>angulos_imagens</code></li>
+<li>Entrega é marcada como &quot;Entrega Pendente&quot; em <code>entregas_itens</code></li>
+<li>Gestão libera para cliente via <strong>FlowReviewExt</strong></li>
+<li>Cliente escolhe um ângulo (ou solicita refazer)</li>
+<li>Ângulo aprovado → produção segue para render final</li>
+<li>Imagem avança para R00</li>
+</ol>
+<p><strong>Tabelas envolvidas:</strong> <code>angulos_imagens</code>, <code>entregas_itens</code>, <code>imagem_decisao_angulos</code>, <code>historico_aprovacoes_imagens</code></p>
+<hr>
+<h3 id="r00--primeira-prévia">R00 — Primeira Prévia</h3>
+<p><strong>Objetivo:</strong> Enviar a primeira prévia completa da imagem ao cliente.</p>
+<p><strong>Funções envolvidas:</strong></p>
+<ul>
+<li><strong>Finalização Completa</strong> — render final da cena</li>
+<li><strong>Pós-Produção</strong> — tratamento final da imagem para o cliente</li>
+</ul>
+<p><strong>Fluxo:</strong></p>
+<ol>
+<li>Finalização gera o render (<code>.exr</code> ou <code>.jpg</code>)</li>
+<li>Render é registrado automaticamente em <code>Renders</code> e em <code>Pós-Produção</code></li>
+<li>Finalizador recebe notificação de aprovação de render</li>
+<li>Pós-Produção processa a imagem e envia como prévia para FlowReview</li>
+<li>Após aprovação interna, imagem é enviada ao cliente via FlowReviewExt</li>
+<li>Se aprovada → avança para EF; se com ajustes → avança para R01</li>
+</ol>
+<hr>
+<h3 id="r01-r02-r03--ciclo-de-alterações">R01, R02, R03... — Ciclo de Alterações</h3>
+<p><strong>Objetivo:</strong> Incorporar feedback do cliente em ciclos iterativos.</p>
+<p><strong>Funções envolvidas:</strong></p>
+<ul>
+<li><strong>Alteração</strong> — executa as modificações solicitadas pelo cliente</li>
+<li><strong>Pós-Produção</strong> — reprocessa a imagem com as alterações</li>
+</ul>
+<p><strong>Fluxo:</strong></p>
+<ol>
+<li>Gestor registra as alterações solicitadas</li>
+<li>Colaborador executa a Alteração e gera novo render</li>
+<li>Pós-Produção reprocessa a imagem</li>
+<li>Nova prévia enviada ao cliente via FlowReviewExt</li>
+<li>Ciclo se repete até aprovação (R01 → R02 → R03...)</li>
+<li>Status da imagem avança a cada rodada (R01, R02, R03, R04, R05)</li>
+</ol>
+<p><strong>Regras de nomenclatura NAS:</strong></p>
+<ul>
+<li>Arquivos de Alteração salvos em: <code>03.Models/{nome_imagem}/Final/{revisao}/</code></li>
+</ul>
+<hr>
+<h3 id="ef--entrega-final">EF — Entrega Final</h3>
+<p><strong>Objetivo:</strong> Concluir a entrega com a imagem aprovada pelo cliente.</p>
+<p><strong>Funções envolvidas:</strong></p>
+<ul>
+<li><strong>Alteração</strong> (se houver último ajuste)</li>
+<li><strong>Pós-Produção</strong> — versão final para entrega</li>
+</ul>
+<p><strong>Fluxo:</strong></p>
+<ol>
+<li>Cliente aprova a prévia no FlowReviewExt</li>
+<li>Arquivo de Pós-Produção aprovado é automaticamente movido para <code>04.Finalizacao/{revisao}/</code></li>
+<li>Status da imagem atualizado para EF (Em Finalização) ou APR (Aprovada)</li>
+<li>Imagem pode ainda transitar para REN (Renderizada) e ENTREGUE</li>
+</ol>
+<hr>
+<h2 id="3-funções-do-pipeline">3. Funções do Pipeline</h2>
+<p>Todas as funções são registradas na tabela <code>funcao</code> e instanciadas por imagem em <code>funcao_imagem</code>.</p>
+<h3 id="31-caderno-funcao_id--1">3.1 Caderno (<code>funcao_id = 1</code>)</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>O que faz</strong></td>
+<td>Documenta o briefing do projeto, referências e instruções técnicas em PDF</td>
+</tr>
+<tr>
+<td><strong>Input</strong></td>
+<td>Briefing do cliente, especificações do projeto</td>
+</tr>
+<tr>
+<td><strong>Output</strong></td>
+<td>Arquivo PDF com o caderno de produção</td>
+</tr>
+<tr>
+<td><strong>Pasta NAS</strong></td>
+<td><code>02.Projetos/</code></td>
+</tr>
+<tr>
+<td><strong>Nome do arquivo</strong></td>
+<td><code>{nº}.{NOMENCLATURA}-{nome}-PDF-{processo}-{revisao}.pdf</code></td>
+</tr>
+<tr>
+<td><strong>Etapas</strong></td>
+<td>P00</td>
+</tr>
+<tr>
+<td><strong>Status funcao_imagem</strong></td>
+<td>Pendente → Em andamento → Em aprovação → Aprovado → Finalizado</td>
+</tr>
+<tr>
+<td><strong>Aprovação</strong></td>
+<td>Ao colocar em aprovação, status muda para &quot;Em aprovação&quot;; arquivo enviado ao worker</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h3 id="32-filtro-de-assets-funcao_id--8">3.2 Filtro de Assets (<code>funcao_id = 8</code>)</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>O que faz</strong></td>
+<td>Filtra e seleciona assets 3D (mobiliário, materiais, vegetação) para uso na cena</td>
+</tr>
+<tr>
+<td><strong>Input</strong></td>
+<td>Referências do projeto, biblioteca de assets</td>
+</tr>
+<tr>
+<td><strong>Output</strong></td>
+<td>PDF ou arquivo de documentação dos assets selecionados</td>
+</tr>
+<tr>
+<td><strong>Pasta NAS</strong></td>
+<td><code>02.Projetos/</code></td>
+</tr>
+<tr>
+<td><strong>Nome do arquivo</strong></td>
+<td><code>{nº}.{NOMENCLATURA}-{nome}-PDF-{processo}-{revisao}.pdf</code></td>
+</tr>
+<tr>
+<td><strong>Etapas</strong></td>
+<td>P00</td>
+</tr>
+<tr>
+<td><strong>Status funcao_imagem</strong></td>
+<td>Igual ao Caderno</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h3 id="33-modelagem-funcao_id--2">3.3 Modelagem (<code>funcao_id = 2</code>)</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>O que faz</strong></td>
+<td>Constrói a geometria 3D da cena (arquitetura, mobiliário)</td>
+</tr>
+<tr>
+<td><strong>Input</strong></td>
+<td>Plantas arquitetônicas, briefing, caderno</td>
+</tr>
+<tr>
+<td><strong>Output</strong></td>
+<td>Arquivo <code>.max</code> (3ds Max) com a modelagem</td>
+</tr>
+<tr>
+<td><strong>Pasta NAS</strong></td>
+<td><code>03.Models/{nome_imagem}/MT/</code></td>
+</tr>
+<tr>
+<td><strong>Nome do arquivo</strong></td>
+<td><code>{nº}.{NOMENCLATURA}-{nome}-IMG-{processo}-{revisao}.{ext}</code></td>
+</tr>
+<tr>
+<td><strong>Etapas</strong></td>
+<td>P00, R00</td>
+</tr>
+<tr>
+<td><strong>Subfuncao NAS</strong></td>
+<td><code>MT</code> (Modelagem Técnica)</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h3 id="34-composição-funcao_id--3">3.4 Composição (<code>funcao_id = 3</code>)</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>O que faz</strong></td>
+<td>Posiciona câmera, luz, materiais e assets na cena 3D</td>
+</tr>
+<tr>
+<td><strong>Input</strong></td>
+<td>Modelagem concluída, referências visuais</td>
+</tr>
+<tr>
+<td><strong>Output</strong></td>
+<td>Arquivo <code>.max</code> ou <code>.psb</code> com a cena composta</td>
+</tr>
+<tr>
+<td><strong>Pasta NAS</strong></td>
+<td><code>03.Models/{nome_imagem}/Comp/</code></td>
+</tr>
+<tr>
+<td><strong>Nome do arquivo</strong></td>
+<td><code>{nº}.{NOMENCLATURA}-{nome}-IMG-{processo}-{revisao}.{ext}</code></td>
+</tr>
+<tr>
+<td><strong>Etapas</strong></td>
+<td>P00, R00</td>
+</tr>
+<tr>
+<td><strong>Subfuncao NAS</strong></td>
+<td><code>Comp</code></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h3 id="35-finalização-funcao_id--4">3.5 Finalização (<code>funcao_id = 4</code>)</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>O que faz</strong></td>
+<td>Executa o render final e ajustes técnicos da imagem</td>
+</tr>
+<tr>
+<td><strong>Input</strong></td>
+<td>Cena composta (<code>.max</code>/<code>.psb</code>), aprovação de ângulo (P00)</td>
+</tr>
+<tr>
+<td><strong>Output</strong></td>
+<td>Render em formato <code>.exr</code> ou <code>.jpg</code> (enviado para Pós-Produção)</td>
+</tr>
+<tr>
+<td><strong>Pasta NAS</strong></td>
+<td><code>03.Models/{nome_imagem}/Final/</code></td>
+</tr>
+<tr>
+<td><strong>Nome do arquivo</strong></td>
+<td><code>{nº}.{NOMENCLATURA}-{nome}-IMG-{processo}-{revisao}.{ext}</code></td>
+</tr>
+<tr>
+<td><strong>Etapas</strong></td>
+<td>P00 (parcial), R00 (completo)</td>
+</tr>
+<tr>
+<td><strong>Subfuncao NAS</strong></td>
+<td><code>Final</code></td>
+</tr>
+<tr>
+<td><strong>Trigger render</strong></td>
+<td>Ao enviar o render, sistema cria linha automática em Renders e Pós-Produção</td>
+</tr>
+<tr>
+<td><strong>Notificação</strong></td>
+<td>Finalizador recebe notificação para aprovar o render</td>
+</tr>
+<tr>
+<td><strong>Ação especial</strong></td>
+<td>Se aprovada com status P00 → registra ângulos em <code>angulos_imagens</code></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h3 id="36-pré-finalização-funcao_id--9">3.6 Pré-Finalização (<code>funcao_id = 9</code>)</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>O que faz</strong></td>
+<td>Etapa intermediária antes da finalização completa</td>
+</tr>
+<tr>
+<td><strong>Input</strong></td>
+<td>Composição aprovada</td>
+</tr>
+<tr>
+<td><strong>Output</strong></td>
+<td>Render parcial para avaliação interna</td>
+</tr>
+<tr>
+<td><strong>Pasta NAS</strong></td>
+<td><code>03.Models/{nome_imagem}/Final/</code></td>
+</tr>
+<tr>
+<td><strong>Etapas</strong></td>
+<td>P00</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h3 id="37-pós-produção-funcao_id--5">3.7 Pós-Produção (<code>funcao_id = 5</code>)</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>O que faz</strong></td>
+<td>Tratamento final da imagem: color grading, retoques, composição 2D</td>
+</tr>
+<tr>
+<td><strong>Input</strong></td>
+<td>Render gerado pela Finalização ou Alteração (<code>.exr</code>/<code>.jpg</code>)</td>
+</tr>
+<tr>
+<td><strong>Output</strong></td>
+<td>Imagem final para o cliente (<code>.jpg</code>/<code>.png</code>)</td>
+</tr>
+<tr>
+<td><strong>Pasta NAS</strong></td>
+<td><code>04.Finalizacao/{revisao}/</code></td>
+</tr>
+<tr>
+<td><strong>Nome do arquivo</strong></td>
+<td><code>{nome_imagem_clean}_{revisao}.{ext}</code></td>
+</tr>
+<tr>
+<td><strong>Etapas</strong></td>
+<td>R00, R01, R02..., EF</td>
+</tr>
+<tr>
+<td><strong>Aprovação</strong></td>
+<td>Imagem enviada como prévia ao FlowReview; após aprovação, arquivo movido para destino final via SFTP</td>
+</tr>
+<tr>
+<td><strong>Planta Humanizada</strong></td>
+<td>Sub-pasta especial: <code>04.Finalizacao/{revisao}/PH/</code></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h3 id="38-alteração-funcao_id--6">3.8 Alteração (<code>funcao_id = 6</code>)</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>O que faz</strong></td>
+<td>Executa modificações solicitadas pelo cliente após a prévia</td>
+</tr>
+<tr>
+<td><strong>Input</strong></td>
+<td>Render anterior, comentários do cliente do FlowReviewExt</td>
+</tr>
+<tr>
+<td><strong>Output</strong></td>
+<td>Novo render com alterações aplicadas</td>
+</tr>
+<tr>
+<td><strong>Pasta NAS</strong></td>
+<td><code>03.Models/{nome_imagem}/Final/{revisao}/</code></td>
+</tr>
+<tr>
+<td><strong>Nome do arquivo</strong></td>
+<td><code>{nº}.{NOMENCLATURA}-{nome}-IMG-{processo}-{revisao}.{ext}</code></td>
+</tr>
+<tr>
+<td><strong>Etapas</strong></td>
+<td>R01, R02, R03..., EF</td>
+</tr>
+<tr>
+<td><strong>Trigger SFTP</strong></td>
+<td>Quando aprovada, arquivo enviado automaticamente para NAS via worker</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h3 id="39-planta-humanizada-funcao_id--7">3.9 Planta Humanizada (<code>funcao_id = 7</code>)</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>O que faz</strong></td>
+<td>Produz plantas humanizadas (vista 2D com elementos decorativos)</td>
+</tr>
+<tr>
+<td><strong>Input</strong></td>
+<td>Planta arquitetônica, assets decorativos</td>
+</tr>
+<tr>
+<td><strong>Output</strong></td>
+<td>Imagem da planta humanizada</td>
+</tr>
+<tr>
+<td><strong>Pasta NAS</strong></td>
+<td><code>04.Finalizacao/{revisao}/PH/</code></td>
+</tr>
+<tr>
+<td><strong>Etapas</strong></td>
+<td>Conforme necessidade do projeto</td>
+</tr>
+<tr>
+<td><strong>Aprovação</strong></td>
+<td>Segue fluxo de Finalização quando tipo de imagem = &quot;humanizada&quot;</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="4-fluxo-de-renderização">4. Fluxo de Renderização</h2>
+<p>O render é o arquivo intermediário central do pipeline. É gerado pelas funções de <strong>Finalização</strong> e <strong>Alteração</strong> e consumido pela <strong>Pós-Produção</strong>.</p>
+<h3 id="41-onde-o-render-é-gerado">4.1 Onde o render é gerado</h3>
+<ul>
+<li><strong>Finalização</strong> (funcao_id = 4): gera o render da cena 3D em <code>.exr</code> ou alta resolução <code>.jpg</code></li>
+<li><strong>Alteração</strong> (funcao_id = 6): gera novo render após modificações</li>
+</ul>
+<h3 id="42-registro-automático-do-render">4.2 Registro automático do render</h3>
+<p>Quando o arquivo de render é enviado via worker, o sistema cria automaticamente:</p>
+<ol>
+<li>Uma linha na tabela de <strong>Renders</strong> (módulo <code>Render/</code>)</li>
+<li>Uma linha na tabela de <strong>Pós-Produção</strong> vinculada ao render</li>
+</ol>
+<pre><code>Finalizador envia render
+       │
+       ▼
+  upload_enqueue.php → staging
+       │
+       ▼
+  upload_worker.php → NAS (03.Models/Final/)
+       │
+       ▼
+  Notificação ao Finalizador para aprovar o render
+       │
+       ▼
+  Finalizador aprova → Pós-Produção ativada
+</code></pre>
+<h3 id="43-nomenclatura-do-render">4.3 Nomenclatura do render</h3>
+<pre><code>{número}.{NOMENCLATURA}_{nome_imagem}.exr
+Exemplo: 1.JON_LIN_Sala.exr
+</code></pre>
+<h3 id="44-quem-consome-o-render">4.4 Quem consome o render</h3>
+<p>A <strong>Pós-Produção</strong> recebe o render como input e produz a imagem final. A linha em Pós-Produção é criada automaticamente quando o render é enviado — <strong>não é necessária criação manual</strong>.</p>
+<h3 id="45-circulação-no-sistema">4.5 Circulação no sistema</h3>
+<pre><code>[Finalização / Alteração]
+       │ gera render (.exr)
+       ▼
+[Render] — aprovação pelo finalizador
+       │ aprovado
+       ▼
+[Pós-Produção] — recebe render como input
+       │ gera imagem final (.jpg)
+       ▼
+[FlowReview] — aprovação interna
+       │ aprovado
+       ▼
+[FlowReviewExt] — aprovação cliente
+       │ aprovado
+       ▼
+[NAS: 04.Finalizacao/{revisao}/]
+</code></pre>
+<hr>
+<h2 id="5-sistema-de-uploads">5. Sistema de Uploads</h2>
+<h3 id="51-arquitetura-geral">5.1 Arquitetura Geral</h3>
+<p>O sistema de upload é dividido em duas camadas:</p>
+<ol>
+<li><strong><code>upload_enqueue.php</code></strong> — recebe o arquivo do browser, armazena em staging e enfileira o job</li>
+<li><strong><code>scripts/upload_worker.php</code></strong> — daemon que processa jobs da fila e envia via SFTP para o NAS</li>
+</ol>
+<h3 id="52-como-o-worker-de-upload-funciona">5.2 Como o Worker de Upload Funciona</h3>
+<h4 id="modo-de-execução">Modo de execução</h4>
+<p>O worker é executado como daemon via CLI:</p>
+<pre><code class="language-bash">php scripts/upload_worker.php --daemon --<span class="hljs-built_in">sleep</span>=3
+</code></pre>
+<h4 id="ciclo-de-processamento">Ciclo de processamento</h4>
+<pre><code>1. Scan do diretório uploads/staging/ por arquivos .json
+2. Claim atômico: rename(id.json → id.json.processing.{pid})
+3. Leitura dos metadados (origem, função, nomenclatura, etc.)
+4. Conexão SFTP reutilizada para NAS
+5. Descoberta do ano correto (2024, 2025, 2026)
+6. Construção do caminho de destino conforme função
+7. Upload com progresso e retry
+8. Atualização do banco (arquivo_log, funcao_imagem)
+9. Notificação Slack ao colaborador
+10. Deleção do arquivo staged
+</code></pre>
+<h4 id="mapeamento-função--pasta-nas">Mapeamento função → pasta NAS</h4>
+<table>
+<thead>
+<tr>
+<th>Função</th>
+<th>Pasta NAS</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Caderno, Filtro de assets</td>
+<td><code>02.Projetos/</code></td>
+</tr>
+<tr>
+<td>Modelagem, Composição, Finalização, Pré-Finalização, Alteração</td>
+<td><code>03.Models/</code></td>
+</tr>
+<tr>
+<td>Pós-Produção, Planta Humanizada</td>
+<td><code>04.Finalizacao/</code></td>
+</tr>
+</tbody>
+</table>
+<h4 id="nomenclatura-de-arquivos">Nomenclatura de arquivos</h4>
+<p><strong>Funções 03.Models:</strong></p>
+<pre><code>{nº}.{NOMENCLATURA}-{primeiraPalavra}-IMG-{processo}-{revisao}.{ext}
+Exemplo: 01.JON_LIN-Sala-IMG-P00-R00.max
+</code></pre>
+<p><strong>Funções 04.Finalizacao:</strong></p>
+<pre><code>{nome_imagem_clean}_{revisao}.{ext}
+Exemplo: Sala_de_Estar_R00.jpg
+</code></pre>
+<p><strong>Funções 02.Projetos:</strong></p>
+<pre><code>{nº}.{NOMENCLATURA}-{primeiraPalavra}-PDF-{processo}-{revisao}.pdf
+Exemplo: 01.JON_LIN-Sala-PDF-P00-R00.pdf
+</code></pre>
+<h4 id="resiliência-e-retries">Resiliência e retries</h4>
+<table>
+<thead>
+<tr>
+<th>Tipo de erro</th>
+<th>Estratégia</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Erro de rede (ENETUNREACHABLE, ECONNREFUSED)</td>
+<td>Retry com backoff: 20s, 40s, 60s... até 50 ciclos</td>
+</tr>
+<tr>
+<td>Erro SFTP (protocolo)</td>
+<td>Retry com backoff: 5s, 10s, 15s... até 5 tentativas</td>
+</tr>
+<tr>
+<td>Erro permanente (auth, permissão)</td>
+<td>Falha imediata, move para <code>failed/</code></td>
+</tr>
+<tr>
+<td>Job órfão (&gt; 1 hora em processing)</td>
+<td>Reclamado por novo worker</td>
+</tr>
+</tbody>
+</table>
+<h4 id="estados-do-arquivo">Estados do arquivo</h4>
+<pre><code>enfileirado → processando → concluido
+                          → falha
+                          → aguardando_rede (retry)
+</code></pre>
+<h3 id="53-quais-arquivos-são-enviados">5.3 Quais Arquivos São Enviados</h3>
+<table>
+<thead>
+<tr>
+<th>Extensão</th>
+<th>Tipo</th>
+<th>Quando</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>.pdf</code></td>
+<td>PDF</td>
+<td>Caderno, Filtro de assets</td>
+</tr>
+<tr>
+<td><code>.max</code></td>
+<td>3ds Max</td>
+<td>Modelagem, Composição, Finalização, Alteração</td>
+</tr>
+<tr>
+<td><code>.psb</code></td>
+<td>Photoshop</td>
+<td>Finalização, Pós-Produção, Alteração</td>
+</tr>
+<tr>
+<td><code>.exr</code></td>
+<td>Render</td>
+<td>Finalização, Alteração (render output)</td>
+</tr>
+<tr>
+<td><code>.jpg</code> / <code>.png</code></td>
+<td>Imagem</td>
+<td>Prévia para FlowReview; entrega final</td>
+</tr>
+</tbody>
+</table>
+<h3 id="54-quando-acontece-o-upload">5.4 Quando Acontece o Upload</h3>
+<p>O upload é disparado quando o colaborador <strong>coloca a função em aprovação</strong> no sistema. O processo é:</p>
+<ol>
+<li>Colaborador seleciona os arquivos na interface</li>
+<li>Sistema envia para <code>upload_enqueue.php</code></li>
+<li>Arquivo vai para staging (<code>uploads/staging/</code>)</li>
+<li>Worker processa em background e envia para NAS</li>
+<li>Colaborador recebe notificação Slack com o caminho do arquivo</li>
+</ol>
+<h3 id="55-rastreamento-via-arquivo_log">5.5 Rastreamento via arquivo_log</h3>
+<pre><code class="language-sql">tabela: arquivo_log
+<span class="hljs-operator">-</span> funcao_imagem_id (qual função originou)
+<span class="hljs-operator">-</span> caminho (caminho Windows Z:\ para acesso na rede)
+<span class="hljs-operator">-</span> nome_arquivo (nome <span class="hljs-keyword">final</span> <span class="hljs-keyword">no</span> NAS)
+<span class="hljs-operator">-</span> tamanho
+<span class="hljs-operator">-</span> tipo (PDF <span class="hljs-operator">/</span> IMG)
+<span class="hljs-operator">-</span> colaborador_id
+<span class="hljs-operator">-</span> status (enfileirado <span class="hljs-operator">/</span> processando <span class="hljs-operator">/</span> concluido <span class="hljs-operator">/</span> falha)
+</code></pre>
+<hr>
+<h2 id="6-sistema-de-aprovação-flow-review">6. Sistema de Aprovação (Flow Review)</h2>
+<h3 id="61-flow-review-interno">6.1 Flow Review Interno</h3>
+<p>O <strong>Flow Review</strong> (<code>FlowReview/</code>) é o sistema de aprovação interna utilizado pela equipe Improov.</p>
+<h4 id="quando-é-acionado">Quando é acionado</h4>
+<ul>
+<li>Quando um colaborador coloca uma função em aprovação (<code>status = 'Em aprovação'</code>)</li>
+<li>O sistema registra a entrada em <code>historico_aprovacoes_imagens</code></li>
+</ul>
+<h4 id="processo-de-revisão">Processo de revisão</h4>
+<pre><code>Colaborador coloca função em aprovação
+       │
+       ▼
+Analista acessa FlowReview → visualiza prévia e PDFs
+       │
+       ├─ Faz comentários (comentarios_imagem)
+       ├─ Marca pontos na imagem
+       └─ Define status: Aprovado / Aprovado com ajustes / Em ajuste
+              │
+              ▼
+       Colaborador recebe notificação
+              │
+              ├─ Se &quot;Em ajuste&quot; → colaborador corrige e reenvia
+              └─ Se &quot;Aprovado&quot; → função concluída
+                     │
+                     ▼
+              Worker envia arquivo final para NAS
+              Status funcao_imagem → 'Finalizado'
+</code></pre>
+<h4 id="tabelas-de-aprovação-interna">Tabelas de aprovação interna</h4>
+<table>
+<thead>
+<tr>
+<th>Tabela</th>
+<th>Propósito</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>historico_aprovacoes_imagens</code></td>
+<td>Registro de cada envio de prévia (índice de envio)</td>
+</tr>
+<tr>
+<td><code>historico_aprovacoes</code></td>
+<td>Registro de mudanças de status da função</td>
+</tr>
+<tr>
+<td><code>comentarios_imagem</code></td>
+<td>Comentários por imagem/página de PDF</td>
+</tr>
+<tr>
+<td><code>angulos_imagens</code></td>
+<td>Controle de ângulos no processo P00</td>
+</tr>
+<tr>
+<td><code>funcao_imagem</code></td>
+<td>Status atual da função</td>
+</tr>
+</tbody>
+</table>
+<h4 id="estados-do-flowreview-interno">Estados do FlowReview interno</h4>
+<pre><code>Em aprovação → [analista revisa] → Em ajuste → [colaborador corrige] → Em aprovação
+                                 → Aprovado com ajustes
+                                 → Aprovado → [worker SFTP] → Finalizado
+</code></pre>
+<h4 id="regras-especiais-de-envio-sftp-pós-aprovação">Regras especiais de envio SFTP pós-aprovação</h4>
+<p>A aprovação aciona o envio SFTP nos seguintes casos:</p>
+<ul>
+<li>Função = <strong>Pós-Produção</strong> + status = <strong>Aprovado</strong></li>
+<li>Função = <strong>Alteração</strong> + status = <strong>Aprovado</strong></li>
+<li>Função = <strong>Finalização</strong> + tipo_imagem = <strong>Humanizada</strong> + status = <strong>Aprovado</strong></li>
+</ul>
+<hr>
+<h3 id="62-flow-review-externo-flowreviewext">6.2 Flow Review Externo (FlowReviewExt)</h3>
+<p>O <strong>FlowReviewExt</strong> (<code>FlowReviewExt/</code>) é o módulo voltado para <strong>aprovação pelo cliente</strong>.</p>
+<h4 id="quando-é-acionado-1">Quando é acionado</h4>
+<ul>
+<li>Após aprovação interna da Pós-Produção</li>
+<li>Gestão libera a imagem para revisão do cliente</li>
+</ul>
+<h4 id="processo-de-revisão-externa">Processo de revisão externa</h4>
+<pre><code>Gestão gera link único de revisão
+       │
+       ▼
+Cliente acessa link → informa nome e e-mail
+       │
+       ▼
+Cliente visualiza a imagem/arquivo
+       │
+       ├─ Aprovar
+       ├─ Aprovar com ajustes + comentário
+       ├─ Solicitar ajustes + comentário
+       └─ Reprovar + comentário
+              │
+              ▼
+       Sistema notifica gestão (Slack + notificação interna)
+              │
+              ├─ Se aprovado → imagem avança para próxima etapa
+              └─ Se ajustes → nova rodada de alterações (R01, R02...)
+</code></pre>
+<h4 id="controle-de-acesso-externo">Controle de acesso externo</h4>
+<ul>
+<li>Token único por revisão (gerado em <code>generate_obra_tokens.php</code>)</li>
+<li>Acesso via <code>/review/{codigo-da-obra}</code></li>
+<li>Sessão PHP com tempo de expiração</li>
+<li>Autenticação por nome + e-mail do cliente</li>
+</ul>
+<h4 id="etapas-que-precisam-de-aprovação-externa">Etapas que precisam de aprovação externa</h4>
+<table>
+<thead>
+<tr>
+<th>Etapa</th>
+<th>Tipo de aprovação</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>P00</td>
+<td>Cliente escolhe ângulo (via FlowReviewExt)</td>
+</tr>
+<tr>
+<td>R00</td>
+<td>Cliente aprova ou solicita ajustes</td>
+</tr>
+<tr>
+<td>R01, R02...</td>
+<td>Cliente aprova iteração de alterações</td>
+</tr>
+<tr>
+<td>EF</td>
+<td>Aprovação final antes da entrega</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="7-estrutura-técnica-encontrada-no-repositório">7. Estrutura Técnica Encontrada no Repositório</h2>
+<h3 id="71-módulos-e-serviços">7.1 Módulos e Serviços</h3>
+<table>
+<thead>
+<tr>
+<th>Módulo</th>
+<th>Caminho</th>
+<th>Propósito</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Produção</td>
+<td><code>Producao/</code></td>
+<td>Dashboard de KPIs e acompanhamento da produção mensal</td>
+</tr>
+<tr>
+<td>Pós-Produção</td>
+<td><code>Pos-Producao/</code></td>
+<td>Gestão de tarefas de pós-produção</td>
+</tr>
+<tr>
+<td>Render</td>
+<td><code>Render/</code></td>
+<td>Gerenciamento de arquivos de render</td>
+</tr>
+<tr>
+<td>Alteração</td>
+<td><code>Alteracao/</code></td>
+<td>Controle de iterações de revisão</td>
+</tr>
+<tr>
+<td>FlowReview</td>
+<td><code>FlowReview/</code></td>
+<td>Aprovação interna</td>
+</tr>
+<tr>
+<td>FlowReviewExt</td>
+<td><code>FlowReviewExt/</code></td>
+<td>Aprovação pelo cliente</td>
+</tr>
+<tr>
+<td>FlowDrive</td>
+<td><code>FlowDrive/</code></td>
+<td>Integração com NAS/armazenamento</td>
+</tr>
+<tr>
+<td>FlowReferências</td>
+<td><code>FlowReferencias/</code></td>
+<td>Gestão de referências do projeto</td>
+</tr>
+<tr>
+<td>FlowTrack</td>
+<td><code>FlowTrack/</code></td>
+<td>Rastreamento de progresso</td>
+</tr>
+<tr>
+<td>Painel Produção</td>
+<td><code>PainelProducao/</code></td>
+<td>Painel de alocação de colaboradores</td>
+</tr>
+<tr>
+<td>Dashboard</td>
+<td><code>Dashboard/</code></td>
+<td>Visão gerencial por obra</td>
+</tr>
+<tr>
+<td>Imagens</td>
+<td><code>Imagens/</code></td>
+<td>Catálogo e gestão de imagens</td>
+</tr>
+<tr>
+<td>Upload</td>
+<td><code>Upload/</code></td>
+<td>Interface de upload legada</td>
+</tr>
+</tbody>
+</table>
+<h3 id="72-workers-e-automações">7.2 Workers e Automações</h3>
+<table>
+<thead>
+<tr>
+<th>Worker / Automação</th>
+<th>Caminho</th>
+<th>Propósito</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Upload Worker (daemon)</td>
+<td><code>scripts/upload_worker.php</code></td>
+<td>Processa fila de uploads SFTP para NAS</td>
+</tr>
+<tr>
+<td>Retry Worker</td>
+<td><code>scripts/retry_failed_uploads.php</code></td>
+<td>Reprocessa uploads com falha</td>
+</tr>
+<tr>
+<td>NAS Test</td>
+<td><code>scripts/test_nas_path.php</code></td>
+<td>Testa conectividade com NAS</td>
+</tr>
+<tr>
+<td>Upload Enqueue</td>
+<td><code>upload_enqueue.php</code></td>
+<td>Recebe arquivos e cria jobs na fila</td>
+</tr>
+<tr>
+<td>Upload Final</td>
+<td><code>uploadFinal.php</code></td>
+<td>Upload complementar para entregas finais</td>
+</tr>
+<tr>
+<td>Verificar Render</td>
+<td><code>verifica_render.php</code></td>
+<td>Verifica status de renders</td>
+</tr>
+<tr>
+<td>Add Render</td>
+<td><code>addRender.php</code></td>
+<td>Adiciona render ao pipeline</td>
+</tr>
+<tr>
+<td>Script Diários</td>
+<td><code>scriptsDiarios.php</code></td>
+<td>Rotinas automáticas diárias</td>
+</tr>
+<tr>
+<td>Webhook</td>
+<td><code>webhook.php</code></td>
+<td>Integração via webhooks externos</td>
+</tr>
+</tbody>
+</table>
+<h3 id="73-tabelas-relevantes-do-pipeline">7.3 Tabelas Relevantes do Pipeline</h3>
+<table>
+<thead>
+<tr>
+<th>Tabela</th>
+<th>Propósito</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>imagens_cliente_obra</code></td>
+<td>Entidade principal: imagem por cliente/obra</td>
+</tr>
+<tr>
+<td><code>funcao</code></td>
+<td>Tipos de funções (Caderno, Modelagem, etc.)</td>
+</tr>
+<tr>
+<td><code>funcao_imagem</code></td>
+<td>Instância de função por imagem</td>
+</tr>
+<tr>
+<td><code>funcao_imagem_pdf</code></td>
+<td>Nome do PDF calculado por função</td>
+</tr>
+<tr>
+<td><code>status_imagem</code></td>
+<td>Códigos de etapa (P00, R00, R01..., EF, APR)</td>
+</tr>
+<tr>
+<td><code>arquivo_log</code></td>
+<td>Rastreamento de uploads de arquivos</td>
+</tr>
+<tr>
+<td><code>historico_aprovacoes</code></td>
+<td>Histórico de aprovações por função</td>
+</tr>
+<tr>
+<td><code>historico_aprovacoes_imagens</code></td>
+<td>Histórico de envios de prévias</td>
+</tr>
+<tr>
+<td><code>comentarios_imagem</code></td>
+<td>Comentários de revisão</td>
+</tr>
+<tr>
+<td><code>angulos_imagens</code></td>
+<td>Ângulos registrados no P00</td>
+</tr>
+<tr>
+<td><code>entregas_itens</code></td>
+<td>Itens de entrega vinculados a imagens</td>
+</tr>
+<tr>
+<td><code>fotografico_info</code></td>
+<td>Endereço para fotografia da obra</td>
+</tr>
+<tr>
+<td><code>fotografico_registro</code></td>
+<td>Registros de visitas fotográficas</td>
+</tr>
+<tr>
+<td><code>flow_ref_axis</code></td>
+<td>Eixos de referência</td>
+</tr>
+<tr>
+<td><code>flow_ref_category</code></td>
+<td>Categorias de referências</td>
+</tr>
+<tr>
+<td><code>flow_ref_subcategory</code></td>
+<td>Subcategorias de referências</td>
+</tr>
+<tr>
+<td><code>flow_ref_upload</code></td>
+<td>Arquivos de referência enviados</td>
+</tr>
+<tr>
+<td><code>arquivo_fisico</code></td>
+<td>Deduplicação de arquivos por hash SHA256</td>
+</tr>
+<tr>
+<td><code>acompanhamento_email</code></td>
+<td>Acompanhamento de comunicações por obra</td>
+</tr>
+</tbody>
+</table>
+<h3 id="74-estrutura-nas-storage">7.4 Estrutura NAS (Storage)</h3>
+<pre><code>/mnt/clientes/
+├── 2024/
+├── 2025/
+└── 2026/
+    └── {NOMENCLATURA}/               (ex.: JON_LIN)
+        ├── 02.Projetos/               (Caderno, Filtros)
+        ├── 03.Models/
+        │   └── {nome_imagem}/         (ex.: Sala_de_Estar)
+        │       ├── MT/                (Modelagem)
+        │       ├── Comp/              (Composição)
+        │       └── Final/             (Finalização, Alteração)
+        │           └── {revisao}/     (ex.: R01/)
+        └── 04.Finalizacao/
+            └── {revisao}/             (ex.: R00/)
+                ├── imagem_final.jpg
+                └── PH/                (Planta Humanizada)
+</code></pre>
+<h3 id="75-tecnologias-utilizadas">7.5 Tecnologias Utilizadas</h3>
+<table>
+<thead>
+<tr>
+<th>Tecnologia</th>
+<th>Uso</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>PHP</td>
+<td>Backend principal</td>
+</tr>
+<tr>
+<td>MySQL</td>
+<td>Banco de dados</td>
+</tr>
+<tr>
+<td>SFTP / phpseclib</td>
+<td>Envio de arquivos para NAS</td>
+</tr>
+<tr>
+<td>Redis</td>
+<td>Progresso de upload em tempo real</td>
+</tr>
+<tr>
+<td>WebSocket</td>
+<td>Notificações de progresso no browser</td>
+</tr>
+<tr>
+<td>Slack API</td>
+<td>Notificações para colaboradores</td>
+</tr>
+<tr>
+<td>3ds Max</td>
+<td>Software de modelagem 3D (externo)</td>
+</tr>
+<tr>
+<td>Photoshop/Affinity</td>
+<td>Software de pós-produção (externo)</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="8-lacunas-no-processo-atual">8. Lacunas no Processo Atual</h2>
+<h3 id="81-fotográfico--estrutura-incompleta">8.1 Fotográfico — Estrutura Incompleta</h3>
+<p>A etapa de <strong>Fotográfico</strong> existe parcialmente no sistema:</p>
+<ul>
+<li>Tabelas <code>fotografico_info</code> e <code>fotografico_registro</code> existem</li>
+<li>Dashboard registra data e observações de visita fotográfica</li>
+<li>Notificação Slack é enviada aos finalizadores quando fotográfico é registrado</li>
+<li><strong>Porém não há:</strong>
+<ul>
+<li>Função específica &quot;Fotográfico&quot; na tabela <code>funcao</code></li>
+<li>Fluxo de upload de fotos de referência da obra</li>
+<li>Aprovação formal das fotos tiradas</li>
+<li>Integração com o FlowReview para as fotos</li>
+</ul>
+</li>
+</ul>
+<h3 id="82-referências--módulo-separado-sem-integração">8.2 Referências — Módulo Separado sem Integração</h3>
+<p>O <strong>FlowReferências</strong> (<code>FlowReferencias/</code>) existe como módulo independente com:</p>
+<ul>
+<li>Upload de referências categorizadas por eixo/categoria/subcategoria</li>
+<li>Tabelas: <code>flow_ref_axis</code>, <code>flow_ref_category</code>, <code>flow_ref_subcategory</code>, <code>flow_ref_upload</code></li>
+<li><strong>Porém não há:</strong>
+<ul>
+<li>Integração com <code>funcao_imagem</code> para vincular referências a funções específicas</li>
+<li>Notificação para colaboradores quando novas referências são adicionadas à sua imagem</li>
+<li>Aprovação ou revisão das referências</li>
+<li>Vínculo com etapas do pipeline (P00, R00...)</li>
+</ul>
+</li>
+</ul>
+<h3 id="83-ausência-de-validação-no-caderno">8.3 Ausência de Validação no Caderno</h3>
+<p>A função Caderno vai direto para aprovação sem validação estruturada de conteúdo (campos obrigatórios, checklists).</p>
+<h3 id="84-fluxo-manual-de-aprovação-de-render">8.4 Fluxo Manual de Aprovação de Render</h3>
+<p>O processo de aprovação de renders ainda envolve passos manuais:</p>
+<ul>
+<li>Finalizador precisa acessar o sistema para aprovar o render</li>
+<li>Não há aprovação automática com critérios técnicos (resolução, formato)</li>
+<li>Render rejeitado requer reenvio manual sem histórico vinculado ao FlowReview</li>
+</ul>
+<h3 id="85-sem-status-de-bloqueio-entre-funções">8.5 Sem Status de Bloqueio Entre Funções</h3>
+<p>O sistema não garante que funções sejam executadas em ordem. Por exemplo:</p>
+<ul>
+<li>Pós-Produção pode ser iniciada antes da Finalização ser aprovada</li>
+<li>Alteração pode ser aberta sem o feedback formal do cliente no FlowReviewExt</li>
+</ul>
+<h3 id="86-dependências-manuais-na-configuração-de-obras">8.6 Dependências Manuais na Configuração de Obras</h3>
+<p>Para cada nova obra, é necessário:</p>
+<ul>
+<li>Criar imagens manualmente em <code>imagens_cliente_obra</code></li>
+<li>Criar funções manualmente em <code>funcao_imagem</code></li>
+<li>Associar colaboradores manualmente</li>
+<li>Não há template ou automação de onboarding de obra</li>
+</ul>
+<h3 id="87-ausência-de-versionamento-de-arquivos">8.7 Ausência de Versionamento de Arquivos</h3>
+<p>O sistema salva arquivos com nome único no NAS, mas:</p>
+<ul>
+<li>Não há versionamento histórico de arquivos substituídos</li>
+<li>Arquivo mais recente sobrescreve o anterior (sem backup automático no NAS)</li>
+<li>Apenas <code>historico_aprovacoes_imagens</code> rastreia índices de envio</li>
+</ul>
+<hr>
+<h2 id="9-sugestões-de-melhoria">9. Sugestões de Melhoria</h2>
+<h3 id="91-padronização-de-etapas">9.1 Padronização de Etapas</h3>
+<p>Criar uma tabela <code>etapa_pipeline</code> que mapeie formalmente:</p>
+<ul>
+<li>Etapa (P00, R00, R01...)</li>
+<li>Funções permitidas por etapa</li>
+<li>Ordem obrigatória de funções</li>
+<li>Pré-requisitos para avançar à próxima etapa</li>
+</ul>
+<p>Isso permitiria bloquear automaticamente funções fora de ordem e dar visibilidade clara do progresso.</p>
+<h3 id="92-separação-de-responsabilidades-no-worker">9.2 Separação de Responsabilidades no Worker</h3>
+<p>O <code>upload_worker.php</code> atualmente faz:</p>
+<ul>
+<li>Gerenciamento de fila</li>
+<li>Upload SFTP</li>
+<li>Atualização de banco</li>
+<li>Envio de notificações Slack</li>
+<li>Gerenciamento de erros e retries</li>
+</ul>
+<p><strong>Sugestão:</strong> Separar em classes/serviços:</p>
+<ul>
+<li><code>QueueManager</code> — gerenciamento de staging/claiming</li>
+<li><code>SFTPService</code> — upload e retry de SFTP</li>
+<li><code>NotificationService</code> — Slack e in-app</li>
+<li><code>DatabaseUpdater</code> — atualizações de status</li>
+</ul>
+<h3 id="93-aprovação-automática-de-render">9.3 Aprovação Automática de Render</h3>
+<p>Implementar validação automática do render antes de enviar para aprovação humana:</p>
+<ul>
+<li>Verificar resolução mínima</li>
+<li>Verificar formato correto (<code>.exr</code>, <code>.jpg</code>)</li>
+<li>Verificar se nomenclatura está correta</li>
+<li>Aprovação automática para renders que passam na validação técnica</li>
+</ul>
+<h3 id="94-integração-flowreferências--funcao_imagem">9.4 Integração FlowReferências → funcao_imagem</h3>
+<p>Vincular referências diretamente a imagens/funções:</p>
+<ul>
+<li>Ao adicionar referência, selecionar a imagem/função alvo</li>
+<li>Notificação automática ao colaborador responsável pela função</li>
+<li>Visualização de referências dentro do FlowReview ao revisar a função</li>
+</ul>
+<h3 id="95-templates-de-obra">9.5 Templates de Obra</h3>
+<p>Criar templates de criação de obra que automaticamente:</p>
+<ul>
+<li>Geram as imagens padrão do projeto</li>
+<li>Atribuem funções conforme o tipo de imagem</li>
+<li>Definem prazos com base no cronograma</li>
+<li>Criam estrutura de pastas no NAS</li>
+</ul>
+<h3 id="96-dashboard-de-status-do-pipeline">9.6 Dashboard de Status do Pipeline</h3>
+<p>Criar uma visão unificada que mostre, por imagem:</p>
+<ul>
+<li>Etapa atual (P00, R00, R01...)</li>
+<li>Função em andamento</li>
+<li>Status de cada função (com indicador visual)</li>
+<li>Próxima ação necessária</li>
+<li>Arquivo pendente de upload</li>
+</ul>
+<h3 id="97-histórico-completo-de-arquivos">9.7 Histórico Completo de Arquivos</h3>
+<p>Implementar versionamento de arquivos com:</p>
+<ul>
+<li>Retenção de versões anteriores no NAS (pasta <code>.history/</code>)</li>
+<li>Registro de substituições em <code>arquivo_log</code></li>
+<li>Possibilidade de rollback para versão anterior</li>
+</ul>
+<hr>
+<h2 id="10-sugestões-para-estruturar-fotográfico-e-referências">10. Sugestões para Estruturar Fotográfico e Referências</h2>
+<h3 id="101-estrutura-para-o-fotográfico">10.1 Estrutura para o Fotográfico</h3>
+<p>O <strong>Fotográfico</strong> é uma etapa inicial do pipeline que coleta imagens reais da obra para uso como referência. Proposta de estruturação:</p>
+<h4 id="adicionar-função-fotográfico-à-tabela-funcao">Adicionar função &quot;Fotográfico&quot; à tabela <code>funcao</code></h4>
+<pre><code class="language-sql"><span class="hljs-keyword">INSERT</span> <span class="hljs-keyword">INTO</span> funcao (idfuncao, nome_funcao) <span class="hljs-keyword">VALUES</span> (<span class="hljs-number">10</span>, <span class="hljs-string">&#x27;Fotográfico&#x27;</span>);
+</code></pre>
+<h4 id="fluxo-proposto-para-fotográfico">Fluxo proposto para Fotográfico</h4>
+<pre><code>Gestor registra visita fotográfica (fotografico_registro)
+       │
+       ▼
+Fotógrafo/Colaborador envia fotos pelo sistema
+       │
+       ▼
+Fotos armazenadas no NAS: 01.Fotografico/{nome_obra}/
+       │
+       ▼
+FlowReview — aprovação interna das fotos
+       │ aprovado
+       ▼
+Fotos disponíveis para consulta em todas as funções subsequentes
+       │
+       ▼
+Notificação para modeladores e finalizadores
+</code></pre>
+<h4 id="estrutura-nas-para-fotográfico">Estrutura NAS para Fotográfico</h4>
+<p>Adicionar nova pasta base:</p>
+<pre><code>/mnt/clientes/{ano}/{NOMENCLATURA}/
+└── 01.Fotografico/            ← NOVA PASTA
+    ├── fachada/
+    ├── interior/
+    └── detalhes/
+</code></pre>
+<h4 id="mapeamento-no-worker">Mapeamento no Worker</h4>
+<p>Adicionar ao <code>mapFuncaoParaPasta()</code>:</p>
+<pre><code class="language-php"><span class="hljs-string">&#x27;fotográfico&#x27;</span> =&gt; <span class="hljs-string">&#x27;01.Fotografico&#x27;</span>,
+<span class="hljs-string">&#x27;fotografico&#x27;</span> =&gt; <span class="hljs-string">&#x27;01.Fotografico&#x27;</span>,
+</code></pre>
+<h4 id="tabelas-necessárias">Tabelas necessárias</h4>
+<ul>
+<li><code>fotografico_info</code> — já existe (endereço da obra)</li>
+<li><code>fotografico_registro</code> — já existe (registro de visitas)</li>
+<li><strong>Novo:</strong> <code>fotografico_arquivo</code> — arquivos individuais enviados<pre><code class="language-sql"><span class="hljs-keyword">CREATE</span> <span class="hljs-keyword">TABLE</span> fotografico_arquivo (
+  id <span class="hljs-type">INT</span> AUTO_INCREMENT <span class="hljs-keyword">PRIMARY</span> KEY,
+  fotografico_registro_id <span class="hljs-type">INT</span> <span class="hljs-keyword">NOT</span> <span class="hljs-keyword">NULL</span>,
+  obra_id <span class="hljs-type">INT</span> <span class="hljs-keyword">NOT</span> <span class="hljs-keyword">NULL</span>,
+  caminho <span class="hljs-type">VARCHAR</span>(<span class="hljs-number">500</span>),
+  nome_arquivo <span class="hljs-type">VARCHAR</span>(<span class="hljs-number">255</span>),
+  tipo ENUM(<span class="hljs-string">&#x27;foto&#x27;</span>, <span class="hljs-string">&#x27;video&#x27;</span>, <span class="hljs-string">&#x27;outro&#x27;</span>),
+  descricao TEXT,
+  aprovado TINYINT(<span class="hljs-number">1</span>) <span class="hljs-keyword">DEFAULT</span> <span class="hljs-number">0</span>,
+  criado_por <span class="hljs-type">INT</span>,
+  criado_em DATETIME <span class="hljs-keyword">DEFAULT</span> <span class="hljs-built_in">CURRENT_TIMESTAMP</span>,
+  <span class="hljs-keyword">FOREIGN</span> KEY (obra_id) <span class="hljs-keyword">REFERENCES</span> obra(idobra)
+);
+</code></pre>
+</li>
+</ul>
+<hr>
+<h3 id="102-estrutura-para-as-referências">10.2 Estrutura para as Referências</h3>
+<p>As <strong>Referências</strong> já existem como módulo (<code>FlowReferencias/</code>), mas precisam de melhor integração com o pipeline de produção.</p>
+<h4 id="fluxo-proposto-para-referências">Fluxo proposto para Referências</h4>
+<pre><code>Gestor/Cliente envia referências ao sistema (FlowReferencias)
+       │ categorizadas por eixo/categoria/subcategoria
+       ▼
+Sistema vincula referência à obra e às imagens relevantes
+       │
+       ▼
+Colaboradores das funções recebem notificação
+       │
+       ▼
+Referências disponíveis dentro do FlowReview ao revisar
+       │
+       ▼
+Gestor aprova ou descarta referências (curadoria)
+</code></pre>
+<h4 id="integração-flowreferências--funcao_imagem">Integração FlowReferências → funcao_imagem</h4>
+<p>Adicionar coluna de vínculo à tabela <code>flow_ref_upload</code>:</p>
+<pre><code class="language-sql"><span class="hljs-keyword">ALTER</span> <span class="hljs-keyword">TABLE</span> flow_ref_upload 
+  <span class="hljs-keyword">ADD</span> <span class="hljs-keyword">COLUMN</span> imagem_id <span class="hljs-type">INT</span> <span class="hljs-keyword">NULL</span>,
+  <span class="hljs-keyword">ADD</span> <span class="hljs-keyword">COLUMN</span> funcao_id <span class="hljs-type">INT</span> <span class="hljs-keyword">NULL</span>,
+  <span class="hljs-keyword">ADD</span> <span class="hljs-keyword">FOREIGN</span> KEY (imagem_id) <span class="hljs-keyword">REFERENCES</span> imagens_cliente_obra(idimagens_cliente_obra);
+</code></pre>
+<h4 id="exibição-no-flowreview">Exibição no FlowReview</h4>
+<p>Dentro da interface de revisão de cada função, exibir:</p>
+<ul>
+<li>Painel lateral com referências vinculadas à imagem</li>
+<li>Filtro por categoria (estilo, materiais, mobiliário, iluminação, etc.)</li>
+<li>Botão para adicionar nova referência diretamente da tela de revisão</li>
+</ul>
+<h4 id="notificações-automáticas">Notificações automáticas</h4>
+<p>Quando uma referência é adicionada a uma obra, notificar automaticamente:</p>
+<ul>
+<li>Todos os colaboradores com funções ativas nessa obra</li>
+<li>Ou apenas os colaboradores das funções selecionadas no vínculo</li>
+</ul>
+<h4 id="pasta-nas-para-referências">Pasta NAS para Referências</h4>
+<pre><code>/mnt/clientes/{ano}/{NOMENCLATURA}/
+└── 00.Referencias/            ← NOVA PASTA
+    ├── cliente/               (referências enviadas pelo cliente)
+    ├── equipe/                (referências coletadas internamente)
+    └── fotografico/           (fotos da obra)
+</code></pre>
+<hr>
+<h2 id="resumo-do-status-das-etapas">Resumo do Status das Etapas</h2>
+<table>
+<thead>
+<tr>
+<th>Etapa</th>
+<th>Implementação</th>
+<th>Observação</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Fotográfico</strong></td>
+<td>⚠️ Parcial</td>
+<td>Registro existe, sem fluxo completo de upload/aprovação</td>
+</tr>
+<tr>
+<td><strong>Referências</strong></td>
+<td>⚠️ Parcial</td>
+<td>Módulo existe, sem integração com pipeline de produção</td>
+</tr>
+<tr>
+<td><strong>P00 (Caderno + Ângulos)</strong></td>
+<td>✅ Implementado</td>
+<td>Fluxo completo incluindo FlowReviewExt para escolha de ângulo</td>
+</tr>
+<tr>
+<td><strong>R00 (Prévia)</strong></td>
+<td>✅ Implementado</td>
+<td>Render + Pós-Produção + aprovação</td>
+</tr>
+<tr>
+<td><strong>R01...Rnn (Alterações)</strong></td>
+<td>✅ Implementado</td>
+<td>Ciclo iterativo funcional</td>
+</tr>
+<tr>
+<td><strong>EF (Entrega Final)</strong></td>
+<td>✅ Implementado</td>
+<td>Aprovação e SFTP automático</td>
+</tr>
+<tr>
+<td><strong>Worker de Upload</strong></td>
+<td>✅ Implementado</td>
+<td>Daemon com retry, Slack, Redis</td>
+</tr>
+<tr>
+<td><strong>FlowReview Interno</strong></td>
+<td>✅ Implementado</td>
+<td>Comentários, ângulos, PDFs</td>
+</tr>
+<tr>
+<td><strong>FlowReview Externo</strong></td>
+<td>✅ Implementado</td>
+<td>Link único, auth cliente, multi-round</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<p><em>Documento gerado com base na análise do repositório ImproovWeb — Março 2026.</em></p>
+
+            
+            
+        </body>
+        </html>

@@ -182,6 +182,7 @@ async function revisarTarefa(
         responsavel: idcolaborador,
         imagem_id,
         tipoRevisao,
+        historico_id: ap_imagem_id ?? null,
       }),
     });
 
@@ -255,6 +256,7 @@ async function revisarTarefa(
           idfuncao_imagem,
           imagem_id,
           data.sftp_remote_path ?? null,
+          data.sftp_caminho_local ?? null,
         );
       }
     }
@@ -281,7 +283,7 @@ async function revisarTarefa(
  * @param {number} idfuncao_imagem  – ID da função de imagem aprovada
  * @param {number} imagem_id        – ID da imagem
  */
-async function resolverConflitoSftp(nomeArquivo, idfuncao_imagem, imagem_id, sftp_remote_path = null) {
+async function resolverConflitoSftp(nomeArquivo, idfuncao_imagem, imagem_id, sftp_remote_path = null, sftp_caminho_local = null) {
   const { isConfirmed: confirmedReplace, isDenied: confirmedAdd } =
     await Swal.fire({
       title: "Arquivo já existe no servidor",
@@ -383,6 +385,8 @@ async function resolverConflitoSftp(nomeArquivo, idfuncao_imagem, imagem_id, sft
         sftp_action,
         sftp_suffix,
         sftp_remote_path,
+        sftp_caminho_local,
+        nome_arquivo: nomeArquivo,
       }),
     });
     const result = await res.json();

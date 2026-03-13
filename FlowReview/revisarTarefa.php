@@ -104,6 +104,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $sftp_action      = $data['sftp_action']      ?? null; // 'replace' | 'add' | null
         $sftp_suffix      = $data['sftp_suffix']      ?? null; // suffix string when action='add'
         $sftp_remote_path = $data['sftp_remote_path'] ?? null; // exact remote path returned on conflict
+        $historico_id     = isset($data['historico_id']) ? (int)$data['historico_id'] : null; // ID exato da imagem sendo revisada
         // Pode conter múltiplos nomes que serão aceitos ao buscar o usuário no Slack
         $nome_colaboradores = ['Pedro Sabel', 'Andre L. de Souza'];
 
@@ -370,10 +371,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 in_array($status, ['Aprovado'])
             )
         ) {
-            $stmtArquivo = $conn->prepare("SELECT nome_arquivo FROM historico_aprovacoes_imagens WHERE funcao_imagem_id = ? ORDER BY id DESC LIMIT 1");
-            $stmtArquivo->bind_param("i", $idfuncao_imagem);
+            // Busca o arquivo exato: usa historico_id quando disponível (imagem sendo visualizada),
+            // caso contrário cai no registro mais recente da função.
+            if ($historico_id) {
+                $stmtArquivo = $conn->prepare("SELECT nome_arquivo, imagem FROM historico_aprovacoes_imagens WHERE id = ? AND funcao_imagem_id = ? LIMIT 1");
+                $stmtArquivo->bind_param("ii", $historico_id, $idfuncao_imagem);
+            } else {
+                $stmtArquivo = $conn->prepare("SELECT nome_arquivo, imagem FROM historico_aprovacoes_imagens WHERE funcao_imagem_id = ? ORDER BY id DESC LIMIT 1");
+                $stmtArquivo->bind_param("i", $idfuncao_imagem);
+            }
             $stmtArquivo->execute();
-            $stmtArquivo->bind_result($nome_arquivo_base);
+            $stmtArquivo->bind_result($nome_arquivo_base, $imagem_db_path);
             $stmtArquivo->fetch();
             $stmtArquivo->close();
 
@@ -385,7 +393,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmtNomen->close();
 
             $uploadDir = dirname(__DIR__) . "/uploads/";
-            $arquivosPossiveis = glob($uploadDir . $nome_arquivo_base . '.*'); // tenta encontrar qualquer extensão
+            $arquivosPossiveis = [];
+
+            // 1ª tentativa: usa o caminho exato registrado na coluna `imagem` do histórico
+            if (!empty($imagem_db_path)) {
+                $caminho_direto = dirname(__DIR__) . '/' . ltrim($imagem_db_path, '/');
+                if (is_file($caminho_direto)) {
+                    $arquivosPossiveis = [$caminho_direto];
+                    $resultadoFinal['logs'][] = "Arquivo localizado via caminho direto do BD: {$caminho_direto}";
+                }
+            }
+
+            // 2ª tentativa: glob pelo nome-base
+            if (empty($arquivosPossiveis)) {
+                $arquivosPossiveis = glob($uploadDir . $nome_arquivo_base . '.*') ?: []; // tenta encontrar qualquer extensão
+            }
 
             // Fallback: arquivo não encontrado localmente → busca no VPS via SFTP
             $arquivoTempVps = null;
@@ -399,14 +421,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $listaRemota = $vsftp->nlist($vpsDir);
                         if (is_array($listaRemota)) {
                             foreach ($listaRemota as $remoteFile) {
-                                if (pathinfo($remoteFile, PATHINFO_FILENAME) === $nome_arquivo_base) {
-                                    $tempPath = sys_get_temp_dir() . DIRECTORY_SEPARATOR . $remoteFile;
-                                    if ($vsftp->get($vpsDir . $remoteFile, $tempPath)) {
+                                // nlist pode retornar path completo ou só basename — normaliza
+                                $remoteBasename = basename($remoteFile);
+                                if (pathinfo($remoteBasename, PATHINFO_FILENAME) === $nome_arquivo_base) {
+                                    $tempPath = sys_get_temp_dir() . DIRECTORY_SEPARATOR . $remoteBasename;
+                                    if ($vsftp->get($vpsDir . $remoteBasename, $tempPath)) {
                                         $arquivosPossiveis = [$tempPath];
                                         $arquivoTempVps    = $tempPath;
-                                        $resultadoFinal['logs'][] = "Arquivo baixado do VPS: {$remoteFile}";
+                                        $resultadoFinal['logs'][] = "Arquivo baixado do VPS: {$remoteBasename}";
                                     } else {
-                                        $resultadoFinal['logs'][] = "Falha ao baixar '{$remoteFile}' do VPS.";
+                                        $resultadoFinal['logs'][] = "Falha ao baixar '{$remoteBasename}' do VPS.";
                                     }
                                     break;
                                 }

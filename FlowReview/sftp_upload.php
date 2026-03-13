@@ -33,12 +33,13 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-$data            = json_decode(file_get_contents('php://input'), true);
-$idfuncao_imagem  = $data['idfuncao_imagem']  ?? null;
-$imagem_id        = $data['imagem_id']        ?? null;
-$sftp_action      = $data['sftp_action']      ?? null; // 'replace' | 'add'
-$sftp_suffix      = $data['sftp_suffix']      ?? null;
-$sftp_remote_path = $data['sftp_remote_path'] ?? null; // caminho exato do conflito
+$data             = json_decode(file_get_contents('php://input'), true);
+$idfuncao_imagem  = $data['idfuncao_imagem']   ?? null;
+$imagem_id        = $data['imagem_id']         ?? null;
+$sftp_action      = $data['sftp_action']       ?? null; // 'replace' | 'add'
+$sftp_suffix      = $data['sftp_suffix']       ?? null;
+$sftp_remote_path = $data['sftp_remote_path']  ?? null; // caminho exato do conflito
+$sftp_caminho_local_req = $data['sftp_caminho_local'] ?? null; // caminho local exato passado pelo frontend
 
 if (!$idfuncao_imagem || !$sftp_action) {
     echo json_encode(['success' => false, 'message' => 'Parâmetros insuficientes.']);
@@ -73,13 +74,32 @@ if (!$nomenclatura) {
     exit;
 }
 
-// ── Localiza o arquivo (local primeiro, depois VPS) ─────────────────────────
+// ── Localiza o arquivo ────────────────────────────────────────────────────────
 $uploadDir        = dirname(__DIR__) . "/uploads/";
-$arquivosPossiveis = glob($uploadDir . $nome_arquivo_base . '.*');
+$arquivosPossiveis = [];
 $arquivoTempVps   = null;
 
+// Prioridade 0: usa o basename do caminho local registrado no momento do conflito.
+// Busca o arquivo exato dentro de uploads/ sem depender de caminhos absolutos do servidor.
+if (!empty($sftp_caminho_local_req)) {
+    $basenameReq   = basename($sftp_caminho_local_req);
+    $caminhoExato  = $uploadDir . $basenameReq;
+    if ($basenameReq && is_file($caminhoExato)) {
+        $arquivosPossiveis = [$caminhoExato];
+        $result['logs'][] = "Arquivo localizado via basename do caminho de conflito: {$basenameReq}";
+    }
+}
+
+// Prioridade 1: glob pelo nome-base (fallback)
 if (empty($arquivosPossiveis)) {
-    // Fallback: tenta baixar do VPS via SFTP
+    $arquivosPossiveis = glob($uploadDir . $nome_arquivo_base . '.*') ?: [];
+    if (!empty($arquivosPossiveis)) {
+        $result['logs'][] = "Arquivo localizado via glob: {$arquivosPossiveis[0]}";
+    }
+}
+
+// 3ª tentativa: baixa do VPS via SFTP
+if (empty($arquivosPossiveis)) {
     try {
         $vpsCfg  = improov_sftp_config('IMPROOV_VPS_SFTP');
         $vpsBase = rtrim((string)improov_env('IMPROOV_VPS_SFTP_REMOTE_PATH'), '/');
@@ -89,14 +109,16 @@ if (empty($arquivosPossiveis)) {
             $listaRemota = $vsftp->nlist($vpsDir);
             if (is_array($listaRemota)) {
                 foreach ($listaRemota as $remoteFile) {
-                    if (pathinfo($remoteFile, PATHINFO_FILENAME) === $nome_arquivo_base) {
-                        $tempPath = sys_get_temp_dir() . DIRECTORY_SEPARATOR . $remoteFile;
-                        if ($vsftp->get($vpsDir . $remoteFile, $tempPath)) {
+                    // nlist pode retornar path completo ou só basename — normaliza
+                    $remoteBasename = basename($remoteFile);
+                    if (pathinfo($remoteBasename, PATHINFO_FILENAME) === $nome_arquivo_base) {
+                        $tempPath = sys_get_temp_dir() . DIRECTORY_SEPARATOR . $remoteBasename;
+                        if ($vsftp->get($vpsDir . $remoteBasename, $tempPath)) {
                             $arquivosPossiveis = [$tempPath];
                             $arquivoTempVps    = $tempPath;
-                            $result['logs'][] = "Arquivo baixado do VPS: {$remoteFile}";
+                            $result['logs'][] = "Arquivo baixado do VPS: {$remoteBasename}";
                         } else {
-                            $result['logs'][] = "Falha ao baixar '{$remoteFile}' do VPS.";
+                            $result['logs'][] = "Falha ao baixar '{$remoteBasename}' do VPS.";
                         }
                         break;
                     }

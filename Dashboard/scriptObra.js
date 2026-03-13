@@ -3538,6 +3538,9 @@ function infosObra(obraId) {
       document.getElementById("nomenclatura").textContent =
         obra.nome_real || "Nome não disponível";
       document.title = obra.nome_real || "Nome não disponível";
+
+      // Atualiza estado do botão de liberar modelagem
+      atualizarBtnLiberarModelagem(intval(obra.liberar_modelagem));
       // document.getElementById('data_inicio_obra').textContent = `Data de Início: ${formatarData(obra.data_inicio)}`;
       // document.getElementById('prazo_obra').textContent = `Prazo: ${formatarData(obra.prazo)}`;
       // document.getElementById('dias_trabalhados').innerHTML = obra.dias_trabalhados ? `<strong>${obra.dias_trabalhados}</strong> dias` : '';
@@ -8795,6 +8798,64 @@ function enviarArquivo() {
 // }
 
 let batchMode = false;
+
+// ====================
+// Liberar Modelagem antes do Filtro de Assets
+// ====================
+function intval(v) {
+  return parseInt(v, 10) || 0;
+}
+
+function atualizarBtnLiberarModelagem(liberado) {
+  const btn = document.getElementById("btnLiberarModelagem");
+  if (!btn) return;
+  if (liberado) {
+    btn.innerHTML = '<i class="fa-solid fa-lock-open"></i> Modelagem Liberada';
+    btn.style.background = "#2196f3";
+    btn.style.color = "#fff";
+    btn.title = "Modelagem liberada antes do filtro de assets — clique para travar";
+    btn.dataset.liberado = "1";
+  } else {
+    btn.innerHTML = '<i class="fa-solid fa-lock"></i> Liberar Modelagem';
+    btn.style.background = "";
+    btn.style.color = "";
+    btn.title = "Liberar modelagem antes do filtro de assets";
+    btn.dataset.liberado = "0";
+  }
+}
+
+(function initLiberarModelagem() {
+  const btn = document.getElementById("btnLiberarModelagem");
+  if (!btn) return;
+  btn.addEventListener("click", function () {
+    const id = localStorage.getItem("obraId");
+    if (!id) return;
+    const novoValor = btn.dataset.liberado === "1" ? 0 : 1;
+    fetch("liberar_modelagem_obra.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ obra_id: Number(id), valor: novoValor }),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success) {
+          atualizarBtnLiberarModelagem(data.liberar_modelagem);
+          Toastify({
+            text: data.liberar_modelagem
+              ? "Modelagem liberada antes do filtro de assets!"
+              : "Liberação da modelagem removida.",
+            duration: 3000,
+            gravity: "top",
+            position: "right",
+            backgroundColor: data.liberar_modelagem ? "#2196f3" : "#757575",
+          }).showToast();
+        } else {
+          alert("Erro ao alterar: " + (data.error || "desconhecido"));
+        }
+      })
+      .catch((e) => alert("Erro de comunicação: " + e.message));
+  });
+})();
 
 document.getElementById("batch_actions").addEventListener("click", function () {
   const table = document.getElementById("tabela-obra");

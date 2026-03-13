@@ -266,6 +266,24 @@ if (count($funcaoImagemIds) > 0) {
 $imagemIds = array_unique(array_column($funcoes, 'imagem_id')); // <- unique para evitar placeholders duplicados
 $todasFuncoes = [];
 
+// ====================
+// Consulta liberar_modelagem por obra
+// ====================
+$obraIds = array_unique(array_column($funcoes, 'obra_id'));
+$liberarModelagemPorObra = [];
+if (count($obraIds) > 0) {
+    $inObra = implode(',', array_fill(0, count($obraIds), '?'));
+    $stmtLM = $conn->prepare("SELECT idobra, liberar_modelagem FROM obra WHERE idobra IN ($inObra)");
+    $typesLM = str_repeat('i', count($obraIds));
+    $stmtLM->bind_param($typesLM, ...$obraIds);
+    $stmtLM->execute();
+    $resultLM = $stmtLM->get_result();
+    while ($row = $resultLM->fetch_assoc()) {
+        $liberarModelagemPorObra[intval($row['idobra'])] = intval($row['liberar_modelagem']);
+    }
+    $stmtLM->close();
+}
+
 if (count($imagemIds) > 0) {
     $inImagem = implode(',', array_fill(0, count($imagemIds), '?'));
     $sqlTodasFuncoes = "SELECT fi.imagem_id, fi.funcao_id, fi.status, fi.prazo, fi.colaborador_id,
@@ -341,6 +359,10 @@ foreach ($funcoes as $funcao) {
     }
     // Se for Alteração (funcao_id == 6), sempre libera
     elseif ($funcaoAtualId == 6) {
+        $liberada = true;
+    }
+    // Se for Modelagem (funcao_id == 2) e a obra tem liberar_modelagem=1, libera direto
+    elseif ($funcaoAtualId == 2 && !empty($liberarModelagemPorObra[intval($funcao['obra_id'])])) {
         $liberada = true;
     }
     // Se esta é a primeira função REAL da imagem, libera sempre

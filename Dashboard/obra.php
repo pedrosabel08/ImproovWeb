@@ -456,6 +456,9 @@ $conn->close();
                         <!-- <button id="clearFilters" class="action-item">Limpar filtros</button> -->
                         <button id="markInactiveBtn" class="action-item">Marcar Inativa</button>
                         <button id="fotograficoBtn" class="action-item">Fotográfico</button>
+                        <button id="btnLiberarModelagem" class="tooltip action-item" data-tooltip="Liberar modelagem antes do filtro de assets">
+                            <i class="fa-solid fa-lock"></i> Liberar Modelagem
+                        </button>
                     </div>
                 </div>
             </div>
@@ -2191,7 +2194,7 @@ $conn->close();
 
     <script>
         // Project root for building root-relative URLs in scripts
-        (function () {
+        (function() {
             const path = String(window.location.pathname || '');
             const useFlow = path.includes('/flow/');
             window.PROJECT_ROOT = useFlow ? '/flow/ImproovWeb' : '/ImproovWeb';

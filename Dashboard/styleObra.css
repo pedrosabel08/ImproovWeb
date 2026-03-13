@@ -1786,6 +1786,10 @@ table#tabela-logs tbody tr:hover {
     background-color: #946ffa;
 }
 
+#btnLiberarModelagem {
+    background-color: #4caccf;
+}
+
 /* Ensure the obra title doesn't wrap and scales responsively */
 #nomenclatura {
     font-size: clamp(1.25rem, 1.2rem + 2.0vw, 2.4rem);

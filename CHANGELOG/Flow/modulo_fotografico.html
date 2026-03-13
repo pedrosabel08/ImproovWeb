@@ -1,0 +1,314 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>M&oacute;dulo Fotogr&aacute;fico &mdash; Sistema Improov</title>
+    <style>
+      /* From extension vscode.github */
+      /*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+      .vscode-dark img[src$="\#gh-light-mode-only"],
+      .vscode-light img[src$="\#gh-dark-mode-only"],
+      .vscode-high-contrast:not(.vscode-high-contrast-light)
+        img[src$="\#gh-light-mode-only"],
+      .vscode-high-contrast-light img[src$="\#gh-dark-mode-only"] {
+        display: none;
+      }
+    </style>
+
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css"
+    />
+    <style>
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", system-ui,
+          "Ubuntu", "Droid Sans", sans-serif;
+        font-size: 14px;
+        line-height: 1.6;
+      }
+    </style>
+    <style>
+      .task-list-item {
+        list-style-type: none;
+      }
+
+      .task-list-item-checkbox {
+        margin-left: -20px;
+        vertical-align: middle;
+        pointer-events: none;
+      }
+    </style>
+    <style>
+      :root {
+        --color-note: #0969da;
+        --color-tip: #1a7f37;
+        --color-warning: #9a6700;
+        --color-severe: #bc4c00;
+        --color-caution: #d1242f;
+        --color-important: #8250df;
+      }
+    </style>
+    <style>
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --color-note: #2f81f7;
+          --color-tip: #3fb950;
+          --color-warning: #d29922;
+          --color-severe: #db6d28;
+          --color-caution: #f85149;
+          --color-important: #a371f7;
+        }
+      }
+    </style>
+    <style>
+      .markdown-alert {
+        padding: 0.5rem 1rem;
+        margin-bottom: 16px;
+        color: inherit;
+        border-left: 0.25em solid #888;
+      }
+
+      .markdown-alert > :first-child {
+        margin-top: 0;
+      }
+
+      .markdown-alert > :last-child {
+        margin-bottom: 0;
+      }
+
+      .markdown-alert .markdown-alert-title {
+        display: flex;
+        font-weight: 500;
+        align-items: center;
+        line-height: 1;
+      }
+
+      .markdown-alert .markdown-alert-title .octicon {
+        margin-right: 0.5rem;
+        display: inline-block;
+        overflow: visible !important;
+        vertical-align: text-bottom;
+        fill: currentColor;
+      }
+
+      .markdown-alert.markdown-alert-note {
+        border-left-color: var(--color-note);
+      }
+
+      .markdown-alert.markdown-alert-note .markdown-alert-title {
+        color: var(--color-note);
+      }
+
+      .markdown-alert.markdown-alert-important {
+        border-left-color: var(--color-important);
+      }
+
+      .markdown-alert.markdown-alert-important .markdown-alert-title {
+        color: var(--color-important);
+      }
+
+      .markdown-alert.markdown-alert-warning {
+        border-left-color: var(--color-warning);
+      }
+
+      .markdown-alert.markdown-alert-warning .markdown-alert-title {
+        color: var(--color-warning);
+      }
+
+      .markdown-alert.markdown-alert-tip {
+        border-left-color: var(--color-tip);
+      }
+
+      .markdown-alert.markdown-alert-tip .markdown-alert-title {
+        color: var(--color-tip);
+      }
+
+      .markdown-alert.markdown-alert-caution {
+        border-left-color: var(--color-caution);
+      }
+
+      .markdown-alert.markdown-alert-caution .markdown-alert-title {
+        color: var(--color-caution);
+      }
+    </style>
+  </head>
+  <body class="vscode-body vscode-light">
+    <h1 id="módulo-fotográfico--sistema-improov">
+      Módulo Fotográfico — Sistema Improov
+    </h1>
+    <h2 id="objetivo">Objetivo</h2>
+    <p>
+      O Módulo Fotográfico centraliza e organiza todas as demandas de captação
+      fotográfica necessárias para a produção das imagens dos projetos. Ele
+      garante que o Background fotográfico (BG) — insumo crítico para a produção
+      — seja planejado, capturado e vinculado corretamente às imagens.
+    </p>
+    <h3 id="permite">Permite:</h3>
+    <ul>
+      <li>visualizar fotográficos pendentes</li>
+      <li>planejar sessões fotográficas</li>
+      <li>organizar logística de captação</li>
+      <li>registrar fotos capturadas</li>
+      <li>vincular fotos às imagens que irão utilizá-las como BG</li>
+    </ul>
+    <h2 id="conceito-geral">Conceito Geral</h2>
+    <p>Fluxo conceitual:</p>
+    <p>
+      Imagem precisa de BG → Pendência Fotográfica → Planejamento da Sessão →
+      Sessão Fotográfica → Fotos Capturadas → Vinculação foto → imagem
+    </p>
+    <h2 id="interface-do-módulo">Interface do Módulo</h2>
+    <p>A interface principal é composta por três áreas horizontais:</p>
+    <ul>
+      <li>
+        <p>
+          <strong>Projetos pendentes (lista de cards)</strong> — exibe todas as
+          pendências fotográficas. Cada card mostra:
+        </p>
+        <ul>
+          <li>Nome do projeto</li>
+          <li>Nome da imagem</li>
+          <li>Tipo de imagem</li>
+          <li>Prazo</li>
+          <li>Cidade / Localização</li>
+        </ul>
+        <p>Exemplo de card:</p>
+        <ul>
+          <li>Ed. Aurora — Fachada frontal — Prazo: 15/04 — Curitiba, PR</li>
+        </ul>
+        <p>
+          Interação: ao clicar em um card, o projeto é destacado no mapa e o
+          painel direito mostra os detalhes.
+        </p>
+      </li>
+      <li>
+        <p>
+          <strong>Mapa de Localização</strong> — exibe pins para cada projeto
+          com pendência fotográfica.
+        </p>
+        <ul>
+          <li>Pin por projeto</li>
+          <li>Agrupamento de projetos próximos</li>
+          <li>Clique no pin seleciona o projeto e abre detalhes</li>
+          <li>
+            Objetivo: facilitar agrupamento logístico e planejamento de rotas
+          </li>
+        </ul>
+      </li>
+      <li>
+        <p>
+          <strong>Painel do Projeto Selecionado</strong> — mostra detalhes
+          completos do projeto e previsões úteis.
+        </p>
+        <ul>
+          <li>Previsão do tempo (condição, temperatura, próximos dias)</li>
+          <li>
+            Informações do projeto: nome, imagem, tipo, prazo, cidade,
+            coordenadas
+          </li>
+          <li>
+            Informações técnicas: altura da câmera, horário, tipo de captação
+            (drone, terrestre), status
+          </li>
+          <li>
+            Plano de Voo / Captação: referências, posição de câmera, altura,
+            lente, acesso, observações
+          </li>
+          <li>Imagens de referência (miniaturas)</li>
+        </ul>
+      </li>
+    </ul>
+    <h2 id="sessão-fotográfica">Sessão Fotográfica</h2>
+    <ul>
+      <li>
+        Sessões podem agrupar vários projetos para otimizar deslocamentos.
+      </li>
+      <li>
+        Registro de sessão: data, fotógrafo, link para drive, número de fotos
+        capturadas, fotos selecionadas e observações.
+      </li>
+    </ul>
+    <p>Exemplo:</p>
+    <ul>
+      <li>Sessão: 12/04 — Fotógrafo: João</li>
+      <li>Projetos: Ed. Aurora, Resid. Ocean View, Ed. Atlântico</li>
+      <li>
+        Link Drive:
+        <a href="https://drive.google.com/xxxxx"
+          >https://drive.google.com/xxxxx</a
+        >
+      </li>
+      <li>Fotos capturadas: 45 — Fotos selecionadas: 6</li>
+    </ul>
+    <h2 id="curadoria-fotográfica">Curadoria Fotográfica</h2>
+    <ul>
+      <li>Seleção de fotos utilizáveis</li>
+      <li>Identificação de fotos que servem como BG</li>
+      <li>Vinculação das fotos às imagens do projeto</li>
+    </ul>
+    <p>Exemplo de vinculação:</p>
+    <ul>
+      <li>
+        Foto <code>BG_012</code> → pode ser usada em: Fachada frontal, Fachada
+        esquina (sim); Rooftop (não)
+      </li>
+    </ul>
+    <h2 id="estrutura-conceitual-entidades-principais">
+      Estrutura Conceitual (Entidades Principais)
+    </h2>
+    <ul>
+      <li>Projeto</li>
+      <li>Imagem</li>
+      <li>PendênciaFotográfica</li>
+      <li>SessãoFotográfica</li>
+      <li>FotoBG</li>
+    </ul>
+    <p>
+      Relacionamento resumido: Projeto → Imagem → PendênciaFotográfica →
+      SessãoFotográfica → Fotos Capturadas → Vinculação foto → imagem
+    </p>
+    <h2 id="benefícios">Benefícios</h2>
+    <ul>
+      <li>Centralização das demandas de fotografia</li>
+      <li>Planejamento logístico eficiente</li>
+      <li>Redução de atrasos no pipeline</li>
+      <li>Rastreabilidade entre foto e imagem</li>
+      <li>Reutilização de BGs</li>
+    </ul>
+    <h2 id="possíveis-evoluções-futuras">Possíveis Evoluções Futuras</h2>
+    <ul>
+      <li>
+        Integração com APIs de previsão do tempo (OpenWeather, WeatherAPI)
+      </li>
+      <li>Planejamento automático de rotas e agrupamento de projetos</li>
+      <li>
+        Integração com drones para registro automático de altura, direção e
+        coordenadas
+      </li>
+      <li>Banco de BGs: biblioteca reutilizável de fundos fotográficos</li>
+    </ul>
+    <hr />
+    <h2 id="visual-exemplo-simplificado">Visual (Exemplo simplificado)</h2>
+    <hr />
+    <h2 id="observação-importante">Observação Importante</h2>
+    <p>
+      O módulo foca na dependência entre imagens e BGs fotográficos: sua função
+      principal é garantir que o insumo fotográfico esteja disponível e
+      vinculado corretamente no pipeline de produção.
+    </p>
+    <hr />
+    <p>Arquivo gerado automaticamente por auxílio de documentação interna.</p>
+
+    <img src="/assets/fotografico_ideia.png" alt="Ideia do Módulo Fotográfico">
+
+  </body>
+</html>

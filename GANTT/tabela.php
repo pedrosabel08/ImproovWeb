@@ -1,11 +1,22 @@
 <?php
+// Ativa relatórios de erro para facilitar depuração
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+
 include '../conexao.php'; // Conexão com o banco
 
-$id_obra = $_GET['id_obra'] ?? null;
+// Remove modos que rejeitam datas zero (0000-00-00) armazenadas legalmente na tabela
+$conn->query("SET SESSION sql_mode = REPLACE(REPLACE(@@SESSION.sql_mode, 'NO_ZERO_DATE', ''), 'NO_ZERO_IN_DATE', '')");
 
-if (!$id_obra) {
+$id_obra = filter_input(INPUT_GET, 'id_obra', FILTER_VALIDATE_INT);
+
+header('Content-Type: application/json');
+
+if ($id_obra === null || $id_obra === false) {
     http_response_code(400);
-    echo json_encode(['erro' => 'ID da obra não fornecido.']);
+    echo json_encode(['erro' => 'ID da obra não fornecido ou inválido.']);
     exit;
 }
 
@@ -32,10 +43,11 @@ ORDER BY FIELD(
     'Planta Humanizada'
 ), img.idimagens_cliente_obra, img.imagem_nome";
 
-$stmtImagens = $conn->prepare($sqlImagens);
-$stmtImagens->bind_param("i", $id_obra);
-$stmtImagens->execute();
-$resultImagens = $stmtImagens->get_result();
+try {
+    $stmtImagens = $conn->prepare($sqlImagens);
+    $stmtImagens->bind_param("i", $id_obra);
+    $stmtImagens->execute();
+    $resultImagens = $stmtImagens->get_result();
 
 // Query para buscar as etapas
 $sqlEtapas = "SELECT 
@@ -105,29 +117,37 @@ ORDER BY
 
 ";
 
-$stmtEtapas = $conn->prepare($sqlEtapas);
-$stmtEtapas->bind_param("ii", $id_obra, $id_obra);
-$stmtEtapas->execute();
-$resultEtapas = $stmtEtapas->get_result();
+    $stmtEtapas = $conn->prepare($sqlEtapas);
+    $stmtEtapas->bind_param("ii", $id_obra, $id_obra);
+    $stmtEtapas->execute();
+    $resultEtapas = $stmtEtapas->get_result();
 
 // Query para determinar o intervalo de datas
-$sqlDatas = "SELECT MIN(data_inicio) as primeira_data, MAX(data_fim) as ultima_data 
-             FROM gantt_prazos 
-             WHERE obra_id = ? AND data_inicio <> '0000-00-00' AND data_fim <> '0000-00-00'";
-$stmtDatas = $conn->prepare($sqlDatas);
-$stmtDatas->bind_param("i", $id_obra);
-$stmtDatas->execute();
-$resultDatas = $stmtDatas->get_result();
-$rowDatas = $resultDatas->fetch_assoc();
-$primeiraData = $rowDatas['primeira_data'];
-$ultimaData = $rowDatas['ultima_data'];
+$sqlDatas = "SELECT 
+    MIN(CASE WHEN data_inicio = '0000-00-00' THEN NULL ELSE data_inicio END) AS primeira_data,
+    MAX(CASE WHEN data_fim = '0000-00-00' THEN NULL ELSE data_fim END) AS ultima_data
+    FROM gantt_prazos
+    WHERE obra_id = ?";
+    $stmtDatas = $conn->prepare($sqlDatas);
+    $stmtDatas->bind_param("i", $id_obra);
+    $stmtDatas->execute();
+    $resultDatas = $stmtDatas->get_result();
+    $rowDatas = $resultDatas->fetch_assoc();
+    $primeiraData = $rowDatas['primeira_data'];
+    $ultimaData = $rowDatas['ultima_data'];
 
-$sqlObra = "SELECT * FROM obra WHERE idobra = ?";
-$stmtObra = $conn->prepare($sqlObra);
-$stmtObra->bind_param("i", $id_obra);
-$stmtObra->execute();
-$resultObra = $stmtObra->get_result();
-$rowObra = $resultObra->fetch_assoc();
+    $sqlObra = "SELECT * FROM obra WHERE idobra = ?";
+    $stmtObra = $conn->prepare($sqlObra);
+    $stmtObra->bind_param("i", $id_obra);
+    $stmtObra->execute();
+    $resultObra = $stmtObra->get_result();
+    $rowObra = $resultObra->fetch_assoc();
+
+} catch (Exception $e) {
+    http_response_code(500);
+    echo json_encode(['erro' => $e->getMessage()]);
+    exit;
+}
 
 // Organizar os dados
 $imagens = [];
@@ -144,7 +164,6 @@ while ($row = $resultEtapas->fetch_assoc()) {
 }
 
 // Retornar os dados em JSON
-header('Content-Type: application/json');
 echo json_encode([
     'imagens' => $imagens,
     'etapas' => $etapas,

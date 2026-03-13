@@ -87,7 +87,8 @@ $conn->close();
             </div>
             <div class="filter-item filter-search">
                 <label for="filtro-busca">Buscar</label>
-                <input type="text" id="filtro-busca" placeholder="Imagem, obra ou colaborador">
+                <i class="fas fa-search search-icon"></i>
+                <input type="text" id="filtro-busca" placeholder="Imagem, obra ou colaborador...">
             </div>
             <div class="filter-actions">
                 <button type="button" id="btn-aplicar-filtros">Aplicar</button>
@@ -117,7 +118,7 @@ $conn->close();
     <div class="form-edicao" id="form-edicao">
         <form id="form-add" method="post" action="insereFuncao.php">
             <div class="titulo-funcoes">
-                <span id="campoNomeImagem"></span>
+                <span id="campoNomeImagem" style="color: var(--text);"></span>
             </div> <input type="hidden" id="imagem_id" name="imagem_id" value="">
             <div class="modal-funcoes">
                 <div class="funcao_comp">

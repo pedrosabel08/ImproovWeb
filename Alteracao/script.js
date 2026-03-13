@@ -1,409 +1,504 @@
 let idImagemSelecionada = null;
 let sortableInstances = [];
 const selectedCards = new Set();
+let _filterDebounceTimer = null;
 
 const STATUS_COLUMNS = [
-    { label: 'Não iniciado', key: 'nao-iniciado' },
-    { label: 'Em andamento', key: 'em-andamento' },
-    { label: 'Em aprovação', key: 'em-aprovacao' },
-    { label: 'Finalizado', key: 'finalizado' }
+  { label: "Não iniciado", key: "nao-iniciado" },
+  { label: "Em andamento", key: "em-andamento" },
+  { label: "Em aprovação", key: "em-aprovacao" },
+  { label: "Finalizado", key: "finalizado" },
 ];
 
 function normalizarStatus(status) {
-    return (status || '')
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .toLowerCase()
-        .trim();
+  return (status || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
 }
 
 function getStatusKey(status) {
-    const normalizado = normalizarStatus(status);
-    if (normalizado === 'nao iniciado') return 'nao-iniciado';
-    if (normalizado === 'em andamento') return 'em-andamento';
-    if (normalizado === 'em aprovacao') return 'em-aprovacao';
-    if (normalizado === 'finalizado') return 'finalizado';
-    return 'nao-iniciado';
+  const normalizado = normalizarStatus(status);
+  if (normalizado === "nao iniciado") return "nao-iniciado";
+  if (normalizado === "em andamento") return "em-andamento";
+  if (normalizado === "em aprovacao") return "em-aprovacao";
+  if (normalizado === "finalizado") return "finalizado";
+  return "nao-iniciado";
 }
 
 function getFilters() {
-    return {
-        status: document.getElementById('filtro-status').value,
-        obra_id: document.getElementById('filtro-obra').value,
-        colaborador_id: document.getElementById('filtro-colaborador').value,
-        busca: document.getElementById('filtro-busca').value.trim()
-    };
+  return {
+    status: document.getElementById("filtro-status").value,
+    obra_id: document.getElementById("filtro-obra").value,
+    colaborador_id: document.getElementById("filtro-colaborador").value,
+    busca: document.getElementById("filtro-busca").value.trim(),
+  };
 }
 
 function montarQueryString(filtros) {
-    const params = new URLSearchParams();
-    Object.entries(filtros).forEach(([key, value]) => {
-        if (value !== '' && value !== null && value !== undefined) {
-            params.append(key, value);
-        }
-    });
-    return params.toString();
+  const params = new URLSearchParams();
+  Object.entries(filtros).forEach(([key, value]) => {
+    if (value !== "" && value !== null && value !== undefined) {
+      params.append(key, value);
+    }
+  });
+  return params.toString();
 }
 
 function limparSelecao() {
-    selectedCards.clear();
-    document.querySelectorAll('.imagem-card.selected').forEach(card => card.classList.remove('selected'));
+  selectedCards.clear();
+  document
+    .querySelectorAll(".imagem-card.selected")
+    .forEach((card) => card.classList.remove("selected"));
 }
 
 function preencherFiltros(filtros) {
-    const selectObra = document.getElementById('filtro-obra');
-    const selectColab = document.getElementById('filtro-colaborador');
-    const obraAtual = selectObra.value;
-    const colabAtual = selectColab.value;
+  const selectObra = document.getElementById("filtro-obra");
+  const selectColab = document.getElementById("filtro-colaborador");
+  const obraAtual = selectObra.value;
+  const colabAtual = selectColab.value;
 
-    selectObra.innerHTML = '<option value="">Todas</option>';
-    (filtros?.obras || []).forEach(obra => {
-        const option = document.createElement('option');
-        option.value = obra.id;
-        option.textContent = obra.nome;
-        selectObra.appendChild(option);
-    });
-    if (obraAtual) {
-        selectObra.value = obraAtual;
-    }
+  selectObra.innerHTML = '<option value="">Todas</option>';
+  (filtros?.obras || []).forEach((obra) => {
+    const option = document.createElement("option");
+    option.value = obra.id;
+    option.textContent = obra.nome;
+    selectObra.appendChild(option);
+  });
+  if (obraAtual) {
+    selectObra.value = obraAtual;
+  }
 
-    selectColab.innerHTML = '<option value="">Todos</option>';
-    (filtros?.colaboradores || []).forEach(colab => {
-        const option = document.createElement('option');
-        option.value = colab.id;
-        option.textContent = colab.nome;
-        selectColab.appendChild(option);
-    });
-    if (colabAtual) {
-        selectColab.value = colabAtual;
-    }
+  selectColab.innerHTML = '<option value="">Todos</option>';
+  (filtros?.colaboradores || []).forEach((colab) => {
+    const option = document.createElement("option");
+    option.value = colab.id;
+    option.textContent = colab.nome;
+    selectColab.appendChild(option);
+  });
+  if (colabAtual) {
+    selectColab.value = colabAtual;
+  }
 }
 
 function agruparPorObra(items) {
-    return items.reduce((acc, item) => {
-        const key = `${item.obra_id}`;
-        if (!acc[key]) {
-            acc[key] = { obra_nome: item.obra_nome, items: [] };
-        }
-        acc[key].items.push(item);
-        return acc;
-    }, {});
+  return items.reduce((acc, item) => {
+    const key = `${item.obra_id}`;
+    if (!acc[key]) {
+      acc[key] = { obra_nome: item.obra_nome, items: [] };
+    }
+    acc[key].items.push(item);
+    return acc;
+  }, {});
 }
 
 function criarCard(item) {
-    const card = document.createElement('div');
-    card.className = 'imagem-card';
-    card.dataset.imagemId = item.imagem_id;
+  const card = document.createElement("div");
+  card.className = "imagem-card";
+  card.dataset.imagemId = item.imagem_id;
+  card.dataset.funcaoId = String(item.funcao_id);
 
-    if (!item.colaborador_id) {
-        card.classList.add('sem-colaborador');
-    }
+  if (!item.colaborador_id) {
+    card.classList.add("sem-colaborador");
+  }
 
-    card.innerHTML = `
+  card.innerHTML = `
         <div class="card-title">${item.imagem_nome}</div>
-        <div class="card-sub">${item.obra_nome}</div>
-        <div class="card-meta">Colab: ${item.colaborador_nome || '—'}</div>
-        <div class="card-meta">Prazo: ${item.prazo || '—'}</div>
+        <div class="card-sub"><i class="fas fa-building"></i> ${item.obra_nome}</div>
+        <div class="card-sub"><i class="fas fa-info-circle"></i> ${item.status_nome}</div>
+        <div class="card-footer">
+            <div class="card-meta"><i class="fas fa-user"></i> ${item.colaborador_nome || "—"}</div>
+            <div class="card-meta"><i class="fas fa-calendar"></i> ${item.prazo || "—"}</div>
+        </div>
     `;
 
-    card.addEventListener('click', (event) => {
-        const imagemId = String(item.imagem_id);
-        if (event.ctrlKey || event.metaKey) {
-            event.preventDefault();
-            if (selectedCards.has(imagemId)) {
-                selectedCards.delete(imagemId);
-                card.classList.remove('selected');
-            } else {
-                selectedCards.add(imagemId);
-                card.classList.add('selected');
-            }
-            return;
-        }
+  card.addEventListener("click", (event) => {
+    const funcaoId = String(item.funcao_id);
+    if (event.ctrlKey || event.metaKey) {
+      event.preventDefault();
+      if (selectedCards.has(funcaoId)) {
+        selectedCards.delete(funcaoId);
+        card.classList.remove("selected");
+      } else {
+        selectedCards.add(funcaoId);
+        card.classList.add("selected");
+      }
+      return;
+    }
 
-        limparSelecao();
-        abrirModal(item.imagem_id);
-    });
+    limparSelecao();
+    abrirModal(item.imagem_id);
+  });
 
-    return card;
+  return card;
 }
 
 function renderKanban(items) {
-    STATUS_COLUMNS.forEach(({ key }) => {
-        const container = document.getElementById(`kanban-${key}`);
-        if (container) {
-            container.innerHTML = '';
-        }
+  STATUS_COLUMNS.forEach(({ key }) => {
+    const container = document.getElementById(`kanban-${key}`);
+    if (container) {
+      container.innerHTML = "";
+    }
+  });
+
+  const obraFiltrada = document.getElementById("filtro-obra").value !== "";
+
+  STATUS_COLUMNS.forEach(({ label, key }) => {
+    const container = document.getElementById(`kanban-${key}`);
+    if (!container) return;
+
+    const itensColuna = items.filter(
+      (item) => getStatusKey(item.status_funcao) === key,
+    );
+    const countElement = document.getElementById(`count-${key}`);
+    if (countElement) {
+      countElement.textContent = String(itensColuna.length);
+    }
+
+    if (itensColuna.length === 0) {
+      const empty = document.createElement("div");
+      empty.className = "empty-state";
+      empty.innerHTML = '<i class="fas fa-inbox"></i><span>Nenhum item</span>';
+      container.appendChild(empty);
+      return;
+    }
+
+    if (obraFiltrada) {
+      const grupos = agruparPorObra(itensColuna);
+      let cardIndex = 0;
+      Object.values(grupos).forEach((grupo) => {
+        const groupContainer = document.createElement("div");
+        groupContainer.className = "obra-group";
+        groupContainer.innerHTML = `<div class="obra-title">${grupo.obra_nome}</div>`;
+
+        const list = document.createElement("div");
+        list.className = "cards-list";
+        grupo.items.forEach((item) => {
+          const card = criarCard(item);
+          card.style.animationDelay = `${cardIndex * 40}ms`;
+          list.appendChild(card);
+          cardIndex++;
+        });
+        groupContainer.appendChild(list);
+        container.appendChild(groupContainer);
+      });
+      return;
+    }
+
+    const list = document.createElement("div");
+    list.className = "cards-list";
+    itensColuna.forEach((item, i) => {
+      const card = criarCard(item);
+      card.style.animationDelay = `${i * 40}ms`;
+      list.appendChild(card);
     });
+    container.appendChild(list);
+  });
 
-    const obraFiltrada = document.getElementById('filtro-obra').value !== '';
-
-    STATUS_COLUMNS.forEach(({ label, key }) => {
-        const container = document.getElementById(`kanban-${key}`);
-        if (!container) return;
-
-        const itensColuna = items.filter(item => getStatusKey(item.status_funcao) === key);
-        const countId = `count-${key}`;
-        const countElement = document.getElementById(countId);
-        if (countElement) {
-            countElement.textContent = String(itensColuna.length);
-        }
-
-        if (obraFiltrada) {
-            const grupos = agruparPorObra(itensColuna);
-            Object.values(grupos).forEach(grupo => {
-                const groupContainer = document.createElement('div');
-                groupContainer.className = 'obra-group';
-                groupContainer.innerHTML = `<div class="obra-title">${grupo.obra_nome}</div>`;
-
-                const list = document.createElement('div');
-                list.className = 'cards-list';
-                grupo.items.forEach(item => list.appendChild(criarCard(item)));
-                groupContainer.appendChild(list);
-                container.appendChild(groupContainer);
-            });
-            return;
-        }
-
-        const list = document.createElement('div');
-        list.className = 'cards-list';
-        itensColuna.forEach(item => list.appendChild(criarCard(item)));
-        container.appendChild(list);
-    });
-
-    inicializarDragAndDrop();
+  inicializarDragAndDrop();
 }
 
 function inicializarDragAndDrop() {
-    sortableInstances.forEach(instance => instance.destroy());
-    sortableInstances = [];
+  sortableInstances.forEach((instance) => instance.destroy());
+  sortableInstances = [];
 
-    document.querySelectorAll('.cards-list').forEach(list => {
-        const instance = new Sortable(list, {
-            group: 'alteracao-kanban',
-            animation: 120,
-            ghostClass: 'drag-ghost',
-            onStart: (evt) => {
-                const draggedId = evt.item?.dataset?.imagemId;
-                if (draggedId && !selectedCards.has(draggedId)) {
-                    limparSelecao();
-                    selectedCards.add(draggedId);
-                    evt.item.classList.add('selected');
-                }
-            },
-            onEnd: (evt) => {
-                const coluna = evt.to.closest('.kanban-column');
-                const statusDestino = coluna?.dataset?.status;
-                if (!statusDestino) {
-                    recarregarAlteracao();
-                    return;
-                }
+  document.querySelectorAll(".cards-list").forEach((list) => {
+    const instance = new Sortable(list, {
+      group: "alteracao-kanban",
+      animation: 120,
+      ghostClass: "drag-ghost",
+      onStart: (evt) => {
+        const funcaoId = evt.item?.dataset?.funcaoId;
+        if (funcaoId && !selectedCards.has(funcaoId)) {
+          limparSelecao();
+          selectedCards.add(funcaoId);
+          evt.item.classList.add("selected");
+        }
+      },
+      onEnd: (evt) => {
+        const coluna = evt.to.closest(".kanban-column");
+        const statusDestino = coluna?.dataset?.status;
+        if (!statusDestino) {
+          recarregarAlteracao();
+          return;
+        }
 
-                const draggedId = evt.item?.dataset?.imagemId;
-                const ids = selectedCards.size > 0 && draggedId && selectedCards.has(draggedId)
-                    ? Array.from(selectedCards)
-                    : draggedId ? [draggedId] : [];
+        const funcaoId = evt.item?.dataset?.funcaoId;
+        const ids =
+          selectedCards.size > 0 && funcaoId && selectedCards.has(funcaoId)
+            ? Array.from(selectedCards)
+            : funcaoId
+              ? [funcaoId]
+              : [];
 
-                if (ids.length === 0) {
-                    recarregarAlteracao();
-                    return;
-                }
+        if (ids.length === 0) {
+          recarregarAlteracao();
+          return;
+        }
 
-                atualizarStatusLote(ids, statusDestino);
-            }
-        });
-
-        sortableInstances.push(instance);
+        atualizarStatusLote(ids, statusDestino);
+      },
     });
+
+    sortableInstances.push(instance);
+  });
 }
 
 function atualizarStatusLote(ids, statusDestino) {
-    const atribuirLogado = normalizarStatus(statusDestino) === 'em andamento';
+  const atribuirLogado = normalizarStatus(statusDestino) === "em andamento";
 
-    fetch('updateStatusLote.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            imagem_ids: ids,
-            status: statusDestino,
-            atribuir_logado: atribuirLogado
-        })
+  fetch("updateStatusLote.php", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      funcao_ids: ids,
+      status: statusDestino,
+      atribuir_logado: atribuirLogado,
+    }),
+  })
+    .then((response) => response.json())
+    .then((data) => {
+      if (!data.success) {
+        Toastify({
+          text: data.message || "Erro ao atualizar status.",
+          duration: 3200,
+          gravity: "top",
+          position: "left",
+          backgroundColor: "red",
+        }).showToast();
+        recarregarAlteracao();
+        return;
+      }
+
+      Toastify({
+        text: "Status atualizado com sucesso!",
+        duration: 2500,
+        gravity: "top",
+        position: "left",
+        backgroundColor: "green",
+      }).showToast();
+
+      recarregarAlteracao();
     })
-        .then(response => response.json())
-        .then(data => {
-            if (!data.success) {
-                Toastify({
-                    text: data.message || 'Erro ao atualizar status.',
-                    duration: 3200,
-                    gravity: 'top',
-                    position: 'left',
-                    backgroundColor: 'red'
-                }).showToast();
-                recarregarAlteracao();
-                return;
-            }
-
-            Toastify({
-                text: 'Status atualizado com sucesso!',
-                duration: 2500,
-                gravity: 'top',
-                position: 'left',
-                backgroundColor: 'green'
-            }).showToast();
-
-            recarregarAlteracao();
-        })
-        .catch(() => {
-            Toastify({
-                text: 'Erro ao atualizar status.',
-                duration: 3200,
-                gravity: 'top',
-                position: 'left',
-                backgroundColor: 'red'
-            }).showToast();
-            recarregarAlteracao();
-        });
+    .catch(() => {
+      Toastify({
+        text: "Erro ao atualizar status.",
+        duration: 3200,
+        gravity: "top",
+        position: "left",
+        backgroundColor: "red",
+      }).showToast();
+      recarregarAlteracao();
+    });
 }
 
 function recarregarAlteracao() {
-    limparSelecao();
-    const filtros = getFilters();
-    const query = montarQueryString(filtros);
+  limparSelecao();
+  const filtros = getFilters();
+  const query = montarQueryString(filtros);
 
-    fetch(`getAlteracao.php${query ? `?${query}` : ''}`)
-        .then(response => response.json())
-        .then(data => {
-            if (!data.success) {
-                throw new Error(data.message || 'Erro ao carregar dados.');
-            }
+  // Show skeleton loaders
+  STATUS_COLUMNS.forEach(({ key }) => {
+    const container = document.getElementById(`kanban-${key}`);
+    if (container) {
+      container.innerHTML =
+        '<div class="cards-list">' +
+        '<div class="skeleton-card"></div>'.repeat(3) +
+        "</div>";
+    }
+  });
 
-            preencherFiltros(data.filtros);
-            renderKanban(data.items || []);
-        })
-        .catch(error => {
-            console.error('Erro ao carregar Kanban:', error);
-        });
+  fetch(`getAlteracao.php${query ? `?${query}` : ""}`)
+    .then((response) => response.json())
+    .then((data) => {
+      if (!data.success) {
+        throw new Error(data.message || "Erro ao carregar dados.");
+      }
+
+      preencherFiltros(data.filtros);
+      renderKanban(data.items || []);
+    })
+    .catch((error) => {
+      console.error("Erro ao carregar Kanban:", error);
+    });
 }
 
 function abrirModal(idimagem) {
-    document.getElementById('form-edicao').style.display = 'flex';
-    atualizarModal(idimagem);
-    idImagemSelecionada = idimagem;
+  document.getElementById("form-edicao").style.display = "flex";
+  atualizarModal(idimagem);
+  idImagemSelecionada = idimagem;
 }
 
 function limparCampos() {
-    document.getElementById('campoNomeImagem').textContent = '';
-    document.getElementById('status_alteracao').value = '';
-    document.getElementById('prazo_alteracao').value = '';
-    document.getElementById('obs_alteracao').value = '';
-    document.getElementById('opcao_alteracao').value = '';
+  document.getElementById("campoNomeImagem").textContent = "";
+  document.getElementById("status_alteracao").value = "";
+  document.getElementById("prazo_alteracao").value = "";
+  document.getElementById("obs_alteracao").value = "";
+  document.getElementById("opcao_alteracao").value = "";
 }
 
 function atualizarModal(idImagem) {
-    limparCampos();
+  limparCampos();
 
-    fetch(`../buscaLinhaAJAX.php?ajid=${idImagem}`)
-        .then(response => response.json())
-        .then(response => {
-            document.getElementById('form-edicao').style.display = 'flex';
+  fetch(`../buscaLinhaAJAX.php?ajid=${idImagem}`)
+    .then((response) => response.json())
+    .then((response) => {
+      document.getElementById("form-edicao").style.display = "flex";
 
-            if (response.funcoes && response.funcoes.length > 0) {
-                document.getElementById('campoNomeImagem').textContent = response.funcoes[0].imagem_nome;
+      if (response.funcoes && response.funcoes.length > 0) {
+        document.getElementById("campoNomeImagem").textContent =
+          response.funcoes[0].imagem_nome;
 
-                response.funcoes.forEach(function (funcao) {
-                    if (funcao.nome_funcao === 'Alteração') {
-                        document.getElementById('opcao_alteracao').value = funcao.colaborador_id || '';
-                        document.getElementById('status_alteracao').value = funcao.status || 'Não iniciado';
-                        document.getElementById('prazo_alteracao').value = funcao.prazo || '';
-                        document.getElementById('obs_alteracao').value = funcao.observacao || '';
-                    }
-                });
-            }
-        })
-        .catch(error => console.error('Erro ao buscar dados da linha:', error));
+        response.funcoes.forEach(function (funcao) {
+          if (funcao.nome_funcao === "Alteração") {
+            document.getElementById("opcao_alteracao").value =
+              funcao.colaborador_id || "";
+            document.getElementById("status_alteracao").value =
+              funcao.status || "Não iniciado";
+            document.getElementById("prazo_alteracao").value =
+              funcao.prazo || "";
+            document.getElementById("obs_alteracao").value =
+              funcao.observacao || "";
+          }
+        });
+      }
+    })
+    .catch((error) => console.error("Erro ao buscar dados da linha:", error));
 }
 
-document.getElementById('salvar_funcoes').addEventListener('click', function (event) {
+document
+  .getElementById("salvar_funcoes")
+  .addEventListener("click", function (event) {
     event.preventDefault();
 
     if (!idImagemSelecionada) {
-        Toastify({
-            text: 'Nenhuma imagem selecionada',
-            duration: 3000,
-            close: true,
-            gravity: 'top',
-            position: 'left',
-            backgroundColor: 'red',
-            stopOnFocus: true,
-        }).showToast();
-        return;
+      Toastify({
+        text: "Nenhuma imagem selecionada",
+        duration: 3000,
+        close: true,
+        gravity: "top",
+        position: "left",
+        backgroundColor: "red",
+        stopOnFocus: true,
+      }).showToast();
+      return;
     }
 
     const dados = {
-        imagem_id: idImagemSelecionada,
-        funcao_id: 6,
-        colaborador_id: document.getElementById('opcao_alteracao').value || '',
-        status: document.getElementById('status_alteracao').value || '',
-        prazo: document.getElementById('prazo_alteracao').value || '',
-        observacao: document.getElementById('obs_alteracao').value || '',
+      imagem_id: idImagemSelecionada,
+      funcao_id: 6,
+      colaborador_id: document.getElementById("opcao_alteracao").value || "",
+      status: document.getElementById("status_alteracao").value || "",
+      prazo: document.getElementById("prazo_alteracao").value || "",
+      observacao: document.getElementById("obs_alteracao").value || "",
     };
 
     $.ajax({
-        type: 'POST',
-        url: '../insereFuncao.php',
-        data: dados,
-        success: function () {
-            Toastify({
-                text: 'Dados salvos com sucesso!',
-                duration: 3000,
-                close: true,
-                gravity: 'top',
-                position: 'left',
-                backgroundColor: 'green',
-                stopOnFocus: true,
-            }).showToast();
-            document.getElementById('form-edicao').style.display = 'none';
-            recarregarAlteracao();
-        },
-        error: function (jqXHR, textStatus, errorThrown) {
-            console.error('Erro ao salvar dados: ' + textStatus, errorThrown);
-            Toastify({
-                text: 'Erro ao salvar dados.',
-                duration: 3000,
-                close: true,
-                gravity: 'top',
-                position: 'left',
-                backgroundColor: 'red',
-                stopOnFocus: true,
-            }).showToast();
-        },
+      type: "POST",
+      url: "../insereFuncao.php",
+      data: dados,
+      success: function () {
+        Toastify({
+          text: "Dados salvos com sucesso!",
+          duration: 3000,
+          close: true,
+          gravity: "top",
+          position: "left",
+          backgroundColor: "green",
+          stopOnFocus: true,
+        }).showToast();
+        document.getElementById("form-edicao").style.display = "none";
+        recarregarAlteracao();
+      },
+      error: function (jqXHR, textStatus, errorThrown) {
+        console.error("Erro ao salvar dados: " + textStatus, errorThrown);
+        Toastify({
+          text: "Erro ao salvar dados.",
+          duration: 3000,
+          close: true,
+          gravity: "top",
+          position: "left",
+          backgroundColor: "red",
+          stopOnFocus: true,
+        }).showToast();
+      },
     });
+  });
+
+document
+  .getElementById("btn-aplicar-filtros")
+  .addEventListener("click", recarregarAlteracao);
+document.getElementById("btn-limpar-filtros").addEventListener("click", () => {
+  document.getElementById("filtro-status").value = "";
+  document.getElementById("filtro-obra").value = "";
+  document.getElementById("filtro-colaborador").value = "";
+  document.getElementById("filtro-busca").value = "";
+  recarregarAlteracao();
 });
 
-document.getElementById('btn-aplicar-filtros').addEventListener('click', recarregarAlteracao);
-document.getElementById('btn-limpar-filtros').addEventListener('click', () => {
-    document.getElementById('filtro-status').value = '';
-    document.getElementById('filtro-obra').value = '';
-    document.getElementById('filtro-colaborador').value = '';
-    document.getElementById('filtro-busca').value = '';
-    recarregarAlteracao();
+// ─── Auto-filters: selects trigger instantly, text input debounces ───
+["filtro-status", "filtro-obra", "filtro-colaborador"].forEach((id) => {
+  document.getElementById(id).addEventListener("change", recarregarAlteracao);
 });
 
-const form_edicao = document.getElementById('form-edicao');
+document.getElementById("filtro-busca").addEventListener("input", () => {
+  clearTimeout(_filterDebounceTimer);
+  _filterDebounceTimer = setTimeout(recarregarAlteracao, 350);
+});
 
-window.addEventListener('touchstart', function (event) {
-    if (event.target == form_edicao) {
-        form_edicao.style.display = 'none';
+// ─── Theme Toggle ───
+function applyTheme(theme) {
+  document.documentElement.setAttribute("data-theme", theme);
+  const icon = document.getElementById("theme-icon");
+  const label = document.getElementById("theme-label");
+  if (icon)
+    icon.innerHTML =
+      theme === "dark"
+        ? '<i class="fas fa-sun"></i>'
+        : '<i class="fas fa-moon"></i>';
+  if (label) label.textContent = theme === "dark" ? "Dark" : "Light";
+  try {
+    localStorage.setItem("alteracao-theme", theme);
+  } catch (e) {}
+}
+
+(function initTheme() {
+  let saved = "light";
+  try {
+    saved = localStorage.getItem("alteracao-theme") || "light";
+  } catch (e) {}
+  applyTheme(saved);
+})();
+
+const themeToggle = document.getElementById("theme-toggle");
+if (themeToggle) {
+  themeToggle.addEventListener("click", () => {
+    const current =
+      document.documentElement.getAttribute("data-theme") || "light";
+    applyTheme(current === "dark" ? "light" : "dark");
+  });
+}
+
+const form_edicao = document.getElementById("form-edicao");
+
+window.addEventListener("touchstart", function (event) {
+  if (event.target == form_edicao) {
+    form_edicao.style.display = "none";
+  }
+});
+
+["click", "touchstart", "keydown"].forEach((eventType) => {
+  window.addEventListener(eventType, function (event) {
+    if (eventType === "keydown" && event.key !== "Escape") return;
+
+    if (
+      event.target == form_edicao ||
+      (eventType === "keydown" && event.key === "Escape")
+    ) {
+      form_edicao.style.display = "none";
     }
-});
-
-['click', 'touchstart', 'keydown'].forEach(eventType => {
-    window.addEventListener(eventType, function (event) {
-        if (eventType === 'keydown' && event.key !== 'Escape') return;
-
-        if (event.target == form_edicao || (eventType === 'keydown' && event.key === 'Escape')) {
-            form_edicao.style.display = 'none';
-        }
-    });
+  });
 });
 
 recarregarAlteracao();

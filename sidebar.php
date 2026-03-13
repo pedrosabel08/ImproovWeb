@@ -56,8 +56,16 @@ $__basePath = (strpos($__reqUri, '/flow/ImproovWeb/') !== false || preg_match('~
                     <!-- <li><a title="Lista Animação" href="https://improov.com.br/flow/ImproovWeb/Animacao"><i class="fas fa-film"></i><span> Lista Animação</span></a></li> -->
                 <?php endif; ?>
 
-                <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1)): ?>
+                <?php if (
+                    isset($_SESSION['nivel_acesso']) && (
+                        $_SESSION['nivel_acesso'] == 1 ||
+                        $_SESSION['nivel_acesso'] == 2 ||
+                        in_array($_SESSION['idcolaborador'] ?? null, [7, 34])
+                    )
+                ): ?>
                     <li><a title="Lista Alteração" href="https://improov.com.br/flow/ImproovWeb/Alteracao"><i class="fa-solid fa-user-pen"></i><span> Lista Alteração</span></a></li>
+                <?php endif; ?>
+                <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1)): ?>
                     <!-- <li><a title="Obras" href="https://improov.com.br/flow/ImproovWeb/Obras"><i class="fas fa-building"></i><span> Obras</span></a></li> -->
                     <li><a title="Dashboard" href="https://improov.com.br/flow/ImproovWeb/Dashboard"><i class="fa-solid fa-chart-line"></i><span> Dashboard</span></a></li>
                     <li><a title="Projetos" href="https://improov.com.br/flow/ImproovWeb/Projetos"><i class="fa-solid fa-diagram-project"></i><span> Projetos</span></a></li>

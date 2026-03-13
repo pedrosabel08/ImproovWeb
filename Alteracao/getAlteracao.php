@@ -16,12 +16,15 @@ $sql = "SELECT
     i.imagem_nome,
     i.obra_id,
     o.nomenclatura,
-    c.nome_colaborador
-FROM funcao_imagem f
+    c.nome_colaborador,
+    s.nome_status
+FROM alteracoes a
+JOIN funcao_imagem f ON f.idfuncao_imagem = a.funcao_id
 JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
 JOIN obra o ON o.idobra = i.obra_id
+JOIN status_imagem s ON s.idstatus = a.status_id
 LEFT JOIN colaborador c ON c.idcolaborador = f.colaborador_id
-WHERE f.funcao_id = 6 AND o.status_obra = 0";
+WHERE f.funcao_id = 6 AND o.status_obra = 0 AND a.status_id = i.status_id";
 
 $params = [];
 $types = '';
@@ -88,6 +91,7 @@ while ($row = $result->fetch_assoc()) {
         'colaborador_nome' => $row['nome_colaborador'] !== null ? (string)$row['nome_colaborador'] : null,
         'status_funcao' => (string)$row['status_funcao'],
         'status_key' => $statusNormalizado,
+        'status_nome' => (string)$row['nome_status'],
         'prazo' => $row['prazo'] ? date('d/m/Y', strtotime($row['prazo'])) : null,
     ];
 

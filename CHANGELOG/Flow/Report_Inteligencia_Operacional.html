@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title></title>
+            <style>
+/* From extension vscode.github */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+.vscode-dark img[src$=\#gh-light-mode-only],
+.vscode-light img[src$=\#gh-dark-mode-only],
+.vscode-high-contrast:not(.vscode-high-contrast-light) img[src$=\#gh-light-mode-only],
+.vscode-high-contrast-light img[src$=\#gh-dark-mode-only] {
+	display: none;
+}
+
+</style>
+            
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css">
+<style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+        </style>
+        <style>
+.task-list-item {
+    list-style-type: none;
+}
+
+.task-list-item-checkbox {
+    margin-left: -20px;
+    vertical-align: middle;
+    pointer-events: none;
+}
+</style>
+<style>
+:root {
+  --color-note: #0969da;
+  --color-tip: #1a7f37;
+  --color-warning: #9a6700;
+  --color-severe: #bc4c00;
+  --color-caution: #d1242f;
+  --color-important: #8250df;
+}
+
+</style>
+<style>
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-note: #2f81f7;
+    --color-tip: #3fb950;
+    --color-warning: #d29922;
+    --color-severe: #db6d28;
+    --color-caution: #f85149;
+    --color-important: #a371f7;
+  }
+}
+
+</style>
+<style>
+.markdown-alert {
+  padding: 0.5rem 1rem;
+  margin-bottom: 16px;
+  color: inherit;
+  border-left: .25em solid #888;
+}
+
+.markdown-alert>:first-child {
+  margin-top: 0
+}
+
+.markdown-alert>:last-child {
+  margin-bottom: 0
+}
+
+.markdown-alert .markdown-alert-title {
+  display: flex;
+  font-weight: 500;
+  align-items: center;
+  line-height: 1
+}
+
+.markdown-alert .markdown-alert-title .octicon {
+  margin-right: 0.5rem;
+  display: inline-block;
+  overflow: visible !important;
+  vertical-align: text-bottom;
+  fill: currentColor;
+}
+
+.markdown-alert.markdown-alert-note {
+  border-left-color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-note .markdown-alert-title {
+  color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-important {
+  border-left-color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-important .markdown-alert-title {
+  color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-warning {
+  border-left-color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-warning .markdown-alert-title {
+  color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-tip {
+  border-left-color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-tip .markdown-alert-title {
+  color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-caution {
+  border-left-color: var(--color-caution);
+}
+
+.markdown-alert.markdown-alert-caution .markdown-alert-title {
+  color: var(--color-caution);
+}
+
+</style>
+        
+        </head>
+        <body class="vscode-body vscode-light">
+            <h1 id="flowtrack--evolução-para-inteligência-operacional">FlowTrack — Evolução para Inteligência Operacional</h1>
+<p>Este documento resume a proposta de evolução da tela <code>FlowTrack/Report</code> de um painel de acompanhamento para um sistema de inteligência operacional. Contém: evolução conceitual, dados necessários, lógica de previsão, sugestões de interface, ideias inovadoras e um roteiro de implementação.</p>
+<hr>
+<h2 id="sumário">Sumário</h2>
+<ul>
+<li>Evolução conceitual</li>
+<li>Dados necessários</li>
+<li>Lógica de previsão</li>
+<li>Sugestões de interface e visualizações</li>
+<li>Funcionalidades avançadas propostas</li>
+<li>Ideias não convencionais (vantagem competitiva)</li>
+<li>Roteiro de implementação</li>
+</ul>
+<h2 id="1-evolução-conceitual-da-página">1. Evolução conceitual da página</h2>
+<p><strong>Hoje:</strong> uma matriz de status (obra × tipo de imagem × função) que responde &quot;onde estamos agora?&quot;.</p>
+<p><strong>Fase 1 — Painel Tático (curto prazo):</strong> adicionar contexto temporal, tempos por etapa, indicadores de aderência ao prazo e alertas básicos.</p>
+<p><strong>Fase 2 — Painel Preditivo (médio prazo):</strong> usar histórico para projetar datas reais de conclusão, incluir previsão de esforço e indicadores de risco.</p>
+<p><strong>Fase 3 — Sistema Operacional Inteligente (longo prazo):</strong> cruzar capacidade da equipe, perfil de complexidade das imagens e dependências para simular cenários, emitir recomendações operacionais e permitir replanejamento automático.</p>
+<hr>
+<h2 id="2-dados-necessários-coleção-automática">2. Dados necessários (coleção automática)</h2>
+<ol>
+<li>
+<p>Logs de transição de status</p>
+<ul>
+<li>Registrar toda mudança de status em <code>funcao_imagem</code> com timestamp, colaborador, status anterior e novo.</li>
+<li>Tabela sugerida: <code>funcao_imagem_log(funcao_id, imagem_id, status_de, status_para, colaborador_id, criado_em)</code>.</li>
+</ul>
+</li>
+<li>
+<p>Tempo por etapa por tipo de imagem</p>
+<ul>
+<li>Tempo médio e desvio padrão por etapa (ex.: modelagem, composição, pós) e por tipo de imagem.</li>
+</ul>
+</li>
+<li>
+<p>Histórico de revisões e retrabalho</p>
+<ul>
+<li>Número de ciclos de revisão por imagem e se houve retrocesso (Finalizado → Em andamento).</li>
+</ul>
+</li>
+<li>
+<p>Capacidade da equipe</p>
+<ul>
+<li>Horas disponíveis por colaborador por período, ausências programadas.</li>
+</ul>
+</li>
+<li>
+<p>Filas e dependências</p>
+<ul>
+<li>Contagem de itens em <code>Não iniciado</code> e em cada etapa; ordem/sequência de funções por tipo de imagem.</li>
+</ul>
+</li>
+<li>
+<p>Metadados da imagem</p>
+<ul>
+<li>Tipo, complexidade estimada (inicial), cliente, entrega associada e prioridade.</li>
+</ul>
+</li>
+<li>
+<p>Entregas e prazos</p>
+<ul>
+<li>Data de entrega alvo, prioridade, impacto de atraso.</li>
+</ul>
+</li>
+</ol>
+<hr>
+<h2 id="3-lógica-de-previsão">3. Lógica de previsão</h2>
+<h3 id="31-previsão-simples-por-imagem">3.1 Previsão simples por imagem</h3>
+<ul>
+<li>Para cada imagem, identificar etapas restantes e somar tempos médios históricos:
+<ul>
+<li>T_restante = Σ tempo_médio(etapa_i, tipo_imagem) × fator_revisão</li>
+</ul>
+</li>
+<li>Data prevista = hoje + (T_restante / capacidade_efetiva)</li>
+</ul>
+<h3 id="32-fator-de-risco-de-atraso-obra">3.2 Fator de risco de atraso (obra)</h3>
+<ul>
+<li>risco_atraso = T_restante_total_obra / (dias_úteis_ate_entrega × capacidade_diária_equipe)</li>
+<li>Thresholds: &lt;0.7 (verde), 0.7–1.0 (amarelo), &gt;1.0 (vermelho).</li>
+</ul>
+<h3 id="33-detecção-de-gargalo">3.3 Detecção de gargalo</h3>
+<ul>
+<li>Gargalo se: fila_entrada &gt; média_saida_semana OR tempo_médio_etapa &gt;= 2× média_outros.</li>
+</ul>
+<h3 id="34-sobrecarga-de-colaborador">3.4 Sobrecarga de colaborador</h3>
+<ul>
+<li>carga_colaborador = Σ tempo_médio_restante(imagens_alocadas)</li>
+<li>score_sobrecarga = carga_colaborador / horas_disponíveis_semana</li>
+<li>score &gt; 1.0 indica sobrecarga.</li>
+</ul>
+<h3 id="35-modelo-incremental-sem-ml-inicial">3.5 Modelo incremental (sem ML inicial)</h3>
+<ul>
+<li>Tempo estimado(etapa, tipo) = 0.5×média_últimas_10 + 0.3×média_últimas_30 + 0.2×média_histórica</li>
+<li>Ajustes por colaborador (curva de aprendizado) e por complexidade da imagem.</li>
+</ul>
+<hr>
+<h2 id="4-indicadores-e-métricas-sugeridas">4. Indicadores e métricas sugeridas</h2>
+<ul>
+<li>% concluído por obra (funções finalizadas / total)</li>
+<li>Previsão de data de entrega (e intervalo de confiança)</li>
+<li>Risco de atraso (score) por obra</li>
+<li>Load por colaborador (horas previstas vs disponíveis)</li>
+<li>Tempo médio por etapa (última semana / último mês)</li>
+<li>Taxa de retrabalho (percentual de imagens com retorno)</li>
+<li>Número médio de revisões por tipo de imagem</li>
+<li>Fila por etapa (itens <code>Não iniciado</code> / <code>Em andamento</code>)</li>
+</ul>
+<hr>
+<h2 id="5-funcionalidades-avançadas">5. Funcionalidades avançadas</h2>
+<ul>
+<li>Previsão automática de data de entrega (por imagem e por obra) com margem de erro baseada no desvio padrão histórico.</li>
+<li>Alerta de risco de atraso em tempo real (push, e-mail, Slack) com explicação do motivo (ex.: fila grande, equipe reduzida).</li>
+<li>Estimativa de esforço restante (horas) por colaborador e por obra.</li>
+<li>Simulador de capacidade: &quot;E se eu adicionar 1 colaborador de modelagem?&quot; — recalcula previsões.</li>
+<li>Recomendações automáticas de realocação de tarefas para minimizar risco (por heurística: mover itens críticos para colaboradores com menor carga e histórico de melhor performance para aquele tipo).</li>
+<li>Exportação e API: permitir consumo por dashboards externos ou integrações com BI.</li>
+</ul>
+<hr>
+<h2 id="6-visualizações-úteis">6. Visualizações úteis</h2>
+<ul>
+<li>Matriz atual aprimorada (obra × tipo × função) com colunas de <code>% concluído</code> e <code>previsão</code></li>
+<li>Heatmap de carga (colaborador × próximas 6 semanas)</li>
+<li>Cumulative Flow Diagram (CFD) por obra / por etapa</li>
+<li>Linha do tempo das entregas com intervalo de confiança</li>
+<li>Painel de alertas ordenado por criticidade</li>
+<li>Gráfico de Pareto de retrabalhos (identificar 20% das imagens que geram 80% do retrabalho)</li>
+<li>Mini-simulador interativo (side panel) para testar cenários</li>
+</ul>
+<hr>
+<h2 id="7-ideias-não-convencionais-vantagem-competitiva">7. Ideias não convencionais (vantagem competitiva)</h2>
+<ul>
+<li>Índice de Complexidade por Imagem: score automático que ajusta estimativas antes do início.</li>
+<li>Curva de Aprendizado por Colaborador × Tipo: uso do histórico para prever que certos colaboradores serão mais rápidos em tarefas específicas.</li>
+<li>Detecção automática de &quot;stall&quot; (imagem sem transições por X dias) que gera alerta de bloqueio silencioso.</li>
+<li>Obra Health Index (0–100) que agrega progresso, retrabalho e carga da equipe para priorização executiva.</li>
+<li>Fingerprint de tipo de imagem: perfis reutilizáveis para orçamentos e planejamento de novas obras.</li>
+</ul>
+<hr>
+<h2 id="8-roteiro-de-implementação-sugerido-sprints">8. Roteiro de implementação sugerido (sprints)</h2>
+<ul>
+<li>Sprint 1: Logar transições de status (criar <code>funcao_imagem_log</code>) — base para todas as métricas.</li>
+<li>Sprint 2: Calcular e exibir <code>% concluído</code> e previsão simples por obra na tabela atual.</li>
+<li>Sprint 3: Alertas básicos de risco de atraso e visão de entregas pendentes com cor de risco.</li>
+<li>Sprint 4: Heatmap de carga da equipe e cálculo de carga por colaborador.</li>
+<li>Sprint 5: CFD e detecção de gargalos automatizada.</li>
+<li>Sprint 6+: Simulador de cenários, refinamento de modelos (ML opcional), integrações BI.</li>
+</ul>
+<hr>
+<h2 id="observações-finais">Observações finais</h2>
+<ul>
+<li>Recomenda-se começar por métricas simples e confiáveis (tempos médios e logs) antes de investir em modelos ML. A qualidade dos dados é crítica.</li>
+<li>Estruturar uma pequena API interna e endpoints de cache (ex.: 30–60s) para reduzir carga no banco de dados ao exibir o painel.</li>
+</ul>
+<hr>
+<p><em>Gerado em: 2026-03-16 — proposta baseada na análise do módulo <code>FlowTrack/Report</code> e práticas de operações produtivas.</em></p>
+
+            
+            
+        </body>
+        </html>

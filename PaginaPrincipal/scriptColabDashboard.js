@@ -15,6 +15,11 @@
   let _currentColabId = null;
   let _listenersWired = false;
 
+  /* ── Heatmap state ───────────────────────────────────────────── */
+  let _heatmapFuncaoId = 0;
+  let _heatmapTipoImg = "";
+  let _heatmapFiltersPopulated = false;
+
   /* ── Entry point (called by scriptIndex.js) ─────────────────── */
   window.initColabDashboard = function () {
     const d = new Date();
@@ -33,6 +38,22 @@
           _currentMes = mes;
           _loaded = false;
           _loadData();
+        });
+      }
+
+      const heatmapFuncaoSel = document.getElementById("heatmap-funcao");
+      if (heatmapFuncaoSel) {
+        heatmapFuncaoSel.addEventListener("change", function () {
+          _heatmapFuncaoId = parseInt(this.value, 10) || 0;
+          _loadHeatmap(_currentMes, _currentAno);
+        });
+      }
+
+      const heatmapTipoSel = document.getElementById("heatmap-tipo");
+      if (heatmapTipoSel) {
+        heatmapTipoSel.addEventListener("change", function () {
+          _heatmapTipoImg = this.value;
+          _loadHeatmap(_currentMes, _currentAno);
         });
       }
 
@@ -82,6 +103,7 @@
         _updateMesLabel(data.kpis || {});
 
         _loaded = true;
+        _loadHeatmap(_currentMes, _currentAno);
       })
       .catch(function (err) {
         console.error("colabDashboard: erro ao carregar dados", err);
@@ -378,6 +400,190 @@
         position: "right",
         style: { background: "#fb7185" },
       }).showToast();
+    }
+  }
+
+  /* ── Activity Heatmap ────────────────────────────────────────── */
+
+  function _loadHeatmap(mes, ano) {
+    if (!mes || !ano) return;
+    const container = document.getElementById("heatmap-container");
+    const avgLabel = document.getElementById("heatmap-avg-label");
+    const mesLabel = document.getElementById("heatmap-mes-label");
+    if (!container) return;
+
+    container.innerHTML = '<div class="hm-loading">Carregando...</div>';
+
+    const url =
+      "PaginaPrincipal/buscar_heatmap.php" +
+      "?mes=" +
+      encodeURIComponent(mes) +
+      "&ano=" +
+      encodeURIComponent(ano) +
+      "&funcao_id=" +
+      encodeURIComponent(_heatmapFuncaoId) +
+      "&tipo_imagem=" +
+      encodeURIComponent(_heatmapTipoImg);
+
+    fetch(url)
+      .then(function (r) {
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.json();
+      })
+      .then(function (data) {
+        if (data.error) throw new Error(data.error);
+
+        var mesesPt = [
+          "",
+          "Janeiro",
+          "Fevereiro",
+          "Março",
+          "Abril",
+          "Maio",
+          "Junho",
+          "Julho",
+          "Agosto",
+          "Setembro",
+          "Outubro",
+          "Novembro",
+          "Dezembro",
+        ];
+        if (mesLabel) {
+          mesLabel.textContent = (mesesPt[parseInt(mes, 10)] || "") + " " + ano;
+        }
+
+        _populateHeatmapFilters(data.funcoes || [], data.tipos_imagem || []);
+        _renderHeatmapCalendar(container, data);
+
+        if (avgLabel) {
+          var mediaFmt = parseFloat(data.media_diaria)
+            .toFixed(1)
+            .replace(".", ",");
+          avgLabel.textContent =
+            "Média histórica: " + mediaFmt + " tarefas/dia";
+        }
+      })
+      .catch(function (err) {
+        console.error("heatmap: erro", err);
+        container.innerHTML =
+          '<div class="hm-loading" style="color:#f87171">Erro ao carregar heatmap.</div>';
+      });
+  }
+
+  function _getHeatmapLevel(total, t1, t2) {
+    if (total === 0) return 0;
+    if (total <= t1) return 1;
+    if (total <= t2) return 2;
+    return 3;
+  }
+
+  function _renderHeatmapCalendar(container, data) {
+    var mes = parseInt(data.mes, 10);
+    var ano = parseInt(data.ano, 10);
+    var porDia = data.por_dia || {};
+    var t1 = parseInt(data.t1, 10);
+    var t2 = parseInt(data.t2, 10);
+
+    var diasNomes = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+    var primeiroDia = new Date(ano, mes - 1, 1);
+    var totalDias = new Date(ano, mes, 0).getDate();
+    var today = new Date();
+    var todayStr =
+      today.getFullYear() +
+      "-" +
+      String(today.getMonth() + 1).padStart(2, "0") +
+      "-" +
+      String(today.getDate()).padStart(2, "0");
+
+    var offset = primeiroDia.getDay(); // 0=Dom … 6=Sáb
+    var cells = [];
+    for (var i = 0; i < offset; i++) cells.push(null);
+    for (var d = 1; d <= totalDias; d++) cells.push(d);
+    while (cells.length % 7 !== 0) cells.push(null);
+
+    var html =
+      '<div class="hm-calendar-header"><div class="hm-week-num"></div>';
+    diasNomes.forEach(function (n) {
+      html += '<div class="hm-day-label">' + n + "</div>";
+    });
+    html += "</div>";
+
+    var weeks = cells.length / 7;
+    for (var w = 0; w < weeks; w++) {
+      html +=
+        '<div class="hm-week"><div class="hm-week-num">' + (w + 1) + "ª</div>";
+      for (var dd = 0; dd < 7; dd++) {
+        var day = cells[w * 7 + dd];
+        if (day === null) {
+          html += '<div class="hm-cell hm-empty"></div>';
+        } else {
+          var dateStr =
+            ano +
+            "-" +
+            String(mes).padStart(2, "0") +
+            "-" +
+            String(day).padStart(2, "0");
+          var total = porDia[dateStr] || 0;
+          var level = _getHeatmapLevel(total, t1, t2);
+          var isToday = dateStr === todayStr ? " hm-today" : "";
+          var label = total > 0 ? total : "";
+          var tooltip =
+            total > 0
+              ? total +
+                " tarefa" +
+                (total > 1 ? "s" : "") +
+                " em " +
+                String(day).padStart(2, "0") +
+                "/" +
+                String(mes).padStart(2, "0") +
+                "/" +
+                ano
+              : "Nenhuma tarefa em " +
+                String(day).padStart(2, "0") +
+                "/" +
+                String(mes).padStart(2, "0") +
+                "/" +
+                ano;
+          html +=
+            '<div class="hm-cell hm-l' +
+            level +
+            isToday +
+            '" title="' +
+            tooltip +
+            '">' +
+            label +
+            "</div>";
+        }
+      }
+      html += "</div>";
+    }
+
+    container.innerHTML = html;
+  }
+
+  function _populateHeatmapFilters(funcoes, tiposImagem) {
+    if (_heatmapFiltersPopulated) return;
+    _heatmapFiltersPopulated = true;
+
+    var selFuncao = document.getElementById("heatmap-funcao");
+    var selTipo = document.getElementById("heatmap-tipo");
+
+    if (selFuncao && funcoes.length) {
+      funcoes.forEach(function (f) {
+        var opt = document.createElement("option");
+        opt.value = f.id;
+        opt.textContent = f.nome;
+        selFuncao.appendChild(opt);
+      });
+    }
+
+    if (selTipo && tiposImagem.length) {
+      tiposImagem.forEach(function (t) {
+        var opt = document.createElement("option");
+        opt.value = t;
+        opt.textContent = t.charAt(0).toUpperCase() + t.slice(1);
+        selTipo.appendChild(opt);
+      });
     }
   }
 })();

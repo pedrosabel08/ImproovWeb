@@ -415,6 +415,34 @@ $conn->close();
                         </div>
                     </div>
 
+                    <!-- Heatmap de atividade mensal do time -->
+                    <div class="dashboard-section" id="heatmap-section">
+                        <div class="section-header">
+                            <h2><i class="ri-calendar-2-line"></i> Atividade do Time — <span id="heatmap-mes-label"></span></h2>
+                            <div class="heatmap-filter-row">
+                                <select id="heatmap-funcao" class="mes-select">
+                                    <option value="0">Todas as etapas</option>
+                                </select>
+                                <select id="heatmap-tipo" class="mes-select">
+                                    <option value="">Todos os tipos</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div id="heatmap-container" class="heatmap-wrap">
+                            <div class="hm-loading">Carregando...</div>
+                        </div>
+                        <div class="heatmap-legend">
+                            <span class="legend-label">Menos</span>
+                            <span class="legend-cell hm-l0"></span>
+                            <span class="legend-cell hm-l1"></span>
+                            <span class="legend-cell hm-l2"></span>
+                            <span class="legend-cell hm-l3"></span>
+                            <span class="legend-label">Mais</span>
+                            <span class="legend-sep">·</span>
+                            <span id="heatmap-avg-label" class="heatmap-avg-label"></span>
+                        </div>
+                    </div>
+
                     <!-- Tarefas do mês -->
                     <div class="dashboard-section">
                         <div class="section-header">

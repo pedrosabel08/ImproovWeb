@@ -70,7 +70,7 @@ $__basePath = (strpos($__reqUri, '/flow/ImproovWeb/') !== false || preg_match('~
                     <li><a title="Dashboard" href="https://improov.com.br/flow/ImproovWeb/Dashboard"><i class="fa-solid fa-chart-line"></i><span> Dashboard</span></a></li>
                     <li><a title="Projetos" href="https://improov.com.br/flow/ImproovWeb/Projetos"><i class="fa-solid fa-diagram-project"></i><span> Projetos</span></a></li>
                     <li><a title="Entregas" href="https://improov.com.br/flow/ImproovWeb/Entregas"><i class="fa-solid fa-diagram-project"></i><span> Entregas</span></a></li>
-                    <li><a title="Gestão" href="https://improov.com.br/flow/ImproovWeb/Gestao"><i class="fa-solid fa-diagram-project"></i><span> Gestão</span></a></li>
+                    <!-- <li><a title="Gestão" href="https://improov.com.br/flow/ImproovWeb/Gestao"><i class="fa-solid fa-diagram-project"></i><span> Gestão</span></a></li> -->
                     <li><a title="Flow Referências" href="https://improov.com.br/flow/ImproovWeb/FlowReferencias"><i class="fas fa-paperclip"></i><span> Flow Referências</span></a></li>
                 <?php endif; ?>
             </ul>
@@ -89,7 +89,7 @@ $__basePath = (strpos($__reqUri, '/flow/ImproovWeb/') !== false || preg_match('~
 
                 <ul class="division">
                     <label for="">Financeiro</label>
-                    <li><a title="Tela de custos" href="https://improov.com.br/flow/ImproovWeb/Custos"><i class="fa-solid fa-desktop"></i><span> Tela Custos</span></a></li>
+                    <!-- <li><a title="Tela de custos" href="https://improov.com.br/flow/ImproovWeb/Custos"><i class="fa-solid fa-desktop"></i><span> Tela Custos</span></a></li> -->
                     <li><a title="Pagamento" href="https://improov.com.br/flow/ImproovWeb/Pagamento"><i class="fas fa-money-bill-wave"></i><span> Pagamento</span></a></li>
                     <li><a title="Contratos" href="https://improov.com.br/flow/ImproovWeb/Contratos"><i class="fa-solid fa-file-contract"></i><span> Contratos</span></a></li>
 
@@ -105,15 +105,15 @@ $__basePath = (strpos($__reqUri, '/flow/ImproovWeb/') !== false || preg_match('~
             <ul class="division">
                 <label for="">Ferramentas</label>
                 <!-- <li><a title="Filtro Colaborador" href="https://improov.com.br/flow/ImproovWeb/main.php#filtro-colab"><i class="fa-solid fa-user"></i><span>Filtro Colaborador</span></a></li> -->
-                <li><a title="Lista Render" href="https://improov.com.br/flow/ImproovWeb/Render"><i class="fas fa-list"></i><span> Lista Render</span></a></li>
+                <li><a title="Flow Render" href="https://improov.com.br/flow/ImproovWeb/Render"><i class="fas fa-list"></i><span> Flow Render</span></a></li>
                 <li><a title="Flow Review" href="https://improov.com.br/flow/ImproovWeb/FlowReview"><i class="fas fa-check"></i><span> Flow Review</span></a></li>
                 <?php if (isset($_SESSION['nivel_acesso']) && in_array($_SESSION['nivel_acesso'], [1, 2])): ?>
                     <li><a title="Mapa de Compatibilização" href="https://improov.com.br/flow/ImproovWeb/MapaCompatibilizacao"><i class="fa-solid fa-map"></i><span> Mapa Compatib.</span></a></li>
                 <?php endif; ?>
                 <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1)): ?>
-                    <li><a title="Adicionar cliente ou obra" href="https://improov.com.br/flow/ImproovWeb/main.php#add-cliente"><i class="fa-solid fa-person"></i><span>Adicionar cliente ou obra</span></a></li>
-                    <li><a title="Gerenciar prioridades" href="https://improov.com.br/flow/ImproovWeb/Prioridade"><i class="fa-solid fa-user-plus"></i><span>Gerenciar prioridades</span></a></li>
-                    <li><a title="Quadro TEA" href="https://improov.com.br/flow/ImproovWeb/Quadro"><i class="fa-solid fa-columns"></i><span>Quadro TEA</span></a></li>
+                    <!-- <li><a title="Adicionar cliente ou obra" href="https://improov.com.br/flow/ImproovWeb/main.php#add-cliente"><i class="fa-solid fa-person"></i><span>Adicionar cliente ou obra</span></a></li> -->
+                    <!-- <li><a title="Gerenciar prioridades" href="https://improov.com.br/flow/ImproovWeb/Prioridade"><i class="fa-solid fa-user-plus"></i><span>Gerenciar prioridades</span></a></li> -->
+                    <!-- <li><a title="Quadro TEA" href="https://improov.com.br/flow/ImproovWeb/Quadro"><i class="fa-solid fa-columns"></i><span>Quadro TEA</span></a></li> -->
                     <li><a title="Notificações" href="https://improov.com.br/flow/ImproovWeb/notificacoes"><i class="fa-solid fa-bell"></i><span>Notificações</span></a></li>
 
                 <?php endif; ?>

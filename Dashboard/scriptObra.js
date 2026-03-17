@@ -7554,9 +7554,11 @@ document
               modal.classList.remove("hidden");
 
               // Preenche opcao_finalizador: prefere o responsável retornado pelo servidor (funcao_id 6/4)
-              const finalizador = response.finalizador || localStorage.getItem("idcolaborador");
+              const finalizador =
+                response.finalizador || localStorage.getItem("idcolaborador");
               if (finalizador) {
-                document.getElementById("opcao_finalizador").value = finalizador;
+                document.getElementById("opcao_finalizador").value =
+                  finalizador;
               }
 
               const obra = localStorage.getItem("obraId");
@@ -8813,7 +8815,8 @@ function atualizarBtnLiberarModelagem(liberado) {
     btn.innerHTML = '<i class="fa-solid fa-lock-open"></i> Modelagem Liberada';
     btn.style.background = "#2196f3";
     btn.style.color = "#fff";
-    btn.title = "Modelagem liberada antes do filtro de assets — clique para travar";
+    btn.title =
+      "Modelagem liberada antes do filtro de assets — clique para travar";
     btn.dataset.liberado = "1";
   } else {
     btn.innerHTML = '<i class="fa-solid fa-lock"></i> Liberar Modelagem';
@@ -9644,15 +9647,19 @@ document
               if (obra) document.getElementById("opcao_obra_pos").value = obra;
 
               // Preenche opcao_finalizador: prefere o responsável retornado pelo servidor (funcao_id 6/4)
-              const finalizadorMs = response.finalizador || localStorage.getItem("idcolaborador");
+              const finalizadorMs =
+                response.finalizador || localStorage.getItem("idcolaborador");
               if (finalizadorMs) {
-                document.getElementById("opcao_finalizador").value = finalizadorMs;
+                document.getElementById("opcao_finalizador").value =
+                  finalizadorMs;
               }
 
               // Use the resolved image id and status id
-              document.getElementById("imagem_id_pos").value = idImagemSelecionada;
+              document.getElementById("imagem_id_pos").value =
+                idImagemSelecionada;
               document.getElementById("opcao_status_pos").value = statusId;
-              document.getElementById("render_id_pos").value = response.idrender;
+              document.getElementById("render_id_pos").value =
+                response.idrender;
 
               // Hide modal_status
               const modalStatus = document.getElementById("modal_status");
@@ -10494,7 +10501,12 @@ function closeModal() {
 }
 
 if (fotograficoBtn)
-  fotograficoBtn.addEventListener("click", openFotograficoLink);
+  fotograficoBtn.addEventListener("click", () => {
+    fotograficoModal.style.display = "flex";
+    fotograficoModal.style.alignItems = "center";
+    fotograficoModal.style.justifyContent = "center";
+    loadFotografico();
+  });
 if (quickFotografico)
   quickFotografico.addEventListener("click", (e) => {
     e.preventDefault();

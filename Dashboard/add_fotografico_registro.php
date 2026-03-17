@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . '/../config/session_bootstrap.php';
-session_start();
+// session_start();
 header('Content-Type: application/json; charset=utf-8');
 require_once '../conexao.php';
 

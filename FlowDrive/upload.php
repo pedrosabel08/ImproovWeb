@@ -314,6 +314,7 @@ $ftp_port = $ftpCfg['port'];
 $ftp_user = $ftpCfg['user'];
 $ftp_pass = $ftpCfg['pass'];
 $ftp_base = $ftpCfg['base'];
+upload_debug_write("FTP config resolved: host={$ftp_host}, port={$ftp_port}, user={$ftp_user}, pass=" . mask_env($ftp_pass) . ", base={$ftp_base}");
 
 // Agrupamento para acompanhamento inteligente: chave = "categoria|tipo_arquivo"
 $acompGroups = [];
@@ -807,8 +808,8 @@ if ($obra_id) {
     }
 }
 
-// Variável de conexão FTP (inicializada apenas se necessária)
-$ftp_conn = null;
+// Conexão SFTP secundária (VPS) — inicializada apenas se necessária (categoria 7)
+$sftp2 = null;
 
 
 function gerarNomeInterno($conn, $obra_id, $tipo_id, $categoria, $nomeTipo, $tipo_arquivo, $ext, &$log, $sufixo = '', $imagem_id = null, $fileOriginalName = null, $indiceEnvio = 1)
@@ -1083,33 +1084,43 @@ if (!empty($arquivosTmp) && count($arquivosTmp) > 0 && ($refsSkpModo === 'geral'
                     $acompGroups[$key]['is_update'] = ($acompGroups[$key]['is_update'] || $foiAtualizacao);
                     $acompGroups[$key]['count']++;
 
-                    // Se for categoria 7, também envia ao FTP secundário
+                    // Se for categoria 7, também envia ao SFTP secundário (VPS)
                     if ($categoria == 7) {
-                        if ($ftp_conn === null) {
-                            $ftp_conn = @ftp_connect($ftp_host, $ftp_port, 10);
-                            if ($ftp_conn && @ftp_login($ftp_conn, $ftp_user, $ftp_pass)) {
-                                @ftp_pasv($ftp_conn, true);
-                                $log[] = "Conectado no FTP secundário: $ftp_host";
-                            } else {
-                                $log[] = "Falha ao conectar no FTP secundário: $ftp_host";
-                                $errors[] = "Falha ao conectar no FTP secundário.";
-                                $ftp_conn = null;
+                        if ($sftp2 === null) {
+                            $log[] = "SFTP secundário: tentando conectar em {$ftp_host}:{$ftp_port} user={$ftp_user}";
+                            upload_debug_write("SFTP secundário: tentando conectar em {$ftp_host}:{$ftp_port} user={$ftp_user}");
+                            try {
+                                $sftp2 = new SFTP($ftp_host, $ftp_port);
+                                if ($sftp2->login($ftp_user, $ftp_pass)) {
+                                    $log[] = "Conectado no SFTP secundário: {$ftp_host}:{$ftp_port}";
+                                    upload_debug_write("SFTP secundário: conectado com sucesso em {$ftp_host}:{$ftp_port}");
+                                } else {
+                                    $log[] = "SFTP secundário: login falhou (user={$ftp_user})";
+                                    upload_debug_write("SFTP secundário: login falhou (user={$ftp_user})");
+                                    $errors[] = "Falha ao autenticar no SFTP secundário (login).";
+                                    $sftp2 = null;
+                                }
+                            } catch (Throwable $e2) {
+                                $log[] = "SFTP secundário: exceção ao conectar: " . $e2->getMessage();
+                                upload_debug_write("SFTP secundário: exceção ao conectar: " . $e2->getMessage());
+                                $errors[] = "Falha ao conectar no SFTP secundário.";
+                                $sftp2 = null;
                             }
                         }
 
-                        if ($ftp_conn) {
+                        if ($sftp2) {
                             $nomen = buscarNomenclatura($conn, $obra_id);
                             $ftpTargetDir = rtrim($ftp_base, '/') . '/' . ($nomen ? $nomen : 'OBRA' . $obra_id) . '/' . $categoriaDir . '/' . $nomeTipo . '/' . $tipo_arquivo;
-                            if (ensureFtpDir($ftp_conn, $ftpTargetDir, $log)) {
-                                $ftpDest = $ftpTargetDir . '/' . $fileNomeInterno;
-                                if (@ftp_put($ftp_conn, $ftpDest, $fileTmp, FTP_BINARY)) {
-                                    $log[] = "Arquivo enviado para FTP: $ftpDest";
-                                    // tentar ajustar permissões no FTP
-                                    ensureFtpPermissions($ftp_conn, $ftpDest, $log);
-                                } else {
-                                    $errors[] = "Erro ao enviar para FTP: $ftpDest";
-                                    $log[] = "Falha FTP put: $ftpDest";
-                                }
+                            if (!$sftp2->is_dir($ftpTargetDir)) {
+                                $sftp2->mkdir($ftpTargetDir, 0777, true);
+                                $log[] = "SFTP secundário: criado diretório $ftpTargetDir";
+                            }
+                            $ftpDest = $ftpTargetDir . '/' . $fileNomeInterno;
+                            if (sftpPutWithFallback($sftp2, $ftpDest, $fileTmp, $log, $errors)) {
+                                $log[] = "Arquivo enviado para SFTP secundário: $ftpDest";
+                                setSftpPermissions($sftp2, $ftpDest, $log);
+                            } else {
+                                $errors[] = "Erro ao enviar para SFTP secundário: $ftpDest";
                             }
                         }
                     }
@@ -1260,33 +1271,43 @@ if (!empty($arquivosPorImagem) && $refsSkpModo === 'porImagem') {
                 $acompGroups[$key]['is_update'] = ($acompGroups[$key]['is_update'] || $foiAtualizacaoImagem);
                 $acompGroups[$key]['count']++;
 
-                // Se for categoria 7, envia também ao FTP secundário
+                // Se for categoria 7, envia também ao SFTP secundário (VPS)
                 if ($categoria == 7) {
-                    if ($ftp_conn === null) {
-                        $ftp_conn = @ftp_connect($ftp_host, $ftp_port, 10);
-                        if ($ftp_conn && @ftp_login($ftp_conn, $ftp_user, $ftp_pass)) {
-                            @ftp_pasv($ftp_conn, true);
-                            $log[] = "Conectado no FTP secundário: $ftp_host";
-                        } else {
-                            $log[] = "Falha ao conectar no FTP secundário: $ftp_host";
-                            $errors[] = "Falha ao conectar no FTP secundário.";
-                            $ftp_conn = null;
+                    if ($sftp2 === null) {
+                        $log[] = "SFTP secundário: tentando conectar em {$ftp_host}:{$ftp_port} user={$ftp_user}";
+                        upload_debug_write("SFTP secundário: tentando conectar em {$ftp_host}:{$ftp_port} user={$ftp_user}");
+                        try {
+                            $sftp2 = new SFTP($ftp_host, $ftp_port);
+                            if ($sftp2->login($ftp_user, $ftp_pass)) {
+                                $log[] = "Conectado no SFTP secundário: {$ftp_host}:{$ftp_port}";
+                                upload_debug_write("SFTP secundário: conectado com sucesso em {$ftp_host}:{$ftp_port}");
+                            } else {
+                                $log[] = "SFTP secundário: login falhou (user={$ftp_user})";
+                                upload_debug_write("SFTP secundário: login falhou (user={$ftp_user})");
+                                $errors[] = "Falha ao autenticar no SFTP secundário (login).";
+                                $sftp2 = null;
+                            }
+                        } catch (Throwable $e2) {
+                            $log[] = "SFTP secundário: exceção ao conectar: " . $e2->getMessage();
+                            upload_debug_write("SFTP secundário: exceção ao conectar: " . $e2->getMessage());
+                            $errors[] = "Falha ao conectar no SFTP secundário.";
+                            $sftp2 = null;
                         }
                     }
 
-                    if ($ftp_conn) {
+                    if ($sftp2) {
                         $nomen = buscarNomenclatura($conn, $obra_id);
                         $ftpTargetDir = rtrim($ftp_base, '/') . '/' . ($nomen ? $nomen : 'OBRA' . $obra_id) . '/' . $categoriaDir . '/' . $nomeTipo . '/' . $tipo_arquivo . '/' . $nome_imagem;
-                        if (ensureFtpDir($ftp_conn, $ftpTargetDir, $log)) {
-                            $ftpDest = $ftpTargetDir . '/' . $fileNomeInterno;
-                            if (@ftp_put($ftp_conn, $ftpDest, $tmpFile, FTP_BINARY)) {
-                                $log[] = "Arquivo enviado para FTP: $ftpDest";
-                                // tentar ajustar permissões no FTP
-                                ensureFtpPermissions($ftp_conn, $ftpDest, $log);
-                            } else {
-                                $errors[] = "Erro ao enviar para FTP: $ftpDest";
-                                $log[] = "Falha FTP put: $ftpDest";
-                            }
+                        if (!$sftp2->is_dir($ftpTargetDir)) {
+                            $sftp2->mkdir($ftpTargetDir, 0777, true);
+                            $log[] = "SFTP secundário: criado diretório $ftpTargetDir";
+                        }
+                        $ftpDest = $ftpTargetDir . '/' . $fileNomeInterno;
+                        if (sftpPutWithFallback($sftp2, $ftpDest, $tmpFile, $log, $errors)) {
+                            $log[] = "Arquivo enviado para SFTP secundário: $ftpDest";
+                            setSftpPermissions($sftp2, $ftpDest, $log);
+                        } else {
+                            $errors[] = "Erro ao enviar para SFTP secundário: $ftpDest";
                         }
                     }
                 }
@@ -1446,8 +1467,5 @@ if (!empty($acompGroups)) {
 }
 
 $conn->close();
-if ($ftp_conn) {
-    @ftp_close($ftp_conn);
-    $log[] = "Conexão FTP fechada.";
-}
+// $sftp2 (phpseclib) é fechado automaticamente ao sair do escopo
 echo json_encode(['success' => $success, 'errors' => $errors, 'log' => $log]);

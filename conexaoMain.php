@@ -47,14 +47,14 @@ function obterObras($conn, $status = 0)
         // When loading active works (status = 0) exclude test/demo project
         // with id 74 or nomenclatura 'TES_TES' from the active list.
         if ($status_int === 0) {
-            $sql = "SELECT idobra, nome_obra, nomenclatura FROM obra WHERE status_obra = ? AND NOT (nomenclatura = ? OR idobra = ?) ORDER BY nomenclatura ASC";
+            $sql = "SELECT idobra, nome_obra, nomenclatura FROM obra WHERE status_obra = ? ORDER BY nomenclatura ASC";
             $stmt = $conn->prepare($sql);
             if ($stmt === false) {
                 return $obras;
             }
             $exclude_nomenclatura = 'TES_TES';
             $exclude_id = 74;
-            $stmt->bind_param('isi', $status_int, $exclude_nomenclatura, $exclude_id);
+            $stmt->bind_param('i', $status_int);
             $stmt->execute();
             $result = $stmt->get_result();
         } else {

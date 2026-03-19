@@ -1,0 +1,375 @@
+﻿
+PROJETO: CEG Tijucas
+DATA ENTREGA: 14/01
+
+FACHADA
+nÃ£o iniciadas: 0
+modelagem: 0 
+composiÃ§Ã£o: 0 
+finalizaÃ§Ã£o: 0
+
+INTERNA
+nÃ£o iniciadas: 0
+modelagem: 0
+composiÃ§Ã£o: 0
+finalizaÃ§Ã£o: 6
+
+UNIDADE
+nÃ£o iniciadas: 0
+modelagem:0
+composiÃ§Ã£o:0
+finalizaÃ§Ã£o:2
+
+EXTERNA
+nÃ£o iniciadas:0
+modelagem:0
+composiÃ§Ã£o:0
+finalizaÃ§Ã£o:0
+
+PLANTA
+nÃ£o iniciadas:0
+finalizaÃ§Ã£o:0
+
+
+PROJETO: CIBEA Ocean
+DATA ENTREGA: 17/03
+
+FACHADA
+nÃ£o iniciadas:0
+modelagem:0
+composiÃ§Ã£o:0
+finalizaÃ§Ã£o:0
+
+INTERNA
+nÃ£o iniciadas:0
+caderno: 1
+modelagem: 5
+composiÃ§Ã£o:5
+finalizaÃ§Ã£o:7
+
+UNIDADE
+nÃ£o iniciadas:6
+caderno:6
+modelagem:6
+composiÃ§Ã£o:6
+finalizaÃ§Ã£o:6
+
+EXTERNA
+nÃ£o iniciadas:0
+modelagem:1
+composiÃ§Ã£o:1
+finalizaÃ§Ã£o:4
+
+PLANTA
+nÃ£o iniciadas:5
+finalizaÃ§Ã£o:5
+
+PROJETO: WER_RIO
+DATA ENTREGA: 13/04
+
+FACHADA
+nÃ£o iniciadas: 5
+modelagem: 1
+composiÃ§Ã£o: 5
+finalizaÃ§Ã£o: 5
+
+INTERNA
+nÃ£o iniciadas: 0
+modelagem: 0
+composiÃ§Ã£o: 0
+finalizaÃ§Ã£o: 9
+
+UNIDADE
+nÃ£o iniciadas:
+modelagem:
+composiÃ§Ã£o:
+finalizaÃ§Ã£o:
+
+EXTERNA
+nÃ£o iniciadas:5
+caderno: 3
+modelagem: -
+composiÃ§Ã£o: 3
+finalizaÃ§Ã£o: 5
+
+PLANTA
+nÃ£o iniciadas: 1
+finalizaÃ§Ã£o: 1â€¨â€¨PROJETO: ABF ALMA
+DATA ENTREGA: 25/03
+
+FACHADA
+nÃ£o iniciadas:0
+modelagem:0
+composiÃ§Ã£o:0
+finalizaÃ§Ã£o:6
+
+INTERNA
+nÃ£o iniciadas:0
+modelagem:0
+composiÃ§Ã£o:0
+finalizaÃ§Ã£o:8
+
+UNIDADE
+nÃ£o iniciadas:1
+modelagem:1
+composiÃ§Ã£o:1
+finalizaÃ§Ã£o:30
+
+EXTERNA
+nÃ£o iniciadas:0
+modelagem:0
+composiÃ§Ã£o:0
+finalizaÃ§Ã£o:4
+
+PLANTA
+nÃ£o iniciadas:5
+finalizaÃ§Ã£o:21â€¨â€¨â€¨PROJETO: NOWA Brickell
+DATA ENTREGA: 02/03
+
+FACHADA
+nÃ£o iniciadas:0
+modelagem:0
+composiÃ§Ã£o:0
+finalizaÃ§Ã£o:2
+
+INTERNA
+nÃ£o iniciadas:0
+modelagem:0
+composiÃ§Ã£o:0
+finalizaÃ§Ã£o:5
+
+UNIDADE
+nÃ£o iniciadas:0
+modelagem:0
+composiÃ§Ã£o:0
+finalizaÃ§Ã£o:2
+
+EXTERNA
+nÃ£o iniciadas:0
+modelagem:0
+composiÃ§Ã£o:0
+finalizaÃ§Ã£o:2
+
+PLANTA
+nÃ£o iniciadas:0
+finalizaÃ§Ã£o:3
+
+
+PROJETO: GT La citta
+DATA ENTREGA: 06/04
+
+FACHADA
+nÃ£o iniciadas:9
+modelagem:0
+composiÃ§Ã£o:9
+finalizaÃ§Ã£o:9
+
+INTERNA
+nÃ£o iniciadas:2â€¨caderno: 10
+modelagem:7
+composiÃ§Ã£o:17
+finalizaÃ§Ã£o:18
+
+UNIDADE
+nÃ£o iniciadas:4 (sÃ³ dependem de finalizaÃ§Ã£o)
+caderno: 7
+modelagem:0
+composiÃ§Ã£o:7
+finalizaÃ§Ã£o:11
+
+EXTERNA
+nÃ£o iniciadas:9
+caderno: 7
+modelagem:-
+composiÃ§Ã£o:9
+finalizaÃ§Ã£o:9
+
+PLANTA
+nÃ£o iniciadas:12
+finalizaÃ§Ã£o:12
+
+
+
+PROJETO: AFC Aura
+DATA ENTREGA: 24/03
+
+FACHADA
+nÃ£o iniciadas:0
+modelagem:0
+composiÃ§Ã£o:0
+finalizaÃ§Ã£o:3
+
+INTERNA
+nÃ£o iniciadas:0
+modelagem:0
+composiÃ§Ã£o:0
+finalizaÃ§Ã£o:0
+
+UNIDADE
+nÃ£o iniciadas:0
+modelagem:0
+composiÃ§Ã£o:3
+finalizaÃ§Ã£o:7
+
+EXTERNA
+nÃ£o iniciadas:0
+modelagem:0
+composiÃ§Ã£o:0
+finalizaÃ§Ã£o:0
+
+PLANTA
+nÃ£o iniciadas:2
+finalizaÃ§Ã£o:5
+
+
+
+PROJETO: Cibea Ocean
+DATA ENTREGA: 17/03
+
+FACHADA
+nÃ£o iniciadas:0
+modelagem:0
+composiÃ§Ã£o:0
+finalizaÃ§Ã£o:0
+
+INTERNA
+nÃ£o iniciadas:0
+caderno: 1
+modelagem:4
+composiÃ§Ã£o:5
+finalizaÃ§Ã£o:7
+
+UNIDADE
+nÃ£o iniciadas:6
+caderno: 4
+modelagem:4
+composiÃ§Ã£o:4
+finalizaÃ§Ã£o:6
+
+EXTERNA
+nÃ£o iniciadas:0
+modelagem:0
+composiÃ§Ã£o:1
+finalizaÃ§Ã£o:4
+
+PLANTA
+nÃ£o iniciadas:6
+finalizaÃ§Ã£o:6
+
+
+PROJETO: Cibea Riverside
+DATA ENTREGA: 10/04
+
+FACHADA
+nÃ£o iniciadas:0
+modelagem:0
+composiÃ§Ã£o:0
+finalizaÃ§Ã£o:0
+
+INTERNA
+nÃ£o iniciadas:4
+caderno:4
+modelagem:4
+composiÃ§Ã£o:4
+finalizaÃ§Ã£o:4
+
+UNIDADE
+nÃ£o iniciadas:4
+caderno:4
+modelagem:4
+composiÃ§Ã£o:4
+finalizaÃ§Ã£o:4
+
+EXTERNA
+nÃ£o iniciadas:3
+caderno: 3
+modelagem:
+composiÃ§Ã£o:3
+finalizaÃ§Ã£o:3
+
+PLANTA
+nÃ£o iniciadas:6
+finalizaÃ§Ã£o:6
+
+
+
+PROJETO:
+DATA ENTREGA:
+
+FACHADA
+nÃ£o iniciadas:4
+modelagem:1
+composiÃ§Ã£o:4
+finalizaÃ§Ã£o:4
+
+
+
+PROJETO:
+DATA ENTREGA:
+
+FACHADA
+nÃ£o iniciadas:
+modelagem:
+composiÃ§Ã£o:
+finalizaÃ§Ã£o:
+
+INTERNA
+nÃ£o iniciadas:
+modelagem:
+composiÃ§Ã£o:
+finalizaÃ§Ã£o:
+
+UNIDADE
+nÃ£o iniciadas:
+modelagem:
+composiÃ§Ã£o:
+finalizaÃ§Ã£o:
+
+EXTERNA
+nÃ£o iniciadas:
+modelagem:
+composiÃ§Ã£o:
+finalizaÃ§Ã£o:
+
+PLANTA
+nÃ£o iniciadas:
+finalizaÃ§Ã£o:
+
+
+
+PROJETO:
+DATA ENTREGA:
+
+FACHADA
+nÃ£o iniciadas:0
+modelagem:0
+composiÃ§Ã£o:2
+finalizaÃ§Ã£o:2
+
+
+
+PROJETO: Koski Citta
+DATA ENTREGA: 14/04
+
+FACHADA
+nÃ£o iniciadas: 3
+modelagem:0
+composiÃ§Ã£o:3
+finalizaÃ§Ã£o:3â€¨
+EXTERNA
+nÃ£o iniciadas:0
+modelagem:0
+composiÃ§Ã£o:0
+finalizaÃ§Ã£o:2
+
+PLANTA
+nÃ£o iniciadas:7
+finalizaÃ§Ã£o:7â€¨â€¨â€¨â€¨
+PROJETO: Cibea Riverside - Fachadas
+DATA ENTREGA:14/01
+
+FACHADA
+nÃ£o iniciadas: 0
+modelagem:0
+composiÃ§Ã£o:0
+finalizaÃ§Ã£o:5

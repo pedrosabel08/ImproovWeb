@@ -175,10 +175,10 @@ $conn->close();
                 </div>
                 <nav>
                     <div class="nav-left">
-                        <?php if (in_array((int)($_SESSION['nivel_acesso'] ?? 0), [1, 5])): ?>
+                        <?php if (in_array((int)($_SESSION['nivel_acesso'] ?? 0), [1, 5]) || in_array((int)($idcolaborador ?? 0), [9, 21])): ?>
                             <button id="overviewBtn"><i class="ri-dashboard-line"></i><span>Visão Geral</span></button>
                         <?php endif; ?>
-                        <button id="painelBtn"><i class="ri-bar-chart-line"></i><span>Painel de Produção</span></button>
+                        <button id="painelBtn" style="display:none;"><i class="ri-bar-chart-line"></i><span>Painel de Produção</span></button>
                         <button id="kanbanBtn" class="active"><i class="ri-kanban-view"></i><span>Kanban</span></button>
                         <button id="listBtn"><i class="ri-list-check"></i><span>Lista</span></button>
                         <!-- <button id="activities"><i class="fa-solid fa-chart-line"><span></i>Activity</span></button> -->
@@ -353,7 +353,7 @@ $conn->close();
                             <h2>Painel de Produção — <span id="colab-mes-nome"></span></h2>
                         </div>
                         <div class="colab-dash-controls">
-                            <?php if (in_array((int)($_SESSION['nivel_acesso'] ?? 0), [1, 5])): ?>
+                            <?php if (in_array((int)($_SESSION['nivel_acesso'] ?? 0), [1, 5]) || in_array((int)($idcolaborador ?? 0), [9, 21])): ?>
                                 <select id="colab-colab-seletor" class="mes-select">
                                     <option value="">Selecione um colaborador</option>
                                     <?php foreach ($colaboradores as $colab): ?>
@@ -975,7 +975,7 @@ $conn->close();
         localStorage.setItem('idcolaborador', idColaborador);
 
         window.PAINEL = {
-            isGestor: <?php echo in_array((int)($_SESSION['nivel_acesso'] ?? 0), [1, 5]) ? 'true' : 'false'; ?>,
+            isGestor: <?php echo (in_array((int)($_SESSION['nivel_acesso'] ?? 0), [1, 5]) || in_array((int)($idcolaborador ?? 0), [9, 21])) ? 'true' : 'false'; ?>,
             colaboradorId: <?php echo intval($idcolaborador); ?>,
             nomeUsuario: <?php echo json_encode($nome_usuario); ?>
         };

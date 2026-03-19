@@ -16,6 +16,7 @@ body {
     display: flex;
     flex-direction: column;
     overflow-y: auto;
+    overflow-x: hidden;
     transition: width 0.3s ease;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
     font-size: 12px;
@@ -53,9 +54,9 @@ body {
     overflow-y: hidden;
 }
 
-.sidebar.mini #gif {
+/* .sidebar.mini #gif {
     display: none;
-}
+} */
 
 .sidebar.mini a {
     text-align: center;

@@ -4721,13 +4721,13 @@ async function carregarOverview() {
 // ─────────────────────────────────────────────────────────────────
 (function () {
   const btnOverview = document.getElementById("overviewBtn");
-  const btnPainel   = document.getElementById("painelBtn");
-  const btnKanban   = document.getElementById("kanbanBtn");
-  const btnLista    = document.getElementById("listBtn");
+  const btnPainel = document.getElementById("painelBtn");
+  const btnKanban = document.getElementById("kanbanBtn");
+  const btnLista = document.getElementById("listBtn");
   const overviewSec = document.getElementById("overview-section");
-  const kanbanSec   = document.getElementById("kanban-section");
-  const listSec     = document.getElementById("list-section");
-  const navRight    = document.querySelector("main nav .nav-right");
+  const kanbanSec = document.getElementById("kanban-section");
+  const listSec = document.getElementById("list-section");
+  const navRight = document.querySelector("main nav .nav-right");
 
   if (!btnKanban || !btnLista || !kanbanSec || !listSec) return;
 
@@ -4738,17 +4738,17 @@ async function carregarOverview() {
 
   // Sub-panels inside #overview-section
   const gestorPanel = document.getElementById("overview-gestor");
-  const colabPanel  = document.getElementById("overview-colab");
+  const colabPanel = document.getElementById("overview-colab");
 
   function hideSections() {
-    if (kanbanSec)   kanbanSec.style.display   = "none";
-    if (listSec)     listSec.style.display     = "none";
+    if (kanbanSec) kanbanSec.style.display = "none";
+    if (listSec) listSec.style.display = "none";
     if (overviewSec) overviewSec.style.display = "none";
   }
 
   function clearActive() {
     if (btnOverview) btnOverview.classList.remove("active");
-    if (btnPainel)   btnPainel.classList.remove("active");
+    if (btnPainel) btnPainel.classList.remove("active");
     btnKanban.classList.remove("active");
     btnLista.classList.remove("active");
   }
@@ -4756,9 +4756,9 @@ async function carregarOverview() {
   // ── Visão Geral (gestor-only: calendar + indicators) ──────────
   function showOverview() {
     hideSections();
-    if (overviewSec) overviewSec.style.display = "block";
-    if (gestorPanel) gestorPanel.style.display = "block";
-    if (colabPanel)  colabPanel.style.display  = "none";
+    if (overviewSec) overviewSec.style.display = "flex";
+    if (gestorPanel) gestorPanel.style.display = "flex";
+    if (colabPanel) colabPanel.style.display = "none";
     if (navRight) navRight.style.visibility = "hidden";
     clearActive();
     if (btnOverview) btnOverview.classList.add("active");
@@ -4768,9 +4768,9 @@ async function carregarOverview() {
   // ── Painel de Produção (everyone: individual production) ───────
   function showPainel() {
     hideSections();
-    if (overviewSec) overviewSec.style.display = "block";
+    if (overviewSec) overviewSec.style.display = "flex";
     if (gestorPanel) gestorPanel.style.display = "none";
-    if (colabPanel)  colabPanel.style.display  = "block";
+    if (colabPanel) colabPanel.style.display = "block";
     if (navRight) navRight.style.visibility = "hidden";
     clearActive();
     if (btnPainel) btnPainel.classList.add("active");
@@ -4801,7 +4801,7 @@ async function carregarOverview() {
   }
 
   if (btnOverview) btnOverview.addEventListener("click", showOverview);
-  if (btnPainel)   btnPainel.addEventListener("click", showPainel);
+  if (btnPainel) btnPainel.addEventListener("click", showPainel);
   btnKanban.addEventListener("click", showKanban);
   btnLista.addEventListener("click", showLista);
 })();

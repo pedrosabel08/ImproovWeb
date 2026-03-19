@@ -3372,6 +3372,22 @@ img.thumb {
   overflow: hidden;
 }
 
+/* ── Manager overview: fill remaining space below indicators ── */
+#overview-gestor {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ── Collaborator dashboard: fill and scroll own content ── */
+#overview-colab {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
 /* ── ① Faixa topo: indicadores compactos ── */
 .overview-indicators {
   flex: 0 0 auto;
@@ -3575,6 +3591,7 @@ img.thumb {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   display: flex;
   flex-direction: column;
+  max-height: max-content;
   min-height: 0;
   min-width: 0; /* allow grid child to shrink below content size */
   overflow: hidden; /* clip any content that exceeds container */
@@ -3617,6 +3634,10 @@ img.thumb {
   letter-spacing: 0.04em;
   color: #6b7280;
   border-bottom: 1px solid #e5e7eb;
+}
+
+.overview-prod-table thead th:nth-child(3) {
+  text-align: right;
 }
 
 .overview-prod-table tbody tr {
@@ -3688,19 +3709,24 @@ img.thumb {
 
 /* ── Responsive ── */
 
-/* Tablet */
+/* Tablet / iPad: switch to stacked rows */
 @media (max-width: 1100px) {
+  #overview-gestor {
+    flex: 0 0 auto; /* natural height; parent #overview-section scrolls */
+  }
+
   .overview-body {
-    grid-template-columns: 1fr 42%;
+    grid-template-columns: 1fr;
+    overflow: visible;
+  }
+
+  .overview-calendar-wrap {
+    min-height: 420px;
   }
 }
 
-/* Small tablet: side by side still but 50/50 */
+/* Small tablet: font/spacing adjustments (layout already stacked above) */
 @media (max-width: 900px) {
-  .overview-body {
-    grid-template-columns: 1fr 1fr;
-  }
-
   .overview-right {
     padding: 14px;
   }

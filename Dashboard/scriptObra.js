@@ -976,8 +976,8 @@ function atualizarModal(idImagem) {
       if (response.funcoes && response.funcoes.length > 0) {
         document.getElementById("campoNomeImagem").textContent =
           displayImageName(response.funcoes[0].imagem_nome);
-        document.getElementById("mood").textContent =
-          `Mood da cena: ${response.funcoes[0].clima || ""}`;
+        // document.getElementById("mood").textContent =
+        //   `Mood da cena: ${response.funcoes[0].clima || ""}`;
 
         const statusHoldSelect = document.getElementById("status_hold"); // Seleciona o elemento <select>
 
@@ -10859,4 +10859,228 @@ if (closeBtn) closeBtn.addEventListener("click", closeModal);
 
   // initial conditionals
   applyConditionals();
+})();
+
+// ===== MÓDULO NOTIFICAR EQUIPE =====
+(function initNotificarEquipe() {
+  const btnOpen = document.getElementById("btnNotificarObra");
+  const modal = document.getElementById("notificarObraModal");
+  if (!btnOpen || !modal) return;
+
+  const closeBtn = modal.querySelector(".notificar-close");
+  const cancelBtn = document.getElementById("notificarCancelBtn");
+  const enviarBtn = document.getElementById("notificarEnviarBtn");
+  const filtroSelect = document.getElementById("notificarFuncaoFiltro");
+  const pessoasList = document.getElementById("notificarPessoasList");
+  const selectAllBtn = document.getElementById("notificarSelectAll");
+  const deselectAllBtn = document.getElementById("notificarDeselectAll");
+  const tituloInput = document.getElementById("notificarTitulo");
+
+  let quillNotificar = null;
+  let pessoasData = []; // dados carregados da API
+  let funcoesData = {}; // id → nome
+
+  function openModal() {
+    modal.style.display = "flex";
+    const curObraId = localStorage.getItem("obraId");
+    if (!curObraId) return;
+
+    // Inicializa Quill se ainda não foi
+    if (!quillNotificar) {
+      quillNotificar = new Quill("#notificarEditor", {
+        theme: "snow",
+        modules: {
+          toolbar: [
+            [{ header: [1, 2, 3, false] }],
+            ["bold", "italic", "underline", "strike"],
+            [{ color: [] }, { background: [] }],
+            [{ list: "ordered" }, { list: "bullet" }],
+            ["link"],
+            ["clean"],
+          ],
+        },
+        placeholder: "Escreva sua mensagem...",
+      });
+    }
+
+    // Carrega pessoas da obra
+    fetch(`notificar_obra.php?obra_id=${encodeURIComponent(curObraId)}`)
+      .then((r) => r.json())
+      .then((data) => {
+        pessoasData = data.pessoas || [];
+        funcoesData = data.funcoes || {};
+        populateFuncaoFilter();
+        renderPessoas();
+      })
+      .catch((err) => {
+        console.error("Erro ao carregar equipe:", err);
+        pessoasList.innerHTML =
+          '<p style="color:#ff6b6b;">Erro ao carregar equipe.</p>';
+      });
+  }
+
+  function closeModal() {
+    modal.style.display = "none";
+  }
+
+  function populateFuncaoFilter() {
+    // Limpa opções (preserva a primeira "Todas")
+    filtroSelect.innerHTML = '<option value="">Todas as funções</option>';
+    const sorted = Object.entries(funcoesData).sort((a, b) =>
+      a[1].localeCompare(b[1]),
+    );
+    sorted.forEach(([id, nome]) => {
+      const opt = document.createElement("option");
+      opt.value = id;
+      opt.textContent = nome;
+      filtroSelect.appendChild(opt);
+    });
+  }
+
+  function renderPessoas() {
+    const filtroFuncao = filtroSelect.value;
+    pessoasList.innerHTML = "";
+
+    // Filtra e deduplica
+    let filtered = pessoasData;
+    if (filtroFuncao) {
+      filtered = pessoasData.filter((p) =>
+        p.funcoes.some((f) => String(f.id) === filtroFuncao),
+      );
+    }
+
+    if (filtered.length === 0) {
+      pessoasList.innerHTML =
+        '<p class="notificar-empty">Nenhuma pessoa encontrada.</p>';
+      return;
+    }
+
+    filtered.forEach((pessoa) => {
+      const uid = pessoa.usuario_id;
+      if (!uid) return; // sem usuário vinculado
+
+      const label = document.createElement("label");
+      label.className = "notificar-pessoa-item";
+
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.value = uid;
+      cb.dataset.colaboradorId = pessoa.id;
+      cb.checked = true; // Seleciona por padrão
+
+      const nameSpan = document.createElement("span");
+      nameSpan.className = "notificar-pessoa-nome";
+      nameSpan.textContent = pessoa.nome;
+
+      const funcSpan = document.createElement("span");
+      funcSpan.className = "notificar-pessoa-funcoes";
+      funcSpan.textContent = pessoa.funcoes.map((f) => f.nome).join(", ");
+
+      label.appendChild(cb);
+      label.appendChild(nameSpan);
+      label.appendChild(funcSpan);
+      pessoasList.appendChild(label);
+    });
+  }
+
+  function getSelectedUserIds() {
+    const checks = pessoasList.querySelectorAll(
+      'input[type="checkbox"]:checked',
+    );
+    const ids = new Set();
+    checks.forEach((c) => ids.add(Number(c.value)));
+    return Array.from(ids);
+  }
+
+  async function enviar() {
+    const curObraId = localStorage.getItem("obraId");
+    const titulo = tituloInput.value.trim();
+    const mensagemHtml = quillNotificar
+      ? quillNotificar.root.innerHTML.trim()
+      : "";
+    const userIds = getSelectedUserIds();
+
+    if (!titulo) {
+      Swal.fire("Atenção", "Preencha o título da notificação.", "warning");
+      return;
+    }
+    if (
+      !mensagemHtml ||
+      mensagemHtml === "<p><br></p>" ||
+      mensagemHtml === "<p></p>"
+    ) {
+      Swal.fire("Atenção", "Escreva uma mensagem.", "warning");
+      return;
+    }
+    if (userIds.length === 0) {
+      Swal.fire("Atenção", "Selecione ao menos um destinatário.", "warning");
+      return;
+    }
+
+    enviarBtn.disabled = true;
+    enviarBtn.innerHTML =
+      '<i class="fa-solid fa-spinner fa-spin"></i> Enviando...';
+
+    try {
+      const resp = await fetch("notificar_obra.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          obra_id: Number(curObraId),
+          titulo: titulo,
+          mensagem: mensagemHtml,
+          usuario_ids: userIds,
+        }),
+      });
+      const result = await resp.json();
+
+      if (result.ok) {
+        Swal.fire(
+          "Enviado!",
+          `Notificação enviada para ${result.destinatarios} pessoa(s).`,
+          "success",
+        );
+        // Limpa campos
+        tituloInput.value = "";
+        if (quillNotificar) quillNotificar.setText("");
+        closeModal();
+      } else {
+        Swal.fire(
+          "Erro",
+          result.error || "Erro ao enviar notificação.",
+          "error",
+        );
+      }
+    } catch (err) {
+      console.error("Erro ao enviar notificação:", err);
+      Swal.fire("Erro", "Falha na comunicação com o servidor.", "error");
+    } finally {
+      enviarBtn.disabled = false;
+      enviarBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Enviar';
+    }
+  }
+
+  // Eventos
+  btnOpen.addEventListener("click", openModal);
+  closeBtn.addEventListener("click", closeModal);
+  cancelBtn.addEventListener("click", closeModal);
+  enviarBtn.addEventListener("click", enviar);
+  filtroSelect.addEventListener("change", renderPessoas);
+
+  selectAllBtn.addEventListener("click", () => {
+    pessoasList
+      .querySelectorAll('input[type="checkbox"]')
+      .forEach((c) => (c.checked = true));
+  });
+
+  deselectAllBtn.addEventListener("click", () => {
+    pessoasList
+      .querySelectorAll('input[type="checkbox"]')
+      .forEach((c) => (c.checked = false));
+  });
+
+  // Fechar ao clicar fora
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) closeModal();
+  });
 })();

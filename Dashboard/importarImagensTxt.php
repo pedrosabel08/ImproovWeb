@@ -153,11 +153,11 @@ function detect_tipo_imagem(string $imagem_nome): string
         if (strpos($s, $kwN) !== false) return 'Unidade';
     }
 
-    foreach (['academia', 'hall de entrada', 'salao de jogos', 'salon de jogos', 'salao de festas', 'salon de festas', 'saloes de festas', 'festas', 'jogos', 'coworking', 'lavanderia', 'gourmet', 'interno', 'grill', 'garagem', 'brinquedoteca', 'bistro', 'cinema', 'sauna', 'sala de massagem', 'espaco kids', 'pizza', 'grab and go', 'bwc', 'home market', 'lobby', 'espaço pet', 'fitness', 'espaco pet', 'pub', 'sports bar'] as $kw) {
+    foreach (['academia', 'hall de entrada', 'salao de jogos', 'salon de jogos', 'salao de festas', 'salon de festas', 'saloes de festas', 'festas', 'jogos', 'coworking', 'lavanderia', 'gourmet', 'interno', 'grill', 'garagem', 'brinquedoteca', 'bistro', 'cinema', 'sauna', 'sala de massagem', 'espaco kids', 'pizza', 'grab and go', 'bwc', 'home market', 'lobby', 'espaço pet', 'fitness', 'espaco pet', 'pub', 'sports bar', 'spa', 'boate', 'salao de beleza', 'beach point'] as $kw) {
         if (strpos($s, $kw) !== false) return 'Imagem Interna';
     }
 
-    foreach (['piscina', 'playground', 'externo', 'quadra', 'lazer', 'fire place'] as $kw) {
+    foreach (['piscina', 'playground', 'externo', 'quadra', 'lazer', 'fire place', 'carwash', 'ofuros'] as $kw) {
         if (strpos($s, $kw) !== false) return 'Imagem Externa';
     }
 

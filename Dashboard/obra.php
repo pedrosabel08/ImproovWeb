@@ -459,6 +459,9 @@ $conn->close();
                         <button id="btnLiberarModelagem" class="tooltip action-item" data-tooltip="Liberar modelagem antes do filtro de assets">
                             <i class="fa-solid fa-lock"></i> Liberar Modelagem
                         </button>
+                        <button id="btnNotificarObra" class="action-item">
+                            <i class="fa-solid fa-paper-plane"></i> Notificar Equipe
+                        </button>
                     </div>
                 </div>
             </div>
@@ -2142,8 +2145,57 @@ $conn->close();
     </div>
 
 
+    <!-- Modal Notificar Equipe -->
+    <div id="notificarObraModal" class="modal" style="display:none;">
+        <div class="modal-content notificar-obra-content">
+            <div class="notificar-header">
+                <h3><i class="fa-solid fa-paper-plane"></i> Notificar Equipe</h3>
+                <span class="close notificar-close">&times;</span>
+            </div>
+
+            <div class="notificar-body">
+                <!-- Filtro por função -->
+                <div class="notificar-field">
+                    <label for="notificarFuncaoFiltro">Filtrar por função</label>
+                    <select id="notificarFuncaoFiltro">
+                        <option value="">Todas as funções</option>
+                    </select>
+                </div>
+
+                <!-- Lista de pessoas -->
+                <div class="notificar-field">
+                    <label>Destinatários</label>
+                    <div class="notificar-select-actions">
+                        <button type="button" id="notificarSelectAll" class="notificar-link-btn">Selecionar todos</button>
+                        <button type="button" id="notificarDeselectAll" class="notificar-link-btn">Limpar seleção</button>
+                    </div>
+                    <div id="notificarPessoasList" class="notificar-pessoas-list"></div>
+                </div>
+
+                <!-- Título -->
+                <div class="notificar-field">
+                    <label for="notificarTitulo">Título</label>
+                    <input type="text" id="notificarTitulo" placeholder="Assunto da notificação" maxlength="200">
+                </div>
+
+                <!-- Editor Quill -->
+                <div class="notificar-field">
+                    <label>Mensagem</label>
+                    <div id="notificarEditorToolbar"></div>
+                    <div id="notificarEditor"></div>
+                </div>
+            </div>
+
+            <div class="notificar-footer">
+                <button type="button" id="notificarCancelBtn" class="notificar-btn-cancel">Cancelar</button>
+                <button type="button" id="notificarEnviarBtn" class="notificar-btn-send">
+                    <i class="fa-solid fa-paper-plane"></i> Enviar
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Fotografico modal -->
     <div id="fotograficoModal" class="modal" style="display:none;">
         <div class="modal-content" style="width:480px; max-width:95%; padding:16px;">
             <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -2212,6 +2264,9 @@ $conn->close();
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <!-- Quill Editor -->
+    <link href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
     <script src="<?php echo asset_url('scriptObra.js'); ?>"></script>
     <script src="<?php echo asset_url('../Entregas/script.js'); ?>"></script>
     <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>

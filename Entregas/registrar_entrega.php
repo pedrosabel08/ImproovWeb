@@ -140,7 +140,7 @@ try {
     // Evento de entrega concluída
     $concluido_set = array('Entregue no prazo', 'Entregue com atraso', 'Entrega antecipada');
     if (in_array($novo_status, $concluido_set) && !in_array($old_status, $concluido_set)) {
-        $assunto = 'Entrega ' . $status_nome . ' concluída na obra ' . $obra_nome;
+        $assunto = 'Entrega ' . $status_nome . ' concluída';
         $tipo = 'entrega';
         $status_acomp = 'pendente';
         $data_today = date('Y-m-d');

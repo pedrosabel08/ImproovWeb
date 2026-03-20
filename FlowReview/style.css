@@ -4,7 +4,7 @@
   padding: 0;
   margin: 0;
   box-sizing: border-box !important;
-  font-family: "Open Sans", sans-serif;
+  font-family: "Inter", sans-serif;
 }
 
 header {
@@ -624,8 +624,8 @@ a {
 
 .comment-number.highlight,
 .comment.highlight {
-  background-color: #007bff;
-  color: #000;
+  background-color: #007bff !important;
+  font-weight: 600 !important;
   transition:
     background-color 0.3s ease,
     color 0.3s ease;
@@ -972,6 +972,24 @@ h2#dataEnvio {
   text-align: center;
   box-shadow: 0 0 0 2px white;
   z-index: 10;
+}
+
+/* Badge de menção nos cards de tarefa */
+.task-item .mencao-badge {
+  top: -8px;
+  right: -8px;
+  font-size: 11px;
+  padding: 3px 6px;
+}
+
+/* Mention highlight — texto @nome em negrito/cor */
+.mention-highlight {
+  color: #2293e6;
+  font-weight: 700;
+}
+
+.reply-actions button {
+  cursor: pointer;
 }
 
 .obra-img-preview {

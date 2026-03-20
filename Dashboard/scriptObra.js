@@ -3115,18 +3115,21 @@ function infosObra(obraId) {
       let antecipada = 0;
       let imagens = 0;
 
-      if (
-        data?.obra?.nome_obra &&
-        data?.aprovacaoObra &&
-        Object.keys(data.aprovacaoObra).length > 0
-      ) {
-        document.getElementById("altBtn").classList.remove("hidden");
-        document.getElementById("altBtn").onclick = function () {
-          window.location.href = `https://improov.com.br/flow/ImproovWeb/FlowReview/index.php?obra_nome=${data.obra.nome_obra}`;
-        };
-      } else {
-        document.getElementById("altBtn").classList.add("hidden");
-      }
+      const _flowReviewUrl = (data?.obra?.nome_obra && data?.aprovacaoObra && Object.keys(data.aprovacaoObra).length > 0)
+        ? `https://improov.com.br/flow/ImproovWeb/FlowReview/index.php?obra_nome=${encodeURIComponent(data.obra.nome_obra)}`
+        : null;
+      ["quick_flow_review", "mobile_flow_review"].forEach(function (id) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        if (_flowReviewUrl) {
+          el.href = _flowReviewUrl;
+          el.classList.remove("hidden");
+          el.style.display = "";
+        } else {
+          el.classList.add("hidden");
+          el.style.display = "none";
+        }
+      });
       // Seleciona os elementos de filtro
       const statusEtapaSelect = document.getElementById(
         "imagem_status_etapa_filtro",
@@ -3450,9 +3453,11 @@ function infosObra(obraId) {
       const revisoes = document.getElementById("revisoes");
       // revisoes.textContent = `Total de alterações: ${data.alt}`
 
-      const alteracao = document.getElementById("altBtn");
       if (data.alt == 0) {
-        alteracao.style.display = "none";
+        ["quick_flow_review", "mobile_flow_review"].forEach(function (id) {
+          const el = document.getElementById(id);
+          if (el) el.style.display = "none";
+        });
       }
 
       // Determina o número de estrelas com base nas alterações

@@ -239,7 +239,11 @@ $conn->close();
                     <i class="fa-solid fa-folder-open"></i>
                     <span class="qa-label">Review</span>
                 </a>
-                <button id="altBtn" class="hidden">Flow Review</button>
+                <a id="quick_flow_review" class="quick-link hidden" href="#" target="_blank" rel="noopener noreferrer"
+                    title="Flow Review" aria-hidden="true" style="display:none;">
+                    <i class="fa-solid fa-eye"></i>
+                    <span class="qa-label">Flow Review</span>
+                </a>
             </div>
             <!-- Mobile hamburger for quick access (visible on small screens) -->
             <button id="quickHamburger" class="quick-hamburger" aria-label="Acessos rápidos" aria-expanded="false">
@@ -275,7 +279,8 @@ $conn->close();
                                 class="fa-brands fa-google-drive"></i> <span>Drive</span></a>
                         <a class="mobile-link" id="mobile_review" href="#" target="_blank" rel="noopener noreferrer"><i
                                 class="fa-solid fa-folder-open"></i> <span>Review</span></a>
-                        <button id="altBtn" class="hidden">Flow Review</button>
+                        <a class="mobile-link" id="mobile_flow_review" href="#" target="_blank" rel="noopener noreferrer" style="display:none;"><i
+                                class="fa-solid fa-eye"></i> <span>Flow Review</span></a>
 
                     </nav>
                 </div>

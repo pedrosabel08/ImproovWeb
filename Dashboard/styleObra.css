@@ -1902,6 +1902,10 @@ i.fa-info {
     transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
 }
 
+a#quick_flow_review, a#mobile_flow_review {
+    background: #8ecaff !important;
+}
+
 .quick-link i {
     font-size: 16px;
 }

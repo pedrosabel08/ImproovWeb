@@ -79,42 +79,18 @@ if ($arquivo_log_id) {
     }
 }
 
-// Processar imagem (se enviada)
+// Processar imagem (se enviada) — sempre envia para o VPS via SFTP
 $imagem_path = null;
 if (isset($_FILES['imagem']) && $_FILES['imagem']['error'] === UPLOAD_ERR_OK) {
-    // filesystem target (relative to this script)
-    $uploadDir = __DIR__ . '/../uploads/comentarios/';
-    if (!is_dir($uploadDir)) {
-        mkdir($uploadDir, 0755, true); // Cria a pasta se não existir
-    }
-
-    $filename = uniqid('coment_', true) . '.' . pathinfo($_FILES['imagem']['name'], PATHINFO_EXTENSION);
-    $targetPath = $uploadDir . $filename;
-
-    $moved = move_uploaded_file($_FILES['imagem']['tmp_name'], $targetPath);
-    if (!$moved) {
+    require_once __DIR__ . '/upload_comentario_vps.php';
+    try {
+        $imagem_path = uploadComentarioVps($_FILES['imagem']);
+    } catch (RuntimeException $e) {
         http_response_code(500);
-        echo json_encode(['sucesso' => false, 'erro' => 'Falha ao mover arquivo para destino.', 'target' => $targetPath]);
+        header('Content-Type: application/json');
+        echo json_encode(['sucesso' => false, 'erro' => 'Falha ao enviar imagem para o VPS: ' . $e->getMessage()]);
         exit;
     }
-
-    // Ensure readable permissions (webserver should be able to serve it)
-    @chmod($targetPath, 0644);
-
-    // Decide public base URL depending on environment (production vs local dev).
-    // If running on the production host, use the real domain; otherwise build from request host.
-    if (isset($_SERVER['HTTP_HOST']) && strpos($_SERVER['HTTP_HOST'], 'improov.com.br') !== false) {
-        $public_base = 'https://improov.com.br/flow/ImproovWeb';
-    } else {
-        // local dev: construct base from current host. Adjust path if your local vhost differs.
-        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-        // assume local docroot maps to /ImproovWeb
-        $public_base = $scheme . '://' . $host . '/ImproovWeb';
-    }
-
-    $imagem_path = $public_base . '/uploads/comentarios/' . $filename;
-    $saved_ok = file_exists($targetPath);
 }
 
 // 1. Buscar o número do comentário
@@ -169,8 +145,6 @@ $response = [
     'comentario_id' => $comentario_id,
     'mencionados' => $mencionados,
     'imagem' => $imagem_path,
-    'fs_path' => isset($targetPath) ? $targetPath : null,
-    'saved_ok' => isset($saved_ok) ? $saved_ok : false,
 ];
 
 header('Content-Type: application/json');

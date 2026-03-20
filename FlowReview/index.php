@@ -302,6 +302,7 @@ $conn->close();
     <div id="comentarioModal" class="modal" style="display: none;">
         <div class="modal-content">
             <h3>Novo Comentário</h3>
+            <div id="reply-context" style="display:none; margin-bottom:10px; padding:8px 10px; background:#f0f4f8; border-left:3px solid #2980b9; border-radius:4px; font-size:13px; color:#444; max-height:80px; overflow:auto;"></div>
             <div id="comentario-quill-editor"></div>
             <input type="hidden" id="comentarioTexto">
             <input type="file" id="imagemComentario" accept="image/*" />

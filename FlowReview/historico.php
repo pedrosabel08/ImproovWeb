@@ -26,7 +26,8 @@ if ($_SERVER["REQUEST_METHOD"] == "GET") {
     $sqlHistorico = "SELECT 
         h.*, 
         h.responsavel, 
-        c.nome_colaborador AS colaborador_nome, 
+        c.nome_colaborador AS colaborador_nome,
+        f.colaborador_id,
         c2.nome_colaborador AS responsavel_nome,
         i.imagem_nome, 
         fun.nome_funcao,

@@ -57,7 +57,7 @@ while ($comentario = $result->fetch_assoc()) {
         $comentario['imagem'] = preg_replace('#^\.\./+#', '', $comentario['imagem']);
     }
     $comentario_id = $comentario['id'];
-    $resQuery = $conn->prepare("SELECT id, texto, data, c.nome_colaborador as nome_responsavel FROM respostas_comentario r 
+    $resQuery = $conn->prepare("SELECT id, texto, data, r.imagem, r.responsavel, c.nome_colaborador as nome_responsavel FROM respostas_comentario r 
     JOIN colaborador c on r.responsavel = c.idcolaborador WHERE comentario_id = ?");
     $resQuery->bind_param('i', $comentario_id);
     $resQuery->execute();

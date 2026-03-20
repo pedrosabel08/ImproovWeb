@@ -1,7 +1,7 @@
 <?php
 include '../conexao.php';
 
-$query = "SELECT idcolaborador, nome_colaborador FROM colaborador";
+$query = "SELECT idcolaborador, nome_colaborador FROM colaborador WHERE ativo = 1 ORDER BY nome_colaborador";
 $result = $conn->query($query);
 
 $usuarios = [];

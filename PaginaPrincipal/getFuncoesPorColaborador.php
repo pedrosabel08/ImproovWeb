@@ -365,6 +365,21 @@ foreach ($funcoes as $funcao) {
     elseif ($funcaoAtualId == 2 && !empty($liberarModelagemPorObra[intval($funcao['obra_id'])])) {
         $liberada = true;
     }
+    // Se for Composição (funcao_id == 3) e a obra tem liberar_modelagem=1,
+    // exige que tanto Modelagem (2) quanto Filtro de assets (8) estejam finalizados
+    elseif ($funcaoAtualId == 3 && !empty($liberarModelagemPorObra[intval($funcao['obra_id'])])) {
+        $statusFinalizado = ['Finalizado', 'Aprovado', 'Aprovado com ajustes'];
+        $modelagem    = isset($todasFuncoes[$imagemId][2]) ? $todasFuncoes[$imagemId][2] : null;
+        $filtroAssets = isset($todasFuncoes[$imagemId][8]) ? $todasFuncoes[$imagemId][8] : null;
+
+        $modelagemOk  = $modelagem !== null && in_array($modelagem['status'], $statusFinalizado);
+        // Se filtro de assets não está atribuído à imagem, não bloqueia
+        $filtroOk     = $filtroAssets === null || in_array($filtroAssets['status'], $statusFinalizado);
+
+        if ($modelagemOk && $filtroOk) {
+            $liberada = true;
+        }
+    }
     // Se esta é a primeira função REAL da imagem, libera sempre
     elseif (isset($primeiraFuncaoImagem[$imagemId]) && $primeiraFuncaoImagem[$imagemId] == $funcaoAtualId) {
         $liberada = true;

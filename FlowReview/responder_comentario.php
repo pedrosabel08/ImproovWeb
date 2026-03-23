@@ -52,6 +52,33 @@ if ($stmt->affected_rows > 0) {
                 $stmtMencao->execute();
             }
         }
+        $stmtMencao->close();
+
+        // Slack DM para cada mencionado
+        require_once __DIR__ . '/mencao_slack_helper.php';
+        $stmtCtx = $conn->prepare(
+            "SELECT fun.nome_funcao, ico.imagem_nome, o.nome_obra
+             FROM comentarios_imagem c
+             INNER JOIN historico_aprovacoes_imagens hai ON hai.id = c.ap_imagem_id
+             INNER JOIN funcao_imagem fi ON fi.idfuncao_imagem = hai.funcao_imagem_id
+             INNER JOIN funcao fun ON fun.idfuncao = fi.funcao_id
+             INNER JOIN imagens_cliente_obra ico ON ico.idimagens_cliente_obra = fi.imagem_id
+             INNER JOIN obra o ON o.idobra = ico.obra_id
+             WHERE c.id = ? LIMIT 1"
+        );
+        $stmtCtx->bind_param('i', $comentario_id);
+        $stmtCtx->execute();
+        $ctxMencao = $stmtCtx->get_result()->fetch_assoc();
+        $stmtCtx->close();
+        enviarSlackMencoes(
+            $conn,
+            $mencionados,
+            $_SESSION['nome_usuario'] ?? 'Alguém',
+            $ctxMencao['nome_funcao'] ?? '',
+            $ctxMencao['imagem_nome'] ?? '',
+            $ctxMencao['nome_obra'] ?? '',
+            $responsavel
+        );
     }
 
     $result = [

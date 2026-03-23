@@ -2,7 +2,8 @@
 require_once __DIR__ . '/../config/session_bootstrap.php';
 include '../conexao.php';
 
-function tableHasColumn(mysqli $conn, string $table, string $column): bool {
+function tableHasColumn(mysqli $conn, string $table, string $column): bool
+{
     $sql = "SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ? LIMIT 1";
     $stmt = $conn->prepare($sql);
     $stmt->bind_param('ss', $table, $column);
@@ -11,31 +12,33 @@ function tableHasColumn(mysqli $conn, string $table, string $column): bool {
     return ($res && $res->num_rows > 0);
 }
 
-function ensurePdfCommentColumns(mysqli $conn): void {
+function ensurePdfCommentColumns(mysqli $conn): void
+{
     // comentários em PDF: amarrados a arquivo_log
     if (!tableHasColumn($conn, 'comentarios_imagem', 'arquivo_log_id')) {
-        @ $conn->query("ALTER TABLE comentarios_imagem ADD COLUMN arquivo_log_id INT NULL");
+        @$conn->query("ALTER TABLE comentarios_imagem ADD COLUMN arquivo_log_id INT NULL");
     }
     if (!tableHasColumn($conn, 'comentarios_imagem', 'pagina')) {
-        @ $conn->query("ALTER TABLE comentarios_imagem ADD COLUMN pagina INT NULL");
+        @$conn->query("ALTER TABLE comentarios_imagem ADD COLUMN pagina INT NULL");
     }
 }
 
-function ensureShapeColumns(mysqli $conn): void {
+function ensureShapeColumns(mysqli $conn): void
+{
     // coordenadas finais para formas geométricas (rect/circle)
     if (!tableHasColumn($conn, 'comentarios_imagem', 'x2')) {
-        @ $conn->query("ALTER TABLE comentarios_imagem ADD COLUMN x2 DOUBLE NULL");
+        @$conn->query("ALTER TABLE comentarios_imagem ADD COLUMN x2 DOUBLE NULL");
     }
     if (!tableHasColumn($conn, 'comentarios_imagem', 'y2')) {
-        @ $conn->query("ALTER TABLE comentarios_imagem ADD COLUMN y2 DOUBLE NULL");
+        @$conn->query("ALTER TABLE comentarios_imagem ADD COLUMN y2 DOUBLE NULL");
     }
     // caminho SVG para freehand
     if (!tableHasColumn($conn, 'comentarios_imagem', 'path_data')) {
-        @ $conn->query("ALTER TABLE comentarios_imagem ADD COLUMN path_data LONGTEXT NULL");
+        @$conn->query("ALTER TABLE comentarios_imagem ADD COLUMN path_data LONGTEXT NULL");
     }
     // cor do desenho
     if (!tableHasColumn($conn, 'comentarios_imagem', 'cor')) {
-        @ $conn->query("ALTER TABLE comentarios_imagem ADD COLUMN cor VARCHAR(20) NULL");
+        @$conn->query("ALTER TABLE comentarios_imagem ADD COLUMN cor VARCHAR(20) NULL");
     }
 }
 
@@ -51,7 +54,7 @@ $y2 = (isset($_POST['y2']) && $_POST['y2'] !== '') ? floatval($_POST['y2']) : nu
 $texto = $_POST['texto'] ?? '';
 $responsavel = $_SESSION['idcolaborador'];
 // tipo do comentário: 'ponto', 'rect', 'circle' ou 'freehand' (default 'ponto')
-$tipo = isset($_POST['tipo']) && in_array($_POST['tipo'], ['ponto','rect','circle','freehand']) ? $_POST['tipo'] : 'ponto';
+$tipo = isset($_POST['tipo']) && in_array($_POST['tipo'], ['ponto', 'rect', 'circle', 'freehand']) ? $_POST['tipo'] : 'ponto';
 $path_data = (isset($_POST['path_data']) && $_POST['path_data'] !== '') ? $_POST['path_data'] : null;
 $cor = (isset($_POST['cor']) && preg_match('/^#[0-9a-fA-F]{6}$/', $_POST['cor'])) ? $_POST['cor'] : '#f59e0b';
 
@@ -138,6 +141,34 @@ if (!empty($mencionados)) {
     }
 
     $stmtInsert->close();
+
+    // Slack DM para cada mencionado
+    require_once __DIR__ . '/mencao_slack_helper.php';
+    $ctxMencao = null;
+    if ($ap_imagem_id) {
+        $stmtCtx = $conn->prepare(
+            "SELECT fun.nome_funcao, ico.imagem_nome, o.nome_obra
+             FROM historico_aprovacoes_imagens hai
+             INNER JOIN funcao_imagem fi ON fi.idfuncao_imagem = hai.funcao_imagem_id
+             INNER JOIN funcao fun ON fun.idfuncao = fi.funcao_id
+             INNER JOIN imagens_cliente_obra ico ON ico.idimagens_cliente_obra = fi.imagem_id
+             INNER JOIN obra o ON o.idobra = ico.obra_id
+             WHERE hai.id = ? LIMIT 1"
+        );
+        $stmtCtx->bind_param('i', $ap_imagem_id);
+        $stmtCtx->execute();
+        $ctxMencao = $stmtCtx->get_result()->fetch_assoc();
+        $stmtCtx->close();
+    }
+    $slackLog = enviarSlackMencoes(
+        $conn,
+        $mencionados,
+        $_SESSION['nome_usuario'] ?? 'Alguém',
+        $ctxMencao['nome_funcao'] ?? '',
+        $ctxMencao['imagem_nome'] ?? '',
+        $ctxMencao['nome_obra'] ?? '',
+        $responsavel
+    );
 }
 
 $response = [
@@ -145,6 +176,7 @@ $response = [
     'comentario_id' => $comentario_id,
     'mencionados' => $mencionados,
     'imagem' => $imagem_path,
+    'slack_mencoes' => $slackLog ?? null,
 ];
 
 header('Content-Type: application/json');

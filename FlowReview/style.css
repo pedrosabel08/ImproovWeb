@@ -415,6 +415,7 @@ a {
   width: 100%;
   transition: 0.3s;
   object-fit: cover;
+  min-height: calc(100% - 12px);
 }
 
 .image:hover {

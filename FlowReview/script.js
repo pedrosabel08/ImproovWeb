@@ -623,7 +623,26 @@ async function exibirCardsDeObra(tarefas) {
     obrasMap.get(tarefa.nome_obra).push(tarefa);
   });
 
-  obrasMap.forEach((tarefasDaObra, nome_obra) => {
+  // Obras com menções não lidas primeiro
+  const obrasOrdenadas = [...obrasMap.entries()].sort(
+    ([a], [b]) =>
+      (mencoes.mencoes_por_obra[b] || 0) - (mencoes.mencoes_por_obra[a] || 0),
+  );
+
+  if (mencoes.total_mencoes > 0) {
+    const linhas = Object.entries(mencoes.mencoes_por_obra || {})
+      .filter(([, q]) => q > 0)
+      .map(([obra, qtd]) => `• <b>${obra}</b>: ${qtd} menção(ões)`)
+      .join("<br>");
+    Swal.fire({
+      title: "📣 Você foi mencionado!",
+      html: linhas + "<br><br>Confira as obras destacadas!",
+      icon: "info",
+      confirmButtonText: "Ver",
+    });
+  }
+
+  obrasOrdenadas.forEach(([nome_obra, tarefasDaObra]) => {
     tarefasDaObra.sort(
       (a, b) => new Date(b.data_aprovacao) - new Date(a.data_aprovacao),
     );
@@ -861,7 +880,18 @@ function exibirTarefas(tarefas, tarefasCompletas) {
   exibirSidebarTabulator(tarefasCompletas);
 
   if (tarefas.length > 0) {
-    tarefas.forEach((tarefa) => {
+    const tarefasOrdenadas = [...tarefas].sort((a, b) => {
+      const mA =
+        (_mencoesDados.mencoes_por_funcao_imagem || {})[
+          String(a.idfuncao_imagem)
+        ] || 0;
+      const mB =
+        (_mencoesDados.mencoes_por_funcao_imagem || {})[
+          String(b.idfuncao_imagem)
+        ] || 0;
+      return mB - mA;
+    });
+    tarefasOrdenadas.forEach((tarefa) => {
       const taskItem = document.createElement("div");
       taskItem.classList.add("task-item");
       taskItem.setAttribute(
@@ -2727,9 +2757,9 @@ function mostrarImagemCompleta(src, id) {
   imgElement.style.width = "100%";
 
   imageWrapper.appendChild(imgElement);
-  document
-    .querySelector("#imagem_atual")
-    .scrollIntoView({ behavior: "smooth" });
+  // document
+  //   .querySelector("#imagem_atual")
+  //   .scrollIntoView({ behavior: "smooth" });
   renderComments(id);
   ajustarNavSelectAoTamanhoDaImagem();
 
@@ -2997,7 +3027,8 @@ document.getElementById("enviarComentario").onclick = async () => {
       );
       if (replyEl) {
         const textoEl = replyEl.querySelector(".resposta-texto");
-        if (textoEl) textoEl.innerHTML = highlightMentions(textoVazio ? "" : texto);
+        if (textoEl)
+          textoEl.innerHTML = highlightMentions(textoVazio ? "" : texto);
         if (result.imagem) {
           const thumb = `https://improov.com.br/flow/ImproovWeb/thumb.php?path=${encodeURIComponent(result.imagem)}&w=200&q=85`;
           let imgDiv = replyEl.querySelector(".comment-image");
@@ -3677,7 +3708,11 @@ async function renderComments(id) {
 
       if (markerEl) {
         markerEl.classList.add("highlight");
-        markerEl.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+        markerEl.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+          inline: "center",
+        });
       }
     });
 

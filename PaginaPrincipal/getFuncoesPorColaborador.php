@@ -372,7 +372,8 @@ foreach ($funcoes as $funcao) {
         $modelagem    = isset($todasFuncoes[$imagemId][2]) ? $todasFuncoes[$imagemId][2] : null;
         $filtroAssets = isset($todasFuncoes[$imagemId][8]) ? $todasFuncoes[$imagemId][8] : null;
 
-        $modelagemOk  = $modelagem !== null && in_array($modelagem['status'], $statusFinalizado);
+        // Se modelagem não está atribuída à imagem, não bloqueia
+        $modelagemOk  = $modelagem === null || in_array($modelagem['status'], $statusFinalizado);
         // Se filtro de assets não está atribuído à imagem, não bloqueia
         $filtroOk     = $filtroAssets === null || in_array($filtroAssets['status'], $statusFinalizado);
 

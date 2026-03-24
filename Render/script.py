@@ -690,7 +690,7 @@ def process_job_folder(cursor, job_folder, p00_rollup=None):
 
     # 🔹 Inserir ou atualizar na tabela pós-produção
     # Não criar registro de pós-produção quando status_id == 1
-    if responsavel_pos_id and status_id != 1:
+    if responsavel_pos_id and resp_id and status_id != 1:
         cursor.execute("""
             INSERT INTO pos_producao
             (render_id, imagem_id, obra_id, colaborador_id, caminho_pasta, numero_bg, status_id, responsavel_id)
@@ -716,6 +716,8 @@ def process_job_folder(cursor, job_folder, p00_rollup=None):
     else:
         if responsavel_pos_id and status_id == 1:
             log_and_print(f"⚠ Pos-produção não criada pois status_id == 1 para imagem_id {imagem_id}")
+        elif responsavel_pos_id and not resp_id:
+            log_and_print(f"⚠ Pos-produção não criada pois responsável de render (resp_id) é nulo para imagem_id {imagem_id}")
         else:
             log_and_print(f"⚠ Imagem {imagem_id} não possui pós-produção, pulando inserção na pos_producao")
     
@@ -723,6 +725,12 @@ def process_job_folder(cursor, job_folder, p00_rollup=None):
     # -------------------------------
     # Lógica de notificação
     # -------------------------------
+    # Notificar canal quando não há colaborador atribuído (sempre que processar)
+    if not resp_id:
+        msg_sem_colab = f"⚠ Render da imagem *{image_name_db}* processado (status: *{status_custom}*), mas *não há colaborador atribuído* (sem responsável de render)."
+        send_webhook_message(msg_sem_colab)
+        log_and_print(f"🔔 Notificação de sem colaborador enviada para o canal de renders ({image_name_db}).")
+
     if status_id != 1 and resp_id and status_custom != ultimo_status:
         if status_custom == "Erro":
             msg = f"O render da imagem: {image_name_db} deu erro, favor verificar!"

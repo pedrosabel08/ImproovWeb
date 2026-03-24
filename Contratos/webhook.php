@@ -307,6 +307,7 @@ function slack_send_webhook(?string $webhookUrl, string $text): bool
 	curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
 	curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
 	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+	curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
 	curl_setopt($ch, CURLOPT_TIMEOUT, 10);
 	$res = curl_exec($ch);
 	$err = curl_error($ch);

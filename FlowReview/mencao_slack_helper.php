@@ -35,6 +35,8 @@ if (!function_exists('_mencao_slack_post_message')) {
             'Content-Type: application/json',
         ]);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
         $resp = curl_exec($ch);
@@ -92,6 +94,8 @@ if (!function_exists('_mencao_resolve_slack_user')) {
         $ch = curl_init('https://slack.com/api/users.list');
         curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . $token]);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
         $resp = curl_exec($ch);
         if (curl_errno($ch)) {
             $logs[] = 'slack_users_list_curl_error=' . curl_error($ch);

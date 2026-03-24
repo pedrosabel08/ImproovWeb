@@ -54,6 +54,8 @@ function slack_post_message($token, $channel, $text, &$logs)
         'Content-Type: application/json',
     ]);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
     $resp = curl_exec($ch);
@@ -109,6 +111,8 @@ function resolve_slack_user_id_by_colaborador($conn, $colaborador_id, $token, &$
     $ch = curl_init('https://slack.com/api/users.list');
     curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . $token]);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
     $resp = curl_exec($ch);
     if (curl_errno($ch)) {
         $logs[] = 'slack_users_list_curl_error=' . curl_error($ch);

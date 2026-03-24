@@ -207,6 +207,8 @@ try {
             'Authorization: Bearer ' . $slackToken
         ]);
         curl_setopt($chList, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($chList, CURLOPT_CONNECTTIMEOUT, 5);
+        curl_setopt($chList, CURLOPT_TIMEOUT, 10);
         $respList = curl_exec($chList);
         $httpList = curl_getinfo($chList, CURLINFO_HTTP_CODE);
         $userId = null;
@@ -246,6 +248,8 @@ try {
                 'Content-Type: application/json'
             ]);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 10);
             curl_setopt($ch, CURLOPT_POST, true);
             curl_setopt($ch, CURLOPT_POSTFIELDS, $payloadJson);
             $resp = curl_exec($ch);
@@ -298,6 +302,8 @@ try {
             $chChan = curl_init('https://slack.com/api/chat.postMessage');
             curl_setopt($chChan, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . $slackToken, 'Content-Type: application/json']);
             curl_setopt($chChan, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($chChan, CURLOPT_CONNECTTIMEOUT, 5);
+            curl_setopt($chChan, CURLOPT_TIMEOUT, 10);
             curl_setopt($chChan, CURLOPT_POST, true);
             curl_setopt($chChan, CURLOPT_POSTFIELDS, $payloadChJson);
             $respChan = curl_exec($chChan);
@@ -324,6 +330,8 @@ try {
             $chList2 = curl_init('https://slack.com/api/users.list');
             curl_setopt($chList2, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . $slackToken]);
             curl_setopt($chList2, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($chList2, CURLOPT_CONNECTTIMEOUT, 5);
+            curl_setopt($chList2, CURLOPT_TIMEOUT, 10);
             $respList2 = curl_exec($chList2);
             if (!curl_errno($chList2)) {
                 $dataList2 = json_decode($respList2, true);
@@ -347,6 +355,8 @@ try {
                 $ch = curl_init('https://slack.com/api/chat.postMessage');
                 curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . $slackToken, 'Content-Type: application/json']);
                 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+                curl_setopt($ch, CURLOPT_TIMEOUT, 10);
                 curl_setopt($ch, CURLOPT_POST, true);
                 curl_setopt($ch, CURLOPT_POSTFIELDS, $payloadJson);
                 $resp = curl_exec($ch);
@@ -375,6 +385,8 @@ try {
             $chChan = curl_init('https://slack.com/api/chat.postMessage');
             curl_setopt($chChan, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . $slackToken, 'Content-Type: application/json']);
             curl_setopt($chChan, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($chChan, CURLOPT_CONNECTTIMEOUT, 5);
+            curl_setopt($chChan, CURLOPT_TIMEOUT, 10);
             curl_setopt($chChan, CURLOPT_POST, true);
             curl_setopt($chChan, CURLOPT_POSTFIELDS, $payloadChJson);
             $respChan = curl_exec($chChan);

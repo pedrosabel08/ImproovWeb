@@ -641,6 +641,41 @@ function addEventListenersToRows() {
       if (event.target.cellIndex === 0) {
         const idImagemSelecionada = linha.getAttribute("data-id");
 
+        // Helper: escapes HTML to prevent XSS
+        function escHtml(str) {
+          if (!str) return "";
+          return String(str)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;");
+        }
+
+        // Helper: format "YYYY-MM-DD HH:MM:SS" → "DD/MM/YYYY"
+        function fmtDate(dateStr) {
+          if (!dateStr) return "hoje";
+          const d = new Date(dateStr.replace(" ", "T"));
+          return (
+            d.getDate().toString().padStart(2, "0") +
+            "/" +
+            (d.getMonth() + 1).toString().padStart(2, "0") +
+            "/" +
+            d.getFullYear()
+          );
+        }
+
+        const dotColor = {
+          "TO-DO": "#9e9e9e",
+          TEA: "#2196f3",
+          APR: "#9c27b0",
+          HOLD: "#ff9800",
+          FIN: "#4caf50",
+          RVW: "#03a9f4",
+          DRV: "#00bcd4",
+          OK: "#8bc34a",
+          REN: "#ff5722",
+        };
+
         fetch("buscar_historico.php", {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -650,10 +685,10 @@ function addEventListenersToRows() {
             if (!response.ok) throw new Error("Erro na requisição");
             return response.json();
           })
-          .then((data) => {
+          .then((etapas) => {
             const modalHist = document.getElementById("modal_hist_status");
 
-            if (data.length === 0) {
+            if (!etapas || etapas.length === 0) {
               Toastify({
                 text: "Nenhum histórico encontrado",
                 duration: 3000,
@@ -662,76 +697,75 @@ function addEventListenersToRows() {
                 backgroundColor: "#ff6b6b",
               }).showToast();
               return;
-            } else {
-              let html = "<div class='timeline'>";
-
-              for (let i = 0; i < data.length; i++) {
-                const item = data[i];
-                const inicio = new Date(item.data_inicio);
-                const inicioFormat = `${inicio.getDate().toString().padStart(2, "0")}/${(inicio.getMonth() + 1).toString().padStart(2, "0")}/${inicio.getFullYear()}`;
-
-                let frase = `A etapa <strong>${item.status_nome}</strong> iniciou em <strong>${inicioFormat}</strong> no status <strong>${item.substatus_nome || "-"}</strong>`;
-
-                // Pega o próximo item para o status final
-                const proximo = data[i + 1];
-                if (proximo && proximo.status_id === item.status_id) {
-                  const fim = new Date(proximo.data_inicio);
-                  const fimFormat = `${fim.getDate().toString().padStart(2, "0")}/${(fim.getMonth() + 1).toString().padStart(2, "0")}/${fim.getFullYear()}`;
-                  frase += ` e foi alterada para <strong>${proximo.substatus_nome || "-"}</strong> em <strong>${fimFormat}</strong>.`;
-                } else {
-                  frase += ".";
-                }
-
-                // Cor do dot conforme substatus
-                let cor = "#ccc";
-                switch (item.substatus_nome) {
-                  case "TO-DO":
-                    cor = "gray";
-                    break;
-                  case "HOLD":
-                    cor = "orange";
-                    break;
-                  case "FIN":
-                    cor = "green";
-                    break;
-                  case "RVW":
-                    cor = "blue";
-                    break;
-                  case "APR":
-                    cor = "purple";
-                    break;
-                }
-
-                html += `
-                                    <div class='timeline-item'>
-                                        <div class='dot' style='background:${cor}'></div>
-                                        <div class='content'>${frase}</div>
-                                    </div>`;
-              }
-
-              html += "</div>";
-
-              modalHist.querySelector("#historico_container").innerHTML = html;
-
-              Toastify({
-                text: "Histórico carregado com sucesso",
-                duration: 3000,
-                gravity: "top",
-                position: "right",
-                backgroundColor: "#4caf50",
-              }).showToast();
             }
 
-            const celulaStatus = linha.cells[0]; // 3ª coluna
+            let html = "";
 
-            // Posicionar modal ao lado da linha
-            const rectLinha = linha.getBoundingClientRect();
-            const rectStatus = celulaStatus.getBoundingClientRect();
+            etapas.forEach((etapa) => {
+              const dataInicioFmt = fmtDate(etapa.data_inicio);
+              const dataFimFmt = etapa.em_andamento
+                ? "hoje"
+                : fmtDate(etapa.data_fim);
+              const badgeClass = etapa.em_andamento
+                ? "etapa-badge etapa-badge--active"
+                : "etapa-badge";
 
+              html += `<div class="etapa-section">
+  <div class="etapa-header">
+    <span class="etapa-nome">${escHtml(etapa.status_nome)}</span>
+    <span class="etapa-datas">${dataInicioFmt} → ${dataFimFmt}</span>
+    <span class="${badgeClass}">${etapa.total_dias} dia${etapa.total_dias !== 1 ? "s" : ""}${etapa.em_andamento ? " ▶" : ""}</span>
+  </div>`;
+
+              if (etapa.tempo_espera_todo_dias > 0) {
+                html += `<div class="paused-warning">⏸ Aguardou <strong>${etapa.tempo_espera_todo_dias} dia${etapa.tempo_espera_todo_dias !== 1 ? "s" : ""}</strong> em TO-DO antes de iniciar</div>`;
+              }
+
+              html += `<div class="timeline">`;
+
+              etapa.substatuses.forEach((sub) => {
+                const cor = dotColor[sub.substatus_nome] || "#ccc";
+                const dataFmt = fmtDate(sub.data_inicio);
+                const duracaoBadge =
+                  sub.dias > 0
+                    ? `<span class="substatus-duration">${sub.dias}d</span>`
+                    : "";
+                const ativoBadge = !sub.data_fim
+                  ? `<span class="substatus-ativo">em andamento</span>`
+                  : "";
+                const holdReason = sub.justificativa
+                  ? `<div class="hold-reason">💬 ${escHtml(sub.justificativa)}</div>`
+                  : "";
+
+                html += `<div class="timeline-item">
+  <div class="dot" style="background:${cor}"></div>
+  <div class="content">
+    <span class="substatus-nome">${escHtml(sub.substatus_nome)}</span>
+    <span class="substatus-data">${dataFmt}</span>
+    ${duracaoBadge}${ativoBadge}${holdReason}
+  </div>
+</div>`;
+              });
+
+              html += `</div></div>`;
+            });
+
+            modalHist.querySelector("#historico_container").innerHTML = html;
+
+            Toastify({
+              text: "Histórico carregado",
+              duration: 2000,
+              gravity: "top",
+              position: "right",
+              backgroundColor: "#4caf50",
+            }).showToast();
+
+            // Anchor to cells[0] (the column that triggered the click)
+            // positionHistModal() will handle left/top on open, scroll and resize
+            histModalAnchor = linha.cells[0];
             modalHist.style.position = "absolute";
-            modalHist.style.left = `${rectStatus.right + 10 + window.scrollX}px`;
-            modalHist.style.top = `${rectLinha.top + window.scrollY}px`;
             modalHist.style.display = "block";
+            positionHistModal();
           })
           .catch((error) => {
             console.error(error);
@@ -3115,9 +3149,12 @@ function infosObra(obraId) {
       let antecipada = 0;
       let imagens = 0;
 
-      const _flowReviewUrl = (data?.obra?.nome_obra && data?.aprovacaoObra && Object.keys(data.aprovacaoObra).length > 0)
-        ? `https://improov.com.br/flow/ImproovWeb/FlowReview/index.php?obra_nome=${encodeURIComponent(data.obra.nome_obra)}`
-        : null;
+      const _flowReviewUrl =
+        data?.obra?.nome_obra &&
+        data?.aprovacaoObra &&
+        Object.keys(data.aprovacaoObra).length > 0
+          ? `https://improov.com.br/flow/ImproovWeb/FlowReview/index.php?obra_nome=${encodeURIComponent(data.obra.nome_obra)}`
+          : null;
       ["quick_flow_review", "mobile_flow_review"].forEach(function (id) {
         const el = document.getElementById(id);
         if (!el) return;
@@ -3321,20 +3358,81 @@ function infosObra(obraId) {
           // { col: 'planta', label: 'Planta' }
         ];
 
-        colunas.forEach((coluna) => {
+        const cfUnificado = item.caderno_filtro_unificado == 1;
+
+        let ci = 0;
+        while (ci < colunas.length) {
+          const coluna = colunas[ci];
+
+          // Par unificado caderno+filtro (only)
+          if (coluna.col === "caderno" && cfUnificado) {
+            const colabC = item.caderno_colaborador || "-";
+            const stC = item.caderno_status || "-";
+            const stF = item.filtro_status || "-";
+            const repSt =
+              stC === "Finalizado" && stF === "Em aprovação" ? stF : stC;
+            const cellUnif = document.createElement("td");
+            cellUnif.colSpan = 2;
+            cellUnif.classList.add(
+              "func-cell",
+              "func-caderno",
+              "func-filtro",
+              "func-pair-unified",
+            );
+            cellUnif.textContent = colabC;
+            cellUnif.setAttribute("data-status", repSt);
+            cellUnif.setAttribute("data-funcao", "caderno");
+            cellUnif.addEventListener("mouseenter", (event) => {
+              tooltip.textContent = `${colabC} — ${repSt}`;
+              tooltip.style.display = "block";
+              tooltip.style.left = event.clientX + "px";
+              tooltip.style.top = event.clientY - 30 + "px";
+            });
+            cellUnif.addEventListener("mouseleave", () => {
+              tooltip.style.display = "none";
+            });
+            cellUnif.addEventListener("mousemove", (event) => {
+              tooltip.style.left = event.clientX + "px";
+              tooltip.style.top = event.clientY - 30 + "px";
+            });
+            row.appendChild(cellUnif);
+            if (colabC !== "-" && colabC !== "Não se aplica") {
+              totaisPorFuncao["caderno"].total++;
+              totaisPorFuncao["filtro"].total++;
+              const stCN = stC.trim().toLowerCase();
+              const stFN = stF.trim().toLowerCase();
+              const statusValidos = [
+                "em aprovação",
+                "aprovado",
+                "ajuste",
+                "finalizado",
+                "aprovado com ajustes",
+              ];
+              if (statusValidos.includes(stCN))
+                totaisPorFuncao["caderno"].validos++;
+              if (statusValidos.includes(stFN))
+                totaisPorFuncao["filtro"].validos++;
+            }
+            if (
+              !(item.imagem_status === "EF" && item.imagem_sub_status === "EF")
+            ) {
+              applyStatusStyle(cellUnif, repSt, colabC);
+            }
+            ci += 2; // pula filtro
+            continue;
+          }
+
+          // Célula normal
           const colaborador = item[`${coluna.col}_colaborador`] || "-";
           const status = item[`${coluna.col}_status`] || "-";
 
-          // Criar apenas a célula do colaborador e refletir o status por cor nessa célula
           const cellColaborador = document.createElement("td");
           cellColaborador.textContent = colaborador;
-          // Armazena o status como atributo para debug/estilos futuros
           cellColaborador.setAttribute("data-status", status);
           cellColaborador.setAttribute("data-funcao", coluna.col);
           cellColaborador.classList.add("func-cell", `func-${coluna.col}`);
 
           cellColaborador.addEventListener("mouseenter", (event) => {
-            // Mostra colaborador + status no tooltip
             tooltip.textContent = colaborador + (status ? " — " + status : "");
             tooltip.style.display = "block";
             tooltip.style.left = event.clientX + "px";
@@ -3350,10 +3448,8 @@ function infosObra(obraId) {
             tooltip.style.top = event.clientY - 30 + "px";
           });
 
-          // Anexa somente a célula do colaborador (não exibimos mais a célula de status separada)
           row.appendChild(cellColaborador);
 
-          // Ajusta estilo quando 'Não se aplica'
           applyStyleNone(cellColaborador, null, colaborador);
 
           const statusNormalizado = status.trim().toLowerCase();
@@ -3371,18 +3467,18 @@ function infosObra(obraId) {
               totaisPorFuncao[coluna.col].validos++;
             }
           }
-          // ...dentro do forEach de colunas...
-          // Aplicamos a cor do status diretamente na célula do colaborador
+
           if (
             !(item.imagem_status === "EF" && item.imagem_sub_status === "EF")
           ) {
             applyStatusStyle(cellColaborador, status, colaborador);
           } else {
-            // Limpa o estilo se for EF/EF
             cellColaborador.style.backgroundColor = "";
             cellColaborador.style.color = "";
           }
-        });
+
+          ci++;
+        }
 
         if (item.imagem_status === "EF" && item.imagem_sub_status === "EF") {
           row.classList.add("linha-ef");
@@ -7016,6 +7112,16 @@ const modalStatus = document.getElementById("modal_status");
 const modalHist = document.getElementById("modal_hist_status");
 const acoesModal = document.getElementById("acoesModal");
 
+// Botão fechar do modal de histórico
+const btnFecharHist = document.getElementById("btn_fechar_hist");
+if (btnFecharHist) {
+  btnFecharHist.addEventListener("click", function (e) {
+    e.stopPropagation();
+    modalHist.style.display = "none";
+    histModalAnchor = null;
+  });
+}
+
 ["click", "touchstart", "keydown"].forEach((eventType) => {
   window.addEventListener(eventType, function (event) {
     // Fecha os modais ao clicar fora ou pressionar Esc
@@ -7101,6 +7207,7 @@ const acoesModal = document.getElementById("acoesModal");
     }
     if (!modalHist.querySelector(".modal-content").contains(event.target)) {
       modalHist.style.display = "none";
+      histModalAnchor = null;
     }
     if (!modalStatus.querySelector(".modal-content").contains(event.target)) {
       modalStatus.style.display = "none";
@@ -7472,10 +7579,37 @@ document.getElementById("copyColumn").addEventListener("click", function () {
   navigator.clipboard
     .writeText(listText)
     .then(() => {
-      alert("Coluna copiada como lista!");
+      Toastify({
+        text: "✅ Coluna copiada!",
+        duration: 2500,
+        gravity: "bottom",
+        position: "center",
+        style: {
+          background: "linear-gradient(135deg, #1e9e5e, #27c47a)",
+          borderRadius: "10px",
+          fontWeight: "600",
+          fontSize: "14px",
+          padding: "10px 20px",
+          boxShadow: "0 4px 14px rgba(0,0,0,0.18)",
+        },
+      }).showToast();
     })
     .catch((err) => {
       console.error("Erro ao copiar a coluna: ", err);
+      Toastify({
+        text: "❌ Erro ao copiar",
+        duration: 2500,
+        gravity: "bottom",
+        position: "center",
+        style: {
+          background: "linear-gradient(135deg, #c0392b, #e74c3c)",
+          borderRadius: "10px",
+          fontWeight: "600",
+          fontSize: "14px",
+          padding: "10px 20px",
+          boxShadow: "0 4px 14px rgba(0,0,0,0.18)",
+        },
+      }).showToast();
     });
 });
 
@@ -9076,6 +9210,39 @@ function positionStatusModal() {
 
 window.addEventListener("resize", positionStatusModal);
 window.addEventListener("scroll", positionStatusModal, true);
+
+let histModalAnchor = null;
+
+function positionHistModal() {
+  const modal = document.getElementById("modal_hist_status");
+  if (!modal || !histModalAnchor || modal.style.display !== "block") return;
+
+  const gap = 8;
+  const rect = histModalAnchor.getBoundingClientRect();
+  const modalW = modal.offsetWidth || 260;
+  const modalH = modal.offsetHeight || 0;
+
+  // prefer to position to the right of the anchor (image cell)
+  let top = rect.top + window.scrollY;
+  let left = rect.right + gap + window.scrollX;
+
+  // if it overflows on the right, push it to fit
+  if (left + modalW > window.innerWidth - gap) {
+    left = Math.max(gap, window.innerWidth - modalW - gap);
+  }
+  left = Math.max(gap, left);
+
+  // if bottom overflows, try position above the anchor
+  if (top + modalH > window.innerHeight - gap) {
+    top = Math.max(gap, rect.bottom + window.scrollY - modalH - gap);
+  }
+
+  modal.style.top = top + "px";
+  modal.style.left = left + "px";
+}
+
+window.addEventListener("resize", positionHistModal);
+window.addEventListener("scroll", positionHistModal, true);
 
 document.querySelectorAll(".modal-row").forEach((row) => {
   row.addEventListener("click", function () {

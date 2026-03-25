@@ -90,6 +90,10 @@ function normalize_name($s)
 
 $resultadoFinal = ['logs' => []];
 
+// Lê sessão para verificar permissões de aprovação dupla
+$idusuario_session   = isset($_SESSION['idusuario'])    ? (int)$_SESSION['idusuario']    : 0;
+$idcolaborador_session = isset($_SESSION['idcolaborador']) ? (int)$_SESSION['idcolaborador'] : 0;
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         $data = json_decode(file_get_contents('php://input'), true);
@@ -143,6 +147,62 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 echo json_encode(['success' => false, 'message' => 'Tipo de revisão inválido.']);
                 exit;
         }
+
+        // ── Aprovação dupla de Pós-produção ──────────────────────────────────────
+        // Quando um finalizador (não-admin, não-direção) aprova uma pós-produção pela
+        // 1ª vez, a tarefa não muda de status: apenas registramos um histórico intermediário
+        // com status_novo='Aguardando Direção' e notificamos a direção via Slack.
+        // A 2ª aprovação (pela direção) segue o fluxo normal (SFTP incluído).
+        $aguardandoDirecao = false;
+        $isPosProducao = (mb_strtolower((string)$nome_funcao, 'UTF-8') === 'pós-produção');
+        $isAdminAprovador = in_array($idusuario_session, [1, 2]);
+        $isDirecaoAprovador = in_array($idcolaborador_session, [9, 21]);
+
+        if ($isPosProducao && $tipoRevisao === 'aprovado' && !$isAdminAprovador && !$isDirecaoAprovador) {
+            // Verifica se já existe um histórico 'Aguardando Direção' para esta tarefa
+            $stmtChkDir = $conn->prepare(
+                "SELECT id FROM historico_aprovacoes WHERE funcao_imagem_id = ? AND status_novo = 'Aguardando Direção' LIMIT 1"
+            );
+            $stmtChkDir->bind_param("i", $idfuncao_imagem);
+            $stmtChkDir->execute();
+            $stmtChkDir->store_result();
+            $isSegundaAprovacao = ($stmtChkDir->num_rows > 0);
+            $stmtChkDir->close();
+
+            if (!$isSegundaAprovacao) {
+                // 1ª aprovação pelo finalizador: NÃO atualiza funcao_imagem.status
+                // Registra apenas no histórico como intermediário
+                $status_ant_dir = "Em aprovação";
+                $status_dir     = "Aguardando Direção";
+                $stmtDir = $conn->prepare(
+                    "INSERT INTO historico_aprovacoes (funcao_imagem_id, status_anterior, status_novo, colaborador_id, responsavel) VALUES (?, ?, ?, ?, ?)"
+                );
+                $stmtDir->bind_param("issii", $idfuncao_imagem, $status_ant_dir, $status_dir, $colaborador_id, $responsavel);
+                $stmtDir->execute();
+                $stmtDir->close();
+
+                // Notifica direção via Slack (busca nome_slack dos colaboradores 9 e 21)
+                $stmtDirSlack = $conn->prepare(
+                    "SELECT u.nome_slack FROM usuario u WHERE u.idcolaborador IN (9, 21) AND u.nome_slack IS NOT NULL AND u.nome_slack != ''"
+                );
+                $stmtDirSlack->execute();
+                $resDirSlack = $stmtDirSlack->get_result();
+                $mensagemDirecao = "⏳ A Pós-produção de {$imagem_resumida} aguarda validação da direção (aprovada por {$nome_responsavel}).";
+                while ($rowSlack = $resDirSlack->fetch_assoc()) {
+                    enviarNotificacaoSlack($rowSlack['nome_slack'], $mensagemDirecao, $resultadoFinal['logs']);
+                }
+                $stmtDirSlack->close();
+
+                $resultadoFinal['success']          = true;
+                $resultadoFinal['message']          = 'Aprovação registrada. Aguardando validação da direção.';
+                $resultadoFinal['aguardando_direcao'] = true;
+                echo json_encode($resultadoFinal);
+                $conn->close();
+                exit;
+            }
+            // Se já existe histórico 'Aguardando Direção', é a 2ª aprovação — deixa passar normalmente
+        }
+        // ─────────────────────────────────────────────────────────────────────────
 
         // Para P00 + Finalização, só permite aprovar a função se TODOS os ângulos estiverem liberados.
         if (in_array($status, ['Aprovado'], true) && $imagem_id) {

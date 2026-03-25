@@ -456,6 +456,90 @@ foreach ($funcoes as $funcao) {
 }
 
 // ====================
+// DETECÇÃO DE PARES UNIFICADOS
+// ====================
+// Par primária → secundária: Caderno(1)+Filtro(8)
+$paresPossiveis = [
+    1 => ['secundaria' => 8, 'par_tipo' => 'caderno_filtro'],
+];
+
+// Consultar pares já separados
+$todasImagemIdsFinal = array_unique(array_column($funcoesFinal, 'imagem_id'));
+$paresSeparados = [];
+if (count($todasImagemIdsFinal) > 0) {
+    try {
+        $inImgFinal = implode(',', array_fill(0, count($todasImagemIdsFinal), '?'));
+        $stmtSep = $conn->prepare(
+            "SELECT imagem_id, par_tipo FROM funcao_par_separado WHERE imagem_id IN ($inImgFinal)"
+        );
+        $typesSep = str_repeat('i', count($todasImagemIdsFinal));
+        $stmtSep->bind_param($typesSep, ...$todasImagemIdsFinal);
+        $stmtSep->execute();
+        $resSep = $stmtSep->get_result();
+        while ($rowSep = $resSep->fetch_assoc()) {
+            $paresSeparados[$rowSep['imagem_id'] . ':' . $rowSep['par_tipo']] = true;
+        }
+        $stmtSep->close();
+    } catch (Exception $e) {
+        // funcao_par_separado table may not exist yet; treat all as unseparated
+    }
+}
+
+// Agrupar funcoesFinal por imagem_id → funcao_id → índice
+$funcoesPorImagemFuncao = [];
+foreach ($funcoesFinal as $idx => $fn) {
+    $funcoesPorImagemFuncao[$fn['imagem_id']][$fn['funcao_id']] = $idx;
+}
+
+$suppressedIndexes = [];
+
+foreach ($paresPossiveis as $funcaoPrimId => $parConfig) {
+    $funcaoSecId = $parConfig['secundaria'];
+    $parTipoUnif = $parConfig['par_tipo'];
+
+    foreach ($funcoesPorImagemFuncao as $imgId => $funcaoMap) {
+        if (!isset($funcaoMap[$funcaoPrimId]) || !isset($funcaoMap[$funcaoSecId])) continue;
+        if (isset($paresSeparados[$imgId . ':' . $parTipoUnif])) continue;
+
+        $idxPrim = $funcaoMap[$funcaoPrimId];
+        $idxSec  = $funcaoMap[$funcaoSecId];
+
+        // Se primária = Finalizado e secundária = Em aprovação → emite a secundária
+        $primFinalizado = $funcoesFinal[$idxPrim]['status'] === 'Finalizado';
+        $secAprovacao   = $funcoesFinal[$idxSec]['status']  === 'Em aprovação';
+
+        if ($primFinalizado && $secAprovacao) {
+            $funcoesFinal[$idxSec]['par_tipo']         = $parTipoUnif;
+            $funcoesFinal[$idxSec]['unified_with']     = [
+                'idfuncao_imagem' => $funcoesFinal[$idxPrim]['idfuncao_imagem'],
+                'funcao_id'       => $funcaoPrimId,
+                'nome_funcao'     => $funcoesFinal[$idxPrim]['nome_funcao'],
+                'status'          => $funcoesFinal[$idxPrim]['status'],
+            ];
+            $funcoesFinal[$idxSec]['par_representative'] = 'secondary';
+            $suppressedIndexes[] = $idxPrim;
+        } else {
+            $funcoesFinal[$idxPrim]['par_tipo']         = $parTipoUnif;
+            $funcoesFinal[$idxPrim]['unified_with']     = [
+                'idfuncao_imagem' => $funcoesFinal[$idxSec]['idfuncao_imagem'],
+                'funcao_id'       => $funcaoSecId,
+                'nome_funcao'     => $funcoesFinal[$idxSec]['nome_funcao'],
+                'status'          => $funcoesFinal[$idxSec]['status'],
+            ];
+            $funcoesFinal[$idxPrim]['par_representative'] = 'primary';
+            $suppressedIndexes[] = $idxSec;
+        }
+    }
+}
+
+if (!empty($suppressedIndexes)) {
+    foreach ($suppressedIndexes as $idx) {
+        unset($funcoesFinal[$idx]);
+    }
+    $funcoesFinal = array_values($funcoesFinal);
+}
+
+// ====================
 // RESPONSE FINAL ÚNICO
 // ====================
 $response = [

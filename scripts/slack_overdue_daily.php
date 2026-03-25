@@ -63,6 +63,8 @@ function enviarMensagemSlack($canal, $mensagem)
         'Authorization: Bearer ' . SLACK_TOKEN,
     ]);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
 
     $resposta = curl_exec($ch);
     $err = curl_error($ch);

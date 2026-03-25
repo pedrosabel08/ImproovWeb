@@ -253,6 +253,42 @@ $imagens = [];
 while ($row = $resultImagens->fetch_assoc()) {
     $imagens[] = $row;
 }
+
+// Adiciona flag de par unificado (caderno+filtro) em cada imagem
+try {
+    $imagemIds = array_column($imagens, 'imagem_id');
+    if (!empty($imagemIds)) {
+        $placeholders = implode(',', array_fill(0, count($imagemIds), '?'));
+        $types = str_repeat('i', count($imagemIds));
+        $stmtPar = $conn->prepare("SELECT imagem_id, par_tipo FROM funcao_par_separado WHERE imagem_id IN ($placeholders)");
+        if ($stmtPar) {
+            $stmtPar->bind_param($types, ...$imagemIds);
+            $stmtPar->execute();
+            $resPar = $stmtPar->get_result();
+            $separados = [];
+            while ($rp = $resPar->fetch_assoc()) {
+                $separados[$rp['imagem_id']][$rp['par_tipo']] = true;
+            }
+            $stmtPar->close();
+            foreach ($imagens as &$img) {
+                $iid = $img['imagem_id'];
+                $cfColab     = $img['caderno_colaborador'] ?? null;
+                $filtroColab = $img['filtro_colaborador'] ?? null;
+                $img['caderno_filtro_unificado'] = (
+                    $cfColab && $filtroColab && $cfColab === $filtroColab &&
+                    empty($separados[$iid]['caderno_filtro'])
+                ) ? 1 : 0;
+            }
+            unset($img);
+        }
+    }
+} catch (Exception $e) {
+    foreach ($imagens as &$img) {
+        $img['caderno_filtro_unificado'] = 0;
+    }
+    unset($img);
+}
+
 $response['imagens'] = $imagens;
 
 $stmtImagens->close();

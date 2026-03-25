@@ -34,9 +34,21 @@
               "icon": "lucide-file",
               "title": "Projetos R00 capacidade atual"
             }
+          },
+          {
+            "id": "1a4127307f5a71b2",
+            "type": "leaf",
+            "state": {
+              "type": "release-notes",
+              "state": {
+                "currentVersion": "1.12.4"
+              },
+              "icon": "lucide-book-up",
+              "title": "Notas de Lançamento 1.12.4"
+            }
           }
         ],
-        "currentTab": 1
+        "currentTab": 2
       }
     ],
     "direction": "vertical"
@@ -181,7 +193,7 @@
       "command-palette:Abrir paleta de comandos": false
     }
   },
-  "active": "6ed958f9a5132e6e",
+  "active": "1a4127307f5a71b2",
   "lastOpenFiles": [
     "Projetos R00 capacidade atual.html",
     "Projetos R00 capacidade atual_raw.txt",

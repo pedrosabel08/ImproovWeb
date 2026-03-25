@@ -125,6 +125,8 @@ if ($slackToken) {
     $ch = curl_init('https://slack.com/api/chat.postMessage');
     curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . $slackToken, 'Content-Type: application/json']);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, $payloadJson);
     $resp = curl_exec($ch);

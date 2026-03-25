@@ -322,7 +322,11 @@ function processarDados(data) {
 
     // Nome a exibir
     const titulo = tipo === "imagem" ? item.imagem_nome : item.titulo;
-    const subtitulo = tipo === "imagem" ? item.nome_funcao : item.descricao;
+    let subtitulo = tipo === "imagem" ? item.nome_funcao : item.descricao;
+    // Unified pair: compound label
+    if (tipo === "imagem" && item.par_tipo === "caderno_filtro") {
+      subtitulo = "Caderno + Filtro de Assets";
+    }
 
     function getTempoClass(tempo, media) {
       if (!tempo || tempo === 0) return ""; // sem tempo registrado
@@ -408,6 +412,21 @@ function processarDados(data) {
         Number(item.requires_file_upload || 0),
       );
       card.dataset.nomeObraReal = item.nome_obra || "";
+
+      // Unified pair attributes
+      if (item.par_tipo) {
+        card.dataset.parTipo = item.par_tipo;
+        card.dataset.idSecundaria = item.unified_with
+          ? String(item.unified_with.idfuncao_imagem || "")
+          : "";
+        card.dataset.funcaoIdSecundaria = item.unified_with
+          ? String(item.unified_with.funcao_id || "")
+          : "";
+        card.dataset.nomeSecundaria = item.unified_with
+          ? item.unified_with.nome_funcao || ""
+          : "";
+        card.dataset.parRepresentative = item.par_representative || "primary";
+      }
     } else {
       // lógica para tarefas criadas
       bolinhaHTML = "";
@@ -3517,6 +3536,27 @@ document.getElementById("salvarModal").addEventListener("click", () => {
           stopOnFocus: true,
         }).showToast();
         cardModal.classList.remove("active");
+
+        // ==== UNIFIED PAIR: also update secondary function ====
+        if (
+          cardSelecionado &&
+          cardSelecionado.dataset.parTipo &&
+          cardSelecionado.dataset.funcaoIdSecundaria &&
+          dados.status !== null
+        ) {
+          $.ajax({
+            type: "POST",
+            url: "insereFuncao.php",
+            data: {
+              imagem_id: cardSelecionado.dataset.idImagem,
+              funcao_id: cardSelecionado.dataset.funcaoIdSecundaria,
+              status: dados.status,
+              prazo: dados.prazo || "",
+            },
+          });
+        }
+        // ==== END UNIFIED PAIR ====
+
         cardSelecionado = null;
         carregarDados(colaborador_id); // Recarrega o Kanban para refletir mudanças
 
@@ -3881,6 +3921,32 @@ colunas.forEach((col) => {
         // Preenche os campos comuns
         modalPrazo.value = card.dataset.prazo || "";
         modalObs.value = card.dataset.observacao || "";
+
+        // ==== UNIFIED PAIR HANDLING ====
+        const _parTipo = card.dataset.parTipo || "";
+        const _idSecundaria = card.dataset.idSecundaria || "";
+        const _funcaoIdSecundaria = card.dataset.funcaoIdSecundaria || "";
+        const _nomeSecundaria = card.dataset.nomeSecundaria || "";
+        const _parRepresentative = card.dataset.parRepresentative || "primary";
+
+        // For in-review + primary representative:
+        // primary → Finalizado (immediate), upload will set secondary → Em aprovação
+        if (_parTipo && novaColuna.id === "in-review" && _parRepresentative === "primary") {
+          $.ajax({
+            type: "POST",
+            url: "insereFuncao.php",
+            data: {
+              imagem_id: card.dataset.idImagem,
+              funcao_id: card.dataset.idFuncao,
+              status: "Finalizado",
+            },
+          });
+          // Redirect the file upload to the secondary function
+          idfuncao_imagem = _idSecundaria || idfuncao_imagem;
+          subtitulo = _nomeSecundaria || subtitulo;
+        }
+
+        // ==== END UNIFIED PAIR HANDLING ====
 
         // Reset modal: mostra tudo inicialmente
         document.querySelector(".modalPrazo").style.display = "flex";
@@ -5199,42 +5265,90 @@ async function loadObraImages(obraId, etapaInicial) {
     cellPrazo.setAttribute("data-field", "prazo");
     row.appendChild(cellPrazo);
 
-    // Colunas de funções
-    colunas.forEach((coluna) => {
-      const colaborador = item[`${coluna.col}_colaborador`] || "-";
-      const status = item[`${coluna.col}_status`] || "-";
+    // Determine unification for this row
+    const cfUnificado = item.caderno_filtro_unificado == 1;
 
-      const cellColab = document.createElement("td");
-      cellColab.textContent = colaborador;
-      cellColab.setAttribute("data-status", status);
-      cellColab.setAttribute("data-funcao", coluna.col);
-      cellColab.classList.add("func-cell", `func-${coluna.col}`);
+    // Colunas de funções (with pair merging)
+    let ci = 0;
+    while (ci < colunas.length) {
+      const coluna = colunas[ci];
+      const isCadernoUnif = coluna.col === "caderno" && cfUnificado;
 
-      cellColab.addEventListener("mouseenter", (event) => {
-        modalTooltip.textContent = colaborador + (status ? " — " + status : "");
-        modalTooltip.style.display = "block";
-        modalTooltip.style.left = event.clientX + "px";
-        modalTooltip.style.top = event.clientY - 30 + "px";
-      });
-      cellColab.addEventListener("mouseleave", () => {
-        modalTooltip.style.display = "none";
-      });
-      cellColab.addEventListener("mousemove", (event) => {
-        modalTooltip.style.left = event.clientX + "px";
-        modalTooltip.style.top = event.clientY - 30 + "px";
-      });
+      if (isCadernoUnif) {
+        // Merge two adjacent columns into one colspan=2 cell
+        const nextColuna = colunas[ci + 1];
+        const colaborador = item[`${coluna.col}_colaborador`] || "-";
+        const statusPrim = item[`${coluna.col}_status`] || "-";
+        const statusSec = item[`${nextColuna.col}_status`] || "-";
 
-      row.appendChild(cellColab);
+        const cellMerged = document.createElement("td");
+        cellMerged.setAttribute("colspan", "2");
+        cellMerged.setAttribute("data-status", statusPrim);
+        cellMerged.setAttribute("data-funcao", coluna.col);
+        cellMerged.classList.add(
+          "func-cell",
+          `func-${coluna.col}`,
+          "func-pair-unified",
+        );
+        cellMerged.innerHTML = `${colaborador} <span title="Funções unificadas" style="opacity:.7">🔗</span><br><small style="font-size:10px;opacity:.8">${statusPrim} / ${statusSec}</small>`;
 
-      modalApplyStyleNone(cellColab, null, colaborador);
+        cellMerged.addEventListener("mouseenter", (event) => {
+          modalTooltip.textContent = `${colaborador} — Caderno: ${statusPrim} | Filtro: ${statusSec}`;
+          modalTooltip.style.display = "block";
+          modalTooltip.style.left = event.clientX + "px";
+          modalTooltip.style.top = event.clientY - 30 + "px";
+        });
+        cellMerged.addEventListener("mouseleave", () => {
+          modalTooltip.style.display = "none";
+        });
+        cellMerged.addEventListener("mousemove", (event) => {
+          modalTooltip.style.left = event.clientX + "px";
+          modalTooltip.style.top = event.clientY - 30 + "px";
+        });
 
-      if (!(item.imagem_status === "EF" && item.imagem_sub_status === "EF")) {
-        modalApplyStatusStyle(cellColab, status, colaborador);
+        row.appendChild(cellMerged);
+        modalApplyStyleNone(cellMerged, null, colaborador);
+        if (!(item.imagem_status === "EF" && item.imagem_sub_status === "EF")) {
+          modalApplyStatusStyle(cellMerged, statusPrim, colaborador);
+        }
+        ci += 2; // skip both columns
       } else {
-        cellColab.style.backgroundColor = "";
-        cellColab.style.color = "";
+        // Normal single cell
+        const colaborador = item[`${coluna.col}_colaborador`] || "-";
+        const status = item[`${coluna.col}_status`] || "-";
+
+        const cellColab = document.createElement("td");
+        cellColab.textContent = colaborador;
+        cellColab.setAttribute("data-status", status);
+        cellColab.setAttribute("data-funcao", coluna.col);
+        cellColab.classList.add("func-cell", `func-${coluna.col}`);
+
+        cellColab.addEventListener("mouseenter", (event) => {
+          modalTooltip.textContent =
+            colaborador + (status ? " — " + status : "");
+          modalTooltip.style.display = "block";
+          modalTooltip.style.left = event.clientX + "px";
+          modalTooltip.style.top = event.clientY - 30 + "px";
+        });
+        cellColab.addEventListener("mouseleave", () => {
+          modalTooltip.style.display = "none";
+        });
+        cellColab.addEventListener("mousemove", (event) => {
+          modalTooltip.style.left = event.clientX + "px";
+          modalTooltip.style.top = event.clientY - 30 + "px";
+        });
+
+        row.appendChild(cellColab);
+        modalApplyStyleNone(cellColab, null, colaborador);
+        if (!(item.imagem_status === "EF" && item.imagem_sub_status === "EF")) {
+          modalApplyStatusStyle(cellColab, status, colaborador);
+        } else {
+          cellColab.style.backgroundColor = "";
+          cellColab.style.color = "";
+        }
+        ci += 1;
       }
-    });
+    }
 
     if (item.imagem_status === "EF" && item.imagem_sub_status === "EF") {
       row.classList.add("linha-ef");

@@ -983,6 +983,56 @@ h2#dataEnvio {
   padding: 3px 6px;
 }
 
+/* Badge de pendência de direção (⏳) — canto superior esquerdo */
+.pendente-direcao-badge {
+  position: absolute;
+  top: -10px;
+  left: -10px;
+  background-color: #ffd966;
+  color: #4a3200;
+  font-size: 12px;
+  font-weight: bold;
+  border-radius: 12px;
+  padding: 3px 7px;
+  min-width: 15px;
+  text-align: center;
+  box-shadow: 0 0 0 2px white;
+  z-index: 10;
+  white-space: nowrap;
+}
+
+.task-item .pendente-direcao-badge {
+  top: -8px;
+  left: -8px;
+  font-size: 11px;
+  padding: 3px 6px;
+}
+
+.obra-direcao-badge {
+  top: -10px;
+  left: -10px;
+}
+
+/* Badge for unified pair primary function */
+.par-primario-badge {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 10px;
+  font-weight: 500;
+  color: #555;
+  background: #e8f0fe;
+  border: 1px solid #c5d3f5;
+  border-radius: 4px;
+  padding: 1px 5px;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+/* Unified pair cell in obra table */
+.func-pair-unified {
+  background-color: rgba(66, 133, 244, 0.06) !important;
+}
+
 /* Mention highlight — texto @nome em negrito/cor */
 .mention-highlight {
   color: #2293e6;

@@ -947,10 +947,11 @@ try {
         throw new Exception('Responsável inválido para histórico.');
     }
 
+    $histStatusNovo = ($acao === 'escolhido') ? 'Aprovado' : $statusNovo;
     if ($insHist = $conn->prepare('INSERT INTO historico_aprovacoes (funcao_imagem_id, status_anterior, status_novo, colaborador_id, responsavel) VALUES (?, ?, ?, ?, ?)')) {
         $sa = $statusAnterior ?? '';
         $colabHist = $colaborador_id ? (int)$colaborador_id : 0;
-        $insHist->bind_param('issii', $funcao_imagem_id, $sa, $statusNovo, $colabHist, $respHist);
+        $insHist->bind_param('issii', $funcao_imagem_id, $sa, $histStatusNovo, $colabHist, $respHist);
         if (!$insHist->execute()) {
             throw new Exception('Erro ao inserir histórico: ' . $insHist->error);
         }

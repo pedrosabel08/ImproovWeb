@@ -642,6 +642,27 @@ async function exibirCardsDeObra(tarefas) {
     });
   }
 
+  const tarefasDirecao = tarefas.filter(
+    (t) => t.pendente_direcao && t.diretor_pode_aprovar,
+  );
+  if (tarefasDirecao.length > 0) {
+    const obrasDirMap = {};
+    tarefasDirecao.forEach((t) => {
+      obrasDirMap[t.nome_obra] = (obrasDirMap[t.nome_obra] || 0) + 1;
+    });
+    const linhasDir = Object.entries(obrasDirMap)
+      .map(([obra, qtd]) => `• <b>${obra}</b>: ${qtd} tarefa(s)`)
+      .join("<br>");
+    Swal.fire({
+      title: "⏳ Aguardando sua validação!",
+      html:
+        linhasDir +
+        "<br><br>Finalizadores aprovaram — aguardando confirmação da direção.",
+      icon: "warning",
+      confirmButtonText: "Ver",
+    });
+  }
+
   obrasOrdenadas.forEach(([nome_obra, tarefasDaObra]) => {
     tarefasDaObra.sort(
       (a, b) => new Date(b.data_aprovacao) - new Date(a.data_aprovacao),
@@ -653,12 +674,16 @@ async function exibirCardsDeObra(tarefas) {
       : "../assets/logo.jpg";
 
     const mencoesNaObra = mencoes.mencoes_por_obra[nome_obra] || 0;
+    const pendenteDirecaoNaObra = tarefasDaObra.filter(
+      (t) => t.pendente_direcao && t.diretor_pode_aprovar,
+    ).length;
 
     const card = document.createElement("div");
     card.classList.add("obra-card");
 
     card.innerHTML = `
-        ${mencoesNaObra > 0 ? `<div class="mencao-badge">${mencoesNaObra}</div>` : ""}
+        ${mencoesNaObra > 0 ? `<div class="mencao-badge">💬 ${mencoesNaObra}</div>` : ""}
+        ${pendenteDirecaoNaObra > 0 ? `<div class="pendente-direcao-badge obra-direcao-badge" title="Aguardando validação da direção">⏳ ${pendenteDirecaoNaObra}</div>` : ""}
         <div class="obra-img-preview">
             <img src="${imagemPreview}" alt="Imagem da obra ${nome_obra}">
         </div>
@@ -905,16 +930,18 @@ function exibirTarefas(tarefas, tarefasCompletas) {
         : "../assets/logo.jpg";
 
       // Define a cor de fundo com base no status
-      const color =
-        tarefa.status_novo === "Em aprovação"
+      const color = tarefa.pendente_direcao
+        ? "#4a3200"
+        : tarefa.status_novo === "Em aprovação"
           ? "#000a59"
           : tarefa.status_novo === "Ajuste"
             ? "#590000"
             : tarefa.status_novo === "Aprovado com ajustes"
               ? "#2e0059ff"
               : "transparent";
-      const bgColor =
-        tarefa.status_novo === "Em aprovação"
+      const bgColor = tarefa.pendente_direcao
+        ? "#ffd966"
+        : tarefa.status_novo === "Em aprovação"
           ? "#90c2ff"
           : tarefa.status_novo === "Ajuste"
             ? "#ff5050"
@@ -926,10 +953,10 @@ function exibirTarefas(tarefas, tarefasCompletas) {
                   <div class="image-wrapper">
                      <img src="${imagemPreview}" alt="Imagem da obra ${tarefa.nome_obra}" class="task-image" onerror="this.onerror=null;this.src='../assets/logo.jpg';">
                 </div>
-                    <h3 class="nome_funcao">${tarefa.nome_funcao}</h3><span class="colaborador">${tarefa.nome_colaborador}</span>
+                    <h3 class="nome_funcao">${tarefa.nome_funcao}${tarefa.par_primario_nome ? `<span class="par-primario-badge" title="${tarefa.par_primario_nome}: ${tarefa.par_primario_status}"> + ${tarefa.par_primario_nome}</span>` : ""}</h3><span class="colaborador">${tarefa.nome_colaborador}</span>
                     <p class="imagem_nome" data-obra="${tarefa.nome_obra}">${tarefa.imagem_nome}</p>
                     <p class="data_aprovacao">${formatarDataHora(tarefa.data_aprovacao)}</p>       
-                    <p id="status_funcao" style="color: ${color}; background-color: ${bgColor}">${tarefa.status_novo}</p>
+                    <p id="status_funcao" style="color: ${color}; background-color: ${bgColor}">${tarefa.pendente_direcao ? "Aguardando Direção" : tarefa.status_novo}</p>
                 </div>
             `;
 
@@ -942,8 +969,18 @@ function exibirTarefas(tarefas, tarefasCompletas) {
         const badge = document.createElement("div");
         badge.classList.add("mencao-badge");
         badge.setAttribute("data-task-badge", tarefa.idfuncao_imagem);
-        badge.textContent = qtdMencoesTask;
+        badge.textContent = `💬 ${qtdMencoesTask}`;
         taskItem.appendChild(badge);
+      }
+
+      // Badge de pendência de direção (⏳) — canto superior esquerdo
+      if (tarefa.pendente_direcao && tarefa.diretor_pode_aprovar) {
+        const dirBadge = document.createElement("div");
+        dirBadge.classList.add("pendente-direcao-badge");
+        dirBadge.setAttribute("data-direcao-badge", tarefa.idfuncao_imagem);
+        dirBadge.textContent = "⏳";
+        dirBadge.title = "Aguardando validação da direção";
+        taskItem.appendChild(dirBadge);
       }
 
       tarefasImagensObra.appendChild(taskItem);
@@ -1369,8 +1406,10 @@ function historyAJAX(idfuncao_imagem) {
               const status = approver.status_novo || approver.status || "—";
               const dt = approver.data_aprovacao || approver.data || null;
               const fecha = dt ? formatarDataHora(new Date(dt)) : "";
+              const displayStatus =
+                status === "Aguardando Direção" ? "Aprovado" : status;
               if (status !== "Em aprovação") {
-                approvalContainer.innerHTML = `<div><strong>${escapeHtml(name)}</strong> — <span>${escapeHtml(status)} ${fecha ? '<br><small style="color:#666">' + escapeHtml(fecha) + "</small>" : ""}</div>`;
+                approvalContainer.innerHTML = `<div><strong>${escapeHtml(name)}</strong> — <span>${escapeHtml(displayStatus)} ${fecha ? '<br><small style="color:#666">' + escapeHtml(fecha) + "</small>" : ""}</div>`;
                 approvalContainer.style.display = "block";
               }
             } else {
@@ -1389,8 +1428,17 @@ function historyAJAX(idfuncao_imagem) {
         imagens.length > 0;
 
       const podeAprovar =
-        [1, 2, 9, 20, 3].includes(idusuario) ||
-        (idusuario === 8 && [23, 40].includes(Number(item?.colaborador_id)));
+        ([1, 2, 9, 20, 3].includes(idusuario) ||
+          (idusuario === 8 &&
+            [23, 40].includes(Number(item?.colaborador_id))) ||
+          tarefaAtual?.diretor_pode_aprovar === true ||
+          tarefaAtual?.finalizador_pode_aprovar === true) &&
+        // Bloqueia o finalizador após a 1ª aprovação (pendente direção)
+        !(
+          tarefaAtual?.pendente_direcao &&
+          !tarefaAtual?.diretor_pode_aprovar &&
+          ![1, 2].includes(idusuario)
+        );
 
       if (podeAprovar) {
         const actionsGroup = document.querySelector(".angulo-actions-group");
@@ -1803,7 +1851,9 @@ function exibirSidebarTabulator(tarefas) {
               ? "#2e0059ff"
               : t.status_novo === "Aprovado"
                 ? "#155900"
-                : "transparent";
+                : t.pendente_direcao
+                  ? "#4a3200"
+                  : "transparent";
       const bgColor =
         t.status_novo === "Em aprovação"
           ? "#90c2ff"
@@ -1813,7 +1863,9 @@ function exibirSidebarTabulator(tarefas) {
               ? "#ae90ffff"
               : t.status_novo === "Aprovado"
                 ? "#6ed64e"
-                : "transparent";
+                : t.pendente_direcao
+                  ? "#ffd966"
+                  : "transparent";
 
       const item = document.createElement("div");
       item.className = "tarefa-item";

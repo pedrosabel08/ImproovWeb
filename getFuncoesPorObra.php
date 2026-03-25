@@ -23,6 +23,8 @@ $sql1 = "SELECT
     ico.antecipada,
     MAX(CASE WHEN fi.funcao_id = 1 THEN c.nome_colaborador END) AS caderno_colaborador,
     MAX(CASE WHEN fi.funcao_id = 1 THEN fi.status END) AS caderno_status,
+    MAX(CASE WHEN fi.funcao_id = 8 THEN c.nome_colaborador END) AS filtro_colaborador,
+    MAX(CASE WHEN fi.funcao_id = 8 THEN fi.status END) AS filtro_status,
     MAX(CASE WHEN fi.funcao_id = 2 THEN c.nome_colaborador END) AS modelagem_colaborador,
     MAX(CASE WHEN fi.funcao_id = 2 THEN fi.status END) AS modelagem_status,
     MAX(CASE WHEN fi.funcao_id = 3 THEN c.nome_colaborador END) AS composicao_colaborador,
@@ -34,7 +36,11 @@ $sql1 = "SELECT
     MAX(CASE WHEN fi.funcao_id = 6 THEN c.nome_colaborador END) AS alteracao_colaborador,
     MAX(CASE WHEN fi.funcao_id = 6 THEN fi.status END) AS alteracao_status,
     MAX(CASE WHEN fi.funcao_id = 7 THEN c.nome_colaborador END) AS planta_colaborador,
-    MAX(CASE WHEN fi.funcao_id = 7 THEN fi.status END) AS planta_status
+    MAX(CASE WHEN fi.funcao_id = 7 THEN fi.status END) AS planta_status,
+    MAX(CASE WHEN fi.funcao_id = 1 THEN fi.colaborador_id END) AS caderno_colab_id,
+    MAX(CASE WHEN fi.funcao_id = 8 THEN fi.colaborador_id END) AS filtro_colab_id,
+    MAX(CASE WHEN fi.funcao_id = 2 THEN fi.colaborador_id END) AS modelagem_colab_id,
+    MAX(CASE WHEN fi.funcao_id = 3 THEN fi.colaborador_id END) AS composicao_colab_id
     FROM imagens_cliente_obra ico
     LEFT JOIN funcao_imagem fi ON fi.imagem_id = ico.idimagens_cliente_obra
     LEFT JOIN colaborador c ON fi.colaborador_id = c.idcolaborador
@@ -165,6 +171,40 @@ if ($result3->num_rows > 0) {
         $acompanhamentoEmails[] = $row;
     }
 }
+
+// Unification flags: check funcao_par_separado for this obra's images
+$paresSeparadosObra = [];
+try {
+    $imagemIdsObra = array_unique(array_column($funcoes, 'imagem_id'));
+    if (count($imagemIdsObra) > 0) {
+        $inImgObra  = implode(',', array_fill(0, count($imagemIdsObra), '?'));
+        $stmtSepObra = $conn->prepare(
+            "SELECT imagem_id, par_tipo FROM funcao_par_separado WHERE imagem_id IN ($inImgObra)"
+        );
+        $typesSepObra = str_repeat('i', count($imagemIdsObra));
+        $stmtSepObra->bind_param($typesSepObra, ...$imagemIdsObra);
+        $stmtSepObra->execute();
+        $resSepObra = $stmtSepObra->get_result();
+        while ($rowSep = $resSepObra->fetch_assoc()) {
+            $paresSeparadosObra[$rowSep['imagem_id'] . ':' . $rowSep['par_tipo']] = true;
+        }
+        $stmtSepObra->close();
+    }
+} catch (Exception $e) {
+    // funcao_par_separado may not exist yet
+}
+
+foreach ($funcoes as &$fn) {
+    $imgId = $fn['imagem_id'];
+    $fn['caderno_filtro_unificado'] = (
+        !isset($paresSeparadosObra[$imgId . ':caderno_filtro']) &&
+        !empty($fn['caderno_colab_id']) &&
+        !empty($fn['filtro_colab_id']) &&
+        $fn['caderno_colab_id'] == $fn['filtro_colab_id']
+    ) ? 1 : 0;
+}
+
+unset($fn);
 
 // Enviando resposta JSON com todos os resultados
 echo json_encode([

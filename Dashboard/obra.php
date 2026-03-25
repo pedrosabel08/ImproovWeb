@@ -1591,7 +1591,10 @@ $conn->close();
 
     <div id="modal_hist_status">
         <div class="modal-content" style="margin: 0;">
-            <h2 style="font-size: 16px;">Histórico Status</h2>
+            <div class="hist-header">
+                <h2 class="hist-title">Histórico de Status</h2>
+                <button class="hist-close" id="btn_fechar_hist" title="Fechar">×</button>
+            </div>
             <div id="historico_container"></div>
         </div>
     </div>

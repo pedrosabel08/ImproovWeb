@@ -2992,11 +2992,171 @@ ul.file-list {
 #modal_hist_status {
     display: none;
     background: #fff;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    padding: 10px;
+    border: 1px solid #dde;
+    border-radius: 10px;
+    padding: 14px 16px 16px;
     z-index: 9999;
-    overflow: auto;
+    min-width: 360px;
+    max-width: 480px;
+    max-height: 72vh;
+    overflow-y: auto;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+}
+
+/* ── Histórico: cabeçalho do modal ── */
+#modal_hist_status .hist-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+#modal_hist_status .hist-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+    margin: 0;
+}
+#modal_hist_status .hist-close {
+    background: none;
+    border: none;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    color: #888;
+    padding: 0 2px;
+}
+#modal_hist_status .hist-close:hover {
+    color: #333;
+}
+
+/* ── Etapa section ── */
+.etapa-section {
+    border: 1px solid #e8e8ee;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    overflow: hidden;
+}
+.etapa-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #f5f6fa;
+    padding: 7px 10px;
+    flex-wrap: wrap;
+}
+.etapa-nome {
+    font-weight: 700;
+    font-size: 13px;
+    color: #2c3e50;
+    min-width: 36px;
+}
+.etapa-datas {
+    font-size: 11px;
+    color: #666;
+    flex: 1;
+}
+.etapa-badge {
+    font-size: 11px;
+    font-weight: 600;
+    background: #e0e4ef;
+    color: #3a4060;
+    border-radius: 20px;
+    padding: 2px 9px;
+    white-space: nowrap;
+}
+.etapa-badge--active {
+    background: #d0f0e0;
+    color: #1a7a45;
+}
+
+/* ── Paused warning ── */
+.paused-warning {
+    font-size: 11px;
+    color: #7a5a00;
+    background: #fff8dc;
+    border-left: 3px solid #f0b429;
+    padding: 5px 10px;
+    margin: 0;
+}
+
+/* ── Timeline dentro de uma etapa ── */
+.etapa-section .timeline {
+    position: relative;
+    margin: 0;
+    padding: 10px 10px 4px 10px;
+}
+.etapa-section .timeline::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 16px;
+    width: 2px;
+    height: 100%;
+    background: #dde;
+}
+.etapa-section .timeline-item {
+    position: relative;
+    margin-bottom: 12px;
+    padding-left: 22px;
+}
+.etapa-section .timeline-item .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    position: absolute;
+    left: 0;
+    top: 3px;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.12);
+}
+.etapa-section .timeline-item .content {
+    margin-left: 0;
+    font-size: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px;
+    line-height: 1.5;
+}
+
+/* ── Substatus labels ── */
+.substatus-nome {
+    font-weight: 600;
+    color: #222;
+    font-size: 12px;
+}
+.substatus-data {
+    color: #888;
+    font-size: 11px;
+}
+.substatus-duration {
+    font-size: 10px;
+    font-weight: 600;
+    background: #ececec;
+    color: #555;
+    border-radius: 10px;
+    padding: 1px 7px;
+    white-space: nowrap;
+}
+.substatus-ativo {
+    font-size: 10px;
+    font-weight: 600;
+    background: #d0f0e0;
+    color: #1a7a45;
+    border-radius: 10px;
+    padding: 1px 7px;
+}
+
+/* ── HOLD reason ── */
+.hold-reason {
+    flex-basis: 100%;
+    font-size: 11px;
+    color: #7a4500;
+    background: #fff3e0;
+    border-left: 3px solid #ff9800;
+    padding: 3px 8px;
+    margin-top: 3px;
+    border-radius: 0 4px 4px 0;
 }
 
 

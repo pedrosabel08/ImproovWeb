@@ -745,8 +745,8 @@ $conn->close();
                             <th>Imagem</th>
                             <th>Status</th>
                             <th style="max-width:15px;">Prazo</th>
-                            <th data-funcao="caderno" class="modal-func-header">Caderno</th>
-                            <th data-funcao="filtro" class="modal-func-header">Filtro de assets</th>
+                            <th data-funcao="caderno" data-par="caderno_filtro" class="modal-func-header">Caderno</th>
+                            <th data-funcao="filtro" data-par="caderno_filtro" class="modal-func-header">Filtro de assets</th>
                             <th data-funcao="modelagem" class="modal-func-header">Modelagem</th>
                             <th data-funcao="composicao" class="modal-func-header">Composição</th>
                             <th data-funcao="finalizacao" class="modal-func-header">Finalização</th>

@@ -6,7 +6,15 @@ include '../conexao.php';
 if (isset($_GET['action'])) {
     switch ($_GET['action']) {
         case 'getRenders':
-            // Buscar todos os renders
+            // Buscar renders com paginação
+            $page  = max(1, (int)($_GET['page']  ?? 1));
+            $limit = max(1, min(200, (int)($_GET['limit'] ?? 100)));
+            $offset = ($page - 1) * $limit;
+
+            $sqlCount = "SELECT COUNT(*) AS total FROM render_alta r WHERE r.status != 'Arquivado'";
+            $resCount = $conn->query($sqlCount);
+            $total = $resCount ? (int)$resCount->fetch_assoc()['total'] : 0;
+
             $sql = "SELECT 
     c.nome_colaborador, 
     s.nome_status, 
@@ -25,15 +33,10 @@ LEFT JOIN
 LEFT JOIN
     obra o ON i.obra_id = o.idobra
 WHERE 
-    (
-        r.status != 'Arquivado'
-        AND (
-            r.status NOT IN ('Finalizado', 'Aprovado') 
-            OR (r.status IN ('Finalizado', 'Aprovado') AND r.data >= CURDATE())
-        )
-    )
+    r.status != 'Arquivado'
 ORDER BY 
-    data DESC";
+    FIELD(r.status, 'Em aprovação', 'Em andamento', 'Refazendo', 'Reprovado', 'Erro', 'Aprovado'), data DESC
+LIMIT $limit OFFSET $offset";
             $result = $conn->query($sql);
             $renders = [];
 
@@ -41,7 +44,7 @@ ORDER BY
                 $renders[] = $row;
             }
 
-            echo json_encode(['status' => 'sucesso', 'renders' => $renders]);
+            echo json_encode(['status' => 'sucesso', 'renders' => $renders, 'total' => $total, 'page' => $page, 'limit' => $limit]);
             break;
 
         case 'getRender':
@@ -86,7 +89,15 @@ if (isset($_POST['action'])) {
                 $debug = isset($_POST['debug']) && (string)$_POST['debug'] === '1';
                 $logs[] = "updateRender: idrender_alta={$idrender_alta}, status={$status}";
 
-                $stmtUpd = $conn->prepare("UPDATE render_alta SET status = ?, data = NOW() WHERE idrender_alta = ?");
+                // Ao reprovar, limpar job_folder e previa_jpg para que o script
+                // possa registrar o novo job corretamente quando rodar (a cada 5 min)
+                if (in_array(strtolower($status), ['reprovado', 'refazendo'])) {
+                    $stmtUpd = $conn->prepare(
+                        "UPDATE render_alta SET status = ?, data = NOW(), job_folder = NULL, previa_jpg = NULL, has_error = 0, errors = NULL WHERE idrender_alta = ?"
+                    );
+                } else {
+                    $stmtUpd = $conn->prepare("UPDATE render_alta SET status = ?, data = NOW() WHERE idrender_alta = ?");
+                }
                 if (!$stmtUpd) {
                     $logs[] = 'Erro prepare update: ' . $conn->error;
                     echo json_encode(['status' => 'erro', 'message' => 'Erro ao atualizar o render', 'logs' => $debug ? $logs : null]);

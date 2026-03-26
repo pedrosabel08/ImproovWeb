@@ -1,4 +1,7 @@
 let allRenders = [];
+let currentPage  = 1;
+let totalRenders = 0;
+const PAGE_LIMIT = 100;
 
 function renderObraFilter() {
   const obras = [
@@ -52,6 +55,22 @@ function renderStatusFilter() {
   }
 }
 
+function renderStatusImagemFilter() {
+  const statusImagens = [
+    ...new Set(allRenders.map((r) => r.nome_status).filter(Boolean)),
+  ].sort();
+  $("#filterStatusImagem").html('<option value="">Todos os Status Imagem</option>');
+  statusImagens.forEach((nome) => {
+    $("#filterStatusImagem").append(`<option value="${nome}">${nome}</option>`);
+  });
+  const selected = $("#filterStatusImagem").val();
+  if (selected && statusImagens.includes(selected)) {
+    $("#filterStatusImagem").val(selected);
+  } else {
+    $("#filterStatusImagem").val("");
+  }
+}
+
 function formatarData(data) {
   const dataObj = data instanceof Date ? data : new Date(data);
 
@@ -68,51 +87,104 @@ function formatarData(data) {
   return `${dia}/${mes}/${ano} ${hora}:${min}:${seg}`;
 }
 
+/* --- Badge helper --- */
+function getStatusBadgeClass(status) {
+  const map = {
+    Finalizado: "s-finalizado",
+    Aprovado: "s-aprovado",
+    "Em andamento": "s-andamento",
+    "Em aprovação": "s-aprovacao",
+    Reprovado: "s-reprovado",
+    Refazendo: "s-refazendo",
+    Erro: "s-erro",
+  };
+  return map[status] || "s-outro";
+}
+
+function getStatusIcon(status) {
+  const icons = {
+    Finalizado: "fa-circle-check",
+    Aprovado: "fa-circle-check",
+    "Em andamento": "fa-circle-half-stroke",
+    "Em aprovação": "fa-circle-dot",
+    Reprovado: "fa-circle-xmark",
+    Refazendo: "fa-rotate-right",
+    Erro: "fa-circle-exclamation",
+  };
+  return icons[status] || "fa-circle";
+}
+
+function formatDateShort(dateStr) {
+  if (!dateStr) return "—";
+  const d = new Date(dateStr);
+  if (isNaN(d)) return "—";
+  return d.toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
 function renderCards(renders) {
-  // Build HTML in a single string to reduce DOM thrashing
+  const grid = document.getElementById("renderGrid");
+
+  if (!renders.length) {
+    grid.innerHTML = `
+      <div class="empty-state">
+        <i class="fa-solid fa-layer-group"></i>
+        <p>Nenhum render encontrado</p>
+        <span>Tente ajustar os filtros aplicados</span>
+      </div>`;
+    updateResultsBadge(0, true, totalRenders);
+    return;
+  }
+
   let html = "";
-  $("#renderGrid").html("");
   renders.forEach(function (render) {
-    // Prefer server-generated thumbnails to avoid loading full-size images on the grid
     const imgUrl = render.previa_jpg
       ? `https://improov.com.br/flow/ImproovWeb/thumb.php?path=${encodeURI("uploads/renders/" + render.previa_jpg)}&w=360&q=75`
       : "../assets/logo.jpg";
 
-    let statusBadgeClass = "";
-    if (render.status === "Finalizado") {
-      statusBadgeClass = "render-status-finalizado";
-    } else if (render.status === "Em andamento") {
-      statusBadgeClass = "render-status-andamento";
-    } else if (render.status === "Erro") {
-      statusBadgeClass = "render-status-erro";
-    } else if (render.status === "Reprovado") {
-      statusBadgeClass = "render-status-reprovado";
-    } else if (render.status === "Aprovado") {
-      statusBadgeClass = "render-status-aprovado";
-    } else if (render.status === "Em aprovação") {
-      statusBadgeClass = "render-status-aprovacao";
-    } else {
-      statusBadgeClass = "render-status-outro";
-    }
+    const sc = getStatusBadgeClass(render.status);
+    const ico = getStatusIcon(render.status);
+    const dateLabel = formatDateShort(render.submitted || render.data);
+    const obra = render.obra_nomenclatura || "—";
+    const colab = render.nome_colaborador || "—";
 
-    // Use native lazy loading attribute to avoid downloading all images at once
     html += `
-            <div class="render-card" data-id="${render.idrender_alta}">
-                <img loading="lazy" decoding="async" width="270" height="160" src="${imgUrl}" alt="Preview" class="card-preview-img">
-                <div class="render-card-content">
-                    <p class="render-card-title">${render.imagem_nome}</p>
-                    <p class="render-card-responsavel">Responsável: ${render.nome_colaborador}</p>
-                    <p class="render-card-prazo">Prazo: ${formatarData(render.data)}</p>
-                    <p class="render-card-status">Status: ${render.nome_status}</p>
-                    <p class="render-card-obra">Obra: ${render.obra_nomenclatura}</p>
-                    <p class="render-status-badge ${statusBadgeClass}">${render.status}</p>
-                </div>
+      <div class="render-card" data-id="${render.idrender_alta}" data-status="${render.status}">
+        <div class="card-thumb-wrap">
+          <img loading="lazy" decoding="async" src="${imgUrl}" alt="" class="loading"
+               onload="this.classList.remove('loading')">
+        </div>
+        <div class="card-body">
+          <p class="card-title" title="${render.imagem_nome}">${render.imagem_nome}</p>
+          <div class="card-meta-row">
+            <div class="card-meta-item">
+              <i class="fa-solid fa-building"></i>
+              <span title="${obra}">${obra}</span>
             </div>
-        `;
+            <div class="card-meta-item">
+              <i class="fa-solid fa-user"></i>
+              <span title="${colab}">${colab}</span>
+            </div>
+          </div>
+          <div class="card-footer">
+            <span class="status-badge ${sc}">
+              <i class="fa-solid ${ico}"></i>
+              ${render.status}
+            </span>
+            <span class="card-date">
+              <i class="fa-regular fa-calendar"></i>
+              ${dateLabel}
+            </span>
+          </div>
+        </div>
+      </div>`;
   });
 
-  // Append once
-  $("#renderGrid").append(html);
+  grid.innerHTML = html;
+  updateResultsBadge(renders.length, isFilterActive(), totalRenders);
 }
 
 // Use event delegation to avoid re-attaching handlers on every re-render
@@ -122,42 +194,146 @@ $("#renderGrid")
     const idrender_alta = $(this).data("id");
     editRender(idrender_alta);
   });
-function loadRenders() {
+function loadRenders(page) {
+  page = page || 1;
+  const btn = document.getElementById("btnLoadMore");
+  if (btn) btn.classList.add("loading");
+
   $.ajax({
     url: "ajax.php",
     method: "GET",
-    data: { action: "getRenders" },
+    data: { action: "getRenders", page: page, limit: PAGE_LIMIT },
     dataType: "json",
     success: function (response) {
       if (response.status === "sucesso") {
-        allRenders = response.renders;
-        renderObraFilter(); // Alimenta o select de obra
-        renderCollaboratorFilter(); // Alimenta o select de colaborador
-        renderStatusFilter(); // Alimenta o select de status
-        // Reaplica os filtros atuais (se houver) para manter o estado filtrado
+        if (page === 1) {
+          allRenders = response.renders;
+        } else {
+          allRenders = allRenders.concat(response.renders);
+        }
+        currentPage = page;
+
+        const total   = response.total || 0;
+        totalRenders  = total;
+        const loaded  = allRenders.length;
+        const hasMore = loaded < total;
+
+        renderObraFilter();
+        renderCollaboratorFilter();
+        renderStatusFilter();
+        renderStatusImagemFilter();
         filterRenders();
+
+        // Show / hide "Carregar mais"
+        const wrap = document.getElementById("loadMoreWrap");
+        if (wrap) wrap.style.display = hasMore ? "flex" : "none";
+        const counter = document.getElementById("loadMoreCounter");
+        if (counter) counter.textContent = hasMore ? `(${loaded} / ${total})` : "";
       }
+    },
+    complete: function () {
+      if (btn) btn.classList.remove("loading");
     },
   });
 }
 
+/* --- Results badge --- */
+function updateResultsBadge(count, hasFilter, total) {
+  const badge = document.getElementById("resultsBadge");
+  const countEl = document.getElementById("resultsCount");
+  const totalEl = document.getElementById("resultsTotal");
+  const dot = document.getElementById("filterDot");
+  if (!badge) return;
+  countEl.textContent = count;
+  if (total !== undefined && total > 0) {
+    totalEl.textContent = " / " + total;
+  } else {
+    totalEl.textContent = "";
+  }
+  if (hasFilter) {
+    badge.classList.add("has-filter");
+    dot.classList.add("visible");
+  } else {
+    badge.classList.remove("has-filter");
+    dot.classList.remove("visible");
+  }
+}
+
+function isFilterActive() {
+  return !!(
+    $("#filterStatus").val() ||
+    $("#filterStatusImagem").val() ||
+    $("#filterColaborador").val() ||
+    $("#filterObra").val() ||
+    $("#filterSearch").val() ||
+    $("#filterDateFrom").val() ||
+    $("#filterDateTo").val()
+  );
+}
+
 function filterRenders() {
   const status = $("#filterStatus").val();
+  const statusImagem = $("#filterStatusImagem").val();
   const colaborador = $("#filterColaborador").val();
   const obra = $("#filterObra").val();
-  const filtered = allRenders.filter(
-    (r) =>
-      (status === "" || r.status === status) &&
-      (colaborador === "" || r.nome_colaborador === colaborador) &&
-      (obra === "" || r.obra_nomenclatura === obra),
-  );
+  const search = $("#filterSearch").val().trim().toLowerCase();
+  const dateFrom = $("#filterDateFrom").val();
+  const dateTo = $("#filterDateTo").val();
+
+  const filtered = allRenders.filter((r) => {
+    if (status && r.status !== status) return false;
+    if (statusImagem && r.nome_status !== statusImagem) return false;
+    if (colaborador && r.nome_colaborador !== colaborador) return false;
+    if (obra && r.obra_nomenclatura !== obra) return false;
+
+    if (search) {
+      const haystack = [
+        r.imagem_nome,
+        r.obra_nomenclatura,
+        r.nome_colaborador,
+        r.status,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      if (!haystack.includes(search)) return false;
+    }
+
+    if (dateFrom || dateTo) {
+      const rawDate = r.submitted || r.data;
+      const d = rawDate ? new Date(rawDate) : null;
+      if (!d || isNaN(d)) return false;
+      if (dateFrom) {
+        const [fy, fm, fd] = dateFrom.split("-").map(Number);
+        const from = new Date(fy, fm - 1, fd, 0, 0, 0, 0);
+        if (d < from) return false;
+      }
+      if (dateTo) {
+        const [ty, tm, td] = dateTo.split("-").map(Number);
+        const end = new Date(ty, tm - 1, td, 23, 59, 59, 999);
+        if (d > end) return false;
+      }
+    }
+
+    return true;
+  });
+
   renderCards(filtered);
 }
 
-// Eventos dos filtros
-$("#filterStatus").on("change", filterRenders);
-$("#filterColaborador").on("change", filterRenders);
-$("#filterObra").on("change", filterRenders);
+// Filter events — real-time on search, applied on select/date change
+$("#filterStatus, #filterStatusImagem, #filterColaborador, #filterObra").on("change", filterRenders);
+$("#filterDateFrom, #filterDateTo").on("change", filterRenders);
+$("#filterSearch").on("input", filterRenders);
+
+$("#btnAplicar").on("click", filterRenders);
+
+$("#btnLimpar").on("click", function () {
+  $("#filterStatus, #filterStatusImagem, #filterColaborador, #filterObra").val("");
+  $("#filterSearch").val("");
+  $("#filterDateFrom, #filterDateTo").val("");
+  filterRenders();
+});
 
 // Função para abrir o modal e carregar os dados para edição
 function editRender(idrender_alta) {
@@ -169,120 +345,113 @@ function editRender(idrender_alta) {
     success: function (response) {
       if (response.status == "sucesso") {
         const r = response.render;
-        $("#render_id").val(r.idrender_alta);
-        $("#modal_idrender").text(r.idrender_alta);
-        $("#modal_imagem_id").text(r.imagem_nome);
-        $("#modal_status").text(r.status);
-        $("#modal_responsavel_id").text(r.nome_colaborador);
-        $("#modal_status_id").text(r.nome_status);
-        $("#modal_computer").text(r.computer);
-        $("#modal_submitted").text(formatarData(r.submitted));
-        $("#modal_last_updated").text(formatarData(r.last_updated));
-        $("#modal_has_error").text(r.has_error == 1 ? "Sim" : "Não");
-        // $('#modal_errors').text(r.errors || '');
-        $("#modal_job_folder").text(r.job_folder);
-        $("#modal_previa_jpg").text(r.previa_jpg);
-        $("#modal_numero_bg").text(r.numero_bg);
 
+        // — Header fields —
+        $("#modal_imagem_id").text(r.imagem_nome || "—");
+        $("#modal_obra_nome").text(r.obra_nomenclatura || "");
+
+        // Status badge in header subtitle
+        const sc = getStatusBadgeClass(r.status);
+        const ico = getStatusIcon(r.status);
+        $("#modal_status_badge").html(
+          `<span class="status-badge ${sc}"><i class="fa-solid ${ico}"></i> ${r.status}</span>`,
+        );
+
+        // — Detail fields —
+        $("#modal_idrender").text(r.idrender_alta || "—");
+        $("#modal_numero_bg").text(r.numero_bg || "—");
+
+        $("#modal_status").text(r.status || "—");
+        $("#modal_status_id").text(r.nome_status || "—");
+        $("#modal_responsavel_id").text(r.nome_colaborador || "—");
+        $("#modal_computer").text(r.computer || "—");
+
+        $("#modal_submitted").text(
+          r.submitted ? formatarData(r.submitted) : "—",
+        );
+        $("#modal_last_updated").text(
+          r.last_updated ? formatarData(r.last_updated) : "—",
+        );
+
+        $("#modal_job_folder").text(r.job_folder || "—");
+        $("#modal_previa_jpg").text(r.previa_jpg || "—");
+
+        // — Error section —
         const errors = r.errors || "";
         if (errors) {
           $("#errorsContainer").show();
-          $("#modal_errors").text(errors).hide(); // começa fechada
+          $("#modal_errors").text(errors).slideUp(0);
+          $("#toggleErrors").removeClass("open");
         } else {
           $("#errorsContainer").hide();
-          $("#modal_errors").hide();
         }
 
-        // Toggle da gaveta de erros
         $("#toggleErrors")
           .off("click")
           .on("click", function (event) {
-            event.preventDefault(); // evita recarregar a página
-            $("#modal_errors").slideToggle();
-            const btn = $(this);
-            btn.text(
-              btn.text().includes("▼") ? "Ocultar erros ▲" : "Mostrar erros ▼",
-            );
+            event.preventDefault();
+            const $body = $("#modal_errors");
+            const $btn = $(this);
+            if ($btn.hasClass("open")) {
+              $btn.removeClass("open");
+              $body.slideUp(200);
+            } else {
+              $btn.addClass("open");
+              $body.slideDown(200);
+            }
           });
 
-        // Prefer previews array if available. If previews exist, show gallery and
-        // set the main image to the first preview. Do NOT show render.previa_jpg
-        // when previews are present.
+        // — Image preview + gallery —
         const previews = response.previews || [];
-        const $imgPreviewContainer = $(".imagem-preview");
-
-        // Remove any existing gallery to avoid duplicates
-        $imgPreviewContainer.find("#modalGallery").remove();
+        const $gallery = $("#modalGallery");
+        $gallery.empty();
 
         if (previews.length > 0) {
-          const first = previews[0];
-          // Main modal image: use a larger thumbnail to balance quality and speed
-          const mainUrl = first.filename
-            ? `https://improov.com.br/flow/ImproovWeb/uploads/renders/${encodeURIComponent(first.filename)}`
-            : "../assets/logo.jpg";
+          const firstUrl = `https://improov.com.br/flow/ImproovWeb/uploads/renders/${encodeURIComponent(previews[0].filename)}`;
+          $("#modalPreviewImg").attr("src", firstUrl);
 
-          // Set main image src to first preview (original full-size)
-          $("#modalPreviewImg").attr("src", mainUrl);
-
-          // Build gallery node
-          const $gallery = $(
-            '<div id="modalGallery" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"></div>',
-          );
           previews.forEach(function (p, idx) {
-            const thumbUrl = p.filename
-              ? `https://improov.com.br/flow/ImproovWeb/uploads/renders/${encodeURIComponent(p.filename)}`
-              : "../assets/logo.jpg";
+            const thumbUrl = `https://improov.com.br/flow/ImproovWeb/uploads/renders/${encodeURIComponent(p.filename)}`;
             const $thumb = $(
-              `<img class="modal-thumb" loading="lazy" decoding="async" data-filename="${p.filename}" data-idx="${idx}" src="${thumbUrl}" alt="Preview ${idx + 1}">`,
+              `<img class="modal-thumb${idx === 0 ? " active" : ""}" loading="lazy" decoding="async" src="${thumbUrl}" alt="Preview ${idx + 1}">`,
             );
-            // style the thumbnail a bit (you can move to CSS file)
-            $thumb.css({
-              width: "60px",
-              height: "60px",
-              objectFit: "cover",
-              cursor: "pointer",
-              borderRadius: "4px",
-              border: "2px solid transparent",
-            });
-            if (idx === 0) $thumb.css("border-color", "#4caf50");
             $gallery.append($thumb);
           });
 
-          // Insert gallery after the main image inside .imagem-preview
-          if ($imgPreviewContainer.length) {
-            $imgPreviewContainer.append($gallery);
-          } else {
-            // Fallback: append to body
-            $("body").append($gallery);
-          }
-
-          // Thumbnail click handler: set main image and active state
+          // Thumbnail click
           $gallery
-            .find(".modal-thumb")
-            .off("click")
-            .on("click", function () {
-              const src = $(this).attr("src");
-              $("#modalPreviewImg").attr("src", src);
-              $gallery.find(".modal-thumb").css("border-color", "transparent");
-              $(this).css("border-color", "#4caf50");
+            .off("click.gallery")
+            .on("click.gallery", ".modal-thumb", function () {
+              $("#modalPreviewImg").attr("src", $(this).attr("src"));
+              $gallery.find(".modal-thumb").removeClass("active");
+              $(this).addClass("active");
             });
         } else {
-          // No previews: fallback to previsa_jpg if available
           const imgUrl = r.previa_jpg
             ? `https://improov.com.br/flow/ImproovWeb/uploads/renders/${encodeURIComponent(r.previa_jpg)}`
             : "../assets/logo.jpg";
           $("#modalPreviewImg").attr("src", imgUrl);
         }
 
-        $("#myModal").css("display", "flex");
+        // — Open modal —
+        $("#myModal").addClass("is-open");
 
-        // Aqui escondemos os botões se o status for Aprovado, Reprovado ou Erro
-        if (["Aprovado", "Reprovado"].includes(r.status)) {
+        // — Action button visibility —
+        if (r.status === "Reprovado" || r.status === "Refazendo") {
           $("#aprovarRender").hide();
           $("#reprovarRender").hide();
+        } else if (r.status === "Aprovado") {
+          $("#aprovarRender").hide();
+          $("#reprovarRender")
+            .show()
+            .data("target-status", "Refazendo")
+            .html('<i class="fa-solid fa-rotate-right"></i> Refazer');
         } else {
           $("#aprovarRender").show();
-          $("#reprovarRender").show();
+          $("#reprovarRender")
+            .show()
+            .data("target-status", "Reprovado")
+            .html('<i class="fa-solid fa-rotate-right"></i> Reprovar');
         }
       }
     },
@@ -401,9 +570,15 @@ $("#modalPreviewImg")
     applyTransforms();
   });
 
-// Fechar o modal
-$("#myModal .close").click(function () {
-  $("#myModal").css("display", "none");
+// Fechar o modal (novo botão + clique no overlay)
+$("#closeModal").on("click", function () {
+  $("#myModal").removeClass("is-open");
+});
+
+$("#myModal").on("click", function (e) {
+  if (e.target === this) {
+    $(this).removeClass("is-open");
+  }
 });
 
 $("#aprovarRender").click(function () {
@@ -430,7 +605,7 @@ $("#aprovarRender").click(function () {
         }).showToast();
 
         // Abre o modal POS
-        $("#modalPOS").css("display", "flex");
+        $("#modalPOS").addClass("is-open");
         $("#pos_render_id").val(idrender_alta);
 
         // NÃO fechamos o modal principal
@@ -459,7 +634,7 @@ $("#aprovarRender").click(function () {
 
 // Fechar modal POS
 $("#fecharPOS").click(function () {
-  $("#modalPOS").hide();
+  $("#modalPOS").removeClass("is-open");
   $("#pos_caminho").val("");
   $("#pos_referencias").val("");
 });
@@ -499,10 +674,10 @@ $("#enviarPOS").click(function () {
           backgroundColor: "#4caf50", // verde
         }).showToast();
 
-        $("#modalPOS").hide();
+        $("#modalPOS").removeClass("is-open");
         $("#pos_caminho").val("");
         $("#pos_referencias").val("");
-        $("#myModal").css("display", "none");
+        $("#myModal").removeClass("is-open");
       } else {
         Toastify({
           text: "Erro ao atualizar pós-produção!",
@@ -528,17 +703,18 @@ $("#enviarPOS").click(function () {
 
 $("#reprovarRender").click(function () {
   const idrender_alta = $("#modal_idrender").text();
+  const targetStatus = $(this).data("target-status") || "Reprovado";
   $.post(
     "ajax.php",
     {
       action: "updateRender",
       idrender_alta: idrender_alta,
-      status: "Reprovado",
+      status: targetStatus,
     },
     function (response) {
       if (response.status === "sucesso") {
         loadRenders();
-        $("#myModal").hide();
+        $("#myModal").removeClass("is-open");
         Toastify({
           text: "Render reprovado com sucesso!",
           duration: 3000,
@@ -585,8 +761,8 @@ $("#deleteRender")
       dataType: "json",
       success: function (response) {
         if (response.status == "sucesso") {
-          loadRenders(); // Recarrega a lista de renders
-          $("#myModal").css("display", "none");
+          loadRenders();
+          $("#myModal").removeClass("is-open");
 
           Toastify({
             text: "Render excluído com sucesso!",
@@ -602,43 +778,9 @@ $("#deleteRender")
 
 // Carregar os renders quando a página for carregada
 $(document).ready(function () {
-  loadRenders();
+  loadRenders(1);
 
-  // Iniciar tutorial ao clicar no botão
-  $("#startTutorial").on("click", function () {
-    startIntroWithStepCallback();
+  $("#btnLoadMore").on("click", function () {
+    loadRenders(currentPage + 1);
   });
 });
-
-// Função para iniciar o Intro.js e simular o clique no step 2
-function startIntroWithStepCallback() {
-  $("#myModal").css("display", "flex"); // Abre o modal ANTES do tutorial
-
-  setTimeout(() => {
-    var intro = introJs();
-    intro.setOptions({
-      nextLabel: "Próximo",
-      prevLabel: "Anterior",
-      doneLabel: "Finalizar",
-    });
-
-    intro.onchange(function (targetElement) {
-      if (this._currentStep === 2) {
-        const statusElement = document.getElementById("render_status");
-        if (statusElement) {
-          statusElement.scrollIntoView({ behavior: "smooth", block: "center" });
-        }
-      }
-    });
-
-    intro.oncomplete(function () {
-      $("#myModal").css("display", "none");
-    });
-
-    intro.onexit(function () {
-      $("#myModal").css("display", "none");
-    });
-
-    intro.start();
-  }, 1); // tempo suficiente para o modal renderizar
-}

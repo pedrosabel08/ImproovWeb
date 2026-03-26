@@ -1,4 +1,6 @@
 import os
+import socket
+import time
 import xml.etree.ElementTree as ET
 import pymysql
 import subprocess
@@ -265,6 +267,98 @@ def upload_to_ftp(local_path, remote_path, ftp_host, ftp_user, ftp_pass):
         except Exception:
             pass
         return False
+
+
+def delete_backburner_job(job_folder_path: str) -> bool:
+    """Remove um job do Backburner via protocolo TCP (porta 3234).
+    Extrai o handle hex do nome da pasta, fecha o Backburner Monitor
+    temporariamente para adquirir o papel de Queue Controller e emite
+    'del job <handle_decimal>'. Reinicia o Monitor após a operação.
+    """
+    MONITOR_EXE = r"C:\Program Files (x86)\Autodesk\Backburner\monitor.exe"
+
+    folder_name = os.path.basename(job_folder_path)
+    m = re.match(r'^([0-9A-Fa-f]{8})\b', folder_name)
+    if not m:
+        log_and_print(f"⚠ Não foi possível extrair ID do job da pasta: {folder_name}", "warning")
+        return False
+
+    # O protocolo Backburner aceita o handle como decimal
+    job_handle = int(m.group(1), 16)
+    manager = os.getenv("BACKBURNER_MANAGER", "127.0.0.1")
+    port = int(os.getenv("BACKBURNER_PORT", "3234"))
+
+    def _send_recv(sock, cmd, wait=0.5):
+        sock.sendall((cmd + "\r\n").encode())
+        time.sleep(wait)
+        buf = b""
+        sock.settimeout(1.0)
+        try:
+            while True:
+                chunk = sock.recv(4096)
+                if not chunk:
+                    break
+                buf += chunk
+        except socket.timeout:
+            pass
+        return buf.decode(errors="replace").strip()
+
+    # Verifica se o Backburner Monitor está em execução (ele segura o slot de controller)
+    monitor_was_running = False
+    try:
+        tl = subprocess.run(
+            ["tasklist", "/FI", "IMAGENAME eq monitor.exe", "/NH"],
+            capture_output=True, text=True, timeout=5
+        )
+        monitor_was_running = "monitor.exe" in tl.stdout
+    except Exception:
+        pass
+
+    if monitor_was_running:
+        log_and_print("🔄 Encerrando Backburner Monitor para adquirir controle da fila...")
+        subprocess.run(["taskkill", "/F", "/IM", "monitor.exe"], capture_output=True, timeout=5)
+        time.sleep(0.8)
+
+    success = False
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(10)
+        s.connect((manager, port))
+        s.recv(1024)  # consume banner
+
+        # Solicita o papel de Queue Controller
+        ctrl_resp = _send_recv(s, "new controller")
+        log_and_print(f"🔧 Backburner new controller ({manager}): {ctrl_resp[:100]}")
+
+        if "201" in ctrl_resp:
+            # Controller concedido — emite del job
+            del_resp = _send_recv(s, f"del job {job_handle}")
+            log_and_print(f"🔧 Backburner del job {job_handle}: {del_resp[:100]}")
+            success = "200" in del_resp
+            if not success:
+                log_and_print(f"⚠ del job não retornou 200: {del_resp[:100]}", "warning")
+        else:
+            log_and_print(
+                f"⚠ Não foi possível adquirir controle do Backburner (resposta: {ctrl_resp[:100]}). "
+                "Verifique se outro processo está segurando o controle da fila.",
+                "warning"
+            )
+        s.close()
+    except Exception as e:
+        log_and_print(f"⚠ Erro ao conectar no Backburner ({manager}:{port}): {e}", "warning")
+
+    # Reinicia o Monitor se estava rodando
+    if monitor_was_running:
+        try:
+            subprocess.Popen(
+                [MONITOR_EXE],
+                creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+            )
+            log_and_print("✅ Backburner Monitor reiniciado")
+        except Exception as e:
+            log_and_print(f"⚠ Não foi possível reiniciar o Backburner Monitor: {e}", "warning")
+
+    return success
 
 
 def parse_xml(xml_path):
@@ -558,16 +652,16 @@ def process_job_folder(cursor, job_folder, p00_rollup=None):
     # Caminho remoto fixo para todas as imagens
     remote_base_path = "/web/improov.com.br/public_html/flow/ImproovWeb/uploads/renders/"
 
-    # 1️⃣ Se status atual = Em aprovação e não tiver previa_jpg → atualizar só a coluna
+    # 1️⃣ Se status atual = Em aprovação → atualizar previa_jpg (substitui no VPS mesmo se mesmo nome)
     if ultimo_status == "Em aprovação":
-        if not existing_preview and caminho_pasta and os.path.exists(caminho_pasta):
+        if caminho_pasta and os.path.exists(caminho_pasta):
             jpgs = [f for f in os.listdir(caminho_pasta) if f.lower().endswith(".jpg")]
             if jpgs:
                 preview_name = jpgs[0]
 
-                # Upload da prévia
+                # Upload da prévia — substitui no VPS mesmo que o nome seja igual
                 local_path = os.path.join(caminho_pasta, preview_name)
-                remote_path = remote_base_path + preview_name  # sempre dentro de /www/sistema/uploads/renders/
+                remote_path = remote_base_path + preview_name
                 ftp_host = os.getenv("FTP_HOST")
                 ftp_user = os.getenv("FTP_USER")
                 ftp_pass = os.getenv("FTP_PASS")
@@ -583,12 +677,32 @@ def process_job_folder(cursor, job_folder, p00_rollup=None):
                     log_and_print(f"🖼️ Previa JPG atualizada para {preview_name} (status já era 'Em aprovação')")
                 else:
                     log_and_print(f"⚠ Upload falhou — nenhuma alteração foi feita no banco para {preview_name}", "warning")
-            return  # não faz mais nada
+        return  # não faz mais nada
 
-    # 2️⃣ Se status atual = Aprovado ou Finalizado → não faz nada
+    # 2️⃣ Se status atual = Aprovado ou Finalizado → remover do Backburner
+    # Se status = Reprovado/Refazendo: o job foi reprovado/refazendo e um NOVO job foi submetido.
+    # Só removemos o job do Backburner quando o novo render COMPLETAR (complete=True).
+    # Enquanto o novo job está rodando (active=True, complete=False), deixamos ele finalizar.
     if ultimo_status in ("Aprovado", "Finalizado"):
-        log_and_print(f"⏭ Status '{ultimo_status}' detectado — nenhum update realizado.")
+        log_and_print(f"⏭ Status '{ultimo_status}' detectado — removendo job do Backburner: {job_folder}")
+        delete_backburner_job(job_folder)
         return
+
+    if ultimo_status in ("Reprovado", "Refazendo"):
+        if complete:
+            # Novo render completou após reprovação → tratar como "Em aprovação" (novo ciclo)
+            log_and_print(f"🔄 Job completou após reprovação — promovendo para 'Em aprovação': {job_folder}")
+            ultimo_status = None   # força prosseguir pelo fluxo normal
+            status_custom = "Em aprovação"
+        elif active and not complete:
+            # Ainda renderizando — deixar finalizar normalmente
+            log_and_print(f"⏩ Render reprovado sendo refeito (Em andamento) — aguardando conclusão: {job_folder}")
+            ultimo_status = None   # força prosseguir pelo fluxo normal (atualiza status no banco)
+            status_custom = "Em andamento"
+        else:
+            # Inativo e incompleto — estado indefinido, processar normalmente
+            log_and_print(f"⏩ Render reprovado com estado indefinido (active=False, complete=False) — processando normalmente: {job_folder}")
+            ultimo_status = None
 
     # 3️⃣ Se status estava como Erro e Complete=Yes → mudar para Em aprovação
     if ultimo_status == "Erro" and complete:
@@ -643,6 +757,12 @@ def process_job_folder(cursor, job_folder, p00_rollup=None):
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ON DUPLICATE KEY UPDATE
             status=VALUES(status),
+            computer=VALUES(computer),
+            submitted=VALUES(submitted),
+            last_updated=VALUES(last_updated),
+            has_error=VALUES(has_error),
+            errors=VALUES(errors),
+            job_folder=VALUES(job_folder),
             previa_jpg=IFNULL(VALUES(previa_jpg), previa_jpg)
     """, (
         imagem_id,

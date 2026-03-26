@@ -175,7 +175,7 @@ $conn->close();
                 </div>
                 <nav>
                     <div class="nav-left">
-                        <?php if (in_array((int)($_SESSION['nivel_acesso'] ?? 0), [1, 5]) || in_array((int)($idcolaborador ?? 0), [9, 21])): ?>
+                        <?php if (in_array((int)($_SESSION['nivel_acesso'] ?? 0), [1, 5]) || in_array((int)($idcolaborador ?? 0), [1, 9, 21])): ?>
                             <button id="overviewBtn"><i class="ri-dashboard-line"></i><span>Visão Geral</span></button>
                         <?php endif; ?>
                         <button id="painelBtn" style="display:none;"><i class="ri-bar-chart-line"></i><span>Painel de Produção</span></button>

@@ -3537,12 +3537,13 @@ document.getElementById("salvarModal").addEventListener("click", () => {
         }).showToast();
         cardModal.classList.remove("active");
 
-        // ==== UNIFIED PAIR: also update secondary function ====
+        // ==== UNIFIED PAIR: also update secondary function (only when primary is representative) ====
         if (
           cardSelecionado &&
           cardSelecionado.dataset.parTipo &&
           cardSelecionado.dataset.funcaoIdSecundaria &&
-          dados.status !== null
+          dados.status !== null &&
+          (cardSelecionado.dataset.parRepresentative || "primary") === "primary"
         ) {
           $.ajax({
             type: "POST",
@@ -5280,10 +5281,12 @@ async function loadObraImages(obraId, etapaInicial) {
         const colaborador = item[`${coluna.col}_colaborador`] || "-";
         const statusPrim = item[`${coluna.col}_status`] || "-";
         const statusSec = item[`${nextColuna.col}_status`] || "-";
+        // Representative status: when Caderno=Finalizado, show Filtro's actual status
+        const repStatus = statusPrim === "Finalizado" ? statusSec : statusPrim;
 
         const cellMerged = document.createElement("td");
         cellMerged.setAttribute("colspan", "2");
-        cellMerged.setAttribute("data-status", statusPrim);
+        cellMerged.setAttribute("data-status", repStatus);
         cellMerged.setAttribute("data-funcao", coluna.col);
         cellMerged.classList.add(
           "func-cell",
@@ -5309,7 +5312,7 @@ async function loadObraImages(obraId, etapaInicial) {
         row.appendChild(cellMerged);
         modalApplyStyleNone(cellMerged, null, colaborador);
         if (!(item.imagem_status === "EF" && item.imagem_sub_status === "EF")) {
-          modalApplyStatusStyle(cellMerged, statusPrim, colaborador);
+          modalApplyStatusStyle(cellMerged, repStatus, colaborador);
         }
         ci += 2; // skip both columns
       } else {

@@ -504,11 +504,10 @@ foreach ($paresPossiveis as $funcaoPrimId => $parConfig) {
         $idxPrim = $funcaoMap[$funcaoPrimId];
         $idxSec  = $funcaoMap[$funcaoSecId];
 
-        // Se primária = Finalizado e secundária = Em aprovação → emite a secundária
+        // Se primária = Finalizado → emite sempre a secundária (independente do status da secundária)
         $primFinalizado = $funcoesFinal[$idxPrim]['status'] === 'Finalizado';
-        $secAprovacao   = $funcoesFinal[$idxSec]['status']  === 'Em aprovação';
 
-        if ($primFinalizado && $secAprovacao) {
+        if ($primFinalizado) {
             $funcoesFinal[$idxSec]['par_tipo']         = $parTipoUnif;
             $funcoesFinal[$idxSec]['unified_with']     = [
                 'idfuncao_imagem' => $funcoesFinal[$idxPrim]['idfuncao_imagem'],

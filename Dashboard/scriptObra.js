@@ -3370,7 +3370,7 @@ function infosObra(obraId) {
             const stC = item.caderno_status || "-";
             const stF = item.filtro_status || "-";
             const repSt =
-              stC === "Finalizado" && stF === "Em aprovação" ? stF : stC;
+              stC === "Finalizado" ? stF : stC;
             const cellUnif = document.createElement("td");
             cellUnif.colSpan = 2;
             cellUnif.classList.add(

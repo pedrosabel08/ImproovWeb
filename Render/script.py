@@ -557,21 +557,6 @@ def process_job_folder(cursor, job_folder, p00_rollup=None):
     # render_alta com um status_id DIFERENTE do status atual da imagem,
     # significa que o job pertence a um ciclo de render já superado → pular.
     # ─────────────────────────────────────────────────────────────────────
-    if caminho_pasta:
-        cursor.execute(
-            "SELECT status_id FROM render_alta WHERE job_folder = %s LIMIT 1",
-            (caminho_pasta,)
-        )
-        prev_record = cursor.fetchone()
-        if prev_record is not None and prev_record[0] != status_id:
-            log_and_print(
-                f"⏭ Job folder já foi processado para status_id={prev_record[0]} "
-                f"mas a imagem está agora em status_id={status_id}. "
-                f"Pulando para evitar reprocessamento de job antigo: {caminho_pasta}",
-                "warning"
-            )
-            return
-
     # Buscar status existente
     cursor.execute("""
         SELECT idrender_alta, status, previa_jpg

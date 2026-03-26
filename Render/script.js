@@ -149,7 +149,7 @@ function renderCards(renders) {
 
     const sc = getStatusBadgeClass(render.status);
     const ico = getStatusIcon(render.status);
-    const dateLabel = formatDateShort(render.submitted || render.data);
+    const dateLabel = formatDateShort(render.data);
     const obra = render.obra_nomenclatura || "—";
     const colab = render.nome_colaborador || "—";
 

@@ -75,6 +75,15 @@ LIMIT $limit OFFSET $offset";
                 echo json_encode(['status' => 'sucesso', 'render' => $render, 'previews' => $previews]);
             }
             break;
+
+        case 'getColaboradores':
+            $res = $conn->query("SELECT idcolaborador, nome_colaborador FROM colaborador WHERE ativo = 1 ORDER BY nome_colaborador");
+            $colaboradores = [];
+            while ($row = $res->fetch_assoc()) {
+                $colaboradores[] = $row;
+            }
+            echo json_encode(['status' => 'sucesso', 'colaboradores' => $colaboradores]);
+            break;
     }
 }
 
@@ -269,8 +278,7 @@ if (isset($_POST['action'])) {
                                             }
                                         }
                                     }
-                                }
-                                else {
+                                } else {
                                     // Quando não for P00: marcar a função de finalização como Finalizado
                                     $funcaoImagemId = null;
                                     $chosenFuncaoId = null;
@@ -363,6 +371,25 @@ if (isset($_POST['action'])) {
                         'message' => 'Erro ao excluir o render: ' . $conn->error
                     ]);
                 }
+            }
+            break;
+
+        case 'getColaboradores':
+            // movido para o bloco GET acima
+            break;
+
+        case 'updateResponsavel':
+            if (isset($_POST['idrender_alta'], $_POST['responsavel_id'])) {
+                $id = (int)$_POST['idrender_alta'];
+                $resp_id = (int)$_POST['responsavel_id'];
+                $stmt = $conn->prepare("UPDATE render_alta SET responsavel_id = ? WHERE idrender_alta = ?");
+                $stmt->bind_param('ii', $resp_id, $id);
+                if ($stmt->execute()) {
+                    echo json_encode(['status' => 'sucesso']);
+                } else {
+                    echo json_encode(['status' => 'erro', 'message' => $stmt->error]);
+                }
+                $stmt->close();
             }
             break;
     }

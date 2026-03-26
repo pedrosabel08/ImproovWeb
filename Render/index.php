@@ -179,6 +179,17 @@ $conn->close();
 
     </div><!-- /.container -->
 
+    <!-- ===== CONTEXT MENU: TROCAR RESPONSÁVEL ===== -->
+    <div id="ctxMenu" class="ctx-menu">
+        <div class="ctx-menu-title">
+            <i class="fa-solid fa-user-pen"></i> Trocar Responsável
+        </div>
+        <select id="ctxResponsavelSelect"></select>
+        <button id="ctxSalvar" class="ctx-btn-salvar">
+            <i class="fa-solid fa-check"></i> Salvar
+        </button>
+    </div>
+
     <!-- ===== JOB DETAILS MODAL ===== -->
     <div id="myModal" class="modal">
         <div class="modal-content">

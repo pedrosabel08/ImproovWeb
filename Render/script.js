@@ -1,5 +1,5 @@
 let allRenders = [];
-let currentPage  = 1;
+let currentPage = 1;
 let totalRenders = 0;
 const PAGE_LIMIT = 100;
 
@@ -59,7 +59,9 @@ function renderStatusImagemFilter() {
   const statusImagens = [
     ...new Set(allRenders.map((r) => r.nome_status).filter(Boolean)),
   ].sort();
-  $("#filterStatusImagem").html('<option value="">Todos os Status Imagem</option>');
+  $("#filterStatusImagem").html(
+    '<option value="">Todos os Status Imagem</option>',
+  );
   statusImagens.forEach((nome) => {
     $("#filterStatusImagem").append(`<option value="${nome}">${nome}</option>`);
   });
@@ -162,7 +164,7 @@ function renderCards(renders) {
           <div class="card-meta-row">
             <div class="card-meta-item">
               <i class="fa-solid fa-building"></i>
-              <span title="${obra}">${obra}</span>
+              <span title="${obra}">${obra} - ${render.nome_status || "—"}</span>
             </div>
             <div class="card-meta-item">
               <i class="fa-solid fa-user"></i>
@@ -213,9 +215,9 @@ function loadRenders(page) {
         }
         currentPage = page;
 
-        const total   = response.total || 0;
-        totalRenders  = total;
-        const loaded  = allRenders.length;
+        const total = response.total || 0;
+        totalRenders = total;
+        const loaded = allRenders.length;
         const hasMore = loaded < total;
 
         renderObraFilter();
@@ -228,7 +230,8 @@ function loadRenders(page) {
         const wrap = document.getElementById("loadMoreWrap");
         if (wrap) wrap.style.display = hasMore ? "flex" : "none";
         const counter = document.getElementById("loadMoreCounter");
-        if (counter) counter.textContent = hasMore ? `(${loaded} / ${total})` : "";
+        if (counter)
+          counter.textContent = hasMore ? `(${loaded} / ${total})` : "";
       }
     },
     complete: function () {
@@ -322,14 +325,19 @@ function filterRenders() {
 }
 
 // Filter events — real-time on search, applied on select/date change
-$("#filterStatus, #filterStatusImagem, #filterColaborador, #filterObra").on("change", filterRenders);
+$("#filterStatus, #filterStatusImagem, #filterColaborador, #filterObra").on(
+  "change",
+  filterRenders,
+);
 $("#filterDateFrom, #filterDateTo").on("change", filterRenders);
 $("#filterSearch").on("input", filterRenders);
 
 $("#btnAplicar").on("click", filterRenders);
 
 $("#btnLimpar").on("click", function () {
-  $("#filterStatus, #filterStatusImagem, #filterColaborador, #filterObra").val("");
+  $("#filterStatus, #filterStatusImagem, #filterColaborador, #filterObra").val(
+    "",
+  );
   $("#filterSearch").val("");
   $("#filterDateFrom, #filterDateTo").val("");
   filterRenders();
@@ -782,5 +790,93 @@ $(document).ready(function () {
 
   $("#btnLoadMore").on("click", function () {
     loadRenders(currentPage + 1);
+  });
+
+  // ── Context menu: trocar responsável ──────────────────────────────
+  let ctxRenderId = null;
+  const $ctxMenu = $("#ctxMenu");
+
+  // Pré-carregar colaboradores uma vez
+  $.ajax({
+    url: "ajax.php",
+    method: "GET",
+    data: { action: "getColaboradores" },
+    dataType: "json",
+    success: function (res) {
+      if (res.status === "sucesso") {
+        const $sel = $("#ctxResponsavelSelect");
+        $sel.empty();
+        res.colaboradores.forEach(function (c) {
+          $sel.append(
+            `<option value="${c.idcolaborador}">${c.nome_colaborador}</option>`,
+          );
+        });
+      }
+    },
+  });
+
+  // Abrir menu no botão direito do card
+  $("#renderGrid").on("contextmenu", ".render-card", function (e) {
+    e.preventDefault();
+    ctxRenderId = $(this).data("id");
+
+    // Posicionar o menu perto do cursor, ajustando para não sair da tela
+    const menuW = 230,
+      menuH = 130;
+    let x = e.clientX,
+      y = e.clientY;
+    if (x + menuW > window.innerWidth) x = window.innerWidth - menuW - 8;
+    if (y + menuH > window.innerHeight) y = window.innerHeight - menuH - 8;
+
+    $ctxMenu.css({ top: y, left: x }).addClass("is-open");
+  });
+
+  // Salvar novo responsável
+  $("#ctxSalvar").on("click", function () {
+    if (!ctxRenderId) return;
+    const responsavel_id = $("#ctxResponsavelSelect").val();
+
+    $.post(
+      "ajax.php",
+      {
+        action: "updateResponsavel",
+        idrender_alta: ctxRenderId,
+        responsavel_id: responsavel_id,
+      },
+      function (res) {
+        if (res.status === "sucesso") {
+          $ctxMenu.removeClass("is-open");
+          loadRenders(1);
+          Toastify({
+            text: "Responsável atualizado com sucesso!",
+            duration: 3000,
+            gravity: "top",
+            position: "right",
+            backgroundColor: "#4caf50",
+          }).showToast();
+        } else {
+          Toastify({
+            text: "Erro ao atualizar responsável!",
+            duration: 3000,
+            gravity: "top",
+            position: "right",
+            backgroundColor: "#f44336",
+          }).showToast();
+        }
+      },
+      "json",
+    );
+  });
+
+  // Fechar ao clicar fora
+  $(document).on("click", function (e) {
+    if (!$(e.target).closest("#ctxMenu").length) {
+      $ctxMenu.removeClass("is-open");
+    }
+  });
+
+  // Fechar ao pressionar Escape
+  $(document).on("keydown.ctx", function (e) {
+    if (e.key === "Escape") $ctxMenu.removeClass("is-open");
   });
 });

@@ -271,28 +271,23 @@ def upload_to_ftp(local_path, remote_path, ftp_host, ftp_user, ftp_pass):
 
 def delete_backburner_job(job_folder_path: str) -> bool:
     """Remove um job do Backburner via protocolo TCP (porta 3234).
-    Extrai o handle hex do nome da pasta, fecha o Backburner Monitor
-    temporariamente para adquirir o papel de Queue Controller e emite
-    'del job <handle_decimal>'. Reinicia o Monitor após a operação.
+    Extrai o handle decimal do nome da pasta (hex→int), adquire o papel
+    de Queue Controller com 'new controller' e emite 'del job <decimal>'.
+    Não precisa encerrar/reiniciar o Backburner Monitor.
     """
-    MONITOR_EXE = r"C:\Program Files (x86)\Autodesk\Backburner\monitor.exe"
-
     folder_name = os.path.basename(job_folder_path)
     m = re.match(r'^([0-9A-Fa-f]{8})\b', folder_name)
     if not m:
         log_and_print(f"⚠ Não foi possível extrair ID do job da pasta: {folder_name}", "warning")
         return False
 
-    # O protocolo Backburner aceita o handle como decimal
-    job_handle = int(m.group(1), 16)
+    job_handle = int(m.group(1), 16)  # hex → decimal (protocolo usa decimal)
     manager = os.getenv("BACKBURNER_MANAGER", "127.0.0.1")
     port = int(os.getenv("BACKBURNER_PORT", "3234"))
 
-    def _send_recv(sock, cmd, wait=0.5):
-        sock.sendall((cmd + "\r\n").encode())
-        time.sleep(wait)
+    def _recv(sock, wait=1.0):
+        sock.settimeout(wait)
         buf = b""
-        sock.settimeout(1.0)
         try:
             while True:
                 chunk = sock.recv(4096)
@@ -301,64 +296,48 @@ def delete_backburner_job(job_folder_path: str) -> bool:
                 buf += chunk
         except socket.timeout:
             pass
-        return buf.decode(errors="replace").strip()
+        return buf.decode(errors="replace")
 
-    # Verifica se o Backburner Monitor está em execução (ele segura o slot de controller)
-    monitor_was_running = False
-    try:
-        tl = subprocess.run(
-            ["tasklist", "/FI", "IMAGENAME eq monitor.exe", "/NH"],
-            capture_output=True, text=True, timeout=5
-        )
-        monitor_was_running = "monitor.exe" in tl.stdout
-    except Exception:
-        pass
+    def _send_recv(sock, cmd, wait=1.0):
+        sock.sendall((cmd + "\r\n").encode())
+        time.sleep(0.3)
+        return _recv(sock, wait)
 
-    if monitor_was_running:
-        log_and_print("🔄 Encerrando Backburner Monitor para adquirir controle da fila...")
-        subprocess.run(["taskkill", "/F", "/IM", "monitor.exe"], capture_output=True, timeout=5)
-        time.sleep(0.8)
-
-    success = False
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.settimeout(10)
         s.connect((manager, port))
-        s.recv(1024)  # consume banner
 
-        # Solicita o papel de Queue Controller
-        ctrl_resp = _send_recv(s, "new controller")
-        log_and_print(f"🔧 Backburner new controller ({manager}): {ctrl_resp[:100]}")
+        # O servidor não envia banner proativo — drena qualquer dado inicial
+        # com timeout curto para não bloquear
+        _recv(s, 0.3)
 
-        if "201" in ctrl_resp:
-            # Controller concedido — emite del job
-            del_resp = _send_recv(s, f"del job {job_handle}")
-            log_and_print(f"🔧 Backburner del job {job_handle}: {del_resp[:100]}")
-            success = "200" in del_resp
-            if not success:
-                log_and_print(f"⚠ del job não retornou 200: {del_resp[:100]}", "warning")
-        else:
+        ctrl_resp = _send_recv(s, "new controller", 1.5)
+        log_and_print(f"🔧 Backburner new controller ({manager}): {ctrl_resp.strip()[:120]}")
+
+        # Resposta esperada: "201 OK" + prompt "backburner(Controller)>"
+        if "201" not in ctrl_resp:
             log_and_print(
-                f"⚠ Não foi possível adquirir controle do Backburner (resposta: {ctrl_resp[:100]}). "
-                "Verifique se outro processo está segurando o controle da fila.",
+                f"⚠ Não foi possível adquirir controle do Backburner "
+                f"(resposta: {ctrl_resp.strip()[:100]})",
                 "warning"
             )
+            s.close()
+            return False
+
+        del_resp = _send_recv(s, f"del job {job_handle}", 1.5)
+        log_and_print(f"🔧 Backburner del job {job_handle}: {del_resp.strip()[:120]}")
+
+        ok = "200" in del_resp
+        if not ok:
+            log_and_print(f"⚠ del job não retornou 200: {del_resp.strip()[:100]}", "warning")
+
         s.close()
+        return ok
+
     except Exception as e:
-        log_and_print(f"⚠ Erro ao conectar no Backburner ({manager}:{port}): {e}", "warning")
-
-    # Reinicia o Monitor se estava rodando
-    if monitor_was_running:
-        try:
-            subprocess.Popen(
-                [MONITOR_EXE],
-                creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
-            )
-            log_and_print("✅ Backburner Monitor reiniciado")
-        except Exception as e:
-            log_and_print(f"⚠ Não foi possível reiniciar o Backburner Monitor: {e}", "warning")
-
-    return success
+        log_and_print(f"⚠ Erro ao deletar job no Backburner ({manager}:{port}): {e}", "warning")
+        return False
 
 
 def parse_xml(xml_path):

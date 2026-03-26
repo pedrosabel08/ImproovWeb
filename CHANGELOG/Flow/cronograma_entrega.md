@@ -225,9 +225,3 @@ Após geração, um único modal exibe uma aba por entrega (quando múltiplas). 
 | Entrega não encontrada | Retorna `{ "error": "Entrega não encontrada" }` com HTTP 404 |
 | Entrega única selecionada | Pula o modal de prioridade e gera o cronograma diretamente |
 | Gestor altera data/responsável no cronograma | As demais linhas **não** são recalculadas — ajuste manual livre |
-
----
-
-## Status
-
-`[Proposta] — 24/03/2026`

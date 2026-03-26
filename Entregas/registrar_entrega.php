@@ -163,17 +163,23 @@ try {
     $stmt->execute();
 
     // Atualizar substatus_id nas imagens vinculadas aos itens desta entrega.
-    // Regra: se a entrega tiver status_id = 6 ou 1 => substatus_id = 9, senão => substatus_id = 6.
-    $substatus_to_set = 6;
-    if (!empty($novo_status_id) && ($novo_status_id === 6 || $novo_status_id === 1)) {
-        $substatus_to_set = 9;
-    }
-
-    // Atualiza apenas as imagens que foram marcadas como entregues (itens processados)
+    // Regra: se a imagem tiver status_id = 6 (EF) ou 1 => substatus_id = 9 (DRV), senão => substatus_id = 6 (RVW).
     if (!empty($processed_image_ids)) {
+        // Busca o status_id atual de cada imagem para determinar o substatus correto
+        $inIds = implode(',', $processed_image_ids); // safe: all cast to intval above
+        $resImgStatus = $conn->query("SELECT idimagens_cliente_obra, status_id FROM imagens_cliente_obra WHERE idimagens_cliente_obra IN ($inIds)");
+        $imgStatusMap = [];
+        if ($resImgStatus) {
+            while ($rImg = $resImgStatus->fetch_assoc()) {
+                $imgStatusMap[intval($rImg['idimagens_cliente_obra'])] = intval($rImg['status_id']);
+            }
+        }
+
         $stmtUpdateImg = $conn->prepare("UPDATE imagens_cliente_obra SET substatus_id = ? WHERE idimagens_cliente_obra = ?");
         if ($stmtUpdateImg) {
             foreach ($processed_image_ids as $img_id) {
+                $img_status_id = $imgStatusMap[$img_id] ?? 0;
+                $substatus_to_set = ($img_status_id === 6 || $img_status_id === 1) ? 9 : 6;
                 $stmtUpdateImg->bind_param('ii', $substatus_to_set, $img_id);
                 $stmtUpdateImg->execute();
             }

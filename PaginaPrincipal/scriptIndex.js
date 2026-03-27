@@ -4756,7 +4756,25 @@ async function carregarOverview() {
       tbody.innerHTML = dadosProd
         .map((row) => {
           const qtd = parseInt(row.quantidade) || 0;
-          const recorde = parseInt(row.recorde_producao) || qtd;
+          const recorde = parseInt(row.recorde_producao) || 0;
+          const bateRecorde = !!row.bate_recorde && recorde > 0;
+          if (bateRecorde) {
+            const linePct = Math.round((recorde / qtd) * 100);
+            return `
+                    <tr class="prod-row-recorde">
+                        <td class="prod-funcao">${row.nome_funcao}</td>
+                        <td class="prod-qtd">
+                            <div class="prod-bar-wrap">
+                                <div class="prod-bar-track prod-bar-track--record">
+                                    <div class="prod-bar prod-bar--record" style="width:100%"></div>
+                                    <div class="prod-bar-record-line" style="left:${linePct}%"></div>
+                                </div>
+                                <span class="prod-qty-record">${qtd}</span>
+                            </div>
+                        </td>
+                        <td class="prod-recorde prod-recorde--beaten">${recorde}</td>
+                    </tr>`;
+          }
           const pct =
             recorde > 0 ? Math.min(100, Math.round((qtd / recorde) * 100)) : 0;
           return `
@@ -4770,7 +4788,7 @@ async function carregarOverview() {
                                 <span>${qtd}</span>
                             </div>
                         </td>
-                        <td class="prod-recorde">${recorde}</td>
+                        <td class="prod-recorde">${recorde || qtd}</td>
                     </tr>`;
         })
         .join("");

@@ -452,6 +452,7 @@ if ($mes) {
           )
           AND fi.colaborador_id NOT IN (21, 15)
           AND NOT (fi.funcao_id = 4 AND fi.colaborador_id IN (7, 34))
+          AND NOT (YEAR(fi.prazo) = $anoSelecionado AND MONTH(fi.prazo) = $mesInt)
       ) AS t
       GROUP BY t.nome_funcao, YEAR(t.prazo), MONTH(t.prazo)
     ) AS s
@@ -473,7 +474,8 @@ if ($mes) {
     $recordeVal = $recordeIndexado[$nomeFuncao] ?? 0;
 
     $linha['mes_anterior'] = $mesAnteriorVal;
-    $linha['recorde_producao'] = max($recordeVal, $mesAnteriorVal, $quantidadeAtual);
+    $linha['recorde_producao'] = max($recordeVal, $mesAnteriorVal);
+    $linha['bate_recorde'] = $quantidadeAtual > $linha['recorde_producao'];
   }
   unset($linha);
 } else {

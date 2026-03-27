@@ -419,6 +419,72 @@ h3.section-title {
   background: #e5e7eb;
 }
 
+/* ---- Indicador visual de recorde batido ---- */
+tr.bate-recorde td {
+  background-color: #f0fdf4 !important;
+}
+
+.td-record-cell {
+  padding: 4px 6px !important;
+}
+
+.record-bar-wrap {
+  position: relative;
+  height: 28px;
+  background: #dcfce7;
+  border-radius: 5px;
+  overflow: visible;
+  min-width: 60px;
+  display: flex;
+  align-items: center;
+}
+
+.record-bar-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, #86efac, #22c55e);
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.record-bar-qty {
+  position: relative;
+  z-index: 2;
+  font-weight: 700;
+  font-size: 13px;
+  color: #166534;
+}
+
+.record-bar-line {
+  position: absolute;
+  top: -4px;
+  height: calc(100% + 8px);
+  width: 2px;
+  background: #ef4444;
+  z-index: 3;
+  border-radius: 1px;
+}
+
+.record-bar-label {
+  position: absolute;
+  top: -16px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: #ef4444;
+  font-weight: 700;
+  white-space: nowrap;
+  background: #fff;
+  padding: 0 3px;
+  border-radius: 2px;
+  border: 1px solid #fca5a5;
+}
+
 /* Responsive */
 @media (max-width: 1100px) {
   .dashboard-cards {

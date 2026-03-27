@@ -384,6 +384,7 @@ FROM (
     )
     AND fi.colaborador_id NOT IN (21, 15)
     AND NOT (fi.funcao_id = 4 AND fi.colaborador_id IN (7, 34))
+    AND NOT (YEAR(fi.prazo) = $anoSelecionado AND MONTH(fi.prazo) = $mes)
   GROUP BY c.nome_colaborador,
     CASE
       WHEN fi.funcao_id = 4 AND LOWER(i.tipo_imagem) = 'planta humanizada' THEN 'Finalização de Planta Humanizada'
@@ -447,9 +448,10 @@ foreach ($dadosMesAtual as $linha) {
 
   $linha['mes_anterior'] = $anteriorIndexado[$chave] ?? 0;
   $quantidadeAtual = isset($linha['quantidade']) ? (int)$linha['quantidade'] : 0;
-  // Pegue o maior entre: recorde histórico, mês anterior e mês atual
+  // Recorde: maior quantidade em meses anteriores (exclui mês atual)
   $recorde = $recordeIndexado[$chave] ?? 0;
-  $linha['recorde_producao'] = max((int)$recorde, (int)($linha['mes_anterior'] ?? 0), $quantidadeAtual);
+  $linha['recorde_producao'] = max((int)$recorde, (int)($linha['mes_anterior'] ?? 0));
+  $linha['bate_recorde'] = $quantidadeAtual > $linha['recorde_producao'];
 
   $resultado[] = $linha;
 }

@@ -1,3 +1,12 @@
+// ---- Barra visual de recorde ----
+function _buildRecordBar(qtd, recorde) {
+  const pct = recorde > 0 ? Math.round((recorde / qtd) * 100) : 0;
+  const lineHtml = recorde > 0
+    ? `<div class="record-bar-line" style="left:${pct}%"></div>`
+    : '';
+  return `<div class="record-bar-wrap"><div class="record-bar-fill" style="width:100%"><span class="record-bar-qty">${qtd}</span></div>${lineHtml}</div>`;
+}
+
 // ---- Produção por colaborador: filtro por colaborador ao clicar em "Função" ----
 let _prodFiltroColab = "";
 let _prodFiltroMenuEl = null;
@@ -225,7 +234,13 @@ function buscarDados() {
         tdFuncao.textContent = linha.nome_funcao;
 
         const tdQtd = document.createElement("td");
-        tdQtd.textContent = linha.quantidade;
+        if (linha.bate_recorde) {
+          tr.classList.add("bate-recorde");
+          tdQtd.className = "td-record-cell";
+          tdQtd.innerHTML = _buildRecordBar(linha.quantidade, linha.recorde_producao);
+        } else {
+          tdQtd.textContent = linha.quantidade;
+        }
 
         const tdPagas = document.createElement("td");
         tdPagas.textContent = linha.pagas;
@@ -485,9 +500,13 @@ function buscarDadosFuncao() {
         const estimativa = linha.quantidade * valorUnitario; // Estimativa de valor
 
         const tr = document.createElement("tr");
+        if (linha.bate_recorde) tr.classList.add("bate-recorde");
+        const qtdCellHtml = linha.bate_recorde
+          ? `<td class="td-record-cell">${_buildRecordBar(linha.quantidade, linha.recorde_producao)}</td>`
+          : `<td>${linha.quantidade}</td>`;
         tr.innerHTML = `
                     <td>${linha.nome_funcao}</td>
-                    <td>${linha.quantidade}</td>
+                    ${qtdCellHtml}
                     <td>${linha.pagas}</td>
                     <td>${linha.nao_pagas}</td>
                     <td>${linha.mes_anterior ?? 0}</td>

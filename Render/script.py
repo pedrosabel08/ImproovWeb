@@ -303,6 +303,16 @@ def delete_backburner_job(job_folder_path: str) -> bool:
         time.sleep(0.3)
         return _recv(sock, wait)
 
+    MONITOR_EXE = r"C:\Program Files (x86)\Autodesk\Backburner\monitor.exe"
+
+    def _is_monitor_running():
+        try:
+            r = subprocess.run(["tasklist", "/FI", "IMAGENAME eq monitor.exe", "/NH"],
+                               capture_output=True, text=True, timeout=5)
+            return "monitor.exe" in r.stdout
+        except Exception:
+            return False
+
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.settimeout(10)
@@ -315,6 +325,27 @@ def delete_backburner_job(job_folder_path: str) -> bool:
         ctrl_resp = _send_recv(s, "new controller", 1.5)
         log_and_print(f"🔧 Backburner new controller ({manager}): {ctrl_resp.strip()[:120]}")
 
+        # "200 Control Pending" = monitor mantém conexão persistente como controller;
+        # ele nunca libera voluntariamente. Fechar o socket e matar o monitor
+        # para adquirir o slot.
+        if "201" not in ctrl_resp and "200" in ctrl_resp:
+            s.close()
+            monitor_was_running = _is_monitor_running()
+            if monitor_was_running:
+                log_and_print("🔄 Encerrando Monitor temporariamente para adquirir controle da fila...")
+                subprocess.run(["taskkill", "/F", "/IM", "monitor.exe"], capture_output=True, timeout=5)
+                time.sleep(1.5)
+
+            # Nova conexão após liberar o slot
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.settimeout(10)
+            s.connect((manager, port))
+            _recv(s, 0.3)
+            ctrl_resp = _send_recv(s, "new controller", 1.5)
+            log_and_print(f"🔧 Backburner new controller (retry): {ctrl_resp.strip()[:120]}")
+        else:
+            monitor_was_running = False  # não precisou matar
+
         # Resposta esperada: "201 OK" + prompt "backburner(Controller)>"
         if "201" not in ctrl_resp:
             log_and_print(
@@ -323,6 +354,10 @@ def delete_backburner_job(job_folder_path: str) -> bool:
                 "warning"
             )
             s.close()
+            if monitor_was_running:
+                subprocess.Popen([MONITOR_EXE],
+                                 creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP)
+                log_and_print("✅ Backburner Monitor reiniciado")
             return False
 
         del_resp = _send_recv(s, f"del job {job_handle}", 1.5)
@@ -333,6 +368,13 @@ def delete_backburner_job(job_folder_path: str) -> bool:
             log_and_print(f"⚠ del job não retornou 200: {del_resp.strip()[:100]}", "warning")
 
         s.close()
+
+        # Reinicia o Monitor apenas se o tínhamos matado
+        if monitor_was_running:
+            subprocess.Popen([MONITOR_EXE],
+                             creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP)
+            log_and_print("✅ Backburner Monitor reiniciado")
+
         return ok
 
     except Exception as e:

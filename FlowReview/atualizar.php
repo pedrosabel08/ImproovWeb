@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/../config/session_bootstrap.php';
 
 include '../conexao.php'; // Conexão com o banco de dados
@@ -53,8 +53,8 @@ try {
         WHERE f.funcao_id IN (1, 2, 3, 4, 5, 6, 7, 8, 9)
           AND (
             f.status IN ('Em aprovação', 'Ajuste', 'Aprovado com ajustes')
-            OR (f.status = 'Em andamento' AND EXISTS (
-                SELECT 1 FROM historico_aprovacoes h WHERE h.funcao_imagem_id = f.idfuncao_imagem
+            OR (f.status IN ('Em andamento', 'Não iniciado') AND f.funcao_id = 4 AND EXISTS (
+                SELECT 1 FROM angulos_imagens ai WHERE ai.imagem_id = f.imagem_id AND ai.liberada = 1
             ))
           )
           AND o.status_obra = 0
@@ -96,8 +96,8 @@ try {
         WHERE f.funcao_id = 5
           AND (
             f.status IN ('Em aprovação', 'Ajuste', 'Aprovado com ajustes')
-            OR (f.status = 'Em andamento' AND EXISTS (
-                SELECT 1 FROM historico_aprovacoes h WHERE h.funcao_imagem_id = f.idfuncao_imagem
+            OR (f.status IN ('Em andamento', 'Não iniciado') AND f.funcao_id = 4 AND EXISTS (
+                SELECT 1 FROM angulos_imagens ai WHERE ai.imagem_id = f.imagem_id AND ai.liberada = 1
             ))
           )
         ORDER BY data_aprovacao DESC";
@@ -138,8 +138,8 @@ try {
         WHERE f.funcao_id IN (1, 2, 3, 4, 5, 6, 7, 8, 9)
           AND (
             f.status IN ('Em aprovação', 'Ajuste', 'Aprovado com ajustes')
-            OR (f.status = 'Em andamento' AND EXISTS (
-                SELECT 1 FROM historico_aprovacoes h WHERE h.funcao_imagem_id = f.idfuncao_imagem
+            OR (f.status IN ('Em andamento', 'Não iniciado') AND f.funcao_id = 4 AND EXISTS (
+                SELECT 1 FROM angulos_imagens ai WHERE ai.imagem_id = f.imagem_id AND ai.liberada = 1
             ))
           )
         ORDER BY data_aprovacao DESC";
@@ -183,8 +183,8 @@ try {
         WHERE f.funcao_id IN (1, 2, 3, 4, 5, 6, 7, 8, 9)
           AND (
             f.status IN ('Em aprovação', 'Ajuste', 'Aprovado com ajustes')
-            OR (f.status = 'Em andamento' AND EXISTS (
-                SELECT 1 FROM historico_aprovacoes h WHERE h.funcao_imagem_id = f.idfuncao_imagem
+            OR (f.status IN ('Em andamento', 'Não iniciado') AND f.funcao_id = 4 AND EXISTS (
+                SELECT 1 FROM angulos_imagens ai WHERE ai.imagem_id = f.imagem_id AND ai.liberada = 1
             ))
           )
           AND o.idobra IN (
@@ -231,8 +231,8 @@ try {
         WHERE f.funcao_id IN (1, 2, 3, 4, 5, 6, 7, 8, 9)
           AND (
             f.status IN ('Em aprovação', 'Ajuste', 'Aprovado com ajustes')
-            OR (f.status = 'Em andamento' AND EXISTS (
-                SELECT 1 FROM historico_aprovacoes h WHERE h.funcao_imagem_id = f.idfuncao_imagem
+            OR (f.status IN ('Em andamento', 'Não iniciado') AND f.funcao_id = 4 AND EXISTS (
+                SELECT 1 FROM angulos_imagens ai WHERE ai.imagem_id = f.imagem_id AND ai.liberada = 1
             ))
           )
           AND o.idobra IN (
@@ -270,6 +270,17 @@ try {
       $tarefas[] = $row;
     }
   }
+
+  // ==== ÂNGULO APROVADO FLAG ====
+  // Tarefas com status 'Não iniciado' ou 'Em andamento' que passaram pelo filtro
+  // do EXISTS (angulos_imagens.liberada=1) recebem flag para exibição no front-end.
+  foreach ($tarefas as &$t) {
+    if (intval($t['funcao_id']) === 4 && in_array($t['status'], ['Não iniciado', 'Em andamento'])) {
+      $t['angulo_aprovado'] = true;
+    }
+  }
+  unset($t);
+  // ==== END ÂNGULO APROVADO FLAG ====
 
   // ==== UNIFIED PAIR BADGE ====
   // For secondary functions (Filtro=8, Composição=3), detect if they belong to a unified pair

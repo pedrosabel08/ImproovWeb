@@ -1100,6 +1100,11 @@ h2#dataEnvio {
   background-color: #ae90ff;
 }
 
+.status-angulo-aprovado {
+  color: #003322;
+  background-color: #66ffcc;
+}
+
 /* Modal defaults */
 .modal {
   display: none;
@@ -1375,6 +1380,10 @@ p.imagem_nome {
 /* ---- Quill editor inside comment modal ---- */
 #comentario-quill-editor {
   min-height: 120px;
+  flex: 1 1 auto;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
   background: #fff;
   border-radius: 0 0 4px 4px;
 }
@@ -1389,10 +1398,14 @@ p.imagem_nome {
   border-color: #ccc;
   font-size: 14px;
   border-radius: 0 0 4px 4px;
+  flex: 1 1 auto;
+  overflow-y: auto;
 }
 
 #comentarioModal .ql-editor {
   min-height: 100px;
+  max-height: 100px;
+  overflow-y: auto;
   color: #222;
 }
 
@@ -1414,6 +1427,10 @@ p.imagem_nome {
   position: fixed !important; /* JS sets left/top dynamically */
   width: 360px;
   max-width: calc(100vw - 24px);
+  max-height: calc(100vh - 40px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
   box-shadow:
     0 8px 32px rgba(0, 0, 0, 0.36),
     0 2px 8px rgba(0, 0, 0, 0.2);
@@ -1589,6 +1606,7 @@ p.imagem_nome {
   display: flex;
   justify-content: space-between;
   margin-top: 10px;
+  flex-shrink: 0;
 }
 
 .modal-actions button {

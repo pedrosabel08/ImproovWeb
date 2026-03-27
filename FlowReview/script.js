@@ -932,22 +932,26 @@ function exibirTarefas(tarefas, tarefasCompletas) {
       // Define a cor de fundo com base no status
       const color = tarefa.pendente_direcao
         ? "#4a3200"
-        : tarefa.status_novo === "Em aprovação"
-          ? "#000a59"
-          : tarefa.status_novo === "Ajuste"
-            ? "#590000"
-            : tarefa.status_novo === "Aprovado com ajustes"
-              ? "#2e0059ff"
-              : "transparent";
+        : tarefa.angulo_aprovado
+          ? "#003322"
+          : tarefa.status_novo === "Em aprovação"
+            ? "#000a59"
+            : tarefa.status_novo === "Ajuste"
+              ? "#590000"
+              : tarefa.status_novo === "Aprovado com ajustes"
+                ? "#2e0059ff"
+                : "transparent";
       const bgColor = tarefa.pendente_direcao
         ? "#ffd966"
-        : tarefa.status_novo === "Em aprovação"
-          ? "#90c2ff"
-          : tarefa.status_novo === "Ajuste"
-            ? "#ff5050"
-            : tarefa.status_novo === "Aprovado com ajustes"
-              ? "#ae90ffff"
-              : "transparent";
+        : tarefa.angulo_aprovado
+          ? "#66ffcc"
+          : tarefa.status_novo === "Em aprovação"
+            ? "#90c2ff"
+            : tarefa.status_novo === "Ajuste"
+              ? "#ff5050"
+              : tarefa.status_novo === "Aprovado com ajustes"
+                ? "#ae90ffff"
+                : "transparent";
       taskItem.innerHTML = `
                 <div class="task-info">
                   <div class="image-wrapper">
@@ -956,7 +960,7 @@ function exibirTarefas(tarefas, tarefasCompletas) {
                     <h3 class="nome_funcao">${tarefa.nome_funcao}${tarefa.par_primario_nome ? `<span class="par-primario-badge" title="${tarefa.par_primario_nome}: ${tarefa.par_primario_status}"> + ${tarefa.par_primario_nome}</span>` : ""}</h3><span class="colaborador">${tarefa.nome_colaborador}</span>
                     <p class="imagem_nome" data-obra="${tarefa.nome_obra}">${tarefa.imagem_nome}</p>
                     <p class="data_aprovacao">${formatarDataHora(tarefa.data_aprovacao)}</p>       
-                    <p id="status_funcao" style="color: ${color}; background-color: ${bgColor}">${tarefa.pendente_direcao ? "Aguardando Direção" : tarefa.status_novo}</p>
+                    <p id="status_funcao" style="color: ${color}; background-color: ${bgColor}">${tarefa.pendente_direcao ? "Aguardando Direção" : tarefa.angulo_aprovado ? "Ângulo aprovado" : tarefa.status_novo}</p>
                 </div>
             `;
 

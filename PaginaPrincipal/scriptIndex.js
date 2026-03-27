@@ -234,7 +234,7 @@ function processarDados(data) {
     else if (s === "aprovado com ajustes" || s === "aprovado_com_ajustes") {
       // Para Finalização (funcao_id=4), manter como "Aprovado com ajustes" sempre.
       const fid = Number(item.funcao_id || item.funcaoId || 0);
-      if (fid === 4) {
+      if (fid === 4 || fid === 5) {
         status = "Aprovado com ajustes";
       } else {
         // Se já existe arquivo associado à função, mostramos visualmente como Finalizado
@@ -262,7 +262,7 @@ function processarDados(data) {
     if (status === "Aprovado com ajustes") {
       try {
         const fid = Number(item.funcao_id || item.funcaoId || 0);
-        if (fid === 4) {
+        if (fid === 4 || fid === 5) {
           colunaId = "aprovado-ajustes";
         } else {
           colunaId = "aprovado";

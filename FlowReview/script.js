@@ -2920,14 +2920,22 @@ function ajustarNavSelectAoTamanhoDaImagem() {
   const img = document.getElementById("imagem_atual");
   const navSelect = document.querySelector(".nav-select");
   if (img && navSelect) {
-    // Aguarda a imagem carregar para pegar o tamanho real
-    img.onload = function () {
-      navSelect.style.width = img.width + "px";
+    const doAjuste = () => {
+      const header = document.querySelector(".container-aprovacao header");
+      const headerH = header ? header.offsetHeight : 74;
+      const navH = navSelect.offsetHeight || 40;
+      const maxH = window.innerHeight - headerH - navH - 20;
+      img.style.maxHeight = maxH + "px";
+      img.style.maxWidth = "100%";
+      img.style.width = "auto";
+      img.style.height = "auto";
+      requestAnimationFrame(() => {
+        const cont = document.getElementById("imagem_completa");
+        if (cont) navSelect.style.width = cont.getBoundingClientRect().width + "px";
+      });
     };
-    // Se a imagem já estiver carregada (cache)
-    if (img.complete) {
-      navSelect.style.width = img.width + "px";
-    }
+    img.onload = doAjuste;
+    if (img.complete) doAjuste();
   }
 }
 
@@ -4200,7 +4208,6 @@ document.addEventListener("keydown", function (event) {
 const imageWrapper = document.getElementById("image_wrapper");
 let currentZoom = 1;
 const zoomStep = 0.1;
-const maxZoom = 3;
 const minZoom = 0.5;
 
 // Pan variables
@@ -4244,7 +4251,7 @@ document.addEventListener(
         currentZoom -= zoomStep;
       }
 
-      currentZoom = Math.max(minZoom, Math.min(maxZoom, currentZoom));
+      currentZoom = Math.max(minZoom, currentZoom);
 
       if (currentZoom === minZoom) {
         // When zoomed out completely, reset pan to origin
@@ -4259,7 +4266,7 @@ document.addEventListener(
 );
 
 document.getElementById("btn-mais-zoom").addEventListener("click", function () {
-  currentZoom = Math.min(currentZoom + zoomStep, maxZoom);
+  currentZoom += zoomStep;
   applyTransforms();
 });
 

@@ -368,6 +368,18 @@ if ($resultTipo === false) {
 }
 $tipoImagem = $resultTipo->fetch_assoc()['tipo_imagem'] ?? '';
 
+// ---------- Detecção de bypass (envia direto ao NAS sem nova aprovação) ----------
+// Condição A: Pós-Produção com status anterior "Aprovado com ajustes"
+// Condição B: Finalização de planta humanizada
+$nomeFuncaoKeyGlobal = strtolower(removerTodosAcentos($nomeFuncao));
+$tipoImagemKeyGlobal = strtolower(removerTodosAcentos($tipoImagem));
+$funcao_status_norm  = strtolower(removerTodosAcentos((string)($funcao_status ?? '')));
+
+$isNasDirectBypass = (
+    ($nomeFuncaoKeyGlobal === 'pos-producao' && $funcao_status_norm === 'aprovado com ajustes')
+    || ($nomeFuncaoKeyGlobal === 'finalizacao' && $tipoImagemKeyGlobal === 'planta humanizada')
+);
+$arquivosParaNAS = [];
 
 for ($i = 0; $i < $totalImagens; $i++) {
     $numeroPrevia = $previaOffset + $i + 1;
@@ -409,6 +421,13 @@ for ($i = 0; $i < $totalImagens; $i++) {
     $stmt->bind_param("isis", $idFuncaoImagem, $caminhoBanco, $indice_envio, $nomeFinalSemExt);
     if ($stmt->execute()) {
         $imagensEnviadas[] = $caminhoBanco;
+        if ($isNasDirectBypass) {
+            $arquivosParaNAS[] = [
+                'tmp_name'   => $imagemAtual['tmp_name'],
+                'extensao'   => $extensao,
+                'nome_final' => $nomeFinalSemExt,
+            ];
+        }
     } else {
         json_error('Erro ao salvar no banco: ' . $stmt->error, 500);
     }
@@ -417,6 +436,131 @@ for ($i = 0; $i < $totalImagens; $i++) {
 
 // Fecha conexão SFTP
 unset($conn_ftp);
+
+if ($isNasDirectBypass) {
+    // ---------- Bypass: status → Aprovado + envia direto ao NAS ----------
+    $stmt = $conn->prepare(
+        "UPDATE funcao_imagem
+         SET status = 'Aprovado', requires_file_upload = 0, file_uploaded_at = NOW()
+         WHERE idfuncao_imagem = ?"
+    );
+    $stmt->bind_param("i", $idFuncaoImagem);
+    if (!$stmt->execute()) {
+        json_error('Erro ao atualizar status para Aprovado: ' . $stmt->error, 500);
+    }
+    $stmt->close();
+
+    // Busca nomenclatura original para montar o caminho no NAS
+    $nomenclaturaRaw = $nomenclatura;
+    $stmtNasNomen = $conn->prepare(
+        "SELECT o.nomenclatura
+         FROM funcao_imagem fi
+         JOIN imagens_cliente_obra ic ON fi.imagem_id = ic.idimagens_cliente_obra
+         JOIN obra o ON ic.obra_id = o.idobra
+         WHERE fi.idfuncao_imagem = ?
+         LIMIT 1"
+    );
+    if ($stmtNasNomen) {
+        $stmtNasNomen->bind_param("i", $idFuncaoImagem);
+        $stmtNasNomen->execute();
+        $rowNasNomen = $stmtNasNomen->get_result()->fetch_assoc();
+        $stmtNasNomen->close();
+        if ($rowNasNomen && !empty($rowNasNomen['nomenclatura'])) {
+            $nomenclaturaRaw = $rowNasNomen['nomenclatura'];
+        }
+    }
+
+    // Envia cada arquivo ao NAS
+    $nasLogs = [];
+    $nasSent = false;
+    try {
+        $nasCfg   = improov_sftp_config(); // NAS — prefixo padrão IMPROOV_SFTP
+        $nasBases = ['/mnt/clientes/2024', '/mnt/clientes/2025', '/mnt/clientes/2026'];
+
+        foreach ($arquivosParaNAS as $nasArq) {
+            $nomeOriginal = $nasArq['nome_final'] . '.' . $nasArq['extensao'];
+            // Remove sufixos numéricos de índice/preview: ex. Nome_EF_1_1.jpg → Nome_EF.jpg
+            $nomeEnvio = preg_replace('/(_\d+)+(\.([^.]+))$/', '.$3', $nomeOriginal);
+            if ($nomeEnvio === $nomeOriginal) {
+                $nomeEnvio = $nomeOriginal;
+            }
+            // Extrai código de revisão: _EF, _P00, _POS etc.
+            preg_match_all('/_[A-Z0-9]{2,3}/i', $nomeEnvio, $matchesRev);
+            $revisao = !empty($matchesRev[0])
+                ? strtoupper(str_replace('_', '', end($matchesRev[0])))
+                : 'P00';
+
+            $arquivoEnviado = false;
+            foreach ($nasBases as $base) {
+                try {
+                    $nas = new SFTP($nasCfg['host'], (int)$nasCfg['port']);
+                    if (!$nas->login($nasCfg['user'], $nasCfg['pass'])) {
+                        $nasLogs[] = "Falha auth NAS ($base).";
+                        continue;
+                    }
+                    $finalizacaoDir = "$base/$nomenclaturaRaw/04.Finalizacao";
+                    if (!$nas->is_dir($finalizacaoDir)) {
+                        $nasLogs[] = "Diretório não encontrado: $finalizacaoDir";
+                        continue;
+                    }
+                    $revisaoDir = "$finalizacaoDir/$revisao";
+                    if (!$nas->is_dir($revisaoDir)) {
+                        if (!$nas->mkdir($revisaoDir, -1, true)) {
+                            $nasLogs[] = "Falha ao criar $revisaoDir.";
+                            continue;
+                        }
+                    }
+                    $remotePath = "$revisaoDir/$nomeEnvio";
+                    if ($nas->put($remotePath, $nasArq['tmp_name'], SFTP::SOURCE_LOCAL_FILE)) {
+                        $nasLogs[]      = "Enviado ao NAS: $remotePath";
+                        $arquivoEnviado = true;
+                        $nasSent        = true;
+                        break;
+                    } else {
+                        $nasLogs[] = "Falha ao enviar $nomeEnvio para $base.";
+                    }
+                } catch (Throwable $e) {
+                    $nasLogs[] = "Erro SFTP NAS ($base): " . $e->getMessage();
+                }
+            }
+            if (!$arquivoEnviado) {
+                $nasLogs[] = "Arquivo não enviado ao NAS: $nomeOriginal";
+            }
+        }
+    } catch (RuntimeException $e) {
+        $nasLogs[] = "Config NAS ausente: " . $e->getMessage();
+    }
+
+    // ---------- Slack: função já no servidor ----------
+    $slackWebhookPos = improov_env('SLACK_WEBHOOK_POS_URL', null);
+    if ($slackWebhookPos) {
+        $nomeImagemNotif = $nome_imagem ?: $nomeImagemSanitizado ?: 'Imagem';
+        $funcaoDisplay   = trim($nomeFuncao);
+        $slackMsg = ['text' => "A {$funcaoDisplay} da imagem {$nomeImagemNotif} foi refeita e já está no servidor!"];
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $slackWebhookPos);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($slackMsg));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+        curl_exec($ch);
+        if (curl_errno($ch)) {
+            error_log('[uploadArquivos.php] Slack bypass error: ' . curl_error($ch));
+        }
+        curl_close($ch);
+    }
+
+    echo json_encode([
+        "success"      => "Imagens enviadas e aprovadas automaticamente!",
+        "bypass_nas"   => true,
+        "nas_enviado"  => $nasSent,
+        "nas_logs"     => $nasLogs,
+        "indice_envio" => $indice_envio,
+        "imagens"      => $imagensEnviadas,
+    ]);
+    exit;
+}
 
 // ---------- Atualiza status para Em aprovação (sempre, inclusive ao adicionar ângulos) ----------
 $hoje = date('Y-m-d');
@@ -429,16 +573,26 @@ if (!$stmt->execute()) {
 }
 $stmt->close();
 
-// ---------- Notificação Slack: pós refeita ----------
-// Disparada quando o colaborador re-envia arquivos de Pós-Produção após um Ajuste
+// ---------- Notificação Slack: função refeita ----------
+// Disparada quando o colaborador re-envia arquivos após um Ajuste
 // ou quando a função estava em "Em aprovação" (opção B solicitada).
-$nomeFuncaoKeyFinal = strtolower(removerTodosAcentos($nomeFuncao));
-$funcao_status_norm = strtolower(removerTodosAcentos((string)($funcao_status ?? '')));
-if ($nomeFuncaoKeyFinal === 'pos-producao' && in_array($funcao_status_norm, ['ajuste', 'em aprovacao'], true)) {
+if (in_array($funcao_status_norm, ['ajuste', 'em aprovacao'], true)) {
     $slackWebhookPos = improov_env('SLACK_WEBHOOK_POS_URL', null);
     if ($slackWebhookPos) {
         $nomeImagemNotif = $nome_imagem ?: $nomeImagemSanitizado ?: 'Imagem';
-        $slackMsg = ['text' => "Pós refeita para a imagem {$nomeImagemNotif}."];
+        $funcaoDisplay   = trim($nomeFuncao);
+        // Determina "refeito/refeita" pela terminação da última palavra
+        $palavras      = preg_split('/[^a-zA-ZÀ-ÿ0-9]+/u', $funcaoDisplay, -1, PREG_SPLIT_NO_EMPTY);
+        $ultimaPalavra = strtolower(end($palavras) ?: '');
+        $terminacoesFemininas = ['a', 'ao', 'cao', 'sao', 'dade', 'agem', 'ncia'];
+        $sufixo = 'refeito';
+        foreach ($terminacoesFemininas as $term) {
+            if (substr(removerTodosAcentos($ultimaPalavra), -strlen($term)) === $term) {
+                $sufixo = 'refeita';
+                break;
+            }
+        }
+        $slackMsg = ['text' => "{$funcaoDisplay} {$sufixo} para a imagem {$nomeImagemNotif}."];
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $slackWebhookPos);
         curl_setopt($ch, CURLOPT_POST, true);
@@ -446,9 +600,9 @@ if ($nomeFuncaoKeyFinal === 'pos-producao' && in_array($funcao_status_norm, ['aj
         curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_TIMEOUT, 5);
-        $slackResp = curl_exec($ch);
+        curl_exec($ch);
         if (curl_errno($ch)) {
-            error_log('[uploadArquivos.php] Slack pós-refeita error: ' . curl_error($ch));
+            error_log('[uploadArquivos.php] Slack reenvio error: ' . curl_error($ch));
         }
         curl_close($ch);
     }

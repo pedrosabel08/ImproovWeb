@@ -25,9 +25,9 @@ INNER JOIN status_imagem s ON p.status_id = s.idstatus
 LEFT JOIN colaborador resp ON p.responsavel_id = resp.idcolaborador
 LEFT JOIN render_alta r ON p.render_id = r.idrender_alta
 ORDER BY 
-    CASE WHEN p.status_pos = 1 THEN 0 ELSE 1 END,   -- primeiro os status_pos = 1
-    (i.prazo IS NULL),                              -- prazos não nulos primeiro
-    p.data_pos DESC;                                 -- desempate por data_pos
+    CASE WHEN p.status_pos = 1 THEN 0 ELSE 1 END,   
+    (i.prazo IS NULL),                              
+    p.data_pos DESC;                                 
 ";
 
 $result = $conn->query($sql);

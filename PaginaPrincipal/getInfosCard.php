@@ -309,6 +309,13 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
             FROM arquivo_log al
             LEFT JOIN funcao_imagem fi ON al.funcao_imagem_id = fi.idfuncao_imagem
             LEFT JOIN funcao f ON fi.funcao_id = f.idfuncao
+            INNER JOIN (
+                SELECT al2.funcao_imagem_id, MAX(al2.criado_em) AS max_criado_em
+                FROM arquivo_log al2
+                LEFT JOIN funcao_imagem fi2 ON al2.funcao_imagem_id = fi2.idfuncao_imagem
+                WHERE fi2.imagem_id = " . $idImagemSelecionada . " AND al2.status IN ('atualizado', 'concluido')
+                GROUP BY al2.funcao_imagem_id
+            ) ultimo ON al.funcao_imagem_id = ultimo.funcao_imagem_id AND al.criado_em = ultimo.max_criado_em
             WHERE fi.imagem_id = " . $idImagemSelecionada . " AND al.status IN ('atualizado', 'concluido')
             ORDER BY al.criado_em DESC";
 

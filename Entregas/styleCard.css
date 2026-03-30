@@ -1,278 +1,180 @@
-/* ===== CARDS ===== */
+/* ===== CARD DE ENTREGA ===== */
 .card-entrega {
-    background: var(--card-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 10px;
-    padding: 0.8rem;
-    cursor: grab;
-    transition: all 0.2s ease;
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  cursor: grab;
+  position: relative;
+  transition:
+    transform var(--transition-normal),
+    box-shadow var(--transition-normal),
+    border-color var(--transition-normal),
+    background var(--transition-normal);
+  box-shadow: var(--shadow-card);
+  animation: cardSlideIn 0.2s both;
 }
 
 .card-entrega:hover {
-    /* background: var(--hover-bg); */
-    transform: scale(1.02);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-card-hover);
+  border-color: var(--border-card-hover);
+  background: var(--bg-card-hover);
+}
+
+.card-entrega:hover::before {
+  opacity: 1;
+}
+.card-entrega:active {
+  cursor: grabbing;
+}
+
+/* Top color bar per status */
+.card-entrega.status-P00 {
+  border-left: 4px solid var(--status-P00);
+}
+.card-entrega.status-R00 {
+  border-left: 4px solid var(--status-R00);
+}
+.card-entrega.status-R01 {
+  border-left: 4px solid var(--status-R01);
+}
+.card-entrega.status-R02 {
+  border-left: 4px solid var(--status-R02);
+}
+.card-entrega.status-R03 {
+  border-left: 4px solid var(--status-R03);
+}
+.card-entrega.status-EF {
+  border-left: 4px solid var(--status-EF);
+}
+
+/* ===== CARD HEADER ===== */
+.card-header {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
 }
 
 .card-entrega h4 {
-    margin: 0 0 0.2rem 0;
-    font-weight: 600;
-    color: var(--accent-color);
-}
-
-/* header wrapper to position badge */
-.card-header {
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.4;
+  flex: 1;
 }
 
 .entrega-badge {
-    position: absolute;
-    top: -8px;
-    right: -8px;
-    background: #ff4b2b;
-    color: #fff;
-    min-width: 26px;
-    height: 26px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    font-weight: 700;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
-    font-size: 0.85rem;
+  position: absolute;
+  top: -14px;
+  right: -14px;
+  background: var(--accent);
+  color: var(--text-on-accent);
+  min-width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  font-weight: 700;
+  font-size: 11px;
+  box-shadow: 0 2px 6px var(--accent-glow);
 }
 
+/* ===== CARD BODY ===== */
 .card-entrega p {
-    margin: 0.2rem 0;
-    font-size: 0.9rem;
+  margin: 3px 0;
+  font-size: 11.5px;
+  color: var(--text-tertiary);
 }
 
 .card-entrega small {
-    font-size: 0.8rem;
-    opacity: 0.7;
+  font-size: 11px;
+  color: var(--text-muted);
 }
 
-/* ===== PROGRESS ===== */
+/* ===== CARD FOOTER ===== */
+.card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-card);
+}
+
+/* ===== PROGRESS BAR ===== */
 .progress-entrega {
-    background: var(--progress-bg);
-    border-radius: 6px;
-    overflow: hidden;
-    height: 8px;
-    margin-top: 6px;
+  background: var(--bg-skeleton);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  height: 5px;
+  margin-top: 8px;
 }
 
 .progress-bar {
-    background: var(--progress-fill);
-    height: 100%;
-    transition: width 0.3s ease;
+  background: var(--accent);
+  height: 100%;
+  border-radius: var(--radius-full);
+  transition: width var(--transition-slow);
 }
 
-/* ===== DRAG OVER ===== */
-.column.drag-over {
-    background: #202020;
-    border: 1px dashed var(--accent-color);
+/* ===== DRAG STATE ===== */
+.card-entrega.dragging {
+  opacity: 0.4;
+  transform: scale(0.96);
 }
 
-#modalImagens {
-    height: 50vh;
-    overflow-y: auto;
+/* ===== ANIMATION ===== */
+@keyframes cardSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
-#modalAdicionarEntrega .modal-content label {
-    font-size: 0.85rem;
-    margin-bottom: 6px;
-    color: #ddd;
-}
-
-#modalAdicionarEntrega .modal-content select,
-#modalAdicionarEntrega .modal-content input[type="date"],
-#modalAdicionarEntrega .modal-content textarea {
-    border: 1px solid var(--border-color);
-    padding: 4px 8px;
-    border-radius: 8px;
-    font-size: 0.8rem;
-}
-
-#modalAdicionarEntrega .modal-content textarea {
-    min-height: 100px;
-    resize: vertical;
-}
-
-.imagens-container {
-    background: rgba(255, 255, 255, 0.02);
-    border: 1px dashed var(--border-color);
-    padding: 10px;
-    border-radius: 8px;
-    color: #ccc;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    max-height: 200px;
-    overflow-y: auto;
-}
-
-
-.checkbox-item {
-    display: flex;
-    gap: 10px;
-}
-
-
-.checkbox-item.antecipada {
-    color: #ff8b8b;
-}
-
-
-.modal-imagem-item {
-    background: var(--card-entrega-bg);
-    padding: 0.5rem 0.8rem;
-    border-radius: 8px;
-    margin-top: 6px;
-    display: grid;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 0.9rem;
-    border: 1px solid var(--border-entrega-color);
-    grid-template-columns: 10% 1fr auto;
-    gap: 10px;
-}
-
-.imagem_nome {
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    overflow: hidden;
-}
-
-.status-ok {
-    color: #00ffb0;
-    font-weight: 600;
-}
-
-.status-pendente {
-    color: #ffbf00;
-    font-weight: 600;
-}
-
-/* ===== STATUS-SPECIFIC CARD STYLES ===== */
-.card-entrega.status-P00 {
-    border-left: 5px solid var(--status-P00);
-}
-
-.card-entrega.status-R00 {
-    border-left: 5px solid var(--status-R00);
-}
-
-.card-entrega.status-R01 {
-    border-left: 5px solid var(--status-R01);
-}
-
-.card-entrega.status-R02 {
-    border-left: 5px solid var(--status-R02);
-}
-.card-entrega.status-R03 {
-    border-left: 5px solid var(--status-R03);
-}
-
-.card-entrega.status-EF {
-    border-left: 5px solid var(--status-EF);
-}
-
-.card-entrega.status-UNKNOWN {
-    border-left: 5px solid var(--status-default);
-}
-
-/* Slightly lift colored cards to help visual separation */
-.card-entrega.status-P00:hover,
-.card-entrega.status-R00:hover,
-.card-entrega.status-R01:hover,
-.card-entrega.status-R02:hover,
-.card-entrega.status-R03:hover,
-.card-entrega.status-EF:hover {
-    transform: translateY(-3px) scale(1.02);
-}
-
-
-
-/* ===== ANIMAÇÃO ===== */
-@keyframes fadeIn {
-    from {
-        transform: scale(0.95);
-        opacity: 0;
-    }
-
-    to {
-        transform: scale(1);
-        opacity: 1;
-    }
-}
-
-/* ===== MINI INFO PANEL (imagem) ===== */
+/* ===== IMAGEM ITEM dentro do modal ===== */
 .mini-image-panel {
-    position: fixed;
-    right: 20px;
-    top: 20%;
-    width: 300px;
-    background: var(--modal-bg);
-    border: 1px solid var(--border-color);
-    padding: 12px;
-    border-radius: 10px;
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
-    z-index: 1200;
-    color: var(--text-color);
+  position: fixed;
+  right: 20px;
+  top: 20%;
+  width: 300px;
+  background: var(--bg-modal);
+  border: 1px solid var(--border-modal);
+  padding: 14px;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  z-index: 1200;
 }
 
 .mini-image-panel .mini-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
 }
 
 .mini-image-panel .fecharMini {
-    background: transparent;
-    border: none;
-    color: var(--text-color);
-    font-size: 18px;
-    cursor: pointer;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 16px;
+  cursor: pointer;
 }
 
 .mini-image-panel p {
-    margin: 6px 0;
-    font-size: 0.9rem;
-}
-
-#entregaModal .buttons button {
-    padding: 6px;
-    border-radius: 10px;
-    cursor: pointer;
-    box-shadow: 4px 0 6px rgba(0, 0, 0, 0.2);
-}
-
-#entregaModal .buttons {
-    text-align: center;
-    font-size: 0.9rem;
-}
-
-#entregaModal .buttons .fecharModal {
-    margin-right: 10px;
-    background: linear-gradient(90deg, #b00000, #eb3131);
-
-}
-
-#entregaModal .buttons .btn-salvar {
-    background: linear-gradient(90deg, #00b09b, #96c93d);
-    color: #fff;
-    border: none;
-    padding: 10px 14px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-weight: 700;
-    justify-self: end;
-}
-
-#entregaModal .buttons .btn-salvar:hover {
-    filter: brightness(0.95);
+  margin: 5px 0;
+  font-size: 12.5px;
+  color: var(--text-secondary);
 }

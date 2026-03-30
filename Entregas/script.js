@@ -98,6 +98,17 @@ document.addEventListener("DOMContentLoaded", () => {
       const card = createCard(entrega);
       col.appendChild(card);
     });
+
+    // Update column count badges
+    columns.forEach((col) => {
+      const count = col.querySelectorAll(".card-entrega").length;
+      const statusKey = (col.dataset.status || "")
+        .split(",")[0]
+        .trim()
+        .toLowerCase();
+      const countEl = document.getElementById("count-" + statusKey);
+      if (countEl) countEl.textContent = count;
+    });
   }
 
   // Populate filter selects (obra/status) from the fetched entregas
@@ -201,8 +212,8 @@ document.addEventListener("DOMContentLoaded", () => {
   // botão de registrar entrega
   const btnRegistrarEntrega = document.createElement("button");
   btnRegistrarEntrega.textContent = "Registrar Entrega";
-  btnRegistrarEntrega.classList.add("btn-salvar");
-  modalEntrega.querySelector(".buttons").appendChild(btnRegistrarEntrega);
+  btnRegistrarEntrega.classList.add("btn-action", "btn-primary");
+  modalEntrega.querySelector(".modal-footer").appendChild(btnRegistrarEntrega);
 
   let entregaAtualId = null;
   let entregaDados = null; // guarda dados retornados por get_entrega_item.php para uso posterior
@@ -229,7 +240,7 @@ document.addEventListener("DOMContentLoaded", () => {
       );
 
       if (modalToClose) {
-        modalToClose.style.display = "none";
+        modalToClose.classList.remove("is-open");
       } else {
         // fallback: hide any open known modal
         const selecionarModal = document.getElementById(
@@ -238,12 +249,12 @@ document.addEventListener("DOMContentLoaded", () => {
         const addModal = document.getElementById("modalAdicionarEntrega");
         const entregaModal = document.getElementById("entregaModal");
 
-        if (selecionarModal && selecionarModal.style.display !== "none")
-          selecionarModal.style.display = "none";
-        else if (addModal && addModal.style.display !== "none")
-          addModal.style.display = "none";
-        else if (entregaModal && entregaModal.style.display !== "none")
-          entregaModal.style.display = "none";
+        if (selecionarModal && selecionarModal.classList.contains("is-open"))
+          selecionarModal.classList.remove("is-open");
+        else if (addModal && addModal.classList.contains("is-open"))
+          addModal.classList.remove("is-open");
+        else if (entregaModal && entregaModal.classList.contains("is-open"))
+          entregaModal.classList.remove("is-open");
       }
 
       entregaAtualId = null;
@@ -376,7 +387,9 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // expose for external callers (e.g. other scripts or handlers)
-  try { window.carregarKanban = carregarKanban; } catch (e) {}
+  try {
+    window.carregarKanban = carregarKanban;
+  } catch (e) {}
 
   carregarKanban();
 
@@ -523,7 +536,7 @@ document.addEventListener("DOMContentLoaded", () => {
         updateMasterState();
       }
 
-      modalEntrega.style.display = "flex";
+      modalEntrega.classList.add("is-open");
     } catch (err) {
       console.error("Erro ao carregar detalhes da entrega:", err);
     }
@@ -629,7 +642,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (json.success) {
         alert(`Entrega registrada! Status: ${json.novo_status}`);
-        modal.style.display = "none";
+        modalEntrega.classList.remove("is-open");
         entregaAtualId = null;
         carregarKanban();
       } else {
@@ -748,7 +761,7 @@ document.addEventListener("DOMContentLoaded", () => {
       );
 
       // abrir modal e carregar imagens
-      if (modalSelecionar) modalSelecionar.style.display = "flex";
+      if (modalSelecionar) modalSelecionar.classList.add("is-open");
       await carregarImagensParaSelecao(obraId, statusId, existingIds);
     });
   }
@@ -784,9 +797,9 @@ document.addEventListener("DOMContentLoaded", () => {
               "\nPuladas: " +
               (json.skipped_count || 0),
           );
-          if (modalSelecionar) modalSelecionar.style.display = "none";
+          if (modalSelecionar) modalSelecionar.classList.remove("is-open");
           // atualizar modal entrega e kanban
-          modal.style.display = "none";
+          modalEntrega.classList.remove("is-open");
           entregaAtualId = null;
           entregaDados = null;
           carregarKanban();
@@ -804,7 +817,7 @@ document.addEventListener("DOMContentLoaded", () => {
 document
   .getElementById("adicionar_entrega")
   .addEventListener("click", function () {
-    document.getElementById("modalAdicionarEntrega").style.display = "flex";
+    document.getElementById("modalAdicionarEntrega").classList.add("is-open");
   });
 
 document.getElementById("obra_id").addEventListener("change", carregarImagens);
@@ -1165,7 +1178,7 @@ if (btnAdicionarImagem) {
       if (json.success) {
         alert("Imagens adicionadas com sucesso: " + (json.added_count || 0));
         // atualizar a view
-        modal.style.display = "none";
+        document.getElementById("entregaModal").classList.remove("is-open");
         entregaAtualId = null;
         entregaDados = null;
         carregarKanban();

@@ -67,7 +67,7 @@ $conn->close();
             <div class="page-header-left">
                 <img src="../gif/assinatura_preto.gif" id="gif" style="height:34px;opacity:0.85;"
                     onerror="this.style.display='none'">
-                <h1 class="page-title">Kanban de Entregas</h1>
+                <h1 class="page-title">Quadro de Entregas</h1>
             </div>
             <div style="display:flex;align-items:center;gap:10px;">
                 <button class="btn-add" id="adicionar_entrega">
@@ -100,6 +100,16 @@ $conn->close();
         <!-- Kanban Board -->
         <div class="kanban-scroll-area">
             <div class="kanban-board" id="kanban">
+                <div class="column" data-status="atrasada">
+                    <div class="column-header">
+                        <span class="column-title">
+                            <i class="fa-solid fa-triangle-exclamation"
+                                style="color:var(--status-reprovado);margin-right:6px;"></i>
+                            Atrasadas
+                        </span>
+                        <span class="column-count" id="count-atrasada">0</span>
+                    </div>
+                </div>
                 <div class="column" data-status="pendente,parcial">
                     <div class="column-header">
                         <span class="column-title">
@@ -116,16 +126,6 @@ $conn->close();
                             Enviado / Aguardando
                         </span>
                         <span class="column-count" id="count-concluida">0</span>
-                    </div>
-                </div>
-                <div class="column" data-status="atrasada">
-                    <div class="column-header">
-                        <span class="column-title">
-                            <i class="fa-solid fa-triangle-exclamation"
-                                style="color:var(--status-reprovado);margin-right:6px;"></i>
-                            Atrasadas
-                        </span>
-                        <span class="column-count" id="count-atrasada">0</span>
                     </div>
                 </div>
             </div>

@@ -108,6 +108,12 @@ O módulo de referência é `Render/` (index.php + style.css). Toda nova tela de
   --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-slow: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Botão Limpar */
+  --btn-clear-border: #ffb3b3;
+  --btn-clear-bg: #fff5f5;
+  --btn-clear-color: #c92a2a;
+  --btn-clear-bg-hover: #ffe3e3;
 }
 
 /* Dark mode automático */
@@ -319,19 +325,22 @@ Regra geral: sem `border`, `height: 36px`, `border-radius: var(--radius-sm)`, `f
 }
 
 .btn-clear {
-  height: 36px;
-  padding: 0 14px;
-  background: var(--bg-count);
-  color: var(--text-secondary);
-  border: none;
+  display: none;
+  align-items: center;
+  gap: 5px;
+  padding: 0 12px;
+  height: 34px;
+  border: 1px solid var(--btn-clear-border);
   border-radius: var(--radius-sm);
+  background: var(--btn-clear-bg);
+  color: var(--btn-clear-color);
+  font-size: 0.75rem;
   font-weight: 600;
-  font-family: inherit;
   cursor: pointer;
-  transition: background var(--transition-fast);
+  transition: background 0.15s;
 }
 .btn-clear:hover {
-  background: #d1d5db;
+  background: var(--btn-clear-bg-hover);
 }
 ```
 

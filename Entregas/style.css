@@ -62,6 +62,12 @@
   --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-slow: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 
+  /* Botão Limpar */
+  --btn-clear-border: #ffb3b3;
+  --btn-clear-bg: #fff5f5;
+  --btn-clear-color: #c92a2a;
+  --btn-clear-bg-hover: #ffe3e3;
+
   /* legacy dark tokens (kept for backward compatibility) */
   --legacy-bg-dark: #121212;
   --legacy-card-bg: #1e1e1e;
@@ -105,6 +111,12 @@
     --accent-hover: #5b8af0;
     --accent-subtle: rgba(109, 155, 255, 0.12);
     --accent-glow: rgba(109, 155, 255, 0.2);
+
+    /* Botão Limpar */
+    --btn-clear-border: #f88a8a;
+    --btn-clear-bg: #f8d6d6;
+    --btn-clear-color: #c92a2a;
+    --btn-clear-bg-hover: #fab8b8;
 
     --shadow-card-hover: 0 4px 14px rgba(109, 155, 255, 0.15);
   }
@@ -228,7 +240,7 @@ body {
   background: var(--bg-input);
   color: var(--text-primary);
   padding: 0 10px;
-  min-width: 160px;
+  min-width: max-content;
   transition:
     border-color var(--transition-fast),
     box-shadow var(--transition-fast);
@@ -277,21 +289,23 @@ body {
 }
 
 .btn-clear {
-  height: 36px;
-  padding: 0 14px;
-  background: var(--bg-count);
-  color: var(--text-secondary);
-  border: none;
+  display: none;
+  align-items: center;
+  gap: 5px;
+  padding: 0 12px;
+  height: 34px;
+  border: 1px solid var(--btn-clear-border);
   border-radius: var(--radius-sm);
-  font-size: 13px;
+  background: var(--btn-clear-bg);
+  color: var(--btn-clear-color);
+  font-size: 0.75rem;
   font-weight: 600;
-  font-family: inherit;
   cursor: pointer;
-  transition: background var(--transition-fast);
+  transition: background 0.15s;
 }
 
 .btn-clear:hover {
-  background: #d1d5db;
+  background: var(--btn-clear-bg-hover);
 }
 
 /* Modal action buttons */
@@ -701,4 +715,41 @@ body {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-tertiary);
+}
+
+/* ===== MOBILE: Header tweaks ===== */
+@media (max-width: 480px) {
+  .page-header {
+    padding: 8px 12px;
+  }
+  .page-header-left {
+    gap: 8px;
+    align-items: center;
+  }
+  .page-header-logo {
+    height: 28px;
+  }
+  .page-title {
+    font-size: 16px;
+    margin: 0;
+    font-weight: 700;
+    display: none;
+  }
+  .results-summary {
+    display: none;
+  }
+  .filters {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+  .filter-search {
+    min-width: 100%;
+  }
+  .filter-item {
+    min-width: 140px;
+  }
+  .btn-apply,
+  .btn-clear {
+    height: 36px;
+  }
 }

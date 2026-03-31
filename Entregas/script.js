@@ -170,6 +170,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const statusVal =
       (document.getElementById("filterStatus") || {}).value || "";
 
+    const hasFilter = obraVal || statusVal;
+    document.getElementById("btnLimparFiltros").style.display = hasFilter
+      ? "inline-flex"
+      : "none";
+
     const filtered = entregasAll.filter((e) => {
       let okObra = true;
       let okStatus = true;
@@ -189,6 +194,14 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     renderEntregas(filtered);
+  }
+
+  const btnLimparFiltros = document.getElementById("btnLimparFiltros");
+  if (btnLimparFiltros) {
+    btnLimparFiltros.addEventListener("click", () => {
+      clearFilters();
+      btnLimparFiltros.style.display = "none";
+    });
   }
 
   // Clear filters UI and render all

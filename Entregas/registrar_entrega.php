@@ -79,17 +79,32 @@ try {
         $novo_status = 'Concluída';
     }
 
-
     // Fetch previous status (and status_id) so we can detect transitions
-    $old_status = null;
+    $old_status    = null;
     $old_status_id = null;
+    $status_nome   = $novo_status; // fallback
+    $novo_status_id = null;
     $stmtOld = $conn->prepare("SELECT status, status_id FROM entregas WHERE id = ?");
     $stmtOld->bind_param('i', $entrega_id);
     $stmtOld->execute();
     $rOld = $stmtOld->get_result()->fetch_assoc();
     if ($rOld) {
-        $old_status = $rOld['status'];
+        $old_status    = $rOld['status'];
         $old_status_id = isset($rOld['status_id']) ? intval($rOld['status_id']) : null;
+    }
+    $stmtOld->close();
+
+    // Busca nome_status na tabela status_imagem pelo status_id do estágio da entrega (1, 2, 3, 4)
+    if ($old_status_id) {
+        $stmtSN = $conn->prepare("SELECT idstatus, nome_status FROM status_imagem WHERE idstatus = ? LIMIT 1");
+        $stmtSN->bind_param('i', $old_status_id);
+        $stmtSN->execute();
+        $rSN = $stmtSN->get_result()->fetch_assoc();
+        if ($rSN) {
+            $novo_status_id = intval($rSN['idstatus']);
+            $status_nome    = $rSN['nome_status'];
+        }
+        $stmtSN->close();
     }
 
     // If certain transitions happen, also insert an entry into acompanhamento_email

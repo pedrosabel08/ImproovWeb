@@ -151,6 +151,11 @@ $conn->close();
 
         </div>
 
+        <!-- Mobile: FAB to toggle filters -->
+        <button id="filter-toggle-btn" aria-expanded="false" aria-controls="filters" class="fab-filter" title="Filtros" style="display:none;">
+            <i class="fa-solid fa-filter"></i>
+        </button>
+
         <!-- Render Grid + Load More (scrollable area) -->
         <div class="grid-scroll-area">
             <div id="renderGrid" class="render-grid">

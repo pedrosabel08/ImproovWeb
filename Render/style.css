@@ -39,6 +39,12 @@
   --status-refazendo: #f97316;
   --status-outro: #94a3b8;
 
+  /* Botão Limpar */
+  --btn-clear-border: #ffb3b3;
+  --btn-clear-bg: #fff5f5;
+  --btn-clear-color: #c92a2a;
+  --btn-clear-bg-hover: #ffe3e3;
+
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
   --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.14);
@@ -1424,4 +1430,80 @@ body {
   font-family: "Inter", sans-serif !important;
   font-size: 13px !important;
   font-weight: 500 !important;
+}
+
+/* ===== MOBILE: filters bottom-sheet + FAB toggle ===== */
+@media (max-width: 768px) {
+  /* Transform the filter bar into a bottom sheet */
+  .filters {
+    position: fixed;
+    left: 60px;
+    right: 12px;
+    bottom: 0;
+    transform: translateY(100%);
+    transition: transform 0.28s ease;
+    z-index: 400;
+    background: var(--bg-surface);
+    border-radius: 12px 12px 0 0;
+    box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.28);
+    padding: 12px;
+    max-height: 70vh;
+    overflow-y: auto;
+    border: 1px solid var(--border-card);
+    align-items: flex-start;
+  }
+  .filters.open {
+    transform: translateY(0);
+  }
+
+  /* Keep actions visible/sticky inside the sheet */
+  .filters .filter-actions {
+    position: sticky;
+    bottom: 12px;
+    background: transparent;
+    padding-top: 8px;
+  }
+
+  /* FAB toggle button */
+  #filter-toggle-btn {
+    display: flex !important;
+    position: fixed;
+    bottom: 18px;
+    right: 16px;
+    z-index: 410;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: var(--text-on-accent);
+    border: none;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  }
+
+  /* Make filter inputs take full width inside the sheet */
+  .filter-item,
+  .filter-search,
+  .filter-date-range {
+    min-width: 100%;
+    width: 100%;
+  }
+
+  /* Slight spacing improvements for small screens */
+  .filters {
+    gap: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .results-badge {
+    font-size: 10px;
+  }
+
+  .page-title {
+    display: none;
+  }
 }

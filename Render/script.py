@@ -325,39 +325,74 @@ def delete_backburner_job(job_folder_path: str) -> bool:
         ctrl_resp = _send_recv(s, "new controller", 1.5)
         log_and_print(f"🔧 Backburner new controller ({manager}): {ctrl_resp.strip()[:120]}")
 
-        # "200 Control Pending" = monitor mantém conexão persistente como controller;
-        # ele nunca libera voluntariamente. Fechar o socket e matar o monitor
-        # para adquirir o slot.
+        # "200 Control Pending" = outro processo é o controller (local ou remoto).
+        # O Backburner NÃO envia 201 assincronamente no socket pendente — o 201
+        # só chega em uma NOVA conexão após o controller liberar o slot.
+        # Estratégia:
+        #   1. Matar monitor local (se for ele o controller) → libera imediatamente.
+        #   2. Para controller remoto (ex: imp-pc002): fazer polling (nova conexão
+        #      a cada BB_CTRL_POLL_INTERVAL s) até controller conceder
+        #      (Grant Control manual ou auto-grant do servidor).
+        monitor_was_running = False
         if "201" not in ctrl_resp and "200" in ctrl_resp:
             s.close()
-            monitor_was_running = _is_monitor_running()
-            if monitor_was_running:
-                log_and_print("🔄 Encerrando Monitor temporariamente para adquirir controle da fila...")
-                subprocess.run(["taskkill", "/F", "/IM", "monitor.exe"], capture_output=True, timeout=5)
-                time.sleep(1.5)
 
-            # Nova conexão após liberar o slot
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.settimeout(10)
-            s.connect((manager, port))
-            _recv(s, 0.3)
-            ctrl_resp = _send_recv(s, "new controller", 1.5)
-            log_and_print(f"🔧 Backburner new controller (retry): {ctrl_resp.strip()[:120]}")
-        else:
-            monitor_was_running = False  # não precisou matar
+            # Se o monitor local for o controller, matá-lo libera o slot imediatamente.
+            if _is_monitor_running():
+                monitor_was_running = True
+                log_and_print("🔄 Encerrando Monitor local para liberar slot...")
+                subprocess.run(["taskkill", "/F", "/IM", "monitor.exe"], capture_output=True, timeout=5)
+                time.sleep(0.5)
+
+            wait_secs = int(os.getenv("BB_CTRL_TIMEOUT", "15"))
+            poll_interval = int(os.getenv("BB_CTRL_POLL_INTERVAL", "5"))
+            log_and_print(
+                f"⏳ Aguardando controle (timeout: {wait_secs}s, poll: {poll_interval}s) — "
+                f"controller remoto detectado, tentando adquirir controle..."
+            )
+            deadline = time.time() + wait_secs
+            attempt = 0
+            ctrl_resp = ""
+            while time.time() < deadline:
+                attempt += 1
+                try:
+                    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    s.settimeout(10)
+                    s.connect((manager, port))
+                    _recv(s, 0.3)
+                    ctrl_resp = _send_recv(s, "new controller", 1.5)
+                    if "201" in ctrl_resp:
+                        log_and_print(f"✅ Controle adquirido (tentativa {attempt}).")
+                        break
+                    s.close()
+                except Exception as e:
+                    log_and_print(f"⚠ Erro na tentativa {attempt}: {e}", "warning")
+                    try:
+                        s.close()
+                    except Exception:
+                        pass
+
+                remaining = int(deadline - time.time())
+                if remaining > 0:
+                    log_and_print(f"⏳ Tentativa {attempt} — controle pendente ({remaining}s restantes)")
+                    time.sleep(min(poll_interval, remaining))
 
         # Resposta esperada: "201 OK" + prompt "backburner(Controller)>"
         if "201" not in ctrl_resp:
             log_and_print(
-                f"⚠ Não foi possível adquirir controle do Backburner "
-                f"(resposta: {ctrl_resp.strip()[:100]})",
+                f"⚠ Não foi possível adquirir controle do Backburner — "
+                f"job adicionado à fila de exclusão pendente: {folder_name}",
                 "warning"
             )
-            s.close()
+            try:
+                s.close()
+            except Exception:
+                pass
             if monitor_was_running:
                 subprocess.Popen([MONITOR_EXE],
                                  creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP)
                 log_and_print("✅ Backburner Monitor reiniciado")
+            _queue_pending_deletion(job_folder_path)
             return False
 
         del_resp = _send_recv(s, f"del job {job_handle}", 1.5)
@@ -380,6 +415,48 @@ def delete_backburner_job(job_folder_path: str) -> bool:
     except Exception as e:
         log_and_print(f"⚠ Erro ao deletar job no Backburner ({manager}:{port}): {e}", "warning")
         return False
+
+
+# ─── Fila de exclusões pendentes do Backburner ──────────────────────────────
+# Quando não é possível adquirir o controle da fila (controller remoto),
+# o job_folder é salvo neste arquivo e tentado novamente na próxima execução.
+_PENDING_FILE = os.path.join(PARENT_FOLDER, "pending_deletions.txt")
+
+def _queue_pending_deletion(job_folder_path: str):
+    """Adiciona job_folder_path à fila de exclusões pendentes."""
+    try:
+        existing = set()
+        if os.path.exists(_PENDING_FILE):
+            with open(_PENDING_FILE, "r", encoding="utf-8") as f:
+                existing = {l.strip() for l in f if l.strip()}
+        if job_folder_path not in existing:
+            with open(_PENDING_FILE, "a", encoding="utf-8") as f:
+                f.write(job_folder_path + "\n")
+            log_and_print(f"📋 Exclusão pendente registrada: {os.path.basename(job_folder_path)}")
+    except Exception as e:
+        log_and_print(f"⚠ Falha ao registrar exclusão pendente: {e}", "warning")
+
+def _process_pending_deletions():
+    """Tenta deletar todos os jobs na fila de exclusões pendentes."""
+    if not os.path.exists(_PENDING_FILE):
+        return
+    with open(_PENDING_FILE, "r", encoding="utf-8") as f:
+        pending = [l.strip() for l in f if l.strip()]
+    if not pending:
+        return
+    log_and_print(f"🔁 Tentando {len(pending)} exclusão(ões) pendente(s) do Backburner...")
+    remaining = []
+    for path in pending:
+        ok = delete_backburner_job(path)
+        if not ok:
+            remaining.append(path)
+    if remaining:
+        with open(_PENDING_FILE, "w", encoding="utf-8") as f:
+            f.write("\n".join(remaining) + "\n")
+        log_and_print(f"⚠ {len(remaining)} exclusão(ões) ainda pendente(s) — serão tentadas na próxima execução.", "warning")
+    else:
+        os.remove(_PENDING_FILE)
+        log_and_print("✅ Todas as exclusões pendentes foram processadas.")
 
 
 def parse_xml(xml_path):
@@ -924,6 +1001,8 @@ def process_job_folder(cursor, job_folder, p00_rollup=None):
 
 def main():
     log_and_print(f"Iniciando processamento da pasta: {PARENT_FOLDER}")
+    # Tentar exclusões Backburner que falharam em execuções anteriores por falta de controle
+    _process_pending_deletions()
     with conn.cursor() as cursor:
         p00_rollup = {}
         processed_folders = 0

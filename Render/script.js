@@ -283,6 +283,18 @@ function filterRenders() {
   const dateFrom = $("#filterDateFrom").val();
   const dateTo = $("#filterDateTo").val();
 
+  const hasFilter =
+    colaborador ||
+    status ||
+    statusImagem ||
+    obra ||
+    search ||
+    dateFrom ||
+    dateTo;
+  document.getElementById("btnLimpar").style.display = hasFilter
+    ? "inline-flex"
+    : "none";
+
   const filtered = allRenders.filter((r) => {
     if (status && r.status !== status) return false;
     if (statusImagem && r.nome_status !== statusImagem) return false;
@@ -880,3 +892,42 @@ $(document).ready(function () {
     if (e.key === "Escape") $ctxMenu.removeClass("is-open");
   });
 });
+
+// Mobile filter toggle (Render)
+(function () {
+  try {
+    const $filters = $("#filters");
+    const $toggle = $("#filter-toggle-btn");
+    if ($filters.length && $toggle.length) {
+      $toggle.on("click", function (e) {
+        e.preventDefault();
+        const isOpen = $filters.hasClass("open");
+        if (isOpen) {
+          $filters.removeClass("open");
+          $(this).attr("aria-expanded", "false");
+        } else {
+          $filters.addClass("open");
+          $(this).attr("aria-expanded", "true");
+          // ensure the sheet is visible on some devices
+          setTimeout(() => {
+            try {
+              $filters[0].scrollIntoView({ behavior: "smooth", block: "end" });
+            } catch (e) {}
+          }, 50);
+        }
+      });
+
+      // close when tapping outside filters or the FAB
+      $(document).on("click touchstart", function (ev) {
+        if (!$(ev.target).closest("#filters, #filter-toggle-btn").length) {
+          if ($filters.hasClass("open")) {
+            $filters.removeClass("open");
+            $toggle.attr("aria-expanded", "false");
+          }
+        }
+      });
+    }
+  } catch (err) {
+    console.error("filter toggle init error:", err);
+  }
+})();

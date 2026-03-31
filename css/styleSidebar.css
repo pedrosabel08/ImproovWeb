@@ -201,6 +201,55 @@ button#menuButton:active {
   color: gold;
 }
 
+/* ── Gaveta obras inativas ─────────────────────────────────── */
+.drawer-toggle {
+  all: unset;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 12px 4px;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.drawer-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--sb-label);
+}
+
+.drawer-chevron {
+  font-size: 9px;
+  color: var(--sb-label);
+  transition: transform 0.25s ease;
+}
+
+.drawer-toggle[aria-expanded="true"] .drawer-chevron {
+  transform: rotate(90deg);
+}
+
+.sidebar.mini .drawer-label {
+  display: none;
+}
+
+.sidebar.mini .drawer-toggle {
+  justify-content: center;
+  padding: 8px 0 4px;
+}
+
+.drawer-body {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+
+.drawer-body.is-open {
+  max-height: 600px;
+}
+
 /* ── Span no modo mini / completo ──────────────────────────── */
 .sidebar.mini .division span {
   display: none;

@@ -171,9 +171,8 @@ document.addEventListener("DOMContentLoaded", () => {
       (document.getElementById("filterStatus") || {}).value || "";
 
     const hasFilter = obraVal || statusVal;
-    document.getElementById("btnLimparFiltros").style.display = hasFilter
-      ? "inline-flex"
-      : "none";
+    const btnLimpar = document.getElementById("btnLimparFiltros");
+    if (btnLimpar) btnLimpar.style.display = hasFilter ? "inline-flex" : "none";
 
     const filtered = entregasAll.filter((e) => {
       let okObra = true;

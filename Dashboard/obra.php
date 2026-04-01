@@ -144,6 +144,7 @@ $conn->close();
     <link rel="stylesheet" href="<?php echo asset_url('../css/modalSessao.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset_url('../css/modalNotificacoes.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset_url('../Entregas/styleCard.css'); ?>">
+    <link rel="stylesheet" href="<?php echo asset_url('../Entregas/styleEntrega.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset_url('../css/briefing_arquivos.css'); ?>">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
@@ -367,62 +368,95 @@ $conn->close();
                 </div>
 
                 <!-- Modals de Entregas (reaproveitados de /Entregas) -->
+                <!-- ====== Modal: Adicionar Entrega ====== -->
                 <div id="modalAdicionarEntrega" class="modal">
-                    <div class="modal-content" style="max-width: 75vh;">
-                        <h2>Adicionar Entrega</h2>
-                        <form id="formAdicionarEntrega">
-                            <div>
-                                <label>Obra:</label>
-                                <select name="obra_id" id="obra_id" required>
-                                    <option value="">Selecione a obra</option>
-                                    <?php foreach ($obras as $obra): ?>
-                                        <option value="<?= $obra['idobra']; ?>" <?= (isset($obra) && isset($obra['idobra']) && $obra['idobra'] ? '' : '') ?>><?= htmlspecialchars($obra['nomenclatura']); ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label>Status:</label>
-                                <select name="status_id" id="status_id" required>
-                                    <option value="">Selecione o status</option>
-                                    <?php foreach ($status_imagens as $status): ?>
-                                        <option value="<?= htmlspecialchars($status['idstatus']); ?>">
-                                            <?= htmlspecialchars($status['nome_status']); ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-
-                            <div id="imagens_container" class="imagens-container">
-                                <p>Selecione uma obra e status para listar as imagens.</p>
-                            </div>
-
-                            <div>
-                                <label for="prazo">Prazo previsto:</label>
-                                <input type="date" name="prazo" id="prazo">
-                            </div>
-                            <div>
-                                <label for="observacoes">Observações:</label>
-                                <textarea name="observacoes" id="observacoes"></textarea>
-                            </div>
-                            <div class="buttons">
-                                <button type="button" class="fecharModal">Fechar</button>
-                                <button type="submit" class="btn-salvar">Salvar Entrega</button>
-                            </div>
-                        </form>
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h2 class="modal-title">
+                                <i class="fa-solid fa-box" style="color:var(--accent);margin-right:8px;"></i>Nova Entrega
+                            </h2>
+                            <button class="modal-close fecharModal"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="formAdicionarEntrega" style="display:contents;">
+                                <div>
+                                    <label>Obra</label>
+                                    <select name="obra_id" id="obra_id" required>
+                                        <option value="">Selecione a obra</option>
+                                        <?php foreach ($obras as $obra): ?>
+                                            <option value="<?= $obra['idobra']; ?>"><?= htmlspecialchars($obra['nomenclatura']); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label>Status</label>
+                                    <select name="status_id" id="status_id" required>
+                                        <option value="">Selecione o status</option>
+                                        <?php foreach ($status_imagens as $status): ?>
+                                            <option value="<?= htmlspecialchars($status['idstatus']); ?>">
+                                                <?= htmlspecialchars($status['nome_status']); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label>Imagens</label>
+                                    <div id="imagens_container" class="imagens-container">
+                                        <p style="margin:0;color:var(--text-muted);">Selecione uma obra e status para listar as
+                                            imagens.</p>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label>Prazo previsto</label>
+                                    <input type="date" name="prazo" id="prazo">
+                                </div>
+                                <div>
+                                    <label>Observações</label>
+                                    <textarea name="observacoes" id="observacoes" placeholder="Observações opcionais..."></textarea>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn-action btn-secondary fecharModal">Cancelar</button>
+                            <button type="submit" form="formAdicionarEntrega" class="btn-action btn-primary">
+                                <i class="fa-solid fa-floppy-disk"></i> Salvar Entrega
+                            </button>
+                        </div>
                     </div>
                 </div>
 
-                <div class="modal" id="entregaModal" style="justify-content: center; align-items: center;">
-                    <div class="modal-content" style="max-width: 85vh; width: 100%;">
-                        <h3 id="modalTitulo"></h3>
-                        <button id="btnAdicionarImagem">Adicionar Imagem</button>
-                        <p><strong>Prazo:</strong> <span id="modalPrazo"></span></p>
-                        <p><strong>Conclusão geral:</strong> <span id="modalProgresso"></span></p>
-                        <div id="modalImagens"></div>
-                        <div class="buttons" style="margin-top: 20px;">
-                            <button type="button" class="fecharModal">Fechar</button>
+                <div class="modal" id="entregaModal">
+                    <div class="modal-content modal-wide">
+                        <div class="modal-header">
+                            <h2 class="modal-title" id="modalTitulo">Entrega</h2>
+                            <button class="modal-close fecharModal"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                        <div class="modal-body">
+                            <div style="display:flex;gap:24px;flex-wrap:wrap;">
+                                <div>
+                                    <span style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;color:var(--text-muted);display:block;margin-bottom:2px;">Prazo</span>
+                                    <span id="modalPrazo" style="font-size:13px;font-weight:500;">—</span>
+                                </div>
+                                <div>
+                                    <span style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;color:var(--text-muted);display:block;margin-bottom:2px;">Conclusão geral</span>
+                                    <span id="modalProgresso" style="font-size:13px;font-weight:500;">—</span>
+                                </div>
+                            </div>
+                            <div>
+                                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                                    <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-muted);">
+                                        <i class="fa-solid fa-images" style="margin-right:5px;"></i>Imagens
+                                    </span>
+                                    <button class="btn-action btn-primary" id="btnAdicionarImagem" style="height:30px;font-size:12px;padding:0 12px;">
+                                        <i class="fa-solid fa-plus"></i> Adicionar
+                                    </button>
+                                </div>
+                                <div id="modalImagens"></div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn-action btn-secondary fecharModal">Fechar</button>
                         </div>
                     </div>
                 </div>

@@ -1,0 +1,384 @@
+/* ================================================================
+   styleEntrega.css
+   Estilos dos modais e componentes do módulo Entregas para uso em
+   Dashboard/obra.php sem conflito com styleObra.css.
+
+   ESCOPO: todo seletor que envolve modal está ancorado nos IDs
+   #entregaModal, #modalAdicionarEntrega e #modalSelecionarImagens.
+   Assim --accent azul do Entregas não sobrescreve o --accent verde
+   global do obra.php, e .modal-content não conflita com os outros
+   30+ modais da page.
+   ================================================================ */
+
+/* ── 1. CSS Variables escopadas nos modais de Entregas ─────────── */
+/* Sobrescrevem as vars globais de styleObra.css SOMENTE dentro
+   destes 3 elementos (cascata CSS padrão). */
+
+#entregaModal,
+#modalAdicionarEntrega,
+#modalSelecionarImagens {
+  --bg-modal: #ffffff;
+  --border-modal: #e2e6eb;
+  --shadow-modal: 0 20px 60px rgba(0, 0, 0, 0.18);
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-xl: 20px;
+  --radius-full: 999px;
+  --text-primary: #1a1d23;
+  --text-secondary: #4b5563;
+  --text-tertiary: #6b7280;
+  --text-muted: #9ca3af;
+  --text-on-accent: #ffffff;
+  /* Accent azul (sobrescreve o verde global do obra.php) */
+  --accent: #4f80e1;
+  --accent-hover: #3b6fd6;
+  --accent-subtle: rgba(79, 128, 225, 0.1);
+  --accent-glow: rgba(79, 128, 225, 0.25);
+  --border-input: #d1d5db;
+  --bg-input: #ffffff;
+  --bg-count: #e8ecf1;
+  --bg-card: #ffffff;
+  --bg-surface-alt: #f8f9fb;
+  --border-card: #e2e6eb;
+  --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.14);
+  --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Blur no overlay dos modais de Entregas */
+  backdrop-filter: blur(4px);
+}
+
+/* ── 2. Modal content ───────────────────────────────────────────── */
+/* Sobrescreve margin:10%auto e padding:20px do styleObra.css       */
+#entregaModal .modal-content,
+#modalAdicionarEntrega .modal-content,
+#modalSelecionarImagens .modal-content {
+  margin: 0;
+  padding: 0;
+  background: var(--bg-modal);
+  border: 1px solid var(--border-modal);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-modal);
+  width: min(560px, 92vw);
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: entregaSlideUp 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+#entregaModal .modal-content.modal-wide {
+  width: min(700px, 92vw);
+}
+
+@keyframes entregaSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ── 3. Header ──────────────────────────────────────────────────── */
+#entregaModal .modal-header,
+#modalAdicionarEntrega .modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--border-modal);
+  flex-shrink: 0;
+}
+
+#entregaModal .modal-title,
+#modalAdicionarEntrega .modal-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+#entregaModal .modal-close,
+#modalAdicionarEntrega .modal-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 16px;
+  padding: 4px 6px;
+  border-radius: var(--radius-xs);
+  line-height: 1;
+  transition:
+    color var(--transition-fast),
+    background var(--transition-fast);
+}
+
+#entregaModal .modal-close:hover,
+#modalAdicionarEntrega .modal-close:hover {
+  color: var(--text-primary);
+  background: var(--bg-count);
+}
+
+/* ── 4. Body ────────────────────────────────────────────────────── */
+#entregaModal .modal-body,
+#modalAdicionarEntrega .modal-body {
+  padding: 20px 22px;
+  overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Labels e campos do formulário dentro do body */
+#modalAdicionarEntrega .modal-body label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+#modalAdicionarEntrega .modal-body select,
+#modalAdicionarEntrega .modal-body input[type="date"],
+#modalAdicionarEntrega .modal-body input[type="text"],
+#modalAdicionarEntrega .modal-body textarea {
+  width: 100%;
+  height: 36px;
+  border: 1px solid var(--border-input);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-family: inherit;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  padding: 0 10px;
+  box-sizing: border-box;
+  outline: none;
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+#modalAdicionarEntrega .modal-body textarea {
+  height: auto;
+  min-height: 90px;
+  padding: 8px 10px;
+  resize: vertical;
+}
+
+#modalAdicionarEntrega .modal-body select:focus,
+#modalAdicionarEntrega .modal-body input:focus,
+#modalAdicionarEntrega .modal-body textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-subtle);
+}
+
+/* ── 5. Footer ──────────────────────────────────────────────────── */
+#entregaModal .modal-footer,
+#modalAdicionarEntrega .modal-footer {
+  padding: 14px 18px;
+  border-top: 1px solid var(--border-modal);
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* ── 6. Botões de ação ──────────────────────────────────────────── */
+#entregaModal .btn-action,
+#modalAdicionarEntrega .btn-action {
+  height: 36px;
+  padding: 0 16px;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition:
+    transform var(--transition-fast),
+    box-shadow var(--transition-fast),
+    background var(--transition-fast);
+}
+
+#entregaModal .btn-action:hover,
+#modalAdicionarEntrega .btn-action:hover {
+  transform: translateY(-1px);
+}
+
+#entregaModal .btn-primary,
+#modalAdicionarEntrega .btn-primary {
+  background: var(--accent);
+  color: var(--text-on-accent);
+}
+
+#entregaModal .btn-primary:hover,
+#modalAdicionarEntrega .btn-primary:hover {
+  background: var(--accent-hover);
+  box-shadow: 0 4px 12px var(--accent-glow);
+}
+
+#entregaModal .btn-secondary,
+#modalAdicionarEntrega .btn-secondary {
+  background: var(--bg-count);
+  color: var(--text-secondary);
+}
+
+#entregaModal .btn-secondary:hover,
+#modalAdicionarEntrega .btn-secondary:hover {
+  background: #d1d5db;
+}
+
+/* ── 7. Itens de imagem no modal de detalhe ─────────────────────── */
+#entregaModal .modal-imagem-item {
+  background: var(--bg-card);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-card);
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+#entregaModal .modal-imagem-item.select-all-item {
+  background: var(--bg-surface-alt);
+  border-color: transparent;
+}
+
+#entregaModal label.imagem_nome {
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+#entregaModal .entregue {
+  font-size: 11.5px;
+  white-space: nowrap;
+  color: var(--text-tertiary);
+}
+
+/* Imagens container dentro do modalSelecionarImagens */
+#modalSelecionarImagens .imagens-container {
+  background: var(--bg-surface-alt);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 320px;
+  overflow-y: auto;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+/* ── 8. Mini info panel (adicionado ao <body> pelo script.js) ───── */
+/* Não pode ser escopado por ID pois é dinamicamente inserido fora
+   dos modais. Usa valores fixos para não depender de variáveis CSS
+   que podem não estar disponíveis no escopo do body. */
+.mini-image-panel {
+  position: fixed;
+  width: 300px;
+  background: #ffffff;
+  border: 1px solid #e2e6eb;
+  padding: 14px;
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.14);
+  z-index: 1200;
+  font-family:
+    "Inter",
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
+}
+
+.mini-image-panel .mini-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #1a1d23;
+}
+
+.mini-image-panel .fecharMini {
+  background: none;
+  border: none;
+  color: #9ca3af;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.mini-image-panel p {
+  margin: 5px 0;
+  font-size: 12.5px;
+  color: #4b5563;
+}
+
+/* ── 9. Kanban widget (modo single-column em obra.php) ──────────── */
+/* Todas as CSS variables que styleCard.css precisa, escopadas aqui
+   para não conflitar com o :root de styleObra.css. */
+#kanban {
+  /* Backgrounds de card */
+  --bg-card: #ffffff;
+  --bg-card-hover: #f4f7ff;
+  --bg-skeleton: #e8ecf1;
+  /* Cores de texto */
+  --text-primary: #1a1d23;
+  --text-secondary: #4b5563;
+  --text-tertiary: #6b7280;
+  --text-muted: #9ca3af;
+  --text-on-accent: #ffffff;
+  /* Accent azul (sobrescreve o verde global só dentro do kanban) */
+  --accent: #4f80e1;
+  --accent-glow: rgba(79, 128, 225, 0.25);
+  /* Bordas */
+  --border-card: #e2e6eb;
+  --border-card-hover: #a3bffa;
+  /* Sombras */
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.05);
+  --shadow-card-hover: 0 4px 14px rgba(79, 128, 225, 0.15);
+  /* Border radius */
+  --radius-md: 12px;
+  --radius-full: 999px;
+  /* Transições */
+  --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#kanban .column {
+  background: #f8f9fb;
+  border-radius: 12px;
+  padding: 12px;
+  border: 1px solid #e2e6eb;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 60px;
+  overflow-y: auto;
+}

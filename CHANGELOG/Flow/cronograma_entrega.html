@@ -139,9 +139,6 @@
         </head>
         <body class="vscode-body vscode-light">
             <h1 id="-cronograma-de-conclusão-por-entrega">📅 Cronograma de Conclusão por Entrega</h1>
-<blockquote>
-<p>Especificação do módulo de replanejamento por entrega, integrado ao módulo <strong>Entregas</strong> existente.</p>
-</blockquote>
 <hr>
 <h2 id="contexto">Contexto</h2>
 <p>O módulo de Entregas agrupa imagens por projeto e etapa de produção (P00, R00, EF, etc.), com um prazo previsto por entrega. Com o tempo, algumas entregas ficam atrasadas ou com prazo próximo, e o gestor precisa responder rapidamente: <strong>&quot;O que falta para essa entrega ser concluída, e quando isso será possível?&quot;</strong></p>
@@ -204,115 +201,6 @@
 <li><strong>Cronograma editável</strong> — após geração automática pelo sistema, o gestor pode ajustar datas e colaboradores manualmente</li>
 </ul>
 <hr>
-<h2 id="algoritmo-de-simulação-de-fila">Algoritmo de Simulação de Fila</h2>
-<pre><code>colaborador_livre[colab_id] = hoje
-
-para cada imagem pendente da entrega:
-    image_prev_end = hoje
-    para cada função pendente da imagem (ordem crescente de funcao_id):
-        start = max(colaborador_livre[colab_id], image_prev_end)
-        end   = start + dias_historico[colab_id][funcao_id]
-        colaborador_livre[colab_id] = end
-        image_prev_end = end
-
-data_conclusao_entrega = max(end de todas as imagens)
-imagem_critica = imagem com maior end
-gargalo = colaborador com maior colaborador_livre
-</code></pre>
-<p>As dependências entre funções da mesma imagem são respeitadas: a Finalização de uma imagem só começa após sua Composição terminar.</p>
-<p><strong>Com múltiplas entregas</strong>, as imagens são enfileiradas na ordem de prioridade das entregas: todas as imagens da entrega de maior prioridade entram na fila antes das da próxima, e assim por diante. A fila de cada colaborador é global às entregas selecionadas.</p>
-<hr>
-<h2 id="arquitetura">Arquitetura</h2>
-<h3 id="arquivo-criado">Arquivo criado</h3>
-<table>
-<thead>
-<tr>
-<th>Arquivo</th>
-<th>Descrição</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>Entregas/get_cronograma.php</code></td>
-<td>Endpoint POST <code>{ entrega_ids: [], prioridades: [] }</code> — executa a simulação e retorna JSON</td>
-</tr>
-</tbody>
-</table>
-<h3 id="arquivos-modificados">Arquivos modificados</h3>
-<table>
-<thead>
-<tr>
-<th>Arquivo</th>
-<th>Mudança</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>Entregas/index.php</code></td>
-<td>Toggle modo planejamento + <code>#modalPrioridade</code> + <code>#cronogramaModal</code></td>
-</tr>
-<tr>
-<td><code>Entregas/script.js</code></td>
-<td>Toggle, seleção múltipla, modal de prioridade, <code>renderCronograma()</code>, edição inline</td>
-</tr>
-<tr>
-<td><code>Entregas/style.css</code></td>
-<td><code>.modo-planejamento</code>, <code>.card-selecionado</code>, <code>.btn-cronograma</code>, <code>.is-critical</code>, <code>.badge-atraso</code>, <code>.fonte-padrao</code>, <code>.campo-editavel</code></td>
-</tr>
-</tbody>
-</table>
-<hr>
-<h2 id="endpoint-get_cronogramaphp">Endpoint <code>get_cronograma.php</code></h2>
-<p><strong>Parâmetro:</strong> <code>POST</code> com body JSON:</p>
-<p><strong>Resposta JSON:</strong></p>
-<pre><code class="language-json"><span class="hljs-comment">// Request</span>
-<span class="hljs-punctuation">{</span>
-  <span class="hljs-attr">&quot;entrega_ids&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">[</span><span class="hljs-number">12</span><span class="hljs-punctuation">,</span> <span class="hljs-number">7</span><span class="hljs-punctuation">,</span> <span class="hljs-number">3</span><span class="hljs-punctuation">]</span><span class="hljs-punctuation">,</span>
-  <span class="hljs-attr">&quot;prioridades&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">[</span><span class="hljs-number">1</span><span class="hljs-punctuation">,</span> <span class="hljs-number">2</span><span class="hljs-punctuation">,</span> <span class="hljs-number">3</span><span class="hljs-punctuation">]</span>   <span class="hljs-comment">// ordem de execução; índice 0 = maior prioridade</span>
-<span class="hljs-punctuation">}</span>
-
-<span class="hljs-comment">// Response</span>
-<span class="hljs-punctuation">{</span>
-  <span class="hljs-attr">&quot;entregas&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">[</span>
-    <span class="hljs-punctuation">{</span>
-      <span class="hljs-attr">&quot;entrega_id&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-number">12</span><span class="hljs-punctuation">,</span>
-      <span class="hljs-attr">&quot;nome&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;PROJETO_A — EF&quot;</span><span class="hljs-punctuation">,</span>
-      <span class="hljs-attr">&quot;data_prevista&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;2026-03-20&quot;</span><span class="hljs-punctuation">,</span>
-      <span class="hljs-attr">&quot;data_estimada_conclusao&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;2026-03-27&quot;</span><span class="hljs-punctuation">,</span>
-      <span class="hljs-attr">&quot;dias_restantes&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-number">3</span><span class="hljs-punctuation">,</span>
-      <span class="hljs-attr">&quot;atrasada&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-keyword">true</span><span class="hljs-punctuation">,</span>
-      <span class="hljs-attr">&quot;imagens&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">[</span>
-        <span class="hljs-punctuation">{</span>
-          <span class="hljs-attr">&quot;nome&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;Sala&quot;</span><span class="hljs-punctuation">,</span>
-          <span class="hljs-attr">&quot;conclusao&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;2026-03-25&quot;</span><span class="hljs-punctuation">,</span>
-          <span class="hljs-attr">&quot;is_critica&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-keyword">false</span><span class="hljs-punctuation">,</span>
-          <span class="hljs-attr">&quot;funcoes&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">[</span>
-            <span class="hljs-punctuation">{</span>
-              <span class="hljs-attr">&quot;funcao_imagem_id&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-number">1042</span><span class="hljs-punctuation">,</span>
-              <span class="hljs-attr">&quot;nome&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;Finalização&quot;</span><span class="hljs-punctuation">,</span>
-              <span class="hljs-attr">&quot;colaborador_id&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-number">21</span><span class="hljs-punctuation">,</span>
-              <span class="hljs-attr">&quot;colaborador&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;Pedro&quot;</span><span class="hljs-punctuation">,</span>
-              <span class="hljs-attr">&quot;start&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;2026-03-25&quot;</span><span class="hljs-punctuation">,</span>
-              <span class="hljs-attr">&quot;end&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;2026-03-25&quot;</span><span class="hljs-punctuation">,</span>
-              <span class="hljs-attr">&quot;dias&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-number">1</span><span class="hljs-punctuation">,</span>
-              <span class="hljs-attr">&quot;fonte&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;historico&quot;</span>
-            <span class="hljs-punctuation">}</span>
-          <span class="hljs-punctuation">]</span>
-        <span class="hljs-punctuation">}</span>
-      <span class="hljs-punctuation">]</span><span class="hljs-punctuation">,</span>
-      <span class="hljs-attr">&quot;critico&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;Pedro — 3 imagens na fila&quot;</span>
-    <span class="hljs-punctuation">}</span>
-  <span class="hljs-punctuation">]</span>
-<span class="hljs-punctuation">}</span>
-</code></pre>
-<p><code>fonte</code> pode ser <code>&quot;historico&quot;</code> (calculado) ou <code>&quot;padrao&quot;</code> (fallback 1 dia, sem dados históricos suficientes).</p>
-<p><strong>Fontes de dados SQL utilizadas:</strong></p>
-<ul>
-<li><code>entregas_itens</code> + <code>imagens_cliente_obra</code> → imagens pendentes da entrega</li>
-<li><code>funcao_imagem</code> + <code>funcao</code> + <code>colaborador</code> → funções pendentes por imagem</li>
-<li><code>log_alteracoes</code> + <code>funcao_imagem</code> → produtividade histórica (30 dias)</li>
-</ul>
-<hr>
 <h2 id="interface">Interface</h2>
 <h3 id="modo-planejamento">Modo Planejamento</h3>
 <p>Um toggle <strong>&quot;Planejamento&quot;</strong> aparece na barra de filtros do kanban de Entregas. Quando ativado:</p>
@@ -370,41 +258,6 @@ gargalo = colaborador com maior colaborador_livre
 <li>Imagens sem responsável (<code>NULL</code>) aparecem como &quot;Sem responsável&quot; e usam 1 dia de fallback</li>
 </ul>
 <hr>
-<h2 id="casos-de-borda">Casos de borda</h2>
-<table>
-<thead>
-<tr>
-<th>Situação</th>
-<th>Comportamento</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Imagem sem colaborador atribuído</td>
-<td>Aparece como &quot;Sem responsável&quot;, <code>dias = 1</code>, não quebra a simulação</td>
-</tr>
-<tr>
-<td>Todas as imagens já entregues</td>
-<td>Modal exibe mensagem &quot;Todas as imagens já foram entregues&quot;</td>
-</tr>
-<tr>
-<td>Colaborador sem histórico no período</td>
-<td>Usa fallback de 1 dia; fonte marcada como <code>&quot;padrao&quot;</code></td>
-</tr>
-<tr>
-<td>Entrega não encontrada</td>
-<td>Retorna <code>{ &quot;error&quot;: &quot;Entrega não encontrada&quot; }</code> com HTTP 404</td>
-</tr>
-<tr>
-<td>Entrega única selecionada</td>
-<td>Pula o modal de prioridade e gera o cronograma diretamente</td>
-</tr>
-<tr>
-<td>Gestor altera data/responsável no cronograma</td>
-<td>As demais linhas <strong>não</strong> são recalculadas — ajuste manual livre</td>
-</tr>
-</tbody>
-</table>
 
             
             

@@ -377,7 +377,7 @@ $funcao_status_norm  = strtolower(removerTodosAcentos((string)($funcao_status ??
 
 $isNasDirectBypass = (
     ($nomeFuncaoKeyGlobal === 'pos-producao' && $funcao_status_norm === 'aprovado com ajustes')
-    || ($nomeFuncaoKeyGlobal === 'finalizacao' && $tipoImagemKeyGlobal === 'planta humanizada')
+    || ($nomeFuncaoKeyGlobal === 'finalizacao' && $tipoImagemKeyGlobal === 'planta humanizada' && $funcao_status_norm === 'aprovado com ajustes')
 );
 $arquivosParaNAS = [];
 
@@ -531,6 +531,102 @@ if ($isNasDirectBypass) {
         $nasLogs[] = "Config NAS ausente: " . $e->getMessage();
     }
 
+    // ---------- Atualiza entregas_itens para 'Entrega pendente' (bypass NAS) ----------
+    $bypassEntregaLogs = [];
+    if ($idimagem > 0) {
+        $stmtBypassImg = $conn->prepare("SELECT status_id, obra_id FROM imagens_cliente_obra WHERE idimagens_cliente_obra = ?");
+        $stmtBypassImg->bind_param("i", $idimagem);
+        $stmtBypassImg->execute();
+        $stmtBypassImg->bind_result($bypass_status_id, $bypass_obra_id);
+        if ($stmtBypassImg->fetch()) {
+            $stmtBypassImg->close();
+
+            // Nome do status da imagem (ex.: P00, R00, EF…)
+            $bypass_status_nome = null;
+            $stmtBypassSt = $conn->prepare("SELECT nome_status FROM status_imagem WHERE idstatus = ? LIMIT 1");
+            if ($stmtBypassSt) {
+                $stmtBypassSt->bind_param("i", $bypass_status_id);
+                $stmtBypassSt->execute();
+                $stmtBypassSt->bind_result($bypass_status_nome);
+                $stmtBypassSt->fetch();
+                $stmtBypassSt->close();
+            }
+
+            // Entrega correspondente ao status + obra
+            $stmtBypassEnt = $conn->prepare("SELECT id FROM entregas WHERE status_id = ? AND obra_id = ? ORDER BY id DESC LIMIT 1");
+            $stmtBypassEnt->bind_param("ii", $bypass_status_id, $bypass_obra_id);
+            $stmtBypassEnt->execute();
+            $stmtBypassEnt->bind_result($bypass_entrega_id);
+            if ($stmtBypassEnt->fetch()) {
+                $stmtBypassEnt->close();
+
+                // Item da entrega para essa imagem
+                $stmtBypassItem = $conn->prepare("SELECT id FROM entregas_itens WHERE entrega_id = ? AND imagem_id = ? LIMIT 1");
+                $stmtBypassItem->bind_param("ii", $bypass_entrega_id, $idimagem);
+                $stmtBypassItem->execute();
+                $stmtBypassItem->bind_result($bypass_entrega_item_id);
+                if ($stmtBypassItem->fetch()) {
+                    $stmtBypassItem->close();
+
+                    $isFinalizacaoBypass = (strtolower(removerTodosAcentos($nomeFuncao)) === 'finalizacao');
+                    $isP00Bypass = ($bypass_status_nome === 'P00');
+
+                    if ($isFinalizacaoBypass && $isP00Bypass) {
+                        // Para P00: garante coluna e vincula entrega_item_id aos ângulos existentes
+                        $colExists = false;
+                        if ($chkCol = $conn->prepare("SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'angulos_imagens' AND COLUMN_NAME = 'entrega_item_id'")) {
+                            $chkCol->execute();
+                            $resChkCol = $chkCol->get_result();
+                            $colExists = ($resChkCol && $resChkCol->num_rows > 0);
+                            $chkCol->close();
+                        }
+                        if (!$colExists) {
+                            @$conn->query("ALTER TABLE angulos_imagens ADD COLUMN entrega_item_id INT NULL AFTER historico_id");
+                            @$conn->query("CREATE INDEX idx_angulos_entrega_item ON angulos_imagens(entrega_item_id)");
+                        }
+                        if ($upAiBypass = $conn->prepare("UPDATE angulos_imagens ai JOIN historico_aprovacoes_imagens hi ON hi.id = ai.historico_id SET ai.entrega_item_id = ? WHERE ai.imagem_id = ? AND hi.funcao_imagem_id = ?")) {
+                            $upAiBypass->bind_param('iii', $bypass_entrega_item_id, $idimagem, $idFuncaoImagem);
+                            $upAiBypass->execute();
+                            $upAiBypass->close();
+                        }
+                        if ($upBypass = $conn->prepare("UPDATE entregas_itens SET status = 'Entrega pendente' WHERE id = ?")) {
+                            $upBypass->bind_param("i", $bypass_entrega_item_id);
+                            $upBypass->execute();
+                            $upBypass->close();
+                        }
+                        $bypassEntregaLogs[] = "P00: entrega_item_id=$bypass_entrega_item_id vinculado aos ângulos.";
+                    } else {
+                        // Fluxo padrão: usa o último historico da função
+                        $stmtBypassHist = $conn->prepare("SELECT id FROM historico_aprovacoes_imagens WHERE funcao_imagem_id = ? ORDER BY id DESC LIMIT 1");
+                        $stmtBypassHist->bind_param("i", $idFuncaoImagem);
+                        $stmtBypassHist->execute();
+                        $stmtBypassHist->bind_result($bypass_hist_id);
+                        if ($stmtBypassHist->fetch()) {
+                            $stmtBypassHist->close();
+                            $stmtBypassUpd = $conn->prepare("UPDATE entregas_itens SET historico_id = ?, status = 'Entrega pendente' WHERE id = ?");
+                            $stmtBypassUpd->bind_param("ii", $bypass_hist_id, $bypass_entrega_item_id);
+                            $stmtBypassUpd->execute();
+                            $stmtBypassUpd->close();
+                            $bypassEntregaLogs[] = "entregas_itens id=$bypass_entrega_item_id atualizado com historico_id=$bypass_hist_id.";
+                        } else {
+                            $stmtBypassHist->close();
+                            $bypassEntregaLogs[] = "Histórico não encontrado para funcao_imagem_id=$idFuncaoImagem.";
+                        }
+                    }
+                } else {
+                    $stmtBypassItem->close();
+                    $bypassEntregaLogs[] = "entregas_itens não encontrado para entrega_id=$bypass_entrega_id imagem_id=$idimagem.";
+                }
+            } else {
+                $stmtBypassEnt->close();
+                $bypassEntregaLogs[] = "Entrega não encontrada para status_id=$bypass_status_id obra_id=$bypass_obra_id.";
+            }
+        } else {
+            $stmtBypassImg->close();
+            $bypassEntregaLogs[] = "imagem id=$idimagem não encontrada em imagens_cliente_obra.";
+        }
+    }
+
     // ---------- Slack: função já no servidor ----------
     $slackWebhookPos = improov_env('SLACK_WEBHOOK_POS_URL', null);
     if ($slackWebhookPos) {
@@ -552,12 +648,13 @@ if ($isNasDirectBypass) {
     }
 
     echo json_encode([
-        "success"      => "Imagens enviadas e aprovadas automaticamente!",
-        "bypass_nas"   => true,
-        "nas_enviado"  => $nasSent,
-        "nas_logs"     => $nasLogs,
-        "indice_envio" => $indice_envio,
-        "imagens"      => $imagensEnviadas,
+        "success"        => "Imagens enviadas e aprovadas automaticamente!",
+        "bypass_nas"     => true,
+        "nas_enviado"    => $nasSent,
+        "nas_logs"       => $nasLogs,
+        "entrega_logs"   => $bypassEntregaLogs,
+        "indice_envio"   => $indice_envio,
+        "imagens"        => $imagensEnviadas,
     ]);
     exit;
 }

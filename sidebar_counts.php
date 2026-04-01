@@ -37,9 +37,11 @@ if ($res) {
 }
 
 // ── Pós-Produção: status_pos = 1 = "Não começou" ──────────────────────────────
-$res_pos = $conn->query("SELECT COUNT(*) AS cnt FROM pos_producao WHERE status_pos = 1");
-$pos_count = ($res_pos) ? intval($res_pos->fetch_assoc()['cnt']) : 0;
-
+$pos_count = 0;
+if ($userId === 9 || $userId === 21) { // Apenas para colaboradores administradores (21)
+    $res_pos = $conn->query("SELECT COUNT(*) AS cnt FROM pos_producao WHERE status_pos = 1");
+    $pos_count = ($res_pos) ? intval($res_pos->fetch_assoc()['cnt']) : 0;
+}
 // ── Render: items with status 'Em aprovação' ────────────────────────────────────
 $res_render = $conn->query("SELECT COUNT(*) AS cnt FROM render_alta WHERE status = 'Em aprovação'");
 $render_count = ($res_render) ? intval($res_render->fetch_assoc()['cnt']) : 0;

@@ -43,7 +43,15 @@ if ($userId === 9 || $userId === 21) { // Apenas para colaboradores administrado
     $pos_count = ($res_pos) ? intval($res_pos->fetch_assoc()['cnt']) : 0;
 }
 // ── Render: items with status 'Em aprovação' ────────────────────────────────────
-$res_render = $conn->query("SELECT COUNT(*) AS cnt FROM render_alta WHERE status = 'Em aprovação'");
+// userId 1 e 9 veem todos; demais veem apenas seus próprios
+if ($userId === 1 || $userId === 9) {
+    $res_render = $conn->query("SELECT COUNT(*) AS cnt FROM render_alta WHERE status = 'Em aprovação'");
+} else {
+    $stmt_render = $conn->prepare("SELECT COUNT(*) AS cnt FROM render_alta WHERE status = 'Em aprovação' AND responsavel_id = ?");
+    $stmt_render->bind_param('i', $userId);
+    $stmt_render->execute();
+    $res_render = $stmt_render->get_result();
+}
 $render_count = ($res_render) ? intval($res_render->fetch_assoc()['cnt']) : 0;
 
 // ── FlowReview: count of 'Em aprovação' tasks scoped by collaborator's role ─────

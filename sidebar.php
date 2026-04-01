@@ -3,11 +3,11 @@ require_once __DIR__ . '/config/version.php';
 // require_once __DIR__ . '/Contratos/access_gate.php';
 
 // Expose session policy to frontend (no headers needed; assumes session already started in the page)
-$__idleSeconds = defined('IMPROOV_SESSION_IDLE_SECONDS') ? (int)IMPROOV_SESSION_IDLE_SECONDS : 30 * 60;
-$__idleWarnSeconds = defined('IMPROOV_SESSION_IDLE_WARN_SECONDS') ? (int)IMPROOV_SESSION_IDLE_WARN_SECONDS : 25 * 60;
-$__absSeconds = defined('IMPROOV_SESSION_ABSOLUTE_SECONDS') ? (int)IMPROOV_SESSION_ABSOLUTE_SECONDS : 60 * 60;
-$__absWarnSeconds = defined('IMPROOV_SESSION_ABSOLUTE_WARN_SECONDS') ? (int)IMPROOV_SESSION_ABSOLUTE_WARN_SECONDS : 55 * 60;
-$__loginTs = isset($_SESSION['login_ts']) ? (int)$_SESSION['login_ts'] : null;
+$__idleSeconds = defined('IMPROOV_SESSION_IDLE_SECONDS') ? (int) IMPROOV_SESSION_IDLE_SECONDS : 30 * 60;
+$__idleWarnSeconds = defined('IMPROOV_SESSION_IDLE_WARN_SECONDS') ? (int) IMPROOV_SESSION_IDLE_WARN_SECONDS : 25 * 60;
+$__absSeconds = defined('IMPROOV_SESSION_ABSOLUTE_SECONDS') ? (int) IMPROOV_SESSION_ABSOLUTE_SECONDS : 60 * 60;
+$__absWarnSeconds = defined('IMPROOV_SESSION_ABSOLUTE_WARN_SECONDS') ? (int) IMPROOV_SESSION_ABSOLUTE_WARN_SECONDS : 55 * 60;
+$__loginTs = isset($_SESSION['login_ts']) ? (int) $_SESSION['login_ts'] : null;
 
 $__reqUri = $_SERVER['REQUEST_URI'] ?? '';
 $__basePath = (strpos($__reqUri, '/flow/ImproovWeb/') !== false || preg_match('~^/flow/ImproovWeb(?:/|$)~', $__reqUri))
@@ -35,6 +35,7 @@ $__basePath = (strpos($__reqUri, '/flow/ImproovWeb/') !== false || preg_match('~
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
 
     <title>Sidebar</title>
+    <!-- Sidebar badge styles moved to css/styleSidebar.css -->
 </head>
 
 <body>
@@ -46,12 +47,17 @@ $__basePath = (strpos($__reqUri, '/flow/ImproovWeb/') !== false || preg_match('~
         <ul>
             <ul class="division">
                 <label for="">Insights</label>
-                <li><a title="Página Principal" href="https://improov.com.br/flow/ImproovWeb/inicio.php"><i class="fas fa-home"></i><span> Página Principal</span></a></li>
-                <li><a title="Flow Review" href="https://improov.com.br/flow/ImproovWeb/FlowReview"><i class="fas fa-check"></i><span> Flow Review</span></a></li>
-                <li><a title="Flow Render" href="https://improov.com.br/flow/ImproovWeb/Render"><i class="fas fa-cube"></i><span> Flow Render</span></a></li>
-                <li><a title="Lista Pós-Produção" href="https://improov.com.br/flow/ImproovWeb/Pos-Producao"><i class="fas fa-film"></i><span> Lista Pós-Produção</span></a></li>
+                <li><a title="Página Principal" href="https://improov.com.br/flow/ImproovWeb/inicio.php"><i
+                            class="fas fa-home"></i><span> Página Principal</span></a></li>
+                <li><a title="Flow Review" href="https://improov.com.br/flow/ImproovWeb/FlowReview"><i
+                            class="fas fa-check"></i><span> Flow Review</span><span class="sidebar-badge" data-module="flow_review" aria-hidden="true"></span></a></li>
+                <li><a title="Flow Render" href="https://improov.com.br/flow/ImproovWeb/Render"><i
+                            class="fas fa-cube"></i><span> Flow Render</span><span class="sidebar-badge" data-module="render" aria-hidden="true"></span></a></li>
+                <li><a title="Lista Pós-Produção" href="https://improov.com.br/flow/ImproovWeb/Pos-Producao"><i
+                            class="fas fa-film"></i><span> Lista Pós-Produção</span><span class="sidebar-badge" data-module="pos_producao" aria-hidden="true"></span></a></li>
                 <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 3)): ?>
-                    <li><a title="Flow Drive" href="https://improov.com.br/flow/ImproovWeb/FlowDrive"><i class="fas fa-file"></i><span> Flow Drive</span></a></li>
+                    <li><a title="Flow Drive" href="https://improov.com.br/flow/ImproovWeb/FlowDrive"><i
+                                class="fas fa-file"></i><span> Flow Drive</span></a></li>
                     <!-- <li><a title="Infos Cliente" href="https://improov.com.br/flow/ImproovWeb/infoCliente"><i class="fas fa-chart-line"></i><span> Infos Cliente</span></a></li> -->
                 <?php endif; ?>
                 <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 4)): ?>
@@ -65,11 +71,14 @@ $__basePath = (strpos($__reqUri, '/flow/ImproovWeb/') !== false || preg_match('~
                         in_array($_SESSION['idcolaborador'] ?? null, [7, 34])
                     )
                 ): ?>
-                    <li><a title="Lista Alteração" href="https://improov.com.br/flow/ImproovWeb/Alteracao"><i class="fa-solid fa-user-pen"></i><span> Lista Alteração</span></a></li>
+                    <li><a title="Lista Alteração" href="https://improov.com.br/flow/ImproovWeb/Alteracao"><i
+                                class="fa-solid fa-user-pen"></i><span> Lista Alteração</span></a></li>
                 <?php endif; ?>
                 <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1)): ?>
                     <!-- <li><a title="Obras" href="https://improov.com.br/flow/ImproovWeb/Obras"><i class="fas fa-building"></i><span> Obras</span></a></li> -->
-                    <li><a title="Entregas" href="https://improov.com.br/flow/ImproovWeb/Entregas"><i class="fa-solid fa-truck-fast"></i><span> Entregas</span></a></li>
+                    <li><a title="Entregas" href="https://improov.com.br/flow/ImproovWeb/Entregas"><i
+                                class="fa-solid fa-truck-fast"></i><span> Entregas</span><span class="sidebar-badge"
+                                data-module="entregas" aria-hidden="true"></span></a></li>
                     <!-- <li><a title="Gestão" href="https://improov.com.br/flow/ImproovWeb/Gestao"><i class="fa-solid fa-diagram-project"></i><span> Gestão</span></a></li> -->
                 <?php endif; ?>
             </ul>
@@ -78,12 +87,18 @@ $__basePath = (strpos($__reqUri, '/flow/ImproovWeb/') !== false || preg_match('~
 
                 <ul class="division">
                     <label for="">Gerencial</label>
-                    <li><a title="Tela Gerencial" href="https://improov.com.br/flow/ImproovWeb/TelaGerencial"><i class="fa-solid fa-gauge-high"></i><span> Tela Gerencial</span></a></li>
-                    <li><a title="Flow Track" href="https://improov.com.br/flow/ImproovWeb/FlowTrack"><i class="fa-solid fa-route"></i><span> Flow Track</span></a></li>
-                    <li><a title="Flow Track" href="https://improov.com.br/flow/ImproovWeb/Colaborador"><i class="fa-solid fa-users"></i><span> Colaboradores</span></a></li>
-                    <li><a title="Dashboard" href="https://improov.com.br/flow/ImproovWeb/Dashboard"><i class="fa-solid fa-chart-line"></i><span> Dashboard</span></a></li>
-                    <li><a title="Projetos" href="https://improov.com.br/flow/ImproovWeb/Projetos"><i class="fa-solid fa-sitemap"></i><span> Projetos</span></a></li>
-                    <li><a title="Quadro Produção" href="https://improov.com.br/flow/ImproovWeb/Quadro"><i class="fa-solid fa-columns"></i><span>Quadro TEA</span></a></li>
+                    <li><a title="Tela Gerencial" href="https://improov.com.br/flow/ImproovWeb/TelaGerencial"><i
+                                class="fa-solid fa-gauge-high"></i><span> Tela Gerencial</span></a></li>
+                    <li><a title="Flow Track" href="https://improov.com.br/flow/ImproovWeb/FlowTrack"><i
+                                class="fa-solid fa-route"></i><span> Flow Track</span></a></li>
+                    <li><a title="Flow Track" href="https://improov.com.br/flow/ImproovWeb/Colaborador"><i
+                                class="fa-solid fa-users"></i><span> Colaboradores</span></a></li>
+                    <li><a title="Dashboard" href="https://improov.com.br/flow/ImproovWeb/Dashboard"><i
+                                class="fa-solid fa-chart-line"></i><span> Dashboard</span></a></li>
+                    <li><a title="Projetos" href="https://improov.com.br/flow/ImproovWeb/Projetos"><i
+                                class="fa-solid fa-sitemap"></i><span> Projetos</span></a></li>
+                    <li><a title="Quadro Produção" href="https://improov.com.br/flow/ImproovWeb/Quadro"><i
+                                class="fa-solid fa-columns"></i><span>Quadro TEA</span></a></li>
                 </ul>
             <?php endif; ?>
 
@@ -92,8 +107,10 @@ $__basePath = (strpos($__reqUri, '/flow/ImproovWeb/') !== false || preg_match('~
                 <ul class="division">
                     <label for="">Financeiro</label>
                     <!-- <li><a title="Tela de custos" href="https://improov.com.br/flow/ImproovWeb/Custos"><i class="fa-solid fa-desktop"></i><span> Tela Custos</span></a></li> -->
-                    <li><a title="Pagamento" href="https://improov.com.br/flow/ImproovWeb/Pagamento"><i class="fas fa-money-bill-wave"></i><span> Pagamento</span></a></li>
-                    <li><a title="Contratos" href="https://improov.com.br/flow/ImproovWeb/Contratos"><i class="fa-solid fa-file-contract"></i><span> Contratos</span></a></li>
+                    <li><a title="Pagamento" href="https://improov.com.br/flow/ImproovWeb/Pagamento"><i
+                                class="fas fa-money-bill-wave"></i><span> Pagamento</span></a></li>
+                    <li><a title="Contratos" href="https://improov.com.br/flow/ImproovWeb/Contratos"><i
+                                class="fa-solid fa-file-contract"></i><span> Contratos</span></a></li>
 
                 </ul>
             <?php endif; ?>
@@ -108,13 +125,17 @@ $__basePath = (strpos($__reqUri, '/flow/ImproovWeb/') !== false || preg_match('~
                 <label for="">Ferramentas</label>
                 <!-- <li><a title="Filtro Colaborador" href="https://improov.com.br/flow/ImproovWeb/main.php#filtro-colab"><i class="fa-solid fa-user"></i><span>Filtro Colaborador</span></a></li> -->
                 <?php if (isset($_SESSION['nivel_acesso']) && in_array($_SESSION['nivel_acesso'], [1, 2])): ?>
-                    <li><a title="Mapa de Compatibilização" href="https://improov.com.br/flow/ImproovWeb/MapaCompatibilizacao"><i class="fa-solid fa-map"></i><span> Mapa Compatib.</span></a></li>
+                    <li><a title="Mapa de Compatibilização"
+                            href="https://improov.com.br/flow/ImproovWeb/MapaCompatibilizacao"><i
+                                class="fa-solid fa-map"></i><span> Mapa Compatib.</span></a></li>
                 <?php endif; ?>
                 <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1)): ?>
                     <!-- <li><a title="Adicionar cliente ou obra" href="https://improov.com.br/flow/ImproovWeb/main.php#add-cliente"><i class="fa-solid fa-person"></i><span>Adicionar cliente ou obra</span></a></li> -->
                     <!-- <li><a title="Gerenciar prioridades" href="https://improov.com.br/flow/ImproovWeb/Prioridade"><i class="fa-solid fa-user-plus"></i><span>Gerenciar prioridades</span></a></li> -->
-                    <li><a title="Notificações" href="https://improov.com.br/flow/ImproovWeb/notificacoes"><i class="fa-solid fa-bell"></i><span>Notificações</span></a></li>
-                    <li><a title="Flow Referências" href="https://improov.com.br/flow/ImproovWeb/FlowReferencias"><i class="fas fa-paperclip"></i><span> Flow Referências</span></a></li>
+                    <li><a title="Notificações" href="https://improov.com.br/flow/ImproovWeb/notificacoes"><i
+                                class="fa-solid fa-bell"></i><span>Notificações</span></a></li>
+                    <li><a title="Flow Referências" href="https://improov.com.br/flow/ImproovWeb/FlowReferencias"><i
+                                class="fas fa-paperclip"></i><span> Flow Referências</span></a></li>
 
                 <?php endif; ?>
 
@@ -123,9 +144,12 @@ $__basePath = (strpos($__reqUri, '/flow/ImproovWeb/') !== false || preg_match('~
                 <label for="">Obras</label>
                 <?php foreach ($obras as $obra): ?>
                     <li class="obra">
-                        <i class="fa fa-star favorite-icon" data-id="<?= $obra['idobra']; ?>" title="<?= htmlspecialchars($obra['nomenclatura']); ?>"></i>
-                        <a title="<?= htmlspecialchars($obra['nomenclatura']); ?>" href="#" class="obra-item" data-id="<?= $obra['idobra']; ?>" data-name="<?= htmlspecialchars($obra['nomenclatura']); ?>">
+                        <i class="fa fa-star favorite-icon" data-id="<?= $obra['idobra']; ?>"
+                            title="<?= htmlspecialchars($obra['nomenclatura']); ?>"></i>
+                        <a title="<?= htmlspecialchars($obra['nomenclatura']); ?>" href="#" class="obra-item"
+                            data-id="<?= $obra['idobra']; ?>" data-name="<?= htmlspecialchars($obra['nomenclatura']); ?>">
                             <span><?= htmlspecialchars($obra['nomenclatura']); ?></span>
+                            <span class="sidebar-badge" data-obra-id="<?= $obra['idobra']; ?>" aria-hidden="true"></span>
                         </a>
                     </li>
                 <?php endforeach; ?>
@@ -142,9 +166,13 @@ $__basePath = (strpos($__reqUri, '/flow/ImproovWeb/') !== false || preg_match('~
                         <div class="drawer-body" id="obras-inativas-body">
                             <?php foreach ($obras_inativas as $obra): ?>
                                 <li class="obra inativa">
-                                    <i class="fa fa-star favorite-icon" data-id="<?= $obra['idobra']; ?>" title="<?= htmlspecialchars($obra['nomenclatura']); ?>"></i>
-                                    <a title="<?= htmlspecialchars($obra['nomenclatura']); ?>" href="#" class="obra-item" data-id="<?= $obra['idobra']; ?>" data-name="<?= htmlspecialchars($obra['nomenclatura']); ?>">
+                                    <i class="fa fa-star favorite-icon" data-id="<?= $obra['idobra']; ?>"
+                                        title="<?= htmlspecialchars($obra['nomenclatura']); ?>"></i>
+                                    <a title="<?= htmlspecialchars($obra['nomenclatura']); ?>" href="#" class="obra-item"
+                                        data-id="<?= $obra['idobra']; ?>"
+                                        data-name="<?= htmlspecialchars($obra['nomenclatura']); ?>">
                                         <span><?= htmlspecialchars($obra['nomenclatura']); ?></span>
+                                        <span class="sidebar-badge" data-obra-id="<?= $obra['idobra']; ?>" aria-hidden="true"></span>
                                     </a>
                                 </li>
                             <?php endforeach; ?>
@@ -154,7 +182,8 @@ $__basePath = (strpos($__reqUri, '/flow/ImproovWeb/') !== false || preg_match('~
             <?php endif; ?>
             <ul id="obras-list" class="division">
                 <label for="">Usuário</label>
-                <li><a title="Informações do Usuário" href="https://improov.com.br/flow/ImproovWeb/infos.php"><i class="fa-solid fa-id-card"></i><span>Informações</span></a></li>
+                <li><a title="Informações do Usuário" href="https://improov.com.br/flow/ImproovWeb/infos.php"><i
+                            class="fa-solid fa-id-card"></i><span>Informações</span></a></li>
             </ul>
         </ul>
     </div>
@@ -163,13 +192,14 @@ $__basePath = (strpos($__reqUri, '/flow/ImproovWeb/') !== false || preg_match('~
 </html>
 
 <script src="<?php echo asset_url($__basePath . 'assets/js/upload-ws.js'); ?>"></script>
+<script src="<?php echo asset_url($__basePath . 'assets/js/sidebar-counts.js'); ?>"></script>
 
 <script>
     // Cache-busting didático:
     // - No deploy, o servidor muda APP_VERSION (cache/deploy_version.txt)
     // - Toda página (via sidebar) compara a versão do servidor com a do navegador
     // - Se mudou, força um reload “limpo” alterando a URL com um param _v
-    (function() {
+    (function () {
         try {
             if (!window.fetch || !window.localStorage || !window.sessionStorage) return;
 
@@ -189,18 +219,18 @@ $__basePath = (strpos($__reqUri, '/flow/ImproovWeb/') !== false || preg_match('~
             var endpoint = window.location.origin + basePath + 'system_version.php';
 
             fetch(endpoint, {
-                    method: 'GET',
-                    cache: 'no-store',
-                    credentials: 'same-origin',
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                })
-                .then(function(resp) {
+                method: 'GET',
+                cache: 'no-store',
+                credentials: 'same-origin',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+                .then(function (resp) {
                     if (!resp.ok) throw new Error('bad');
                     return resp.json();
                 })
-                .then(function(data) {
+                .then(function (data) {
                     if (!data || !data.ok || !data.version) return;
 
                     var current = String(data.version);
@@ -222,7 +252,7 @@ $__basePath = (strpos($__reqUri, '/flow/ImproovWeb/') !== false || preg_match('~
                         window.location.replace(url.toString());
                     }
                 })
-                .catch(function() {
+                .catch(function () {
                     // Se falhar, não quebra a navegação
                 });
         } catch (e) {
@@ -233,7 +263,7 @@ $__basePath = (strpos($__reqUri, '/flow/ImproovWeb/') !== false || preg_match('~
 
 <script>
     // Envia o title e url ao servidor para registrar histórico com título amigável
-    (function() {
+    (function () {
         try {
             if (!window.fetch) return;
             const payload = new FormData();

@@ -48,16 +48,19 @@ body {
   overflow-y: auto;
 }
 
-.sidebar.complete::-webkit-scrollbar {
+.sidebar.complete::-webkit-scrollbar,
+.drawer-body.is-open::-webkit-scrollbar {
   width: 4px;
 }
 
-.sidebar.complete::-webkit-scrollbar-thumb {
+.sidebar.complete::-webkit-scrollbar-thumb,
+.drawer-body.is-open::-webkit-scrollbar-thumb {
   background-color: var(--sb-scroll);
   border-radius: 10px;
 }
 
-.sidebar.complete::-webkit-scrollbar-track {
+.sidebar.complete::-webkit-scrollbar-track,
+.drawer-body.is-open::-webkit-scrollbar-track {
   background-color: transparent;
 }
 
@@ -248,6 +251,7 @@ button#menuButton:active {
 
 .drawer-body.is-open {
   max-height: 600px;
+  overflow-y: auto;
 }
 
 /* ── Span no modo mini / completo ──────────────────────────── */
@@ -264,6 +268,79 @@ button#menuButton:active {
   opacity: 1;
   width: auto;
   transition: opacity 0.2s ease 0.1s;
+}
+
+/* ===== SIDEBAR BADGE =====
+   Badge is always absolute-positioned (out of flow) so it never
+   pushes text or icons. Complete mode: floats to the right edge.
+   Mini mode: floats top-right of the icon.
+*/
+.sidebar .sidebar-badge {
+  display: inline-block;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #ffffff;
+  font-weight: 700;
+  text-align: center;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+}
+
+.sidebar .sidebar-badge.is-small {
+  min-width: 16px;
+  height: 16px;
+  line-height: 16px;
+  font-size: 11px;
+  padding: 0 5px;
+}
+
+/* Both modes: badge is always suspended / absolute, never inline */
+.sidebar ul li {
+  position: relative;
+}
+.sidebar ul li a {
+  position: relative;
+}
+
+/* Shared absolute positioning for both mini and complete */
+.sidebar .sidebar-badge {
+  position: absolute;
+  margin-left: 0;
+  z-index: 5;
+}
+
+/* complete: badge hovers to the right of the text label */
+.sidebar.complete .sidebar-badge {
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  min-width: 20px;
+  height: 20px;
+  line-height: 20px;
+  font-size: 12px;
+  padding: 0 6px;
+}
+
+/* mini: badge hovers to the top-right of the icon */
+.sidebar.mini ul li {
+  position: relative;
+}
+.sidebar.mini li a {
+  justify-content: center;
+}
+.sidebar.mini .sidebar-badge {
+  left: calc(45% + 10px);
+  top: 35%;
+  transform: translateY(-50%);
+  min-width: 15px;
+  height: 15px;
+  line-height: 15px;
+  font-size: 10px;
+  padding: 0 5px;
+}
+
+/* Hide empty badges (JS toggles aria-hidden) */
+.sidebar .sidebar-badge[aria-hidden="true"]:empty {
+  display: none;
 }
 
 /* ── Modo claro via media query ────────────────────────────── */
@@ -284,7 +361,8 @@ button#menuButton:active {
     content: url("../gif/assinatura_preto.gif");
   }
 
-  .sidebar.complete::-webkit-scrollbar-track {
+  .sidebar.complete::-webkit-scrollbar-track,
+  .drawer-body.is-open::-webkit-scrollbar-track {
     background-color: #f1f1f1;
   }
 }

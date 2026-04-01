@@ -261,9 +261,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
           // Atualiza as duas tabelas
           var tabelaAPagar = document.querySelector("#tabela-a-pagar tbody");
-          var tabelaPago   = document.querySelector("#tabela-pago tbody");
+          var tabelaPago = document.querySelector("#tabela-pago tbody");
           tabelaAPagar.innerHTML = "";
-          tabelaPago.innerHTML   = "";
+          tabelaPago.innerHTML = "";
           let totalValor = 0;
 
           document
@@ -293,6 +293,15 @@ document.addEventListener("DOMContentLoaded", function () {
             checkbox.setAttribute("funcao", item.funcao_id);
             // include function name so backend can detect 'Finalização parcial'
             checkbox.setAttribute("data-funcao-name", item.nome_funcao || "");
+            // comissão do gestor (colab 8 sobre 23/40) e valor a usar no pagamento
+            checkbox.setAttribute(
+              "data-comissao-gestor",
+              item.comissao_gestor ? "1" : "",
+            );
+            checkbox.setAttribute(
+              "data-valor",
+              item.valor_exibido != null ? String(item.valor_exibido) : "0",
+            );
             // counts to allow 2nd confirmation (pago parcial -> pago completa)
             checkbox.setAttribute(
               "data-pago-parcial-count",
@@ -336,7 +345,8 @@ document.addEventListener("DOMContentLoaded", function () {
               cellFuncao.textContent = item.nome_funcao;
               cellStatusFuncao.textContent = item.status;
               // Mostra valor_exibido (50% para Finalização Parcial/pago-parcial)
-              const valorParaMostrar = item.valor_exibido != null ? item.valor_exibido : item.valor;
+              const valorParaMostrar =
+                item.valor_exibido != null ? item.valor_exibido : item.valor;
               cellValor.textContent = valorParaMostrar;
               cellData.textContent = item.data_pagamento
                 ? item.data_pagamento
@@ -404,12 +414,19 @@ document.addEventListener("DOMContentLoaded", function () {
             row.appendChild(cellData);
 
             // Roteia para a tabela correta de acordo com status de pagamento
-            const normIt = (s) => (s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim();
+            const normIt = (s) =>
+              (s || "")
+                .toLowerCase()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .trim();
             const fnNormIt = normIt(item.nome_funcao || "");
             const pagoParcIt = parseInt(item.pago_parcial_count || 0, 10);
             const pagoCompIt = parseInt(item.pago_completa_count || 0, 10);
-            const isFinalizacaoCompleta = fnNormIt.includes("finalizacao") && fnNormIt.includes("completa");
-            const jaFoiPago = item.pagamento == 1 &&
+            const isFinalizacaoCompleta =
+              fnNormIt.includes("finalizacao") && fnNormIt.includes("completa");
+            const jaFoiPago =
+              item.pagamento == 1 &&
               !(isFinalizacaoCompleta && pagoParcIt > 0 && pagoCompIt === 0);
 
             // Coluna de Ações — botão de pagamento individual (só para linhas não pagas)
@@ -420,40 +437,57 @@ document.addEventListener("DOMContentLoaded", function () {
               btnPagar.className = "btn-pagar-linha";
               btnPagar.addEventListener("click", function () {
                 const colaboradorId = parseInt(
-                  document.getElementById("colaborador").value, 10
+                  document.getElementById("colaborador").value,
+                  10,
                 );
                 const mes = document.getElementById("mes").value;
                 const ano = document.getElementById("ano").value;
-                const ids = [{
-                  id: parseInt(checkbox.getAttribute("data-id"), 10),
-                  origem: checkbox.getAttribute("data-origem"),
-                  funcao_id: parseInt(checkbox.getAttribute("funcao"), 10),
-                  funcao_name: checkbox.getAttribute("data-funcao-name") || ""
-                }];
+                const ids = [
+                  {
+                    id: parseInt(checkbox.getAttribute("data-id"), 10),
+                    origem: checkbox.getAttribute("data-origem"),
+                    funcao_id: parseInt(checkbox.getAttribute("funcao"), 10),
+                    funcao_name:
+                      checkbox.getAttribute("data-funcao-name") || "",
+                    comissao_gestor:
+                      checkbox.getAttribute("data-comissao-gestor") === "1",
+                    valor: parseFloat(
+                      checkbox.getAttribute("data-valor") || "0",
+                    ),
+                  },
+                ];
                 fetch("updatePagamento.php", {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ ids, colaborador_id: colaboradorId, mes, ano })
+                  body: JSON.stringify({
+                    ids,
+                    colaborador_id: colaboradorId,
+                    mes,
+                    ano,
+                  }),
                 })
-                .then(r => r.json())
-                .then(resp => {
-                  if (resp.success) {
-                    fetch("insertHistorico.php", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ ids, colaborador_id: colaboradorId })
-                    })
-                    .then(r => r.json())
-                    .then(() => carregarDadosColab())
-                    .catch(() => carregarDadosColab());
-                  } else {
+                  .then((r) => r.json())
+                  .then((resp) => {
+                    if (resp.success) {
+                      fetch("insertHistorico.php", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          ids,
+                          colaborador_id: colaboradorId,
+                        }),
+                      })
+                        .then((r) => r.json())
+                        .then(() => carregarDadosColab())
+                        .catch(() => carregarDadosColab());
+                    } else {
+                      alert("Erro ao registrar pagamento.");
+                    }
+                  })
+                  .catch((err) => {
+                    console.error("Erro ao pagar linha:", err);
                     alert("Erro ao registrar pagamento.");
-                  }
-                })
-                .catch(err => {
-                  console.error("Erro ao pagar linha:", err);
-                  alert("Erro ao registrar pagamento.");
-                });
+                  });
               });
               cellAcoes.appendChild(btnPagar);
             }
@@ -486,7 +520,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
           // ─── Painel de divergências de valor ────────────────────────────
           const divergentes = (data.funcoes || []).filter(
-            (f) => f.tem_divergencia && f.origem === "funcao_imagem"
+            (f) => f.tem_divergencia && f.origem === "funcao_imagem",
           );
 
           let painelDiv = document.getElementById("painel-divergencias");
@@ -507,32 +541,34 @@ document.addEventListener("DOMContentLoaded", function () {
               .map(
                 (f) => `
               <tr>
-                <td style="padding:4px 8px">${f.imagem_nome || ""}</td>
-                <td style="padding:4px 8px">${f.nome_funcao || ""}</td>
-                <td style="padding:4px 8px;color:#c0392b;font-weight:600">${currencyBRL(f.valor)}</td>
-                <td style="padding:4px 8px;color:#27ae60;font-weight:600">${currencyBRL(f.valor_esperado)}</td>
-              </tr>`
+                <td>${f.imagem_nome || ""}</td>
+                <td>${f.nome_funcao || ""}</td>
+                <td class="valor-atual">${currencyBRL(f.valor)}</td>
+                <td class="valor-esperado">${currencyBRL(f.valor_esperado)}</td>
+              </tr>`,
               )
               .join("");
 
             painelDiv.style.display = "";
             painelDiv.innerHTML = `
-              <div style="background:#fff8e1;border:1px solid #f0ad4e;border-radius:6px;padding:12px 16px;margin-bottom:14px">
-                <strong style="color:#8a6000">&#9888; ${divergentes.length} tarefa(s) com valor diferente do esperado</strong>
-                <table style="width:100%;margin-top:8px;border-collapse:collapse;font-size:13px">
+              <div class="divergencia-box">
+                <p class="divergencia-titulo">
+                  <i class="fa-solid fa-triangle-exclamation"></i>
+                  ${divergentes.length} tarefa(s) com valor diferente do esperado
+                </p>
+                <table class="divergencia-table">
                   <thead>
-                    <tr style="background:#ffe082">
-                      <th style="padding:4px 8px;text-align:left">Imagem</th>
-                      <th style="padding:4px 8px;text-align:left">Função</th>
-                      <th style="padding:4px 8px;text-align:left">Valor atual</th>
-                      <th style="padding:4px 8px;text-align:left">Valor esperado</th>
+                    <tr>
+                      <th>Imagem</th>
+                      <th>Função</th>
+                      <th>Valor atual</th>
+                      <th>Valor esperado</th>
                     </tr>
                   </thead>
                   <tbody>${linhas}</tbody>
                 </table>
-                <button id="btn-corrigir-valores"
-                  style="margin-top:10px;padding:6px 16px;background:#e67e22;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px">
-                  Corrigir valores automaticamente
+                <button id="btn-corrigir-valores" class="btn btn-warning">
+                  <i class="fa-solid fa-wand-magic-sparkles"></i> Corrigir valores automaticamente
                 </button>
               </div>`;
 
@@ -545,7 +581,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 }));
                 if (
                   !confirm(
-                    `Atualizar ${itens.length} tarefa(s) para os valores esperados?`
+                    `Atualizar ${itens.length} tarefa(s) para os valores esperados?`,
                   )
                 )
                   return;
@@ -557,13 +593,46 @@ document.addEventListener("DOMContentLoaded", function () {
                   });
                   const json = await res.json();
                   if (json.success) {
-                    alert(`${json.atualizados} tarefa(s) corrigida(s) com sucesso!`);
+                    Toastify({
+                      text: `${json.atualizados} tarefa(s) corrigida(s) com sucesso!`,
+                      duration: 3500,
+                      gravity: "top",
+                      position: "right",
+                      style: {
+                        background: "#10b981",
+                        borderRadius: "8px",
+                        fontFamily: '"Inter", sans-serif',
+                        fontSize: "13px",
+                      },
+                    }).showToast();
                     carregarDadosColab();
                   } else {
-                    alert("Erro: " + (json.error || "desconhecido"));
+                    Toastify({
+                      text: "Erro: " + (json.error || "desconhecido"),
+                      duration: 4000,
+                      gravity: "top",
+                      position: "right",
+                      style: {
+                        background: "#ef4444",
+                        borderRadius: "8px",
+                        fontFamily: '"Inter", sans-serif',
+                        fontSize: "13px",
+                      },
+                    }).showToast();
                   }
                 } catch (e) {
-                  alert("Erro ao corrigir valores");
+                  Toastify({
+                    text: "Erro ao corrigir valores.",
+                    duration: 4000,
+                    gravity: "top",
+                    position: "right",
+                    style: {
+                      background: "#ef4444",
+                      borderRadius: "8px",
+                      fontFamily: '"Inter", sans-serif',
+                      fontSize: "13px",
+                    },
+                  }).showToast();
                 }
               });
           }
@@ -626,15 +695,17 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById("colaborador").value,
         10,
       );
-// Confirma TODAS as tarefas visíveis na tabela "A Pagar" (independente de checkbox)
-        var checkboxes = Array.from(
-          document.querySelectorAll("#tabela-a-pagar .pagamento-checkbox"),
-        ).filter((cb) => !cb.disabled && cb.closest("tr").offsetParent !== null);
-        var ids = checkboxes.map((cb) => ({
-          id: parseInt(cb.getAttribute("data-id"), 10),
-          origem: cb.getAttribute("data-origem"),
-          funcao_id: parseInt(cb.getAttribute("funcao"), 10),
+      // Confirma TODAS as tarefas visíveis na tabela "A Pagar" (independente de checkbox)
+      var checkboxes = Array.from(
+        document.querySelectorAll("#tabela-a-pagar .pagamento-checkbox"),
+      ).filter((cb) => !cb.disabled && cb.closest("tr").offsetParent !== null);
+      var ids = checkboxes.map((cb) => ({
+        id: parseInt(cb.getAttribute("data-id"), 10),
+        origem: cb.getAttribute("data-origem"),
+        funcao_id: parseInt(cb.getAttribute("funcao"), 10),
         funcao_name: cb.getAttribute("data-funcao-name") || "",
+        comissao_gestor: cb.getAttribute("data-comissao-gestor") === "1",
+        valor: parseFloat(cb.getAttribute("data-valor") || "0"),
       }));
 
       if (ids.length > 0) {
@@ -737,9 +808,11 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 function contarLinhasTabela() {
-  const linhas = Array.from(document.querySelectorAll(
-    "#tabela-a-pagar tbody tr, #tabela-pago tbody tr"
-  ));
+  const linhas = Array.from(
+    document.querySelectorAll(
+      "#tabela-a-pagar tbody tr, #tabela-pago tbody tr",
+    ),
+  );
   let totalImagens = 0;
   let totalValor = 0;
   // Conta imagens visíveis e soma valores
@@ -807,7 +880,8 @@ function contarLinhasTabela() {
         .replace(/\p{Diacritic}/gu, "")
         .trim();
       if (
-        (fnorm.includes("finalizacao") && fnorm.includes("completa")) &&
+        fnorm.includes("finalizacao") &&
+        fnorm.includes("completa") &&
         pagoParcialCount > 0 &&
         pagoCompletaCount === 0
       ) {
@@ -1009,7 +1083,9 @@ document
         .map((cb) => cb.name)
         .filter(Boolean);
       const itens = Array.from(
-        document.querySelectorAll("#tabela-a-pagar tbody tr, #tabela-pago tbody tr"),
+        document.querySelectorAll(
+          "#tabela-a-pagar tbody tr, #tabela-pago tbody tr",
+        ),
       )
         .filter((tr) => tr.offsetParent !== null)
         .map((tr) => {
@@ -1074,21 +1150,134 @@ document
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
-        alert(data.message || "Erro ao gerar adendo.");
+        Toastify({
+          text: data.message || "Erro ao gerar adendo.",
+          duration: 4000,
+          gravity: "top",
+          position: "right",
+          style: {
+            background: "#ef4444",
+            borderRadius: "8px",
+            fontFamily: '"Inter", sans-serif',
+            fontSize: "13px",
+          },
+        }).showToast();
         return;
       }
-      if (data.download_url) {
-        window.open(data.download_url, "_blank");
+      if (data.preview_url && data.temp_rel) {
+        abrirModalAdendo(data.preview_url, data.temp_rel);
       } else {
-        alert("Adendo gerado com sucesso.");
+        Toastify({
+          text: "Adendo gerado com sucesso.",
+          duration: 3000,
+          gravity: "top",
+          position: "right",
+          style: {
+            background: "#10b981",
+            borderRadius: "8px",
+            fontFamily: '"Inter", sans-serif',
+            fontSize: "13px",
+          },
+        }).showToast();
       }
     } catch (e) {
       console.error("Erro ao gerar adendo", e);
-      alert("Erro ao gerar adendo.");
+      Toastify({
+        text: "Erro ao gerar adendo.",
+        duration: 4000,
+        gravity: "top",
+        position: "right",
+        style: {
+          background: "#ef4444",
+          borderRadius: "8px",
+          fontFamily: '"Inter", sans-serif',
+          fontSize: "13px",
+        },
+      }).showToast();
     } finally {
       btn.disabled = false;
     }
   });
+
+function abrirModalAdendo(previewUrl, tempRel) {
+  const modal = document.getElementById("modalAdendo");
+  const frame = document.getElementById("adendo-preview-frame");
+  if (!modal || !frame) return;
+
+  frame.src = previewUrl;
+  modal.classList.add("is-open");
+
+  // Clone confirm button to remove any previously attached listeners
+  const btnOld = document.getElementById("btn-confirmar-adendo");
+  const btnNew = btnOld.cloneNode(true);
+  btnOld.parentNode.replaceChild(btnNew, btnOld);
+
+  btnNew.addEventListener("click", async function () {
+    btnNew.disabled = true;
+    try {
+      const res = await fetch("confirmar_adendo.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ temp_rel: tempRel }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        Toastify({
+          text: data.message || "Erro ao confirmar adendo.",
+          duration: 4000,
+          gravity: "top",
+          position: "right",
+          style: {
+            background: "#ef4444",
+            borderRadius: "8px",
+            fontFamily: '"Inter", sans-serif',
+            fontSize: "13px",
+          },
+        }).showToast();
+        return;
+      }
+      fecharModalAdendo();
+      Toastify({
+        text: "Adendo salvo com sucesso!",
+        duration: 3500,
+        gravity: "top",
+        position: "right",
+        style: {
+          background: "#10b981",
+          borderRadius: "8px",
+          fontFamily: '"Inter", sans-serif',
+          fontSize: "13px",
+        },
+      }).showToast();
+      if (data.download_url) {
+        window.open(data.download_url, "_blank");
+      }
+    } catch (e) {
+      console.error("Erro ao confirmar adendo", e);
+      Toastify({
+        text: "Erro ao confirmar adendo.",
+        duration: 4000,
+        gravity: "top",
+        position: "right",
+        style: {
+          background: "#ef4444",
+          borderRadius: "8px",
+          fontFamily: '"Inter", sans-serif',
+          fontSize: "13px",
+        },
+      }).showToast();
+    } finally {
+      btnNew.disabled = false;
+    }
+  });
+}
+
+function fecharModalAdendo() {
+  const modal = document.getElementById("modalAdendo");
+  const frame = document.getElementById("adendo-preview-frame");
+  if (modal) modal.classList.remove("is-open");
+  if (frame) frame.src = "";
+}
 
 document
   .getElementById("generate-lista")
@@ -1132,7 +1321,9 @@ document
             ...document.querySelectorAll("#tabela-a-pagar tbody tr"),
             ...document.querySelectorAll("#tabela-pago tbody tr"),
           ];
-          const tableHeaderThs = document.querySelectorAll("#tabela-a-pagar thead tr th");
+          const tableHeaderThs = document.querySelectorAll(
+            "#tabela-a-pagar thead tr th",
+          );
           const selectedColumnIndexes = [0, 1, 2]; // colunas que vão para o PDF
           const funcaoColumnIndex = 2; // Ajuste para o índice da coluna "função"
           const dataPagamentoColumnIndex = 5;

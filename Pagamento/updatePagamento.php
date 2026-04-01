@@ -67,6 +67,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     // fetch valor and any meta we need per origin
                     if ($origem === 'funcao_imagem') {
+                        // ── Caminho de comissão do gestor ──────────────────────────────────────
+                        // Não toca funcao_imagem.pagamento; registra apenas em pagamento_itens.
+                        if (!empty($item['comissao_gestor'])) {
+                            $dupChk = $conn->prepare(
+                                "SELECT COUNT(1) AS cnt FROM pagamento_itens " .
+                                    "WHERE origem = 'funcao_imagem' AND origem_id = ? AND observacao = 'Comissão Gestor'"
+                            );
+                            $dupChk->bind_param('i', $id);
+                            $dupChk->execute();
+                            $cntRow = $dupChk->get_result()->fetch_assoc();
+                            $dupChk->close();
+                            if (intval($cntRow['cnt'] ?? 0) > 0) continue; // já registrado
+
+                            $valor = isset($item['valor']) && is_numeric($item['valor']) ? (float)$item['valor'] : 0.0;
+                            $obsComissao = 'Comissão Gestor';
+                            if ($hasObservacao) {
+                                $insItem->bind_param('isids', $pagamento_id, $origem, $id, $valor, $obsComissao);
+                            } else {
+                                $insItem->bind_param('isid', $pagamento_id, $origem, $id, $valor);
+                            }
+                            $insItem->execute();
+                            $valor_total += $valor;
+                            $didAnyNewPayments = true;
+                            continue;
+                        }
+                        // ───────────────────────────────────────────────────────────────────────
+
                         $s = $conn->prepare("SELECT idfuncao_imagem, IFNULL(valor,0) AS valor, funcao_id, imagem_id, pagamento FROM funcao_imagem WHERE idfuncao_imagem = ? LIMIT 1");
                         $s->bind_param('i', $id);
                         $s->execute();
@@ -89,9 +116,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             // If a full payment has already been recorded for this imagem, ignore.
                             $dup = $conn->prepare(
                                 "SELECT COUNT(1) AS cnt\n" .
-                                "FROM pagamento_itens pi\n" .
-                                "JOIN funcao_imagem fi2 ON pi.origem = 'funcao_imagem' AND pi.origem_id = fi2.idfuncao_imagem\n" .
-                                "WHERE fi2.imagem_id = ? AND fi2.funcao_id = 4 AND pi.observacao = 'Pago Completa'"
+                                    "FROM pagamento_itens pi\n" .
+                                    "JOIN funcao_imagem fi2 ON pi.origem = 'funcao_imagem' AND pi.origem_id = fi2.idfuncao_imagem\n" .
+                                    "WHERE fi2.imagem_id = ? AND fi2.funcao_id = 4 AND pi.observacao = 'Pago Completa'"
                             );
                             if ($dup) {
                                 $dup->bind_param('i', $imagem_id_db);
@@ -107,10 +134,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                             $ps = $conn->prepare(
                                 "SELECT pi.pagamento_id, pi.origem_id, pi.criado_em AS data_parcial\n" .
-                                "FROM pagamento_itens pi\n" .
-                                "JOIN funcao_imagem fi2 ON pi.origem = 'funcao_imagem' AND pi.origem_id = fi2.idfuncao_imagem\n" .
-                                "WHERE fi2.imagem_id = ? AND fi2.funcao_id = 4 AND pi.observacao = 'Finalização Parcial'\n" .
-                                "ORDER BY pi.criado_em ASC LIMIT 1"
+                                    "FROM pagamento_itens pi\n" .
+                                    "JOIN funcao_imagem fi2 ON pi.origem = 'funcao_imagem' AND pi.origem_id = fi2.idfuncao_imagem\n" .
+                                    "WHERE fi2.imagem_id = ? AND fi2.funcao_id = 4 AND pi.observacao = 'Finalização Parcial'\n" .
+                                    "ORDER BY pi.criado_em ASC LIMIT 1"
                             );
                             if ($ps) {
                                 $ps->bind_param('i', $imagem_id_db);
@@ -443,10 +470,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $imagem_id_db = intval($item['imagem_id']);
                             $ps = $conn->prepare(
                                 "SELECT pi.pagamento_id, pi.origem_id, pi.criado_em AS data_parcial\n" .
-                                "FROM pagamento_itens pi\n" .
-                                "JOIN funcao_imagem fi2 ON pi.origem = 'funcao_imagem' AND pi.origem_id = fi2.idfuncao_imagem\n" .
-                                "WHERE fi2.imagem_id = ? AND fi2.funcao_id = 4 AND pi.observacao = 'Finalização Parcial'\n" .
-                                "ORDER BY pi.criado_em ASC LIMIT 1"
+                                    "FROM pagamento_itens pi\n" .
+                                    "JOIN funcao_imagem fi2 ON pi.origem = 'funcao_imagem' AND pi.origem_id = fi2.idfuncao_imagem\n" .
+                                    "WHERE fi2.imagem_id = ? AND fi2.funcao_id = 4 AND pi.observacao = 'Finalização Parcial'\n" .
+                                    "ORDER BY pi.criado_em ASC LIMIT 1"
                             );
                             if ($ps) {
                                 $ps->bind_param('i', $imagem_id_db);

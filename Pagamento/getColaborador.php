@@ -11,7 +11,7 @@ if ($mesNumero && $ano) {
     $fimMesDia = cal_days_in_month(CAL_GREGORIAN, $mesNumero, $ano);
     $fimMesDataTime = sprintf('%04d-%02d-%02d 23:59:59', $ano, $mesNumero, $fimMesDia);
     $snapJoin = "LEFT JOIN (
-        SELECT h1.imagem_id, h1.status_id
+        SELECT h1.imagem_id, MAX(h1.status_id) AS status_id
         FROM historico_imagens h1
         INNER JOIN (
             SELECT imagem_id, MAX(data_movimento) AS max_data
@@ -19,6 +19,7 @@ if ($mesNumero && $ano) {
             WHERE data_movimento <= ?
             GROUP BY imagem_id
         ) hm ON hm.imagem_id = h1.imagem_id AND hm.max_data = h1.data_movimento
+        GROUP BY h1.imagem_id
     ) hi_snap ON hi_snap.imagem_id = ico.idimagens_cliente_obra";
     $snapStatusCond = "hi_snap.status_id = 1";
 } else {
@@ -169,6 +170,7 @@ if ($colaboradorId == 1) {
     fi.idfuncao_imagem AS identificador,
     fi.imagem_id,
     ico.imagem_nome,
+    ico.tipo_imagem,
     fi.funcao_id,
     CASE 
         WHEN fi.funcao_id = 4 THEN 
@@ -239,6 +241,7 @@ SELECT
     fi.idfuncao_imagem AS identificador,
     fi.imagem_id,
     ico.imagem_nome,
+    ico.tipo_imagem,
     fi.funcao_id,
     CASE 
         WHEN fi.funcao_id = 4 THEN 
@@ -257,21 +260,19 @@ SELECT
     END AS nome_funcao,
     fi.status,
     fi.prazo,
-    fi.pagamento,
+    CASE WHEN EXISTS (
+        SELECT 1 FROM pagamento_itens pi
+        WHERE pi.origem = 'funcao_imagem' AND pi.origem_id = fi.idfuncao_imagem
+          AND pi.observacao = 'Comissão Gestor'
+    ) THEN 1 ELSE 0 END AS pagamento,
     fi.valor,
-    fi.data_pagamento,
-    CASE WHEN fi.funcao_id = 4 THEN (
-        SELECT COUNT(1)
-        FROM pagamento_itens pi
-        JOIN funcao_imagem fi_pi ON pi.origem = 'funcao_imagem' AND pi.origem_id = fi_pi.idfuncao_imagem
-        WHERE fi_pi.imagem_id = fi.imagem_id AND fi_pi.funcao_id = 4 AND pi.observacao = 'Finalização Parcial'
-    ) ELSE 0 END AS pago_parcial_count,
-    CASE WHEN fi.funcao_id = 4 THEN (
-        SELECT COUNT(1)
-        FROM pagamento_itens pi
-        JOIN funcao_imagem fi_pi ON pi.origem = 'funcao_imagem' AND pi.origem_id = fi_pi.idfuncao_imagem
-        WHERE fi_pi.imagem_id = fi.imagem_id AND fi_pi.funcao_id = 4 AND pi.observacao = 'Pago Completa'
-    ) ELSE 0 END AS pago_completa_count
+    NULL AS data_pagamento,
+    0 AS pago_parcial_count,
+    CASE WHEN EXISTS (
+        SELECT 1 FROM pagamento_itens pi
+        WHERE pi.origem = 'funcao_imagem' AND pi.origem_id = fi.idfuncao_imagem
+          AND pi.observacao = 'Comissão Gestor'
+    ) THEN 1 ELSE 0 END AS pago_completa_count
 FROM 
     funcao_imagem fi
 JOIN 
@@ -286,6 +287,7 @@ JOIN
 WHERE 
     fi.colaborador_id IN (23, 40)
     AND fi.funcao_id = 4
+    AND fi.pagamento = 0
     AND NOT (
         EXISTS (
             SELECT 1 FROM funcao_imagem fi_sub
@@ -312,7 +314,7 @@ WHERE
     } else {
         $sql .= " AND (fi.status = 'Finalizado' OR fi.status = 'Em aprovação' OR fi.status = 'Ajuste' OR fi.status = 'Aprovado com ajustes' OR fi.status = 'Aprovado')";
     }
-} elseif (in_array($colaboradorId, [13, 20, 23, 37, 39])) {
+} elseif (in_array($colaboradorId, [13, 20, 23, 37, 39, 40])) {
     $sql = "SELECT 
     fi.colaborador_id,
     'funcao_imagem' AS origem,
@@ -380,6 +382,29 @@ WHERE
         )";
     } else {
         $sql .= " AND (fi.status = 'Finalizado' OR fi.status = 'Em aprovação' OR fi.status = 'Ajuste' OR fi.status = 'Aprovado com ajustes' OR fi.status = 'Aprovado')";
+    }
+
+    // Para 23/40: só Finalização Completa ainda não totalmente paga
+    if (in_array($colaboradorId, [23, 40])) {
+        $sql .= " AND (
+            fi.funcao_id != 4
+            OR (
+                NOT (
+                    EXISTS (
+                        SELECT 1 FROM funcao_imagem fi_sub
+                        JOIN funcao f_sub ON fi_sub.funcao_id = f_sub.idfuncao
+                        WHERE fi_sub.imagem_id = fi.imagem_id
+                          AND f_sub.nome_funcao = 'Pré-Finalização'
+                    )
+                    OR {$snapStatusCond}
+                )
+                AND NOT EXISTS (
+                    SELECT 1 FROM pagamento_itens pi
+                    JOIN funcao_imagem fi_pi ON pi.origem = 'funcao_imagem' AND pi.origem_id = fi_pi.idfuncao_imagem
+                    WHERE fi_pi.imagem_id = fi.imagem_id AND fi_pi.funcao_id = 4 AND pi.observacao = 'Pago Completa'
+                )
+            )
+        )";
     }
 
     $sql .= " 
@@ -505,7 +530,7 @@ if ($colaboradorId == 1) {
     } else {
         $stmt->bind_param('ii', $colaboradorId, $colaboradorId);
     }
-} elseif (in_array($colaboradorId, [13, 20, 23, 37, 39])) {
+} elseif (in_array($colaboradorId, [13, 20, 23, 37, 39, 40])) {
     if ($mesNumero && $ano) {
         // funcao_imagem: s(snap), i(colab), i(ano), i(mes), i(mes_log), i(ano_log) + animacao: i(colab), i(ano), i(mes)
         $stmt->bind_param('siiiiiiii', $fimMesDataTime, $colaboradorId, $ano, $mesNumero, $mesNumero, $ano, $colaboradorId, $ano, $mesNumero);
@@ -606,6 +631,23 @@ foreach ($funcoes as &$f) {
         } else {
             $tarifado = 130.00;
         }
+    }
+
+    // Comissão do gestor (colaborador 8) sobre finalizações completas de 23/40
+    if ($colaboradorId === 8 && in_array($colabId, [23, 40]) && $funcId === 4) {
+        $imgNomeLower = mb_strtolower($f['imagem_nome'] ?? '', 'UTF-8');
+        $tipoImg      = $f['tipo_imagem'] ?? '';
+        // Fachada = R$100, exceto se o nome contiver 'embasamento' → R$80
+        // Imagem Externa e qualquer outro tipo = R$80
+        $comissao = ($tipoImg === 'Fachada' && !str_contains($imgNomeLower, 'embasamento'))
+            ? 100.00
+            : 80.00;
+        $f['comissao_gestor'] = true;
+        $f['valor_tarifado']  = $comissao;
+        $f['valor_esperado']  = $comissao;
+        $f['valor_exibido']   = $comissao;
+        $f['tem_divergencia'] = false;
+        continue; // pula o cálculo geral abaixo
     }
 
     // valor_esperado = sempre o valor CHEIO de funcao_colaborador

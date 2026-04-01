@@ -49,11 +49,13 @@ try {
     $meses = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
     $mesNome = $meses[(int)$dt->format('m')] ?? $dt->format('m');
 
-    $pdfDir = __DIR__ . '/../Contratos/gerados/adendos/' . $dt->format('Y') . '_' . $dt->format('m') . '_' . $mesNome;
+    // Generate to a temp dir first — the user must approve before we save to the final location
+    $pdfDirFinal = __DIR__ . '/../Contratos/gerados/adendos/' . $dt->format('Y') . '_' . $dt->format('m') . '_' . $mesNome;
+    $pdfDir = __DIR__ . '/../Contratos/gerados/adendos/temp';
     if (!is_dir($pdfDir)) {
         if (!mkdir($pdfDir, 0775, true) && !is_dir($pdfDir)) {
             http_response_code(500);
-            echo json_encode(['success' => false, 'message' => 'Não foi possível criar pasta para PDFs: ' . $pdfDir]);
+            echo json_encode(['success' => false, 'message' => 'Não foi possível criar pasta temporária.']);
             exit;
         }
     }
@@ -69,12 +71,29 @@ try {
 
     $resp = $service->gerarAdendo($colaboradorId, $mes, $ano, $valorFixo, $funcoes, $extras, $itens);
 
-    $baseGerados = realpath(__DIR__ . '/../Contratos/gerados');
     $arquivoPath = $resp['arquivo_path'] ?? '';
-    if ($baseGerados && $arquivoPath) {
-        $rel = ltrim(str_replace($baseGerados, '', realpath($arquivoPath) ?: $arquivoPath), DIRECTORY_SEPARATOR);
-        $resp['download_url'] = '../Contratos/download.php?arquivo=' . rawurlencode($rel);
+    $baseGerados  = realpath(__DIR__ . '/../Contratos/gerados');
+    $realArquivo  = $arquivoPath ? (realpath($arquivoPath) ?: $arquivoPath) : '';
+
+    if ($baseGerados && $realArquivo) {
+        $tempRel = ltrim(str_replace($baseGerados, '', $realArquivo), DIRECTORY_SEPARATOR);
+        $tempRel = str_replace('\\', '/', $tempRel);  // always forward slashes
+
+        // Store pending adendo in session so confirmar_adendo.php can validate & move it
+        $_SESSION['adendo_pendente'] = [
+            'temp_rel'    => $tempRel,
+            'final_dir'   => $pdfDirFinal,
+            'colaborador' => $colaboradorId,
+            'mes'         => $mes,
+            'ano'         => $ano,
+        ];
+
+        $resp['temp_rel']   = $tempRel;
+        $resp['preview_url'] = 'ver_adendo.php'; // served inline via PHP (no path traversal risk)
     }
+
+    // Remove direct download_url — the file is still in temp and must be approved first
+    unset($resp['download_url']);
 
     echo json_encode($resp);
 } catch (Throwable $e) {

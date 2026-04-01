@@ -53,10 +53,16 @@ class AdendoLocalService
         $extras = $this->normalizeExtras($extrasInput);
 
         if ($colaboradorId === 1) {
-            // Adendo do colaborador 1 sempre usa somente a tabela de extras: Acompanhamento R$3000
-            $extras = [['categoria' => 'Acompanhamento', 'valor' => 3000.00]];
-            $tabelaHtml = $this->buildExtrasTabelaHtml($extras);
-            $totalValor = $this->sumExtras($extras);
+            // Colaborador 1: variável (funcao_imagem) + fixo Acompanhamento R$4000
+            $extras = [['categoria' => 'Acompanhamento', 'valor' => 4000.00]];
+            if (!empty($rows)) {
+                $tabelaHtml = $this->buildTabelaHtml($rows, $showValor);
+                $tabelaHtml .= '<br>' . $this->buildExtrasTabelaHtml($extras);
+                $totalValor = $this->sumRows($rows) + $this->sumExtras($extras);
+            } else {
+                $tabelaHtml = $this->buildExtrasTabelaHtml($extras);
+                $totalValor = $this->sumExtras($extras);
+            }
         } else {
             $tabelaHtml = $this->buildTabelaHtml($rows, $showValor);
             $totalValor = $this->sumRows($rows);

@@ -717,6 +717,402 @@ body {
   background: var(--text-tertiary);
 }
 
+/* ===== PLANNING MODE ===== */
+.modo-planejamento .card-entrega {
+  cursor: pointer;
+  position: relative;
+}
+
+.modo-planejamento .card-entrega .card-checkbox {
+  display: flex;
+}
+
+.card-checkbox {
+  display: none;
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--border-input);
+  border-radius: var(--radius-xs);
+  background: var(--bg-input);
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition-fast);
+  z-index: 2;
+}
+
+.card-checkbox.checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.card-checkbox.checked::after {
+  content: "\f00c";
+  font-family: "Font Awesome 6 Free";
+  font-weight: 900;
+  font-size: 11px;
+  color: var(--text-on-accent);
+}
+
+.card-selecionado {
+  border-color: var(--accent) !important;
+  box-shadow:
+    0 0 0 2px var(--accent-glow),
+    var(--shadow-card) !important;
+}
+
+/* ===== FLOATING BAR ===== */
+.floating-bar {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-lg);
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: var(--shadow-lg);
+  z-index: 900;
+  transition: var(--transition-normal);
+}
+
+.floating-bar.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-50%) translateY(20px);
+}
+
+.floating-bar .count-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.floating-bar .count-label strong {
+  color: var(--accent);
+}
+
+/* ===== BOTÃO CRONOGRAMA NO CARD ===== */
+.btn-cronograma-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-subtle);
+  border: none;
+  border-radius: var(--radius-full);
+  padding: 3px 10px;
+  cursor: pointer;
+  transition: var(--transition-fast);
+  white-space: nowrap;
+}
+
+.btn-cronograma-card:hover {
+  background: var(--accent);
+  color: var(--text-on-accent);
+}
+
+/* ===== MODAL PRIORIDADE ===== */
+.priority-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.priority-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--bg-surface-alt);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-sm);
+  cursor: grab;
+  transition: var(--transition-fast);
+}
+
+.priority-item:active {
+  cursor: grabbing;
+}
+
+.priority-item.sortable-ghost {
+  opacity: 0.4;
+  background: var(--accent-subtle);
+}
+
+.priority-item .priority-number {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  background: var(--accent);
+  color: var(--text-on-accent);
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.priority-item .priority-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.priority-item .priority-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.priority-item .priority-meta {
+  font-size: 11.5px;
+  color: var(--text-tertiary);
+  display: flex;
+  gap: 12px;
+  margin-top: 2px;
+}
+
+.priority-item .badge-atraso-sm {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--status-reprovado);
+  background: rgba(239, 68, 68, 0.1);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+}
+
+.priority-item .drag-handle {
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: grab;
+}
+
+/* ===== CRONOGRAMA MODAL ===== */
+.cronograma-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border-card);
+  margin-bottom: 16px;
+  overflow-x: auto;
+  padding-bottom: 0;
+}
+
+.cronograma-tab {
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: var(--transition-fast);
+}
+
+.cronograma-tab:hover {
+  color: var(--text-primary);
+}
+
+.cronograma-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.cronograma-summary {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.cronograma-summary .summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cronograma-summary .summary-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-muted);
+}
+
+.cronograma-summary .summary-value {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.badge-atraso {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--status-reprovado);
+  background: rgba(239, 68, 68, 0.1);
+  padding: 2px 10px;
+  border-radius: var(--radius-full);
+  margin-left: 8px;
+}
+
+/* ===== CRONOGRAMA TABLE ===== */
+.cronograma-table-wrapper {
+  overflow-x: auto;
+  margin-bottom: 12px;
+}
+
+.cronograma-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+.cronograma-table thead th {
+  background: var(--bg-table-head);
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-muted);
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-table);
+  white-space: nowrap;
+}
+
+.cronograma-table tbody td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-table);
+  color: var(--text-secondary);
+  vertical-align: middle;
+}
+
+.cronograma-table tbody tr:hover {
+  background: var(--bg-table-row-hover);
+}
+
+.cronograma-table tbody tr.is-critical {
+  background: rgba(239, 68, 68, 0.06);
+}
+
+.cronograma-table tbody tr.is-critical:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.cronograma-table .fonte-padrao {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.campo-editavel {
+  cursor: pointer;
+  border-bottom: 1px dashed var(--text-muted);
+  padding-bottom: 1px;
+  transition: var(--transition-fast);
+}
+
+.campo-editavel:hover {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.campo-editavel input,
+.campo-editavel select {
+  font-size: 12.5px;
+  padding: 4px 8px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-xs);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  width: 100%;
+  min-width: 80px;
+}
+
+.gargalo-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  border-radius: var(--radius-sm);
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  margin-top: 8px;
+}
+
+.gargalo-info i {
+  color: var(--status-andamento);
+}
+
+.gargalo-info strong {
+  color: var(--text-primary);
+}
+
+/* ===== TOGGLE SWITCH ===== */
+.toggle-planejamento {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.toggle-planejamento .toggle-track {
+  width: 36px;
+  height: 20px;
+  border-radius: var(--radius-full);
+  background: var(--border-input);
+  position: relative;
+  transition: var(--transition-fast);
+}
+
+.toggle-planejamento .toggle-track::after {
+  content: "";
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  transition: var(--transition-fast);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.toggle-planejamento.active .toggle-track {
+  background: var(--accent);
+}
+
+.toggle-planejamento.active .toggle-track::after {
+  left: 18px;
+}
+
+.toggle-planejamento .toggle-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+}
+
+.toggle-planejamento.active .toggle-label {
+  color: var(--accent);
+}
+
 /* ===== MOBILE: Header tweaks ===== */
 @media (max-width: 480px) {
   .page-header {

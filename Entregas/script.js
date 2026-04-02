@@ -57,6 +57,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const readyCount = parseInt(entrega.ready_count || 0, 10);
 
     card.innerHTML = `
+                <div class="card-checkbox"></div>
                 <div class="card-header">
                     <h4>${entrega.nomenclatura || ""} - ${entrega.nome_etapa || ""}</h4>
                     ${readyCount > 0 ? `<div class="entrega-badge" title="Imagens prontas para entrega">${readyCount}</div>` : ""}
@@ -66,7 +67,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 <div class="progress-entrega">
                     <div class="progress-bar" style="width:${entrega.pct_entregue || 0}%"></div>
                 </div>
-                <small>${entrega.entregues || 0}/${entrega.total_itens || 0} imagens entregues</small>
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <small>${entrega.entregues || 0}/${entrega.total_itens || 0} imagens entregues</small>
+                    <button class="btn-cronograma-card" title="Gerar cronograma para esta entrega"><i class="fa-solid fa-calendar-days"></i> Cronograma</button>
+                </div>
             `;
 
     return card;
@@ -248,7 +252,7 @@ document.addEventListener("DOMContentLoaded", () => {
       // try to find the closest modal container for this button
       // (covers the known modal IDs used in this file)
       const modalToClose = btn.closest(
-        "#modalSelecionarImagens, #modalAdicionarEntrega, #entregaModal",
+        "#modalSelecionarImagens, #modalAdicionarEntrega, #entregaModal, #modalPrioridade, #cronogramaModal",
       );
 
       if (modalToClose) {
@@ -416,8 +420,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // --- ABRIR MODAL AO CLICAR EM UM CARD ---
   document.addEventListener("click", async (e) => {
+    // Interceptar clique no botão de cronograma individual
+    if (e.target.closest(".btn-cronograma-card")) {
+      e.stopPropagation();
+      const card = e.target.closest(".card-entrega");
+      if (card) gerarCronogramaParaEntregas([parseInt(card.dataset.id)]);
+      return;
+    }
+
     const card = e.target.closest(".card-entrega");
     if (!card) return;
+
+    // Em modo planejamento, seleciona/deseleciona ao invés de abrir modal
+    if (window._modoPlanejamento) {
+      toggleCardSelection(card);
+      return;
+    }
 
     entregaAtualId = card.dataset.id;
 
@@ -823,6 +841,384 @@ document.addEventListener("DOMContentLoaded", () => {
         alert("Erro ao adicionar imagens (ver console)");
       }
     });
+  }
+
+  // =====================================================
+  // ===== MODO PLANEJAMENTO / CRONOGRAMA =====
+  // =====================================================
+
+  window._modoPlanejamento = false;
+  const selectedEntregas = new Set();
+
+  const togglePlanejamento = document.getElementById("togglePlanejamento");
+  const floatingBar = document.getElementById("floatingBar");
+  const floatingCount = document.getElementById("floatingCount");
+  const btnGerarCronograma = document.getElementById("btnGerarCronograma");
+
+  if (togglePlanejamento) {
+    togglePlanejamento.addEventListener("click", () => {
+      window._modoPlanejamento = !window._modoPlanejamento;
+      togglePlanejamento.classList.toggle("active", window._modoPlanejamento);
+      document
+        .querySelector(".container")
+        .classList.toggle("modo-planejamento", window._modoPlanejamento);
+
+      if (!window._modoPlanejamento) {
+        // Limpar seleção
+        selectedEntregas.clear();
+        document
+          .querySelectorAll(".card-selecionado")
+          .forEach((c) => c.classList.remove("card-selecionado"));
+        document
+          .querySelectorAll(".card-checkbox.checked")
+          .forEach((c) => c.classList.remove("checked"));
+        updateFloatingBar();
+      }
+      updateFloatingBar();
+    });
+  }
+
+  function toggleCardSelection(card) {
+    const id = parseInt(card.dataset.id);
+    const checkbox = card.querySelector(".card-checkbox");
+    if (selectedEntregas.has(id)) {
+      selectedEntregas.delete(id);
+      card.classList.remove("card-selecionado");
+      if (checkbox) checkbox.classList.remove("checked");
+    } else {
+      selectedEntregas.add(id);
+      card.classList.add("card-selecionado");
+      if (checkbox) checkbox.classList.add("checked");
+    }
+    updateFloatingBar();
+  }
+  // expose for the click handler
+  window.toggleCardSelection = toggleCardSelection;
+
+  function updateFloatingBar() {
+    if (!floatingBar) return;
+    const count = selectedEntregas.size;
+    if (window._modoPlanejamento && count > 0) {
+      floatingBar.classList.remove("hidden");
+      floatingCount.textContent = count;
+    } else {
+      floatingBar.classList.add("hidden");
+    }
+  }
+
+  // Gerar cronograma click
+  if (btnGerarCronograma) {
+    btnGerarCronograma.addEventListener("click", () => {
+      const ids = Array.from(selectedEntregas);
+      if (ids.length === 0) return;
+      if (ids.length === 1) {
+        gerarCronogramaParaEntregas(ids);
+      } else {
+        abrirModalPrioridade(ids);
+      }
+    });
+  }
+
+  // Modal de Prioridade
+  function abrirModalPrioridade(ids) {
+    const modal = document.getElementById("modalPrioridade");
+    const list = document.getElementById("priorityList");
+    if (!modal || !list) return;
+
+    // Buscar dados das entregas selecionadas do array entregasAll
+    const selecionadas = ids
+      .map((id) =>
+        entregasAll.find((e) => e.id === id || parseInt(e.id) === id),
+      )
+      .filter(Boolean);
+
+    // Ordenar: atrasadas primeiro, depois por data_prevista
+    selecionadas.sort((a, b) => {
+      const aAtrasada = a.kanban_status === "atrasada" ? 0 : 1;
+      const bAtrasada = b.kanban_status === "atrasada" ? 0 : 1;
+      if (aAtrasada !== bAtrasada) return aAtrasada - bAtrasada;
+      return (a.data_prevista || "").localeCompare(b.data_prevista || "");
+    });
+
+    list.innerHTML = "";
+    selecionadas.forEach((entrega, idx) => {
+      const pendentes = (entrega.total_itens || 0) - (entrega.entregues || 0);
+      const isAtrasada = entrega.kanban_status === "atrasada";
+      const li = document.createElement("li");
+      li.classList.add("priority-item");
+      li.dataset.id = entrega.id;
+      li.innerHTML = `
+        <i class="fa-solid fa-grip-vertical drag-handle"></i>
+        <span class="priority-number">${idx + 1}</span>
+        <div class="priority-info">
+          <div class="priority-title">${entrega.nomenclatura || ""} — ${entrega.nome_etapa || ""}</div>
+          <div class="priority-meta">
+            <span>${pendentes} imagens faltando</span>
+            <span>Prazo: ${entrega.data_prevista ? formatarData(entrega.data_prevista) : "—"}</span>
+            ${isAtrasada ? '<span class="badge-atraso-sm">⚠️ atrasada</span>' : ""}
+          </div>
+        </div>
+      `;
+      list.appendChild(li);
+    });
+
+    // Inicializar SortableJS
+    if (window.Sortable) {
+      new Sortable(list, {
+        animation: 150,
+        handle: ".drag-handle",
+        ghostClass: "sortable-ghost",
+        onEnd: () => {
+          // Atualizar números
+          list.querySelectorAll(".priority-item").forEach((li, i) => {
+            li.querySelector(".priority-number").textContent = i + 1;
+          });
+        },
+      });
+    }
+
+    modal.classList.add("is-open");
+  }
+
+  // Confirmar prioridade
+  const btnConfirmarPrioridade = document.getElementById(
+    "btnConfirmarPrioridade",
+  );
+  if (btnConfirmarPrioridade) {
+    btnConfirmarPrioridade.addEventListener("click", () => {
+      const list = document.getElementById("priorityList");
+      const orderedIds = Array.from(
+        list.querySelectorAll(".priority-item"),
+      ).map((li) => parseInt(li.dataset.id));
+      document.getElementById("modalPrioridade").classList.remove("is-open");
+      gerarCronogramaParaEntregas(orderedIds);
+    });
+  }
+
+  // Gerar Cronograma (fetch + render)
+  async function gerarCronogramaParaEntregas(orderedIds) {
+    const cronogramaModal = document.getElementById("cronogramaModal");
+    const cronogramaTabs = document.getElementById("cronogramaTabs");
+    const cronogramaContent = document.getElementById("cronogramaContent");
+    if (!cronogramaModal) return;
+
+    cronogramaTabs.innerHTML = "";
+    cronogramaContent.innerHTML =
+      '<p style="color:var(--text-muted);">Gerando cronograma...</p>';
+    cronogramaModal.classList.add("is-open");
+
+    try {
+      const res = await fetch(BASE + "get_cronograma.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ entrega_ids: orderedIds }),
+      });
+      const data = await res.json();
+
+      if (data.error) {
+        cronogramaContent.innerHTML = `<p style="color:var(--status-reprovado);">${data.error}</p>`;
+        return;
+      }
+
+      window._cronogramaData = data;
+      renderCronograma(data);
+    } catch (err) {
+      console.error("Erro ao gerar cronograma:", err);
+      cronogramaContent.innerHTML =
+        '<p style="color:var(--status-reprovado);">Erro ao gerar cronograma.</p>';
+    }
+  }
+  window.gerarCronogramaParaEntregas = gerarCronogramaParaEntregas;
+
+  function renderCronograma(data) {
+    const cronogramaTabs = document.getElementById("cronogramaTabs");
+    const cronogramaContent = document.getElementById("cronogramaContent");
+
+    const entregas = data.entregas || [];
+    const colaboradores = data.colaboradores || [];
+
+    if (entregas.length === 0) {
+      cronogramaContent.innerHTML =
+        '<p style="color:var(--text-muted);">Nenhuma imagem pendente encontrada nas entregas selecionadas.</p>';
+      return;
+    }
+
+    // Tabs (only if multiple)
+    cronogramaTabs.innerHTML = "";
+    if (entregas.length > 1) {
+      entregas.forEach((ent, idx) => {
+        const btn = document.createElement("button");
+        btn.classList.add("cronograma-tab");
+        if (idx === 0) btn.classList.add("active");
+        btn.textContent = `${ent.nomenclatura} — ${ent.nome_etapa}`;
+        btn.dataset.index = idx;
+        btn.addEventListener("click", () => {
+          cronogramaTabs
+            .querySelectorAll(".cronograma-tab")
+            .forEach((t) => t.classList.remove("active"));
+          btn.classList.add("active");
+          renderCronogramaTab(entregas[idx], colaboradores);
+        });
+        cronogramaTabs.appendChild(btn);
+      });
+    }
+
+    renderCronogramaTab(entregas[0], colaboradores);
+  }
+
+  function renderCronogramaTab(entrega, colaboradores) {
+    const cronogramaContent = document.getElementById("cronogramaContent");
+    const prazoOriginal = entrega.data_prevista
+      ? formatarData(entrega.data_prevista)
+      : "—";
+    const estimativa = entrega.estimativa_conclusao
+      ? formatarData(entrega.estimativa_conclusao)
+      : "—";
+
+    let html = `<div class="cronograma-summary">
+      <div class="summary-item">
+        <span class="summary-label">Prazo original</span>
+        <span class="summary-value">${prazoOriginal}</span>
+      </div>
+      <div class="summary-item">
+        <span class="summary-label">📅 Estimativa de conclusão</span>
+        <span class="summary-value">${estimativa}${entrega.is_atrasado ? '<span class="badge-atraso">⚠️ Atraso</span>' : ""}</span>
+      </div>
+    </div>`;
+
+    if (entrega.tarefas.length === 0) {
+      html +=
+        '<p style="color:var(--text-muted);">Nenhuma tarefa pendente para esta entrega.</p>';
+      cronogramaContent.innerHTML = html;
+      return;
+    }
+
+    html += `<div class="cronograma-table-wrapper">
+    <table class="cronograma-table">
+      <thead>
+        <tr>
+          <th>Imagem</th>
+          <th>Função</th>
+          <th>Responsável ✏️</th>
+          <th>Início ✏️</th>
+          <th>Fim ✏️</th>
+        </tr>
+      </thead>
+      <tbody>`;
+
+    entrega.tarefas.forEach((t, idx) => {
+      const criticalClass = t.is_critical ? " is-critical" : "";
+      const fallbackClass = t.is_fallback ? " fonte-padrao" : "";
+      const colabOptions = colaboradores
+        .map(
+          (c) =>
+            `<option value="${c.id}" ${parseInt(c.id) === t.colaborador_id ? "selected" : ""}>${c.nome}</option>`,
+        )
+        .join("");
+
+      html += `<tr class="${criticalClass}" data-idx="${idx}">
+        <td>${t.imagem_nome}</td>
+        <td>${t.funcao_nome}</td>
+        <td class="${fallbackClass}">
+          <span class="campo-editavel campo-colab" data-idx="${idx}" data-field="colaborador">${t.colaborador_nome}</span>
+        </td>
+        <td class="${fallbackClass}">
+          <span class="campo-editavel campo-data" data-idx="${idx}" data-field="data_inicio">${formatarData(t.data_inicio)}</span>
+        </td>
+        <td class="${fallbackClass}">
+          <span class="campo-editavel campo-data" data-idx="${idx}" data-field="data_fim">${formatarData(t.data_fim)}</span>
+        </td>
+      </tr>`;
+    });
+
+    html += `</tbody></table></div>`;
+
+    // Gargalo
+    if (entrega.gargalo) {
+      html += `<div class="gargalo-info">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        Gargalo: <strong>${entrega.gargalo.colaborador_nome}</strong> — ${entrega.gargalo.quantidade} tarefa(s) na fila
+      </div>`;
+    }
+
+    cronogramaContent.innerHTML = html;
+
+    // Attach inline edit handlers
+    attachInlineEditHandlers(entrega, colaboradores);
+  }
+
+  function attachInlineEditHandlers(entrega, colaboradores) {
+    const content = document.getElementById("cronogramaContent");
+
+    // Editar colaborador
+    content.querySelectorAll(".campo-colab").forEach((span) => {
+      span.addEventListener("click", function () {
+        if (this.querySelector("select")) return; // already editing
+        const idx = parseInt(this.dataset.idx);
+        const tarefa = entrega.tarefas[idx];
+        const select = document.createElement("select");
+        select.innerHTML =
+          '<option value="0">Sem responsável</option>' +
+          colaboradores
+            .map(
+              (c) =>
+                `<option value="${c.id}" ${parseInt(c.id) === tarefa.colaborador_id ? "selected" : ""}>${c.nome}</option>`,
+            )
+            .join("");
+        this.textContent = "";
+        this.appendChild(select);
+        select.focus();
+
+        const finish = () => {
+          const newId = parseInt(select.value);
+          const newName = select.options[select.selectedIndex].text;
+          tarefa.colaborador_id = newId;
+          tarefa.colaborador_nome = newName;
+          tarefa.is_fallback = newId === 0;
+          this.textContent = newName;
+        };
+        select.addEventListener("change", finish);
+        select.addEventListener("blur", finish);
+      });
+    });
+
+    // Editar datas
+    content.querySelectorAll(".campo-data").forEach((span) => {
+      span.addEventListener("click", function () {
+        if (this.querySelector("input")) return;
+        const idx = parseInt(this.dataset.idx);
+        const field = this.dataset.field;
+        const tarefa = entrega.tarefas[idx];
+        const currentVal = tarefa[field]; // yyyy-mm-dd
+
+        const input = document.createElement("input");
+        input.type = "date";
+        input.value = currentVal || "";
+        this.textContent = "";
+        this.appendChild(input);
+        input.focus();
+
+        const finish = () => {
+          const newVal = input.value;
+          if (newVal) {
+            tarefa[field] = newVal;
+            this.textContent = formatarData(newVal);
+          } else {
+            this.textContent = formatarData(tarefa[field]);
+          }
+        };
+        input.addEventListener("change", finish);
+        input.addEventListener("blur", finish);
+      });
+    });
+  }
+
+  // Helper: format date from YYYY-MM-DD to DD/MM
+  function formatarDataCurta(str) {
+    if (!str) return "—";
+    const parts = str.split("-");
+    if (parts.length >= 3) return `${parts[2]}/${parts[1]}`;
+    return str;
   }
 });
 

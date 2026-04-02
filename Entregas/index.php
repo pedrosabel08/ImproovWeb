@@ -95,6 +95,11 @@ $conn->close();
                     <i class="fa-solid fa-xmark"></i> Limpar
                 </button>
             </div>
+            <div class="toggle-planejamento" id="togglePlanejamento"
+                title="Ativar modo planejamento para selecionar entregas e gerar cronograma">
+                <div class="toggle-track"></div>
+                <span class="toggle-label">Planejamento</span>
+            </div>
         </div>
 
         <!-- Kanban Board -->
@@ -255,10 +260,63 @@ $conn->close();
         </div>
     </div>
 
+    <!-- ====== Floating Bar (Planejamento) ====== -->
+    <div class="floating-bar hidden" id="floatingBar">
+        <span class="count-label"><strong id="floatingCount">0</strong> entrega(s) selecionada(s)</span>
+        <button class="btn-action btn-primary" id="btnGerarCronograma">
+            <i class="fa-solid fa-calendar-days"></i> Gerar Cronograma
+        </button>
+    </div>
+
+    <!-- ====== Modal: Prioridade ====== -->
+    <div id="modalPrioridade" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">
+                    <i class="fa-solid fa-arrow-down-1-9" style="color:var(--accent);margin-right:8px;"></i>Defina a
+                    prioridade de execução
+                </h2>
+                <button class="modal-close fecharModal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size:12px;color:var(--text-tertiary);margin:0 0 12px;">Arraste para reordenar. A entrega
+                    no topo será priorizada.</p>
+                <ul class="priority-list" id="priorityList"></ul>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-action btn-secondary fecharModal">Cancelar</button>
+                <button type="button" class="btn-action btn-primary" id="btnConfirmarPrioridade">
+                    <i class="fa-solid fa-calendar-days"></i> Gerar Cronograma
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ====== Modal: Cronograma ====== -->
+    <div id="cronogramaModal" class="modal">
+        <div class="modal-content modal-wide" style="max-width:900px;">
+            <div class="modal-header">
+                <h2 class="modal-title">
+                    <i class="fa-solid fa-calendar-days" style="color:var(--accent);margin-right:8px;"></i>Cronograma de
+                    Conclusão
+                </h2>
+                <button class="modal-close fecharModal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body" id="cronogramaBody">
+                <div class="cronograma-tabs" id="cronogramaTabs"></div>
+                <div id="cronogramaContent"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-action btn-secondary fecharModal">Fechar</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
     <script src="<?php echo asset_url('script.js'); ?>"></script>
     <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
     <script src="<?php echo asset_url('../script/controleSessao.js'); ?>"></script>

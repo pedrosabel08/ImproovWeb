@@ -3174,6 +3174,7 @@ function infosObra(obraId) {
       const statusSelect = document.getElementById("imagem_status_filtro");
       const tipoImagemSelect = document.getElementById("tipo_imagem"); // Certifique-se de ter um <select> com id="tipo_imagem" no HTML
       const antecipadaSelect = document.getElementById("antecipada_obra");
+      const subtipoFiltroSelect = document.getElementById("subtipo_filtro");
 
       // Salva os valores/seleções atuais para restaurar após repopular os selects
       const readSelectValue = (el) => {
@@ -3226,17 +3227,21 @@ function infosObra(obraId) {
       const prevStatusEtapa = readSelectValue(statusEtapaSelect);
       const prevStatus = readSelectValue(statusSelect);
       const prevAntecipada = readSelectValue(antecipadaSelect);
+      const prevSubtipo = readSelectValue(subtipoFiltroSelect);
 
       // Limpa e recria as options (começa com defaults)
       tipoImagemSelect.innerHTML = '<option value="0">Todos</option>';
       statusEtapaSelect.innerHTML =
         '<option value="">Selecione uma etapa</option>';
       statusSelect.innerHTML = '<option value="">Selecione um status</option>';
+      if (subtipoFiltroSelect)
+        subtipoFiltroSelect.innerHTML = '<option value="">Sem subtipo</option>';
 
       // Objeto para armazenar os status únicos
       const statusUnicos = new Set();
       const statusEtapaUnicos = new Set();
       const tipoImagemUnicos = new Set();
+      const subtipoUnicos = new Map(); // id -> nome
 
       data.imagens.forEach(function (item) {
         idsImagensObra.push(parseInt(item.imagem_id));
@@ -3262,7 +3267,19 @@ function infosObra(obraId) {
         }
 
         var cellNomeImagem = document.createElement("td");
-        cellNomeImagem.textContent = displayImageName(item.imagem_nome);
+        const nomeText = document.createTextNode(
+          displayImageName(item.imagem_nome),
+        );
+        cellNomeImagem.appendChild(nomeText);
+        if (item.subtipo_nome) {
+          const subtipoBadge = document.createElement("span");
+          subtipoBadge.className = "subtipo-badge";
+          if (item.subtipo_id) {
+            subtipoBadge.classList.add(`subtipo-badge--${item.subtipo_id}`);
+          }
+          subtipoBadge.textContent = item.subtipo_nome;
+          cellNomeImagem.appendChild(subtipoBadge);
+        }
         cellNomeImagem.setAttribute("antecipada", item.antecipada);
         cellNomeImagem.setAttribute("data-field", "nome_imagem");
         row.appendChild(cellNomeImagem);
@@ -3331,6 +3348,10 @@ function infosObra(obraId) {
         statusEtapaUnicos.add(item.imagem_status);
         statusUnicos.add(item.imagem_sub_status);
         tipoImagemUnicos.add(item.tipo_imagem);
+        if (item.subtipo_id && item.subtipo_nome) {
+          subtipoUnicos.set(String(item.subtipo_id), item.subtipo_nome);
+        }
+        row.setAttribute("data-subtipo-id", item.subtipo_id ?? "");
 
         var cellPrazo = document.createElement("td");
         // Se prazo for nulo, vazio ou não estiver no formato YYYY-MM-DD, mostra '-' como placeholder
@@ -3369,8 +3390,7 @@ function infosObra(obraId) {
             const colabC = item.caderno_colaborador || "-";
             const stC = item.caderno_status || "-";
             const stF = item.filtro_status || "-";
-            const repSt =
-              stC === "Finalizado" ? stF : stC;
+            const repSt = stC === "Finalizado" ? stF : stC;
             const cellUnif = document.createElement("td");
             cellUnif.colSpan = 2;
             cellUnif.classList.add(
@@ -3511,6 +3531,16 @@ function infosObra(obraId) {
         tipoImagemSelect.appendChild(tipoOption);
       });
 
+      // Adiciona os subtipos únicos ao subtipoFiltroSelect
+      if (subtipoFiltroSelect) {
+        subtipoUnicos.forEach((nome, id) => {
+          const opt = document.createElement("option");
+          opt.value = id;
+          opt.textContent = nome;
+          subtipoFiltroSelect.appendChild(opt);
+        });
+      }
+
       // Restaura as seleções anteriores (inclui suporte Select2)
       try {
         // Se Select2 estiver ativo, usamos sua API para restaurar
@@ -3527,6 +3557,8 @@ function infosObra(obraId) {
           if (antecipadaSelect) {
             if (prevAntecipada !== null)
               $(antecipadaSelect).val(prevAntecipada).trigger("change");
+            if (subtipoFiltroSelect && prevSubtipo !== null)
+              $(subtipoFiltroSelect).val(prevSubtipo).trigger("change");
           }
         } else {
           // Fallback para selects nativos
@@ -3534,17 +3566,16 @@ function infosObra(obraId) {
           restoreSelectValue(statusEtapaSelect, prevStatusEtapa);
           restoreSelectValue(statusSelect, prevStatus);
           restoreSelectValue(antecipadaSelect, prevAntecipada);
+          restoreSelectValue(subtipoFiltroSelect, prevSubtipo);
         }
       } catch (e) {
         // Em caso de erro, aplica fallback simples
         restoreSelectValue(tipoImagemSelect, prevTipo);
         restoreSelectValue(statusEtapaSelect, prevStatusEtapa);
         restoreSelectValue(statusSelect, prevStatus);
-        restoreSelectValue(anticipadaSelect, prevAntecipada);
+        restoreSelectValue(antecipadaSelect, prevAntecipada);
+        restoreSelectValue(subtipoFiltroSelect, prevSubtipo);
       }
-
-      // Reaplica o filtro agora que as opções e seleções foram restauradas
-      filtrarTabela();
 
       const revisoes = document.getElementById("revisoes");
       // revisoes.textContent = `Total de alterações: ${data.alt}`
@@ -4081,65 +4112,6 @@ function infosObra(obraId) {
 
       // Limpa o conteúdo da div
       prazosDiv.innerHTML = "";
-
-      // // Agrupa os prazos por status
-      // const groupedPrazos = data.prazos.reduce((acc, prazo) => {
-      //     if (!acc[prazo.nome_status]) {
-      //         acc[prazo.nome_status] = [];
-      //     }
-      //     acc[prazo.nome_status].push({
-      //         prazo: prazo.prazo,
-      //         idsImagens: prazo.idImagens || [] // Use idImagens conforme o JSON retornado
-      //     });
-      //     return acc;
-      // }, {});
-
-      // // Renderiza os cards agrupados
-      // Object.entries(groupedPrazos).forEach(([status, prazos]) => {
-      //     const prazoList = document.createElement('div');
-      //     prazoList.classList.add('prazos');
-
-      //     prazoList.innerHTML = `
-      //     <div class="prazo-card">
-      //         <p class="nome_status">${status}</p>
-      //         <ul>
-      //         ${prazos.map(prazo => `
-      //             <li
-      //                 data-ids="${(prazo.idsImagens || []).join(',')}"
-      //                 class="prazo-item">
-      //                 ${formatarData(prazo.prazo)}
-      //             </li>`).join("")}
-      //         </ul>
-      //     </div>
-      // `;
-
-      //     const prazoCard = prazoList.querySelector('.prazo-card');
-      //     applyStatusImagem(prazoCard, status);
-      //     prazosDiv.appendChild(prazoList);
-      // });
-
-      // // Adiciona eventos de mouse para estilizar linhas da tabela
-      // prazosDiv.addEventListener('mouseover', (event) => {
-      //     const target = event.target.closest('.prazo-item');
-      //     if (target) {
-      //         const ids = target.getAttribute('data-ids').split(',');
-      //         ids.forEach(id => {
-      //             const linha = document.querySelector(`tr[data-id="${id}"]`);
-      //             if (linha) linha.classList.add('highlight');
-      //         });
-      //     }
-      // });
-
-      // prazosDiv.addEventListener('mouseout', (event) => {
-      //     const target = event.target.closest('.prazo-item');
-      //     if (target) {
-      //         const ids = target.getAttribute('data-ids').split(',');
-      //         ids.forEach(id => {
-      //             const linha = document.querySelector(`tr[data-id="${id}"]`);
-      //             if (linha) linha.classList.remove('highlight');
-      //         });
-      //     }
-      // });
     })
     .catch((error) => console.error("Erro ao carregar funções:", error));
 }
@@ -4211,6 +4183,7 @@ function readGlobalFilters() {
   const antecipadaEl = document.getElementById("antecipada_obra");
   const statusEtapaEl = document.getElementById("imagem_status_etapa_filtro");
   const statusEl = document.getElementById("imagem_status_filtro");
+  const subtipoEl = document.getElementById("subtipo_filtro");
 
   const tipoImagemFiltro = tipoImagemEl
     ? tipoImagemEl.multiple
@@ -4252,11 +4225,22 @@ function readGlobalFilters() {
         : []
     : [];
 
+  const subtipoFiltro = subtipoEl
+    ? subtipoEl.multiple
+      ? Array.from(subtipoEl.selectedOptions)
+          .map((o) => String(o.value))
+          .filter((v) => v !== "")
+      : subtipoEl.value
+        ? [String(subtipoEl.value)]
+        : []
+    : [];
+
   return {
     tipoImagemFiltro,
     antecipadaFiltro,
     statusEtapaImagemFiltro,
     statusImagemFiltro,
+    subtipoFiltro,
   };
 }
 
@@ -4274,6 +4258,7 @@ function rowMatchesGlobalFilters(row, globals) {
   const statusColuna =
     row.querySelector('td[data-field="status_imagem"]')?.textContent.trim() ||
     "";
+  const subtipoIdColuna = row.getAttribute("data-subtipo-id") || "";
 
   if (
     globals.tipoImagemFiltro.length > 0 &&
@@ -4312,6 +4297,10 @@ function rowMatchesGlobalFilters(row, globals) {
   ) {
     if (!globals.statusEtapaImagemFiltro.some((v) => v === statusEtapaColuna))
       return false;
+  }
+
+  if (globals.subtipoFiltro && globals.subtipoFiltro.length > 0) {
+    if (!globals.subtipoFiltro.includes(subtipoIdColuna)) return false;
   }
 
   return true;
@@ -4968,12 +4957,18 @@ function initSelect2Filters() {
         allowClear: true,
         width: "resolve",
       });
+      $("#subtipo_filtro").select2({
+        placeholder: "Subtipo",
+        allowClear: true,
+        width: "resolve",
+      });
 
       // quando Select2 muda, dispara filtrarTabela
       $("#tipo_imagem").on("change", handleFilterChange);
       $("#antecipada_obra").on("change", handleFilterChange);
       $("#imagem_status_etapa_filtro").on("change", handleFilterChange);
       $("#imagem_status_filtro").on("change", handleFilterChange);
+      $("#subtipo_filtro").on("change", handleFilterChange);
     }
   } catch (e) {
     console.warn("Select2 init failed or not available", e);
@@ -4991,6 +4986,7 @@ function clearFilters() {
       $("#antecipada_obra").val(null).trigger("change");
       $("#imagem_status_etapa_filtro").val(null).trigger("change");
       $("#imagem_status_filtro").val(null).trigger("change");
+      $("#subtipo_filtro").val(null).trigger("change");
     } else {
       // fallback para selects nativos
       const els = [
@@ -4998,6 +4994,7 @@ function clearFilters() {
         "antecipada_obra",
         "imagem_status_etapa_filtro",
         "imagem_status_filtro",
+        "subtipo_filtro",
       ];
       els.forEach((id) => {
         const el = document.getElementById(id);
@@ -7280,25 +7277,31 @@ document.getElementById("editImagesBtn").addEventListener("click", () => {
     return;
   }
 
-  // Faz a requisição para buscar imagens relacionadas à obra
-  fetch("infosImagens.php", {
-    method: "POST", // Usa POST para enviar dados ao servidor
-    headers: {
-      "Content-Type": "application/json", // Especifica que o corpo da requisição será JSON
-    },
-    body: JSON.stringify({ obraId }), // Envia o 'obraId' como JSON
-  })
-    .then((response) => {
-      if (!response.ok) {
-        throw new Error("Erro ao buscar imagens");
-      }
-      return response.json();
-    })
-    .then((images) => {
+  // Busca imagens e subtipos em paralelo
+  Promise.all([
+    fetch("infosImagens.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ obraId }),
+    }).then((r) => {
+      if (!r.ok) throw new Error("Erro ao buscar imagens");
+      return r.json();
+    }),
+    fetch("getSubtipos.php")
+      .then((r) => r.json())
+      .catch(() => []),
+  ])
+    .then(([images, subtipos]) => {
+      // Monta as options de subtipo uma vez
+      const subtipoOptions = subtipos
+        .map((s) => `<option value="${s.id}">${s.nome}</option>`)
+        .join("");
+
       const imageList = document.getElementById("imageList");
       imageList.innerHTML = ""; // Limpa o conteúdo existente
 
       images.forEach((image) => {
+        const currentSubtipo = image.subtipo_id ? String(image.subtipo_id) : "";
         const imageContainer = document.createElement("div");
         imageContainer.innerHTML = `
                     <div class="image-item">
@@ -7313,6 +7316,7 @@ document.getElementById("editImagesBtn").addEventListener("click", () => {
                             <label>Data de Início: <input type="date" data-id="${image.idimagem}" name="data_inicio" value="${image.data_inicio}"></label><br>
                             <label>Prazo: <input type="date" data-id="${image.idimagem}" name="prazo" value="${image.prazo}"></label><br>
                             <label>Tipo de Imagem: <input type="text" data-id="${image.idimagem}" name="tipo_imagem" value="${image.tipo_imagem}"></label>
+                            <label>Subtipo: <select data-id="${image.idimagem}" name="subtipo_id"><option value="">-- Sem subtipo --</option>${subtipoOptions}</select></label><br>
                             <label>Antecipada: <input type="checkbox" data-id="${image.idimagem}" name="antecipada" ${image.antecipada == 1 ? "checked" : ""}></label>
                             <label>Terá animação?: <input type="checkbox" data-id="${image.idimagem}" name="animacao" value="1" ${image.animacao == 1 ? "checked" : ""}></label>
                             <label>Clima: <input type="text" data-id="${image.idimagem}" name="clima" value="${image.clima}"></label>
@@ -7320,6 +7324,14 @@ document.getElementById("editImagesBtn").addEventListener("click", () => {
                     </div>
                 `;
         imageList.appendChild(imageContainer);
+
+        // Pre-seleciona o subtipo atual
+        if (currentSubtipo) {
+          const subtipoSel = imageContainer.querySelector(
+            `select[name="subtipo_id"]`,
+          );
+          if (subtipoSel) subtipoSel.value = currentSubtipo;
+        }
 
         // Adiciona o evento de clique para mostrar/esconder o conteúdo e trocar o ícone
         const tituloImagem = imageContainer.querySelector(".titulo_imagem");
@@ -7376,6 +7388,9 @@ document.getElementById("saveChangesBtn").addEventListener("click", () => {
       tipo_imagem: document.querySelector(
         `input[name="tipo_imagem"][data-id="${id}"]`,
       ).value,
+      subtipo_id:
+        document.querySelector(`select[name="subtipo_id"][data-id="${id}"]`)
+          ?.value || null,
       antecipada: document.querySelector(
         `input[name="antecipada"][data-id="${id}"]`,
       ).checked
@@ -9282,6 +9297,9 @@ document.getElementById("btnAtualizar").addEventListener("click", function () {
             break;
           case "prazo_modal":
             coluna = "prazo";
+            break;
+          case "subtipo_modal":
+            coluna = "subtipo_id";
             break;
           default:
             coluna = input.id || "campo";

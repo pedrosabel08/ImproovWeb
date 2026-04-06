@@ -197,6 +197,8 @@ $sqlImagens = "SELECT
         ico.tipo_imagem,
         ico.antecipada,
         ico.status_id,
+        ico.subtipo_id,
+        sti.nome AS subtipo_nome,
         MAX(CASE WHEN fi.funcao_id = 1 THEN c.nome_colaborador END) AS caderno_colaborador,
         MAX(CASE WHEN fi.funcao_id = 1 THEN fi.status END) AS caderno_status,
         MAX(CASE WHEN fi.funcao_id = 8 THEN c.nome_colaborador END) AS filtro_colaborador,
@@ -234,6 +236,7 @@ $sqlImagens = "SELECT
     LEFT JOIN colaborador c ON fi.colaborador_id = c.idcolaborador
     LEFT JOIN status_imagem s ON ico.status_id = s.idstatus
     LEFT JOIN substatus_imagem su ON su.id = ico.substatus_id
+    LEFT JOIN subtipo_imagem sti ON sti.id = ico.subtipo_id
     WHERE ico.obra_id = ?
     GROUP BY ico.idimagens_cliente_obra
     ORDER BY FIELD(ico.tipo_imagem, 'Fachada', 'Imagem Interna', 'Unidade', 'Imagem Externa', 'Planta Humanizada'), ico.idimagens_cliente_obra

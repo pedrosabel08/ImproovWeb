@@ -40,7 +40,8 @@ $sql = "UPDATE imagens_cliente_obra
         tipo_imagem = ?,
         antecipada = ?,
         animacao = ?,
-        clima = ?
+        clima = ?,
+        subtipo_id = ?
     WHERE idimagens_cliente_obra = ?";
 
 $stmt = $conn->prepare($sql);
@@ -63,6 +64,7 @@ foreach ($data as $idx => $image) {
     $antecipada = (isset($image['antecipada']) && ($image['antecipada'] == '1' || $image['antecipada'] === 1)) ? 1 : 0;
     $animacao = (isset($image['animacao']) && ($image['animacao'] == '1' || $image['animacao'] === 1)) ? 1 : 0;
     $clima = isset($image['clima']) ? $image['clima'] : null;
+    $subtipo_id = (isset($image['subtipo_id']) && $image['subtipo_id'] !== '' && $image['subtipo_id'] !== null) ? (int)$image['subtipo_id'] : null;
     $idimagem = isset($image['idimagem']) ? (int)$image['idimagem'] : 0;
 
     if ($idimagem <= 0) {
@@ -88,8 +90,8 @@ foreach ($data as $idx => $image) {
     // `clima` é NOT NULL na tabela; evita passar NULL
     if ($clima === null) $clima = '';
 
-    // Tipos: recebimento_arquivos(s or null), data_inicio(s or null), prazo(s or null), imagem_nome(s), tipo_imagem(s), antecipada(i), animacao(i), clima(s), idimagem(i)
-    if (!$stmt->bind_param("sssssiisi", $recebimento_arquivos, $data_inicio, $prazo, $imagem_nome, $tipo_imagem, $antecipada, $animacao, $clima, $idimagem)) {
+    // Tipos: recebimento_arquivos(s or null), data_inicio(s or null), prazo(s or null), imagem_nome(s), tipo_imagem(s), antecipada(i), animacao(i), clima(s), subtipo_id(i or null), idimagem(i)
+    if (!$stmt->bind_param("sssssiisii", $recebimento_arquivos, $data_inicio, $prazo, $imagem_nome, $tipo_imagem, $antecipada, $animacao, $clima, $subtipo_id, $idimagem)) {
         $errors[] = "bind_param falhou no item $idx: " . $stmt->error;
         $success = false;
         continue;

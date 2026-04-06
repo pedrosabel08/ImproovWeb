@@ -34,6 +34,12 @@ $obras_inativas = obterObras($conn, 1);
 $clientes = obterClientes($conn);
 $nivel_acesso = $_SESSION['nivel_acesso'];
 
+$subtipos = [];
+$resSubtipos = $conn->query("SELECT id, nome FROM subtipo_imagem ORDER BY id");
+if ($resSubtipos) {
+    $subtipos = $resSubtipos->fetch_all(MYSQLI_ASSOC);
+}
+
 // Monta um array de colaboradores por função (usando a tabela funcao_colaborador)
 $colaboradores_por_funcao = [];
 $sqlFc = "SELECT fc.funcao_id, c.idcolaborador, c.nome_colaborador
@@ -294,6 +300,7 @@ $conn->close();
                     <select name="tipo_imagem" id="tipo_imagem" multiple>
                         <option value="0">Todos</option>
                     </select>
+                    <select id="subtipo_filtro" multiple></select>
 
                     <select id="antecipada_obra" multiple size="2">
                         <option value="">Todos as imagens</option>
@@ -573,6 +580,16 @@ $conn->close();
                         <select id="modal_colaborador">
                             <option value="">-- Selecionar colaborador --</option>
                             <?php renderColabOptions($funcoes, $colaboradores_por_funcao, $colaboradores, ''); ?>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-row" data-target="subtipoField">Subtipo
+                    <div id="subtipoField" class="modal-field" style="display: none;">
+                        <select id="subtipo_modal">
+                            <option value="">-- Sem subtipo --</option>
+                            <?php foreach ($subtipos as $s): ?>
+                                <option value="<?= htmlspecialchars($s['id']); ?>"><?= htmlspecialchars($s['nome']); ?></option>
+                            <?php endforeach; ?>
                         </select>
                     </div>
                 </div>

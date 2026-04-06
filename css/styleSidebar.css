@@ -145,6 +145,10 @@ li.obra {
   padding: 0 15px !important;
 }
 
+a.obra-item {
+  width: 100%;
+}
+
 /* ── Divisões / categorias ─────────────────────────────────── */
 ul.division {
   position: relative;

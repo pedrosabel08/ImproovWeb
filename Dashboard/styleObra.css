@@ -233,6 +233,72 @@ input:checked + .slider:before {
   margin-left: 6px;
 }
 
+.subtipo-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 5px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background-color: #e2e8f0;
+  color: #475569;
+  font-size: 10px;
+  font-weight: 500;
+  white-space: nowrap;
+  vertical-align: middle;
+  line-height: 1.5;
+}
+
+/* Paleta de cores por subtipo_id */
+.subtipo-badge--1 {
+  background-color: #dbeafe;
+  color: #1d4ed8;
+}
+.subtipo-badge--2 {
+  background-color: #ede9fe;
+  color: #6d28d9;
+}
+.subtipo-badge--3 {
+  background-color: #dcfce7;
+  color: #15803d;
+}
+.subtipo-badge--4 {
+  background-color: #ffedd5;
+  color: #c2410c;
+}
+.subtipo-badge--5 {
+  background-color: #fce7f3;
+  color: #be185d;
+}
+.subtipo-badge--6 {
+  background-color: #ccfbf1;
+  color: #0f766e;
+}
+.subtipo-badge--7 {
+  background-color: #fef9c3;
+  color: #a16207;
+}
+.subtipo-badge--8 {
+  background-color: #e0e7ff;
+  color: #4338ca;
+}
+.subtipo-badge--9 {
+  background-color: #f0fdf4;
+  color: #166534;
+}
+/* fallback para IDs além de 9: cicla a partir de 1 */
+.subtipo-badge--10 {
+  background-color: #dbeafe;
+  color: #1d4ed8;
+}
+.subtipo-badge--11 {
+  background-color: #ede9fe;
+  color: #6d28d9;
+}
+.subtipo-badge--12 {
+  background-color: #dcfce7;
+  color: #15803d;
+}
+
 .oculto {
   display: none;
 }

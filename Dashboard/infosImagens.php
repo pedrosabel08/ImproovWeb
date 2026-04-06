@@ -27,11 +27,14 @@ try {
             i.tipo_imagem, 
             i.antecipada,
             i.clima,
-            i.animacao 
+            i.animacao,
+            i.subtipo_id,
+            sti.nome AS subtipo_nome
         FROM imagens_cliente_obra i
         JOIN obra o ON i.obra_id = o.idobra 
         LEFT JOIN funcao_imagem fi ON i.idimagens_cliente_obra = fi.imagem_id 
         LEFT JOIN status_imagem s ON i.status_id = s.idstatus
+        LEFT JOIN subtipo_imagem sti ON sti.id = i.subtipo_id
         WHERE o.idobra = ?
         GROUP BY i.idimagens_cliente_obra"
     );

@@ -600,6 +600,25 @@ if (!empty($colabIdsNaLista)) {
     $stmtFc->close();
 }
 
+// ─── Carregar flags valor_aprovado ────────────────────────────────────────────
+$overrideIds = [];
+$fiIds = array_values(array_filter(array_map(
+    fn($f) => $f['origem'] === 'funcao_imagem' ? (int)$f['identificador'] : null,
+    $funcoes
+)));
+if (!empty($fiIds)) {
+    $ph = implode(',', array_fill(0, count($fiIds), '?'));
+    $stmtOv = $conn->prepare("SELECT idfuncao_imagem FROM funcao_imagem WHERE idfuncao_imagem IN ($ph) AND valor_aprovado = 1");
+    $stmtOv->bind_param(str_repeat('i', count($fiIds)), ...$fiIds);
+    $stmtOv->execute();
+    $resOv = $stmtOv->get_result();
+    while ($rowOv = $resOv->fetch_assoc()) {
+        $overrideIds[(int)$rowOv['idfuncao_imagem']] = true;
+    }
+    $stmtOv->close();
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 foreach ($funcoes as &$f) {
     $colabId  = isset($f['colaborador_id']) ? (int)$f['colaborador_id'] : 0;
     $funcId   = isset($f['funcao_id'])      ? (int)$f['funcao_id']      : 0;
@@ -654,27 +673,36 @@ foreach ($funcoes as &$f) {
     // O banco deve guardar o valor inteiro; o 50% é só exibição.
     $valorEsperado = $tarifado;
 
-    // valor_exibido: 50% para Finalização Parcial ou pago-parcial aguardando 2ª parcela
-    $valorExibido = $valorBruto;
-    if ($tarifado !== null && $funcId === 4) {
-        $ehParcial     = stripos($nomeFn, 'Parcial') !== false;
-        $pagoSoParcial = $pagoParc > 0 && $pagoComp === 0;
+    $estaAprovado = isset($overrideIds[(int)$f['identificador']]);
 
-        if ($ehParcial || $pagoSoParcial) {
-            $valorExibido = round($tarifado * 0.5, 2);
-        } else {
+    // valor_exibido: 50% para Finalização Parcial ou pago-parcial aguardando 2ª parcela
+    // Se valor_aprovado=1, respeitar o fi.valor salvo no banco (não substituir pelo tarifado)
+    if ($estaAprovado) {
+        $valorExibido = $valorBruto;
+    } else {
+        $valorExibido = $valorBruto;
+        if ($tarifado !== null && $funcId === 4) {
+            $ehParcial     = stripos($nomeFn, 'Parcial') !== false;
+            $pagoSoParcial = $pagoParc > 0 && $pagoComp === 0;
+
+            if ($ehParcial || $pagoSoParcial) {
+                $valorExibido = round($tarifado * 0.5, 2);
+            } else {
+                $valorExibido = $tarifado;
+            }
+        } elseif ($tarifado !== null) {
             $valorExibido = $tarifado;
         }
-    } elseif ($tarifado !== null) {
-        $valorExibido = $tarifado;
     }
 
     $f['valor_tarifado']  = $tarifado;       // valor cheio de funcao_colaborador
     $f['valor_esperado']  = $valorEsperado;  // o que deve estar salvo em fi.valor (sempre cheio)
     $f['valor_exibido']   = $valorExibido;   // o que a tabela mostra (50% quando parcial)
+    $f['valor_aprovado']  = $estaAprovado ? 1 : 0;
     $f['tem_divergencia'] = (
-        $valorEsperado !== null
-        && $valorBruto  !== null
+        !$estaAprovado
+        && $valorEsperado !== null
+        && $valorBruto    !== null
         && abs($valorBruto - $valorEsperado) >= 0.01
     );
 }

@@ -545,6 +545,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 <td>${f.nome_funcao || ""}</td>
                 <td class="valor-atual">${currencyBRL(f.valor)}</td>
                 <td class="valor-esperado">${currencyBRL(f.valor_esperado)}</td>
+                <td><button class="btn-row validate btn-aprovar-valor" data-id="${f.identificador}" title="Aprovar valor atual e ignorar divergência"><i class="fa-solid fa-check"></i> Aprovar</button></td>
               </tr>`,
               )
               .join("");
@@ -563,6 +564,7 @@ document.addEventListener("DOMContentLoaded", function () {
                       <th>Função</th>
                       <th>Valor atual</th>
                       <th>Valor esperado</th>
+                      <th></th>
                     </tr>
                   </thead>
                   <tbody>${linhas}</tbody>
@@ -571,6 +573,64 @@ document.addEventListener("DOMContentLoaded", function () {
                   <i class="fa-solid fa-wand-magic-sparkles"></i> Corrigir valores automaticamente
                 </button>
               </div>`;
+
+            painelDiv.querySelectorAll(".btn-aprovar-valor").forEach((btn) => {
+              btn.addEventListener("click", async () => {
+                const id = parseInt(btn.dataset.id, 10);
+                btn.disabled = true;
+                try {
+                  const res = await fetch("aprovarValor.php", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ id }),
+                  });
+                  const json = await res.json();
+                  if (json.success) {
+                    Toastify({
+                      text: "Valor aprovado. Divergência ignorada.",
+                      duration: 3000,
+                      gravity: "top",
+                      position: "right",
+                      style: {
+                        background: "#10b981",
+                        borderRadius: "8px",
+                        fontFamily: '"Inter", sans-serif',
+                        fontSize: "13px",
+                      },
+                    }).showToast();
+                    carregarDadosColab();
+                  } else {
+                    Toastify({
+                      text: "Erro: " + (json.message || "desconhecido"),
+                      duration: 4000,
+                      gravity: "top",
+                      position: "right",
+                      style: {
+                        background: "#ef4444",
+                        borderRadius: "8px",
+                        fontFamily: '"Inter", sans-serif',
+                        fontSize: "13px",
+                      },
+                    }).showToast();
+                    btn.disabled = false;
+                  }
+                } catch (e) {
+                  Toastify({
+                    text: "Erro ao aprovar valor.",
+                    duration: 4000,
+                    gravity: "top",
+                    position: "right",
+                    style: {
+                      background: "#ef4444",
+                      borderRadius: "8px",
+                      fontFamily: '"Inter", sans-serif',
+                      fontSize: "13px",
+                    },
+                  }).showToast();
+                  btn.disabled = false;
+                }
+              });
+            });
 
             document
               .getElementById("btn-corrigir-valores")

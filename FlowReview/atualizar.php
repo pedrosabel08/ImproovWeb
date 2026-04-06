@@ -286,8 +286,10 @@ try {
   // For secondary functions (Filtro=8, Composição=3), detect if they belong to a unified pair
   // by checking if the corresponding primary (Caderno=1, Modelagem=2) is "Finalizado"
   // for the same imagem_id and colaborador_id, and the pair is not explicitly separated.
-  $pairMap = [8 => ['primary_id' => 1, 'primary_nome' => 'Caderno', 'par_tipo' => 'caderno_filtro'],
-               3 => ['primary_id' => 2, 'primary_nome' => 'Modelagem', 'par_tipo' => 'modelagem_composicao']];
+  $pairMap = [
+    8 => ['primary_id' => 1, 'primary_nome' => 'Caderno', 'par_tipo' => 'caderno_filtro'],
+    3 => ['primary_id' => 2, 'primary_nome' => 'Modelagem', 'par_tipo' => 'modelagem_composicao']
+  ];
 
   $imagemIdsSec = [];
   foreach ($tarefas as $t) {
@@ -370,7 +372,7 @@ try {
 
     $stmtFinP = $conn->prepare(
       "SELECT imagem_id FROM funcao_imagem
-       WHERE funcao_id = 4 AND colaborador_id = ? AND imagem_id IN ($inP)"
+       WHERE funcao_id IN (4, 6) AND colaborador_id = ? AND imagem_id IN ($inP)"
     );
     $stmtFinP->bind_param($typesP, ...$paramsP);
     $stmtFinP->execute();
@@ -380,6 +382,24 @@ try {
       $imgComFinalizacao[$rowP['imagem_id']] = true;
     }
     $stmtFinP->close();
+
+    // Colaborador 8 também pode aprovar pós-produção das imagens
+    // finalizadas pelos colaboradores 23 e 40.
+    if (intval($idcolaborador) === 8) {
+      $inP8    = implode(',', array_fill(0, count($imagemIdsPosP), '?'));
+      $typesP8 = str_repeat('i', count($imagemIdsPosP));
+      $stmtFinP8 = $conn->prepare(
+        "SELECT imagem_id FROM funcao_imagem
+         WHERE funcao_id IN (4, 6) AND colaborador_id IN (23, 40) AND imagem_id IN ($inP8)"
+      );
+      $stmtFinP8->bind_param($typesP8, ...$imagemIdsPosP);
+      $stmtFinP8->execute();
+      $resFinP8 = $stmtFinP8->get_result();
+      while ($rowP8 = $resFinP8->fetch_assoc()) {
+        $imgComFinalizacao[$rowP8['imagem_id']] = true;
+      }
+      $stmtFinP8->close();
+    }
 
     foreach ($tarefas as &$t) {
       // Não marcar finalizador_pode_aprovar se a tarefa já está aguardando direção

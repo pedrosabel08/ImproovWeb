@@ -1466,6 +1466,7 @@ function historyAJAX(idfuncao_imagem) {
           });
         } else {
           btnAjustesFuncao.style.display = "none";
+          btnOpen.style.display = "flex";
           if (actionsGroupLabel)
             actionsGroupLabel.textContent = "Enviar Aprovação";
           btnOpen.textContent = "Enviar aprovação";

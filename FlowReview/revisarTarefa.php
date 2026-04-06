@@ -276,10 +276,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $resultadoFinal['success'] = true;
             $resultadoFinal['message'] = 'Tarefa atualizada com sucesso.';
+
+            $tipo_imagem_nome = null;
+            if ($imagem_id) {
+                $stmtTipo = $conn->prepare("SELECT tipo_imagem FROM imagens_cliente_obra WHERE idimagens_cliente_obra = ?");
+                $stmtTipo->bind_param("i", $imagem_id);
+                $stmtTipo->execute();
+                $stmtTipo->bind_result($tipo_imagem_nome);
+                $stmtTipo->fetch();
+                $stmtTipo->close();
+            }
+
+            $nomeFuncaoLower = mb_strtolower((string)$nome_funcao, 'UTF-8');
             // Ao aprovar uma função, atualizar vínculos de entrega
             // - Para P00 + Finalização: vincular TODOS os ângulos (historico_aprovacoes_imagens) ao item de entrega via angulos_imagens.entrega_item_id
             // - Para demais (R00..EF): atualizar entregas_itens.historico_id com o id correspondente (último)
-            if (in_array($status, ['Aprovado', 'Aprovado com ajustes'])) {
+            if (
+                in_array($status, ['Aprovado', 'Aprovado com ajustes']) &&
+                (
+                    $nomeFuncaoLower === 'pós-produção' ||
+                    ($nomeFuncaoLower === 'finalização' && stripos((string)$tipo_imagem_nome, 'humanizada') !== false)
+                )
+            ) {
                 if ($imagem_id) {
                     // obtém status_id e obra_id da imagem
                     $stmtImg = $conn->prepare("SELECT status_id, obra_id FROM imagens_cliente_obra WHERE idimagens_cliente_obra = ?");
@@ -402,21 +420,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
 
-        $tipo_imagem_nome = null;
-
-        if ($imagem_id) {
-            $stmtTipo = $conn->prepare(query: "SELECT tipo_imagem
-        FROM imagens_cliente_obra 
-        WHERE idimagens_cliente_obra = ?
-    ");
-            $stmtTipo->bind_param("i", $imagem_id);
-            $stmtTipo->execute();
-            $stmtTipo->bind_result($tipo_imagem_nome);
-            $stmtTipo->fetch();
-            $stmtTipo->close();
-        }
-
-
         // SFTP envio final
         if (
             (
@@ -427,7 +430,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             (
                 // 🔸 Nova condição: finalização de planta humanizada
                 mb_strtolower($nome_funcao, 'UTF-8') === 'finalização' &&
-                stripos($tipo_imagem_nome, 'humanizada') !== false &&
+                stripos((string)$tipo_imagem_nome, 'humanizada') !== false &&
                 in_array($status, ['Aprovado'])
             )
         ) {

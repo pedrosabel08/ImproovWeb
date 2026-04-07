@@ -1021,6 +1021,18 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       window._cronogramaData = data;
+      // Reset to table view on each new cronograma generation
+      window._cronogramaView = "table";
+      window._cronogramaCurrentEntrega = null;
+      const _tog = document.getElementById("cronogramaViewToggle");
+      if (_tog) {
+        _tog.style.display = "none";
+        _tog
+          .querySelectorAll(".vt-btn")
+          .forEach((b) =>
+            b.classList.toggle("active", b.dataset.view === "table"),
+          );
+      }
       renderCronograma(data);
     } catch (err) {
       console.error("Erro ao gerar cronograma:", err);
@@ -1033,14 +1045,38 @@ document.addEventListener("DOMContentLoaded", () => {
   function renderCronograma(data) {
     const cronogramaTabs = document.getElementById("cronogramaTabs");
     const cronogramaContent = document.getElementById("cronogramaContent");
+    const viewToggle = document.getElementById("cronogramaViewToggle");
 
     const entregas = data.entregas || [];
     const colaboradores = data.colaboradores || [];
+    window._cronogramaColabs = colaboradores;
 
     if (entregas.length === 0) {
       cronogramaContent.innerHTML =
         '<p style="color:var(--text-muted);">Nenhuma imagem pendente encontrada nas entregas selecionadas.</p>';
+      if (viewToggle) viewToggle.style.display = "none";
       return;
+    }
+
+    // Show view toggle and wire buttons
+    if (viewToggle) {
+      viewToggle.style.display = "flex";
+      viewToggle.querySelectorAll(".vt-btn").forEach((btn) => {
+        btn.classList.toggle(
+          "active",
+          btn.dataset.view === (window._cronogramaView || "table"),
+        );
+        btn.onclick = () => {
+          viewToggle
+            .querySelectorAll(".vt-btn")
+            .forEach((b) => b.classList.remove("active"));
+          btn.classList.add("active");
+          window._cronogramaView = btn.dataset.view;
+          const cur = window._cronogramaCurrentEntrega || entregas[0];
+          if (window._cronogramaView === "gantt") renderCronogramaGantt(cur);
+          else renderCronogramaTab(cur, colaboradores);
+        };
+      });
     }
 
     // Tabs (only if multiple)
@@ -1057,16 +1093,20 @@ document.addEventListener("DOMContentLoaded", () => {
             .querySelectorAll(".cronograma-tab")
             .forEach((t) => t.classList.remove("active"));
           btn.classList.add("active");
-          renderCronogramaTab(entregas[idx], colaboradores);
+          if (window._cronogramaView === "gantt")
+            renderCronogramaGantt(entregas[idx]);
+          else renderCronogramaTab(entregas[idx], colaboradores);
         });
         cronogramaTabs.appendChild(btn);
       });
     }
 
-    renderCronogramaTab(entregas[0], colaboradores);
+    if (window._cronogramaView === "gantt") renderCronogramaGantt(entregas[0]);
+    else renderCronogramaTab(entregas[0], colaboradores);
   }
 
   function renderCronogramaTab(entrega, colaboradores) {
+    window._cronogramaCurrentEntrega = entrega;
     const cronogramaContent = document.getElementById("cronogramaContent");
     const prazoOriginal = entrega.data_prevista
       ? formatarData(entrega.data_prevista)
@@ -1150,39 +1190,112 @@ document.addEventListener("DOMContentLoaded", () => {
   function attachInlineEditHandlers(entrega, colaboradores) {
     const content = document.getElementById("cronogramaContent");
 
-    // Editar colaborador
+    // ── Editar colaborador ────────────────────────────────────────────────
     content.querySelectorAll(".campo-colab").forEach((span) => {
-      span.addEventListener("click", function () {
-        if (this.querySelector("select")) return; // already editing
+      span.addEventListener("click", async function () {
+        if (this.querySelector("select,span.colab-loading")) return; // already editing
+
         const idx = parseInt(this.dataset.idx);
         const tarefa = entrega.tarefas[idx];
+        const originalText = this.textContent;
+
+        // Show spinner while fetching availability
+        const loading = document.createElement("span");
+        loading.className = "colab-loading";
+        loading.textContent = " ⏳";
+        this.appendChild(loading);
+
+        // Fetch availability from GANTT endpoint
+        let available = [];
+        try {
+          const res = await fetch(
+            `../GANTT/get_colaboradores_por_funcao.php?funcao_id=${encodeURIComponent(tarefa.funcao_id)}&data_inicio=${encodeURIComponent(tarefa.data_inicio)}&data_fim=${encodeURIComponent(tarefa.data_fim)}&gantt_id=0`,
+          );
+          if (res.ok) available = await res.json();
+        } catch (_) {
+          /* fallback: available stays empty, use full colaboradores list */
+        }
+
+        // Remove spinner
+        loading.remove();
+        if (this.querySelector("select")) return; // late guard
+
+        // Build a lookup: colaborador_id → availability info
+        const availMap = new Map();
+        available.forEach((c) => availMap.set(parseInt(c.idcolaborador), c));
+
         const select = document.createElement("select");
-        select.innerHTML =
-          '<option value="0">Sem responsável</option>' +
-          colaboradores
-            .map(
-              (c) =>
-                `<option value="${c.id}" ${parseInt(c.id) === tarefa.colaborador_id ? "selected" : ""}>${c.nome}</option>`,
-            )
-            .join("");
+        select.className = "colab-select";
+
+        // "Sem responsável" option
+        const optNone = document.createElement("option");
+        optNone.value = "0";
+        optNone.textContent = "Sem responsável";
+        if (tarefa.colaborador_id === 0) optNone.selected = true;
+        select.appendChild(optNone);
+
+        // Add every colaborador (full list as fallback when endpoint returns nothing)
+        const listToRender =
+          available.length > 0
+            ? available.map((c) => ({
+                id: parseInt(c.idcolaborador),
+                nome: c.nome_colaborador,
+                ocupado: !!c.ocupado,
+                obras: c.obras_conflitantes || "",
+                conflito_inicio: c.data_inicio_conflito || "",
+                conflito_fim: c.data_fim_conflito || "",
+              }))
+            : colaboradores.map((c) => ({
+                id: parseInt(c.id),
+                nome: c.nome,
+                ocupado: false,
+                obras: "",
+                conflito_inicio: "",
+                conflito_fim: "",
+              }));
+
+        listToRender.forEach((c) => {
+          const opt = document.createElement("option");
+          opt.value = c.id;
+          if (c.ocupado) {
+            opt.textContent = `⚠️ ${c.nome} (${c.obras})`;
+            opt.className = "colab-busy";
+            if (c.conflito_inicio && c.conflito_fim) {
+              opt.title = `Ocupado de ${formatarData(c.conflito_inicio)} a ${formatarData(c.conflito_fim)}`;
+            }
+          } else {
+            opt.textContent = `✅ ${c.nome}`;
+          }
+          if (c.id === tarefa.colaborador_id) opt.selected = true;
+          select.appendChild(opt);
+        });
+
         this.textContent = "";
         this.appendChild(select);
         select.focus();
 
         const finish = () => {
           const newId = parseInt(select.value);
-          const newName = select.options[select.selectedIndex].text;
+          const selOpt = select.options[select.selectedIndex];
+          // Strip leading emoji from display text
+          const rawName = selOpt ? selOpt.textContent : "";
+          const newName = rawName.replace(/^[✅⚠️]\s*/, "").split(" (")[0];
           tarefa.colaborador_id = newId;
-          tarefa.colaborador_nome = newName;
+          tarefa.colaborador_nome = newName || originalText;
           tarefa.is_fallback = newId === 0;
-          this.textContent = newName;
+          this.textContent = tarefa.colaborador_nome;
+          if (selOpt && selOpt.className === "colab-busy") {
+            this.classList.add("colab-warning");
+          } else {
+            this.classList.remove("colab-warning");
+          }
         };
         select.addEventListener("change", finish);
         select.addEventListener("blur", finish);
       });
     });
 
-    // Editar datas
+    // ── Editar datas ──────────────────────────────────────────────────────
     content.querySelectorAll(".campo-data").forEach((span) => {
       span.addEventListener("click", function () {
         if (this.querySelector("input")) return;
@@ -1200,17 +1313,67 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const finish = () => {
           const newVal = input.value;
-          if (newVal) {
+          if (!newVal || newVal === currentVal) {
+            this.textContent = formatarData(tarefa[field]);
+            return;
+          }
+
+          if (field === "data_inicio") {
+            // Cascade: shift current + downstream tasks on the same image
+            cascadeTaskDateChange(entrega, idx, newVal);
+            // Re-render table to reflect all changes
+            renderCronogramaTab(
+              entrega,
+              window._cronogramaColabs || colaboradores,
+            );
+          } else {
+            // data_fim: update only this task
             tarefa[field] = newVal;
             this.textContent = formatarData(newVal);
-          } else {
-            this.textContent = formatarData(tarefa[field]);
           }
         };
+
         input.addEventListener("change", finish);
         input.addEventListener("blur", finish);
       });
     });
+  }
+
+  /**
+   * Shift the data_inicio of task[idx] to newDateStr and propagate the same
+   * delta (in days) to data_fim of that task and to data_inicio + data_fim of
+   * every subsequent task that belongs to the same imagem_id AND whose
+   * data_inicio is >= the old start date (i.e. it depends on it in the chain).
+   */
+  function cascadeTaskDateChange(entrega, idx, newDateStr) {
+    const tarefa = entrega.tarefas[idx];
+    const oldStart = new Date(tarefa.data_inicio + "T00:00:00");
+    const newStart = new Date(newDateStr + "T00:00:00");
+    const deltaMs = newStart - oldStart;
+    if (deltaMs === 0) return;
+
+    const shiftDate = (dateStr) => {
+      if (!dateStr) return dateStr;
+      const d = new Date(dateStr + "T00:00:00");
+      d.setTime(d.getTime() + deltaMs);
+      return d.toISOString().slice(0, 10);
+    };
+
+    // Shift the edited task
+    tarefa.data_inicio = newDateStr;
+    tarefa.data_fim = shiftDate(tarefa.data_fim);
+
+    // Shift downstream tasks of the same image
+    const imagemId = tarefa.imagem_id;
+    for (let i = idx + 1; i < entrega.tarefas.length; i++) {
+      const t = entrega.tarefas[i];
+      if (t.imagem_id !== imagemId) continue;
+      // Only cascade tasks that start on or after the old start date
+      if (new Date(t.data_inicio + "T00:00:00") >= oldStart) {
+        t.data_inicio = shiftDate(t.data_inicio);
+        t.data_fim = shiftDate(t.data_fim);
+      }
+    }
   }
 
   // Helper: format date from YYYY-MM-DD to DD/MM
@@ -1220,7 +1383,206 @@ document.addEventListener("DOMContentLoaded", () => {
     if (parts.length >= 3) return `${parts[2]}/${parts[1]}`;
     return str;
   }
+
+  // Map funcao_id to a color pair used in the Gantt bars
+  function getFuncaoColor(funcaoId) {
+    const palette = {
+      1: { bg: "#fce4ec", text: "#880e4f" }, // Caderno
+      2: { bg: "#fff3e0", text: "#bf360c" }, // Modelagem
+      3: { bg: "#f9ffc6", text: "#596112" }, // Composição
+      4: { bg: "#e8f5e9", text: "#1b5e20" }, // Finalização
+      5: { bg: "#e3f2fd", text: "#0d47a1" }, // Pós-produção
+      6: { bg: "#fbe9e7", text: "#b71c1c" }, // Alteração
+      7: { bg: "#d0edf5", text: "#0004ff" }, // Planta Humanizada
+      8: { bg: "#dcffec", text: "#009921" }, // Filtro de assets
+    };
+    return palette[funcaoId] || { bg: "#e8ecf1", text: "#4b5563" };
+  }
+
+  // Render cronograma as a Gantt chart (read-only)
+  function renderCronogramaGantt(entrega) {
+    window._cronogramaCurrentEntrega = entrega;
+    const content = document.getElementById("cronogramaContent");
+
+    const prazoOriginal = entrega.data_prevista
+      ? formatarData(entrega.data_prevista)
+      : "—";
+    const estimativa = entrega.estimativa_conclusao
+      ? formatarData(entrega.estimativa_conclusao)
+      : "—";
+
+    const summaryHtml = `<div class="cronograma-summary">
+      <div class="summary-item">
+        <span class="summary-label">Prazo original</span>
+        <span class="summary-value">${prazoOriginal}</span>
+      </div>
+      <div class="summary-item">
+        <span class="summary-label">📅 Estimativa de conclusão</span>
+        <span class="summary-value">${estimativa}${
+          entrega.is_atrasado
+            ? '<span class="badge-atraso">⚠️ Atraso</span>'
+            : ""
+        }</span>
+      </div>
+    </div>`;
+
+    if (entrega.tarefas.length === 0) {
+      content.innerHTML =
+        summaryHtml +
+        '<p style="color:var(--text-muted);">Nenhuma tarefa pendente para esta entrega.</p>';
+      return;
+    }
+
+    // Build date range from min data_inicio to max data_fim
+    let minDate = null;
+    let maxDate = null;
+    entrega.tarefas.forEach((t) => {
+      const d1 = new Date(t.data_inicio + "T00:00:00");
+      const d2 = new Date(t.data_fim + "T00:00:00");
+      if (!minDate || d1 < minDate) minDate = d1;
+      if (!maxDate || d2 > maxDate) maxDate = d2;
+    });
+
+    const dates = [];
+    const cur = new Date(minDate);
+    while (cur <= maxDate) {
+      dates.push(new Date(cur));
+      cur.setDate(cur.getDate() + 1);
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Group tasks by imagem_id preserving insertion order
+    const imageMap = new Map();
+    entrega.tarefas.forEach((t) => {
+      if (!imageMap.has(t.imagem_id)) {
+        imageMap.set(t.imagem_id, { nome: t.imagem_nome, tarefas: [] });
+      }
+      imageMap.get(t.imagem_id).tarefas.push(t);
+    });
+
+    // Build month header cells
+    const monthCells = [];
+    let curMonth = null;
+    let monthCount = 0;
+    dates.forEach((d, i) => {
+      const m = d.toLocaleDateString("pt-BR", {
+        month: "short",
+        year: "numeric",
+      });
+      if (m !== curMonth) {
+        if (curMonth !== null)
+          monthCells.push({ label: curMonth, count: monthCount });
+        curMonth = m;
+        monthCount = 1;
+      } else {
+        monthCount++;
+      }
+      if (i === dates.length - 1)
+        monthCells.push({ label: curMonth, count: monthCount });
+    });
+
+    const thMeses =
+      '<th class="gantt-sticky"></th>' +
+      monthCells
+        .map(
+          (mc) =>
+            `<th colspan="${mc.count}" class="gantt-th-month">${mc.label}</th>`,
+        )
+        .join("");
+
+    const thDias =
+      '<th class="gantt-sticky"></th>' +
+      dates
+        .map((d) => {
+          const dow = d.getDay();
+          const isWeekend = dow === 0 || dow === 6;
+          const isToday = d.getTime() === today.getTime();
+          const cls = isToday
+            ? "gantt-th-day gantt-today"
+            : isWeekend
+              ? "gantt-th-day gantt-weekend"
+              : "gantt-th-day";
+          return `<th class="${cls}">${d.getDate()}</th>`;
+        })
+        .join("");
+
+    // Build body rows
+    let rows = "";
+    imageMap.forEach((img) => {
+      let cells = `<td class="gantt-sticky gantt-img-label" title="${img.nome}">${img.nome}</td>`;
+
+      dates.forEach((d) => {
+        const dow = d.getDay();
+        const isToday = d.getTime() === today.getTime();
+
+        let task = null;
+        for (const t of img.tarefas) {
+          const s = new Date(t.data_inicio + "T00:00:00");
+          const e = new Date(t.data_fim + "T00:00:00");
+          if (d >= s && d <= e) {
+            task = t;
+            break;
+          }
+        }
+
+        if (task) {
+          const color = getFuncaoColor(task.funcao_id);
+          const bold = task.is_critical ? "font-weight:700;" : "";
+          const colabAbrev = (task.colaborador_nome || "—").split(" ")[0];
+          cells += `<td style="background:${color.bg};color:${color.text};${bold}font-size:10px;padding:1px 0;" title="${task.funcao_nome} — ${task.colaborador_nome}">${colabAbrev}</td>`;
+        } else {
+          cells += `<td${isToday ? ' class="gantt-today-cell"' : ""}></td>`;
+        }
+      });
+
+      rows += `<tr>${cells}</tr>`;
+    });
+
+    // Build legend (unique functions)
+    const funcoesSeen = new Map();
+    entrega.tarefas.forEach((t) => {
+      if (!funcoesSeen.has(t.funcao_id))
+        funcoesSeen.set(t.funcao_id, t.funcao_nome);
+    });
+    let legend = '<div class="gantt-legend">';
+    funcoesSeen.forEach((nome, id) => {
+      const c = getFuncaoColor(id);
+      legend += `<span class="gantt-legend-item" style="background:${c.bg};color:${c.text};">${nome}</span>`;
+    });
+    legend += "</div>";
+
+    // Gargalo
+    let gargaloHtml = "";
+    if (entrega.gargalo) {
+      gargaloHtml = `<div class="gargalo-info">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        Gargalo: <strong>${entrega.gargalo.colaborador_nome}</strong> — ${entrega.gargalo.quantidade} tarefa(s) na fila
+      </div>`;
+    }
+
+    content.innerHTML =
+      summaryHtml +
+      legend +
+      `<div class="gantt-wrapper">
+        <table class="gantt-table">
+          <thead>
+            <tr>${thMeses}</tr>
+            <tr>${thDias}</tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>` +
+      gargaloHtml;
+  }
 });
+
+// ─── keep everything below OUTSIDE the DOMContentLoaded closure ─────────────
+void 0; // anchor — do not remove
+
+// ──────── re-attach globals below ────────
+// (nothing needed: the split below is handled by the original code structure)
 
 document
   .getElementById("adicionar_entrega")

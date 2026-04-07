@@ -294,7 +294,7 @@ $conn->close();
 
     <!-- ====== Modal: Cronograma ====== -->
     <div id="cronogramaModal" class="modal">
-        <div class="modal-content modal-wide" style="max-width:900px;">
+        <div class="modal-content modal-xl">
             <div class="modal-header">
                 <h2 class="modal-title">
                     <i class="fa-solid fa-calendar-days" style="color:var(--accent);margin-right:8px;"></i>Cronograma de
@@ -303,6 +303,10 @@ $conn->close();
                 <button class="modal-close fecharModal"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="modal-body" id="cronogramaBody">
+                <div class="cronograma-view-toggle" id="cronogramaViewToggle" style="display:none;">
+                    <button class="vt-btn active" data-view="table"><i class="fa-solid fa-table-list"></i> Tabela</button>
+                    <button class="vt-btn" data-view="gantt"><i class="fa-solid fa-chart-gantt"></i> Gantt</button>
+                </div>
                 <div class="cronograma-tabs" id="cronogramaTabs"></div>
                 <div id="cronogramaContent"></div>
             </div>

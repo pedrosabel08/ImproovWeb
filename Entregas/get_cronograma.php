@@ -1,4 +1,5 @@
 <?php
+
 /**
  * get_cronograma.php
  * Gera cronograma de conclusão para uma ou mais entregas.
@@ -43,7 +44,8 @@ if (!is_array($entrega_ids) || count($entrega_ids) === 0) {
 // Sanitize IDs
 $entrega_ids = array_map('intval', $entrega_ids);
 $entrega_ids = array_filter($entrega_ids, function ($id) {
-    return $id > 0; });
+    return $id > 0;
+});
 
 if (count($entrega_ids) === 0) {
     http_response_code(400);
@@ -133,7 +135,8 @@ $sql_funcoes = "SELECT fi.imagem_id, fi.funcao_id, fi.colaborador_id, fi.status,
                 JOIN funcao f ON fi.funcao_id = f.idfuncao
                 LEFT JOIN colaborador c ON fi.colaborador_id = c.idcolaborador
                 WHERE fi.imagem_id IN ($img_placeholders)
-                  AND fi.status NOT IN ('Finalizado', 'Aprovado', 'Aprovado com ajustes')
+                  AND fi.status NOT IN ('Finalizado', 'Aprovado', 'Aprovado com ajustes') AND fi.colaborador_id NOT IN (15, 30)
+                  AND fi.funcao_id != 8
                 ORDER BY fi.imagem_id, fi.funcao_id";
 
 $stmt = $conn->prepare($sql_funcoes);
@@ -202,26 +205,45 @@ foreach ($entrega_ids as $eid) {
     }
 }
 
-// Simular fila
-$colab_next_day = []; // colaborador_id => próximo dia livre (int, 0 = hoje)
-$task_end_day = [];   // task_key => dia de conclusão (int offset from hoje)
+// Simular fila (usamos floats para suportar médias >1 ou <1 tarefas/dia)
+$colab_next_day = []; // colaborador_id => próximo dia livre (float, 0 = hoje)
+$task_end_day = [];   // task_key => dia de conclusão (float offset from hoje)
 
 $scheduled = [];
 
 foreach ($task_list as &$task) {
     $colab_id = $task['colaborador_id'];
 
-    // Dia mais cedo que o colaborador está livre
-    $colab_day = $colab_next_day[$colab_id] ?? 0;
+    // Dia mais cedo que o colaborador está livre (float)
+    $colab_day = $colab_next_day[$colab_id] ?? 0.0;
 
     // Dia mais cedo que a dependência termina
-    $dep_day = 0;
+    $dep_day = 0.0;
     if ($task['depends_on'] !== null && isset($task_end_day[$task['depends_on']])) {
         $dep_day = $task_end_day[$task['depends_on']];
     }
 
+    // Determinar duração da tarefa (em dias).
+    // Por padrão 1 dia. Para `funcao_id == 5` ou `funcao_nome == "Pós-produção"`
+    // usamos média de 5 tarefas/dia => 0.2 dias por tarefa.
+    $duration_days = 1.0;
+    if (isset($task['funcao_id']) && intval($task['funcao_id']) === 5) {
+        $duration_days = 0.2;
+    } elseif (isset($task['funcao_nome'])) {
+        if (function_exists('mb_strtolower')) {
+            $nomeLower = mb_strtolower(trim($task['funcao_nome']), 'UTF-8');
+            $target = mb_strtolower('Pós-produção', 'UTF-8');
+        } else {
+            $nomeLower = strtolower(trim($task['funcao_nome']));
+            $target = strtolower('Pós-produção');
+        }
+        if ($nomeLower === $target) {
+            $duration_days = 0.2;
+        }
+    }
+
     $start_day = max($colab_day, $dep_day);
-    $end_day = $start_day + 1; // duração fixa = 1 dia
+    $end_day = $start_day + $duration_days; // end_day é exclusivo (float)
 
     // Atualizar estado
     $colab_next_day[$colab_id] = $end_day;
@@ -259,16 +281,25 @@ foreach ($entrega_ids as $eid) {
         continue;
     }
 
-    // Encontrar o dia máximo de conclusão
-    $max_end = 0;
+    // Encontrar o dia máximo de conclusão (float)
+    $max_end = 0.0;
     foreach ($tarefas_entrega as $t) {
         if ($t['end_day'] > $max_end) {
             $max_end = $t['end_day'];
         }
     }
 
+    // Construir estimativa adicionando parte inteira (dias) + segundos da fração
     $data_estimativa = clone $hoje;
-    $data_estimativa->modify('+' . $max_end . ' days');
+    $days = (int) floor($max_end);
+    $fraction = max(0, $max_end - $days);
+    $seconds = (int) round($fraction * 86400);
+    if ($days > 0) {
+        $data_estimativa->modify('+' . $days . ' days');
+    }
+    if ($seconds > 0) {
+        $data_estimativa->modify('+' . $seconds . ' seconds');
+    }
     $estimativa_str = $data_estimativa->format('Y-m-d');
 
     $is_atrasado = $info['data_prevista'] && $estimativa_str > $info['data_prevista'];
@@ -288,7 +319,7 @@ foreach ($entrega_ids as $eid) {
     $gargalo = null;
     $critical_colab = null;
     foreach ($tarefas_entrega as $t) {
-        if ($t['end_day'] === $max_end) {
+        if (abs($t['end_day'] - $max_end) < 1e-6) {
             $critical_colab = $t['colaborador_id'];
             break;
         }
@@ -304,7 +335,7 @@ foreach ($entrega_ids as $eid) {
     // Rastrear caminho crítico: última tarefa + suas dependências
     $critical_keys = [];
     foreach ($tarefas_entrega as $t) {
-        if ($t['end_day'] === $max_end) {
+        if (abs($t['end_day'] - $max_end) < 1e-6) {
             // Rastrear chain backwards
             $key = $t['key'];
             $critical_keys[$key] = true;
@@ -330,10 +361,19 @@ foreach ($entrega_ids as $eid) {
     // Formatar tarefas
     $tarefas_out = [];
     foreach ($tarefas_entrega as $t) {
+        // data_inicio: dia de floor(start_day)
+        $start_index = (int) floor($t['start_day']);
         $dt_inicio = clone $hoje;
-        $dt_inicio->modify('+' . $t['start_day'] . ' days');
+        if ($start_index > 0) {
+            $dt_inicio->modify('+' . $start_index . ' days');
+        }
+
+        // data_fim: dia inclusivo correspondente a floor(end_day - epsilon)
+        $inclusive_end_index = (int) max(0, floor($t['end_day'] - 1e-9));
         $dt_fim = clone $hoje;
-        $dt_fim->modify('+' . ($t['end_day'] - 1) . ' days'); // end_day é exclusive
+        if ($inclusive_end_index > 0) {
+            $dt_fim->modify('+' . $inclusive_end_index . ' days');
+        }
 
         $tarefas_out[] = [
             'imagem_id' => $t['imagem_id'],

@@ -4,39 +4,59 @@ include 'conexao.php';
 $imagens = [
 
     // ======================
-    // ARS_VIE (obra_id = 55, cliente_id = 32)
-    // (these were already present; including full list provided)
+    // ROM_MAE (obra_id = 63, cliente_id = 36)
     // ======================
-    ['nome' => '10.ROM_MAE_Piscina_EF_3_1_POS', 'obra_id' => 63, 'cliente_id' => 41, 'colaborador_id' => 13],
-    ['nome' => '13.ROM_MAE_Prainha_deck_molhado_EF_3_1_POS', 'obra_id' => 63, 'cliente_id' => 41, 'colaborador_id' => 13],
-    ['nome' => '22.ROM_MAE_Wine_garden_sacada_EF_4_1 Vista', 'obra_id' => 63, 'cliente_id' => 41, 'colaborador_id' => 13],
-    ['nome' => '22.ROM_MAE_Wine_garden_sacada_EF_4_1 Geral', 'obra_id' => 63, 'cliente_id' => 41, 'colaborador_id' => 13],
-    ['nome' => '1.CEG_RES Fachada embasamento_Hall_POS', 'obra_id' => 76, 'cliente_id' => 47, 'colaborador_id' => 13],
-    ['nome' => '1.CEG_RES Fachada embasamento_Lojas_POS', 'obra_id' => 76, 'cliente_id' => 47, 'colaborador_id' => 13],
-    ['nome' => '10.CEG_RES_Gourmet_externo_EF_3_1_POS', 'obra_id' => 76, 'cliente_id' => 47, 'colaborador_id' => 13],
-    ['nome' => '12.CEG_RES_Piscina_EF_2_1_POS', 'obra_id' => 76, 'cliente_id' => 47, 'colaborador_id' => 13],
-    ['nome' => '13.CEG_RES_Piscina_infantil_+_Piscina_adulto_EF_2_1_POS', 'obra_id' => 76, 'cliente_id' => 47, 'colaborador_id' => 13],
-    ['nome' => '14.CEG_RES_Suite_1_apto_tipo_-_Final_01_EF_2_1 Geral', 'obra_id' => 76, 'cliente_id' => 47, 'colaborador_id' => 13],
-    ['nome' => '14.CEG_RES_Suite_1_apto_tipo_-_Final_01_EF_2_1 Detalhe', 'obra_id' => 76, 'cliente_id' => 47, 'colaborador_id' => 13],
-    ['nome' => '17.CEG_RES_Living_apto_tipo_-_Final_01_EF_2_1', 'obra_id' => 76, 'cliente_id' => 47, 'colaborador_id' => 13],
-    ['nome' => '50.CEG_RES_Sacada_apartamento_tipo_mostrando_vista_EF_2_1', 'obra_id' => 76, 'cliente_id' => 47, 'colaborador_id' => 13],
-    ['nome' => 'CEG_RES_Tracking_0029', 'obra_id' => 76, 'cliente_id' => 47, 'colaborador_id' => 13],
-    ['nome' => 'CEG_RES_Tracking_0035', 'obra_id' => 76, 'cliente_id' => 47, 'colaborador_id' => 13],
-    ['nome' => 'CEG_RES_Tracking_0039', 'obra_id' => 76, 'cliente_id' => 47, 'colaborador_id' => 13],
-    ['nome' => '17.JON_LIN Loft unidade_16_Angulo_1', 'obra_id' => 73, 'cliente_id' => 40, 'colaborador_id' => 13],
-    ['nome' => '17.JON_LIN Loft unidade_16_Angulo_2', 'obra_id' => 73, 'cliente_id' => 40, 'colaborador_id' => 13],
-    ['nome' => '9.JON_LIN Petstore', 'obra_id' => 73, 'cliente_id' => 40, 'colaborador_id' => 13],
-    ['nome' => 'JON_LIN_Brinquedoteca', 'obra_id' => 73, 'cliente_id' => 40, 'colaborador_id' => 13],
-    ['nome' => '9.JON_LIN_Area_interna_do_patio_coberto Foco no palco', 'obra_id' => 73, 'cliente_id' => 40, 'colaborador_id' => 13],
-    ['nome' => '5.JON_LIN Lobby', 'obra_id' => 73, 'cliente_id' => 40, 'colaborador_id' => 13],
-    ['nome' => '7.JON_LIN Docas para motos na garagem', 'obra_id' => 73, 'cliente_id' => 40, 'colaborador_id' => 13],
-    ['nome' => 'JON_LIN - Espaco_Beauty', 'obra_id' => 73, 'cliente_id' => 40, 'colaborador_id' => 13],
-    ['nome' => '11.JON_LIN Area interna do patio coberto', 'obra_id' => 73, 'cliente_id' => 40, 'colaborador_id' => 13],
-    ['nome' => '10.JON_LIN Area interna do patio coberto - 2 - Foco nas lojas', 'obra_id' => 73, 'cliente_id' => 40, 'colaborador_id' => 13],
+    ['nome' => '5.ROM_MAE_Fachada Baixo', 'obra_id' => 63, 'cliente_id' => 36, 'colaborador_id' => 13],
+    ['nome' => '19.ROM_MAE_Pub_tematico_interior_angulo_EF_5_1', 'obra_id' => 63, 'cliente_id' => 36, 'colaborador_id' => 13],
+    ['nome' => '33.ROM_MAE Espaco gourmet apto', 'obra_id' => 63, 'cliente_id' => 36, 'colaborador_id' => 13],
+    ['nome' => '36.ROM_MAE Suite cobertura duplex_EF', 'obra_id' => 63, 'cliente_id' => 36, 'colaborador_id' => 13],
+    ['nome' => '37.ROM_MAE Living cobertura duplex_CAM 1', 'obra_id' => 63, 'cliente_id' => 36, 'colaborador_id' => 13],
+    ['nome' => '37.ROM_MAE Living cobertura duplex_detalhe', 'obra_id' => 63, 'cliente_id' => 36, 'colaborador_id' => 13],
+    ['nome' => 'Tracking_0048', 'obra_id' => 63, 'cliente_id' => 36, 'colaborador_id' => 13],
+    ['nome' => 'Tracking_0050', 'obra_id' => 63, 'cliente_id' => 36, 'colaborador_id' => 13],
+    ['nome' => 'Tracking_0063', 'obra_id' => 63, 'cliente_id' => 36, 'colaborador_id' => 13],
+    ['nome' => 'Tracking_0074', 'obra_id' => 63, 'cliente_id' => 36, 'colaborador_id' => 13],
+
+    // ======================
+    // LD9_URB (obra_id = 57, cliente_id = 37)
+    // ======================
+    ['nome' => '3.LD9_URB Embasamento comercial', 'obra_id' => 57, 'cliente_id' => 37, 'colaborador_id' => 13],
+    ['nome' => '12.LD9_URB Piscinas angulo', 'obra_id' => 57, 'cliente_id' => 37, 'colaborador_id' => 13],
+    ['nome' => '16.LD9_URB Piscina interna aquecida', 'obra_id' => 57, 'cliente_id' => 37, 'colaborador_id' => 13],
+    ['nome' => '19.LD9_URB Academia', 'obra_id' => 57, 'cliente_id' => 37, 'colaborador_id' => 13],
+    ['nome' => '46.LD9_URB Placemaking', 'obra_id' => 57, 'cliente_id' => 37, 'colaborador_id' => 13],
+    ['nome' => '49.LD9_URB Wine club', 'obra_id' => 57, 'cliente_id' => 37, 'colaborador_id' => 13],
+    ['nome' => 'LD9_URB_Tracking_0062', 'obra_id' => 57, 'cliente_id' => 37, 'colaborador_id' => 13],
+    ['nome' => 'LF9_URB_Tracking_0012', 'obra_id' => 57, 'cliente_id' => 37, 'colaborador_id' => 13],
+    ['nome' => 'LF9_URB_Tracking_0058_v1', 'obra_id' => 57, 'cliente_id' => 37, 'colaborador_id' => 13],
+    ['nome' => 'LF9_URB_Tracking_0042', 'obra_id' => 57, 'cliente_id' => 37, 'colaborador_id' => 13],
+
+    // ======================
+    // HAB_AVT (obra_id = 101, cliente_id = 69)
+    // ======================
+    ['nome' => 'Tracking', 'obra_id' => 101, 'cliente_id' => 69, 'colaborador_id' => 13],
+
+    // ======================
+    // GES_CHA (obra_id = 63, cliente_id = 36)
+    // ======================
+    ['nome' => '6. GES_CHA-Embasamento', 'obra_id' => 63, 'cliente_id' => 36, 'colaborador_id' => 13],
+    ['nome' => '11. GES_CHA Piscina angulo geral', 'obra_id' => 63, 'cliente_id' => 36, 'colaborador_id' => 13],
+    ['nome' => '15. GES_CHA -Piscina Raia', 'obra_id' => 63, 'cliente_id' => 36, 'colaborador_id' => 13],
+    ['nome' => '39.GES_CHA_Academia Geral', 'obra_id' => 63, 'cliente_id' => 36, 'colaborador_id' => 13],
+    ['nome' => '39.GES_CHA_Academia Vista', 'obra_id' => 63, 'cliente_id' => 36, 'colaborador_id' => 13],
+    ['nome' => 'GES_CHA_Tracking_0001', 'obra_id' => 63, 'cliente_id' => 36, 'colaborador_id' => 13],
+    ['nome' => 'GES_CHA_Tracking_0002', 'obra_id' => 63, 'cliente_id' => 36, 'colaborador_id' => 13],
+    ['nome' => 'GES_CHA_Tracking_0003', 'obra_id' => 63, 'cliente_id' => 36, 'colaborador_id' => 13],
+
+    // ======================
+    // ARS_VIE (obra_id = 55, cliente_id = 32)
+    // ======================
+    ['nome' => 'ARS_VIE_Redario', 'obra_id' => 55, 'cliente_id' => 32, 'colaborador_id' => 13],
+    ['nome' => 'ARS_VIE_Fireplace', 'obra_id' => 55, 'cliente_id' => 32, 'colaborador_id' => 13],
 ];
 
 $status = 'Finalizado';
-$data = '2026-02-28';
+$data = '2026-03-31';
 
 foreach ($imagens as $img) {
     // Inserir na tabela imagem_animacao

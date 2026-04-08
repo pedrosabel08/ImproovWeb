@@ -285,7 +285,7 @@ input:checked + .slider:before {
   background-color: #f0fdf4;
   color: #166534;
 }
-/* fallback para IDs além de 9: cicla a partir de 1 */
+/* Paleta de cores por subtipo_id */
 .subtipo-badge--10 {
   background-color: #dbeafe;
   color: #1d4ed8;
@@ -295,6 +295,42 @@ input:checked + .slider:before {
   color: #6d28d9;
 }
 .subtipo-badge--12 {
+  background-color: #dcfce7;
+  color: #15803d;
+}
+.subtipo-badge--13 {
+  background-color: #ffedd5;
+  color: #c2410c;
+}
+.subtipo-badge--14 {
+  background-color: #fce7f3;
+  color: #be185d;
+}
+.subtipo-badge--15 {
+  background-color: #ccfbf1;
+  color: #0f766e;
+}
+.subtipo-badge--16 {
+  background-color: #fef9c3;
+  color: #a16207;
+}
+.subtipo-badge--17 {
+  background-color: #e0e7ff;
+  color: #4338ca;
+}
+.subtipo-badge--18 {
+  background-color: #f0fdf4;
+  color: #166534;
+}
+.subtipo-badge--19 {
+  background-color: #dbeafe;
+  color: #1d4ed8;
+}
+.subtipo-badge--20 {
+  background-color: #ede9fe;
+  color: #6d28d9;
+}
+.subtipo-badge--21 {
   background-color: #dcfce7;
   color: #15803d;
 }
@@ -2909,7 +2945,6 @@ ul.file-list {
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 10px;
-  width: 290px;
   box-shadow: 0 8px 24px var(--shadow);
   z-index: 1000;
   font-size: 0.9rem;
@@ -2923,7 +2958,7 @@ ul.file-list {
   border-bottom: 1px solid var(--border);
   padding: 4px 2px;
   min-width: 120px;
-  font-size: 0.88rem;
+  font-size: 0.8rem;
 }
 
 #acoesModal input:focus,
@@ -2952,6 +2987,103 @@ ul.file-list {
 
 #acoesModal .modal-row:hover {
   background: var(--bg);
+}
+
+/* Botões do acoesModal */
+#acoesModal #btnBatchRevisao,
+#acoesModal #btnAtualizar {
+  height: 30px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    transform 0.15s;
+}
+#acoesModal #btnBatchRevisao {
+  background: rgba(79, 128, 225, 0.12);
+  color: #3b6fd6;
+}
+#acoesModal #btnBatchRevisao:hover {
+  background: rgba(79, 128, 225, 0.22);
+  transform: translateY(-1px);
+}
+#acoesModal #btnAtualizar {
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+}
+#acoesModal #btnAtualizar:hover {
+  background: rgba(16, 185, 129, 0.22);
+  transform: translateY(-1px);
+}
+
+/* Select2 dentro do #acoesModal — mesma aparência dos selects nativos */
+#acoesModal .select2-container {
+  min-width: 140px;
+  max-width: 180px;
+  font-size: 0.8rem;
+}
+#acoesModal .select2-container .select2-selection--single {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  height: 28px;
+  box-shadow: none;
+}
+#acoesModal
+  .select2-container
+  .select2-selection--single
+  .select2-selection__rendered {
+  color: var(--text);
+  font-size: 0.8rem;
+  line-height: 28px;
+  padding-left: 2px;
+  padding-right: 24px;
+}
+#acoesModal
+  .select2-container
+  .select2-selection--single
+  .select2-selection__arrow {
+  height: 28px;
+}
+#acoesModal
+  .select2-container
+  .select2-selection--single
+  .select2-selection__clear {
+  color: var(--text);
+  font-size: 1rem;
+  margin-right: 4px;
+}
+/* Dropdown posicionado dentro do modal */
+#acoesModal .select2-dropdown {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  font-size: 0.8rem;
+  z-index: 1100;
+}
+#acoesModal .select2-search--dropdown .select2-search__field {
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 0.85rem;
+  padding: 4px 6px;
+}
+#acoesModal .select2-results__option {
+  color: var(--text);
+  padding: 5px 10px;
+  font-size: 0.85rem;
+}
+#acoesModal .select2-results__option--highlighted {
+  background: rgba(79, 128, 225, 0.12);
+  color: var(--text);
 }
 
 #batch_actions:hover,
@@ -4042,4 +4174,8 @@ tr#linha-porcentagem {
 .notificar-btn-send:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.btn-cronograma-card {
+  display: none !important;
 }

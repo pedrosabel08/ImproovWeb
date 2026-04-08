@@ -35,7 +35,7 @@ $clientes = obterClientes($conn);
 $nivel_acesso = $_SESSION['nivel_acesso'];
 
 $subtipos = [];
-$resSubtipos = $conn->query("SELECT id, nome FROM subtipo_imagem ORDER BY id");
+$resSubtipos = $conn->query("SELECT id, nome FROM subtipo_imagem ORDER BY nome ASC");
 if ($resSubtipos) {
     $subtipos = $resSubtipos->fetch_all(MYSQLI_ASSOC);
 }

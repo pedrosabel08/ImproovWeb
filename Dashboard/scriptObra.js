@@ -5016,6 +5016,64 @@ function clearFilters() {
   }
 }
 
+// Select2 com tags para o select de subtipo no modal de batch edit
+function initSubtipoModalSelect2() {
+  if (!window.jQuery || !$.fn || !$.fn.select2) return;
+  const $sel = $("#subtipo_modal");
+  if (!$sel.length) return;
+  try {
+    $sel.select2("destroy");
+  } catch (_) {}
+
+  $sel.select2({
+    tags: true,
+    placeholder: "-- Sem subtipo --",
+    allowClear: true,
+    width: "100%",
+    dropdownParent: $("body"),
+    language: { noResults: () => "Nenhum resultado. Digite para criar." },
+    createTag(params) {
+      const term = params.term.trim();
+      if (!term) return null;
+      return { id: "new:" + term, text: term, newTag: true };
+    },
+    templateResult(item) {
+      if (item.newTag) {
+        const el = document.createElement("span");
+        el.innerHTML = `<i class="fa-solid fa-plus"></i> <small>Criar:</small> <strong>${item.text}</strong>`;
+        return el;
+      }
+      return item.text || item.id;
+    },
+  });
+
+  $sel.on("select2:select", async function (e) {
+    const data = e.params.data;
+    if (!data.newTag) return;
+    const nome = data.text.trim();
+    if (!nome) return;
+    try {
+      const resp = await fetch("getSubtipos.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nome }),
+      });
+      const json = await resp.json();
+      if (json.id && !json.error) {
+        // Adiciona a option real com ID do banco e remove a temporária
+        const realOpt = new Option(json.nome, json.id, true, true);
+        $sel.append(realOpt);
+        $sel.find(`option[value="new:${nome}"]`).remove();
+        $sel.val(json.id).trigger("change");
+      } else {
+        console.warn("Erro ao criar subtipo:", json.error);
+      }
+    } catch (err) {
+      console.error("Erro ao criar subtipo:", err);
+    }
+  });
+}
+
 // Ligando o botão Limpar filtros
 document.addEventListener("DOMContentLoaded", function () {
   initSelect2Filters();
@@ -7584,7 +7642,10 @@ document.getElementById("copyColumn").addEventListener("click", function () {
   rows.forEach((row) => {
     // Verifica se a linha está visível (não tem display: none)
     if (window.getComputedStyle(row).display !== "none") {
-      columnData.push(row.cells[1].innerText);
+      // Clona a célula e remove o badge de subtipo para copiar só o nome da imagem
+      const cellClone = row.cells[1].cloneNode(true);
+      cellClone.querySelectorAll(".subtipo-badge").forEach((el) => el.remove());
+      columnData.push(cellClone.innerText.trim());
     }
   });
 
@@ -9259,17 +9320,28 @@ function positionHistModal() {
 window.addEventListener("resize", positionHistModal);
 window.addEventListener("scroll", positionHistModal, true);
 
+let _subtipoSelect2Initialized = false;
+
 document.querySelectorAll(".modal-row").forEach((row) => {
   row.addEventListener("click", function () {
     const targetId = this.getAttribute("data-target");
     const field = document.getElementById(targetId);
-    field.style.display = field.style.display === "block" ? "none" : "block";
+    const opening = field.style.display !== "block";
+    field.style.display = opening ? "block" : "none";
+
+    // Inicializa Select2 do subtipo somente na primeira vez que o campo fica visível
+    if (opening && targetId === "subtipoField" && !_subtipoSelect2Initialized) {
+      _subtipoSelect2Initialized = true;
+      initSubtipoModalSelect2();
+    }
   });
 
-  // Impede que clique nos inputs ou selects dispare o toggle
-  row.querySelectorAll("input, select").forEach((el) => {
-    el.addEventListener("click", (e) => e.stopPropagation());
-  });
+  // Impede que qualquer clique DENTRO do campo (inputs, selects, e o container do Select2)
+  // suba para o .modal-row e dispare o toggle
+  const field = document.getElementById(row.getAttribute("data-target"));
+  if (field) {
+    field.addEventListener("click", (e) => e.stopPropagation());
+  }
 });
 
 document.getElementById("btnAtualizar").addEventListener("click", function () {

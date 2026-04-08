@@ -206,10 +206,11 @@ $conn->close();
                     </div>
                 </nav>
             </header>
+            <div id="filtros-ativos-bar"></div>
             <div class="kanban" id="kanban-section">
                 <div class="kanban-box" id="to-do">
                     <div class="header" style="background-color: #b9b9b9;">
-                        <div class="title"><i class="fa-solid fa-play"></i><span>Não iniciado</span></div>
+                        <div class="title"><i class="ri-circle-line"></i><span>Não iniciado</span></div>
                         <span class="task-count"></span>
                     </div>
                     <div class="content">
@@ -217,7 +218,7 @@ $conn->close();
                 </div>
                 <div class="kanban-box" id="hold">
                     <div class="header" style="background-color: #dd3812d6;">
-                        <div class="title"><i class="fa-solid fa-play"></i><span>HOLD</span></div>
+                        <div class="title"><i class="ri-pause-circle-fill"></i><span>HOLD</span></div>
                         <span class="task-count"></span>
                     </div>
                     <div class="content">
@@ -225,7 +226,7 @@ $conn->close();
                 </div>
                 <div class="kanban-box" id="in-progress">
                     <div class="header" style="background-color: #f7c81bc7;">
-                        <div class="title"><i class="fa-solid fa-hourglass-start"></i><span>Em andamento</span></div>
+                        <div class="title"><i class="ri-loader-4-line"></i><span>Em andamento</span></div>
                         <span class="task-count"></span>
                     </div>
                     <div class="content">
@@ -233,7 +234,7 @@ $conn->close();
                 </div>
                 <div class="kanban-box" id="in-review">
                     <div class="header" style="background-color: #4fd5fd8c;">
-                        <div class="title"><i class="fa-solid fa-magnifying-glass"></i><span>Em aprovação</span></div>
+                        <div class="title"><i class="ri-eye-line"></i><span>Em aprovação</span></div>
                         <span class="task-count"></span>
                     </div>
                     <div class="content">
@@ -241,7 +242,7 @@ $conn->close();
                 </div>
                 <div class="kanban-box" id="ajuste">
                     <div class="header" style="background-color: #fd5353bf;">
-                        <div class="title"><i class="ri-error-warning-line"></i><span>Em ajuste</span></div>
+                        <div class="title"><i class="ri-tools-line"></i><span>Em ajuste</span></div>
                         <span class="task-count"></span>
                     </div>
                     <div class="content">
@@ -249,7 +250,7 @@ $conn->close();
                 </div>
                 <div class="kanban-box" id="aprovado-ajustes">
                     <div class="header" style="background-color: #ae90ffff;">
-                        <div class="title"><i class="fa-solid fa-exclamation-circle"></i><span>Aprovado com
+                        <div class="title"><i class="ri-checkbox-indeterminate-line"></i><span>Aprovado com
                                 ajustes</span></div>
                         <span class="task-count"></span>
                     </div>
@@ -258,7 +259,7 @@ $conn->close();
                 </div>
                 <div class="kanban-box" id="aprovado">
                     <div class="header" style="background-color: #37ff34a3;">
-                        <div class="title"><i class="fa-solid fa-check"></i><span>Aprovado</span></div>
+                        <div class="title"><i class="ri-checkbox-circle-line"></i><span>Aprovado</span></div>
                         <span class="task-count"></span>
                     </div>
                     <div class="content">
@@ -266,7 +267,7 @@ $conn->close();
                 </div>
                 <div class="kanban-box" id="done">
                     <div class="header" style="background-color: #b7f71bbf;">
-                        <div class="title"><i class="fa-solid fa-check"></i><span>Finalizado</span></div>
+                        <div class="title"><i class="ri-flag-2-fill"></i><span>Finalizado</span></div>
                         <span class="task-count"></span>
                     </div>
                     <div class="content">

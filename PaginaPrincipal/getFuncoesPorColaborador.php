@@ -196,6 +196,17 @@ function calcularTempo($logs, $statusAtual)
             }
             break;
 
+        case 'Não iniciado':
+            foreach ($logs as $log) {
+                if ($log['status_novo'] === 'Não iniciado' && $log['status_anterior'] === null) {
+                    $dataInicio = new DateTime($log['data']);
+                    $diff = $dataInicio->diff(new DateTime());
+                    $tempoCalculado = $diff->days * 1440 + $diff->h * 60 + $diff->i;
+                    break; // usa o registro da trigger (status_anterior NULL) = momento da criação
+                }
+            }
+            break;
+
         case 'Em andamento':
             foreach ($logs as $log) {
                 if ($log['status_novo'] === 'Em andamento') {
@@ -245,7 +256,7 @@ $logsPorFuncao = [];
 
 if (count($funcaoImagemIds) > 0) {
     $inIds = implode(',', array_fill(0, count($funcaoImagemIds), '?'));
-    $sqlLogsAll = "SELECT funcao_imagem_id, status_novo, data 
+    $sqlLogsAll = "SELECT funcao_imagem_id, status_anterior, status_novo, data 
                    FROM log_alteracoes 
                    WHERE funcao_imagem_id IN ($inIds) 
                    ORDER BY data ASC";

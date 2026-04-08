@@ -7,6 +7,7 @@ if (colaborador_id === 9 || colaborador_id === 21) {
 
 document.getElementById("idcolab").addEventListener("change", function () {
   const idcolab = parseInt(this.value, 10);
+  this.classList.toggle("colaborador-filtrado", !!this.value);
   carregarDados(idcolab);
 });
 
@@ -549,12 +550,22 @@ function processarDados(data) {
       }
     }
 
+    // Badge: para imagens mostra o nome da função com cor; para tarefas mantém prioridade
+    const funcaoBadgeHTML =
+      tipo === "imagem"
+        ? `<span class="funcao-badge funcao-id-${item.funcao_id || 0}">${item.nome_funcao || ""}</span>`
+        : `<span class="priority ${item.prioridade || "medium"}">${item.prioridade || "Medium"}</span>`;
+
+    // Tempo: para Não iniciado bloqueado não exibe contagem
+    const tempoDisplay =
+      status === "Não iniciado" && liberado === "0"
+        ? null
+        : item.tempo_calculado;
+
     card.innerHTML = `
                     ${hasPendingFile ? `<div class="pending-file-ribbon"><i class="ri-alert-line"></i> Arquivo pendente</div>` : ""}
                     <div class="header-kanban">
-                        <span class="priority ${item.prioridade || "medium"}">
-                            ${item.prioridade || "Medium"}
-                        </span>
+                        ${funcaoBadgeHTML}
                         ${bolinhaHTML}
                         ${
                           item.notificacoes_nao_lidas &&
@@ -571,7 +582,6 @@ function processarDados(data) {
                         <h5>${titulo || "-"}</h5>
                         <!-- Use server-side thumb generator to reduce weight for thumbnails -->
                         <img loading="lazy" src="${imgSrc}" alt="" style="max-width: 100%; height: auto; margin-bottom: 8px;">
-                        <p>${subtitulo || "-"}</p>
                     <div class="card-footer">
                         <span class="date ${atrasada ? "atrasada" : ""}">
                             <i class="fa-regular fa-calendar"></i>
@@ -580,11 +590,11 @@ function processarDados(data) {
                     </div>
                     <div class="card-log">
                             <span 
-                                class="date tooltip ${getTempoClass(item.tempo_calculado, mediaFuncao)}" 
+                                class="date tooltip ${getTempoClass(tempoDisplay, mediaFuncao)}" 
                                 data-tooltip="${formatarDuracao(mediaFuncao)}"
-                                data-inicio="${item.tempo_calculado || ""}">
+                                data-inicio="${tempoDisplay || ""}">
                                 <i class="ri-time-line"></i> 
-                                ${item.tempo_calculado ? formatarDuracao(item.tempo_calculado) : "-"}
+                                ${tempoDisplay ? formatarDuracao(tempoDisplay) : "-"}
                                 </span>
                     <div class="comments">
                         ${item.indice_envio_atual ? `<span class="indice_envio"><i class="ri-file-line"></i> ${item.indice_envio_atual} |</span>` : ""}
@@ -673,6 +683,9 @@ function processarDados(data) {
 
   preencherFiltros();
   alertarPendenciasSeNecessario(data);
+
+  // Reaplica filtros ativos (obra, função, status, prazo) após recarregar os cards
+  aplicarFiltros();
 }
 
 document.getElementById("modalDaily").style.display = "none";
@@ -1747,7 +1760,12 @@ function atualizarTemposEmAndamento() {
   spans.forEach((span) => {
     // pega o card correto
     const card = span.closest(".kanban-card");
-    if (!card || card.dataset.status !== "Em andamento") return;
+    const isEmAndamento = card && card.dataset.status === "Em andamento";
+    const isNaoIniciado =
+      card &&
+      card.dataset.status === "Não iniciado" &&
+      card.dataset.liberado === "1";
+    if (!card || (!isEmAndamento && !isNaoIniciado)) return;
 
     // pega o valor de data-inicio (em minutos)
     let minutosIniciais = parseInt(span.dataset.inicio, 10);
@@ -3056,7 +3074,13 @@ function abrirSidebar(idFuncao, idImagem, nomeObra = "") {
           li.style.paddingLeft = "10px";
           li.style.marginBottom = "10px";
 
-          li.innerHTML = `<strong>${formatarDataComentario(log.data)}</strong> ${log.imagem_status_at_update ? `(${log.imagem_status_at_update})` : ""} ${log.status_anterior} → <em>${log.status_novo}</em> (${log.responsavel})`;
+          const statusAnteriorLabel =
+            !log.status_anterior ||
+            log.status_anterior === "null" ||
+            log.status_anterior === "Tarefa criada"
+              ? `<em class="log-inicio">Tarefa criada</em>`
+              : log.status_anterior;
+          li.innerHTML = `<strong>${formatarDataComentario(log.data)}</strong> ${log.imagem_status_at_update ? `(${log.imagem_status_at_update})` : ""} ${statusAnteriorLabel} → <em>${log.status_novo}</em> (${log.responsavel})`;
           logDiv.appendChild(li);
         });
       } else {
@@ -3211,6 +3235,18 @@ function preencherFiltros() {
   const filtroObra = document.getElementById("filtroObra");
   const filtroFuncao = document.getElementById("filtroFuncao");
 
+  // Salva os valores selecionados antes de reconstruir (padrão scriptObra.js)
+  const obrasSelecionadas = new Set(
+    Array.from(filtroObra.querySelectorAll("input:checked"))
+      .map((el) => el.value)
+      .filter((v) => v),
+  );
+  const funcoesSelecionadas = new Set(
+    Array.from(filtroFuncao.querySelectorAll("input:checked"))
+      .map((el) => el.value)
+      .filter((v) => v),
+  );
+
   filtroObra.innerHTML =
     '<label><input type="checkbox" value=""> Todas as obras</label>';
   filtroFuncao.innerHTML =
@@ -3222,6 +3258,14 @@ function preencherFiltros() {
 
   funcoes.forEach((f) => {
     filtroFuncao.innerHTML += `<label><input type="checkbox" value="${f}"> ${f}</label>`;
+  });
+
+  // Restaura as seleções anteriores nos checkboxes recriados
+  filtroObra.querySelectorAll("input[type=checkbox]").forEach((cb) => {
+    if (cb.value && obrasSelecionadas.has(cb.value)) cb.checked = true;
+  });
+  filtroFuncao.querySelectorAll("input[type=checkbox]").forEach((cb) => {
+    if (cb.value && funcoesSelecionadas.has(cb.value)) cb.checked = true;
   });
 
   // Reaplica os eventos de filtro
@@ -3316,12 +3360,130 @@ function aplicarFiltros() {
   });
 
   atualizarTaskCount();
+
+  // ── Indicadores visuais de filtros ativos ──────────────────────────────
+  const btnFilter = document.getElementById("filter");
+
+  // Dropbtns: highlight se o grupo tem algum item selecionado
+  const gruposFiltro = [
+    { id: "filtroObra", lista: obrasSelecionadas },
+    { id: "filtroFuncao", lista: funcoesSelecionadas },
+    { id: "filtroStatus", lista: statusSelecionados },
+  ];
+  gruposFiltro.forEach(({ id, lista }) => {
+    const container = document.getElementById(id);
+    if (!container) return;
+    const btn = container.closest(".dropdown")?.querySelector(".dropbtn");
+    if (btn) btn.classList.toggle("tem-filtro", lista.length > 0);
+  });
+
+  // Destaca o botão prazo se houver range selecionado
+  const prazoContainer = document
+    .getElementById("prazoRange")
+    ?.closest(".dropdown");
+  const prazoBtn = prazoContainer?.querySelector(".dropbtn");
+  if (prazoBtn) prazoBtn.classList.toggle("tem-filtro", !!prazoInicio);
+
+  // Botão #filter: ativo se qualquer filtro estiver em uso
+  const qualquerFiltroAtivo =
+    obrasSelecionadas.length > 0 ||
+    funcoesSelecionadas.length > 0 ||
+    statusSelecionados.length > 0 ||
+    !!prazoInicio;
+  if (btnFilter)
+    btnFilter.classList.toggle("filtro-ativo", qualquerFiltroAtivo);
+
+  // ── Barra de tags de filtros ativos ────────────────────────────────────
+  atualizarTagsFiltro(
+    obrasSelecionadas,
+    funcoesSelecionadas,
+    statusSelecionados,
+    prazoInicio,
+    prazoFim,
+  );
 }
 
 // Vincula eventos de mudança dos selects
 ["filtroObra", "filtroFuncao", "filtroStatus"].forEach((id) => {
   document.getElementById(id)?.addEventListener("change", aplicarFiltros);
 });
+
+// ── Barra de tags de filtros ativos ────────────────────────────────────────
+function atualizarTagsFiltro(obras, funcoes, statuses, prazoInicio, prazoFim) {
+  const bar = document.getElementById("filtros-ativos-bar");
+  if (!bar) return;
+
+  bar.innerHTML = "";
+
+  const tags = [];
+
+  obras.forEach((v) => tags.push({ label: v, grupo: "obra", valor: v }));
+  funcoes.forEach((v) => tags.push({ label: v, grupo: "funcao", valor: v }));
+  statuses.forEach((v) => tags.push({ label: v, grupo: "status", valor: v }));
+
+  if (prazoInicio) {
+    const fmt = (d) => d.toLocaleDateString("pt-BR");
+    const label =
+      prazoFim && prazoFim.getTime() !== prazoInicio.getTime()
+        ? `${fmt(prazoInicio)} – ${fmt(prazoFim)}`
+        : fmt(prazoInicio);
+    tags.push({ label: `Prazo: ${label}`, grupo: "prazo", valor: null });
+  }
+
+  if (tags.length === 0) return;
+
+  tags.forEach(({ label, grupo, valor }) => {
+    const tag = document.createElement("span");
+    tag.className = "filtro-tag";
+    tag.innerHTML = `${label}<button class="remove-filtro" title="Remover filtro"><i class="ri-close-line"></i></button>`;
+    tag.querySelector(".remove-filtro").addEventListener("click", () => {
+      removerFiltro(grupo, valor);
+    });
+    bar.appendChild(tag);
+  });
+
+  const btnLimpar = document.createElement("button");
+  btnLimpar.className = "limpar-todos";
+  btnLimpar.textContent = "Limpar tudo";
+  btnLimpar.addEventListener("click", limparTodosFiltros);
+  bar.appendChild(btnLimpar);
+}
+
+function removerFiltro(grupo, valor) {
+  if (grupo === "prazo") {
+    const input = document.getElementById("prazoRange");
+    if (input && input._flatpickr) input._flatpickr.clear();
+    else if (input) input.value = "";
+  } else {
+    const groupMap = {
+      obra: "filtroObra",
+      funcao: "filtroFuncao",
+      status: "filtroStatus",
+    };
+    const container = document.getElementById(groupMap[grupo]);
+    if (container) {
+      const cb = Array.from(
+        container.querySelectorAll("input[type=checkbox]"),
+      ).find((el) => el.value === valor);
+      if (cb) cb.checked = false;
+    }
+  }
+  aplicarFiltros();
+}
+
+function limparTodosFiltros() {
+  ["filtroObra", "filtroFuncao", "filtroStatus"].forEach((id) => {
+    document.querySelectorAll(`#${id} input[type=checkbox]`).forEach((cb) => {
+      cb.checked = false;
+    });
+  });
+  const prazoInput = document.getElementById("prazoRange");
+  if (prazoInput) {
+    if (prazoInput._flatpickr) prazoInput._flatpickr.clear();
+    else prazoInput.value = "";
+  }
+  aplicarFiltros();
+}
 
 function formatarData(data) {
   const partes = data.split("-");
@@ -3932,7 +4094,11 @@ colunas.forEach((col) => {
 
         // For in-review + primary representative:
         // primary → Finalizado (immediate), upload will set secondary → Em aprovação
-        if (_parTipo && novaColuna.id === "in-review" && _parRepresentative === "primary") {
+        if (
+          _parTipo &&
+          novaColuna.id === "in-review" &&
+          _parRepresentative === "primary"
+        ) {
           $.ajax({
             type: "POST",
             url: "insereFuncao.php",

@@ -93,7 +93,7 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
     if ($idFuncaoImagem > 0) {
         // Fetch logs in DESC order for the UI display (most recent first)
         // Also fetch the image status name that was active at the time of the log
-        $sqlLog = "SELECT la.idlog, la.funcao_imagem_id, la.status_anterior, la.status_novo, la.data,
+        $sqlLog = "SELECT la.idlog, la.funcao_imagem_id, COALESCE(la.status_anterior, 'Tarefa criada') AS status_anterior, la.status_novo, la.data,
                    la.colaborador_id, c.nome_colaborador AS responsavel,
                    fi.imagem_id,
                    s_im.nome_status AS imagem_status_at_update
@@ -117,7 +117,7 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
 
         // --- Additional query (ASC) to compute time intervals between consecutive logs ---
         $logAsc = [];
-        $sqlLogAsc = "SELECT la.idlog, la.funcao_imagem_id, la.status_anterior, la.status_novo, la.data,
+        $sqlLogAsc = "SELECT la.idlog, la.funcao_imagem_id, COALESCE(la.status_anterior, 'Tarefa criada') AS status_anterior, la.status_novo, la.data,
                           la.colaborador_id
             FROM log_alteracoes la
             WHERE la.funcao_imagem_id = $idFuncaoImagem

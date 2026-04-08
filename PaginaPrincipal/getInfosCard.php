@@ -139,12 +139,13 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
                 $startTs = (new DateTime($current['data']))->getTimestamp();
                 $endTs = (new DateTime($next['data']))->getTimestamp();
                 $diff = $endTs - $startTs;
-                if ($diff < 0) $diff = 0;
-                $durations_by_log[(int)$current['idlog']] = $diff;
+                if ($diff < 0)
+                    $diff = 0;
+                $durations_by_log[(int) $current['idlog']] = $diff;
             }
             // last log has no next event => null (or 0). Keep as null to indicate open interval.
             $lastLog = $logAsc[$countDur - 1];
-            $durations_by_log[(int)$lastLog['idlog']] = null;
+            $durations_by_log[(int) $lastLog['idlog']] = null;
         }
 
         // Compute total production time and personal production time
@@ -154,7 +155,7 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
         // determine assigned collaborator for this funcao_imagem (if available)
         $assigned_colab_id = null;
         if (!empty($funcoes) && isset($funcoes[0]['colaborador_id'])) {
-            $assigned_colab_id = (int)$funcoes[0]['colaborador_id'];
+            $assigned_colab_id = (int) $funcoes[0]['colaborador_id'];
         }
 
         // active states considered as 'production' for personal time
@@ -166,11 +167,12 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
                 $start = new DateTime($logAsc[$i]['data']);
                 $end = new DateTime($logAsc[$i + 1]['data']);
                 $interval_sec = $end->getTimestamp() - $start->getTimestamp();
-                if ($interval_sec < 0) $interval_sec = 0;
+                if ($interval_sec < 0)
+                    $interval_sec = 0;
                 $tempo_total_seg += $interval_sec;
 
                 $status_novo = isset($logAsc[$i]['status_novo']) ? $logAsc[$i]['status_novo'] : null;
-                $log_colab_id = isset($logAsc[$i]['colaborador_id']) ? (int)$logAsc[$i]['colaborador_id'] : null;
+                $log_colab_id = isset($logAsc[$i]['colaborador_id']) ? (int) $logAsc[$i]['colaborador_id'] : null;
 
                 // Count as personal production if the interval starts with an active state
                 // and the actor matches the assigned collaborator (if known).
@@ -192,10 +194,14 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
             $minutes = floor($s / 60);
             $seconds = $s - $minutes * 60;
             $parts = [];
-            if ($days > 0) $parts[] = $days . 'd';
-            if ($hours > 0) $parts[] = $hours . 'h';
-            if ($minutes > 0) $parts[] = $minutes . 'm';
-            if ($seconds > 0) $parts[] = $seconds . 's';
+            if ($days > 0)
+                $parts[] = $days . 'd';
+            if ($hours > 0)
+                $parts[] = $hours . 'h';
+            if ($minutes > 0)
+                $parts[] = $minutes . 'm';
+            if ($seconds > 0)
+                $parts[] = $seconds . 's';
             return implode(' ', $parts) ?: '0s';
         }
 
@@ -214,7 +220,7 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
         // --- enrich logAlteracoes (which was fetched DESC) with duration fields ---
         if (!empty($logAlteracoes)) {
             foreach ($logAlteracoes as $idx => $entry) {
-                $idlog = isset($entry['idlog']) ? (int)$entry['idlog'] : null;
+                $idlog = isset($entry['idlog']) ? (int) $entry['idlog'] : null;
                 if ($idlog !== null && array_key_exists($idlog, $durations_by_log)) {
                     $secs = $durations_by_log[$idlog];
                     if ($secs === null) {
@@ -252,7 +258,7 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
         if ($rowTipo = $resTipo->fetch_assoc()) {
             // tipo_imagem in imagens_cliente_obra is a varchar (name). Keep as string.
             $tipoImagemName = isset($rowTipo['tipo_imagem']) ? $rowTipo['tipo_imagem'] : null;
-            $obraIdFromImage = isset($rowTipo['obra_id']) ? (int)$rowTipo['obra_id'] : null;
+            $obraIdFromImage = isset($rowTipo['obra_id']) ? (int) $rowTipo['obra_id'] : null;
         }
     }
 
@@ -281,7 +287,7 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
         // Restrict to the same obra (if we have it) so we don't pull files from other obras
         $obraFilter = '';
         if (!empty($obraIdFromImage)) {
-            $obraFilter = ' AND a.obra_id = ' . (int)$obraIdFromImage;
+            $obraFilter = ' AND a.obra_id = ' . (int) $obraIdFromImage;
         }
 
         $sqlArquivosTipo = "SELECT a.idarquivo, a.obra_id, a.imagem_id, a.tipo_imagem_id, a.nome_interno, a.caminho, a.tipo, a.categoria_id, a.recebido_em, a.status,
@@ -342,11 +348,66 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
         }
     }
 
+    // ==========================================================
+    // 8) Briefing da obra
+    // ==========================================================
+    $briefing_obra = [];
+    if (!empty($obraIdFromImage)) {
+        $obraIdBriefing = (int) $obraIdFromImage;
+        $stmtBriefing = $conn->prepare(
+            "SELECT nivel, conceito, valor_media, outro_padrao, vidro, esquadria, soleira, acab_calcadas, assets, comp_planta FROM briefing WHERE obra_id = ? LIMIT 1"
+        );
+        if ($stmtBriefing) {
+            $stmtBriefing->bind_param("i", $obraIdBriefing);
+            $stmtBriefing->execute();
+            $resBriefing = $stmtBriefing->get_result();
+            if ($row = $resBriefing->fetch_assoc()) {
+                $briefing_obra = $row;
+            }
+            $stmtBriefing->close();
+        }
+
+        // obra links (link_drive, link_review, fotografico)
+        $obra_links = [];
+        $stmtLinks = $conn->prepare(
+            "SELECT link_drive, link_review, fotografico FROM obra WHERE idobra = ? LIMIT 1"
+        );
+        if ($stmtLinks) {
+            $stmtLinks->bind_param("i", $obraIdBriefing);
+            $stmtLinks->execute();
+            $resLinks = $stmtLinks->get_result();
+            if ($rowLinks = $resLinks->fetch_assoc()) {
+                $obra_links = $rowLinks;
+            }
+            $stmtLinks->close();
+        }
+    }
+
+    // ==========================================================
+    // 9) Observações da obra (observacao_obra)
+    // ==========================================================
+    $observacoes_obra = [];
+    if (!empty($obraIdFromImage)) {
+        $obraIdObs = (int) $obraIdFromImage;
+        $stmtObs = $conn->prepare(
+            "SELECT id, descricao, data FROM observacao_obra WHERE obra_id = ? ORDER BY ordem ASC, data DESC"
+        );
+        if ($stmtObs) {
+            $stmtObs->bind_param("i", $obraIdObs);
+            $stmtObs->execute();
+            $resObs = $stmtObs->get_result();
+            while ($row = $resObs->fetch_assoc()) {
+                $observacoes_obra[] = $row;
+            }
+            $stmtObs->close();
+        }
+    }
+
     // ====================================
     // Resposta final
     // ==========================================================
     echo json_encode([
-        "funcoes"       => $funcoes,
+        "funcoes" => $funcoes,
         "status_imagem" => $statusImagem,
         "colaboradores" => $colaboradores,
         "log_alteracoes" => $logAlteracoes,
@@ -355,7 +416,10 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
         "arquivos_imagem" => $arquivos_imagem,
         "arquivos_tipo" => $arquivos_tipo,
         "arquivos_anteriores" => $arquivos_anteriores,
-        "notificacoes"  => $notificacoes
+        "notificacoes" => $notificacoes,
+        "briefing_obra" => $briefing_obra,
+        "obra_links" => $obra_links ?? [],
+        "observacoes_obra" => $observacoes_obra,
 
     ], JSON_UNESCAPED_UNICODE);
 } else {

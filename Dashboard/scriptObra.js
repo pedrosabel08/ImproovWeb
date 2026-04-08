@@ -1007,6 +1007,85 @@ function atualizarModal(idImagem) {
     .then((response) => {
       document.getElementById("form-edicao").style.display = "flex";
 
+      // ── Painel de contexto da obra ─────────────────────────────
+      (function renderBriefingContextPanel() {
+        const panelId = "briefing-context-panel";
+        let panel = document.getElementById(panelId);
+        if (panel) panel.remove();
+
+        const br = window.__obraBriefing || {};
+        const obs = window.__obraObservacoes || [];
+        const links = window.__obraLinks || {};
+
+        const LABELS = {
+          nivel: "Nível",
+          conceito: "Conceito",
+          valor_media: "Valor médio",
+          outro_padrao: "Ref. padrão",
+          vidro: "Vidro",
+          esquadria: "Esquadria",
+          soleira: "Soleira",
+          acab_calcadas: "Calçadas",
+          assets: "Assets",
+          comp_planta: "Comp. planta",
+        };
+
+        const chips = Object.entries(LABELS)
+          .filter(([k]) => br[k] && String(br[k]).trim() !== "")
+          .map(
+            ([k, label]) =>
+              `<span class="bc-chip" title="${label}">${label}: ${String(br[k])}</span>`,
+          )
+          .join("");
+
+        const LINK_DEFS = [
+          { key: "link_drive", label: "Drive", icon: "fa-solid fa-hard-drive" },
+          {
+            key: "link_review",
+            label: "Review Studio",
+            icon: "fa-solid fa-eye",
+          },
+          {
+            key: "fotografico",
+            label: "Fotográfico",
+            icon: "fa-solid fa-camera",
+          },
+        ];
+        const linkBtns = LINK_DEFS.filter(
+          (d) => links[d.key] && String(links[d.key]).trim() !== "",
+        )
+          .map(
+            (d) =>
+              `<a class="bc-link-btn" href="${String(links[d.key])}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()"><i class="${d.icon}"></i> ${d.label}</a>`,
+          )
+          .join("");
+
+        const obsItems = obs
+          .slice(0, 5)
+          .map((o) => `<li class="bc-obs-item">${o.descricao || ""}</li>`)
+          .join("");
+        const obsMore =
+          obs.length > 5
+            ? `<li class="bc-obs-more">+ ${obs.length - 5} mais</li>`
+            : "";
+
+        if (!chips && !linkBtns && obs.length === 0) return;
+
+        panel = document.createElement("div");
+        panel.id = panelId;
+        panel.className = "briefing-context-panel";
+        panel.innerHTML = [
+          chips ? `<div class="bc-chips">${chips}</div>` : "",
+          linkBtns ? `<div class="bc-links">${linkBtns}</div>` : "",
+          obs.length > 0
+            ? `<ul class="bc-obs-list">${obsItems}${obsMore}</ul>`
+            : "",
+        ].join("");
+
+        const formEdicao = document.getElementById("form-edicao");
+        if (formEdicao) formEdicao.prepend(panel);
+      })();
+
       if (response.funcoes && response.funcoes.length > 0) {
         document.getElementById("campoNomeImagem").textContent =
           displayImageName(response.funcoes[0].imagem_nome);
@@ -3637,19 +3716,16 @@ function infosObra(obraId) {
       if (data.briefing && data.briefing.length > 0) {
         const br = data.briefing[0];
 
-        // utilitário: seta o valor do input e adiciona um marcador ↳ quando existe
+        // utilitário: seta o valor do input e atualiza o span de exibição
         function setWithArrow(id, value) {
           const el = document.getElementById(id);
-          if (!el) return;
-          if (
-            value !== null &&
-            value !== undefined &&
-            String(value).trim() !== ""
-          ) {
-            el.value = String(value);
-          } else {
-            el.value = "";
-          }
+          const span = document.getElementById("val-" + id);
+          const display =
+            value !== null && value !== undefined && String(value).trim() !== ""
+              ? String(value)
+              : "";
+          if (el) el.value = display;
+          if (span) span.textContent = display || "—";
         }
 
         setWithArrow("nivel", br.nivel);
@@ -3662,11 +3738,24 @@ function infosObra(obraId) {
         setWithArrow("assets", br.assets);
         setWithArrow("comp_planta", br.comp_planta);
         setWithArrow("acab_calcadas", br.acab_calcadas);
+
+        // Cache global para uso no modal de tarefa
+        window.__obraBriefing = br;
       } else {
         console.warn("Briefing não encontrado ou vazio."); // Apenas um aviso, sem erro no console
+        window.__obraBriefing = {};
       }
 
+      // Cache observações
+      window.__obraObservacoes = Array.isArray(data.infos) ? data.infos : [];
+
+      // Cache obra links
       const obra = data.obra;
+      window.__obraLinks = {
+        link_drive: obra.link_drive || "",
+        link_review: obra.link_review || "",
+        fotografico: obra.fotografico || "",
+      };
       document.getElementById("nomenclatura").textContent =
         obra.nome_real || "Nome não disponível";
       document.title = obra.nome_real || "Nome não disponível";
@@ -3681,6 +3770,13 @@ function infosObra(obraId) {
       // Populate basic fields
       document.getElementById("local").value = obra.local || "";
       document.getElementById("altura_drone").value = obra.altura_drone || "";
+      // Populate display spans for basic fields
+      const _setSpan = (id, val) => {
+        const s = document.getElementById("val-" + id);
+        if (s) s.textContent = val && String(val).trim() ? String(val) : "—";
+      };
+      _setSpan("local", obra.local);
+      _setSpan("altura_drone", obra.altura_drone);
 
       // Populate link fields and ensure placeholders when empty
       const fotograficoEl = document.getElementById("fotografico");
@@ -3696,6 +3792,8 @@ function infosObra(obraId) {
         } catch (e) {}
         fotograficoEl.style.display = "";
         fotograficoEl.placeholder = val ? "" : "--";
+        const sp = document.getElementById("val-fotografico");
+        if (sp) sp.textContent = val || "—";
       }
       if (driveEl) {
         const val = obra.link_drive || "";
@@ -3705,6 +3803,8 @@ function infosObra(obraId) {
         } catch (e) {}
         driveEl.style.display = "";
         driveEl.placeholder = val ? "" : "--";
+        const sp = document.getElementById("val-link_drive");
+        if (sp) sp.textContent = val || "—";
       }
       if (reviewEl) {
         const val = obra.link_review || "";
@@ -3714,6 +3814,19 @@ function infosObra(obraId) {
         } catch (e) {}
         reviewEl.style.display = "";
         reviewEl.placeholder = val ? "" : "--";
+        const sp = document.getElementById("val-link_review");
+        if (sp) sp.textContent = val || "—";
+      }
+
+      // Admin check: enable edit buttons for admins
+      const _uid = Number(localStorage.getItem("usuarioId"));
+      const secInfosObra = document.getElementById("secao-infos-obra");
+      if (secInfosObra) {
+        if ([1, 2, 9].includes(_uid)) {
+          secInfosObra.classList.add("is-admin");
+        } else {
+          secInfosObra.classList.remove("is-admin");
+        }
       }
 
       // Ensure open buttons reflect current values
@@ -3939,152 +4052,76 @@ function infosObra(obraId) {
         setTimeout(setMobileLinks, 60);
       })();
 
-      // const infosDiv = document.getElementById('infos');
+      // Renderiza instruções/observações como cards
+      (function renderObsCards() {
+        const cardList = document.getElementById("obsCardList");
+        if (!cardList) return;
+        cardList.innerHTML = "";
 
-      // // Limpa o conteúdo da div
-      // infosDiv.innerHTML = "";
-
-      // Verifica se há dados no array
-      if (data.infos.length === 0) {
-        document.querySelector(".infos-container").style.display = "none";
-      } else {
-        // Seleciona a tabela onde as informações serão inseridas
-        const tabela = document.getElementById("tabelaInfos");
-
-        // Limpa a tabela antes de adicionar os novos dados
-        tabela.querySelector("tbody").innerHTML = "";
-
-        // Preenche a tabela com as informações
-        data.infos.forEach((info) => {
-          const linha = document.createElement("tr"); // Cria uma linha para cada info
-
-          linha.innerHTML = `
-                        <td>${info.descricao}</td>
-                        <td>${formatarData(info.data)}</td>
-                    `;
-
-          linha.setAttribute("data-id", info.id); // Adiciona o ID da imagem à linha
-          linha.setAttribute("ordem", info.ordem); // Adiciona o ID da imagem à linha
-
-          tabela.querySelector("tbody").appendChild(linha); // Adiciona a linha na tabela
-
-          // Adiciona evento de clique a cada linha da tabelaInfos
-          linha.addEventListener("click", function () {
-            const descricaoId = this.getAttribute("data-id");
-            const descricao = this.querySelector("td:nth-child(1)").textContent;
-
-            // Preenche o modal com os dados da linha clicada
-            document.getElementById("descricaoId").value = descricaoId;
-            document.getElementById("desc").value = descricao;
-
-            const deleteObs = document.getElementById("deleteObs");
-            deleteObs.setAttribute("data-id", descricaoId);
-            deleteObs.addEventListener("click", function () {
-              const id = this.getAttribute("data-id");
-              fetch(`deleteObs.php?id=${id}`, {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/x-www-form-urlencoded", // Forma correta de enviar dados via POST
-                },
-                body: `id=${id}`, // Envia o id no corpo da requisição
-              })
-                .then((response) => response.json())
-                .then((data) => {
-                  if (data.success) {
-                    alert("Observação excluída com sucesso!");
-                    document.getElementById("modalObservacao").style.display =
-                      "none";
-                  } else {
-                    alert("Erro ao excluir observação.");
-                  }
-                })
-                .catch((error) =>
-                  console.error("Erro ao excluir observação:", error),
-                );
-            });
-
-            // Exibe o modal
-            document.getElementById("modalObservacao").style.display = "block";
-          });
-        });
-
-        // Inicializa o DataTables se ainda não foi inicializado
-        if (!$.fn.DataTable.isDataTable("#tabelaInfos")) {
-          $(document).ready(function () {
-            $("#tabelaInfos").DataTable({
-              paging: false,
-              lengthChange: false,
-              info: false,
-              ordering: true,
-              searching: true,
-              order: [], // Remove a ordenação padrão
-              columnDefs: [
-                {
-                  targets: 0, // Aplica a ordenação na primeira coluna
-                  orderData: function (row, type, set, meta) {
-                    // Retorna o valor do atributo data-id para a ordenação
-                    return $(row).attr("ordem");
-                  },
-                },
-              ],
-              language: {
-                url: "https://cdn.datatables.net/plug-ins/1.10.21/i18n/Portuguese.json",
-              },
-            });
-          });
+        const infos = Array.isArray(data.infos) ? data.infos : [];
+        if (infos.length === 0) {
+          cardList.innerHTML = '<p class="obs-empty">Nenhuma instrução cadastrada.</p>';
+          return;
         }
 
-        // Inicializa o SortableJS na tabela
-        new Sortable(tabela.querySelector("tbody"), {
-          animation: 150,
-          onEnd: function (evt) {
-            // Obtém a nova ordem das linhas
-            const linhas = Array.from(tabela.querySelectorAll("tbody tr"));
-            const novaOrdem = linhas.map((linha) =>
-              linha.getAttribute("data-id"),
-            );
+        const isAdmin = [1, 2, 9].includes(Number(localStorage.getItem("usuarioId")));
 
-            // Envia a nova ordem para o servidor (opcional)
+        infos.forEach((info) => {
+          const card = document.createElement("div");
+          card.className = "obs-card";
+          card.setAttribute("data-id", info.id);
+          card.setAttribute("data-ordem", info.ordem || 0);
+          card.innerHTML = `
+            <div class="obs-card-body">
+              <p class="obs-card-text">${info.descricao || ""}</p>
+              <span class="obs-card-date">${formatarData(info.data)}</span>
+            </div>
+            ${isAdmin ? `<button type="button" class="obs-card-edit" title="Editar"><i class="fa-solid fa-pencil"></i></button>` : ""}
+          `;
+
+          if (isAdmin) {
+            card.querySelector(".obs-card-edit").addEventListener("click", function (e) {
+              e.stopPropagation();
+              document.getElementById("descricaoId").value = info.id;
+              document.getElementById("desc").value = info.descricao;
+              const deleteObs = document.getElementById("deleteObs");
+              deleteObs.setAttribute("data-id", info.id);
+              document.getElementById("modalObservacao").style.display = "block";
+            });
+          }
+
+          cardList.appendChild(card);
+        });
+
+        // Drag-to-reorder
+        new Sortable(cardList, {
+          animation: 150,
+          handle: ".obs-card",
+          onEnd: function () {
+            const novaOrdem = Array.from(cardList.querySelectorAll(".obs-card")).map(
+              (c) => c.getAttribute("data-id")
+            );
             fetch("atualizarOrdem.php", {
               method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
+              headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ ordem: novaOrdem }),
             })
-              .then((response) => response.json())
-              .then((data) => {
-                if (data.success) {
-                  Toastify({
-                    text: "Ordem atualizada com sucesso!",
-                    duration: 3000,
-                    gravity: "top",
-                    position: "right",
-                    backgroundColor: "#4caf50", // Cor de sucesso
-                  }).showToast();
-                } else {
-                  Toastify({
-                    text: "Erro ao atualizar ordem.",
-                    duration: 3000,
-                    gravity: "top",
-                    position: "right",
-                    backgroundColor: "#f44336", // Cor de erro
-                  }).showToast();
-                }
-              })
-              .catch((error) => {
-                console.error("Erro ao atualizar ordem:", error);
+              .then((r) => r.json())
+              .then((res) => {
                 Toastify({
-                  text: "Erro ao atualizar ordem.",
+                  text: res.success ? "Ordem atualizada!" : "Erro ao atualizar ordem.",
                   duration: 3000,
                   gravity: "top",
                   position: "right",
-                  backgroundColor: "#f44336", // Cor de erro
+                  backgroundColor: res.success ? "#4caf50" : "#f44336",
                 }).showToast();
+              })
+              .catch(() => {
+                Toastify({ text: "Erro ao atualizar ordem.", duration: 3000, gravity: "top", position: "right", backgroundColor: "#f44336" }).showToast();
               });
           },
         });
-      }
+      })();
 
       if (data.recebimentos && data.recebimentos.length > 0) {
         data.recebimentos.forEach((recebimento) => {
@@ -7555,19 +7592,143 @@ function submitFormImagem(event) {
     });
 }
 
-document.querySelectorAll(".campo input[type='text']").forEach((input) => {
-  input.addEventListener("keydown", function (event) {
-    if (event.key === "Enter" && this.value.trim() !== "") {
-      event.preventDefault(); // Evita o comportamento padrão
+// Debounce map for per-field auto-save
+window.__briefingDebounceMap = {};
 
-      // Coleta os dados do input
-      const campo = this.name;
-      const valor = this.value.trim();
+function salvarNoBancoSilent(campo, valor, obraId, siId) {
+  const si = document.getElementById(siId);
+  if (si) { si.textContent = "⏳"; si.className = "campo-si saving"; }
+  fetch("salvar.php", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: `campo=${encodeURIComponent(campo)}&valor=${encodeURIComponent(valor)}&obraId=${encodeURIComponent(obraId)}`,
+  })
+    .then((r) => r.json())
+    .then((data) => {
+      if (si) {
+        si.textContent = data.sucesso ? "✓" : "✗";
+        si.className = "campo-si " + (data.sucesso ? "saved" : "error");
+        setTimeout(() => { si.textContent = ""; si.className = "campo-si"; }, 2200);
+      }
+    })
+    .catch(() => {
+      if (si) {
+        si.textContent = "✗"; si.className = "campo-si error";
+        setTimeout(() => { si.textContent = ""; si.className = "campo-si"; }, 2200);
+      }
+    });
+}
 
-      salvarNoBanco(campo, valor, obraId);
-    }
+(function initInfosObraUI() {
+  // --- Tabs ---
+  const tabs = document.querySelectorAll("#secao-infos-obra .info-tab");
+  const contents = document.querySelectorAll("#secao-infos-obra .info-tab-content");
+  tabs.forEach((tab) => {
+    tab.addEventListener("click", function () {
+      const target = this.dataset.tab;
+      tabs.forEach((t) => { t.classList.remove("is-active"); t.setAttribute("aria-selected", "false"); });
+      contents.forEach((c) => { c.classList.remove("is-active"); c.style.display = "none"; });
+      this.classList.add("is-active");
+      this.setAttribute("aria-selected", "true");
+      const panel = document.getElementById("tab-" + target);
+      if (panel) { panel.classList.add("is-active"); panel.style.display = ""; }
+    });
   });
-});
+
+  // --- Briefing group collapse ---
+  document.querySelectorAll(".briefing-group-header").forEach((btn) => {
+    btn.addEventListener("click", function () {
+      const group = this.closest(".briefing-group");
+      const body = group?.querySelector(".briefing-group-body");
+      const chevron = this.querySelector(".bgh-chevron");
+      const expanded = this.getAttribute("aria-expanded") === "true";
+      this.setAttribute("aria-expanded", String(!expanded));
+      if (body) body.style.display = expanded ? "none" : "";
+      if (chevron) chevron.style.transform = expanded ? "rotate(-90deg)" : "rotate(0deg)";
+    });
+  });
+
+  // --- Edit-mode toggle for .campo-edit-btn ---
+  document.querySelectorAll(".campo-edit-btn").forEach((btn) => {
+    btn.addEventListener("click", function () {
+      const fieldId = this.dataset.target;
+      const input = document.getElementById(fieldId);
+      const span = document.getElementById("val-" + fieldId);
+      if (!input || !span) return;
+      const isEditing = input.classList.contains("is-editing");
+      if (isEditing) {
+        // cancel: restore original value
+        input.value = (span.textContent === "—") ? "" : span.textContent;
+        input.classList.remove("is-editing");
+        span.style.display = "";
+        this.innerHTML = '<i class="fa-solid fa-pencil"></i>';
+        this.title = "Editar";
+        const si = document.getElementById("si-" + fieldId);
+        if (si) { si.textContent = ""; si.className = "campo-si"; }
+      } else {
+        input.classList.add("is-editing");
+        span.style.display = "none";
+        this.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+        this.title = "Cancelar";
+        input.focus();
+      }
+    });
+  });
+
+  // --- Auto-save debounce on .campo-input ---
+  document.querySelectorAll(".campo-input").forEach((input) => {
+    const fieldId = input.id;
+    const siId = "si-" + fieldId;
+    const valSpanId = "val-" + fieldId;
+
+    input.addEventListener("input", function () {
+      clearTimeout(window.__briefingDebounceMap[fieldId]);
+      window.__briefingDebounceMap[fieldId] = setTimeout(() => {
+        const v = this.value.trim();
+        salvarNoBancoSilent(this.name || fieldId, v, obraId, siId);
+        const sp = document.getElementById(valSpanId);
+        if (sp) sp.textContent = v || "—";
+      }, 900);
+    });
+
+    input.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        clearTimeout(window.__briefingDebounceMap[fieldId]);
+        const v = this.value.trim();
+        salvarNoBancoSilent(this.name || fieldId, v, obraId, siId);
+        const sp = document.getElementById(valSpanId);
+        if (sp) { sp.textContent = v || "—"; sp.style.display = ""; }
+        this.classList.remove("is-editing");
+        const editBtn = document.querySelector(`.campo-edit-btn[data-target="${fieldId}"]`);
+        if (editBtn) { editBtn.innerHTML = '<i class="fa-solid fa-pencil"></i>'; editBtn.title = "Editar"; }
+      }
+    });
+
+    input.addEventListener("blur", function () {
+      if (!this.classList.contains("is-editing")) return;
+      clearTimeout(window.__briefingDebounceMap[fieldId]);
+      const v = this.value.trim();
+      salvarNoBancoSilent(this.name || fieldId, v, obraId, siId);
+      const sp = document.getElementById(valSpanId);
+      if (sp) { sp.textContent = v || "—"; sp.style.display = ""; }
+      this.classList.remove("is-editing");
+      const editBtn = document.querySelector(`.campo-edit-btn[data-target="${fieldId}"]`);
+      if (editBtn) { editBtn.innerHTML = '<i class="fa-solid fa-pencil"></i>'; editBtn.title = "Editar"; }
+    });
+  });
+
+  // --- Link span: click to open in new tab ---
+  document.querySelectorAll(".campo-val--link").forEach((span) => {
+    span.addEventListener("click", function () {
+      const txt = this.textContent.trim();
+      if (!txt || txt === "—") return;
+      let url = txt;
+      if (!/^https?:\/\//i.test(url)) url = "https://" + url;
+      window.open(url, "_blank", "noopener,noreferrer");
+    });
+  });
+})();
 
 function salvarNoBanco(campo, valor, obraId) {
   fetch("salvar.php", {

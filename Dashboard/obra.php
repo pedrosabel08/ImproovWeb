@@ -208,9 +208,9 @@ $conn->close();
                     <i class="fa-solid fa-list"></i>
                     <span class="qa-label">Histórico</span>
                 </a>
-                <a class="quick-link" href="#obsSection" title="Ir para Observações" aria-hidden="false">
-                    <i class="fa-solid fa-note-sticky"></i>
-                    <span class="qa-label">Observações</span>
+                <a class="quick-link" href="#secao-infos-obra" title="Ir para Informações da Obra" aria-hidden="false">
+                    <i class="fa-solid fa-clipboard-list"></i>
+                    <span class="qa-label">Info. Obra</span>
                 </a>
                 <a class="quick-link" href="#secao-arquivos" title="Ir para Arquivos" aria-hidden="false">
                     <i class="fa-solid fa-file"></i>
@@ -268,8 +268,8 @@ $conn->close();
                                 class="fa-solid fa-table-cells"></i> <span>Tabela</span></a>
                         <a class="mobile-link" id="mobile_hist" href="#list_acomp"><i class="fa-solid fa-list"></i>
                             <span>Histórico</span></a>
-                        <a class="mobile-link" id="mobile_obs" href="#obsSection"><i
-                                class="fa-solid fa-note-sticky"></i> <span>Observações</span></a>
+                        <a class="mobile-link" id="mobile_obs" href="#secao-infos-obra"><i
+                                class="fa-solid fa-clipboard-list"></i> <span>Info. Obra</span></a>
                         <a class="mobile-link" id="mobile_arquivos" href="#secao-arquivos"><i
                                 class="fa-solid fa-file"></i> <span>Arquivos</span></a>
 
@@ -286,8 +286,9 @@ $conn->close();
                                 class="fa-brands fa-google-drive"></i> <span>Drive</span></a>
                         <a class="mobile-link" id="mobile_review" href="#" target="_blank" rel="noopener noreferrer"><i
                                 class="fa-solid fa-folder-open"></i> <span>Review</span></a>
-                        <a class="mobile-link" id="mobile_flow_review" href="#" target="_blank" rel="noopener noreferrer" style="display:none;"><i
-                                class="fa-solid fa-eye"></i> <span>Flow Review</span></a>
+                        <a class="mobile-link" id="mobile_flow_review" href="#" target="_blank"
+                            rel="noopener noreferrer" style="display:none;"><i class="fa-solid fa-eye"></i> <span>Flow
+                                Review</span></a>
 
                     </nav>
                 </div>
@@ -380,7 +381,8 @@ $conn->close();
                     <div class="modal-content">
                         <div class="modal-header">
                             <h2 class="modal-title">
-                                <i class="fa-solid fa-box" style="color:var(--accent);margin-right:8px;"></i>Nova Entrega
+                                <i class="fa-solid fa-box" style="color:var(--accent);margin-right:8px;"></i>Nova
+                                Entrega
                             </h2>
                             <button class="modal-close fecharModal"><i class="fa-solid fa-xmark"></i></button>
                         </div>
@@ -391,7 +393,8 @@ $conn->close();
                                     <select name="obra_id" id="obra_id" required>
                                         <option value="">Selecione a obra</option>
                                         <?php foreach ($obras as $obra): ?>
-                                            <option value="<?= $obra['idobra']; ?>"><?= htmlspecialchars($obra['nomenclatura']); ?>
+                                            <option value="<?= $obra['idobra']; ?>">
+                                                <?= htmlspecialchars($obra['nomenclatura']); ?>
                                             </option>
                                         <?php endforeach; ?>
                                     </select>
@@ -410,7 +413,8 @@ $conn->close();
                                 <div>
                                     <label>Imagens</label>
                                     <div id="imagens_container" class="imagens-container">
-                                        <p style="margin:0;color:var(--text-muted);">Selecione uma obra e status para listar as
+                                        <p style="margin:0;color:var(--text-muted);">Selecione uma obra e status para
+                                            listar as
                                             imagens.</p>
                                     </div>
                                 </div>
@@ -420,7 +424,8 @@ $conn->close();
                                 </div>
                                 <div>
                                     <label>Observações</label>
-                                    <textarea name="observacoes" id="observacoes" placeholder="Observações opcionais..."></textarea>
+                                    <textarea name="observacoes" id="observacoes"
+                                        placeholder="Observações opcionais..."></textarea>
                                 </div>
                             </form>
                         </div>
@@ -442,20 +447,26 @@ $conn->close();
                         <div class="modal-body">
                             <div style="display:flex;gap:24px;flex-wrap:wrap;">
                                 <div>
-                                    <span style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;color:var(--text-muted);display:block;margin-bottom:2px;">Prazo</span>
+                                    <span
+                                        style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;color:var(--text-muted);display:block;margin-bottom:2px;">Prazo</span>
                                     <span id="modalPrazo" style="font-size:13px;font-weight:500;">—</span>
                                 </div>
                                 <div>
-                                    <span style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;color:var(--text-muted);display:block;margin-bottom:2px;">Conclusão geral</span>
+                                    <span
+                                        style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;color:var(--text-muted);display:block;margin-bottom:2px;">Conclusão
+                                        geral</span>
                                     <span id="modalProgresso" style="font-size:13px;font-weight:500;">—</span>
                                 </div>
                             </div>
                             <div>
-                                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-                                    <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-muted);">
+                                <div
+                                    style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                                    <span
+                                        style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-muted);">
                                         <i class="fa-solid fa-images" style="margin-right:5px;"></i>Imagens
                                     </span>
-                                    <button class="btn-action btn-primary" id="btnAdicionarImagem" style="height:30px;font-size:12px;padding:0 12px;">
+                                    <button class="btn-action btn-primary" id="btnAdicionarImagem"
+                                        style="height:30px;font-size:12px;padding:0 12px;">
                                         <i class="fa-solid fa-plus"></i> Adicionar
                                     </button>
                                 </div>
@@ -502,7 +513,8 @@ $conn->close();
                         <!-- <button id="clearFilters" class="action-item">Limpar filtros</button> -->
                         <button id="markInactiveBtn" class="action-item">Marcar Inativa</button>
                         <button id="fotograficoBtn" class="action-item">Fotográfico</button>
-                        <button id="btnLiberarModelagem" class="tooltip action-item" data-tooltip="Liberar modelagem antes do filtro de assets">
+                        <button id="btnLiberarModelagem" class="tooltip action-item"
+                            data-tooltip="Liberar modelagem antes do filtro de assets">
                             <i class="fa-solid fa-lock"></i> Liberar Modelagem
                         </button>
                         <button id="btnNotificarObra" class="action-item">
@@ -588,7 +600,8 @@ $conn->close();
                         <select id="subtipo_modal">
                             <option value="">-- Sem subtipo --</option>
                             <?php foreach ($subtipos as $s): ?>
-                                <option value="<?= htmlspecialchars($s['id']); ?>"><?= htmlspecialchars($s['nome']); ?></option>
+                                <option value="<?= htmlspecialchars($s['id']); ?>"><?= htmlspecialchars($s['nome']); ?>
+                                </option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -750,96 +763,234 @@ $conn->close();
                 <button id="btnMostrarAcomps"><i class="fas fa-chevron-down"></i></button>
             </div>
         </div>
-        <div id="infos-obra" class="infos-obra"
+        <div id="secao-infos-obra" class="infos-obra"
             style="width: 95%; margin: 30px auto; box-shadow: 0 1px 10px rgba(0, 0, 0, 0.7);">
 
-            <div id="obsSection" class="obs">
+            <div id="obsSection">
+                <!-- Header com título e tabs -->
                 <div class="infos-obra-header">
                     <h1>Informações da Obra</h1>
-                    <button id="obsAdd" class="btnAcompObs">+ Novo</button>
+                    <nav class="info-obra-tabs" role="tablist" aria-label="Seções de informações da obra">
+                        <button class="info-tab is-active" data-tab="briefing" role="tab" aria-selected="true"
+                            aria-controls="tab-briefing">
+                            <i class="fa-solid fa-clipboard-list"></i> Briefing
+                        </button>
+                        <button class="info-tab" data-tab="instrucoes" role="tab" aria-selected="false"
+                            aria-controls="tab-instrucoes">
+                            <i class="fa-solid fa-note-sticky"></i> Instruções
+                        </button>
+                    </nav>
                 </div>
-                <div id="briefing">
-                    <div class="campo">
-                        <label for="nivel">Qual o nível de padrão do empreendimento?</label>
-                        <input type="text" name="nivel" id="nivel">
-                    </div>
-                    <div class="campo">
-                        <label for="conceito">Qual o conceito do empreendimento?</label>
-                        <input type="text" name="conceito" id="conceito">
-                    </div>
-                    <div class="campo">
-                        <label for="valor_media">Qual a faixa média de valor dos apartamentos?</label>
-                        <input type="text" name="valor_media" id="valor_media">
-                    </div>
-                    <div class="campo">
-                        <label for="outro_padrao">Já tem algum outro empreendimento no mesmo padrão?</label>
-                        <input type="text" name="outro_padrao" id="outro_padrao">
-                    </div>
-                    <div class="campo">
-                        <label for="assets">Haverá necessidade de escolha de assets (modelos de mobiliário)
-                            especifico?</label>
-                        <input type="text" name="assets" id="assets">
-                    </div>
-                    <div class="campo">
-                        <label for="comp_planta">Existe a necessidade das plantas humanizadas estarem compatibilizadas
-                            com as imagens finais?</label>
-                        <input type="text" name="comp_planta" id="comp_planta">
-                    </div>
-                    <div class="campo">
-                        <label for="vidro">Cor dos vidros:</label>
-                        <input type="text" name="vidro" id="vidro">
-                    </div>
-                    <div class="campo">
-                        <label for="esquadria">Cor das esquadrias:</label>
-                        <input type="text" name="esquadria" id="esquadria">
-                    </div>
-                    <div class="campo">
-                        <label for="soleira">Cor das soleiras/pingadeiras:</label>
-                        <input type="text" name="soleira" id="soleira">
-                    </div>
-                    <div class="campo">
-                        <label for="acab_calcadas">Acabamento das calçadas:</label>
-                        <input type="text" name="acab_calcadas" id="acab_calcadas">
-                    </div>
-                    <div class="campo link_campo">
-                        <label for="">Link do Fotográfico:</label>
-                        <input type="text" name="fotografico" id="fotografico"
-                            style="font-size: 14px; border: none; width: 80ch;">
-                    </div>
-                    <div class="campo link_campo">
-                        <label for="">Link do Drive:</label>
-                        <input type="text" name="link_drive" id="link_drive"
-                            style="font-size: 14px; border: none; width: 80ch;">
-                    </div>
-                    <div class="campo link_campo">
-                        <label for="">Link do Review Studio:</label>
-                        <input type="text" name="link_review" id="link_review"
-                            style="font-size: 14px; border: none; width: 80ch;">
-                    </div>
-                    <div class="campo">
-                        <label for="">Local da obra:</label>
-                        <input type="text" name="local" id="local">
-                    </div>
-                    <div class="campo">
-                        <label for="">Altura drone:</label>
-                        <input type="text" name="altura_drone" id="altura_drone">
-                    </div>
 
+                <!-- TAB: Briefing -->
+                <div id="tab-briefing" class="info-tab-content is-active" role="tabpanel">
+                    <div id="briefing">
+
+                        <!-- Grupo: Padrão -->
+                        <div class="briefing-group">
+                            <button type="button" class="briefing-group-header" aria-expanded="true">
+                                <span><i class="fa-solid fa-gem"></i> Padrão</span>
+                                <i class="bgh-chevron fa-solid fa-chevron-down"></i>
+                            </button>
+                            <div class="briefing-group-body">
+                                <div class="campo" data-field="nivel">
+                                    <label>Qual o nível de padrão do empreendimento?</label>
+                                    <div class="campo-row">
+                                        <span class="campo-val" id="val-nivel">—</span>
+                                        <input type="text" name="nivel" id="nivel" class="campo-input">
+                                        <span class="campo-si" id="si-nivel"></span>
+                                        <button type="button" class="campo-edit-btn" data-target="nivel"
+                                            title="Editar"><i class="fa-solid fa-pencil"></i></button>
+                                    </div>
+                                </div>
+                                <div class="campo" data-field="conceito">
+                                    <label>Qual o conceito do empreendimento?</label>
+                                    <div class="campo-row">
+                                        <span class="campo-val" id="val-conceito">—</span>
+                                        <input type="text" name="conceito" id="conceito" class="campo-input">
+                                        <span class="campo-si" id="si-conceito"></span>
+                                        <button type="button" class="campo-edit-btn" data-target="conceito"
+                                            title="Editar"><i class="fa-solid fa-pencil"></i></button>
+                                    </div>
+                                </div>
+                                <div class="campo" data-field="valor_media">
+                                    <label>Qual a faixa média de valor dos apartamentos?</label>
+                                    <div class="campo-row">
+                                        <span class="campo-val" id="val-valor_media">—</span>
+                                        <input type="text" name="valor_media" id="valor_media" class="campo-input">
+                                        <span class="campo-si" id="si-valor_media"></span>
+                                        <button type="button" class="campo-edit-btn" data-target="valor_media"
+                                            title="Editar"><i class="fa-solid fa-pencil"></i></button>
+                                    </div>
+                                </div>
+                                <div class="campo" data-field="outro_padrao">
+                                    <label>Já tem algum outro empreendimento no mesmo padrão?</label>
+                                    <div class="campo-row">
+                                        <span class="campo-val" id="val-outro_padrao">—</span>
+                                        <input type="text" name="outro_padrao" id="outro_padrao" class="campo-input">
+                                        <span class="campo-si" id="si-outro_padrao"></span>
+                                        <button type="button" class="campo-edit-btn" data-target="outro_padrao"
+                                            title="Editar"><i class="fa-solid fa-pencil"></i></button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Grupo: Materiais -->
+                        <div class="briefing-group">
+                            <button type="button" class="briefing-group-header" aria-expanded="true">
+                                <span><i class="fa-solid fa-layer-group"></i> Materiais</span>
+                                <i class="bgh-chevron fa-solid fa-chevron-down"></i>
+                            </button>
+                            <div class="briefing-group-body">
+                                <div class="campo" data-field="vidro">
+                                    <label>Cor dos vidros:</label>
+                                    <div class="campo-row">
+                                        <span class="campo-val" id="val-vidro">—</span>
+                                        <input type="text" name="vidro" id="vidro" class="campo-input">
+                                        <span class="campo-si" id="si-vidro"></span>
+                                        <button type="button" class="campo-edit-btn" data-target="vidro"
+                                            title="Editar"><i class="fa-solid fa-pencil"></i></button>
+                                    </div>
+                                </div>
+                                <div class="campo" data-field="esquadria">
+                                    <label>Cor das esquadrias:</label>
+                                    <div class="campo-row">
+                                        <span class="campo-val" id="val-esquadria">—</span>
+                                        <input type="text" name="esquadria" id="esquadria" class="campo-input">
+                                        <span class="campo-si" id="si-esquadria"></span>
+                                        <button type="button" class="campo-edit-btn" data-target="esquadria"
+                                            title="Editar"><i class="fa-solid fa-pencil"></i></button>
+                                    </div>
+                                </div>
+                                <div class="campo" data-field="soleira">
+                                    <label>Cor das soleiras/pingadeiras:</label>
+                                    <div class="campo-row">
+                                        <span class="campo-val" id="val-soleira">—</span>
+                                        <input type="text" name="soleira" id="soleira" class="campo-input">
+                                        <span class="campo-si" id="si-soleira"></span>
+                                        <button type="button" class="campo-edit-btn" data-target="soleira"
+                                            title="Editar"><i class="fa-solid fa-pencil"></i></button>
+                                    </div>
+                                </div>
+                                <div class="campo" data-field="acab_calcadas">
+                                    <label>Acabamento das calçadas:</label>
+                                    <div class="campo-row">
+                                        <span class="campo-val" id="val-acab_calcadas">—</span>
+                                        <input type="text" name="acab_calcadas" id="acab_calcadas" class="campo-input">
+                                        <span class="campo-si" id="si-acab_calcadas"></span>
+                                        <button type="button" class="campo-edit-btn" data-target="acab_calcadas"
+                                            title="Editar"><i class="fa-solid fa-pencil"></i></button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Grupo: Produção -->
+                        <div class="briefing-group">
+                            <button type="button" class="briefing-group-header" aria-expanded="true">
+                                <span><i class="fa-solid fa-cogs"></i> Produção</span>
+                                <i class="bgh-chevron fa-solid fa-chevron-down"></i>
+                            </button>
+                            <div class="briefing-group-body">
+                                <div class="campo" data-field="assets">
+                                    <label>Haverá necessidade de escolha de assets (modelos de mobiliário)
+                                        específico?</label>
+                                    <div class="campo-row">
+                                        <span class="campo-val" id="val-assets">—</span>
+                                        <input type="text" name="assets" id="assets" class="campo-input">
+                                        <span class="campo-si" id="si-assets"></span>
+                                        <button type="button" class="campo-edit-btn" data-target="assets"
+                                            title="Editar"><i class="fa-solid fa-pencil"></i></button>
+                                    </div>
+                                </div>
+                                <div class="campo" data-field="comp_planta">
+                                    <label>Existe a necessidade das plantas humanizadas estarem compatibilizadas com as
+                                        imagens finais?</label>
+                                    <div class="campo-row">
+                                        <span class="campo-val" id="val-comp_planta">—</span>
+                                        <input type="text" name="comp_planta" id="comp_planta" class="campo-input">
+                                        <span class="campo-si" id="si-comp_planta"></span>
+                                        <button type="button" class="campo-edit-btn" data-target="comp_planta"
+                                            title="Editar"><i class="fa-solid fa-pencil"></i></button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Grupo: Links & Localização -->
+                        <div class="briefing-group">
+                            <button type="button" class="briefing-group-header" aria-expanded="true">
+                                <span><i class="fa-solid fa-link"></i> Links &amp; Localização</span>
+                                <i class="bgh-chevron fa-solid fa-chevron-down"></i>
+                            </button>
+                            <div class="briefing-group-body">
+                                <div class="campo link_campo" data-field="fotografico">
+                                    <label>Link do Fotográfico:</label>
+                                    <div class="campo-row">
+                                        <span class="campo-val campo-val--link" id="val-fotografico">—</span>
+                                        <input type="text" name="fotografico" id="fotografico" class="campo-input">
+                                        <span class="campo-si" id="si-fotografico"></span>
+                                        <button type="button" class="campo-edit-btn" data-target="fotografico"
+                                            title="Editar"><i class="fa-solid fa-pencil"></i></button>
+                                    </div>
+                                </div>
+                                <div class="campo link_campo" data-field="link_drive">
+                                    <label>Link do Drive:</label>
+                                    <div class="campo-row">
+                                        <span class="campo-val campo-val--link" id="val-link_drive">—</span>
+                                        <input type="text" name="link_drive" id="link_drive" class="campo-input">
+                                        <span class="campo-si" id="si-link_drive"></span>
+                                        <button type="button" class="campo-edit-btn" data-target="link_drive"
+                                            title="Editar"><i class="fa-solid fa-pencil"></i></button>
+                                    </div>
+                                </div>
+                                <div class="campo link_campo" data-field="link_review">
+                                    <label>Link do Review Studio:</label>
+                                    <div class="campo-row">
+                                        <span class="campo-val campo-val--link" id="val-link_review">—</span>
+                                        <input type="text" name="link_review" id="link_review" class="campo-input">
+                                        <span class="campo-si" id="si-link_review"></span>
+                                        <button type="button" class="campo-edit-btn" data-target="link_review"
+                                            title="Editar"><i class="fa-solid fa-pencil"></i></button>
+                                    </div>
+                                </div>
+                                <div class="campo" data-field="local">
+                                    <label>Local da obra:</label>
+                                    <div class="campo-row">
+                                        <span class="campo-val" id="val-local">—</span>
+                                        <input type="text" name="local" id="local" class="campo-input">
+                                        <span class="campo-si" id="si-local"></span>
+                                        <button type="button" class="campo-edit-btn" data-target="local"
+                                            title="Editar"><i class="fa-solid fa-pencil"></i></button>
+                                    </div>
+                                </div>
+                                <div class="campo" data-field="altura_drone">
+                                    <label>Altura drone:</label>
+                                    <div class="campo-row">
+                                        <span class="campo-val" id="val-altura_drone">—</span>
+                                        <input type="text" name="altura_drone" id="altura_drone" class="campo-input">
+                                        <span class="campo-si" id="si-altura_drone"></span>
+                                        <button type="button" class="campo-edit-btn" data-target="altura_drone"
+                                            title="Editar"><i class="fa-solid fa-pencil"></i></button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
                 </div>
-                <div class="infos-container">
-                    <h2>Observações</h2>
-                    <table id="tabelaInfos">
-                        <thead>
-                            <tr>
-                                <th>Descrição</th>
-                                <th>Data</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <!-- As linhas serão adicionadas aqui via JavaScript -->
-                        </tbody>
-                    </table>
+
+                <!-- TAB: Instruções -->
+                <div id="tab-instrucoes" class="info-tab-content" role="tabpanel" style="display:none;">
+                    <button id="obsAdd" class="obs-add-new-btn">
+                        <i class="fa-solid fa-plus"></i> Nova instrução
+                    </button>
+                    <div id="obsCardList" class="obs-card-list">
+                        <!-- populado pelo JS -->
+                    </div>
                 </div>
+
             </div>
         </div>
 
@@ -2225,8 +2376,10 @@ $conn->close();
                 <div class="notificar-field">
                     <label>Destinatários</label>
                     <div class="notificar-select-actions">
-                        <button type="button" id="notificarSelectAll" class="notificar-link-btn">Selecionar todos</button>
-                        <button type="button" id="notificarDeselectAll" class="notificar-link-btn">Limpar seleção</button>
+                        <button type="button" id="notificarSelectAll" class="notificar-link-btn">Selecionar
+                            todos</button>
+                        <button type="button" id="notificarDeselectAll" class="notificar-link-btn">Limpar
+                            seleção</button>
                     </div>
                     <div id="notificarPessoasList" class="notificar-pessoas-list"></div>
                 </div>
@@ -2305,7 +2458,7 @@ $conn->close();
 
     <script>
         // Project root for building root-relative URLs in scripts
-        (function() {
+        (function () {
             const path = String(window.location.pathname || '');
             const useFlow = path.includes('/flow/');
             window.PROJECT_ROOT = useFlow ? '/flow/ImproovWeb' : '/ImproovWeb';

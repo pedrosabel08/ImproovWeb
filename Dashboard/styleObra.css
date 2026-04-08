@@ -1321,6 +1321,434 @@ span#obras_finalizadas {
   align-items: center;
 }
 
+/* ── Painel de contexto da obra no modal de tarefa ─────── */
+.briefing-context-panel {
+  background: var(--bg-surface-alt, #f8f9fb);
+  border: 1px solid var(--border-card, #e2e6eb);
+  border-radius: var(--radius-sm, 8px);
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.bc-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.bc-chip {
+  background: rgba(79, 128, 225, 0.1);
+  color: #2c59b5;
+  border: 1px solid rgba(79, 128, 225, 0.25);
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bc-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.bc-link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 6px;
+  background: #f0f4ff;
+  color: #1a56db;
+  font-size: 11px;
+  font-weight: 600;
+  text-decoration: none;
+  border: 1px solid rgba(79, 128, 225, 0.3);
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.bc-link-btn:hover {
+  background: #1a56db;
+  color: #fff;
+}
+
+.bc-obs-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  border-top: 1px solid var(--border-card, #e2e6eb);
+  padding-top: 6px;
+}
+
+.bc-obs-item {
+  border-left: 2px solid var(--border-card, #d0d7e8);
+  padding-left: 7px;
+  font-size: 11.5px;
+  color: var(--text-secondary, #4b5563);
+  line-height: 1.4;
+}
+
+.bc-obs-more {
+  font-size: 11px;
+  color: var(--text-muted, #9ca3af);
+  padding-left: 9px;
+  font-style: italic;
+}
+
+/* ======================================================
+   INFORMAÇÕES DA OBRA — Briefing Groups + Tabs + Cards
+   ====================================================== */
+
+/* Header da seção */
+.infos-obra-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 18px 22px 14px;
+  border-bottom: 1px solid var(--border-card, #2a3350);
+}
+
+.infos-obra-header h1 {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--text-primary, #e2e8f0);
+  margin: 0;
+}
+
+/* Tabs */
+.info-obra-tabs {
+  display: flex;
+  gap: 6px;
+}
+
+.info-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border: 1px solid var(--border-card, #2a3350);
+  border-radius: var(--radius-sm, 6px);
+  background: transparent;
+  color: var(--text-secondary, #94a3b8);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    border-color 0.15s;
+}
+
+.info-tab:hover {
+  background: rgba(79, 128, 225, 0.08);
+  color: var(--text-primary, #e2e8f0);
+}
+
+.info-tab.is-active {
+  background: rgba(79, 128, 225, 0.15);
+  border-color: var(--accent, #4f80e1);
+  color: var(--accent, #4f80e1);
+  font-weight: 600;
+}
+
+.info-tab-content {
+  padding: 0 0 18px;
+}
+
+/* Briefing groups */
+.briefing-group {
+  border-bottom: 1px solid var(--border-card, #2a3350);
+}
+
+.briefing-group:last-child {
+  border-bottom: none;
+}
+
+.briefing-group-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 22px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-primary, #e2e8f0);
+  font-size: 13px;
+  font-weight: 600;
+  gap: 8px;
+  transition: background 0.15s;
+}
+
+.briefing-group-header:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.briefing-group-header span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.briefing-group-header span i {
+  color: var(--accent, #4f80e1);
+  font-size: 12px;
+}
+
+.bgh-chevron {
+  font-size: 11px;
+  color: var(--text-muted, #64748b);
+  transition: transform 0.2s;
+}
+
+.briefing-group-body {
+  padding: 2px 22px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* Campo row — read + edit mode */
+.campo {
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.campo:last-child {
+  border-bottom: none;
+}
+
+.campo label {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--text-muted, #64748b);
+  margin-bottom: 4px;
+  letter-spacing: 0.02em;
+}
+
+.campo-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+}
+
+.campo-val {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-primary, #e2e8f0);
+  padding: 2px 4px;
+  border-radius: 4px;
+  word-break: break-word;
+}
+
+.campo-val--link {
+  cursor: pointer;
+  color: var(--accent, #4f80e1);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  font-size: 12.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.campo-val--link:hover {
+  color: #7ba8f7;
+}
+
+.campo-input {
+  flex: 1;
+  font-size: 13px;
+  padding: 5px 8px;
+  background: var(--bg-input, rgba(255, 255, 255, 0.05));
+  border: 1px solid var(--border-card, #2a3350);
+  border-radius: var(--radius-sm, 6px);
+  color: var(--text-primary, #e2e8f0);
+  outline: none;
+  transition: border-color 0.15s;
+  /* hidden by default; shown when .is-editing */
+  display: none;
+}
+
+.campo-input.is-editing {
+  display: block;
+}
+
+.campo-input:focus {
+  border-color: var(--accent, #4f80e1);
+  background: rgba(79, 128, 225, 0.08);
+}
+
+.campo-si {
+  font-size: 11px;
+  min-width: 16px;
+  text-align: center;
+  transition: color 0.15s;
+}
+
+.campo-si.saving {
+  color: var(--text-muted, #94a3b8);
+}
+.campo-si.saved {
+  color: #4caf50;
+  font-weight: 700;
+}
+.campo-si.error {
+  color: #e53935;
+  font-weight: 700;
+}
+
+.campo-edit-btn {
+  display: none; /* shown via .is-admin */
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted, #64748b);
+  cursor: pointer;
+  font-size: 11px;
+  transition:
+    background 0.15s,
+    color 0.15s;
+  flex-shrink: 0;
+}
+
+.campo-edit-btn:hover {
+  background: rgba(79, 128, 225, 0.12);
+  color: var(--accent, #4f80e1);
+}
+
+#secao-infos-obra.is-admin .campo-edit-btn {
+  display: inline-flex;
+}
+
+/* Obs card list (Instruções tab) */
+.info-tab-content #tab-instrucoes,
+#tab-instrucoes {
+  padding: 16px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.obs-add-new-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  background: rgba(79, 128, 225, 0.12);
+  border: 1px solid var(--accent, #4f80e1);
+  border-radius: var(--radius-sm, 6px);
+  color: var(--accent, #4f80e1);
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+  align-self: flex-start;
+}
+
+.obs-add-new-btn:hover {
+  background: rgba(79, 128, 225, 0.22);
+}
+
+.obs-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.obs-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 1px solid var(--border-card, #2a3350);
+  border-radius: var(--radius-sm, 6px);
+  background: var(--bg-card, rgba(255, 255, 255, 0.03));
+  cursor: grab;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+
+.obs-card:hover {
+  border-color: rgba(79, 128, 225, 0.35);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.obs-card-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.obs-card-text {
+  font-size: 13px;
+  color: var(--text-primary, #e2e8f0);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.obs-card-date {
+  font-size: 11px;
+  color: var(--text-muted, #64748b);
+}
+
+.obs-card-edit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted, #64748b);
+  cursor: pointer;
+  font-size: 11px;
+  flex-shrink: 0;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.obs-card-edit:hover {
+  background: rgba(79, 128, 225, 0.12);
+  color: var(--accent, #4f80e1);
+}
+
+.obs-empty {
+  font-size: 13px;
+  color: var(--text-muted, #64748b);
+  font-style: italic;
+  padding: 8px 0;
+}
+
 #add-imagem-form {
   display: flex;
   flex-direction: column;

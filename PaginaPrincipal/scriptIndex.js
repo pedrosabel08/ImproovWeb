@@ -2962,6 +2962,101 @@ function abrirSidebar(idFuncao, idImagem, nomeObra = "") {
       });
       anguloBody.appendChild(btnFlowReview);
 
+      // ── Informações da Obra ── (canto superior direito, abaixo de Ângulo definido)
+      const infoObraBody = createNode(
+        "Informações da Obra",
+        "mindmap-info-obra",
+        {},
+        rightSlot,
+      );
+
+      (function renderInfoObraNode() {
+        const BRIEFING_LABELS = {
+          nivel: "Nível",
+          conceito: "Conceito",
+          valor_media: "Valor médio",
+          outro_padrao: "Ref. padrão",
+          vidro: "Vidro",
+          esquadria: "Esquadria",
+          soleira: "Soleira",
+          acab_calcadas: "Calçadas",
+          assets: "Assets",
+          comp_planta: "Comp. planta",
+        };
+
+        const br = data.briefing_obra || {};
+        const links = data.obra_links || {};
+        const obs = Array.isArray(data.observacoes_obra) ? data.observacoes_obra : [];
+
+        // --- chips de briefing ---
+        const chipsDiv = document.createElement("div");
+        chipsDiv.className = "mindmap-briefing-chips";
+
+        let hasChip = false;
+        Object.entries(BRIEFING_LABELS).forEach(([key, label]) => {
+          const val = br[key];
+          if (!val || String(val).trim() === "") return;
+          hasChip = true;
+          const chip = document.createElement("span");
+          chip.className = "mindmap-briefing-chip";
+          chip.title = label;
+          chip.textContent = `${label}: ${String(val)}`;
+          chipsDiv.appendChild(chip);
+        });
+
+        if (!hasChip) {
+          const empty = document.createElement("div");
+          empty.className = "mindmap-empty";
+          empty.textContent = "Sem briefing preenchido";
+          chipsDiv.appendChild(empty);
+        }
+
+        infoObraBody.appendChild(chipsDiv);
+
+        // --- links ---
+        const linkDefs = [
+          { key: "link_drive", label: "Drive", icon: "fa-solid fa-hard-drive" },
+          { key: "link_review", label: "Review Studio", icon: "fa-solid fa-eye" },
+          { key: "fotografico", label: "Fotográfico", icon: "fa-solid fa-camera" },
+        ];
+        const hasLink = linkDefs.some((d) => links[d.key] && String(links[d.key]).trim() !== "");
+        if (hasLink) {
+          const linksDiv = document.createElement("div");
+          linksDiv.className = "mindmap-briefing-links";
+          linkDefs.forEach(({ key, label, icon }) => {
+            const url = links[key];
+            if (!url || String(url).trim() === "") return;
+            const a = document.createElement("a");
+            a.className = "mindmap-briefing-link-btn";
+            a.href = String(url);
+            a.target = "_blank";
+            a.rel = "noopener noreferrer";
+            a.innerHTML = `<i class="${icon}"></i> ${label}`;
+            a.addEventListener("click", (e) => e.stopPropagation());
+            linksDiv.appendChild(a);
+          });
+          infoObraBody.appendChild(linksDiv);
+        }
+
+        // --- observações ---
+        if (obs.length > 0) {
+          const obsSep = document.createElement("div");
+          obsSep.className = "mindmap-obs-sep";
+          obsSep.textContent = "Observações";
+          infoObraBody.appendChild(obsSep);
+
+          const obsList = document.createElement("ul");
+          obsList.className = "mindmap-obs-list";
+          obs.forEach((o) => {
+            const li = document.createElement("li");
+            li.className = "mindmap-obs-item";
+            li.textContent = o.descricao || "";
+            obsList.appendChild(li);
+          });
+          infoObraBody.appendChild(obsList);
+        }
+      })();
+
       // Colaboradores/Logs — elementos expandíveis dentro do núcleo principal
       const centerDrawers = [];
       function createCenterDrawer(title) {

@@ -551,9 +551,19 @@ function processarDados(data) {
     }
 
     // Badge: para imagens mostra o nome da função com cor; para tarefas mantém prioridade
+
+    // Unified pair: compound label
+    if (tipo === "imagem" && item.par_tipo === "caderno_filtro") {
+      subtitulo = "Caderno + Filtro de Assets";
+      funcaoIdBadge = 1;
+    } else {
+      subtitulo = item.nome_funcao;
+      funcaoIdBadge = item.funcao_id || 0;
+    }
+
     const funcaoBadgeHTML =
       tipo === "imagem"
-        ? `<span class="funcao-badge funcao-id-${item.funcao_id || 0}">${item.nome_funcao || ""}</span>`
+        ? `<span class="funcao-badge funcao-id-${funcaoIdBadge}">${subtitulo || ""}</span>`
         : `<span class="priority ${item.prioridade || "medium"}">${item.prioridade || "Medium"}</span>`;
 
     // Tempo: para Não iniciado bloqueado não exibe contagem
@@ -2986,7 +2996,9 @@ function abrirSidebar(idFuncao, idImagem, nomeObra = "") {
 
         const br = data.briefing_obra || {};
         const links = data.obra_links || {};
-        const obs = Array.isArray(data.observacoes_obra) ? data.observacoes_obra : [];
+        const obs = Array.isArray(data.observacoes_obra)
+          ? data.observacoes_obra
+          : [];
 
         // --- chips de briefing ---
         const chipsDiv = document.createElement("div");
@@ -3016,10 +3028,20 @@ function abrirSidebar(idFuncao, idImagem, nomeObra = "") {
         // --- links ---
         const linkDefs = [
           { key: "link_drive", label: "Drive", icon: "fa-solid fa-hard-drive" },
-          { key: "link_review", label: "Review Studio", icon: "fa-solid fa-eye" },
-          { key: "fotografico", label: "Fotográfico", icon: "fa-solid fa-camera" },
+          {
+            key: "link_review",
+            label: "Review Studio",
+            icon: "fa-solid fa-eye",
+          },
+          {
+            key: "fotografico",
+            label: "Fotográfico",
+            icon: "fa-solid fa-camera",
+          },
         ];
-        const hasLink = linkDefs.some((d) => links[d.key] && String(links[d.key]).trim() !== "");
+        const hasLink = linkDefs.some(
+          (d) => links[d.key] && String(links[d.key]).trim() !== "",
+        );
         if (hasLink) {
           const linksDiv = document.createElement("div");
           linksDiv.className = "mindmap-briefing-links";

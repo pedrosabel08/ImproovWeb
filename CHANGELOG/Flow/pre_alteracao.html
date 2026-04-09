@@ -1,0 +1,445 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Processo de Pr&eacute;-Altera&ccedil;&atilde;o de Imagens</title>
+    <style>
+      /* From extension vscode.github */
+      /*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+      .vscode-dark img[src$="\#gh-light-mode-only"],
+      .vscode-light img[src$="\#gh-dark-mode-only"],
+      .vscode-high-contrast:not(.vscode-high-contrast-light)
+        img[src$="\#gh-light-mode-only"],
+      .vscode-high-contrast-light img[src$="\#gh-dark-mode-only"] {
+        display: none;
+      }
+    </style>
+
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css"
+    />
+    <style>
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", system-ui,
+          "Ubuntu", "Droid Sans", sans-serif;
+        font-size: 14px;
+        line-height: 1.6;
+      }
+    </style>
+    <style>
+      .task-list-item {
+        list-style-type: none;
+      }
+
+      .task-list-item-checkbox {
+        margin-left: -20px;
+        vertical-align: middle;
+        pointer-events: none;
+      }
+    </style>
+    <style>
+      :root {
+        --color-note: #0969da;
+        --color-tip: #1a7f37;
+        --color-warning: #9a6700;
+        --color-severe: #bc4c00;
+        --color-caution: #d1242f;
+        --color-important: #8250df;
+      }
+    </style>
+    <style>
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --color-note: #2f81f7;
+          --color-tip: #3fb950;
+          --color-warning: #d29922;
+          --color-severe: #db6d28;
+          --color-caution: #f85149;
+          --color-important: #a371f7;
+        }
+      }
+    </style>
+    <style>
+      .markdown-alert {
+        padding: 0.5rem 1rem;
+        margin-bottom: 16px;
+        color: inherit;
+        border-left: 0.25em solid #888;
+      }
+
+      .markdown-alert > :first-child {
+        margin-top: 0;
+      }
+
+      .markdown-alert > :last-child {
+        margin-bottom: 0;
+      }
+
+      .markdown-alert .markdown-alert-title {
+        display: flex;
+        font-weight: 500;
+        align-items: center;
+        line-height: 1;
+      }
+
+      .markdown-alert .markdown-alert-title .octicon {
+        margin-right: 0.5rem;
+        display: inline-block;
+        overflow: visible !important;
+        vertical-align: text-bottom;
+        fill: currentColor;
+      }
+
+      .markdown-alert.markdown-alert-note {
+        border-left-color: var(--color-note);
+      }
+
+      .markdown-alert.markdown-alert-note .markdown-alert-title {
+        color: var(--color-note);
+      }
+
+      .markdown-alert.markdown-alert-important {
+        border-left-color: var(--color-important);
+      }
+
+      .markdown-alert.markdown-alert-important .markdown-alert-title {
+        color: var(--color-important);
+      }
+
+      .markdown-alert.markdown-alert-warning {
+        border-left-color: var(--color-warning);
+      }
+
+      .markdown-alert.markdown-alert-warning .markdown-alert-title {
+        color: var(--color-warning);
+      }
+
+      .markdown-alert.markdown-alert-tip {
+        border-left-color: var(--color-tip);
+      }
+
+      .markdown-alert.markdown-alert-tip .markdown-alert-title {
+        color: var(--color-tip);
+      }
+
+      .markdown-alert.markdown-alert-caution {
+        border-left-color: var(--color-caution);
+      }
+
+      .markdown-alert.markdown-alert-caution .markdown-alert-title {
+        color: var(--color-caution);
+      }
+    </style>
+  </head>
+  <body class="vscode-body vscode-light">
+    <h1 id="processo-de-pré-alteração-de-imagens">
+      Processo de Pré-Alteração de Imagens
+    </h1>
+    <h2 id="1-objetivo">1. Objetivo</h2>
+    <p>
+      Estruturar o fluxo entre a finalização dos comentários do cliente e o
+      início da execução das alterações, garantindo:
+    </p>
+    <ul>
+      <li>Eliminação de ambiguidades</li>
+      <li>Redução de retrabalho</li>
+      <li>Aumento de velocidade na execução</li>
+      <li>Clareza total para o executor</li>
+      <li>Previsibilidade na definição de prazos</li>
+    </ul>
+    <hr />
+    <h2 id="2-escopo">2. Escopo</h2>
+    <p>Este processo se aplica a todas as imagens após:</p>
+    <ul>
+      <li>Entrega inicial (R00)</li>
+      <li>Status: RVW (em revisão pelo cliente)</li>
+    </ul>
+    <hr />
+    <h2 id="3-visão-geral-do-fluxo">3. Visão Geral do Fluxo</h2>
+    <ol>
+      <li>Entrega inicial → R00 + RVW</li>
+      <li>Cliente finaliza comentários → RVW_DONE</li>
+      <li>Pré-análise → PRE_ALT</li>
+      <li>Consolidação e esclarecimento → cliente</li>
+      <li>Análise finalizada → READY_FOR_PLANNING</li>
+      <li>Planejamento → definição de status final (EF ou R01)</li>
+    </ol>
+    <hr />
+    <h2 id="4-status-do-processo">4. Status do Processo</h2>
+    <h3 id="41-rvw-review">4.1 RVW (Review)</h3>
+    <ul>
+      <li>Imagem entregue ao cliente</li>
+      <li>Aguardando comentários</li>
+    </ul>
+    <hr />
+    <h3 id="42-rvw_done-review-concluído">4.2 RVW_DONE (Review Concluído)</h3>
+    <ul>
+      <li>Cliente finalizou todos os comentários</li>
+      <li>Pronto para iniciar pré-análise</li>
+    </ul>
+    <hr />
+    <h3 id="43-pre_alt-pré-alteração">4.3 PRE_ALT (Pré-Alteração)</h3>
+    <p><strong>Responsável: Nicolle</strong></p>
+    <p>Atividades:</p>
+    <ul>
+      <li>Leitura completa dos comentários</li>
+      <li>Classificação das alterações</li>
+      <li>Identificação de dúvidas</li>
+      <li>Estruturação das ações</li>
+    </ul>
+    <hr />
+    <h3 id="44-ready_for_planning">4.4 READY_FOR_PLANNING</h3>
+    <ul>
+      <li>Todas as imagens foram analisadas</li>
+      <li>Dúvidas resolvidas com cliente</li>
+      <li>Escopo definido e fechado</li>
+    </ul>
+    <p><strong>Trigger:</strong></p>
+    <ul>
+      <li>Notificação para o gestor de projetos</li>
+    </ul>
+    <hr />
+    <h3 id="45-execução">4.5 Execução</h3>
+    <p>Após planejamento:</p>
+    <ul>
+      <li><strong>EF (Execução Final)</strong> → alterações simples</li>
+      <li>
+        <strong>R01 (Nova rodada)</strong> → alterações médias e complexas
+      </li>
+    </ul>
+    <hr />
+    <h2 id="5-papel-dos-responsáveis">5. Papel dos Responsáveis</h2>
+    <h3 id="51-nicolle-arquiteta--pré-análise">
+      5.1 Nicolle (Arquiteta / Pré-Análise)
+    </h3>
+    <p>Responsável por:</p>
+    <ul>
+      <li>Interpretar comentários do cliente</li>
+      <li>Classificar complexidade</li>
+      <li>Traduzir comentários em ações objetivas</li>
+      <li>Consolidar dúvidas</li>
+      <li>Interagir com cliente (quando necessário)</li>
+      <li>Definir escopo final antes da execução</li>
+    </ul>
+    <hr />
+    <h3 id="52-gestor-de-projetos">5.2 Gestor de Projetos</h3>
+    <p>Responsável por:</p>
+    <ul>
+      <li>Receber análise estruturada</li>
+      <li>Definir prazos</li>
+      <li>Definir prioridade</li>
+      <li>Direcionar imagens para EF ou R01</li>
+      <li>Atualizar status</li>
+    </ul>
+    <hr />
+    <h3 id="53-executor">5.3 Executor</h3>
+    <p>Responsável por:</p>
+    <ul>
+      <li>Executar alterações sem necessidade de interpretação</li>
+      <li>Seguir exatamente o que foi definido na pré-análise</li>
+    </ul>
+    <hr />
+    <h2 id="6-classificação-das-alterações">6. Classificação das Alterações</h2>
+    <h3 id="61-por-complexidade">6.1 Por Complexidade</h3>
+    <ul>
+      <li>
+        <p><strong>S (Simples)</strong></p>
+        <ul>
+          <li>Ajustes diretos</li>
+          <li>Não exigem decisão</li>
+          <li>Ex: cor, intensidade, pequenos elementos</li>
+        </ul>
+      </li>
+      <li>
+        <p><strong>M (Médio)</strong></p>
+        <ul>
+          <li>Exigem interpretação leve</li>
+          <li>Impacto moderado na imagem</li>
+        </ul>
+      </li>
+      <li>
+        <p><strong>C (Complexo)</strong></p>
+        <ul>
+          <li>Envolvem arquitetura ou layout</li>
+          <li>Podem impactar múltiplas imagens</li>
+        </ul>
+      </li>
+    </ul>
+    <hr />
+    <h3 id="62-por-tipo">6.2 Por Tipo</h3>
+    <ul>
+      <li>Arquitetura</li>
+      <li>Layout / Composição</li>
+      <li>Materiais / Texturas</li>
+      <li>Iluminação</li>
+      <li>Elementos decorativos</li>
+      <li>Correções técnicas</li>
+    </ul>
+    <hr />
+    <h2 id="7-estrutura-da-pré-análise">7. Estrutura da Pré-Análise</h2>
+    <p>Para cada imagem:</p>
+    <h3 id="71-classificação-geral">7.1 Classificação Geral</h3>
+    <ul>
+      <li>Complexidade: S / M / C</li>
+      <li>Tipo predominante</li>
+    </ul>
+    <hr />
+    <h3 id="72-lista-de-alterações">7.2 Lista de Alterações</h3>
+    <p>Formato:</p>
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Tipo</th>
+          <th>Complexidade</th>
+          <th>Ação</th>
+          <th>Observação</th>
+        </tr>
+      </thead>
+    </table>
+    <hr />
+    <h3 id="73-avaliação-executiva">7.3 Avaliação Executiva</h3>
+    <ul>
+      <li>Esforço: Baixo / Médio / Alto</li>
+      <li>Risco: Baixo / Médio / Alto</li>
+      <li>Dependência externa: Sim / Não</li>
+    </ul>
+    <hr />
+    <h2 id="8-consolidação-de-dúvidas">8. Consolidação de Dúvidas</h2>
+    <h3 id="regra-obrigatória">Regra obrigatória:</h3>
+    <ul>
+      <li>
+        Todas as dúvidas devem ser consolidadas antes de enviar ao cliente
+      </li>
+      <li>Não enviar dúvidas isoladas</li>
+    </ul>
+    <hr />
+    <h3 id="abordagem-recomendada">Abordagem recomendada:</h3>
+    <p>Sempre propor solução:</p>
+    <p><strong>Errado:</strong></p>
+    <ul>
+      <li>“Cliente quis dizer o que?”</li>
+    </ul>
+    <p><strong>Correto:</strong></p>
+    <ul>
+      <li>“Sugestão: aplicar solução X baseada em Y. Confirmar?”</li>
+    </ul>
+    <hr />
+    <h2 id="9-definição-final-de-escopo">9. Definição Final de Escopo</h2>
+    <p>Após retorno do cliente:</p>
+    <ul>
+      <li>
+        Todas as alterações devem estar:
+        <ul>
+          <li>Claras</li>
+          <li>Objetivas</li>
+          <li>Sem necessidade de interpretação</li>
+        </ul>
+      </li>
+    </ul>
+    <hr />
+    <h2 id="10-complexidade-regra-de-mudança">
+      10. Complexidade (Regra de Mudança)
+    </h2>
+    <h3 id="fase-1--pré-esclarecimento">Fase 1 — Pré-esclarecimento</h3>
+    <ul>
+      <li>Complexidade é provisória</li>
+      <li>Pode mudar</li>
+    </ul>
+    <h3 id="fase-2--pós-esclarecimento">Fase 2 — Pós-esclarecimento</h3>
+    <ul>
+      <li>Complexidade é final</li>
+      <li>Não deve mudar</li>
+    </ul>
+    <p><strong>Se mudar após isso → falha no processo</strong></p>
+    <hr />
+    <h2 id="11-planejamento-gestor-de-projetos">
+      11. Planejamento (Gestor de Projetos)
+    </h2>
+    <p>Entrada:</p>
+    <ul>
+      <li>Pré-análise finalizada</li>
+      <li>Escopo fechado</li>
+    </ul>
+    <p>Decisões:</p>
+    <ul>
+      <li>
+        <p>Direcionamento:</p>
+        <ul>
+          <li>S → EF</li>
+          <li>M/C → R01</li>
+        </ul>
+      </li>
+      <li>
+        <p>Definição de prazo</p>
+      </li>
+      <li>
+        <p>Definição de prioridade</p>
+      </li>
+    </ul>
+    <hr />
+    <h2 id="12-notificações">12. Notificações</h2>
+    <p>O gestor deve ser notificado quando:</p>
+    <ul>
+      <li>Todas as imagens estiverem em <strong>READY_FOR_PLANNING</strong></li>
+    </ul>
+    <hr />
+    <h2 id="13-sla-sugestão">13. SLA (Sugestão)</h2>
+    <ul>
+      <li>Pré-análise: até X horas após RVW_DONE</li>
+      <li>Consolidação com cliente: variável</li>
+      <li>Planejamento: imediato após READY</li>
+    </ul>
+    <hr />
+    <h2 id="14-regras-críticas-do-processo">14. Regras Críticas do Processo</h2>
+    <ul>
+      <li>Executor não interpreta comentários</li>
+      <li>Gestor não lê comentário bruto</li>
+      <li>Nicolle não envia dúvidas fragmentadas</li>
+      <li>Escopo deve estar fechado antes da execução</li>
+      <li>Complexidade não muda após definição final</li>
+    </ul>
+    <hr />
+    <h2 id="15-riscos-e-pontos-de-atenção">15. Riscos e Pontos de Atenção</h2>
+    <h3 id="151-gargalo-na-pré-análise">15.1 Gargalo na pré-análise</h3>
+    <ul>
+      <li>Mitigação: padronização e possível backup</li>
+    </ul>
+    <hr />
+    <h3 id="152-atraso-invisível">15.2 Atraso invisível</h3>
+    <ul>
+      <li>Mitigação: SLA claro para PRE_ALT</li>
+    </ul>
+    <hr />
+    <h3 id="153-overprocess">15.3 Overprocess</h3>
+    <ul>
+      <li>Mitigação: fast track para alterações simples</li>
+    </ul>
+    <hr />
+    <h2 id="16-otimização-futura">16. Otimização Futura</h2>
+    <ul>
+      <li>Nicolle sugerir prazo base por imagem</li>
+      <li>Automatização de status</li>
+      <li>Filtros por complexidade</li>
+      <li>
+        Métricas de performance:
+        <ul>
+          <li>Tempo de execução</li>
+          <li>Retrabalho</li>
+          <li>Tempo de ciclo total</li>
+        </ul>
+      </li>
+    </ul>
+    <hr />
+  </body>
+</html>

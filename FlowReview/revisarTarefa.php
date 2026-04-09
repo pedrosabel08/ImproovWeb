@@ -262,6 +262,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmtNotif->close();
         }
 
+        $conn->begin_transaction();
+
         $stmt = $conn->prepare("UPDATE funcao_imagem SET status = ? WHERE idfuncao_imagem = ?");
         $stmt->bind_param("si", $status, $idfuncao_imagem);
 
@@ -414,6 +416,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
         } else {
+            $conn->rollback();
             $resultadoFinal['success'] = false;
             $resultadoFinal['message'] = 'Erro ao atualizar tarefa.';
             echo json_encode($resultadoFinal);
@@ -577,7 +580,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $resolved_path = dirname($resolved_path) . '/' . $base_r . '_' . $sftp_suffix . '.' . $ext_r;
                         }
                         try {
-                            $sftp = new SFTP($ftp_host, $ftp_port);
+                            $sftp = new SFTP($ftp_host, $ftp_port, 60);
                             if (!$sftp->login($ftp_user, $ftp_pass)) {
                                 $resultadoFinal['logs'][] = "Falha ao autenticar no SFTP para resolução de conflito.";
                             } else {
@@ -594,7 +597,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     } else {
                         foreach ($bases as $base) {
                             try {
-                                $sftp = new SFTP($ftp_host, $ftp_port);
+                                $sftp = new SFTP($ftp_host, $ftp_port, 60);
                                 if (!$sftp->login($ftp_user, $ftp_pass)) {
                                     $resultadoFinal['logs'][] = "Falha ao conectar no host $ftp_host:$ftp_port para base $base.";
                                     continue;
@@ -664,7 +667,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($arquivoTempVps && is_file($arquivoTempVps)) {
                 @unlink($arquivoTempVps);
             }
+
+            // ── SFTP falhou sem conflito: reverte status e notifica ───────────────
+            if (!isset($resultadoFinal['sftp_conflict']) && empty($resultadoFinal['sftp_enviado'])) {
+                $conn->rollback();
+                $resultadoFinal['success'] = false;
+                $resultadoFinal['message'] = 'Erro no envio SFTP. Status da tarefa não foi alterado. Tente novamente.';
+                $stmtSlackErr = $conn->prepare(
+                    "SELECT u.nome_slack FROM usuario u
+                     JOIN colaborador c ON u.idcolaborador = c.idcolaborador
+                     WHERE c.nome_colaborador IN ('Pedro Sabel', 'Andre L. de Souza')
+                       AND u.nome_slack IS NOT NULL AND u.nome_slack != ''"
+                );
+                $stmtSlackErr->execute();
+                $resSlackErr = $stmtSlackErr->get_result();
+                $msgErroSftp = "\u26a0\ufe0f Falha no envio SFTP: *{$imagem_resumida}* ({$nome_funcao}). Status da tarefa *n\u00e3o foi alterado*. Verifique a conex\u00e3o com o servidor.";
+                while ($rowErr = $resSlackErr->fetch_assoc()) {
+                    enviarNotificacaoSlack($rowErr['nome_slack'], $msgErroSftp, $resultadoFinal['logs']);
+                }
+                $stmtSlackErr->close();
+                echo json_encode($resultadoFinal);
+                $conn->close();
+                exit;
+            }
+            // ─────────────────────────────────────────────────────────────────────
         }
+
+        // Commit: BD confirmado (SFTP enviado, conflito pendente ou SFTP não necessário)
+        $conn->commit();
 
         // Slack envio final — só na 1ª chamada (não reenvia na resolução de conflito SFTP)
         if ($sftp_action !== null) {

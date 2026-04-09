@@ -140,8 +140,16 @@ document.addEventListener("DOMContentLoaded", function () {
           if (next === "pago")
             confirmMsg =
               "Confirmar pagamento para todas as tarefas do mês selecionado deste colaborador?";
-          const ok = confirm(confirmMsg);
-          if (!ok) return;
+          const { isConfirmed: okConfirm } = await Swal.fire({
+            title: btn.textContent.trim(),
+            text: confirmMsg,
+            icon: "question",
+            showCancelButton: true,
+            confirmButtonText: "Confirmar",
+            cancelButtonText: "Cancelar",
+            confirmButtonColor: "#4f80e1",
+          });
+          if (!okConfirm) return;
           await atualizarStatusResumo(colab, next);
         });
       });
@@ -173,15 +181,26 @@ document.addEventListener("DOMContentLoaded", function () {
       });
       const json = await res.json();
       if (!json.success) {
-        alert(
-          "Falha ao atualizar status: " + (json.error || "erro desconhecido"),
-        );
+        await Swal.fire({
+          icon: "error",
+          title: "Erro",
+          text:
+            "Falha ao atualizar status: " + (json.error || "erro desconhecido"),
+          timer: 3000,
+          timerProgressBar: true,
+        });
       } else {
         carregarResumo();
       }
     } catch (e) {
       console.error("Erro ao atualizar status", e);
-      alert("Erro ao atualizar status");
+      await Swal.fire({
+        icon: "error",
+        title: "Erro",
+        text: "Erro ao atualizar status",
+        timer: 3000,
+        timerProgressBar: true,
+      });
     }
   }
 
@@ -481,12 +500,24 @@ document.addEventListener("DOMContentLoaded", function () {
                         .then(() => carregarDadosColab())
                         .catch(() => carregarDadosColab());
                     } else {
-                      alert("Erro ao registrar pagamento.");
+                      Swal.fire({
+                        icon: "error",
+                        title: "Erro",
+                        text: "Erro ao registrar pagamento.",
+                        timer: 3000,
+                        timerProgressBar: true,
+                      });
                     }
                   })
                   .catch((err) => {
                     console.error("Erro ao pagar linha:", err);
-                    alert("Erro ao registrar pagamento.");
+                    Swal.fire({
+                      icon: "error",
+                      title: "Erro",
+                      text: "Erro ao registrar pagamento.",
+                      timer: 3000,
+                      timerProgressBar: true,
+                    });
                   });
               });
               cellAcoes.appendChild(btnPagar);
@@ -640,9 +671,17 @@ document.addEventListener("DOMContentLoaded", function () {
                   valor_novo: f.valor_esperado,
                 }));
                 if (
-                  !confirm(
-                    `Atualizar ${itens.length} tarefa(s) para os valores esperados?`,
-                  )
+                  !(
+                    await Swal.fire({
+                      title: "Confirmar",
+                      text: `Atualizar ${itens.length} tarefa(s) para os valores esperados?`,
+                      icon: "question",
+                      showCancelButton: true,
+                      confirmButtonText: "Atualizar",
+                      cancelButtonText: "Cancelar",
+                      confirmButtonColor: "#4f80e1",
+                    })
+                  ).isConfirmed
                 )
                   return;
                 try {
@@ -750,7 +789,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   document
     .getElementById("confirmar-pagamento")
-    .addEventListener("click", function () {
+    .addEventListener("click", async function () {
       var colaboradorId = parseInt(
         document.getElementById("colaborador").value,
         10,
@@ -769,6 +808,16 @@ document.addEventListener("DOMContentLoaded", function () {
       }));
 
       if (ids.length > 0) {
+        const { isConfirmed } = await Swal.fire({
+          title: "Confirmar pagamento",
+          text: "Confirmar pagamento para todas as tarefas do mês selecionado deste colaborador?",
+          icon: "question",
+          showCancelButton: true,
+          confirmButtonText: "Confirmar",
+          cancelButtonText: "Cancelar",
+          confirmButtonColor: "#4f80e1",
+        });
+        if (!isConfirmed) return;
         // include selected month/year so backend can group itens into pagamentos (mes_ref)
         const mes = document.getElementById("mes").value;
         const ano = document.getElementById("ano").value;
@@ -787,7 +836,13 @@ document.addEventListener("DOMContentLoaded", function () {
           .then((response) => response.json())
           .then((data) => {
             if (data.success) {
-              alert("Pagamentos atualizados com sucesso!");
+              Swal.fire({
+                icon: "success",
+                title: "Sucesso",
+                text: "Pagamentos atualizados com sucesso!",
+                timer: 3000,
+                timerProgressBar: true,
+              });
               // Inserir no histórico
               fetch("insertHistorico.php", {
                 method: "POST",
@@ -802,9 +857,21 @@ document.addEventListener("DOMContentLoaded", function () {
                 .then((response) => response.json())
                 .then((data) => {
                   if (data.success) {
-                    alert("Histórico atualizado com sucesso!");
+                    Swal.fire({
+                      icon: "success",
+                      title: "Sucesso",
+                      text: "Histórico atualizado com sucesso!",
+                      timer: 3000,
+                      timerProgressBar: true,
+                    });
                   } else {
-                    alert("Erro ao atualizar histórico.");
+                    Swal.fire({
+                      icon: "error",
+                      title: "Erro",
+                      text: "Erro ao atualizar histórico.",
+                      timer: 3000,
+                      timerProgressBar: true,
+                    });
                   }
                 })
                 .catch((error) => {
@@ -812,14 +879,26 @@ document.addEventListener("DOMContentLoaded", function () {
                 });
               carregarDadosColab();
             } else {
-              alert("Erro ao atualizar pagamentos.");
+              Swal.fire({
+                icon: "error",
+                title: "Erro",
+                text: "Erro ao atualizar pagamentos.",
+                timer: 3000,
+                timerProgressBar: true,
+              });
             }
           })
           .catch((error) => {
             console.error("Erro ao confirmar pagamentos:", error);
           });
       } else {
-        alert("Não há tarefas pendentes para confirmar.");
+        Swal.fire({
+          icon: "warning",
+          title: "Atenção",
+          text: "Não há tarefas pendentes para confirmar.",
+          timer: 3000,
+          timerProgressBar: true,
+        });
       }
     });
 
@@ -849,20 +928,37 @@ document.addEventListener("DOMContentLoaded", function () {
           .then((response) => response.json())
           .then((data) => {
             if (data.success) {
-              alert("Valores atualizados com sucesso!");
+              Swal.fire({
+                icon: "success",
+                title: "Sucesso",
+                text: "Valores atualizados com sucesso!",
+                timer: 3000,
+                timerProgressBar: true,
+              });
               carregarDadosColab();
             } else {
-              alert(
-                "Erro ao atualizar valores: " +
+              Swal.fire({
+                icon: "error",
+                title: "Erro",
+                text:
+                  "Erro ao atualizar valores: " +
                   (data.error || "Erro desconhecido."),
-              );
+                timer: 3000,
+                timerProgressBar: true,
+              });
             }
           })
           .catch((error) => {
             console.error("Erro ao adicionar valores:", error);
           });
       } else {
-        alert("Selecione pelo menos uma imagem e insira um valor.");
+        Swal.fire({
+          icon: "warning",
+          title: "Atenção",
+          text: "Selecione pelo menos uma imagem e insira um valor.",
+          timer: 3000,
+          timerProgressBar: true,
+        });
       }
     });
 });
@@ -1091,7 +1187,13 @@ document
     })();
 
     if (!colaboradorId) {
-      alert("Selecione um colaborador antes de gerar o adendo.");
+      await Swal.fire({
+        icon: "warning",
+        title: "Atenção",
+        text: "Selecione um colaborador antes de gerar o adendo.",
+        timer: 3000,
+        timerProgressBar: true,
+      });
       return;
     }
 
@@ -1101,35 +1203,91 @@ document
     const ano = anoEl ? parseInt(anoEl.value, 10) : NaN;
 
     if (!Number.isFinite(mes) || !Number.isFinite(ano)) {
-      alert("Selecione mês e ano antes de gerar o adendo.");
+      await Swal.fire({
+        icon: "warning",
+        title: "Atenção",
+        text: "Selecione mês e ano antes de gerar o adendo.",
+        timer: 3000,
+        timerProgressBar: true,
+      });
       return;
     }
 
-    const valorFixo = prompt("Digite o valor fixo (somente número):");
-    if (!valorFixo || isNaN(valorFixo)) {
-      alert("Por favor, insira um valor numérico válido.");
-      return;
-    }
+    const { value: valorFixo, isConfirmed: vfConfirmed } = await Swal.fire({
+      title: "Valor fixo",
+      input: "text",
+      inputLabel: "Digite o valor fixo (somente número)",
+      inputPlaceholder: "Ex: 1500",
+      showCancelButton: true,
+      confirmButtonText: "Continuar",
+      cancelButtonText: "Cancelar",
+      confirmButtonColor: "#4f80e1",
+      inputValidator: (value) => {
+        if (!value || isNaN(value))
+          return "Por favor, insira um valor numérico válido.";
+      },
+    });
+    if (!vfConfirmed || !valorFixo) return;
 
     // Bônus/extras opcionais
     const extras = [];
-    let addBonus = confirm("Deseja adicionar bônus/extra no adendo?");
+    const { isConfirmed: querBonus } = await Swal.fire({
+      title: "Bônus/Extra",
+      text: "Deseja adicionar bônus/extra no adendo?",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Sim",
+      cancelButtonText: "Não",
+      confirmButtonColor: "#4f80e1",
+    });
+    let addBonus = querBonus;
     while (addBonus) {
-      const categoria = prompt("Categoria do bônus/extra:");
-      if (!categoria || !categoria.trim()) {
-        alert("Categoria inválida.");
-      } else {
-        const valorExtraRaw = prompt("Valor do bônus/extra (somente número):");
-        const valorExtra = valorExtraRaw
-          ? parseFloat(valorExtraRaw.replace(",", "."))
-          : NaN;
-        if (!valorExtraRaw || isNaN(valorExtra)) {
-          alert("Valor inválido.");
-        } else {
-          extras.push({ categoria: categoria.trim(), valor: valorExtra });
+      const { value: categoria, isConfirmed: catConfirmed } = await Swal.fire({
+        title: "Categoria",
+        input: "text",
+        inputLabel: "Categoria do bônus/extra",
+        inputPlaceholder: "Ex: Premiação",
+        showCancelButton: true,
+        confirmButtonText: "Continuar",
+        cancelButtonText: "Cancelar",
+        confirmButtonColor: "#4f80e1",
+        inputValidator: (value) => {
+          if (!value || !value.trim()) return "Categoria inválida.";
+        },
+      });
+      if (catConfirmed && categoria && categoria.trim()) {
+        const { value: valorExtraRaw, isConfirmed: veConfirmed } =
+          await Swal.fire({
+            title: "Valor do bônus/extra",
+            input: "text",
+            inputLabel: "Valor (somente número)",
+            inputPlaceholder: "Ex: 200",
+            showCancelButton: true,
+            confirmButtonText: "Adicionar",
+            cancelButtonText: "Cancelar",
+            confirmButtonColor: "#4f80e1",
+            inputValidator: (value) => {
+              if (!value || isNaN(parseFloat(value.replace(",", "."))))
+                return "Valor inválido.";
+            },
+          });
+        if (veConfirmed && valorExtraRaw) {
+          extras.push({
+            categoria: categoria.trim(),
+            valor: parseFloat(valorExtraRaw.replace(",", ".")),
+          });
         }
       }
-      addBonus = confirm("Adicionar outro bônus/extra?");
+      const { isConfirmed: maisBonus } = await Swal.fire({
+        title: "Mais bônus/extra?",
+        text: "Adicionar outro bônus/extra?",
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonText: "Sim",
+        cancelButtonText: "Não",
+        confirmButtonColor: "#4f80e1",
+      });
+      addBonus = maisBonus;
     }
 
     const btn = this;
@@ -1468,7 +1626,13 @@ document
 
             doc.save(`Relatório_Completo_${colaborador}_${mesNome}_${ano}.pdf`);
           } else {
-            alert("Nenhum dado disponível para gerar a lista.");
+            Swal.fire({
+              icon: "warning",
+              title: "Atenção",
+              text: "Nenhum dado disponível para gerar a lista.",
+              timer: 3000,
+              timerProgressBar: true,
+            });
           }
         };
         reader.readAsDataURL(blob);

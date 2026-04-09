@@ -233,7 +233,7 @@ body {
     <img
       src="../gif/assinatura_preto.gif"
       class="page-header-logo"
-      id="gif"  
+      id="gif"
       style="height:36px; opacity:0.85"
     />
     <h1 class="page-title">Nome da Página</h1>
@@ -673,6 +673,72 @@ Para erros use `background: "#ef4444"`. Para sucesso use `background: "#10b981"`
 
 ---
 
+## Diálogos (SweetAlert2)
+
+**Nunca usar `alert()`, `confirm()` ou `prompt()` nativos do browser.** Sempre substituir por SweetAlert2.
+
+Incluir no HTML antes dos scripts do módulo:
+
+```html
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+```
+
+### Alerta simples (com barra de progresso)
+
+```js
+Swal.fire({
+  icon: "success", // 'success' | 'error' | 'warning' | 'info' | 'question'
+  title: "Sucesso",
+  text: "Operação realizada com sucesso!",
+  timer: 3000,
+  timerProgressBar: true,
+});
+```
+
+### Confirmação
+
+```js
+const { isConfirmed } = await Swal.fire({
+  title: "Tem certeza?",
+  text: "Esta ação não pode ser desfeita.",
+  icon: "question",
+  showCancelButton: true,
+  confirmButtonText: "Confirmar",
+  cancelButtonText: "Cancelar",
+  confirmButtonColor: "#4f80e1",
+});
+if (!isConfirmed) return;
+```
+
+### Input de texto
+
+```js
+const { value, isConfirmed } = await Swal.fire({
+  title: "Informe o valor",
+  input: "text",
+  inputLabel: "Descrição do campo",
+  inputPlaceholder: "Ex: 1500",
+  showCancelButton: true,
+  confirmButtonText: "Continuar",
+  cancelButtonText: "Cancelar",
+  confirmButtonColor: "#4f80e1",
+  inputValidator: (v) => {
+    if (!v) return "Campo obrigatório.";
+  },
+});
+if (!isConfirmed || !value) return;
+```
+
+**Regras:**
+
+- Usar `timerProgressBar: true` sempre que o diálogo fechar automaticamente.
+- Usar `confirmButtonColor: '#4f80e1'` (accent do projeto) nos botões primários.
+- Erros: `icon: 'error'`, `timer: 3000`, `timerProgressBar: true`.
+- Avisos: `icon: 'warning'`, `timer: 3000`, `timerProgressBar: true`.
+- Confirmações e inputs não devem ter `timer` (aguardar ação do usuário).
+
+---
+
 ---
 
 ## Tabelas de Dados
@@ -1082,3 +1148,4 @@ Use `.btn-row` para botões compactos dentro de células de tabela.
 - Tabelas sempre envolvidas em `.table-section` com `.table-wrap` para scroll horizontal.
 - Cabeçalhos de tabela sempre com `text-transform: uppercase` e `var(--text-muted)`.
 - Linhas de tabela com hover `var(--bg-table-row-hover)` e seleção `var(--bg-table-row-selected)`.
+- **Nunca usar `alert()`, `confirm()` ou `prompt()` nativos** — sempre SweetAlert2 com `timerProgressBar: true` quando auto-fechável.

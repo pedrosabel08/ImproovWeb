@@ -163,7 +163,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             if (!$shouldRegisterPagoCompleta) {
                                 continue;
                             }
-                            $didAnyAuditOnly = true;
+                            // Pago Completa = segunda metade do valor (50%).
+                            // Usa o valor enviado pelo frontend (valor_exibido = 50% do tarifado);
+                            // fallback: metade do valor salvo no banco.
+                            $valor = (isset($item['valor']) && is_numeric($item['valor']) && (float)$item['valor'] > 0)
+                                ? (float)$item['valor']
+                                : round($valor * 0.5, 2);
+                            $didAnyNewPayments = true;
                         }
 
                         // observation: use supplied funcao_name to detect 'Finalização parcial'
@@ -171,6 +177,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         if ($hasObservacao) {
                             if (mb_strtolower($funcao_name, 'UTF-8') === mb_strtolower('Finalização parcial', 'UTF-8')) {
                                 $obs = 'Finalização Parcial';
+                                // Finalização Parcial = primeira metade do valor (50%).
+                                // Usa o valor enviado pelo frontend (valor_exibido = 50% do tarifado);
+                                // fallback: metade do valor salvo no banco.
+                                $valor = (isset($item['valor']) && is_numeric($item['valor']) && (float)$item['valor'] > 0)
+                                    ? (float)$item['valor']
+                                    : round($valor * 0.5, 2);
                             }
                             if ($shouldRegisterPagoCompleta) {
                                 $obs = 'Pago Completa';
@@ -183,10 +195,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $insItem->bind_param('isid', $pagamento_id, $origem, $id, $valor);
                         }
                         $insItem->execute();
-                        // Only count values for newly paid items; for audit-only 'Pago Completa' we don't want to change totals.
-                        if (!$ja_pago) {
-                            $valor_total += $valor;
-                        }
+                        $valor_total += $valor;
 
                         if ($parcialInfo) {
                             $evx = $conn->prepare("INSERT INTO pagamento_eventos (pagamento_id, tipo, descricao, usuario_id) VALUES (?,?,?,?)");

@@ -384,29 +384,6 @@ WHERE
         $sql .= " AND (fi.status = 'Finalizado' OR fi.status = 'Em aprovação' OR fi.status = 'Ajuste' OR fi.status = 'Aprovado com ajustes' OR fi.status = 'Aprovado')";
     }
 
-    // Para 23/40: só Finalização Completa ainda não totalmente paga
-    if (in_array($colaboradorId, [23, 40])) {
-        $sql .= " AND (
-            fi.funcao_id != 4
-            OR (
-                NOT (
-                    EXISTS (
-                        SELECT 1 FROM funcao_imagem fi_sub
-                        JOIN funcao f_sub ON fi_sub.funcao_id = f_sub.idfuncao
-                        WHERE fi_sub.imagem_id = fi.imagem_id
-                          AND f_sub.nome_funcao = 'Pré-Finalização'
-                    )
-                    OR {$snapStatusCond}
-                )
-                AND NOT EXISTS (
-                    SELECT 1 FROM pagamento_itens pi
-                    JOIN funcao_imagem fi_pi ON pi.origem = 'funcao_imagem' AND pi.origem_id = fi_pi.idfuncao_imagem
-                    WHERE fi_pi.imagem_id = fi.imagem_id AND fi_pi.funcao_id = 4 AND pi.observacao = 'Pago Completa'
-                )
-            )
-        )";
-    }
-
     $sql .= " 
 UNION ALL
 SELECT 

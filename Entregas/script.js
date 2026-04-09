@@ -54,7 +54,15 @@ document.addEventListener("DOMContentLoaded", () => {
         .toUpperCase() || "UNKNOWN";
     card.classList.add("status-" + statusCode);
 
+    // Store extra metadata for context menu
+    card.dataset.kanbanStatus = entrega.kanban_status || "";
+    card.dataset.arquivada = entrega.arquivada ? "1" : "0";
+    card.dataset.canUnarchive = entrega.can_unarchive ? "1" : "0";
+    card.dataset.dataPrevista = entrega.data_prevista || "";
+    card.dataset.statusId = entrega.status_id || "0";
+
     const readyCount = parseInt(entrega.ready_count || 0, 10);
+    const isConcluida = (entrega.kanban_status || "") === "concluida";
 
     card.innerHTML = `
                 <div class="card-checkbox"></div>
@@ -69,7 +77,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 </div>
                 <div style="display:flex;justify-content:space-between;align-items:center;">
                     <small>${entrega.entregues || 0}/${entrega.total_itens || 0} imagens entregues</small>
-                    <button class="btn-cronograma-card" title="Gerar cronograma para esta entrega"><i class="fa-solid fa-calendar-days"></i> Cronograma</button>
+                    ${!isConcluida ? `<button class="btn-cronograma-card" title="Gerar cronograma para esta entrega"><i class="fa-solid fa-calendar-days"></i> Cronograma</button>` : ""}
                 </div>
             `;
 
@@ -375,28 +383,39 @@ document.addEventListener("DOMContentLoaded", () => {
   // --- FUNÇÃO PRINCIPAL PARA CARREGAR O KANBAN ---
   async function carregarKanban() {
     try {
-      // If running inside Dashboard we may have an obraId in localStorage.
-      // When present, request only that obra from the server to avoid client-side filtering.
-      // However, on the main Entregas page we always want to show all entregas,
-      // so ignore localStorage when the current page path contains '/entregas'.
-      const storedObra =
-        typeof localStorage !== "undefined"
-          ? localStorage.getItem("obraId")
-          : null;
-      const isEntregasPage = window.location.pathname
-        .toLowerCase()
-        .includes("/entregas");
-      let url = BASE + "listar_entregas.php";
-      if (storedObra && !isEntregasPage) {
-        url += "?obra_id=" + encodeURIComponent(storedObra);
+      const modoArquivadas = window._modoArquivadas || false;
+
+      let url;
+      if (modoArquivadas) {
+        url = BASE + "listar_arquivadas.php";
+      } else {
+        // If running inside Dashboard we may have an obraId in localStorage.
+        const storedObra =
+          typeof localStorage !== "undefined"
+            ? localStorage.getItem("obraId")
+            : null;
+        const isEntregasPage = window.location.pathname
+          .toLowerCase()
+          .includes("/entregas");
+        url = BASE + "listar_entregas.php";
+        if (storedObra && !isEntregasPage) {
+          url += "?obra_id=" + encodeURIComponent(storedObra);
+        }
       }
+
       const res = await fetch(url);
       const entregas = await res.json();
 
       entregasAll = Array.isArray(entregas) ? entregas : [];
 
+      // Visual indicator for archive mode
+      const kanban = document.getElementById("kanban");
+      const banner = document.getElementById("arquivadasBanner");
+      if (kanban) kanban.classList.toggle("kanban-arquivadas", modoArquivadas);
+      if (banner) banner.style.display = modoArquivadas ? "flex" : "none";
+
       populateFiltersFrom(entregasAll);
-      renderEntregas(entregasAll);
+      applyFilters(); // re-apply current filter selection after reload
     } catch (err) {
       console.error("Erro ao carregar o Kanban:", err);
     }
@@ -1708,194 +1727,358 @@ document
       .catch((err) => console.error("Erro:", err));
   });
 
-// ===== Side delete modal + contextmenu / long-press handlers =====
-// Delegated handlers so we don't need to rebind per-card.
+// ===== Rich context menu for cards (right-click / long-press) =====
 (function () {
-  const MODAL_ID = "sideDeleteModal";
+  const MENU_ID = "cardContextMenu";
+  let currentCard = null;
 
-  function createSideModal() {
-    let m = document.getElementById(MODAL_ID);
+  function getMenu() {
+    let m = document.getElementById(MENU_ID);
     if (m) return m;
     m = document.createElement("div");
-    m.id = MODAL_ID;
-    m.style.position = "absolute";
-    m.style.zIndex = 2000;
-    m.style.minWidth = "200px";
-    m.style.background = "var(--modal-bg, #222)";
-    m.style.border = "1px solid var(--border-color, #444)";
-    m.style.padding = "10px";
-    m.style.borderRadius = "8px";
-    m.style.boxShadow = "0 8px 30px rgba(0,0,0,0.5)";
-    m.style.color = "var(--text-color, #fff)";
+    m.id = MENU_ID;
+    m.className = "card-context-menu";
     m.style.display = "none";
-
     m.innerHTML = `
-            <div style="display:flex;flex-direction:column;gap:8px;">
-                <div style="font-weight:700">Ações da entrega</div>
-                <div id="sideDeleteText">Excluir entrega?</div>
-                <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px;">
-                    <button id="sideCancelBtn" style="background:transparent;border:1px solid #666;color:inherit;padding:6px 8px;border-radius:6px;">Cancelar</button>
-                    <button id="sideDeleteBtn" style="background:linear-gradient(90deg,#ff416c,#ff4b2b);border:none;color:#fff;padding:6px 10px;border-radius:6px;">Excluir</button>
-                </div>
-            </div>
-        `;
+      <div class="ctx-header">
+        <span class="ctx-title" id="ctxMenuTitle">Ações da entrega</span>
+      </div>
+      <div class="ctx-body">
+        <button class="ctx-item ctx-date"><i class="fa-solid fa-calendar-days"></i> Mudar data prevista</button>
+        <button class="ctx-item ctx-status-change"><i class="fa-solid fa-tag"></i> Mudar status</button>
+        <button class="ctx-item ctx-archive"><i class="fa-solid fa-box-archive"></i> Arquivar</button>
+        <button class="ctx-item ctx-delete"><i class="fa-solid fa-trash"></i> Excluir</button>
+      </div>`;
     document.body.appendChild(m);
 
-    m.querySelector("#sideCancelBtn").addEventListener("click", () =>
-      hideSideModal(),
-    );
-    return m;
-  }
+    // ── Mudar data prevista ────────────────────────────────────────────
+    m.querySelector(".ctx-date").addEventListener("click", async () => {
+      const card = currentCard;
+      hideMenu();
+      if (!card) return;
+      const entregaId = card.dataset.id;
+      const currentDate = card.dataset.dataPrevista || "";
+      const { value, isConfirmed } = await Swal.fire({
+        title: "Mudar data prevista",
+        input: "date",
+        inputValue: currentDate,
+        showCancelButton: true,
+        confirmButtonText: "Salvar",
+        cancelButtonText: "Cancelar",
+        confirmButtonColor: "#4f80e1",
+        inputValidator: (v) => {
+          if (!v) return "Selecione uma data.";
+        },
+      });
+      if (!isConfirmed || !value) return;
+      await _callUpdate(
+        entregaId,
+        { data_prevista: value },
+        "Data prevista atualizada!",
+      );
+    });
 
-  function showSideModalForCard(card) {
-    if (!card) return;
-    const id = card.dataset.id;
-    const modal = createSideModal();
-    const rect = card.getBoundingClientRect();
-    const modalW = 260; // approximate
-    const modalH = modal.offsetHeight || 120;
-
-    // Decide left/right placement
-    let left = rect.right + 8 + window.scrollX;
-    const preferRight = rect.right + modalW + 16 < window.innerWidth;
-    if (!preferRight) {
-      left = rect.left - modalW - 8 + window.scrollX;
-    }
-    let top = rect.top + window.scrollY;
-    // adjust to keep within viewport vertically
-    if (top + modalH > window.scrollY + window.innerHeight - 10) {
-      top = window.scrollY + window.innerHeight - modalH - 10;
-    }
-    if (top < window.scrollY + 10) top = window.scrollY + 10;
-
-    modal.style.left = left + "px";
-    modal.style.top = top + "px";
-    modal.style.display = "block";
-    modal.dataset.entregaId = id;
-    // update text with basic info
-    const title =
-      card.querySelector(".card-header h4")?.textContent || `Entrega ${id}`;
-    const txt = modal.querySelector("#sideDeleteText");
-    if (txt)
-      txt.textContent = `Excluir ${title}? Esta ação removerá a entrega.`;
-
-    // attach delete handler
-    const delBtn = modal.querySelector("#sideDeleteBtn");
-    if (delBtn) {
-      delBtn.onclick = async function () {
-        const entregaId = modal.dataset.entregaId;
-        // hide the side modal immediately when confirmation appears
-        try {
-          hideSideModal();
-        } catch (e) {}
-        // confirm with SweetAlert
-        try {
-          const res = await Swal.fire({
-            title: "Confirma exclusão?",
-            text: "A exclusão removerá a entrega e seus itens. Esta ação não pode ser desfeita.",
+    // ── Mudar status ───────────────────────────────────────────────────
+    m.querySelector(".ctx-status-change").addEventListener(
+      "click",
+      async () => {
+        const card = currentCard;
+        hideMenu();
+        if (!card) return;
+        const entregaId = card.dataset.id;
+        const currentStId = card.dataset.statusId || "0";
+        const statuses = window.STATUS_IMAGENS || [];
+        if (!statuses.length) {
+          Swal.fire({
             icon: "warning",
-            showCancelButton: true,
-            confirmButtonText: "Sim, excluir",
-            cancelButtonText: "Cancelar",
+            title: "Sem opções",
+            text: "Lista de status não disponível.",
+            timer: 2500,
+            timerProgressBar: true,
           });
-          if (!res.isConfirmed) return;
-        } catch (e) {
-          console.error("Swal error", e);
           return;
         }
+        const inputOptions = {};
+        statuses.forEach((s) => {
+          inputOptions[s.id] = s.nome;
+        });
+        const { value, isConfirmed } = await Swal.fire({
+          title: "Mudar status",
+          input: "select",
+          inputOptions,
+          inputValue: currentStId,
+          showCancelButton: true,
+          confirmButtonText: "Salvar",
+          cancelButtonText: "Cancelar",
+          confirmButtonColor: "#4f80e1",
+          inputValidator: (v) => {
+            if (!v) return "Selecione um status.";
+          },
+        });
+        if (!isConfirmed || !value) return;
+        await _callUpdate(
+          entregaId,
+          { status_id: parseInt(value) },
+          "Status atualizado!",
+        );
+      },
+    );
 
-        try {
-          const response = await fetch(BASE + "remove_entrega.php", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ entrega_id: entregaId }),
-          });
-          const json = await response.json();
-          if (json && json.success) {
-            // remove card visually and refresh
-            const cardEl = document.querySelector(
-              `.card-entrega[data-id="${entregaId}"]`,
-            );
-            if (cardEl) cardEl.remove();
-            carregarKanban();
-            Swal.fire({
-              icon: "success",
-              title: "Excluído",
-              text: json.message || "Entrega excluída.",
-            });
-          } else {
-            Swal.fire({
-              icon: "error",
-              title: "Erro",
-              text: json.error || "Falha ao excluir entrega.",
-            });
-          }
-        } catch (err) {
-          console.error("Erro ao excluir entrega:", err);
+    // ── Arquivar / Desarquivar ─────────────────────────────────────────
+    m.querySelector(".ctx-archive").addEventListener("click", async () => {
+      const card = currentCard;
+      hideMenu();
+      if (!card) return;
+      const entregaId = card.dataset.id;
+      const canUnarchive = card.dataset.canUnarchive === "1";
+      const modoArq = window._modoArquivadas || false;
+      const isUnarchiving = modoArq && canUnarchive;
+      const titleCard =
+        card.querySelector(".card-header h4")?.textContent ||
+        `Entrega ${entregaId}`;
+      const { isConfirmed } = await Swal.fire({
+        title: isUnarchiving ? "Desarquivar entrega?" : "Arquivar entrega?",
+        text: isUnarchiving
+          ? `"${titleCard}" voltará para o kanban ativo.`
+          : `"${titleCard}" será movida para o arquivo.`,
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonText: isUnarchiving ? "Desarquivar" : "Arquivar",
+        cancelButtonText: "Cancelar",
+        confirmButtonColor: "#4f80e1",
+      });
+      if (!isConfirmed) return;
+      try {
+        const res = await fetch(BASE + "archive_entrega.php", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            entrega_id: entregaId,
+            arquivada: isUnarchiving ? 0 : 1,
+          }),
+        });
+        const json = await res.json();
+        if (json && json.success) {
+          _toast(
+            isUnarchiving ? "Entrega desarquivada!" : "Entrega arquivada!",
+          );
+          if (typeof window.carregarKanban === "function")
+            window.carregarKanban();
+        } else {
           Swal.fire({
             icon: "error",
             title: "Erro",
-            text: "Falha ao excluir (ver console).",
+            text: json.error || "Falha ao arquivar.",
+            timer: 3000,
+            timerProgressBar: true,
           });
         }
-      };
-    }
-  }
-
-  function hideSideModal() {
-    const m = document.getElementById(MODAL_ID);
-    if (m) {
-      m.style.display = "none";
-      delete m.dataset.entregaId;
-    }
-  }
-
-  // Hide modal on outside click
-  document.addEventListener("click", function (e) {
-    const modal = document.getElementById(MODAL_ID);
-    if (!modal) return;
-    if (modal.style.display === "none") return;
-    if (modal.contains(e.target)) return;
-    // if clicked on a card, keep it (handled separately)
-    if (e.target.closest && e.target.closest(".card-entrega")) return;
-    hideSideModal();
-  });
-
-  // Intercept clicks on cards when suppressed by long-press (capture phase)
-  document.addEventListener(
-    "click",
-    function (e) {
-      const card = e.target.closest && e.target.closest(".card-entrega");
-      if (card && card.dataset && card.dataset.suppressClick === "1") {
-        e.stopImmediatePropagation();
-        e.preventDefault();
-        card.dataset.suppressClick = "0";
-        return false;
+      } catch (err) {
+        console.error(err);
+        Swal.fire({
+          icon: "error",
+          title: "Erro",
+          text: "Falha a arquivar (ver console).",
+          timer: 3000,
+          timerProgressBar: true,
+        });
       }
-    },
-    true,
-  );
+    });
 
-  // right-click handler
+    // ── Excluir ────────────────────────────────────────────────────────
+    m.querySelector(".ctx-delete").addEventListener("click", async () => {
+      const card = currentCard;
+      hideMenu();
+      if (!card) return;
+      const entregaId = card.dataset.id;
+      const titleCard =
+        card.querySelector(".card-header h4")?.textContent ||
+        `Entrega ${entregaId}`;
+      const { isConfirmed } = await Swal.fire({
+        title: "Excluir entrega?",
+        text: `"${titleCard}" e todos seus itens serão removidos permanentemente.`,
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonText: "Sim, excluir",
+        cancelButtonText: "Cancelar",
+        confirmButtonColor: "#ef4444",
+      });
+      if (!isConfirmed) return;
+      try {
+        const response = await fetch(BASE + "remove_entrega.php", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ entrega_id: entregaId }),
+        });
+        const json = await response.json();
+        if (json && json.success) {
+          const cardEl = document.querySelector(
+            `.card-entrega[data-id="${entregaId}"]`,
+          );
+          if (cardEl) cardEl.remove();
+          if (typeof window.carregarKanban === "function")
+            window.carregarKanban();
+          Swal.fire({
+            icon: "success",
+            title: "Excluído",
+            text: json.message || "Entrega excluída.",
+            timer: 2000,
+            timerProgressBar: true,
+          });
+        } else {
+          Swal.fire({
+            icon: "error",
+            title: "Erro",
+            text: json.error || "Falha ao excluir.",
+            timer: 3000,
+            timerProgressBar: true,
+          });
+        }
+      } catch (err) {
+        console.error(err);
+        Swal.fire({
+          icon: "error",
+          title: "Erro",
+          text: "Falha ao excluir (ver console).",
+          timer: 3000,
+          timerProgressBar: true,
+        });
+      }
+    });
+
+    return m;
+  }
+
+  async function _callUpdate(entregaId, payload, successMsg) {
+    try {
+      payload.entrega_id = entregaId;
+      const res = await fetch(BASE + "update_entrega.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const json = await res.json();
+      if (json && json.success) {
+        _toast(successMsg);
+        if (typeof window.carregarKanban === "function")
+          window.carregarKanban();
+      } else {
+        Swal.fire({
+          icon: "error",
+          title: "Erro",
+          text: json.error || "Falha ao atualizar.",
+          timer: 3000,
+          timerProgressBar: true,
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      Swal.fire({
+        icon: "error",
+        title: "Erro",
+        text: "Falha ao atualizar (ver console).",
+        timer: 3000,
+        timerProgressBar: true,
+      });
+    }
+  }
+
+  function _toast(msg, color) {
+    if (typeof Toastify === "undefined") return;
+    Toastify({
+      text: msg,
+      duration: 3000,
+      gravity: "top",
+      position: "right",
+      style: {
+        background: color || "#10b981",
+        borderRadius: "8px",
+        fontFamily: '"Inter", sans-serif',
+        fontSize: "13px",
+        fontWeight: "500",
+      },
+    }).showToast();
+  }
+
+  function showMenu(card) {
+    if (!card) return;
+    currentCard = card;
+    const menu = getMenu();
+    const canUnarchive = card.dataset.canUnarchive === "1";
+    const modoArq = window._modoArquivadas || false;
+    const archiveBtn = menu.querySelector(".ctx-archive");
+    if (archiveBtn) {
+      if (modoArq && canUnarchive) {
+        archiveBtn.innerHTML =
+          '<i class="fa-solid fa-box-open"></i> Desarquivar';
+        archiveBtn.style.display = "";
+      } else if (modoArq) {
+        // inactive-obra entrega — cannot unarchive
+        archiveBtn.style.display = "none";
+      } else {
+        archiveBtn.innerHTML =
+          '<i class="fa-solid fa-box-archive"></i> Arquivar';
+        archiveBtn.style.display = "";
+      }
+    }
+
+    // Position menu to the right of the card (flip left if no space)
+    const rect = card.getBoundingClientRect();
+    const menuW = 240;
+    const menuH = 190;
+    let left = rect.right + 8 + window.scrollX;
+    if (rect.right + menuW + 16 > window.innerWidth) {
+      left = rect.left - menuW - 8 + window.scrollX;
+    }
+    let top = rect.top + window.scrollY;
+    if (top + menuH > window.scrollY + window.innerHeight - 10) {
+      top = window.scrollY + window.innerHeight - menuH - 10;
+    }
+    if (top < window.scrollY + 10) top = window.scrollY + 10;
+
+    menu.style.left = Math.max(10, left) + "px";
+    menu.style.top = Math.max(10, top) + "px";
+    menu.style.display = "block";
+  }
+
+  function hideMenu() {
+    const m = document.getElementById(MENU_ID);
+    if (m) m.style.display = "none";
+    currentCard = null;
+  }
+
+  // Right-click on any card
   document.addEventListener("contextmenu", function (e) {
     const card = e.target.closest && e.target.closest(".card-entrega");
     if (!card) return;
     e.preventDefault();
-    showSideModalForCard(card);
+    showMenu(card);
   });
 
-  // long-press for touch devices
+  // Close on outside click
+  document.addEventListener("click", function (e) {
+    const menu = document.getElementById(MENU_ID);
+    if (!menu || menu.style.display === "none") return;
+    if (menu.contains(e.target)) return;
+    if (e.target.closest && e.target.closest(".card-entrega")) return;
+    hideMenu();
+  });
+
+  // Close on Escape
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") hideMenu();
+  });
+
+  // Long-press (touch)
   let touchTimer = null;
   document.addEventListener(
     "touchstart",
     function (e) {
       const card = e.target.closest && e.target.closest(".card-entrega");
       if (!card) return;
-      // start timer
       touchTimer = setTimeout(() => {
-        // mark to suppress click handlers
         card.dataset.suppressClick = "1";
-        showSideModalForCard(card);
+        showMenu(card);
       }, 600);
     },
     { passive: true },
@@ -1904,7 +2087,7 @@ document
   ["touchend", "touchcancel", "touchmove"].forEach((ev) => {
     document.addEventListener(
       ev,
-      function (e) {
+      function () {
         if (touchTimer) {
           clearTimeout(touchTimer);
           touchTimer = null;
@@ -1912,6 +2095,34 @@ document
       },
       { passive: true },
     );
+  });
+
+  // Intercept suppressed click (after long-press)
+  document.addEventListener(
+    "click",
+    function (e) {
+      const card = e.target.closest && e.target.closest(".card-entrega");
+      if (card && card.dataset && card.dataset.suppressClick === "1") {
+        e.stopImmediatePropagation();
+        e.preventDefault();
+        card.dataset.suppressClick = "0";
+      }
+    },
+    true,
+  );
+
+  // ── "Ver arquivadas" button ──────────────────────────────────────────
+  document.addEventListener("DOMContentLoaded", function () {
+    const btn = document.getElementById("btnVerArquivadas");
+    if (!btn) return;
+    btn.addEventListener("click", function () {
+      window._modoArquivadas = !window._modoArquivadas;
+      btn.classList.toggle("btn-arquivadas-active", window._modoArquivadas);
+      btn.innerHTML = window._modoArquivadas
+        ? '<i class="fa-solid fa-arrow-left"></i> Voltar às ativas'
+        : '<i class="fa-solid fa-box-archive"></i> Ver arquivadas';
+      if (typeof window.carregarKanban === "function") window.carregarKanban();
+    });
   });
 })();
 

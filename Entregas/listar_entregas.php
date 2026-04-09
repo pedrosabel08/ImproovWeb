@@ -4,10 +4,11 @@ require_once '../conexao.php';
 
 $obra_id = isset($_GET['obra_id']) && is_numeric($_GET['obra_id']) ? intval($_GET['obra_id']) : null;
 
-$where = '';
+$conditions = ["(e.arquivada IS NULL OR e.arquivada = 0)", "o.status_obra = 0"];
 if ($obra_id !== null) {
-    $where = "WHERE e.obra_id = " . $obra_id;
+    $conditions[] = "e.obra_id = " . $obra_id;
 }
+$where = "WHERE " . implode(" AND ", $conditions);
 
 $sql = "SELECT 
     e.id,

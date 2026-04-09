@@ -178,3 +178,166 @@
   font-size: 12.5px;
   color: var(--text-secondary);
 }
+
+/* ===================================================
+   CONTEXT MENU (card right-click / long-press)
+   =================================================== */
+.card-context-menu {
+  position: absolute;
+  z-index: 2100;
+  min-width: 230px;
+  background: var(--bg-modal);
+  border: 1px solid var(--border-modal);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-modal);
+  overflow: hidden;
+  animation: contextMenuIn 0.14s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes contextMenuIn {
+  from {
+    opacity: 0;
+    transform: scale(0.94) translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.ctx-header {
+  padding: 10px 14px 9px;
+  border-bottom: 1px solid var(--border-modal);
+}
+
+.ctx-title {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+}
+
+.ctx-body {
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.ctx-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 12px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--transition-fast);
+}
+
+.ctx-item:hover {
+  background: var(--bg-card-hover);
+}
+
+.ctx-item i {
+  width: 16px;
+  text-align: center;
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.ctx-item.ctx-archive i {
+  color: var(--accent);
+}
+.ctx-item.ctx-date i {
+  color: var(--status-andamento);
+}
+.ctx-item.ctx-status-change i {
+  color: var(--status-aprovacao);
+}
+
+.ctx-item.ctx-delete {
+  color: #c92a2a;
+}
+.ctx-item.ctx-delete:hover {
+  background: rgba(239, 68, 68, 0.08);
+}
+.ctx-item.ctx-delete i {
+  color: #c92a2a;
+}
+
+/* ===================================================
+   "VER ARQUIVADAS" button
+   =================================================== */
+.btn-arquivadas {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 14px;
+  background: var(--bg-count);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-input);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast),
+    border-color var(--transition-fast),
+    transform var(--transition-fast);
+}
+
+.btn-arquivadas:hover {
+  background: var(--accent-subtle);
+  color: var(--accent);
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.btn-arquivadas.btn-arquivadas-active {
+  background: var(--accent-subtle);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* ===================================================
+   KANBAN — archived mode visual overlay
+   =================================================== */
+.kanban-arquivadas::before {
+  content: "Modo Arquivadas";
+  display: block;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: #92400e;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 12px;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+/* Subtly dim archived cards */
+.kanban-arquivadas .card-entrega {
+  opacity: 0.88;
+}
+.kanban-arquivadas .card-entrega:hover {
+  opacity: 1;
+}

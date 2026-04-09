@@ -100,6 +100,9 @@ $conn->close();
                 <div class="toggle-track"></div>
                 <span class="toggle-label">Planejamento</span>
             </div>
+            <button class="btn-arquivadas" id="btnVerArquivadas" title="Ver entregas arquivadas e de obras inativas">
+                <i class="fa-solid fa-box-archive"></i> Ver arquivadas
+            </button>
         </div>
 
         <!-- Kanban Board -->
@@ -317,6 +320,18 @@ $conn->close();
     </div>
 
     <!-- Scripts -->
+    <script>
+        window.STATUS_IMAGENS = <?php
+                                $statusArr = [];
+                                foreach ($status_imagens as $s) {
+                                    $statusArr[] = [
+                                        'id'   => intval($s['idstatus'] ?? $s['id'] ?? 0),
+                                        'nome' => htmlspecialchars_decode($s['nome_status'] ?? $s['nome'] ?? '')
+                                    ];
+                                }
+                                echo json_encode($statusArr);
+                                ?>;
+    </script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>

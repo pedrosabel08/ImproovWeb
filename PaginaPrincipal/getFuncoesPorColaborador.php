@@ -123,7 +123,6 @@ $sqlTarefas = "SELECT
 FROM tarefas
 WHERE colaborador_id = ?
   AND status <> 'Finalizado'
-  AND prazo <= CURDATE()
 ORDER BY prazo ASC";
 $stmtTarefas = $conn->prepare($sqlTarefas);
 $stmtTarefas->bind_param("i", $colaboradorId);

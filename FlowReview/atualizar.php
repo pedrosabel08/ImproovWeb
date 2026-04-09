@@ -427,8 +427,16 @@ try {
     $typDir  = str_repeat('i', count($funcaoImagemIds5));
 
     $stmtDir = $conn->prepare(
-      "SELECT DISTINCT funcao_imagem_id FROM historico_aprovacoes
-       WHERE funcao_imagem_id IN ($inDir) AND status_novo = 'Aguardando Direção'"
+      "SELECT DISTINCT h.funcao_imagem_id
+       FROM historico_aprovacoes h
+       WHERE h.funcao_imagem_id IN ($inDir)
+         AND h.status_novo = 'Aguardando Direção'
+         AND NOT EXISTS (
+             SELECT 1
+             FROM historico_aprovacoes h2
+             WHERE h2.funcao_imagem_id = h.funcao_imagem_id
+               AND h2.id > h.id
+         )"
     );
     $stmtDir->bind_param($typDir, ...$funcaoImagemIds5);
     $stmtDir->execute();

@@ -117,8 +117,33 @@ if (isset($_POST['action'])) {
                 $stmtUpd->close();
 
                 if ($okUpd === TRUE) {
+                    // Ao reprovar/refazer, zerar status_pos em pos_producao
+                    if (in_array(strtolower($status), ['reprovado', 'refazendo'])) {
+                        $stmtPos = $conn->prepare("UPDATE pos_producao SET status_pos = 0 WHERE render_id = ?");
+                        if ($stmtPos) {
+                            $stmtPos->bind_param('i', $idrender_alta);
+                            $stmtPos->execute();
+                            $logs[] = 'pos_producao.status_pos resetado para 0';
+                            $stmtPos->close();
+                        } else {
+                            $logs[] = 'Erro prepare pos_producao reset: ' . $conn->error;
+                        }
+                    }
+
                     // Se o novo status for 'Aprovado', preparar os ângulos para follow-up
                     if (strtolower($status) === 'aprovado') {
+
+                        $stmtPos = $conn->prepare("UPDATE pos_producao SET data_pos = NOW() WHERE render_id = ?");
+                        if ($stmtPos) {
+                            $stmtPos->bind_param('i', $idrender_alta);
+                            $stmtPos->execute();
+                            $logs[] = 'pos_producao.data_pos resetado para NOW()';
+                            $stmtPos->close();
+                        } else {
+                            $logs[] = 'Erro prepare pos_producao reset: ' . $conn->error;
+                        }
+
+
                         // Criar tabela followup_angles se não existir
                         $createSql = "CREATE TABLE IF NOT EXISTS followup_angles (
                             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -349,7 +374,7 @@ if (isset($_POST['action'])) {
                 $obs = $_POST['obs'];
 
                 // Atualiza a tabela pos
-                $sql = "UPDATE pos_producao SET refs = '$refs', obs = '$obs' WHERE render_id = $render_id;";
+                $sql = "UPDATE pos_producao SET refs = '$refs', obs = '$obs', data_pos = NOW() WHERE render_id = $render_id;";
                 if ($conn->query($sql) === TRUE) {
                     echo json_encode(['status' => 'sucesso']);
                 } else {

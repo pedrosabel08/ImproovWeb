@@ -2932,7 +2932,8 @@ function ajustarNavSelectAoTamanhoDaImagem() {
       img.style.height = "auto";
       requestAnimationFrame(() => {
         const cont = document.getElementById("imagem_completa");
-        if (cont) navSelect.style.width = cont.getBoundingClientRect().width + "px";
+        if (cont)
+          navSelect.style.width = cont.getBoundingClientRect().width + "px";
       });
     };
     img.onload = doAjuste;
@@ -3773,11 +3774,47 @@ async function renderComments(id) {
 
       if (markerEl) {
         markerEl.classList.add("highlight");
-        markerEl.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-          inline: "center",
-        });
+
+        // Pan to the marker, accounting for the CSS zoom transform.
+        // scrollIntoView() uses layout positions and ignores CSS transforms,
+        // so it navigates to the wrong place when zoomed. Instead, compute
+        // the marker's natural % position and adjust the translate so it
+        // appears centred in the image_wrapper viewport.
+        const iw = document.getElementById("image_wrapper");
+        const iwW = iw.offsetWidth; // natural size, unaffected by transform
+        const iwH = iw.offsetHeight;
+
+        let targetX = 50; // % from left
+        let targetY = 50; // % from top
+
+        if (comentario.tipo === "rect" || comentario.tipo === "circle") {
+          const cx1 = parseFloat(comentario.x) || 0;
+          const cy1 = parseFloat(comentario.y) || 0;
+          const cx2 = comentario.x2 != null ? parseFloat(comentario.x2) : cx1;
+          const cy2 = comentario.y2 != null ? parseFloat(comentario.y2) : cy1;
+          targetX = (cx1 + cx2) / 2;
+          targetY = (cy1 + cy2) / 2;
+        } else if (comentario.tipo === "freehand") {
+          let pts = [];
+          try {
+            pts = JSON.parse(comentario.path_data || "[]");
+          } catch (e) {}
+          if (pts.length > 0) {
+            targetX = pts[0][0];
+            targetY = pts[0][1];
+          }
+        } else {
+          targetX = parseFloat(comentario.x) || 50;
+          targetY = parseFloat(comentario.y) || 50;
+        }
+
+        // With transform: scale(zoom) translate(tx, ty), the visual distance
+        // of a natural point from the wrapper centre is:
+        //   zoom * (naturalOffset + tx)
+        // Setting tx = −naturalOffset makes the marker appear at the centre.
+        currentTranslateX = -(targetX / 100 - 0.5) * iwW;
+        currentTranslateY = -(targetY / 100 - 0.5) * iwH;
+        applyTransforms();
       }
     });
 

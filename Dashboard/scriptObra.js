@@ -227,6 +227,12 @@ if (usuarioId !== 1 && usuarioId !== 2 && usuarioId !== 9) {
     .forEach((checkbox) => {
       checkbox.disabled = false;
     });
+  document.querySelectorAll(".campo-edit-btn").forEach((edit) => {
+    edit.style.display = "flex";
+  });
+  document.querySelectorAll(".obs-card-edit").forEach((edit) => {
+    edit.style.display = "flex";
+  });
 }
 
 // 🔒 Apenas usuários 1 e 2 podem editar selects e inputs dentro de .modal-funcoes
@@ -1081,6 +1087,8 @@ function atualizarModal(idImagem) {
             ? `<ul class="bc-obs-list">${obsItems}${obsMore}</ul>`
             : "",
         ].join("");
+
+        panel.style.display = "none";
 
         const formEdicao = document.getElementById("form-edicao");
         if (formEdicao) formEdicao.prepend(panel);
@@ -4079,22 +4087,22 @@ function infosObra(obraId) {
               <p class="obs-card-text">${info.descricao || ""}</p>
               <span class="obs-card-date">${formatarData(info.data)}</span>
             </div>
-            ${isAdmin ? `<button type="button" class="obs-card-edit" title="Editar"><i class="fa-solid fa-pencil"></i></button>` : ""}
+            <button type="button" class="obs-card-edit" title="Editar"><i class="fa-solid fa-pencil"></i></button>
           `;
 
-          if (isAdmin) {
-            card
-              .querySelector(".obs-card-edit")
-              .addEventListener("click", function (e) {
-                e.stopPropagation();
-                document.getElementById("descricaoId").value = info.id;
-                document.getElementById("desc").value = info.descricao;
-                const deleteObs = document.getElementById("deleteObs");
-                deleteObs.setAttribute("data-id", info.id);
-                document.getElementById("modalObservacao").style.display =
-                  "block";
-              });
-          }
+          card
+            .querySelector(".obs-card-edit")
+            .addEventListener("click", function (e) {
+              e.stopPropagation();
+              document.getElementById("descricaoId").value = info.id;
+              document.getElementById("desc").value = info.descricao;
+              const deleteObs = document.getElementById("deleteObs");
+              deleteObs.setAttribute("data-id", info.id);
+              deleteObs.style.display = "inline-flex";
+              const lbl = document.getElementById("obsModalLabel");
+              if (lbl) lbl.textContent = "Editar instrução";
+              document.getElementById("modalObservacao").style.display = "flex";
+            });
 
           cardList.appendChild(card);
         });
@@ -6969,8 +6977,11 @@ document.getElementById("configAcomp").addEventListener("click", function () {
 });
 
 document.getElementById("obsAdd").addEventListener("click", function () {
-  modalObs.style.display = "block";
   limparCamposFormulario();
+  document.getElementById("deleteObs").style.display = "none";
+  const lbl = document.getElementById("obsModalLabel");
+  if (lbl) lbl.textContent = "Nova instrução";
+  modalObs.style.display = "flex";
 });
 
 function limparCamposFormulario() {
@@ -7105,51 +7116,148 @@ document
       });
   });
 
-document
-  .getElementById("adicionar_observacao")
-  .addEventListener("submit", function (e) {
-    e.preventDefault(); // Previne o envio padrão do formulário
+document.getElementById("saveObs").addEventListener("click", function (e) {
+  e.preventDefault();
 
-    // Obtendo os dados do formulário
-    const desc = document.getElementById("desc").value.trim();
-    const descricaoId = document.getElementById("descricaoId").value;
+  const desc = document.getElementById("desc").value.trim();
+  const descricaoId = document.getElementById("descricaoId").value;
 
-    // Validações simples
-    if (!desc) {
+  if (!desc) {
+    Toastify({
+      text: "Preencha a descrição.",
+      duration: 3000,
+      gravity: "top",
+      position: "right",
+      style: {
+        background: "#ef4444",
+        borderRadius: "8px",
+        fontFamily: '"Inter", sans-serif',
+        fontSize: "13px",
+        fontWeight: "500",
+      },
+    }).showToast();
+    return;
+  }
+
+  fetch("addAcompanhamento.php", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ idobra: obraId, desc: desc, id: descricaoId }),
+  })
+    .then((r) => r.json())
+    .then((data) => {
+      if (data.success) {
+        Toastify({
+          text: data.message,
+          duration: 3000,
+          gravity: "top",
+          position: "right",
+          style: {
+            background: "#10b981",
+            borderRadius: "8px",
+            fontFamily: '"Inter", sans-serif',
+            fontSize: "13px",
+            fontWeight: "500",
+          },
+        }).showToast();
+        limparCamposFormulario();
+        infosObra(obraId);
+        modalObs.style.display = "none";
+      } else {
+        Toastify({
+          text: data.message,
+          duration: 3000,
+          gravity: "top",
+          position: "right",
+          style: {
+            background: "#ef4444",
+            borderRadius: "8px",
+            fontFamily: '"Inter", sans-serif',
+            fontSize: "13px",
+            fontWeight: "500",
+          },
+        }).showToast();
+      }
+    })
+    .catch(() => {
       Toastify({
-        text: "Preencha todos os campos corretamente.",
+        text: "Erro ao salvar observação.",
         duration: 3000,
         gravity: "top",
         position: "right",
-        backgroundColor: "#f44336", // Cor de erro
+        style: {
+          background: "#ef4444",
+          borderRadius: "8px",
+          fontFamily: '"Inter", sans-serif',
+          fontSize: "13px",
+          fontWeight: "500",
+        },
       }).showToast();
-      return;
-    }
+    });
+});
 
-    // Enviando os dados via AJAX
-    fetch("addAcompanhamento.php", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
+document.getElementById("closeObsModal").addEventListener("click", function () {
+  modalObs.style.display = "none";
+  limparCamposFormulario();
+});
+
+document.getElementById("deleteObs").addEventListener("click", function (e) {
+  e.preventDefault();
+
+  const descricaoId = document.getElementById("descricaoId").value;
+
+  if (!descricaoId) {
+    Toastify({
+      text: "Nenhuma observação selecionada para excluir.",
+      duration: 3000,
+      gravity: "top",
+      position: "right",
+      style: {
+        background: "#f59e0b",
+        borderRadius: "8px",
+        fontFamily: '"Inter", sans-serif',
+        fontSize: "13px",
+        fontWeight: "500",
       },
-      body: new URLSearchParams({
-        idobra: obraId,
-        desc: desc,
-        id: descricaoId,
-      }),
+    }).showToast();
+    return;
+  }
+
+  Swal.fire({
+    title: "Excluir observação?",
+    text: "Esta ação não pode ser desfeita.",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonText: "Excluir",
+    cancelButtonText: "Cancelar",
+    confirmButtonColor: "#ef4444",
+  }).then(({ isConfirmed }) => {
+    if (!isConfirmed) return;
+
+    fetch("deleteObs.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ id: descricaoId }),
     })
-      .then((response) => response.json()) // Converte a resposta para JSON
+      .then((r) => r.json())
       .then((data) => {
-        // Exibe o Toastify com base na resposta
         if (data.success) {
           Toastify({
             text: data.message,
             duration: 3000,
             gravity: "top",
             position: "right",
-            backgroundColor: "#4caf50", // Cor de sucesso
+            style: {
+              background: "#10b981",
+              borderRadius: "8px",
+              fontFamily: '"Inter", sans-serif',
+              fontSize: "13px",
+              fontWeight: "500",
+            },
           }).showToast();
-          document.getElementById("adicionar_observacao").reset(); // Reseta o formulário
+          limparCamposFormulario();
+          infosObra(obraId);
+
           modalObs.style.display = "none";
         } else {
           Toastify({
@@ -7157,21 +7265,33 @@ document
             duration: 3000,
             gravity: "top",
             position: "right",
-            backgroundColor: "#f44336", // Cor de erro
+            style: {
+              background: "#ef4444",
+              borderRadius: "8px",
+              fontFamily: '"Inter", sans-serif',
+              fontSize: "13px",
+              fontWeight: "500",
+            },
           }).showToast();
         }
       })
-      .catch((error) => {
-        console.error("Erro ao enviar acompanhamento:", error);
+      .catch(() => {
         Toastify({
-          text: "Erro ao adicionar acompanhamento.",
+          text: "Erro ao excluir observação.",
           duration: 3000,
           gravity: "top",
           position: "right",
-          backgroundColor: "#f44336", // Cor de erro
+          style: {
+            background: "#ef4444",
+            borderRadius: "8px",
+            fontFamily: '"Inter", sans-serif',
+            fontSize: "13px",
+            fontWeight: "500",
+          },
         }).showToast();
       });
   });
+});
 
 const modalPos = document.getElementById("modal_pos");
 const eventModal = document.getElementById("eventModal");

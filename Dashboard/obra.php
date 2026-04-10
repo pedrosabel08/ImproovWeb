@@ -1113,25 +1113,30 @@ $conn->close();
         </div>
 
         <div id="modalObservacao" class="modal">
-            <div class="modal-content" style="width: 500px;">
-                <h2 style="margin-bottom: 30px;">Observação</h2>
-                <div id="acompanhamentoConteudo">
-                    <form id="adicionar_observacao" style="align-items: center;">
-                        <!-- Campo de descrição -->
-                        <input type="hidden" id="descricaoId">
+            <div class="obs-modal-box">
+                <div class="obs-modal-header">
+                    <div class="obs-modal-title">
+                        <i class="fa-solid fa-note-sticky obs-modal-icon"></i>
+                        <span id="obsModalLabel">Nova instrução</span>
+                    </div>
+                    <button type="button" class="obs-modal-close" id="closeObsModal" aria-label="Fechar">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
 
-                        <div id="campo">
-                            <label for="desc">Descrição:</label>
-                            <textarea name="desc" id="desc" name="desc" required></textarea>
-                        </div>
+                <div class="obs-modal-body">
+                    <input type="hidden" id="descricaoId">
+                    <label class="obs-modal-label" for="desc">Descrição</label>
+                    <textarea id="desc" class="obs-modal-textarea" placeholder="Escreva a instrução..." rows="5"></textarea>
+                </div>
 
-                        <!-- Botão para enviar -->
-                        <div class="buttons" style="margin-top: 15px;">
-                            <button type="submit" id="add-acomp">Salvar</button>
-                            <button id="deleteObs" style="background-color: red;">Excluir</button>
-                        </div>
-
-                    </form>
+                <div class="obs-modal-footer">
+                    <button type="button" id="deleteObs" class="obs-btn obs-btn-danger" style="display:none;">
+                        <i class="fa-solid fa-trash"></i> Excluir
+                    </button>
+                    <button type="button" id="saveObs" class="obs-btn obs-btn-primary">
+                        <i class="fa-solid fa-floppy-disk"></i> Salvar
+                    </button>
                 </div>
             </div>
         </div>
@@ -2458,7 +2463,7 @@ $conn->close();
 
     <script>
         // Project root for building root-relative URLs in scripts
-        (function () {
+        (function() {
             const path = String(window.location.pathname || '');
             const useFlow = path.includes('/flow/');
             window.PROJECT_ROOT = useFlow ? '/flow/ImproovWeb' : '/ImproovWeb';

@@ -30,7 +30,7 @@ try {
 
     // buscar itens da entrega
     // Prioriza explicitamente substatus RVW, depois DRV, depois pendentes
-    $sql2 = "SELECT ei.id, ei.imagem_id, i.imagem_nome AS nome, ei.status, ss.nome_substatus
+    $sql2 = "SELECT ei.id, ei.imagem_id, i.imagem_nome AS nome, ei.status, ss.nome_substatus, i.substatus_id
              FROM entregas_itens ei
              INNER JOIN imagens_cliente_obra i ON ei.imagem_id = i.idimagens_cliente_obra
              INNER JOIN substatus_imagem ss ON ss.id = i.substatus_id

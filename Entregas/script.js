@@ -510,13 +510,37 @@ document.addEventListener("DOMContentLoaded", () => {
         const isEntregue = STATUS_ENTREGUE.has(ns) && !isPendente;
         const isEmAndamento = !isPendente && !isEntregue;
 
-        const checked = isEntregue ? "checked" : "";
-        const disabled = isEntregue ? "disabled" : "";
+        const isRvw = (img.substatus_id === 6 || nsub === "rvw") && isEntregue;
+
+        // RVW items: entregues mas com checkbox habilitado para marcar RVW_DONE
+        const checked  = (isEntregue && !isRvw) ? "checked" : "";
+        const disabled = (isEntregue && !isRvw) ? "disabled" : "";
+
+        let statusLabel;
+        if (nsub === "rvw_done") {
+            statusLabel = '<span class="entregue substatus-rvw-done">RVW_DONE</span>';
+        } else if (nsub === "pre_alt") {
+            statusLabel = '<span class="entregue substatus-pre-alt">PRE_ALT</span>';
+        } else if (nsub === "ready_for_planning") {
+            statusLabel = '<span class="entregue substatus-ready">READY</span>';
+        } else if (isEntregue && !isRvw) {
+            statusLabel = '<span class="entregue">📦 Entregue</span>';
+        } else if (isRvw) {
+            statusLabel = '<span class="entregue substatus-rvw">RVW</span>';
+        } else if (isPendente) {
+            statusLabel = '<span class="entregue">✅ Pendente</span>';
+        } else {
+            statusLabel = '<span class="entregue">⏳ Em andamento</span>';
+        }
+
+        if (isRvw) div.classList.add("rvw-selectable");
+        div.dataset.substatusId = img.substatus_id || "";
+        div.dataset.substatusNome = nsub;
 
         div.innerHTML = `
                 <input type="checkbox" id="img-item-${img.id}" value="${img.id}" ${checked} ${disabled} data-imagem-id="${img.imagem_id}">
                 <label class="imagem_nome" data-imagem-id="${img.imagem_id}">${img.nome}</label>
-                <span class="entregue">${isEntregue ? "📦 Entregue" : isPendente ? "✅ Pendente" : "⏳ Em andamento"}</span>
+                ${statusLabel}
             `;
         modalImagens.appendChild(div);
       });
@@ -569,6 +593,7 @@ document.addEventListener("DOMContentLoaded", () => {
           const selectable = getSelectable();
           selectable.forEach((cb) => (cb.checked = master.checked));
           master.indeterminate = false;
+          updateRvwBatchBar();
         });
 
         // adicionar listener para cada checkbox selecionável para manter o mestre em sincronia
@@ -577,12 +602,15 @@ document.addEventListener("DOMContentLoaded", () => {
           selectable.forEach((cb) => {
             cb.removeEventListener("change", updateMasterState);
             cb.addEventListener("change", updateMasterState);
+            cb.removeEventListener("change", updateRvwBatchBar);
+            cb.addEventListener("change", updateRvwBatchBar);
           });
         };
 
         attachIndividualListeners();
         // inicializar estado do mestre
         updateMasterState();
+        updateRvwBatchBar();
       }
 
       modalEntrega.classList.add("is-open");
@@ -591,30 +619,200 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // --- REMOVER IMAGEM COM CLIQUE DIREITO ---
-  modalImagens.addEventListener("contextmenu", async (e) => {
-    const item = e.target.closest(".modal-imagem-item");
-    if (!item || item.classList.contains("select-all-item")) return;
+  // --- RVW BATCH BAR ---
+  // Barra flutuante que aparece no modal quando imagens RVW estão selecionadas
+  function updateRvwBatchBar() {
+    const modalContent = modalEntrega.querySelector(".modal-content");
+    if (!modalContent) return;
+
+    const checkedRvw = Array.from(
+      modalImagens.querySelectorAll(".rvw-selectable input[type='checkbox']:checked")
+    );
+
+    let bar = modalContent.querySelector(".rvw-batch-bar");
+
+    if (checkedRvw.length === 0) {
+      if (bar) bar.remove();
+      return;
+    }
+
+    if (!bar) {
+      bar = document.createElement("div");
+      bar.className = "rvw-batch-bar";
+      bar.innerHTML = `
+        <span class="rvw-batch-info"></span>
+        <button class="btn-action btn-rvw-done">
+          <i class="fa-solid fa-check-double"></i> Marcar como RVW_DONE
+        </button>
+      `;
+      bar.querySelector(".btn-rvw-done").addEventListener("click", () =>
+        confirmarRvwDoneBatch(bar)
+      );
+      modalContent.appendChild(bar);
+    }
+
+    bar.querySelector(".rvw-batch-info").textContent =
+      `${checkedRvw.length} imagem${checkedRvw.length > 1 ? "ns" : ""} selecionada${checkedRvw.length > 1 ? "s" : ""}`;
+  }
+
+  async function confirmarRvwDoneBatch(bar) {
+    const checkedRvw = Array.from(
+      modalImagens.querySelectorAll(".rvw-selectable input[type='checkbox']:checked")
+    );
+    if (checkedRvw.length === 0) return;
+
+    // Coletar imagem_ids (data-imagem-id) das imagens selecionadas
+    const imagemIds = checkedRvw
+      .map((cb) => parseInt(cb.dataset.imagemId, 10))
+      .filter(Boolean);
+
+    if (imagemIds.length === 0) return;
+
+    try {
+      const res = await fetch(BASE + "update_substatus_imagem.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imagem_ids: imagemIds, substatus_id: 10 }), // 10 = RVW_DONE
+      });
+      const json = await res.json();
+      if (json.success) {
+        // Atualizar visual: remover classe rvw-selectable e atualizar badge
+        checkedRvw.forEach((cb) => {
+          const item = cb.closest(".modal-imagem-item");
+          if (!item) return;
+          item.classList.remove("rvw-selectable");
+          item.dataset.substatusId = "10";
+          item.dataset.substatusNome = "rvw_done";
+          cb.checked = false;
+          cb.disabled = true;
+          const span = item.querySelector(".entregue");
+          if (span) {
+            span.className = "entregue substatus-rvw-done";
+            span.textContent = "RVW_DONE";
+          }
+        });
+        if (bar) bar.remove();
+        // Atualizar entregaDados
+        if (entregaDados && Array.isArray(entregaDados.itens)) {
+          imagemIds.forEach((imId) => {
+            const found = entregaDados.itens.find((it) => parseInt(it.imagem_id, 10) === imId);
+            if (found) {
+              found.substatus_id = 10;
+              found.nome_substatus = "RVW_DONE";
+            }
+          });
+        }
+        Toastify({ text: "RVW_DONE aplicado com sucesso!", duration: 3000, gravity: "top", position: "right", style: { background: "#059669" } }).showToast();
+      } else {
+        Toastify({ text: "Erro: " + (json.error || "desconhecido"), duration: 3000, gravity: "top", position: "right", style: { background: "#dc2626" } }).showToast();
+      }
+    } catch (err) {
+      console.error("Erro ao aplicar RVW_DONE:", err);
+    }
+  }
+
+  // --- CONTEXTO MENU NO MODAL DE IMAGENS (rich menu) ---
+  const MODAL_CTX_ID = "modalImagemContextMenu";
+
+  function getModalCtxMenu() {
+    let m = document.getElementById(MODAL_CTX_ID);
+    if (!m) {
+      m = document.createElement("div");
+      m.id = MODAL_CTX_ID;
+      m.className = "card-context-menu";
+      m.innerHTML = `
+        <div class="ctx-header"><span class="ctx-title">Ações da imagem</span></div>
+        <div class="ctx-body">
+          <button class="ctx-item ctx-rvw-done" style="display:none">
+            <i class="fa-solid fa-check-double"></i> Marcar como RVW_DONE
+          </button>
+          <button class="ctx-item ctx-remove-img">
+            <i class="fa-solid fa-trash"></i> Remover da entrega
+          </button>
+        </div>`;
+      document.body.appendChild(m);
+    }
+    return m;
+  }
+
+  function showModalCtxMenu(item, x, y) {
+    const m = getModalCtxMenu();
+    const isRvw = item.classList.contains("rvw-selectable");
+    m.querySelector(".ctx-rvw-done").style.display = isRvw ? "" : "none";
+
+    m.style.left = x + "px";
+    m.style.top  = y + "px";
+    m.style.display = "block";
+
+    // handler RVW_DONE (single item)
+    const btnRvwDone = m.querySelector(".ctx-rvw-done");
+    const newBtnRvw = btnRvwDone.cloneNode(true);
+    btnRvwDone.parentNode.replaceChild(newBtnRvw, btnRvwDone);
+    newBtnRvw.addEventListener("click", async () => {
+      hideModalCtxMenu();
+      const cb = item.querySelector("input[type='checkbox']");
+      if (!cb) return;
+      const imagemId = parseInt(cb.dataset.imagemId, 10);
+      if (!imagemId) return;
+      try {
+        const res = await fetch(BASE + "update_substatus_imagem.php", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ imagem_ids: [imagemId], substatus_id: 10 }),
+        });
+        const json = await res.json();
+        if (json.success) {
+          item.classList.remove("rvw-selectable");
+          item.dataset.substatusId = "10";
+          item.dataset.substatusNome = "rvw_done";
+          cb.checked = false;
+          cb.disabled = true;
+          const span = item.querySelector(".entregue");
+          if (span) {
+            span.className = "entregue substatus-rvw-done";
+            span.textContent = "RVW_DONE";
+          }
+          if (entregaDados && Array.isArray(entregaDados.itens)) {
+            const found = entregaDados.itens.find((it) => parseInt(it.imagem_id, 10) === imagemId);
+            if (found) { found.substatus_id = 10; found.nome_substatus = "RVW_DONE"; }
+          }
+          updateRvwBatchBar();
+          Toastify({ text: "RVW_DONE aplicado!", duration: 2500, gravity: "top", position: "right", style: { background: "#059669" } }).showToast();
+        }
+      } catch (err) {
+        console.error("Erro ao aplicar RVW_DONE:", err);
+      }
+    });
+
+    // handler remover
+    const btnRemove = m.querySelector(".ctx-remove-img");
+    const newBtnRemove = btnRemove.cloneNode(true);
+    btnRemove.parentNode.replaceChild(newBtnRemove, btnRemove);
+    newBtnRemove.addEventListener("click", () => {
+      hideModalCtxMenu();
+      handleRemoveImagemFromEntrega(item);
+    });
+  }
+
+  function hideModalCtxMenu() {
+    const m = document.getElementById(MODAL_CTX_ID);
+    if (m) m.style.display = "none";
+  }
+
+  document.addEventListener("click", (e) => {
+    if (e.target.closest(`#${MODAL_CTX_ID}`)) return;
+    hideModalCtxMenu();
+  });
+
+  // --- REMOVER IMAGEM COM CLIQUE DIREITO (rich context menu) ---
+  async function handleRemoveImagemFromEntrega(item) {
     if (!entregaAtualId) return;
-    e.preventDefault();
     const checkbox = item.querySelector('input[type="checkbox"]');
     if (!checkbox) return;
-    const itemId = parseInt(checkbox.value, 10); // este é o id do registro em entregas_itens
-    // obter também a imagem_id armazenada nos dados, se disponível
-    let imagemId = null;
-    if (entregaDados && Array.isArray(entregaDados.itens)) {
-      const found = entregaDados.itens.find(
-        (it) => parseInt(it.id, 10) === itemId,
-      );
-      if (found) imagemId = found.imagem_id;
-    }
+    const itemId = parseInt(checkbox.value, 10);
     const nomeLabel = item.querySelector("label.imagem_nome");
-    const nomeImagem = nomeLabel
-      ? nomeLabel.textContent.trim()
-      : "Item " + itemId;
-    const confirmar = confirm(
-      `Remover a imagem "${nomeImagem}" desta entrega?`,
-    );
+    const nomeImagem = nomeLabel ? nomeLabel.textContent.trim() : "Item " + itemId;
+    const confirmar = confirm(`Remover a imagem "${nomeImagem}" desta entrega?`);
     if (!confirmar) return;
     try {
       const payload = { entrega_id: entregaAtualId, item_id: itemId };
@@ -643,25 +841,36 @@ document.addEventListener("DOMContentLoaded", () => {
         const master = document.getElementById("selectAllImagens");
         if (master) {
           const selectable = Array.from(
-            modalImagens.querySelectorAll(
-              'input[type="checkbox"]:not([disabled])',
-            ),
+            modalImagens.querySelectorAll('input[type="checkbox"]:not([disabled])'),
           ).filter((cb) => cb.id !== "selectAllImagens");
           const checkedCount = selectable.filter((cb) => cb.checked).length;
-          master.checked =
-            selectable.length > 0 && checkedCount === selectable.length;
-          master.indeterminate =
-            checkedCount > 0 && checkedCount < selectable.length;
+          master.checked = selectable.length > 0 && checkedCount === selectable.length;
+          master.indeterminate = checkedCount > 0 && checkedCount < selectable.length;
         }
+        updateRvwBatchBar();
       } else {
-        alert(
-          "Não foi possível remover: " + (json.error || "erro desconhecido"),
-        );
+        alert("Não foi possível remover: " + (json.error || "erro desconhecido"));
       }
     } catch (err) {
       console.error("Erro ao remover imagem da entrega:", err);
       alert("Falha ao remover imagem (ver console)");
     }
+  }
+
+  // Wire contextmenu to rich menu
+  modalImagens.addEventListener("contextmenu", (e) => {
+    const item = e.target.closest(".modal-imagem-item");
+    if (!item || item.classList.contains("select-all-item")) return;
+    if (!entregaAtualId) return;
+    e.preventDefault();
+    // Position menu near cursor, keep within viewport
+    const menuWidth = 230;
+    const menuHeight = 100;
+    let x = e.clientX + window.scrollX;
+    let y = e.clientY + window.scrollY;
+    if (e.clientX + menuWidth > window.innerWidth) x = e.clientX - menuWidth + window.scrollX;
+    if (e.clientY + menuHeight > window.innerHeight) y = e.clientY - menuHeight + window.scrollY;
+    showModalCtxMenu(item, x, y);
   });
 
   // --- REGISTRAR ENTREGA ---

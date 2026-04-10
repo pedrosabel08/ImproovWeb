@@ -99,6 +99,9 @@ function getStatusBadgeClass(status) {
     Reprovado: "s-reprovado",
     Refazendo: "s-refazendo",
     Erro: "s-erro",
+    RVW_DONE: "s-rvw-done",
+    PRE_ALT: "s-pre-alt",
+    READY_FOR_PLANNING: "s-ready-for-planning",
   };
   return map[status] || "s-outro";
 }
@@ -112,6 +115,9 @@ function getStatusIcon(status) {
     Reprovado: "fa-circle-xmark",
     Refazendo: "fa-rotate-right",
     Erro: "fa-circle-exclamation",
+    RVW_DONE: "fa-circle-check",
+    PRE_ALT: "fa-magnifying-glass",
+    READY_FOR_PLANNING: "fa-circle-check",
   };
   return icons[status] || "fa-circle";
 }

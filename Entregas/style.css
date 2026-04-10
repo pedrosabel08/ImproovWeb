@@ -41,6 +41,11 @@
   --status-refazendo: #f97316;
   --status-outro: #94a3b8;
 
+  /* Substatus de pré-alteração */
+  --status-rvw-done: #d97706;
+  --status-pre-alt: #7c3aed;
+  --status-ready-for-planning: #0891b2;
+
   /* Shadows */
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
@@ -462,6 +467,18 @@ body {
 .s-outro {
   background: var(--bg-count);
   color: var(--text-tertiary);
+}
+.s-rvw-done {
+  background: rgba(245, 158, 11, 0.12);
+  color: #d97706;
+}
+.s-pre-alt {
+  background: rgba(139, 92, 246, 0.12);
+  color: #7c3aed;
+}
+.s-ready-for-planning {
+  background: rgba(8, 145, 178, 0.12);
+  color: #0891b2;
 }
 
 /* imagem status inline */
@@ -1315,4 +1332,97 @@ option.colab-busy {
   .btn-clear {
     height: 36px;
   }
+}
+
+/* ===== PRÉ-ALTERAÇÃO: Modal image substatus badges ===== */
+.entregue {
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.substatus-rvw {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: rgba(79, 128, 225, 0.12);
+  color: var(--accent);
+}
+
+.substatus-rvw-done {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: rgba(245, 158, 11, 0.12);
+  color: #d97706;
+}
+
+.substatus-pre-alt {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: rgba(139, 92, 246, 0.12);
+  color: #7c3aed;
+}
+
+.substatus-ready {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+}
+
+/* Imagem com RVW: borda acento para indicar que é selecionável */
+.modal-imagem-item.rvw-selectable {
+  border-color: rgba(79, 128, 225, 0.35);
+  background: rgba(79, 128, 225, 0.04);
+}
+
+.modal-imagem-item.rvw-selectable:hover {
+  background: rgba(79, 128, 225, 0.08);
+}
+
+/* ===== PRÉ-ALTERAÇÃO: Barra batch dentro do modal ===== */
+.rvw-batch-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 18px;
+  background: var(--accent-subtle);
+  border-top: 1px solid rgba(79, 128, 225, 0.2);
+  flex-shrink: 0;
+}
+
+.rvw-batch-info {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.btn-rvw-done {
+  height: 32px;
+  padding: 0 14px;
+  background: var(--accent);
+  color: var(--text-on-accent);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background var(--transition-fast);
+  white-space: nowrap;
+}
+
+.btn-rvw-done:hover {
+  background: var(--accent-hover);
 }

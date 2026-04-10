@@ -39,6 +39,114 @@
   --status-R02: #ff4757;
   --status-EF: #3742fa;
   --status-default: #6c757d;
+
+  /* Status imagem (si-*) — cores sólidas para células de tabela */
+  --si-p00: #ffc21c;
+  --si-r00: #1cf4ff;
+  --si-r01: #ff6200;
+  --si-r02: #ff3c00;
+  --si-r03: #ff0000;
+  --si-r04: #6449ff;
+  --si-r05: #7d36f7;
+  --si-ef: #0dff00;
+  --si-hold: #ff0000;
+  --si-tea: #f7eb07;
+  --si-ren: #0c9ef2;
+  --si-apr: #0c45f2;
+  --si-app: #7d36f7;
+  --si-rvw: #228b22;
+  --si-ok: #6495ed;
+  --si-fin: #228b22;
+  --si-drv: #00f3ff;
+  --si-rvw-done: #d97706;
+  --si-pre-alt: #7c3aed;
+  --si-ready-for-planning: #0891b2;
+}
+
+/* ===== STATUS IMAGEM — células de tabela ===== */
+.si-p00 {
+  background-color: var(--si-p00);
+  color: #000;
+}
+.si-r00 {
+  background-color: var(--si-r00);
+  color: #000;
+}
+.si-r01 {
+  background-color: var(--si-r01);
+  color: #000;
+}
+.si-r02 {
+  background-color: var(--si-r02);
+  color: #000;
+}
+.si-r03 {
+  background-color: var(--si-r03);
+  color: #000;
+}
+.si-r04 {
+  background-color: var(--si-r04);
+  color: #000;
+}
+.si-r05 {
+  background-color: var(--si-r05);
+  color: #000;
+}
+.si-ef {
+  background-color: var(--si-ef);
+  color: #000;
+}
+.si-hold {
+  background-color: var(--si-hold);
+  color: #000;
+}
+.si-tea {
+  background-color: var(--si-tea);
+  color: #000;
+}
+.si-ren {
+  background-color: var(--si-ren);
+  color: #fff;
+}
+.si-apr {
+  background-color: var(--si-apr);
+  color: #fff;
+}
+.si-app {
+  background-color: var(--si-app);
+  color: #fff;
+}
+.si-rvw {
+  background-color: var(--si-rvw);
+  color: #fff;
+}
+.si-ok {
+  background-color: var(--si-ok);
+  color: #fff;
+}
+.si-to-do {
+  background-color: var(--si-ok);
+  color: #fff;
+}
+.si-fin {
+  background-color: var(--si-fin);
+  color: #fff;
+}
+.si-drv {
+  background-color: var(--si-drv);
+  color: #000;
+}
+.si-rvw-done {
+  background-color: var(--si-rvw-done);
+  color: #fff;
+}
+.si-pre-alt {
+  background-color: var(--si-pre-alt);
+  color: #fff;
+}
+.si-ready-for-planning {
+  background-color: var(--si-ready-for-planning);
+  color: #fff;
 }
 
 /* Base body uses variables for background/text so themes can override */

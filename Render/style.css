@@ -39,6 +39,11 @@
   --status-refazendo: #f97316;
   --status-outro: #94a3b8;
 
+  /* Substatus de pré-alteração */
+  --status-rvw-done: #d97706;
+  --status-pre-alt: #7c3aed;
+  --status-ready-for-planning: #0891b2;
+
   /* Botão Limpar */
   --btn-clear-border: #ffb3b3;
   --btn-clear-bg: #fff5f5;
@@ -636,6 +641,18 @@ body {
 .status-badge.s-outro {
   background: var(--bg-count);
   color: var(--text-tertiary);
+}
+.status-badge.s-rvw-done {
+  background: rgba(245, 158, 11, 0.12);
+  color: #d97706;
+}
+.status-badge.s-pre-alt {
+  background: rgba(139, 92, 246, 0.12);
+  color: #7c3aed;
+}
+.status-badge.s-ready-for-planning {
+  background: rgba(8, 145, 178, 0.12);
+  color: #0891b2;
 }
 
 .card-date {

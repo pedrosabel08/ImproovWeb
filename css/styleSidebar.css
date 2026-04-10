@@ -347,6 +347,11 @@ button#menuButton:active {
   display: none;
 }
 
+/* Color variants */
+.sidebar .sidebar-badge--green {
+  background: #10b981;
+}
+
 /* ── Modo claro via media query ────────────────────────────── */
 @media (prefers-color-scheme: light) {
   :root {

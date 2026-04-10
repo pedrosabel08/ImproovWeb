@@ -88,6 +88,11 @@ O módulo de referência é `Render/` (index.php + style.css). Toda nova tela de
   --status-refazendo: #f97316;
   --status-outro: #94a3b8;
 
+  /* Substatus de pré-alteração */
+  --status-rvw-done: #d97706;
+  --status-pre-alt: #7c3aed;
+  --status-ready-for-planning: #0891b2;
+
   /* Sombras */
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
@@ -411,6 +416,10 @@ Regra geral: sem `border`, `height: 36px`, `border-radius: var(--radius-sm)`, `f
 <span class="status-badge s-reprovado">Reprovado</span>
 <span class="status-badge s-refazendo">Refazendo</span>
 <span class="status-badge s-outro">Outro</span>
+<!-- Substatus de pré-alteração -->
+<span class="status-badge s-rvw-done">RVW_DONE</span>
+<span class="status-badge s-pre-alt">PRE_ALT</span>
+<span class="status-badge s-ready-for-planning">READY_FOR_PLANNING</span>
 ```
 
 ```css
@@ -450,7 +459,78 @@ Regra geral: sem `border`, `height: 36px`, `border-radius: var(--radius-sm)`, `f
   background: var(--bg-count);
   color: var(--text-tertiary);
 }
+/* Substatus de pré-alteração (IDs 10, 11, 12) */
+.s-rvw-done {
+  background: rgba(245, 158, 11, 0.12);
+  color: #d97706;
+}
+.s-pre-alt {
+  background: rgba(139, 92, 246, 0.12);
+  color: #7c3aed;
+}
+.s-ready-for-planning {
+  background: rgba(8, 145, 178, 0.12);
+  color: #0891b2;
+}
 ```
+
+> **Tabela canônica de status** (badges translúcidos — `s-*`)
+>
+> | Status | CSS var | Cor (hex) | Classe badge |
+> |---|---|---|---|
+> | Finalizado | `--status-finalizado` | `#10b981` | `s-finalizado` |
+> | Em Andamento | `--status-andamento` | `#f59e0b` | `s-andamento` |
+> | Em Aprovação | `--status-aprovacao` | `#8b5cf6` | `s-aprovacao` |
+> | Reprovado | `--status-reprovado` | `#ef4444` | `s-reprovado` |
+> | Refazendo | `--status-refazendo` | `#f97316` | `s-refazendo` |
+> | Outro | `--status-outro` | `#94a3b8` | `s-outro` |
+> | RVW_DONE | `--status-rvw-done` | `#d97706` | `s-rvw-done` |
+> | PRE_ALT | `--status-pre-alt` | `#7c3aed` | `s-pre-alt` |
+> | READY_FOR_PLANNING | `--status-ready-for-planning` | `#0891b2` | `s-ready-for-planning` |
+
+---
+
+## Status Imagem — células de tabela (`si-*`)
+
+Usados por `applyStatusImagem()` / `modalApplyStatusImagem()` para colorir células `<td>`.  
+As classes usam fundo sólido (não translúcido). Aplique via `cell.classList.add(cls)`.
+
+```css
+/* CSS vars declaradas em styleObra.css e styleIndex.css */
+--si-p00: #ffc21c;   --si-r00: #1cf4ff;   --si-r01: #ff6200;
+--si-r02: #ff3c00;   --si-r03: #ff0000;   --si-r04: #6449ff;
+--si-r05: #7d36f7;   --si-ef: #0dff00;    --si-hold: #ff0000;
+--si-tea: #f7eb07;   --si-ren: #0c9ef2;   --si-apr: #0c45f2;
+--si-app: #7d36f7;   --si-rvw: #228b22;   --si-ok: #6495ed;
+--si-fin: #228b22;   --si-drv: #00f3ff;
+--si-rvw-done: #d97706;  --si-pre-alt: #7c3aed;  --si-ready-for-planning: #0891b2;
+```
+
+> **Tabela canônica de status imagem** (`si-*`)
+>
+> | Status | Classe | Background | Texto |
+> |---|---|---|---|
+> | P00 | `si-p00` | `#ffc21c` | preto |
+> | R00 | `si-r00` | `#1cf4ff` | preto |
+> | R01 | `si-r01` | `#ff6200` | preto |
+> | R02 | `si-r02` | `#ff3c00` | preto |
+> | R03 | `si-r03` | `#ff0000` | preto |
+> | R04 | `si-r04` | `#6449ff` | preto |
+> | R05 | `si-r05` | `#7d36f7` | preto |
+> | EF | `si-ef` | `#0dff00` | preto |
+> | HOLD | `si-hold` | `#ff0000` | preto |
+> | TEA | `si-tea` | `#f7eb07` | preto |
+> | REN | `si-ren` | `#0c9ef2` | branco |
+> | APR | `si-apr` | `#0c45f2` | branco |
+> | APP | `si-app` | `#7d36f7` | branco |
+> | RVW | `si-rvw` | `#228b22` | branco |
+> | OK | `si-ok` | `#6495ed` | branco |
+> | TO-DO | `si-to-do` | `#6495ed` | branco |
+> | FIN | `si-fin` | `#228b22` | branco |
+> | DRV | `si-drv` | `#00f3ff` | preto |
+> | RVW_DONE | `si-rvw-done` | `#d97706` | branco |
+> | PRE_ALT | `si-pre-alt` | `#7c3aed` | branco |
+> | READY_FOR_PLANNING | `si-ready-for-planning` | `#0891b2` | branco |
 
 ---
 

@@ -4060,11 +4060,14 @@ function infosObra(obraId) {
 
         const infos = Array.isArray(data.infos) ? data.infos : [];
         if (infos.length === 0) {
-          cardList.innerHTML = '<p class="obs-empty">Nenhuma instrução cadastrada.</p>';
+          cardList.innerHTML =
+            '<p class="obs-empty">Nenhuma instrução cadastrada.</p>';
           return;
         }
 
-        const isAdmin = [1, 2, 9].includes(Number(localStorage.getItem("usuarioId")));
+        const isAdmin = [1, 2, 9].includes(
+          Number(localStorage.getItem("usuarioId")),
+        );
 
         infos.forEach((info) => {
           const card = document.createElement("div");
@@ -4080,14 +4083,17 @@ function infosObra(obraId) {
           `;
 
           if (isAdmin) {
-            card.querySelector(".obs-card-edit").addEventListener("click", function (e) {
-              e.stopPropagation();
-              document.getElementById("descricaoId").value = info.id;
-              document.getElementById("desc").value = info.descricao;
-              const deleteObs = document.getElementById("deleteObs");
-              deleteObs.setAttribute("data-id", info.id);
-              document.getElementById("modalObservacao").style.display = "block";
-            });
+            card
+              .querySelector(".obs-card-edit")
+              .addEventListener("click", function (e) {
+                e.stopPropagation();
+                document.getElementById("descricaoId").value = info.id;
+                document.getElementById("desc").value = info.descricao;
+                const deleteObs = document.getElementById("deleteObs");
+                deleteObs.setAttribute("data-id", info.id);
+                document.getElementById("modalObservacao").style.display =
+                  "block";
+              });
           }
 
           cardList.appendChild(card);
@@ -4098,9 +4104,9 @@ function infosObra(obraId) {
           animation: 150,
           handle: ".obs-card",
           onEnd: function () {
-            const novaOrdem = Array.from(cardList.querySelectorAll(".obs-card")).map(
-              (c) => c.getAttribute("data-id")
-            );
+            const novaOrdem = Array.from(
+              cardList.querySelectorAll(".obs-card"),
+            ).map((c) => c.getAttribute("data-id"));
             fetch("atualizarOrdem.php", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -4109,7 +4115,9 @@ function infosObra(obraId) {
               .then((r) => r.json())
               .then((res) => {
                 Toastify({
-                  text: res.success ? "Ordem atualizada!" : "Erro ao atualizar ordem.",
+                  text: res.success
+                    ? "Ordem atualizada!"
+                    : "Erro ao atualizar ordem.",
                   duration: 3000,
                   gravity: "top",
                   position: "right",
@@ -4117,7 +4125,13 @@ function infosObra(obraId) {
                 }).showToast();
               })
               .catch(() => {
-                Toastify({ text: "Erro ao atualizar ordem.", duration: 3000, gravity: "top", position: "right", backgroundColor: "#f44336" }).showToast();
+                Toastify({
+                  text: "Erro ao atualizar ordem.",
+                  duration: 3000,
+                  gravity: "top",
+                  position: "right",
+                  backgroundColor: "#f44336",
+                }).showToast();
               });
           },
         });
@@ -4789,85 +4803,49 @@ function navegar(direcao) {
 const tooltip = document.getElementById("tooltip");
 
 function applyStatusImagem(cell, status, descricao = "") {
-  switch (status) {
-    case "P00":
-      cell.style.backgroundColor = "#ffc21c";
-      break;
-    case "R00":
-      cell.style.backgroundColor = "#1cf4ff";
-      break;
-    case "R01":
-      cell.style.backgroundColor = "#ff6200";
-      break;
-    case "R02":
-      cell.style.backgroundColor = "#ff3c00";
-      break;
-    case "R03":
-      cell.style.backgroundColor = "#ff0000";
-      break;
-    case "R04":
-      cell.style.backgroundColor = "#6449ffff";
-      break;
-    case "R05":
-      cell.style.backgroundColor = "#7d36f7";
-      break;
-    case "EF":
-      cell.style.backgroundColor = "#0dff00";
-      break;
-    case "HOLD":
-      cell.style.backgroundColor = "#ff0000";
-      cell.classList.add("tool"); // Adiciona a classe tooltip
-      cell.addEventListener("mouseenter", (event) => {
-        tooltip.textContent =
-          descricao && String(descricao).trim()
-            ? descricao
-            : "HOLD sem justificativa cadastrada.";
-        tooltip.style.display = "block";
-        tooltip.style.left = event.clientX + "px";
-        tooltip.style.top = event.clientY - 30 + "px";
-      });
-
-      cell.addEventListener("mouseleave", () => {
-        tooltip.style.display = "none";
-      });
-
-      cell.addEventListener("mousemove", (event) => {
-        tooltip.style.left = event.clientX + "px";
-        tooltip.style.top = event.clientY - 30 + "px";
-      });
-      break;
-    case "TEA":
-      cell.style.backgroundColor = "#f7eb07";
-      break;
-    case "REN":
-      cell.style.backgroundColor = "#0c9ef2";
-      break;
-    case "APR":
-      cell.style.backgroundColor = "#0c45f2";
-      cell.style.color = "white";
-      break;
-    case "APP":
-      cell.style.backgroundColor = "#7d36f7";
-    case "RVW":
-      cell.style.backgroundColor = "green";
-      cell.style.color = "white";
-      break;
-    case "OK":
-      cell.style.backgroundColor = "cornflowerblue";
-      cell.style.color = "white";
-      break;
-    case "TO-DO":
-      cell.style.backgroundColor = "cornflowerblue";
-      cell.style.color = "white";
-      break;
-    case "FIN":
-      cell.style.backgroundColor = "green";
-      cell.style.color = "white";
-      break;
-    case "DRV":
-      cell.style.backgroundColor = "#00f3ff";
-      cell.style.color = "black";
-      break;
+  const classMap = {
+    P00: "si-p00",
+    R00: "si-r00",
+    R01: "si-r01",
+    R02: "si-r02",
+    R03: "si-r03",
+    R04: "si-r04",
+    R05: "si-r05",
+    EF: "si-ef",
+    HOLD: "si-hold",
+    TEA: "si-tea",
+    REN: "si-ren",
+    APR: "si-apr",
+    APP: "si-app",
+    RVW: "si-rvw",
+    OK: "si-ok",
+    "TO-DO": "si-to-do",
+    FIN: "si-fin",
+    DRV: "si-drv",
+    RVW_DONE: "si-rvw-done",
+    PRE_ALT: "si-pre-alt",
+    READY_FOR_PLANNING: "si-ready-for-planning",
+  };
+  const cls = classMap[status];
+  if (cls) cell.classList.add(cls);
+  if (status === "HOLD") {
+    cell.classList.add("tool");
+    cell.addEventListener("mouseenter", (event) => {
+      tooltip.textContent =
+        descricao && String(descricao).trim()
+          ? descricao
+          : "HOLD sem justificativa cadastrada.";
+      tooltip.style.display = "block";
+      tooltip.style.left = event.clientX + "px";
+      tooltip.style.top = event.clientY - 30 + "px";
+    });
+    cell.addEventListener("mouseleave", () => {
+      tooltip.style.display = "none";
+    });
+    cell.addEventListener("mousemove", (event) => {
+      tooltip.style.left = event.clientX + "px";
+      tooltip.style.top = event.clientY - 30 + "px";
+    });
   }
 }
 
@@ -7597,7 +7575,10 @@ window.__briefingDebounceMap = {};
 
 function salvarNoBancoSilent(campo, valor, obraId, siId) {
   const si = document.getElementById(siId);
-  if (si) { si.textContent = "⏳"; si.className = "campo-si saving"; }
+  if (si) {
+    si.textContent = "⏳";
+    si.className = "campo-si saving";
+  }
   fetch("salvar.php", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -7608,13 +7589,20 @@ function salvarNoBancoSilent(campo, valor, obraId, siId) {
       if (si) {
         si.textContent = data.sucesso ? "✓" : "✗";
         si.className = "campo-si " + (data.sucesso ? "saved" : "error");
-        setTimeout(() => { si.textContent = ""; si.className = "campo-si"; }, 2200);
+        setTimeout(() => {
+          si.textContent = "";
+          si.className = "campo-si";
+        }, 2200);
       }
     })
     .catch(() => {
       if (si) {
-        si.textContent = "✗"; si.className = "campo-si error";
-        setTimeout(() => { si.textContent = ""; si.className = "campo-si"; }, 2200);
+        si.textContent = "✗";
+        si.className = "campo-si error";
+        setTimeout(() => {
+          si.textContent = "";
+          si.className = "campo-si";
+        }, 2200);
       }
     });
 }
@@ -7622,16 +7610,27 @@ function salvarNoBancoSilent(campo, valor, obraId, siId) {
 (function initInfosObraUI() {
   // --- Tabs ---
   const tabs = document.querySelectorAll("#secao-infos-obra .info-tab");
-  const contents = document.querySelectorAll("#secao-infos-obra .info-tab-content");
+  const contents = document.querySelectorAll(
+    "#secao-infos-obra .info-tab-content",
+  );
   tabs.forEach((tab) => {
     tab.addEventListener("click", function () {
       const target = this.dataset.tab;
-      tabs.forEach((t) => { t.classList.remove("is-active"); t.setAttribute("aria-selected", "false"); });
-      contents.forEach((c) => { c.classList.remove("is-active"); c.style.display = "none"; });
+      tabs.forEach((t) => {
+        t.classList.remove("is-active");
+        t.setAttribute("aria-selected", "false");
+      });
+      contents.forEach((c) => {
+        c.classList.remove("is-active");
+        c.style.display = "none";
+      });
       this.classList.add("is-active");
       this.setAttribute("aria-selected", "true");
       const panel = document.getElementById("tab-" + target);
-      if (panel) { panel.classList.add("is-active"); panel.style.display = ""; }
+      if (panel) {
+        panel.classList.add("is-active");
+        panel.style.display = "";
+      }
     });
   });
 
@@ -7644,7 +7643,8 @@ function salvarNoBancoSilent(campo, valor, obraId, siId) {
       const expanded = this.getAttribute("aria-expanded") === "true";
       this.setAttribute("aria-expanded", String(!expanded));
       if (body) body.style.display = expanded ? "none" : "";
-      if (chevron) chevron.style.transform = expanded ? "rotate(-90deg)" : "rotate(0deg)";
+      if (chevron)
+        chevron.style.transform = expanded ? "rotate(-90deg)" : "rotate(0deg)";
     });
   });
 
@@ -7658,13 +7658,16 @@ function salvarNoBancoSilent(campo, valor, obraId, siId) {
       const isEditing = input.classList.contains("is-editing");
       if (isEditing) {
         // cancel: restore original value
-        input.value = (span.textContent === "—") ? "" : span.textContent;
+        input.value = span.textContent === "—" ? "" : span.textContent;
         input.classList.remove("is-editing");
         span.style.display = "";
         this.innerHTML = '<i class="fa-solid fa-pencil"></i>';
         this.title = "Editar";
         const si = document.getElementById("si-" + fieldId);
-        if (si) { si.textContent = ""; si.className = "campo-si"; }
+        if (si) {
+          si.textContent = "";
+          si.className = "campo-si";
+        }
       } else {
         input.classList.add("is-editing");
         span.style.display = "none";
@@ -7698,10 +7701,18 @@ function salvarNoBancoSilent(campo, valor, obraId, siId) {
         const v = this.value.trim();
         salvarNoBancoSilent(this.name || fieldId, v, obraId, siId);
         const sp = document.getElementById(valSpanId);
-        if (sp) { sp.textContent = v || "—"; sp.style.display = ""; }
+        if (sp) {
+          sp.textContent = v || "—";
+          sp.style.display = "";
+        }
         this.classList.remove("is-editing");
-        const editBtn = document.querySelector(`.campo-edit-btn[data-target="${fieldId}"]`);
-        if (editBtn) { editBtn.innerHTML = '<i class="fa-solid fa-pencil"></i>'; editBtn.title = "Editar"; }
+        const editBtn = document.querySelector(
+          `.campo-edit-btn[data-target="${fieldId}"]`,
+        );
+        if (editBtn) {
+          editBtn.innerHTML = '<i class="fa-solid fa-pencil"></i>';
+          editBtn.title = "Editar";
+        }
       }
     });
 
@@ -7711,10 +7722,18 @@ function salvarNoBancoSilent(campo, valor, obraId, siId) {
       const v = this.value.trim();
       salvarNoBancoSilent(this.name || fieldId, v, obraId, siId);
       const sp = document.getElementById(valSpanId);
-      if (sp) { sp.textContent = v || "—"; sp.style.display = ""; }
+      if (sp) {
+        sp.textContent = v || "—";
+        sp.style.display = "";
+      }
       this.classList.remove("is-editing");
-      const editBtn = document.querySelector(`.campo-edit-btn[data-target="${fieldId}"]`);
-      if (editBtn) { editBtn.innerHTML = '<i class="fa-solid fa-pencil"></i>'; editBtn.title = "Editar"; }
+      const editBtn = document.querySelector(
+        `.campo-edit-btn[data-target="${fieldId}"]`,
+      );
+      if (editBtn) {
+        editBtn.innerHTML = '<i class="fa-solid fa-pencil"></i>';
+        editBtn.title = "Editar";
+      }
     });
   });
 

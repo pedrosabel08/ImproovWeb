@@ -5227,92 +5227,48 @@ function modalNormalizeFilterValue(value) {
 
 // --- Status colors (imagem) ---
 function modalApplyStatusImagem(cell, status, descricao) {
-  switch (status) {
-    case "P00":
-      cell.style.backgroundColor = "#ffc21c";
-      cell.style.color = "black";
-      break;
-    case "R00":
-      cell.style.backgroundColor = "#1cf4ff";
-      cell.style.color = "black";
-      break;
-    case "R01":
-      cell.style.backgroundColor = "#ff6200";
-      cell.style.color = "black";
-      break;
-    case "R02":
-      cell.style.backgroundColor = "#ff3c00";
-      cell.style.color = "black";
-      break;
-    case "R03":
-      cell.style.backgroundColor = "#ff0000";
-      cell.style.color = "black";
-      break;
-    case "R04":
-      cell.style.backgroundColor = "#6449ff";
-      cell.style.color = "black";
-      break;
-    case "R05":
-      cell.style.backgroundColor = "#7d36f7";
-      cell.style.color = "black";
-      break;
-    case "EF":
-      cell.style.backgroundColor = "#0dff00";
-      cell.style.color = "black";
-      break;
-    case "HOLD":
-      cell.style.backgroundColor = "#ff0000";
-      cell.addEventListener("mouseenter", (event) => {
-        modalTooltip.textContent =
-          descricao && String(descricao).trim()
-            ? descricao
-            : "HOLD sem justificativa cadastrada.";
-        modalTooltip.style.display = "block";
-        modalTooltip.style.left = event.clientX + "px";
-        modalTooltip.style.top = event.clientY - 30 + "px";
-      });
-      cell.addEventListener("mouseleave", () => {
-        modalTooltip.style.display = "none";
-      });
-      cell.addEventListener("mousemove", (event) => {
-        modalTooltip.style.left = event.clientX + "px";
-        modalTooltip.style.top = event.clientY - 30 + "px";
-      });
-      break;
-    case "TEA":
-      cell.style.backgroundColor = "#f7eb07";
-      cell.style.color = "black";
-      break;
-    case "REN":
-      cell.style.backgroundColor = "#0c9ef2";
-      break;
-    case "APR":
-      cell.style.backgroundColor = "#0c45f2";
-      cell.style.color = "white";
-      break;
-    case "APP":
-      cell.style.backgroundColor = "#7d36f7";
-      break;
-    case "RVW":
-      cell.style.backgroundColor = "green";
-      cell.style.color = "white";
-      break;
-    case "OK":
-      cell.style.backgroundColor = "cornflowerblue";
-      cell.style.color = "white";
-      break;
-    case "TO-DO":
-      cell.style.backgroundColor = "cornflowerblue";
-      cell.style.color = "white";
-      break;
-    case "FIN":
-      cell.style.backgroundColor = "green";
-      cell.style.color = "white";
-      break;
-    case "DRV":
-      cell.style.backgroundColor = "#00f3ff";
-      cell.style.color = "black";
-      break;
+  const classMap = {
+    P00: "si-p00",
+    R00: "si-r00",
+    R01: "si-r01",
+    R02: "si-r02",
+    R03: "si-r03",
+    R04: "si-r04",
+    R05: "si-r05",
+    EF: "si-ef",
+    HOLD: "si-hold",
+    TEA: "si-tea",
+    REN: "si-ren",
+    APR: "si-apr",
+    APP: "si-app",
+    RVW: "si-rvw",
+    OK: "si-ok",
+    "TO-DO": "si-to-do",
+    FIN: "si-fin",
+    DRV: "si-drv",
+    RVW_DONE: "si-rvw-done",
+    PRE_ALT: "si-pre-alt",
+    READY_FOR_PLANNING: "si-ready-for-planning",
+  };
+  const cls = classMap[status];
+  if (cls) cell.classList.add(cls);
+  if (status === "HOLD") {
+    cell.addEventListener("mouseenter", (event) => {
+      modalTooltip.textContent =
+        descricao && String(descricao).trim()
+          ? descricao
+          : "HOLD sem justificativa cadastrada.";
+      modalTooltip.style.display = "block";
+      modalTooltip.style.left = event.clientX + "px";
+      modalTooltip.style.top = event.clientY - 30 + "px";
+    });
+    cell.addEventListener("mouseleave", () => {
+      modalTooltip.style.display = "none";
+    });
+    cell.addEventListener("mousemove", (event) => {
+      modalTooltip.style.left = event.clientX + "px";
+      modalTooltip.style.top = event.clientY - 30 + "px";
+    });
   }
 }
 

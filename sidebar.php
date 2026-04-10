@@ -58,6 +58,10 @@ $__basePath = (strpos($__reqUri, '/flow/ImproovWeb/') !== false || preg_match('~
                 <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 3)): ?>
                     <li><a title="Flow Drive" href="https://improov.com.br/flow/ImproovWeb/FlowDrive"><i
                                 class="fas fa-file"></i><span> Flow Drive</span></a></li>
+                    <li><a title="Pré-Alteração" href="https://improov.com.br/flow/ImproovWeb/PreAlteracao"><i
+                                class="fa-solid fa-magnifying-glass-chart"></i><span> Pré-Alteração</span>
+                            <span class="sidebar-badge" data-module="pre_alt_analise" aria-hidden="true"></span>
+                        </a></li>
                     <!-- <li><a title="Infos Cliente" href="https://improov.com.br/flow/ImproovWeb/infoCliente"><i class="fas fa-chart-line"></i><span> Infos Cliente</span></a></li> -->
                 <?php endif; ?>
                 <?php if (isset($_SESSION['nivel_acesso']) && ($_SESSION['nivel_acesso'] == 1 || $_SESSION['nivel_acesso'] == 4)): ?>
@@ -79,10 +83,6 @@ $__basePath = (strpos($__reqUri, '/flow/ImproovWeb/') !== false || preg_match('~
                     <li><a title="Entregas" href="https://improov.com.br/flow/ImproovWeb/Entregas"><i
                                 class="fa-solid fa-truck-fast"></i><span> Entregas</span><span class="sidebar-badge"
                                 data-module="entregas" aria-hidden="true"></span></a></li>
-                    <li><a title="Pré-Alteração" href="https://improov.com.br/flow/ImproovWeb/PreAlteracao"><i
-                                class="fa-solid fa-magnifying-glass-chart"></i><span> Pré-Alteração</span>
-                                <span class="sidebar-badge" data-module="pre_alt_analise" aria-hidden="true"></span>
-                            </a></li>
                     <!-- <li><a title="Gestão" href="https://improov.com.br/flow/ImproovWeb/Gestao"><i class="fa-solid fa-diagram-project"></i><span> Gestão</span></a></li> -->
                 <?php endif; ?>
             </ul>
@@ -203,7 +203,7 @@ $__basePath = (strpos($__reqUri, '/flow/ImproovWeb/') !== false || preg_match('~
     // - No deploy, o servidor muda APP_VERSION (cache/deploy_version.txt)
     // - Toda página (via sidebar) compara a versão do servidor com a do navegador
     // - Se mudou, força um reload “limpo” alterando a URL com um param _v
-    (function () {
+    (function() {
         try {
             if (!window.fetch || !window.localStorage || !window.sessionStorage) return;
 
@@ -223,18 +223,18 @@ $__basePath = (strpos($__reqUri, '/flow/ImproovWeb/') !== false || preg_match('~
             var endpoint = window.location.origin + basePath + 'system_version.php';
 
             fetch(endpoint, {
-                method: 'GET',
-                cache: 'no-store',
-                credentials: 'same-origin',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            })
-                .then(function (resp) {
+                    method: 'GET',
+                    cache: 'no-store',
+                    credentials: 'same-origin',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(function(resp) {
                     if (!resp.ok) throw new Error('bad');
                     return resp.json();
                 })
-                .then(function (data) {
+                .then(function(data) {
                     if (!data || !data.ok || !data.version) return;
 
                     var current = String(data.version);
@@ -256,7 +256,7 @@ $__basePath = (strpos($__reqUri, '/flow/ImproovWeb/') !== false || preg_match('~
                         window.location.replace(url.toString());
                     }
                 })
-                .catch(function () {
+                .catch(function() {
                     // Se falhar, não quebra a navegação
                 });
         } catch (e) {
@@ -267,7 +267,7 @@ $__basePath = (strpos($__reqUri, '/flow/ImproovWeb/') !== false || preg_match('~
 
 <script>
     // Envia o title e url ao servidor para registrar histórico com título amigável
-    (function () {
+    (function() {
         try {
             if (!window.fetch) return;
             const payload = new FormData();

@@ -6775,7 +6775,7 @@ const btnAcomp = document.getElementById("acomp");
 if (btnAcomp) {
   btnAcomp.addEventListener("click", function () {
     // show the modal to add a new acompanhamento
-    if (modal) modal.style.display = "block";
+    if (modal) modal.style.display = "flex";
   });
 }
 
@@ -7199,6 +7199,10 @@ document.getElementById("saveObs").addEventListener("click", function (e) {
 document.getElementById("closeObsModal").addEventListener("click", function () {
   modalObs.style.display = "none";
   limparCamposFormulario();
+});
+
+document.getElementById("closeAcompModal").addEventListener("click", function () {
+  modal.style.display = "none";
 });
 
 document.getElementById("deleteObs").addEventListener("click", function (e) {

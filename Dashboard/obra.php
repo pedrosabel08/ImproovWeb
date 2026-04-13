@@ -1068,46 +1068,45 @@ $conn->close();
 
 
         <div id="modalAcompanhamento" class="modal">
-            <div class="modal-content" style="width: 500px;">
-                <h2 style="margin-bottom: 30px;">Acompanhamento por Email</h2>
-                <div id="acompanhamentoConteudo">
-                    <form id="adicionar_acomp">
-                        <div class="radioButtons" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                            <label><input type="radio" name="acompanhamento" value="Start do Projeto"> Start do
-                                Projeto</label>
-                            <label><input type="radio" name="acompanhamento" value="Prazo de dias úteis (45 dias)">
-                                Prazo de dias úteis (45 dias)</label>
-                            <label><input type="radio" name="acompanhamento" value="Recebimento de arquivos">
-                                Recebimento de arquivos</label>
-                            <label><input type="radio" name="acompanhamento" value="Prazo com a entrega (30/01)"> Prazo
-                                com a entrega (30/01)</label>
-                            <label><input type="radio" name="acompanhamento"
-                                    value="Projeto pausado aguardando aprovação do cliente.">Projeto pausado aguardando
-                                aprovação do cliente.</label>
-                            <label><input type="radio" name="acompanhamento" value="Enviado os toons da fachada">Enviado
-                                os toons da fachada</label>
-                            <label><input type="radio" name="acompanhamento" value="Enviado imagens prévias"> Enviado
-                                imagens prévias</label>
-                        </div>
+            <div class="obs-modal-box">
+                <div class="obs-modal-header">
+                    <div class="obs-modal-title">
+                        <i class="fa-solid fa-envelope obs-modal-icon"></i>
+                        <span>Acompanhamento</span>
+                    </div>
+                    <button type="button" class="obs-modal-close" id="closeAcompModal" aria-label="Fechar">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
 
+                <div class="obs-modal-body">
+                    <div id="acompanhamentoConteudo">
+                        <form id="adicionar_acomp">
+                            <div class="radioButtons" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px;">
+                                <label><input type="radio" name="acompanhamento" value="Start do Projeto"> Start do Projeto</label>
+                                <label><input type="radio" name="acompanhamento" value="Prazo de dias úteis (45 dias)"> Prazo de dias úteis (45 dias)</label>
+                                <label><input type="radio" name="acompanhamento" value="Recebimento de arquivos"> Recebimento de arquivos</label>
+                                <label><input type="radio" name="acompanhamento" value="Prazo com a entrega (30/01)"> Prazo com a entrega (30/01)</label>
+                                <label><input type="radio" name="acompanhamento" value="Projeto pausado aguardando aprovação do cliente.">Projeto pausado aguardando aprovação do cliente.</label>
+                                <label><input type="radio" name="acompanhamento" value="Enviado os toons da fachada">Enviado os toons da fachada</label>
+                                <label><input type="radio" name="acompanhamento" value="Enviado imagens prévias"> Enviado imagens prévias</label>
+                            </div>
 
-                        <!-- Campo de assunto -->
-                        <div id="campo">
-                            <label for="assunto">Assunto:</label>
-                            <textarea name="assunto" id="assunto" name="assunto" style="width: 50%;"
-                                required></textarea>
-                        </div>
+                            <!-- Campo de assunto -->
+                            <label class="obs-modal-label" for="assunto">Assunto</label>
+                            <textarea name="assunto" id="assunto" class="obs-modal-textarea" placeholder="Descreva o assunto..." rows="3" required></textarea>
 
-                        <!-- Campo de data -->
-                        <div id="campo">
-                            <label for="data">Data:</label>
-                            <input type="date" name="data_acomp" id="data_acomp" required>
-                        </div>
+                            <!-- Campo de data -->
+                            <label class="obs-modal-label" for="data_acomp" style="margin-top: 12px;">Data</label>
+                            <input type="date" name="data_acomp" id="data_acomp" class="obs-modal-textarea" style="height: 36px; padding: 0 10px;" required>
+                        </form>
+                    </div>
+                </div>
 
-                        <!-- Botão para enviar -->
-                        <button type="submit" id="add-acomp" style="width: max-content;margin: auto;">Adicionar
-                            Acompanhamento</button>
-                    </form>
+                <div class="obs-modal-footer">
+                    <button type="submit" form="adicionar_acomp" id="add-acomp" class="obs-btn obs-btn-primary">
+                        <i class="fa-solid fa-paper-plane"></i> Adicionar Acompanhamento
+                    </button>
                 </div>
             </div>
         </div>

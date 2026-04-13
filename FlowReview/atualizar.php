@@ -463,6 +463,61 @@ try {
   }
   // ==== END PENDENTE DIREÇÃO ====
 
+  // ==== SLA DATA ====
+  // Inject SLA limit (hours) per function and the timestamp when each task
+  // last entered "Em aprovação" so the frontend can render live timers.
+  $slaLimites = [];
+  try {
+    $slaRes = $conn->query('SELECT funcao_id, limite_horas FROM sla_funcao');
+    if ($slaRes) {
+      while ($slaRow = $slaRes->fetch_assoc()) {
+        $slaLimites[(int)$slaRow['funcao_id']] = (int)$slaRow['limite_horas'];
+      }
+    }
+  } catch (Exception $exSla) { /* sla_funcao table not yet created — skip */
+  }
+
+  if (!empty($slaLimites)) {
+    // Collect IDs of tasks currently in "Em aprovação"
+    $idsAprovacao = [];
+    foreach ($tarefas as $t) {
+      if ($t['status'] === 'Em aprovação') {
+        $idsAprovacao[] = (int)$t['idfuncao_imagem'];
+      }
+    }
+
+    $slaInicios = [];
+    if (!empty($idsAprovacao)) {
+      $inSla = implode(',', $idsAprovacao);
+      $slaInicioRes = $conn->query(
+        "SELECT funcao_imagem_id, data_aprovacao
+         FROM historico_aprovacoes
+         WHERE funcao_imagem_id IN ($inSla)
+           AND status_novo = 'Em aprovação'
+         ORDER BY funcao_imagem_id ASC, data_aprovacao DESC"
+      );
+      if ($slaInicioRes) {
+        while ($slaRow = $slaInicioRes->fetch_assoc()) {
+          $fid = (int)$slaRow['funcao_imagem_id'];
+          if (!isset($slaInicios[$fid])) { // keep only the most recent entry
+            $slaInicios[$fid] = $slaRow['data_aprovacao'];
+          }
+        }
+      }
+    }
+
+    foreach ($tarefas as &$t) {
+      $funcaoId = (int)$t['funcao_id'];
+      $fimId    = (int)$t['idfuncao_imagem'];
+      $t['sla_limite_horas'] = $slaLimites[$funcaoId] ?? null;
+      $t['sla_inicio']       = ($t['status'] === 'Em aprovação')
+        ? ($slaInicios[$fimId] ?? null)
+        : null;
+    }
+    unset($t);
+  }
+  // ==== END SLA DATA ====
+
   // Retornar os resultados no formato JSON
   echo json_encode($tarefas);
 

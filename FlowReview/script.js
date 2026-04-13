@@ -578,6 +578,19 @@ async function loadMetrics() {
       card.appendChild(avg);
       card.appendChild(total);
 
+      // SLA breach count indicator
+      if (row.sla_limite_horas) {
+        const slaInfo = document.createElement("div");
+        slaInfo.style.marginTop = "4px";
+        slaInfo.style.fontSize = "11px";
+        if (row.em_breach > 0) {
+          slaInfo.innerHTML = `<span style="color:#ef4444;font-weight:700;">⚠ ${row.em_breach} acima do SLA (${row.sla_limite_horas}h)</span>`;
+        } else {
+          slaInfo.innerHTML = `<span style="color:#10b981;">✓ SLA OK (${row.sla_limite_horas}h)</span>`;
+        }
+        card.appendChild(slaInfo);
+      }
+
       grid.appendChild(card);
     });
 
@@ -987,6 +1000,28 @@ function exibirTarefas(tarefas, tarefasCompletas) {
         taskItem.appendChild(dirBadge);
       }
 
+      // SLA timer badge — only for tasks in "Em aprovação" with SLA data
+      if (
+        tarefa.status_novo === "Em aprovação" &&
+        tarefa.sla_inicio &&
+        tarefa.sla_limite_horas
+      ) {
+        const slaBadge = document.createElement("div");
+        slaBadge.classList.add("sla-timer");
+        slaBadge.dataset.slaInicio = tarefa.sla_inicio;
+        slaBadge.dataset.slaLimite = tarefa.sla_limite_horas;
+        const { expirado, texto } = calcSlaTimer(
+          tarefa.sla_inicio,
+          tarefa.sla_limite_horas,
+        );
+        slaBadge.textContent = texto;
+        if (expirado) slaBadge.classList.add("sla-breach");
+        slaBadge.title = expirado
+          ? `SLA excedido! Limite: ${tarefa.sla_limite_horas}h`
+          : `Em aprovação há ${texto.replace("⏱ ", "")} (limite: ${tarefa.sla_limite_horas}h)`;
+        taskItem.appendChild(slaBadge);
+      }
+
       tarefasImagensObra.appendChild(taskItem);
     });
   } else {
@@ -999,6 +1034,42 @@ function formatarData(data) {
   const [ano, mes, dia] = data.split("-"); // Divide a string no formato 'YYYY-MM-DD'
   return `${dia}/${mes}/${ano}`; // Retorna o formato 'DD/MM/YYYY'
 }
+
+/**
+ * Calculates how long a task has been in "Em aprovação" and whether it
+ * has exceeded its SLA limit.
+ *
+ * @param {string} inicio       – MySQL datetime string (YYYY-MM-DD HH:MM:SS)
+ * @param {number} limiteHoras  – SLA limit in hours
+ * @returns {{ expirado: boolean, texto: string, horasDecorridas: number }}
+ */
+function calcSlaTimer(inicio, limiteHoras) {
+  const inicioDate = new Date(String(inicio).replace(" ", "T"));
+  const horasDecorridas = (Date.now() - inicioDate.getTime()) / 36e5;
+  const expirado = horasDecorridas >= limiteHoras;
+  const h = Math.floor(horasDecorridas);
+  const m = Math.floor((horasDecorridas % 1) * 60);
+  const texto = expirado
+    ? `⚠ ${h}h${String(m).padStart(2, "0")}`
+    : `⏱ ${h}h${String(m).padStart(2, "0")}`;
+  return { expirado, texto, horasDecorridas };
+}
+
+// Live-update all visible SLA timer badges every 60 seconds
+setInterval(() => {
+  document.querySelectorAll(".sla-timer[data-sla-inicio]").forEach((el) => {
+    const inicio = el.dataset.slaInicio;
+    const limite = parseFloat(el.dataset.slaLimite);
+    if (!inicio || !limite) return;
+    const { expirado, texto } = calcSlaTimer(inicio, limite);
+    el.textContent = texto;
+    el.title = expirado
+      ? `SLA excedido! Limite: ${limite}h`
+      : `Em aprovação há ${texto.replace("⏱ ", "")} (limite: ${limite}h)`;
+    if (expirado) el.classList.add("sla-breach");
+    else el.classList.remove("sla-breach");
+  });
+}, 60000);
 
 function formatarDataHora(data) {
   const date = new Date(data);

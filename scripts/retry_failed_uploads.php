@@ -4,6 +4,8 @@
 //   php scripts/retry_failed_uploads.php
 //   php scripts/retry_failed_uploads.php --dry-run
 //   php scripts/retry_failed_uploads.php --id=upl_698e1205986205.00281749
+//   php scripts/retry_failed_uploads.php --daemon
+//   php scripts/retry_failed_uploads.php --daemon --sleep=60
 
 $failedDir = __DIR__ . '/../uploads/failed';
 $stagingDir = __DIR__ . '/../uploads/staging';
@@ -17,10 +19,21 @@ if (!is_dir($stagingDir) && !@mkdir($stagingDir, 0777, true)) {
     exit(1);
 }
 
-$opts = getopt('', ['dry-run', 'id:', 'limit:']);
-$dryRun = isset($opts['dry-run']);
-$filterId = isset($opts['id']) ? trim((string)$opts['id']) : '';
-$limit = isset($opts['limit']) ? max(1, (int)$opts['limit']) : 0;
+$opts = getopt('', ['dry-run', 'id:', 'limit:', 'daemon', 'sleep:']);
+$dryRun    = isset($opts['dry-run']);
+$filterId  = isset($opts['id'])    ? trim((string)$opts['id'])  : '';
+$limit     = isset($opts['limit']) ? max(1, (int)$opts['limit']) : 0;
+$daemon    = isset($opts['daemon']);
+$sleepSecs = isset($opts['sleep']) ? max(5, (int)$opts['sleep']) : 60;
+
+$shutdown = false;
+if (function_exists('pcntl_async_signals')) {
+    pcntl_async_signals(true);
+}
+if (function_exists('pcntl_signal') && defined('SIGTERM') && defined('SIGINT')) {
+    pcntl_signal(SIGTERM, function () use (&$shutdown) { $shutdown = true; });
+    pcntl_signal(SIGINT,  function () use (&$shutdown) { $shutdown = true; });
+}
 
 function rlog(string $msg, string $level = 'INFO'): void
 {
@@ -93,20 +106,28 @@ function find_staged_file_in_failed(array $meta, string $failedDir, string $jobI
     return null;
 }
 
+do {
+if ($shutdown) break;
+
 $allFailed = glob($failedDir . '/*') ?: [];
 $metaFiles = array_values(array_filter($allFailed, 'is_meta_candidate'));
 
 if (empty($metaFiles)) {
+    if ($daemon) {
+        sleep($sleepSecs);
+        continue;
+    }
     rlog('Nenhum meta de falha encontrado em uploads/failed.', 'WARN');
-    exit(0);
+    break;
 }
 
 $processed = 0;
-$requeued = 0;
-$skipped = 0;
-$errors = 0;
+$requeued  = 0;
+$skipped   = 0;
+$errors    = 0;
 
 foreach ($metaFiles as $metaPath) {
+    if ($shutdown) break;
     $jobId = extract_job_id_from_meta_name($metaPath);
     if ($filterId !== '' && $filterId !== $jobId) {
         continue;
@@ -195,4 +216,11 @@ rlog("- Reenfileirados: {$requeued}", 'SUCCESS');
 rlog("- Ignorados: {$skipped}", $skipped > 0 ? 'WARN' : 'INFO');
 rlog("- Erros: {$errors}", $errors > 0 ? 'ERROR' : 'INFO');
 
-exit($errors > 0 ? 2 : 0);
+if (!$daemon) break;
+
+rlog("Aguardando {$sleepSecs}s até próxima varredura...");
+sleep($sleepSecs);
+
+} while (true);
+
+exit(0);

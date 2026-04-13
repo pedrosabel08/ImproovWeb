@@ -7,8 +7,11 @@ if (colaborador_id === 9 || colaborador_id === 21) {
 
 document.getElementById("idcolab").addEventListener("change", function () {
   const idcolab = parseInt(this.value, 10);
+  // Atualiza a variável global para que todos os carregarDados subsequentes
+  // (após salvar tarefa, upload, etc.) usem o colaborador filtrado
+  colaborador_id = idcolab || idColaborador;
   this.classList.toggle("colaborador-filtrado", !!this.value);
-  carregarDados(idcolab);
+  carregarDados(colaborador_id);
 });
 
 // Converte um caminho SFTP/servidor para a URL pública onde os JPGs ficam acessíveis
@@ -4444,6 +4447,7 @@ function enviarImagens() {
                 showConfirmButton: false,
                 timer: 2000,
               });
+              carregarDados(colaborador_id);
             }
           } catch (err) {
             Toastify({

@@ -1214,7 +1214,7 @@ checkDailyAccess()
 
 carregarDados(colaborador_id);
 
-carregarEventosEntrega();
+// carregarEventosEntrega();
 
 const data = new Date();
 
@@ -1352,73 +1352,73 @@ document.querySelector("#date span").textContent = formatted;
 
 let events = [];
 
-function carregarEventosEntrega() {
-  fetch(`./Dashboard/Calendario/getEventosEntrega.php`)
-    .then((res) => res.json())
-    .then((data) => {
-      console.log("Eventos de entrega:", data);
+// function carregarEventosEntrega() {
+//   fetch(`./Dashboard/Calendario/getEventosEntrega.php`)
+//     .then((res) => res.json())
+//     .then((data) => {
+//       console.log("Eventos de entrega:", data);
 
-      events = data.map((evento) => {
-        delete evento.eventDate;
+//       events = data.map((evento) => {
+//         delete evento.eventDate;
 
-        const colors = getEventColors(evento); // 👈 adiciona o título
+//         const colors = getEventColors(evento); // 👈 adiciona o título
 
-        return {
-          id: evento.id,
-          title: evento.descricao,
-          start: evento.start,
-          end: evento.end && evento.end !== evento.start ? evento.end : null,
-          allDay: evento.end ? true : false,
-          tipo_evento: evento.tipo_evento,
-          backgroundColor: colors.backgroundColor,
-          color: colors.color,
-        };
-      });
-      if (!fullCalendar) {
-        openFullCalendar();
-      } else {
-        fullCalendar.removeAllEvents();
-        fullCalendar.addEventSource(events);
-      }
+//         return {
+//           id: evento.id,
+//           title: evento.descricao,
+//           start: evento.start,
+//           end: evento.end && evento.end !== evento.start ? evento.end : null,
+//           allDay: evento.end ? true : false,
+//           tipo_evento: evento.tipo_evento,
+//           backgroundColor: colors.backgroundColor,
+//           color: colors.color,
+//         };
+//       });
+//       if (!fullCalendar) {
+//         openFullCalendar();
+//       } else {
+//         fullCalendar.removeAllEvents();
+//         fullCalendar.addEventSource(events);
+//       }
 
-      if (
-        colaborador_id === 1 ||
-        colaborador_id === 9 ||
-        colaborador_id === 21
-      ) {
-        notificarEventosDaSemana(events);
-      }
-    });
-}
-// 👇 Função que retorna eventos desta semana
-function notificarEventosDaSemana(eventos) {
-  const hoje = new Date();
-  const inicioSemana = new Date(hoje);
-  inicioSemana.setDate(hoje.getDate() - hoje.getDay()); // domingo
-  const fimSemana = new Date(inicioSemana);
-  fimSemana.setDate(inicioSemana.getDate() + 6); // sábado
+//       if (
+//         colaborador_id === 1 ||
+//         colaborador_id === 9 ||
+//         colaborador_id === 21
+//       ) {
+//         notificarEventosDaSemana(events);
+//       }
+//     });
+// }
+// // 👇 Função que retorna eventos desta semana
+// function notificarEventosDaSemana(eventos) {
+//   const hoje = new Date();
+//   const inicioSemana = new Date(hoje);
+//   inicioSemana.setDate(hoje.getDate() - hoje.getDay()); // domingo
+//   const fimSemana = new Date(inicioSemana);
+//   fimSemana.setDate(inicioSemana.getDate() + 6); // sábado
 
-  const eventosSemana = eventos.filter((evento) => {
-    const startDate = new Date(evento.start);
-    return startDate >= inicioSemana && startDate <= fimSemana;
-  });
+//   const eventosSemana = eventos.filter((evento) => {
+//     const startDate = new Date(evento.start);
+//     return startDate >= inicioSemana && startDate <= fimSemana;
+//   });
 
-  if (eventosSemana.length > 0) {
-    const listaEventos = eventosSemana
-      .map(
-        (ev) =>
-          `<li><strong>${ev.title}</strong> em ${new Date(ev.start).toLocaleDateString()}</li>`,
-      )
-      .join("");
+//   if (eventosSemana.length > 0) {
+//     const listaEventos = eventosSemana
+//       .map(
+//         (ev) =>
+//           `<li><strong>${ev.title}</strong> em ${new Date(ev.start).toLocaleDateString()}</li>`,
+//       )
+//       .join("");
 
-    Swal.fire({
-      icon: "info",
-      title: "Eventos desta semana",
-      html: `<ul style="text-align: left; padding: 0 20px">${listaEventos}</ul>`,
-      confirmButtonText: "Entendi",
-    });
-  }
-}
+//     Swal.fire({
+//       icon: "info",
+//       title: "Eventos desta semana",
+//       html: `<ul style="text-align: left; padding: 0 20px">${listaEventos}</ul>`,
+//       confirmButtonText: "Entendi",
+//     });
+//   }
+// }
 
 // Função para definir as cores com base no tipo_evento
 function getEventColors(event) {

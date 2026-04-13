@@ -162,34 +162,34 @@ function buscarTarefas(mostrarAlerta = true) {
 
         const idsPermitidos = [1, 9, 19, 21];
 
-        if (idsPermitidos.includes(colaborador_id) && mostrarAlerta) {
-          let mensagem = "";
-          for (const funcao in contagemPorFuncao) {
-            mensagem += `<p><strong>${funcao}</strong>: ${contagemPorFuncao[funcao]} tarefas</p>`;
-          }
+        // if (idsPermitidos.includes(colaborador_id) && mostrarAlerta) {
+        //   let mensagem = "";
+        //   for (const funcao in contagemPorFuncao) {
+        //     mensagem += `<p><strong>${funcao}</strong>: ${contagemPorFuncao[funcao]} tarefas</p>`;
+        //   }
 
-          const htmlContent = `<div>${mensagem || "<p>Nenhuma tarefa para aprovação.</p>"}</div>`;
+        //   const htmlContent = `<div>${mensagem || "<p>Nenhuma tarefa para aprovação.</p>"}</div>`;
 
-          Swal.fire({
-            title: "Tarefas em aprovação",
-            icon: "info",
-            html: htmlContent,
-            confirmButtonText: "OK",
-          });
-        }
+        //   Swal.fire({
+        //     title: "Tarefas em aprovação",
+        //     icon: "info",
+        //     html: htmlContent,
+        //     confirmButtonText: "OK",
+        //   });
+        // }
       } else {
         contadorTarefas.textContent = "";
         contagemTarefasGlobal = {};
         console.log("Nenhuma tarefa pendente.");
       }
 
-      if (mostrarAlerta && notificacoesModulo.length > 0) {
-        console.debug(
-          "buscarTarefas: enfileirando notificacoesModulo",
-          notificacoesModulo.length,
-        );
-        enfileirarNotificacoesModulo(notificacoesModulo);
-      }
+      // if (mostrarAlerta && notificacoesModulo.length > 0) {
+      //   console.debug(
+      //     "buscarTarefas: enfileirando notificacoesModulo",
+      //     notificacoesModulo.length,
+      //   );
+      //   enfileirarNotificacoesModulo(notificacoesModulo);
+      // }
 
       return { tarefas, notificacoes, notificacoesModulo };
     })

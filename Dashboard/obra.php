@@ -607,6 +607,7 @@ $conn->close();
                     </div>
                 </div>
                 <div style="text-align: center; padding-top: 5px;">
+                    <button id="btnBatchRenderAlta" type="button" style="margin-right: 8px;">+ Render Alta</button>
                     <button id="btnBatchRevisao" type="button" style="margin-right: 8px;">+ Revisão</button>
                     <button id="btnAtualizar">✓ Atualizar</button>
                 </div>
@@ -1750,47 +1751,39 @@ $conn->close();
 
     <div id="modal_status">
         <div class="modal-content" style="margin: 0;">
-            <h2 style="font-size: 16px;">Alterar Status</h2>
-            <label for="statusSelect" style="font-size: 14px;">Selecione o novo status:</label>
-            <select id="statusSelect" name="statusSelect" style="width: max-content; text-align: center; margin: auto;"
-                required>
-                <?php foreach ($status_etapa as $statusEtapa): ?>
-                    <option value="<?= htmlspecialchars($statusEtapa['id']); ?>">
-                        <?= htmlspecialchars($statusEtapa['nome_substatus']); ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
-            <button type="button" id="alterar_status"
-                onclick="alterarStatus(this.getAttribute('data-imagemid'))">✅</button>
-
-            <hr style="margin: 8px 0; border: none; border-top: 1px solid #ddd;">
-
-            <label for="opcao_status_ms" style="font-size: 14px;">Etapa</label>
-            <select id="opcao_status_ms" name="status_id_ms"
-                style="width: max-content; text-align: center; margin: auto;">
-                <?php foreach ($status_imagens as $status): ?>
-                    <option value="<?= htmlspecialchars($status['idstatus']); ?>">
-                        <?= htmlspecialchars($status['nome_status']); ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
-            <button type="button" id="alterar_etapa_ms"
-                style="padding: 3px 10px; font-size: 13px; background-color: #2196F3; color: #fff; border: none; border-radius: 4px; cursor: pointer;">Salvar
-                etapa</button>
-
-            <hr style="margin: 8px 0; border: none; border-top: 1px solid #ddd;">
-
-            <div style="display: flex; flex-direction: column; gap: 6px; align-items: center;">
-                <div style="display: flex; align-items: center; gap: 6px;">
-                    <button type="button" id="addRenderMs" class="buttons-form-add"
-                        style="padding: 3px 10px; font-size: 13px; background-color: steelblue;">Render</button>
-                    <label class="switch" style="margin: 0;">
-                        <input type="checkbox" id="notificarMs">
-                        <span class="slider"></span>
-                    </label>
+            <div class="ms-section">
+                <label class="ms-label" for="opcao_status_ms">Etapa</label>
+                <div class="ms-row">
+                    <select id="opcao_status_ms" name="status_id_ms" class="ms-select">
+                        <?php foreach ($status_imagens as $status): ?>
+                            <option value="<?= htmlspecialchars($status['idstatus']); ?>">
+                                <?= htmlspecialchars($status['nome_status']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <button type="button" id="alterar_etapa_ms" class="ms-btn ms-btn-save">Salvar</button>
                 </div>
-                <button type="button" id="addRevisaoMs" class="buttons-form-add"
-                    style="padding: 3px 10px; font-size: 13px; background-color: seagreen; color:#fff;">Revisão</button>
+            </div>
+            <hr class="ms-divider">
+            <div class="ms-section">
+                <label class="ms-label" for="statusSelect">Substatus</label>
+                <div class="ms-row">
+                    <select id="statusSelect" name="statusSelect" class="ms-select" required>
+                        <?php foreach ($status_etapa as $statusEtapa): ?>
+                            <option value="<?= htmlspecialchars($statusEtapa['id']); ?>">
+                                <?= htmlspecialchars($statusEtapa['nome_substatus']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <button type="button" id="alterar_status" class="ms-btn ms-btn-save"
+                        onclick="alterarStatus(this.getAttribute('data-imagemid'))">Salvar</button>
+                </div>
+            </div>
+            <hr class="ms-divider">
+            <div class="ms-actions">
+                <button type="button" id="addRenderMs" class="ms-btn ms-btn-render">+Render</button>
+                <button type="button" id="addEfMs" class="ms-btn ms-btn-ef">+EF</button>
+                <button type="button" id="addRevisaoMs" class="ms-btn ms-btn-revisao">+Revisão</button>
             </div>
         </div>
     </div>

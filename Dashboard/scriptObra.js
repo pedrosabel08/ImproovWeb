@@ -846,7 +846,7 @@ function addEventListenersToRows() {
       const modalStatus = document.getElementById("modal_status");
       if (modalStatus) {
         // Anchor to the image cell so the modal follows the image on scroll
-        statusModalAnchor = celulaImagem || celulaStatus;
+        statusModalAnchor = celulaStatus;
         modalStatus.style.position = "absolute";
         modalStatus.style.display = "block";
         // Use the centralized positioning helper
@@ -7201,9 +7201,11 @@ document.getElementById("closeObsModal").addEventListener("click", function () {
   limparCamposFormulario();
 });
 
-document.getElementById("closeAcompModal").addEventListener("click", function () {
-  modal.style.display = "none";
-});
+document
+  .getElementById("closeAcompModal")
+  .addEventListener("click", function () {
+    modal.style.display = "none";
+  });
 
 document.getElementById("deleteObs").addEventListener("click", function (e) {
   e.preventDefault();
@@ -9933,6 +9935,82 @@ document
       });
   });
 
+document
+  .getElementById("btnBatchRenderAlta")
+  ?.addEventListener("click", async function () {
+    const idsSelecionados = obterIdsSelecionadosBatch();
+
+    if (idsSelecionados.length === 0) {
+      Toastify({
+        text: "Selecione ao menos uma imagem.",
+        duration: 3000,
+        gravity: "top",
+        position: "right",
+        backgroundColor: "linear-gradient(to right, #b00000ff, #e97171ff)",
+      }).showToast();
+      return;
+    }
+
+    const dadosModal = await solicitarDadosRevisaoModal("");
+    if (!dadosModal) {
+      return;
+    }
+
+    fetch("addRenderBatch.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ids: idsSelecionados,
+        data_recebimento: dadosModal.data_recebimento,
+        colaborador_id: dadosModal.colaborador_id,
+      }),
+    })
+      .then((res) => res.json())
+      .then(async (res) => {
+        if (res.status === "sucesso") {
+          Toastify({
+            text: "EF adicionado com sucesso!",
+            duration: 3000,
+            gravity: "top",
+            position: "right",
+            backgroundColor: "linear-gradient(to right, #00b09b, #96c93d)",
+          }).showToast();
+
+          // Auto-insert into Entregas — status_id = 6 (EF) para todas as imagens
+          if (res.novo_prazo) {
+            const currentObraId = localStorage.getItem("obraId");
+            await inserirImagemNaEntrega(
+              currentObraId,
+              6,
+              res.novo_prazo,
+              idsSelecionados,
+            );
+          }
+
+          document.getElementById("acoesModal").style.display = "none";
+          infosObra(obraId);
+          return;
+        }
+        Toastify({
+          text: `Erro ao adicionar EF: ${res.message || "falha desconhecida"}`,
+          duration: 3500,
+          gravity: "top",
+          position: "right",
+          backgroundColor: "linear-gradient(to right, #b00000ff, #e97171ff)",
+        }).showToast();
+      })
+      .catch((err) => {
+        console.error(err);
+        Toastify({
+          text: "Erro interno ao adicionar EF.",
+          duration: 3000,
+          gravity: "top",
+          position: "right",
+          backgroundColor: "linear-gradient(to right, #b00000ff, #e97171ff)",
+        }).showToast();
+      });
+  });
+
 // ===== ENTREGAS AUTO-INSERT HELPER =====
 /**
  * After a revision is added, auto-inserts the image(s) into the Entregas table.
@@ -10176,7 +10254,7 @@ document
       return;
     }
 
-    const notificar = document.getElementById("notificarMs").checked;
+    const notificar = document.getElementById("notificarMs")?.checked ?? false;
 
     // Sync hidden opcao_status
     document.getElementById("opcao_status").value = statusId;
@@ -10358,6 +10436,85 @@ document
           document.getElementById("opcao_status_ms").value =
             response.novo_status;
         }
+
+        infosObra(obraId);
+      }
+    } catch (err) {
+      Swal.fire({
+        icon: "error",
+        title: "Erro ao enviar",
+        text: "Falha na comunicação com o servidor.",
+      });
+    }
+  });
+
+// EF (Entrega Final) from modal_status — single image
+document
+  .getElementById("addEfMs")
+  ?.addEventListener("click", async function (event) {
+    event.preventDefault();
+
+    const imagemId = document
+      .getElementById("alterar_status")
+      ?.getAttribute("data-imagemid");
+    if (!imagemId) {
+      Toastify({
+        text: "Nenhuma imagem selecionada",
+        duration: 3000,
+        gravity: "top",
+        position: "right",
+        backgroundColor: "red",
+      }).showToast();
+      return;
+    }
+
+    const currentObraId = localStorage.getItem("obraId");
+    const dadosModal = await solicitarDadosRevisaoModal("");
+    if (!dadosModal) return;
+
+    try {
+      const res = await fetch("addRenderBatch.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ids: [imagemId],
+          data_recebimento: dadosModal.data_recebimento,
+          colaborador_id: dadosModal.colaborador_id,
+        }),
+      });
+      const response = await res.json();
+
+      if (response.status === "erro") {
+        Swal.fire({
+          icon: "error",
+          title: "Erro ao adicionar EF",
+          text: response.message,
+        });
+        return;
+      }
+
+      if (response.status === "sucesso") {
+        Swal.fire({
+          icon: "success",
+          title: "EF adicionado!",
+          text: "Entrega Final registrada com sucesso.",
+          confirmButtonText: "OK",
+        });
+
+        if (response.novo_prazo) {
+          await inserirImagemNaEntrega(
+            currentObraId,
+            6,
+            response.novo_prazo,
+            [imagemId],
+          );
+        }
+
+        document.getElementById("opcao_status_ms").value = "6";
+        document.getElementById("opcao_status").value = "6";
+
+        const modalStatus = document.getElementById("modal_status");
+        if (modalStatus) modalStatus.style.display = "none";
 
         infosObra(obraId);
       }

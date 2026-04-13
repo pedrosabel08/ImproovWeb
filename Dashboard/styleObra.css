@@ -3617,20 +3617,88 @@ ul.file-list {
 }
 
 #modal_status .modal-content {
-  width: 200px;
-  max-height: 80%;
-  overflow-y: auto;
-  background-color: #fff;
-  border: 1px solid #ccc;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-  border-radius: 6px;
-  padding: 20px;
+  min-width: 220px;
+  
+  background: var(--bg-card, #fff);
+  border: 1px solid var(--border-card, #e2e6eb);
+  box-shadow: var(--shadow-md, 0 4px 12px rgba(0,0,0,0.08));
+  border-radius: var(--radius-md, 12px);
+  padding: 14px 14px 12px;
   margin: 0;
   display: flex;
   flex-direction: column;
+  gap: 8px;
+}
+
+/* modal_status inner elements */
+#modal_status .ms-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+#modal_status .ms-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-muted, #9ca3af);
+}
+#modal_status .ms-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+#modal_status .ms-select {
+  flex: 1;
+  height: 28px;
+  border: 1px solid var(--border-input, #d1d5db);
+  border-radius: var(--radius-sm, 8px);
+  font-size: 11px;
+  font-family: inherit;
+  background: var(--bg-input, #fff);
+  color: var(--text-primary, #1a1d23);
+  padding: 0 6px;
+}
+#modal_status .ms-divider {
+  margin: 0;
+  border: none;
+  border-top: 1px solid var(--border-card, #e2e6eb);
+}
+#modal_status .ms-actions {
+  display: flex;
+  gap: 6px;
   justify-content: center;
-  text-align: center;
-  gap: 5px;
+}
+#modal_status .ms-btn {
+  height: 28px;
+  padding: 0 10px;
+  border: none;
+  border-radius: var(--radius-sm, 8px);
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, transform 0.15s;
+}
+#modal_status .ms-btn:hover {
+  transform: translateY(-1px);
+}
+#modal_status .ms-btn-save {
+  background: rgba(79, 128, 225, 0.12);
+  color: #3b6fd6;
+}
+#modal_status .ms-btn-render {
+  background: rgba(70, 130, 180, 0.12);
+  color: steelblue;
+}
+#modal_status .ms-btn-ef {
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+}
+#modal_status .ms-btn-revisao {
+  background: rgba(124, 58, 237, 0.12);
+  color: #7c3aed;
 }
 
 .buttons-actions {
@@ -3693,6 +3761,7 @@ ul.file-list {
 }
 
 /* Botões do acoesModal */
+#acoesModal #btnBatchRenderAlta,
 #acoesModal #btnBatchRevisao,
 #acoesModal #btnAtualizar {
   height: 30px;
@@ -3706,6 +3775,14 @@ ul.file-list {
   transition:
     background 0.15s,
     transform 0.15s;
+}
+#acoesModal #btnBatchRenderAlta {
+  background: rgba(70, 130, 180, 0.12);
+  color: steelblue;
+}
+#acoesModal #btnBatchRenderAlta:hover {
+  background: rgba(70, 130, 180, 0.22);
+  transform: translateY(-1px);
 }
 #acoesModal #btnBatchRevisao {
   background: rgba(79, 128, 225, 0.12);

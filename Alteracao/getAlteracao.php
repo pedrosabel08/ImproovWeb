@@ -17,7 +17,8 @@ $sql = "SELECT
     i.obra_id,
     o.nomenclatura,
     c.nome_colaborador,
-    s.nome_status
+    s.nome_status,
+    a.status_id AS imagem_status_id
 FROM alteracoes a
 JOIN funcao_imagem f ON f.idfuncao_imagem = a.funcao_id
 JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
@@ -93,6 +94,7 @@ while ($row = $result->fetch_assoc()) {
         'status_key' => $statusNormalizado,
         'status_nome' => (string)$row['nome_status'],
         'prazo' => $row['prazo'] ? date('d/m/Y', strtotime($row['prazo'])) : null,
+        'is_ef' => ((int)$row['imagem_status_id'] === 6),
     ];
 
     $items[] = $item;

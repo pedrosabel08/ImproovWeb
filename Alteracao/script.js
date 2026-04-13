@@ -93,6 +93,34 @@ function agruparPorObra(items) {
   }, {});
 }
 
+function applyStatusImagem(cell, status) {
+  const classMap = {
+    P00: "si-p00",
+    R00: "si-r00",
+    R01: "si-r01",
+    R02: "si-r02",
+    R03: "si-r03",
+    R04: "si-r04",
+    R05: "si-r05",
+    EF: "si-ef",
+    HOLD: "si-hold",
+    TEA: "si-tea",
+    REN: "si-ren",
+    APR: "si-apr",
+    APP: "si-app",
+    RVW: "si-rvw",
+    OK: "si-ok",
+    "TO-DO": "si-to-do",
+    FIN: "si-fin",
+    DRV: "si-drv",
+    RVW_DONE: "si-rvw-done",
+    PRE_ALT: "si-pre-alt",
+    READY_FOR_PLANNING: "si-ready-for-planning",
+  };
+  const cls = classMap[status];
+  if (cls) cell.classList.add(cls);
+}
+
 function criarCard(item) {
   const card = document.createElement("div");
   card.className = "imagem-card";
@@ -103,15 +131,21 @@ function criarCard(item) {
     card.classList.add("sem-colaborador");
   }
 
+  if (item.is_ef) {
+    card.classList.add("ef-card");
+  }
+
   card.innerHTML = `
+        <span class="badge">${item.status_nome}</span>
         <div class="card-title">${item.imagem_nome}</div>
         <div class="card-sub"><i class="fas fa-building"></i> ${item.obra_nome}</div>
-        <div class="card-sub"><i class="fas fa-info-circle"></i> ${item.status_nome}</div>
         <div class="card-footer">
             <div class="card-meta"><i class="fas fa-user"></i> ${item.colaborador_nome || "—"}</div>
             <div class="card-meta"><i class="fas fa-calendar"></i> ${item.prazo || "—"}</div>
         </div>
     `;
+
+  applyStatusImagem(card.querySelector(".badge"), item.status_nome);
 
   card.addEventListener("click", (event) => {
     const funcaoId = String(item.funcao_id);

@@ -8,6 +8,8 @@
   --bg-card: #ffffff;
   --bg-card-hover: #f0f4ff;
   --bg-card-sem-colab: #fff5f5;
+  --bg-card-ef: #fffbef;
+  --border-card-ef: #1d920e;
   --bg-filter: #ffffff;
   --bg-column: #f5f7fa;
   --bg-count: #e8ecf1;
@@ -54,6 +56,29 @@
   --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-slow: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ─── Status imagem (si-*) ─── */
+  --si-p00: #ffc21c;
+  --si-r00: #1cf4ff;
+  --si-r01: #ff6200;
+  --si-r02: #ff3c00;
+  --si-r03: #ff0000;
+  --si-r04: #6449ff;
+  --si-r05: #7d36f7;
+  --si-ef: #0dff00;
+  --si-hold: #ff0000;
+  --si-tea: #f7eb07;
+  --si-ren: #0c9ef2;
+  --si-apr: #0c45f2;
+  --si-app: #7d36f7;
+  --si-rvw: #228b22;
+  --si-ok: #6495ed;
+  --si-fin: #228b22;
+  --si-drv: #00f3ff;
+  --si-rvw-done: #d97706;
+  --si-pre-alt: #7c3aed;
+  --si-ready-for-planning: #0891b2;
+  --si-default: #6b7280;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -64,7 +89,32 @@
     --bg-card: #1e2130;
     --bg-card-hover: #272b3d;
     --bg-card-sem-colab: #2a1f1f;
+    --bg-card-ef: #071f00;
+    --border-card-ef: #1d920e;
     --bg-filter: #1a1d27;
+
+    /* ─── Status imagem dark (valores mantidos — são neon, legíveis em dark) ─── */
+    --si-p00: #ffc21c;
+    --si-r00: #1cf4ff;
+    --si-r01: #ff6200;
+    --si-r02: #ff3c00;
+    --si-r03: #ff0000;
+    --si-r04: #6449ff;
+    --si-r05: #7d36f7;
+    --si-ef: #0dff00;
+    --si-hold: #ff0000;
+    --si-tea: #f7eb07;
+    --si-ren: #0c9ef2;
+    --si-apr: #0c45f2;
+    --si-app: #7d36f7;
+    --si-rvw: #228b22;
+    --si-ok: #6495ed;
+    --si-fin: #228b22;
+    --si-drv: #00f3ff;
+    --si-rvw-done: #d97706;
+    --si-pre-alt: #7c3aed;
+    --si-ready-for-planning: #0891b2;
+    --si-default: #4b5563;
     --bg-column: #161821;
     --bg-count: #272b3d;
     --bg-obra-group: #1e2130;
@@ -517,7 +567,59 @@ body {
   background: #ef4444;
 }
 
+.imagem-card.ef-card {
+  background: var(--bg-card-ef);
+  border-color: var(--border-card-ef);
+}
+
+.imagem-card.ef-card::before {
+  background: var(--border-card-ef);
+  opacity: 1;
+}
+
+.badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: var(--si-default);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  padding: 2px 6px;
+  border-radius: var(--radius-full);
+  line-height: 1.4;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* ─── Status imagem — badge colors ─── */
+.badge.si-p00  { background: var(--si-p00);  color: #000; }
+.badge.si-r00  { background: var(--si-r00);  color: #000; }
+.badge.si-r01  { background: var(--si-r01);  color: #fff; }
+.badge.si-r02  { background: var(--si-r02);  color: #fff; }
+.badge.si-r03  { background: var(--si-r03);  color: #fff; }
+.badge.si-r04  { background: var(--si-r04);  color: #fff; }
+.badge.si-r05  { background: var(--si-r05);  color: #fff; }
+.badge.si-ef   { background: var(--si-ef);   color: #000; }
+.badge.si-hold { background: var(--si-hold); color: #fff; }
+.badge.si-tea  { background: var(--si-tea);  color: #000; }
+.badge.si-ren  { background: var(--si-ren);  color: #fff; }
+.badge.si-apr  { background: var(--si-apr);  color: #fff; }
+.badge.si-app  { background: var(--si-app);  color: #fff; }
+.badge.si-rvw  { background: var(--si-rvw);  color: #fff; }
+.badge.si-ok   { background: var(--si-ok);   color: #fff; }
+.badge.si-to-do { background: var(--si-ok);  color: #fff; }
+.badge.si-fin  { background: var(--si-fin);  color: #fff; }
+.badge.si-drv  { background: var(--si-drv);  color: #000; }
+.badge.si-rvw-done         { background: var(--si-rvw-done);         color: #fff; }
+.badge.si-pre-alt          { background: var(--si-pre-alt);          color: #fff; }
+.badge.si-ready-for-planning { background: var(--si-ready-for-planning); color: #fff; }
+
 /* ─── Card Content ─── */
+.ef-card .card-sub {
+  color: #ebebeb;
+}
 .card-title {
   font-size: 13px;
   font-weight: 700;
@@ -533,6 +635,10 @@ body {
   display: flex;
   align-items: center;
   gap: 4px;
+}
+
+.ef-card .card-sub {
+  color: #a5aab1;
 }
 
 .card-sub i {

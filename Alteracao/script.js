@@ -157,10 +157,13 @@ function renderKanban(items) {
     }
 
     if (itensColuna.length === 0) {
+      const list = document.createElement("div");
+      list.className = "cards-list";
       const empty = document.createElement("div");
       empty.className = "empty-state";
       empty.innerHTML = '<i class="fas fa-inbox"></i><span>Nenhum item</span>';
-      container.appendChild(empty);
+      list.appendChild(empty);
+      container.appendChild(list);
       return;
     }
 

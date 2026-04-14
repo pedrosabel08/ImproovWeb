@@ -26,6 +26,7 @@ INNER JOIN obra o ON o.idobra = ico.obra_id
 WHERE 
     m.mencionado_id = ?
     AND m.visto = 0
+    AND fi.status NOT IN ('Finalizado', 'Aprovado')
 GROUP BY 
     o.nome_obra");
 $stmt->bind_param("i", $idColaborador);
@@ -49,9 +50,11 @@ FROM
     mencoes m
 INNER JOIN comentarios_imagem c ON c.id = m.comentario_id
 INNER JOIN historico_aprovacoes_imagens hai ON hai.id = c.ap_imagem_id
+INNER JOIN funcao_imagem fi ON fi.idfuncao_imagem = hai.funcao_imagem_id
 WHERE 
     m.mencionado_id = ?
     AND m.visto = 0
+    AND fi.status NOT IN ('Finalizado', 'Aprovado')
 GROUP BY 
     hai.funcao_imagem_id");
 $stmt2->bind_param("i", $idColaborador);
@@ -63,7 +66,11 @@ while ($row = $result2->fetch_assoc()) {
 }
 
 // ── IDs dos comentários com menções não vistas ──────────────────────────────
-$stmt3 = $conn->prepare("SELECT comentario_id FROM mencoes WHERE mencionado_id = ? AND visto = 0 AND comentario_id IS NOT NULL");
+$stmt3 = $conn->prepare("SELECT comentario_id FROM mencoes m
+INNER JOIN comentarios_imagem c ON c.id = m.comentario_id
+INNER JOIN historico_aprovacoes_imagens hai ON hai.id = c.ap_imagem_id
+INNER JOIN funcao_imagem fi ON fi.idfuncao_imagem = hai.funcao_imagem_id
+WHERE m.mencionado_id = ? AND m.visto = 0 AND comentario_id IS NOT NULL AND fi.status NOT IN ('Finalizado', 'Aprovado')");
 $stmt3->bind_param("i", $idColaborador);
 $stmt3->execute();
 $result3 = $stmt3->get_result();
@@ -127,7 +134,12 @@ while ($row = $result5->fetch_assoc()) {
 }
 
 // ── IDs das respostas com menções não vistas ────────────────────────────────
-$stmt6 = $conn->prepare("SELECT resposta_id FROM mencoes WHERE mencionado_id = ? AND visto = 0 AND resposta_id IS NOT NULL");
+$stmt6 = $conn->prepare("SELECT resposta_id FROM mencoes m
+INNER JOIN respostas_comentario rc ON rc.id = m.resposta_id
+INNER JOIN comentarios_imagem c ON c.id = rc.comentario_id
+INNER JOIN historico_aprovacoes_imagens hai ON hai.id = c.ap_imagem_id
+INNER JOIN funcao_imagem fi ON fi.idfuncao_imagem = hai.funcao_imagem_id
+WHERE m.mencionado_id = ? AND m.visto = 0 AND m.resposta_id IS NOT NULL AND fi.status NOT IN ('Finalizado', 'Aprovado')");
 $stmt6->bind_param("i", $idColaborador);
 $stmt6->execute();
 $result6 = $stmt6->get_result();

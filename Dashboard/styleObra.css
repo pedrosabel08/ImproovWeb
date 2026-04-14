@@ -1833,6 +1833,7 @@ span#obras_finalizadas {
   color: var(--text-primary, #e2e8f0);
   line-height: 1.5;
   margin: 0;
+  white-space: pre-wrap;
 }
 
 .obs-card-date {
@@ -1883,7 +1884,7 @@ span#obras_finalizadas {
   border: 1px solid var(--border-modal, #e2e6eb);
   border-radius: var(--radius-lg, 16px);
   box-shadow: var(--shadow-modal, 0 20px 60px rgba(0, 0, 0, 0.18));
-  width: 480px;
+  width: 50vw;
   max-width: 95vw;
   display: flex;
   flex-direction: column;
@@ -1952,7 +1953,7 @@ span#obras_finalizadas {
 
 .obs-modal-textarea {
   width: 100%;
-  min-height: 120px;
+  min-height: 200px;
   padding: 10px 12px;
   border: 1px solid var(--border-input, #d1d5db);
   border-radius: var(--radius-sm, 8px);
@@ -3118,7 +3119,7 @@ a#mobile_flow_review {
   cursor: pointer;
 }
 
-#desc {
+/* #desc {
   white-space: pre-wrap;
   overflow-y: auto;
   resize: none;
@@ -3126,7 +3127,7 @@ a#mobile_flow_review {
   height: 100px;
   padding: 5px;
   box-sizing: border-box;
-}
+} */
 
 .clear-button {
   background-color: transparent;

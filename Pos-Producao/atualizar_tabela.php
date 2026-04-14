@@ -31,9 +31,9 @@ LEFT JOIN render_alta r ON p.render_id = r.idrender_alta
 LEFT JOIN pos_prioridade_obra ppo ON o.idobra = ppo.obra_id
 ORDER BY 
     CASE WHEN p.status_pos = 1 THEN 0 ELSE 1 END,
+    p.flag_urgente DESC,
     (ppo.prioridade IS NULL) ASC,
     ppo.prioridade ASC,
-    p.flag_urgente DESC,
     p.prioridade ASC,
     (i.prazo IS NULL),
     p.data_pos DESC;                                 

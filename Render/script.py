@@ -962,7 +962,7 @@ def process_job_folder(cursor, job_folder, p00_rollup=None):
             log_and_print(f"🔔 Notificação enviada para colaborador {resp_id} e canal de renders.")
 
         # Atualizar função e imagem
-    if status_custom == "Em aprovação" and funcao_id:
+    if status_custom in ("Em aprovação", "Em andamento") and funcao_id:
         # cursor.execute("""
         #     UPDATE funcao_imagem
         #     SET status = 'Finalizado', prazo = NOW()

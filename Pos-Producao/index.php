@@ -158,6 +158,71 @@ $conn->close();
             <button id="openModalBtn" style="display: none;">Inserir render</button>
             <button id="openModalBtnRender">Ver Render Elements</button>
         </header>
+
+        <!-- Metric Cards -->
+        <section class="metricas-section">
+            <div class="metric-card" id="card-pendentes" data-filter="pendentes">
+                <div class="metric-icon"><i class="fa-solid fa-hourglass-half"></i></div>
+                <div class="metric-info">
+                    <span class="metric-value" id="metric-pendentes">—</span>
+                    <span class="metric-label">Pendentes</span>
+                </div>
+            </div>
+            <div class="metric-card metric-card--danger" id="card-atraso" data-filter="atraso">
+                <div class="metric-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                <div class="metric-info">
+                    <span class="metric-value" id="metric-atraso">—</span>
+                    <span class="metric-label">Em Atraso</span>
+                </div>
+            </div>
+            <div class="metric-card metric-card--success" id="card-hoje" data-filter="hoje">
+                <div class="metric-icon"><i class="fa-solid fa-circle-check"></i></div>
+                <div class="metric-info">
+                    <span class="metric-value" id="metric-hoje">—</span>
+                    <span class="metric-label">Finalizados Hoje</span>
+                </div>
+            </div>
+            <div class="metric-card metric-card--blue" id="card-semana" data-filter="semana">
+                <div class="metric-icon"><i class="fa-solid fa-calendar-week"></i></div>
+                <div class="metric-info">
+                    <span class="metric-value" id="metric-semana">—</span>
+                    <span class="metric-label">Esta Semana</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Filter Bar -->
+        <section class="filter-bar">
+            <div class="filter-bar__search">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" id="fb-busca" placeholder="Buscar imagem...">
+            </div>
+            <select id="fb-status-render">
+                <option value="">Status Render</option>
+                <option value="Aprovado">Aprovado</option>
+                <option value="Em aprovação">Em aprovação</option>
+                <option value="Em andamento">Em andamento</option>
+                <option value="Erro">Erro</option>
+                <option value="Reprovado">Reprovado</option>
+                <option value="Finalizado">Finalizado</option>
+            </select>
+            <select id="fb-status-pos">
+                <option value="">Status Pós</option>
+                <option value="1">Não começou</option>
+                <option value="0">Finalizado</option>
+            </select>
+            <select id="fb-obra">
+                <option value="">Nome Obra</option>
+            </select>
+            <select id="fb-finalizador">
+                <option value="">Finalizador</option>
+            </select>
+            <div class="filter-bar__actions">
+                <button id="fb-aplicar"><i class="fa-solid fa-filter"></i> Aplicar</button>
+                <button id="fb-limpar"><i class="fa-solid fa-xmark"></i> Limpar</button>
+            </div>
+        </section>
+
         <div class="tabela-container">
             <nav>
                 <div id="widget-prazos">

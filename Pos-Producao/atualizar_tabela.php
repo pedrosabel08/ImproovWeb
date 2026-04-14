@@ -5,6 +5,7 @@ $sql = "SELECT
     p.idpos_producao,
     col.nome_colaborador,
     o.nome_obra,
+    o.idobra,
     p.data_pos,
     o.nomenclatura,
     i.imagem_nome,
@@ -16,7 +17,10 @@ $sql = "SELECT
     s.nome_status,
     resp.nome_colaborador AS nome_responsavel,
     r.status AS status_render,
-    i.prazo
+    i.prazo,
+    p.prioridade,
+    p.flag_urgente,
+    ppo.prioridade AS prioridade_obra
 FROM pos_producao p
 INNER JOIN colaborador col ON p.colaborador_id = col.idcolaborador
 INNER JOIN obra o ON p.obra_id = o.idobra
@@ -24,9 +28,14 @@ INNER JOIN imagens_cliente_obra i ON p.imagem_id = i.idimagens_cliente_obra
 INNER JOIN status_imagem s ON p.status_id = s.idstatus
 LEFT JOIN colaborador resp ON p.responsavel_id = resp.idcolaborador
 LEFT JOIN render_alta r ON p.render_id = r.idrender_alta
+LEFT JOIN pos_prioridade_obra ppo ON o.idobra = ppo.obra_id
 ORDER BY 
-    CASE WHEN p.status_pos = 1 THEN 0 ELSE 1 END,   
-    (i.prazo IS NULL),                              
+    CASE WHEN p.status_pos = 1 THEN 0 ELSE 1 END,
+    (ppo.prioridade IS NULL) ASC,
+    ppo.prioridade ASC,
+    p.flag_urgente DESC,
+    p.prioridade ASC,
+    (i.prazo IS NULL),
     p.data_pos DESC;                                 
 ";
 

@@ -189,7 +189,6 @@ function atualizarTabela() {
           pagination: "local",
           responsiveLayout: true,
           index: "idpos_producao",
-          maxHeight: "83vh",
           height: "100%",
           pagination: true,
           paginationSize: 100,
@@ -364,6 +363,15 @@ carregarMetricas();
 document.getElementById("fb-busca").addEventListener("keydown", function (e) {
   if (e.key === "Enter") document.getElementById("fb-aplicar").click();
 });
+
+// Filter bar — Selects aplicam filtro automaticamente ao mudar
+["fb-status-render", "fb-status-pos", "fb-obra", "fb-finalizador"].forEach(
+  function (id) {
+    document.getElementById(id).addEventListener("change", function () {
+      document.getElementById("fb-aplicar").click();
+    });
+  },
+);
 
 // Filter bar — Aplicar
 document.getElementById("fb-aplicar").addEventListener("click", function () {

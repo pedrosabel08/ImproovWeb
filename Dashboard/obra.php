@@ -319,7 +319,7 @@ $conn->close();
 
             <!-- KPIs e Gráficos TEA (inseridos abaixo de .filtros-select) -->
             <div id="kpi-charts" style="width:100%; margin-top:12px; display:flex; gap:12px; flex-wrap:wrap;">
-                <div class="kpi-row stats-container">
+                <div class="kpi-row stats-container" style="display: none;">
                     <div class="stat-card small" style="flex:1; text-align:center;" id="kpi-tea-total">
                         <h2>TEA (Em andamento)</h2>
                         <p id="kpi-tea-total-value">—</p>
@@ -341,7 +341,7 @@ $conn->close();
                 <!-- TEA chart and Entregas placed side-by-side -->
                 <div
                     style="display:flex; gap:12px; width:100%; margin-top:12px; align-items:flex-start; flex-wrap:wrap;">
-                    <div class="chart-container" style="min-width:320px; flex:1;">
+                    <div class="chart-container" style="min-width:320px; flex:1; display: none;">
                         <div class="chart-title">TEA por função</div>
                         <canvas id="teaFuncChart" style="width:100%; height:240px;"></canvas>
                     </div>

@@ -687,6 +687,25 @@ a {
   height: 220px !important;
 }
 
+/* Entregas kanban dentro de obra.php: cards ocupam 100% da coluna */
+#kanban {
+  width: 100%;
+}
+
+#kanban .column {
+  width: 100%;
+  min-width: unset;
+  flex: unset;
+  box-sizing: border-box;
+  flex-direction: row !important;
+  gap: 15px !important;
+}
+
+#kanban .card-entrega {
+  width: 100%;
+  box-sizing: border-box;
+}
+
 /* Responsive tweak: stack KPIs vertically on small screens */
 @media (max-width: 900px) {
   #kpi-charts {

@@ -157,7 +157,7 @@ header button#openModalBtnRender {
 
 .tabela-container {
   margin: auto;
-  max-height: calc(100vh - 108px);
+  max-height: 70vh;
   overflow-y: auto;
   padding: 10px;
   width: 95vw;
@@ -812,7 +812,6 @@ nav {
   color: var(--text-tertiary);
   margin-top: 4px;
   font-weight: 500;
-  white-space: nowrap;
 }
 
 /* ==========================================

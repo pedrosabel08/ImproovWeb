@@ -1,0 +1,344 @@
+/* ═══════════════════════════════════════════════════════════════
+   TvDashboard/style.css — Dark theme para exibição em TV
+   ═══════════════════════════════════════════════════════════════ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  /* Paleta dark TV */
+  --tv-bg: #0a0c10;
+  --tv-surface: #13161e;
+  --tv-surface-2: #1a1e2a;
+  --tv-border: #252a38;
+  --tv-text: #e8eaf0;
+  --tv-text-muted: #6b7280;
+  --tv-accent: #4f80e1;
+  --tv-accent-glow: rgba(79, 128, 225, 0.25);
+
+  /* Funções — cores individuais */
+  --c-caderno: #38bdf8;
+  --c-filtro: #a78bfa;
+  --c-modelagem: #fb923c;
+  --c-composicao: #34d399;
+  --c-pre-fin: #fbbf24;
+  --c-fin-parcial: #f87171;
+  --c-fin-completa: #4ade80;
+  --c-fin-planta: #2dd4bf;
+  --c-pos: #c084fc;
+  --c-alteracao: #94a3b8;
+
+  /* Status de progresso */
+  --badge-low: #ef4444;
+  --badge-mid: #f59e0b;
+  --badge-high: #3b82f6;
+  --badge-done: #10b981;
+
+  /* Layout */
+  --header-h: 80px;
+  --chart-ratio: 60%;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--tv-bg);
+  color: var(--tv-text);
+  font-family:
+    "Inter",
+    -apple-system,
+    sans-serif;
+}
+
+/* ── Cabeçalho ──────────────────────────────────────────────── */
+.tv-header {
+  height: var(--header-h);
+  display: grid;
+  grid-template-columns: 220px 1fr 240px;
+  align-items: center;
+  padding: 0 32px;
+  background: var(--tv-surface);
+  border-bottom: 1px solid var(--tv-border);
+  position: relative;
+  z-index: 10;
+}
+
+.tv-logo {
+  height: 44px;
+  object-fit: contain;
+  filter: brightness(1.1);
+}
+
+.tv-header-center {
+  text-align: center;
+}
+
+.tv-title {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  color: var(--tv-text);
+}
+
+.tv-subtitle {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--tv-accent);
+  letter-spacing: 0.3px;
+  display: block;
+  margin-top: 2px;
+}
+
+.tv-header-right {
+  text-align: right;
+}
+
+.tv-clock {
+  font-size: 28px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 2px;
+  color: var(--tv-text);
+  line-height: 1;
+}
+
+.tv-last-update {
+  font-size: 11px;
+  color: var(--tv-text-muted);
+  margin-top: 4px;
+}
+
+/* ── Corpo principal ────────────────────────────────────────── */
+.tv-main {
+  display: grid;
+  grid-template-columns: var(--chart-ratio) 1fr;
+  height: calc(100vh - var(--header-h));
+  gap: 0;
+  overflow: hidden;
+}
+
+/* ── Seção do gráfico ───────────────────────────────────────── */
+.tv-chart-section {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 28px 24px 28px 32px;
+  border-right: 1px solid var(--tv-border);
+  overflow: hidden;
+}
+
+.tv-chart-wrap {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+#tvChart {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* ── Seção da tabela ────────────────────────────────────────── */
+.tv-table-section {
+  display: flex;
+  flex-direction: column;
+  padding: 24px 28px 20px 24px;
+  overflow: hidden;
+  gap: 16px;
+}
+
+.tv-table {
+  width: 100%;
+  border-collapse: collapse;
+  flex: 1;
+  font-size: 15px;
+}
+
+.tv-table thead th {
+  padding: 10px 12px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--tv-text-muted);
+  border-bottom: 1px solid var(--tv-border);
+  background: var(--tv-surface);
+}
+
+.tv-table thead th:not(:first-child) {
+  text-align: center;
+}
+
+.tv-table tbody tr {
+  border-bottom: 1px solid var(--tv-border);
+  transition: background 0.2s;
+}
+
+.tv-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.tv-table tbody tr.tv-row-record {
+  background: rgba(255, 215, 0, 0.05);
+}
+
+.tv-table tbody tr.tv-row-done {
+  background: rgba(16, 185, 129, 0.07);
+}
+
+.tv-table tbody td {
+  padding: 11px 12px;
+  vertical-align: middle;
+}
+
+.tv-table tbody td:not(:first-child) {
+  text-align: center;
+}
+
+/* Nome da função com pastilha de cor */
+.tv-func-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.tv-func-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Quantidade — destaque */
+.tv-qty {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+/* Badge de % da meta */
+.tv-pct-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  min-width: 50px;
+  text-align: center;
+}
+
+.tv-pct-none {
+  background: var(--tv-surface-2);
+  color: var(--tv-text-muted);
+}
+
+.tv-pct-low {
+  background: rgba(239, 68, 68, 0.18);
+  color: #fca5a5;
+}
+
+.tv-pct-mid {
+  background: rgba(245, 158, 11, 0.18);
+  color: #fcd34d;
+}
+
+.tv-pct-high {
+  background: rgba(59, 130, 246, 0.18);
+  color: #93c5fd;
+}
+
+.tv-pct-done {
+  background: rgba(16, 185, 129, 0.18);
+  color: #6ee7b7;
+}
+
+/* Ícone de troféu para recorde */
+.tv-record-icon {
+  color: #fbbf24;
+  font-size: 13px;
+  margin-left: 4px;
+}
+
+/* Variação vs mês anterior */
+.tv-delta-up {
+  color: #4ade80;
+  font-weight: 600;
+}
+.tv-delta-down {
+  color: #f87171;
+  font-weight: 600;
+}
+.tv-delta-eq {
+  color: var(--tv-text-muted);
+}
+
+/* ── Legenda inferior ───────────────────────────────────────── */
+.tv-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding-top: 4px;
+  border-top: 1px solid var(--tv-border);
+}
+
+.tv-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--tv-text-muted);
+}
+
+.tv-legend-low i {
+  color: var(--badge-low);
+}
+.tv-legend-mid i {
+  color: var(--badge-mid);
+}
+.tv-legend-high i {
+  color: var(--badge-high);
+}
+.tv-legend-done i {
+  color: var(--badge-done);
+}
+.tv-legend-record i {
+  color: #fbbf24;
+}
+
+/* Loading row */
+.tv-table-loading {
+  text-align: center;
+  color: var(--tv-text-muted);
+  padding: 32px !important;
+  font-size: 14px;
+}
+
+/* ── Overlay offline ────────────────────────────────────────── */
+.tv-offline {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(239, 68, 68, 0.9);
+  color: #fff;
+  padding: 12px 24px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 100;
+  backdrop-filter: blur(8px);
+}

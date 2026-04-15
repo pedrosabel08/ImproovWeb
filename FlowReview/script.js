@@ -1050,8 +1050,8 @@ function calcSlaTimer(inicio, limiteHoras) {
   const h = Math.floor(horasDecorridas);
   const m = Math.floor((horasDecorridas % 1) * 60);
   const texto = expirado
-    ? `⚠ ${h}h${String(m).padStart(2, "0")}`
-    : `⏱ ${h}h${String(m).padStart(2, "0")}`;
+    ? `⚠ ${h}h ${m}min`
+    : `⏱ ${h}h ${m}min`;
   return { expirado, texto, horasDecorridas };
 }
 

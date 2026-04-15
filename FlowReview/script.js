@@ -2288,22 +2288,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
-  // Busca de função na sidebar (fr-section-tarefas)
+  // Busca de imagem na sidebar (fr-section-tarefas)
   const frSearchFuncao = document.getElementById("fr-search-funcao");
   if (frSearchFuncao) {
     frSearchFuncao.addEventListener("input", () => {
       const val = frSearchFuncao.value.toLowerCase().trim();
-      const sel = document.getElementById("nome_funcao");
-      if (!sel) return;
-      Array.from(sel.options).forEach((opt) => {
-        if (opt.value === "Todos") {
-          opt.hidden = false;
-          opt.disabled = false;
-          return;
-        }
-        const matches = !val || opt.text.toLowerCase().includes(val);
-        opt.hidden = !matches;
-        opt.disabled = !matches;
+      document.querySelectorAll(".tarefasImagensObra .task-item").forEach((item) => {
+        const nomeImagem = (item.querySelector(".imagem_nome")?.textContent || "").toLowerCase();
+        item.style.display = !val || nomeImagem.includes(val) ? "" : "none";
       });
     });
   }

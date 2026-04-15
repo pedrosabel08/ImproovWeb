@@ -60,7 +60,26 @@ const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
         }
       });
 
-      console.log('Connected to Redis and subscribed to upload_progress:* and pos_producao:*');
+      // psubscribe to funcao_atualizada:* channels (function insert/update broadcasts)
+      await sub.pSubscribe('funcao_atualizada:*', (message, channel) => {
+        console.log('funcao_atualizada message received on channel:', channel);
+        try {
+          const payload = JSON.parse(message);
+          const envelope = JSON.stringify({ channel, payload });
+          let sent = 0;
+          wss.clients.forEach((socket) => {
+            if (socket.readyState === WebSocket.OPEN) {
+              socket.send(envelope);
+              sent++;
+            }
+          });
+          console.log(`funcao_atualizada broadcast sent to ${sent} client(s)`);
+        } catch (err) {
+          console.error('Failed to forward funcao_atualizada message', err);
+        }
+      });
+
+      console.log('Connected to Redis and subscribed to upload_progress:*, pos_producao:* and funcao_atualizada:*');
 
       // clear any reconnect timer if successful
       if (reconnectTimer) {

@@ -1214,6 +1214,11 @@ checkDailyAccess()
 
 carregarDados(colaborador_id);
 
+// Atualiza lista automaticamente quando uma função for inserida/atualizada ou upload enfileirado (via WebSocket)
+window.addEventListener('improov:funcaoAtualizada', () => {
+  carregarDados(colaborador_id);
+});
+
 // carregarEventosEntrega();
 
 const data = new Date();

@@ -586,7 +586,7 @@ function update_log_entries_status(array $logIds = null, string $status = '', $c
 
 function mark_funcao_upload_quitado(array $meta): void
 {
-    global $conn;
+    global $conn, $redis;
 
     ensure_db_connection_local();
 
@@ -655,6 +655,11 @@ function mark_funcao_upload_quitado(array $meta): void
     if ($updFinal) {
         $updFinal->close();
     }
+    try {
+        if ($redis) {
+            $redis->publish('funcao_atualizada:updated', json_encode(['source' => 'upload_worker']));
+        }
+    } catch (Exception $e) { /* ignore */ }
 }
 
 // Remove any duplicate meta json recreated after claim (race in enqueue)

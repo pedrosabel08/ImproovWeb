@@ -150,11 +150,11 @@ $conn->close();
 
                     <div class="fr-filter-group">
                         <label for="nome_funcao">
-                            <i class="fa-solid fa-layer-group"></i> Função
+                            <i class="fa-solid fa-layer-group"></i> Imagem
                         </label>
                         <div class="fr-input-wrap" style="margin-bottom:4px">
                             <i class="fa-solid fa-magnifying-glass fr-input-icon"></i>
-                            <input type="search" id="fr-search-funcao" placeholder="Buscar função...">
+                            <input type="search" id="fr-search-funcao" placeholder="Buscar imagem...">
                         </div>
                         <select name="nome_funcao" id="nome_funcao">
                             <option value="Todos">Todos</option>

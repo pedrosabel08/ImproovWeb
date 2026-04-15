@@ -213,6 +213,12 @@ try {
     $stmt->close();
 
     $conn->commit();
+    try {
+        if (file_exists(__DIR__ . '/vendor/autoload.php')) require_once __DIR__ . '/vendor/autoload.php';
+        if (class_exists('\Predis\Client')) {
+            (new \Predis\Client())->publish('funcao_atualizada:updated', json_encode(['source' => 'insereFuncao']));
+        }
+    } catch (Exception $e) { /* ignore Redis failures */ }
     echo json_encode(['success' => 'Dados inseridos/atualizados com sucesso!']);
 } catch (Exception $e) {
     // Log exception details for debugging

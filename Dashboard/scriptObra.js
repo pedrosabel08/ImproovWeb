@@ -11807,3 +11807,9 @@ if (closeBtn) closeBtn.addEventListener("click", closeModal);
     if (e.target === modal) closeModal();
   });
 })();
+
+// Atualiza infosObra automaticamente quando uma função for inserida/atualizada (via WebSocket)
+window.addEventListener('improov:funcaoAtualizada', () => {
+  const id = localStorage.getItem('obraId');
+  if (id) infosObra(id);
+});

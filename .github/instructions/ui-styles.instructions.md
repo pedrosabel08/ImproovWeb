@@ -116,7 +116,8 @@ O módulo de referência é `Render/` (index.php + style.css). Toda nova tela de
 
   /* Tabelas */
   --bg-table-head: #f8f9fb;
-  --bg-table-row-hover: #f4f7ff;
+  --bg-table-row: #f4f7ff;
+  --bg-table-row-hover: #0b0e11;
   --bg-table-row-selected: rgba(79, 128, 225, 0.07);
   --border-table: #e8ecf1;
 
@@ -136,7 +137,8 @@ O módulo de referência é `Render/` (index.php + style.css). Toda nova tela de
     --bg-input: #1a1d2e;
     --bg-modal: #1e2130;
     --bg-table-head: #1a1d2e;
-    --bg-table-row-hover: #22263a;
+    --bg-table-row: #22263a;
+    --bg-table-row-hover: #2c3040;
     --bg-table-row-selected: rgba(109, 155, 255, 0.1);
     --border-card: #2c3040;
     --border-input: #2c3040;
@@ -476,16 +478,16 @@ Regra geral: sem `border`, `height: 36px`, `border-radius: var(--radius-sm)`, `f
 
 > **Tabela canônica de status** (badges translúcidos — `s-*`)
 >
-> | Status | CSS var | Cor (hex) | Classe badge |
-> |---|---|---|---|
-> | Finalizado | `--status-finalizado` | `#10b981` | `s-finalizado` |
-> | Em Andamento | `--status-andamento` | `#f59e0b` | `s-andamento` |
-> | Em Aprovação | `--status-aprovacao` | `#8b5cf6` | `s-aprovacao` |
-> | Reprovado | `--status-reprovado` | `#ef4444` | `s-reprovado` |
-> | Refazendo | `--status-refazendo` | `#f97316` | `s-refazendo` |
-> | Outro | `--status-outro` | `#94a3b8` | `s-outro` |
-> | RVW_DONE | `--status-rvw-done` | `#d97706` | `s-rvw-done` |
-> | PRE_ALT | `--status-pre-alt` | `#7c3aed` | `s-pre-alt` |
+> | Status             | CSS var                       | Cor (hex) | Classe badge           |
+> | ------------------ | ----------------------------- | --------- | ---------------------- |
+> | Finalizado         | `--status-finalizado`         | `#10b981` | `s-finalizado`         |
+> | Em Andamento       | `--status-andamento`          | `#f59e0b` | `s-andamento`          |
+> | Em Aprovação       | `--status-aprovacao`          | `#8b5cf6` | `s-aprovacao`          |
+> | Reprovado          | `--status-reprovado`          | `#ef4444` | `s-reprovado`          |
+> | Refazendo          | `--status-refazendo`          | `#f97316` | `s-refazendo`          |
+> | Outro              | `--status-outro`              | `#94a3b8` | `s-outro`              |
+> | RVW_DONE           | `--status-rvw-done`           | `#d97706` | `s-rvw-done`           |
+> | PRE_ALT            | `--status-pre-alt`            | `#7c3aed` | `s-pre-alt`            |
 > | READY_FOR_PLANNING | `--status-ready-for-planning` | `#0891b2` | `s-ready-for-planning` |
 
 ---
@@ -497,40 +499,53 @@ As classes usam fundo sólido (não translúcido). Aplique via `cell.classList.a
 
 ```css
 /* CSS vars declaradas em styleObra.css e styleIndex.css */
---si-p00: #ffc21c;   --si-r00: #1cf4ff;   --si-r01: #ff6200;
---si-r02: #ff3c00;   --si-r03: #ff0000;   --si-r04: #6449ff;
---si-r05: #7d36f7;   --si-ef: #0dff00;    --si-hold: #ff0000;
---si-tea: #f7eb07;   --si-ren: #0c9ef2;   --si-apr: #0c45f2;
---si-app: #7d36f7;   --si-rvw: #228b22;   --si-ok: #6495ed;
---si-fin: #228b22;   --si-drv: #00f3ff;
---si-rvw-done: #d97706;  --si-pre-alt: #7c3aed;  --si-ready-for-planning: #0891b2;
+--si-p00: #ffc21c;
+--si-r00: #1cf4ff;
+--si-r01: #ff6200;
+--si-r02: #ff3c00;
+--si-r03: #ff0000;
+--si-r04: #6449ff;
+--si-r05: #7d36f7;
+--si-ef: #0dff00;
+--si-hold: #ff0000;
+--si-tea: #f7eb07;
+--si-ren: #0c9ef2;
+--si-apr: #0c45f2;
+--si-app: #7d36f7;
+--si-rvw: #228b22;
+--si-ok: #6495ed;
+--si-fin: #228b22;
+--si-drv: #00f3ff;
+--si-rvw-done: #d97706;
+--si-pre-alt: #7c3aed;
+--si-ready-for-planning: #0891b2;
 ```
 
 > **Tabela canônica de status imagem** (`si-*`)
 >
-> | Status | Classe | Background | Texto |
-> |---|---|---|---|
-> | P00 | `si-p00` | `#ffc21c` | preto |
-> | R00 | `si-r00` | `#1cf4ff` | preto |
-> | R01 | `si-r01` | `#ff6200` | preto |
-> | R02 | `si-r02` | `#ff3c00` | preto |
-> | R03 | `si-r03` | `#ff0000` | preto |
-> | R04 | `si-r04` | `#6449ff` | preto |
-> | R05 | `si-r05` | `#7d36f7` | preto |
-> | EF | `si-ef` | `#0dff00` | preto |
-> | HOLD | `si-hold` | `#ff0000` | preto |
-> | TEA | `si-tea` | `#f7eb07` | preto |
-> | REN | `si-ren` | `#0c9ef2` | branco |
-> | APR | `si-apr` | `#0c45f2` | branco |
-> | APP | `si-app` | `#7d36f7` | branco |
-> | RVW | `si-rvw` | `#228b22` | branco |
-> | OK | `si-ok` | `#6495ed` | branco |
-> | TO-DO | `si-to-do` | `#6495ed` | branco |
-> | FIN | `si-fin` | `#228b22` | branco |
-> | DRV | `si-drv` | `#00f3ff` | preto |
-> | RVW_DONE | `si-rvw-done` | `#d97706` | branco |
-> | PRE_ALT | `si-pre-alt` | `#7c3aed` | branco |
-> | READY_FOR_PLANNING | `si-ready-for-planning` | `#0891b2` | branco |
+> | Status             | Classe                  | Background | Texto  |
+> | ------------------ | ----------------------- | ---------- | ------ |
+> | P00                | `si-p00`                | `#ffc21c`  | preto  |
+> | R00                | `si-r00`                | `#1cf4ff`  | preto  |
+> | R01                | `si-r01`                | `#ff6200`  | preto  |
+> | R02                | `si-r02`                | `#ff3c00`  | preto  |
+> | R03                | `si-r03`                | `#ff0000`  | preto  |
+> | R04                | `si-r04`                | `#6449ff`  | preto  |
+> | R05                | `si-r05`                | `#7d36f7`  | preto  |
+> | EF                 | `si-ef`                 | `#0dff00`  | preto  |
+> | HOLD               | `si-hold`               | `#ff0000`  | preto  |
+> | TEA                | `si-tea`                | `#f7eb07`  | preto  |
+> | REN                | `si-ren`                | `#0c9ef2`  | branco |
+> | APR                | `si-apr`                | `#0c45f2`  | branco |
+> | APP                | `si-app`                | `#7d36f7`  | branco |
+> | RVW                | `si-rvw`                | `#228b22`  | branco |
+> | OK                 | `si-ok`                 | `#6495ed`  | branco |
+> | TO-DO              | `si-to-do`              | `#6495ed`  | branco |
+> | FIN                | `si-fin`                | `#228b22`  | branco |
+> | DRV                | `si-drv`                | `#00f3ff`  | preto  |
+> | RVW_DONE           | `si-rvw-done`           | `#d97706`  | branco |
+> | PRE_ALT            | `si-pre-alt`            | `#7c3aed`  | branco |
+> | READY_FOR_PLANNING | `si-ready-for-planning` | `#0891b2`  | branco |
 
 ---
 
@@ -911,6 +926,8 @@ Toda tabela de dados deve ser envolvida em `.table-section` com header e `.table
   text-align: left;
   border-bottom: 1px solid var(--border-table);
   white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
 }
 /* Alinhamento de colunas */
 .data-table thead th.col-center,
@@ -940,6 +957,7 @@ Toda tabela de dados deve ser envolvida em `.table-section` com header e `.table
   padding: 10px 12px;
   color: var(--text-primary);
   vertical-align: middle;
+  background: var(--bg-table-row);
 }
 /* Modificadores de célula */
 .data-table tbody td.col-numeric {
@@ -1227,5 +1245,6 @@ Use `.btn-row` para botões compactos dentro de células de tabela.
 - Modais com animação spring: `cubic-bezier(0.34, 1.56, 0.64, 1)`.
 - Tabelas sempre envolvidas em `.table-section` com `.table-wrap` para scroll horizontal.
 - Cabeçalhos de tabela sempre com `text-transform: uppercase` e `var(--text-muted)`.
+- `th` sempre com `white-space: nowrap; text-overflow: ellipsis; overflow: hidden;` para evitar quebra de linha e respeitando largura da coluna.
 - Linhas de tabela com hover `var(--bg-table-row-hover)` e seleção `var(--bg-table-row-selected)`.
 - **Nunca usar `alert()`, `confirm()` ou `prompt()` nativos** — sempre SweetAlert2 com `timerProgressBar: true` quando auto-fechável.

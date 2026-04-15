@@ -44,7 +44,7 @@
   --transition-slow: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   --bg-table-head: #f8f9fb;
   --bg-table-row: #f4f7ff;
-  --bg-table-row-hover: #e8ecf1;
+  --bg-table-row-hover: #0b0e11;
   --bg-table-row-selected: rgba(79, 128, 225, 0.07);
   --border-table: #e8ecf1;
   --btn-clear-border: #ffb3b3;

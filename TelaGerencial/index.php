@@ -65,12 +65,16 @@ $conn->close();
 
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css" />
     <link rel="stylesheet" href="<?php echo asset_url('style.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset_url('../css/styleSidebar.css'); ?>">
+    <link rel="stylesheet" href="<?php echo asset_url('../css/modalSessao.css'); ?>">
     <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
         type="image/x-icon">
     <title>Tela Gerencial</title>
-    <link rel="stylesheet" href="<?php echo asset_url('../css/modalSessao.css'); ?>">
 </head>
 
 <body>
@@ -80,8 +84,11 @@ $conn->close();
 
     ?>
     <div class="container">
-        <header>
-            <img src="../gif/assinatura_preto.gif" alt="" style="width: 200px;">
+        <div class="page-header">
+            <div class="page-header-left">
+                <img src="../gif/assinatura_preto.gif" class="page-header-logo" id="gif" style="height:36px; opacity:0.85" />
+                <h1 class="page-title">Tela Gerencial</h1>
+            </div>
             <div class="filtros-linha">
                 <label for="mes">Mês:</label>
                 <select id="mes" onchange="refreshAll()">
@@ -109,7 +116,7 @@ $conn->close();
                 </select>
                 <button id="gerar-relatorio">Gerar relatório</button>
             </div>
-        </header>
+        </div>
 
         <!-- Cards de resumo -->
         <div class="dashboard-cards">
@@ -147,30 +154,31 @@ $conn->close();
             </div>
         </div> -->
 
-        <!-- Tabela de colaboradores — largura total -->
-        <div class="section-block">
-            <h2 class="section-title">Produção por colaborador</h2>
-            <div class="table-scroll">
-                <table id="tabelaProducao">
-                    <thead>
-                        <tr>
-                            <th>Colaborador</th>
-                            <th id="thFuncaoProducao">Função</th>
-                            <th>Quantidade</th>
-                            <th>Pagas</th>
-                            <th>Não pagas</th>
-                            <th>Mês anterior</th>
-                            <th>Recorde</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
+        <!-- Grid principal: 2 colunas, 2 linhas -->
+        <div class="tables-main-grid">
+            <!-- Linha 1: tabela de colaboradores — span 2 colunas -->
+            <div class="table-block full-span">
+                <h2 class="section-title">Produção por colaborador</h2>
+                <div class="table-scroll">
+                    <table id="tabelaProducao">
+                        <thead>
+                            <tr>
+                                <th>Colaborador</th>
+                                <th id="thFuncaoProducao">Função</th>
+                                <th>Quantidade</th>
+                                <th>Pagas</th>
+                                <th>Não pagas</th>
+                                <th>Mês anterior</th>
+                                <th>Recorde</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
             </div>
-        </div>
 
-        <!-- Grade 2 colunas: entregas + função -->
-        <div class="tables-grid">
-            <div class="table-section">
+            <!-- Linha 2, col 1: imagens entregues -->
+            <div class="table-block">
                 <h3 class="section-title">Imagens entregues <span id="mes_atual"></span></h3>
                 <div class="table-scroll">
                     <table id="tabelaEntregas">
@@ -185,7 +193,9 @@ $conn->close();
                     </table>
                 </div>
             </div>
-            <div class="table-section">
+
+            <!-- Linha 2, col 2: produção por função -->
+            <div class="table-block">
                 <h3 class="section-title">Produção por função</h3>
                 <div class="table-scroll">
                     <table id="tabelaFuncao">
@@ -218,10 +228,13 @@ $conn->close();
     </div>
 
 
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="<?php echo asset_url('dashboard-utils.js'); ?>"></script>
     <script src="<?php echo asset_url('script.js'); ?>"></script>
     <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
     <script src="<?php echo asset_url('../script/controleSessao.js'); ?>"></script>
+    <?php include '../css/modalSessao.php'; ?>
 </body>
 
 </html>

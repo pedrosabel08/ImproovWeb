@@ -9,7 +9,7 @@ foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWe
 }
 unset($__root, $__p);
 
-session_start();
+// session_start();
 
 include '../conexao.php';
 include '../conexaoMain.php';
@@ -93,9 +93,11 @@ $conn->close();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
         integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css" />
     <link rel="stylesheet" href="<?php echo asset_url('style.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset_url('addClienteObra.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset_url('../css/styleSidebar.css'); ?>">
@@ -166,7 +168,10 @@ $conn->close();
     <div class="main-content">
         <!-- Cabeçalho do Dashboard -->
         <div class="dashboard-header">
-            <img id="gif" src="../gif/assinatura_preto.gif" alt="" style="width: 150px;">
+            <div class="page-header-left">
+                <img id="gif" src="../gif/assinatura_preto.gif" alt="" style="height: 36px; opacity: 0.85;">
+                <h1 class="page-title">Dashboard</h1>
+            </div>
             <?php if ($nivel_acesso == 1): ?>
                 <button id="btnAddClienteObra" type="button">Adicionar cliente/obra</button>
             <?php endif; ?>
@@ -316,7 +321,7 @@ $conn->close();
                         <?php if (!empty($clientes) && is_array($clientes)): ?>
                             <?php foreach ($clientes as $c): ?>
                                 <?php
-                                $cid = isset($c['idcliente']) ? $c['idcliente'] : (isset($c['id'] ) ? $c['id'] : '');
+                                $cid = isset($c['idcliente']) ? $c['idcliente'] : (isset($c['id']) ? $c['id'] : '');
                                 $cname = isset($c['nome_cliente']) ? $c['nome_cliente'] : (isset($c['nome']) ? $c['nome'] : '');
                                 ?>
                                 <?php if ($cid !== ''): ?>
@@ -365,6 +370,7 @@ $conn->close();
         localStorage.setItem('idcolaborador', idColaborador);
     </script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="https://cdn.jsdelivr.net/npm/swiper/swiper-bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="<?php echo asset_url('../script/sidebar.js'); ?>" defer></script>

@@ -9,7 +9,7 @@ foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWe
 }
 unset($__root, $__p);
 
-session_start();
+// session_start();
 
 include '../conexao.php';
 
@@ -50,8 +50,8 @@ $connMain->close();
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" href="<?php echo asset_url('style.css'); ?>" />
     <link rel="stylesheet" href="<?php echo asset_url('../css/styleSidebar.css'); ?>" />
-    <link href="https://cdn.jsdelivr.net/npm/remixicon/fonts/remixicon.css" rel="stylesheet" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" />
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css" />
     <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
@@ -67,8 +67,11 @@ $connMain->close();
 
     <div class="container">
         <div class="header">
-            <h1>📌 Flow Referências</h1>
-            <button class="btn-upload" id="btnUpload">+ Novo Upload</button>
+            <div class="page-header-left">
+                <img src="../gif/assinatura_preto.gif" id="gif" style="height:36px; opacity:0.85" />
+                <h1>Flow Referências</h1>
+            </div>
+            <button class="btn-upload" id="btnUpload"><i class="fa-solid fa-upload"></i> Novo Upload</button>
         </div>
 
         <div class="filters">

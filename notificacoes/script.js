@@ -1,5 +1,16 @@
-function confirmDelete() {
-    return confirm('Excluir esta notificação?');
+async function confirmDelete(e) {
+    e.preventDefault();
+    const form = e.target;
+    const { isConfirmed } = await Swal.fire({
+        title: 'Excluir notificação?',
+        text: 'Esta ação não pode ser desfeita.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Excluir',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#ef4444',
+    });
+    if (isConfirmed) form.submit();
 }
 
 function qs(sel, root = document) {

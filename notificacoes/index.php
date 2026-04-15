@@ -114,10 +114,15 @@ if ($resVer === false) {
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css" />
     <link rel="stylesheet" href="<?php echo asset_url('style.css'); ?>" />
     <link rel="stylesheet" href="<?php echo asset_url('../css/styleSidebar.css'); ?>" />
+    <link rel="stylesheet" href="<?php echo asset_url('../css/modalSessao.css'); ?>" />
     <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
         type="image/x-icon">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <title>Notificações</title>
 </head>
 
@@ -126,32 +131,38 @@ if ($resVer === false) {
     <?php include '../sidebar.php'; ?>
 
     <div class="container">
-        <div class="header">
-            <h1>Notificações</h1>
+        <div class="page-header">
+            <div class="page-header-left">
+                <img src="../gif/assinatura_preto.gif" class="page-header-logo" id="gif" style="height:36px; opacity:0.85" />
+                <h1 class="page-title">Notificações</h1>
+            </div>
             <div class="inline">
-                <button class="btn primary" type="button" id="btnOpenCreate">Adicionar notificação</button>
-                <div class="small">Admin</div>
+                <button class="btn-apply" type="button" id="btnOpenCreate"><i class="fa-solid fa-plus"></i> Adicionar notificação</button>
             </div>
         </div>
 
         <?php if ($flashOk): ?>
-            <div class="alert ok"><?= h($flashOk) ?></div>
+            <div class="alert-box ok"><i class="fa-solid fa-circle-check"></i><?= h($flashOk) ?></div>
         <?php endif; ?>
         <?php if ($flashErr): ?>
-            <div class="alert err"><?= h($flashErr) ?></div>
+            <div class="alert-box err"><i class="fa-solid fa-circle-xmark"></i><?= h($flashErr) ?></div>
         <?php endif; ?>
 
         <?php if (!$tableReady): ?>
-            <div class="alert err">
+            <div class="alert-box danger"><i class="fa-solid fa-circle-xmark"></i>
                 Tabela <b>notificacoes</b> não encontrada. Rode o SQL em
                 <b>sql/2026-01-14_notificacoes_module.sql</b>.
             </div>
         <?php endif; ?>
 
-        <div class="card">
-            <h2 style="margin:0 0 12px 0; font-size: 16px;">Notificações cadastradas</h2>
-
-            <table class="table">
+        <div class="grid-scroll-area">
+        <div class="table-section">
+            <div class="table-section-header">
+                <span class="table-section-title"><i class="fa-solid fa-bell"></i> Notificações cadastradas</span>
+                <span class="table-section-count" id="notifCount">0</span>
+            </div>
+            <div class="table-wrap">
+            <table class="data-table">
                 <thead>
                     <tr>
                         <th>ID</th>
@@ -178,19 +189,19 @@ if ($resVer === false) {
                             <td><?= (int)$n['id'] ?></td>
                             <td>
                                 <?php if ((int)$n['ativa'] === 1): ?>
-                                    <span class="badge on">ativa</span>
+                                    <span class="status-badge s-ativo">ativa</span>
                                 <?php else: ?>
-                                    <span class="badge off">inativa</span>
+                                    <span class="status-badge s-inativo">inativa</span>
                                 <?php endif; ?>
                             </td>
                             <td>
                                 <div><?= h($n['titulo']) ?></div>
                                 <div class="small">Criado em: <?= h($n['criado_em'] ?? '') ?></div>
                             </td>
-                            <td><span class="badge"><?= h($n['tipo']) ?></span></td>
-                            <td><span class="badge"><?= h($n['canal']) ?></span></td>
+                            <td><span class="status-badge s-info"><?= h($n['tipo']) ?></span></td>
+                            <td><span class="status-badge s-info"><?= h($n['canal']) ?></span></td>
                             <td>
-                                <span class="badge"><?= h($segmentacaoLabel($n['segmentacao_tipo'] ?? 'geral')) ?></span>
+                                <span class="status-badge s-info"><?= h($segmentacaoLabel($n['segmentacao_tipo'] ?? 'geral')) ?></span>
                             </td>
                             <td><?= (int)$n['prioridade'] ?></td>
                             <td class="small">
@@ -199,28 +210,30 @@ if ($resVer === false) {
                             </td>
                             <td class="small">
                                 <div><b><?= (int)($n['dest_vistos'] ?? 0) ?></b> / <?= (int)($n['dest_total'] ?? 0) ?> vistos</div>
-                                <button class="btn" type="button" data-action="status" data-id="<?= (int)$n['id'] ?>">Ver status</button>
+                                <button class="btn-row neutral" type="button" data-action="status" data-id="<?= (int)$n['id'] ?>"><i class="fa-solid fa-eye"></i> Ver status</button>
                             </td>
                             <td>
                                 <div class="inline">
-                                    <a class="btn" href="index.php?edit=<?= (int)$n['id'] ?>#modal">Editar</a>
+                                    <a class="btn-row neutral" href="index.php?edit=<?= (int)$n['id'] ?>#modal"><i class="fa-solid fa-pen"></i> Editar</a>
 
                                     <form method="POST" action="actions/toggle.php" style="display:inline;">
                                         <input type="hidden" name="id" value="<?= (int)$n['id'] ?>" />
                                         <input type="hidden" name="ativa" value="<?= (int)$n['ativa'] ?>" />
-                                        <button class="btn" type="submit"><?= ((int)$n['ativa'] === 1) ? 'Desativar' : 'Ativar' ?></button>
+                                        <button class="btn-row neutral" type="submit"><?= ((int)$n['ativa'] === 1) ? 'Desativar' : 'Ativar' ?></button>
                                     </form>
 
-                                    <form method="POST" action="actions/delete.php" style="display:inline;" onsubmit="return confirmDelete();">
+                                    <form method="POST" action="actions/delete.php" style="display:inline;" onsubmit="confirmDelete(event);">
                                         <input type="hidden" name="id" value="<?= (int)$n['id'] ?>" />
-                                        <button class="btn danger" type="submit">Excluir</button>
+                                        <button class="btn-row danger" type="submit"><i class="fa-solid fa-trash"></i> Excluir</button>
                                     </form>
                                 </div>
                             </td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
-            </table>
+                </table>
+            </div>
+        </div>
         </div>
 
     </div>
@@ -236,9 +249,9 @@ if ($resVer === false) {
                 </div>
                 <div class="inline">
                     <?php if ($editRow): ?>
-                        <a class="btn" href="index.php">Sair da edição</a>
+                        <a class="btn-row neutral" href="index.php">Sair da edição</a>
                     <?php endif; ?>
-                    <button class="btn" type="button" data-close="1">Fechar</button>
+                    <button class="btn-row neutral" type="button" data-close="1"><i class="fa-solid fa-xmark"></i> Fechar</button>
                 </div>
             </div>
 
@@ -401,7 +414,7 @@ if ($resVer === false) {
                         </div>
 
                             <div class="inline">
-                                <button class="btn primary" type="submit"><?= $editRow ? 'Salvar' : 'Criar' ?></button>
+                                <button class="btn-apply" type="submit"><i class="fa-solid fa-check"></i> <?= $editRow ? 'Salvar' : 'Criar' ?></button>
                             </div>
                         </form>
                     </div>
@@ -436,7 +449,7 @@ if ($resVer === false) {
                             </div>
 
                             <div class="inline">
-                                <button class="btn primary" type="submit">Registrar versão</button>
+                                <button class="btn-apply" type="submit"><i class="fa-solid fa-tag"></i> Registrar versão</button>
                             </div>
                         </form>
 
@@ -463,7 +476,7 @@ if ($resVer === false) {
                                         <?php foreach ($versionLogs as $v): ?>
                                             <tr>
                                                 <td class="small"><?= h($v['criado_em'] ?? '-') ?></td>
-                                                <td><span class="badge"><?= h($v['versao'] ?? '-') ?></span></td>
+                                                <td><span class="status-badge s-info"><?= h($v['versao'] ?? '-') ?></span></td>
                                                 <td class="small"><?= h($v['tipo'] ?? '-') ?></td>
                                                 <td class="small"><?= nl2br(h($v['descricao'] ?? '')) ?></td>
                                             </tr>
@@ -487,7 +500,7 @@ if ($resVer === false) {
                     <div class="modal__title">Status de leitura</div>
                     <div class="small">Quem viu / quem falta</div>
                 </div>
-                <button class="btn" type="button" data-close-status="1">Fechar</button>
+                <button class="btn-row neutral" type="button" data-close-status="1"><i class="fa-solid fa-xmark"></i> Fechar</button>
             </div>
             <div class="card" style="margin: 0;">
                 <div id="statusSummary" class="small" style="margin-bottom: 12px;"></div>
@@ -508,9 +521,19 @@ if ($resVer === false) {
 
     <script>
         window.__editOpen = <?= $editRow ? 'true' : 'false' ?>;
+        // Count badge
+        document.addEventListener('DOMContentLoaded', () => {
+            const rows = document.querySelectorAll('.data-table tbody tr');
+            const count = document.getElementById('notifCount');
+            if (count) count.textContent = rows.length;
+        });
     </script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="<?php echo asset_url('script.js'); ?>"></script>
     <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
+    <script src="<?php echo asset_url('../script/controleSessao.js'); ?>"></script>
+    <?php include '../css/modalSessao.php'; ?>
 </body>
 
 </html>

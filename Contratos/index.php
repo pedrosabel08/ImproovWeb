@@ -55,18 +55,26 @@ $conn->close();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css" />
     <link rel="stylesheet" href="<?php echo asset_url('../css/styleSidebar.css'); ?>">
     <link rel="stylesheet" href="<?php echo asset_url('./style.css'); ?>">
+    <link rel="stylesheet" href="<?php echo asset_url('../css/modalSessao.css'); ?>">
     <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
         type="image/x-icon">
     <title>Contratos</title>
-    <link rel="stylesheet" href="<?php echo asset_url('../css/modalSessao.css'); ?>">
 </head>
 
 <body>
     <?php include __DIR__ . '/../sidebar.php'; ?>
     <main class="contratos-main">
-        <h1>Contratos</h1>
+        <div class="page-header">
+            <div class="page-header-left">
+                <img src="../gif/assinatura_preto.gif" id="gif" style="height:36px; opacity:0.85" />
+                <h1>Contratos</h1>
+            </div>
+        </div>
         <div class="contratos-card">
             <table id="contratos-table">
                 <thead>
@@ -97,11 +105,13 @@ $conn->close();
     </main>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
     <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.css">
     <script src="<?php echo asset_url('./contratos.js'); ?>"></script>
     <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>
     <script src="<?php echo asset_url('../script/controleSessao.js'); ?>"></script>
+    <?php include '../css/modalSessao.php'; ?>
 </body>
 
 </html>

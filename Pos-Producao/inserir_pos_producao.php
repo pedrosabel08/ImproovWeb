@@ -138,6 +138,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     );
 
     if ($stmt->execute()) {
+        require_once 'ws_notify.php';
+        notifyPosProducaoUpdate();
         echo "Dados inseridos ou atualizados com sucesso!";
 
         // Definir a mensagem com base no status_pos

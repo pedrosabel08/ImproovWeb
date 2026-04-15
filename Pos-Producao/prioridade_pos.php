@@ -1,6 +1,7 @@
 <?php
 session_start();
 include_once __DIR__ . '/../conexao.php';
+require_once 'ws_notify.php';
 
 header('Content-Type: application/json');
 
@@ -37,6 +38,7 @@ if ($action === 'reorder') {
             $stmt->execute();
         }
         $conn->commit();
+        notifyPosProducaoUpdate();
         echo json_encode(['success' => true]);
     } catch (Exception $e) {
         $conn->rollback();
@@ -61,6 +63,7 @@ if ($action === 'reorder') {
     }
     $stmt->bind_param('ii', $flag, $id);
     if ($stmt->execute()) {
+        notifyPosProducaoUpdate();
         echo json_encode(['success' => true]);
     } else {
         echo json_encode(['success' => false, 'message' => 'Erro ao atualizar.']);
@@ -93,6 +96,7 @@ if ($action === 'reorder') {
             $stmt->execute();
         }
         $conn->commit();
+        notifyPosProducaoUpdate();
         echo json_encode(['success' => true]);
     } catch (Exception $e) {
         $conn->rollback();

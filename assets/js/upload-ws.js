@@ -106,6 +106,13 @@
         ws.addEventListener('message', ev => {
             try {
                 const data = JSON.parse(ev.data);
+
+                // pos_producao channel: dispatch event for table refresh
+                if (data.channel && data.channel.startsWith('pos_producao:')) {
+                    window.dispatchEvent(new CustomEvent('improov:posProducaoUpdated'));
+                    return;
+                }
+
                 const payload = data.payload || data;
                 if (!payload || !payload.id) return;
                 if (payload.id !== subscribedId) return; // ignore unrelated

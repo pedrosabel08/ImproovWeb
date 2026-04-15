@@ -41,7 +41,26 @@ const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
         }
       });
 
-      console.log('Connected to Redis and subscribed to upload_progress:*');
+      // psubscribe to pos_producao:* channels (table update broadcasts)
+      await sub.pSubscribe('pos_producao:*', (message, channel) => {
+        console.log('pos_producao message received on channel:', channel);
+        try {
+          const payload = JSON.parse(message);
+          const envelope = JSON.stringify({ channel, payload });
+          let sent = 0;
+          wss.clients.forEach((socket) => {
+            if (socket.readyState === WebSocket.OPEN) {
+              socket.send(envelope);
+              sent++;
+            }
+          });
+          console.log(`pos_producao broadcast sent to ${sent} client(s)`);
+        } catch (err) {
+          console.error('Failed to forward pos_producao message', err);
+        }
+      });
+
+      console.log('Connected to Redis and subscribed to upload_progress:* and pos_producao:*');
 
       // clear any reconnect timer if successful
       if (reconnectTimer) {

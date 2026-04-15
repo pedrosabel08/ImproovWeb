@@ -17,6 +17,8 @@ if (isset($data['id_pos'])) {
     $stmt->bind_param("i", $idPos);
 
     if ($stmt->execute()) {
+        require_once 'ws_notify.php';
+        notifyPosProducaoUpdate();
         echo json_encode(['success' => true]);
     } else {
         echo json_encode(['success' => false, 'message' => 'Erro ao deletar o item']);

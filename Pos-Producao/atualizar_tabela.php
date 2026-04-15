@@ -29,13 +29,13 @@ INNER JOIN status_imagem s ON p.status_id = s.idstatus
 LEFT JOIN colaborador resp ON p.responsavel_id = resp.idcolaborador
 LEFT JOIN render_alta r ON p.render_id = r.idrender_alta
 LEFT JOIN pos_prioridade_obra ppo ON o.idobra = ppo.obra_id
-ORDER BY 
+ORDER BY
     CASE WHEN p.status_pos = 1 THEN 0 ELSE 1 END,
-    p.flag_urgente DESC,
-    (ppo.prioridade IS NULL) ASC,
-    ppo.prioridade ASC,
-    p.prioridade ASC,
-    (i.prazo IS NULL),
+    CASE WHEN p.status_pos != 0 THEN p.flag_urgente END DESC,
+    CASE WHEN p.status_pos != 0 THEN (ppo.prioridade IS NULL) END ASC,
+    CASE WHEN p.status_pos != 0 THEN ppo.prioridade END ASC,
+    CASE WHEN p.status_pos != 0 THEN p.prioridade END ASC,
+    CASE WHEN p.status_pos != 0 THEN (i.prazo IS NULL) END ASC,
     p.data_pos DESC;                                 
 ";
 

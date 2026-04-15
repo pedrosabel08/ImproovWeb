@@ -359,6 +359,26 @@ function atualizarTabela() {
 atualizarTabela();
 carregarMetricas();
 
+// Atualiza tabela automaticamente quando outro usuário faz uma alteração (via WebSocket)
+window.addEventListener('improov:posProducaoUpdated', () => {
+  atualizarTabela();
+});
+
+// Garantir conexão WebSocket mesmo sem sessão de upload ativa
+(function () {
+  const STORAGE_KEY = 'improov_client_id';
+  function ensureWs() {
+    if (!window.improovUploadWS) return;
+    if (!localStorage.getItem(STORAGE_KEY)) {
+      localStorage.setItem(STORAGE_KEY, 'pos_' + Math.random().toString(36).slice(2, 10));
+    }
+    window.improovUploadWS.subscribe(localStorage.getItem(STORAGE_KEY));
+  }
+  // Aguarda upload-ws.js inicializar (carregado via sidebar)
+  if (document.readyState === 'complete') ensureWs();
+  else window.addEventListener('load', ensureWs);
+})();
+
 // Filter bar — Enter no campo de busca
 document.getElementById("fb-busca").addEventListener("keydown", function (e) {
   if (e.key === "Enter") document.getElementById("fb-aplicar").click();

@@ -15,7 +15,7 @@
 
   <header class="gv-header">
     <div class="gv-header-logo">
-      <img src="../gif/logo_improov.gif" alt="Improov" class="gv-logo">
+      <img src="../gif/assinatura_branco.gif" alt="Improov" class="gv-logo">
     </div>
     <div class="gv-header-center">
       <h1 class="gv-title">Gestão à Vista</h1>

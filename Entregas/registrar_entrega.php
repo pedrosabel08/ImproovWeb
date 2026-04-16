@@ -31,7 +31,8 @@ try {
             $stmtSelect->bind_param('ii', $item_id, $entrega_id);
             $stmtSelect->execute();
             $res = $stmtSelect->get_result()->fetch_assoc();
-            if (!$res) continue;
+            if (!$res)
+                continue;
 
             $status_item = ($hoje <= $res['data_prevista']) ? 'Entregue no prazo' : 'Entregue com atraso';
             $stmtUpdate->bind_param('si', $status_item, $item_id);
@@ -41,8 +42,10 @@ try {
                 $processed_image_ids[] = intval($res['imagem_id']);
             }
         }
-        if ($stmtSelect) $stmtSelect->close();
-        if ($stmtUpdate) $stmtUpdate->close();
+        if ($stmtSelect)
+            $stmtSelect->close();
+        if ($stmtUpdate)
+            $stmtUpdate->close();
     }
 
     // Verificar total de imagens, quantas já estão entregues e obter obra_id/data_prevista
@@ -80,16 +83,16 @@ try {
     }
 
     // Fetch previous status (and status_id) so we can detect transitions
-    $old_status    = null;
+    $old_status = null;
     $old_status_id = null;
-    $status_nome   = $novo_status; // fallback
+    $status_nome = $novo_status; // fallback
     $novo_status_id = null;
     $stmtOld = $conn->prepare("SELECT status, status_id FROM entregas WHERE id = ?");
     $stmtOld->bind_param('i', $entrega_id);
     $stmtOld->execute();
     $rOld = $stmtOld->get_result()->fetch_assoc();
     if ($rOld) {
-        $old_status    = $rOld['status'];
+        $old_status = $rOld['status'];
         $old_status_id = isset($rOld['status_id']) ? intval($rOld['status_id']) : null;
     }
     $stmtOld->close();
@@ -102,7 +105,7 @@ try {
         $rSN = $stmtSN->get_result()->fetch_assoc();
         if ($rSN) {
             $novo_status_id = intval($rSN['idstatus']);
-            $status_nome    = $rSN['nome_status'];
+            $status_nome = $rSN['nome_status'];
         }
         $stmtSN->close();
     }
@@ -115,7 +118,8 @@ try {
         $stmtOrdem->bind_param('i', $obra_id);
         $stmtOrdem->execute();
         $rOrd = $stmtOrdem->get_result()->fetch_assoc();
-        if ($rOrd && isset($rOrd['next_ordem'])) $next_ordem = intval($rOrd['next_ordem']);
+        if ($rOrd && isset($rOrd['next_ordem']))
+            $next_ordem = intval($rOrd['next_ordem']);
         $stmtOrdem->close();
     }
 
@@ -126,7 +130,8 @@ try {
         $stmtObra->bind_param('i', $obra_id);
         $stmtObra->execute();
         $rObra = $stmtObra->get_result()->fetch_assoc();
-        if ($rObra) $obra_nome = $rObra['nomenclatura'];
+        if ($rObra)
+            $obra_nome = $rObra['nomenclatura'];
         $stmtObra->close();
     }
 
@@ -165,7 +170,8 @@ try {
         }
     }
 
-    if ($insertAcompStmt) $insertAcompStmt->close();
+    if ($insertAcompStmt)
+        $insertAcompStmt->close();
 
     // Atualizar status da entrega (inclui status_id quando disponível)
     if ($novo_status_id !== null) {
@@ -199,6 +205,14 @@ try {
                 $stmtUpdateImg->execute();
             }
             $stmtUpdateImg->close();
+            try {
+                if (file_exists(__DIR__ . '/../vendor/autoload.php'))
+                    require_once __DIR__ . '/../vendor/autoload.php';
+                if (class_exists('\Predis\Client')) {
+                    (new \Predis\Client())->publish('funcao_atualizada:updated', json_encode(['source' => 'registrar_entrega']));
+                }
+            } catch (Exception $e) { /* ignore Redis failures */
+            }
         }
     }
 

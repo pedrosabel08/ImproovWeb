@@ -2476,6 +2476,7 @@ $conn->close();
     <!-- Quill Editor -->
     <link href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
+    <script src="<?php echo asset_url('../assets/js/upload-ws.js'); ?>"></script>
     <script src="<?php echo asset_url('scriptObra.js'); ?>"></script>
     <script src="<?php echo asset_url('../Entregas/script.js'); ?>"></script>
     <script src="<?php echo asset_url('../script/sidebar.js'); ?>"></script>

@@ -1,3 +1,21 @@
+// Garantir conexão WebSocket mesmo sem sessão de upload ativa
+(function () {
+  const STORAGE_KEY = "improov_client_id";
+  function ensureWs() {
+    if (!window.improovUploadWS) return;
+    if (!localStorage.getItem(STORAGE_KEY)) {
+      localStorage.setItem(
+        STORAGE_KEY,
+        "pos_" + Math.random().toString(36).slice(2, 10),
+      );
+    }
+    window.improovUploadWS.subscribe(localStorage.getItem(STORAGE_KEY));
+  }
+  // Aguarda upload-ws.js inicializar (carregado via sidebar)
+  if (document.readyState === "complete") ensureWs();
+  else window.addEventListener("load", ensureWs);
+})();
+
 // Small modal: open bf-right content when clicking a 'pendente' status
 (function initBriefingRightModal() {
   let lastPlaceholder = null;
@@ -10502,12 +10520,9 @@ document
         });
 
         if (response.novo_prazo) {
-          await inserirImagemNaEntrega(
-            currentObraId,
-            6,
-            response.novo_prazo,
-            [imagemId],
-          );
+          await inserirImagemNaEntrega(currentObraId, 6, response.novo_prazo, [
+            imagemId,
+          ]);
         }
 
         document.getElementById("opcao_status_ms").value = "6";
@@ -11809,7 +11824,7 @@ if (closeBtn) closeBtn.addEventListener("click", closeModal);
 })();
 
 // Atualiza infosObra automaticamente quando uma função for inserida/atualizada (via WebSocket)
-window.addEventListener('improov:funcaoAtualizada', () => {
-  const id = localStorage.getItem('obraId');
+window.addEventListener("improov:funcaoAtualizada", () => {
+  const id = localStorage.getItem("obraId");
   if (id) infosObra(id);
 });

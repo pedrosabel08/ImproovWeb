@@ -156,6 +156,8 @@ function abrirModalUploadFinalPendente(card) {
   );
 
   cardModal.classList.add("active");
+  const _modalTitle = document.getElementById("modalCardTitle");
+  if (_modalTitle) _modalTitle.textContent = titulo || "Editar Card";
   card.classList.add("selected");
 
   const modalWidth = cardModal.offsetWidth || 400;
@@ -4320,6 +4322,14 @@ colunas.forEach((col) => {
           document.querySelector(".buttons").style.display = "flex";
           document.querySelector(".modalUploads").style.display = "none";
           document.querySelector(".statusAnterior").style.display = "none";
+        }
+
+        // Atualiza título do modal: nome da imagem quando há uploads, senão "Editar Card"
+        const _modalTitleDrag = document.getElementById("modalCardTitle");
+        if (_modalTitleDrag) {
+          _modalTitleDrag.textContent = card.classList.contains("tarefa-criada")
+            ? "Editar Card"
+            : (titulo || "Editar Card");
         }
 
         // Posicionar modal ao lado da coluna de destino

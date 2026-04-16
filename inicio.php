@@ -525,7 +525,7 @@ $conn->close();
     <div id="cardModal" class="card-modal">
         <div class="modal-content">
 
-            <h3>Editar Card</h3>
+            <h3 id="modalCardTitle">Editar Card</h3>
             <div class="modal-item modalPrazo">
                 <h4>Prazo de entrega:</h4>
                 <input type="date" id="modalPrazo">

@@ -212,6 +212,34 @@ try {
 
     $stmt->close();
 
+    // ─── Inserir em alteracoes se funcao_id = 6 ───────────────────────────
+    if ($funcao_id == 6) {
+        $funcao_imagem_id = $conn->insert_id;
+
+        // Verificar se já existe registro em alteracoes
+        $stmtCheck = $conn->prepare(
+            "SELECT idalt FROM alteracoes WHERE funcao_id = ? AND status_id = ? LIMIT 1"
+        );
+        $stmtCheck->bind_param("ii", $funcao_imagem_id, $status_id);
+        $stmtCheck->execute();
+        $stmtCheck->store_result();
+        $exists = $stmtCheck->num_rows > 0;
+        $stmtCheck->close();
+
+        // Se não existe, inserir na tabela alteracoes
+        if (!$exists && $status_id !== null) {
+            $stmtAlt = $conn->prepare(
+                "INSERT INTO alteracoes (funcao_id, data_recebimento, status_id) VALUES (?, NOW(), ?)"
+            );
+            $stmtAlt->bind_param("ii", $funcao_imagem_id, $status_id);
+            if (!$stmtAlt->execute()) {
+                write_log_insere_funcao("ALTERACOES INSERT ERROR: " . $stmtAlt->error);
+            }
+            $stmtAlt->close();
+        }
+    }
+    // ──────────────────────────────────────────────────────────────────────
+
     $conn->commit();
     try {
         if (file_exists(__DIR__ . '/vendor/autoload.php')) require_once __DIR__ . '/vendor/autoload.php';

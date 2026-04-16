@@ -2,6 +2,7 @@ let idImagemSelecionada = null;
 let sortableInstances = [];
 const selectedCards = new Set();
 let _filterDebounceTimer = null;
+let cardsCompactos = false;
 
 const STATUS_COLUMNS = [
   { label: "Não iniciado", key: "nao-iniciado" },
@@ -19,17 +20,26 @@ function normalizarStatus(status) {
 }
 
 function getStatusKey(status) {
-  const normalizado = normalizarStatus(status);
-  if (normalizado === "nao iniciado") return "nao-iniciado";
-  if (normalizado === "em andamento") return "em-andamento";
-  if (normalizado === "em aprovacao") return "em-aprovacao";
-  if (normalizado === "finalizado") return "finalizado";
+  const n = normalizarStatus(status);
+  if (n === "nao iniciado") return "nao-iniciado";
+  if (n === "em andamento") return "em-andamento";
+  if (n === "em aprovacao") return "em-aprovacao";
+  if (n === "finalizado") return "finalizado";
   return "nao-iniciado";
+}
+
+function getEFKanbanStatusClass(status) {
+  const n = normalizarStatus(status);
+  if (n === "finalizado") return "ef-ks-done";
+  if (n === "em andamento") return "ef-ks-wip";
+  if (n === "em aprovacao") return "ef-ks-review";
+  return "ef-ks-todo";
 }
 
 function getFilters() {
   return {
     status: document.getElementById("filtro-status").value,
+    status_imagem: document.getElementById("filtro-status-imagem").value,
     obra_id: document.getElementById("filtro-obra").value,
     colaborador_id: document.getElementById("filtro-colaborador").value,
     busca: document.getElementById("filtro-busca").value.trim(),
@@ -56,8 +66,11 @@ function limparSelecao() {
 function preencherFiltros(filtros) {
   const selectObra = document.getElementById("filtro-obra");
   const selectColab = document.getElementById("filtro-colaborador");
+  const selectStatusImagem = document.getElementById("filtro-status-imagem");
+
   const obraAtual = selectObra.value;
   const colabAtual = selectColab.value;
+  const statusImagemAtual = selectStatusImagem.value;
 
   selectObra.innerHTML = '<option value="">Todas</option>';
   (filtros?.obras || []).forEach((obra) => {
@@ -66,9 +79,7 @@ function preencherFiltros(filtros) {
     option.textContent = obra.nome;
     selectObra.appendChild(option);
   });
-  if (obraAtual) {
-    selectObra.value = obraAtual;
-  }
+  if (obraAtual) selectObra.value = obraAtual;
 
   selectColab.innerHTML = '<option value="">Todos</option>';
   (filtros?.colaboradores || []).forEach((colab) => {
@@ -77,17 +88,22 @@ function preencherFiltros(filtros) {
     option.textContent = colab.nome;
     selectColab.appendChild(option);
   });
-  if (colabAtual) {
-    selectColab.value = colabAtual;
-  }
+  if (colabAtual) selectColab.value = colabAtual;
+
+  selectStatusImagem.innerHTML = '<option value="">Todos</option>';
+  (filtros?.status_imagens || []).forEach((status) => {
+    const option = document.createElement("option");
+    option.value = status.nome;
+    option.textContent = status.nome;
+    selectStatusImagem.appendChild(option);
+  });
+  if (statusImagemAtual) selectStatusImagem.value = statusImagemAtual;
 }
 
 function agruparPorObra(items) {
   return items.reduce((acc, item) => {
     const key = `${item.obra_id}`;
-    if (!acc[key]) {
-      acc[key] = { obra_nome: item.obra_nome, items: [] };
-    }
+    if (!acc[key]) acc[key] = { obra_nome: item.obra_nome, items: [] };
     acc[key].items.push(item);
     return acc;
   }, {});
@@ -127,23 +143,24 @@ function criarCard(item) {
   card.dataset.imagemId = item.imagem_id;
   card.dataset.funcaoId = String(item.funcao_id);
 
-  if (!item.colaborador_id) {
-    card.classList.add("sem-colaborador");
-  }
+  if (!item.colaborador_id) card.classList.add("sem-colaborador");
+  if (item.is_ef) card.classList.add("ef-card");
+  if (cardsCompactos) card.classList.add("card-compact");
 
-  if (item.is_ef) {
-    card.classList.add("ef-card");
-  }
+  const efLabelHtml = item.is_ef
+    ? `<div class="ef-label"><i class="fa-solid fa-bolt"></i> Render em Alta</div>`
+    : "";
 
   card.innerHTML = `
-        <span class="badge">${item.status_nome}</span>
-        <div class="card-title">${item.imagem_nome}</div>
-        <div class="card-sub"><i class="fas fa-building"></i> ${item.obra_nome}</div>
-        <div class="card-footer">
-            <div class="card-meta"><i class="fas fa-user"></i> ${item.colaborador_nome || "—"}</div>
-            <div class="card-meta"><i class="fas fa-calendar"></i> ${item.prazo || "—"}</div>
-        </div>
-    `;
+    ${efLabelHtml}
+    <span class="badge">${item.status_nome}</span>
+    <div class="card-title">${item.imagem_nome}</div>
+    <div class="card-sub"><i class="fa-solid fa-building"></i> ${item.obra_nome}</div>
+    <div class="card-footer">
+      <div class="card-meta"><i class="fa-solid fa-user"></i> ${item.colaborador_nome || "—"}</div>
+      <div class="card-meta"><i class="fa-solid fa-calendar"></i> ${item.prazo || "—"}</div>
+    </div>
+  `;
 
   applyStatusImagem(card.querySelector(".badge"), item.status_nome);
 
@@ -160,7 +177,6 @@ function criarCard(item) {
       }
       return;
     }
-
     limparSelecao();
     abrirModal(item.imagem_id);
   });
@@ -168,13 +184,65 @@ function criarCard(item) {
   return card;
 }
 
+function renderEFPanel(items) {
+  const efItems = items.filter((i) => i.is_ef);
+  const body = document.getElementById("ef-panel-body");
+  const countEl = document.getElementById("ef-panel-count");
+
+  if (countEl) countEl.textContent = String(efItems.length);
+  if (!body) return;
+
+  body.innerHTML = "";
+
+  if (efItems.length === 0) {
+    body.innerHTML = `
+      <div class="ef-panel-empty">
+        <i class="fa-solid fa-check"></i>
+        <span>Nenhum EF</span>
+      </div>`;
+    return;
+  }
+
+  efItems.forEach((item) => {
+    const div = document.createElement("div");
+    div.className = "ef-item";
+    div.dataset.imagemId = item.imagem_id;
+
+    const ksCls = getEFKanbanStatusClass(item.status_funcao);
+    const dateHtml = item.prazo
+      ? `<div class="ef-item-date"><i class="fa-solid fa-calendar"></i> ${item.prazo}</div>`
+      : "";
+
+    div.innerHTML = `
+      <div class="ef-item-top">
+        <span class="badge si-ef" style="position:static;display:inline-block;">EF</span>
+        <span class="ef-item-kanban-status ${ksCls}">${item.status_funcao}</span>
+      </div>
+      <div class="ef-item-title">${item.imagem_nome}</div>
+      <div class="ef-item-meta"><i class="fa-solid fa-building"></i> ${item.obra_nome}</div>
+      <div class="ef-item-footer">
+        ${dateHtml}
+        <div class="card-meta"><i class="fa-solid fa-user"></i> ${item.colaborador_nome || "—"}</div>
+      </div>
+    `;
+
+    div.addEventListener("click", () => abrirModal(item.imagem_id));
+    body.appendChild(div);
+  });
+}
+
 function renderKanban(items) {
   STATUS_COLUMNS.forEach(({ key }) => {
     const container = document.getElementById(`kanban-${key}`);
-    if (container) {
-      container.innerHTML = "";
-    }
+    if (container) container.innerHTML = "";
   });
+
+  // Update results count
+  const resultsCountEl = document.getElementById("resultsCount");
+  if (resultsCountEl) resultsCountEl.textContent = String(items.length);
+
+  // Render EF panel
+  renderEFPanel(items);
 
   const obraFiltrada = document.getElementById("filtro-obra").value !== "";
 
@@ -185,9 +253,16 @@ function renderKanban(items) {
     const itensColuna = items.filter(
       (item) => getStatusKey(item.status_funcao) === key,
     );
+
     const countElement = document.getElementById(`count-${key}`);
-    if (countElement) {
-      countElement.textContent = String(itensColuna.length);
+    if (countElement) countElement.textContent = String(itensColuna.length);
+
+    const efCountEl = document.getElementById(`ef-count-${key}`);
+    if (efCountEl) {
+      const efQty = itensColuna.filter((i) => i.is_ef).length;
+      const efSpan = efCountEl.querySelector("span");
+      if (efSpan) efSpan.textContent = String(efQty);
+      efCountEl.style.display = efQty > 0 ? "flex" : "none";
     }
 
     if (itensColuna.length === 0) {
@@ -195,7 +270,8 @@ function renderKanban(items) {
       list.className = "cards-list";
       const empty = document.createElement("div");
       empty.className = "empty-state";
-      empty.innerHTML = '<i class="fas fa-inbox"></i><span>Nenhum item</span>';
+      empty.innerHTML =
+        '<i class="fa-solid fa-inbox"></i><span>Nenhum item</span>';
       list.appendChild(empty);
       container.appendChild(list);
       return;
@@ -208,7 +284,6 @@ function renderKanban(items) {
         const groupContainer = document.createElement("div");
         groupContainer.className = "obra-group";
         groupContainer.innerHTML = `<div class="obra-title">${grupo.obra_nome}</div>`;
-
         const list = document.createElement("div");
         list.className = "cards-list";
         grupo.items.forEach((item) => {
@@ -273,11 +348,9 @@ function inicializarDragAndDrop() {
           recarregarAlteracao();
           return;
         }
-
         atualizarStatusLote(ids, statusDestino);
       },
     });
-
     sortableInstances.push(instance);
   });
 }
@@ -294,28 +367,36 @@ function atualizarStatusLote(ids, statusDestino) {
       atribuir_logado: atribuirLogado,
     }),
   })
-    .then((response) => response.json())
+    .then((r) => r.json())
     .then((data) => {
       if (!data.success) {
         Toastify({
           text: data.message || "Erro ao atualizar status.",
           duration: 3200,
           gravity: "top",
-          position: "left",
-          backgroundColor: "red",
+          position: "right",
+          style: {
+            background: "#ef4444",
+            borderRadius: "8px",
+            fontFamily: '"Inter",sans-serif',
+            fontSize: "13px",
+          },
         }).showToast();
         recarregarAlteracao();
         return;
       }
-
       Toastify({
-        text: "Status atualizado com sucesso!",
+        text: "Status atualizado!",
         duration: 2500,
         gravity: "top",
-        position: "left",
-        backgroundColor: "green",
+        position: "right",
+        style: {
+          background: "#10b981",
+          borderRadius: "8px",
+          fontFamily: '"Inter",sans-serif',
+          fontSize: "13px",
+        },
       }).showToast();
-
       recarregarAlteracao();
     })
     .catch(() => {
@@ -323,8 +404,13 @@ function atualizarStatusLote(ids, statusDestino) {
         text: "Erro ao atualizar status.",
         duration: 3200,
         gravity: "top",
-        position: "left",
-        backgroundColor: "red",
+        position: "right",
+        style: {
+          background: "#ef4444",
+          borderRadius: "8px",
+          fontFamily: '"Inter",sans-serif',
+          fontSize: "13px",
+        },
       }).showToast();
       recarregarAlteracao();
     });
@@ -335,7 +421,6 @@ function recarregarAlteracao() {
   const filtros = getFilters();
   const query = montarQueryString(filtros);
 
-  // Show skeleton loaders
   STATUS_COLUMNS.forEach(({ key }) => {
     const container = document.getElementById(`kanban-${key}`);
     if (container) {
@@ -347,28 +432,31 @@ function recarregarAlteracao() {
   });
 
   fetch(`getAlteracao.php${query ? `?${query}` : ""}`)
-    .then((response) => response.json())
+    .then((r) => r.json())
     .then((data) => {
-      if (!data.success) {
+      if (!data.success)
         throw new Error(data.message || "Erro ao carregar dados.");
-      }
-
       preencherFiltros(data.filtros);
       renderKanban(data.items || []);
     })
-    .catch((error) => {
-      console.error("Erro ao carregar Kanban:", error);
-    });
+    .catch((error) => console.error("Erro ao carregar Kanban:", error));
 }
 
+// ─── Modal ───
 function abrirModal(idimagem) {
-  document.getElementById("form-edicao").style.display = "flex";
+  const modal = document.getElementById("myModal");
+  if (modal) modal.classList.add("is-open");
   atualizarModal(idimagem);
   idImagemSelecionada = idimagem;
 }
 
+function fecharModal() {
+  const modal = document.getElementById("myModal");
+  if (modal) modal.classList.remove("is-open");
+}
+
 function limparCampos() {
-  document.getElementById("campoNomeImagem").textContent = "";
+  document.getElementById("campoNomeImagem").textContent = "—";
   document.getElementById("status_alteracao").value = "";
   document.getElementById("prazo_alteracao").value = "";
   document.getElementById("obs_alteracao").value = "";
@@ -379,15 +467,13 @@ function atualizarModal(idImagem) {
   limparCampos();
 
   fetch(`../buscaLinhaAJAX.php?ajid=${idImagem}`)
-    .then((response) => response.json())
+    .then((r) => r.json())
     .then((response) => {
-      document.getElementById("form-edicao").style.display = "flex";
-
       if (response.funcoes && response.funcoes.length > 0) {
         document.getElementById("campoNomeImagem").textContent =
           response.funcoes[0].imagem_nome;
 
-        response.funcoes.forEach(function (funcao) {
+        response.funcoes.forEach((funcao) => {
           if (funcao.nome_funcao === "Alteração") {
             document.getElementById("opcao_alteracao").value =
               funcao.colaborador_id || "";
@@ -406,18 +492,19 @@ function atualizarModal(idImagem) {
 
 document
   .getElementById("salvar_funcoes")
-  .addEventListener("click", function (event) {
-    event.preventDefault();
-
+  .addEventListener("click", function () {
     if (!idImagemSelecionada) {
       Toastify({
         text: "Nenhuma imagem selecionada",
         duration: 3000,
-        close: true,
         gravity: "top",
-        position: "left",
-        backgroundColor: "red",
-        stopOnFocus: true,
+        position: "right",
+        style: {
+          background: "#ef4444",
+          borderRadius: "8px",
+          fontFamily: '"Inter",sans-serif',
+          fontSize: "13px",
+        },
       }).showToast();
       return;
     }
@@ -439,43 +526,62 @@ document
         Toastify({
           text: "Dados salvos com sucesso!",
           duration: 3000,
-          close: true,
           gravity: "top",
-          position: "left",
-          backgroundColor: "green",
-          stopOnFocus: true,
+          position: "right",
+          style: {
+            background: "#10b981",
+            borderRadius: "8px",
+            fontFamily: '"Inter",sans-serif',
+            fontSize: "13px",
+          },
         }).showToast();
-        document.getElementById("form-edicao").style.display = "none";
+        fecharModal();
         recarregarAlteracao();
       },
       error: function (jqXHR, textStatus, errorThrown) {
-        console.error("Erro ao salvar dados: " + textStatus, errorThrown);
+        console.error("Erro ao salvar:", textStatus, errorThrown);
         Toastify({
           text: "Erro ao salvar dados.",
           duration: 3000,
-          close: true,
           gravity: "top",
-          position: "left",
-          backgroundColor: "red",
-          stopOnFocus: true,
+          position: "right",
+          style: {
+            background: "#ef4444",
+            borderRadius: "8px",
+            fontFamily: '"Inter",sans-serif',
+            fontSize: "13px",
+          },
         }).showToast();
       },
     });
   });
 
+// Fechar modal pelos botões e overlay
+document.getElementById("closeModal").addEventListener("click", fecharModal);
+document.getElementById("closeModalBtn").addEventListener("click", fecharModal);
+document.getElementById("myModal").addEventListener("click", function (e) {
+  if (e.target === this) fecharModal();
+});
+
+// ─── Filtros ───
 document
   .getElementById("btn-aplicar-filtros")
   .addEventListener("click", recarregarAlteracao);
 document.getElementById("btn-limpar-filtros").addEventListener("click", () => {
   document.getElementById("filtro-status").value = "";
+  document.getElementById("filtro-status-imagem").value = "";
   document.getElementById("filtro-obra").value = "";
   document.getElementById("filtro-colaborador").value = "";
   document.getElementById("filtro-busca").value = "";
   recarregarAlteracao();
 });
 
-// ─── Auto-filters: selects trigger instantly, text input debounces ───
-["filtro-status", "filtro-obra", "filtro-colaborador"].forEach((id) => {
+[
+  "filtro-status",
+  "filtro-status-imagem",
+  "filtro-obra",
+  "filtro-colaborador",
+].forEach((id) => {
   document.getElementById(id).addEventListener("change", recarregarAlteracao);
 });
 
@@ -484,58 +590,24 @@ document.getElementById("filtro-busca").addEventListener("input", () => {
   _filterDebounceTimer = setTimeout(recarregarAlteracao, 350);
 });
 
-// ─── Theme Toggle ───
-function applyTheme(theme) {
-  document.documentElement.setAttribute("data-theme", theme);
-  const icon = document.getElementById("theme-icon");
-  const label = document.getElementById("theme-label");
-  if (icon)
-    icon.innerHTML =
-      theme === "dark"
-        ? '<i class="fas fa-sun"></i>'
-        : '<i class="fas fa-moon"></i>';
-  if (label) label.textContent = theme === "dark" ? "Dark" : "Light";
-  try {
-    localStorage.setItem("alteracao-theme", theme);
-  } catch (e) {}
-}
-
-(function initTheme() {
-  let saved = "light";
-  try {
-    saved = localStorage.getItem("alteracao-theme") || "light";
-  } catch (e) {}
-  applyTheme(saved);
-})();
-
-const themeToggle = document.getElementById("theme-toggle");
-if (themeToggle) {
-  themeToggle.addEventListener("click", () => {
-    const current =
-      document.documentElement.getAttribute("data-theme") || "light";
-    applyTheme(current === "dark" ? "light" : "dark");
+// ─── Compact toggle (all cards) ───
+const btnToggleCompact = document.getElementById("btn-toggle-compact");
+if (btnToggleCompact) {
+  btnToggleCompact.addEventListener("click", () => {
+    cardsCompactos = !cardsCompactos;
+    document.querySelectorAll(".imagem-card").forEach((card) => {
+      card.classList.toggle("card-compact", cardsCompactos);
+    });
+    btnToggleCompact.classList.toggle("ativo", cardsCompactos);
+    btnToggleCompact.innerHTML = cardsCompactos
+      ? '<i class="fa-solid fa-expand"></i> Expandir'
+      : '<i class="fa-solid fa-compress"></i> Compactar';
   });
 }
 
-const form_edicao = document.getElementById("form-edicao");
-
-window.addEventListener("touchstart", function (event) {
-  if (event.target == form_edicao) {
-    form_edicao.style.display = "none";
-  }
-});
-
-["click", "touchstart", "keydown"].forEach((eventType) => {
-  window.addEventListener(eventType, function (event) {
-    if (eventType === "keydown" && event.key !== "Escape") return;
-
-    if (
-      event.target == form_edicao ||
-      (eventType === "keydown" && event.key === "Escape")
-    ) {
-      form_edicao.style.display = "none";
-    }
-  });
+// ESC fecha modal
+window.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") fecharModal();
 });
 
 recarregarAlteracao();

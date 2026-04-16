@@ -4,6 +4,7 @@ include '../conexao.php';
 
 $obraId = isset($_GET['obra_id']) && $_GET['obra_id'] !== '' ? (int)$_GET['obra_id'] : null;
 $status = isset($_GET['status']) ? trim((string)$_GET['status']) : '';
+$statusImagem = isset($_GET['status_imagem']) ? trim((string)$_GET['status_imagem']) : '';
 $colaboradorId = isset($_GET['colaborador_id']) && $_GET['colaborador_id'] !== '' ? (int)$_GET['colaborador_id'] : null;
 $busca = isset($_GET['busca']) ? trim((string)$_GET['busca']) : '';
 
@@ -25,13 +26,14 @@ JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = f.imagem_id
 JOIN obra o ON o.idobra = i.obra_id
 JOIN status_imagem s ON s.idstatus = a.status_id
 LEFT JOIN colaborador c ON c.idcolaborador = f.colaborador_id
-WHERE f.funcao_id = 6 AND o.status_obra = 0 AND a.status_id = i.status_id";
+WHERE f.funcao_id = 6 AND o.status_obra = 0 AND a.status_id = i.status_id
+AND (f.status != 'Finalizado' OR (f.status = 'Finalizado' AND i.prazo = CURDATE()))";
 
 $params = [];
 $types = '';
 
 if ($obraId !== null) {
-    $sql .= " AND i.obra_id = ?";
+    $sql .= " AND i.obra_id = ?";           
     $params[] = $obraId;
     $types .= 'i';
 }
@@ -39,6 +41,12 @@ if ($obraId !== null) {
 if ($status !== '') {
     $sql .= " AND COALESCE(NULLIF(TRIM(f.status), ''), 'Não iniciado') = ?";
     $params[] = $status;
+    $types .= 's';
+}
+
+if ($statusImagem !== '') {
+    $sql .= " AND s.nome_status = ?";
+    $params[] = $statusImagem;
     $types .= 's';
 }
 
@@ -95,6 +103,7 @@ while ($row = $result->fetch_assoc()) {
         'status_nome' => (string)$row['nome_status'],
         'prazo' => $row['prazo'] ? date('d/m/Y', strtotime($row['prazo'])) : null,
         'is_ef' => ((int)$row['imagem_status_id'] === 6),
+        'idstatus' => (int)$row['imagem_status_id'],
     ];
 
     $items[] = $item;
@@ -102,6 +111,10 @@ while ($row = $result->fetch_assoc()) {
 
     if ($item['colaborador_id'] !== null) {
         $colabMap[$item['colaborador_id']] = $item['colaborador_nome'];
+    }
+
+    if ($item['idstatus'] !== null) {
+        $statusImagemMap[$item['idstatus']] = $item['status_nome'];
     }
 }
 
@@ -115,12 +128,18 @@ foreach ($colabMap as $id => $nome) {
     $colaboradores[] = ['id' => (int)$id, 'nome' => $nome];
 }
 
+$statusImagem = [];
+foreach ($statusImagemMap as $id => $nome) {
+    $statusImagem[] = ['id' => (int)$id, 'nome' => $nome];
+}
+
 echo json_encode([
     'success' => true,
     'items' => $items,
     'filtros' => [
         'obras' => $obras,
-        'colaboradores' => $colaboradores
+        'colaboradores' => $colaboradores,
+        'status_imagens' => $statusImagem
     ]
 ]);
 exit;

@@ -423,24 +423,6 @@ function ensure_ftp_dir($ftp, $path, &$logs)
 
 function carregar_config_sftp_vps(&$logs)
 {
-    $cfgPath = dirname(__DIR__) . '/.vscode/sftp.json';
-    if (is_file($cfgPath)) {
-        $json = @file_get_contents($cfgPath);
-        $cfg = json_decode((string)$json, true);
-        if (is_array($cfg) && !empty($cfg['host']) && !empty($cfg['username']) && !empty($cfg['remotePath'])) {
-            return [
-                'host' => (string)$cfg['host'],
-                'port' => (int)($cfg['port'] ?? 22),
-                'username' => (string)$cfg['username'],
-                'password' => (string)($cfg['password'] ?? ''),
-                'remotePath' => rtrim((string)$cfg['remotePath'], '/'),
-            ];
-        }
-        $logs[] = 'sftp_json_invalid';
-    } else {
-        $logs[] = 'sftp_json_not_found';
-    }
-
     try {
         $vpsCfg = improov_sftp_config('IMPROOV_VPS_SFTP');
         return [
@@ -451,7 +433,7 @@ function carregar_config_sftp_vps(&$logs)
             'remotePath' => rtrim((string)improov_env('IMPROOV_VPS_SFTP_REMOTE_PATH'), '/'),
         ];
     } catch (RuntimeException $e) {
-        $logs[] = 'vps_sftp_env_missing';
+        $logs[] = 'vps_sftp_env_missing=' . $e->getMessage();
     }
 
     return [
@@ -491,9 +473,20 @@ function enviar_angulo_para_vps($localPath, $nomenclatura, $categoriaDir, $tipoI
     $targetDirRel = '/uploads/angulo_definido/' . sanitize_dir_name((string)$nomenclatura) . '/' . $categoriaDir . '/' . $tipoImagem . '/IMG/' . $nomeImagemDir;
     $localFallbackOk = false;
 
-    $sftp = new phpseclib3\Net\SFTP((string)$cfg['host'], (int)$cfg['port']);
+    try {
+        $sftp = new phpseclib3\Net\SFTP((string)$cfg['host'], (int)$cfg['port']);
+    } catch (Throwable $e) {
+        $logs[] = 'vps_sftp_connection_exception=' . $e->getMessage();
+        return ['remote' => false, 'local' => false];
+    }
+
     if (!$sftp->login((string)$cfg['username'], (string)$cfg['password'])) {
-        $logs[] = 'vps_sftp_login_failed';
+        $lastErrors = method_exists($sftp, 'getLastSFTPErrors') ? $sftp->getLastSFTPErrors() : [];
+        $errorStr = !empty($lastErrors) ? implode('|', (array)$lastErrors) : 'unknown';
+        $logs[] = 'vps_sftp_login_failed|' . $errorStr;
+        $logs[] = 'vps_sftp_host=' . (string)$cfg['host'];
+        $logs[] = 'vps_sftp_user=' . (string)$cfg['username'];
+        $logs[] = 'vps_sftp_port=' . (int)$cfg['port'];
     } else {
         $base = rtrim((string)$cfg['remotePath'], '/');
         $targetDir = $base . $targetDirRel;

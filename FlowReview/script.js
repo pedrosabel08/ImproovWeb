@@ -445,6 +445,7 @@ let todosOsColaboradores = new Set();
 let todasAsFuncoes = new Set();
 let funcaoGlobalSelecionada = null;
 let colaboradorGlobalSelecionado = null;
+let statusGlobalSelecionado = null;
 
 async function fetchObrasETarefas() {
   try {
@@ -489,6 +490,19 @@ async function fetchObrasETarefas() {
       });
     }
 
+    // Populate status filter na sidebar home
+    const todosOsStatus = new Set(dadosTarefas.map((t) => t.status));
+    const frStatusHome = document.getElementById("fr-status-home");
+    if (frStatusHome) {
+      frStatusHome.innerHTML = '<option value="">Todos</option>';
+      [...todosOsStatus].sort().forEach((status) => {
+        const option = document.createElement("option");
+        option.value = status;
+        option.textContent = status;
+        frStatusHome.appendChild(option);
+      });
+    }
+
     // Attach sidebar filter listeners only once
     const searchInput = document.getElementById("fr-search-obra");
     if (searchInput && !searchInput._frListenerAdded) {
@@ -506,6 +520,12 @@ async function fetchObrasETarefas() {
           applyHomeFilters();
         });
       }
+      if (frStatusHome) {
+        frStatusHome.addEventListener("change", () => {
+          statusGlobalSelecionado = frStatusHome.value || null;
+          applyHomeFilters();
+        });
+      }
     }
   } catch (error) {
     console.error(error);
@@ -519,12 +539,15 @@ function applyHomeFilters() {
     .trim();
   const funcaoVal = document.getElementById("fr-funcao-home")?.value || "";
   const colabVal = document.getElementById("fr-colaborador-home")?.value || "";
+  const statusVal = document.getElementById("fr-status-home")?.value || "";
 
   let filtradas = dadosTarefas;
   if (funcaoVal)
     filtradas = filtradas.filter((t) => t.nome_funcao === funcaoVal);
   if (colabVal)
     filtradas = filtradas.filter((t) => t.nome_colaborador === colabVal);
+  if (statusVal)
+    filtradas = filtradas.filter((t) => t.status === statusVal);
   if (searchVal)
     filtradas = filtradas.filter(
       (t) =>
@@ -735,6 +758,7 @@ function filtrarTarefasPorObra(obraSelecionada) {
   const colaboradorSelecionado =
     document.getElementById("filtro_colaborador").value;
   let funcaoSelecionada = document.getElementById("nome_funcao").value;
+  const statusSelecionado = document.getElementById("filtro_status")?.value || "";
 
   // Se houver filtro global ativo, aplica e reflete visualmente (apenas na entrada)
   if (funcaoGlobalSelecionada) {
@@ -758,6 +782,18 @@ function filtrarTarefasPorObra(obraSelecionada) {
     colaboradorGlobalSelecionado = null;
   }
 
+  // Aplica filtro de status da home (se houver), apenas na entrada
+  if (statusGlobalSelecionado) {
+    const selectStatus = document.getElementById("filtro_status");
+    if (selectStatus) {
+      const opcoesStatus = Array.from(selectStatus.options).map((opt) => opt.value);
+      if (opcoesStatus.includes(statusGlobalSelecionado)) {
+        selectStatus.value = statusGlobalSelecionado;
+      }
+    }
+    statusGlobalSelecionado = null;
+  }
+
   if (tarefasDaObra.length > 0) {
     const obraId = tarefasDaObra[0].idobra; // ajuste se o campo for diferente
     const nomeObra = tarefasDaObra[0].nome_obra;
@@ -771,13 +807,15 @@ function filtrarTarefasPorObra(obraSelecionada) {
     });
   }
 
-  // Aplica os filtros adicionais (colaborador e função)
+  // Aplica os filtros adicionais (colaborador, função e status)
   const tarefasFiltradas = tarefasDaObra.filter((t) => {
     const matchColaborador =
       !colaboradorSelecionado || t.nome_colaborador === colaboradorSelecionado;
     const matchFuncao =
       funcaoSelecionada === "Todos" || t.nome_funcao === funcaoSelecionada;
-    return matchColaborador && matchFuncao;
+    const matchStatus =
+      !statusSelecionado || t.status === statusSelecionado;
+    return matchColaborador && matchFuncao && matchStatus;
   });
 
   // Exibe as tarefas filtradas
@@ -826,13 +864,16 @@ function atualizarSelectFuncao(tarefas) {
 function atualizarFiltrosDinamicos(tarefas) {
   const selectColaborador = document.getElementById("filtro_colaborador");
   const selectFuncao = document.getElementById("nome_funcao");
+  const selectStatus = document.getElementById("filtro_status");
 
   // Salva os valores antes de atualizar
   const valorAnteriorColaborador = selectColaborador.value;
   const valorAnteriorFuncao = selectFuncao.value;
+  const valorAnteriorStatus = selectStatus ? selectStatus.value : "";
 
   const colaboradores = [...new Set(tarefas.map((t) => t.nome_colaborador))];
   const funcoes = [...new Set(tarefas.map((t) => t.nome_funcao))];
+  const status = [...new Set(tarefas.map((t) => t.status))];
 
   // Atualiza select de colaborador
   selectColaborador.innerHTML = '<option value="">Todos</option>';
@@ -852,6 +893,17 @@ function atualizarFiltrosDinamicos(tarefas) {
     selectFuncao.appendChild(option);
   });
 
+  // Atualiza select de status
+  if (selectStatus) {
+    selectStatus.innerHTML = '<option value="">Todos</option>';
+    status.sort().forEach((st) => {
+      const option = document.createElement("option");
+      option.value = st;
+      option.textContent = st;
+      selectStatus.appendChild(option);
+    });
+  }
+
   // Reatribui os valores anteriores (se ainda existirem nas opções)
   if (
     [...selectColaborador.options].some(
@@ -863,6 +915,10 @@ function atualizarFiltrosDinamicos(tarefas) {
 
   if ([...selectFuncao.options].some((o) => o.value === valorAnteriorFuncao)) {
     selectFuncao.value = valorAnteriorFuncao;
+  }
+
+  if (selectStatus && [...selectStatus.options].some((o) => o.value === valorAnteriorStatus)) {
+    selectStatus.value = valorAnteriorStatus;
   }
 }
 
@@ -899,6 +955,14 @@ document.getElementById("nome_funcao").addEventListener("change", () => {
 
   filtrarTarefasPorObra(obraSelecionada);
 });
+
+const filtroStatusElement = document.getElementById("filtro_status");
+if (filtroStatusElement) {
+  filtroStatusElement.addEventListener("change", () => {
+    const obraSelecionada = document.getElementById("filtro_obra").value;
+    filtrarTarefasPorObra(obraSelecionada);
+  });
+}
 
 // Função para exibir as tarefas e abastecer os filtros
 function exibirTarefas(tarefas, tarefasCompletas) {

@@ -488,7 +488,7 @@ a {
   max-width: 90%;
   max-height: calc(100vh - 60px);
   height: auto;
-  width: auto;
+  width: 100%;
   display: flex;
   justify-content: flex-start;
   align-items: center;

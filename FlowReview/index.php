@@ -138,6 +138,15 @@ $conn->close();
                             <option value="">Todos</option>
                         </select>
                     </div>
+
+                    <div class="fr-filter-group">
+                        <label for="fr-status-home">
+                            <i class="fa-solid fa-tasks"></i> Status da Tarefa
+                        </label>
+                        <select id="fr-status-home">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
                 </div>
 
                 <!-- Seção 2: tarefas da obra selecionada -->
@@ -166,6 +175,15 @@ $conn->close();
                             <i class="fa-solid fa-user"></i> Colaborador
                         </label>
                         <select name="filtro_colaborador" id="filtro_colaborador">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
+
+                    <div class="fr-filter-group">
+                        <label for="filtro_status">
+                            <i class="fa-solid fa-tasks"></i> Status da Tarefa
+                        </label>
+                        <select name="filtro_status" id="filtro_status">
                             <option value="">Todos</option>
                         </select>
                     </div>

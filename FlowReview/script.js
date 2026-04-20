@@ -1856,8 +1856,14 @@ function historyAJAX(idfuncao_imagem) {
 
             if (img.has_comments == "1" || img.has_comments === 1) {
               const notificationDot = document.createElement("div");
-              notificationDot.className = "notification-dot";
-              notificationDot.textContent = `${img.comment_count}`;
+              const pendentes = parseInt(img.pending_count ?? img.comment_count ?? 0, 10);
+              const total     = parseInt(img.comment_count ?? 0, 10);
+              const todosOk   = total > 0 && pendentes === 0;
+              notificationDot.className = "notification-dot" + (todosOk ? " notification-dot--ok" : "");
+              notificationDot.textContent = todosOk ? "✓" : String(pendentes > 0 ? pendentes : total);
+              notificationDot.title = todosOk
+                ? "Todos os comentários concluídos"
+                : `${pendentes} comentário(s) pendente(s)`;
               wrapper.appendChild(notificationDot);
             }
 
@@ -3418,6 +3424,33 @@ function createFreehandPreviewSvg(startX, startY) {
   return svg;
 }
 
+// ---- Atualiza badge de comentários na thumbnail da nav lateral --------------
+function _atualizarBadgeImagem(apImagemId, total, pendentes) {
+  const imgEl = document.querySelector(
+    `#imagens .imageWrapper img[data-id="${apImagemId}"]`,
+  );
+  if (!imgEl) return;
+  const wrapper = imgEl.closest(".imageWrapper");
+  if (!wrapper) return;
+
+  let dot = wrapper.querySelector(".notification-dot");
+  if (total === 0) {
+    if (dot) dot.remove();
+    return;
+  }
+  if (!dot) {
+    dot = document.createElement("div");
+    wrapper.appendChild(dot);
+  }
+  const todosOk = pendentes === 0;
+  dot.className = "notification-dot" + (todosOk ? " notification-dot--ok" : "");
+  dot.textContent = todosOk ? "✓" : String(pendentes);
+  dot.title = todosOk
+    ? "Todos os comentários concluídos"
+    : `${pendentes} comentário(s) pendente(s)`;
+}
+// ---------------------------------------------------------------------------
+
 // ---- Comment inline popup (shown when clicking a .comment marker) ---------
 let activeCommentPopup = null;
 
@@ -3543,6 +3576,48 @@ function highlightMentions(html) {
   });
 }
 
+// ---- Checklist de comentários -----------------------------------------------
+
+async function toggleCommentConcluido(comentarioId, concluido) {
+  try {
+    const res = await fetch("marcar_comentario_concluido.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ comentario_id: comentarioId, concluido: concluido ? 1 : 0 }),
+    });
+    return await res.json();
+  } catch (e) {
+    console.error("Erro ao marcar comentário:", e);
+    return null;
+  }
+}
+
+function renderCommentProgress(container, comentarios) {
+  const total      = comentarios.length;
+  const concluidos = comentarios.filter((c) => parseInt(c.concluido ?? 0, 10) === 1).length;
+  const pct        = total > 0 ? Math.round((concluidos / total) * 100) : 0;
+  const todosOk    = total > 0 && concluidos === total;
+
+  let bar = container.querySelector(".comment-progress-bar");
+  if (!bar) {
+    bar = document.createElement("div");
+    bar.className = "comment-progress-bar";
+    container.prepend(bar);
+  }
+
+  bar.innerHTML = `
+    <div class="comment-progress-label">
+      <span>Ajustes concluídos</span>
+      <span class="comment-progress-pct ${todosOk ? "all-done" : ""}">${concluidos}/${total} (${pct}%)</span>
+    </div>
+    <div class="comment-progress-track">
+      <div class="comment-progress-fill ${todosOk ? "all-done" : ""}" style="width:${pct}%"></div>
+    </div>
+  `;
+}
+
+// ---------------------------------------------------------------------------
+
 async function renderComments(id) {
   // console.log("renderComments", id); // debug
   const comentariosDiv = document.querySelector(".comentarios");
@@ -3588,6 +3663,7 @@ async function renderComments(id) {
     comentariosDiv.style.display = "none";
   } else {
     comentariosDiv.style.display = "flex";
+    renderCommentProgress(comentariosDiv, comentarios);
   }
 
   const users = await fetch("buscar_usuarios.php").then((res) => res.json());
@@ -3613,6 +3689,8 @@ async function renderComments(id) {
 
     const header = document.createElement("div");
     header.classList.add("comment-header");
+    const isConcluido = parseInt(comentario.concluido ?? 0, 10) === 1;
+
     const pageInfo =
       isPdf && comentario.pagina
         ? `<div class="comment-page">Pág. ${comentario.pagina}</div>`
@@ -3622,6 +3700,35 @@ async function renderComments(id) {
             <div class="comment-user">${comentario.nome_responsavel}</div>
             ${pageInfo}
         `;
+
+    // Botão de checklist (marcar/desmarcar como concluído)
+    const checkBtn = document.createElement("button");
+    checkBtn.className = "comment-check" + (isConcluido ? " checked" : "");
+    checkBtn.title = isConcluido ? "Desmarcar ajuste" : "Marcar ajuste como concluído";
+    checkBtn.setAttribute("aria-label", checkBtn.title);
+    checkBtn.innerHTML = isConcluido ? "✅" : "⬜";
+    checkBtn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const novo = !isConcluido;
+      checkBtn.disabled = true;
+      const result = await toggleCommentConcluido(comentario.id, novo);
+      checkBtn.disabled = false;
+      if (result && result.sucesso) {
+        // Re-renderiza comentários com dados atualizados
+        await renderComments(id);
+        // Atualiza badge da imagem na nav lateral
+        _atualizarBadgeImagem(
+          typeof id === "object" ? id.arquivo_log_id : id,
+          result.total,
+          result.pendentes
+        );
+      }
+    });
+    header.appendChild(checkBtn);
+
+    if (isConcluido) {
+      commentCard.classList.add("comment-concluido");
+    }
 
     const commentBody = document.createElement("div");
     commentBody.classList.add("comment-body");
@@ -3829,6 +3936,12 @@ async function renderComments(id) {
       commentDiv.style.backgroundColor = cor;
       commentDiv.style.color = "#fff";
     }
+
+    // Marca visualmente o marker como concluído
+    if (isConcluido) {
+      commentDiv.classList.add("comment-marker-concluido");
+    }
+
     commentDiv.setAttribute("data-id", comentario.id);
 
     // Generic marker click (ponto + shapes; freehand uses SVG hit handler above)

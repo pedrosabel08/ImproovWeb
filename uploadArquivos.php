@@ -659,6 +659,53 @@ if ($isNasDirectBypass) {
     exit;
 }
 
+// ---------- Bloquear reenvio quando há comentários pendentes ----------------
+// Aplica-se apenas quando a função estava em "Ajuste" (reenvio após revisão).
+// No primeiro envio ($funcao_status_norm não é 'ajuste') o bloqueio não ocorre.
+$funcao_status_norm_pre = strtolower(removerTodosAcentos((string)($funcao_status ?? '')));
+if ($funcao_status_norm_pre === 'ajuste') {
+    // Verifica se a coluna 'concluido' existe
+    $chkCol = $conn->prepare(
+        "SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'comentarios_imagem' AND COLUMN_NAME = 'concluido' LIMIT 1"
+    );
+    $chkCol->execute();
+    $colExists = ($chkCol->get_result()->num_rows > 0);
+    $chkCol->close();
+
+    if ($colExists) {
+        // Busca o último historico_aprovacoes_imagens para esta função
+        $stmtLastHai = $conn->prepare(
+            "SELECT id FROM historico_aprovacoes_imagens WHERE funcao_imagem_id = ? ORDER BY id DESC LIMIT 1"
+        );
+        $stmtLastHai->bind_param('i', $idFuncaoImagem);
+        $stmtLastHai->execute();
+        $rowLastHai = $stmtLastHai->get_result()->fetch_assoc();
+        $stmtLastHai->close();
+
+        if ($rowLastHai) {
+            $lastApImagemId = (int)$rowLastHai['id'];
+            $stmtPend = $conn->prepare(
+                "SELECT COUNT(*) AS total, SUM(concluido) AS concluidos FROM comentarios_imagem WHERE ap_imagem_id = ?"
+            );
+            $stmtPend->bind_param('i', $lastApImagemId);
+            $stmtPend->execute();
+            $rowPend    = $stmtPend->get_result()->fetch_assoc();
+            $stmtPend->close();
+            $totalComents = (int)($rowPend['total']     ?? 0);
+            $concluidosCo = (int)($rowPend['concluidos'] ?? 0);
+            if ($totalComents > 0 && $concluidosCo < $totalComents) {
+                $pendentes = $totalComents - $concluidosCo;
+                json_error(
+                    "Existem {$pendentes} comentário(s) não concluído(s). Conclua todos os ajustes no Flow Review antes de enviar uma nova versão.",
+                    422,
+                    ['pendentes' => $pendentes, 'total' => $totalComents, 'concluidos' => $concluidosCo]
+                );
+            }
+        }
+    }
+}
+// ---------- Fim bloqueio comentários pendentes ------------------------------
+
 // ---------- Atualiza status para Em aprovação (sempre, inclusive ao adicionar ângulos) ----------
 $hoje = date('Y-m-d');
 $stmt = $conn->prepare("UPDATE funcao_imagem 

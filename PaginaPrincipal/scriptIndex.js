@@ -4201,6 +4201,9 @@ colunas.forEach((col) => {
         }
         cardSelecionado = card;
 
+        // Armazena coluna de origem para uso em enviarImagens (bloqueio de comentários)
+        window._cardVeioDe = deColuna.id || "";
+
         idfuncao_imagem = card.getAttribute("data-id");
         idimagem = card.getAttribute("data-id-imagem");
         titulo = card.querySelector("h5")?.innerText || "";
@@ -4366,7 +4369,10 @@ function enviarImagens() {
     return;
   }
 
-  const formData = new FormData();
+  // Bloqueia reenvio quando há comentários pendentes (status Ajuste)
+  // Verifica de forma assíncrona; se houver pendentes exibe alerta e aborta.
+  const _doEnviar = () => {
+    const formData = new FormData();
   imagensSelecionadas.forEach((file) => formData.append("imagens[]", file));
   formData.append("dataIdFuncoes", idfuncao_imagem);
   formData.append("idimagem", idimagem);
@@ -4503,6 +4509,32 @@ function enviarImagens() {
       xhr.send(formData);
     },
   });
+  }; // fim _doEnviar
+
+  // Se a tarefa está em "Ajuste", verifica comentários pendentes no Flow Review
+  if (idfuncao_imagem && window._cardVeioDe === "ajuste") {
+    fetch(
+      `FlowReview/verificar_comentarios_pendentes.php?funcao_imagem_id=${encodeURIComponent(idfuncao_imagem)}`,
+    )
+      .then((r) => r.json())
+      .then((data) => {
+        if (data && data.tem_pendentes) {
+          Swal.fire({
+            icon: "warning",
+            title: "Comentários pendentes",
+            html: `Existem <strong>${data.pendentes}</strong> comentário(s) não concluído(s).<br>
+                   Acesse o <strong>Flow Review</strong> e marque todos os ajustes como concluídos antes de enviar uma nova versão.`,
+            confirmButtonText: "Entendido",
+            confirmButtonColor: "#f59e0b",
+          });
+        } else {
+          _doEnviar();
+        }
+      })
+      .catch(() => _doEnviar()); // falha silenciosa: não bloqueia
+  } else {
+    _doEnviar();
+  }
 }
 
 function enviarArquivo() {

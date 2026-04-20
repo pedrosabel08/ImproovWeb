@@ -481,7 +481,7 @@ function enviar_angulo_para_vps($localPath, $nomenclatura, $categoriaDir, $tipoI
     }
 
     if (!$sftp->login((string)$cfg['username'], (string)$cfg['password'])) {
-        $lastErrors = method_exists($sftp, 'getLastSFTPErrors') ? $sftp->getLastSFTPErrors() : [];
+        $lastErrors = method_exists($sftp, 'getErrors') ? $sftp->getErrors() : [];
         $errorStr = !empty($lastErrors) ? implode('|', (array)$lastErrors) : 'unknown';
         $logs[] = 'vps_sftp_login_failed|' . $errorStr;
         $logs[] = 'vps_sftp_host=' . (string)$cfg['host'];

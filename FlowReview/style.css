@@ -1016,6 +1016,60 @@ h2#dataEnvio {
   left: -10px;
 }
 
+/* Badge de prioridade de aprovação (🔥) — canto inferior esquerdo */
+.prioridade-badge {
+  position: absolute;
+  bottom: -10px;
+  left: -10px;
+  background-color: #e85e00;
+  color: white;
+  border-radius: 50px;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: 0 0 0 2px white;
+  z-index: 10;
+  white-space: nowrap;
+}
+
+.task-item .prioridade-badge {
+  bottom: -8px;
+  left: -8px;
+  font-size: 11px;
+  padding: 3px 6px;
+}
+
+/* Menu de contexto da imagem principal */
+#menuContextoImagem {
+  display: none;
+  position: absolute;
+  background: #1a1a2e;
+  border: 1px solid #444;
+  padding: 4px;
+  list-style: none;
+  font-size: 14px;
+  color: white;
+  border-radius: 10px;
+  cursor: pointer;
+  z-index: 9999;
+  min-width: 200px;
+}
+
+#menuContextoImagem li {
+  padding: 8px 14px;
+  border-radius: 7px;
+  transition: background 0.15s;
+}
+
+#menuContextoImagem li:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+#menuContextoImagem li span {
+  display: inline-block;
+  margin-left: 6px;
+}
+
 /* Badge for unified pair primary function */
 .par-primario-badge {
   display: inline-block;

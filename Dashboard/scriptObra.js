@@ -3258,7 +3258,7 @@ function infosObra(obraId) {
         data?.obra?.nome_obra &&
         data?.aprovacaoObra &&
         Object.keys(data.aprovacaoObra).length > 0
-          ? `https://improov.com.br/flow/ImproovWeb/FlowReview/index.php?obra_nome=${encodeURIComponent(data.obra.nome_obra)}`
+          ? `https://improov.com.br/flow/ImproovWeb/FlowReview/index.php?obra_nome=${encodeURIComponent(data.obra.nomenclatura)}`
           : null;
       ["quick_flow_review", "mobile_flow_review"].forEach(function (id) {
         const el = document.getElementById(id);

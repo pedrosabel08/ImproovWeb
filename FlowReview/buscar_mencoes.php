@@ -13,29 +13,29 @@ $response = [
 ];
 
 // ── Contagem por obra (não vistas) ──────────────────────────────────────────
-$stmt = $conn->prepare("SELECT 
-    o.nome_obra,
+$stmt = $conn->prepare("SELECT
+    o.nomenclatura,
     COUNT(*) AS qtd_mencoes
-FROM 
+FROM
     mencoes m
 INNER JOIN comentarios_imagem c ON c.id = m.comentario_id
 INNER JOIN historico_aprovacoes_imagens hai ON hai.id = c.ap_imagem_id
 INNER JOIN funcao_imagem fi ON fi.idfuncao_imagem = hai.funcao_imagem_id
 INNER JOIN imagens_cliente_obra ico ON ico.idimagens_cliente_obra = fi.imagem_id
 INNER JOIN obra o ON o.idobra = ico.obra_id
-WHERE 
+WHERE
     m.mencionado_id = ?
     AND m.visto = 0
     AND fi.status NOT IN ('Finalizado', 'Aprovado')
-GROUP BY 
-    o.nome_obra");
+GROUP BY
+    o.nomenclatura");
 $stmt->bind_param("i", $idColaborador);
 $stmt->execute();
 $result = $stmt->get_result();
 
 $total = 0;
 while ($row = $result->fetch_assoc()) {
-    $obra = $row['nome_obra'];
+    $obra = $row['nomenclatura'];
     $qtd  = (int)$row['qtd_mencoes'];
     $total += $qtd;
     $response['mencoes_por_obra'][$obra] = ($response['mencoes_por_obra'][$obra] ?? 0) + $qtd;
@@ -81,7 +81,7 @@ while ($row = $result3->fetch_assoc()) {
 
 // ── Menções em respostas: contagem por obra ──────────────────────────────────
 $stmt4 = $conn->prepare("SELECT
-    o.nome_obra,
+    o.nomenclatura,
     COUNT(*) AS qtd_mencoes
 FROM
     mencoes m
@@ -96,13 +96,13 @@ WHERE
     AND m.visto = 0
     AND m.resposta_id IS NOT NULL
 GROUP BY
-    o.nome_obra");
+    o.nomenclatura");
 $stmt4->bind_param("i", $idColaborador);
 $stmt4->execute();
 $result4 = $stmt4->get_result();
 
 while ($row = $result4->fetch_assoc()) {
-    $obra = $row['nome_obra'];
+    $obra = $row['nomenclatura'];
     $qtd  = (int)$row['qtd_mencoes'];
     $total += $qtd;
     $response['mencoes_por_obra'][$obra] = ($response['mencoes_por_obra'][$obra] ?? 0) + $qtd;

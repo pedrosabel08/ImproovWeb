@@ -452,9 +452,16 @@ async function fetchObrasETarefas() {
     const response = await fetch(`atualizar.php`);
     if (!response.ok) throw new Error("Erro ao buscar tarefas");
 
-    dadosTarefas = await response.json();
+    const responseData = await response.json();
+    dadosTarefas = responseData.tarefas ?? responseData;
 
-    todasAsObras = new Set(dadosTarefas.map((t) => t.nome_obra));
+    // Calcula offset entre horário do servidor (Brasília) e relógio local
+    if (responseData.server_now) {
+      const serverDate = new Date(responseData.server_now.replace(" ", "T") + "-03:00");
+      _serverTimeOffset = serverDate.getTime() - Date.now();
+    }
+
+    todasAsObras = new Set(dadosTarefas.map((t) => t.nomenclatura));
     todosOsColaboradores = new Set(dadosTarefas.map((t) => t.nome_colaborador));
     todasAsFuncoes = new Set(dadosTarefas.map((t) => t.nome_funcao)); // ou o nome do campo correspondente
 
@@ -546,13 +553,10 @@ function applyHomeFilters() {
     filtradas = filtradas.filter((t) => t.nome_funcao === funcaoVal);
   if (colabVal)
     filtradas = filtradas.filter((t) => t.nome_colaborador === colabVal);
-  if (statusVal)
-    filtradas = filtradas.filter((t) => t.status === statusVal);
+  if (statusVal) filtradas = filtradas.filter((t) => t.status === statusVal);
   if (searchVal)
-    filtradas = filtradas.filter(
-      (t) =>
-        (t.nome_obra || "").toLowerCase().includes(searchVal) ||
-        (t.nomenclatura || "").toLowerCase().includes(searchVal),
+    filtradas = filtradas.filter((t) =>
+      (t.nomenclatura || "").toLowerCase().includes(searchVal),
     );
 
   exibirCardsDeObra(filtradas);
@@ -653,16 +657,22 @@ async function exibirCardsDeObra(tarefas) {
 
   const obrasMap = new Map();
   tarefas.forEach((tarefa) => {
-    if (!obrasMap.has(tarefa.nome_obra)) {
-      obrasMap.set(tarefa.nome_obra, []);
+    if (!obrasMap.has(tarefa.nomenclatura)) {
+      obrasMap.set(tarefa.nomenclatura, []);
     }
-    obrasMap.get(tarefa.nome_obra).push(tarefa);
+    obrasMap.get(tarefa.nomenclatura).push(tarefa);
   });
 
-  // Obras com menções não lidas primeiro
+  // Obras com prioridade primeiro, depois menções
   const obrasOrdenadas = [...obrasMap.entries()].sort(
-    ([a], [b]) =>
-      (mencoes.mencoes_por_obra[b] || 0) - (mencoes.mencoes_por_obra[a] || 0),
+    ([a, tarefasA], [b, tarefasB]) => {
+      const prioA = tarefasA.filter((t) => t.prioridade_aprovacao == 1 && t.status_novo === "Em aprovação").length;
+      const prioB = tarefasB.filter((t) => t.prioridade_aprovacao == 1 && t.status_novo === "Em aprovação").length;
+      if (prioB !== prioA) return prioB - prioA;
+      return (
+        (mencoes.mencoes_por_obra[b] || 0) - (mencoes.mencoes_por_obra[a] || 0)
+      );
+    },
   );
 
   if (mencoes.total_mencoes > 0) {
@@ -684,7 +694,7 @@ async function exibirCardsDeObra(tarefas) {
   if (tarefasDirecao.length > 0) {
     const obrasDirMap = {};
     tarefasDirecao.forEach((t) => {
-      obrasDirMap[t.nome_obra] = (obrasDirMap[t.nome_obra] || 0) + 1;
+      obrasDirMap[t.nomenclatura] = (obrasDirMap[t.nomenclatura] || 0) + 1;
     });
     const linhasDir = Object.entries(obrasDirMap)
       .map(([obra, qtd]) => `• <b>${obra}</b>: ${qtd} tarefa(s)`)
@@ -699,7 +709,28 @@ async function exibirCardsDeObra(tarefas) {
     });
   }
 
-  obrasOrdenadas.forEach(([nome_obra, tarefasDaObra]) => {
+  // SweetAlert de prioridade de aprovação (só dispara uma vez por carregamento)
+  const tarefasPrio = tarefas.filter((t) => t.prioridade_aprovacao == 1 && t.status_novo === "Em aprovação");
+  if (tarefasPrio.length > 0 && !_prioAlertShown) {
+    _prioAlertShown = true;
+    const obrasPrioMap = {};
+    tarefasPrio.forEach((t) => {
+      obrasPrioMap[t.nomenclatura] = (obrasPrioMap[t.nomenclatura] || 0) + 1;
+    });
+    const linhasPrio = Object.entries(obrasPrioMap)
+      .map(([obra, qtd]) => `• <b>${obra}</b>: ${qtd} tarefa(s)`)
+      .join("<br>");
+    Swal.fire({
+      title: "🔥 Aprovações com prioridade!",
+      html:
+        linhasPrio + "<br><br>Estas tarefas estão marcadas como prioridade.",
+      icon: "warning",
+      confirmButtonText: "Ver",
+      confirmButtonColor: "#e85e00",
+    });
+  }
+
+  obrasOrdenadas.forEach(([nomenclatura, tarefasDaObra]) => {
     tarefasDaObra.sort(
       (a, b) => new Date(b.data_aprovacao) - new Date(a.data_aprovacao),
     );
@@ -709,9 +740,12 @@ async function exibirCardsDeObra(tarefas) {
       ? `https://improov.com.br/flow/ImproovWeb/thumb.php?path=${encodeURIComponent(tarefaComImagem.imagem)}&w=450&q=85`
       : "../assets/logo.jpg";
 
-    const mencoesNaObra = mencoes.mencoes_por_obra[nome_obra] || 0;
+    const mencoesNaObra = mencoes.mencoes_por_obra[nomenclatura] || 0;
     const pendenteDirecaoNaObra = tarefasDaObra.filter(
       (t) => t.pendente_direcao && t.diretor_pode_aprovar,
+    ).length;
+    const prioridadeNaObra = tarefasDaObra.filter(
+      (t) => t.prioridade_aprovacao == 1 && t.status_novo === "Em aprovação",
     ).length;
 
     const card = document.createElement("div");
@@ -720,8 +754,9 @@ async function exibirCardsDeObra(tarefas) {
     card.innerHTML = `
         ${mencoesNaObra > 0 ? `<div class="mencao-badge">💬 ${mencoesNaObra}</div>` : ""}
         ${pendenteDirecaoNaObra > 0 ? `<div class="pendente-direcao-badge obra-direcao-badge" title="Aguardando validação da direção">⏳ ${pendenteDirecaoNaObra}</div>` : ""}
+        ${prioridadeNaObra > 0 ? `<div class="prioridade-badge" title="Aprovações com prioridade">🔥 ${prioridadeNaObra}</div>` : ""}
         <div class="obra-img-preview">
-            <img src="${imagemPreview}" alt="Imagem da obra ${nome_obra}">
+            <img src="${imagemPreview}" alt="Imagem da obra ${nomenclatura}">
         </div>
         <div class="obra-info">
             <h3>${tarefasDaObra[0].nomenclatura}</h3>
@@ -730,7 +765,7 @@ async function exibirCardsDeObra(tarefas) {
     `;
 
     card.addEventListener("click", () => {
-      filtrarTarefasPorObra(nome_obra);
+      filtrarTarefasPorObra(nomenclatura);
     });
 
     container.appendChild(card);
@@ -748,7 +783,7 @@ function filtrarTarefasPorObra(obraSelecionada) {
 
   // Filtra todas as tarefas da obra
   const tarefasDaObra = dadosTarefas.filter(
-    (t) => t.nome_obra === obraSelecionada,
+    (t) => t.nomenclatura === obraSelecionada,
   );
 
   // Atualiza os filtros dinamicamente com base nessa obra
@@ -758,7 +793,8 @@ function filtrarTarefasPorObra(obraSelecionada) {
   const colaboradorSelecionado =
     document.getElementById("filtro_colaborador").value;
   let funcaoSelecionada = document.getElementById("nome_funcao").value;
-  const statusSelecionado = document.getElementById("filtro_status")?.value || "";
+  const statusSelecionado =
+    document.getElementById("filtro_status")?.value || "";
 
   // Se houver filtro global ativo, aplica e reflete visualmente (apenas na entrada)
   if (funcaoGlobalSelecionada) {
@@ -786,7 +822,9 @@ function filtrarTarefasPorObra(obraSelecionada) {
   if (statusGlobalSelecionado) {
     const selectStatus = document.getElementById("filtro_status");
     if (selectStatus) {
-      const opcoesStatus = Array.from(selectStatus.options).map((opt) => opt.value);
+      const opcoesStatus = Array.from(selectStatus.options).map(
+        (opt) => opt.value,
+      );
       if (opcoesStatus.includes(statusGlobalSelecionado)) {
         selectStatus.value = statusGlobalSelecionado;
       }
@@ -796,13 +834,12 @@ function filtrarTarefasPorObra(obraSelecionada) {
 
   if (tarefasDaObra.length > 0) {
     const obraId = tarefasDaObra[0].idobra; // ajuste se o campo for diferente
-    const nomeObra = tarefasDaObra[0].nome_obra;
     const nomenclatura = tarefasDaObra[0].nomenclatura;
 
     const obraNavLinks = document.querySelectorAll(".obra_nav");
 
     obraNavLinks.forEach((link) => {
-      link.href = `https://improov.com.br/flow/ImproovWeb/FlowReview/index.php?obra_nome=${nomeObra}`;
+      link.href = `https://improov.com.br/flow/ImproovWeb/FlowReview/index.php?obra_nome=${encodeURIComponent(nomenclatura)}`;
       link.textContent = nomenclatura;
     });
   }
@@ -813,8 +850,7 @@ function filtrarTarefasPorObra(obraSelecionada) {
       !colaboradorSelecionado || t.nome_colaborador === colaboradorSelecionado;
     const matchFuncao =
       funcaoSelecionada === "Todos" || t.nome_funcao === funcaoSelecionada;
-    const matchStatus =
-      !statusSelecionado || t.status === statusSelecionado;
+    const matchStatus = !statusSelecionado || t.status === statusSelecionado;
     return matchColaborador && matchFuncao && matchStatus;
   });
 
@@ -917,7 +953,10 @@ function atualizarFiltrosDinamicos(tarefas) {
     selectFuncao.value = valorAnteriorFuncao;
   }
 
-  if (selectStatus && [...selectStatus.options].some((o) => o.value === valorAnteriorStatus)) {
+  if (
+    selectStatus &&
+    [...selectStatus.options].some((o) => o.value === valorAnteriorStatus)
+  ) {
     selectStatus.value = valorAnteriorStatus;
   }
 }
@@ -928,7 +967,7 @@ document.getElementById("filtro_colaborador").addEventListener("change", () => {
     document.getElementById("filtro_colaborador").value;
 
   const tarefasDaObra = dadosTarefas.filter(
-    (t) => t.nome_obra === obraSelecionada,
+    (t) => t.nomenclatura === obraSelecionada,
   );
   const tarefasFiltradas = tarefasDaObra.filter(
     (t) =>
@@ -945,7 +984,7 @@ document.getElementById("nome_funcao").addEventListener("change", () => {
   const funcaoSelecionada = document.getElementById("nome_funcao").value;
 
   const tarefasDaObra = dadosTarefas.filter(
-    (t) => t.nome_obra === obraSelecionada,
+    (t) => t.nomenclatura === obraSelecionada,
   );
   const tarefasFiltradas = tarefasDaObra.filter(
     (t) => funcaoSelecionada === "Todos" || t.nome_funcao === funcaoSelecionada,
@@ -983,6 +1022,11 @@ function exibirTarefas(tarefas, tarefasCompletas) {
 
   if (tarefas.length > 0) {
     const tarefasOrdenadas = [...tarefas].sort((a, b) => {
+      // Prioridade de aprovação primeiro
+      const pA = a.prioridade_aprovacao == 1 && a.status_novo === "Em aprovação" ? 1 : 0;
+      const pB = b.prioridade_aprovacao == 1 && b.status_novo === "Em aprovação" ? 1 : 0;
+      if (pB !== pA) return pB - pA;
+      // Depois menções
       const mA =
         (_mencoesDados.mencoes_por_funcao_imagem || {})[
           String(a.idfuncao_imagem)
@@ -1035,7 +1079,7 @@ function exibirTarefas(tarefas, tarefasCompletas) {
                      <img src="${imagemPreview}" alt="Imagem da obra ${tarefa.nome_obra}" class="task-image" onerror="this.onerror=null;this.src='../assets/logo.jpg';">
                 </div>
                     <h3 class="nome_funcao">${tarefa.nome_funcao}${tarefa.par_primario_nome ? `<span class="par-primario-badge" title="${tarefa.par_primario_nome}: ${tarefa.par_primario_status}"> + ${tarefa.par_primario_nome}</span>` : ""}</h3><span class="colaborador">${tarefa.nome_colaborador}</span>
-                    <p class="imagem_nome" data-obra="${tarefa.nome_obra}">${tarefa.imagem_nome}</p>
+                    <p class="imagem_nome" data-obra="${tarefa.nomenclatura}">${tarefa.imagem_nome}</p>
                     <p class="data_aprovacao">${formatarDataHora(tarefa.data_aprovacao)}</p>       
                     <p id="status_funcao" style="color: ${color}; background-color: ${bgColor}">${tarefa.pendente_direcao ? "Aguardando Direção" : tarefa.angulo_aprovado ? "Ângulo aprovado" : tarefa.status_novo}</p>
                 </div>
@@ -1062,6 +1106,16 @@ function exibirTarefas(tarefas, tarefasCompletas) {
         dirBadge.textContent = "⏳";
         dirBadge.title = "Aguardando validação da direção";
         taskItem.appendChild(dirBadge);
+      }
+
+      // Badge de prioridade de aprovação (🔥) — canto inferior direito
+      if (tarefa.prioridade_aprovacao == 1 && tarefa.status_novo === "Em aprovação") {
+        const prioBadge = document.createElement("div");
+        prioBadge.classList.add("prioridade-badge");
+        prioBadge.setAttribute("data-prio-badge", tarefa.idfuncao_imagem);
+        prioBadge.textContent = "🔥";
+        prioBadge.title = "Aprovação com prioridade";
+        taskItem.appendChild(prioBadge);
       }
 
       // SLA timer badge — only for tasks in "Em aprovação" with SLA data
@@ -1108,14 +1162,14 @@ function formatarData(data) {
  * @returns {{ expirado: boolean, texto: string, horasDecorridas: number }}
  */
 function calcSlaTimer(inicio, limiteHoras) {
-  const inicioDate = new Date(String(inicio).replace(" ", "T"));
-  const horasDecorridas = (Date.now() - inicioDate.getTime()) / 36e5;
+  // Parseia como horário de Brasília (UTC-3) para não depender do fuso local
+  const inicioDate = new Date(String(inicio).replace(" ", "T") + "-03:00");
+  // Usa horário do servidor (corrigido pelo offset calculado no fetch)
+  const horasDecorridas = (Date.now() + _serverTimeOffset - inicioDate.getTime()) / 36e5;
   const expirado = horasDecorridas >= limiteHoras;
   const h = Math.floor(horasDecorridas);
   const m = Math.floor((horasDecorridas % 1) * 60);
-  const texto = expirado
-    ? `⚠ ${h}h ${m}min`
-    : `⏱ ${h}h ${m}min`;
+  const texto = expirado ? `⚠ ${h}h ${m}min` : `⏱ ${h}h ${m}min`;
   return { expirado, texto, horasDecorridas };
 }
 
@@ -1856,11 +1910,17 @@ function historyAJAX(idfuncao_imagem) {
 
             if (img.has_comments == "1" || img.has_comments === 1) {
               const notificationDot = document.createElement("div");
-              const pendentes = parseInt(img.pending_count ?? img.comment_count ?? 0, 10);
-              const total     = parseInt(img.comment_count ?? 0, 10);
-              const todosOk   = total > 0 && pendentes === 0;
-              notificationDot.className = "notification-dot" + (todosOk ? " notification-dot--ok" : "");
-              notificationDot.textContent = todosOk ? "✓" : String(pendentes > 0 ? pendentes : total);
+              const pendentes = parseInt(
+                img.pending_count ?? img.comment_count ?? 0,
+                10,
+              );
+              const total = parseInt(img.comment_count ?? 0, 10);
+              const todosOk = total > 0 && pendentes === 0;
+              notificationDot.className =
+                "notification-dot" + (todosOk ? " notification-dot--ok" : "");
+              notificationDot.textContent = todosOk
+                ? "✓"
+                : String(pendentes > 0 ? pendentes : total);
               notificationDot.title = todosOk
                 ? "Todos os comentários concluídos"
                 : `${pendentes} comentário(s) pendente(s)`;
@@ -2229,7 +2289,68 @@ document.addEventListener("click", (e) => {
   if (!menu.contains(e.target)) {
     menu.style.display = "none";
   }
+  const menuImg = document.getElementById("menuContextoImagem");
+  if (menuImg && !menuImg.contains(e.target)) {
+    menuImg.style.display = "none";
+  }
 });
+
+function abrirMenuContextoImagem(x, y) {
+  const menu = document.getElementById("menuContextoImagem");
+  if (!menu) return;
+  menu.style.top = `${y}px`;
+  menu.style.left = `${x}px`;
+  menu.style.display = "block";
+}
+
+async function marcarPrioridadeAprovacao() {
+  const menu = document.getElementById("menuContextoImagem");
+  if (menu) menu.style.display = "none";
+
+  const fimId = funcaoImagemId || currentFuncaoContext?.funcao_imagem_id;
+  if (!fimId) {
+    Swal.fire({
+      title: "Erro",
+      text: "Nenhuma tarefa selecionada.",
+      icon: "error",
+    });
+    return;
+  }
+
+  try {
+    const res = await fetch("marcar_prioridade_aprovacao.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ funcao_imagem_id: fimId }),
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.message || "Erro desconhecido");
+
+    const isPrioridade = data.prioridade === 1;
+    Swal.fire({
+      title: isPrioridade
+        ? "🔥 Marcada como prioridade!"
+        : "Prioridade removida",
+      text: isPrioridade
+        ? "Esta tarefa será exibida em destaque na fila de aprovação."
+        : "A prioridade desta tarefa foi removida.",
+      icon: "success",
+      timer: 2500,
+      showConfirmButton: false,
+    });
+
+    // Atualiza dado local para refletir imediatamente nos cards
+    const task = dadosTarefas.find((t) => t.idfuncao_imagem == fimId);
+    if (task) task.prioridade_aprovacao = isPrioridade ? 1 : 0;
+
+    const obraSelecionada = document.getElementById("filtro_obra").value;
+    if (obraSelecionada) {
+      filtrarTarefasPorObra(obraSelecionada);
+    }
+  } catch (err) {
+    Swal.fire({ title: "Erro", text: err.message, icon: "error" });
+  }
+}
 
 let tribute; // variável global
 let mencionadosIds = []; // armazenar os IDs dos mencionados
@@ -2238,6 +2359,8 @@ let _editingCommentId = null; // ID do comentário em edição (null = novo come
 let _replyingToCommentId = null; // ID do comentário sendo respondido (null = não é resposta)
 let _editingReplyId = null; // ID da resposta em edição (null = não é edição de resposta)
 let quillComentario = null; // instância do Quill no modal de comentário
+let _prioAlertShown = false; // garante que o alerta de prioridade só dispara uma vez por carregamento
+let _serverTimeOffset = 0;   // offset (ms) entre horário do servidor Brasília e relógio local
 let _mencoesDados = {
   total_mencoes: 0,
   mencoes_por_obra: {},
@@ -2363,10 +2486,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (frSearchFuncao) {
     frSearchFuncao.addEventListener("input", () => {
       const val = frSearchFuncao.value.toLowerCase().trim();
-      document.querySelectorAll(".tarefasImagensObra .task-item").forEach((item) => {
-        const nomeImagem = (item.querySelector(".imagem_nome")?.textContent || "").toLowerCase();
-        item.style.display = !val || nomeImagem.includes(val) ? "" : "none";
-      });
+      document
+        .querySelectorAll(".tarefasImagensObra .task-item")
+        .forEach((item) => {
+          const nomeImagem = (
+            item.querySelector(".imagem_nome")?.textContent || ""
+          ).toLowerCase();
+          item.style.display = !val || nomeImagem.includes(val) ? "" : "none";
+        });
     });
   }
 
@@ -2952,6 +3079,12 @@ function mostrarImagemCompleta(src, id) {
   //   .scrollIntoView({ behavior: "smooth" });
   renderComments(id);
   ajustarNavSelectAoTamanhoDaImagem();
+
+  imgElement.addEventListener("contextmenu", (event) => {
+    event.preventDefault();
+    document.getElementById("menuContexto").style.display = "none";
+    abrirMenuContextoImagem(event.pageX, event.pageY);
+  });
 
   imgElement.addEventListener("click", function (event) {
     if (dragMoved) return;
@@ -3583,7 +3716,10 @@ async function toggleCommentConcluido(comentarioId, concluido) {
     const res = await fetch("marcar_comentario_concluido.php", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ comentario_id: comentarioId, concluido: concluido ? 1 : 0 }),
+      body: JSON.stringify({
+        comentario_id: comentarioId,
+        concluido: concluido ? 1 : 0,
+      }),
     });
     return await res.json();
   } catch (e) {
@@ -3593,10 +3729,12 @@ async function toggleCommentConcluido(comentarioId, concluido) {
 }
 
 function renderCommentProgress(container, comentarios) {
-  const total      = comentarios.length;
-  const concluidos = comentarios.filter((c) => parseInt(c.concluido ?? 0, 10) === 1).length;
-  const pct        = total > 0 ? Math.round((concluidos / total) * 100) : 0;
-  const todosOk    = total > 0 && concluidos === total;
+  const total = comentarios.length;
+  const concluidos = comentarios.filter(
+    (c) => parseInt(c.concluido ?? 0, 10) === 1,
+  ).length;
+  const pct = total > 0 ? Math.round((concluidos / total) * 100) : 0;
+  const todosOk = total > 0 && concluidos === total;
 
   let bar = container.querySelector(".comment-progress-bar");
   if (!bar) {
@@ -3704,7 +3842,9 @@ async function renderComments(id) {
     // Botão de checklist (marcar/desmarcar como concluído)
     const checkBtn = document.createElement("button");
     checkBtn.className = "comment-check" + (isConcluido ? " checked" : "");
-    checkBtn.title = isConcluido ? "Desmarcar ajuste" : "Marcar ajuste como concluído";
+    checkBtn.title = isConcluido
+      ? "Desmarcar ajuste"
+      : "Marcar ajuste como concluído";
     checkBtn.setAttribute("aria-label", checkBtn.title);
     checkBtn.innerHTML = isConcluido ? "✅" : "⬜";
     checkBtn.addEventListener("click", async (e) => {
@@ -3720,7 +3860,7 @@ async function renderComments(id) {
         _atualizarBadgeImagem(
           typeof id === "object" ? id.arquivo_log_id : id,
           result.total,
-          result.pendentes
+          result.pendentes,
         );
       }
     });

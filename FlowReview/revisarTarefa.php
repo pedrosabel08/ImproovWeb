@@ -270,6 +270,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($stmt->execute()) {
             $stmt->close();
 
+            // Reset prioridade ao aprovar (qualquer tipo de aprovação)
+            if (in_array($tipoRevisao, ['aprovado', 'aprovado_com_ajustes'])) {
+                $stmtPrio = $conn->prepare(
+                    "UPDATE funcao_imagem SET prioridade_aprovacao = 0 WHERE idfuncao_imagem = ?"
+                );
+                $stmtPrio->bind_param("i", $idfuncao_imagem);
+                $stmtPrio->execute();
+                $stmtPrio->close();
+            }
+
             $status_anterior = "Em aprovação";
             $stmt = $conn->prepare("INSERT INTO historico_aprovacoes (funcao_imagem_id, status_anterior, status_novo, colaborador_id, responsavel) VALUES (?, ?, ?, ?, ?)");
             $stmt->bind_param("issii", $idfuncao_imagem, $status_anterior, $status, $colaborador_id, $responsavel);

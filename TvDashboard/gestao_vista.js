@@ -68,24 +68,21 @@ function startUpdatedLabel() {
 // ── Construção de células de meta ─────────────────────────────────────────────
 
 function metaCells(qtdParcial, metaInd, diasRestantes) {
-  const diaAtual = getDiaAtual();
-  const r00 = metaInd !== null ? metaInd - qtdParcial : null;
-
-  const tdDia = `<td>${diaAtual}</td>`;
+  const r00 = metaInd !== null ? qtdParcial - metaInd : null;
 
   let tdR00, tdDias;
   if (r00 === null) {
     tdR00 = `<td>–</td>`;
     tdDias = `<td>–</td>`;
-  } else if (r00 <= 0) {
-    tdR00 = `<td class="gv-cell-done">${r00}</td>`;
+  } else if (r00 > 0) {
+    tdR00 = `<td class="gv-cell-done">+${r00}</td>`;
     tdDias = `<td class="gv-cell-done">${diasRestantes}</td>`;
   } else {
-    tdR00 = `<td>${r00}</td>`;
+    tdR00 = `<td>${Math.abs(r00)}</td>`;
     tdDias = `<td>${diasRestantes}</td>`;
   }
 
-  return tdDia + tdR00 + tdDias;
+  return tdR00 + tdDias;
 }
 
 // ── Renderização: Perspectivas ────────────────────────────────────────────────
@@ -107,22 +104,53 @@ function buildPerspectivas(data) {
     totalRec += f.recorde_mes;
     totalQtd += f.qtd_parcial;
     const bateuRec = f.recorde_mes > 0 && f.qtd_parcial >= f.recorde_mes;
+    const pct =
+      typeof f.pct_meta === "number"
+        ? f.pct_meta
+        : f.pct_meta === null
+          ? null
+          : null;
+    let pctBadge = "";
+    if (pct === null) {
+      pctBadge = '<span class="gv-pct-badge gv-pct-none">—</span>';
+    } else if (meta_individual !== null && f.qtd_parcial >= meta_individual) {
+      pctBadge = `<span class="gv-pct-badge gv-pct-done">${pct}%</span>`;
+    } else if (pct >= 80) {
+      pctBadge = `<span class="gv-pct-badge gv-pct-high">${pct}%</span>`;
+    } else if (pct >= 50) {
+      pctBadge = `<span class="gv-pct-badge gv-pct-mid">${pct}%</span>`;
+    } else {
+      pctBadge = `<span class="gv-pct-badge gv-pct-low">${pct}%</span>`;
+    }
+
     rows += `<tr class="${bateuRec ? "gv-row-record" : ""}">
       <td>${f.nome}</td>
       <td>${f.recorde_mes}</td>
-      <td>${f.qtd_parcial}</td>
+      <td><span class="gv-qty">${f.qtd_parcial}</span> ${pctBadge}</td>
       ${metaCells(f.qtd_parcial, meta_individual, diasRestantes)}
     </tr>`;
   }
 
   document.getElementById("bodyPerspectivas").innerHTML = rows;
+  const totalPct = (meta_total !== null && meta_total > 0) ? Math.round((totalQtd / meta_total) * 100) : null;
+  let totalPctBadge = '';
+  if (totalPct === null) {
+    totalPctBadge = '<span class="gv-pct-badge gv-pct-none">—</span>';
+  } else if (meta_total !== null && totalQtd >= meta_total) {
+    totalPctBadge = `<span class="gv-pct-badge gv-pct-done">${totalPct}%</span>`;
+  } else if (totalPct >= 80) {
+    totalPctBadge = `<span class="gv-pct-badge gv-pct-high">${totalPct}%</span>`;
+  } else if (totalPct >= 50) {
+    totalPctBadge = `<span class="gv-pct-badge gv-pct-mid">${totalPct}%</span>`;
+  } else {
+    totalPctBadge = `<span class="gv-pct-badge gv-pct-low">${totalPct}%</span>`;
+  }
+
   document.getElementById("footPerspectivas").innerHTML = `<tr>
     <td class="gv-tfoot-label">Total:</td>
     <td>${totalRec}</td>
-    <td>${totalQtd}</td>
-    <td class="gv-tfoot-label">Meta (mês):</td>
-    <td class="gv-tfoot-meta">${meta_total ?? "–"}</td>
-    <td></td>
+    <td>${totalQtd} ${totalPctBadge}</td>
+    <td class="gv-tfoot-meta">Meta (mês): ${meta_total ?? "–"}</td>
   </tr>`;
 }
 
@@ -135,25 +163,60 @@ function buildSecao(data, bodyId, footId, labelTotalProd, labelMeta) {
   let totalQtd = 0;
   let rows = "";
 
-  const sorted = [...funcionarios].sort((a, b) => b.qtd_parcial - a.qtd_parcial);
+  const sorted = [...funcionarios].sort(
+    (a, b) => b.qtd_parcial - a.qtd_parcial,
+  );
   for (const f of sorted) {
     totalQtd += f.qtd_parcial;
     const bateuRec = f.recorde_mes > 0 && f.qtd_parcial >= f.recorde_mes;
+    const pct =
+      typeof f.pct_meta === "number"
+        ? f.pct_meta
+        : f.pct_meta === null
+          ? null
+          : null;
+    let pctBadge = "";
+    if (pct === null) {
+      pctBadge = '<span class="gv-pct-badge gv-pct-none">—</span>';
+    } else if (meta_individual !== null && f.qtd_parcial >= meta_individual) {
+      pctBadge = `<span class="gv-pct-badge gv-pct-done">${pct}%</span>`;
+    } else if (pct >= 80) {
+      pctBadge = `<span class="gv-pct-badge gv-pct-high">${pct}%</span>`;
+    } else if (pct >= 50) {
+      pctBadge = `<span class="gv-pct-badge gv-pct-mid">${pct}%</span>`;
+    } else {
+      pctBadge = `<span class="gv-pct-badge gv-pct-low">${pct}%</span>`;
+    }
+
+    const qtdDisplay = f.qtd_parcial || "";
     rows += `<tr class="${bateuRec ? "gv-row-record" : ""}">
       <td>${f.nome}</td>
       <td>${f.recorde_mes || ""}</td>
-      <td>${f.qtd_parcial || ""}</td>
+      <td><span class="gv-qty">${qtdDisplay}</span> ${pctBadge}</td>
       ${metaCells(f.qtd_parcial, meta_individual, diasRestantes)}
     </tr>`;
   }
 
   document.getElementById(bodyId).innerHTML = rows;
+  const sectionPct = (meta_total !== null && meta_total > 0) ? Math.round((totalQtd / meta_total) * 100) : null;
+  let sectionPctBadge = '';
+  if (sectionPct === null) {
+    sectionPctBadge = '<span class="gv-pct-badge gv-pct-none">—</span>';
+  } else if (meta_total !== null && totalQtd >= meta_total) {
+    sectionPctBadge = `<span class="gv-pct-badge gv-pct-done">${sectionPct}%</span>`;
+  } else if (sectionPct >= 80) {
+    sectionPctBadge = `<span class="gv-pct-badge gv-pct-high">${sectionPct}%</span>`;
+  } else if (sectionPct >= 50) {
+    sectionPctBadge = `<span class="gv-pct-badge gv-pct-mid">${sectionPct}%</span>`;
+  } else {
+    sectionPctBadge = `<span class="gv-pct-badge gv-pct-low">${sectionPct}%</span>`;
+  }
+
   document.getElementById(footId).innerHTML = `<tr>
     <td colspan="2" class="gv-tfoot-label">${labelTotalProd}</td>
-    <td>${totalQtd}</td>
+    <td>${totalQtd} ${sectionPctBadge}</td>
     <td class="gv-tfoot-label">${labelMeta}</td>
     <td class="gv-tfoot-meta">${meta_total ?? "–"}</td>
-    <td></td>
   </tr>`;
 }
 
@@ -200,5 +263,5 @@ document.addEventListener("DOMContentLoaded", () => {
   initClock();
   startUpdatedLabel();
   carregarDados();
-  setInterval(carregarDados, 120000); // atualiza a cada 2 minutos
+  // setInterval(carregarDados, 120000); // atualiza a cada 2 minutos
 });

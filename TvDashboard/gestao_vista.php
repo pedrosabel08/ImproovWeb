@@ -35,14 +35,13 @@
       <table class="gv-table" id="tblPerspectivas">
         <thead>
           <tr class="gv-thead-group">
-            <th colspan="4" class="gv-th-group">Números atuais</th>
+            <th colspan="3" class="gv-th-group">Números atuais</th>
             <th colspan="2" class="gv-th-group gv-th-meta">Falta para a meta</th>
           </tr>
           <tr class="gv-thead-cols">
             <th>Funcionário</th>
             <th>Recorde / mês</th>
             <th>Qtnd parcial do mês</th>
-            <th>Dia atual</th>
             <th class="gv-th-red">Qtde R00</th>
             <th class="gv-th-red">Dias</th>
           </tr>
@@ -60,14 +59,13 @@
         <table class="gv-table" id="tblPlantas">
           <thead>
             <tr class="gv-thead-group">
-              <th colspan="4" class="gv-th-group">Números atuais</th>
+              <th colspan="3" class="gv-th-group">Números atuais</th>
               <th colspan="2" class="gv-th-group gv-th-meta">Falta para a meta</th>
             </tr>
             <tr class="gv-thead-cols">
               <th>Funcionário</th>
               <th>Recorde / mês</th>
               <th>Qtnd parcial do mês</th>
-              <th>Dia atual</th>
               <th class="gv-th-red">Qtde R00</th>
               <th class="gv-th-red">Dias</th>
             </tr>
@@ -82,14 +80,13 @@
         <table class="gv-table" id="tblAlteracoes">
           <thead>
             <tr class="gv-thead-group">
-              <th colspan="4" class="gv-th-group">Números atuais</th>
+              <th colspan="3" class="gv-th-group">Números atuais</th>
               <th colspan="2" class="gv-th-group gv-th-meta">Falta para a meta</th>
             </tr>
             <tr class="gv-thead-cols">
               <th>Funcionário</th>
               <th>Recorde / mês</th>
               <th>Qtnd parcial do mês</th>
-              <th>Dia atual</th>
               <th class="gv-th-red">Qtde R00</th>
               <th class="gv-th-red">Dias</th>
             </tr>

@@ -1,4 +1,5 @@
 <?php
+
 /**
  * TvDashboard/buscar_gestao_vista.php
  * Retorna dados por colaborador para Perspectivas, Plantas Humanizadas e Alterações.
@@ -351,9 +352,9 @@ $stmtMeta->close();
 $conn->close();
 
 // ── Monta seções ──────────────────────────────────────────────────────────────
-function buildFuncionario(string $nome, int $id, int $qtd, int $recorde): array
+function buildFuncionario(string $nome, int $id, int $qtd, int $recorde, ?int $pct_meta = null): array
 {
-  return ['nome' => $nome, 'colaborador_id' => $id, 'qtd_parcial' => $qtd, 'recorde_mes' => $recorde];
+  return ['nome' => $nome, 'colaborador_id' => $id, 'qtd_parcial' => $qtd, 'recorde_mes' => $recorde, 'pct_meta' => $pct_meta];
 }
 
 // Perspectivas
@@ -364,7 +365,8 @@ $perspFunc = [];
 foreach ($perspIds as $cid) {
   $qtd = $finIdx[$cid]['Finalização Completa'] ?? 0;
   $rec = $recFinIdx[$cid]['Finalização Completa'] ?? 0;
-  $perspFunc[] = buildFuncionario($perspNames[$cid], $cid, $qtd, $rec);
+  $pct = ($metaPerspInd !== null && $metaPerspInd > 0) ? (int) round(($qtd / $metaPerspInd) * 100) : null;
+  $perspFunc[] = buildFuncionario($perspNames[$cid], $cid, $qtd, $rec, $pct);
 }
 
 // Outros = soma de todos os colaboradores fora da lista (21 já excluído pelo SQL)
@@ -376,7 +378,8 @@ foreach ($finIdx as $cid => $nomes) {
     $outrosRec  = max($outrosRec, $recFinIdx[$cid]['Finalização Completa'] ?? 0);
   }
 }
-$perspFunc[] = buildFuncionario('Outros', 0, $outrosQtd, $outrosRec);
+$outrosPct = ($metaPerspInd !== null && $metaPerspInd > 0) ? (int) round(($outrosQtd / $metaPerspInd) * 100) : null;
+$perspFunc[] = buildFuncionario('Outros', 0, $outrosQtd, $outrosRec, $outrosPct);
 
 // Plantas Humanizadas
 $metaPlantasTotal = $metaMap[7] ?? null;
@@ -386,7 +389,8 @@ $plantasFunc = [];
 foreach ($plantasIds as $cid) {
   $qtd = $finIdx[$cid]['Finalização de Planta Humanizada'] ?? 0;
   $rec = $recFinIdx[$cid]['Finalização de Planta Humanizada'] ?? 0;
-  $plantasFunc[] = buildFuncionario($plantasNames[$cid], $cid, $qtd, $rec);
+  $pct = ($metaPlantasInd !== null && $metaPlantasInd > 0) ? (int) round(($qtd / $metaPlantasInd) * 100) : null;
+  $plantasFunc[] = buildFuncionario($plantasNames[$cid], $cid, $qtd, $rec, $pct);
 }
 
 // Alterações
@@ -397,7 +401,8 @@ $alterFunc = [];
 foreach ($alterIds as $cid) {
   $qtd = $altIdx[$cid] ?? 0;
   $rec = $recAltIdx[$cid] ?? 0;
-  $alterFunc[] = buildFuncionario($alterNames[$cid], $cid, $qtd, $rec);
+  $pct = ($metaAltInd !== null && $metaAltInd > 0) ? (int) round(($qtd / $metaAltInd) * 100) : null;
+  $alterFunc[] = buildFuncionario($alterNames[$cid], $cid, $qtd, $rec, $pct);
 }
 
 echo json_encode([

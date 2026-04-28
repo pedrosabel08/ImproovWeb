@@ -33,9 +33,39 @@
   --modal-bg: #1a1a1a;
   --progress-bg: #2a2a2a;
   --progress-fill: #00adb5;
+  /* Backgrounds */
+  --bg-body: #f0f2f5;
+  --bg-surface: #ffffff;
+  --bg-surface-alt: #f8f9fb;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f4f7ff;
+  --bg-filter: #ffffff;
+  --bg-input: #ffffff;
+  --bg-count: #e8ecf1;
+  --bg-overlay: rgba(0, 0, 0, 0.5);
+  --bg-modal: #ffffff;
+  --bg-section: #f8f9fb;
+  --bg-skeleton: #e8ecf1;
+  --bg-skeleton-shine: #f4f6f9;
 
-  --text-primary: #3f3f3f;
-  --text-secondary: #666666;
+  /* Borders */
+  --border-card: #e2e6eb;
+  --border-card-hover: #a3bffa;
+  --border-input: #d1d5db;
+  --border-modal: #e2e6eb;
+
+  /* Texts */
+  --text-primary: #1a1d23;
+  --text-secondary: #4b5563;
+  --text-tertiary: #6b7280;
+  --text-muted: #9ca3af;
+  --text-on-accent: #ffffff;
+
+  /* Accent (primary blue) */
+  --accent: #4f80e1;
+  --accent-hover: #3b6fd6;
+  --accent-subtle: rgba(79, 128, 225, 0.1);
+  --accent-glow: rgba(79, 128, 225, 0.25);
 
   /* status colors */
   --status-R00: #00b894;
@@ -43,6 +73,33 @@
   --status-R02: #ff4757;
   --status-EF: #3742fa;
   --status-default: #6c757d;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.14);
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.05);
+  --shadow-card-hover: 0 4px 14px rgba(79, 128, 225, 0.15);
+  --shadow-modal: 0 20px 60px rgba(0, 0, 0, 0.18);
+
+  /* Border radius */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-full: 999px;
+
+  /* Transitions */
+  --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Botão Limpar */
+  --btn-clear-border: #ffb3b3;
+  --btn-clear-bg: #fff5f5;
+  --btn-clear-color: #c92a2a;
+  --btn-clear-bg-hover: #ffe3e3;
 
   /* Status imagem (si-*) — cores sólidas para células de tabela */
   --si-p00: #ffc21c;
@@ -697,7 +754,6 @@ a {
   min-width: unset;
   flex: unset;
   box-sizing: border-box;
-  flex-direction: row !important;
   gap: 15px !important;
 }
 
@@ -3638,10 +3694,10 @@ ul.file-list {
 
 #modal_status .modal-content {
   min-width: 220px;
-  
+
   background: var(--bg-card, #fff);
   border: 1px solid var(--border-card, #e2e6eb);
-  box-shadow: var(--shadow-md, 0 4px 12px rgba(0,0,0,0.08));
+  box-shadow: var(--shadow-md, 0 4px 12px rgba(0, 0, 0, 0.08));
   border-radius: var(--radius-md, 12px);
   padding: 14px 14px 12px;
   margin: 0;
@@ -3699,7 +3755,9 @@ ul.file-list {
   font-family: inherit;
   cursor: pointer;
   white-space: nowrap;
-  transition: background 0.15s, transform 0.15s;
+  transition:
+    background 0.15s,
+    transform 0.15s;
 }
 #modal_status .ms-btn:hover {
   transform: translateY(-1px);
@@ -4978,4 +5036,45 @@ tr#linha-porcentagem {
 
 .btn-cronograma-card {
   display: none !important;
+}
+
+.column-cards {
+  display: flex;
+  gap: 15px;
+}
+
+.column-cards {
+  display: flex;
+  gap: 15px;
+}
+
+.column-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-card);
+  flex-shrink: 0;
+}
+
+.column-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.2px;
+  margin: 0;
+}
+
+.column-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-count);
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-weight: 600;
+  min-width: 22px;
+  height: 22px;
+  border-radius: var(--radius-full);
+  padding: 0 6px;
 }

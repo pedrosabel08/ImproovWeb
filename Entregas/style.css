@@ -391,7 +391,6 @@ body {
   flex-direction: column;
   gap: 10px;
   border: 1px solid var(--border-card);
-  overflow-y: auto;
   box-shadow: var(--shadow-sm);
 }
 
@@ -431,6 +430,13 @@ body {
   background: var(--accent-subtle);
 }
 
+.column-cards {
+  overflow-y: auto;
+  padding: 6px;
+  gap: 10px;
+  display: flex;
+  flex-direction: column;
+}
 /* ===== STATUS BADGES ===== */
 .status-badge {
   display: inline-flex;

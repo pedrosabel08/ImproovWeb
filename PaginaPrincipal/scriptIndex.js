@@ -1217,7 +1217,7 @@ checkDailyAccess()
 carregarDados(colaborador_id);
 
 // Atualiza lista automaticamente quando uma função for inserida/atualizada ou upload enfileirado (via WebSocket)
-window.addEventListener('improov:funcaoAtualizada', () => {
+window.addEventListener("improov:funcaoAtualizada", () => {
   carregarDados(colaborador_id);
 });
 
@@ -4329,7 +4329,7 @@ colunas.forEach((col) => {
         if (_modalTitleDrag) {
           _modalTitleDrag.textContent = card.classList.contains("tarefa-criada")
             ? "Editar Card"
-            : (titulo || "Editar Card");
+            : titulo || "Editar Card";
         }
 
         // Posicionar modal ao lado da coluna de destino
@@ -4972,11 +4972,13 @@ async function carregarOverview() {
       backgroundColor:
         e.kanban_status === "atrasada"
           ? "#ef4444"
-          : e.kanban_status === "parcial"
-            ? "#f59e0b"
-            : e.kanban_status === "concluida"
-              ? "#22c55e"
-              : "#3b82f6",
+          : e.kanban_status === "hold"
+            ? "#6b7280"
+            : e.kanban_status === "parcial"
+              ? "#f59e0b"
+              : e.kanban_status === "concluida"
+                ? "#22c55e"
+                : "#3b82f6",
       borderColor: "transparent",
       textColor: "#fff",
       extendedProps: {

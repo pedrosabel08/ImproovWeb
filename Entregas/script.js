@@ -60,15 +60,21 @@ document.addEventListener("DOMContentLoaded", () => {
     card.dataset.canUnarchive = entrega.can_unarchive ? "1" : "0";
     card.dataset.dataPrevista = entrega.data_prevista || "";
     card.dataset.statusId = entrega.status_id || "0";
+    card.dataset.emHold = entrega.em_hold ? "1" : "0";
+    card.dataset.motivoHold = entrega.motivo_hold || "";
+
+    if (entrega.em_hold) card.classList.add("card-hold");
 
     const readyCount = parseInt(entrega.ready_count || 0, 10);
     const isConcluida = (entrega.kanban_status || "") === "concluida";
+    const isHold = !!entrega.em_hold;
 
     card.innerHTML = `
                 <div class="card-checkbox"></div>
                 <div class="card-header">
                     <h4>${entrega.nomenclatura || ""} - ${entrega.nome_etapa || ""}</h4>
-                    ${readyCount > 0 ? `<div class="entrega-badge" title="Imagens prontas para entrega">${readyCount}</div>` : ""}
+                    ${isHold ? `<div class="hold-badge" title="${entrega.motivo_hold ? "Motivo: " + entrega.motivo_hold : "Em HOLD"}"><i class="fa-solid fa-pause"></i> HOLD</div>` : ""}
+                    ${readyCount > 0 && !isHold ? `<div class="entrega-badge" title="Imagens prontas para entrega">${readyCount}</div>` : ""}
                 </div>
                 <p><strong>Status:</strong> ${entrega.nome_etapa || entrega.status || entrega.kanban_status || ""}</p>
                 <p><strong>Prazo:</strong> ${entrega.data_prevista ? formatarData(entrega.data_prevista) : "-"}</p>
@@ -88,7 +94,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function renderEntregas(list) {
     // clear existing cards
     columns.forEach((col) =>
-      col.querySelectorAll(".card-entrega").forEach((card) => card.remove()),
+      (col.querySelector(".column-cards") || col).querySelectorAll(".card-entrega").forEach((card) => card.remove()),
     );
 
     list.forEach((entrega) => {
@@ -108,7 +114,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (!col) return;
       const card = createCard(entrega);
-      col.appendChild(card);
+      (col.querySelector(".column-cards") || col).appendChild(card);
     });
 
     // Update column count badges
@@ -513,24 +519,26 @@ document.addEventListener("DOMContentLoaded", () => {
         const isRvw = (img.substatus_id === 6 || nsub === "rvw") && isEntregue;
 
         // RVW items: entregues mas com checkbox habilitado para marcar RVW_DONE
-        const checked  = (isEntregue && !isRvw) ? "checked" : "";
-        const disabled = (isEntregue && !isRvw) ? "disabled" : "";
+        const checked = isEntregue && !isRvw ? "checked" : "";
+        const disabled = isEntregue && !isRvw ? "disabled" : "";
 
         let statusLabel;
         if (nsub === "rvw_done") {
-            statusLabel = '<span class="entregue substatus-rvw-done">RVW_DONE</span>';
+          statusLabel =
+            '<span class="entregue substatus-rvw-done">RVW_DONE</span>';
         } else if (nsub === "pre_alt") {
-            statusLabel = '<span class="entregue substatus-pre-alt">PRE_ALT</span>';
+          statusLabel =
+            '<span class="entregue substatus-pre-alt">PRE_ALT</span>';
         } else if (nsub === "ready_for_planning") {
-            statusLabel = '<span class="entregue substatus-ready">READY</span>';
+          statusLabel = '<span class="entregue substatus-ready">READY</span>';
         } else if (isEntregue && !isRvw) {
-            statusLabel = '<span class="entregue">📦 Entregue</span>';
+          statusLabel = '<span class="entregue">📦 Entregue</span>';
         } else if (isRvw) {
-            statusLabel = '<span class="entregue substatus-rvw">RVW</span>';
+          statusLabel = '<span class="entregue substatus-rvw">RVW</span>';
         } else if (isPendente) {
-            statusLabel = '<span class="entregue">✅ Pendente</span>';
+          statusLabel = '<span class="entregue">✅ Pendente</span>';
         } else {
-            statusLabel = '<span class="entregue">⏳ Em andamento</span>';
+          statusLabel = '<span class="entregue">⏳ Em andamento</span>';
         }
 
         if (isRvw) div.classList.add("rvw-selectable");
@@ -626,7 +634,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!modalContent) return;
 
     const checkedRvw = Array.from(
-      modalImagens.querySelectorAll(".rvw-selectable input[type='checkbox']:checked")
+      modalImagens.querySelectorAll(
+        ".rvw-selectable input[type='checkbox']:checked",
+      ),
     );
 
     let bar = modalContent.querySelector(".rvw-batch-bar");
@@ -645,9 +655,9 @@ document.addEventListener("DOMContentLoaded", () => {
           <i class="fa-solid fa-check-double"></i> Marcar como RVW_DONE
         </button>
       `;
-      bar.querySelector(".btn-rvw-done").addEventListener("click", () =>
-        confirmarRvwDoneBatch(bar)
-      );
+      bar
+        .querySelector(".btn-rvw-done")
+        .addEventListener("click", () => confirmarRvwDoneBatch(bar));
       modalContent.appendChild(bar);
     }
 
@@ -657,7 +667,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   async function confirmarRvwDoneBatch(bar) {
     const checkedRvw = Array.from(
-      modalImagens.querySelectorAll(".rvw-selectable input[type='checkbox']:checked")
+      modalImagens.querySelectorAll(
+        ".rvw-selectable input[type='checkbox']:checked",
+      ),
     );
     if (checkedRvw.length === 0) return;
 
@@ -695,16 +707,30 @@ document.addEventListener("DOMContentLoaded", () => {
         // Atualizar entregaDados
         if (entregaDados && Array.isArray(entregaDados.itens)) {
           imagemIds.forEach((imId) => {
-            const found = entregaDados.itens.find((it) => parseInt(it.imagem_id, 10) === imId);
+            const found = entregaDados.itens.find(
+              (it) => parseInt(it.imagem_id, 10) === imId,
+            );
             if (found) {
               found.substatus_id = 10;
               found.nome_substatus = "RVW_DONE";
             }
           });
         }
-        Toastify({ text: "RVW_DONE aplicado com sucesso!", duration: 3000, gravity: "top", position: "right", style: { background: "#059669" } }).showToast();
+        Toastify({
+          text: "RVW_DONE aplicado com sucesso!",
+          duration: 3000,
+          gravity: "top",
+          position: "right",
+          style: { background: "#059669" },
+        }).showToast();
       } else {
-        Toastify({ text: "Erro: " + (json.error || "desconhecido"), duration: 3000, gravity: "top", position: "right", style: { background: "#dc2626" } }).showToast();
+        Toastify({
+          text: "Erro: " + (json.error || "desconhecido"),
+          duration: 3000,
+          gravity: "top",
+          position: "right",
+          style: { background: "#dc2626" },
+        }).showToast();
       }
     } catch (err) {
       console.error("Erro ao aplicar RVW_DONE:", err);
@@ -741,7 +767,7 @@ document.addEventListener("DOMContentLoaded", () => {
     m.querySelector(".ctx-rvw-done").style.display = isRvw ? "" : "none";
 
     m.style.left = x + "px";
-    m.style.top  = y + "px";
+    m.style.top = y + "px";
     m.style.display = "block";
 
     // handler RVW_DONE (single item)
@@ -773,11 +799,22 @@ document.addEventListener("DOMContentLoaded", () => {
             span.textContent = "RVW_DONE";
           }
           if (entregaDados && Array.isArray(entregaDados.itens)) {
-            const found = entregaDados.itens.find((it) => parseInt(it.imagem_id, 10) === imagemId);
-            if (found) { found.substatus_id = 10; found.nome_substatus = "RVW_DONE"; }
+            const found = entregaDados.itens.find(
+              (it) => parseInt(it.imagem_id, 10) === imagemId,
+            );
+            if (found) {
+              found.substatus_id = 10;
+              found.nome_substatus = "RVW_DONE";
+            }
           }
           updateRvwBatchBar();
-          Toastify({ text: "RVW_DONE aplicado!", duration: 2500, gravity: "top", position: "right", style: { background: "#059669" } }).showToast();
+          Toastify({
+            text: "RVW_DONE aplicado!",
+            duration: 2500,
+            gravity: "top",
+            position: "right",
+            style: { background: "#059669" },
+          }).showToast();
         }
       } catch (err) {
         console.error("Erro ao aplicar RVW_DONE:", err);
@@ -811,8 +848,12 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!checkbox) return;
     const itemId = parseInt(checkbox.value, 10);
     const nomeLabel = item.querySelector("label.imagem_nome");
-    const nomeImagem = nomeLabel ? nomeLabel.textContent.trim() : "Item " + itemId;
-    const confirmar = confirm(`Remover a imagem "${nomeImagem}" desta entrega?`);
+    const nomeImagem = nomeLabel
+      ? nomeLabel.textContent.trim()
+      : "Item " + itemId;
+    const confirmar = confirm(
+      `Remover a imagem "${nomeImagem}" desta entrega?`,
+    );
     if (!confirmar) return;
     try {
       const payload = { entrega_id: entregaAtualId, item_id: itemId };
@@ -841,15 +882,21 @@ document.addEventListener("DOMContentLoaded", () => {
         const master = document.getElementById("selectAllImagens");
         if (master) {
           const selectable = Array.from(
-            modalImagens.querySelectorAll('input[type="checkbox"]:not([disabled])'),
+            modalImagens.querySelectorAll(
+              'input[type="checkbox"]:not([disabled])',
+            ),
           ).filter((cb) => cb.id !== "selectAllImagens");
           const checkedCount = selectable.filter((cb) => cb.checked).length;
-          master.checked = selectable.length > 0 && checkedCount === selectable.length;
-          master.indeterminate = checkedCount > 0 && checkedCount < selectable.length;
+          master.checked =
+            selectable.length > 0 && checkedCount === selectable.length;
+          master.indeterminate =
+            checkedCount > 0 && checkedCount < selectable.length;
         }
         updateRvwBatchBar();
       } else {
-        alert("Não foi possível remover: " + (json.error || "erro desconhecido"));
+        alert(
+          "Não foi possível remover: " + (json.error || "erro desconhecido"),
+        );
       }
     } catch (err) {
       console.error("Erro ao remover imagem da entrega:", err);
@@ -868,8 +915,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const menuHeight = 100;
     let x = e.clientX + window.scrollX;
     let y = e.clientY + window.scrollY;
-    if (e.clientX + menuWidth > window.innerWidth) x = e.clientX - menuWidth + window.scrollX;
-    if (e.clientY + menuHeight > window.innerHeight) y = e.clientY - menuHeight + window.scrollY;
+    if (e.clientX + menuWidth > window.innerWidth)
+      x = e.clientX - menuWidth + window.scrollX;
+    if (e.clientY + menuHeight > window.innerHeight)
+      y = e.clientY - menuHeight + window.scrollY;
     showModalCtxMenu(item, x, y);
   });
 
@@ -920,7 +969,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const cardId = e.dataTransfer.getData("text/plain");
       const card = document.querySelector(`.card-entrega[data-id="${cardId}"]`);
       if (!card) return;
-      col.appendChild(card);
+      (col.querySelector(".column-cards") || col).appendChild(card);
 
       const newStatus = col.dataset.status;
 
@@ -1955,6 +2004,8 @@ document
       <div class="ctx-body">
         <button class="ctx-item ctx-date"><i class="fa-solid fa-calendar-days"></i> Mudar data prevista</button>
         <button class="ctx-item ctx-status-change"><i class="fa-solid fa-tag"></i> Mudar status</button>
+        <button class="ctx-item ctx-hold-colocar"><i class="fa-solid fa-pause"></i> Colocar em HOLD</button>
+        <button class="ctx-item ctx-hold-remover"><i class="fa-solid fa-play"></i> Remover HOLD</button>
         <button class="ctx-item ctx-archive"><i class="fa-solid fa-box-archive"></i> Arquivar</button>
         <button class="ctx-item ctx-delete"><i class="fa-solid fa-trash"></i> Excluir</button>
       </div>`;
@@ -2094,6 +2145,107 @@ document
       }
     });
 
+    // ── Colocar em HOLD ────────────────────────────────────────────────
+    m.querySelector(".ctx-hold-colocar").addEventListener("click", async () => {
+      const card = currentCard;
+      hideMenu();
+      if (!card) return;
+      const entregaId = card.dataset.id;
+      const titleCard =
+        card.querySelector(".card-header h4")?.textContent ||
+        `Entrega ${entregaId}`;
+      const { isConfirmed, value: motivo } = await Swal.fire({
+        title: "Colocar em HOLD",
+        html: `<p style="margin-bottom:8px;font-size:13px;color:var(--text-muted)">"${titleCard}"</p>
+               <textarea id="swal-motivo-hold" class="swal2-textarea" placeholder="Motivo obrigatório..." style="min-height:80px"></textarea>`,
+        showCancelButton: true,
+        confirmButtonText: "Confirmar HOLD",
+        cancelButtonText: "Cancelar",
+        confirmButtonColor: "#9e9e9e",
+        preConfirm: () => {
+          const val = document
+            .getElementById("swal-motivo-hold")
+            ?.value?.trim();
+          if (!val) {
+            Swal.showValidationMessage("O motivo é obrigatório.");
+            return false;
+          }
+          return val;
+        },
+      });
+      if (!isConfirmed || !motivo) return;
+      try {
+        const res = await fetch(BASE + "toggle_hold_entrega.php", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            entrega_id: entregaId,
+            acao: "colocar",
+            motivo,
+          }),
+        });
+        const json = await res.json();
+        if (json.ok) {
+          _toast("Entrega colocada em HOLD.", "#9e9e9e");
+          carregarKanban();
+        } else {
+          Swal.fire({
+            icon: "error",
+            title: "Erro",
+            text: json.msg || "Falha ao colocar em HOLD.",
+            timer: 3000,
+            timerProgressBar: true,
+          });
+        }
+      } catch (err) {
+        console.error(err);
+        Swal.fire({
+          icon: "error",
+          title: "Erro",
+          text: "Falha ao colocar em HOLD (ver console).",
+          timer: 3000,
+          timerProgressBar: true,
+        });
+      }
+    });
+
+    // ── Remover HOLD ───────────────────────────────────────────────────
+    m.querySelector(".ctx-hold-remover").addEventListener("click", async () => {
+      const card = currentCard;
+      hideMenu();
+      if (!card) return;
+      const entregaId = card.dataset.id;
+      try {
+        const res = await fetch(BASE + "toggle_hold_entrega.php", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ entrega_id: entregaId, acao: "remover" }),
+        });
+        const json = await res.json();
+        if (json.ok) {
+          _toast("HOLD removido. Entrega retomada.", "#10b981");
+          carregarKanban();
+        } else {
+          Swal.fire({
+            icon: "error",
+            title: "Erro",
+            text: json.msg || "Falha ao remover HOLD.",
+            timer: 3000,
+            timerProgressBar: true,
+          });
+        }
+      } catch (err) {
+        console.error(err);
+        Swal.fire({
+          icon: "error",
+          title: "Erro",
+          text: "Falha ao remover HOLD (ver console).",
+          timer: 3000,
+          timerProgressBar: true,
+        });
+      }
+    });
+
     // ── Excluir ────────────────────────────────────────────────────────
     m.querySelector(".ctx-delete").addEventListener("click", async () => {
       const card = currentCard;
@@ -2215,6 +2367,7 @@ document
     const menu = getMenu();
     const canUnarchive = card.dataset.canUnarchive === "1";
     const modoArq = window._modoArquivadas || false;
+    const isHold = card.dataset.emHold === "1";
     const archiveBtn = menu.querySelector(".ctx-archive");
     if (archiveBtn) {
       if (modoArq && canUnarchive) {
@@ -2228,6 +2381,21 @@ document
         archiveBtn.innerHTML =
           '<i class="fa-solid fa-box-archive"></i> Arquivar';
         archiveBtn.style.display = "";
+      }
+    }
+
+    const holdColocarBtn = menu.querySelector(".ctx-hold-colocar");
+    const holdRemoverBtn = menu.querySelector(".ctx-hold-remover");
+    if (holdColocarBtn && holdRemoverBtn) {
+      if (modoArq) {
+        holdColocarBtn.style.display = "none";
+        holdRemoverBtn.style.display = "none";
+      } else if (isHold) {
+        holdColocarBtn.style.display = "none";
+        holdRemoverBtn.style.display = "";
+      } else {
+        holdColocarBtn.style.display = "";
+        holdRemoverBtn.style.display = "none";
       }
     }
 

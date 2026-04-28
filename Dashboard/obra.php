@@ -369,128 +369,146 @@ $conn->close();
                             <div id="kanban" style="margin-top:8px;">
                                 <!-- single column for pending deliveries (no kanban needed here) -->
                                 <div class="column" data-status="pendente,parcial,atrasada">
+                                    <div class="column-header">
+                                        <span class="column-title" style="font-size:12px;">
+                                            <i class="fa-solid fa-hourglass-half"
+                                                style="color:#9e9e9e;margin-right:4px;"></i>PENDENTE
+                                        </span>
+                                        <span class="column-count" id="count-pendente">0</span>
+                                    </div>
+                                    <div class="column-cards"></div>
+                                </div>
+                                <div class="column column-hold" data-status="hold" style="min-width:180px;">
+                                    <div class="column-header">
+                                        <span class="column-title" style="font-size:12px;">
+                                            <i class="fa-solid fa-pause"
+                                                style="color:#9e9e9e;margin-right:4px;"></i>HOLD
+                                        </span>
+                                        <span class="column-count" id="count-hold">0</span>
+                                    </div>
+                                    <div class="column-cards"></div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <!-- Modals de Entregas (reaproveitados de /Entregas) -->
-                <!-- ====== Modal: Adicionar Entrega ====== -->
-                <div id="modalAdicionarEntrega" class="modal">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h2 class="modal-title">
-                                <i class="fa-solid fa-box" style="color:var(--accent);margin-right:8px;"></i>Nova
-                                Entrega
-                            </h2>
-                            <button class="modal-close fecharModal"><i class="fa-solid fa-xmark"></i></button>
-                        </div>
-                        <div class="modal-body">
-                            <form id="formAdicionarEntrega" style="display:contents;">
-                                <div>
-                                    <label>Obra</label>
-                                    <select name="obra_id" id="obra_id" required>
-                                        <option value="">Selecione a obra</option>
-                                        <?php foreach ($obras as $obra): ?>
-                                            <option value="<?= $obra['idobra']; ?>">
-                                                <?= htmlspecialchars($obra['nomenclatura']); ?>
-                                            </option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label>Status</label>
-                                    <select name="status_id" id="status_id" required>
-                                        <option value="">Selecione o status</option>
-                                        <?php foreach ($status_imagens as $status): ?>
-                                            <option value="<?= htmlspecialchars($status['idstatus']); ?>">
-                                                <?= htmlspecialchars($status['nome_status']); ?>
-                                            </option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label>Imagens</label>
-                                    <div id="imagens_container" class="imagens-container">
-                                        <p style="margin:0;color:var(--text-muted);">Selecione uma obra e status para
-                                            listar as
-                                            imagens.</p>
-                                    </div>
-                                </div>
-                                <div>
-                                    <label>Prazo previsto</label>
-                                    <input type="date" name="prazo" id="prazo">
-                                </div>
-                                <div>
-                                    <label>Observações</label>
-                                    <textarea name="observacoes" id="observacoes"
-                                        placeholder="Observações opcionais..."></textarea>
-                                </div>
-                            </form>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn-action btn-secondary fecharModal">Cancelar</button>
-                            <button type="submit" form="formAdicionarEntrega" class="btn-action btn-primary">
-                                <i class="fa-solid fa-floppy-disk"></i> Salvar Entrega
-                            </button>
-                        </div>
+            <!-- Modals de Entregas (reaproveitados de /Entregas) -->
+            <!-- ====== Modal: Adicionar Entrega ====== -->
+            <div id="modalAdicionarEntrega" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2 class="modal-title">
+                            <i class="fa-solid fa-box" style="color:var(--accent);margin-right:8px;"></i>Nova
+                            Entrega
+                        </h2>
+                        <button class="modal-close fecharModal"><i class="fa-solid fa-xmark"></i></button>
                     </div>
-                </div>
-
-                <div class="modal" id="entregaModal">
-                    <div class="modal-content modal-wide">
-                        <div class="modal-header">
-                            <h2 class="modal-title" id="modalTitulo">Entrega</h2>
-                            <button class="modal-close fecharModal"><i class="fa-solid fa-xmark"></i></button>
-                        </div>
-                        <div class="modal-body">
-                            <div style="display:flex;gap:24px;flex-wrap:wrap;">
-                                <div>
-                                    <span
-                                        style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;color:var(--text-muted);display:block;margin-bottom:2px;">Prazo</span>
-                                    <span id="modalPrazo" style="font-size:13px;font-weight:500;">—</span>
-                                </div>
-                                <div>
-                                    <span
-                                        style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;color:var(--text-muted);display:block;margin-bottom:2px;">Conclusão
-                                        geral</span>
-                                    <span id="modalProgresso" style="font-size:13px;font-weight:500;">—</span>
+                    <div class="modal-body">
+                        <form id="formAdicionarEntrega" style="display:contents;">
+                            <div>
+                                <label>Obra</label>
+                                <select name="obra_id" id="obra_id" required>
+                                    <option value="">Selecione a obra</option>
+                                    <?php foreach ($obras as $obra): ?>
+                                        <option value="<?= $obra['idobra']; ?>">
+                                            <?= htmlspecialchars($obra['nomenclatura']); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div>
+                                <label>Status</label>
+                                <select name="status_id" id="status_id" required>
+                                    <option value="">Selecione o status</option>
+                                    <?php foreach ($status_imagens as $status): ?>
+                                        <option value="<?= htmlspecialchars($status['idstatus']); ?>">
+                                            <?= htmlspecialchars($status['nome_status']); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div>
+                                <label>Imagens</label>
+                                <div id="imagens_container" class="imagens-container">
+                                    <p style="margin:0;color:var(--text-muted);">Selecione uma obra e status para
+                                        listar as
+                                        imagens.</p>
                                 </div>
                             </div>
                             <div>
-                                <div
-                                    style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-                                    <span
-                                        style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-muted);">
-                                        <i class="fa-solid fa-images" style="margin-right:5px;"></i>Imagens
-                                    </span>
-                                    <button class="btn-action btn-primary" id="btnAdicionarImagem"
-                                        style="height:30px;font-size:12px;padding:0 12px;">
-                                        <i class="fa-solid fa-plus"></i> Adicionar
-                                    </button>
-                                </div>
-                                <div id="modalImagens"></div>
+                                <label>Prazo previsto</label>
+                                <input type="date" name="prazo" id="prazo">
                             </div>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn-action btn-secondary fecharModal">Fechar</button>
-                        </div>
+                            <div>
+                                <label>Observações</label>
+                                <textarea name="observacoes" id="observacoes"
+                                    placeholder="Observações opcionais..."></textarea>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn-action btn-secondary fecharModal">Cancelar</button>
+                        <button type="submit" form="formAdicionarEntrega" class="btn-action btn-primary">
+                            <i class="fa-solid fa-floppy-disk"></i> Salvar Entrega
+                        </button>
                     </div>
                 </div>
+            </div>
 
-                <!-- Modal Selecionar Imagens para Entrega -->
-                <div id="modalSelecionarImagens" class="modal">
-                    <div class="modal-content" style="max-width: 75vh;">
-                        <h2>Selecionar imagens para adicionar à entrega</h2>
-                        <div id="selecionar_imagens_container" class="imagens-container">
-                            <p>Selecione uma entrega para carregar imagens.</p>
+            <div class="modal" id="entregaModal">
+                <div class="modal-content modal-wide">
+                    <div class="modal-header">
+                        <h2 class="modal-title" id="modalTitulo">Entrega</h2>
+                        <button class="modal-close fecharModal"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                    <div class="modal-body">
+                        <div style="display:flex;gap:24px;flex-wrap:wrap;">
+                            <div>
+                                <span
+                                    style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;color:var(--text-muted);display:block;margin-bottom:2px;">Prazo</span>
+                                <span id="modalPrazo" style="font-size:13px;font-weight:500;">—</span>
+                            </div>
+                            <div>
+                                <span
+                                    style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;color:var(--text-muted);display:block;margin-bottom:2px;">Conclusão
+                                    geral</span>
+                                <span id="modalProgresso" style="font-size:13px;font-weight:500;">—</span>
+                            </div>
                         </div>
-                        <div class="buttons">
-                            <button type="button" class="fecharModal">Fechar</button>
-                            <button type="button" id="btnAdicionarSelecionadas" class="btn-salvar">Adicionar
-                                Selecionadas</button>
+                        <div>
+                            <div
+                                style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                                <span
+                                    style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-muted);">
+                                    <i class="fa-solid fa-images" style="margin-right:5px;"></i>Imagens
+                                </span>
+                                <button class="btn-action btn-primary" id="btnAdicionarImagem"
+                                    style="height:30px;font-size:12px;padding:0 12px;">
+                                    <i class="fa-solid fa-plus"></i> Adicionar
+                                </button>
+                            </div>
+                            <div id="modalImagens"></div>
                         </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn-action btn-secondary fecharModal">Fechar</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Selecionar Imagens para Entrega -->
+            <div id="modalSelecionarImagens" class="modal">
+                <div class="modal-content" style="max-width: 75vh;">
+                    <h2>Selecionar imagens para adicionar à entrega</h2>
+                    <div id="selecionar_imagens_container" class="imagens-container">
+                        <p>Selecione uma entrega para carregar imagens.</p>
+                    </div>
+                    <div class="buttons">
+                        <button type="button" class="fecharModal">Fechar</button>
+                        <button type="button" id="btnAdicionarSelecionadas" class="btn-salvar">Adicionar
+                            Selecionadas</button>
                     </div>
                 </div>
             </div>
@@ -719,457 +737,467 @@ $conn->close();
                 </table>
             </div>
         </div>
+    </div>
 
-        <!-- Modal para unificar acompanhamentos (populado pelo JS) -->
-        <div id="unifyAcompanhamentoModal" class="modal" style="display:none;">
-            <div class="modal-content" style="width:720px; max-width:95%;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                    <h2 style="margin:0;">Unificar Acompanhamentos</h2>
-                    <button class="unify-close"
-                        style="background:transparent;border:none;font-size:20px;">&times;</button>
-                </div>
-                <div id="unifyGroupsList" style="max-height:60vh; overflow:auto;">
-                    <!-- JS irá popular com grupos: cada grupo terá data, assunto, count e botões -->
-                </div>
-                <div style="text-align:right; margin-top:10px;">
-                    <button id="unifyCloseBtn">Fechar</button>
-                </div>
+    <!-- Modal para unificar acompanhamentos (populado pelo JS) -->
+    <div id="unifyAcompanhamentoModal" class="modal" style="display:none;">
+        <div class="modal-content" style="width:720px; max-width:95%;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <h2 style="margin:0;">Unificar Acompanhamentos</h2>
+                <button class="unify-close" style="background:transparent;border:none;font-size:20px;">&times;</button>
+            </div>
+            <div id="unifyGroupsList" style="max-height:60vh; overflow:auto;">
+                <!-- JS irá popular com grupos: cada grupo terá data, assunto, count e botões -->
+            </div>
+            <div style="text-align:right; margin-top:10px;">
+                <button id="unifyCloseBtn">Fechar</button>
             </div>
         </div>
+    </div>
 
-        <div id="infos-obra" style="width: 95%; margin: 30px auto; box-shadow: 0 1px 10px rgba(0, 0, 0, 0.7);">
-            <div class="acompanhamentos">
-                <div class="infos-obra-header">
-                    <h1>Histórico</h1>
-                    <div class="buttons-acomp" style="display: flex;">
-                        <button id="acomp" class="btnAcompObs">+ Novo</button>
-                        <button id="configAcomp" class="animate__animated"
-                            style="background-color: transparent; color: black;"><i
-                                class="fa-solid fa-gear"></i></button>
-                        <button id="btnHistoricoPdf" type="button" class="btnAcompObs" style="margin-left: 8px;">
-                            <i class="fa-solid fa-file-pdf"></i> PDF
+    <div id="infos-obra" style="width: 95%; margin: 30px auto; box-shadow: 0 1px 10px rgba(0, 0, 0, 0.7);">
+        <div class="acompanhamentos">
+            <div class="infos-obra-header">
+                <h1>Histórico</h1>
+                <div class="buttons-acomp" style="display: flex;">
+                    <button id="acomp" class="btnAcompObs">+ Novo</button>
+                    <button id="configAcomp" class="animate__animated"
+                        style="background-color: transparent; color: black;"><i class="fa-solid fa-gear"></i></button>
+                    <button id="btnHistoricoPdf" type="button" class="btnAcompObs" style="margin-left: 8px;">
+                        <i class="fa-solid fa-file-pdf"></i> PDF
+                    </button>
+                </div>
+            </div>
+
+            <!-- Acompanhamentos: filtros por categoria -->
+            <div class="acomp-filters" aria-label="Filtrar acompanhamentos">
+                <button id="btn_acomp_todos" class="acomp-filter-btn active" data-category="todos">Todos</button>
+                <button id="btn_acomp_manuais" class="acomp-filter-btn" data-category="manuais">Manuais</button>
+                <button id="btn_acomp_entregas" class="acomp-filter-btn" data-category="entregas">Entregas</button>
+                <button id="btn_acomp_arquivos" class="acomp-filter-btn" data-category="arquivos">Arquivos</button>
+            </div>
+
+            <div id="list_acomp" class="list-acomp" aria-live="polite"></div>
+            <button id="btnMostrarAcomps"><i class="fas fa-chevron-down"></i></button>
+        </div>
+    </div>
+    <div id="secao-infos-obra" class="infos-obra"
+        style="width: 95%; margin: 30px auto; box-shadow: 0 1px 10px rgba(0, 0, 0, 0.7);">
+
+        <div id="obsSection">
+            <!-- Header com título e tabs -->
+            <div class="infos-obra-header">
+                <h1>Informações da Obra</h1>
+                <nav class="info-obra-tabs" role="tablist" aria-label="Seções de informações da obra">
+                    <button class="info-tab is-active" data-tab="briefing" role="tab" aria-selected="true"
+                        aria-controls="tab-briefing">
+                        <i class="fa-solid fa-clipboard-list"></i> Briefing
+                    </button>
+                    <button class="info-tab" data-tab="instrucoes" role="tab" aria-selected="false"
+                        aria-controls="tab-instrucoes">
+                        <i class="fa-solid fa-note-sticky"></i> Instruções
+                    </button>
+                </nav>
+            </div>
+
+            <!-- TAB: Briefing -->
+            <div id="tab-briefing" class="info-tab-content is-active" role="tabpanel">
+                <div id="briefing">
+
+                    <!-- Grupo: Padrão -->
+                    <div class="briefing-group">
+                        <button type="button" class="briefing-group-header" aria-expanded="true">
+                            <span><i class="fa-solid fa-gem"></i> Padrão</span>
+                            <i class="bgh-chevron fa-solid fa-chevron-down"></i>
                         </button>
+                        <div class="briefing-group-body">
+                            <div class="campo" data-field="nivel">
+                                <label>Qual o nível de padrão do empreendimento?</label>
+                                <div class="campo-row">
+                                    <span class="campo-val" id="val-nivel">—</span>
+                                    <input type="text" name="nivel" id="nivel" class="campo-input">
+                                    <span class="campo-si" id="si-nivel"></span>
+                                    <button type="button" class="campo-edit-btn" data-target="nivel" title="Editar"><i
+                                            class="fa-solid fa-pencil"></i></button>
+                                </div>
+                            </div>
+                            <div class="campo" data-field="conceito">
+                                <label>Qual o conceito do empreendimento?</label>
+                                <div class="campo-row">
+                                    <span class="campo-val" id="val-conceito">—</span>
+                                    <input type="text" name="conceito" id="conceito" class="campo-input">
+                                    <span class="campo-si" id="si-conceito"></span>
+                                    <button type="button" class="campo-edit-btn" data-target="conceito"
+                                        title="Editar"><i class="fa-solid fa-pencil"></i></button>
+                                </div>
+                            </div>
+                            <div class="campo" data-field="valor_media">
+                                <label>Qual a faixa média de valor dos apartamentos?</label>
+                                <div class="campo-row">
+                                    <span class="campo-val" id="val-valor_media">—</span>
+                                    <input type="text" name="valor_media" id="valor_media" class="campo-input">
+                                    <span class="campo-si" id="si-valor_media"></span>
+                                    <button type="button" class="campo-edit-btn" data-target="valor_media"
+                                        title="Editar"><i class="fa-solid fa-pencil"></i></button>
+                                </div>
+                            </div>
+                            <div class="campo" data-field="outro_padrao">
+                                <label>Já tem algum outro empreendimento no mesmo padrão?</label>
+                                <div class="campo-row">
+                                    <span class="campo-val" id="val-outro_padrao">—</span>
+                                    <input type="text" name="outro_padrao" id="outro_padrao" class="campo-input">
+                                    <span class="campo-si" id="si-outro_padrao"></span>
+                                    <button type="button" class="campo-edit-btn" data-target="outro_padrao"
+                                        title="Editar"><i class="fa-solid fa-pencil"></i></button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                </div>
 
-                <!-- Acompanhamentos: filtros por categoria -->
-                <div class="acomp-filters" aria-label="Filtrar acompanhamentos">
-                    <button id="btn_acomp_todos" class="acomp-filter-btn active" data-category="todos">Todos</button>
-                    <button id="btn_acomp_manuais" class="acomp-filter-btn" data-category="manuais">Manuais</button>
-                    <button id="btn_acomp_entregas" class="acomp-filter-btn" data-category="entregas">Entregas</button>
-                    <button id="btn_acomp_arquivos" class="acomp-filter-btn" data-category="arquivos">Arquivos</button>
-                </div>
-
-                <div id="list_acomp" class="list-acomp" aria-live="polite"></div>
-                <button id="btnMostrarAcomps"><i class="fas fa-chevron-down"></i></button>
-            </div>
-        </div>
-        <div id="secao-infos-obra" class="infos-obra"
-            style="width: 95%; margin: 30px auto; box-shadow: 0 1px 10px rgba(0, 0, 0, 0.7);">
-
-            <div id="obsSection">
-                <!-- Header com título e tabs -->
-                <div class="infos-obra-header">
-                    <h1>Informações da Obra</h1>
-                    <nav class="info-obra-tabs" role="tablist" aria-label="Seções de informações da obra">
-                        <button class="info-tab is-active" data-tab="briefing" role="tab" aria-selected="true"
-                            aria-controls="tab-briefing">
-                            <i class="fa-solid fa-clipboard-list"></i> Briefing
+                    <!-- Grupo: Materiais -->
+                    <div class="briefing-group">
+                        <button type="button" class="briefing-group-header" aria-expanded="true">
+                            <span><i class="fa-solid fa-layer-group"></i> Materiais</span>
+                            <i class="bgh-chevron fa-solid fa-chevron-down"></i>
                         </button>
-                        <button class="info-tab" data-tab="instrucoes" role="tab" aria-selected="false"
-                            aria-controls="tab-instrucoes">
-                            <i class="fa-solid fa-note-sticky"></i> Instruções
+                        <div class="briefing-group-body">
+                            <div class="campo" data-field="vidro">
+                                <label>Cor dos vidros:</label>
+                                <div class="campo-row">
+                                    <span class="campo-val" id="val-vidro">—</span>
+                                    <input type="text" name="vidro" id="vidro" class="campo-input">
+                                    <span class="campo-si" id="si-vidro"></span>
+                                    <button type="button" class="campo-edit-btn" data-target="vidro" title="Editar"><i
+                                            class="fa-solid fa-pencil"></i></button>
+                                </div>
+                            </div>
+                            <div class="campo" data-field="esquadria">
+                                <label>Cor das esquadrias:</label>
+                                <div class="campo-row">
+                                    <span class="campo-val" id="val-esquadria">—</span>
+                                    <input type="text" name="esquadria" id="esquadria" class="campo-input">
+                                    <span class="campo-si" id="si-esquadria"></span>
+                                    <button type="button" class="campo-edit-btn" data-target="esquadria"
+                                        title="Editar"><i class="fa-solid fa-pencil"></i></button>
+                                </div>
+                            </div>
+                            <div class="campo" data-field="soleira">
+                                <label>Cor das soleiras/pingadeiras:</label>
+                                <div class="campo-row">
+                                    <span class="campo-val" id="val-soleira">—</span>
+                                    <input type="text" name="soleira" id="soleira" class="campo-input">
+                                    <span class="campo-si" id="si-soleira"></span>
+                                    <button type="button" class="campo-edit-btn" data-target="soleira" title="Editar"><i
+                                            class="fa-solid fa-pencil"></i></button>
+                                </div>
+                            </div>
+                            <div class="campo" data-field="acab_calcadas">
+                                <label>Acabamento das calçadas:</label>
+                                <div class="campo-row">
+                                    <span class="campo-val" id="val-acab_calcadas">—</span>
+                                    <input type="text" name="acab_calcadas" id="acab_calcadas" class="campo-input">
+                                    <span class="campo-si" id="si-acab_calcadas"></span>
+                                    <button type="button" class="campo-edit-btn" data-target="acab_calcadas"
+                                        title="Editar"><i class="fa-solid fa-pencil"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Grupo: Produção -->
+                    <div class="briefing-group">
+                        <button type="button" class="briefing-group-header" aria-expanded="true">
+                            <span><i class="fa-solid fa-cogs"></i> Produção</span>
+                            <i class="bgh-chevron fa-solid fa-chevron-down"></i>
                         </button>
-                    </nav>
+                        <div class="briefing-group-body">
+                            <div class="campo" data-field="assets">
+                                <label>Haverá necessidade de escolha de assets (modelos de mobiliário)
+                                    específico?</label>
+                                <div class="campo-row">
+                                    <span class="campo-val" id="val-assets">—</span>
+                                    <input type="text" name="assets" id="assets" class="campo-input">
+                                    <span class="campo-si" id="si-assets"></span>
+                                    <button type="button" class="campo-edit-btn" data-target="assets" title="Editar"><i
+                                            class="fa-solid fa-pencil"></i></button>
+                                </div>
+                            </div>
+                            <div class="campo" data-field="comp_planta">
+                                <label>Existe a necessidade das plantas humanizadas estarem compatibilizadas com as
+                                    imagens finais?</label>
+                                <div class="campo-row">
+                                    <span class="campo-val" id="val-comp_planta">—</span>
+                                    <input type="text" name="comp_planta" id="comp_planta" class="campo-input">
+                                    <span class="campo-si" id="si-comp_planta"></span>
+                                    <button type="button" class="campo-edit-btn" data-target="comp_planta"
+                                        title="Editar"><i class="fa-solid fa-pencil"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Grupo: Links & Localização -->
+                    <div class="briefing-group">
+                        <button type="button" class="briefing-group-header" aria-expanded="true">
+                            <span><i class="fa-solid fa-link"></i> Links &amp; Localização</span>
+                            <i class="bgh-chevron fa-solid fa-chevron-down"></i>
+                        </button>
+                        <div class="briefing-group-body">
+                            <div class="campo link_campo" data-field="fotografico">
+                                <label>Link do Fotográfico:</label>
+                                <div class="campo-row">
+                                    <span class="campo-val campo-val--link" id="val-fotografico">—</span>
+                                    <input type="text" name="fotografico" id="fotografico" class="campo-input">
+                                    <span class="campo-si" id="si-fotografico"></span>
+                                    <button type="button" class="campo-edit-btn" data-target="fotografico"
+                                        title="Editar"><i class="fa-solid fa-pencil"></i></button>
+                                </div>
+                            </div>
+                            <div class="campo link_campo" data-field="link_drive">
+                                <label>Link do Drive:</label>
+                                <div class="campo-row">
+                                    <span class="campo-val campo-val--link" id="val-link_drive">—</span>
+                                    <input type="text" name="link_drive" id="link_drive" class="campo-input">
+                                    <span class="campo-si" id="si-link_drive"></span>
+                                    <button type="button" class="campo-edit-btn" data-target="link_drive"
+                                        title="Editar"><i class="fa-solid fa-pencil"></i></button>
+                                </div>
+                            </div>
+                            <div class="campo link_campo" data-field="link_review">
+                                <label>Link do Review Studio:</label>
+                                <div class="campo-row">
+                                    <span class="campo-val campo-val--link" id="val-link_review">—</span>
+                                    <input type="text" name="link_review" id="link_review" class="campo-input">
+                                    <span class="campo-si" id="si-link_review"></span>
+                                    <button type="button" class="campo-edit-btn" data-target="link_review"
+                                        title="Editar"><i class="fa-solid fa-pencil"></i></button>
+                                </div>
+                            </div>
+                            <div class="campo" data-field="local">
+                                <label>Local da obra:</label>
+                                <div class="campo-row">
+                                    <span class="campo-val" id="val-local">—</span>
+                                    <input type="text" name="local" id="local" class="campo-input">
+                                    <span class="campo-si" id="si-local"></span>
+                                    <button type="button" class="campo-edit-btn" data-target="local" title="Editar"><i
+                                            class="fa-solid fa-pencil"></i></button>
+                                </div>
+                            </div>
+                            <div class="campo" data-field="altura_drone">
+                                <label>Altura drone:</label>
+                                <div class="campo-row">
+                                    <span class="campo-val" id="val-altura_drone">—</span>
+                                    <input type="text" name="altura_drone" id="altura_drone" class="campo-input">
+                                    <span class="campo-si" id="si-altura_drone"></span>
+                                    <button type="button" class="campo-edit-btn" data-target="altura_drone"
+                                        title="Editar"><i class="fa-solid fa-pencil"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
+            </div>
 
-                <!-- TAB: Briefing -->
-                <div id="tab-briefing" class="info-tab-content is-active" role="tabpanel">
-                    <div id="briefing">
+            <!-- TAB: Instruções -->
+            <div id="tab-instrucoes" class="info-tab-content" role="tabpanel" style="display:none;">
+                <button id="obsAdd" class="obs-add-new-btn">
+                    <i class="fa-solid fa-plus"></i> Nova instrução
+                </button>
+                <div id="obsCardList" class="obs-card-list">
+                    <!-- populado pelo JS -->
+                </div>
+            </div>
 
-                        <!-- Grupo: Padrão -->
-                        <div class="briefing-group">
-                            <button type="button" class="briefing-group-header" aria-expanded="true">
-                                <span><i class="fa-solid fa-gem"></i> Padrão</span>
-                                <i class="bgh-chevron fa-solid fa-chevron-down"></i>
-                            </button>
-                            <div class="briefing-group-body">
-                                <div class="campo" data-field="nivel">
-                                    <label>Qual o nível de padrão do empreendimento?</label>
-                                    <div class="campo-row">
-                                        <span class="campo-val" id="val-nivel">—</span>
-                                        <input type="text" name="nivel" id="nivel" class="campo-input">
-                                        <span class="campo-si" id="si-nivel"></span>
-                                        <button type="button" class="campo-edit-btn" data-target="nivel"
-                                            title="Editar"><i class="fa-solid fa-pencil"></i></button>
-                                    </div>
-                                </div>
-                                <div class="campo" data-field="conceito">
-                                    <label>Qual o conceito do empreendimento?</label>
-                                    <div class="campo-row">
-                                        <span class="campo-val" id="val-conceito">—</span>
-                                        <input type="text" name="conceito" id="conceito" class="campo-input">
-                                        <span class="campo-si" id="si-conceito"></span>
-                                        <button type="button" class="campo-edit-btn" data-target="conceito"
-                                            title="Editar"><i class="fa-solid fa-pencil"></i></button>
-                                    </div>
-                                </div>
-                                <div class="campo" data-field="valor_media">
-                                    <label>Qual a faixa média de valor dos apartamentos?</label>
-                                    <div class="campo-row">
-                                        <span class="campo-val" id="val-valor_media">—</span>
-                                        <input type="text" name="valor_media" id="valor_media" class="campo-input">
-                                        <span class="campo-si" id="si-valor_media"></span>
-                                        <button type="button" class="campo-edit-btn" data-target="valor_media"
-                                            title="Editar"><i class="fa-solid fa-pencil"></i></button>
-                                    </div>
-                                </div>
-                                <div class="campo" data-field="outro_padrao">
-                                    <label>Já tem algum outro empreendimento no mesmo padrão?</label>
-                                    <div class="campo-row">
-                                        <span class="campo-val" id="val-outro_padrao">—</span>
-                                        <input type="text" name="outro_padrao" id="outro_padrao" class="campo-input">
-                                        <span class="campo-si" id="si-outro_padrao"></span>
-                                        <button type="button" class="campo-edit-btn" data-target="outro_padrao"
-                                            title="Editar"><i class="fa-solid fa-pencil"></i></button>
-                                    </div>
-                                </div>
-                            </div>
+        </div>
+    </div>
+
+
+    <div class="modal" id="modalArquivos">
+        <form action="" id="formArquivos">
+            <div class="modal-content" style="overflow-y: auto;">
+                <h2 style="margin-bottom: 15px;">Editar Arquivos</h2>
+                <div class="arquivos-container">
+                    <div class="arquivo-item">
+                        <label>
+                            <span>Arquivos Fachada</span>
+                            <input type="checkbox" class="tipo-imagem" data-tipo="Fachada">
+                            <input type="date" class="data-recebimento" id="data-fachada" disabled>
+                        </label>
+                        <div class="subtipos">
+                            <label>DWG<input type="checkbox"> </label>
+                            <label>PDF<input type="checkbox"> </label>
+                            <label>3D ou Referências/Mood<input type="checkbox"> </label>
+                            <label>Paisagismo<input type="checkbox"> </label>
                         </div>
+                    </div>
 
-                        <!-- Grupo: Materiais -->
-                        <div class="briefing-group">
-                            <button type="button" class="briefing-group-header" aria-expanded="true">
-                                <span><i class="fa-solid fa-layer-group"></i> Materiais</span>
-                                <i class="bgh-chevron fa-solid fa-chevron-down"></i>
-                            </button>
-                            <div class="briefing-group-body">
-                                <div class="campo" data-field="vidro">
-                                    <label>Cor dos vidros:</label>
-                                    <div class="campo-row">
-                                        <span class="campo-val" id="val-vidro">—</span>
-                                        <input type="text" name="vidro" id="vidro" class="campo-input">
-                                        <span class="campo-si" id="si-vidro"></span>
-                                        <button type="button" class="campo-edit-btn" data-target="vidro"
-                                            title="Editar"><i class="fa-solid fa-pencil"></i></button>
-                                    </div>
-                                </div>
-                                <div class="campo" data-field="esquadria">
-                                    <label>Cor das esquadrias:</label>
-                                    <div class="campo-row">
-                                        <span class="campo-val" id="val-esquadria">—</span>
-                                        <input type="text" name="esquadria" id="esquadria" class="campo-input">
-                                        <span class="campo-si" id="si-esquadria"></span>
-                                        <button type="button" class="campo-edit-btn" data-target="esquadria"
-                                            title="Editar"><i class="fa-solid fa-pencil"></i></button>
-                                    </div>
-                                </div>
-                                <div class="campo" data-field="soleira">
-                                    <label>Cor das soleiras/pingadeiras:</label>
-                                    <div class="campo-row">
-                                        <span class="campo-val" id="val-soleira">—</span>
-                                        <input type="text" name="soleira" id="soleira" class="campo-input">
-                                        <span class="campo-si" id="si-soleira"></span>
-                                        <button type="button" class="campo-edit-btn" data-target="soleira"
-                                            title="Editar"><i class="fa-solid fa-pencil"></i></button>
-                                    </div>
-                                </div>
-                                <div class="campo" data-field="acab_calcadas">
-                                    <label>Acabamento das calçadas:</label>
-                                    <div class="campo-row">
-                                        <span class="campo-val" id="val-acab_calcadas">—</span>
-                                        <input type="text" name="acab_calcadas" id="acab_calcadas" class="campo-input">
-                                        <span class="campo-si" id="si-acab_calcadas"></span>
-                                        <button type="button" class="campo-edit-btn" data-target="acab_calcadas"
-                                            title="Editar"><i class="fa-solid fa-pencil"></i></button>
-                                    </div>
-                                </div>
-                            </div>
+                    <div class="arquivo-item">
+                        <label>
+                            <span>Arquivos Imagens Externas</span>
+                            <input type="checkbox" class="tipo-imagem" data-tipo="Imagem Externa">
+                            <input type="date" class="data-recebimento" id="data-imagens-externas" disabled>
+                        </label>
+                        <div class="subtipos">
+                            <label>DWG<input type="checkbox"> </label>
+                            <label>PDF<input type="checkbox"> </label>
+                            <label>3D ou Referências/Mood<input type="checkbox"> </label>
+                            <label>Paisagismo<input type="checkbox"> </label>
                         </div>
+                    </div>
 
-                        <!-- Grupo: Produção -->
-                        <div class="briefing-group">
-                            <button type="button" class="briefing-group-header" aria-expanded="true">
-                                <span><i class="fa-solid fa-cogs"></i> Produção</span>
-                                <i class="bgh-chevron fa-solid fa-chevron-down"></i>
-                            </button>
-                            <div class="briefing-group-body">
-                                <div class="campo" data-field="assets">
-                                    <label>Haverá necessidade de escolha de assets (modelos de mobiliário)
-                                        específico?</label>
-                                    <div class="campo-row">
-                                        <span class="campo-val" id="val-assets">—</span>
-                                        <input type="text" name="assets" id="assets" class="campo-input">
-                                        <span class="campo-si" id="si-assets"></span>
-                                        <button type="button" class="campo-edit-btn" data-target="assets"
-                                            title="Editar"><i class="fa-solid fa-pencil"></i></button>
-                                    </div>
-                                </div>
-                                <div class="campo" data-field="comp_planta">
-                                    <label>Existe a necessidade das plantas humanizadas estarem compatibilizadas com as
-                                        imagens finais?</label>
-                                    <div class="campo-row">
-                                        <span class="campo-val" id="val-comp_planta">—</span>
-                                        <input type="text" name="comp_planta" id="comp_planta" class="campo-input">
-                                        <span class="campo-si" id="si-comp_planta"></span>
-                                        <button type="button" class="campo-edit-btn" data-target="comp_planta"
-                                            title="Editar"><i class="fa-solid fa-pencil"></i></button>
-                                    </div>
-                                </div>
-                            </div>
+                    <div class="arquivo-item">
+                        <label>
+                            <span>Arquivos Internas Áreas Comuns</span>
+                            <input type="checkbox" class="tipo-imagem" data-tipo="Imagem Interna">
+                            <input type="date" class="data-recebimento" id="data-internas-comuns" disabled>
+                        </label>
+                        <div class="subtipos">
+                            <label>DWG<input type="checkbox"> </label>
+                            <label>PDF<input type="checkbox"> </label>
+                            <label>3D ou Referências/Mood<input type="checkbox"> </label>
+                            <label>Luminotécnico<input type="checkbox"> </label>
                         </div>
+                    </div>
 
-                        <!-- Grupo: Links & Localização -->
-                        <div class="briefing-group">
-                            <button type="button" class="briefing-group-header" aria-expanded="true">
-                                <span><i class="fa-solid fa-link"></i> Links &amp; Localização</span>
-                                <i class="bgh-chevron fa-solid fa-chevron-down"></i>
-                            </button>
-                            <div class="briefing-group-body">
-                                <div class="campo link_campo" data-field="fotografico">
-                                    <label>Link do Fotográfico:</label>
-                                    <div class="campo-row">
-                                        <span class="campo-val campo-val--link" id="val-fotografico">—</span>
-                                        <input type="text" name="fotografico" id="fotografico" class="campo-input">
-                                        <span class="campo-si" id="si-fotografico"></span>
-                                        <button type="button" class="campo-edit-btn" data-target="fotografico"
-                                            title="Editar"><i class="fa-solid fa-pencil"></i></button>
-                                    </div>
-                                </div>
-                                <div class="campo link_campo" data-field="link_drive">
-                                    <label>Link do Drive:</label>
-                                    <div class="campo-row">
-                                        <span class="campo-val campo-val--link" id="val-link_drive">—</span>
-                                        <input type="text" name="link_drive" id="link_drive" class="campo-input">
-                                        <span class="campo-si" id="si-link_drive"></span>
-                                        <button type="button" class="campo-edit-btn" data-target="link_drive"
-                                            title="Editar"><i class="fa-solid fa-pencil"></i></button>
-                                    </div>
-                                </div>
-                                <div class="campo link_campo" data-field="link_review">
-                                    <label>Link do Review Studio:</label>
-                                    <div class="campo-row">
-                                        <span class="campo-val campo-val--link" id="val-link_review">—</span>
-                                        <input type="text" name="link_review" id="link_review" class="campo-input">
-                                        <span class="campo-si" id="si-link_review"></span>
-                                        <button type="button" class="campo-edit-btn" data-target="link_review"
-                                            title="Editar"><i class="fa-solid fa-pencil"></i></button>
-                                    </div>
-                                </div>
-                                <div class="campo" data-field="local">
-                                    <label>Local da obra:</label>
-                                    <div class="campo-row">
-                                        <span class="campo-val" id="val-local">—</span>
-                                        <input type="text" name="local" id="local" class="campo-input">
-                                        <span class="campo-si" id="si-local"></span>
-                                        <button type="button" class="campo-edit-btn" data-target="local"
-                                            title="Editar"><i class="fa-solid fa-pencil"></i></button>
-                                    </div>
-                                </div>
-                                <div class="campo" data-field="altura_drone">
-                                    <label>Altura drone:</label>
-                                    <div class="campo-row">
-                                        <span class="campo-val" id="val-altura_drone">—</span>
-                                        <input type="text" name="altura_drone" id="altura_drone" class="campo-input">
-                                        <span class="campo-si" id="si-altura_drone"></span>
-                                        <button type="button" class="campo-edit-btn" data-target="altura_drone"
-                                            title="Editar"><i class="fa-solid fa-pencil"></i></button>
-                                    </div>
-                                </div>
-                            </div>
+                    <div class="arquivo-item">
+                        <label>
+                            <span>Arquivos Unidades</span>
+                            <input type="checkbox" class="tipo-imagem" data-tipo="Unidade">
+                            <input type="date" class="data-recebimento" id="data-unidades" disabled>
+                        </label>
+                        <div class="subtipos">
+                            <label>DWG<input type="checkbox"> </label>
+                            <label>PDF<input type="checkbox"> </label>
+                            <label>3D ou Referências/Mood<input type="checkbox"> </label>
+                            <label>Unidades Definidas<input type="checkbox"> </label>
+                            <label>Luminotécnico<input type="checkbox"> </label>
                         </div>
-
                     </div>
                 </div>
 
-                <!-- TAB: Instruções -->
-                <div id="tab-instrucoes" class="info-tab-content" role="tabpanel" style="display:none;">
-                    <button id="obsAdd" class="obs-add-new-btn">
-                        <i class="fa-solid fa-plus"></i> Nova instrução
-                    </button>
-                    <div id="obsCardList" class="obs-card-list">
-                        <!-- populado pelo JS -->
-                    </div>
+                <div class="arquivo-actions">
+                    <input type="date" name="data_arquivos" id="data_arquivos" required>
+                    <button type="button" id="salvarArquivo">Salvar</button>
                 </div>
+            </div>
+        </form>
+    </div>
 
+
+    <div id="modalAcompanhamento" class="modal">
+        <div class="obs-modal-box">
+            <div class="obs-modal-header">
+                <div class="obs-modal-title">
+                    <i class="fa-solid fa-envelope obs-modal-icon"></i>
+                    <span>Acompanhamento</span>
+                </div>
+                <button type="button" class="obs-modal-close" id="closeAcompModal" aria-label="Fechar">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="obs-modal-body">
+                <div id="acompanhamentoConteudo">
+                    <form id="adicionar_acomp">
+                        <div class="radioButtons"
+                            style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px;">
+                            <label><input type="radio" name="acompanhamento" value="Start do Projeto"> Start do
+                                Projeto</label>
+                            <label><input type="radio" name="acompanhamento" value="Prazo de dias úteis (45 dias)">
+                                Prazo de dias úteis (45 dias)</label>
+                            <label><input type="radio" name="acompanhamento" value="Recebimento de arquivos">
+                                Recebimento de arquivos</label>
+                            <label><input type="radio" name="acompanhamento" value="Prazo com a entrega (30/01)">
+                                Prazo com a entrega (30/01)</label>
+                            <label><input type="radio" name="acompanhamento"
+                                    value="Projeto pausado aguardando aprovação do cliente.">Projeto pausado
+                                aguardando aprovação do cliente.</label>
+                            <label><input type="radio" name="acompanhamento" value="Enviado os toons da fachada">Enviado
+                                os toons da fachada</label>
+                            <label><input type="radio" name="acompanhamento" value="Enviado imagens prévias">
+                                Enviado imagens prévias</label>
+                        </div>
+
+                        <!-- Campo de assunto -->
+                        <label class="obs-modal-label" for="assunto">Assunto</label>
+                        <textarea name="assunto" id="assunto" class="obs-modal-textarea"
+                            placeholder="Descreva o assunto..." rows="3" required></textarea>
+
+                        <!-- Campo de data -->
+                        <label class="obs-modal-label" for="data_acomp" style="margin-top: 12px;">Data</label>
+                        <input type="date" name="data_acomp" id="data_acomp" class="obs-modal-textarea"
+                            style="height: 36px; padding: 0 10px;" required>
+                    </form>
+                </div>
+            </div>
+
+            <div class="obs-modal-footer">
+                <button type="submit" form="adicionar_acomp" id="add-acomp" class="obs-btn obs-btn-primary">
+                    <i class="fa-solid fa-paper-plane"></i> Adicionar Acompanhamento
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modalObservacao" class="modal">
+        <div class="obs-modal-box">
+            <div class="obs-modal-header">
+                <div class="obs-modal-title">
+                    <i class="fa-solid fa-note-sticky obs-modal-icon"></i>
+                    <span id="obsModalLabel">Nova instrução</span>
+                </div>
+                <button type="button" class="obs-modal-close" id="closeObsModal" aria-label="Fechar">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="obs-modal-body">
+                <input type="hidden" id="descricaoId">
+                <label class="obs-modal-label" for="desc">Descrição</label>
+                <textarea id="desc" class="obs-modal-textarea" placeholder="Escreva a instrução..." rows="5"></textarea>
+            </div>
+
+            <div class="obs-modal-footer">
+                <button type="button" id="deleteObs" class="obs-btn obs-btn-danger" style="display:none;">
+                    <i class="fa-solid fa-trash"></i> Excluir
+                </button>
+                <button type="button" id="saveObs" class="obs-btn obs-btn-primary">
+                    <i class="fa-solid fa-floppy-disk"></i> Salvar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Secao Arquivos da Obra (inserida abaixo de Observação) -->
+    <section id="secao-arquivos" class="secao arquivos-secao infos-obra">
+        <div class="secao-titulo arquivos-header">
+            <h2>Arquivos da Obra</h2>
+            <div class="arquivos-actions">
+                <button id="btnAddArquivo" type="button" class="btn-add-arquivo" title="Adicionar novo arquivo">+
+                    Novo</button>
+                <button id="btnRefreshArquivos" type="button" class="btn-refresh-arquivo"
+                    title="Recarregar lista">↻</button>
             </div>
         </div>
 
-
-        <div class="modal" id="modalArquivos">
-            <form action="" id="formArquivos">
-                <div class="modal-content" style="overflow-y: auto;">
-                    <h2 style="margin-bottom: 15px;">Editar Arquivos</h2>
-                    <div class="arquivos-container">
-                        <div class="arquivo-item">
-                            <label>
-                                <span>Arquivos Fachada</span>
-                                <input type="checkbox" class="tipo-imagem" data-tipo="Fachada">
-                                <input type="date" class="data-recebimento" id="data-fachada" disabled>
-                            </label>
-                            <div class="subtipos">
-                                <label>DWG<input type="checkbox"> </label>
-                                <label>PDF<input type="checkbox"> </label>
-                                <label>3D ou Referências/Mood<input type="checkbox"> </label>
-                                <label>Paisagismo<input type="checkbox"> </label>
-                            </div>
-                        </div>
-
-                        <div class="arquivo-item">
-                            <label>
-                                <span>Arquivos Imagens Externas</span>
-                                <input type="checkbox" class="tipo-imagem" data-tipo="Imagem Externa">
-                                <input type="date" class="data-recebimento" id="data-imagens-externas" disabled>
-                            </label>
-                            <div class="subtipos">
-                                <label>DWG<input type="checkbox"> </label>
-                                <label>PDF<input type="checkbox"> </label>
-                                <label>3D ou Referências/Mood<input type="checkbox"> </label>
-                                <label>Paisagismo<input type="checkbox"> </label>
-                            </div>
-                        </div>
-
-                        <div class="arquivo-item">
-                            <label>
-                                <span>Arquivos Internas Áreas Comuns</span>
-                                <input type="checkbox" class="tipo-imagem" data-tipo="Imagem Interna">
-                                <input type="date" class="data-recebimento" id="data-internas-comuns" disabled>
-                            </label>
-                            <div class="subtipos">
-                                <label>DWG<input type="checkbox"> </label>
-                                <label>PDF<input type="checkbox"> </label>
-                                <label>3D ou Referências/Mood<input type="checkbox"> </label>
-                                <label>Luminotécnico<input type="checkbox"> </label>
-                            </div>
-                        </div>
-
-                        <div class="arquivo-item">
-                            <label>
-                                <span>Arquivos Unidades</span>
-                                <input type="checkbox" class="tipo-imagem" data-tipo="Unidade">
-                                <input type="date" class="data-recebimento" id="data-unidades" disabled>
-                            </label>
-                            <div class="subtipos">
-                                <label>DWG<input type="checkbox"> </label>
-                                <label>PDF<input type="checkbox"> </label>
-                                <label>3D ou Referências/Mood<input type="checkbox"> </label>
-                                <label>Unidades Definidas<input type="checkbox"> </label>
-                                <label>Luminotécnico<input type="checkbox"> </label>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="arquivo-actions">
-                        <input type="date" name="data_arquivos" id="data_arquivos" required>
-                        <button type="button" id="salvarArquivo">Salvar</button>
-                    </div>
-                </div>
-            </form>
+        <!-- Requisitos do cliente (Briefing Arquivos) - acima da lista de arquivos -->
+        <div id="briefingArquivosPendentes" style="display:none; margin: 10px 0 14px;">
+            <div style="font-weight: 700; margin-bottom: 8px;">Requisitos do cliente (pendentes)</div>
+            <div id="briefingArquivosPendentesContent"></div>
         </div>
 
-
-        <div id="modalAcompanhamento" class="modal">
-            <div class="obs-modal-box">
-                <div class="obs-modal-header">
-                    <div class="obs-modal-title">
-                        <i class="fa-solid fa-envelope obs-modal-icon"></i>
-                        <span>Acompanhamento</span>
-                    </div>
-                    <button type="button" class="obs-modal-close" id="closeAcompModal" aria-label="Fechar">
-                        <i class="fa-solid fa-xmark"></i>
-                    </button>
-                </div>
-
-                <div class="obs-modal-body">
-                    <div id="acompanhamentoConteudo">
-                        <form id="adicionar_acomp">
-                            <div class="radioButtons" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px;">
-                                <label><input type="radio" name="acompanhamento" value="Start do Projeto"> Start do Projeto</label>
-                                <label><input type="radio" name="acompanhamento" value="Prazo de dias úteis (45 dias)"> Prazo de dias úteis (45 dias)</label>
-                                <label><input type="radio" name="acompanhamento" value="Recebimento de arquivos"> Recebimento de arquivos</label>
-                                <label><input type="radio" name="acompanhamento" value="Prazo com a entrega (30/01)"> Prazo com a entrega (30/01)</label>
-                                <label><input type="radio" name="acompanhamento" value="Projeto pausado aguardando aprovação do cliente.">Projeto pausado aguardando aprovação do cliente.</label>
-                                <label><input type="radio" name="acompanhamento" value="Enviado os toons da fachada">Enviado os toons da fachada</label>
-                                <label><input type="radio" name="acompanhamento" value="Enviado imagens prévias"> Enviado imagens prévias</label>
-                            </div>
-
-                            <!-- Campo de assunto -->
-                            <label class="obs-modal-label" for="assunto">Assunto</label>
-                            <textarea name="assunto" id="assunto" class="obs-modal-textarea" placeholder="Descreva o assunto..." rows="3" required></textarea>
-
-                            <!-- Campo de data -->
-                            <label class="obs-modal-label" for="data_acomp" style="margin-top: 12px;">Data</label>
-                            <input type="date" name="data_acomp" id="data_acomp" class="obs-modal-textarea" style="height: 36px; padding: 0 10px;" required>
-                        </form>
-                    </div>
-                </div>
-
-                <div class="obs-modal-footer">
-                    <button type="submit" form="adicionar_acomp" id="add-acomp" class="obs-btn obs-btn-primary">
-                        <i class="fa-solid fa-paper-plane"></i> Adicionar Acompanhamento
-                    </button>
-                </div>
+        <div id="arquivosWrapper" class="arquivos-wrapper">
+            <div class="arquivos-head-row">
+                <div class="arq-col nome">Nome</div>
+                <div class="arq-col tipo">Tipo</div>
+                <div class="arq-col colaborador">Colaborador</div>
+                <div class="arq-col tamanho">Tamanho</div>
+                <div class="arq-col modificado">Modificado</div>
             </div>
+            <div id="listaArquivos" class="arquivos-grid" aria-live="polite"></div>
         </div>
-
-        <div id="modalObservacao" class="modal">
-            <div class="obs-modal-box">
-                <div class="obs-modal-header">
-                    <div class="obs-modal-title">
-                        <i class="fa-solid fa-note-sticky obs-modal-icon"></i>
-                        <span id="obsModalLabel">Nova instrução</span>
-                    </div>
-                    <button type="button" class="obs-modal-close" id="closeObsModal" aria-label="Fechar">
-                        <i class="fa-solid fa-xmark"></i>
-                    </button>
-                </div>
-
-                <div class="obs-modal-body">
-                    <input type="hidden" id="descricaoId">
-                    <label class="obs-modal-label" for="desc">Descrição</label>
-                    <textarea id="desc" class="obs-modal-textarea" placeholder="Escreva a instrução..." rows="5"></textarea>
-                </div>
-
-                <div class="obs-modal-footer">
-                    <button type="button" id="deleteObs" class="obs-btn obs-btn-danger" style="display:none;">
-                        <i class="fa-solid fa-trash"></i> Excluir
-                    </button>
-                    <button type="button" id="saveObs" class="obs-btn obs-btn-primary">
-                        <i class="fa-solid fa-floppy-disk"></i> Salvar
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Secao Arquivos da Obra (inserida abaixo de Observação) -->
-        <section id="secao-arquivos" class="secao arquivos-secao infos-obra">
-            <div class="secao-titulo arquivos-header">
-                <h2>Arquivos da Obra</h2>
-                <div class="arquivos-actions">
-                    <button id="btnAddArquivo" type="button" class="btn-add-arquivo" title="Adicionar novo arquivo">+
-                        Novo</button>
-                    <button id="btnRefreshArquivos" type="button" class="btn-refresh-arquivo"
-                        title="Recarregar lista">↻</button>
-                </div>
-            </div>
-
-            <!-- Requisitos do cliente (Briefing Arquivos) - acima da lista de arquivos -->
-            <div id="briefingArquivosPendentes" style="display:none; margin: 10px 0 14px;">
-                <div style="font-weight: 700; margin-bottom: 8px;">Requisitos do cliente (pendentes)</div>
-                <div id="briefingArquivosPendentesContent"></div>
-            </div>
-
-            <div id="arquivosWrapper" class="arquivos-wrapper">
-                <div class="arquivos-head-row">
-                    <div class="arq-col nome">Nome</div>
-                    <div class="arq-col tipo">Tipo</div>
-                    <div class="arq-col colaborador">Colaborador</div>
-                    <div class="arq-col tamanho">Tamanho</div>
-                    <div class="arq-col modificado">Modificado</div>
-                </div>
-                <div id="listaArquivos" class="arquivos-grid" aria-live="polite"></div>
-            </div>
-        </section>
+    </section>
 
     </div>
     <div class="form-edicao" id="form-edicao">
@@ -2455,7 +2483,7 @@ $conn->close();
 
     <script>
         // Project root for building root-relative URLs in scripts
-        (function() {
+        (function () {
             const path = String(window.location.pathname || '');
             const useFlow = path.includes('/flow/');
             window.PROJECT_ROOT = useFlow ? '/flow/ImproovWeb' : '/ImproovWeb';

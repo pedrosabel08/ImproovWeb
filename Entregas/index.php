@@ -117,6 +117,7 @@ $conn->close();
                         </span>
                         <span class="column-count" id="count-atrasada">0</span>
                     </div>
+                        <div class="column-cards"></div>
                 </div>
                 <div class="column" data-status="pendente,parcial">
                     <div class="column-header">
@@ -126,6 +127,17 @@ $conn->close();
                         </span>
                         <span class="column-count" id="count-pendente">0</span>
                     </div>
+                        <div class="column-cards"></div>
+                </div>
+                <div class="column column-hold" data-status="hold">
+                    <div class="column-header">
+                        <span class="column-title">
+                            <i class="fa-solid fa-pause" style="color:#9e9e9e;margin-right:6px;"></i>
+                            HOLD
+                        </span>
+                        <span class="column-count" id="count-hold">0</span>
+                    </div>
+                        <div class="column-cards"></div>
                 </div>
                 <div class="column" data-status="concluida">
                     <div class="column-header">
@@ -135,6 +147,7 @@ $conn->close();
                         </span>
                         <span class="column-count" id="count-concluida">0</span>
                     </div>
+                        <div class="column-cards"></div>
                 </div>
             </div>
         </div>
@@ -307,7 +320,8 @@ $conn->close();
             </div>
             <div class="modal-body" id="cronogramaBody">
                 <div class="cronograma-view-toggle" id="cronogramaViewToggle" style="display:none;">
-                    <button class="vt-btn active" data-view="table"><i class="fa-solid fa-table-list"></i> Tabela</button>
+                    <button class="vt-btn active" data-view="table"><i class="fa-solid fa-table-list"></i>
+                        Tabela</button>
                     <button class="vt-btn" data-view="gantt"><i class="fa-solid fa-chart-gantt"></i> Gantt</button>
                 </div>
                 <div class="cronograma-tabs" id="cronogramaTabs"></div>
@@ -322,15 +336,15 @@ $conn->close();
     <!-- Scripts -->
     <script>
         window.STATUS_IMAGENS = <?php
-                                $statusArr = [];
-                                foreach ($status_imagens as $s) {
-                                    $statusArr[] = [
-                                        'id'   => intval($s['idstatus'] ?? $s['id'] ?? 0),
-                                        'nome' => htmlspecialchars_decode($s['nome_status'] ?? $s['nome'] ?? '')
-                                    ];
-                                }
-                                echo json_encode($statusArr);
-                                ?>;
+        $statusArr = [];
+        foreach ($status_imagens as $s) {
+            $statusArr[] = [
+                'id' => intval($s['idstatus'] ?? $s['id'] ?? 0),
+                'nome' => htmlspecialchars_decode($s['nome_status'] ?? $s['nome'] ?? '')
+            ];
+        }
+        echo json_encode($statusArr);
+        ?>;
     </script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>

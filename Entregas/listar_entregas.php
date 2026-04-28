@@ -10,7 +10,7 @@ if ($obra_id !== null) {
 }
 $where = "WHERE " . implode(" AND ", $conditions);
 
-$sql = "SELECT 
+$sql = "SELECT
     e.id,
     e.obra_id,
     e.status_id,
@@ -18,6 +18,8 @@ $sql = "SELECT
     e.data_conclusao,
     e.status,
     e.observacoes,
+    e.em_hold,
+    e.motivo_hold,
     s.nome_status as nome_etapa,
     o.nomenclatura,
     COUNT(ei.id) AS total_itens,
@@ -60,8 +62,11 @@ while ($row = $res->fetch_assoc()) {
         $statusCol = 'concluida';
     }
 
-    // 🚨 NOVA REGRA: se o prazo já passou e ainda não estiver concluída → "atrasado"
-    if ($dataPrevista < $hoje && ($statusCol === 'pendente' || $statusCol === 'parcial')) {
+    // HOLD: entrega pausada — nunca considerada atrasada
+    if (intval($row['em_hold'])) {
+        $statusCol = 'hold';
+        // 🚨 NOVA REGRA: se o prazo já passou e ainda não estiver concluída → "atrasado"
+    } elseif ($dataPrevista < $hoje && ($statusCol === 'pendente' || $statusCol === 'parcial')) {
         $statusCol = 'atrasada';
     }
 
@@ -72,6 +77,8 @@ while ($row = $res->fetch_assoc()) {
         'status' => $row['status'],
         'status_id' => intval($row['status_id'] ?? 0),
         'observacoes' => $row['observacoes'],
+        'em_hold' => (bool) intval($row['em_hold']),
+        'motivo_hold' => $row['motivo_hold'],
         'nome_etapa' => $row['nome_etapa'],
         'nomenclatura' => $row['nomenclatura'],
         'total_itens' => $total,

@@ -836,9 +836,10 @@ function addEventListenersToRows() {
       const idImagemSelecionada = linha.getAttribute("data-id");
       document.getElementById("imagem_id").value = idImagemSelecionada;
 
-      // Atualiza o atributo data-imagemid do botão
+      // Atualiza o atributo data-imagemid do botão alterar_status
       const botaoAlterar = document.getElementById("alterar_status");
-      botaoAlterar.setAttribute("data-imagemid", idImagemSelecionada);
+      if (botaoAlterar)
+        botaoAlterar.setAttribute("data-imagemid", idImagemSelecionada);
 
       // Resetar o negrito das células de imagem de todas as linhas
       linhasTabela.forEach(function (outraLinha) {
@@ -847,27 +848,22 @@ function addEventListenersToRows() {
         }
       });
 
-      // Obter a posição da linha
-      const rectLinha = linha.getBoundingClientRect();
-
       // Obter as células
       const celulaStatus = linha.cells[2]; // 3ª coluna
-      const celulaImagem = linha.cells[1]; // 2ª coluna (onde está a imagem)
+      const celulaImagem = linha.cells[1]; // 2ª coluna
 
       // Aplicar negrito apenas à célula da linha clicada
-      if (celulaImagem) {
-        celulaImagem.style.fontWeight = "bold";
-      }
+      if (celulaImagem) celulaImagem.style.fontWeight = "bold";
+
+      // Armazenar imagem_id para o botão +Animação do modal_status
+      window.__ctxMenuImagemId = idImagemSelecionada;
 
       // Mostrar modal ao lado direito da coluna de status
-      const rectStatus = celulaStatus.getBoundingClientRect();
       const modalStatus = document.getElementById("modal_status");
       if (modalStatus) {
-        // Anchor to the image cell so the modal follows the image on scroll
         statusModalAnchor = celulaStatus;
         modalStatus.style.position = "absolute";
         modalStatus.style.display = "block";
-        // Use the centralized positioning helper
         positionStatusModal();
       }
     });
@@ -3258,7 +3254,7 @@ function infosObra(obraId) {
         data?.obra?.nome_obra &&
         data?.aprovacaoObra &&
         Object.keys(data.aprovacaoObra).length > 0
-          ? `https://improov.com.br/flow/ImproovWeb/FlowReview/index.php?obra_nome=${encodeURIComponent(data.obra.nome_obra)}`
+          ? `https://improov.com.br/flow/ImproovWeb/FlowReview/index.php?obra_nome=${encodeURIComponent(data.obra.nomenclatura)}`
           : null;
       ["quick_flow_review", "mobile_flow_review"].forEach(function (id) {
         const el = document.getElementById(id);
@@ -3558,7 +3554,7 @@ function infosObra(obraId) {
           cellColaborador.classList.add("func-cell", `func-${coluna.col}`);
 
           cellColaborador.addEventListener("mouseenter", (event) => {
-            tooltip.textContent = colaborador + (status ? " — " + status : "");
+            tooltip.textContent = status ? status : "";
             tooltip.style.display = "block";
             tooltip.style.left = event.clientX + "px";
             tooltip.style.top = event.clientY - 30 + "px";
@@ -3739,6 +3735,10 @@ function infosObra(obraId) {
       document.addEventListener("keydown", navegarTeclado);
 
       addEventListenersToRows();
+      // Cachear cliente_id para o modal de animação
+      window.__obraClienteId = data.obra.cliente_id || "";
+      // Carregar tabela de animações
+      carregarAnimacoesObra(obraId);
       if (data.briefing && data.briefing.length > 0) {
         const br = data.briefing[0];
 
@@ -4163,28 +4163,28 @@ function infosObra(obraId) {
         });
       })();
 
-      if (data.recebimentos && data.recebimentos.length > 0) {
-        data.recebimentos.forEach((recebimento) => {
-          const tipoImagem = recebimento.tipo_imagem;
-          const datasRecebimento = recebimento.datas_recebimento.split(", "); // Divide as datas por vírgula
-          const primeiraData = datasRecebimento[0]; // Pega a primeira data
+      // if (data.recebimentos && data.recebimentos.length > 0) {
+      //   data.recebimentos.forEach((recebimento) => {
+      //     const tipoImagem = recebimento.tipo_imagem;
+      //     const datasRecebimento = recebimento.datas_recebimento.split(", "); // Divide as datas por vírgula
+      //     const primeiraData = datasRecebimento[0]; // Pega a primeira data
 
-          // Mapeia os IDs dos campos de data com base no tipo de imagem
-          const campoDataMap = {
-            Fachada: "data-fachada",
-            "Imagem Externa": "data-imagens-externas",
-            "Imagem Interna": "data-internas-comuns",
-            Unidades: "data-unidades",
-            "Planta Humanizada": "data-ph",
-          };
+      //     // Mapeia os IDs dos campos de data com base no tipo de imagem
+      //     const campoDataMap = {
+      //       Fachada: "data-fachada",
+      //       "Imagem Externa": "data-imagens-externas",
+      //       "Imagem Interna": "data-internas-comuns",
+      //       Unidades: "data-unidades",
+      //       "Planta Humanizada": "data-ph",
+      //     };
 
-          // Preenche o campo de data correspondente
-          const campoData = document.getElementById(campoDataMap[tipoImagem]);
-          if (campoData) {
-            campoData.value = primeiraData; // Define a primeira data no campo
-          }
-        });
-      }
+      //     // Preenche o campo de data correspondente
+      //     const campoData = document.getElementById(campoDataMap[tipoImagem]);
+      //     if (campoData) {
+      //       campoData.value = primeiraData; // Define a primeira data no campo
+      //     }
+      //   });
+      // }
       const prazosDiv = document.getElementById("prazos-list");
 
       // Limpa o conteúdo da div
@@ -11828,3 +11828,246 @@ window.addEventListener("improov:funcaoAtualizada", () => {
   const id = localStorage.getItem("obraId");
   if (id) infosObra(id);
 });
+
+// =============================================================
+// ANIMAÇÕES: context menu, modal e carregamento de tabela
+// =============================================================
+
+// Fechar modal de animação
+(function () {
+  const closeBtn = document.getElementById("closeModalAnimacao");
+  const cancelBtn = document.getElementById("cancelarModalAnimacao");
+  function fechar() {
+    document.getElementById("modalAdicionarAnimacao").style.display = "none";
+    document.getElementById("formAdicionarAnimacao").reset();
+  }
+  if (closeBtn) closeBtn.addEventListener("click", fechar);
+  if (cancelBtn) cancelBtn.addEventListener("click", fechar);
+})();
+
+// Submit do formulário de animação
+(function () {
+  function onSubmitAnimacao(e) {
+    e.preventDefault();
+
+    const payload = {
+      imagem_id: document.getElementById("anim_imagem_id").value,
+      obra_id: document.getElementById("anim_obra_id").value,
+      cliente_id: document.getElementById("anim_cliente_id").value,
+      colaborador_id: document.getElementById("anim_colaborador").value,
+      tipo_animacao: document.getElementById("anim_tipo").value,
+      duracao: document.getElementById("anim_duracao").value,
+      prazo: document.getElementById("anim_prazo").value,
+    };
+
+    fetch("../Animacao/inserirAnimacaoNova.php", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    })
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (data) {
+        if (data.success) {
+          if (typeof Toastify !== "undefined") {
+            Toastify({
+              text: "Animação criada com sucesso!",
+              duration: 3000,
+              gravity: "top",
+              position: "right",
+              backgroundColor: "#4caf50",
+            }).showToast();
+          }
+          document.getElementById("modalAdicionarAnimacao").style.display =
+            "none";
+          document.getElementById("formAdicionarAnimacao").reset();
+          const obraIdAtual = obraId || localStorage.getItem("obraId");
+          if (obraIdAtual) carregarAnimacoesObra(obraIdAtual);
+        } else {
+          if (typeof Toastify !== "undefined") {
+            Toastify({
+              text: data.error || "Erro ao criar animação.",
+              duration: 4000,
+              gravity: "top",
+              position: "right",
+              backgroundColor: "#e74c3c",
+            }).showToast();
+          } else {
+            alert(data.error || "Erro ao criar animação.");
+          }
+        }
+      })
+      .catch(function (err) {
+        console.error("Erro ao criar animação:", err);
+      });
+  }
+
+  function bindSubmitAnimacao() {
+    const form = document.getElementById("formAdicionarAnimacao");
+    if (!form || form.dataset.submitBound === "1") return;
+    form.dataset.submitBound = "1";
+    form.addEventListener("submit", onSubmitAnimacao);
+  }
+
+  bindSubmitAnimacao();
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", bindSubmitAnimacao, {
+      once: true,
+    });
+  }
+})();
+
+// Carregar tabela de animações da obra
+function carregarAnimacoesObra(obraIdParam) {
+  fetch(
+    "../Animacao/getAnimacoesObra.php?obra_id=" +
+      encodeURIComponent(obraIdParam),
+  )
+    .then(function (r) {
+      return r.json();
+    })
+    .then(function (animacoes) {
+      const secao = document.getElementById("secao-animacoes");
+      const tbody = document.querySelector("#tabela-animacoes tbody");
+      if (!secao || !tbody) return;
+
+      tbody.innerHTML = "";
+
+      if (!animacoes || animacoes.length === 0) {
+        secao.style.display = "none";
+        return;
+      }
+
+      secao.style.display = "block";
+      animacoes.forEach(function (a) {
+        const tr = document.createElement("tr");
+        tr.setAttribute("data-animacao-id", a.idanimacao);
+
+        const nomeImagem = document.createElement("td");
+        nomeImagem.textContent = String(a.imagem_nome || "");
+
+        const statusImagem = document.createElement("td");
+        const isImagemConcluida =
+          Number(a.imagem_status_id) === 6 &&
+          Number(a.imagem_substatus_id) === 9;
+        statusImagem.innerHTML = isImagemConcluida
+          ? '<i class="fa-solid fa-circle-check" style="color:#16a34a;" title="Concluida"></i>'
+          : '<i class="fa-solid fa-hourglass-half" style="color:#f59e0b;" title="Em espera"></i>';
+
+        const nomeAnimacao = document.createElement("td");
+        nomeAnimacao.textContent = String(a.nome_animacao || "");
+
+        const substatusTd = document.createElement("td");
+        const rawSubstatus = String(a.substatus || "").trim();
+        substatusTd.textContent = rawSubstatus || "-";
+
+        if (rawSubstatus) {
+          let substatusForStyle = rawSubstatus
+            .toUpperCase()
+            .replace(/\s+/g, "_");
+          if (substatusForStyle === "TO_DO") substatusForStyle = "TO-DO";
+          applyStatusImagem(
+            substatusTd,
+            substatusForStyle,
+            a.hold_justificativa_recente || a.descricao || "",
+          );
+        }
+
+        const tipoAnimacao = document.createElement("td");
+        tipoAnimacao.textContent = String(a.tipo_animacao || "-");
+
+        const duracao = document.createElement("td");
+        duracao.textContent = a.duracao || "-";
+
+        const colunasAnimacao = [
+          { col: "animacao", label: "Animação" },
+          { col: "pos_producao", label: "Pós Produção" },
+        ];
+
+        tr.appendChild(nomeImagem);
+        tr.appendChild(statusImagem);
+        tr.appendChild(nomeAnimacao);
+        tr.appendChild(substatusTd);
+        tr.appendChild(tipoAnimacao);
+        tr.appendChild(duracao);
+
+        colunasAnimacao.forEach(function (coluna) {
+          const colaborador = a[`${coluna.col}_colaborador`] || "-";
+          const statusFuncao = a[`${coluna.col}_status`] || "-";
+
+          const cellColaborador = document.createElement("td");
+          cellColaborador.textContent = colaborador;
+          cellColaborador.setAttribute("data-status", statusFuncao);
+          cellColaborador.setAttribute("data-funcao", coluna.col);
+          cellColaborador.classList.add("func-cell", `func-${coluna.col}`);
+
+          applyStyleNone(cellColaborador, null, colaborador);
+
+          if (colaborador !== "-" && colaborador !== "Não se aplica") {
+            applyStatusStyle(cellColaborador, statusFuncao, colaborador);
+          }
+
+          cellColaborador.addEventListener("mouseenter", (event) => {
+            tooltip.textContent = statusFuncao ? statusFuncao : "";
+            tooltip.style.display = "block";
+            tooltip.style.left = event.clientX + "px";
+            tooltip.style.top = event.clientY - 30 + "px";
+          });
+
+          cellColaborador.addEventListener("mouseleave", () => {
+            tooltip.style.display = "none";
+          });
+
+          cellColaborador.addEventListener("mousemove", (event) => {
+            tooltip.style.left = event.clientX + "px";
+            tooltip.style.top = event.clientY - 30 + "px";
+          });
+
+          tr.appendChild(cellColaborador);
+        });
+
+        tbody.appendChild(tr);
+      });
+    })
+    .catch(function (err) {
+      console.error("Erro ao carregar animações:", err);
+    });
+}
+
+// Handler do botão +Animação dentro do #modal_status
+document
+  .getElementById("addAnimacaoMs")
+  ?.addEventListener("click", function (event) {
+    event.preventDefault();
+
+    const hiddenImagem = document.getElementById("imagem_id")?.value;
+    const fallbackImagem = document
+      .getElementById("alterar_status")
+      ?.getAttribute("data-imagemid");
+    const idImagemSelecionada = hiddenImagem || fallbackImagem;
+
+    if (!idImagemSelecionada) {
+      Toastify({
+        text: "Nenhuma imagem selecionada",
+        duration: 3000,
+        gravity: "top",
+        position: "right",
+        backgroundColor: "red",
+      }).showToast();
+      return;
+    }
+
+    // Fechar o modal_status e abrir o modal de animação
+    document.getElementById("modal_status").style.display = "none";
+
+    document.getElementById("anim_imagem_id").value = idImagemSelecionada;
+    document.getElementById("anim_obra_id").value =
+      obraId || localStorage.getItem("obraId") || "";
+    document.getElementById("anim_cliente_id").value =
+      window.__obraClienteId || "";
+
+    document.getElementById("modalAdicionarAnimacao").style.display = "block";
+  });

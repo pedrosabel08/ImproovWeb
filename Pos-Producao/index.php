@@ -152,11 +152,14 @@ $conn->close();
 
     <div id="filtro">
         <header>
-            <h1>Lista Pós-Produção</h1>
-            <img src="../gif/assinatura_preto.gif" alt="" style="width: 200px;">
-
-            <button id="openModalBtn" style="display: none;">Inserir render</button>
-            <button id="openModalBtnRender">Ver Render Elements</button>
+            <div class="header-left">
+                <img src="../gif/assinatura_preto.gif" class="page-header-logo" id="gif" alt="">
+                <h1>Lista Pós-Produção</h1>
+            </div>
+            <div class="header-right">
+                <button id="openModalBtn" style="display: none;">Inserir render</button>
+                <button id="openModalBtnRender">Ver Render Elements</button>
+            </div>
         </header>
 
         <!-- Metric Cards -->
@@ -239,38 +242,96 @@ $conn->close();
 
     <div id="modal" class="modal">
         <div class="modal-content">
-            <span class="close">&times;</span>
-            <button id="deleteButton">Excluir</button>
-            <div id="form-inserir">
-                <h2>Formulário de Dados</h2>
+
+            <!-- Header -->
+            <div class="modal-header">
+                <div class="modal-header-left">
+                    <i class="fa-solid fa-film modal-header-icon"></i>
+                    <div>
+                        <h2 class="modal-title" id="modal-title-imagem">Pós-Produção</h2>
+                        <span class="modal-subtitle" id="modal-subtitle-obra"></span>
+                    </div>
+                </div>
+                <button class="modal-close" id="closeModalBtn" title="Fechar">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Body -->
+            <div class="modal-body">
                 <form id="formPosProducao">
-                    <div>
-                        <label for="nomeFinalizador">Nome Finalizador</label>
-                        <select name="final_id" id="opcao_finalizador" required>
-                            <option value="0">Selecione um colaborador:</option>
-                            <?php foreach ($colaboradores as $colab): ?>
-                                <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
-                                    <?= htmlspecialchars($colab['nome_colaborador']); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
+                    <input type="hidden" name="id-pos" id="id-pos">
+                    <input type="hidden" id="alterar_imagem" name="alterar_imagem" value="false">
+                    <input type="hidden" id="render_id_pos" name="render_id_pos">
+
+                    <!-- Grid 2 colunas: Finalizador + Responsável -->
+                    <div class="form-row-2">
+                        <div class="form-group">
+                            <label class="form-label">
+                                <i class="fa-solid fa-user"></i> Finalizador
+                                <span class="save-status" id="ss-finalizador"></span>
+                            </label>
+                            <select name="final_id" id="opcao_finalizador" class="form-select" required>
+                                <option value="0">Selecione um colaborador</option>
+                                <?php foreach ($colaboradores as $colab): ?>
+                                    <option value="<?= htmlspecialchars($colab['idcolaborador']); ?>">
+                                        <?= htmlspecialchars($colab['nome_colaborador']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <!-- <div class="form-group">
+                            <label class="form-label">
+                                <i class="fa-solid fa-user-tie"></i> Responsável
+                                <span class="save-status" id="ss-responsavel"></span>
+                            </label>
+                            <select name="responsavel_id" id="responsavel_id" class="form-select">
+                                <option value="14">Adriana</option>
+                                <option value="28">Eduardo</option>
+                            </select>
+                        </div> -->
                     </div>
 
-                    <div>
-                        <label for="nomeObra">Nome Obra</label>
-                        <select name="obra_id" id="opcao_obra" onchange="buscarImagens()" required>
-                            <option value="0">Selecione uma obra:</option>
-                            <?php foreach ($obras as $obra): ?>
-                                <option value="<?= $obra['idobra']; ?>"><?= htmlspecialchars($obra['nome_obra']); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
+                    <!-- Grid 2 colunas: Obra + Revisão -->
+                    <div class="form-row-2">
+                        <div class="form-group">
+                            <label class="form-label">
+                                <i class="fa-solid fa-building"></i> Obra
+                                <span class="save-status" id="ss-obra"></span>
+                            </label>
+                            <select name="obra_id" id="opcao_obra" class="form-select" onchange="buscarImagens()" required>
+                                <option value="0">Selecione uma obra</option>
+                                <?php foreach ($obras as $obra): ?>
+                                    <option value="<?= $obra['idobra']; ?>">
+                                        <?= htmlspecialchars($obra['nome_obra']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">
+                                <i class="fa-solid fa-rotate"></i> Revisão
+                                <span class="save-status" id="ss-status"></span>
+                            </label>
+                            <select name="status_id" id="opcao_status" class="form-select">
+                                <?php foreach ($status_imagens as $status): ?>
+                                    <option value="<?= htmlspecialchars($status['idstatus']); ?>">
+                                        <?= htmlspecialchars($status['nome_status']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
                     </div>
 
-                    <div>
-                        <label for="imagem_id">Nome Imagem</label>
-                        <select id="imagem_id_pos" name="imagem_id_pos" required>
-                            <option value="">Selecione uma imagem:</option>
+                    <!-- Imagem (full width) -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <i class="fa-solid fa-image"></i> Imagem
+                        </label>
+                        <select id="imagem_id_pos" name="imagem_id_pos" class="form-select" required>
+                            <option value="">Selecione uma imagem</option>
                             <?php foreach ($imagens as $imagem): ?>
                                 <option value="<?= $imagem['idimagens_cliente_obra']; ?>">
                                     <?= htmlspecialchars($imagem['imagem_nome']); ?>
@@ -279,60 +340,60 @@ $conn->close();
                         </select>
                     </div>
 
-                    <div>
-                        <label for="caminhoPasta">Caminho Pasta</label>
-                        <input type="text" id="caminhoPasta" name="caminho_pasta">
+                    <!-- Caminho Pasta (full width) com botão de cópia -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <i class="fa-solid fa-folder-open"></i> Caminho Pasta
+                            <span class="save-status" id="ss-caminho"></span>
+                        </label>
+                        <div class="input-copy-wrap">
+                            <input type="text" id="caminhoPasta" name="caminho_pasta" class="form-input" placeholder="\\servidor\pasta\projeto">
+                            <button type="button" class="btn-copy-field" id="btnCopyCaminho" title="Copiar caminho">
+                                <i class="fa-solid fa-copy"></i>
+                            </button>
+                        </div>
                     </div>
 
-                    <div>
-                        <label for="numeroBG">Número BG</label>
-                        <input type="text" id="numeroBG" name="numero_bg">
+                    <!-- Grid 2 colunas: BG + Referências -->
+                    <div class="form-row-2">
+                        <div class="form-group">
+                            <label class="form-label">
+                                <i class="fa-solid fa-hashtag"></i> Número BG
+                                <span class="save-status" id="ss-bg"></span>
+                            </label>
+                            <input type="text" id="numeroBG" name="numero_bg" class="form-input" placeholder="Ex: BG_001">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">
+                                <i class="fa-solid fa-link"></i> Referências
+                                <span class="save-status" id="ss-refs"></span>
+                            </label>
+                            <input type="text" id="referenciasCaminho" name="refs" class="form-input" placeholder="Link ou caminho de refs">
+                        </div>
                     </div>
 
-                    <div>
-                        <label for="referenciasCaminho">Referências/Caminho</label>
-                        <input type="text" id="referenciasCaminho" name="refs">
-                    </div>
-
-                    <div>
-                        <label for="observacao">Observação</label>
-                        <textarea id="observacao" name="obs" rows="3"></textarea>
-                    </div>
-
-                    <div>
-                        <label for="status">Revisão</label>
-                        <select name="status_id" id="opcao_status">
-                            <?php foreach ($status_imagens as $status): ?>
-                                <option value="<?= htmlspecialchars($status['idstatus']); ?>">
-                                    <?= htmlspecialchars($status['nome_status']); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <input type="text" name="id-pos" id="id-pos" hidden>
-                    <input type="hidden" id="alterar_imagem" name="alterar_imagem" value="false">
-
-                    <div>
-                        <label for="status_pos">Status</label>
-                        <input type="checkbox" name="status_pos" id="status_pos" disabled>
-                    </div>
-
-                    <div>
-                        <label for="nome_responsavel">Nome Responsável</label>
-                        <select name="responsavel_id" id="responsavel_id">
-                            <option value="14" id="Adriana">Adriana</option>
-                            <option value="28" id="Eduardo">Eduardo</option>
-                        </select>
-                    </div>
-
-                    <input type="hidden" id="render_id_pos" name="render_id_pos">
-
-
-                    <div>
-                        <button type="submit">Enviar</button>
+                    <!-- Observação (full width) -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <i class="fa-solid fa-comment-dots"></i> Observação
+                            <span class="save-status" id="ss-obs"></span>
+                        </label>
+                        <textarea id="observacao" name="obs" rows="3" class="form-textarea" placeholder="Observações sobre esta pós-produção..."></textarea>
                     </div>
                 </form>
             </div>
+
+            <!-- Footer -->
+            <div class="modal-footer">
+                <button type="button" class="btn-modal-danger" id="deleteButton">
+                    <i class="fa-solid fa-trash"></i> Excluir
+                </button>
+                <button type="button" class="btn-modal-finalizar" id="btnFinalizarPos">
+                    <i class="fa-solid fa-circle-check"></i> Finalizar pós
+                </button>
+            </div>
+
         </div>
     </div>
 

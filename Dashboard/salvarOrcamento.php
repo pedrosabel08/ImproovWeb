@@ -1,6 +1,6 @@
 <?php
 // Inclui o arquivo de conexão
-require_once '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 // Verifica se a solicitação é POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

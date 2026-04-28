@@ -44,7 +44,7 @@ if ($userId === 9 || $userId === 21) { // Apenas para colaboradores administrado
 }
 // ── Render: items with status 'Em aprovação' ────────────────────────────────────
 // userId 1 e 9 veem todos; demais veem apenas seus próprios
-if ($userId === 1 || $userId === 9) {
+if ($userId === 21 || $userId === 9) {
     $res_render = $conn->query("SELECT COUNT(*) AS cnt FROM render_alta WHERE status = 'Em aprovação'");
 } else {
     $stmt_render = $conn->prepare("SELECT COUNT(*) AS cnt FROM render_alta WHERE status = 'Em aprovação' AND responsavel_id = ?");

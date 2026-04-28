@@ -15,21 +15,22 @@ $idcolaborador = $_SESSION['idcolaborador'];
 try {
   // Construção da query com base no usuário
   if ($idusuario == 1 || $idusuario == 2) {
-    $sql = "SELECT 
+    $sql = "SELECT
             f.idfuncao_imagem,
-            f.funcao_id, 
-            fun.nome_funcao, 
-            f.status, 
-            f.imagem_id, 
-            i.imagem_nome, 
-            f.colaborador_id, 
-            c.nome_colaborador, 
+            f.funcao_id,
+            fun.nome_funcao,
+            f.status,
+            f.imagem_id,
+            i.imagem_nome,
+            f.colaborador_id,
+            c.nome_colaborador,
             c.telefone,
             u.nome_slack,
             o.nome_obra,
             o.nomenclatura,
             o.idobra,
             s.nome_status,
+            COALESCE(f.prioridade_aprovacao, 0) AS prioridade_aprovacao,
             (SELECT MAX(hi.data_aprovacao)
              FROM historico_aprovacoes hi
              WHERE hi.funcao_imagem_id = f.idfuncao_imagem) AS data_aprovacao,
@@ -60,20 +61,21 @@ try {
           AND o.status_obra = 0
         ORDER BY data_aprovacao DESC";
   } elseif ($idusuario == 5) {
-    $sql = "SELECT 
+    $sql = "SELECT
             f.idfuncao_imagem,
-            f.funcao_id, 
-            fun.nome_funcao, 
-            f.status, 
-            f.imagem_id, 
-            i.imagem_nome, 
-            f.colaborador_id, 
-            c.nome_colaborador, 
+            f.funcao_id,
+            fun.nome_funcao,
+            f.status,
+            f.imagem_id,
+            i.imagem_nome,
+            f.colaborador_id,
+            c.nome_colaborador,
             c.telefone,
             u.nome_slack,
             o.nome_obra,
             o.nomenclatura,
             o.idobra,
+            COALESCE(f.prioridade_aprovacao, 0) AS prioridade_aprovacao,
             (SELECT MAX(h.data_aprovacao)
              FROM historico_aprovacoes h
              WHERE h.funcao_imagem_id = f.idfuncao_imagem) AS data_aprovacao,
@@ -102,20 +104,21 @@ try {
           )
         ORDER BY data_aprovacao DESC";
   } elseif ($idusuario == 9 || $idusuario == 20 || $idusuario == 3) {
-    $sql = "SELECT 
+    $sql = "SELECT
             f.idfuncao_imagem,
-            f.funcao_id, 
-            fun.nome_funcao, 
-            f.status, 
-            f.imagem_id, 
-            i.imagem_nome, 
-            f.colaborador_id, 
-            c.nome_colaborador, 
+            f.funcao_id,
+            fun.nome_funcao,
+            f.status,
+            f.imagem_id,
+            i.imagem_nome,
+            f.colaborador_id,
+            c.nome_colaborador,
             c.telefone,
             u.nome_slack,
             o.nome_obra,
             o.nomenclatura,
             o.idobra,
+            COALESCE(f.prioridade_aprovacao, 0) AS prioridade_aprovacao,
             (SELECT MAX(h.data_aprovacao)
              FROM historico_aprovacoes h
              WHERE h.funcao_imagem_id = f.idfuncao_imagem) AS data_aprovacao,
@@ -147,20 +150,21 @@ try {
     // Se for colaborador não-admin, limitar por obras associadas ao colaborador.
     // Permitir que o colaborador 8 veja as tarefas dele e do colaborador 40.
     if ($idcolaborador == 8) {
-      $sql = "SELECT 
+      $sql = "SELECT
             f.idfuncao_imagem,
-            f.funcao_id, 
-            fun.nome_funcao, 
-            f.status, 
-            f.imagem_id, 
-            i.imagem_nome, 
-            f.colaborador_id, 
-            c.nome_colaborador, 
+            f.funcao_id,
+            fun.nome_funcao,
+            f.status,
+            f.imagem_id,
+            i.imagem_nome,
+            f.colaborador_id,
+            c.nome_colaborador,
             c.telefone,
             u.nome_slack,
             o.nome_obra,
             o.nomenclatura,
             o.idobra,
+            COALESCE(f.prioridade_aprovacao, 0) AS prioridade_aprovacao,
             (SELECT MAX(h.data_aprovacao)
              FROM historico_aprovacoes h
              WHERE h.funcao_imagem_id = f.idfuncao_imagem) AS data_aprovacao,
@@ -195,20 +199,21 @@ try {
           )
         ORDER BY data_aprovacao DESC";
     } else {
-      $sql = "SELECT 
+      $sql = "SELECT
             f.idfuncao_imagem,
-            f.funcao_id, 
-            fun.nome_funcao, 
-            f.status, 
-            f.imagem_id, 
-            i.imagem_nome, 
-            f.colaborador_id, 
-            c.nome_colaborador, 
+            f.funcao_id,
+            fun.nome_funcao,
+            f.status,
+            f.imagem_id,
+            i.imagem_nome,
+            f.colaborador_id,
+            c.nome_colaborador,
             c.telefone,
             u.nome_slack,
             o.nome_obra,
             o.nomenclatura,
             o.idobra,
+            COALESCE(f.prioridade_aprovacao, 0) AS prioridade_aprovacao,
             (SELECT MAX(h.data_aprovacao)
              FROM historico_aprovacoes h
              WHERE h.funcao_imagem_id = f.idfuncao_imagem) AS data_aprovacao,
@@ -519,7 +524,8 @@ try {
   // ==== END SLA DATA ====
 
   // Retornar os resultados no formato JSON
-  echo json_encode($tarefas);
+  $serverNow = (new DateTime('now', new DateTimeZone('America/Sao_Paulo')))->format('Y-m-d H:i:s');
+  echo json_encode(['server_now' => $serverNow, 'tarefas' => $tarefas]);
 
   $stmt->close();
   $conn->close();

@@ -1,6 +1,6 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
-require_once '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 $data = json_decode(file_get_contents('php://input'), true);
 if (!$data) {

@@ -137,3 +137,6 @@ dist
 /vendor/
 
 /.vscode
+
+conexao.php
+conexaoMain.php

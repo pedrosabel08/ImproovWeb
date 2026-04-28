@@ -4,7 +4,7 @@
  * GET  ?tipo_arquivo=DWG  → returns array of suffix strings
  * POST {tipo_arquivo, valor}  → inserts new suffix, returns {ok, valor}
  */
-require_once '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 header('Content-Type: application/json; charset=utf-8');
 
 // ── GET: list ────────────────────────────────────────────────────

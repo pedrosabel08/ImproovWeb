@@ -317,6 +317,9 @@ $conn->close();
     <ul id="menuContexto">
         <li onclick="excluirImagem()">Excluir <span>🗑️</span></li>
     </ul>
+    <ul id="menuContextoImagem">
+        <li onclick="marcarPrioridadeAprovacao()">Aprovação com prioridade <span>🔥</span></li>
+    </ul>
     <div id="comentarioModal" class="modal" style="display: none;">
         <div class="modal-content">
             <h3>Novo Comentário</h3>

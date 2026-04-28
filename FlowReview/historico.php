@@ -6,6 +6,24 @@ header("Access-Control-Allow-Headers: Content-Type");
 
 include_once __DIR__ . '/../conexao.php';
 
+// Garante colunas de checklist de comentários (migração leve e idempotente)
+function ensureConcluidoColsHistorico(mysqli $conn): bool
+{
+    static $checked = false;
+    if ($checked) return true;
+    $checked = true;
+    $res = $conn->query(
+        "SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'comentarios_imagem' AND COLUMN_NAME = 'concluido' LIMIT 1"
+    );
+    if (!$res || $res->num_rows === 0) {
+        @$conn->query("ALTER TABLE comentarios_imagem ADD COLUMN concluido TINYINT(1) NOT NULL DEFAULT 0");
+        @$conn->query("ALTER TABLE comentarios_imagem ADD COLUMN concluido_por INT NULL");
+        @$conn->query("ALTER TABLE comentarios_imagem ADD COLUMN concluido_em DATETIME NULL");
+        return false; // recém criada; valores default já são 0
+    }
+    return true;
+}
+
 // garante charset caso conexao.php não tenha setado
 if (isset($conn) && method_exists($conn, 'set_charset')) {
     $conn->set_charset('utf8mb4');
@@ -17,6 +35,7 @@ if (!isset($conn) || (isset($conn->connect_error) && $conn->connect_error)) {
 }
 
 if ($_SERVER["REQUEST_METHOD"] == "GET") {
+    ensureConcluidoColsHistorico($conn);
     $idFuncaoSelecionada = $_GET['ajid'];
 
     // Proteção contra SQL Injection
@@ -155,10 +174,12 @@ if ($_SERVER["REQUEST_METHOD"] == "GET") {
         )
     ) AS nome_status_envio,
     COUNT(ci.id) AS comment_count,
-    CASE 
+    CASE
         WHEN COUNT(ci.id) > 0 THEN true
         ELSE false
     END AS has_comments,
+    SUM(COALESCE(ci.concluido, 0)) AS concluidos_count,
+    (COUNT(ci.id) - SUM(COALESCE(ci.concluido, 0))) AS pending_count,
     MAX(COALESCE(ai.liberada, 0)) AS angulo_liberada,
     MAX(COALESCE(ai.sugerida, 0)) AS angulo_sugerida,
     MAX(COALESCE(ai.motivo_sugerida, '')) AS angulo_motivo

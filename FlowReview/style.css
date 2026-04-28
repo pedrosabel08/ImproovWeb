@@ -1016,6 +1016,60 @@ h2#dataEnvio {
   left: -10px;
 }
 
+/* Badge de prioridade de aprovação (🔥) — canto inferior esquerdo */
+.prioridade-badge {
+  position: absolute;
+  bottom: -10px;
+  left: -10px;
+  background-color: #e85e00;
+  color: white;
+  border-radius: 50px;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: 0 0 0 2px white;
+  z-index: 10;
+  white-space: nowrap;
+}
+
+.task-item .prioridade-badge {
+  bottom: -8px;
+  left: -8px;
+  font-size: 11px;
+  padding: 3px 6px;
+}
+
+/* Menu de contexto da imagem principal */
+#menuContextoImagem {
+  display: none;
+  position: absolute;
+  background: #1a1a2e;
+  border: 1px solid #444;
+  padding: 4px;
+  list-style: none;
+  font-size: 14px;
+  color: white;
+  border-radius: 10px;
+  cursor: pointer;
+  z-index: 9999;
+  min-width: 200px;
+}
+
+#menuContextoImagem li {
+  padding: 8px 14px;
+  border-radius: 7px;
+  transition: background 0.15s;
+}
+
+#menuContextoImagem li:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+#menuContextoImagem li span {
+  display: inline-block;
+  margin-left: 6px;
+}
+
 /* Badge for unified pair primary function */
 .par-primario-badge {
   display: inline-block;
@@ -2773,7 +2827,6 @@ nav.breadcrumb-nav a {
     overflow-y: auto;
   }
 
-
   /* Bottom-sheet drawer (same as portrait) */
   .wrapper-sidebar {
     position: fixed;
@@ -3565,4 +3618,113 @@ nav.breadcrumb-nav a {
   .task-item {
     width: 100% !important;
   }
+}
+
+/* ============================================================
+   Checklist de comentários — estilos adicionados
+   ============================================================ */
+
+/* Badge de comentários: estado "todos concluídos" */
+.notification-dot--ok {
+  background-color: #16a34a !important;
+}
+
+/* Barra de progresso de ajustes acima da lista de comentários */
+.comment-progress-bar {
+  padding: 8px 12px 4px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid #444;
+}
+
+.comment-progress-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: #aaa;
+  margin-bottom: 6px;
+}
+
+.comment-progress-pct {
+  font-weight: 600;
+  color: #f59e0b;
+}
+
+.comment-progress-pct.all-done {
+  color: #4ade80;
+}
+
+.comment-progress-track {
+  height: 6px;
+  background: #555;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.comment-progress-fill {
+  height: 100%;
+  background: #f59e0b;
+  border-radius: 3px;
+  transition:
+    width 0.3s ease,
+    background 0.3s ease;
+}
+
+.comment-progress-fill.all-done {
+  background: #16a34a;
+}
+
+/* Botão de checklist por comentário */
+.comment-check {
+  margin-left: auto;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition:
+    transform 0.15s ease,
+    opacity 0.15s ease;
+  opacity: 0.6;
+}
+
+.comment-check:hover {
+  opacity: 1;
+  transform: scale(1.15);
+}
+
+.comment-check.checked {
+  opacity: 1;
+}
+
+.comment-check:disabled {
+  cursor: wait;
+  opacity: 0.4;
+}
+
+/* Card de comentário concluído — aparência atenuada */
+.comment-concluido {
+  opacity: 0.65;
+}
+
+.comment-concluido .comment-body p {
+  text-decoration: line-through;
+  color: #888;
+}
+
+/* Marker de comentário na imagem — estado concluído */
+.comment-marker-concluido.comment {
+  opacity: 0.5;
+  outline: 2px solid #16a34a;
+  outline-offset: 1px;
+}
+
+.comment-marker-concluido.comment-shape {
+  opacity: 0.45;
+}
+
+.comment-marker-concluido.comment-freehand {
+  opacity: 0.35;
 }

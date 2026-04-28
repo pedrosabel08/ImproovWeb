@@ -1,6 +1,6 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
-require_once '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 if (!isset($_POST['imagem_id'], $_POST['status_id'])) {
     http_response_code(400);

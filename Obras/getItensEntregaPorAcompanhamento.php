@@ -1,7 +1,7 @@
 <?php
 // Retorna itens (nomes de imagens) entregues para um acompanhamento_email (quando originado de uma entrega)
 header('Content-Type: application/json; charset=utf-8');
-require_once '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 $acompId = isset($_GET['acomp_id']) ? intval($_GET['acomp_id']) : 0;
 if ($acompId <= 0) {

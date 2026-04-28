@@ -105,6 +105,51 @@ $funcoes = $result->fetch_all(MYSQLI_ASSOC);
 $stmt->close();
 
 // ====================
+// FUNCAO_ANIMACAO (para o Kanban)
+// ====================
+$sqlAnimFuncoes = "SELECT
+    fa.id                AS idfuncao_imagem,
+    fa.animacao_id,
+    fa.funcao_id,
+    fa.status,
+    fa.prazo,
+    fa.observacao,
+    fa.valor,
+    0                    AS requires_file_upload,
+    NULL                 AS file_uploaded_at,
+    f.nome_funcao,
+    a.imagem_id,
+    a.tipo_animacao,
+    CONCAT(
+        ico.imagem_nome,
+        ' - ',
+        UCASE(SUBSTRING(a.tipo_animacao, 1, 1)),
+        LOWER(SUBSTRING(a.tipo_animacao, 2))
+    ) AS nome_animacao,
+    ico.obra_id,
+    ico.prazo            AS imagem_prazo,
+    ico.substatus_id     AS imagem_status_id,
+    si.nome_status,
+    o.nomenclatura,
+    o.nome_obra
+FROM funcao_animacao fa
+JOIN animacao a             ON a.idanimacao = fa.animacao_id
+JOIN funcao f               ON f.idfuncao   = fa.funcao_id
+JOIN imagens_cliente_obra ico ON ico.idimagens_cliente_obra = a.imagem_id
+JOIN obra o                 ON o.idobra = ico.obra_id
+LEFT JOIN status_imagem si  ON si.idstatus = ico.status_id
+WHERE fa.colaborador_id = ?
+  AND o.status_obra = 0
+  AND fa.status NOT IN ('Finalizado', 'Aprovado')
+ORDER BY fa.prazo ASC";
+
+$stmtAnim = $conn->prepare($sqlAnimFuncoes);
+$stmtAnim->bind_param('i', $colaboradorId);
+$stmtAnim->execute();
+$animFuncoes = $stmtAnim->get_result()->fetch_all(MYSQLI_ASSOC);
+$stmtAnim->close();
+
+// ====================
 // TAREFAS
 // ====================
 $sqlTarefas = "SELECT 
@@ -462,6 +507,47 @@ foreach ($funcoes as $funcao) {
         'notificacoes_nao_lidas'     => isset($funcao['notificacoes_nao_lidas']) ? intval($funcao['notificacoes_nao_lidas']) : 0,
         'file_uploaded_at'           => $funcao['file_uploaded_at'],
         'requires_file_upload'       => $funcao['requires_file_upload']
+    ];
+}
+
+// ====================
+// MESCLAR FUNCAO_ANIMACAO NO funcoesFinal
+// ====================
+foreach ($animFuncoes as $af) {
+    $funcoesFinal[] = [
+        'imagem_id'                  => $af['imagem_id'],
+        'imagem_nome'                => $af['nome_animacao'],
+        'status'                     => $af['status'],
+        'prazo'                      => $af['prazo'],
+        'nome_funcao'                => $af['nome_funcao'],
+        'prioridade'                 => 3,
+        'funcao_id'                  => $af['funcao_id'],
+        'nome_status'                => $af['nome_status'],
+        'hold_justificativa_recente' => null,
+        'justificativa'              => null,
+        'descricao'                  => $af['observacao'],
+        'status_funcao_anterior'     => null,
+        'prazo_funcao_anterior'      => null,
+        'liberada'                   => true,
+        'funcaoAnteriorId'           => null,
+        'obra_id'                    => $af['obra_id'],
+        'nomenclatura'               => $af['nomenclatura'],
+        'nome_obra'                  => $af['nome_obra'],
+        'idfuncao_imagem'            => $af['idfuncao_imagem'],
+        'imagem_status_id'           => isset($af['imagem_status_id']) ? intval($af['imagem_status_id']) : null,
+        'tempo_em_andamento'         => null,
+        'imagem_prazo'               => $af['imagem_prazo'],
+        'comentarios_ultima_versao'  => 0,
+        'indice_envio_atual'         => null,
+        'ultima_imagem'              => null,
+        'observacao'                 => $af['observacao'],
+        'tempo_calculado'            => null,
+        'notificacoes_nao_lidas'     => 0,
+        'file_uploaded_at'           => $af['file_uploaded_at'] ?? null,
+        'requires_file_upload'       => $af['requires_file_upload'] ?? 0,
+        'is_animacao'                => true,
+        'animacao_id'                => $af['animacao_id'],
+        'tipo_animacao'              => $af['tipo_animacao'],
     ];
 }
 

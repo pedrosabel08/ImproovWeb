@@ -1,6 +1,6 @@
 <?php
 header('Content-Type: application/json');
-require_once '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/auth_cookie.php';
 if (empty($flow_user_id)) {

@@ -161,28 +161,38 @@ try {
 
             // ─── Inserir em alteracoes se funcao_id = 6 ───────────────────────────
             if ($funcao_id == 6) {
-                $funcao_imagem_id = $stmt->insert_id;
-
-                // Verificar se já existe registro em alteracoes
-                $stmtCheck = $conn->prepare(
-                    "SELECT idalt FROM alteracoes WHERE funcao_id = ? AND status_id = ? LIMIT 1"
+                // Buscar o idfuncao_imagem que acabou de ser inserido/atualizado
+                $stmtGetId = $conn->prepare(
+                    "SELECT idfuncao_imagem FROM funcao_imagem WHERE imagem_id = ? AND funcao_id = ? LIMIT 1"
                 );
-                $stmtCheck->bind_param("ii", $funcao_imagem_id, $status_id);
-                $stmtCheck->execute();
-                $stmtCheck->store_result();
-                $exists = $stmtCheck->num_rows > 0;
-                $stmtCheck->close();
+                $stmtGetId->bind_param("ii", $imagem_id, $funcao_id);
+                $stmtGetId->execute();
+                $stmtGetId->bind_result($funcao_imagem_id);
+                $stmtGetId->fetch();
+                $stmtGetId->close();
 
-                // Se não existe, inserir na tabela alteracoes
-                if (!$exists && $status_id !== null) {
-                    $stmtAlt = $conn->prepare(
-                        "INSERT INTO alteracoes (funcao_id, data_recebimento, status_id) VALUES (?, NOW(), ?)"
+                if ($funcao_imagem_id && $status_id !== null) {
+                    // Verificar se já existe registro em alteracoes
+                    $stmtCheck = $conn->prepare(
+                        "SELECT idalt FROM alteracoes WHERE funcao_id = ? AND status_id = ? LIMIT 1"
                     );
-                    $stmtAlt->bind_param("ii", $funcao_imagem_id, $status_id);
-                    if (!$stmtAlt->execute()) {
-                        write_log_insere_funcao2("ALTERACOES INSERT ERROR: " . $stmtAlt->error);
+                    $stmtCheck->bind_param("ii", $funcao_imagem_id, $status_id);
+                    $stmtCheck->execute();
+                    $stmtCheck->store_result();
+                    $exists = $stmtCheck->num_rows > 0;
+                    $stmtCheck->close();
+
+                    // Se não existe, inserir na tabela alteracoes
+                    if (!$exists) {
+                        $stmtAlt = $conn->prepare(
+                            "INSERT INTO alteracoes (funcao_id, data_recebimento, status_id) VALUES (?, NOW(), ?)"
+                        );
+                        $stmtAlt->bind_param("ii", $funcao_imagem_id, $status_id);
+                        if (!$stmtAlt->execute()) {
+                            write_log_insere_funcao2("ALTERACOES INSERT ERROR: " . $stmtAlt->error);
+                        }
+                        $stmtAlt->close();
                     }
-                    $stmtAlt->close();
                 }
             }
             // ──────────────────────────────────────────────────────────────────────

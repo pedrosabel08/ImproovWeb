@@ -84,7 +84,7 @@ try {
     $stmtCheckFuncao  = $conn->prepare('SELECT idfuncao_imagem FROM funcao_imagem WHERE imagem_id = ? AND funcao_id = 6');
     $stmtInsertFuncao = $conn->prepare('INSERT INTO funcao_imagem (imagem_id, colaborador_id, funcao_id) VALUES (?, NULL, 6)');
     $stmtUpdateColab  = $conn->prepare('UPDATE funcao_imagem SET colaborador_id = ? WHERE idfuncao_imagem = ?');
-    $stmtResetStatus  = $conn->prepare('UPDATE funcao_imagem SET status = \'N\u00e3o iniciado\' WHERE idfuncao_imagem = ?');
+    $stmtResetStatus  = $conn->prepare('UPDATE funcao_imagem SET status = \'Não iniciado\' WHERE idfuncao_imagem = ?');
     $stmtUpdateImagem = $conn->prepare('UPDATE imagens_cliente_obra SET status_id = ?, prazo = ? WHERE idimagens_cliente_obra = ?');
     $stmtInsertEvento = $conn->prepare('INSERT INTO eventos_obra (descricao, data_evento, tipo_evento, obra_id, responsavel_id) VALUES (?, ?, ?, ?, ?)');
     $stmtInsertAlt    = $conn->prepare('INSERT INTO alteracoes (funcao_id, data_recebimento, status_id) VALUES (?, ?, ?)');

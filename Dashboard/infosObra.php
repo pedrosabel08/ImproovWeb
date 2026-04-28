@@ -59,6 +59,7 @@ $stmtFuncoes->close();
 $sqlObra = "SELECT
     o.*, 
     COUNT(*) AS total_imagens,
+    MAX(i.cliente_id) AS cliente_id,
     COUNT(CASE WHEN i.antecipada = 1 THEN 1 ELSE NULL END) AS total_imagens_antecipadas,
     MIN(i.data_inicio) AS primeira_imagem_data_inicio,
     MAX(i.prazo) AS max_imagem_prazo,

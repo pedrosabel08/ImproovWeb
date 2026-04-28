@@ -1416,11 +1416,21 @@ table#tabela-obra tbody tr:hover {
   background: rgba(255, 235, 205, 0.5);
 }
 
+#tabela-animacoes {
+  width: 100%;
+}
+
 #tabela-obra th {
   background-color: #333;
   color: white;
   font-weight: 500;
   padding: 5px;
+}
+
+#tabela-animacoes th {
+  background-color: #333;
+  color: white;
+  font-weight: 500;
 }
 
 #tabela-obra tbody td,
@@ -1432,6 +1442,45 @@ table#tabela-obra tbody tr:hover {
   white-space: nowrap;
   text-align: center;
   max-width: 10px;
+}
+
+#tabela-animacoes tbody td,
+#tabela-animacoes th {
+  border: 1px solid black;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+  max-width: 10px;
+  padding: 5px;
+}
+
+#tabela-animacoes tbody tr:hover {
+  background: #eeeeee;
+}
+
+#secao-animacoes {
+  margin: auto;
+  width: 80%;
+}
+
+#secao-animacoes h2 {
+  font-size: 1rem;
+  margin-bottom: 3px;
+}
+
+.anim-substatus-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  color: #fff;
+  background: var(--anim-substatus-color, var(--status-outro));
 }
 
 tr#linha-porcentagem td {
@@ -2028,7 +2077,6 @@ span#obras_finalizadas {
 
 .obs-modal-textarea {
   width: 100%;
-  min-height: 200px;
   padding: 10px 12px;
   border: 1px solid var(--border-input, #d1d5db);
   border-radius: var(--radius-sm, 8px);

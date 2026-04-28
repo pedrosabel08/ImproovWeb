@@ -2,19 +2,25 @@ var modal = document.getElementById("modal");
 var modalRender = document.getElementById("renderModal");
 var openModalBtn = document.getElementById("openModalBtn");
 var openModalBtnRender = document.getElementById("openModalBtnRender");
-var closeModal = document.getElementsByClassName("close")[0];
+var closeModal = document.getElementById("closeModalBtn");
 var closeModalRender = document.getElementsByClassName("closeModalRender")[0];
 const formPosProducao = document.getElementById("formPosProducao");
 
 function limparCampos() {
-  document.getElementById("opcao_finalizador").selectedIndex = 0; // Resetar select
-  document.getElementById("opcao_obra").selectedIndex = 0; // Resetar select
-  document.getElementById("imagem_id_pos").value = ""; // Limpar campo de texto
-  document.getElementById("id-pos").value = ""; // Limpar campo de texto
-  document.getElementById("caminhoPasta").value = ""; // Limpar campo de texto
-  document.getElementById("numeroBG").value = ""; // Limpar campo de texto
-  document.getElementById("referenciasCaminho").value = ""; // Limpar campo de texto
-  document.getElementById("observacao").value = ""; // Limpar campo de texto
+  document.getElementById("opcao_finalizador").selectedIndex = 0;
+  document.getElementById("opcao_obra").selectedIndex = 0;
+  document.getElementById("imagem_id_pos").value = "";
+  document.getElementById("id-pos").value = "";
+  document.getElementById("caminhoPasta").value = "";
+  document.getElementById("numeroBG").value = "";
+  document.getElementById("referenciasCaminho").value = "";
+  document.getElementById("observacao").value = "";
+  document.getElementById("alterar_imagem").value = "false";
+  document.getElementById("render_id_pos").value = "";
+  document.getElementById("modal-title-imagem").textContent = "Pós-Produção";
+  document.getElementById("modal-subtitle-obra").textContent = "";
+  _limparTodasSaveStatus();
+  _atualizarBotaoFinalizar(1); // reset para estado padrão
 }
 
 openModalBtn.onclick = function () {
@@ -23,7 +29,6 @@ openModalBtn.onclick = function () {
 };
 openModalBtnRender.onclick = function () {
   modalRender.style.display = "flex";
-  limparCampos();
 };
 
 closeModal.onclick = function () {
@@ -32,8 +37,249 @@ closeModal.onclick = function () {
 };
 closeModalRender.onclick = function () {
   modalRender.style.display = "none";
-  limparCampos();
 };
+
+// ==========================================
+// AUTO-SAVE — Infraestrutura
+// ==========================================
+
+const AUTOSAVE_DELAY = 900; // ms
+
+function _debounce(fn, delay) {
+  let timer;
+  return function () {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn.apply(this, arguments), delay);
+  };
+}
+
+function _setSaveStatus(el, state) {
+  if (!el) return;
+  el.className = "save-status";
+  if (state === "typing") {
+    el.innerHTML = '<i class="fa-solid fa-keyboard"></i> Digitando...';
+    el.classList.add("ss-typing");
+  } else if (state === "saving") {
+    el.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Salvando...';
+    el.classList.add("ss-saving");
+  } else if (state === "saved") {
+    el.innerHTML = '<i class="fa-solid fa-check"></i> Salvo';
+    el.classList.add("ss-saved");
+    // A animação CSS já faz o fade-out; limpamos após 3s
+    setTimeout(() => {
+      if (el.classList.contains("ss-saved")) {
+        el.innerHTML = "";
+        el.className = "save-status";
+      }
+    }, 3000);
+  } else if (state === "error") {
+    el.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Erro';
+    el.classList.add("ss-error");
+  } else {
+    el.innerHTML = "";
+  }
+}
+
+function _limparTodasSaveStatus() {
+  document.querySelectorAll(".save-status").forEach(function (el) {
+    el.innerHTML = "";
+    el.className = "save-status";
+  });
+}
+
+function _autoSave(statusEl) {
+  var idPos = document.getElementById("id-pos").value;
+  if (!idPos || document.getElementById("alterar_imagem").value !== "true")
+    return;
+
+  _setSaveStatus(statusEl, "saving");
+
+  var payload = {
+    id_pos: idPos,
+    caminho_pasta: document.getElementById("caminhoPasta").value,
+    numero_bg: document.getElementById("numeroBG").value,
+    refs: document.getElementById("referenciasCaminho").value,
+    obs: document.getElementById("observacao").value,
+    status_id: document.getElementById("opcao_status").value,
+    colaborador_id: document.getElementById("opcao_finalizador").value,
+    // responsavel_id: document.getElementById("responsavel_id").value,
+  };
+
+  fetch("autosave_pos.php", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  })
+    .then(function (r) {
+      return r.json();
+    })
+    .then(function (res) {
+      _setSaveStatus(statusEl, res.success ? "saved" : "error");
+    })
+    .catch(function () {
+      _setSaveStatus(statusEl, "error");
+    });
+}
+
+// Registra listeners de auto-save nos campos do modal
+function _initAutoSaveListeners() {
+  // Text inputs com debounce
+  var textFields = [
+    { id: "caminhoPasta", ssId: "ss-caminho" },
+    { id: "numeroBG", ssId: "ss-bg" },
+    { id: "referenciasCaminho", ssId: "ss-refs" },
+    { id: "observacao", ssId: "ss-obs" },
+  ];
+  textFields.forEach(function (f) {
+    var el = document.getElementById(f.id);
+    var ss = document.getElementById(f.ssId);
+    var debouncedSave = _debounce(function () {
+      _autoSave(ss);
+    }, AUTOSAVE_DELAY);
+    el.addEventListener("input", function () {
+      _setSaveStatus(ss, "typing");
+      debouncedSave();
+    });
+  });
+
+  // Selects: salva imediatamente no change
+  var selectFields = [
+    { id: "opcao_finalizador", ssId: "ss-finalizador" },
+    { id: "opcao_obra", ssId: "ss-obra" },
+    { id: "opcao_status", ssId: "ss-status" },
+    // { id: "responsavel_id", ssId: "ss-responsavel" },
+  ];
+  selectFields.forEach(function (f) {
+    var el = document.getElementById(f.id);
+    var ss = document.getElementById(f.ssId);
+    el.addEventListener("change", function () {
+      _autoSave(ss);
+    });
+  });
+}
+
+_initAutoSaveListeners();
+
+// Botão de copiar caminho pasta
+document
+  .getElementById("btnCopyCaminho")
+  .addEventListener("click", function () {
+    var valor = document.getElementById("caminhoPasta").value;
+    if (!valor) return;
+    navigator.clipboard
+      .writeText(valor)
+      .then(function () {
+        var btn = document.getElementById("btnCopyCaminho");
+        btn.classList.add("copied");
+        btn.innerHTML = '<i class="fa-solid fa-check"></i>';
+        setTimeout(function () {
+          btn.classList.remove("copied");
+          btn.innerHTML = '<i class="fa-solid fa-copy"></i>';
+        }, 1800);
+      })
+      .catch(function () {
+        Toastify({
+          text: "Não foi possível copiar o caminho.",
+          duration: 2500,
+          gravity: "top",
+          position: "right",
+          style: {
+            background: "#ef4444",
+            borderRadius: "var(--radius-sm)",
+            fontFamily: '"Inter", sans-serif',
+            fontSize: "13px",
+          },
+        }).showToast();
+      });
+  });
+
+// ==========================================
+// BOTÃO FINALIZAR / VOLTAR PÓS
+// ==========================================
+
+function _atualizarBotaoFinalizar(statusPos) {
+  var btn = document.getElementById("btnFinalizarPos");
+  btn.dataset.statusPos = String(statusPos);
+  if (parseInt(statusPos) === 0) {
+    btn.innerHTML = '<i class="fa-solid fa-rotate-left"></i> Voltar pós';
+    btn.className = "btn-modal-voltar";
+  } else {
+    btn.innerHTML = '<i class="fa-solid fa-circle-check"></i> Finalizar pós';
+    btn.className = "btn-modal-finalizar";
+  }
+}
+
+document
+  .getElementById("btnFinalizarPos")
+  .addEventListener("click", async function () {
+    var idPos = document.getElementById("id-pos").value;
+    if (!idPos) return;
+
+    var currentStatus = parseInt(this.dataset.statusPos);
+    var isFinalizing = currentStatus === 1;
+
+    var result = await Swal.fire({
+      title: isFinalizing ? "Finalizar pós-produção?" : "Reabrir pós-produção?",
+      text: isFinalizing
+        ? "Marcar esta imagem como pós finalizada."
+        : "Marcar esta imagem como pendente novamente.",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: isFinalizing ? "Finalizar" : "Reabrir",
+      cancelButtonText: "Cancelar",
+      confirmButtonColor: "#4f80e1",
+    });
+
+    if (!result.isConfirmed) return;
+
+    var formData = new FormData();
+    formData.append("id_pos", idPos);
+
+    fetch("toggle_status_pos.php", { method: "POST", body: formData })
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (res) {
+        if (!res.success) {
+          Swal.fire({
+            icon: "error",
+            title: "Erro",
+            text: "Não foi possível alterar o status.",
+            timer: 3000,
+            timerProgressBar: true,
+          });
+          return;
+        }
+        _atualizarBotaoFinalizar(res.new_status);
+        atualizarTabela();
+        var msg =
+          res.new_status === 0
+            ? "Pós finalizada com sucesso!"
+            : "Pós reaberta com sucesso!";
+        Toastify({
+          text: msg,
+          duration: 3000,
+          gravity: "top",
+          position: "right",
+          style: {
+            background: res.new_status === 0 ? "#10b981" : "#f59e0b",
+            borderRadius: "var(--radius-sm)",
+            fontFamily: '"Inter", sans-serif',
+            fontSize: "13px",
+            fontWeight: "500",
+          },
+        }).showToast();
+      })
+      .catch(function () {
+        Swal.fire({
+          icon: "error",
+          title: "Erro",
+          text: "Falha na requisição.",
+          timer: 3000,
+          timerProgressBar: true,
+        });
+      });
+  });
 
 // Fechar modais ao pressionar ESC
 document.addEventListener("keydown", function (event) {
@@ -91,27 +337,42 @@ formPosProducao.addEventListener("submit", function (e) {
     .catch((error) => console.error("Erro:", error));
 });
 
-document.getElementById("deleteButton").addEventListener("click", function () {
-  const idPos = document.getElementById("id-pos").value;
+document
+  .getElementById("deleteButton")
+  .addEventListener("click", async function () {
+    const idPos = document.getElementById("id-pos").value;
 
-  if (!idPos) {
-    Toastify({
-      text: "Nenhum item selecionado para deletar.",
-      duration: 3000,
-      gravity: "top",
-      position: "left",
-      backgroundColor: "#ff5f6d",
-      close: true,
-    }).showToast();
-    return;
-  }
+    if (!idPos) {
+      Toastify({
+        text: "Nenhum item selecionado para deletar.",
+        duration: 3000,
+        gravity: "top",
+        position: "right",
+        style: {
+          background: "#ef4444",
+          borderRadius: "var(--radius-sm)",
+          fontFamily: '"Inter", sans-serif',
+          fontSize: "13px",
+        },
+      }).showToast();
+      return;
+    }
 
-  if (confirm("Tem certeza que deseja deletar este item?")) {
+    const result = await Swal.fire({
+      title: "Excluir registro?",
+      text: "Esta ação não pode ser desfeita.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Excluir",
+      cancelButtonText: "Cancelar",
+      confirmButtonColor: "#dc2626",
+    });
+
+    if (!result.isConfirmed) return;
+
     fetch("delete.php", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id_pos: idPos }),
     })
       .then((response) => response.json())
@@ -121,36 +382,37 @@ document.getElementById("deleteButton").addEventListener("click", function () {
             text: "Item deletado com sucesso.",
             duration: 3000,
             gravity: "top",
-            position: "left",
-            backgroundColor: "#ffa200",
-            close: true,
+            position: "right",
+            style: {
+              background: "#f59e0b",
+              borderRadius: "var(--radius-sm)",
+              fontFamily: '"Inter", sans-serif',
+              fontSize: "13px",
+            },
           }).showToast();
           modal.style.display = "none";
           atualizarTabela();
         } else {
-          Toastify({
-            text: "Erro ao deletar item: " + data.message,
-            duration: 3000,
-            gravity: "top",
-            position: "left",
-            backgroundColor: "red",
-            close: true,
-          }).showToast();
+          Swal.fire({
+            icon: "error",
+            title: "Erro",
+            text: "Erro ao deletar: " + data.message,
+            timer: 3000,
+            timerProgressBar: true,
+          });
         }
       })
       .catch((error) => {
         console.error("Erro ao deletar:", error);
-        Toastify({
+        Swal.fire({
+          icon: "error",
+          title: "Erro",
           text: "Ocorreu um erro ao tentar deletar o item.",
-          duration: 3000,
-          gravity: "top",
-          position: "left",
-          backgroundColor: "red",
-          close: true,
-        }).showToast();
+          timer: 3000,
+          timerProgressBar: true,
+        });
       });
-  }
-});
+  });
 
 function atualizarTabela() {
   fetch("atualizar_tabela.php")
@@ -360,23 +622,26 @@ atualizarTabela();
 carregarMetricas();
 
 // Atualiza tabela automaticamente quando outro usuário faz uma alteração (via WebSocket)
-window.addEventListener('improov:posProducaoUpdated', () => {
+window.addEventListener("improov:posProducaoUpdated", () => {
   atualizarTabela();
 });
 
 // Garantir conexão WebSocket mesmo sem sessão de upload ativa
 (function () {
-  const STORAGE_KEY = 'improov_client_id';
+  const STORAGE_KEY = "improov_client_id";
   function ensureWs() {
     if (!window.improovUploadWS) return;
     if (!localStorage.getItem(STORAGE_KEY)) {
-      localStorage.setItem(STORAGE_KEY, 'pos_' + Math.random().toString(36).slice(2, 10));
+      localStorage.setItem(
+        STORAGE_KEY,
+        "pos_" + Math.random().toString(36).slice(2, 10),
+      );
     }
     window.improovUploadWS.subscribe(localStorage.getItem(STORAGE_KEY));
   }
   // Aguarda upload-ws.js inicializar (carregado via sidebar)
-  if (document.readyState === 'complete') ensureWs();
-  else window.addEventListener('load', ensureWs);
+  if (document.readyState === "complete") ensureWs();
+  else window.addEventListener("load", ensureWs);
 })();
 
 // Filter bar — Enter no campo de busca
@@ -392,6 +657,10 @@ document.getElementById("fb-busca").addEventListener("keydown", function (e) {
     });
   },
 );
+
+document.getElementById("fb-busca").addEventListener("input", function () {
+  document.getElementById("fb-aplicar").click();
+});
 
 // Filter bar — Aplicar
 document.getElementById("fb-aplicar").addEventListener("click", function () {
@@ -473,24 +742,30 @@ function buscarInfosImagem(idImagemSelecionada) {
     data: { ajid: idImagemSelecionada },
     success: function (response) {
       if (response.length > 0) {
-        setSelectValue("opcao_finalizador", response[0].nome_colaborador);
-        setSelectValue("opcao_obra", response[0].nome_obra);
-        document.getElementById("imagem_id_pos").value = response[0].id_imagem;
-        document.getElementById("id-pos").value = response[0].idpos_producao;
-        document.getElementById("caminhoPasta").value =
-          response[0].caminho_pasta;
-        document.getElementById("numeroBG").value = response[0].numero_bg;
-        document.getElementById("referenciasCaminho").value = response[0].refs;
-        document.getElementById("observacao").value = response[0].obs;
-        document.getElementById("render_id_pos").value = response[0].idrender;
-        setSelectValue("opcao_status", response[0].nome_status);
-
-        const checkboxStatusPos = document.getElementById("status_pos");
-        checkboxStatusPos.checked = response[0].status_pos == 0;
-        checkboxStatusPos.disabled = false;
-
+        var d = response[0];
+        setSelectValue("opcao_finalizador", d.nome_colaborador);
+        setSelectValue("opcao_obra", d.nome_obra);
+        document.getElementById("imagem_id_pos").value = d.id_imagem;
+        document.getElementById("id-pos").value = d.idpos_producao;
+        document.getElementById("caminhoPasta").value = d.caminho_pasta || "";
+        document.getElementById("numeroBG").value = d.numero_bg || "";
+        document.getElementById("referenciasCaminho").value = d.refs || "";
+        document.getElementById("observacao").value = d.obs || "";
+        document.getElementById("render_id_pos").value = d.idrender || "";
+        setSelectValue("opcao_status", d.nome_status);
+        setSelectValue("responsavel_id", d.nome_responsavel);
         document.getElementById("alterar_imagem").value = "true";
-        setSelectValue("responsavel_id", response[0].nome_responsavel);
+
+        // Título e subtítulo do header do modal
+        document.getElementById("modal-title-imagem").textContent =
+          d.imagem_nome || "Pós-Produção";
+        document.getElementById("modal-subtitle-obra").textContent =
+          d.nome_obra || "";
+
+        // Botão Finalizar / Voltar
+        _atualizarBotaoFinalizar(d.status_pos);
+
+        _limparTodasSaveStatus();
       } else {
         console.log("Nenhum produto encontrado.");
       }

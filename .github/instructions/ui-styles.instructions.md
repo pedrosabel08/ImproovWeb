@@ -629,7 +629,7 @@ As classes usam fundo sólido (não translúcido). Aplique via `cell.classList.a
   border: 1px solid var(--border-modal);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-modal);
-  width: min(560px, 92vw);
+  width: min(50vw, 92vw);
   max-height: 92vh;
   display: flex;
   flex-direction: column;

@@ -183,6 +183,71 @@ function sanitizeFilename_worker($str)
     return $str;
 }
 
+function sanitizeFolderSegment_worker($str)
+{
+    $str = removerTodosAcentos_worker($str);
+    $str = str_replace(['°', 'º', 'ª'], 'o', $str);
+    $trans = @iconv('UTF-8', 'ASCII//TRANSLIT', $str);
+    if ($trans !== false) $str = $trans;
+    $str = preg_replace('/[\/\\:\*\?"<>\|]/', '', $str);
+    $str = preg_replace('/[\x00-\x1F\x7F]/u', '', $str);
+    $str = preg_replace('/\s+/', ' ', $str);
+    $str = trim($str, " .-_\t\n\r\0\x0B");
+    if (strlen($str) > 160) $str = substr($str, 0, 160);
+    if ($str === '') $str = 'unnamed';
+    return $str;
+}
+
+function normalize_task_type_worker($value): string
+{
+    $raw = mb_strtolower(trim((string)$value), 'UTF-8');
+    return $raw === 'animacao' ? 'animacao' : 'imagem';
+}
+
+function normalize_animation_type_worker($value): ?string
+{
+    $raw = mb_strtolower(trim((string)$value), 'UTF-8');
+    if ($raw === '') return null;
+    if (!in_array($raw, ['horizontal', 'vertical', 'reels'], true)) return null;
+    return $raw;
+}
+
+function format_animation_type_worker($value): string
+{
+    $normalized = normalize_animation_type_worker($value);
+    if ($normalized === null) return '';
+    return ucfirst($normalized);
+}
+
+function resolve_log_file_type_worker(string $extension, string $taskType = 'imagem'): string
+{
+    $ext = strtoupper(trim($extension, '. '));
+    if ($ext === '') return 'ARQUIVO';
+    if ($taskType === 'animacao') return $ext;
+    return $ext === 'PDF' ? 'PDF' : 'IMG';
+}
+
+function build_animation_folder_name_worker(string $nomeImagem, ?string $tipoAnimacao): string
+{
+    $nomeBase = sanitizeFolderSegment_worker($nomeImagem);
+    $tipoLabel = format_animation_type_worker($tipoAnimacao);
+    if ($tipoLabel === '') {
+        return $nomeBase;
+    }
+    return $nomeBase;
+}
+
+function build_animation_file_name_worker(string $numeroImagem, string $nomenclatura, ?string $tipoAnimacao, string $extension, string $nomeFuncao): string
+{
+    $numero = trim($numeroImagem) !== '' ? trim($numeroImagem) : '0';
+    $nomenclaturaSafe = sanitizeFilename_worker($nomenclatura);
+    $tipoAnimLabel = sanitizeFilename_worker(format_animation_type_worker($tipoAnimacao) ?: 'Animacao');
+    $tipoArquivoLabel = sanitizeFilename_worker(strtoupper(trim($extension, '. ')) ?: 'ARQUIVO');
+    $nomeFuncaoSafe = sanitizeFilename_worker($nomeFuncao);
+    $ext = strtolower(trim($extension, '. '));
+    return "{$numero}.{$nomenclaturaSafe}-{$tipoAnimLabel}-{$tipoArquivoLabel}-{$nomeFuncaoSafe}.{$ext}";
+}
+
 function ensure_remote_dir_recursive(SFTP $sftp, string $dir): bool
 {
     $dir = rtrim($dir, '/');
@@ -516,16 +581,42 @@ function create_log_entries_if_missing(string $metaPath, array &$meta, string $r
     $createIds = [];
     $dataIdFuncoes = $meta['dataIdFuncoes'] ?? [];
     $colaborador_id = $meta['post']['idcolaborador'] ?? null;
+    $taskType = normalize_task_type_worker($meta['tipo_tarefa'] ?? ($meta['post']['tipo_tarefa'] ?? null));
+    $funcaoAnimacaoId = (int)($meta['funcao_animacao_id'] ?? ($meta['post']['funcao_animacao_id'] ?? 0));
 
     // allow caller to set initial status; default to enfileirado
     $status = $meta['log_status'] ?? 'enfileirado';
 
-    if (empty($dataIdFuncoes)) {
+    if ($taskType === 'animacao') {
+        if ($funcaoAnimacaoId > 0) {
+            $q = $conn->prepare("INSERT INTO arquivo_log (funcao_imagem_id, tipo_tarefa, funcao_animacao_id, caminho, nome_arquivo, tamanho, tipo, colaborador_id, status) VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?)");
+            if ($q) {
+                $colaborador_id_int = $colaborador_id !== null ? (int) $colaborador_id : null;
+                $q->bind_param('sissisis', $taskType, $funcaoAnimacaoId, $remote_path, $nome_final, $tamanho, $tipo, $colaborador_id_int, $status);
+                $q->execute();
+                $createIds[] = $q->insert_id;
+                $q->close();
+            } else {
+                error_log('[upload_worker] DB: failed to prepare INSERT (funcao_animacao_id): ' . ($conn->error ?? ''));
+            }
+        } else {
+            $q = $conn->prepare("INSERT INTO arquivo_log (funcao_imagem_id, tipo_tarefa, funcao_animacao_id, caminho, nome_arquivo, tamanho, tipo, colaborador_id, status) VALUES (NULL, ?, NULL, ?, ?, ?, ?, ?, ?)");
+            if ($q) {
+                $colaborador_id_int = $colaborador_id !== null ? (int) $colaborador_id : null;
+                $q->bind_param('sssisis', $taskType, $remote_path, $nome_final, $tamanho, $tipo, $colaborador_id_int, $status);
+                $q->execute();
+                $createIds[] = $q->insert_id;
+                $q->close();
+            } else {
+                error_log('[upload_worker] DB: failed to prepare INSERT (animacao sem referencia): ' . ($conn->error ?? ''));
+            }
+        }
+    } elseif (empty($dataIdFuncoes)) {
         // insert a single row with funcao_imagem_id = NULL
-        $q = $conn->prepare("INSERT INTO arquivo_log (funcao_imagem_id, caminho, nome_arquivo, tamanho, tipo, colaborador_id, status) VALUES (NULL,?,?,?,?,?,?)");
+        $q = $conn->prepare("INSERT INTO arquivo_log (funcao_imagem_id, tipo_tarefa, funcao_animacao_id, caminho, nome_arquivo, tamanho, tipo, colaborador_id, status) VALUES (NULL, ?, NULL, ?, ?, ?, ?, ?, ?)");
         if ($q) {
             $colaborador_id_int = $colaborador_id !== null ? (int) $colaborador_id : null;
-            $q->bind_param('ssisis', $remote_path, $nome_final, $tamanho, $tipo, $colaborador_id_int, $status);
+            $q->bind_param('sssisis', $taskType, $remote_path, $nome_final, $tamanho, $tipo, $colaborador_id_int, $status);
             $q->execute();
             $createIds[] = $q->insert_id;
             $q->close();
@@ -533,12 +624,12 @@ function create_log_entries_if_missing(string $metaPath, array &$meta, string $r
             error_log('[upload_worker] DB: failed to prepare INSERT (NULL funcao_imagem_id): ' . ($conn->error ?? ''));
         }
     } else {
-        $stmt = $conn->prepare("INSERT INTO arquivo_log (funcao_imagem_id, caminho, nome_arquivo, tamanho, tipo, colaborador_id, status) VALUES (?,?,?,?,?,?,?)");
+        $stmt = $conn->prepare("INSERT INTO arquivo_log (funcao_imagem_id, tipo_tarefa, funcao_animacao_id, caminho, nome_arquivo, tamanho, tipo, colaborador_id, status) VALUES (?, ?, NULL, ?, ?, ?, ?, ?, ?)");
         if ($stmt) {
             foreach ($dataIdFuncoes as $fid) {
                 $fid_int = (int) $fid;
                 $colaborador_id_int = $colaborador_id !== null ? (int) $colaborador_id : null;
-                $stmt->bind_param('issisis', $fid_int, $remote_path, $nome_final, $tamanho, $tipo, $colaborador_id_int, $status);
+                $stmt->bind_param('isssisis', $fid_int, $taskType, $remote_path, $nome_final, $tamanho, $tipo, $colaborador_id_int, $status);
                 $stmt->execute();
                 $createIds[] = $stmt->insert_id;
             }
@@ -587,6 +678,10 @@ function update_log_entries_status(array $logIds = null, string $status = '', $c
 function mark_funcao_upload_quitado(array $meta): void
 {
     global $conn, $redis;
+
+    if (normalize_task_type_worker($meta['tipo_tarefa'] ?? ($meta['post']['tipo_tarefa'] ?? null)) === 'animacao') {
+        return;
+    }
 
     ensure_db_connection_local();
 
@@ -926,9 +1021,11 @@ do {
         // ensure attempts count
         $meta['attempts'] = isset($meta['attempts']) ? (int)$meta['attempts'] : 0;
 
+        $taskType = normalize_task_type_worker($meta['tipo_tarefa'] ?? ($meta['post']['tipo_tarefa'] ?? null));
+
         // determine file type early for logging even on failures
         $ext = pathinfo($staged, PATHINFO_EXTENSION);
-        $tipo = in_array(strtolower($ext), ['pdf']) ? 'PDF' : 'IMG';
+        $tipo = resolve_log_file_type_worker($ext, $taskType);
 
         $jobId = $meta['id'] ?? pathinfo($processingMeta, PATHINFO_FILENAME);
         cleanup_duplicate_meta_files($baseDir, $jobId, $processingMeta);
@@ -955,10 +1052,14 @@ do {
         $numeroImagem = $meta['post']['numeroImagem'] ?? '';
         $primeiraPalavra = $meta['post']['primeiraPalavra'] ?? '';
         $nome_imagem = $meta['post']['nome_imagem'] ?? '';
+        $nome_imagem_original = $meta['nome_imagem_original'] ?? ($meta['post']['nome_imagem_original'] ?? $nome_imagem);
+        $tipo_animacao = $meta['tipo_animacao'] ?? ($meta['post']['tipo_animacao'] ?? null);
+        $caminho_base_upload = trim((string)($meta['caminho_base_upload'] ?? ($meta['post']['caminho_base_upload'] ?? '04.Finalizacao/Anima')));
 
         // Fix common mojibake in incoming POST fields (client may have wrong encoding)
         $nome_funcao = fix_mojibake_worker($nome_funcao);
         $nome_imagem = fix_mojibake_worker($nome_imagem);
+        $nome_imagem_original = fix_mojibake_worker($nome_imagem_original);
         $primeiraPalavra = fix_mojibake_worker($primeiraPalavra);
         error_log("[upload_worker] decoded fields: nome_funcao={$nome_funcao} | nome_imagem={$nome_imagem} | primeiraPalavra={$primeiraPalavra}");
         // Normalizar componentes do nome do arquivo removendo acentos
@@ -966,12 +1067,14 @@ do {
         $primeiraPalavra_clean = removerTodosAcentos_worker($primeiraPalavra);
         $nome_imagem_clean = removerTodosAcentos_worker($nome_imagem);
 
-        $pasta_funcao = mapFuncaoParaPasta($nome_funcao);
-        if (!$pasta_funcao) {
-            worker_log("Função sem pasta mapeada: {$nome_funcao}", 'ERROR');
-            rename($staged, $failedDir . '/' . basename($staged));
-            rename($processingMeta, $failedDir . '/' . basename($processingMeta));
-            continue;
+        if ($taskType !== 'animacao') {
+            $pasta_funcao = mapFuncaoParaPasta($nome_funcao);
+            if (!$pasta_funcao) {
+                worker_log("Função sem pasta mapeada: {$nome_funcao}", 'ERROR');
+                rename($staged, $failedDir . '/' . basename($staged));
+                rename($processingMeta, $failedDir . '/' . basename($processingMeta));
+                continue;
+            }
         }
 
         $clientes_base = ['/mnt/clientes/2024', '/mnt/clientes/2025', '/mnt/clientes/2026'];
@@ -984,12 +1087,26 @@ do {
         // simply not existing (permanent, should fail).
         $sftpDiscover = sftp_connect_safe($ftp_host, $ftp_port, $ftp_user, $ftp_pass, $sftpConnError);
         if ($sftpDiscover) {
-            foreach ($clientes_base as $base) {
-                $destino_base = $base . '/' . $nomenclatura . '/' . $pasta_funcao;
-                $attemptedDestinos[] = $destino_base;
-                if (@$sftpDiscover->is_dir($destino_base)) {
-                    $upload_ok = $destino_base;
-                    break;
+            if ($taskType === 'animacao') {
+                $baseSubpath = trim($caminho_base_upload !== '' ? $caminho_base_upload : '04.Finalizacao/Anima', '/');
+                $baseParent = trim(dirname($baseSubpath), '/.');
+                $animaFolder = trim(basename($baseSubpath), '/.');
+                foreach ($clientes_base as $base) {
+                    $destino_base = $base . '/' . $nomenclatura . '/' . $baseParent;
+                    $attemptedDestinos[] = $destino_base . '/' . $animaFolder;
+                    if (@$sftpDiscover->is_dir($destino_base)) {
+                        $upload_ok = rtrim($destino_base, '/') . '/' . $animaFolder;
+                        break;
+                    }
+                }
+            } else {
+                foreach ($clientes_base as $base) {
+                    $destino_base = $base . '/' . $nomenclatura . '/' . $pasta_funcao;
+                    $attemptedDestinos[] = $destino_base;
+                    if (@$sftpDiscover->is_dir($destino_base)) {
+                        $upload_ok = $destino_base;
+                        break;
+                    }
                 }
             }
         }
@@ -1048,40 +1165,45 @@ do {
             continue;
         }
 
-        $semAcento = removerTodosAcentos_worker($nome_funcao);
-        $processo = strtoupper(mb_substr($semAcento, 0, 3, 'UTF-8'));
-        $nome_base = "{$numeroImagem}.{$nomenclatura_clean}-{$primeiraPalavra_clean}-{$tipo}-{$processo}";
-        $revisao = resolve_revisao_worker($meta['dataIdFuncoes'] ?? []);
         $remote_dir = $upload_ok;
-        $nome_final = "{$nome_base}-{$revisao}.{$ext}";
+        if ($taskType === 'animacao') {
+            $remote_dir = $remote_dir . '/' . build_animation_folder_name_worker($nome_imagem_original, $tipo_animacao);
+            $nome_final = build_animation_file_name_worker($numeroImagem, $nomenclatura, $tipo_animacao, $ext, $nome_funcao);
+        } else {
+            $semAcento = removerTodosAcentos_worker($nome_funcao);
+            $processo = strtoupper(mb_substr($semAcento, 0, 3, 'UTF-8'));
+            $nome_base = "{$numeroImagem}.{$nomenclatura_clean}-{$primeiraPalavra_clean}-{$tipo}-{$processo}";
+            $revisao = resolve_revisao_worker($meta['dataIdFuncoes'] ?? []);
+            $nome_final = "{$nome_base}-{$revisao}.{$ext}";
 
-        // Regras especiais iguais ao uploadFinal.php
-        $funcao_normalizada = mb_strtolower($nome_funcao, 'UTF-8');
-        if ($pasta_funcao === '03.Models') {
-            $nomeImagemSanitizado = sanitizeFilename_worker($nome_imagem);
-            $funcao_key = $funcao_normalizada;
-            if ($funcao_key === 'alteração' || $funcao_key === 'alteracao') {
-                $remote_dir = $remote_dir . "/{$nomeImagemSanitizado}/Final/{$revisao}";
-            } else {
-                $mapa_sub = [
-                    'modelagem' => 'MT',
-                    'composição' => 'Comp',
-                    'composicao' => 'Comp',
-                    'finalização' => 'Final',
-                    'finalizacao' => 'Final',
-                    'pré-finalização' => 'Final',
-                    'pre-finalizacao' => 'Final'
-                ];
-                $subpasta_funcao = $mapa_sub[$funcao_key] ?? 'OUTROS';
-                $remote_dir = $remote_dir . "/{$nomeImagemSanitizado}/{$subpasta_funcao}";
+            // Regras especiais iguais ao uploadFinal.php
+            $funcao_normalizada = mb_strtolower($nome_funcao, 'UTF-8');
+            if ($pasta_funcao === '03.Models') {
+                $nomeImagemSanitizado = sanitizeFilename_worker($nome_imagem);
+                $funcao_key = $funcao_normalizada;
+                if ($funcao_key === 'alteração' || $funcao_key === 'alteracao') {
+                    $remote_dir = $remote_dir . "/{$nomeImagemSanitizado}/Final/{$revisao}";
+                } else {
+                    $mapa_sub = [
+                        'modelagem' => 'MT',
+                        'composição' => 'Comp',
+                        'composicao' => 'Comp',
+                        'finalização' => 'Final',
+                        'finalizacao' => 'Final',
+                        'pré-finalização' => 'Final',
+                        'pre-finalizacao' => 'Final'
+                    ];
+                    $subpasta_funcao = $mapa_sub[$funcao_key] ?? 'OUTROS';
+                    $remote_dir = $remote_dir . "/{$nomeImagemSanitizado}/{$subpasta_funcao}";
+                }
+            } elseif ($funcao_normalizada === 'pós-produção' || $funcao_normalizada === 'pos-producao' || $funcao_normalizada === 'pos-produção') {
+                // Pós-Produção: nome_final = nome_imagem_revisao.ext em pasta revisao
+                $nome_final = "{$nome_imagem_clean}_{$revisao}.{$ext}";
+                $remote_dir = $remote_dir . "/{$revisao}";
+            } elseif ($funcao_normalizada === 'planta humanizada') {
+                $nome_final = "{$nome_imagem_clean}_{$revisao}.{$ext}";
+                $remote_dir = $remote_dir . "/{$revisao}/PH";
             }
-        } elseif ($funcao_normalizada === 'pós-produção' || $funcao_normalizada === 'pos-producao' || $funcao_normalizada === 'pos-produção') {
-            // Pós-Produção: nome_final = nome_imagem_revisao.ext em pasta revisao
-            $nome_final = "{$nome_imagem_clean}_{$revisao}.{$ext}";
-            $remote_dir = $remote_dir . "/{$revisao}";
-        } elseif ($funcao_normalizada === 'planta humanizada') {
-            $nome_final = "{$nome_imagem_clean}_{$revisao}.{$ext}";
-            $remote_dir = $remote_dir . "/{$revisao}/PH";
         }
 
         // Garantir diretórios remotos existentes
@@ -1089,7 +1211,9 @@ do {
         // Windows/SMB to present 8.3 shortnames (e.g. names with degree symbol).
         $parts = explode('/', trim($remote_dir, '/'));
         foreach ($parts as &$p) {
-            $p = sanitizeFilename_worker($p);
+            $p = $taskType === 'animacao'
+                ? sanitizeFolderSegment_worker($p)
+                : sanitizeFilename_worker($p);
         }
         $remote_dir = '/' . implode('/', $parts);
 

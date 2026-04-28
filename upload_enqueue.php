@@ -146,6 +146,84 @@ if (!function_exists('normalizeRevisaoUploadEnqueue')) {
     }
 }
 
+if (!function_exists('normalizeTaskTypeUploadEnqueue')) {
+    function normalizeTaskTypeUploadEnqueue($value): string
+    {
+        $raw = mb_strtolower(trim((string)$value), 'UTF-8');
+        return $raw === 'animacao' ? 'animacao' : 'imagem';
+    }
+}
+
+if (!function_exists('normalizeAnimationTypeUploadEnqueue')) {
+    function normalizeAnimationTypeUploadEnqueue($value): ?string
+    {
+        $raw = mb_strtolower(trim((string)$value), 'UTF-8');
+        if ($raw === '') {
+            return null;
+        }
+        if (!in_array($raw, ['horizontal', 'vertical', 'reels'], true)) {
+            return null;
+        }
+        return $raw;
+    }
+}
+
+if (!function_exists('formatAnimationTypeUploadEnqueue')) {
+    function formatAnimationTypeUploadEnqueue($value): string
+    {
+        $normalized = normalizeAnimationTypeUploadEnqueue($value);
+        if ($normalized === null) {
+            return '';
+        }
+        return ucfirst($normalized);
+    }
+}
+
+if (!function_exists('sanitizeFolderSegmentUploadEnqueue')) {
+    function sanitizeFolderSegmentUploadEnqueue($str)
+    {
+        $str = removerTodosAcentos((string)$str);
+        $str = str_replace(['°', 'º', 'ª'], 'o', $str);
+        $trans = @iconv('UTF-8', 'ASCII//TRANSLIT', $str);
+        if ($trans !== false) {
+            $str = $trans;
+        }
+        $str = preg_replace('/[\/\\:\*\?"<>\|]/', '', $str);
+        $str = preg_replace('/[\x00-\x1F\x7F]/u', '', $str);
+        $str = preg_replace('/\s+/', ' ', $str);
+        return trim($str, " .-_\t\n\r\0\x0B");
+    }
+}
+
+if (!function_exists('buildAnimationFolderNameUploadEnqueue')) {
+    function buildAnimationFolderNameUploadEnqueue($nomeImagem, $tipoAnimacao): string
+    {
+        $nome = sanitizeFolderSegmentUploadEnqueue($nomeImagem);
+        $tipo = formatAnimationTypeUploadEnqueue($tipoAnimacao);
+        if ($nome === '') {
+            $nome = 'Animacao';
+        }
+        if ($tipo === '') {
+            return $nome;
+        }
+        return $nome . ' - ' . $tipo;
+    }
+}
+
+if (!function_exists('resolveLogFileTypeUploadEnqueue')) {
+    function resolveLogFileTypeUploadEnqueue($extension, string $taskType): string
+    {
+        $ext = strtoupper(trim((string)$extension, '. '));
+        if ($ext === '') {
+            return 'ARQUIVO';
+        }
+        if ($taskType === 'animacao') {
+            return $ext;
+        }
+        return $ext === 'PDF' ? 'PDF' : 'IMG';
+    }
+}
+
 if (!function_exists('resolveRevisaoFromDbUploadEnqueue')) {
     function resolveRevisaoFromDbUploadEnqueue(array $dataIdFuncoes): string
     {
@@ -216,12 +294,29 @@ for ($i = 0; $i < $total; $i++) {
     @chmod($destFile, 0666);
 
     // coleta metadados do POST
+    $tipo_tarefa = normalizeTaskTypeUploadEnqueue($_POST['tipo_tarefa'] ?? null);
+    $funcao_animacao_id = isset($_POST['funcao_animacao_id']) ? (int)$_POST['funcao_animacao_id'] : 0;
+    $animacao_id = isset($_POST['animacao_id']) ? (int)$_POST['animacao_id'] : 0;
+    $tipo_animacao = normalizeAnimationTypeUploadEnqueue($_POST['tipo_animacao'] ?? null);
+    $nome_imagem_original = trim((string)($_POST['nome_imagem_original'] ?? ($_POST['nome_imagem'] ?? '')));
+    $caminho_base_upload = trim((string)($_POST['caminho_base_upload'] ?? ''));
     $meta = [];
     $meta['original_name'] = $originalName;
     $meta['staged_path'] = $destFile;
     $meta['id'] = $id;
     $meta['uploaded_at'] = date('c');
     $meta['post'] = $_POST;
+    $meta['tipo_tarefa'] = $tipo_tarefa;
+    $meta['funcao_animacao_id'] = $tipo_tarefa === 'animacao' && $funcao_animacao_id > 0 ? $funcao_animacao_id : null;
+    $meta['animacao_id'] = $tipo_tarefa === 'animacao' && $animacao_id > 0 ? $animacao_id : null;
+    $meta['tipo_animacao'] = $tipo_tarefa === 'animacao' ? $tipo_animacao : null;
+    $meta['nome_imagem_original'] = $nome_imagem_original;
+    $meta['caminho_base_upload'] = $tipo_tarefa === 'animacao'
+        ? ($caminho_base_upload !== '' ? $caminho_base_upload : '04.Finalizacao/Anima')
+        : null;
+    $meta['nome_pasta_animacao'] = $tipo_tarefa === 'animacao'
+        ? buildAnimationFolderNameUploadEnqueue($nome_imagem_original, $tipo_animacao)
+        : null;
     // dataIdFuncoes pode estar serializado como JSON ou string
     if (isset($_POST['dataIdFuncoes'])) {
         $raw = $_POST['dataIdFuncoes'];
@@ -238,7 +333,7 @@ for ($i = 0; $i < $total; $i++) {
     try {
         require_once __DIR__ . '/conexao.php';
         $colaborador_id = isset($_POST['idcolaborador']) ? (int)$_POST['idcolaborador'] : null;
-        $tipo = strtolower(pathinfo($originalName, PATHINFO_EXTENSION)) === 'pdf' ? 'PDF' : 'IMG';
+        $tipo = resolveLogFileTypeUploadEnqueue($ext, $tipo_tarefa);
         $status = 'enfileirado';
         $tamanho = is_array($arquivos['size']) ? ($arquivos['size'][$i] ?? 0) : $arquivos['size'];
 
@@ -252,21 +347,29 @@ for ($i = 0; $i < $total; $i++) {
         }
 
         $logIds = [];
-        if (!empty($dataIdFuncoes)) {
-            $stmt = $conn->prepare("INSERT INTO arquivo_log (funcao_imagem_id, caminho, nome_arquivo, tamanho, tipo, colaborador_id, status) VALUES (?,?,?,?,?,?,?)");
+        if ($tipo_tarefa === 'animacao') {
+            $stmt = $conn->prepare("INSERT INTO arquivo_log (funcao_imagem_id, tipo_tarefa, funcao_animacao_id, caminho, nome_arquivo, tamanho, tipo, colaborador_id, status) VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?)");
+            if ($stmt) {
+                $stmt->bind_param('sissisis', $tipo_tarefa, $funcao_animacao_id, $destFile, $originalName, $tamanho, $tipo, $colaborador_id, $status);
+                $stmt->execute();
+                $logIds[] = $stmt->insert_id;
+                $stmt->close();
+            }
+        } elseif (!empty($dataIdFuncoes)) {
+            $stmt = $conn->prepare("INSERT INTO arquivo_log (funcao_imagem_id, tipo_tarefa, funcao_animacao_id, caminho, nome_arquivo, tamanho, tipo, colaborador_id, status) VALUES (?, ?, NULL, ?, ?, ?, ?, ?, ?)");
             if ($stmt) {
                 foreach ($dataIdFuncoes as $fid) {
                     $fidInt = (int)$fid;
-                    $stmt->bind_param('ississs', $fidInt, $destFile, $originalName, $tamanho, $tipo, $colaborador_id, $status);
+                    $stmt->bind_param('isssisis', $fidInt, $tipo_tarefa, $destFile, $originalName, $tamanho, $tipo, $colaborador_id, $status);
                     $stmt->execute();
                     $logIds[] = $stmt->insert_id;
                 }
                 $stmt->close();
             }
         } else {
-            $stmt = $conn->prepare("INSERT INTO arquivo_log (funcao_imagem_id, caminho, nome_arquivo, tamanho, tipo, colaborador_id, status) VALUES (NULL,?,?,?,?,?,?)");
+            $stmt = $conn->prepare("INSERT INTO arquivo_log (funcao_imagem_id, tipo_tarefa, funcao_animacao_id, caminho, nome_arquivo, tamanho, tipo, colaborador_id, status) VALUES (NULL, ?, NULL, ?, ?, ?, ?, ?, ?)");
             if ($stmt) {
-                $stmt->bind_param('ssisss', $destFile, $originalName, $tamanho, $tipo, $colaborador_id, $status);
+                $stmt->bind_param('sssisis', $tipo_tarefa, $destFile, $originalName, $tamanho, $tipo, $colaborador_id, $status);
                 $stmt->execute();
                 $logIds[] = $stmt->insert_id;
                 $stmt->close();
@@ -309,7 +412,7 @@ for ($i = 0; $i < $total; $i++) {
         }
 
         // 1) Se PDF: inserir em funcao_imagem_pdf (usando o mesmo nome_final calculado pelo servidor)
-        if ($extLower === 'pdf' && !empty($dataIdFuncoes)) {
+        if ($tipo_tarefa !== 'animacao' && $extLower === 'pdf' && !empty($dataIdFuncoes)) {
             $tipoCalc = 'PDF';
             $semAcento = removerTodosAcentos($nome_funcao);
             $processo = strtoupper(mb_substr($semAcento, 0, 3, 'UTF-8'));
@@ -340,7 +443,7 @@ for ($i = 0; $i < $total; $i++) {
 
         // 2) Se função for Caderno/Filtro de assets: colocar em aprovação
         $func_lower = mb_strtolower($nome_funcao, 'UTF-8');
-        if (!empty($dataIdFuncoes) && in_array($func_lower, ['caderno', 'filtro de assets'])) {
+        if ($tipo_tarefa !== 'animacao' && !empty($dataIdFuncoes) && in_array($func_lower, ['caderno', 'filtro de assets'])) {
             foreach ($dataIdFuncoes as $fid) {
                 $fidInt = (int)$fid;
                 $stmt = $conn->prepare("UPDATE funcao_imagem SET status = 'Em aprovação', requires_file_upload = 1, file_uploaded_at = NULL WHERE idfuncao_imagem = ?");

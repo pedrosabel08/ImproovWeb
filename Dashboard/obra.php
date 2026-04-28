@@ -718,6 +718,29 @@ $conn->close();
                     </tbody>
                 </table>
             </div>
+
+            <!-- ========================================================= -->
+            <!-- SEÇÃO DE ANIMAÇÕES                                         -->
+            <!-- ========================================================= -->
+            <div id="secao-animacoes" style="display:none;">
+                <h2>Animações</h2>
+                <table id="tabela-animacoes">
+                    <thead>
+                        <tr>
+                            <th>Nome da imagem</th>
+                            <th>Status Imagem</th>
+                            <th>Nome da animação</th>
+                            <th>Substatus</th>
+                            <th>Tipo de animação</th>
+                            <th>Duração (s)</th>
+                            <th>Animação</th>
+                            <th>Pós-Produção</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
         </div>
 
         <!-- Modal para unificar acompanhamentos (populado pelo JS) -->
@@ -1784,6 +1807,7 @@ $conn->close();
                 <button type="button" id="addRenderMs" class="ms-btn ms-btn-render">+Render</button>
                 <button type="button" id="addEfMs" class="ms-btn ms-btn-ef">+EF</button>
                 <button type="button" id="addRevisaoMs" class="ms-btn ms-btn-revisao">+Revisão</button>
+                <button type="button" id="addAnimacaoMs" class="ms-btn ms-btn-animacao">+Animação</button>
             </div>
         </div>
     </div>
@@ -2573,6 +2597,65 @@ $conn->close();
             updateFixed();
         });
     </script>
+
+    <!-- ========================================================= -->
+    <!-- ========================================================= -->
+    <!-- MODAL: Adicionar Animação                                  -->
+    <!-- ========================================================= -->
+    <div class="modal" id="modalAdicionarAnimacao" style="display:none;">
+        <div class="modal-content" style="width:440px; max-width:95%; margin:80px auto; max-height:85vh; overflow-y:auto;">
+            <span class="close" id="closeModalAnimacao" style="cursor:pointer; float:right; font-size:22px;">&times;</span>
+            <h2 style="margin-bottom:16px;">Adicionar Animação</h2>
+            <form id="formAdicionarAnimacao" method="post">
+                <input type="hidden" id="anim_imagem_id">
+                <input type="hidden" id="anim_obra_id">
+                <input type="hidden" id="anim_cliente_id">
+
+                <div style="margin-bottom:12px;">
+                    <label style="display:block; margin-bottom:4px; font-weight:600;">Tipo de animação</label>
+                    <select id="anim_tipo" name="tipo_animacao" required style="width:100%; padding:6px;">
+                        <option value="">-- Selecione --</option>
+                        <option value="vertical">Vertical</option>
+                        <option value="horizontal">Horizontal</option>
+                        <option value="reels">Reels</option>
+                    </select>
+                </div>
+
+                <div style="margin-bottom:12px;">
+                    <label style="display:block; margin-bottom:4px; font-weight:600;">Responsável (Finalização)</label>
+                    <select id="anim_colaborador" name="colaborador_id" required style="width:100%; padding:6px;">
+                        <option value="">-- Selecione --</option>
+                        <?php if (!empty($colaboradores_por_funcao[10])): ?>
+                            <?php foreach ($colaboradores_por_funcao[10] as $c): ?>
+                                <option value="<?= htmlspecialchars($c['idcolaborador']); ?>">
+                                    <?= htmlspecialchars($c['nome_colaborador']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </select>
+                </div>
+
+                <div style="margin-bottom:12px;">
+                    <label style="display:block; margin-bottom:4px; font-weight:600;">Duração (segundos)</label>
+                    <input type="number" id="anim_duracao" name="duracao" min="1" required
+                        style="width:100%; padding:6px; box-sizing:border-box;">
+                </div>
+
+                <div style="margin-bottom:12px;">
+                    <label style="display:block; margin-bottom:4px; font-weight:600;">Prazo</label>
+                    <input type="date" id="anim_prazo" name="prazo"
+                        style="width:100%; padding:6px; box-sizing:border-box;">
+                </div>
+
+                <div style="text-align:right;">
+                    <button type="button" id="cancelarModalAnimacao"
+                        style="margin-right:8px; padding:6px 16px;">Cancelar</button>
+                    <button type="submit" class="buttons-form-add"
+                        style="padding:6px 16px;">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
 </body>
 

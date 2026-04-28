@@ -433,6 +433,14 @@ function processarDados(data) {
           : "";
         card.dataset.parRepresentative = item.par_representative || "primary";
       }
+
+      // Animação attributes
+      if (item.is_animacao) {
+        card.dataset.isAnimacao = "1";
+        card.dataset.animacaoId = String(item.animacao_id || "");
+        card.dataset.tipoAnimacao = item.tipo_animacao || "";
+        card.classList.add("animacao-card");
+      }
     } else {
       // lógica para tarefas criadas
       bolinhaHTML = "";
@@ -638,6 +646,11 @@ function processarDados(data) {
       if (card.classList.contains("tarefa-criada")) {
         const idTarefa = card.dataset.id;
         abrirSidebarTarefaCriada(idTarefa);
+      } else if (card.dataset.isAnimacao === "1") {
+        // Cards de animação: abrir sidebar com o contexto de funcao_animacao
+        const idFuncao = card.dataset.id;
+        const idImagem = card.dataset.idImagem;
+        abrirSidebar(idFuncao, idImagem, card.dataset.nomeObraReal || "", true);
       } else if (card.classList.contains("tarefa-imagem")) {
         if (card.dataset.requiresFileUpload === "1") {
           Swal.fire({
@@ -804,6 +817,10 @@ function checkFuncoesSomentePrimeiroAcesso() {
       return checkFuncoesEmAndamento(idColaborador)
         .then(() => {
           try {
+            // Remove chaves antigas antes de salvar a de hoje
+            Object.keys(localStorage)
+              .filter((k) => k.startsWith("funcoes_visto_") && k !== chave)
+              .forEach((k) => localStorage.removeItem(k));
             localStorage.setItem(chave, "1");
           } catch (e) {
             console.error(
@@ -1122,68 +1139,112 @@ function checkFuncoesEmAndamento(idColaborador) {
   return new Promise((resolve, reject) => {
     fetch("getFuncoesEmAndamento.php", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: `idcolaborador=${idColaborador}`,
     })
       .then((res) => res.json())
       .then((funcoes) => {
         if (!funcoes || funcoes.length === 0) {
-          resolve(); // nada em andamento, segue fluxo
+          resolve();
           return;
         }
 
-        // Processa em sequência cada função
-        let index = 0;
+        const itensHtml = funcoes
+          .map(
+            (f) => `
+          <div class="fi-item" data-id="${f.idfuncao_imagem}" style="
+            border:1px solid #e2e8f0; border-radius:8px; padding:12px 14px;
+            margin-bottom:10px; text-align:left; background:#fff;">
+            <div style="font-weight:600; font-size:14px; color:#1a202c; margin-bottom:2px;">
+              ${f.imagem_nome}
+            </div>
+            <div style="font-size:12px; color:#718096; margin-bottom:10px;">
+              ${f.nome_funcao} &bull; ${f.nomenclatura}
+            </div>
+            <div style="display:flex; gap:8px; margin-bottom:0;">
+              <label style="flex:1; cursor:pointer;">
+                <input type="radio" name="fi_status_${f.idfuncao_imagem}" value="continuar" checked
+                  style="margin-right:5px;" onchange="document.getElementById('fi_obs_${f.idfuncao_imagem}').style.display='none'">
+                <span style="font-size:13px;">Continuar</span>
+              </label>
+              <label style="flex:1; cursor:pointer;">
+                <input type="radio" name="fi_status_${f.idfuncao_imagem}" value="hold"
+                  style="margin-right:5px;" onchange="document.getElementById('fi_obs_${f.idfuncao_imagem}').style.display='block'">
+                <span style="font-size:13px; color:#e53e3e;">HOLD</span>
+              </label>
+            </div>
+            <div id="fi_obs_${f.idfuncao_imagem}" style="display:none; margin-top:8px;">
+              <input type="text" placeholder="Por que não está fazendo?"
+                style="width:100%; box-sizing:border-box; padding:7px 10px; border:1px solid #cbd5e0;
+                border-radius:6px; font-size:13px; outline:none;">
+            </div>
+          </div>`,
+          )
+          .join("");
 
-        function perguntarProximo() {
-          if (index >= funcoes.length) {
-            resolve(); // terminou todas
+        Swal.fire({
+          title: "Tarefas em andamento",
+          html: `
+            <p style="font-size:13px; color:#718096; margin-bottom:14px;">
+              Revise o status de cada tarefa:
+            </p>
+            <div style="max-height:360px; overflow-y:auto; padding-right:4px;">
+              ${itensHtml}
+            </div>`,
+          confirmButtonText: "Confirmar",
+          showCancelButton: false,
+          focusConfirm: false,
+          preConfirm: () => {
+            const resultado = funcoes.map((f) => {
+              const radio = document.querySelector(
+                `input[name="fi_status_${f.idfuncao_imagem}"]:checked`,
+              );
+              const status = radio ? radio.value : "continuar";
+              const obsInput = document.querySelector(
+                `#fi_obs_${f.idfuncao_imagem} input`,
+              );
+              const obs = obsInput ? obsInput.value.trim() : "";
+              return { idfuncao_imagem: f.idfuncao_imagem, status, obs };
+            });
+
+            const semObs = resultado.find((i) => i.status === "hold" && !i.obs);
+            if (semObs) {
+              Swal.showValidationMessage(
+                "Preencha a observação para todas as tarefas em HOLD.",
+              );
+              return false;
+            }
+
+            return resultado;
+          },
+        }).then((result) => {
+          if (!result.isConfirmed) {
+            resolve();
             return;
           }
 
-          const funcao = funcoes[index];
-          Swal.fire({
-            title: `Você ainda está trabalhando em ${funcao.imagem_nome}?`,
-            text: `Função: ${funcao.nome_funcao}`,
-            icon: "question",
-            showCancelButton: true,
-            confirmButtonText: "Sim, estou fazendo",
-            cancelButtonText: "Não, colocar em HOLD",
-          }).then((result) => {
-            if (result.isConfirmed) {
-              // continua sem alterar
-              index++;
-              perguntarProximo();
-            } else {
-              // pede observação
-              Swal.fire({
-                title: "Observação",
-                input: "text",
-                inputPlaceholder: "Por que não está fazendo?",
-                showCancelButton: false,
-                confirmButtonText: "Salvar",
-              }).then((obsResult) => {
-                const obs = obsResult.value || "";
+          const paraHold = result.value.filter((i) => i.status === "hold");
 
-                fetch("atualizarFuncao.php", {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/x-www-form-urlencoded",
-                  },
-                  body: `idfuncao_imagem=${funcao.idfuncao_imagem}&observacao=${encodeURIComponent(obs)}`,
-                }).finally(() => {
-                  index++;
-                  perguntarProximo();
-                  carregarDados(idColaborador); // atualiza o kanban
-                });
-              });
-            }
+          if (paraHold.length === 0) {
+            resolve();
+            return;
+          }
+
+          Promise.all(
+            paraHold.map((item) =>
+              fetch("atualizarFuncao.php", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/x-www-form-urlencoded",
+                },
+                body: `idfuncao_imagem=${item.idfuncao_imagem}&observacao=${encodeURIComponent(item.obs)}`,
+              }),
+            ),
+          ).finally(() => {
+            carregarDados(idColaborador);
+            resolve();
           });
-        }
-
-        perguntarProximo();
+        });
       })
       .catch((err) => {
         console.error("Erro ao verificar funções em andamento:", err);
@@ -1217,7 +1278,7 @@ checkDailyAccess()
 carregarDados(colaborador_id);
 
 // Atualiza lista automaticamente quando uma função for inserida/atualizada ou upload enfileirado (via WebSocket)
-window.addEventListener('improov:funcaoAtualizada', () => {
+window.addEventListener("improov:funcaoAtualizada", () => {
   carregarDados(colaborador_id);
 });
 
@@ -2113,9 +2174,9 @@ function abrirSidebarTarefaCriada(idTarefa) {
     });
 }
 
-function abrirSidebar(idFuncao, idImagem, nomeObra = "") {
+function abrirSidebar(idFuncao, idImagem, nomeObra = "", isAnimacao = false) {
   return fetch(
-    `PaginaPrincipal/getInfosCard.php?idfuncao=${idFuncao}&imagem_id=${idImagem}`,
+    `PaginaPrincipal/getInfosCard.php?idfuncao=${idFuncao}&imagem_id=${idImagem}&is_animacao=${isAnimacao ? 1 : 0}`,
   )
     .then((res) => {
       if (!res.ok) throw new Error("Network response was not ok");
@@ -2309,14 +2370,26 @@ function abrirSidebar(idFuncao, idImagem, nomeObra = "") {
       const center = document.createElement("div");
       center.className = "mindmap-card mindmap-center";
       center.style.setProperty("--anim-delay", "0s");
+      const isAnimacaoCard =
+        String(funcao.is_animacao || "0") === "1" ||
+        String(funcao.is_animacao || "").toLowerCase() === "true";
+      const mainTitle = isAnimacaoCard
+        ? funcao.nome_animacao || "Animação"
+        : funcao.imagem_nome || "-";
+      const extraMainMeta = isAnimacaoCard
+        ? `<div><strong>Imagem:</strong> ${funcao.imagem_nome || "-"}</div>
+           <div><strong>Tipo:</strong> ${funcao.tipo_animacao || "-"}</div>
+           <div><strong>Duração:</strong> ${funcao.duracao || "-"}</div>`
+        : "";
       center.innerHTML = `
                 <div class="mindmap-center-title">Núcleo principal</div>
-                <div class="mindmap-main">${funcao.imagem_nome || "-"} - <span class="mindmap-status" style="font-size: 1rem; background:${getImagemStatusColor(data.status_imagem.nome_status)};">${data.status_imagem.nome_status || "-"}</span></div>
+                <div class="mindmap-main">${mainTitle} - <span class="mindmap-status" style="font-size: 1rem; background:${getImagemStatusColor(data.status_imagem.nome_status)};">${data.status_imagem.nome_status || "-"}</span></div>
                 <div class="mindmap-meta">
                     <div><strong>Função:</strong> ${funcao.nome_funcao || "-"}</div>
                     <div><strong>Status:</strong> <span class="mindmap-status" style="background:${getFuncaoStatusColor(funcao.status)};">${funcao.status || "-"}</span></div>
                     <div><strong>Prazo:</strong> ${funcao.prazo ? formatarData(funcao.prazo) : "-"}</div>
                     <div><strong>Observação:</strong> ${funcao.observacao || "-"}</div>
+                    ${extraMainMeta}
                 </div>
             `;
       centerSlot.appendChild(center);
@@ -3780,14 +3853,20 @@ document.getElementById("salvarModal").addEventListener("click", () => {
       imagem_id: cardSelecionado.dataset.idImagem,
       funcao_id: cardSelecionado.dataset.idFuncao,
       cardId: cardSelecionado.dataset.id,
+      animacao_id: cardSelecionado.dataset.animacaoId || "",
       status: statusMap[cardSelecionado.closest(".kanban-box").id] || null,
       prazo: modalPrazo.value,
       observacao: modalObs.value,
     };
 
+    const isAnimacaoCard = cardSelecionado.dataset.isAnimacao === "1";
+    const saveUrl = isAnimacaoCard
+      ? "PaginaPrincipal/atualizaFuncaoAnimacao.php"
+      : "insereFuncao.php";
+
     $.ajax({
       type: "POST",
-      url: "insereFuncao.php",
+      url: saveUrl,
       data: dados,
       success: function (response) {
         let payload = response;
@@ -3855,7 +3934,7 @@ document.getElementById("salvarModal").addEventListener("click", () => {
           const prev = (previousStatus || "").toString().toLowerCase();
           if (novo === "em andamento" && prev === "aprovado com ajustes") {
             // open mind map and get data so we can show the previous function name
-            abrirSidebar(dados.cardId, dados.imagem_id)
+            abrirSidebar(dados.cardId, dados.imagem_id, "", isAnimacaoCard)
               .then((data) => {
                 // ensure notifications container exists
                 let notificacoesDiv = mindmapContent?.querySelector(
@@ -4332,7 +4411,7 @@ colunas.forEach((col) => {
         if (_modalTitleDrag) {
           _modalTitleDrag.textContent = card.classList.contains("tarefa-criada")
             ? "Editar Card"
-            : (titulo || "Editar Card");
+            : titulo || "Editar Card";
         }
 
         // Posicionar modal ao lado da coluna de destino
@@ -4373,26 +4452,26 @@ function enviarImagens() {
   // Verifica de forma assíncrona; se houver pendentes exibe alerta e aborta.
   const _doEnviar = () => {
     const formData = new FormData();
-  imagensSelecionadas.forEach((file) => formData.append("imagens[]", file));
-  formData.append("dataIdFuncoes", idfuncao_imagem);
-  formData.append("idimagem", idimagem);
-  formData.append("nome_funcao", subtitulo);
-  formData.append("nome_imagem", titulo);
+    imagensSelecionadas.forEach((file) => formData.append("imagens[]", file));
+    formData.append("dataIdFuncoes", idfuncao_imagem);
+    formData.append("idimagem", idimagem);
+    formData.append("nome_funcao", subtitulo);
+    formData.append("nome_imagem", titulo);
 
-  const numeroImagem = titulo.match(/^\d+/)?.[0] || "";
-  formData.append("numeroImagem", numeroImagem);
-  formData.append("nomenclatura", obra);
+    const numeroImagem = titulo.match(/^\d+/)?.[0] || "";
+    formData.append("numeroImagem", numeroImagem);
+    formData.append("nomenclatura", obra);
 
-  // Extrai a primeira palavra da descrição (depois da nomenclatura)
-  // aceita letras maiúsculas, underscores e dígitos na nomenclatura (ex: MEN_991)
-  const descricaoMatch = titulo.match(/^\d+\.\s*[A-Z0-9_]+\s+([^\s]+)/i);
-  const primeiraPalavra = descricaoMatch ? descricaoMatch[1] : "";
-  formData.append("primeiraPalavra", primeiraPalavra);
+    // Extrai a primeira palavra da descrição (depois da nomenclatura)
+    // aceita letras maiúsculas, underscores e dígitos na nomenclatura (ex: MEN_991)
+    const descricaoMatch = titulo.match(/^\d+\.\s*[A-Z0-9_]+\s+([^\s]+)/i);
+    const primeiraPalavra = descricaoMatch ? descricaoMatch[1] : "";
+    formData.append("primeiraPalavra", primeiraPalavra);
 
-  // Container de progresso
-  const progressContainer = document.createElement("div");
-  progressContainer.style.fontSize = "16px";
-  progressContainer.innerHTML = `
+    // Container de progresso
+    const progressContainer = document.createElement("div");
+    progressContainer.style.fontSize = "16px";
+    progressContainer.innerHTML = `
         <progress id="uploadProgress" value="0" max="100" style="width:100%;height:20px;"></progress>
         <div id="uploadStatus">Enviando... 0%</div>
         <div id="uploadTempo">Tempo: 0s</div>
@@ -4401,114 +4480,120 @@ function enviarImagens() {
         <button id="cancelarUpload" style="margin-top:10px;padding:5px 10px;">Cancelar</button>
     `;
 
-  Swal.fire({
-    title: "Enviando prévia...",
-    html: progressContainer,
-    showConfirmButton: false,
-    allowOutsideClick: false,
-    allowEscapeKey: false,
-    allowEnterKey: false,
-    didOpen: () => {
-      // Avoid backdrop clicks bubbling to global handlers (which might close other modals/kanban UI)
-      try {
-        const container = Swal.getContainer();
-        if (container) {
-          ["click", "mousedown", "touchstart", "pointerdown"].forEach((evt) => {
-            container.addEventListener(evt, (e) => e.stopPropagation(), true);
-          });
-        }
-      } catch (e) {}
+    Swal.fire({
+      title: "Enviando prévia...",
+      html: progressContainer,
+      showConfirmButton: false,
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+      allowEnterKey: false,
+      didOpen: () => {
+        // Avoid backdrop clicks bubbling to global handlers (which might close other modals/kanban UI)
+        try {
+          const container = Swal.getContainer();
+          if (container) {
+            ["click", "mousedown", "touchstart", "pointerdown"].forEach(
+              (evt) => {
+                container.addEventListener(
+                  evt,
+                  (e) => e.stopPropagation(),
+                  true,
+                );
+              },
+            );
+          }
+        } catch (e) {}
 
-      const xhr = new XMLHttpRequest();
-      const startTime = Date.now();
-      let uploadCancelado = false;
+        const xhr = new XMLHttpRequest();
+        const startTime = Date.now();
+        let uploadCancelado = false;
 
-      xhr.open("POST", "uploadArquivos.php");
+        xhr.open("POST", "uploadArquivos.php");
 
-      xhr.upload.addEventListener("progress", (e) => {
-        if (e.lengthComputable) {
-          const now = Date.now();
-          const elapsed = (now - startTime) / 1000;
-          const uploadedMB = e.loaded / (1024 * 1024);
-          const totalMB = e.total / (1024 * 1024);
-          const percent = (e.loaded / e.total) * 100;
-          const speed = uploadedMB / elapsed;
-          const remainingMB = totalMB - uploadedMB;
-          const estimatedTime = remainingMB / (speed || 1);
+        xhr.upload.addEventListener("progress", (e) => {
+          if (e.lengthComputable) {
+            const now = Date.now();
+            const elapsed = (now - startTime) / 1000;
+            const uploadedMB = e.loaded / (1024 * 1024);
+            const totalMB = e.total / (1024 * 1024);
+            const percent = (e.loaded / e.total) * 100;
+            const speed = uploadedMB / elapsed;
+            const remainingMB = totalMB - uploadedMB;
+            const estimatedTime = remainingMB / (speed || 1);
 
-          document.getElementById("uploadProgress").value = percent;
-          document.getElementById("uploadStatus").innerText =
-            `Enviando... ${percent.toFixed(2)}%`;
-          document.getElementById("uploadTempo").innerText =
-            `Tempo: ${elapsed.toFixed(1)}s`;
-          document.getElementById("uploadVelocidade").innerText =
-            `Velocidade: ${speed.toFixed(2)} MB/s`;
-          document.getElementById("uploadEstimativa").innerText =
-            `Tempo restante: ${estimatedTime.toFixed(1)}s`;
-        }
-      });
+            document.getElementById("uploadProgress").value = percent;
+            document.getElementById("uploadStatus").innerText =
+              `Enviando... ${percent.toFixed(2)}%`;
+            document.getElementById("uploadTempo").innerText =
+              `Tempo: ${elapsed.toFixed(1)}s`;
+            document.getElementById("uploadVelocidade").innerText =
+              `Velocidade: ${speed.toFixed(2)} MB/s`;
+            document.getElementById("uploadEstimativa").innerText =
+              `Tempo restante: ${estimatedTime.toFixed(1)}s`;
+          }
+        });
 
-      xhr.onreadystatechange = () => {
-        if (xhr.readyState === 4 && !uploadCancelado) {
-          try {
-            const res = JSON.parse(xhr.responseText);
+        xhr.onreadystatechange = () => {
+          if (xhr.readyState === 4 && !uploadCancelado) {
+            try {
+              const res = JSON.parse(xhr.responseText);
 
-            if (res.error) {
+              if (res.error) {
+                Toastify({
+                  text: "Erro: " + res.error,
+                  duration: 3000,
+                  gravity: "top",
+                  backgroundColor: "#f44336",
+                }).showToast();
+              } else {
+                Swal.fire({
+                  position: "center",
+                  icon: "success",
+                  title: "Prévia enviada com sucesso!",
+                  showConfirmButton: false,
+                  timer: 2000,
+                });
+                carregarDados(colaborador_id);
+              }
+            } catch (err) {
               Toastify({
-                text: "Erro: " + res.error,
+                text: "Erro ao processar resposta do servidor",
                 duration: 3000,
                 gravity: "top",
                 backgroundColor: "#f44336",
               }).showToast();
-            } else {
-              Swal.fire({
-                position: "center",
-                icon: "success",
-                title: "Prévia enviada com sucesso!",
-                showConfirmButton: false,
-                timer: 2000,
-              });
-              carregarDados(colaborador_id);
+              console.error(err);
             }
-          } catch (err) {
+          }
+        };
+
+        xhr.onerror = () => {
+          if (!uploadCancelado) {
             Toastify({
-              text: "Erro ao processar resposta do servidor",
+              text: "Erro ao enviar prévia",
               duration: 3000,
               gravity: "top",
               backgroundColor: "#f44336",
             }).showToast();
-            console.error(err);
           }
-        }
-      };
+        };
 
-      xhr.onerror = () => {
-        if (!uploadCancelado) {
-          Toastify({
-            text: "Erro ao enviar prévia",
-            duration: 3000,
-            gravity: "top",
-            backgroundColor: "#f44336",
-          }).showToast();
-        }
-      };
-
-      document
-        .getElementById("cancelarUpload")
-        .addEventListener("click", () => {
-          uploadCancelado = true;
-          xhr.abort();
-          Swal.fire({
-            icon: "warning",
-            title: "Upload cancelado",
-            showConfirmButton: false,
-            timer: 1500,
+        document
+          .getElementById("cancelarUpload")
+          .addEventListener("click", () => {
+            uploadCancelado = true;
+            xhr.abort();
+            Swal.fire({
+              icon: "warning",
+              title: "Upload cancelado",
+              showConfirmButton: false,
+              timer: 1500,
+            });
           });
-        });
 
-      xhr.send(formData);
-    },
-  });
+        xhr.send(formData);
+      },
+    });
   }; // fim _doEnviar
 
   // Se a tarefa está em "Ajuste", verifica comentários pendentes no Flow Review
@@ -4524,8 +4609,36 @@ function enviarImagens() {
             title: "Comentários pendentes",
             html: `Existem <strong>${data.pendentes}</strong> comentário(s) não concluído(s).<br>
                    Acesse o <strong>Flow Review</strong> e marque todos os ajustes como concluídos antes de enviar uma nova versão.`,
-            confirmButtonText: "Entendido",
-            confirmButtonColor: "#f59e0b",
+            showCancelButton: true,
+            confirmButtonText: "Ir para o Flow Review",
+            cancelButtonText: "Entendido",
+            confirmButtonColor: "#2563eb",
+            cancelButtonColor: "#f59e0b",
+          }).then((result) => {
+            if (!result.isConfirmed) return;
+
+            const nomeObraFinal = obra || "";
+            localStorage.setItem(
+              "fr_goto",
+              JSON.stringify({
+                idfuncao_imagem: idfuncao_imagem,
+                nome_obra: nomeObraFinal,
+              }),
+            );
+
+            // Derive ImproovWeb base dynamically so it works on both local and production
+            const _p = window.location.pathname;
+            const _si = _p.indexOf("/ImproovWeb");
+            const _imBase =
+              _si !== -1
+                ? window.location.origin +
+                  _p.slice(0, _si + "/ImproovWeb".length)
+                : "https://improov.com.br/flow/ImproovWeb";
+            const base = `${_imBase}/FlowReview/index.php`;
+            const url = nomeObraFinal
+              ? `${base}?obra_nome=${encodeURIComponent(nomeObraFinal)}`
+              : base;
+            window.open(url, "_blank");
           });
         } else {
           _doEnviar();
@@ -4550,13 +4663,24 @@ function enviarArquivo() {
 
   // Monta os campos exatamente como o backend espera
   const file = arquivosFinais[0];
+  const isAnimacaoCard = cardSelecionado?.dataset?.isAnimacao === "1";
+  const tipoAnimacaoCard = cardSelecionado?.dataset?.tipoAnimacao || "";
   const formData = new FormData();
   formData.append("arquivo_final", file);
-  formData.append("dataIdFuncoes", JSON.stringify([idfuncao_imagem]));
+  formData.append("tipo_tarefa", isAnimacaoCard ? "animacao" : "imagem");
+  if (isAnimacaoCard) {
+    formData.append("funcao_animacao_id", idfuncao_imagem || "");
+    formData.append("animacao_id", cardSelecionado?.dataset?.animacaoId || "");
+    formData.append("tipo_animacao", tipoAnimacaoCard);
+    formData.append("caminho_base_upload", "04.Finalizacao/Anima");
+  } else {
+    formData.append("dataIdFuncoes", JSON.stringify([idfuncao_imagem]));
+  }
   formData.append("idimagem", idimagem);
   formData.append("nome_funcao", subtitulo);
   const campoNomeImagem = titulo;
   formData.append("nome_imagem", campoNomeImagem);
+  formData.append("nome_imagem_original", campoNomeImagem);
 
   const numeroImagem = campoNomeImagem.match(/^\d+/)?.[0] || "";
   formData.append("numeroImagem", numeroImagem);

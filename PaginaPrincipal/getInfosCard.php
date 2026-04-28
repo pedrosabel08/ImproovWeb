@@ -10,27 +10,55 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
     // --- Parâmetro ---
     $idImagemSelecionada = (int) $_GET['imagem_id']; // segurança
     $idFuncaoImagem = isset($_GET['idfuncao']) ? (int) $_GET['idfuncao'] : 0;
+    $isAnimacao = isset($_GET['is_animacao']) && (int) $_GET['is_animacao'] === 1;
 
     // ==========================================================
-    // 1) Funções da imagem (mantém sua lógica atual)
+    // 1) Núcleo do card (funcao_imagem ou funcao_animacao)
     // ==========================================================
-    $sqlFuncoes = "SELECT 
-            img.clima, 
-            img.imagem_nome,
-            img.idimagens_cliente_obra AS idimagem,
-            f.nome_funcao, 
-            col.idcolaborador AS colaborador_id, 
-            col.nome_colaborador, 
-            fi.prazo, 
-            fi.status,
-            fi.observacao,
-            fi.idfuncao_imagem AS id
-        FROM imagens_cliente_obra img
-        LEFT JOIN funcao_imagem fi ON img.idimagens_cliente_obra = fi.imagem_id
-        LEFT JOIN colaborador col ON fi.colaborador_id = col.idcolaborador
-        LEFT JOIN funcao f ON fi.funcao_id = f.idfuncao
-        WHERE fi.idfuncao_imagem = $idFuncaoImagem
-    ";
+    if ($isAnimacao) {
+        $sqlFuncoes = "SELECT
+                img.clima,
+                img.imagem_nome,
+                img.idimagens_cliente_obra AS idimagem,
+                f.nome_funcao,
+                col.idcolaborador AS colaborador_id,
+                col.nome_colaborador,
+                fa.prazo,
+                fa.status,
+                fa.observacao,
+                fa.id AS id,
+                a.idanimacao AS animacao_id,
+                a.tipo_animacao,
+                a.duracao,
+                CONCAT('Animação - ', UCASE(SUBSTRING(a.tipo_animacao, 1, 1)), LOWER(SUBSTRING(a.tipo_animacao, 2))) AS nome_animacao,
+                1 AS is_animacao
+            FROM funcao_animacao fa
+            JOIN animacao a ON a.idanimacao = fa.animacao_id
+            JOIN imagens_cliente_obra img ON img.idimagens_cliente_obra = a.imagem_id
+            LEFT JOIN colaborador col ON fa.colaborador_id = col.idcolaborador
+            LEFT JOIN funcao f ON fa.funcao_id = f.idfuncao
+            WHERE fa.id = $idFuncaoImagem
+            LIMIT 1";
+    } else {
+        $sqlFuncoes = "SELECT 
+                img.clima, 
+                img.imagem_nome,
+                img.idimagens_cliente_obra AS idimagem,
+                f.nome_funcao, 
+                col.idcolaborador AS colaborador_id, 
+                col.nome_colaborador, 
+                fi.prazo, 
+                fi.status,
+                fi.observacao,
+                fi.idfuncao_imagem AS id,
+                0 AS is_animacao
+            FROM imagens_cliente_obra img
+            LEFT JOIN funcao_imagem fi ON img.idimagens_cliente_obra = fi.imagem_id
+            LEFT JOIN colaborador col ON fi.colaborador_id = col.idcolaborador
+            LEFT JOIN funcao f ON fi.funcao_id = f.idfuncao
+            WHERE fi.idfuncao_imagem = $idFuncaoImagem
+            LIMIT 1";
+    }
     $resultFuncoes = $conn->query($sqlFuncoes);
     $funcoes = [];
     if ($resultFuncoes && $resultFuncoes->num_rows > 0) {
@@ -90,7 +118,7 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
     ];
 
     $logAlteracoes = [];
-    if ($idFuncaoImagem > 0) {
+    if (!$isAnimacao && $idFuncaoImagem > 0) {
         // Fetch logs in DESC order for the UI display (most recent first)
         // Also fetch the image status name that was active at the time of the log
         $sqlLog = "SELECT la.idlog, la.funcao_imagem_id, COALESCE(la.status_anterior, 'Tarefa criada') AS status_anterior, la.status_novo, la.data,
@@ -252,6 +280,7 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
     $arquivos_tipo = [];
 
     // fetch tipo_imagem (name) from imagens_cliente_obra
+    $obraIdFromImage = null;
     $tipoImagemName = null;
     $sqlTipo = "SELECT tipo_imagem, obra_id FROM imagens_cliente_obra WHERE idimagens_cliente_obra = " . $idImagemSelecionada . " LIMIT 1";
     if ($resTipo = $conn->query($sqlTipo)) {

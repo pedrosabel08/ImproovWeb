@@ -349,12 +349,27 @@ foreach ($stmtMeta->get_result()->fetch_all(MYSQLI_ASSOC) as $r) {
   $metaMap[(int) $r['funcao_id']] = (int) $r['quantidade_meta'];
 }
 $stmtMeta->close();
+
+// ── Imagens dos colaboradores ─────────────────────────────────────────────────
+$allCollabImageIds = array_merge($perspIds, $plantasIds, $alterIds);
+$placeholdersImg = implode(',', array_fill(0, count($allCollabImageIds), '?'));
+$typesImg = str_repeat('i', count($allCollabImageIds));
+
+$sqlImg = "SELECT idcolaborador, imagem FROM colaborador WHERE idcolaborador IN ($placeholdersImg)";
+$stmtImg = $conn->prepare($sqlImg);
+$stmtImg->bind_param($typesImg, ...$allCollabImageIds);
+$stmtImg->execute();
+$imagemIdx = [];
+foreach ($stmtImg->get_result()->fetch_all(MYSQLI_ASSOC) as $r) {
+  $imagemIdx[(int) $r['idcolaborador']] = $r['imagem'];
+}
+$stmtImg->close();
 $conn->close();
 
 // ── Monta seções ──────────────────────────────────────────────────────────────
-function buildFuncionario(string $nome, int $id, int $qtd, int $recorde, ?int $pct_meta = null): array
+function buildFuncionario(string $nome, int $id, int $qtd, int $recorde, ?int $pct_meta = null, ?string $imagem_url = null): array
 {
-  return ['nome' => $nome, 'colaborador_id' => $id, 'qtd_parcial' => $qtd, 'recorde_mes' => $recorde, 'pct_meta' => $pct_meta];
+  return ['nome' => $nome, 'colaborador_id' => $id, 'qtd_parcial' => $qtd, 'recorde_mes' => $recorde, 'pct_meta' => $pct_meta, 'imagem_url' => $imagem_url];
 }
 
 // Perspectivas
@@ -366,7 +381,17 @@ foreach ($perspIds as $cid) {
   $qtd = $finIdx[$cid]['Finalização Completa'] ?? 0;
   $rec = $recFinIdx[$cid]['Finalização Completa'] ?? 0;
   $pct = ($metaPerspInd !== null && $metaPerspInd > 0) ? (int) round(($qtd / $metaPerspInd) * 100) : null;
-  $perspFunc[] = buildFuncionario($perspNames[$cid], $cid, $qtd, $rec, $pct);
+  $imagem_url = null;
+  if (!empty($imagemIdx[$cid])) {
+    $rawImg = $imagemIdx[$cid];
+    if (preg_match('#^(https?://|//|/|\.\./)#i', $rawImg)) {
+      $imagem_url = $rawImg;
+    } else {
+      $rawImg = preg_replace('#^\./+#', '', $rawImg);
+      $imagem_url = '../' . $rawImg;
+    }
+  }
+  $perspFunc[] = buildFuncionario($perspNames[$cid], $cid, $qtd, $rec, $pct, $imagem_url);
 }
 
 // Outros = soma de todos os colaboradores fora da lista (21 já excluído pelo SQL)
@@ -379,7 +404,7 @@ foreach ($finIdx as $cid => $nomes) {
   }
 }
 $outrosPct = ($metaPerspInd !== null && $metaPerspInd > 0) ? (int) round(($outrosQtd / $metaPerspInd) * 100) : null;
-$perspFunc[] = buildFuncionario('Outros', 0, $outrosQtd, $outrosRec, $outrosPct);
+$perspFunc[] = buildFuncionario('Outros', 0, $outrosQtd, $outrosRec, $outrosPct, null);
 
 // Plantas Humanizadas
 $metaPlantasTotal = $metaMap[7] ?? null;
@@ -390,7 +415,17 @@ foreach ($plantasIds as $cid) {
   $qtd = $finIdx[$cid]['Finalização de Planta Humanizada'] ?? 0;
   $rec = $recFinIdx[$cid]['Finalização de Planta Humanizada'] ?? 0;
   $pct = ($metaPlantasInd !== null && $metaPlantasInd > 0) ? (int) round(($qtd / $metaPlantasInd) * 100) : null;
-  $plantasFunc[] = buildFuncionario($plantasNames[$cid], $cid, $qtd, $rec, $pct);
+  $imagem_url = null;
+  if (!empty($imagemIdx[$cid])) {
+    $rawImg = $imagemIdx[$cid];
+    if (preg_match('#^(https?://|//|/|\.\./)#i', $rawImg)) {
+      $imagem_url = $rawImg;
+    } else {
+      $rawImg = preg_replace('#^\./+#', '', $rawImg);
+      $imagem_url = '../' . $rawImg;
+    }
+  }
+  $plantasFunc[] = buildFuncionario($plantasNames[$cid], $cid, $qtd, $rec, $pct, $imagem_url);
 }
 
 // Alterações
@@ -402,7 +437,17 @@ foreach ($alterIds as $cid) {
   $qtd = $altIdx[$cid] ?? 0;
   $rec = $recAltIdx[$cid] ?? 0;
   $pct = ($metaAltInd !== null && $metaAltInd > 0) ? (int) round(($qtd / $metaAltInd) * 100) : null;
-  $alterFunc[] = buildFuncionario($alterNames[$cid], $cid, $qtd, $rec, $pct);
+  $imagem_url = null;
+  if (!empty($imagemIdx[$cid])) {
+    $rawImg = $imagemIdx[$cid];
+    if (preg_match('#^(https?://|//|/|\.\./)#i', $rawImg)) {
+      $imagem_url = $rawImg;
+    } else {
+      $rawImg = preg_replace('#^\./+#', '', $rawImg);
+      $imagem_url = '../' . $rawImg;
+    }
+  }
+  $alterFunc[] = buildFuncionario($alterNames[$cid], $cid, $qtd, $rec, $pct, $imagem_url);
 }
 
 echo json_encode([

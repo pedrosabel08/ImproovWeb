@@ -4,7 +4,7 @@
 // Muda substatus da imagem para PRE_ALT (11).
 // Ao final, verifica se todas as imagens da obra estão prontas → READY_FOR_PLANNING (12).
 header('Content-Type: application/json; charset=utf-8');
-require_once '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 require_once '../config/session_bootstrap.php';
 require_once '../config/secure_env.php';
 

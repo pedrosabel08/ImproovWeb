@@ -3,7 +3,7 @@
 // Atualiza a complexidade e o flag necessita_retorno de uma análise já salva.
 // Re-dispara a verificação READY_FOR_PLANNING.
 header('Content-Type: application/json; charset=utf-8');
-require_once '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 require_once '../config/session_bootstrap.php';
 require_once '../config/secure_env.php';
 

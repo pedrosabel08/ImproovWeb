@@ -1,5 +1,5 @@
 <?php
-require_once '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 
 // Recebe dados do frontend
 $ganttId = (int)$_POST['gantt_id'];

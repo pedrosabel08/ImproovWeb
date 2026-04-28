@@ -3,7 +3,7 @@
 // Retorna imagens da obra com substatus RVW_DONE (10), PRE_ALT (11) ou READY_FOR_PLANNING (12)
 // Inclui dados da pre_alt_analise se já tiver sido preenchida
 header('Content-Type: application/json; charset=utf-8');
-require_once '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 require_once '../config/session_bootstrap.php';
 
 if (session_status() !== PHP_SESSION_ACTIVE) {

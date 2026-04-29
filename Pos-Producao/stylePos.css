@@ -48,6 +48,27 @@
   --transition: 0.18s ease;
   --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+
+  --si-p00: #ffc21c;
+  --si-r00: #1cf4ff;
+  --si-r01: #ff6200;
+  --si-r02: #ff3c00;
+  --si-r03: #ff0000;
+  --si-r04: #6449ff;
+  --si-r05: #7d36f7;
+  --si-ef: #0dff00;
+  --si-hold: #ff0000;
+  --si-tea: #f7eb07;
+  --si-ren: #0c9ef2;
+  --si-apr: #0c45f2;
+  --si-app: #7d36f7;
+  --si-rvw: #228b22;
+  --si-ok: #6495ed;
+  --si-fin: #228b22;
+  --si-drv: #00f3ff;
+  --si-rvw-done: #d97706;
+  --si-pre-alt: #7c3aed;
+  --si-ready-for-planning: #0891b2;
 }
 
 @media (prefers-color-scheme: dark) {

@@ -897,19 +897,9 @@ $conn->close();
         <i class="ri-loader-4-line ri-spin"></i> Carregando...
     </div>
 
-    <!-- Modal do mapa mental -->
-    <div class="modal mindmap-modal" id="mindmapModal">
-        <div class="modal-content mindmap-modal-content">
-            <!-- <div class="mindmap-header">
-                <h2>Mapa mental</h2>
-                <span class="close-button" id="closeMindmap">&times;</span>
-            </div> -->
-            <div class="mindmap-body">
-                <div class="mindmap-notifications" id="mindmap-notifications"></div>
-                <div class="mindmap-canvas" id="mindmap-content">
-                </div>
-            </div>
-        </div>
+    <!-- Task Panel -->
+    <div class="task-panel-overlay" id="taskPanelOverlay">
+        <div id="task-panel-content"></div>
     </div>
 
     <div id="modalSessao" class="modal-sessao">

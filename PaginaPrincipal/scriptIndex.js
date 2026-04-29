@@ -1639,10 +1639,16 @@ function showToast(message, type = "success") {
 
   Toastify({
     text: message,
-    duration: 4000,
+    duration: 3000,
     gravity: "top",
     position: "right",
     backgroundColor: backgroundColor,
+    style: {
+      borderRadius: "var(--radius-sm)",
+      fontFamily: '"Inter", sans-serif',
+      fontSize: "13px",
+      fontWeight: "500",
+    },
   }).showToast();
 }
 
@@ -1986,66 +1992,35 @@ function atualizarTaskCount() {
   });
 }
 
-// Mind map modal (detalhes)
-const mindmapModal = document.getElementById("mindmapModal");
-const mindmapContent = document.getElementById("mindmap-content");
-const mindmapNotifications = document.getElementById("mindmap-notifications");
-const closeMindmap = document.getElementById("closeMindmap");
+// Task Panel overlay
+const mindmapModal = document.getElementById("taskPanelOverlay");
+const mindmapContent = document.getElementById("task-panel-content");
 
 function openMindmapModal() {
   if (!mindmapModal) return;
-  mindmapModal.classList.remove("mindmap-exit");
+  mindmapModal.classList.remove("tp-overlay-exit");
   mindmapModal.style.display = "flex";
-  // trigger enter animation
-  requestAnimationFrame(() => mindmapModal.classList.add("mindmap-enter"));
+  requestAnimationFrame(() => mindmapModal.classList.add("tp-overlay-enter"));
 }
 
 function resetMindmapModal() {
   if (!mindmapContent) return;
   mindmapContent.innerHTML = "";
-  if (mindmapNotifications) mindmapNotifications.innerHTML = "";
-  mindmapContent.classList.remove("mindmap-blurred-mode");
-  mindmapContent.classList.remove("mindmap-has-notifications");
 }
 
 function closeMindmapModal() {
   if (!mindmapModal) return;
-  // play exit animation, then hide and reset
-  mindmapModal.classList.remove("mindmap-enter");
-  mindmapModal.classList.add("mindmap-exit");
+  mindmapModal.classList.remove("tp-overlay-enter");
+  mindmapModal.classList.add("tp-overlay-exit");
   const onAnimEnd = (e) => {
-    if (e.animationName && e.animationName.includes("mindmapFadeOut")) {
+    if (e.animationName && e.animationName.includes("tpOverlayOut")) {
       mindmapModal.style.display = "none";
-      mindmapModal.classList.remove("mindmap-exit");
+      mindmapModal.classList.remove("tp-overlay-exit");
       mindmapModal.removeEventListener("animationend", onAnimEnd);
       resetMindmapModal();
     }
   };
   mindmapModal.addEventListener("animationend", onAnimEnd);
-}
-
-if (closeMindmap) {
-  closeMindmap.addEventListener("click", closeMindmapModal);
-}
-
-if (mindmapModal) {
-  mindmapModal.addEventListener("click", (e) => {
-    if (e.target === mindmapModal) closeMindmapModal();
-  });
-}
-
-if (mindmapContent) {
-  mindmapContent.addEventListener("click", (e) => {
-    if (
-      e.target.closest(".mindmap-card") ||
-      e.target.closest(".mindmap-header") ||
-      e.target.closest(".notificacoes-container") ||
-      e.target.closest(".mindmap-notifications-card")
-    ) {
-      return;
-    }
-    closeMindmapModal();
-  });
 }
 
 // =====================
@@ -2188,115 +2163,6 @@ function abrirSidebar(idFuncao, idImagem, nomeObra = "", isAnimacao = false) {
 
       const funcao = data.funcoes && data.funcoes[0] ? data.funcoes[0] : {};
 
-      let pendingNotifications = null;
-      if (data.notificacoes && data.notificacoes.length > 0) {
-        const notificacoesDiv = document.createElement("div");
-        notificacoesDiv.className = "notificacoes-container";
-        notificacoesDiv.innerHTML = `<h3>Notificações</h3>`;
-
-        // blur other cards while notifications exist
-        if (mindmapContent)
-          mindmapContent.classList.add("mindmap-has-notifications");
-
-        data.notificacoes.forEach((notif) => {
-          const notifEl = document.createElement("div");
-          notifEl.className = "func-notif";
-          notifEl.dataset.notId = notif.id;
-
-          const msgSpan = document.createElement("div");
-          msgSpan.className = "msg";
-          msgSpan.textContent = notif.mensagem;
-
-          const rightDiv = document.createElement("div");
-          rightDiv.style.display = "flex";
-          rightDiv.style.alignItems = "center";
-
-          const dataSpan = document.createElement("div");
-          dataSpan.className = "data";
-          dataSpan.textContent = notif.data ? notif.data.split(" ")[0] : "";
-
-          const markBtn = document.createElement("button");
-          markBtn.className = "mark-btn";
-          markBtn.textContent = "Marcar lida";
-
-          // Click handler: mark as read via backend then remove element
-          function marcarLida() {
-            const id = notifEl.dataset.notId;
-            fetch("PaginaPrincipal/markNotificacao.php", {
-              method: "POST",
-              headers: { "Content-Type": "application/x-www-form-urlencoded" },
-              body: `id=${encodeURIComponent(id)}`,
-            })
-              .then((r) => r.json())
-              .then((res) => {
-                if (res && res.success) {
-                  // remove from DOM
-                  notifEl.remove();
-
-                  // if there are no more notifications, remove sidebar blur
-                  try {
-                    if (!notificacoesDiv.querySelector(".func-notif")) {
-                      notificacoesDiv.remove();
-                      if (mindmapContent)
-                        mindmapContent.classList.remove(
-                          "mindmap-has-notifications",
-                        );
-                    }
-                  } catch (e) {
-                    console.error("Erro ao atualizar blur do mapa:", e);
-                  }
-                  // update any card icon counts if present
-                  const card = document.querySelector(
-                    `.kanban-card[data-id="${notif.funcao_imagem_id || notif.funcao_imagem || ""}"]`,
-                  );
-                  if (card) {
-                    const countEl = card.querySelector(".notif-count");
-                    if (countEl) {
-                      let n = Number(countEl.textContent || 0);
-                      n = Math.max(0, n - 1);
-                      if (n === 0) {
-                        const icon = card.querySelector(".notif-icon");
-                        if (icon) icon.remove();
-                      } else {
-                        countEl.textContent = n;
-                      }
-                    }
-                  }
-                  showToast("Notificação marcada como lida", "update");
-                } else {
-                  showToast("Não foi possível marcar como lida", "error");
-                }
-              })
-              .catch((err) => {
-                console.error("Erro markNotificacao:", err);
-                showToast("Erro ao conectar com o servidor", "error");
-              });
-          }
-
-          // clicking the whole element marks as read (manual reading)
-          notifEl.addEventListener("click", function (e) {
-            // avoid double-trigger when clicking the button
-            if (e.target === markBtn) return;
-            marcarLida();
-          });
-
-          markBtn.addEventListener("click", function (e) {
-            e.stopPropagation();
-            marcarLida();
-          });
-
-          rightDiv.appendChild(dataSpan);
-          rightDiv.appendChild(markBtn);
-
-          notifEl.appendChild(msgSpan);
-          notifEl.appendChild(rightDiv);
-
-          notificacoesDiv.appendChild(notifEl);
-        });
-
-        pendingNotifications = notificacoesDiv;
-      }
-
       function getFuncaoStatusColor(status) {
         const s = String(status || "").toLowerCase();
         switch (s) {
@@ -2343,111 +2209,13 @@ function abrirSidebar(idFuncao, idImagem, nomeObra = "", isAnimacao = false) {
         }
       }
 
-      // ===== Canvas =====
-      const canvas = document.createElement("div");
-      canvas.className = "mindmap-layout";
-
-      const grid = document.createElement("div");
-      grid.className = "mindmap-grid";
-      canvas.appendChild(grid);
-
-      function createSlot(className, innerClassName) {
-        const slot = document.createElement("div");
-        slot.className = `mindmap-slot ${className}`;
-        const inner = document.createElement("div");
-        inner.className = `slot-inner ${innerClassName}`;
-        slot.appendChild(inner);
-        grid.appendChild(slot);
-        return inner;
-      }
-
-      const topSlot = createSlot("slot-top", "slot-inner-bottom");
-      const leftSlot = createSlot("slot-left", "slot-stack slot-stack-left");
-      const centerSlot = createSlot("slot-center", "slot-inner-center");
-      const rightSlot = createSlot("slot-right", "slot-stack slot-stack-right");
-      const bottomSlot = createSlot("slot-bottom", "slot-inner-top");
-
-      const center = document.createElement("div");
-      center.className = "mindmap-card mindmap-center";
-      center.style.setProperty("--anim-delay", "0s");
+      // ===== Task Panel =====
+      const nomeObraFinal = nomeObra || (funcao && funcao.nomenclatura) || "";
       const isAnimacaoCard =
         String(funcao.is_animacao || "0") === "1" ||
         String(funcao.is_animacao || "").toLowerCase() === "true";
-      const mainTitle = isAnimacaoCard
-        ? funcao.nome_animacao || "Animação"
-        : funcao.imagem_nome || "-";
-      const extraMainMeta = isAnimacaoCard
-        ? `<div><strong>Imagem:</strong> ${funcao.imagem_nome || "-"}</div>
-           <div><strong>Tipo:</strong> ${funcao.tipo_animacao || "-"}</div>
-           <div><strong>Duração:</strong> ${funcao.duracao || "-"}</div>`
-        : "";
-      center.innerHTML = `
-                <div class="mindmap-center-title">Núcleo principal</div>
-                <div class="mindmap-main">${mainTitle} - <span class="mindmap-status" style="font-size: 1rem; background:${getImagemStatusColor(data.status_imagem.nome_status)};">${data.status_imagem.nome_status || "-"}</span></div>
-                <div class="mindmap-meta">
-                    <div><strong>Função:</strong> ${funcao.nome_funcao || "-"}</div>
-                    <div><strong>Status:</strong> <span class="mindmap-status" style="background:${getFuncaoStatusColor(funcao.status)};">${funcao.status || "-"}</span></div>
-                    <div><strong>Prazo:</strong> ${funcao.prazo ? formatarData(funcao.prazo) : "-"}</div>
-                    <div><strong>Observação:</strong> ${funcao.observacao || "-"}</div>
-                    ${extraMainMeta}
-                </div>
-            `;
-      centerSlot.appendChild(center);
 
-      // Redraw connectors when clicking the center card (but not when clicking its drawer headers)
-      center.addEventListener("click", (e) => {
-        if (e.target.closest(".mindmap-center-drawer-title")) return;
-        requestAnimationFrame(drawMindmapLines);
-      });
-
-      let mindmapNodeIndex = 0;
-
-      function createNode(title, className, options = {}, parent = null) {
-        const node = document.createElement("div");
-        node.className = `mindmap-card mindmap-node ${className}`;
-        const delay = 0.06 * mindmapNodeIndex + 0.1;
-        node.style.setProperty("--anim-delay", `${delay}s`);
-        node.dataset.animDelay = String(delay);
-        mindmapNodeIndex += 1;
-
-        const header = document.createElement("div");
-        header.className = "mindmap-node-title";
-
-        const titleSpan = document.createElement("span");
-        titleSpan.textContent = title;
-
-        const toggle = document.createElement("span");
-        toggle.className = "mindmap-drawer-toggle";
-        toggle.innerHTML = "&#9662;";
-
-        header.appendChild(titleSpan);
-        header.appendChild(toggle);
-
-        const body = document.createElement("div");
-        body.className = "mindmap-node-body";
-
-        node.appendChild(header);
-        node.appendChild(body);
-        (parent || grid).appendChild(node);
-
-        if (options.collapsible === false) {
-          toggle.style.display = "none";
-        } else {
-          node.classList.add("mindmap-drawer");
-          header.addEventListener("click", () => {
-            node.classList.toggle("drawer-collapsed");
-          });
-
-          // trigger redraw of connectors only when the node itself is clicked (not the header)
-          node.addEventListener("click", (e) => {
-            if (e.target.closest(".mindmap-node-title")) return;
-            requestAnimationFrame(drawMindmapLines);
-          });
-        }
-
-        return body;
-      }
-
+      // Separate angulo_definido from other files
       const isAnguloDefinido = (it) => {
         const raw = `${it?.caminho || ""} ${it?.nome_interno || ""} ${it?.nome_arquivo || ""}`;
         return /angulo_definido/i.test(raw);
@@ -2459,7 +2227,6 @@ function abrirSidebar(idFuncao, idImagem, nomeObra = "", isAnimacao = false) {
       const arquivosTipoAll = Array.isArray(data.arquivos_tipo)
         ? data.arquivos_tipo
         : [];
-
       const anguloItems = [...arquivosImagemAll, ...arquivosTipoAll].filter(
         isAnguloDefinido,
       );
@@ -2470,39 +2237,806 @@ function abrirSidebar(idFuncao, idImagem, nomeObra = "", isAnimacao = false) {
         (it) => !isAnguloDefinido(it),
       );
 
-      // Arquivos (3 núcleos à esquerda)
-      if (pendingNotifications) {
-        const notifBody = createNode(
-          "Notificações",
-          "mindmap-notifications-card mindmap-notifications-focus",
-          {},
-          topSlot,
-        );
-        notifBody.appendChild(pendingNotifications);
+      // Preview image URL (first angulo_definido)
+      let previewUrl = null;
+      for (const it of anguloItems) {
+        if (it.caminho) {
+          try {
+            previewUrl = sftpToPublicUrl(it.caminho);
+          } catch (e) {}
+          if (previewUrl) break;
+        }
       }
 
-      const arquivosImagemBody = createNode(
-        "Arquivos da imagem",
-        "mindmap-files-image",
-        {},
-        leftSlot,
+      // Status badge class helper
+      function getStatusBadgeClass(status) {
+        return getUnifiedStatusClass(status, "etapa");
+      }
+
+      const mainTitle = isAnimacaoCard
+        ? funcao.nome_animacao || "Animação"
+        : funcao.imagem_nome || "-";
+
+      const revisionName =
+        data.status_imagem && data.status_imagem.nome_status
+          ? data.status_imagem.nome_status
+          : "";
+
+      const lastLog =
+        Array.isArray(data.log_alteracoes) && data.log_alteracoes.length > 0
+          ? data.log_alteracoes[0]
+          : null;
+      const ultimaAtualizacao = lastLog
+        ? formatarDataComentario(lastLog.data)
+        : "-";
+
+      // ── Build panel ──
+      const panel = document.createElement("div");
+      panel.className = "task-panel";
+
+      // ─ Header ─
+      const tpHeader = document.createElement("div");
+      tpHeader.className = "tp-header";
+      tpHeader.innerHTML = `
+        <button class="tp-back-btn" id="tp-close-btn">
+          <i class="fa-solid fa-arrow-left"></i> Voltar para tarefas
+        </button>
+        <div class="tp-header-main">
+          <div class="tp-title-block">
+            <div class="tp-title-row">
+              <h2 class="tp-title">${mainTitle}</h2>
+              ${revisionName ? `<span class="tp-status-badge ${getUnifiedStatusClass(revisionName)}">${revisionName}</span>` : ""}
+            </div>
+            <div class="tp-meta-row">
+              <div class="tp-meta-item">
+                <strong>Função</strong>
+                <span class="funcao-badge funcao-id-${funcao.funcao_id}">${funcao.nome_funcao || "-"}</span>
+              </div>
+              <div class="tp-meta-sep"></div>
+              <div class="tp-meta-item">
+                <strong>Status</strong>
+                <span class="tp-status-badge status-badge ${getStatusBadgeClass(funcao.status)}">${funcao.status || "-"}</span>
+              </div>
+              <div class="tp-meta-sep"></div>
+              <div class="tp-meta-item">
+                <strong>Prazo</strong>
+                <span>${funcao.prazo ? formatarData(funcao.prazo) : "-"}</span>
+              </div>
+            </div>
+          </div>
+          <div class="tp-actions">
+            <button class="tp-btn-edit" id="tp-btn-edit">
+              <i class="fa-solid fa-pen"></i> Editar tarefa
+            </button>
+            <button class="tp-btn-menu" title="Mais ações">⋯</button>
+          </div>
+        </div>
+      `;
+      // ─ Body ─
+      const tpBody = document.createElement("div");
+      tpBody.className = "tp-body";
+      panel.appendChild(tpBody);
+
+      // ─ Header (inside body, spans full width) ─
+      tpBody.appendChild(tpHeader);
+
+      // ─── Main Column ───
+      const tpMain = document.createElement("div");
+      tpMain.className = "tp-main";
+      tpBody.appendChild(tpMain);
+
+      // ─ Resumo da tarefa ─
+      const summaryCard = document.createElement("div");
+      summaryCard.className = "tp-card tp-summary-card";
+      summaryCard.innerHTML = `
+        <div class="tp-summary-text">
+          <h4>Resumo da tarefa</h4>
+          <p>${funcao.observacao || "Sem descrição disponível para esta tarefa."}</p>
+          ${
+            isAnimacaoCard
+              ? `
+            <div style="margin-top:12px;display:flex;flex-direction:column;gap:4px;">
+              <div style="font-size:12px;color:#7d90aa;"><strong style="color:#aab5c8">Imagem:</strong> ${funcao.imagem_nome || "-"}</div>
+              <div style="font-size:12px;color:#7d90aa;"><strong style="color:#aab5c8">Tipo:</strong> ${funcao.tipo_animacao || "-"}</div>
+              <div style="font-size:12px;color:#7d90aa;"><strong style="color:#aab5c8">Duração:</strong> ${funcao.duracao || "-"}</div>
+            </div>
+          `
+              : ""
+          }
+        </div>
+        <div class="tp-preview-wrap" id="tp-preview-wrap">
+          ${
+            previewUrl
+              ? `
+            <img src="${encodeURI(previewUrl)}" alt="Preview" loading="lazy" />
+            <div class="tp-preview-expand"><i class="fa-solid fa-expand"></i></div>
+          `
+              : `
+            <div class="tp-preview-placeholder">
+              <i class="fa-regular fa-image"></i>
+              <span>Sem preview</span>
+            </div>
+          `
+          }
+        </div>
+      `;
+      tpMain.appendChild(summaryCard);
+
+      // Expand preview on click
+      if (previewUrl) {
+        const previewWrap = summaryCard.querySelector("#tp-preview-wrap");
+        if (previewWrap) {
+          previewWrap.addEventListener("click", () => {
+            const overlay = document.createElement("div");
+            overlay.style.cssText =
+              "position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:zoom-out;";
+            const img = document.createElement("img");
+            img.src = encodeURI(previewUrl);
+            img.style.cssText =
+              "max-width:96vw;max-height:96vh;object-fit:contain;border-radius:8px;";
+            overlay.appendChild(img);
+            overlay.addEventListener("click", () => overlay.remove());
+            document.body.appendChild(overlay);
+          });
+        }
+      }
+
+      // ─ Informações principais ─
+      const infoBlock = document.createElement("div");
+      infoBlock.className = "tp-card";
+      infoBlock.style.padding = "16px 20px";
+
+      const colaboradoresList = Array.isArray(data.colaboradores)
+        ? data.colaboradores
+        : [];
+      const MAX_AV = 5;
+      const avatarsHtml = colaboradoresList
+        .slice(0, MAX_AV)
+        .map((col) => {
+          const initials = (col.nome_colaborador || "?")
+            .split(" ")
+            .slice(0, 2)
+            .map((w) => w[0])
+            .join("")
+            .toUpperCase();
+          return `<div class="tp-avatar" title="${col.nome_colaborador}">${initials}</div>`;
+        })
+        .join("");
+      const extraCount =
+        colaboradoresList.length > MAX_AV
+          ? `<span class="tp-avatar-more">+${colaboradoresList.length - MAX_AV}</span>`
+          : "";
+
+      const statusImgClass = getUnifiedStatusClass(revisionName, "substatus");
+
+      infoBlock.innerHTML = `
+        <div class="tp-section-label" style="margin-bottom:14px;">Informações principais</div>
+        <div class="tp-info-grid">
+          <div class="tp-info-item">
+            <div class="tp-info-label">Empreendimento</div>
+            <div class="tp-info-value">${funcao.nomenclatura || "-"}</div>
+          </div>
+          <div class="tp-info-item">
+            <div class="tp-info-label">Subtipo</div>
+            <div class="tp-info-value muted">${funcao.subtipo || "-"}</div>
+          </div>
+          <div class="tp-info-item">
+            <div class="tp-info-label">Responsável</div>
+            <div class="tp-info-value">${funcao.nome_colaborador || "-"}</div>
+          </div>
+          <div class="tp-info-item">
+            <div class="tp-info-label">Status da imagem</div>
+            <div class="tp-info-value">
+              <span class="status-badge ${statusImgClass}">${revisionName || "-"}</span>
+            </div>
+          </div>
+          <div class="tp-info-item">
+            <div class="tp-info-label">Equipe</div>
+            <div class="tp-info-value">
+              <div style="display:flex;align-items:center;gap:2px;flex-wrap:wrap;">
+                ${avatarsHtml}${extraCount}
+              </div>
+            </div>
+          </div>
+          <div class="tp-info-item">
+            <div class="tp-info-label">Última atualização</div>
+            <div class="tp-info-value muted">${ultimaAtualizacao}</div>
+          </div>
+          <div class="tp-info-item">
+            <div class="tp-info-label">Tempo de produção</div>
+            <div class="tp-info-value muted">${data.tempo_total_producao && data.tempo_total_producao.readable ? data.tempo_total_producao.readable : "-"}</div>
+          </div>
+        </div>
+      `;
+      tpMain.appendChild(infoBlock);
+
+      // ─ Arquivos e Entregas ─
+      function getFileIconClass(tipo) {
+        const t = String(tipo || "").toLowerCase();
+        if (t === "exr") return "exr";
+        if (t === "rvt") return "rvt";
+        if (t === "psd" || t === "psb") return "psd";
+        if (t === "pdf") return "pdf";
+        if (t === "dwg") return "dwg";
+        if (t === "skp") return "skp";
+        return "other";
+      }
+
+      function getFileIconSymbol(tipo) {
+        const t = String(tipo || "").toLowerCase();
+        if (t === "pdf") return '<i class="fa-solid fa-file-pdf"></i>';
+        if (t === "dwg") return '<i class="fa-solid fa-drafting-compass"></i>';
+        if (t === "rvt") return '<i class="fa-solid fa-cube"></i>';
+        if (t === "skp") return '<i class="fa-solid fa-cube"></i>';
+        if (t === "exr" || t === "psd" || t === "psb")
+          return '<i class="fa-solid fa-layer-group"></i>';
+        return '<i class="fa-solid fa-file"></i>';
+      }
+
+      const filesCard = document.createElement("div");
+      filesCard.className = "tp-card";
+      filesCard.style.padding = "16px 20px";
+
+      const filesBlockDiv = document.createElement("div");
+      filesBlockDiv.className = "tp-files-block";
+      filesCard.appendChild(filesBlockDiv);
+
+      // Left: main files
+      const filesMainDiv = document.createElement("div");
+      filesMainDiv.className = "tp-files-main";
+      filesMainDiv.innerHTML = `<div class="tp-section-label">Arquivos principais da etapa</div>`;
+      filesBlockDiv.appendChild(filesMainDiv);
+
+      const PRIORITY_TYPES = ["DWG", "PDF", "SKP", "IMG"];
+      const priorityFiles = arquivosImagem.filter((f) =>
+        PRIORITY_TYPES.includes(String(f.tipo || "").toUpperCase()),
       );
-      const arquivosTipoBody = createNode(
-        "Arquivos do tipo de imagem",
-        "mindmap-files-type",
-        {},
-        leftSlot,
-      );
-      const arquivosAnterioresBody = createNode(
-        "Processos anteriores",
-        "mindmap-files-previous",
-        {},
-        leftSlot,
+      const otherMainFiles = arquivosImagem
+        .filter(
+          (f) => !PRIORITY_TYPES.includes(String(f.tipo || "").toUpperCase()),
+        )
+        .slice(0, 3);
+      const mainFilesToShow = [...priorityFiles, ...otherMainFiles].slice(0, 8);
+
+      const fileList = document.createElement("div");
+      fileList.className = "tp-file-list";
+
+      if (mainFilesToShow.length > 0) {
+        mainFilesToShow.forEach((f) => {
+          const nomeArq = f.nome_interno || f.nome_arquivo || "Arquivo";
+          const tipo = String(f.tipo || "").toUpperCase();
+          const row = document.createElement("div");
+          row.className = "tp-file-row";
+          const normalizedPath = f.caminho
+            ? normalizePath(f.caminho, false)
+            : "";
+          let dataStr = "";
+          const rawDate = f.recebido_em || f.data || "";
+          if (rawDate) {
+            const d = new Date(rawDate);
+            if (!isNaN(d.getTime())) {
+              dataStr = `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+            }
+          }
+
+          const actionButtons = [];
+          if (normalizedPath) {
+            actionButtons.push(
+              `<a class="tp-file-btn tp-copy-btn" href="#" title="Copiar caminho" data-copy-path="${normalizedPath.replace(/"/g, "&quot;")}"><i class="fa-regular fa-copy"></i></a>`,
+            );
+          }
+          if (tipo === "PDF" && f.idarquivo) {
+            actionButtons.push(
+              `<a class="tp-file-btn tp-view-btn" href="#" title="Ver PDF"><i class="fa-solid fa-eye"></i></a>`,
+            );
+          }
+
+          row.innerHTML = `
+            <div class="tp-file-icon ${getFileIconClass(f.tipo)}">${getFileIconSymbol(f.tipo)}</div>
+            <div class="tp-file-info">
+              <div class="tp-file-name">${nomeArq}</div>
+              <div class="tp-file-meta">${tipo}${dataStr ? " · " + dataStr : ""}${f.sufixo ? " · " + f.sufixo : ""}</div>
+            </div>
+            ${actionButtons.length ? `<div class="tp-file-action">${actionButtons.join("")}</div>` : ""}
+          `;
+
+          const copyBtn = row.querySelector(".tp-copy-btn");
+          if (copyBtn) {
+            copyBtn.addEventListener("click", async (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              const pathToCopy = copyBtn.dataset.copyPath || "";
+              if (!pathToCopy) return;
+              try {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                  await navigator.clipboard.writeText(pathToCopy);
+                } else {
+                  const tempInput = document.createElement("textarea");
+                  tempInput.value = pathToCopy;
+                  tempInput.setAttribute("readonly", "readonly");
+                  tempInput.style.position = "fixed";
+                  tempInput.style.opacity = "0";
+                  document.body.appendChild(tempInput);
+                  tempInput.select();
+                  document.execCommand("copy");
+                  document.body.removeChild(tempInput);
+                }
+                showToast("Caminho copiado", "update");
+              } catch (err) {
+                showToast("Não foi possível copiar o caminho", "error");
+              }
+            });
+          }
+
+          if (tipo === "PDF" && f.idarquivo) {
+            const viewBtn = row.querySelector(".tp-view-btn");
+            if (viewBtn) {
+              viewBtn.addEventListener("click", (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                openPdfViewerModal(f.idarquivo, nomeArq);
+              });
+            }
+          }
+          fileList.appendChild(row);
+        });
+      } else {
+        fileList.innerHTML = `<div class="tp-empty">Sem arquivos principais</div>`;
+      }
+
+      if (arquivosImagem.length > mainFilesToShow.length) {
+        const moreDiv = document.createElement("div");
+        moreDiv.style.cssText =
+          "font-size:11px;color:#394558;margin-top:8px;cursor:pointer;padding-left:2px;";
+        moreDiv.textContent = `+ ${arquivosImagem.length - mainFilesToShow.length} arquivos adicionais`;
+        moreDiv.addEventListener("click", () =>
+          openTpFilesModal("Arquivos da Imagem", arquivosImagem, false),
+        );
+        fileList.appendChild(moreDiv);
+      }
+      filesMainDiv.appendChild(fileList);
+
+      // Right: Insumos
+      const insumosDiv = document.createElement("div");
+      insumosDiv.className = "tp-files-side";
+      insumosDiv.innerHTML = `<div class="tp-section-label">Insumos e referências</div>`;
+      filesBlockDiv.appendChild(insumosDiv);
+
+      const insumosList = document.createElement("div");
+      insumosList.className = "tp-insumos-list";
+      insumosDiv.appendChild(insumosList);
+
+      const insumosData = [
+        {
+          iconClass: "extern",
+          icon: '<i class="fa-solid fa-folder-open"></i>',
+          title: "Arquivos externos",
+          arr: arquivosTipo,
+          isTipoLevel: true,
+        },
+        {
+          iconClass: "image",
+          icon: '<i class="fa-solid fa-images"></i>',
+          title: "Arquivos da imagem",
+          arr: arquivosImagem,
+          isTipoLevel: false,
+        },
+        {
+          iconClass: "prev",
+          icon: '<i class="fa-solid fa-clock-rotate-left"></i>',
+          title: "Processos anteriores",
+          arr: Array.isArray(data.arquivos_anteriores)
+            ? data.arquivos_anteriores
+            : [],
+          isTipoLevel: false,
+          isAnteriores: true,
+        },
+      ];
+
+      insumosData.forEach(
+        ({ iconClass, icon, title, arr, isTipoLevel, isAnteriores }) => {
+          const count = arr ? arr.length : 0;
+          let lastUpdated = "";
+          if (arr && arr.length > 0) {
+            const d = new Date(
+              arr[0].recebido_em || arr[0].criado_em || arr[0].data || "",
+            );
+            if (!isNaN(d.getTime())) {
+              lastUpdated = `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+            }
+          }
+          const card = document.createElement("div");
+          card.className = "tp-insumo-card";
+          card.innerHTML = `
+          <div class="tp-insumo-icon ${iconClass}">${icon}</div>
+          <div class="tp-insumo-info">
+            <div class="tp-insumo-title">${title}</div>
+            <div class="tp-insumo-meta">${lastUpdated ? "Atualizado em " + lastUpdated : "Sem arquivos"}</div>
+          </div>
+          <span class="tp-insumo-count">${count}</span>
+          <span class="tp-insumo-arrow"><i class="fa-solid fa-chevron-right"></i></span>
+        `;
+          card.addEventListener("click", () => {
+            if (isAnteriores) {
+              openTpFilesModal(title, arr, false, true);
+            } else {
+              openTpFilesModal(title, arr, isTipoLevel, false);
+            }
+          });
+          insumosList.appendChild(card);
+        },
       );
 
-      // Helper: group array of arquivos by categoria_nome -> tipo
+      // Third column: Logs
+      const logsCard = document.createElement("div");
+      logsCard.className = "tp-files-logs";
+      filesBlockDiv.appendChild(logsCard);
+
+      const logAlts = Array.isArray(data.log_alteracoes)
+        ? data.log_alteracoes
+        : [];
+      const LOGS_VISIBLE = 5;
+
+      function buildTpLogEntry(log) {
+        const dataFormatada = formatarDataComentario(log.data);
+        const parts = dataFormatada.split(" ");
+        const datePart = parts[0] || "";
+        const timePart = parts[1] || "";
+        const statusAnterior =
+          !log.status_anterior ||
+          log.status_anterior === "null" ||
+          log.status_anterior === "Tarefa criada"
+            ? "Tarefa criada"
+            : log.status_anterior;
+        const statusNovoClass = getUnifiedStatusClass(log.status_novo, "etapa");
+        const actionText =
+          statusAnterior === "Tarefa criada"
+            ? `Tarefa criada → <em>${log.status_novo}</em>`
+            : `${statusAnterior} → <em class="tp-status-badge status-badge ${statusNovoClass}">${log.status_novo}</em>`;
+        const imgStatus = log.imagem_status_at_update
+          ? ` <span style="opacity:.45;font-size:10px;">(${log.imagem_status_at_update})</span>`
+          : "";
+        const div = document.createElement("div");
+        div.className = "tp-log-entry";
+        div.innerHTML = `
+          <div class="tp-log-date">${datePart}<br><span style="font-size:10px;">${timePart}</span></div>
+          <div class="tp-log-right">
+            <div class="tp-log-actor">${log.responsavel || "?"}</div>
+            <div class="tp-log-action">${actionText}${imgStatus}</div>
+          </div>
+        `;
+        return div;
+      }
+
+      const logsTitle = document.createElement("div");
+      logsTitle.className = "tp-logs-title";
+      logsTitle.innerHTML = `
+        <span style="text-transform:uppercase;letter-spacing:0.5px;">Logs</span>
+        ${logAlts.length > LOGS_VISIBLE ? `<span class="tp-see-all" id="tp-see-all-logs">Ver todos (${logAlts.length})</span>` : ""}
+      `;
+      logsCard.appendChild(logsTitle);
+
+      const timeline = document.createElement("div");
+      timeline.className = "tp-log-timeline";
+      timeline.id = "tp-log-timeline";
+      logsCard.appendChild(timeline);
+
+      if (logAlts.length > 0) {
+        logAlts
+          .slice(0, LOGS_VISIBLE)
+          .forEach((log) => timeline.appendChild(buildTpLogEntry(log)));
+      } else {
+        timeline.innerHTML = `<div class="tp-empty">Sem logs disponíveis</div>`;
+      }
+
+      const seeAllLogs = logsTitle.querySelector("#tp-see-all-logs");
+      if (seeAllLogs) {
+        seeAllLogs.addEventListener("click", () => {
+          const isExpanded = seeAllLogs.dataset.expanded === "1";
+          timeline.innerHTML = "";
+          const slice = isExpanded ? logAlts.slice(0, LOGS_VISIBLE) : logAlts;
+          slice.forEach((log) => timeline.appendChild(buildTpLogEntry(log)));
+          seeAllLogs.textContent = isExpanded
+            ? `Ver todos (${logAlts.length})`
+            : "Ver menos";
+          seeAllLogs.dataset.expanded = isExpanded ? "0" : "1";
+        });
+      }
+
+      tpMain.appendChild(filesCard);
+
+      // ─── Sidebar ───
+      const tpSidebar = document.createElement("div");
+      tpSidebar.className = "tp-sidebar";
+      tpBody.appendChild(tpSidebar);
+
+      // ─ Notificações ─
+      const notifBlock = document.createElement("div");
+      notifBlock.className = "tp-sidebar-block";
+      const notificacoes = Array.isArray(data.notificacoes)
+        ? data.notificacoes
+        : [];
+      const unreadCount = notificacoes.length;
+      notifBlock.innerHTML = `
+        <div class="tp-sidebar-block-title">
+          Notificações
+          ${unreadCount > 0 ? `<span class="count">${unreadCount}</span>` : ""}
+        </div>
+        ${unreadCount === 0 ? '<div class="tp-empty">Nenhuma notificação pendente</div>' : ""}
+        <div class="tp-notif-list" id="tp-notif-list"></div>
+      `;
+      if (unreadCount > 0) {
+        const notifList = notifBlock.querySelector("#tp-notif-list");
+        notificacoes.forEach((notif) => {
+          const item = document.createElement("div");
+          item.className = "tp-notif-item unread";
+          item.dataset.notId = notif.id;
+          const mensagem = notif.mensagem || "Notificação";
+          const hora = notif.data
+            ? (notif.data.split(" ")[1] || "").substring(0, 5)
+            : "";
+          item.innerHTML = `
+            <div class="tp-notif-icon-wrap"><i class="fa-solid fa-bell"></i></div>
+            <div class="tp-notif-content">
+              <div class="tp-notif-title">${mensagem}</div>
+              <div class="tp-notif-sub">${hora}</div>
+            </div>
+            <div class="tp-notif-dot"></div>
+          `;
+          item.addEventListener("click", () => {
+            const id = item.dataset.notId;
+            fetch("PaginaPrincipal/markNotificacao.php", {
+              method: "POST",
+              headers: { "Content-Type": "application/x-www-form-urlencoded" },
+              body: `id=${encodeURIComponent(id)}`,
+            })
+              .then((r) => r.json())
+              .then((res) => {
+                if (res && res.success) {
+                  item.style.opacity = "0.38";
+                  item.style.pointerEvents = "none";
+                  const dot = item.querySelector(".tp-notif-dot");
+                  if (dot) dot.style.display = "none";
+                  showToast("Notificação marcada como lida", "update");
+                }
+              })
+              .catch(() => showToast("Erro ao marcar notificação", "error"));
+          });
+          notifList.appendChild(item);
+        });
+      }
+      tpSidebar.appendChild(notifBlock);
+
+      // ─ Informações da Obra ─
+      const obraBlock = document.createElement("div");
+      obraBlock.className = "tp-sidebar-block";
+      const BRIEFING_LABELS = {
+        nivel: "Nível",
+        conceito: "Conceito",
+        valor_media: "Valor médio",
+        outro_padrao: "Ref. padrão",
+        vidro: "Vidro",
+        esquadria: "Esquadria",
+        soleira: "Soleira",
+        acab_calcadas: "Calçadas",
+        assets: "Assets",
+        comp_planta: "Comp. planta",
+      };
+      const br = data.briefing_obra || {};
+      const briefingEntries = Object.entries(BRIEFING_LABELS).filter(
+        ([k]) => br[k] && String(br[k]).trim(),
+      );
+      const MAX_CHIPS = 6;
+
+      const obraBlockTitle = document.createElement("div");
+      obraBlockTitle.className = "tp-sidebar-block-title";
+      obraBlockTitle.textContent = "Informações da Obra";
+      obraBlock.appendChild(obraBlockTitle);
+
+      const chipsContainer = document.createElement("div");
+      chipsContainer.className = "tp-briefing-chips";
+      chipsContainer.id = "tp-briefing-chips";
+      obraBlock.appendChild(chipsContainer);
+
+      function renderBriefingChips(entries) {
+        chipsContainer.innerHTML =
+          entries
+            .map(([k, label]) => {
+              const val = String(br[k]);
+              const display =
+                val.length > 32 ? val.substring(0, 30) + "…" : val;
+              return `<span class="tp-briefing-chip" title="${label}: ${val}"><strong>${label}:</strong> ${display}</span>`;
+            })
+            .join("") || '<div class="tp-empty">Sem briefing preenchido</div>';
+      }
+
+      renderBriefingChips(briefingEntries.slice(0, MAX_CHIPS));
+
+      if (briefingEntries.length > MAX_CHIPS) {
+        const seeAllBriefing = document.createElement("button");
+        seeAllBriefing.className = "tp-see-all-btn";
+        seeAllBriefing.textContent = `Ver todas (${briefingEntries.length})`;
+        seeAllBriefing.addEventListener("click", () => {
+          const isExpanded = seeAllBriefing.dataset.expanded === "1";
+          renderBriefingChips(
+            isExpanded ? briefingEntries.slice(0, MAX_CHIPS) : briefingEntries,
+          );
+          seeAllBriefing.textContent = isExpanded
+            ? `Ver todas (${briefingEntries.length})`
+            : "Ver menos";
+          seeAllBriefing.dataset.expanded = isExpanded ? "0" : "1";
+        });
+        obraBlock.appendChild(seeAllBriefing);
+      }
+      tpSidebar.appendChild(obraBlock);
+
+      // ─ Observações ─
+      const obs = Array.isArray(data.observacoes_obra)
+        ? data.observacoes_obra
+        : [];
+      if (obs.length > 0) {
+        const obsBlock = document.createElement("div");
+        obsBlock.className = "tp-sidebar-block";
+        const obsText = obs
+          .map((o) => o.descricao || "")
+          .filter(Boolean)
+          .join("\n\n");
+        obsBlock.innerHTML = `
+          <div class="tp-sidebar-block-title">Observações</div>
+          <div class="tp-obs-text" style="white-space:pre-line">${obsText}</div>
+        `;
+        tpSidebar.appendChild(obsBlock);
+      }
+
+      // ─ Acesso Rápido ─
+      const quickBlock = document.createElement("div");
+      quickBlock.className = "tp-sidebar-block";
+
+      const quickTitle = document.createElement("div");
+      quickTitle.className = "tp-sidebar-block-title";
+      quickTitle.textContent = "Acesso rápido";
+      quickBlock.appendChild(quickTitle);
+
+      const colabsRow = document.createElement("div");
+      colabsRow.className = "tp-colabs-row";
+      colaboradoresList.slice(0, 6).forEach((col) => {
+        const initials = (col.nome_colaborador || "?")
+          .split(" ")
+          .slice(0, 2)
+          .map((w) => w[0])
+          .join("")
+          .toUpperCase();
+        const av = document.createElement("div");
+        av.className = "tp-colab-avatar";
+        av.title =
+          col.nome_colaborador + (col.funcoes ? " (" + col.funcoes + ")" : "");
+        av.textContent = initials;
+        colabsRow.appendChild(av);
+      });
+      if (colaboradoresList.length > 0) {
+        const countSpan = document.createElement("span");
+        countSpan.className = "tp-colab-count";
+        const extra =
+          colaboradoresList.length > 6
+            ? `+${colaboradoresList.length - 6} `
+            : "";
+        countSpan.textContent = `${extra}${colaboradoresList.length} membro${colaboradoresList.length !== 1 ? "s" : ""}`;
+        colabsRow.appendChild(countSpan);
+      }
+      quickBlock.appendChild(colabsRow);
+
+      const quickLinksDiv = document.createElement("div");
+      quickLinksDiv.className = "tp-quick-links";
+
+      const links = data.obra_links || {};
+      const linkDefs = [
+        {
+          label: "Flow Review",
+          iconClass: "review",
+          icon: "fa-solid fa-eye",
+          action: () => {
+            localStorage.setItem(
+              "fr_goto",
+              JSON.stringify({
+                idfuncao_imagem: idFuncao,
+                nome_obra: nomeObraFinal,
+              }),
+            );
+            const _p = window.location.pathname;
+            const _si = _p.indexOf("/ImproovWeb");
+            const _base =
+              _si !== -1
+                ? window.location.origin +
+                  _p.slice(0, _si + "/ImproovWeb".length)
+                : "https://improov.com.br/flow/ImproovWeb";
+            const url = nomeObraFinal
+              ? `${_base}/FlowReview/index.php?obra_nome=${encodeURIComponent(nomeObraFinal)}`
+              : `${_base}/FlowReview/index.php`;
+            window.open(url, "_blank");
+          },
+        },
+        links.link_review
+          ? {
+              label: "Review Studio",
+              iconClass: "studio",
+              icon: "fa-solid fa-desktop",
+              href: links.link_review,
+            }
+          : null,
+        links.fotografico
+          ? {
+              label: "Fotográfico",
+              iconClass: "photo",
+              icon: "fa-solid fa-camera",
+              href: links.fotografico,
+            }
+          : null,
+        links.link_drive
+          ? {
+              label: "Drive",
+              iconClass: "drive",
+              icon: "fa-solid fa-hard-drive",
+              href: links.link_drive,
+            }
+          : null,
+      ].filter(Boolean);
+
+      linkDefs.forEach(({ label, iconClass, icon, href, action }) => {
+        const el = href
+          ? document.createElement("a")
+          : document.createElement("div");
+        el.className = "tp-quick-link";
+        if (href) {
+          el.href = href;
+          el.target = "_blank";
+          el.rel = "noopener noreferrer";
+        }
+        el.innerHTML = `
+          <div class="tp-quick-link-icon ${iconClass}"><i class="${icon}"></i></div>
+          <span>${label}</span>
+          <span class="tp-quick-link-arrow"><i class="fa-solid fa-chevron-right"></i></span>
+        `;
+        if (action) {
+          el.addEventListener("click", (e) => {
+            e.preventDefault();
+            action();
+          });
+        }
+        quickLinksDiv.appendChild(el);
+      });
+      quickBlock.appendChild(quickLinksDiv);
+      tpSidebar.appendChild(quickBlock);
+
+      // ─── Files Detail Modal helper ───
+      function normalizePath(rawPath, isTipoLevel = false) {
+        if (!rawPath) return "";
+        let p = rawPath;
+        p = p.replace(/^\/\/*mnt\/clientes/i, "Z:");
+        p = p.replace(/\//g, "\\");
+        p = p.replace(/\\+$/g, "");
+        const parts = p.split("\\").filter(Boolean);
+        if (parts.length === 0) return p;
+        const TYPES = ["IMG", "DWG", "PDF", "Outros", "SKP"];
+        let idx = -1;
+        for (let i = 0; i < parts.length; i++) {
+          if (TYPES.includes(parts[i].toUpperCase())) {
+            idx = i;
+            break;
+          }
+        }
+        if (idx >= 0) {
+          if (isTipoLevel) return parts.slice(0, idx + 1).join("\\");
+          if (idx + 1 < parts.length) return parts.slice(0, idx + 2).join("\\");
+          return parts.slice(0, idx + 1).join("\\");
+        }
+        const last = parts[parts.length - 1];
+        if (/\.[A-Za-z0-9]{1,6}$/.test(last))
+          return parts.slice(0, -1).join("\\");
+        return parts.join("\\");
+      }
+
       function groupArquivos(arr) {
-        const grouped = {}; // { categoria: { tipo: [items] } }
+        const grouped = {};
         arr.forEach((a) => {
           const cat = a.categoria_nome || "Sem categoria";
           const tipo =
@@ -2516,51 +3050,6 @@ function abrirSidebar(idFuncao, idImagem, nomeObra = "", isAnimacao = false) {
         return grouped;
       }
 
-      // normalize path: replace /mnt/clientes -> Z:, use backslashes, and trim
-      function normalizePath(rawPath, isTipoLevel = false) {
-        if (!rawPath) return "";
-        let p = rawPath;
-        // replace linux mount prefix with drive letter
-        p = p.replace(/^\/\/*mnt\/clientes/i, "Z:");
-        // normalize slashes to backslashes
-        p = p.replace(/\//g, "\\");
-        // remove trailing backslashes
-        p = p.replace(/\\+$/g, "");
-
-        const parts = p.split("\\").filter(Boolean);
-        if (parts.length === 0) return p;
-
-        const TYPES = ["IMG", "DWG", "PDF", "Outros", "SKP"];
-        let idx = -1;
-        for (let i = 0; i < parts.length; i++) {
-          if (TYPES.includes(parts[i].toUpperCase())) {
-            idx = i;
-            break;
-          }
-        }
-
-        if (idx >= 0) {
-          // for type-level files, stop at the type folder
-          if (isTipoLevel) {
-            return parts.slice(0, idx + 1).join("\\");
-          }
-          // for image-specific files, keep the folder after the type as well (if present)
-          if (idx + 1 < parts.length) {
-            return parts.slice(0, idx + 2).join("\\");
-          }
-          return parts.slice(0, idx + 1).join("\\");
-        }
-
-        // fallback: if last segment looks like a filename (has an extension), drop it
-        const last = parts[parts.length - 1];
-        if (/\.[A-Za-z0-9]{1,6}$/.test(last)) {
-          return parts.slice(0, -1).join("\\");
-        }
-
-        // otherwise return full normalized path
-        return parts.join("\\");
-      }
-
       function renderGroupedArquivos(
         title,
         arr,
@@ -2568,234 +3057,138 @@ function abrirSidebar(idFuncao, idImagem, nomeObra = "", isAnimacao = false) {
         target = null,
       ) {
         if (!arr || arr.length === 0) return null;
-
         const section = document.createElement("div");
         section.classList.add("arquivos-section");
-
-        const header = document.createElement("h3");
-        header.innerHTML = `📁 ${title}`;
-        section.appendChild(header);
-
         const grouped = groupArquivos(arr);
-
         Object.keys(grouped).forEach((cat) => {
           const catDiv = document.createElement("div");
           catDiv.classList.add("arquivos-categoria");
-
-          // total por categoria
           const totalCat = Object.values(grouped[cat]).reduce(
-            (s, arr) => s + arr.length,
+            (s, a) => s + a.length,
             0,
           );
-
           const catHeader = document.createElement("div");
           catHeader.classList.add("cat-header");
-          catHeader.innerHTML = `🏗️ ${cat} <span class="count">(${totalCat})</span>`;
+          catHeader.textContent = `${cat} (${totalCat})`;
           catDiv.appendChild(catHeader);
-
-          // tipos dentro da categoria
           Object.keys(grouped[cat]).forEach((tipo) => {
             const tipoArr = grouped[cat][tipo];
             const tipoDiv = document.createElement("div");
             tipoDiv.classList.add("arquivos-tipo");
-
-            // Se a categoria contém itens com categoria_id === 7 (ex: JPGs),
-            // não adicionamos o cabeçalho de tipo. Isso evita repetir o tipo
-            // para entradas de imagem que têm apresentação especial abaixo.
-            const containsCategoria7 = tipoArr.some(
-              (it) => parseInt(it.categoria_id, 10) === 7,
-            );
-            if (!containsCategoria7) {
-              tipoDiv.innerHTML = `\n                <div class="tipo-header">↳ ${tipo} <span class="count">(${tipoArr.length})</span></div>\n            `;
-            } else {
-              // Marca o elemento para estilos alternativos, se necessário
-              tipoDiv.classList.add("no-tipo-header");
-            }
-
-            const infoDiv = document.createElement("div");
-            infoDiv.classList.add("tipo-info");
-
-            // separate items where categoria_id == 7 (special: show JPG filename + observação)
-            const jpgItems = tipoArr.filter(
-              (it) => parseInt(it.categoria_id, 10) === 7,
-            );
             const otherItems = tipoArr.filter(
               (it) => parseInt(it.categoria_id, 10) !== 7,
             );
-
-            // First render other items as folder paths (existing behavior)
+            const jpgItems = tipoArr.filter(
+              (it) => parseInt(it.categoria_id, 10) === 7,
+            );
             const rawPaths = Array.from(
               new Set(otherItems.map((it) => it.caminho).filter(Boolean)),
             );
-            const paths = rawPaths.map((p) => normalizePath(p, isTipoLevel));
-            const uniquePaths = Array.from(new Set(paths));
-
+            const uniquePaths = Array.from(
+              new Set(rawPaths.map((p) => normalizePath(p, isTipoLevel))),
+            );
+            const infoDiv = document.createElement("div");
+            infoDiv.classList.add("tipo-info");
             if (uniquePaths.length > 0) {
               uniquePaths.forEach((p) => {
-                // Linha do caminho da pasta
                 const pDiv = document.createElement("div");
                 pDiv.classList.add("path");
                 pDiv.innerHTML = `📂 ${p}`;
                 infoDiv.appendChild(pDiv);
-
-                // Arquivos que compõem este caminho
-                const filesForPath = otherItems.filter((it) => {
-                  const np = normalizePath(it.caminho, isTipoLevel);
-                  return np === p;
-                });
-
+                const filesForPath = otherItems.filter(
+                  (it) => normalizePath(it.caminho, isTipoLevel) === p,
+                );
                 if (filesForPath.length > 0) {
                   const listDiv = document.createElement("div");
                   listDiv.classList.add("path-files");
-
                   filesForPath.forEach((it) => {
+                    const nome = it.nome_interno || it.nome_arquivo || "—";
                     const fileEntry = document.createElement("div");
                     fileEntry.classList.add("file-entry");
-
-                    // Nome do arquivo
-                    const nome = it.nome_interno || it.nome_arquivo || "—";
                     const titleDiv = document.createElement("div");
                     titleDiv.classList.add("file-title");
                     titleDiv.textContent = `↳ ${nome}`;
-
-                    // Botão de visualização para PDF
-                    const tipoArquivo = String(it.tipo || "").toUpperCase();
+                    const tipoArq = String(it.tipo || "").toUpperCase();
                     const idarquivo = it.idarquivo ? String(it.idarquivo) : "";
-                    if (tipoArquivo === "PDF" && idarquivo) {
+                    if (tipoArq === "PDF" && idarquivo) {
                       const link = document.createElement("a");
                       link.classList.add("btn-view-pdf");
                       link.href = "#";
                       link.innerHTML = '<i class="fa-solid fa-file-pdf"></i>';
                       link.addEventListener("click", (e) => {
                         e.preventDefault();
-                        // evita interferir com eventos de clique do sidebar
                         e.stopPropagation();
                         openPdfViewerModal(idarquivo, nome);
                       });
                       titleDiv.appendChild(link);
                     }
-                    listDiv.appendChild(titleDiv);
-
-                    // Metadados: data (recebido_em), sufixo, descricao
                     const metaDiv = document.createElement("div");
                     metaDiv.classList.add("file-meta");
-
-                    // Data recebido_em formatada dd/mm/aaaa
-                    let dataStr = "";
-                    const rawDate =
-                      it.recebido_em || it.data || it.data_recebimento || "";
+                    const partes = [];
+                    const rawDate = it.recebido_em || it.data || "";
                     if (rawDate) {
                       const d = new Date(rawDate);
-                      if (!isNaN(d.getTime())) {
-                        const dd = String(d.getDate()).padStart(2, "0");
-                        const mm = String(d.getMonth() + 1).padStart(2, "0");
-                        const yyyy = d.getFullYear();
-                        dataStr = `${dd}/${mm}/${yyyy}`;
-                      } else {
-                        // se não for parseável, mostra como veio
-                        dataStr = String(rawDate);
-                      }
+                      if (!isNaN(d.getTime()))
+                        partes.push(
+                          `📅 ${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`,
+                        );
                     }
-
-                    const partes = [];
-                    if (dataStr) partes.push(`📅 ${dataStr}`);
                     if (it.sufixo) partes.push(`📝 ${it.sufixo}`);
                     if (it.descricao) partes.push(`⚠️ ${it.descricao}`);
-
                     if (partes.length > 0) {
                       metaDiv.textContent = partes.join(" | ");
-                      listDiv.appendChild(metaDiv);
                     }
+                    fileEntry.appendChild(titleDiv);
+                    fileEntry.appendChild(metaDiv);
+                    listDiv.appendChild(fileEntry);
                   });
-
                   infoDiv.appendChild(listDiv);
                 }
               });
-            } else if (otherItems.length === 0 && jpgItems.length === 0) {
-              const noneDiv = document.createElement("div");
-              noneDiv.classList.add("path");
-              noneDiv.textContent = "Sem caminho";
-              infoDiv.appendChild(noneDiv);
             }
-
-            // Then render jpg items: show filename (from nome_interno or from caminho) and observação if present
-            if (jpgItems.length > 0) {
-              jpgItems.forEach((it) => {
-                const pDiv = document.createElement("div");
-                pDiv.classList.add("path", "jpg-entry");
-
-                // extrai nome do arquivo
-                let filename = it.nome_interno || "";
-                if (!filename && it.caminho) {
-                  const parts = it.caminho.split(/[\\\/]/).filter(Boolean);
-                  filename = parts.length
-                    ? parts[parts.length - 1]
-                    : it.caminho;
-                }
-
-                // tenta construir URL pública
-                let url = null;
-                if (it.caminho) {
-                  url = sftpToPublicUrl(it.caminho);
-                }
-
-                console.log("URL pública para", filename, ":", url);
-
-                if (url) {
-                  const img = document.createElement("img");
-                  img.src = encodeURI(url);
-                  img.alt = filename;
-                  img.title = filename;
-                  img.classList.add("thumb");
-
-                  const filenameSpan = document.createElement("span");
-                  filenameSpan.textContent = filename;
-
-                  // adiciona o nome primeiro
-                  pDiv.appendChild(filenameSpan);
-                  // e depois a imagem
-                  pDiv.appendChild(img);
-                } else {
-                  pDiv.textContent = `🖼️ ${filename}`;
-                }
-
-                // adiciona observação
-                if (it.descricao) {
-                  const descDiv = document.createElement("div");
-                  descDiv.classList.add("arquivo-descricao");
-                  descDiv.textContent = `⚠️ ${it.descricao}`;
-                  pDiv.appendChild(descDiv);
-                }
-
-                infoDiv.appendChild(pDiv);
-              });
-            }
-
+            jpgItems.forEach((it) => {
+              const pDiv = document.createElement("div");
+              pDiv.classList.add("path", "jpg-entry");
+              let filename = it.nome_interno || "";
+              if (!filename && it.caminho) {
+                const pts = it.caminho.split(/[\\\/]/).filter(Boolean);
+                filename = pts.length ? pts[pts.length - 1] : it.caminho;
+              }
+              const url = it.caminho ? sftpToPublicUrl(it.caminho) : null;
+              if (url) {
+                const img = document.createElement("img");
+                img.src = encodeURI(url);
+                img.alt = filename;
+                img.title = filename;
+                img.classList.add("thumb");
+                const filenameSpan = document.createElement("span");
+                filenameSpan.textContent = filename;
+                pDiv.appendChild(filenameSpan);
+                pDiv.appendChild(img);
+              } else {
+                pDiv.textContent = `🖼️ ${filename}`;
+              }
+              if (it.descricao) {
+                const descDiv = document.createElement("div");
+                descDiv.classList.add("arquivo-descricao");
+                descDiv.textContent = `⚠️ ${it.descricao}`;
+                pDiv.appendChild(descDiv);
+              }
+              infoDiv.appendChild(pDiv);
+            });
             tipoDiv.appendChild(infoDiv);
             catDiv.appendChild(tipoDiv);
           });
-
           section.appendChild(catDiv);
         });
-
         if (target) target.appendChild(section);
         return section;
       }
 
-      // Render previous-task arquivos (logs) with custom layout:
-      // - .cat-header = nome_funcao
-      // - .arquivos-tipo will contain only .tipo-info with caminhos
       function renderArquivosAnteriores(title, arr, target = null) {
         if (!arr || arr.length === 0) return null;
-
         const section = document.createElement("div");
         section.classList.add("arquivos-section");
-
-        const header = document.createElement("h3");
-        header.innerHTML = `📁 ${title}`;
-        section.appendChild(header);
-
-        // group by nome_funcao -> tipo -> items
         const groupedByFunc = {};
         arr.forEach((a) => {
           const func = a.nome_funcao || "Sem função";
@@ -2807,75 +3200,60 @@ function abrirSidebar(idFuncao, idImagem, nomeObra = "", isAnimacao = false) {
           if (!groupedByFunc[func][tipo]) groupedByFunc[func][tipo] = [];
           groupedByFunc[func][tipo].push(a);
         });
-
         Object.keys(groupedByFunc).forEach((funcName) => {
           const catDiv = document.createElement("div");
           catDiv.classList.add("arquivos-categoria");
-
-          // total por função
           const totalFunc = Object.values(groupedByFunc[funcName]).reduce(
-            (s, arr) => s + arr.length,
+            (s, a) => s + a.length,
             0,
           );
-
           const catHeader = document.createElement("div");
           catHeader.classList.add("cat-header");
-          catHeader.innerHTML = `🏗️ ${funcName} <span class="count">(${totalFunc})</span>`;
+          catHeader.textContent = `${funcName} (${totalFunc})`;
           catDiv.appendChild(catHeader);
-
-          // for each tipo, show paths and allow per-file "Ver PDF" when tipo == PDF
           Object.keys(groupedByFunc[funcName]).forEach((tipo) => {
             const tipoArr = groupedByFunc[funcName][tipo];
             const tipoDiv = document.createElement("div");
             tipoDiv.classList.add("arquivos-tipo");
-
             const rawPaths = Array.from(
               new Set(tipoArr.map((it) => it.caminho).filter(Boolean)),
             );
-            const paths = rawPaths.map((p) => normalizePath(p, false));
-            const uniquePaths = Array.from(new Set(paths));
-
+            const uniquePaths = Array.from(
+              new Set(rawPaths.map((p) => normalizePath(p, false))),
+            );
             const infoDiv = document.createElement("div");
             infoDiv.classList.add("tipo-info");
-
             if (uniquePaths.length > 0) {
               uniquePaths.forEach((p) => {
                 const pDiv = document.createElement("div");
                 pDiv.classList.add("path");
                 pDiv.innerHTML = `📂 ${p}`;
                 infoDiv.appendChild(pDiv);
-
-                const filesForPath = tipoArr.filter((it) => {
-                  const np = normalizePath(it.caminho, false);
-                  return np === p;
-                });
-
+                const filesForPath = tipoArr.filter(
+                  (it) => normalizePath(it.caminho, false) === p,
+                );
                 if (filesForPath.length > 0) {
                   const listDiv = document.createElement("div");
                   listDiv.classList.add("path-files");
-
                   filesForPath.forEach((it) => {
-                    const fileEntry = document.createElement("div");
-                    fileEntry.classList.add("file-entry");
-
                     let nomeArquivo = it.nome_arquivo || it.nome_interno || "";
                     if (!nomeArquivo && it.caminho) {
-                      const parts = String(it.caminho)
+                      const pts = String(it.caminho)
                         .split(/[\\/]/)
                         .filter(Boolean);
-                      nomeArquivo = parts.length
-                        ? parts[parts.length - 1]
+                      nomeArquivo = pts.length
+                        ? pts[pts.length - 1]
                         : String(it.caminho);
                     }
                     if (!nomeArquivo) nomeArquivo = "—";
-
+                    const fileEntry = document.createElement("div");
+                    fileEntry.classList.add("file-entry");
                     const titleDiv = document.createElement("div");
                     titleDiv.classList.add("file-title");
                     titleDiv.textContent = `↳ ${nomeArquivo}`;
-
-                    const tipoArquivo = String(it.tipo || "").toUpperCase();
+                    const tipoArq = String(it.tipo || "").toUpperCase();
                     const idlog = it.id ? String(it.id) : "";
-                    if (tipoArquivo === "PDF" && idlog) {
+                    if (tipoArq === "PDF" && idlog) {
                       const link = document.createElement("a");
                       link.classList.add("btn-view-pdf");
                       link.href = "#";
@@ -2883,7 +3261,6 @@ function abrirSidebar(idFuncao, idImagem, nomeObra = "", isAnimacao = false) {
                       link.addEventListener("click", (e) => {
                         e.preventDefault();
                         e.stopPropagation();
-
                         const base =
                           "https://improov.com.br/flow/ImproovWeb/FlowDrive/visualizar_pdf_log.php";
                         openPdfViewerModal({
@@ -2894,11 +3271,9 @@ function abrirSidebar(idFuncao, idImagem, nomeObra = "", isAnimacao = false) {
                       });
                       titleDiv.appendChild(link);
                     }
-
                     fileEntry.appendChild(titleDiv);
                     listDiv.appendChild(fileEntry);
                   });
-
                   infoDiv.appendChild(listDiv);
                 }
               });
@@ -2908,500 +3283,68 @@ function abrirSidebar(idFuncao, idImagem, nomeObra = "", isAnimacao = false) {
               noneDiv.textContent = "Sem caminho";
               infoDiv.appendChild(noneDiv);
             }
-
             tipoDiv.appendChild(infoDiv);
             catDiv.appendChild(tipoDiv);
           });
-
           section.appendChild(catDiv);
         });
-
         if (target) target.appendChild(section);
         return section;
       }
-      renderGroupedArquivos(
-        "Arquivos da imagem",
-        arquivosImagem,
-        false,
-        arquivosImagemBody,
-      ) ||
-        arquivosImagemBody.appendChild(
-          Object.assign(document.createElement("div"), {
-            className: "mindmap-empty",
-            textContent: "Sem arquivos da imagem",
-          }),
-        );
-      renderGroupedArquivos(
-        "Arquivos do tipo de imagem",
-        arquivosTipo,
-        true,
-        arquivosTipoBody,
-      ) ||
-        arquivosTipoBody.appendChild(
-          Object.assign(document.createElement("div"), {
-            className: "mindmap-empty",
-            textContent: "Sem arquivos do tipo de imagem",
-          }),
-        );
-      renderArquivosAnteriores(
-        "Processos anteriores",
-        data.arquivos_anteriores,
-        arquivosAnterioresBody,
-      ) ||
-        arquivosAnterioresBody.appendChild(
-          Object.assign(document.createElement("div"), {
-            className: "mindmap-empty",
-            textContent: "Sem processos anteriores",
-          }),
-        );
 
-      function renderAnguloDefinido(arr, target) {
-        if (!arr || arr.length === 0) return null;
-
-        const list = document.createElement("div");
-        list.className = "mindmap-angulo-list";
-
-        arr.forEach((it) => {
-          const item = document.createElement("div");
-          item.className = "mindmap-angulo-item";
-
-          let filename = it.nome_interno || it.nome_arquivo || "";
-          if (!filename && it.caminho) {
-            const parts = String(it.caminho).split(/[\\/]/).filter(Boolean);
-            filename = parts.length
-              ? parts[parts.length - 1]
-              : String(it.caminho);
-          }
-          if (!filename) filename = "—";
-
-          let url = null;
-          if (it.caminho) {
-            url = sftpToPublicUrl(it.caminho);
-          }
-
-          if (url) {
-            const img = document.createElement("img");
-            img.src = encodeURI(url);
-            img.alt = filename;
-            img.title = filename;
-            img.classList.add("thumb");
-
-            const filenameSpan = document.createElement("span");
-            filenameSpan.textContent = filename;
-
-            item.appendChild(filenameSpan);
-            item.appendChild(img);
-          } else {
-            item.textContent = `🖼️ ${filename}`;
-          }
-
-          if (it.descricao) {
-            const descDiv = document.createElement("div");
-            descDiv.classList.add("arquivo-descricao");
-            descDiv.textContent = `⚠️ ${it.descricao}`;
-            item.appendChild(descDiv);
-          }
-
-          list.appendChild(item);
-        });
-
-        if (target) target.appendChild(list);
-        return list;
-      }
-
-      const anguloBody = createNode(
-        "Ângulo definido",
-        "mindmap-angle",
-        {},
-        rightSlot,
-      );
-      renderAnguloDefinido(anguloItems, anguloBody) ||
-        anguloBody.appendChild(
-          Object.assign(document.createElement("div"), {
-            className: "mindmap-empty",
-            textContent: "Sem ângulo definido",
-          }),
-        );
-
-      // "Ir para o Flow Review" button — always visible in the Ângulo definido node
-      const nomeObraFinal = nomeObra || (funcao && funcao.nome_obra) || "";
-      const btnFlowReview = document.createElement("a");
-      btnFlowReview.className = "btn-ir-flowreview";
-      btnFlowReview.innerHTML =
-        '<i class="fa-solid fa-arrow-up-right-from-square"></i> Ir para o Flow Review';
-      btnFlowReview.href = "#";
-      btnFlowReview.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        localStorage.setItem(
-          "fr_goto",
-          JSON.stringify({
-            idfuncao_imagem: idFuncao,
-            nome_obra: nomeObraFinal,
-          }),
-        );
-        // Derive ImproovWeb base dynamically so it works on both local and production
-        const _p = window.location.pathname;
-        const _si = _p.indexOf("/ImproovWeb");
-        const _imBase =
-          _si !== -1
-            ? window.location.origin + _p.slice(0, _si + "/ImproovWeb".length)
-            : "https://improov.com.br/flow/ImproovWeb";
-        const base = `${_imBase}/FlowReview/index.php`;
-        const url = nomeObraFinal
-          ? `${base}?obra_nome=${encodeURIComponent(nomeObraFinal)}`
-          : base;
-        window.open(url, "_blank");
-      });
-      anguloBody.appendChild(btnFlowReview);
-
-      // ── Informações da Obra ── (canto superior direito, abaixo de Ângulo definido)
-      const infoObraBody = createNode(
-        "Informações da Obra",
-        "mindmap-info-obra",
-        {},
-        rightSlot,
-      );
-
-      (function renderInfoObraNode() {
-        const BRIEFING_LABELS = {
-          nivel: "Nível",
-          conceito: "Conceito",
-          valor_media: "Valor médio",
-          outro_padrao: "Ref. padrão",
-          vidro: "Vidro",
-          esquadria: "Esquadria",
-          soleira: "Soleira",
-          acab_calcadas: "Calçadas",
-          assets: "Assets",
-          comp_planta: "Comp. planta",
-        };
-
-        const br = data.briefing_obra || {};
-        const links = data.obra_links || {};
-        const obs = Array.isArray(data.observacoes_obra)
-          ? data.observacoes_obra
-          : [];
-
-        // --- chips de briefing ---
-        const chipsDiv = document.createElement("div");
-        chipsDiv.className = "mindmap-briefing-chips";
-
-        let hasChip = false;
-        Object.entries(BRIEFING_LABELS).forEach(([key, label]) => {
-          const val = br[key];
-          if (!val || String(val).trim() === "") return;
-          hasChip = true;
-          const chip = document.createElement("span");
-          chip.className = "mindmap-briefing-chip";
-          chip.title = label;
-          chip.textContent = `${label}: ${String(val)}`;
-          chipsDiv.appendChild(chip);
-        });
-
-        if (!hasChip) {
-          const empty = document.createElement("div");
-          empty.className = "mindmap-empty";
-          empty.textContent = "Sem briefing preenchido";
-          chipsDiv.appendChild(empty);
-        }
-
-        infoObraBody.appendChild(chipsDiv);
-
-        // --- links ---
-        const linkDefs = [
-          { key: "link_drive", label: "Drive", icon: "fa-solid fa-hard-drive" },
-          {
-            key: "link_review",
-            label: "Review Studio",
-            icon: "fa-solid fa-eye",
-          },
-          {
-            key: "fotografico",
-            label: "Fotográfico",
-            icon: "fa-solid fa-camera",
-          },
-        ];
-        const hasLink = linkDefs.some(
-          (d) => links[d.key] && String(links[d.key]).trim() !== "",
-        );
-        if (hasLink) {
-          const linksDiv = document.createElement("div");
-          linksDiv.className = "mindmap-briefing-links";
-          linkDefs.forEach(({ key, label, icon }) => {
-            const url = links[key];
-            if (!url || String(url).trim() === "") return;
-            const a = document.createElement("a");
-            a.className = "mindmap-briefing-link-btn";
-            a.href = String(url);
-            a.target = "_blank";
-            a.rel = "noopener noreferrer";
-            a.innerHTML = `<i class="${icon}"></i> ${label}`;
-            a.addEventListener("click", (e) => e.stopPropagation());
-            linksDiv.appendChild(a);
-          });
-          infoObraBody.appendChild(linksDiv);
-        }
-
-        // --- observações ---
-        if (obs.length > 0) {
-          const obsSep = document.createElement("div");
-          obsSep.className = "mindmap-obs-sep";
-          obsSep.textContent = "Observações";
-          infoObraBody.appendChild(obsSep);
-
-          const obsList = document.createElement("ul");
-          obsList.className = "mindmap-obs-list";
-          obs.forEach((o) => {
-            const li = document.createElement("li");
-            li.className = "mindmap-obs-item";
-            li.textContent = o.descricao || "";
-            obsList.appendChild(li);
-          });
-          infoObraBody.appendChild(obsList);
-        }
-      })();
-
-      // Colaboradores/Logs — elementos expandíveis dentro do núcleo principal
-      const centerDrawers = [];
-      function createCenterDrawer(title) {
-        const wrapper = document.createElement("div");
-        wrapper.className = "mindmap-center-drawer drawer-collapsed";
-
-        const header = document.createElement("div");
-        header.className = "mindmap-center-drawer-title";
-
-        const titleSpan = document.createElement("span");
-        titleSpan.textContent = title;
-
-        const toggle = document.createElement("span");
-        toggle.className = "mindmap-center-drawer-toggle";
-        toggle.innerHTML = "&#9662;";
-
-        header.appendChild(titleSpan);
-        header.appendChild(toggle);
-
-        const body = document.createElement("div");
-        body.className = "mindmap-center-drawer-body";
-
-        wrapper.appendChild(header);
-        wrapper.appendChild(body);
-
-        centerDrawers.push(wrapper);
-
-        header.addEventListener("click", () => {
-          const willOpen = wrapper.classList.contains("drawer-collapsed");
-          if (willOpen) {
-            centerDrawers.forEach((other) => {
-              if (other !== wrapper) {
-                other.classList.add("drawer-collapsed");
-              }
-            });
-          }
-          wrapper.classList.toggle("drawer-collapsed");
-        });
-
-        return { wrapper, body };
-      }
-
-      const { wrapper: colabsDrawer, body: colabsBody } =
-        createCenterDrawer("Colaboradores");
-      center.appendChild(colabsDrawer);
-
-      if (data.colaboradores && data.colaboradores.length > 0) {
-        const ul = document.createElement("ul");
-        ul.className = "mindmap-colabs-list";
-        data.colaboradores.forEach((col) => {
-          let funcoes = col.funcoes || "";
-          if (funcoes) {
-            const arr = funcoes.split(",").map((f) => f.trim());
-            if (arr.length > 1) {
-              const last = arr.pop();
-              funcoes = arr.join(", ") + " e " + last;
-            }
-          }
-          const li = document.createElement("li");
-          li.textContent = `${col.nome_colaborador} - ${funcoes}`;
-          ul.appendChild(li);
-        });
-        colabsBody.appendChild(ul);
-      } else {
-        const empty = document.createElement("div");
-        empty.className = "mindmap-empty";
-        empty.textContent = "Sem colaboradores vinculados";
-        colabsBody.appendChild(empty);
-      }
-
-      // Logs — elemento expandível dentro do núcleo principal
-      const { wrapper: logsDrawer, body: logsBody } =
-        createCenterDrawer("Logs");
-      center.appendChild(logsDrawer);
-
-      const logDiv = document.createElement("div");
-      logDiv.classList.add("log-alteracoes");
-      if (data.log_alteracoes && data.log_alteracoes.length > 0) {
-        data.log_alteracoes.forEach((log) => {
-          const li = document.createElement("div");
-          li.classList.add("log-entry");
-
-          let corBorda;
-          switch (String(log.status_novo || "").toLowerCase()) {
-            case "em aprovação":
-              corBorda = "#4a90e2";
-              break;
-            case "finalizado":
-            case "aprovado":
-              corBorda = "#28a745";
-              break;
-            case "aprovado com ajustes":
-              corBorda = "#5e07ffff";
-              break;
-            case "não iniciado":
-              corBorda = "#6c757d";
-              break;
-            case "em andamento":
-              corBorda = "#ff9800";
-              break;
-            case "ajuste":
-            case "hold":
-              corBorda = "#dc3545";
-              break;
-            default:
-              corBorda = "#777";
-          }
-
-          li.style.borderLeft = `3px solid ${corBorda}`;
-          li.style.paddingLeft = "10px";
-          li.style.marginBottom = "10px";
-
-          const statusAnteriorLabel =
-            !log.status_anterior ||
-            log.status_anterior === "null" ||
-            log.status_anterior === "Tarefa criada"
-              ? `<em class="log-inicio">Tarefa criada</em>`
-              : log.status_anterior;
-          li.innerHTML = `<strong>${formatarDataComentario(log.data)}</strong> ${log.imagem_status_at_update ? `(${log.imagem_status_at_update})` : ""} ${statusAnteriorLabel} → <em>${log.status_novo}</em> (${log.responsavel})`;
-          logDiv.appendChild(li);
-        });
-      } else {
-        const empty = document.createElement("div");
-        empty.className = "mindmap-empty";
-        empty.textContent = "Sem alterações recentes";
-        logDiv.appendChild(empty);
-      }
-      logsBody.appendChild(logDiv);
-
-      function drawMindmapLines() {
-        if (!mindmapContent) return;
-        const existing = canvas.querySelector(".mindmap-lines");
+      function openTpFilesModal(title, arr, isTipoLevel, isAnteriores) {
+        const existing = document.getElementById("tp-files-modal");
         if (existing) existing.remove();
-
-        const svg = document.createElementNS(
-          "http://www.w3.org/2000/svg",
-          "svg",
-        );
-        svg.classList.add("mindmap-lines");
-        svg.setAttribute("width", "100%");
-        svg.setAttribute("height", "100%");
-
-        const defs = document.createElementNS(
-          "http://www.w3.org/2000/svg",
-          "defs",
-        );
-        const marker = document.createElementNS(
-          "http://www.w3.org/2000/svg",
-          "marker",
-        );
-        marker.setAttribute("id", "arrowhead");
-        marker.setAttribute("markerWidth", "8");
-        marker.setAttribute("markerHeight", "8");
-        marker.setAttribute("refX", "6");
-        marker.setAttribute("refY", "4");
-        marker.setAttribute("orient", "auto");
-        const arrowPath = document.createElementNS(
-          "http://www.w3.org/2000/svg",
-          "path",
-        );
-        arrowPath.setAttribute("d", "M0,0 L8,4 L0,8 Z");
-        arrowPath.setAttribute("fill", "#3b3b3b");
-        marker.appendChild(arrowPath);
-        defs.appendChild(marker);
-        svg.appendChild(defs);
-
-        const canvasRect = canvas.getBoundingClientRect();
-        const centerRect = center.getBoundingClientRect();
-
-        const startLeft = {
-          x: centerRect.left - canvasRect.left,
-          y: centerRect.top - canvasRect.top + centerRect.height / 2,
-        };
-        const startRight = {
-          x: centerRect.left - canvasRect.left + centerRect.width,
-          y: centerRect.top - canvasRect.top + centerRect.height / 2,
-        };
-        const startTop = {
-          x: centerRect.left - canvasRect.left + centerRect.width / 2,
-          y: centerRect.top - canvasRect.top,
-        };
-        const startBottom = {
-          x: centerRect.left - canvasRect.left + centerRect.width / 2,
-          y: centerRect.top - canvasRect.top + centerRect.height,
-        };
-
-        const centerPoint = {
-          x: centerRect.left - canvasRect.left + centerRect.width / 2,
-          y: centerRect.top - canvasRect.top + centerRect.height / 2,
-        };
-
-        const nodes = Array.from(canvas.querySelectorAll(".mindmap-node"));
-        nodes.forEach((node) => {
-          const rect = node.getBoundingClientRect();
-          const end = {
-            x: rect.left - canvasRect.left + rect.width / 2,
-            y: rect.top - canvasRect.top + rect.height / 2,
-          };
-
-          const delay = node.dataset.animDelay
-            ? `${node.dataset.animDelay}s`
-            : "0s";
-          const line = document.createElementNS(
-            "http://www.w3.org/2000/svg",
-            "line",
-          );
-          line.setAttribute("x1", centerPoint.x);
-          line.setAttribute("y1", centerPoint.y);
-          line.setAttribute("x2", end.x);
-          line.setAttribute("y2", end.y);
-          line.setAttribute("stroke", "#3b3b3b");
-          line.setAttribute("stroke-width", "3");
-          line.setAttribute("marker-end", "url(#arrowhead)");
-          line.style.setProperty("--anim-delay", delay);
-          svg.appendChild(line);
+        const modal = document.createElement("div");
+        modal.id = "tp-files-modal";
+        modal.className = "tp-files-modal open";
+        modal.innerHTML = `
+          <div class="tp-files-modal-content">
+            <div class="tp-files-modal-header">
+              <h3>${title}</h3>
+              <button class="tp-files-modal-close">&times;</button>
+            </div>
+            <div class="tp-files-modal-body" id="tp-files-modal-body"></div>
+          </div>
+        `;
+        modal.addEventListener("click", (e) => {
+          if (e.target === modal) modal.remove();
         });
-
-        canvas.appendChild(svg);
+        modal
+          .querySelector(".tp-files-modal-close")
+          .addEventListener("click", () => modal.remove());
+        document.addEventListener("keydown", function onKey(e) {
+          if (e.key === "Escape") {
+            modal.remove();
+            document.removeEventListener("keydown", onKey);
+          }
+        });
+        const bodyDiv = modal.querySelector("#tp-files-modal-body");
+        if (!arr || arr.length === 0) {
+          bodyDiv.innerHTML =
+            '<div style="padding:20px;text-align:center;color:#394558;">Sem arquivos disponíveis</div>';
+        } else if (isAnteriores) {
+          renderArquivosAnteriores(title, arr, bodyDiv);
+        } else {
+          renderGroupedArquivos(title, arr, isTipoLevel, bodyDiv);
+        }
+        document.body.appendChild(modal);
       }
 
+      // ─ Close button ─
+      const tpCloseBtn = panel.querySelector("#tp-close-btn");
+      if (tpCloseBtn) {
+        tpCloseBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          closeMindmapModal();
+        });
+      }
+
+      // ─ Append panel ─
       if (mindmapContent) {
-        mindmapContent.appendChild(canvas);
-        requestAnimationFrame(drawMindmapLines);
+        mindmapContent.style.height = "100vh";
+        mindmapContent.appendChild(panel);
       }
-
-      if (!window.__mindmapResizeBound) {
-        window.__mindmapResizeBound = true;
-        window.addEventListener("resize", () => {
-          requestAnimationFrame(drawMindmapLines);
-        });
-      }
-
-      const pathEl = mindmapContent
-        ? mindmapContent.querySelectorAll(".path")
-        : [];
-      pathEl.forEach((el) => {
-        if (el.classList.contains("jpg-entry") || el.querySelector("img"))
-          return;
-        el.innerHTML = el.textContent.replace(/[\\/]/g, "$&<wbr>");
-      });
 
       return data; // expose fetched data to caller
     });
@@ -5402,9 +5345,17 @@ function modalNormalizeFilterValue(value) {
   return String(value).trim().toLowerCase();
 }
 
-// --- Status colors (imagem) ---
-function modalApplyStatusImagem(cell, status, descricao) {
-  const classMap = {
+function getUnifiedStatusClass(status, scope = "auto") {
+  const raw = String(status || "").trim();
+  const upper = raw.toUpperCase();
+  const normalized = raw
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const substatusMap = {
     P00: "si-p00",
     R00: "si-r00",
     R01: "si-r01",
@@ -5427,7 +5378,28 @@ function modalApplyStatusImagem(cell, status, descricao) {
     PRE_ALT: "si-pre-alt",
     READY_FOR_PLANNING: "si-ready-for-planning",
   };
-  const cls = classMap[status];
+
+  const etapaMap = {
+    "nao iniciado": "si-to-do",
+    "em andamento": "si-tea",
+    "em aprovacao": "si-apr",
+    finalizado: "si-fin",
+    aprovado: "si-fin",
+    "aprovado com ajustes": "si-app",
+    ajuste: "si-ajuste",
+    hold: "si-hold",
+    reprovado: "si-ajuste",
+    refazendo: "si-ren",
+  };
+
+  if (scope === "substatus") return substatusMap[upper] || "si-outro";
+  if (scope === "etapa") return etapaMap[normalized] || "si-outro";
+  return substatusMap[upper] || etapaMap[normalized] || "si-outro";
+}
+
+// --- Status colors (imagem) ---
+function modalApplyStatusImagem(cell, status, descricao) {
+  const cls = getUnifiedStatusClass(status, "substatus");
   if (cls) cell.classList.add(cls);
   if (status === "HOLD") {
     cell.addEventListener("mouseenter", (event) => {
@@ -5452,44 +5424,33 @@ function modalApplyStatusImagem(cell, status, descricao) {
 // --- Status colors (funções) ---
 function modalApplyStatusStyle(cell, status, colaborador) {
   if (colaborador === "Não se aplica") return;
-  switch (status) {
-    case "Finalizado":
-      cell.style.backgroundColor = "green";
-      cell.style.color = "white";
-      break;
-    case "Em andamento":
-      cell.style.backgroundColor = "#f7eb07";
-      cell.style.color = "black";
-      break;
-    case "Em aprovação":
-      cell.style.backgroundColor = "#0c45f2";
-      cell.style.color = "white";
-      break;
-    case "Aprovado":
-      cell.style.backgroundColor = "lightseagreen";
-      cell.style.color = "black";
-      break;
-    case "Ajuste":
-      cell.style.backgroundColor = "orangered";
-      cell.style.color = "black";
-      break;
-    case "Aprovado com ajustes":
-      cell.style.backgroundColor = "mediumslateblue";
-      cell.style.color = "black";
-      break;
-    case "Não iniciado":
-      cell.style.backgroundColor = "#eee";
-      cell.style.color = "black";
-      break;
-    case "HOLD":
-      cell.style.backgroundColor = "#ff0000";
-      cell.style.color = "black";
-      break;
-    default:
-      cell.style.backgroundColor = "";
-      cell.style.color = "";
-      break;
-  }
+  const cls = getUnifiedStatusClass(status, "etapa");
+  cell.classList.remove(
+    "si-p00",
+    "si-r00",
+    "si-r01",
+    "si-r02",
+    "si-r03",
+    "si-r04",
+    "si-r05",
+    "si-ef",
+    "si-hold",
+    "si-tea",
+    "si-ren",
+    "si-apr",
+    "si-app",
+    "si-rvw",
+    "si-ok",
+    "si-to-do",
+    "si-fin",
+    "si-drv",
+    "si-rvw-done",
+    "si-pre-alt",
+    "si-ready-for-planning",
+    "si-ajuste",
+    "si-outro",
+  );
+  cell.classList.add(cls);
 }
 
 function modalApplyStyleNone(cell, cell2, nome) {

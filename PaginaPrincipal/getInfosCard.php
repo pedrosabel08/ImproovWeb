@@ -44,6 +44,7 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
                 img.clima, 
                 img.imagem_nome,
                 img.idimagens_cliente_obra AS idimagem,
+                sub.nome as subtipo,
                 f.nome_funcao, 
                 col.idcolaborador AS colaborador_id, 
                 col.nome_colaborador, 
@@ -51,11 +52,15 @@ if ($_SERVER["REQUEST_METHOD"] === "GET") {
                 fi.status,
                 fi.observacao,
                 fi.idfuncao_imagem AS id,
+                fi.funcao_id,
+                o.nomenclatura,
                 0 AS is_animacao
             FROM imagens_cliente_obra img
             LEFT JOIN funcao_imagem fi ON img.idimagens_cliente_obra = fi.imagem_id
             LEFT JOIN colaborador col ON fi.colaborador_id = col.idcolaborador
             LEFT JOIN funcao f ON fi.funcao_id = f.idfuncao
+            LEFT JOIN subtipo_imagem sub ON img.subtipo_id = sub.id
+            LEFT JOIN obra o ON img.obra_id = o.idobra
             WHERE fi.idfuncao_imagem = $idFuncaoImagem
             LIMIT 1";
     }

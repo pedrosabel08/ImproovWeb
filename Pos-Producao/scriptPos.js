@@ -522,7 +522,15 @@ function atualizarTabela() {
                 return `<span style="background:${cor};color:white;padding:4px 6px;border-radius:4px;font-size:12px">${txt}</span>`;
               },
             },
-            { title: "Revisão", field: "nome_status" },
+            {
+              title: "Revisão",
+              field: "nome_status",
+              formatter: function (cell) {
+                let val = (cell.getValue() || "");
+                let cor = val.toLowerCase();
+                return `<span style="background:var(--si-${cor});color:black;padding:4px 6px;border-radius:4px;font-size:12px;font-weight:bold">${val}</span>`;
+              },
+            },
             // { title: "Responsável", field: "nome_responsavel", headerFilter: "list", headerFilterParams: { values: listaValores("nome_responsavel") } },
           ],
         });

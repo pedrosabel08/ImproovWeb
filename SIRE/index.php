@@ -65,6 +65,17 @@ if ($res_amb) {
 }
 
 $conn2->close();
+
+$conn = conectarBanco();
+
+$clientes = obterClientes($conn);
+$obras = obterObras($conn);
+$obras_inativas = obterObras($conn, 1);
+$colaboradores = obterColaboradores($conn);
+$status_imagens = obterStatusImagens($conn);
+$funcoes = obterFuncoes($conn);
+$conn->close();
+
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">

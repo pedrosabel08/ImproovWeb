@@ -57,6 +57,7 @@
           <div class="gv-col-h">Progresso</div>
           <div class="gv-col-h c">Qtd Parcial</div>
           <div class="gv-col-h c">Falta para Meta</div>
+          <div class="gv-col-h c">Recorde</div>
           <div class="gv-col-h r">Ritmo</div>
         </div>
         <div class="gv-rows" id="bodyPerspectivas"></div>
@@ -86,6 +87,7 @@
           <div class="gv-col-headers">
             <div class="gv-col-h">Funcionário</div>
             <div class="gv-col-h">Progresso</div>
+            <div class="gv-col-h c">Recorde</div>
             <div class="gv-col-h c">Qtd Parcial</div>
             <div class="gv-col-h c">Falta para Meta</div>
             <div class="gv-col-h r">Ritmo</div>
@@ -114,6 +116,7 @@
           <div class="gv-col-headers">
             <div class="gv-col-h">Funcionário</div>
             <div class="gv-col-h">Progresso</div>
+            <div class="gv-col-h c">Recorde</div>
             <div class="gv-col-h c">Qtd Parcial</div>
             <div class="gv-col-h c">Falta para Meta</div>
             <div class="gv-col-h r">Ritmo</div>

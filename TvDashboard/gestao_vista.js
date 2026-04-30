@@ -140,6 +140,7 @@ function buildEmployeeRow(f, meta_individual) {
     ? `<div class="gv-avatar" style="background:hsl(${hue},55%,38%)"><img src="${f.imagem_url}" alt="${f.nome}" class="gv-avatar-img"></div>`
     : `<div class="gv-avatar" style="background:hsl(${hue},55%,38%)">${initial}</div>`;
   const metaSub = meta_individual !== null ? `de ${meta_individual}` : "";
+  const recorde = Number.isFinite(f.recorde_mes) ? f.recorde_mes : 0;
 
   return `<div class="gv-row">
     <div class="gv-row-nome">
@@ -154,10 +155,13 @@ function buildEmployeeRow(f, meta_individual) {
       <div class="gv-prog-label">${pgLabel}</div>
     </div>
     <div class="gv-row-qtd">
-      <div class="gv-qtd-val">${f.qtd_parcial}</div>
-      <div class="gv-qtd-sub">${metaSub}</div>
+    <div class="gv-qtd-val">${f.qtd_parcial}</div>
+    <div class="gv-qtd-sub">${metaSub}</div>
     </div>
     <div class="gv-row-falta">${faltaHtml}</div>
+    <div class="gv-row-recorde">
+      <div class="gv-rec-val">${recorde}</div>
+    </div>
     <div class="gv-row-ritmo">
       <span class="gv-ritmo-icon gv-ritmo-${ritmo.tipo}">${ritmo.icon}</span>
       <div class="gv-ritmo-info">

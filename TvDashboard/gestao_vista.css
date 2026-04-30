@@ -365,14 +365,14 @@ body {
 /* Perspectivas grid columns */
 .gv-section--persp .gv-col-headers,
 .gv-section--persp .gv-row {
-  grid-template-columns: 160px 1fr 120px 110px 140px;
+  grid-template-columns: 150px 1fr 100px 110px 100px 130px;
 }
 /* Plantas & Alterações grid columns */
 .gv-section--plants .gv-col-headers,
 .gv-section--plants .gv-row,
 .gv-section--alter .gv-col-headers,
 .gv-section--alter .gv-row {
-  grid-template-columns: 130px 1fr 100px 90px 120px;
+  grid-template-columns: 120px 1fr 80px 90px 80px 110px;
 }
 
 /* ─── Rows scroll area ────────────────────────────────────── */
@@ -504,6 +504,21 @@ body {
 }
 
 /* QTD cell */
+.gv-row-recorde {
+  text-align: center;
+}
+.gv-rec-val {
+  font-size: 1.05rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.gv-rec-sub {
+  font-size: 9px;
+  color: var(--gv-text-sub);
+  font-weight: 500;
+}
+
 .gv-row-qtd {
   text-align: center;
 }
@@ -668,6 +683,9 @@ body {
   .gv-kpi-value { 
     font-size: 3.75rem;
   }
+  .gv-rec-val {
+    font-size: 3rem;
+  }
   .gv-qtd-val {
     font-size: 3rem;
   }
@@ -723,13 +741,13 @@ body {
   }
   .gv-section--persp .gv-col-headers,
   .gv-section--persp .gv-row {
-    grid-template-columns: 280px 1fr 160px 150px 190px;
+    grid-template-columns: 240px 1fr 130px 150px 130px 170px;
   }
   .gv-section--plants .gv-col-headers,
   .gv-section--plants .gv-row,
   .gv-section--alter .gv-col-headers,
   .gv-section--alter .gv-row {
-    grid-template-columns: 250px 1fr 140px 130px 160px;
+    grid-template-columns: 210px 1fr 115px 130px 115px 145px;
   }
   .gv-row-bottom {
     display: none;

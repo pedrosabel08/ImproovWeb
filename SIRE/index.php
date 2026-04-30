@@ -17,10 +17,11 @@ if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
 include_once __DIR__ . '/../conexao.php';
 include '../conexaoMain.php';
 
-$idusuario  = $_SESSION['idusuario'];
+$idusuario = $_SESSION['idusuario'];
 $tela_atual = basename($_SERVER['PHP_SELF']);
 
-if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
+if (session_status() === PHP_SESSION_ACTIVE)
+    session_write_close();
 
 $conn2 = conectarBanco();
 $sql_log = "UPDATE logs_usuarios SET tela_atual = ?, ultima_atividade = NOW() WHERE usuario_id = ?";
@@ -32,7 +33,7 @@ if ($stmt_log) {
 }
 
 /* ── Filtros dinâmicos: obras e ambientes distintos ── */
-$obras_list   = [];
+$obras_list = [];
 $ambientes_list = [];
 
 $res_obras = $conn2->query("
@@ -44,7 +45,8 @@ $res_obras = $conn2->query("
     ORDER BY o.nomenclatura
 ");
 if ($res_obras) {
-    while ($row = $res_obras->fetch_assoc()) $obras_list[] = $row;
+    while ($row = $res_obras->fetch_assoc())
+        $obras_list[] = $row;
     $res_obras->free();
 }
 
@@ -57,7 +59,8 @@ $res_amb = $conn2->query("
     ORDER BY i.tipo_imagem
 ");
 if ($res_amb) {
-    while ($row = $res_amb->fetch_assoc()) $ambientes_list[] = $row['ambiente'];
+    while ($row = $res_amb->fetch_assoc())
+        $ambientes_list[] = $row['ambiente'];
     $res_amb->free();
 }
 
@@ -70,7 +73,8 @@ $conn2->close();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Catálogo de Referências</title>
-    <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s" type="image/x-icon">
+    <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
+        type="image/x-icon">
 
     <!-- Fonts & Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -113,10 +117,8 @@ $conn2->close();
         <div class="search-bar-wrap">
             <div class="search-bar-inner">
                 <i class="fa-solid fa-magnifying-glass search-bar-icon"></i>
-                <input type="text" id="searchInput"
-                    class="search-bar-input"
-                    placeholder="Buscar por ambiente, obra, estilo ou palavra-chave…"
-                    autocomplete="off">
+                <input type="text" id="searchInput" class="search-bar-input"
+                    placeholder="Buscar por ambiente, obra, estilo ou palavra-chave…" autocomplete="off">
                 <button type="button" class="search-bar-clear" id="searchClear" title="Limpar busca">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
@@ -160,6 +162,14 @@ $conn2->close();
                 <select id="filterTipo">
                     <option value="">Todos os tipos</option>
                 </select>
+            </div>
+
+            <div class="filter-item filter-item--golden">
+                <label class="filter-golden-label" for="filterGolden">
+                    <input type="checkbox" id="filterGolden">
+                    <i class="fa-solid fa-star"></i>
+                    Apenas Golden Samples
+                </label>
             </div>
 
             <div class="filter-actions">
@@ -210,6 +220,10 @@ $conn2->close();
                     </span>
                 </div>
                 <div class="modal-header-right">
+                    <button type="button" class="btn-golden-modal" id="lbBtnGolden" title="Marcar como Golden Sample">
+                        <i class="fa-regular fa-star" id="lbGoldenIcon"></i>
+                        <span id="lbGoldenLabel">Golden Sample</span>
+                    </button>
                     <button class="modal-close" id="closeLightbox" title="Fechar (Esc)">
                         <i class="fa-solid fa-xmark"></i>
                     </button>
@@ -221,7 +235,8 @@ $conn2->close();
                 <!-- Preview -->
                 <div class="modal-preview-panel">
                     <img id="lbMainImg" class="modal-main-img" src="" alt="Referência">
-                    <div class="lb-zoom-hint"><i class="fa-solid fa-magnifying-glass-plus"></i> Ctrl + scroll para zoom</div>
+                    <div class="lb-zoom-hint"><i class="fa-solid fa-magnifying-glass-plus"></i> Ctrl + scroll para zoom
+                    </div>
                 </div>
 
                 <!-- Detalhes -->
@@ -297,6 +312,7 @@ $conn2->close();
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="../script/sidebar.js"></script>
     <script src="../script/controleSessao.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="<?php echo asset_url('catalogo.js'); ?>"></script>
 </body>
 

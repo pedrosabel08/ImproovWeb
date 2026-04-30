@@ -30,6 +30,7 @@ if ($action === 'getRefs') {
             ri.nomenclatura,
             ri.nome_arquivo,
             ri.importado_em,
+            ri.golden_sample,
             i.obra_id,
             i.tipo_imagem as ambiente,
             o.nomenclatura AS obra_nomenclatura
@@ -37,7 +38,7 @@ if ($action === 'getRefs') {
         LEFT JOIN funcao_imagem fi ON fi.idfuncao_imagem = ri.funcao_imagem_id
         LEFT JOIN imagens_cliente_obra i ON i.idimagens_cliente_obra = fi.imagem_id
         LEFT JOIN obra o ON o.idobra = i.obra_id
-        ORDER BY ri.importado_em DESC
+        ORDER BY ri.golden_sample DESC, ri.importado_em DESC
         LIMIT 5000
     ";
 

@@ -531,6 +531,11 @@ body {
 .ref-card:hover .card-thumb-wrap img {
   transform: scale(1.05);
 }
+
+.ref-card:hover .card-body p {
+  color: #333;
+}
+
 .card-thumb-wrap img.loading {
   opacity: 0;
 }
@@ -1043,6 +1048,225 @@ body {
   transition: transform 0.1s;
   user-select: none;
   -webkit-user-drag: none;
+}
+
+/* ── Golden Sample — Coração no Card ─────────────────────────────── */
+
+/* variável de cor golden, usada em todo o módulo */
+:root {
+  --golden: #f59e0b;
+  --golden-hover: #d97706;
+  --golden-subtle: rgba(245, 158, 11, 0.12);
+  --golden-glow: rgba(245, 158, 11, 0.35);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --golden: #fbbf24;
+    --golden-hover: #f59e0b;
+    --golden-subtle: rgba(251, 191, 36, 0.12);
+    --golden-glow: rgba(251, 191, 36, 0.3);
+  }
+}
+
+/* Botão coração posicionado no canto superior direito do card */
+.card-heart {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transform: scale(0.85);
+  transition:
+    opacity var(--transition-fast),
+    transform var(--transition-fast),
+    background var(--transition-fast),
+    color var(--transition-fast);
+  pointer-events: none; /* ativado no hover via .ref-card:hover */
+}
+
+/* Aparece no hover do card */
+.ref-card:hover .card-heart {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+}
+
+/* Estado ativo: golden_sample = 1 */
+.card-heart.is-golden {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+  background: var(--golden-subtle);
+  color: var(--golden);
+}
+
+.card-heart:hover {
+  background: var(--golden-subtle);
+  color: var(--golden);
+  transform: scale(1.12);
+}
+.card-heart.is-golden:hover {
+  background: rgba(245, 158, 11, 0.22);
+  color: var(--golden-hover);
+}
+
+/* Estado loading: impede duplo clique */
+.card-heart.is-loading {
+  pointer-events: none;
+  opacity: 0.55;
+  animation: heartPulse 0.7s ease-in-out infinite;
+}
+
+@keyframes heartPulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+}
+
+/* Destaque sutil no card quando golden_sample = 1 */
+.ref-card.is-golden {
+  border-color: rgba(245, 158, 11, 0.3);
+}
+.ref-card.is-golden::before {
+  background: var(--golden);
+}
+
+/* ── Golden Sample — Filtro Checkbox ─────────────────────────────── */
+
+.filter-item--golden {
+  display: flex;
+  align-items: flex-end;
+  padding-bottom: 2px;
+}
+
+.filter-golden-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 14px;
+  border: 1.5px solid var(--border-input);
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+  transition:
+    border-color var(--transition-fast),
+    background var(--transition-fast),
+    color var(--transition-fast),
+    box-shadow var(--transition-fast);
+  white-space: nowrap;
+}
+
+.filter-golden-label input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--golden);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.filter-golden-label i {
+  color: var(--golden);
+  font-size: 12px;
+  transition: transform var(--transition-fast);
+}
+
+.filter-golden-label:hover {
+  border-color: var(--golden);
+  background: var(--golden-subtle);
+  color: var(--golden-hover);
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
+}
+
+.filter-golden-label:has(input:checked) {
+  border-color: var(--golden);
+  background: var(--golden-subtle);
+  color: var(--golden-hover);
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
+}
+
+.filter-golden-label:has(input:checked) i {
+  transform: scale(1.2);
+}
+
+/* ── Golden Sample — Botão no Modal ──────────────────────────────── */
+
+.btn-golden-modal {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 36px;
+  padding: 0 14px;
+  border: 1.5px solid var(--border-input);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface-alt);
+  color: var(--text-secondary);
+  font-size: 12.5px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition:
+    border-color var(--transition-fast),
+    background var(--transition-fast),
+    color var(--transition-fast),
+    box-shadow var(--transition-fast),
+    transform var(--transition-fast);
+  white-space: nowrap;
+}
+
+.btn-golden-modal i {
+  font-size: 13px;
+  transition:
+    transform var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.btn-golden-modal:hover {
+  border-color: var(--golden);
+  background: var(--golden-subtle);
+  color: var(--golden-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px var(--golden-glow);
+}
+
+.btn-golden-modal.is-golden {
+  border-color: var(--golden);
+  background: var(--golden-subtle);
+  color: var(--golden-hover);
+}
+
+.btn-golden-modal.is-golden i {
+  color: var(--golden);
+}
+
+.btn-golden-modal.is-golden:hover {
+  background: rgba(245, 158, 11, 0.2);
+  box-shadow: 0 4px 12px var(--golden-glow);
+}
+
+.btn-golden-modal.is-loading {
+  pointer-events: none;
+  opacity: 0.6;
 }
 
 /* ── Responsive ───────────────────────────────────────────────────── */

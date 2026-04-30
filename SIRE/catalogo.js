@@ -18,6 +18,8 @@ let allRefs = [];
 let filtered = [];
 let currentPage = 1;
 let totalRefs = 0;
+let currentLightboxId = null; // ID da referência aberta no modal
+let goldenPending = {}; // { id: true } → evita race condition
 
 // ── Utilitários ───────────────────────────────────────────────────────────────
 
@@ -52,6 +54,7 @@ function isFilterActive() {
     $("#filterAmbiente").val() !== "" ||
     $("#filterEstilo").val() !== "" ||
     $("#filterTipo").val() !== "" ||
+    $("#filterGolden").is(":checked") ||
     $("#searchInput").val().trim() !== ""
   );
 }
@@ -99,15 +102,17 @@ function renderCards(refs, append) {
     const titulo = ref.ambiente || ref.nome_arquivo || "—";
     const data = formatDate(ref.importado_em);
 
+    const isGolden = ref.golden_sample == 1;
     html += `
-      <div class="ref-card"
+      <div class="ref-card${isGolden ? " is-golden" : ""}"
            data-id="${ref.id}"
            data-nome="${escAttr(ref.nome_arquivo)}"
            data-obra="${escAttr(obra)}"
            data-ambiente="${escAttr(ambiente)}"
            data-estilo="${escAttr(estilo)}"
            data-nomenclatura="${escAttr(ref.nomenclatura || "")}"
-           data-data="${escAttr(data)}">
+           data-data="${escAttr(data)}"
+           data-golden="${isGolden ? "1" : "0"}">
         <div class="card-thumb-wrap">
           <img loading="lazy"
                decoding="async"
@@ -116,6 +121,13 @@ function renderCards(refs, append) {
                class="loading"
                onload="this.classList.remove('loading')"
                onerror="this.src='../assets/logo.jpg';this.classList.remove('loading')">
+          <button type="button"
+                  class="card-heart${isGolden ? " is-golden" : ""}"
+                  data-id="${ref.id}"
+                  title="${isGolden ? "Remover dos Golden Samples" : "Marcar como Golden Sample"}"
+                  aria-label="Golden Sample">
+            <i class="${isGolden ? "fa-solid" : "fa-regular"} fa-star"></i>
+          </button>
         </div>
         <div class="card-body">
           <p class="card-title" title="${escAttr(titulo)}">${esc(titulo)}</p>
@@ -164,6 +176,106 @@ function escAttr(str) {
   return esc(str);
 }
 
+// ── Golden Sample — Toggle ────────────────────────────────────────────────────
+
+function toggleGoldenSample(id) {
+  if (goldenPending[id]) return; // evita race condition
+  goldenPending[id] = true;
+
+  // Localiza o card no DOM
+  const $card = $(`[data-id="${id}"]`).filter(".ref-card");
+  const $btn = $card.find(".card-heart");
+  const $modalBtn = $("#lbBtnGolden");
+
+  // Estado atual (optimistic UI a partir do DOM)
+  const currentGolden =
+    $btn.hasClass("is-golden") || $card.hasClass("is-golden");
+  const newGolden = !currentGolden;
+
+  // Optimistic: atualiza imediatamente
+  applyGoldenToCard($card, $btn, newGolden);
+  if (currentLightboxId == id) {
+    applyGoldenToModal($modalBtn, newGolden);
+  }
+
+  $btn.addClass("is-loading");
+  if (currentLightboxId == id) $modalBtn.addClass("is-loading");
+
+  fetch("golden_sample_ajax.php", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ referencia_id: id }),
+  })
+    .then(function (r) {
+      return r.json();
+    })
+    .then(function (res) {
+      if (res.success) {
+        const confirmed = res.golden_sample == 1;
+        // Confirma o estado com resposta do servidor
+        applyGoldenToCard($card, $btn, confirmed);
+        if (currentLightboxId == id) {
+          applyGoldenToModal($modalBtn, confirmed);
+        }
+        // Sincroniza allRefs
+        const ref = allRefs.find(function (r) {
+          return r.id == id;
+        });
+        if (ref) ref.golden_sample = res.golden_sample;
+      } else {
+        // Rollback em caso de erro
+        applyGoldenToCard($card, $btn, currentGolden);
+        if (currentLightboxId == id)
+          applyGoldenToModal($modalBtn, currentGolden);
+        showError(res.message || "Erro ao salvar Golden Sample.");
+      }
+    })
+    .catch(function () {
+      applyGoldenToCard($card, $btn, currentGolden);
+      if (currentLightboxId == id) applyGoldenToModal($modalBtn, currentGolden);
+      showError("Erro de comunicação com o servidor.");
+    })
+    .finally(function () {
+      $btn.removeClass("is-loading");
+      if (currentLightboxId == id) $modalBtn.removeClass("is-loading");
+      delete goldenPending[id];
+    });
+}
+
+function applyGoldenToCard($card, $btn, isGolden) {
+  if (isGolden) {
+    $card.addClass("is-golden").attr("data-golden", "1");
+    $btn
+      .addClass("is-golden")
+      .attr("title", "Remover dos Golden Samples")
+      .find("i")
+      .removeClass("fa-regular")
+      .addClass("fa-solid");
+  } else {
+    $card.removeClass("is-golden").attr("data-golden", "0");
+    $btn
+      .removeClass("is-golden")
+      .attr("title", "Marcar como Golden Sample")
+      .find("i")
+      .removeClass("fa-solid")
+      .addClass("fa-regular");
+  }
+}
+
+function applyGoldenToModal($modalBtn, isGolden) {
+  const $icon = $("#lbGoldenIcon");
+  const $label = $("#lbGoldenLabel");
+  if (isGolden) {
+    $modalBtn.addClass("is-golden");
+    $icon.removeClass("fa-regular").addClass("fa-solid");
+    $label.text("Golden Sample");
+  } else {
+    $modalBtn.removeClass("is-golden");
+    $icon.removeClass("fa-solid").addClass("fa-regular");
+    $label.text("Golden Sample");
+  }
+}
+
 // ── Filtros locais ────────────────────────────────────────────────────────────
 
 function applyFilters() {
@@ -172,8 +284,10 @@ function applyFilters() {
   const ambiente = $("#filterAmbiente").val().toLowerCase();
   const estilo = $("#filterEstilo").val().toLowerCase();
   const tipo = $("#filterTipo").val().toLowerCase();
+  const apenasGolden = $("#filterGolden").is(":checked");
 
   filtered = allRefs.filter(function (ref) {
+    if (apenasGolden && ref.golden_sample != 1) return false;
     if (obra && String(ref.obra_id) !== obra) return false;
     if (ambiente && (ref.ambiente || "").toLowerCase() !== ambiente)
       return false;
@@ -280,15 +394,20 @@ function populateDynamicFilters() {
 // ── Lightbox ──────────────────────────────────────────────────────────────────
 
 function openLightbox(card) {
-  const nome = $(card).data("nome") || "";
-  const obra = $(card).data("obra") || "—";
-  const ambiente = $(card).data("ambiente") || "—";
-  const estilo = $(card).data("estilo") || "—";
-  const nomenclatura = $(card).data("nomenclatura") || "—";
-  const data = $(card).data("data") || "—";
+  const $card = $(card);
+  const refId = $card.data("id");
+  const nome = $card.data("nome") || "";
+  const obra = $card.data("obra") || "—";
+  const ambiente = $card.data("ambiente") || "—";
+  const estilo = $card.data("estilo") || "—";
+  const nomenclatura = $card.data("nomenclatura") || "—";
+  const data = $card.data("data") || "—";
 
   const fullSrc = originalUrl(nome);
   const thumbSrc = thumbUrl(nome);
+
+  // Registra o ID atual no lightbox
+  currentLightboxId = refId;
 
   // Preenche o modal
   $("#lb_titulo").text(ambiente !== "—" ? ambiente : nome);
@@ -307,6 +426,10 @@ function openLightbox(card) {
   $("#lb_ambiente_det").text(ambiente);
   $("#lb_estilo").text(estilo);
   $("#lb_data").text(data);
+
+  // Sincroniza botão Golden Sample do modal com o estado atual
+  const isGolden = $card.data("golden") == "1" || $card.hasClass("is-golden");
+  applyGoldenToModal($("#lbBtnGolden"), isGolden);
 
   // Carrega thumb inicialmente, depois troca para original
   const $img = $("#lbMainImg");
@@ -447,6 +570,7 @@ function openFullscreen(src) {
 function closeLightbox() {
   $("#refLightbox").removeClass("is-open");
   $("#lbMainImg").attr("src", "");
+  currentLightboxId = null;
 }
 
 $("#closeLightbox, #closeLightboxFooter").on("click", closeLightbox);
@@ -461,13 +585,27 @@ $(document).on("keydown", function (e) {
   }
 });
 
-// ── Event Delegation (cards) ─────────────────────────────────────────────────
+// ── Event Delegation (cards + coração) ───────────────────────────────────────
+
+// Coração: stopPropagation para não abrir o modal
+$("#refGrid")
+  .off("click.heartClick")
+  .on("click.heartClick", ".card-heart", function (e) {
+    e.stopPropagation();
+    const id = parseInt($(this).data("id"), 10);
+    if (id) toggleGoldenSample(id);
+  });
 
 $("#refGrid")
   .off("click.refClick")
   .on("click.refClick", ".ref-card", function () {
     openLightbox(this);
   });
+
+// Botão Golden Sample no modal
+$("#lbBtnGolden").on("click", function () {
+  if (currentLightboxId) toggleGoldenSample(currentLightboxId);
+});
 
 // ── Busca com debounce ────────────────────────────────────────────────────────
 
@@ -506,6 +644,11 @@ $("#btnLimpar").on("click", function () {
   $("#filterAmbiente").val("");
   $("#filterEstilo").val("");
   $("#filterTipo").val("");
+  $("#filterGolden").prop("checked", false);
+  applyFilters();
+});
+
+$("#filterGolden").on("change", function () {
   applyFilters();
 });
 

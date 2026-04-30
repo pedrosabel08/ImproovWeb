@@ -73,7 +73,7 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg-body: #505157;
+    --bg-body: #0f1117;
     --bg-surface: #1e2130;
     --bg-surface-alt: #1a1d2e;
     --bg-card: #1e2130;
@@ -113,6 +113,7 @@
 * {
   padding: 0;
   margin: 0;
+  box-sizing: border-box;
   font-family: "Inter", sans-serif;
 }
 

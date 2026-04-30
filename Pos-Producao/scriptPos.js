@@ -102,7 +102,7 @@ function _autoSave(statusEl) {
     obs: document.getElementById("observacao").value,
     status_id: document.getElementById("opcao_status").value,
     colaborador_id: document.getElementById("opcao_finalizador").value,
-    // responsavel_id: document.getElementById("responsavel_id").value,
+    responsavel_id: document.getElementById("responsavel_id").value,
   };
 
   fetch("autosave_pos.php", {
@@ -147,7 +147,7 @@ function _initAutoSaveListeners() {
     { id: "opcao_finalizador", ssId: "ss-finalizador" },
     { id: "opcao_obra", ssId: "ss-obra" },
     { id: "opcao_status", ssId: "ss-status" },
-    // { id: "responsavel_id", ssId: "ss-responsavel" },
+    { id: "responsavel_id", ssId: "ss-responsavel" },
   ];
   selectFields.forEach(function (f) {
     var el = document.getElementById(f.id);

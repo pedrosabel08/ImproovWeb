@@ -281,7 +281,7 @@ $conn->close();
                             </select>
                         </div>
 
-                        <!-- <div class="form-group">
+                        <div class="form-group">
                             <label class="form-label">
                                 <i class="fa-solid fa-user-tie"></i> Responsável
                                 <span class="save-status" id="ss-responsavel"></span>
@@ -290,7 +290,7 @@ $conn->close();
                                 <option value="14">Adriana</option>
                                 <option value="28">Eduardo</option>
                             </select>
-                        </div> -->
+                        </div>
                     </div>
 
                     <!-- Grid 2 colunas: Obra + Revisão -->

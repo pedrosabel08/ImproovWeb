@@ -342,3 +342,358 @@ body {
   z-index: 100;
   backdrop-filter: blur(8px);
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   RESPONSIVE BREAKPOINTS
+   TV (≥2000px) · Desktop (1280–1999px) · Small desktop (1025–1279px)
+   Tablet/iPad (769–1024px) · Mobile (≤768px) · Portrait (≤480px)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── TV (≥ 2000px) ──────────────────────────────────────────── */
+@media screen and (min-width: 2000px) {
+  :root {
+    --header-h: 100px;
+    --chart-ratio: 62%;
+  }
+  .tv-header {
+    grid-template-columns: 280px 1fr 300px;
+    padding: 0 48px;
+  }
+  .tv-logo {
+    height: 56px;
+  }
+  .tv-title {
+    font-size: 32px;
+  }
+  .tv-subtitle {
+    font-size: 17px;
+  }
+  .tv-clock {
+    font-size: 44px;
+    letter-spacing: 3px;
+  }
+  .tv-last-update {
+    font-size: 14px;
+    margin-top: 6px;
+  }
+  .tv-chart-section {
+    padding: 36px 32px 36px 48px;
+  }
+  .tv-table-section {
+    padding: 32px 40px 28px 32px;
+  }
+  .tv-table {
+    font-size: 20px;
+  }
+  .tv-table thead th {
+    font-size: 14px;
+    padding: 14px 16px;
+  }
+  .tv-table tbody td {
+    padding: 16px 16px;
+  }
+  .tv-qty {
+    font-size: 26px;
+  }
+  .tv-pct-badge {
+    font-size: 16px;
+    padding: 5px 14px;
+    min-width: 64px;
+  }
+  .tv-func-name {
+    font-size: 20px;
+    gap: 14px;
+  }
+  .tv-func-dot {
+    width: 14px;
+    height: 14px;
+  }
+  .tv-legend {
+    gap: 24px;
+    padding-top: 8px;
+  }
+  .tv-legend-item {
+    font-size: 15px;
+    gap: 8px;
+  }
+}
+
+/* ── Small desktop (1025–1279px) ───────────────────────────── */
+@media screen and (max-width: 1279px) {
+  :root {
+    --header-h: 70px;
+  }
+  .tv-header {
+    grid-template-columns: 180px 1fr 200px;
+    padding: 0 24px;
+  }
+  .tv-logo {
+    height: 38px;
+  }
+  .tv-title {
+    font-size: 20px;
+  }
+  .tv-subtitle {
+    font-size: 12px;
+  }
+  .tv-clock {
+    font-size: 24px;
+  }
+  .tv-chart-section {
+    padding: 20px 18px 20px 24px;
+  }
+  .tv-table-section {
+    padding: 18px 20px 16px 18px;
+  }
+  .tv-table {
+    font-size: 13px;
+  }
+  .tv-table thead th {
+    font-size: 10px;
+    padding: 8px 10px;
+  }
+  .tv-table tbody td {
+    padding: 9px 10px;
+  }
+  .tv-qty {
+    font-size: 16px;
+  }
+  .tv-pct-badge {
+    font-size: 11px;
+    padding: 2px 8px;
+    min-width: 44px;
+  }
+  .tv-func-name {
+    font-size: 13px;
+  }
+}
+
+/* ── Tablet / iPad (769–1024px) ────────────────────────────── */
+@media screen and (max-width: 1024px) {
+  :root {
+    --header-h: auto;
+    --chart-ratio: 100%;
+  }
+
+  html,
+  body {
+    overflow: auto;
+    height: auto;
+  }
+
+  /* Header: 2-linha compacta */
+  .tv-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    height: auto;
+    padding: 12px 20px;
+    gap: 6px 12px;
+  }
+  .tv-header-left {
+    order: 1;
+    flex-shrink: 0;
+  }
+  .tv-header-right {
+    order: 2;
+    margin-left: auto;
+    text-align: right;
+  }
+  .tv-header-center {
+    order: 3;
+    flex: 1 1 100%;
+    text-align: left;
+  }
+
+  .tv-logo {
+    height: 34px;
+  }
+  .tv-title {
+    font-size: 18px;
+  }
+  .tv-subtitle {
+    font-size: 11px;
+    margin-top: 1px;
+  }
+  .tv-clock {
+    font-size: 22px;
+  }
+
+  /* Main: empilhado verticalmente */
+  .tv-main {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    overflow: visible;
+  }
+
+  .tv-chart-section {
+    border-right: none;
+    border-bottom: 1px solid var(--tv-border);
+    padding: 20px;
+    min-height: 45vh;
+  }
+  .tv-table-section {
+    padding: 20px;
+    gap: 12px;
+  }
+  .tv-table {
+    font-size: 14px;
+  }
+  .tv-table thead th {
+    font-size: 10px;
+    padding: 9px 10px;
+  }
+  .tv-table tbody td {
+    padding: 10px 10px;
+  }
+}
+
+/* ── Mobile (≤ 768px) ──────────────────────────────────────── */
+@media screen and (max-width: 768px) {
+  html,
+  body {
+    overflow: auto;
+    height: auto;
+  }
+
+  .tv-header {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    height: auto;
+    padding: 12px 16px;
+    gap: 4px;
+  }
+  .tv-header-left,
+  .tv-header-center,
+  .tv-header-right {
+    width: 100%;
+    margin-left: 0;
+  }
+  .tv-header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-align: left;
+  }
+  .tv-last-update {
+    margin-top: 0;
+  }
+
+  .tv-logo {
+    height: 28px;
+  }
+  .tv-title {
+    font-size: 16px;
+  }
+  .tv-subtitle {
+    font-size: 10px;
+  }
+  .tv-clock {
+    font-size: 20px;
+  }
+
+  .tv-main {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    overflow: visible;
+  }
+
+  .tv-chart-section {
+    border-right: none;
+    border-bottom: 1px solid var(--tv-border);
+    padding: 14px;
+    min-height: 55vw;
+  }
+  .tv-table-section {
+    padding: 14px;
+    gap: 10px;
+    overflow-x: auto;
+  }
+  .tv-table {
+    font-size: 12px;
+    min-width: 360px;
+  }
+  .tv-table thead th {
+    font-size: 9px;
+    padding: 7px 8px;
+  }
+  .tv-table tbody td {
+    padding: 8px 8px;
+  }
+  .tv-qty {
+    font-size: 15px;
+  }
+  .tv-pct-badge {
+    font-size: 10px;
+    padding: 2px 6px;
+    min-width: 36px;
+  }
+  .tv-func-name {
+    font-size: 12px;
+    gap: 6px;
+  }
+  .tv-func-dot {
+    width: 8px;
+    height: 8px;
+  }
+  .tv-legend {
+    gap: 10px;
+  }
+  .tv-legend-item {
+    font-size: 10px;
+  }
+}
+
+/* ── Mobile portrait (≤ 480px) ─────────────────────────────── */
+@media screen and (max-width: 480px) {
+  .tv-header {
+    padding: 10px 12px;
+  }
+  .tv-logo {
+    height: 24px;
+  }
+  .tv-title {
+    font-size: 14px;
+  }
+  .tv-clock {
+    font-size: 17px;
+  }
+  .tv-chart-section {
+    padding: 10px 12px;
+    min-height: 60vw;
+  }
+  .tv-table-section {
+    padding: 10px 12px;
+  }
+  .tv-table {
+    font-size: 11px;
+  }
+  .tv-table thead th {
+    font-size: 8px;
+    padding: 6px 6px;
+  }
+  .tv-table tbody td {
+    padding: 7px 6px;
+  }
+  .tv-qty {
+    font-size: 13px;
+  }
+  .tv-pct-badge {
+    font-size: 9px;
+    padding: 2px 5px;
+    min-width: 30px;
+  }
+  .tv-func-name {
+    font-size: 11px;
+    gap: 5px;
+  }
+  /* Legenda em 2 colunas */
+  .tv-legend {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+}

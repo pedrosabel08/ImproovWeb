@@ -91,17 +91,17 @@ function calcularRitmo(qtd_parcial, meta_individual, pct) {
   const rateStr = taxaAtual > 0 ? `${taxaAtual.toFixed(1)}/dia` : "";
 
   if (pct === null || meta_individual === null || meta_individual === 0) {
-    return { tipo: "none", icon: "–", label: "–", rate: "" };
+    return { tipo: "none", icon: '<i class="fa-solid fa-minus"></i>', label: "–", rate: "" };
   }
   if (pct === 0)
-    return { tipo: "none", icon: "–", label: "Sem produção", rate: rateStr };
+    return { tipo: "none", icon: '<i class="fa-solid fa-minus"></i>', label: "Sem produção", rate: rateStr };
   if (pct >= 110)
-    return { tipo: "done", icon: "↗", label: "Acelerado", rate: rateStr };
+    return { tipo: "done", icon: '<i class="fa-solid fa-arrow-trend-up"></i>', label: "Acelerado", rate: rateStr };
   if (pct >= 70)
-    return { tipo: "on", icon: "→", label: "No ritmo", rate: rateStr };
+    return { tipo: "on", icon: '<i class="fa-solid fa-arrow-right"></i>', label: "No ritmo", rate: rateStr };
   if (pct >= 35)
-    return { tipo: "warn", icon: "↘", label: "Atrasado", rate: rateStr };
-  return { tipo: "crit", icon: "↘↘", label: "Crítico", rate: rateStr };
+    return { tipo: "warn", icon: '<i class="fa-solid fa-arrow-trend-down"></i>', label: "Atrasado", rate: rateStr };
+  return { tipo: "crit", icon: '<i class="fa-solid fa-angles-down"></i>', label: "Crítico", rate: rateStr };
 }
 
 function getAvatarHue(name) {
@@ -258,53 +258,103 @@ function buildSecao(data, bodyId, footId, metaElId) {
 function buildSummaryBar(dados) {
   const { perspectivas, plantas_humanizadas } = dados;
 
-  const allFuncs = [
-    ...perspectivas.funcionarios.filter((f) => f.colaborador_id !== 0),
-    ...plantas_humanizadas.funcionarios,
-  ];
+  // Em TV (≥1800px) só Perspectivas é exibido — KPIs refletem apenas essa seção
+  const isTv = window.innerWidth >= 1950;
+
+  const allFuncs = isTv
+    ? perspectivas.funcionarios.filter((f) => f.colaborador_id !== 0)
+    : [
+        ...perspectivas.funcionarios.filter((f) => f.colaborador_id !== 0),
+        ...plantas_humanizadas.funcionarios,
+      ];
 
   const totalQtdPersp = perspectivas.funcionarios.reduce(
     (s, f) => s + f.qtd_parcial,
     0,
   );
+
   const totalMetaPersp = perspectivas.meta_total ?? 0;
-  const totalPctPersp =
-    totalMetaPersp > 0
-      ? Math.round((totalQtdPersp / totalMetaPersp) * 100)
-      : null;
+
+  // =========================
+  // CONTROLE DE TEMPO
+  // =========================
+
+  const hoje = new Date();
+  const diaAtual = hoje.getDate();
+
+  const diasNoMes = new Date(
+    hoje.getFullYear(),
+    hoje.getMonth() + 1,
+    0,
+  ).getDate();
+
+  // % do tempo já consumido no mês
+  const pctTempo = diasNoMes > 0 ? (diaAtual / diasNoMes) * 100 : 0;
+
+  // % real entregue
+  const pctProducao =
+    totalMetaPersp > 0 ? (totalQtdPersp / totalMetaPersp) * 100 : null;
+
+  // diferença entre produção e tempo
+  // positivo = adiantado
+  // negativo = atrasado
+  const gapRitmo = pctProducao !== null ? pctProducao - pctTempo : null;
+
+  // projeção final mantendo o ritmo atual
+  const mediaDia = diaAtual > 0 ? totalQtdPersp / diaAtual : 0;
+
+  const projecaoFinal = mediaDia * diasNoMes;
+
+  const projecaoPct =
+    totalMetaPersp > 0 ? (projecaoFinal / totalMetaPersp) * 100 : null;
+
+  // valor exibido no card principal
+  const totalPctPersp = pctProducao !== null ? Math.round(pctProducao) : null;
+
+  // =========================
+  // STATUS DOS FUNCIONÁRIOS
+  // =========================
 
   const dentroMeta = allFuncs.filter(
     (f) => f.pct_meta !== null && f.pct_meta >= 100,
   ).length;
+
   const emRisco = allFuncs.filter(
     (f) => f.pct_meta !== null && f.pct_meta >= 50 && f.pct_meta < 100,
   ).length;
+
   const atrasados = allFuncs.filter(
     (f) => f.pct_meta !== null && f.pct_meta < 50,
   ).length;
+
   const totalFunc = allFuncs.filter((f) => f.pct_meta !== null).length;
 
+  // =========================
+  // STATUS GERAL
+  // =========================
+
   let statusCls, statusTxt, statusSub;
-  if (totalPctPersp === null) {
+
+  if (pctProducao === null) {
     statusCls = "no-data";
     statusTxt = "SEM DADOS";
     statusSub = "Aguardando informações";
-  } else if (totalPctPersp >= 90) {
+  } else if (projecaoPct >= 100 && gapRitmo >= 0) {
     statusCls = "on-track";
     statusTxt = "ON TRACK";
-    statusSub = "Ritmo dentro do esperado";
-  } else if (totalPctPersp >= 70) {
+    statusSub = "Entrega dentro do ritmo esperado";
+  } else if (projecaoPct >= 90) {
     statusCls = "on-track";
     statusTxt = "NO RITMO";
-    statusSub = "Ritmo dentro do esperado";
-  } else if (totalPctPersp >= 50) {
+    statusSub = "Pequeno desvio no ritmo";
+  } else if (projecaoPct >= 70) {
     statusCls = "at-risk";
     statusTxt = "EM RISCO";
-    statusSub = "Ritmo abaixo do esperado";
+    statusSub = "Meta pode não ser atingida";
   } else {
     statusCls = "behind";
     statusTxt = "ATRASADO";
-    statusSub = "Ritmo crítico";
+    statusSub = "Ritmo insuficiente para conclusão";
   }
   const iconCls =
     statusCls === "on-track"
@@ -318,14 +368,17 @@ function buildSummaryBar(dados) {
   const diasRestantes = getDiasRestantes();
   const now = new Date();
   const ultimoDia = daysInMonth(now.getFullYear(), now.getMonth() + 1);
-  const metaTotal =
-    (perspectivas.meta_total ?? 0) + (plantas_humanizadas.meta_total ?? 0);
+  const metaTotal = isTv
+    ? (perspectivas.meta_total ?? 0)
+    : (perspectivas.meta_total ?? 0) + (plantas_humanizadas.meta_total ?? 0);
+
+  const statusLabel = isTv ? "Status Perspectivas" : "Status Geral do Mês";
 
   document.getElementById("gvSummaryBar").innerHTML = `
     <div class="gv-kpi gv-kpi--status">
       <div class="gv-kpi-icon ${iconCls}"><i class="fa-solid fa-bullseye-arrow"></i></div>
       <div class="gv-kpi-status-text">
-        <span class="gv-kpi-label">Status Geral do Mês</span>
+        <span class="gv-kpi-label">${statusLabel}</span>
         <span class="gv-kpi-status-val ${statusCls}">${statusTxt}</span>
         <span class="gv-kpi-status-sub">${statusSub}</span>
       </div>

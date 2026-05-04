@@ -296,6 +296,8 @@ body {
   border-bottom: 1px solid var(--gv-border);
   background: var(--gv-surface-2);
   flex-shrink: 0;
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
 }
 .gv-section-title-wrap {
   display: flex;
@@ -396,7 +398,7 @@ body {
 /* ─── Employee row ────────────────────────────────────────── */
 .gv-row {
   display: grid;
-  padding: 12px 16px;
+  padding: 11px 16px;
   border-bottom: 1px solid var(--gv-border);
   align-items: center;
   transition: background 0.15s;
@@ -565,7 +567,6 @@ body {
 }
 .gv-ritmo-icon {
   font-size: 1.1rem;
-  font-weight: 800;
   flex-shrink: 0;
 }
 .gv-ritmo-info {
@@ -609,6 +610,8 @@ body {
   grid-template-columns: 1fr 1fr 1fr;
   align-items: center;
   gap: 12px;
+  border-bottom-left-radius: 10px;
+  border-bottom-right-radius: 10px;
 }
 .gv-foot-left,
 .gv-foot-right,
@@ -678,9 +681,494 @@ body {
   pointer-events: none;
 }
 
-/* ─── TV scaling (≥1800px) ────────────────────────────────── */
-@media screen and (min-width: 1800px) {
-  .gv-kpi-value { 
+/* ═══════════════════════════════════════════════════════════════
+   RESPONSIVE BREAKPOINTS
+   Mobile portrait  ≤ 480px
+   Mobile landscape  481px – 768px  (orientation: landscape + max-height: 500px)
+   iPad portrait    769px – 1024px  (orientation: portrait)   ← OK
+   iPad landscape   769px – 1024px  (orientation: landscape)
+   Monitor padrão   1025px – 1999px
+   TV               ≥ 2000px
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ─── Utilitário: ocultar coluna de Progresso ─────────────── */
+/* Aplicado em mobile (portrait + landscape) */
+.gv-hide-progress .gv-col-h:nth-child(2),
+.gv-hide-progress .gv-row-progresso {
+  display: none;
+}
+
+/* ═══════════════════════════════════════════════════
+   MONITOR PADRÃO  (1025px – 1999px)
+   Layout desktop completo, apenas ajuste de escala
+   ═══════════════════════════════════════════════════ */
+@media screen and (min-width: 1025px) and (max-width: 1999px) {
+  :root {
+    --header-h: 52px;
+    --summary-h: 96px;
+  }
+  .gv-header {
+    padding: 8px 16px;
+  }
+  .gv-header-label,
+  .gv-header-divider {
+    display: none;
+  }
+  .gv-clock {
+    font-size: 1.55rem;
+  }
+  .gv-title {
+    font-size: 1.15rem;
+  }
+  .gv-summary-bar {
+    padding: 6px 12px;
+    gap: 6px;
+  }
+  .gv-kpi-value {
+    font-size: 1.45rem;
+  }
+  .gv-body {
+    padding: 0 10px 6px;
+    gap: 6px;
+  }
+  /* Colunas com fr para preencher largura disponível */
+  .gv-section--persp .gv-col-headers,
+  .gv-section--persp .gv-row {
+    grid-template-columns: 140px 1fr 1fr 1fr 1fr 140px;
+  }
+  .gv-section--plants .gv-col-headers,
+  .gv-section--plants .gv-row,
+  .gv-section--alter .gv-col-headers,
+  .gv-section--alter .gv-row {
+    grid-template-columns: 120px 1fr 1fr 1fr 1fr 120px;
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   iPad PORTRAIT  (769px – 1024px, portrait)
+   Layout scrollable, sections empilhadas, SEM ocultação de progresso
+   ═══════════════════════════════════════════════════ */
+@media screen and (min-width: 768px) and (max-width: 1024px) and (orientation: portrait) {
+  html,
+  body {
+    overflow-x: hidden;
+    overflow-y: auto;
+    height: auto;
+  }
+  .gv-header {
+    flex-wrap: wrap;
+    height: auto;
+    padding: 8px 14px;
+    gap: 6px 12px;
+  }
+  .gv-header-label,
+  .gv-header-divider {
+    display: none;
+  }
+  .gv-header-center {
+    order: 3;
+    flex: 1 1 100%;
+    text-align: center;
+  }
+  .gv-header-right {
+    order: 2;
+    margin-left: auto;
+  }
+  .gv-summary-bar {
+    height: auto;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 6px 12px;
+  }
+  .gv-kpi {
+    flex: 1 1 calc(33.33% - 6px);
+    min-width: 110px;
+    padding: 8px 12px;
+  }
+  .gv-kpi-value {
+    font-size: 1.35rem;
+  }
+  .gv-body {
+    height: auto;
+    overflow: visible;
+    padding: 0 10px 8px;
+    gap: 8px;
+  }
+  .gv-main {
+    grid-template-rows: auto auto;
+    overflow: visible;
+    min-height: 0;
+  }
+  .gv-rows {
+    overflow: hidden;
+  }
+  /* Bottom row: empilhado para dar largura total a cada seção */
+  .gv-row-bottom {
+    grid-template-columns: 1fr;
+  }
+  /* Perspectivas: 6 colunas com fr fluido */
+  .gv-section--persp .gv-col-headers,
+  .gv-section--persp .gv-row {
+    grid-template-columns: 130px 1fr 1fr 1fr 1fr 130px;
+  }
+  /* Plantas e Alterações: mesmas 6 colunas, largura total disponível */
+  .gv-section--plants .gv-col-headers,
+  .gv-section--plants .gv-row,
+  .gv-section--alter .gv-col-headers,
+  .gv-section--alter .gv-row {
+    grid-template-columns: 120px 1fr 1fr 1fr 1fr 120px;
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   iPad LANDSCAPE  (769px – 1024px, landscape)
+   Layout compacto, sem progresso, sections lado a lado
+   ═══════════════════════════════════════════════════ */
+@media screen and (min-width: 769px) and (max-width: 1024px) and (orientation: landscape) {
+  html,
+  body {
+    overflow: auto;
+    height: auto;
+  }
+  .gv-header {
+    padding: 6px 14px;
+    gap: 8px;
+  }
+  .gv-header-label,
+  .gv-header-divider {
+    display: none;
+  }
+  .gv-summary-bar {
+    height: auto;
+    flex-wrap: wrap;
+    gap: 5px;
+    padding: 5px 12px;
+  }
+  .gv-kpi {
+    flex: 1 1 calc(25% - 5px);
+    min-width: 90px;
+    padding: 6px 10px;
+  }
+  .gv-kpi-value {
+    font-size: 1.2rem;
+  }
+  .gv-body {
+    height: auto;
+    overflow: visible;
+    padding: 0 10px 6px;
+    gap: 6px;
+  }
+  .gv-main {
+    grid-template-rows: auto auto;
+    overflow: visible;
+    min-height: 0;
+  }
+  .gv-rows {
+    overflow: hidden;
+  }
+  .gv-row-bottom {
+    grid-template-columns: 1fr 1fr;
+  }
+  /* Oculta coluna de progresso */
+  .gv-col-headers .gv-col-h:nth-child(2),
+  .gv-row-progresso {
+    display: none;
+  }
+  /* 5 colunas restantes preenchendo 100% */
+  .gv-section--persp .gv-col-headers,
+  .gv-section--persp .gv-row {
+    grid-template-columns: 130px 1fr 1fr 1fr 130px;
+  }
+  .gv-section--plants .gv-col-headers,
+  .gv-section--plants .gv-row,
+  .gv-section--alter .gv-col-headers,
+  .gv-section--alter .gv-row {
+    grid-template-columns: 110px 1fr 1fr 1fr 110px;
+  }
+  .gv-row {
+    padding: 8px 12px;
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   MOBILE LANDSCAPE  (≤ 768px, landscape, height ≤ 500px)
+   Sem progresso em header e body, layout compacto
+   ═══════════════════════════════════════════════════ */
+@media screen and (max-width: 768px) and (orientation: landscape) and (max-height: 500px) {
+  html,
+  body {
+    overflow: auto;
+    height: auto;
+  }
+  .gv-header {
+    height: auto;
+    padding: 5px 12px;
+    gap: 8px;
+  }
+  .gv-header-label,
+  .gv-header-divider {
+    display: none;
+  }
+  .gv-clock {
+    font-size: 1.1rem;
+  }
+  .gv-title {
+    font-size: 0.9rem;
+  }
+  .gv-period {
+    font-size: 8px;
+  }
+  .gv-dias-badge {
+    font-size: 0.7rem;
+  }
+  /* Summary em linha única */
+  .gv-summary-bar {
+    height: auto;
+    flex-wrap: nowrap;
+    gap: 4px;
+    padding: 4px 10px;
+    overflow-x: auto;
+  }
+  .gv-kpi {
+    flex: 0 0 auto;
+    min-width: 90px;
+    padding: 5px 8px;
+  }
+  .gv-kpi-value {
+    font-size: 1rem;
+  }
+  .gv-kpi-label {
+    font-size: 7.5px;
+  }
+  .gv-kpi-sub {
+    font-size: 7.5px;
+  }
+  .gv-kpi--status {
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    flex: 0 0 auto;
+    min-width: 160px;
+  }
+  .gv-kpi-icon {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+  }
+  .gv-body {
+    height: auto;
+    overflow: visible;
+    padding: 0 8px 4px;
+    gap: 5px;
+  }
+  .gv-main {
+    grid-template-rows: auto auto;
+    overflow: visible;
+    min-height: 0;
+  }
+  .gv-rows {
+    overflow: hidden;
+  }
+  .gv-row-bottom {
+    grid-template-columns: 1fr 1fr;
+  }
+  /* Oculta coluna de progresso */
+  .gv-col-headers .gv-col-h:nth-child(2),
+  .gv-row-progresso {
+    display: none;
+  }
+  /* 5 colunas restantes preenchendo 100% */
+  .gv-section--persp .gv-col-headers,
+  .gv-section--persp .gv-row {
+    grid-template-columns: 100px 1fr 1fr 1fr 100px;
+  }
+  .gv-section--plants .gv-col-headers,
+  .gv-section--plants .gv-row,
+  .gv-section--alter .gv-col-headers,
+  .gv-section--alter .gv-row {
+    grid-template-columns: 85px 1fr 1fr 1fr 85px;
+  }
+  .gv-row {
+    padding: 6px 10px;
+  }
+  .gv-row-name-text {
+    font-size: 11px;
+  }
+  .gv-avatar {
+    width: 22px;
+    height: 22px;
+    font-size: 8px;
+  }
+  .gv-section-footer {
+    grid-template-columns: 1fr 1fr;
+    padding: 5px 10px;
+  }
+  .gv-section-meta-label {
+    display: none;
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   MOBILE PORTRAIT  (≤ 480px)
+   Sem progresso, colunas fluidas, sem overflow nas rows
+   ═══════════════════════════════════════════════════ */
+@media screen and (max-width: 480px) {
+  html,
+  body {
+    overflow: auto;
+    height: auto;
+  }
+  .gv-header {
+    flex-wrap: wrap;
+    height: auto;
+    padding: 6px 10px;
+    gap: 4px 8px;
+  }
+  .gv-header-label,
+  .gv-header-divider {
+    display: none;
+  }
+  .gv-header-logo {
+    order: 1;
+  }
+  .gv-header-right {
+    order: 2;
+    margin-left: auto;
+  }
+  .gv-header-center {
+    order: 3;
+    flex: 1 1 100%;
+    text-align: center;
+  }
+  .gv-logo {
+    height: 24px;
+  }
+  .gv-clock {
+    font-size: 1.1rem;
+  }
+  .gv-title {
+    font-size: 0.95rem;
+  }
+  .gv-period {
+    font-size: 8px;
+  }
+  .gv-dias-badge {
+    font-size: 0.72rem;
+  }
+  .gv-updated {
+    font-size: 8px;
+  }
+  /* Summary: grid 2 colunas */
+  .gv-summary-bar {
+    height: auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5px;
+    padding: 5px 8px;
+  }
+  .gv-kpi {
+    padding: 7px 9px;
+  }
+  .gv-kpi--status {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+  }
+  .gv-kpi-value {
+    font-size: 1.2rem;
+  }
+  .gv-kpi-label {
+    font-size: 8px;
+  }
+  .gv-kpi-sub {
+    font-size: 8px;
+  }
+  .gv-kpi-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 13px;
+  }
+  .gv-body {
+    height: auto;
+    overflow: visible;
+    padding: 0 6px 6px;
+    gap: 6px;
+  }
+  .gv-main {
+    grid-template-rows: auto auto;
+    overflow: visible;
+    min-height: 0;
+  }
+  .gv-rows {
+    overflow: hidden;
+  }
+  /* Bottom row: empilhado */
+  .gv-row-bottom {
+    grid-template-columns: 1fr;
+  }
+  /* Oculta coluna de progresso */
+  .gv-col-headers .gv-col-h:nth-child(2),
+  .gv-row-progresso {
+    display: none;
+  }
+  /* 5 colunas restantes preenchendo 100% — sem min-width, sem overflow */
+  .gv-section--persp .gv-col-headers,
+  .gv-section--persp .gv-row,
+  .gv-section--plants .gv-col-headers,
+  .gv-section--plants .gv-row,
+  .gv-section--alter .gv-col-headers,
+  .gv-section--alter .gv-row {
+    grid-template-columns: 2fr 1fr 1fr 1fr 1.5fr;
+  }
+  .gv-row {
+    padding: 7px 10px;
+  }
+  .gv-avatar {
+    width: 24px;
+    height: 24px;
+    font-size: 9px;
+  }
+  .gv-row-nome {
+    gap: 6px;
+  }
+  .gv-row-name-text {
+    font-size: 11px;
+  }
+  .gv-qtd-val {
+    font-size: 0.9rem;
+  }
+  .gv-falta-val {
+    font-size: 0.95rem;
+  }
+  .gv-rec-val {
+    font-size: 0.85rem;
+  }
+  .gv-ritmo-label {
+    font-size: 9px;
+  }
+  .gv-ritmo-rate {
+    font-size: 8px;
+  }
+  .gv-section-footer {
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    padding: 5px 10px;
+  }
+  .gv-section-meta-label {
+    display: none;
+  }
+  .gv-foot-val {
+    font-size: 1rem;
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   TV  (≥ 2000px)
+   Somente Perspectivas visível, tudo amplificado
+   ═══════════════════════════════════════════════════ */
+@media screen and (min-width: 2000px) {
+  .gv-kpi-value {
     font-size: 3.75rem;
   }
   .gv-rec-val {
@@ -741,14 +1229,9 @@ body {
   }
   .gv-section--persp .gv-col-headers,
   .gv-section--persp .gv-row {
-    grid-template-columns: 240px 1fr 130px 150px 130px 170px;
+    grid-template-columns: 240px 1fr 1fr 1fr 1fr 200px;
   }
-  .gv-section--plants .gv-col-headers,
-  .gv-section--plants .gv-row,
-  .gv-section--alter .gv-col-headers,
-  .gv-section--alter .gv-row {
-    grid-template-columns: 210px 1fr 115px 130px 115px 145px;
-  }
+  /* Oculta Plantas e Alterações — só Perspectivas na TV */
   .gv-row-bottom {
     display: none;
   }

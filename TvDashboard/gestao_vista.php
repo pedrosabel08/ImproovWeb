@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+  <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s" type="image/x-icon">
   <link rel="stylesheet" href="gestao_vista.css">
 </head>
 
@@ -87,9 +88,9 @@
           <div class="gv-col-headers">
             <div class="gv-col-h">Funcionário</div>
             <div class="gv-col-h">Progresso</div>
-            <div class="gv-col-h c">Recorde</div>
             <div class="gv-col-h c">Qtd Parcial</div>
             <div class="gv-col-h c">Falta para Meta</div>
+            <div class="gv-col-h c">Recorde</div>
             <div class="gv-col-h r">Ritmo</div>
           </div>
           <div class="gv-rows" id="bodyPlantas"></div>
@@ -116,9 +117,9 @@
           <div class="gv-col-headers">
             <div class="gv-col-h">Funcionário</div>
             <div class="gv-col-h">Progresso</div>
-            <div class="gv-col-h c">Recorde</div>
             <div class="gv-col-h c">Qtd Parcial</div>
             <div class="gv-col-h c">Falta para Meta</div>
+            <div class="gv-col-h c">Recorde</div>
             <div class="gv-col-h r">Ritmo</div>
           </div>
           <div class="gv-rows" id="bodyAlteracoes"></div>

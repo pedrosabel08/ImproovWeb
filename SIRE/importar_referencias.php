@@ -1,4 +1,5 @@
 <?php
+
 /**
  * SIRE — Sistema de Importação de Referências de Imagens
  * Script: importar_referencias.php
@@ -183,7 +184,6 @@ try {
         throw new RuntimeException('Falha na autenticação SFTP NAS (' . $nasCfg['host'] . ')');
     }
     sire_log('NAS SFTP: OK');
-
 } catch (Throwable $e) {
     sire_log('ERRO na inicialização de conexões: ' . $e->getMessage(), 'FATAL');
     exit(1);
@@ -192,12 +192,13 @@ try {
 // ── Query de seleção ─────────────────────────────────────────────────────────
 
 $querySql = "
-    WITH ultimos AS (
+    WITH candidatos AS (
         SELECT
             o.nomenclatura,
             hi.nome_arquivo,
             hi.funcao_imagem_id,
-            hi.id,
+            fi.imagem_id,
+            fi.funcao_id,
             ROW_NUMBER() OVER (
                 PARTITION BY hi.funcao_imagem_id
                 ORDER BY hi.id DESC
@@ -210,18 +211,33 @@ $querySql = "
         JOIN obra o
             ON o.idobra = i.obra_id
         WHERE
-            fi.funcao_id = 5
-            AND i.status_id = 6
+            i.status_id = 6
             AND i.substatus_id = 9
+            AND i.tipo_imagem = 'Planta Humanizada'
+            AND fi.funcao_id IN (4, 6)
             AND hi.nome_arquivo IS NOT NULL
             AND hi.nome_arquivo != ''
+    ),
+    ultimos AS (
+        SELECT * FROM candidatos WHERE rn = 1
+    ),
+    priorizados AS (
+        SELECT
+            nomenclatura,
+            nome_arquivo,
+            funcao_imagem_id,
+            ROW_NUMBER() OVER (
+                PARTITION BY imagem_id
+                ORDER BY CASE funcao_id WHEN 6 THEN 1 ELSE 2 END
+            ) AS rn2
+        FROM ultimos
     )
     SELECT
         nomenclatura,
         nome_arquivo,
         funcao_imagem_id
-    FROM ultimos
-    WHERE rn = 1
+    FROM priorizados
+    WHERE rn2 = 1
     LIMIT :limit
 ";
 
@@ -395,7 +411,6 @@ foreach ($registros as $idx => $row) {
         $dim = ($largura !== null && $altura !== null) ? "{$largura}x{$altura}" : 'dim:?';
         sire_log("  → IMPORTADO  sha1=$hash  $dim  {$tamanhoByes}B  → $caminhoStorage", 'OK');
         $stats['importado']++;
-
     } catch (Throwable $e) {
         sire_log("  → EXCEÇÃO: " . $e->getMessage(), 'ERROR');
         if (isset($tmpFile) && file_exists($tmpFile)) {

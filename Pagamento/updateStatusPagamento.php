@@ -125,11 +125,11 @@ try {
     $q->execute(); $rs = $q->get_result();
     while ($row = $rs->fetch_assoc()) { $idsAC[] = ['id' => (int)$row['idacompanhamento'], 'valor' => (float)$row['valor']]; $valor_total += (float)$row['valor']; }
     $q->close();
-    // animacao by data_anima
-    $q = $conn->prepare("SELECT idanimacao, IFNULL(valor,0) AS valor FROM animacao WHERE colaborador_id = ? AND pagamento = 0 AND YEAR(data_anima) = ? AND MONTH(data_anima) = ?");
+    // funcao_animacao by animacao.data_anima
+    $q = $conn->prepare("SELECT fa.id, IFNULL(fa.valor,0) AS valor FROM funcao_animacao fa JOIN animacao an ON fa.animacao_id = an.idanimacao WHERE fa.colaborador_id = ? AND fa.pagamento = 0 AND YEAR(an.data_anima) = ? AND MONTH(an.data_anima) = ?");
     $q->bind_param('iii', $colaborador_id, $ano, $mes);
     $q->execute(); $rs = $q->get_result();
-    while ($row = $rs->fetch_assoc()) { $idsAN[] = ['id' => (int)$row['idanimacao'], 'valor' => (float)$row['valor']]; $valor_total += (float)$row['valor']; }
+    while ($row = $rs->fetch_assoc()) { $idsAN[] = ['id' => (int)$row['id'], 'valor' => (float)$row['valor']]; $valor_total += (float)$row['valor']; }
     $q->close();
 
         // Update origin tables: mark as paid
@@ -143,7 +143,7 @@ try {
         }
         if (!empty($idsAN)) {
             $ids = implode(',', array_map(function($x){return intval($x['id']);}, $idsAN));
-            $conn->query("UPDATE animacao SET pagamento = 1, data_pagamento = NOW() WHERE idanimacao IN ($ids)");
+            $conn->query("UPDATE funcao_animacao SET pagamento = 1, data_pagamento = NOW() WHERE id IN ($ids)");
         }
 
         // Insert items rows with valor and observacao (if applicable)
@@ -175,7 +175,7 @@ try {
                 $insItem->execute();
             }
             foreach ($idsAN as $item) {
-                $o = 'animacao';
+                $o = 'funcao_animacao';
                 $id = $item['id'];
                 $v = $item['valor'];
                 $obs = null;
@@ -202,7 +202,7 @@ try {
                 $insItem->execute();
             }
             foreach ($idsAN as $item) {
-                $o = 'animacao';
+                $o = 'funcao_animacao';
                 $id = $item['id'];
                 $v = $item['valor'];
                 $insItem->bind_param('isid', $pagamento_id, $o, $id, $v);

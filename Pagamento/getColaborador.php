@@ -387,33 +387,37 @@ WHERE
     $sql .= " 
 UNION ALL
 SELECT 
-    an.colaborador_id,
-    'animacao' AS origem,
-    an.idanimacao AS identificador,
+    fa.colaborador_id,
+    'funcao_animacao' AS origem,
+    fa.id AS identificador,
     an.imagem_id,
     ico.imagem_nome,
-    NULL AS funcao_id,
-    'Animação' AS nome_funcao,
-    an.status_anima as status,
+    fa.funcao_id,
+    f.nome_funcao AS nome_funcao,
+    fa.status,
     an.data_anima as prazo,
-    an.pagamento,
-    an.valor,
-    an.data_pagamento,
+    fa.pagamento,
+    fa.valor,
+    fa.data_pagamento,
     NULL AS pago_parcial_count,
     NULL AS pago_completa_count,
     an.obra_id  
 FROM 
-    animacao an
-JOIN 
-    imagem_animacao ico ON an.imagem_id = ico.idimagem_animacao
+    funcao_animacao fa
+JOIN
+    animacao an ON fa.animacao_id = an.idanimacao
+JOIN
+    funcao f ON fa.funcao_id = f.idfuncao
+LEFT JOIN 
+    imagens_cliente_obra ico ON an.imagem_id = ico.idimagens_cliente_obra
 WHERE 
-    an.colaborador_id = ?";
+    fa.colaborador_id = ?";
 
     if ($mesNumero && $ano) {
         $sql .= " AND YEAR(an.data_anima) = ? AND MONTH(an.data_anima) = ?";
     }
 
-    // 👇 agora o ORDER BY usa o alias de coluna, não de tabela
+    // ORDER BY usa alias de coluna, não de tabela
     $sql .= " ORDER BY obra_id, imagem_nome";
 } else {
     // Consulta padrão para outros colaboradores

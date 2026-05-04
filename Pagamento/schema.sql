@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS pagamentos (
 CREATE TABLE IF NOT EXISTS pagamento_itens (
   idpagamento_item INT AUTO_INCREMENT PRIMARY KEY,
   pagamento_id INT NOT NULL,
-  origem ENUM('funcao_imagem','acompanhamento','animacao') NOT NULL,
+  origem ENUM('funcao_imagem','acompanhamento','animacao','funcao_animacao') NOT NULL,
   origem_id INT NOT NULL,
   valor DECIMAL(12,2) DEFAULT 0.00,
   observacao VARCHAR(255) DEFAULT NULL,

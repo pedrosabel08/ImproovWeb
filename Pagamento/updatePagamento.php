@@ -236,15 +236,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         }
                         $insItem->execute();
                         $valor_total += $valor;
-                    } elseif ($origem === 'animacao') {
-                        $s = $conn->prepare("SELECT idanimacao, IFNULL(valor,0) AS valor FROM animacao WHERE idanimacao = ? LIMIT 1");
+                    } elseif ($origem === 'funcao_animacao') {
+                        $s = $conn->prepare("SELECT id, IFNULL(valor,0) AS valor FROM funcao_animacao WHERE id = ? LIMIT 1");
                         $s->bind_param('i', $id);
                         $s->execute();
                         $r = $s->get_result();
                         $row = $r ? $r->fetch_assoc() : null;
                         $s->close();
                         $valor = $row ? (float)$row['valor'] : 0.0;
-                        $u = $conn->prepare("UPDATE animacao SET pagamento = 1, data_pagamento = NOW() WHERE idanimacao = ?");
+                        $u = $conn->prepare("UPDATE funcao_animacao SET pagamento = 1, data_pagamento = NOW() WHERE id = ?");
                         $u->bind_param('i', $id);
                         $u->execute();
                         $u->close();
@@ -300,8 +300,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $sql = "UPDATE funcao_imagem SET pagamento = 1, data_pagamento = NOW() WHERE idfuncao_imagem = ?";
                 } elseif ($origem === 'acompanhamento') {
                     $sql = "UPDATE acompanhamento SET pagamento = 1, data_pagamento = NOW() WHERE idacompanhamento = ?";
-                } elseif ($origem === 'animacao') {
-                    $sql = "UPDATE animacao SET pagamento = 1, data_pagamento = NOW() WHERE idanimacao = ?";
+                } elseif ($origem === 'funcao_animacao') {
+                    $sql = "UPDATE funcao_animacao SET pagamento = 1, data_pagamento = NOW() WHERE id = ?";
                 } else {
                     continue;
                 }
@@ -424,13 +424,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $valor_total += (float)$row['valor'];
                 }
                 $q->close();
-                // animacao by data_anima
-                $q = $conn->prepare("SELECT idanimacao, IFNULL(valor,0) AS valor FROM animacao WHERE colaborador_id = ? AND pagamento = 0 AND YEAR(data_anima) = ? AND MONTH(data_anima) = ?");
+                // funcao_animacao by animacao.data_anima
+                $q = $conn->prepare("SELECT fa.id, IFNULL(fa.valor,0) AS valor FROM funcao_animacao fa JOIN animacao an ON fa.animacao_id = an.idanimacao WHERE fa.colaborador_id = ? AND fa.pagamento = 0 AND YEAR(an.data_anima) = ? AND MONTH(an.data_anima) = ?");
                 $q->bind_param('iii', $colaborador_id, $ano, $mes);
                 $q->execute();
                 $rs = $q->get_result();
                 while ($row = $rs->fetch_assoc()) {
-                    $idsAN[] = ['id' => (int)$row['idanimacao'], 'valor' => (float)$row['valor']];
+                    $idsAN[] = ['id' => (int)$row['id'], 'valor' => (float)$row['valor']];
                     $valor_total += (float)$row['valor'];
                 }
                 $q->close();
@@ -452,7 +452,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $ids = implode(',', array_map(function ($x) {
                         return intval($x['id']);
                     }, $idsAN));
-                    $conn->query("UPDATE animacao SET pagamento = 1, data_pagamento = NOW() WHERE idanimacao IN ($ids)");
+                    $conn->query("UPDATE funcao_animacao SET pagamento = 1, data_pagamento = NOW() WHERE id IN ($ids)");
                 }
 
                 // Insert items rows with valor and observacao (if applicable)
@@ -528,7 +528,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $insItem->execute();
                     }
                     foreach ($idsAN as $item) {
-                        $o = 'animacao';
+                        $o = 'funcao_animacao';
                         $id = $item['id'];
                         $v = $item['valor'];
                         $obs = null;
@@ -555,7 +555,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $insItem->execute();
                     }
                     foreach ($idsAN as $item) {
-                        $o = 'animacao';
+                        $o = 'funcao_animacao';
                         $id = $item['id'];
                         $v = $item['valor'];
                         $insItem->bind_param('isid', $pagamento_id, $o, $id, $v);

@@ -79,14 +79,15 @@ if ($r = $conn->query($sqlAC)) {
     }
 }
 
-// Aggregate animacao (uses column `data_anima`)
-$sqlAN = "SELECT colaborador_id,
-  SUM(CASE WHEN pagamento = 0 THEN IFNULL(valor,0) ELSE 0 END) AS valor_pendente,
-  SUM(IFNULL(valor,0)) AS valor_mes,
-  MAX(GREATEST(IFNULL(data_pagamento, '0000-00-00'), IFNULL(data_anima, '0000-00-00'))) AS last_update
-FROM animacao
-WHERE colaborador_id IN ($ids) AND YEAR(data_anima) = $ano AND MONTH(data_anima) = $mes
-GROUP BY colaborador_id";
+// Aggregate funcao_animacao (tasks within animacao, date from animacao.data_anima)
+$sqlAN = "SELECT fa.colaborador_id,
+  SUM(CASE WHEN fa.pagamento = 0 THEN IFNULL(fa.valor,0) ELSE 0 END) AS valor_pendente,
+  SUM(IFNULL(fa.valor,0)) AS valor_mes,
+  MAX(GREATEST(IFNULL(fa.data_pagamento, '0000-00-00'), IFNULL(an.data_anima, '0000-00-00'))) AS last_update
+FROM funcao_animacao fa
+JOIN animacao an ON fa.animacao_id = an.idanimacao
+WHERE fa.colaborador_id IN ($ids) AND YEAR(an.data_anima) = $ano AND MONTH(an.data_anima) = $mes
+GROUP BY fa.colaborador_id";
 
 if ($r = $conn->query($sqlAN)) {
     while ($row = $r->fetch_assoc()) {

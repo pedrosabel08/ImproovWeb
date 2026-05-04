@@ -85,13 +85,13 @@ try {
     }
     $q->close();
 
-    // animacao
-    $q = $conn->prepare("SELECT idanimacao, IFNULL(valor,0) AS valor, data_anima FROM animacao WHERE colaborador_id = ? AND pagamento = 0 AND YEAR(data_anima) = ? AND MONTH(data_anima) = ?");
+    // funcao_animacao
+    $q = $conn->prepare("SELECT fa.id, IFNULL(fa.valor,0) AS valor, an.data_anima FROM funcao_animacao fa JOIN animacao an ON fa.animacao_id = an.idanimacao WHERE fa.colaborador_id = ? AND fa.pagamento = 0 AND YEAR(an.data_anima) = ? AND MONTH(an.data_anima) = ?");
     $q->bind_param('iii', $colaborador_id, $ano, $mes);
     $q->execute();
     $rs = $q->get_result();
     while ($row = $rs->fetch_assoc()) {
-        $item = ['idanimacao' => (int)$row['idanimacao'], 'valor' => (float)$row['valor'], 'data_anima' => $row['data_anima']];
+        $item = ['id' => (int)$row['id'], 'valor' => (float)$row['valor'], 'data_anima' => $row['data_anima']];
         $out['items']['animacao'][] = $item;
         $out['valor_total'] += $item['valor'];
     }
@@ -108,8 +108,8 @@ try {
         $out['actions'][] = ['action' => 'UPDATE acompanhamento', 'set' => ['pagamento' => 1, 'data_pagamento' => 'NOW()'], 'where' => ['idacompanhamento IN' => $ids]];
     }
     if (!empty($out['items']['animacao'])) {
-        $ids = array_map(function($i){return $i['idanimacao'];}, $out['items']['animacao']);
-        $out['actions'][] = ['action' => 'UPDATE animacao', 'set' => ['pagamento' => 1, 'data_pagamento' => 'NOW()'], 'where' => ['idanimacao IN' => $ids]];
+        $ids = array_map(function($i){return $i['id'];}, $out['items']['animacao']);
+        $out['actions'][] = ['action' => 'UPDATE funcao_animacao', 'set' => ['pagamento' => 1, 'data_pagamento' => 'NOW()'], 'where' => ['id IN' => $ids]];
     }
 
     // Inserts into pagamento_itens
@@ -135,7 +135,7 @@ try {
         $toInsert[] = ['pagamento_id' => $pagamento_ref, 'origem' => 'acompanhamento', 'origem_id' => $it['idacompanhamento'], 'valor' => $it['valor'], 'observacao' => null];
     }
     foreach ($out['items']['animacao'] as $it) {
-        $toInsert[] = ['pagamento_id' => $pagamento_ref, 'origem' => 'animacao', 'origem_id' => $it['idanimacao'], 'valor' => $it['valor'], 'observacao' => null];
+        $toInsert[] = ['pagamento_id' => $pagamento_ref, 'origem' => 'funcao_animacao', 'origem_id' => $it['id'], 'valor' => $it['valor'], 'observacao' => null];
     }
 
     $out['actions'][] = ['action' => 'INSERT pagamento_itens (simulated)', 'rows' => $toInsert];

@@ -415,7 +415,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 : "";
 
               totalValor += parseFloat(item.valor) || 0;
-            } else if (item.origem === "animacao") {
+            } else if (item.origem === "funcao_animacao") {
               cellNomeImagem.textContent = item.imagem_nome;
               cellFuncao.textContent = "Animação";
               cellStatusFuncao.textContent = item.status;

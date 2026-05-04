@@ -22,8 +22,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             } elseif ($origem === 'acompanhamento') {
                 $sql = "UPDATE acompanhamento SET valor = ? WHERE idacompanhamento = ?";
-            } elseif ($origem === 'animacao') {
-                $sql = "UPDATE animacao SET valor = ? WHERE idanimacao = ?";
+            } elseif ($origem === 'funcao_animacao') {
+                $sql = "UPDATE funcao_animacao SET valor = ? WHERE id = ?";
             } else {
                 continue; // Ignorar caso origem desconhecida
             }

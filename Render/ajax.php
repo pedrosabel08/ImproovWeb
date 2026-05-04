@@ -119,11 +119,11 @@ if (isset($_POST['action'])) {
                 if ($okUpd === TRUE) {
                     // Ao reprovar/refazer, zerar status_pos em pos_producao
                     if (in_array(strtolower($status), ['reprovado', 'refazendo'])) {
-                        $stmtPos = $conn->prepare("UPDATE pos_producao SET status_pos = 0 WHERE render_id = ?");
+                        $stmtPos = $conn->prepare("UPDATE pos_producao SET status_pos = 1 WHERE render_id = ?");
                         if ($stmtPos) {
                             $stmtPos->bind_param('i', $idrender_alta);
                             $stmtPos->execute();
-                            $logs[] = 'pos_producao.status_pos resetado para 0';
+                            $logs[] = 'pos_producao.status_pos resetado para 1';
                             $stmtPos->close();
                         } else {
                             $logs[] = 'Erro prepare pos_producao reset: ' . $conn->error;

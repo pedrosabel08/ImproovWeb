@@ -1102,7 +1102,15 @@ function contarLinhasTabela() {
         : (label.textContent || "").trim();
     }
 
-    const count = mapaContagem[nomeFuncao] || 0;
+    // "Planta Humanizada" agrega todas as linhas cujo nome de função contém " ph "
+    let count;
+    if (nomeFuncao === "Planta Humanizada") {
+      count = Object.entries(mapaContagem)
+        .filter(([k]) => k.toLowerCase().includes(" ph "))
+        .reduce((sum, [, v]) => sum + v, 0);
+    } else {
+      count = mapaContagem[nomeFuncao] || 0;
+    }
 
     // Atualiza ou cria o span .tipo-count dentro do label
     let spanCount = label.querySelector(".tipo-count");
@@ -1161,9 +1169,14 @@ function filtrarTabela() {
           .replace(/\s*-\s*.*/g, "")
           .trim();
         const funcaoNorm = normalize(funcaoText);
+        // "Planta Humanizada" também cobre funções com " ph " no nome (ex: Finalização PH Completa)
+        const matchesPH =
+          funcoesSelecionadas.includes("planta humanizada") &&
+          funcaoNorm.includes(" ph ");
         if (
           funcoesSelecionadas.length === 0 ||
-          funcoesSelecionadas.includes(funcaoNorm)
+          funcoesSelecionadas.includes(funcaoNorm) ||
+          matchesPH
         ) {
           linha.style.display = "";
         } else {

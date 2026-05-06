@@ -287,7 +287,6 @@ JOIN
 WHERE 
     fi.colaborador_id IN (23, 40)
     AND fi.funcao_id = 4
-    AND fi.pagamento = 0
     AND NOT (
         EXISTS (
             SELECT 1 FROM funcao_imagem fi_sub
@@ -395,7 +394,7 @@ SELECT
     fa.funcao_id,
     f.nome_funcao AS nome_funcao,
     fa.status,
-    an.data_anima as prazo,
+    fa.prazo as prazo,
     fa.pagamento,
     fa.valor,
     fa.data_pagamento,
@@ -414,7 +413,7 @@ WHERE
     fa.colaborador_id = ?";
 
     if ($mesNumero && $ano) {
-        $sql .= " AND YEAR(an.data_anima) = ? AND MONTH(an.data_anima) = ?";
+        $sql .= " AND YEAR(fa.prazo) = ? AND MONTH(fa.prazo) = ?";
     }
 
     // ORDER BY usa alias de coluna, não de tabela
@@ -689,6 +688,11 @@ foreach ($funcoes as &$f) {
 }
 unset($f);
 // ──────────────────────────────────────────────────────────────────────────────
+
+// Remove todas as entradas de Finalização Parcial (incluindo PH Parcial)
+$funcoes = array_values(array_filter($funcoes, function ($f) {
+    return stripos($f['nome_funcao'] ?? '', 'parcial') === false;
+}));
 
 $response = [
     "dadosColaborador" => $dadosColaborador,

@@ -42,12 +42,16 @@ class AdendoLocalService
 
         [$contratanteNome, $contratanteCnpj] = $this->getContratanteInfo($colaboradorId, $colab);
 
-        $itens = !empty($itensInput) ? $this->normalizeItensInput($itensInput) : $this->getAdendoItens($colaboradorId, $mes, $ano);
-        if (!empty($funcoesFiltro)) {
-            $itens = $this->filterItensByFuncoes($itens, $funcoesFiltro);
+        if (!empty($itensInput)) {
+            // Itens já filtrados pelo frontend — não reaplicar filtro de funções
+            $itens = $this->normalizeItensInput($itensInput);
+        } else {
+            $itens = $this->getAdendoItens($colaboradorId, $mes, $ano);
+            if (!empty($funcoesFiltro)) {
+                $itens = $this->filterItensByFuncoes($itens, $funcoesFiltro);
+            }
         }
-        $nomeColaborador = (string)($colab['nome_colaborador'] ?? '');
-        $showValor = !$this->isColaboradorSemValor($nomeColaborador);
+        $showValor = true;
 
         $rows = $this->buildRows($itens, $showValor);
         $extras = $this->normalizeExtras($extrasInput);
@@ -199,10 +203,12 @@ class AdendoLocalService
         foreach ($itens as $item) {
             $dataPagamento = $this->normalizeDateValue($item['data_pagamento'] ?? null);
             $pagoParcial = $this->isPagoParcial($item);
-            // Finalização Parcial já paga parcialmente ainda não foi concluída — não entra no adendo
-            $isParcialJaPaga = $pagoParcial && stripos((string)($item['nome_funcao'] ?? ''), 'Parcial') !== false;
-            if ($isParcialJaPaga) continue;
-            $incluirLinha = $dataPagamento === null || $dataPagamento === '0000-00-00' || $pagoParcial;
+            $pagoCompleta = (int)($item['pago_completa_count'] ?? 0);
+            // Qualquer "Finalização Parcial" não entra no adendo (mesmo lógica do getColaborador.php)
+            if (stripos((string)($item['nome_funcao'] ?? ''), 'parcial') !== false) continue;
+            // Incluir apenas linhas não pagas; para comissão do gestor, pago_completa_count=1 indica pago
+            $incluirLinha = ($dataPagamento === null || $dataPagamento === '0000-00-00' || $pagoParcial)
+                && $pagoCompleta === 0;
             if (!$incluirLinha) continue;
 
             $imagem = (string)($item['imagem_nome'] ?? '');
@@ -216,18 +222,18 @@ class AdendoLocalService
 
             if ($pagoParcial) {
                 // Para funções com colaborador (ex.: "Finalização Completa - Vitor"), manter o rótulo original
-                    // limpar rótulos como "(Pago parcial)" e normalizar
-                    $funcaoClean = preg_replace('/\s*\((?=.*pago\s*parcial)[^)]*\)\s*/i', '', $funcao);
-                    $funcaoClean = trim($funcaoClean);
-                    // Se já vier com traço seguido de nome, manter assim. Use original raw value as fallback.
-                    $hasDashClean = preg_match('/[\-–—]\s*\S+/u', $funcaoClean) === 1;
-                    $hasDashOriginal = preg_match('/[\-–—]\s*\S+/u', (string)($item['nome_funcao'] ?? '')) === 1;
-                    if ($hasDashClean || $hasDashOriginal) {
-                        $funcao = $funcaoClean;
-                    } else {
-                        // Caso contrário usamos o rótulo padrão para pagamento final
-                        $funcao = 'Finalização completa com pagamento final';
-                    }
+                // limpar rótulos como "(Pago parcial)" e normalizar
+                $funcaoClean = preg_replace('/\s*\((?=.*pago\s*parcial)[^)]*\)\s*/i', '', $funcao);
+                $funcaoClean = trim($funcaoClean);
+                // Se já vier com traço seguido de nome, manter assim. Use original raw value as fallback.
+                $hasDashClean = preg_match('/[\-–—]\s*\S+/u', $funcaoClean) === 1;
+                $hasDashOriginal = preg_match('/[\-–—]\s*\S+/u', (string)($item['nome_funcao'] ?? '')) === 1;
+                if ($hasDashClean || $hasDashOriginal) {
+                    $funcao = $funcaoClean;
+                } else {
+                    // Caso contrário usamos o rótulo padrão para pagamento final
+                    $funcao = 'Finalização completa com pagamento final';
+                }
             }
 
             $funcao = $this->applyAnimacaoRename($funcao, $valor);
@@ -236,7 +242,7 @@ class AdendoLocalService
                 'no' => $rowNumber,
                 'imagem' => $imagem,
                 'funcao' => $funcao,
-                'valor' => $showValor ? $this->formatCurrency($valor) : null,
+                'valor' => ($valor === null || $valor === '' || (float)$valor === 0.0) ? '-' : $this->formatCurrency($valor),
                 'valor_num' => $valor,
             ];
 
@@ -401,17 +407,88 @@ class AdendoLocalService
     {
         $tz = new DateTimeZone('America/Sao_Paulo');
         $dt = new DateTimeImmutable(sprintf('%04d-%02d-01', $ano, $mes), $tz);
+        $feriados = $this->getFeriadosNacionais($ano);
         $count = 0;
         while (true) {
             $dow = (int)$dt->format('N');
-            if ($dow < 6) {
+            $dateStr = $dt->format('Y-m-d');
+            // Segunda (1) a sábado (6) contam, exceto feriados
+            if ($dow <= 6 && !isset($feriados[$dateStr])) {
                 $count++;
             }
             if ($count === 5) {
+                // Se o 5º dia útil cair no sábado, avança para segunda-feira
+                if ($dow === 6) {
+                    $dt = $dt->modify('+2 days');
+                }
+                // Se o dia resultante for feriado ou domingo, continua avançando
+                while ((int)$dt->format('N') === 7 || isset($feriados[$dt->format('Y-m-d')])) {
+                    $dt = $dt->modify('+1 day');
+                }
                 return $dt;
             }
             $dt = $dt->modify('+1 day');
         }
+    }
+
+    /**
+     * Retorna array de feriados nacionais brasileiros no formato ['Y-m-d' => true].
+     * Inclui feriados fixos e móveis (Sexta-feira Santa e Corpus Christi).
+     */
+    private function getFeriadosNacionais(int $ano): array
+    {
+        $feriados = [];
+
+        // Feriados fixos
+        $fixos = [
+            sprintf('%04d-01-01', $ano), // Confraternização Universal
+            sprintf('%04d-04-21', $ano), // Tiradentes
+            sprintf('%04d-05-01', $ano), // Dia do Trabalhador
+            sprintf('%04d-09-07', $ano), // Independência do Brasil
+            sprintf('%04d-10-12', $ano), // Nossa Senhora Aparecida
+            sprintf('%04d-11-02', $ano), // Finados
+            sprintf('%04d-11-15', $ano), // Proclamação da República
+            sprintf('%04d-12-25', $ano), // Natal
+        ];
+        // Consciência Negra tornou-se feriado nacional a partir de 2024
+        if ($ano >= 2024) {
+            $fixos[] = sprintf('%04d-11-20', $ano);
+        }
+        foreach ($fixos as $d) {
+            $feriados[$d] = true;
+        }
+
+        // Feriados móveis baseados na Páscoa
+        $pascoa = $this->calcularPascoa($ano);
+        $feriados[$pascoa->modify('-2 days')->format('Y-m-d')] = true; // Sexta-feira Santa
+        $feriados[$pascoa->modify('+60 days')->format('Y-m-d')] = true; // Corpus Christi
+
+        return $feriados;
+    }
+
+    /**
+     * Calcula a data da Páscoa para um dado ano pelo algoritmo de Butcher.
+     */
+    private function calcularPascoa(int $ano): DateTimeImmutable
+    {
+        $a = $ano % 19;
+        $b = intdiv($ano, 100);
+        $c = $ano % 100;
+        $d = intdiv($b, 4);
+        $e = $b % 4;
+        $f = intdiv($b + 8, 25);
+        $g = intdiv($b - $f + 1, 3);
+        $h = (19 * $a + $b - $d - $g + 15) % 30;
+        $i = intdiv($c, 4);
+        $k = $c % 4;
+        $l = (32 + 2 * $e + 2 * $i - $h - $k) % 7;
+        $m = intdiv($a + 11 * $h + 22 * $l, 451);
+        $mes = intdiv($h + $l - 7 * $m + 114, 31);
+        $dia = (($h + $l - 7 * $m + 114) % 31) + 1;
+        return new DateTimeImmutable(
+            sprintf('%04d-%02d-%02d', $ano, $mes, $dia),
+            new DateTimeZone('America/Sao_Paulo')
+        );
     }
 
     private function getAdendoItens(int $colaboradorId, int $mesNumero, int $ano): array
@@ -623,22 +700,20 @@ class AdendoLocalService
         END AS nome_funcao,
         fi.status,
         fi.prazo,
-        fi.pagamento,
+        CASE WHEN EXISTS (
+            SELECT 1 FROM pagamento_itens pi
+            WHERE pi.origem = 'funcao_imagem' AND pi.origem_id = fi.idfuncao_imagem
+              AND pi.observacao = 'Comissão Gestor'
+        ) THEN 1 ELSE 0 END AS pagamento,
         fi.valor,
-        fi.data_pagamento,
+        NULL AS data_pagamento,
         c.nome_colaborador AS colaborador_ref,
-        CASE WHEN fi.funcao_id = 4 THEN (
-            SELECT COUNT(1)
-            FROM pagamento_itens pi
-            JOIN funcao_imagem fi_pi ON pi.origem = 'funcao_imagem' AND pi.origem_id = fi_pi.idfuncao_imagem
-            WHERE fi_pi.imagem_id = fi.imagem_id AND fi_pi.funcao_id = 4 AND pi.observacao = 'Finalização Parcial'
-        ) ELSE 0 END AS pago_parcial_count,
-        CASE WHEN fi.funcao_id = 4 THEN (
-            SELECT COUNT(1)
-            FROM pagamento_itens pi
-            JOIN funcao_imagem fi_pi ON pi.origem = 'funcao_imagem' AND pi.origem_id = fi_pi.idfuncao_imagem
-            WHERE fi_pi.imagem_id = fi.imagem_id AND fi_pi.funcao_id = 4 AND pi.observacao = 'Pago Completa'
-        ) ELSE 0 END AS pago_completa_count
+        0 AS pago_parcial_count,
+        CASE WHEN EXISTS (
+            SELECT 1 FROM pagamento_itens pi
+            WHERE pi.origem = 'funcao_imagem' AND pi.origem_id = fi.idfuncao_imagem
+              AND pi.observacao = 'Comissão Gestor'
+        ) THEN 1 ELSE 0 END AS pago_completa_count
     FROM 
         funcao_imagem fi
     JOIN 
@@ -1006,9 +1081,26 @@ ORDER BY obra_id, imagem_nome";
         if ($num === 0) return 'zero';
 
         $unidades = [
-            '', 'um', 'dois', 'três', 'quatro', 'cinco', 'seis', 'sete', 'oito', 'nove',
-            'dez', 'onze', 'doze', 'treze', 'quatorze', 'quinze', 'dezesseis',
-            'dezessete', 'dezoito', 'dezenove'
+            '',
+            'um',
+            'dois',
+            'três',
+            'quatro',
+            'cinco',
+            'seis',
+            'sete',
+            'oito',
+            'nove',
+            'dez',
+            'onze',
+            'doze',
+            'treze',
+            'quatorze',
+            'quinze',
+            'dezesseis',
+            'dezessete',
+            'dezoito',
+            'dezenove'
         ];
         $dezenas = ['', '', 'vinte', 'trinta', 'quarenta', 'cinquenta', 'sessenta', 'setenta', 'oitenta', 'noventa'];
         $centenas = ['', 'cento', 'duzentos', 'trezentos', 'quatrocentos', 'quinhentos', 'seiscentos', 'setecentos', 'oitocentos', 'novecentos'];

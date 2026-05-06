@@ -92,10 +92,15 @@ $conn->close();
 				<img src="../gif/assinatura_preto.gif" id="gif" style="height:36px;opacity:0.85" alt="ImproovWeb" />
 				<h1 class="page-title">Pagamento</h1>
 			</div>
-			<span class="results-badge">
-				<i class="fa-solid fa-coins"></i>
-				<span id="total-imagens">0</span> itens
-			</span>
+			<div style="display:flex;align-items:center;gap:10px;">
+				<button class="btn btn-status-geral" id="btn-ver-status-geral">
+					<i class="fa-solid fa-chart-bar"></i> Ver status geral dos adendos
+				</button>
+				<span class="results-badge">
+					<i class="fa-solid fa-coins"></i>
+					<span id="total-imagens">0</span> itens
+				</span>
+			</div>
 		</div>
 
 		<!-- Filters -->
@@ -145,18 +150,30 @@ $conn->close();
 
 			<!-- Checkbox filter group -->
 			<div class="checkbox-filter-group tipo-imagem">
-				<label class="checkbox-label"><input type="checkbox" name="Caderno" id="Caderno" onclick="filtrarTabela()"><span>Caderno</span></label>
-				<label class="checkbox-label"><input type="checkbox" name="Filtro de assets" id="Filtro de_assets" onclick="filtrarTabela()"><span>Filtro de assets</span></label>
-				<label class="checkbox-label"><input type="checkbox" name="Modelagem" id="Modelagem" onclick="filtrarTabela()"><span>Modelagem</span></label>
-				<label class="checkbox-label"><input type="checkbox" name="Composição" id="Composicao" onclick="filtrarTabela()"><span>Composição</span></label>
-				<label class="checkbox-label"><input type="checkbox" name="Pré-Finalização" id="Pre-Finalizacao" onclick="filtrarTabela()"><span>Pré-Finalização</span></label>
-				<label class="checkbox-label"><input type="checkbox" name="Finalização Completa" id="Finalizacao_Completa" onclick="filtrarTabela()"><span>Finalização Completa</span></label>
-				<label class="checkbox-label"><input type="checkbox" name="Finalização Parcial" id="Finalizacao_Parcial" onclick="filtrarTabela()"><span>Finalização Parcial</span></label>
-				<label class="checkbox-label"><input type="checkbox" name="Alteração" id="Alteracao" onclick="filtrarTabela()"><span>Alteração</span></label>
-				<label class="checkbox-label"><input type="checkbox" name="Pós-produção" id="Pos_producao" onclick="filtrarTabela()"><span>Pós-produção</span></label>
-				<label class="checkbox-label"><input type="checkbox" name="Planta Humanizada" id="Planta_Humanizada" onclick="filtrarTabela()"><span>Planta Humanizada</span></label>
-				<label class="checkbox-label"><input type="checkbox" name="Acompanhamento" id="Acompanhamento" onclick="filtrarTabela()"><span>Acompanhamento</span></label>
-				<label class="checkbox-label"><input type="checkbox" name="Animação" id="Animacao" onclick="filtrarTabela()"><span>Animação</span></label>
+				<label class="checkbox-label"><input type="checkbox" name="Caderno" id="Caderno"
+						onclick="filtrarTabela()"><span>Caderno</span></label>
+				<label class="checkbox-label"><input type="checkbox" name="Filtro de assets" id="Filtro de_assets"
+						onclick="filtrarTabela()"><span>Filtro de assets</span></label>
+				<label class="checkbox-label"><input type="checkbox" name="Modelagem" id="Modelagem"
+						onclick="filtrarTabela()"><span>Modelagem</span></label>
+				<label class="checkbox-label"><input type="checkbox" name="Composição" id="Composicao"
+						onclick="filtrarTabela()"><span>Composição</span></label>
+				<label class="checkbox-label"><input type="checkbox" name="Pré-Finalização" id="Pre-Finalizacao"
+						onclick="filtrarTabela()"><span>Pré-Finalização</span></label>
+				<label class="checkbox-label"><input type="checkbox" name="Finalização Completa"
+						id="Finalizacao_Completa" onclick="filtrarTabela()"><span>Finalização Completa</span></label>
+				<label class="checkbox-label"><input type="checkbox" name="Finalização Parcial" id="Finalizacao_Parcial"
+						onclick="filtrarTabela()"><span>Finalização Parcial</span></label>
+				<label class="checkbox-label"><input type="checkbox" name="Alteração" id="Alteracao"
+						onclick="filtrarTabela()"><span>Alteração</span></label>
+				<label class="checkbox-label"><input type="checkbox" name="Pós-produção" id="Pos_producao"
+						onclick="filtrarTabela()"><span>Pós-produção</span></label>
+				<label class="checkbox-label"><input type="checkbox" name="Planta Humanizada" id="Planta_Humanizada"
+						onclick="filtrarTabela()"><span>Planta Humanizada</span></label>
+				<label class="checkbox-label"><input type="checkbox" name="Acompanhamento" id="Acompanhamento"
+						onclick="filtrarTabela()"><span>Acompanhamento</span></label>
+				<label class="checkbox-label"><input type="checkbox" name="Animação" id="Animacao"
+						onclick="filtrarTabela()"><span>Animação</span></label>
 			</div>
 
 			<!-- Action toolbar -->
@@ -191,15 +208,28 @@ $conn->close();
 					</div>
 				</div>
 				<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-					<button class="btn btn-secondary" id="generate-adendo">
+					<button class="btn btn-adendo-gerar" id="generate-adendo">
 						<i class="fa-solid fa-file-contract"></i> Gerar Adendo
 					</button>
-					<button class="btn btn-secondary" id="generate-lista">
+					<button class="btn btn-lista-gerar" id="generate-lista">
 						<i class="fa-solid fa-file-pdf"></i> Gerar Lista
 					</button>
-					<button class="btn btn-secondary" id="generate-excel" onclick="exportToExcel()">
+					<button class="btn btn-excel-gerar" id="generate-excel" onclick="exportToExcel()">
 						<i class="fa-solid fa-file-excel"></i> Excel
 					</button>
+					<!-- Adendo status widget -->
+					<div class="adendo-status-widget" id="adendo-status-widget" style="display:none;">
+						<div class="adendo-badge-wrapper">
+							<span class="adendo-status-badge" id="adendo-status-badge">
+								<i class="fa-solid fa-circle-minus"></i> Não enviado
+							</span>
+							<span class="adendo-status-date" id="adendo-status-date"></span>
+						</div>
+						<button class="info-btn" id="btn-adendo-info" title="Ver detalhes do adendo"
+							aria-label="Detalhes do adendo">
+							<i class="fa-solid fa-circle-info"></i>
+						</button>
+					</div>
 				</div>
 			</div>
 
@@ -315,6 +345,66 @@ $conn->close();
 		</div><!-- /.table-scroll-area -->
 
 	</div><!-- /.container -->
+
+	<!-- Popover: Detalhes do Adendo (individual) -->
+	<div id="popoverAdendoInfo" class="adendo-popover" role="dialog" aria-modal="true" style="display:none;">
+		<div class="adendo-popover-header">
+			<span><i class="fa-solid fa-timeline"></i> Histórico do Adendo</span>
+			<button class="adendo-popover-close" id="btn-fechar-popover" aria-label="Fechar">
+				<i class="fa-solid fa-xmark"></i>
+			</button>
+		</div>
+		<div class="adendo-popover-body" id="adendo-popover-body">
+			<p class="adendo-popover-loading">Carregando...</p>
+		</div>
+		<div class="adendo-popover-footer">
+			<button class="btn btn-sm btn-secondary" id="btn-download-adendo" style="display:none;">
+				<i class="fa-solid fa-download"></i> Baixar
+			</button>
+			<button class="btn btn-sm btn-warning" id="btn-reenviar-adendo" style="display:none;">
+				<i class="fa-solid fa-paper-plane"></i> Reenviar
+			</button>
+		</div>
+	</div>
+
+	<!-- Modal: Status Geral dos Adendos -->
+	<div id="modalStatusGeral" class="modal">
+		<div class="modal-content" style="width:min(960px,96vw);max-height:92vh;">
+			<div class="modal-header">
+				<h2 class="modal-title"><i class="fa-solid fa-chart-bar"></i> Status Geral dos Adendos</h2>
+				<button class="modal-close" id="btn-fechar-status-geral" aria-label="Fechar"><i
+						class="fa-solid fa-xmark"></i></button>
+			</div>
+			<div class="modal-body">
+				<!-- Summary cards -->
+				<div class="status-geral-summary" id="status-geral-summary"></div>
+				<!-- Table -->
+				<div class="table-section">
+					<div class="table-section-header">
+						<span class="table-section-title">
+							<i class="fa-solid fa-list"></i> Todos os Adendos
+						</span>
+						<span class="table-section-count" id="status-geral-count">0</span>
+					</div>
+					<div class="table-wrap">
+						<table class="data-table" id="tabela-status-geral">
+							<thead>
+								<tr>
+									<th>Colaborador</th>
+									<th class="col-center">Competência</th>
+									<th class="col-center">Status</th>
+									<th class="col-center">Data envio</th>
+									<th class="col-center">Última atualização</th>
+									<th class="col-center">Ações</th>
+								</tr>
+							</thead>
+							<tbody id="tbody-status-geral"></tbody>
+						</table>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
 
 	<!-- Modal: Aprovação do Adendo -->
 	<div id="modalAdendo" class="modal">

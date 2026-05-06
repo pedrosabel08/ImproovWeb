@@ -549,6 +549,17 @@ document.addEventListener("DOMContentLoaded", function () {
 
           contarLinhasTabela();
 
+          // ─── Adendo status widget ────────────────────────────────────────
+          const _colabId = parseInt(
+            document.getElementById("colaborador").value,
+            10,
+          );
+          const _mesId = parseInt(document.getElementById("mes").value, 10);
+          const _anoId = parseInt(document.getElementById("ano").value, 10);
+          if (_colabId && _mesId && _anoId) {
+            atualizarAdendoStatus(_colabId, _mesId, _anoId);
+          }
+
           // ─── Painel de divergências de valor ────────────────────────────
           const divergentes = (data.funcoes || []).filter(
             (f) => f.tem_divergencia && f.origem === "funcao_imagem",
@@ -745,6 +756,9 @@ document.addEventListener("DOMContentLoaded", function () {
       document.querySelector("#tabela-pago tbody").innerHTML = "";
       var totalValorLabel = document.getElementById("totalValor");
       totalValorLabel.textContent = "Total: R$ 0,00";
+      // Hide adendo widget when no collaborator selected
+      const _widget = document.getElementById("adendo-status-widget");
+      if (_widget) _widget.style.display = "none";
     }
   }
 
@@ -901,6 +915,54 @@ document.addEventListener("DOMContentLoaded", function () {
         });
       }
     });
+
+  // ── "Ver status geral" button ────────────────────────────────────────────
+  const btnStatusGeral = document.getElementById("btn-ver-status-geral");
+  if (btnStatusGeral) {
+    btnStatusGeral.addEventListener("click", abrirModalStatusGeral);
+  }
+
+  // ── Modal status geral — close button ───────────────────────────────────
+  const btnFecharStatusGeral = document.getElementById(
+    "btn-fechar-status-geral",
+  );
+  if (btnFecharStatusGeral) {
+    btnFecharStatusGeral.addEventListener("click", fecharModalStatusGeral);
+  }
+  const modalStatusGeral = document.getElementById("modalStatusGeral");
+  if (modalStatusGeral) {
+    modalStatusGeral.addEventListener("click", function (e) {
+      if (e.target === modalStatusGeral) fecharModalStatusGeral();
+    });
+  }
+
+  // ── Info button (adendo popover) ─────────────────────────────────────────
+  const btnAdendoInfo = document.getElementById("btn-adendo-info");
+  if (btnAdendoInfo) {
+    btnAdendoInfo.addEventListener("click", function (e) {
+      e.stopPropagation();
+      toggleAdendoPopover(btnAdendoInfo);
+    });
+  }
+
+  // Close popover on outside click
+  document.addEventListener("click", function (e) {
+    const popover = document.getElementById("popoverAdendoInfo");
+    if (popover && popover.style.display !== "none") {
+      if (!popover.contains(e.target)) {
+        popover.style.display = "none";
+      }
+    }
+  });
+
+  // Popover close button
+  const btnFecharPopover = document.getElementById("btn-fechar-popover");
+  if (btnFecharPopover) {
+    btnFecharPopover.addEventListener("click", function () {
+      const popover = document.getElementById("popoverAdendoInfo");
+      if (popover) popover.style.display = "none";
+    });
+  }
 
   document
     .getElementById("adicionar-valor")
@@ -1835,3 +1897,446 @@ function exportToExcel() {
 //     // also expose for manual invocation after dynamic updates
 //     window._transformPagamentoStatusBadges = transformAll;
 // })();
+
+// ====================================================================
+// ADENDO STATUS — Widget, Popover, Modal Status Geral
+// ====================================================================
+
+/**
+ * Returns the CSS class + label for a given adendo status string.
+ */
+function adendoStatusInfo(status) {
+  const map = {
+    nao_gerado: {
+      cls: "estado-nao-gerado",
+      icon: "fa-circle-minus",
+      label: "Não gerado",
+    },
+    gerado: { cls: "estado-gerado", icon: "fa-file", label: "Gerado" },
+    enviado: {
+      cls: "estado-enviado",
+      icon: "fa-paper-plane",
+      label: "Enviado",
+    },
+    visualizado: {
+      cls: "estado-visualizado",
+      icon: "fa-eye",
+      label: "Visualizado",
+    },
+    assinado: {
+      cls: "estado-assinado",
+      icon: "fa-signature",
+      label: "Assinado",
+    },
+    recusado: {
+      cls: "estado-recusado",
+      icon: "fa-circle-xmark",
+      label: "Recusado",
+    },
+    expirado: { cls: "estado-expirado", icon: "fa-clock", label: "Expirado" },
+  };
+  return (
+    map[status] || {
+      cls: "estado-nao-enviado",
+      icon: "fa-circle-minus",
+      label: "Não enviado",
+    }
+  );
+}
+
+/**
+ * Returns badge CSS class for table display inside status geral modal.
+ */
+function adendoBadgeClass(status) {
+  const map = {
+    nao_gerado: "b-nao-gerado",
+    gerado: "b-gerado",
+    enviado: "b-enviado",
+    visualizado: "b-visualizado",
+    assinado: "b-assinado",
+    recusado: "b-recusado",
+    expirado: "b-expirado",
+  };
+  return map[status] || "b-nao-enviado";
+}
+
+/**
+ * Formats a datetime string in pt-BR locale.
+ */
+function fmtDatetime(str) {
+  if (!str || str === "0000-00-00 00:00:00" || str === "0000-00-00") return "—";
+  const d = new Date(str.replace(" ", "T"));
+  if (isNaN(d.getTime())) return str;
+  return (
+    d.toLocaleDateString("pt-BR") +
+    " " +
+    d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+  );
+}
+
+// ── Cached adendo data for the current collaborator/month ─────────────────
+let _currentAdendo = null;
+
+/**
+ * Fetches adendo status for the selected collaborator/month and updates widget.
+ */
+async function atualizarAdendoStatus(colaboradorId, mes, ano) {
+  const widget = document.getElementById("adendo-status-widget");
+  const badge = document.getElementById("adendo-status-badge");
+  const dateEl = document.getElementById("adendo-status-date");
+  if (!widget || !badge) return;
+
+  try {
+    const res = await fetch(
+      `get_adendo_status.php?colaborador_id=${encodeURIComponent(colaboradorId)}&mes=${encodeURIComponent(mes)}&ano=${encodeURIComponent(ano)}`,
+    );
+    const json = await res.json();
+    _currentAdendo = json.adendo || null;
+
+    const adendo = json.adendo;
+    const info = adendoStatusInfo(adendo ? adendo.status : null);
+
+    // Update badge
+    badge.className = `adendo-status-badge ${info.cls}`;
+    badge.innerHTML = `<i class="fa-solid ${info.icon}"></i> ${info.label}`;
+
+    // Update date
+    if (adendo && adendo.updated_at) {
+      dateEl.textContent = fmtDatetime(adendo.updated_at);
+    } else {
+      dateEl.textContent = "";
+    }
+
+    // Show/hide download & reenviar buttons in popover based on state
+    const btnDownload = document.getElementById("btn-download-adendo");
+    const btnReenviar = document.getElementById("btn-reenviar-adendo");
+    if (btnDownload)
+      btnDownload.style.display = adendo && adendo.arquivo_nome ? "" : "none";
+    if (btnReenviar)
+      btnReenviar.style.display =
+        adendo && ["enviado", "visualizado", "gerado"].includes(adendo.status)
+          ? ""
+          : "none";
+
+    widget.style.display = "";
+  } catch (e) {
+    console.error("Erro ao buscar status adendo:", e);
+    widget.style.display = "none";
+  }
+}
+
+// ── Popover ────────────────────────────────────────────────────────────────
+
+/**
+ * Toggles the adendo info popover, loading data if needed.
+ */
+async function toggleAdendoPopover(anchorEl) {
+  const popover = document.getElementById("popoverAdendoInfo");
+  if (!popover) return;
+
+  if (popover.style.display !== "none") {
+    popover.style.display = "none";
+    return;
+  }
+
+  // Position popover
+  positionPopover(popover, anchorEl);
+  popover.style.display = "flex";
+
+  // Load data
+  const body = document.getElementById("adendo-popover-body");
+  body.innerHTML = '<p class="adendo-popover-loading">Carregando...</p>';
+
+  try {
+    const colaboradorId = parseInt(
+      document.getElementById("colaborador").value,
+      10,
+    );
+    const mes = parseInt(document.getElementById("mes").value, 10);
+    const ano = parseInt(document.getElementById("ano").value, 10);
+
+    const res = await fetch(
+      `get_adendo_status.php?colaborador_id=${encodeURIComponent(colaboradorId)}&mes=${encodeURIComponent(mes)}&ano=${encodeURIComponent(ano)}`,
+    );
+    const json = await res.json();
+    const adendo = json.adendo;
+    const log = json.log || [];
+
+    body.innerHTML = buildPopoverBody(adendo, log);
+
+    // Wire download button
+    const btnDl = document.getElementById("btn-download-adendo");
+    if (btnDl && adendo && adendo.arquivo_nome) {
+      btnDl.style.display = "";
+      btnDl.onclick = function () {
+        window.open(
+          "../Contratos/download.php?arquivo=" +
+            encodeURIComponent(adendo.arquivo_path || adendo.arquivo_nome),
+          "_blank",
+        );
+      };
+    }
+
+    // Wire reenviar button (just triggers adendo generation flow)
+    const btnRe = document.getElementById("btn-reenviar-adendo");
+    if (
+      btnRe &&
+      adendo &&
+      ["enviado", "visualizado", "gerado"].includes(adendo.status)
+    ) {
+      btnRe.style.display = "";
+      btnRe.onclick = function () {
+        popover.style.display = "none";
+        document.getElementById("generate-adendo").click();
+      };
+    }
+  } catch (e) {
+    console.error("Erro ao carregar detalhes do adendo:", e);
+    body.innerHTML = '<p class="adendo-popover-loading">Erro ao carregar.</p>';
+  }
+}
+
+/**
+ * Builds the HTML content for the adendo info popover.
+ */
+function buildPopoverBody(adendo, log) {
+  let html = "";
+
+  // // Meta info
+  // if (adendo) {
+  //   html += `<div class="adendo-doc-meta">`;
+  //   if (adendo.arquivo_nome) {
+  //     html += `<div class="adendo-doc-meta-row"><span class="adendo-doc-meta-label">Documento</span><span class="adendo-doc-meta-value">${escHtml(adendo.arquivo_nome)}</span></div>`;
+  //   }
+  //   if (adendo.data_envio) {
+  //     html += `<div class="adendo-doc-meta-row"><span class="adendo-doc-meta-label">Enviado em</span><span class="adendo-doc-meta-value">${fmtDatetime(adendo.data_envio)}</span></div>`;
+  //   }
+  //   if (adendo.assinado_em) {
+  //     html += `<div class="adendo-doc-meta-row"><span class="adendo-doc-meta-label">Assinado em</span><span class="adendo-doc-meta-value">${fmtDatetime(adendo.assinado_em)}</span></div>`;
+  //   }
+  //   html += `</div>`;
+  // }
+
+  // Timeline
+  html += `<div class="adendo-timeline">`;
+
+  if (log.length === 0 && !adendo) {
+    html += `<div class="adendo-timeline-empty">Nenhum adendo gerado para este mês.</div>`;
+  } else if (log.length === 0 && adendo) {
+    // Synthetic timeline from adendo fields
+    const synth = [];
+    if (adendo.created_at)
+      synth.push({ status: "gerado", ocorrido_em: adendo.created_at });
+    if (adendo.data_envio)
+      synth.push({ status: "enviado", ocorrido_em: adendo.data_envio });
+    if (adendo.assinado_em)
+      synth.push({ status: "assinado", ocorrido_em: adendo.assinado_em });
+
+    if (synth.length === 0) {
+      html += `<div class="adendo-timeline-empty">Sem histórico disponível.</div>`;
+    } else {
+      html += synth.map((e) => buildTimelineItem(e)).join("");
+    }
+  } else {
+    html += log.map((e) => buildTimelineItem(e)).join("");
+  }
+
+  html += `</div>`;
+  return html;
+}
+
+function buildTimelineItem(e) {
+  const info = adendoStatusInfo(e.status || e.acao);
+  const title = e.acao
+    ? info.label +
+      ' <small style="color:var(--text-muted);font-weight:400;">via ' +
+      escHtml(e.acao) +
+      "</small>"
+    : info.label;
+  return `
+    <div class="adendo-timeline-item tl-${escHtml(e.status || "")}">
+      <div class="adendo-timeline-dot"></div>
+      <div class="adendo-timeline-title">${title}</div>
+      <div class="adendo-timeline-date">${fmtDatetime(e.ocorrido_em || e.created_at)}</div>
+    </div>`;
+}
+
+/**
+ * Positions the popover near an anchor element, preferring right/left based on viewport space.
+ */
+function positionPopover(popover, anchor) {
+  const rect = anchor.getBoundingClientRect();
+  const pw = 320; // popover width
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+
+  let top = rect.bottom + 8;
+  let left = rect.left;
+
+  // Prefer left side if not enough room on right
+  if (left + pw > vw - 8) left = rect.right - pw;
+  if (left < 8) left = 8;
+
+  // Flip above if overflows bottom
+  if (top + 420 > vh) top = rect.top - 420 - 8;
+  if (top < 8) top = 8;
+
+  popover.style.top = top + "px";
+  popover.style.left = left + "px";
+}
+
+// ── Modal Status Geral ─────────────────────────────────────────────────────
+
+async function abrirModalStatusGeral() {
+  const modal = document.getElementById("modalStatusGeral");
+  if (!modal) return;
+  modal.classList.add("is-open");
+
+  // Reset
+  const summaryEl = document.getElementById("status-geral-summary");
+  const tbodyEl = document.getElementById("tbody-status-geral");
+  const countEl = document.getElementById("status-geral-count");
+  if (summaryEl)
+    summaryEl.innerHTML =
+      '<p style="color:var(--text-muted);font-size:13px;">Carregando...</p>';
+  if (tbodyEl)
+    tbodyEl.innerHTML =
+      '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);">Carregando...</td></tr>';
+
+  try {
+    const res = await fetch("get_adendo_status.php?mode=geral");
+    const json = await res.json();
+
+    if (!json.success) throw new Error(json.message || "Erro desconhecido");
+
+    const { counts, items } = json;
+    const total = counts.total || 0;
+    const pct = (n) =>
+      total > 0
+        ? ` <span class="sg-card-pct">${Math.round((n / total) * 100)}%</span>`
+        : "";
+
+    // Summary cards
+    if (summaryEl) {
+      summaryEl.innerHTML = `
+        <div class="sg-card c-total">
+          <div class="sg-card-label">Total</div>
+          <div class="sg-card-value">${total}</div>
+        </div>
+        <div class="sg-card c-assinado">
+          <div class="sg-card-label"><i class="fa-solid fa-signature"></i> Assinados</div>
+          <div class="sg-card-value">${counts.assinado}${pct(counts.assinado)}</div>
+        </div>
+        <div class="sg-card c-visualizado">
+          <div class="sg-card-label"><i class="fa-solid fa-eye"></i> Visualizados</div>
+          <div class="sg-card-value">${counts.visualizado}${pct(counts.visualizado)}</div>
+        </div>
+        <div class="sg-card c-enviado">
+          <div class="sg-card-label"><i class="fa-solid fa-paper-plane"></i> Enviados</div>
+          <div class="sg-card-value">${counts.enviado}${pct(counts.enviado)}</div>
+        </div>
+        <div class="sg-card c-nao-enviado">
+          <div class="sg-card-label"><i class="fa-solid fa-circle-minus"></i> Não enviados</div>
+          <div class="sg-card-value">${counts.nao_enviado}${pct(counts.nao_enviado)}</div>
+        </div>`;
+    }
+
+    // Table
+    if (countEl) countEl.textContent = total;
+
+    if (tbodyEl) {
+      if (items.length === 0) {
+        tbodyEl.innerHTML =
+          '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);">Nenhum adendo encontrado.</td></tr>';
+      } else {
+        tbodyEl.innerHTML = items
+          .map((item) => {
+            const info = adendoStatusInfo(item.status);
+            const bCls = adendoBadgeClass(item.status);
+            const envio = fmtDatetime(item.data_envio);
+            const updated = fmtDatetime(item.updated_at);
+            return `<tr>
+            <td>${escHtml(item.nome_colaborador)}</td>
+            <td class="col-center">${escHtml(item.competencia)}</td>
+            <td class="col-center"><span class="adendo-badge ${bCls}"><i class="fa-solid ${info.icon}"></i> ${info.label}</span></td>
+            <td class="col-center">${envio}</td>
+            <td class="col-center">${updated}</td>
+            <td class="col-center">
+              <button class="btn-row validate btn-sg-detalhes" data-id="${escHtml(item.id)}" title="Ver histórico">
+                <i class="fa-solid fa-clock-rotate-left"></i> Detalhes
+              </button>
+            </td>
+          </tr>`;
+          })
+          .join("");
+
+        // Wire detail buttons
+        tbodyEl.querySelectorAll(".btn-sg-detalhes").forEach((btn) => {
+          btn.addEventListener("click", () =>
+            abrirDetalhesAdendoGeral(parseInt(btn.dataset.id, 10)),
+          );
+        });
+      }
+    }
+  } catch (e) {
+    console.error("Erro ao carregar status geral:", e);
+    if (summaryEl)
+      summaryEl.innerHTML =
+        '<p style="color:#ef4444;font-size:13px;">Erro ao carregar dados.</p>';
+    if (tbodyEl)
+      tbodyEl.innerHTML =
+        '<tr><td colspan="6" style="text-align:center;color:#ef4444;">Erro ao carregar.</td></tr>';
+  }
+}
+
+function fecharModalStatusGeral() {
+  const modal = document.getElementById("modalStatusGeral");
+  if (modal) modal.classList.remove("is-open");
+}
+
+/**
+ * Opens a SweetAlert with the log history for a specific adendo (from status geral modal).
+ */
+async function abrirDetalhesAdendoGeral(adendoId) {
+  // We re-fetch by adendo id directly would require a different endpoint.
+  // Instead, show what we have from the already-loaded list if possible.
+  // For simplicity, query the single endpoint by searching the item in the list.
+  Swal.fire({
+    title: "Carregando histórico...",
+    didOpen: () => Swal.showLoading(),
+    showConfirmButton: false,
+  });
+  try {
+    const res = await fetch(
+      `get_adendo_status.php?adendo_id=${encodeURIComponent(adendoId)}&mode=by_id`,
+    );
+    const json = await res.json();
+    const adendo = json.adendo;
+    const log = json.log || [];
+    Swal.close();
+    await Swal.fire({
+      title: adendo ? `Adendo — ${escHtml(adendo.competencia)}` : "Histórico",
+      html: `<div style="text-align:left;">${buildPopoverBody(adendo, log)}</div>`,
+      confirmButtonText: "Fechar",
+      confirmButtonColor: "#4f80e1",
+      width: 480,
+    });
+  } catch (e) {
+    Swal.fire({
+      icon: "error",
+      title: "Erro",
+      text: "Não foi possível carregar o histórico.",
+      timer: 3000,
+      timerProgressBar: true,
+    });
+  }
+}
+
+/** Escapes HTML special chars */
+function escHtml(str) {
+  return String(str ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}

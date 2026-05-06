@@ -4,8 +4,7 @@ header('Content-Type: application/json; charset=utf-8');
 // Logar erros fatais do webhook para diagnóstico.
 register_shutdown_function(function () {
 	$error = error_get_last();
-	if (!$error)
-		return;
+	if (!$error) return;
 	$logDir = __DIR__ . '/../logs';
 	$logPath = $logDir . '/zapsign_webhook_fatal.log';
 	if (!is_dir($logDir) || !is_writable($logDir)) {
@@ -57,27 +56,22 @@ require_once __DIR__ . '/services/AdendoStatusService.php';
 function inferDocTypeFromName(string $docName): ?string
 {
 	$docName = trim($docName);
-	if ($docName === '')
-		return null;
+	if ($docName === '') return null;
 	if (function_exists('mb_strtoupper')) {
 		$upper = mb_strtoupper($docName, 'UTF-8');
 	} else {
 		$upper = strtoupper($docName);
 	}
-	if ($upper === '')
-		return null;
-	if (strpos($upper, 'CONTRATO_') === 0)
-		return 'contrato';
-	if (strpos($upper, 'ADENDO_CONTRATUAL_') === 0)
-		return 'adendo';
+	if ($upper === '') return null;
+	if (strpos($upper, 'CONTRATO_') === 0) return 'contrato';
+	if (strpos($upper, 'ADENDO_CONTRATUAL_') === 0) return 'adendo';
 	return null;
 }
 
 function normalize_name_simple(string $s): string
 {
 	$s = trim($s);
-	if ($s === '')
-		return '';
+	if ($s === '') return '';
 	if (function_exists('mb_strtolower')) {
 		$s = mb_strtolower($s, 'UTF-8');
 	} else {
@@ -92,8 +86,7 @@ function normalize_name_simple(string $s): string
 function parseDocNameParts(string $docName): ?array
 {
 	$base = trim(preg_replace('/\.pdf$/i', '', $docName) ?? $docName);
-	if ($base === '')
-		return null;
+	if ($base === '') return null;
 
 	$prefix = null;
 	$rest = null;
@@ -104,12 +97,10 @@ function parseDocNameParts(string $docName): ?array
 		$prefix = 'CONTRATO';
 		$rest = substr($base, strlen('CONTRATO_'));
 	}
-	if (!$prefix || $rest === null)
-		return null;
+	if (!$prefix || $rest === null) return null;
 
 	$parts = explode('_', $rest);
-	if (count($parts) < 3)
-		return null;
+	if (count($parts) < 3) return null;
 	$year = array_pop($parts);
 	$monthName = array_pop($parts);
 	$rawName = trim(str_replace('_', ' ', implode('_', $parts)));
@@ -130,8 +121,7 @@ function parseDocNameParts(string $docName): ?array
 	];
 	$monthKey = strtoupper($monthName);
 	$monthNum = $monthMap[$monthKey] ?? null;
-	if (!$monthNum || !preg_match('/^\d{4}$/', $year))
-		return null;
+	if (!$monthNum || !preg_match('/^\d{4}$/', $year)) return null;
 	return [
 		'prefix' => $prefix,
 		'name_raw' => $rawName,
@@ -142,16 +132,14 @@ function parseDocNameParts(string $docName): ?array
 function findColaboradorIdByName(mysqli $conn, string $rawName): ?int
 {
 	$target = normalize_name_simple($rawName);
-	if ($target === '')
-		return null;
+	if ($target === '') return null;
 	$sql = "SELECT c.idcolaborador, u.nome_usuario FROM colaborador c JOIN usuario u ON u.idcolaborador = c.idcolaborador WHERE c.ativo = 1";
 	$res = $conn->query($sql);
-	if (!$res)
-		return null;
+	if (!$res) return null;
 	while ($row = $res->fetch_assoc()) {
-		$nome = normalize_name_simple((string) ($row['nome_usuario'] ?? ''));
+		$nome = normalize_name_simple((string)($row['nome_usuario'] ?? ''));
 		if ($nome !== '' && $nome === $target) {
-			return (int) $row['idcolaborador'];
+			return (int)$row['idcolaborador'];
 		}
 	}
 	return null;
@@ -230,8 +218,8 @@ function resolveContratoId(mysqli $conn, string $docToken, string $docName): arr
 			$stmt->execute();
 			$res = $stmt->get_result();
 			if ($res && ($row = $res->fetch_assoc())) {
-				$contratoId = (int) $row['id'];
-				$colaboradorId = isset($row['colaborador_id']) ? (int) $row['colaborador_id'] : null;
+				$contratoId = (int)$row['id'];
+				$colaboradorId = isset($row['colaborador_id']) ? (int)$row['colaborador_id'] : null;
 			}
 			$stmt->close();
 		}
@@ -243,8 +231,8 @@ function resolveContratoId(mysqli $conn, string $docToken, string $docName): arr
 			$stmt->execute();
 			$res = $stmt->get_result();
 			if ($res && ($row = $res->fetch_assoc())) {
-				$contratoId = (int) $row['id'];
-				$colaboradorId = isset($row['colaborador_id']) ? (int) $row['colaborador_id'] : null;
+				$contratoId = (int)$row['id'];
+				$colaboradorId = isset($row['colaborador_id']) ? (int)$row['colaborador_id'] : null;
 			}
 			$stmt->close();
 		}
@@ -264,8 +252,8 @@ function resolveAdendoId(mysqli $conn, string $docToken, string $docName): array
 			$stmt->execute();
 			$res = $stmt->get_result();
 			if ($res && ($row = $res->fetch_assoc())) {
-				$adendoId = (int) $row['id'];
-				$colaboradorId = isset($row['colaborador_id']) ? (int) $row['colaborador_id'] : null;
+				$adendoId = (int)$row['id'];
+				$colaboradorId = isset($row['colaborador_id']) ? (int)$row['colaborador_id'] : null;
 			}
 			$stmt->close();
 		}
@@ -277,8 +265,8 @@ function resolveAdendoId(mysqli $conn, string $docToken, string $docName): array
 			$stmt->execute();
 			$res = $stmt->get_result();
 			if ($res && ($row = $res->fetch_assoc())) {
-				$adendoId = (int) $row['id'];
-				$colaboradorId = isset($row['colaborador_id']) ? (int) $row['colaborador_id'] : null;
+				$adendoId = (int)$row['id'];
+				$colaboradorId = isset($row['colaborador_id']) ? (int)$row['colaborador_id'] : null;
 			}
 			$stmt->close();
 		}
@@ -290,15 +278,12 @@ function resolveAdendoId(mysqli $conn, string $docToken, string $docName): array
 // --- Small dotenv loader (no external dependency) ---
 function load_dotenv_simple(string $path): void
 {
-	if (!file_exists($path))
-		return;
+	if (!file_exists($path)) return;
 	$lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
 	foreach ($lines as $line) {
 		$line = trim($line);
-		if ($line === '' || $line[0] === '#')
-			continue;
-		if (strpos($line, '=') === false)
-			continue;
+		if ($line === '' || $line[0] === '#') continue;
+		if (strpos($line, '=') === false) continue;
 		list($k, $v) = array_map('trim', explode('=', $line, 2));
 		$v = trim($v, "\"'");
 		putenv("{$k}={$v}");
@@ -330,12 +315,12 @@ function slack_send_webhook(?string $webhookUrl, string $text): bool
 	curl_close($ch);
 	$ok = !($res === false || $code < 200 || $code >= 300 || $err);
 	@file_put_contents($slackLog, json_encode([
-		'ts' => gmdate('c'),
-		'ok' => $ok,
-		'http' => $code,
-		'curl_err' => $err ?: null,
-		'body' => is_string($res) ? substr($res, 0, 200) : null,
-		'text' => substr($text, 0, 100),
+		'ts'      => gmdate('c'),
+		'ok'      => $ok,
+		'http'    => $code,
+		'curl_err'=> $err ?: null,
+		'body'    => is_string($res) ? substr($res, 0, 200) : null,
+		'text'    => substr($text, 0, 100),
 	], JSON_UNESCAPED_UNICODE) . "\n", FILE_APPEND);
 	return $ok;
 }
@@ -344,32 +329,27 @@ function extractSignerName(array $data): string
 {
 	$signer = $data['signer'] ?? null;
 	if (is_array($signer)) {
-		$name = trim((string) ($signer['name'] ?? $signer['full_name'] ?? $signer['email'] ?? ''));
-		if ($name !== '')
-			return $name;
+		$name = trim((string)($signer['name'] ?? $signer['full_name'] ?? $signer['email'] ?? ''));
+		if ($name !== '') return $name;
 	}
 
 	$signers = $data['signers'] ?? ($data['document']['signers'] ?? null);
 	if (is_array($signers)) {
 		// prefer signed signer
 		foreach ($signers as $s) {
-			if (!is_array($s))
-				continue;
-			$status = strtolower((string) ($s['status'] ?? $s['state'] ?? ''));
+			if (!is_array($s)) continue;
+			$status = strtolower((string)($s['status'] ?? $s['state'] ?? ''));
 			$hasSigned = !empty($s['signed_at']) || $status === 'signed';
 			if ($hasSigned) {
-				$name = trim((string) ($s['name'] ?? $s['full_name'] ?? $s['email'] ?? ''));
-				if ($name !== '')
-					return $name;
+				$name = trim((string)($s['name'] ?? $s['full_name'] ?? $s['email'] ?? ''));
+				if ($name !== '') return $name;
 			}
 		}
 		// fallback: first signer with name/email
 		foreach ($signers as $s) {
-			if (!is_array($s))
-				continue;
-			$name = trim((string) ($s['name'] ?? $s['full_name'] ?? $s['email'] ?? ''));
-			if ($name !== '')
-				return $name;
+			if (!is_array($s)) continue;
+			$name = trim((string)($s['name'] ?? $s['full_name'] ?? $s['email'] ?? ''));
+			if ($name !== '') return $name;
 		}
 	}
 
@@ -398,38 +378,34 @@ function monthNamePtBrFromNumber(int $month): ?string
 
 function monthNameFromCompetencia(?string $competencia): ?string
 {
-	if (!is_string($competencia))
-		return null;
+	if (!is_string($competencia)) return null;
 	$competencia = trim($competencia);
-	if ($competencia === '')
-		return null;
+	if ($competencia === '') return null;
 
 	if (preg_match('/^\d{4}-(\d{2})(?:-\d{2})?$/', $competencia, $m)) {
-		return monthNamePtBrFromNumber((int) $m[1]);
+		return monthNamePtBrFromNumber((int)$m[1]);
 	}
 
 	if (preg_match('/^(\d{2})\/\d{4}$/', $competencia, $m)) {
-		return monthNamePtBrFromNumber((int) $m[1]);
+		return monthNamePtBrFromNumber((int)$m[1]);
 	}
 
 	$ts = strtotime($competencia);
-	if ($ts === false)
-		return null;
+	if ($ts === false) return null;
 
-	return monthNamePtBrFromNumber((int) date('n', $ts));
+	return monthNamePtBrFromNumber((int)date('n', $ts));
 }
 
 function currentMonthNamePtBr(): string
 {
 	$now = new DateTimeImmutable('now', new DateTimeZone('America/Sao_Paulo'));
-	$month = (int) $now->format('n');
+	$month = (int)$now->format('n');
 	return monthNamePtBrFromNumber($month) ?? 'Mês atual';
 }
 
 function resolveCompetenciaMonthName(mysqli $conn, string $table, string $docToken, string $docName): ?string
 {
-	if (!in_array($table, ['contratos', 'adendos'], true))
-		return null;
+	if (!in_array($table, ['contratos', 'adendos'], true)) return null;
 
 	$competencia = null;
 
@@ -440,7 +416,7 @@ function resolveCompetenciaMonthName(mysqli $conn, string $table, string $docTok
 			$stmt->execute();
 			$res = $stmt->get_result();
 			if ($res && ($row = $res->fetch_assoc())) {
-				$competencia = isset($row['competencia']) ? (string) $row['competencia'] : null;
+				$competencia = isset($row['competencia']) ? (string)$row['competencia'] : null;
 			}
 			$stmt->close();
 		}
@@ -453,7 +429,7 @@ function resolveCompetenciaMonthName(mysqli $conn, string $table, string $docTok
 			$stmt->execute();
 			$res = $stmt->get_result();
 			if ($res && ($row = $res->fetch_assoc())) {
-				$competencia = isset($row['competencia']) ? (string) $row['competencia'] : null;
+				$competencia = isset($row['competencia']) ? (string)$row['competencia'] : null;
 			}
 			$stmt->close();
 		}
@@ -471,8 +447,7 @@ $signUrl = '';
 $signers = $data['signers'] ?? ($data['document']['signers'] ?? []);
 if (is_array($signers)) {
 	foreach ($signers as $signer) {
-		if (!is_array($signer))
-			continue;
+		if (!is_array($signer)) continue;
 		$url = $signer['sign_url'] ?? $signer['url'] ?? $signer['signer_url'] ?? '';
 		if (is_string($url) && trim($url) !== '') {
 			$signUrl = trim($url);
@@ -490,20 +465,13 @@ if (!$event || !$docToken) {
 function inferStatusFromEvent(string $event): ?string
 {
 	$e = strtolower(trim($event));
-	if ($e === '')
-		return null;
-	if (strpos($e, 'created') !== false || strpos($e, 'criado') !== false || strpos($e, 'doc_created') !== false || strpos($e, 'document.created') !== false || strpos($e, 'document_created') !== false)
-		return 'enviado';
-	if (strpos($e, 'signed') !== false || strpos($e, 'assinado') !== false)
-		return 'assinado';
-	if (strpos($e, 'refus') !== false || strpos($e, 'recus') !== false)
-		return 'recusado';
-	if (strpos($e, 'expire') !== false || strpos($e, 'expir') !== false)
-		return 'expirado';
-	if (strpos($e, 'sent') !== false || strpos($e, 'enviado') !== false)
-		return 'enviado';
-	if (strpos($e, 'visual') !== false || strpos($e, 'view') !== false || strpos($e, 'read') !== false)
-		return 'visualizado';
+	if ($e === '') return null;
+	if (strpos($e, 'created') !== false || strpos($e, 'criado') !== false || strpos($e, 'doc_created') !== false || strpos($e, 'document.created') !== false || strpos($e, 'document_created') !== false) return 'enviado';
+	if (strpos($e, 'signed') !== false || strpos($e, 'assinado') !== false) return 'assinado';
+	if (strpos($e, 'refus') !== false || strpos($e, 'recus') !== false) return 'recusado';
+	if (strpos($e, 'expire') !== false || strpos($e, 'expir') !== false) return 'expirado';
+	if (strpos($e, 'sent') !== false || strpos($e, 'enviado') !== false) return 'enviado';
+	if (strpos($e, 'visual') !== false || strpos($e, 'view') !== false || strpos($e, 'read') !== false) return 'visualizado';
 	return null;
 }
 
@@ -580,10 +548,8 @@ try {
 
 	function updateSignUrl(mysqli $conn, string $table, string $docToken, string $docName, bool $matchByName, string $signUrl): void
 	{
-		if (!in_array($table, ['contratos', 'adendos'], true))
-			return;
-		if ($signUrl === '')
-			return;
+		if (!in_array($table, ['contratos', 'adendos'], true)) return;
+		if ($signUrl === '') return;
 		if ($matchByName && $docName !== '') {
 			if ($docToken !== '') {
 				$sql = "UPDATE {$table} SET sign_url = ?, zapsign_doc_token = ? WHERE arquivo_nome = ?";

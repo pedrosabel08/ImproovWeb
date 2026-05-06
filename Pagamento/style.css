@@ -1001,6 +1001,10 @@ a {
   flex: 1;
   min-height: 0;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 15px;
 }
 .modal-footer {
   display: flex;
@@ -1010,4 +1014,474 @@ a {
   padding: 14px 18px;
   border-top: 1px solid var(--border-modal);
   flex-shrink: 0;
+}
+
+/* ================================================================
+   Botão "Ver status geral dos adendos" (header)
+   ================================================================ */
+.btn-status-geral {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 16px;
+  background: rgba(139, 92, 246, 0.12);
+  color: #7c3aed;
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast),
+    transform var(--transition-fast),
+    box-shadow var(--transition-fast);
+  white-space: nowrap;
+}
+.btn-status-geral:hover {
+  background: rgba(139, 92, 246, 0.22);
+  border-color: rgba(139, 92, 246, 0.5);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.2);
+}
+.btn-status-geral:active {
+  transform: translateY(0);
+}
+
+/* ================================================================
+   Botões de ação com hover distintos
+   ================================================================ */
+.btn-adendo-gerar {
+  background: var(--bg-count);
+  color: var(--text-secondary);
+  transition:
+    background var(--transition-fast),
+    transform var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+.btn-adendo-gerar:hover {
+  background: rgba(79, 128, 225, 0.15);
+  color: var(--accent);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px var(--accent-glow);
+}
+.btn-adendo-gerar:active {
+  transform: translateY(0);
+}
+
+.btn-lista-gerar {
+  background: var(--bg-count);
+  color: var(--text-secondary);
+  transition:
+    background var(--transition-fast),
+    transform var(--transition-fast);
+}
+.btn-lista-gerar:hover {
+  background: rgba(100, 116, 139, 0.18);
+  color: var(--text-primary);
+  transform: translateY(-1px);
+}
+.btn-lista-gerar:active {
+  transform: translateY(0);
+}
+
+.btn-excel-gerar {
+  background: var(--bg-count);
+  color: var(--text-secondary);
+  transition:
+    background var(--transition-fast),
+    transform var(--transition-fast);
+}
+.btn-excel-gerar:hover {
+  background: rgba(16, 185, 129, 0.14);
+  color: #059669;
+  transform: translateY(-1px);
+}
+.btn-excel-gerar:active {
+  transform: translateY(0);
+}
+
+/* Small button variant */
+.btn.btn-sm {
+  height: 30px;
+  padding: 0 12px;
+  font-size: 12px;
+}
+
+/* ================================================================
+   Adendo Status Widget
+   ================================================================ */
+.adendo-status-widget {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-sm);
+  padding: 4px 10px 4px 6px;
+  box-shadow: var(--shadow-sm);
+}
+
+.adendo-badge-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.adendo-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+}
+
+/* Badge states */
+.adendo-status-badge.estado-nao-enviado,
+.adendo-status-badge.estado-nao-gerado {
+  background: var(--bg-count);
+  color: var(--text-tertiary);
+}
+.adendo-status-badge.estado-gerado {
+  background: rgba(8, 145, 178, 0.12);
+  color: #0891b2;
+}
+.adendo-status-badge.estado-enviado {
+  background: rgba(79, 128, 225, 0.12);
+  color: var(--accent);
+}
+.adendo-status-badge.estado-visualizado {
+  background: rgba(245, 158, 11, 0.12);
+  color: #d97706;
+}
+.adendo-status-badge.estado-assinado {
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+}
+.adendo-status-badge.estado-recusado {
+  background: rgba(239, 68, 68, 0.12);
+  color: #dc2626;
+}
+.adendo-status-badge.estado-expirado {
+  background: rgba(249, 115, 22, 0.12);
+  color: #ea580c;
+}
+
+.adendo-status-date {
+  font-size: 10.5px;
+  color: var(--text-muted);
+  padding-left: 10px;
+}
+
+/* Info button */
+.info-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 16px;
+  transition:
+    color var(--transition-fast),
+    background var(--transition-fast),
+    box-shadow var(--transition-fast);
+  flex-shrink: 0;
+}
+.info-btn:hover {
+  color: var(--accent);
+  background: var(--accent-subtle);
+  box-shadow: 0 0 0 3px var(--accent-subtle);
+}
+.info-btn:active {
+  transform: scale(0.92);
+}
+
+/* ================================================================
+   Adendo Popover (timeline drawer)
+   ================================================================ */
+.adendo-popover {
+  position: fixed;
+  z-index: 1100;
+  width: 320px;
+  background: var(--bg-modal);
+  border: 1px solid var(--border-modal);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  animation: popoverIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  overflow: hidden;
+}
+@keyframes popoverIn {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.adendo-popover-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border-modal);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.adendo-popover-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 14px;
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast);
+}
+.adendo-popover-close:hover {
+  background: var(--border-input);
+  color: var(--text-primary);
+}
+
+.adendo-popover-body {
+  padding: 14px;
+  overflow-y: auto;
+  max-height: 340px;
+  flex: 1;
+}
+
+.adendo-popover-footer {
+  display: flex;
+  gap: 8px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--border-modal);
+  flex-shrink: 0;
+}
+
+.adendo-popover-loading {
+  color: var(--text-muted);
+  font-size: 13px;
+  text-align: center;
+  padding: 20px 0;
+}
+
+/* Doc meta info */
+.adendo-doc-meta {
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  background: var(--bg-surface-alt);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-card);
+}
+.adendo-doc-meta-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 4px;
+  font-size: 12px;
+}
+.adendo-doc-meta-row:last-child {
+  margin-bottom: 0;
+}
+.adendo-doc-meta-label {
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-size: 10.5px;
+  letter-spacing: 0.3px;
+  min-width: 70px;
+}
+.adendo-doc-meta-value {
+  color: var(--text-primary);
+  font-size: 12px;
+  word-break: break-all;
+}
+
+/* Timeline */
+.adendo-timeline {
+  position: relative;
+  padding-left: 24px;
+}
+.adendo-timeline::before {
+  content: "";
+  position: absolute;
+  left: 9px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--border-card);
+  border-radius: 2px;
+}
+.adendo-timeline-item {
+  position: relative;
+  margin-bottom: 14px;
+}
+.adendo-timeline-item:last-child {
+  margin-bottom: 0;
+}
+
+.adendo-timeline-dot {
+  position: absolute;
+  left: -19px;
+  top: 3px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--bg-modal);
+  background: var(--text-muted);
+  flex-shrink: 0;
+}
+.adendo-timeline-item.tl-enviado .adendo-timeline-dot {
+  background: var(--accent);
+}
+.adendo-timeline-item.tl-visualizado .adendo-timeline-dot {
+  background: #d97706;
+}
+.adendo-timeline-item.tl-assinado .adendo-timeline-dot {
+  background: #10b981;
+}
+.adendo-timeline-item.tl-recusado .adendo-timeline-dot {
+  background: #ef4444;
+}
+.adendo-timeline-item.tl-expirado .adendo-timeline-dot {
+  background: #f97316;
+}
+.adendo-timeline-item.tl-gerado .adendo-timeline-dot {
+  background: #0891b2;
+}
+
+.adendo-timeline-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.adendo-timeline-date {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
+.adendo-timeline-empty {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 14px 0;
+}
+
+/* ================================================================
+   Status Geral Modal — Summary cards
+   ================================================================ */
+.status-geral-summary {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.sg-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.sg-card-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-muted);
+}
+.sg-card-value {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.sg-card-pct {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.sg-card.c-total .sg-card-value {
+  color: var(--accent);
+}
+.sg-card.c-assinado .sg-card-value {
+  color: #10b981;
+}
+.sg-card.c-visualizado .sg-card-value {
+  color: #d97706;
+}
+.sg-card.c-enviado .sg-card-value {
+  color: var(--accent);
+}
+.sg-card.c-nao-enviado .sg-card-value {
+  color: var(--text-tertiary);
+}
+
+/* Status badge inside table for geral modal */
+.adendo-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 9px;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+}
+.adendo-badge.b-nao-gerado,
+.adendo-badge.b-nao-enviado {
+  background: var(--bg-count);
+  color: var(--text-tertiary);
+}
+.adendo-badge.b-gerado {
+  background: rgba(8, 145, 178, 0.12);
+  color: #0891b2;
+}
+.adendo-badge.b-enviado {
+  background: rgba(79, 128, 225, 0.12);
+  color: var(--accent);
+}
+.adendo-badge.b-visualizado {
+  background: rgba(245, 158, 11, 0.12);
+  color: #d97706;
+}
+.adendo-badge.b-assinado {
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+}
+.adendo-badge.b-recusado {
+  background: rgba(239, 68, 68, 0.12);
+  color: #dc2626;
+}
+.adendo-badge.b-expirado {
+  background: rgba(249, 115, 22, 0.12);
+  color: #ea580c;
 }

@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Teste de Sons – Gestão à Vista</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
+    />
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: "Inter", sans-serif;
+        background: #0d0f14;
+        color: #e8eaf0;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 32px;
+        padding: 40px 20px;
+      }
+
+      h1 {
+        font-size: 1.4rem;
+        font-weight: 800;
+        letter-spacing: -0.3px;
+        text-align: center;
+      }
+
+      .subtitle {
+        font-size: 12px;
+        color: #9aa3b0;
+        text-align: center;
+        margin-top: -22px;
+      }
+
+      /* Status de unlock */
+      #unlockStatus {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: #1c2030;
+        border: 1px solid rgba(255, 255, 255, 0.07);
+        border-radius: 10px;
+        padding: 12px 20px;
+        font-size: 13px;
+        font-weight: 600;
+        transition: border-color 0.3s;
+      }
+      #unlockStatus.locked {
+        border-color: #ef4444;
+        color: #ef4444;
+      }
+      #unlockStatus.unlocked {
+        border-color: #10b981;
+        color: #10b981;
+      }
+      #unlockStatus i {
+        font-size: 1rem;
+      }
+
+      /* Grid de botões */
+      .sound-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+        width: 100%;
+        max-width: 680px;
+      }
+
+      .sound-card {
+        background: #151821;
+        border: 1px solid rgba(255, 255, 255, 0.07);
+        border-radius: 12px;
+        padding: 24px 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+        cursor: pointer;
+        user-select: none;
+        transition:
+          background 0.15s,
+          border-color 0.15s,
+          transform 0.1s;
+      }
+      .sound-card:hover {
+        background: #1c2030;
+        border-color: rgba(255, 255, 255, 0.14);
+      }
+      .sound-card:active {
+        transform: scale(0.96);
+      }
+
+      .sound-card.flash-meta {
+        border-color: #f0b429;
+        background: rgba(240, 180, 41, 0.12);
+      }
+      .sound-card.flash-item {
+        border-color: #4f8ef7;
+        background: rgba(79, 142, 247, 0.12);
+      }
+      .sound-card.flash-ranking {
+        border-color: #10b981;
+        background: rgba(16, 185, 129, 0.12);
+      }
+
+      .sound-icon {
+        width: 52px;
+        height: 52px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+      }
+      .sound-icon.meta {
+        background: rgba(240, 180, 41, 0.18);
+        color: #f0b429;
+      }
+      .sound-icon.item {
+        background: rgba(79, 142, 247, 0.18);
+        color: #4f8ef7;
+      }
+      .sound-icon.ranking {
+        background: rgba(16, 185, 129, 0.18);
+        color: #10b981;
+      }
+
+      .sound-label {
+        font-size: 13px;
+        font-weight: 700;
+        text-align: center;
+      }
+      .sound-desc {
+        font-size: 10.5px;
+        color: #9aa3b0;
+        text-align: center;
+        line-height: 1.5;
+      }
+
+      /* Simulador de evento */
+      .simulator {
+        width: 100%;
+        max-width: 680px;
+        background: #151821;
+        border: 1px solid rgba(255, 255, 255, 0.07);
+        border-radius: 12px;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .simulator h2 {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #9aa3b0;
+      }
+      .sim-row {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .sim-row label {
+        font-size: 12px;
+        color: #9aa3b0;
+        min-width: 120px;
+      }
+      .sim-btn {
+        padding: 7px 16px;
+        border-radius: 7px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: #232638;
+        color: #e8eaf0;
+        font-family: inherit;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.15s;
+      }
+      .sim-btn:hover {
+        background: #2d3150;
+      }
+
+      /* Log */
+      #eventLog {
+        width: 100%;
+        max-width: 680px;
+        background: #151821;
+        border: 1px solid rgba(255, 255, 255, 0.07);
+        border-radius: 12px;
+        padding: 16px 20px;
+        min-height: 80px;
+        max-height: 160px;
+        overflow-y: auto;
+        font-size: 11.5px;
+        color: #9aa3b0;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      #eventLog .log-entry {
+        display: flex;
+        gap: 8px;
+      }
+      #eventLog .log-time {
+        color: #4b5563;
+        flex-shrink: 0;
+      }
+      #eventLog .log-meta {
+        color: #f0b429;
+      }
+      #eventLog .log-item {
+        color: #4f8ef7;
+      }
+      #eventLog .log-ranking {
+        color: #10b981;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Teste de Sons – Gestão à Vista</h1>
+    <p class="subtitle">
+      Clique em qualquer botão para desbloquear o áudio e testar os sons
+    </p>
+
+    <div id="unlockStatus" class="locked">
+      <i class="fa-solid fa-lock"></i>
+      Áudio bloqueado – clique em qualquer botão para liberar
+    </div>
+
+    <!-- Botões diretos -->
+    <div class="sound-grid">
+      <div class="sound-card" id="btnMeta" onclick="testSound('meta')">
+        <div class="sound-icon meta"><i class="fa-solid fa-trophy"></i></div>
+        <div class="sound-label">Meta Atingida</div>
+        <div class="sound-desc">
+          Arpejo celebratório<br />C5 → E5 → G5 → C6 → E6
+        </div>
+      </div>
+
+      <div class="sound-card" id="btnItem" onclick="testSound('item')">
+        <div class="sound-icon item"><i class="fa-solid fa-plus"></i></div>
+        <div class="sound-label">Novo Item</div>
+        <div class="sound-desc">Ping duplo curto<br />880 Hz + 1108 Hz</div>
+      </div>
+
+      <div class="sound-card" id="btnRanking" onclick="testSound('ranking')">
+        <div class="sound-icon ranking">
+          <i class="fa-solid fa-arrow-trend-up"></i>
+        </div>
+        <div class="sound-label">Subiu no Ranking</div>
+        <div class="sound-desc">Dois tons ascendentes<br />659 Hz → 880 Hz</div>
+      </div>
+    </div>
+
+    <!-- Simulador de sequência -->
+    <div class="simulator">
+      <h2>
+        <i class="fa-solid fa-flask" style="margin-right: 6px"></i>Simulador de
+        Sequência
+      </h2>
+      <div class="sim-row">
+        <label>Todos os sons em ordem:</label>
+        <button class="sim-btn" onclick="simulateAll()">
+          ▶ Executar sequência
+        </button>
+      </div>
+      <div class="sim-row">
+        <label>Intervalo entre sons:</label>
+        <button class="sim-btn" onclick="simulateRapid()">
+          ⚡ Modo rápido (300ms)
+        </button>
+        <button class="sim-btn" onclick="simulateSlow()">
+          🐌 Modo lento (1.5s)
+        </button>
+      </div>
+    </div>
+
+    <!-- Log de eventos -->
+    <div id="eventLog">
+      <div class="log-entry">
+        <span class="log-time">--:--:--</span><span>Aguardando eventos…</span>
+      </div>
+    </div>
+
+    <script>
+      // ── Web Audio (mesma lógica do gestao_vista.js) ───────────────────────────
+
+      let ctx = null;
+      let unlocked = false;
+
+      function getCtx() {
+        if (!ctx)
+          ctx = new (window.AudioContext || window.webkitAudioContext)();
+        return ctx;
+      }
+
+      function unlock() {
+        if (unlocked) return;
+        const ac = getCtx();
+        const resume =
+          ac.state === "suspended" ? ac.resume() : Promise.resolve();
+        resume.then(() => {
+          unlocked = true;
+          const el = document.getElementById("unlockStatus");
+          el.className = "unlocked";
+          el.innerHTML =
+            '<i class="fa-solid fa-lock-open"></i> Áudio desbloqueado – pronto para reprodução';
+        });
+      }
+
+      function tone(freq, startTime, duration, gain = 0.22, type = "sine") {
+        const ac = getCtx();
+        const osc = ac.createOscillator();
+        const gainNode = ac.createGain();
+        osc.connect(gainNode);
+        gainNode.connect(ac.destination);
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, startTime);
+        gainNode.gain.setValueAtTime(0, startTime);
+        gainNode.gain.linearRampToValueAtTime(gain, startTime + 0.01);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+        osc.start(startTime);
+        osc.stop(startTime + duration + 0.05);
+      }
+
+      function playMetaReached() {
+        const ac = getCtx();
+        const t = ac.currentTime;
+        [523.25, 659.25, 783.99, 1046.5, 1318.51].forEach((f, i) => {
+          tone(f, t + i * 0.11, 0.38, 0.2);
+        });
+      }
+
+      function playNewItem() {
+        const ac = getCtx();
+        const t = ac.currentTime;
+        tone(880, t, 0.1, 0.16);
+        tone(1108.73, t + 0.08, 0.15, 0.11);
+      }
+
+      function playRankingUp() {
+        const ac = getCtx();
+        const t = ac.currentTime;
+        tone(659.25, t, 0.15, 0.17, "triangle");
+        tone(880, t + 0.13, 0.2, 0.17, "triangle");
+      }
+
+      // ── Interface ─────────────────────────────────────────────────────────────
+
+      const SOUNDS = {
+        meta: {
+          fn: playMetaReached,
+          label: "Meta Atingida",
+          cls: "log-meta",
+          flash: "flash-meta",
+          btn: "btnMeta",
+        },
+        item: {
+          fn: playNewItem,
+          label: "Novo Item",
+          cls: "log-item",
+          flash: "flash-item",
+          btn: "btnItem",
+        },
+        ranking: {
+          fn: playRankingUp,
+          label: "Subiu no Ranking",
+          cls: "log-ranking",
+          flash: "flash-ranking",
+          btn: "btnRanking",
+        },
+      };
+
+      function testSound(type) {
+        unlock();
+        if (!unlocked) {
+          addLog("Clique detectado – desbloqueando áudio...", "");
+          return;
+        }
+        const s = SOUNDS[type];
+        s.fn();
+        addLog(s.label, s.cls);
+        flashCard(s.btn, s.flash);
+      }
+
+      function flashCard(id, cls) {
+        const el = document.getElementById(id);
+        el.classList.add(cls);
+        setTimeout(() => el.classList.remove(cls), 600);
+      }
+
+      function addLog(label, cls) {
+        const log = document.getElementById("eventLog");
+        const now = new Date().toLocaleTimeString("pt-BR");
+        const entry = document.createElement("div");
+        entry.className = "log-entry";
+        entry.innerHTML = `<span class="log-time">${now}</span><span class="${cls}">▶ ${label}</span>`;
+        // remove placeholder
+        if (
+          log.children.length === 1 &&
+          log.children[0].querySelector(".log-time")?.textContent === "--:--:--"
+        ) {
+          log.innerHTML = "";
+        }
+        log.appendChild(entry);
+        log.scrollTop = log.scrollHeight;
+      }
+
+      function simulateAll(interval = 800) {
+        unlock();
+        const keys = ["item", "ranking", "meta"];
+        keys.forEach((k, i) => setTimeout(() => testSound(k), i * interval));
+      }
+
+      function simulateRapid() {
+        simulateAll(300);
+      }
+      function simulateSlow() {
+        simulateAll(1500);
+      }
+    </script>
+  </body>
+</html>

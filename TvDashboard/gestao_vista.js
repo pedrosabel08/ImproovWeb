@@ -91,17 +91,47 @@ function calcularRitmo(qtd_parcial, meta_individual, pct) {
   const rateStr = taxaAtual > 0 ? `${taxaAtual.toFixed(1)}/dia` : "";
 
   if (pct === null || meta_individual === null || meta_individual === 0) {
-    return { tipo: "none", icon: '<i class="fa-solid fa-minus"></i>', label: "–", rate: "" };
+    return {
+      tipo: "none",
+      icon: '<i class="fa-solid fa-minus"></i>',
+      label: "–",
+      rate: "",
+    };
   }
   if (pct === 0)
-    return { tipo: "none", icon: '<i class="fa-solid fa-minus"></i>', label: "Sem produção", rate: rateStr };
+    return {
+      tipo: "none",
+      icon: '<i class="fa-solid fa-minus"></i>',
+      label: "Sem produção",
+      rate: rateStr,
+    };
   if (pct >= 110)
-    return { tipo: "done", icon: '<i class="fa-solid fa-arrow-trend-up"></i>', label: "Acelerado", rate: rateStr };
+    return {
+      tipo: "done",
+      icon: '<i class="fa-solid fa-arrow-trend-up"></i>',
+      label: "Acelerado",
+      rate: rateStr,
+    };
   if (pct >= 70)
-    return { tipo: "on", icon: '<i class="fa-solid fa-arrow-right"></i>', label: "No ritmo", rate: rateStr };
+    return {
+      tipo: "on",
+      icon: '<i class="fa-solid fa-arrow-right"></i>',
+      label: "No ritmo",
+      rate: rateStr,
+    };
   if (pct >= 35)
-    return { tipo: "warn", icon: '<i class="fa-solid fa-arrow-trend-down"></i>', label: "Atrasado", rate: rateStr };
-  return { tipo: "crit", icon: '<i class="fa-solid fa-angles-down"></i>', label: "Crítico", rate: rateStr };
+    return {
+      tipo: "warn",
+      icon: '<i class="fa-solid fa-arrow-trend-down"></i>',
+      label: "Atrasado",
+      rate: rateStr,
+    };
+  return {
+    tipo: "crit",
+    icon: '<i class="fa-solid fa-angles-down"></i>',
+    label: "Crítico",
+    rate: rateStr,
+  };
 }
 
 function getAvatarHue(name) {
@@ -142,7 +172,7 @@ function buildEmployeeRow(f, meta_individual) {
   const metaSub = meta_individual !== null ? `de ${meta_individual}` : "";
   const recorde = Number.isFinite(f.recorde_mes) ? f.recorde_mes : 0;
 
-  return `<div class="gv-row">
+  return `<div class="gv-row" data-colab-id="${f.colaborador_id}">
     <div class="gv-row-nome">
       ${imagemAvatar}
       <span class="gv-row-name-text">${f.nome}</span>
@@ -259,7 +289,7 @@ function buildSummaryBar(dados) {
   const { perspectivas, plantas_humanizadas } = dados;
 
   // Em TV (≥1800px) só Perspectivas é exibido — KPIs refletem apenas essa seção
-  const isTv = window.innerWidth >= 1950;
+  const isTv = document.documentElement.classList.contains("gv-tv-mode");
 
   const allFuncs = isTv
     ? perspectivas.funcionarios.filter((f) => f.colaborador_id !== 0)
@@ -415,6 +445,187 @@ function buildSummaryBar(dados) {
     </div>`;
 }
 
+// ── Sistema de Áudio (Web Audio API) ────────────────────────────────────────
+
+const GVAudio = (() => {
+  let ctx = null;
+  let unlocked = false;
+
+  function getCtx() {
+    if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+    return ctx;
+  }
+
+  // Desbloqueia o AudioContext na primeira interação do usuário
+  function unlock() {
+    if (unlocked) return;
+    const ac = getCtx();
+    if (ac.state === "suspended") {
+      ac.resume().then(() => {
+        unlocked = true;
+      });
+    } else {
+      unlocked = true;
+    }
+  }
+
+  ["click", "keydown", "touchstart", "scroll", "pointerdown"].forEach((evt) => {
+    document.addEventListener(evt, unlock, { passive: true });
+  });
+
+  function tone(freq, startTime, duration, gain = 0.22, type = "sine") {
+    const ac = getCtx();
+    const osc = ac.createOscillator();
+    const gainNode = ac.createGain();
+    osc.connect(gainNode);
+    gainNode.connect(ac.destination);
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, startTime);
+    gainNode.gain.setValueAtTime(0, startTime);
+    gainNode.gain.linearRampToValueAtTime(gain, startTime + 0.01);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+    osc.start(startTime);
+    osc.stop(startTime + duration + 0.05);
+  }
+
+  // Arpejo celebratório — meta atingida (C5-E5-G5-C6-E6)
+  function playMetaReached() {
+    if (!unlocked) return;
+    const ac = getCtx();
+    const t = ac.currentTime;
+    [523.25, 659.25, 783.99, 1046.5, 1318.51].forEach((f, i) => {
+      tone(f, t + i * 0.11, 0.38, 0.2);
+    });
+  }
+
+  // Ping duplo curto — novo item produzido
+  function playNewItem() {
+    if (!unlocked) return;
+    const ac = getCtx();
+    const t = ac.currentTime;
+    tone(880, t, 0.1, 0.16);
+    tone(1108.73, t + 0.08, 0.15, 0.11);
+  }
+
+  // Dois tons ascendentes — subiu no ranking
+  function playRankingUp() {
+    if (!unlocked) return;
+    const ac = getCtx();
+    const t = ac.currentTime;
+    tone(659.25, t, 0.15, 0.17, "triangle");
+    tone(880, t + 0.13, 0.2, 0.17, "triangle");
+  }
+
+  return { playMetaReached, playNewItem, playRankingUp };
+})();
+
+// ── Rastreamento de estado para eventos sonoros ───────────────────────────────
+
+let prevState = null;
+
+function buildStateSnapshot(dados) {
+  function secSnap(sec) {
+    const sorted = [...sec.funcionarios].sort(
+      (a, b) => b.qtd_parcial - a.qtd_parcial,
+    );
+    const map = new Map();
+    sorted.forEach((f, idx) => {
+      map.set(f.colaborador_id, {
+        qtd: f.qtd_parcial,
+        rank: idx,
+        metaOk: typeof f.pct_meta === "number" && f.pct_meta >= 100,
+      });
+    });
+    return map;
+  }
+  return {
+    persp: secSnap(dados.perspectivas),
+    plantas: secSnap(dados.plantas_humanizadas),
+    alter: secSnap(dados.alteracoes),
+  };
+}
+
+function detectSoundEvents(newDados) {
+  if (!prevState) return []; // primeira carga — sem som
+
+  const newSnap = buildStateSnapshot(newDados);
+  const sections = [
+    {
+      newMap: newSnap.persp,
+      prevMap: prevState.persp,
+      bodyId: "bodyPerspectivas",
+    },
+    {
+      newMap: newSnap.plantas,
+      prevMap: prevState.plantas,
+      bodyId: "bodyPlantas",
+    },
+    {
+      newMap: newSnap.alter,
+      prevMap: prevState.alter,
+      bodyId: "bodyAlteracoes",
+    },
+  ];
+
+  const events = []; // { type: 'meta'|'rank'|'item', bodyId, colabId }
+
+  for (const { newMap, prevMap, bodyId } of sections) {
+    for (const [colabId, cur] of newMap) {
+      const prv = prevMap.get(colabId);
+      if (!prv) continue;
+      if (cur.metaOk && !prv.metaOk)
+        events.push({ type: "meta", bodyId, colabId });
+      else if (cur.rank < prv.rank)
+        events.push({ type: "rank", bodyId, colabId });
+      else if (cur.qtd > prv.qtd)
+        events.push({ type: "item", bodyId, colabId });
+    }
+  }
+
+  // Som: prioridade meta > ranking > item (um som por ciclo)
+  const hasMeta = events.some((e) => e.type === "meta");
+  const hasRank = events.some((e) => e.type === "rank");
+  const hasItem = events.some((e) => e.type === "item");
+
+  if (hasMeta) setTimeout(() => GVAudio.playMetaReached(), 80);
+  else if (hasRank) setTimeout(() => GVAudio.playRankingUp(), 80);
+  else if (hasItem) setTimeout(() => GVAudio.playNewItem(), 80);
+
+  return events;
+}
+
+function applyHighlights(events) {
+  const CLASS_MAP = {
+    meta: "gv-row--evt-meta",
+    rank: "gv-row--evt-rank",
+    item: "gv-row--evt-item",
+  };
+  for (const { type, bodyId, colabId } of events) {
+    const container = document.getElementById(bodyId);
+    if (!container) continue;
+    const row = container.querySelector(`[data-colab-id="${colabId}"]`);
+    if (!row) continue;
+    // Remove classes anteriores para reiniciar animação se necessário
+    row.classList.remove(
+      "gv-row--evt-meta",
+      "gv-row--evt-rank",
+      "gv-row--evt-item",
+    );
+    void row.offsetWidth; // força reflow para reiniciar animação CSS
+    row.classList.add(CLASS_MAP[type]);
+    row.addEventListener(
+      "animationend",
+      () =>
+        row.classList.remove(
+          "gv-row--evt-meta",
+          "gv-row--evt-rank",
+          "gv-row--evt-item",
+        ),
+      { once: true },
+    );
+  }
+}
+
 // ── Polling ───────────────────────────────────────────────────────────────────
 
 async function carregarDados() {
@@ -426,6 +637,9 @@ async function carregarDados() {
     const resp = await fetch(`buscar_gestao_vista.php?mes=${mes}&ano=${ano}`);
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const dados = await resp.json();
+
+    const soundEvents = detectSoundEvents(dados);
+    prevState = buildStateSnapshot(dados);
 
     buildSummaryBar(dados);
     buildPerspectivas(dados.perspectivas);
@@ -442,6 +656,8 @@ async function carregarDados() {
       "metaAlteracoes",
     );
 
+    if (soundEvents.length) applyHighlights(soundEvents);
+
     lastUpdateAt = Date.now();
     document.getElementById("gvUpdated").textContent = "Atualizado agora";
     document.getElementById("gvOffline").hidden = true;
@@ -457,5 +673,5 @@ document.addEventListener("DOMContentLoaded", () => {
   initClock();
   startUpdatedLabel();
   carregarDados();
-  setInterval(carregarDados, 120000); // atualiza a cada 2 minutos
+  setInterval(carregarDados, 30000); // atualiza a cada 30 segundos
 });

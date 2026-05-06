@@ -10,6 +10,16 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
   <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s" type="image/x-icon">
   <link rel="stylesheet" href="gestao_vista.css">
+  <script>
+    /* TV mode: ?tv=1 ativa, ?tv=0 desativa, persiste via localStorage */
+    (function() {
+      var p = new URLSearchParams(location.search);
+      if (p.get('tv') === '1') localStorage.setItem('gvTvMode', '1');
+      else if (p.get('tv') === '0') localStorage.removeItem('gvTvMode');
+      if (localStorage.getItem('gvTvMode') === '1')
+        document.documentElement.classList.add('gv-tv-mode');
+    })();
+  </script>
 </head>
 
 <body>

@@ -42,10 +42,15 @@
   padding: 0;
 }
 
-html,
+html {
+  height: 100%;
+}
+
 body {
   height: 100%;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
   background: var(--gv-bg);
   color: var(--gv-text);
   font-family: "Inter", sans-serif;
@@ -146,7 +151,7 @@ body {
 
 /* ─── Summary Bar ─────────────────────────────────────────── */
 .gv-summary-bar {
-  height: var(--summary-h);
+  /* height: var(--summary-h); */
   display: flex;
   align-items: stretch;
   gap: 8px;
@@ -257,7 +262,8 @@ body {
 .gv-body {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - var(--header-h) - var(--summary-h) - var(--footer-h));
+  flex: 1;
+  min-height: 0;
   overflow: hidden;
   padding: 0 14px 8px;
   gap: 8px;
@@ -267,7 +273,7 @@ body {
 .gv-main {
   flex: 1;
   display: grid;
-  grid-template-rows: 3fr 2fr;
+  grid-template-rows: minmax(0, 3fr) minmax(0, 2fr);
   gap: 8px;
   min-height: 0;
 }
@@ -287,6 +293,7 @@ body {
   border-radius: 10px;
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
 .gv-section-header {
   display: flex;
@@ -380,9 +387,11 @@ body {
 /* ─── Rows scroll area ────────────────────────────────────── */
 .gv-rows {
   flex: 1;
+  min-height: 0;
   overflow-y: hidden;
   overflow-x: hidden;
   display: grid;
+  grid-auto-rows: 1fr;
 }
 .gv-rows::-webkit-scrollbar {
   width: 3px;
@@ -401,6 +410,7 @@ body {
   padding: 11px 16px;
   border-bottom: 1px solid var(--gv-border);
   align-items: center;
+  min-height: 0;
   transition: background 0.15s;
 }
 .gv-row:last-child {
@@ -408,6 +418,49 @@ body {
 }
 .gv-row:hover {
   background: var(--gv-surface-2);
+}
+
+/* ─── Event highlight animations ─────────────────────────── */
+@keyframes gv-flash-meta {
+  0% {
+    background: rgba(16, 185, 129, 0.3);
+    box-shadow: inset 3px 0 0 var(--gv-green);
+  }
+  40% {
+    background: rgba(16, 185, 129, 0.16);
+    box-shadow: inset 3px 0 0 var(--gv-green);
+  }
+  100% {
+    background: transparent;
+    box-shadow: none;
+  }
+}
+@keyframes gv-flash-rank {
+  0% {
+    background: rgba(240, 180, 41, 0.26);
+    box-shadow: inset 3px 0 0 var(--gv-yellow);
+  }
+  100% {
+    background: transparent;
+    box-shadow: none;
+  }
+}
+@keyframes gv-flash-item {
+  0% {
+    background: rgba(79, 142, 247, 0.2);
+  }
+  100% {
+    background: transparent;
+  }
+}
+.gv-row--evt-meta {
+  animation: gv-flash-meta 6s ease-out;
+}
+.gv-row--evt-rank {
+  animation: gv-flash-rank 4.4s ease-out;
+}
+.gv-row--evt-item {
+  animation: gv-flash-item 3.2s ease-out;
 }
 
 /* Name cell */
@@ -1164,10 +1217,10 @@ body {
 }
 
 /* ═══════════════════════════════════════════════════
-   TV  (≥ 2000px)
+   TV  (≥ 2000px  OU  classe .gv-tv-mode forçada via ?tv=1)
    Somente Perspectivas visível, tudo amplificado
    ═══════════════════════════════════════════════════ */
-@media screen and (min-width: 2000px) {
+@media screen and (min-width: 2600px) {
   .gv-kpi-value {
     font-size: 3.75rem;
   }
@@ -1238,4 +1291,96 @@ body {
   .gv-main {
     grid-template-rows: 1fr;
   }
+}
+
+.gv-tv-mode .gv-kpi-value {
+  font-size: 3.75rem;
+}
+
+html.gv-tv-mode .gv-rec-val {
+  font-size: 3rem;
+}
+
+html.gv-tv-mode .gv-qtd-val {
+  font-size: 3rem;
+}
+
+html.gv-tv-mode .gv-falta-val {
+  font-size: 3.25rem;
+}
+
+html.gv-tv-mode .gv-prog-pct {
+  font-size: 2.5rem;
+}
+
+html.gv-tv-mode .gv-foot-val {
+  font-size: 3.5rem;
+}
+
+html.gv-tv-mode .gv-row-name-text {
+  font-size: 2.5rem;
+}
+
+html.gv-tv-mode .gv-clock {
+  font-size: 3.75rem;
+}
+
+html.gv-tv-mode .gv-title {
+  font-size: 3.5rem;
+}
+
+html.gv-tv-mode .gv-section-title {
+  font-size: 2.5rem;
+}
+
+html.gv-tv-mode .gv-section-meta-label strong {
+  font-size: 3.5rem;
+}
+
+html.gv-tv-mode .gv-kpi-label {
+  font-size: 1.25rem;
+}
+
+html.gv-tv-mode .gv-kpi-status-val {
+  font-size: 3.125rem;
+}
+
+html.gv-tv-mode .gv-ritmo-label {
+  font-size: 1.75rem;
+}
+
+html.gv-tv-mode .gv-ritmo-rate {
+  font-size: 1.5rem;
+}
+
+html.gv-tv-mode .gv-ritmo-icon {
+  font-size: 2.25rem;
+}
+
+html.gv-tv-mode .gv-foot-left,
+html.gv-tv-mode .gv-foot-right,
+html.gv-tv-mode .gv-section-meta-label {
+  font-size: 1.25rem;
+}
+
+html.gv-tv-mode .gv-period {
+  font-size: 1.25rem;
+}
+
+html.gv-tv-mode .gv-col-h {
+  font-size: 1.5rem;
+}
+
+html.gv-tv-mode .gv-section--persp .gv-col-headers,
+html.gv-tv-mode .gv-section--persp .gv-row {
+  grid-template-columns: 240px 1fr 1fr 1fr 1fr 200px;
+}
+
+/* Oculta Plantas e Alterações — só Perspectivas na TV */
+html.gv-tv-mode .gv-row-bottom {
+  display: none;
+}
+
+html.gv-tv-mode .gv-main {
+  grid-template-rows: 1fr;
 }

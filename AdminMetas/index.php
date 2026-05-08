@@ -25,8 +25,10 @@ $mesSel = isset($_GET['mes']) ? (int) $_GET['mes'] : (int) date('m');
 $anoSel = isset($_GET['ano']) ? (int) $_GET['ano'] : (int) date('Y');
 
 // Validação
-if ($mesSel < 1 || $mesSel > 12) $mesSel = (int) date('m');
-if ($anoSel < 2020 || $anoSel > 2100) $anoSel = (int) date('Y');
+if ($mesSel < 1 || $mesSel > 12)
+    $mesSel = (int) date('m');
+if ($anoSel < 2020 || $anoSel > 2100)
+    $anoSel = (int) date('Y');
 
 $nomeMeses = [
     'Janeiro',
@@ -53,7 +55,8 @@ $anoAtual = (int) date('Y');
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin — Metas por Colaborador</title>
-    <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s" type="image/x-icon">
+    <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s"
+        type="image/x-icon">
 
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -72,17 +75,16 @@ $anoAtual = (int) date('Y');
     <?php include '../sidebar.php'; ?>
 
     <div class="container">
-
-        <!-- ── Page Header ─────────────────────────────────────────────────── -->
         <div class="page-header">
             <div class="page-header-left">
-                <img
-                    src="../gif/assinatura_preto.gif"
-                    class="page-header-logo"
-                    id="gif"
-                    style="height:36px; opacity:0.85"
-                    alt="ImproovWeb">
-                <h1 class="page-title">Admin — Metas por Colaborador</h1>
+                <img src="../gif/assinatura_preto.gif" class="page-header-logo" id="gif" alt="ImproovWeb">
+
+                <div class="page-heading">
+                    <span class="page-kicker">heart.made</span>
+                    <h1 class="page-title">Metas por Colaborador</h1>
+                    <p class="page-subtitle">Defina e edite metas mensais por função e colaborador com foco em
+                        velocidade operacional.</p>
+                </div>
             </div>
 
             <div class="page-header-right">
@@ -91,76 +93,141 @@ $anoAtual = (int) date('Y');
                     <span id="resultsCount">…</span> colaboradores
                 </span>
 
-                <button class="btn-salvar" id="btnSalvar" type="button">
+                <a href="../TvDashboard/index.php" target="_blank" class="btn-secondary">
+                    <i class="fa-solid fa-tv"></i>
+                    Ver como TV
+                </a>
+
+                <button class="btn-primary" id="btnSalvar" type="button">
                     <i class="fa-solid fa-floppy-disk"></i>
-                    Salvar metas
+                    <span class="btn-label">Salvar alterações</span>
                     <span id="pendingBadge" class="pending-badge" style="display:none">0</span>
                 </button>
-
-                <a href="../TvDashboard/index.php" target="_blank" class="btn-salvar" style="background:var(--text-secondary);text-decoration:none;font-size:12px;">
-                    <i class="fa-solid fa-tv"></i> TV
-                </a>
             </div>
         </div>
 
-        <!-- ── Filter Bar ──────────────────────────────────────────────────── -->
-        <div class="filters">
-            <div class="filter-group">
-                <label class="filter-label" for="selMes">Mês</label>
-                <select id="selMes" class="filter-select">
-                    <?php foreach ($nomeMeses as $i => $nome): ?>
-                        <option value="<?= $i + 1 ?>" <?= ($i + 1 === $mesSel) ? 'selected' : '' ?>>
-                            <?= $nome ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
+        <div class="filters-panel" id="filtersPanel" aria-labelledby="filtersSheetTitle">
+            <div class="filters-sheet-header">
+                <div class="filters-sheet-copy">
+                    <span class="filters-sheet-kicker">Filtros</span>
+                    <strong class="filters-sheet-title" id="filtersSheetTitle">Ajuste o período e os filtros</strong>
+                </div>
 
-            <div class="filter-group">
-                <label class="filter-label" for="selAno">Ano</label>
-                <select id="selAno" class="filter-select">
-                    <?php for ($a = $anoAtual; $a >= $anoAtual - 4; $a--): ?>
-                        <option value="<?= $a ?>" <?= ($a === $anoSel) ? 'selected' : '' ?>>
-                            <?= $a ?>
-                        </option>
-                    <?php endfor; ?>
-                </select>
-            </div>
-
-            <div class="filter-actions">
-                <button id="btnAplicar" class="btn-apply" type="button">
-                    <i class="fa-solid fa-magnifying-glass"></i> Aplicar
+                <button class="filters-sheet-close" id="btnCloseFilters" type="button" aria-label="Fechar filtros">
+                    <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
 
-            <div style="margin-left:auto; display:flex; align-items:flex-end; gap:12px;">
-                <div style="font-size:11px; color:var(--text-muted); line-height:1.6;">
-                    <span style="display:inline-flex;align-items:center;gap:5px;margin-right:10px;">
-                        <span class="ind ind-below" style="width:16px;height:16px;font-size:9px;"><i class="fa-solid fa-arrow-down"></i></span>
-                        Abaixo
-                    </span>
-                    <span style="display:inline-flex;align-items:center;gap:5px;margin-right:10px;">
-                        <span class="ind ind-atingida" style="width:16px;height:16px;font-size:9px;"><i class="fa-solid fa-check"></i></span>
-                        Atingida
-                    </span>
-                    <span style="display:inline-flex;align-items:center;gap:5px;margin-right:10px;">
-                        <span class="ind ind-superada" style="width:16px;height:16px;font-size:9px;"><i class="fa-solid fa-arrow-up"></i></span>
-                        Superada
-                    </span>
-                    <span style="display:inline-flex;align-items:center;gap:5px;">
-                        <span class="ind ind-recorde" style="width:16px;height:16px;font-size:9px;"><i class="fa-solid fa-trophy"></i></span>
-                        Recorde
-                    </span>
+            <div class="filters-grid">
+                <div class="filter-group">
+                    <label class="filter-label" for="selMes">Mês</label>
+                    <div class="control-shell">
+                        <i class="fa-regular fa-calendar"></i>
+                        <select id="selMes" class="filter-select">
+                            <?php foreach ($nomeMeses as $i => $nome): ?>
+                                <option value="<?= $i + 1 ?>" <?= ($i + 1 === $mesSel) ? 'selected' : '' ?>>
+                                    <?= $nome ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
                 </div>
+
+                <div class="filter-group">
+                    <label class="filter-label" for="selAno">Ano</label>
+                    <div class="control-shell">
+                        <i class="fa-regular fa-calendar"></i>
+                        <select id="selAno" class="filter-select">
+                            <?php for ($a = $anoAtual; $a >= $anoAtual - 4; $a--): ?>
+                                <option value="<?= $a ?>" <?= ($a === $anoSel) ? 'selected' : '' ?>>
+                                    <?= $a ?>
+                                </option>
+                            <?php endfor; ?>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label" for="selFuncao">Função</label>
+                    <div class="control-shell">
+                        <i class="fa-solid fa-briefcase"></i>
+                        <select id="selFuncao" class="filter-select">
+                            <option value="">Todas</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="filter-group search-group">
+                    <label class="filter-label" for="searchColaborador">Buscar colaborador</label>
+                    <div class="control-shell control-shell-search">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input id="searchColaborador" class="filter-input" type="search" autocomplete="off"
+                            placeholder="Buscar colaborador...">
+                        <button class="search-clear" id="btnLimparBusca" type="button" aria-label="Limpar busca">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="filter-actions">
+                    <button id="btnAplicar" class="btn-apply" type="button">
+                        <i class="fa-solid fa-arrow-rotate-right"></i>
+                        Atualizar período
+                    </button>
+                </div>
+            </div>
+
+            <div class="pending-panel" id="pendingPanel">
+                <span class="pending-panel-label">Alterações pendentes</span>
+                <strong class="pending-panel-value" id="pendingSummaryCount">0</strong>
             </div>
         </div>
 
-        <!-- ── Accordion List ──────────────────────────────────────────────── -->
+        <div class="legend-bar">
+            <div class="legend-copy">
+                <i class="fa-solid fa-circle-info"></i>
+                Edite as metas diretamente na tabela. As alterações só são aplicadas ao salvar.
+            </div>
+
+            <div class="legend-items" aria-label="Legenda de status">
+                <span class="legend-item"><span class="legend-dot legend-none"></span>Sem meta</span>
+                <span class="legend-item"><span class="legend-dot legend-below"></span>Abaixo</span>
+                <span class="legend-item"><span class="legend-dot legend-hit"></span>Atingida</span>
+                <span class="legend-item"><span class="legend-dot legend-over"></span>Superada</span>
+                <span class="legend-item"><span class="legend-dot legend-record"></span>Recorde</span>
+            </div>
+        </div>
+
         <div class="list-scroll-area" id="listaAcordoes">
             <!-- Preenchido via JS -->
         </div>
 
+        <div class="sticky-footer" id="stickyFooter" style="display:none;">
+            <div class="sticky-footer-copy">
+                <strong><span id="stickyPendingCount">0</span> alterações pendentes</strong>
+                <span>Revise ou salve para aplicar as metas deste período.</span>
+            </div>
+
+            <div class="sticky-footer-actions">
+                <button id="btnDescartar" class="btn-ghost" type="button">
+                    <i class="fa-regular fa-trash-can"></i>
+                    Descartar alterações
+                </button>
+
+                <button id="btnSalvarFooter" class="btn-primary" type="button">
+                    <i class="fa-solid fa-floppy-disk"></i>
+                    <span class="btn-label">Salvar alterações</span>
+                    <span id="pendingBadgeFooter" class="pending-badge" style="display:none">0</span>
+                </button>
+            </div>
+        </div>
     </div>
+
+    <div class="filters-sheet-backdrop" id="filtersBackdrop" aria-hidden="true"></div>
+    <button class="filters-sheet-trigger" id="btnOpenFilters" type="button" aria-controls="filtersPanel"
+        aria-expanded="false" aria-label="Abrir filtros">
+        <i class="fa-solid fa-sliders"></i>
+    </button>
 
     <?php include '../css/modalSessao.php'; ?>
 

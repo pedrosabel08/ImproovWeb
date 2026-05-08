@@ -328,6 +328,122 @@ body {
 }
 ```
 
+### Responsividade Canônica
+
+Use estes breakpoints como padrão para telas novas e refactors responsivos:
+
+- `mobile portrait`: `@media (max-width: 767px) and (orientation: portrait)`
+- `mobile landscape`: `@media (max-width: 926px) and (orientation: landscape)`
+- `ipad portrait`: `@media (min-width: 768px) and (max-width: 1024px)`
+- `ipad landscape`: `@media (min-width: 1025px) and (max-width: 1366px)`
+- `desktop padrão`: `1367px` até `2499px`
+- `ultrawide`: `@media (min-width: 2500px)`
+
+### Filtros Em Telas Menores
+
+De `ipad landscape` para baixo, a barra de filtros do topo deve virar um `bottom-sheet` acionado por botão flutuante.
+
+```html
+<div class="filters" id="filtersPanel">...</div>
+
+<div class="filters-sheet-backdrop" id="filtersBackdrop"></div>
+
+<button
+  class="filters-sheet-trigger"
+  id="btnOpenFilters"
+  type="button"
+  aria-controls="filtersPanel"
+  aria-expanded="false"
+>
+  <i class="fa-solid fa-sliders"></i>
+</button>
+```
+
+```css
+.filters-sheet-trigger,
+.filters-sheet-backdrop,
+.filters-sheet-header {
+  display: none;
+}
+
+@media (max-width: 1366px) {
+  .filters-sheet-trigger {
+    display: flex;
+    position: fixed;
+    right: 16px;
+    bottom: 16px;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    align-items: center;
+    justify-content: center;
+    background: var(--accent);
+    color: var(--text-on-accent);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+    z-index: 410;
+  }
+
+  .filters-sheet-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0 0 0 60px;
+    background: rgba(0, 0, 0, 0.45);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--transition-normal);
+    z-index: 400;
+  }
+
+  .filters-sheet-backdrop.is-visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .filters {
+    position: fixed;
+    left: 72px;
+    right: 16px;
+    bottom: 16px;
+    max-height: 78vh;
+    overflow-y: auto;
+    transform: translateY(calc(100% + 24px));
+    opacity: 0;
+    pointer-events: none;
+    transition:
+      transform var(--transition-normal),
+      opacity var(--transition-fast);
+    z-index: 405;
+  }
+
+  .filters.is-sheet-open {
+    transform: translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .filters-sheet-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .filter-actions,
+  .filter-actions .btn-apply {
+    width: 100%;
+  }
+}
+```
+
+Regras:
+
+- O botão de filtros deve ficar no canto inferior direito.
+- O painel deve surgir de baixo para cima, com backdrop e rolagem interna.
+- O conteúdo do sheet deve reutilizar os mesmos campos do header. Não duplicar lógica.
+- O sheet deve fechar ao clicar no backdrop, no botão de fechar, em `Escape` ou após concluir a ação principal.
+- Em `mobile portrait`, a largura útil do sheet pode ocupar quase toda a área disponível.
+- Em `ipad portrait` e `ipad landscape`, manter margens laterais e densidade confortável.
+- Tabelas densas podem virar cards empilhados no mobile usando `data-label` por célula; em iPad, prefira manter scroll horizontal quando isso preservar legibilidade.
+
 ---
 
 ## Botões

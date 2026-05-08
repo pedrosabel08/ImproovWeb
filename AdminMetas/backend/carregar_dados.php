@@ -15,7 +15,7 @@
  *       funcao_id, nome_funcao, cor,
  *       total_parcial, total_anterior, recorde_equipe,
  *       colaboradores: [
- *         { colaborador_id, nome, parcial, mes_anterior, recorde, meta }
+ *         { colaborador_id, nome, parcial, mes_anterior, recorde, meta, nivel_finalizacao }
  *       ]
  *     }
  *   ]
@@ -61,13 +61,13 @@ try {
 
     // Funções exibidas — Pré-Finalização (ID 9) excluída
     $funcoesConfig = [
-        1 => ['nome' => 'Caderno',                           'cor' => '#38bdf8'],
-        8 => ['nome' => 'Filtro de assets',                  'cor' => '#a78bfa'],
-        2 => ['nome' => 'Modelagem',                         'cor' => '#fb923c'],
-        3 => ['nome' => 'Composição',                        'cor' => '#34d399'],
-        4 => ['nome' => 'Finalização Completa',              'cor' => '#4ade80'],
-        7 => ['nome' => 'Finalização de Planta Humanizada',  'cor' => '#2dd4bf'],
-        5 => ['nome' => 'Pós-produção',                      'cor' => '#c084fc'],
+        1 => ['nome' => 'Caderno', 'cor' => '#38bdf8'],
+        8 => ['nome' => 'Filtro de assets', 'cor' => '#a78bfa'],
+        2 => ['nome' => 'Modelagem', 'cor' => '#fb923c'],
+        3 => ['nome' => 'Composição', 'cor' => '#34d399'],
+        4 => ['nome' => 'Finalização Completa', 'cor' => '#4ade80'],
+        7 => ['nome' => 'Finalização de Planta Humanizada', 'cor' => '#2dd4bf'],
+        5 => ['nome' => 'Pós-produção', 'cor' => '#c084fc'],
     ];
 
     $funcaoIds = implode(',', array_map('intval', array_keys($funcoesConfig)));
@@ -121,15 +121,15 @@ try {
     ";
 
     // ── Datas auxiliares — mês atual ──────────────────────────────────────────
-    $fimMesDia      = cal_days_in_month(CAL_GREGORIAN, $mes, $ano);
-    $fimMesData     = sprintf('%04d-%02d-%02d', $ano, $mes, $fimMesDia);
+    $fimMesDia = cal_days_in_month(CAL_GREGORIAN, $mes, $ano);
+    $fimMesData = sprintf('%04d-%02d-%02d', $ano, $mes, $fimMesDia);
     $fimMesDataTime = $fimMesData . ' 23:59:59';
 
     // ── Mês anterior ──────────────────────────────────────────────────────────
-    $mesAnt    = ($mes === 1) ? 12 : $mes - 1;
-    $anoAnt    = ($mes === 1) ? $ano - 1 : $ano;
-    $fimAntDia      = cal_days_in_month(CAL_GREGORIAN, $mesAnt, $anoAnt);
-    $fimAntData     = sprintf('%04d-%02d-%02d', $anoAnt, $mesAnt, $fimAntDia);
+    $mesAnt = ($mes === 1) ? 12 : $mes - 1;
+    $anoAnt = ($mes === 1) ? $ano - 1 : $ano;
+    $fimAntDia = cal_days_in_month(CAL_GREGORIAN, $mesAnt, $anoAnt);
+    $fimAntData = sprintf('%04d-%02d-%02d', $anoAnt, $mesAnt, $fimAntDia);
     $fimAntDataTime = $fimAntData . ' 23:59:59';
 
     // Colaboradores excluídos globalmente (mesmo critério de buscar_producao.php)
@@ -153,38 +153,40 @@ try {
     ";
 
     // ── 1. Colaboradores por função ───────────────────────────────────────────
-    // funcao_id=4 + planta humanizada → effective funcao_id=7 via $EFF_FUNCAO
+    // A lista-base da tela vem apenas de funcao_colaborador.
     $sqlColabs = "
-        SELECT DISTINCT fi.colaborador_id,
-            $EFF_FUNCAO AS funcao_id,
-            c.nome_colaborador
-        FROM funcao_imagem fi
-        LEFT JOIN imagens_cliente_obra ico ON fi.imagem_id = ico.idimagens_cliente_obra
-        JOIN colaborador c ON c.idcolaborador = fi.colaborador_id
-        WHERE fi.funcao_id IN ($funcaoIds)
-          AND fi.colaborador_id IS NOT NULL
+        SELECT DISTINCT fc.colaborador_id,
+            fc.funcao_id,
+            c.nome_colaborador,
+            fc.nivel_finalizacao
+        FROM funcao_colaborador fc
+        JOIN colaborador c ON c.idcolaborador = fc.colaborador_id
+        WHERE fc.funcao_id IN ($funcaoIds)
+          AND fc.colaborador_id IS NOT NULL
           AND c.ativo = 1
-          AND fi.prazo >= DATE_SUB(NOW(), INTERVAL 18 MONTH)
-          AND fi.colaborador_id NOT IN (21, 15)
-          AND NOT (fi.funcao_id = 4 AND fi.colaborador_id IN (7, 34))
-          AND NOT (fi.funcao_id = 4 AND ico.status_id = 1)
-        UNION
-        SELECT DISTINCT mc.colaborador_id, mc.funcao_id, c.nome_colaborador
-        FROM meta_colaborador mc
-        JOIN colaborador c ON c.idcolaborador = mc.colaborador_id
-        WHERE mc.funcao_id IN ($funcaoIds)
-          AND mc.mes = ? AND mc.ano = ?
-          AND c.ativo = 1
-        ORDER BY nome_colaborador ASC
+          AND fc.colaborador_id NOT IN (21, 15, 30)
+          AND NOT (fc.funcao_id = 4 AND fc.colaborador_id IN (7, 34))
+            AND NOT (
+                fc.funcao_id IN (2, 3)
+                AND EXISTS (
+                    SELECT 1
+                    FROM funcao_colaborador fc2
+                    WHERE fc2.colaborador_id = fc.colaborador_id
+                        AND fc2.funcao_id = 4
+                )
+            )
+        ORDER BY c.nome_colaborador ASC
     ";
 
     $stmtC = $conn->prepare($sqlColabs);
-    $stmtC->bind_param('ii', $mes, $ano);
     $stmtC->execute();
 
-    $colabsByFuncao = []; // [funcao_id][colaborador_id] = nome
+    $colabsByFuncao = []; // [funcao_id][colaborador_id] = ['nome' => string, 'nivel_finalizacao' => ?int]
     foreach ($stmtC->get_result()->fetch_all(MYSQLI_ASSOC) as $r) {
-        $colabsByFuncao[(int) $r['funcao_id']][(int) $r['colaborador_id']] = $r['nome_colaborador'];
+        $colabsByFuncao[(int) $r['funcao_id']][(int) $r['colaborador_id']] = [
+            'nome' => $r['nome_colaborador'],
+            'nivel_finalizacao' => isset($r['nivel_finalizacao']) ? (int) $r['nivel_finalizacao'] : null,
+        ];
     }
     $stmtC->close();
 
@@ -388,8 +390,8 @@ try {
     $recEquipeMap = []; // [funcao_id] = ['recorde' => N, 'periodo' => 'YYYY-MM']
     foreach ($stmtRecEq->get_result()->fetch_all(MYSQLI_ASSOC) as $r) {
         $recEquipeMap[(int) $r['funcao_id']] = [
-            'recorde'  => (int) $r['recorde_equipe'],
-            'periodo'  => $r['recorde_periodo'] ?? null,
+            'recorde' => (int) $r['recorde_equipe'],
+            'periodo' => $r['recorde_periodo'] ?? null,
         ];
     }
     $stmtRecEq->close();
@@ -419,21 +421,23 @@ try {
     foreach ($funcoesConfig as $funcaoId => $cfg) {
         $colabs = $colabsByFuncao[$funcaoId] ?? [];
 
-        $totalParcial  = 0;
+        $totalParcial = 0;
         $totalAnterior = 0;
         $colaboradoresList = [];
 
-        foreach ($colabs as $colaboradorId => $nomeColab) {
-            $parcial  = $currMap[$funcaoId][$colaboradorId] ?? 0;
+        foreach ($colabs as $colaboradorId => $colabInfo) {
+            $nomeColab = $colabInfo['nome'];
+            $nivelFinalizacao = $colabInfo['nivel_finalizacao'] ?? null;
+            $parcial = $currMap[$funcaoId][$colaboradorId] ?? 0;
             $anterior = $prevMap[$funcaoId][$colaboradorId] ?? 0;
 
-            $recEntry  = $recMap[$funcaoId][$colaboradorId] ?? null;
+            $recEntry = $recMap[$funcaoId][$colaboradorId] ?? null;
             $recordeDb = $recEntry['recorde'] ?? 0;
             if ($recordeDb >= $anterior) {
-                $recorde    = $recordeDb;
+                $recorde = $recordeDb;
                 $recordeMes = $recEntry['periodo'] ?? null;
             } else {
-                $recorde    = $anterior;
+                $recorde = $anterior;
                 $recordeMes = sprintf('%04d-%02d', $anoAnt, $mesAnt);
             }
 
@@ -441,48 +445,49 @@ try {
                 ? $metasMap[$funcaoId][$colaboradorId]
                 : null;
 
-            $totalParcial  += $parcial;
+            $totalParcial += $parcial;
             $totalAnterior += $anterior;
 
             $colaboradoresList[] = [
                 'colaborador_id' => $colaboradorId,
-                'nome'           => $nomeColab,
-                'parcial'        => $parcial,
-                'mes_anterior'   => $anterior,
-                'recorde'        => $recorde,
-                'recorde_mes'    => $recordeMes,
-                'meta'           => $meta,
+                'nome' => $nomeColab,
+                'nivel_finalizacao' => $nivelFinalizacao,
+                'parcial' => $parcial,
+                'mes_anterior' => $anterior,
+                'recorde' => $recorde,
+                'recorde_mes' => $recordeMes,
+                'meta' => $meta,
             ];
         }
 
         // Recorde equipe = max(melhor mês histórico, mês anterior)
-        $recEqEntry   = $recEquipeMap[$funcaoId] ?? null;
-        $recEquipeDb  = $recEqEntry['recorde'] ?? 0;
+        $recEqEntry = $recEquipeMap[$funcaoId] ?? null;
+        $recEquipeDb = $recEqEntry['recorde'] ?? 0;
         if ($recEquipeDb >= $totalAnterior) {
-            $recEquipe    = $recEquipeDb;
+            $recEquipe = $recEquipeDb;
             $recEquipeMes = $recEqEntry['periodo'] ?? null;
         } else {
-            $recEquipe    = $totalAnterior;
+            $recEquipe = $totalAnterior;
             $recEquipeMes = sprintf('%04d-%02d', $anoAnt, $mesAnt);
         }
 
         $funcoes[] = [
-            'funcao_id'          => $funcaoId,
-            'nome_funcao'        => $cfg['nome'],
-            'cor'                => $cfg['cor'],
-            'total_parcial'      => $totalParcial,
-            'total_anterior'     => $totalAnterior,
-            'recorde_equipe'     => $recEquipe,
+            'funcao_id' => $funcaoId,
+            'nome_funcao' => $cfg['nome'],
+            'cor' => $cfg['cor'],
+            'total_parcial' => $totalParcial,
+            'total_anterior' => $totalAnterior,
+            'recorde_equipe' => $recEquipe,
             'recorde_equipe_mes' => $recEquipeMes,
-            'colaboradores'      => $colaboradoresList,
+            'colaboradores' => $colaboradoresList,
         ];
     }
 
     ob_end_clean();
     echo json_encode([
         'success' => true,
-        'mes'     => $mes,
-        'ano'     => $ano,
+        'mes' => $mes,
+        'ano' => $ano,
         'mes_ant' => $mesAnt,
         'ano_ant' => $anoAnt,
         'funcoes' => $funcoes,

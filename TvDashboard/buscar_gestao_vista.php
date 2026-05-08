@@ -153,21 +153,28 @@ FROM (
     AND fi.colaborador_id NOT IN (21, 15, 7, 34)
     AND (
       EXISTS (
-        SELECT 1 FROM log_alteracoes la
-        WHERE la.funcao_imagem_id = fi.idfuncao_imagem AND MONTH(la.data) = ? AND YEAR(la.data) = ?
+        SELECT 1 FROM (
+          SELECT la_fc.funcao_imagem_id, MIN(la_fc.data) AS primeira_conclusao
+          FROM log_alteracoes la_fc
+          WHERE LOWER(TRIM(la_fc.status_novo))
+                IN ('finalizado','em aprovação','aprovado com ajustes','aprovado')
+          GROUP BY la_fc.funcao_imagem_id
+        ) AS fc
+        WHERE fc.funcao_imagem_id = fi.idfuncao_imagem
+          AND MONTH(fc.primeira_conclusao) = ?
+          AND YEAR(fc.primeira_conclusao) = ?
       )
       OR (MONTH(fi.prazo) = ? AND YEAR(fi.prazo) = ?)
     )
     AND (
       LOWER(TRIM(fi.status)) IN ('finalizado','em aprovação','ajuste','aprovado com ajustes','aprovado')
-      OR EXISTS (
-        SELECT 1 FROM log_alteracoes la_fin
-        WHERE la_fin.funcao_imagem_id = fi.idfuncao_imagem AND la_fin.data <= ?
-          AND (
-            LOWER(TRIM(la_fin.status_novo))    IN ('finalizado','em aprovação','ajuste','aprovado com ajustes','aprovado')
-            OR LOWER(TRIM(la_fin.status_anterior)) IN ('finalizado','em aprovação','ajuste','aprovado com ajustes','aprovado')
-          )
-      )
+      OR (
+        SELECT LOWER(TRIM(la_last.status_novo))
+        FROM log_alteracoes la_last
+        WHERE la_last.funcao_imagem_id = fi.idfuncao_imagem AND la_last.data <= ?
+        ORDER BY la_last.data DESC, la_last.idlog DESC
+        LIMIT 1
+      ) IN ('finalizado','em aprovação','ajuste','aprovado com ajustes','aprovado')
     )
 ) AS t
 WHERE t.pagamento <> 1
@@ -230,21 +237,28 @@ FROM (
     AND fi.colaborador_id NOT IN (21, 15)
     AND (
       EXISTS (
-        SELECT 1 FROM log_alteracoes la
-        WHERE la.funcao_imagem_id = fi.idfuncao_imagem AND MONTH(la.data) = ? AND YEAR(la.data) = ?
+        SELECT 1 FROM (
+          SELECT la_fc.funcao_imagem_id, MIN(la_fc.data) AS primeira_conclusao
+          FROM log_alteracoes la_fc
+          WHERE LOWER(TRIM(la_fc.status_novo))
+                IN ('finalizado','em aprovação','aprovado com ajustes','aprovado')
+          GROUP BY la_fc.funcao_imagem_id
+        ) AS fc
+        WHERE fc.funcao_imagem_id = fi.idfuncao_imagem
+          AND MONTH(fc.primeira_conclusao) = ?
+          AND YEAR(fc.primeira_conclusao) = ?
       )
       OR (MONTH(fi.prazo) = ? AND YEAR(fi.prazo) = ?)
     )
     AND (
       LOWER(TRIM(fi.status)) IN ('finalizado','em aprovação','ajuste','aprovado com ajustes','aprovado')
-      OR EXISTS (
-        SELECT 1 FROM log_alteracoes la_fin
-        WHERE la_fin.funcao_imagem_id = fi.idfuncao_imagem AND la_fin.data <= ?
-          AND (
-            LOWER(TRIM(la_fin.status_novo))    IN ('finalizado','em aprovação','ajuste','aprovado com ajustes','aprovado')
-            OR LOWER(TRIM(la_fin.status_anterior)) IN ('finalizado','em aprovação','ajuste','aprovado com ajustes','aprovado')
-          )
-      )
+      OR (
+        SELECT LOWER(TRIM(la_last.status_novo))
+        FROM log_alteracoes la_last
+        WHERE la_last.funcao_imagem_id = fi.idfuncao_imagem AND la_last.data <= ?
+        ORDER BY la_last.data DESC, la_last.idlog DESC
+        LIMIT 1
+      ) IN ('finalizado','em aprovação','ajuste','aprovado com ajustes','aprovado')
     )
 ) AS t
 WHERE t.pagamento <> 1

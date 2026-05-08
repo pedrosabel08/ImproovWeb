@@ -21,7 +21,8 @@ if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
     exit;
 }
 
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
+require_once __DIR__ . '/../conexaoMain.php';
 
 $mesSel = isset($_GET['mes']) ? (int)$_GET['mes'] : (int)date('m');
 $anoSel = isset($_GET['ano']) ? (int)$_GET['ano'] : (int)date('Y');
@@ -51,7 +52,6 @@ foreach ($stmtF->get_result()->fetch_all(MYSQLI_ASSOC) as $r) {
     $metasMap[(int)$r['funcao_id']] = (int)$r['quantidade_meta'];
 }
 $stmtF->close();
-$conn->close();
 
 foreach ($funcoesTv as &$f) {
     $f['quantidade_meta'] = isset($metasMap[$f['idfuncao']]) ? $metasMap[$f['idfuncao']] : '';
@@ -75,6 +75,15 @@ $nomeMeses = [
     'Dezembro'
 ];
 $anoAtual = (int)date('Y');
+
+
+$clientes = obterClientes($conn);
+$obras = obterObras($conn);
+$obras_inativas = obterObras($conn, 1);
+$colaboradores = obterColaboradores($conn);
+
+$conn->close();
+
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">

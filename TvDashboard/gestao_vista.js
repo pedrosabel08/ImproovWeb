@@ -85,12 +85,14 @@ function getProgressLabel(pct) {
   return "Abaixo do ritmo";
 }
 
-function calcularRitmo(qtd_parcial, meta_individual, pct) {
+function calcularRitmo(qtd_parcial, meta_individual) {
   const diaAtual = getDiaAtual();
+  const diasNoMes = daysInMonth(new Date().getFullYear(), new Date().getMonth() + 1);
+
   const taxaAtual = diaAtual > 0 ? qtd_parcial / diaAtual : 0;
   const rateStr = taxaAtual > 0 ? `${taxaAtual.toFixed(1)}/dia` : "";
 
-  if (pct === null || meta_individual === null || meta_individual === 0) {
+  if (!meta_individual) {
     return {
       tipo: "none",
       icon: '<i class="fa-solid fa-minus"></i>',
@@ -98,34 +100,69 @@ function calcularRitmo(qtd_parcial, meta_individual, pct) {
       rate: "",
     };
   }
-  if (pct === 0)
+
+  if (qtd_parcial === 0) {
     return {
       tipo: "none",
       icon: '<i class="fa-solid fa-minus"></i>',
       label: "Sem produção",
       rate: rateStr,
     };
-  if (pct >= 110)
+  }
+
+  // Evita distorção no começo do mês
+  if (diaAtual < 3) {
+    return {
+      tipo: "none",
+      icon: '<i class="fa-solid fa-minus"></i>',
+      label: "Aguardando base",
+      rate: rateStr,
+    };
+  }
+
+  const ritmoNecessario = meta_individual / diasNoMes;
+  const performance = ritmoNecessario > 0 ? taxaAtual / ritmoNecessario : 0;
+
+  // ======================
+  // CLASSIFICAÇÃO
+  // ======================
+  console.log({
+    qtd_parcial,
+    meta_individual,
+    diaAtual,
+    diasNoMes,
+    taxaAtual,
+    ritmoNecessario,
+    performance,
+  });
+
+  if (performance >= 1.2) {
     return {
       tipo: "done",
       icon: '<i class="fa-solid fa-arrow-trend-up"></i>',
       label: "Acelerado",
       rate: rateStr,
     };
-  if (pct >= 70)
+  }
+
+  if (performance >= 0.9) {
     return {
       tipo: "on",
       icon: '<i class="fa-solid fa-arrow-right"></i>',
       label: "No ritmo",
       rate: rateStr,
     };
-  if (pct >= 35)
+  }
+
+  if (performance >= 0.7) {
     return {
       tipo: "warn",
       icon: '<i class="fa-solid fa-arrow-trend-down"></i>',
-      label: "Atrasado",
+      label: "Em risco",
       rate: rateStr,
     };
+  }
+
   return {
     tipo: "crit",
     icon: '<i class="fa-solid fa-angles-down"></i>',
@@ -163,7 +200,7 @@ function buildEmployeeRow(f, meta_individual) {
     faltaHtml = `<div class="gv-falta-val ${fc}">${falta}</div>`;
   }
 
-  const ritmo = calcularRitmo(f.qtd_parcial, meta_individual, pct);
+  const ritmo = calcularRitmo(f.qtd_parcial, meta_individual);
   const hue = getAvatarHue(f.nome);
   const initial = f.nome.charAt(0).toUpperCase();
   const imagemAvatar = f.imagem_url
@@ -432,11 +469,6 @@ function buildSummaryBar(dados) {
       <span class="gv-kpi-label">Atrasados</span>
       <span class="gv-kpi-value red">${atrasados}</span>
       <span class="gv-kpi-sub">${totalFunc > 0 ? Math.round((atrasados / totalFunc) * 100) + "%" : "–"} dos colaboradores</span>
-    </div>
-    <div class="gv-kpi">
-      <span class="gv-kpi-label">Meta do Mês</span>
-      <span class="gv-kpi-value accent">${metaTotal > 0 ? metaTotal : "–"}</span>
-      <span class="gv-kpi-sub">Total esperado</span>
     </div>
     <div class="gv-kpi">
       <span class="gv-kpi-label">Dias Restantes</span>

@@ -454,13 +454,13 @@ body {
   }
 }
 .gv-row--evt-meta {
-  animation: gv-flash-meta 6s ease-out;
+  animation: gv-flash-meta 10s ease-out;
 }
 .gv-row--evt-rank {
-  animation: gv-flash-rank 4.4s ease-out;
+  animation: gv-flash-rank 8.5s ease-out;
 }
 .gv-row--evt-item {
-  animation: gv-flash-item 3.2s ease-out;
+  animation: gv-flash-item 7s ease-out;
 }
 
 /* Name cell */

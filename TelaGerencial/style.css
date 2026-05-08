@@ -417,7 +417,6 @@ h3.section-title {
   flex: 1;
   min-height: 0;
   overflow: hidden;
-  max-height: 75vh;
 }
 .table-block {
   display: flex;
@@ -432,12 +431,11 @@ h3.section-title {
 /* Scrollable table wrappers */
 .table-scroll {
   flex: 1;
-  overflow-x: auto;
+  overflow-x: hidden;
   overflow-y: auto;
   min-height: 0;
   border-radius: 8px;
   border: 1px solid var(--border-table);
-  max-height: max-content;
 }
 .table-scroll table {
   width: 100%;
@@ -535,8 +533,8 @@ h3.section-title {
 
 /* ---- Indicador visual de recorde batido ---- */
 tr.bate-recorde td {
-  background-color: rgba(16, 185, 129, 0.08) !important;
-  color: black;
+  background-color: #1f7a5a;
+  color: #f5f5f5;
 }
 
 .td-record-cell {
@@ -604,28 +602,434 @@ tr.bate-recorde td {
   border: 1px solid rgba(239, 68, 68, 0.4);
 }
 
-/* Responsive */
-@media (max-width: 1100px) {
-  .dashboard-cards {
-    grid-template-columns: repeat(2, 1fr);
+/* ═══════════════════════════════════════════════════════════════
+   RESPONSIVE BREAKPOINTS
+   Mobile portrait  ≤ 480px
+   Mobile landscape ≤ 768px + landscape + max-height ≤ 500px
+   iPad portrait    768px – 1024px  (portrait)
+   iPad landscape   769px – 1024px  (landscape)
+   Monitor padrão   1025px – 1999px
+   TV               ≥ 2000px
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════════════
+   MONITOR PADRÃO  (1025px – 1999px)
+   Sem scroll vertical — tudo visível na tela
+   ═══════════════════════════════════════════════════ */
+@media screen and (min-width: 1025px) and (max-width: 1999px) {
+  .container {
+    gap: 12px;
+    padding: 16px 20px;
   }
-  .dashboard-charts {
-    grid-template-columns: 1fr 1fr;
+  .page-title {
+    font-size: 17px;
+  }
+  .dashboard-cards {
+    gap: 10px;
+    margin-bottom: 0;
+  }
+  .card {
+    padding: 12px 16px;
+  }
+  .card-value {
+    font-size: 24px;
+  }
+  .card-value--sm {
+    font-size: 15px;
+  }
+  .tables-main-grid {
+    gap: 10px;
+    max-height: none;
+  }
+  .section-title {
+    font-size: 13px;
+    margin-bottom: 7px;
+  }
+  h3.section-title {
+    font-size: 12px;
+  }
+  th,
+  td {
+    font-size: 12px;
+    padding: 8px;
+  }
+  .table-scroll {
+    overflow-x: hidden;
   }
 }
-@media (max-width: 720px) {
-  .dashboard-cards {
-    grid-template-columns: 1fr 1fr;
+
+/* ═══════════════════════════════════════════════════
+   TV  (≥ 2000px)
+   Amplificado — sem scroll vertical
+   ═══════════════════════════════════════════════════ */
+@media screen and (min-width: 2000px) {
+  .container {
+    gap: 24px;
+    padding: 28px 36px;
   }
-  .dashboard-charts {
-    grid-template-columns: 1fr;
+  .page-title {
+    font-size: 32px;
+  }
+  .page-header-logo {
+    height: 60px !important;
+  }
+  .dashboard-cards {
+    gap: 20px;
+    margin-bottom: 0;
+  }
+  .card {
+    padding: 24px 32px;
+  }
+  .card-title {
+    font-size: 16px;
+  }
+  .card-value {
+    font-size: 52px;
+  }
+  .card-value--sm {
+    font-size: 32px;
+  }
+  .tables-main-grid {
+    gap: 20px;
+    max-height: none;
+  }
+  .section-title {
+    font-size: 22px;
+    margin-bottom: 14px;
+  }
+  h3.section-title {
+    font-size: 20px;
+  }
+  th {
+    font-size: 18px;
+    padding: 16px 18px;
+  }
+  td {
+    font-size: 20px;
+    padding: 16px 18px;
+  }
+  .table-scroll {
+    overflow-x: hidden;
+  }
+  .record-bar-wrap {
+    height: 48px;
+    min-width: 100px;
+  }
+  .record-bar-qty {
+    font-size: 22px;
+  }
+  .record-bar-label {
+    font-size: 15px;
+    top: -20px;
+  }
+  .filtros-linha label {
+    font-size: 16px;
+  }
+  .filtros-linha select {
+    height: 52px;
+    font-size: 18px;
+  }
+  header .filtros-linha button {
+    height: 52px;
+    font-size: 18px;
+    padding: 0 32px;
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   iPad PORTRAIT  (768px – 1024px, portrait)
+   Scrollável, sections empilhadas, sem scroll horizontal
+   ═══════════════════════════════════════════════════ */
+@media screen and (min-width: 768px) and (max-width: 1024px) and (orientation: portrait) {
+  html,
+  body {
+    overflow-x: hidden;
+    overflow-y: auto;
+    height: auto;
+  }
+  .container {
+    height: auto;
+    overflow: visible;
+    gap: 12px;
+    padding: 14px 16px;
+  }
+  .dashboard-cards {
+    grid-template-columns: repeat(2, 1fr);
+    margin-bottom: 0;
   }
   .tables-main-grid {
     grid-template-columns: 1fr;
     grid-template-rows: auto;
+    max-height: none;
+    overflow: visible;
   }
   .table-block.full-span {
     grid-column: 1;
+  }
+  .table-scroll {
+    overflow-x: hidden;
+    overflow-y: auto;
+    max-height: 45vh;
+  }
+  #tabelaProducao,
+  #tabelaEntregas,
+  #tabelaFuncao {
+    table-layout: fixed;
+  }
+  #tabelaProducao td,
+  #tabelaFuncao td {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  /* Ocultar "Mês anterior" */
+  #tabelaProducao th:nth-child(6),
+  #tabelaProducao td:nth-child(6),
+  #tabelaFuncao th:nth-child(5),
+  #tabelaFuncao td:nth-child(5) {
+    display: none;
+  }
+  th,
+  td {
+    font-size: 12px;
+    padding: 8px 7px;
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   iPad LANDSCAPE  (769px – 1024px, landscape)
+   Scrollável, compacto, 2 colunas mantidas
+   ═══════════════════════════════════════════════════ */
+@media screen and (min-width: 769px) and (max-width: 1024px) and (orientation: landscape) {
+  html,
+  body {
+    overflow: auto;
+    height: auto;
+  }
+  .container {
+    height: auto;
+    overflow: visible;
+    gap: 10px;
+    padding: 12px 16px;
+  }
+  .dashboard-cards {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-bottom: 0;
+  }
+  .card {
+    padding: 10px 14px;
+  }
+  .card-value {
+    font-size: 22px;
+  }
+  .tables-main-grid {
+    max-height: none;
+    overflow: visible;
+    gap: 10px;
+  }
+  .table-scroll {
+    overflow-x: hidden;
+    overflow-y: auto;
+    max-height: 38vh;
+  }
+  #tabelaProducao,
+  #tabelaEntregas,
+  #tabelaFuncao {
+    table-layout: fixed;
+  }
+  #tabelaProducao td,
+  #tabelaFuncao td {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  /* Ocultar "Mês anterior" */
+  #tabelaProducao th:nth-child(6),
+  #tabelaProducao td:nth-child(6),
+  #tabelaFuncao th:nth-child(5),
+  #tabelaFuncao td:nth-child(5) {
+    display: none;
+  }
+  th,
+  td {
+    font-size: 11px;
+    padding: 7px 6px;
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   MOBILE LANDSCAPE  (≤ 768px, landscape, height ≤ 500px)
+   Scrollável, layout compacto
+   ═══════════════════════════════════════════════════ */
+@media screen and (max-width: 768px) and (orientation: landscape) and (max-height: 500px) {
+  html,
+  body {
+    overflow: auto;
+    height: auto;
+  }
+  .container {
+    height: auto;
+    overflow: visible;
+    gap: 8px;
+    padding: 8px 12px;
+  }
+  .page-title {
+    font-size: 14px;
+  }
+  .page-header-logo {
+    height: 26px !important;
+  }
+  .dashboard-cards {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    margin-bottom: 0;
+  }
+  .card {
+    padding: 8px 10px;
+  }
+  .card-title {
+    font-size: 9px;
+  }
+  .card-value {
+    font-size: 18px;
+    margin-top: 3px;
+  }
+  .card-value--sm {
+    font-size: 12px;
+  }
+  .tables-main-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+    max-height: none;
+    overflow: visible;
+  }
+  .table-block.full-span {
+    grid-column: 1;
+  }
+  .table-scroll {
+    overflow-x: hidden;
+    overflow-y: auto;
+    max-height: 55vh;
+  }
+  #tabelaProducao,
+  #tabelaEntregas,
+  #tabelaFuncao {
+    table-layout: fixed;
+  }
+  #tabelaProducao td,
+  #tabelaFuncao td {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  /* Ocultar "Função" + "Mês anterior" de producao; "Não pagas" + "Mês anterior" de funcao */
+  #tabelaProducao th:nth-child(2),
+  #tabelaProducao td:nth-child(2),
+  #tabelaProducao th:nth-child(6),
+  #tabelaProducao td:nth-child(6),
+  #tabelaFuncao th:nth-child(4),
+  #tabelaFuncao td:nth-child(4),
+  #tabelaFuncao th:nth-child(5),
+  #tabelaFuncao td:nth-child(5) {
+    display: none;
+  }
+  th,
+  td {
+    font-size: 11px;
+    padding: 6px 5px;
+  }
+  .record-bar-wrap {
+    min-width: 0;
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   MOBILE PORTRAIT  (≤ 480px)
+   Scrollável, layout mínimo
+   ═══════════════════════════════════════════════════ */
+@media screen and (max-width: 480px) {
+  html,
+  body {
+    overflow: auto;
+    height: auto;
+  }
+  .container {
+    height: auto;
+    overflow: visible;
+    gap: 8px;
+    padding: 8px 10px;
+  }
+  .page-title {
+    font-size: 14px;
+  }
+  .page-header-logo {
+    height: 26px !important;
+  }
+  .dashboard-cards {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+    margin-bottom: 0;
+  }
+  .card {
+    padding: 8px 10px;
+  }
+  .card-title {
+    font-size: 9px;
+  }
+  .card-value {
+    font-size: 18px;
+    margin-top: 3px;
+  }
+  .card-value--sm {
+    font-size: 12px;
+  }
+  .tables-main-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+    max-height: none;
+    overflow: visible;
+  }
+  .table-block.full-span {
+    grid-column: 1;
+  }
+  .table-scroll {
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+  #tabelaProducao,
+  #tabelaEntregas,
+  #tabelaFuncao {
+    table-layout: fixed;
+  }
+  #tabelaProducao td,
+  #tabelaFuncao td {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  /* Ocultar "Função" + "Mês anterior" de producao; "Não pagas" + "Mês anterior" de funcao */
+  #tabelaProducao th:nth-child(2),
+  #tabelaProducao td:nth-child(2),
+  #tabelaProducao th:nth-child(6),
+  #tabelaProducao td:nth-child(6),
+  #tabelaFuncao th:nth-child(4),
+  #tabelaFuncao td:nth-child(4),
+  #tabelaFuncao th:nth-child(5),
+  #tabelaFuncao td:nth-child(5) {
+    display: none;
+  }
+  th,
+  td {
+    font-size: 11px;
+    padding: 6px 5px;
+  }
+  .record-bar-wrap {
+    min-width: 0;
+  }
+  .filtros-linha {
+    flex-wrap: wrap;
+    gap: 6px;
   }
 }
 
@@ -744,6 +1148,9 @@ table th {
 }
 table tr:hover td {
   background: var(--bg-table-row-hover);
+}
+table tr.bate-recorde:hover td {
+  background: #24936b;
 }
 table tbody td {
   background: var(--bg-table-row);

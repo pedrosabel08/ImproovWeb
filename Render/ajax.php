@@ -1,5 +1,5 @@
 <?php
-include '../conexao.php';
+require_once __DIR__ . '/../conexao.php';
 // header('Content-Type: application/json');
 
 // Lidar com as ações de AJAX
@@ -83,6 +83,102 @@ LIMIT $limit OFFSET $offset";
                 $colaboradores[] = $row;
             }
             echo json_encode(['status' => 'sucesso', 'colaboradores' => $colaboradores]);
+            break;
+
+        case 'getRenderTimeline':
+            if (isset($_GET['render_id'])) {
+                $render_id = (int)$_GET['render_id'];
+
+                // 1. Fetch logs from log_render ordered chronologically
+                $logs = [];
+                $stmtLogs = $conn->prepare(
+                    "SELECT id, status_anterior, status_novo, data
+                     FROM log_render
+                     WHERE render_id = ?
+                     ORDER BY data ASC, id ASC"
+                );
+                if ($stmtLogs) {
+                    $stmtLogs->bind_param('i', $render_id);
+                    $stmtLogs->execute();
+                    $res = $stmtLogs->get_result();
+                    while ($row = $res->fetch_assoc()) {
+                        $logs[] = $row;
+                    }
+                    $stmtLogs->close();
+                }
+
+                // 2. Fetch render metadata for anchor/fallback
+                $render = null;
+                $stmtR = $conn->prepare(
+                    "SELECT submitted, last_updated, data, status
+                     FROM render_alta
+                     WHERE idrender_alta = ? LIMIT 1"
+                );
+                if ($stmtR) {
+                    $stmtR->bind_param('i', $render_id);
+                    $stmtR->execute();
+                    $render = $stmtR->get_result()->fetch_assoc();
+                    $stmtR->close();
+                }
+
+                // 3. Build ordered timeline
+                $timeline = [];
+
+                // Always start with "Enviado" anchor using render_alta.submitted
+                $startDate = null;
+                if ($render) {
+                    $startDate = !empty($render['submitted']) ? $render['submitted']
+                        : (!empty($render['data'])      ? $render['data'] : null);
+                }
+
+                if ($startDate) {
+                    $timeline[] = [
+                        'status_anterior' => null,
+                        'status_novo'     => 'Enviado',
+                        'data'            => $startDate,
+                        'source'          => 'fallback',
+                        'is_start'        => true,
+                    ];
+                }
+
+                if (!empty($logs)) {
+                    // Primary source: log_render entries
+                    foreach ($logs as $log) {
+                        $timeline[] = [
+                            'status_anterior' => $log['status_anterior'],
+                            'status_novo'     => $log['status_novo'],
+                            'data'            => $log['data'],
+                            'source'          => 'log',
+                            'is_start'        => false,
+                        ];
+                    }
+                } else {
+                    // Fallback: show current status from render_alta when no logs exist
+                    if ($render) {
+                        $fallbackDate   = !empty($render['last_updated']) ? $render['last_updated']
+                            : (!empty($render['data'])         ? $render['data'] : null);
+                        $currentStatus  = $render['status'] ?? null;
+
+                        // Only add if the date differs from the start anchor (avoid duplicate)
+                        if ($currentStatus && $fallbackDate && $fallbackDate !== $startDate) {
+                            $timeline[] = [
+                                'status_anterior' => null,
+                                'status_novo'     => $currentStatus,
+                                'data'            => $fallbackDate,
+                                'source'          => 'fallback',
+                                'is_start'        => false,
+                            ];
+                        }
+                    }
+                }
+
+                // 4. Sort chronologically (datetime strings are lexicographically sortable)
+                usort($timeline, function ($a, $b) {
+                    return strcmp($a['data'] ?? '', $b['data'] ?? '');
+                });
+
+                echo json_encode(['status' => 'sucesso', 'timeline' => $timeline]);
+            }
             break;
     }
 }

@@ -361,6 +361,99 @@ $("#btnLimpar").on("click", function () {
   filterRenders();
 });
 
+/* --- Timeline helpers --- */
+function buildTimelineEntry(ev) {
+  var d = ev.data ? new Date(ev.data.replace(" ", "T")) : null;
+  var pad = function (n) {
+    return String(n).padStart(2, "0");
+  };
+  var datePart = d
+    ? pad(d.getDate()) + "/" + pad(d.getMonth() + 1) + "/" + d.getFullYear()
+    : "—";
+  var timePart = d ? pad(d.getHours()) + ":" + pad(d.getMinutes()) : "";
+
+  var srcClass = ev.source === "log" ? "tl-source-log" : "tl-source-fallback";
+  var startClass = ev.is_start ? "tl-is-start" : "";
+
+  var actionHtml;
+  if (ev.is_start || !ev.status_anterior) {
+    var bc = getStatusBadgeClass(ev.status_novo);
+    actionHtml =
+      '<span class="status-badge ' + bc + '">' + ev.status_novo + "</span>";
+  } else {
+    var bc2 = getStatusBadgeClass(ev.status_novo);
+    actionHtml =
+      '<span class="tl-prev" style="color:var(--text-tertiary);font-size:11.5px;">' +
+      ev.status_anterior +
+      "</span>" +
+      ' <i class="fa-solid fa-arrow-right" style="font-size:8px;color:var(--text-muted);"></i> ' +
+      '<span class="status-badge ' +
+      bc2 +
+      '">' +
+      ev.status_novo +
+      "</span>";
+  }
+
+  return (
+    '<div class="tl-entry ' +
+    srcClass +
+    " " +
+    startClass +
+    '">' +
+    '<div class="tl-date">' +
+    datePart +
+    '<span class="tl-time">' +
+    timePart +
+    "</span>" +
+    "</div>" +
+    '<div class="tl-right">' +
+    '<div class="tl-action">' +
+    actionHtml +
+    "</div>" +
+    "</div>" +
+    "</div>"
+  );
+}
+
+function renderTimeline(events) {
+  var $container = $("#renderTimeline");
+  if (!events || !events.length) {
+    $container.html('<div class="tl-empty">Sem histórico disponível.</div>');
+    return;
+  }
+  var html = "";
+  for (var i = 0; i < events.length; i++) {
+    html += buildTimelineEntry(events[i]);
+  }
+  $container.html(html);
+}
+
+function loadRenderTimeline(renderId) {
+  $("#renderTimeline").html(
+    '<div class="tl-loading"><i class="fa-solid fa-circle-notch fa-spin"></i> Carregando…</div>',
+  );
+  $.ajax({
+    url: "ajax.php",
+    method: "GET",
+    data: { action: "getRenderTimeline", render_id: renderId },
+    dataType: "json",
+    success: function (resp) {
+      if (resp && resp.status === "sucesso") {
+        renderTimeline(resp.timeline || []);
+      } else {
+        $("#renderTimeline").html(
+          '<div class="tl-empty">Erro ao carregar histórico.</div>',
+        );
+      }
+    },
+    error: function () {
+      $("#renderTimeline").html(
+        '<div class="tl-empty">Erro ao carregar histórico.</div>',
+      );
+    },
+  });
+}
+
 // Função para abrir o modal e carregar os dados para edição
 function editRender(idrender_alta) {
   $.ajax({
@@ -391,13 +484,6 @@ function editRender(idrender_alta) {
         $("#modal_status_id").text(r.nome_status || "—");
         $("#modal_responsavel_id").text(r.nome_colaborador || "—");
         $("#modal_computer").text(r.computer || "—");
-
-        $("#modal_submitted").text(
-          r.submitted ? formatarData(r.submitted) : "—",
-        );
-        $("#modal_last_updated").text(
-          r.last_updated ? formatarData(r.last_updated) : "—",
-        );
 
         $("#modal_job_folder").text(r.job_folder || "—");
         $("#modal_previa_jpg").text(r.previa_jpg || "—");
@@ -461,6 +547,9 @@ function editRender(idrender_alta) {
 
         // — Open modal —
         $("#myModal").addClass("is-open");
+
+        // — Load timeline —
+        loadRenderTimeline(idrender_alta);
 
         // — Action button visibility —
         if (r.status === "Reprovado" || r.status === "Refazendo") {

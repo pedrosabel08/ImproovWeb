@@ -283,14 +283,9 @@ $conn->close();
                         <div class="detail-section-title">
                             <i class="fa-solid fa-clock-rotate-left"></i> Linha do Tempo
                         </div>
-                        <div class="detail-grid">
-                            <div class="detail-row">
-                                <span class="detail-label">Enviado</span>
-                                <span class="detail-value" id="modal_submitted">—</span>
-                            </div>
-                            <div class="detail-row">
-                                <span class="detail-label">Última atualização</span>
-                                <span class="detail-value" id="modal_last_updated">—</span>
+                        <div id="renderTimeline" class="render-timeline">
+                            <div class="tl-loading">
+                                <i class="fa-solid fa-circle-notch fa-spin"></i> Carregando…
                             </div>
                         </div>
                     </div>

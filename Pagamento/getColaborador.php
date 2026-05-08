@@ -390,7 +390,14 @@ SELECT
     'funcao_animacao' AS origem,
     fa.id AS identificador,
     an.imagem_id,
-    ico.imagem_nome,
+    CONCAT(
+  ico.imagem_nome, 
+  ' - ', 
+  CONCAT(
+    UPPER(LEFT(an.tipo_animacao, 1)), 
+    LOWER(SUBSTRING(an.tipo_animacao, 2))
+  )
+) AS imagem_nome,
     fa.funcao_id,
     f.nome_funcao AS nome_funcao,
     fa.status,
@@ -410,14 +417,14 @@ JOIN
 LEFT JOIN 
     imagens_cliente_obra ico ON an.imagem_id = ico.idimagens_cliente_obra
 WHERE 
-    fa.colaborador_id = ?";
+    fa.colaborador_id = ? AND fa.status IN ('Finalizado', 'Em aprovação', 'Ajuste', 'Aprovado com ajustes', 'Aprovado')";
 
     if ($mesNumero && $ano) {
         $sql .= " AND YEAR(fa.prazo) = ? AND MONTH(fa.prazo) = ?";
     }
 
     // ORDER BY usa alias de coluna, não de tabela
-    $sql .= " ORDER BY obra_id, imagem_nome";
+    $sql .= " ORDER BY obra_id, funcao_id DESC, imagem_nome";
 } else {
     // Consulta padrão para outros colaboradores
     $sql = "SELECT 

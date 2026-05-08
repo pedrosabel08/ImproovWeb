@@ -417,7 +417,7 @@ document.addEventListener("DOMContentLoaded", function () {
               totalValor += parseFloat(item.valor) || 0;
             } else if (item.origem === "funcao_animacao") {
               cellNomeImagem.textContent = item.imagem_nome;
-              cellFuncao.textContent = "Animação";
+              cellFuncao.textContent = item.nome_funcao || "Animação";
               cellStatusFuncao.textContent = item.status;
               cellValor.textContent = item.valor;
               cellData.textContent = item.data_pagamento

@@ -27,12 +27,7 @@ $data_anima     = !empty($input['data_anima'])    ? $input['data_anima']     : d
 $prazo          = !empty($input['prazo'])          ? $input['prazo']          : null;
 $data_pagamento = !empty($input['data_pagamento']) ? $input['data_pagamento'] : null;
 
-$allowed_tipos = ['vertical', 'horizontal', 'reels'];
 
-if (!in_array($tipo_animacao, $allowed_tipos)) {
-    echo json_encode(['success' => false, 'error' => 'Tipo de animação inválido']);
-    exit;
-}
 if (!$imagem_id || !$colaborador_id) {
     echo json_encode(['success' => false, 'error' => 'imagem_id e colaborador_id são obrigatórios']);
     exit;

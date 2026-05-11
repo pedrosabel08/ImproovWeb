@@ -273,7 +273,7 @@ body {
 .gv-main {
   flex: 1;
   display: grid;
-  grid-template-rows: minmax(0, 3fr) minmax(0, 2fr);
+  grid-template-rows: auto auto;
   gap: 8px;
   min-height: 0;
 }
@@ -388,8 +388,7 @@ body {
 .gv-rows {
   flex: 1;
   min-height: 0;
-  overflow-y: hidden;
-  overflow-x: hidden;
+  overflow: hidden;
   display: grid;
   grid-auto-rows: 1fr;
 }
@@ -407,7 +406,7 @@ body {
 /* ─── Employee row ────────────────────────────────────────── */
 .gv-row {
   display: grid;
-  padding: 11px 16px;
+  padding: 8px 14px;
   border-bottom: 1px solid var(--gv-border);
   align-items: center;
   min-height: 0;
@@ -794,6 +793,88 @@ body {
   .gv-section--alter .gv-col-headers,
   .gv-section--alter .gv-row {
     grid-template-columns: 120px 1fr 1fr 1fr 1fr 120px;
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   NARROW DESKTOP  (1280px – 1599px)
+   Espaçamentos compactos para maximizar linhas visíveis
+   em viewports com altura intermediária (~800–900px).
+   Sobrescreve apenas o que precisa ser reduzido;
+   o restante herda do bloco 1025–1999px acima.
+   ═══════════════════════════════════════════════════ */
+@media screen and (min-width: 1280px) and (max-width: 1599px) {
+  .gv-header {
+    padding: 6px 14px;
+  }
+  .gv-clock {
+    font-size: 1.35rem;
+  }
+  .gv-title {
+    font-size: 1.05rem;
+  }
+  .gv-summary-bar {
+    padding: 4px 10px;
+    gap: 5px;
+  }
+  .gv-kpi {
+    padding: 6px 10px;
+  }
+  .gv-kpi-value {
+    font-size: 1.25rem;
+  }
+  .gv-kpi-icon {
+    width: 36px;
+    height: 36px;
+    font-size: 14px;
+  }
+  .gv-kpi--status {
+    gap: 8px;
+  }
+  .gv-body {
+    padding: 0 8px 4px;
+    gap: 5px;
+  }
+  .gv-main {
+    gap: 5px;
+  }
+  .gv-row-bottom {
+    gap: 5px;
+  }
+  .gv-section-header {
+    padding: 7px 14px;
+  }
+  .gv-col-headers {
+    padding: 3px 14px;
+  }
+  .gv-row {
+    padding: 8px 14px;
+  }
+  .gv-section-footer {
+    padding: 5px 14px;
+  }
+  .gv-foot-val {
+    font-size: 1.1rem;
+  }
+  .gv-section--persp .gv-col-headers,
+  .gv-section--persp .gv-row {
+    grid-template-columns: 130px 1fr 1fr 1fr 1fr 120px;
+  }
+  .gv-section--plants .gv-col-headers,
+  .gv-section--plants .gv-row,
+  .gv-section--alter .gv-col-headers,
+  .gv-section--alter .gv-row {
+    grid-template-columns: 110px 1fr 1fr 1fr 1fr 110px;
+  }
+}
+
+@media screen and (min-width: 1025px) and (max-width: 1279px) {
+  body {
+    overflow: auto;
+  }
+  .gv-body {
+    min-height: auto;
+    overflow: visible;
   }
 }
 
@@ -1217,79 +1298,130 @@ body {
 }
 
 /* ═══════════════════════════════════════════════════
-   TV  (≥ 2000px  OU  classe .gv-tv-mode forçada via ?tv=1)
-   Somente Perspectivas visível, tudo amplificado
+   MONITOR ULTRAWIDE / 2K+  (≥ 2500px)
+   Exibe as 3 tabelas com escala confortável para
+   monitores grandes (ex: 2560×1440, 3440×1440).
+   NÃO oculta Plantas nem Alterações.
    ═══════════════════════════════════════════════════ */
-@media screen and (min-width: 2600px) {
+@media screen and (min-width: 2500px) {
   .gv-kpi-value {
-    font-size: 3.75rem;
-  }
-  .gv-rec-val {
-    font-size: 3rem;
-  }
-  .gv-qtd-val {
-    font-size: 3rem;
-  }
-  .gv-falta-val {
-    font-size: 3.25rem;
-  }
-  .gv-prog-pct {
-    font-size: 2.5rem;
-  }
-  .gv-foot-val {
-    font-size: 3.5rem;
-  }
-  .gv-row-name-text {
-    font-size: 2.5rem;
-  }
-  .gv-clock {
-    font-size: 3.75rem;
-  }
-  .gv-title {
-    font-size: 3.5rem;
-  }
-  .gv-section-title {
-    font-size: 2.5rem;
-  }
-  .gv-section-meta-label strong {
-    font-size: 3.5rem;
+    font-size: 2.25rem;
   }
   .gv-kpi-label {
-    font-size: 1.25rem;
+    font-size: 0.85rem;
+  }
+  .gv-kpi-sub {
+    font-size: 0.8rem;
   }
   .gv-kpi-status-val {
-    font-size: 3.125rem;
+    font-size: 1.6rem;
   }
-  .gv-ritmo-label {
-    font-size: 1.75rem;
+  .gv-kpi-status-sub {
+    font-size: 0.85rem;
   }
-  .gv-ritmo-rate {
+  .gv-kpi-icon {
+    width: 56px;
+    height: 56px;
+    font-size: 22px;
+  }
+  .gv-clock {
+    font-size: 2.4rem;
+  }
+  .gv-title {
+    font-size: 2rem;
+  }
+  .gv-period {
+    font-size: 0.85rem;
+  }
+  .gv-dias-badge {
+    font-size: 1.4rem;
+  }
+  .gv-section-title {
+    font-size: 1rem;
+  }
+  .gv-col-h {
+    font-size: 0.75rem;
+  }
+  .gv-row-name-text {
+    font-size: 1.05rem;
+  }
+  .gv-avatar {
+    width: 38px;
+    height: 38px;
+    font-size: 14px;
+  }
+  .gv-prog-pct {
+    font-size: 1.2rem;
+  }
+  .gv-prog-label {
+    font-size: 0.75rem;
+  }
+  .gv-prog-bar {
+    height: 6px;
+  }
+  .gv-qtd-val {
     font-size: 1.5rem;
   }
+  .gv-qtd-sub {
+    font-size: 0.75rem;
+  }
+  .gv-falta-val {
+    font-size: 1.65rem;
+  }
+  .gv-rec-val {
+    font-size: 1.35rem;
+  }
+  .gv-rec-sub {
+    font-size: 0.7rem;
+  }
+  .gv-ritmo-label {
+    font-size: 0.9rem;
+  }
+  .gv-ritmo-rate {
+    font-size: 0.78rem;
+  }
   .gv-ritmo-icon {
-    font-size: 2.25rem;
+    font-size: 1.3rem;
+  }
+  .gv-foot-val {
+    font-size: 1.8rem;
   }
   .gv-foot-left,
   .gv-foot-right,
   .gv-section-meta-label {
-    font-size: 1.25rem;
+    font-size: 0.75rem;
   }
-  .gv-period {
-    font-size: 1.25rem;
+  .gv-section-meta-label strong {
+    font-size: 1.35rem;
   }
-  .gv-col-h {
-    font-size: 1.5rem;
+  .gv-row {
+    padding: 14px 20px;
+  }
+  .gv-section-header {
+    padding: 12px 20px;
+  }
+  .gv-col-headers {
+    padding: 6px 20px;
+  }
+  .gv-section-footer {
+    padding: 10px 20px;
   }
   .gv-section--persp .gv-col-headers,
   .gv-section--persp .gv-row {
-    grid-template-columns: 240px 1fr 1fr 1fr 1fr 200px;
+    grid-template-columns: 200px 1fr 1fr 1fr 1fr 180px;
   }
-  /* Oculta Plantas e Alterações — só Perspectivas na TV */
+  .gv-section--plants .gv-col-headers,
+  .gv-section--plants .gv-row,
+  .gv-section--alter .gv-col-headers,
+  .gv-section--alter .gv-row {
+    grid-template-columns: 180px 1fr 1fr 1fr 1fr 160px;
+  }
+  /* Mantém as 3 tabelas visíveis */
   .gv-row-bottom {
-    display: none;
+    display: grid;
   }
   .gv-main {
-    grid-template-rows: 1fr;
+    grid-template-rows: minmax(0, 3fr) minmax(0, 2fr);
   }
 }
 

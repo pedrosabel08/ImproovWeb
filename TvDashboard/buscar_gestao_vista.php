@@ -424,7 +424,13 @@ $allCollabImageIds = array_merge($perspIds, $plantasIds, $alterIds);
 $placeholdersImg = implode(',', array_fill(0, count($allCollabImageIds), '?'));
 $typesImg = str_repeat('i', count($allCollabImageIds));
 
-$sqlImg = "SELECT idcolaborador, imagem FROM colaborador WHERE idcolaborador IN ($placeholdersImg)";
+$sqlImg = "SELECT c.idcolaborador, COALESCE(c.imagem, iu.thumb) AS imagem
+FROM
+    colaborador c
+    LEFT JOIN usuario u ON c.idcolaborador = u.idcolaborador
+    LEFT JOIN informacoes_usuario iu ON iu.usuario_id = u.idusuario
+WHERE
+    c.idcolaborador IN ($placeholdersImg)";
 $stmtImg = $conn->prepare($sqlImg);
 $stmtImg->bind_param($typesImg, ...$allCollabImageIds);
 $stmtImg->execute();
@@ -457,7 +463,7 @@ foreach ($perspIds as $cid) {
       $imagem_url = $rawImg;
     } else {
       $rawImg = preg_replace('#^\./+#', '', $rawImg);
-      $imagem_url = '../' . $rawImg;
+      $imagem_url = $rawImg;
     }
   }
   $perspFunc[] = buildFuncionario($perspNames[$cid], $cid, $qtd, $rec, $pct, $imagem_url);
@@ -472,8 +478,7 @@ foreach ($finIdx as $cid => $nomes) {
     $outrosRec  = max($outrosRec, $recFinIdx[$cid]['Finalização Completa'] ?? 0);
   }
 }
-$outrosPct = ($metaPerspInd !== null && $metaPerspInd > 0) ? (int) round(($outrosQtd / $metaPerspInd) * 100) : null;
-$perspFunc[] = buildFuncionario('Outros', 0, $outrosQtd, $outrosRec, $outrosPct, null);
+$perspFunc[] = buildFuncionario('Outros', 0, $outrosQtd, $outrosRec, null, null);
 
 // Plantas Humanizadas
 $metaPlantasTotal = $metaMap[7] ?? null;
@@ -491,7 +496,7 @@ foreach ($plantasIds as $cid) {
       $imagem_url = $rawImg;
     } else {
       $rawImg = preg_replace('#^\./+#', '', $rawImg);
-      $imagem_url = '../' . $rawImg;
+      $imagem_url = $rawImg;
     }
   }
   $plantasFunc[] = buildFuncionario($plantasNames[$cid], $cid, $qtd, $rec, $pct, $imagem_url);
@@ -513,7 +518,7 @@ foreach ($alterIds as $cid) {
       $imagem_url = $rawImg;
     } else {
       $rawImg = preg_replace('#^\./+#', '', $rawImg);
-      $imagem_url = '../' . $rawImg;
+      $imagem_url = $rawImg;
     }
   }
   $alterFunc[] = buildFuncionario($alterNames[$cid], $cid, $qtd, $rec, $pct, $imagem_url);

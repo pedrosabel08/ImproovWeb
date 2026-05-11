@@ -95,7 +95,7 @@ $__basePath = (strpos($__reqUri, '/flow/ImproovWeb/') !== false || preg_match('~
                     <label for="">Gerencial</label>
                     <li><a title="Tela Gerencial" href="https://improov.com.br/flow/ImproovWeb/TelaGerencial"><i
                                 class="fa-solid fa-gauge-high"></i><span> Tela Gerencial</span></a></li>
-                    <li><a title="Configurar Metas - TV" href="https://improov.com.br/flow/ImproovWeb/TvDashboard/admin.php"><i
+                    <li><a title="Configurar Metas - TV" href="https://improov.com.br/flow/ImproovWeb/AdminMetas"><i
                                 class="fa-solid fa-bullseye"></i><span> Metas TV</span></a></li>
                     <li><a title="Flow Track" href="https://improov.com.br/flow/ImproovWeb/FlowTrack"><i
                                 class="fa-solid fa-route"></i><span> Flow Track</span></a></li>
@@ -144,7 +144,8 @@ $__basePath = (strpos($__reqUri, '/flow/ImproovWeb/') !== false || preg_match('~
                                 class="fa-solid fa-bell"></i><span>Notificações</span></a></li>
                     <li><a title="Flow Referências" href="https://improov.com.br/flow/ImproovWeb/FlowReferencias"><i
                                 class="fas fa-paperclip"></i><span> Flow Referências</span></a></li>
-
+                    <li><a title="SIRE" href="https://improov.com.br/flow/ImproovWeb/SIRE"><i class="fa-solid fa-link"></i><span> SIRE</span></a></li>
+                    
                 <?php endif; ?>
 
             </ul>

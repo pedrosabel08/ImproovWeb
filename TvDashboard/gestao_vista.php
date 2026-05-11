@@ -1,3 +1,64 @@
+<?php
+require_once __DIR__ . '/../config/session_bootstrap.php';
+$__root = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/\\');
+foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWeb/config/version.php'] as $__p) {
+  if ($__p && is_file($__p)) {
+    require_once $__p;
+    break;
+  }
+}
+unset($__root, $__p);
+
+// session_start();
+$nome_usuario = $_SESSION['nome_usuario'];
+
+include '../conexaoMain.php';
+include_once __DIR__ . '/../conexao.php';
+
+$idusuario = $_SESSION['idusuario'];
+$tela_atual = basename($_SERVER['PHP_SELF']);
+// Use DB server time for ultima_atividade to avoid clock/timezone mismatches
+// $ultima_atividade = date('Y-m-d H:i:s');
+
+// We already extracted needed session values; close the session to release the lock
+// before performing heavier DB work below.
+if (session_status() === PHP_SESSION_ACTIVE) {
+  session_write_close();
+}
+
+// Use MySQL NOW() so the database records its own current timestamp
+$sql2 = "UPDATE logs_usuarios 
+         SET tela_atual = ?, ultima_atividade = NOW()
+         WHERE usuario_id = ?";
+$stmt2 = $conn->prepare($sql2);
+
+if (!$stmt2) {
+  die("Erro no prepare: " . $conn->error);
+}
+
+// 'si' indica os tipos: string, integer
+$stmt2->bind_param("si", $tela_atual, $idusuario);
+
+if (!$stmt2->execute()) {
+  die("Erro no execute: " . $stmt2->error);
+}
+$stmt2->close();
+
+$conn = conectarBanco();
+
+$clientes = obterClientes($conn);
+$obras = obterObras($conn);
+$obras_inativas = obterObras($conn, 1);
+$colaboradores = obterColaboradores($conn);
+$status_imagens = obterStatusImagens($conn);
+$funcoes = obterFuncoes($conn);
+$imagens = obterImagens($conn);
+$status_etapa = obterStatus($conn);
+
+$conn->close();
+?>
+
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 
@@ -159,7 +220,7 @@
     <i class="fa-solid fa-triangle-exclamation"></i> Sem conexão com o servidor
   </div>
 
-  <script src="gestao_vista.js"></script>
+  <script src="<?php echo asset_url('gestao_vista.js'); ?>"></script>
 </body>
 
 </html>

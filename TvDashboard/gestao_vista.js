@@ -87,7 +87,10 @@ function getProgressLabel(pct) {
 
 function calcularRitmo(qtd_parcial, meta_individual) {
   const diaAtual = getDiaAtual();
-  const diasNoMes = daysInMonth(new Date().getFullYear(), new Date().getMonth() + 1);
+  const diasNoMes = daysInMonth(
+    new Date().getFullYear(),
+    new Date().getMonth() + 1,
+  );
 
   const taxaAtual = diaAtual > 0 ? qtd_parcial / diaAtual : 0;
   const rateStr = taxaAtual > 0 ? `${taxaAtual.toFixed(1)}/dia` : "";
@@ -204,7 +207,7 @@ function buildEmployeeRow(f, meta_individual) {
   const hue = getAvatarHue(f.nome);
   const initial = f.nome.charAt(0).toUpperCase();
   const imagemAvatar = f.imagem_url
-    ? `<div class="gv-avatar" style="background:hsl(${hue},55%,38%)"><img src="${f.imagem_url}" alt="${f.nome}" class="gv-avatar-img"></div>`
+    ? `<div class="gv-avatar" style="background:hsl(${hue},55%,38%)"><img src="https://improov.com.br/flow/ImproovWeb/${f.imagem_url}" alt="${f.nome}" class="gv-avatar-img"></div>`
     : `<div class="gv-avatar" style="background:hsl(${hue},55%,38%)">${initial}</div>`;
   const metaSub = meta_individual !== null ? `de ${meta_individual}` : "";
   const recorde = Number.isFinite(f.recorde_mes) ? f.recorde_mes : 0;
@@ -291,7 +294,7 @@ function buildPerspectivas(data) {
     rows = "";
   for (const f of all) {
     totalQtd += f.qtd_parcial;
-    rows += buildEmployeeRow(f, meta_individual);
+    rows += buildEmployeeRow(f, f.colaborador_id === 0 ? null : meta_individual);
   }
   document.getElementById("bodyPerspectivas").innerHTML = rows;
   renderSectionFooter("footPerspectivas", totalQtd, meta_total);

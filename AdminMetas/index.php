@@ -16,10 +16,24 @@ foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWe
 }
 unset($__root, $__p);
 
+include '../conexaoMain.php';
+include '../conexao.php';
+
 if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
-    header('Location: ../index.html');
-    exit;
+    header("Location: ../index.html");
+    exit();
 }
+
+$conn = conectarBanco();
+
+$clientes = obterClientes($conn);
+$obras = obterObras($conn);
+$colaboradores = obterColaboradores($conn);
+$status_imagens = obterStatusImagens($conn);
+$funcoes = obterFuncoes($conn);
+$imagens = obterImagens($conn);
+
+$conn->close();
 
 $mesSel = isset($_GET['mes']) ? (int) $_GET['mes'] : (int) date('m');
 $anoSel = isset($_GET['ano']) ? (int) $_GET['ano'] : (int) date('Y');
@@ -80,7 +94,6 @@ $anoAtual = (int) date('Y');
                 <img src="../gif/assinatura_preto.gif" class="page-header-logo" id="gif" alt="ImproovWeb">
 
                 <div class="page-heading">
-                    <span class="page-kicker">heart.made</span>
                     <h1 class="page-title">Metas por Colaborador</h1>
                     <p class="page-subtitle">Defina e edite metas mensais por função e colaborador com foco em
                         velocidade operacional.</p>

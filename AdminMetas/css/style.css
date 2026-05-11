@@ -891,6 +891,15 @@ body::before {
   font-size: 11px;
   font-weight: 700;
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.avatar-token img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+  display: block;
 }
 
 .colab-meta {
@@ -1304,6 +1313,51 @@ body::before {
 
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(148, 163, 184, 0.5);
+}
+
+/* ── Tooltips (JS-driven, position:fixed — immune to overflow:hidden) ─────── */
+.app-tooltip {
+  position: fixed;
+  z-index: 99999;
+  background: rgba(7, 11, 21, 0.97);
+  color: #e8eaed;
+  font-size: 11.5px;
+  font-weight: 500;
+  font-family:
+    "Inter",
+    -apple-system,
+    sans-serif;
+  line-height: 1.4;
+  padding: 6px 10px;
+  border-radius: 8px;
+  white-space: nowrap;
+  pointer-events: none;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.app-tooltip.is-visible {
+  opacity: 1;
+}
+
+.app-tooltip::after {
+  content: "";
+  position: absolute;
+  left: var(--arrow-left, 50%);
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+}
+
+.app-tooltip.pos-above::after {
+  top: 100%;
+  border-top-color: rgba(7, 11, 21, 0.97);
+}
+
+.app-tooltip.pos-below::after {
+  bottom: 100%;
+  border-bottom-color: rgba(7, 11, 21, 0.97);
 }
 
 @media (max-width: 1366px) {

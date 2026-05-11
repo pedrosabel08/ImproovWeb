@@ -158,9 +158,12 @@ try {
         SELECT DISTINCT fc.colaborador_id,
             fc.funcao_id,
             c.nome_colaborador,
+            COALESCE(c.imagem, iu.thumb) AS foto_colaborador,
             fc.nivel_finalizacao
         FROM funcao_colaborador fc
         JOIN colaborador c ON c.idcolaborador = fc.colaborador_id
+        LEFT JOIN usuario u ON u.idcolaborador = c.idcolaborador
+        LEFT JOIN informacoes_usuario iu ON iu.usuario_id = u.idusuario
         WHERE fc.funcao_id IN ($funcaoIds)
           AND fc.colaborador_id IS NOT NULL
           AND c.ativo = 1
@@ -175,6 +178,15 @@ try {
                         AND fc2.funcao_id = 4
                 )
             )
+            AND NOT (
+                fc.funcao_id = 4
+                AND EXISTS (
+                    SELECT 1
+                    FROM funcao_colaborador fc2
+                    WHERE fc2.colaborador_id = fc.colaborador_id
+                        AND fc2.funcao_id = 7
+                )
+            )
         ORDER BY c.nome_colaborador ASC
     ";
 
@@ -186,6 +198,7 @@ try {
         $colabsByFuncao[(int) $r['funcao_id']][(int) $r['colaborador_id']] = [
             'nome' => $r['nome_colaborador'],
             'nivel_finalizacao' => isset($r['nivel_finalizacao']) ? (int) $r['nivel_finalizacao'] : null,
+            'foto_colaborador' => $r['foto_colaborador'] ?? null,
         ];
     }
     $stmtC->close();
@@ -203,6 +216,127 @@ try {
         )
     ";
 
+    // ── Condição: apenas não pagos ────────────────────────────────────────────
+    // Exclui itens já pagos até o fim do período consultado.
+    // Usa dois ? com o mesmo valor (fim do mês) — bind em cada query.
+    // Para funcao_id=4 (Finalização Completa / Planta Humanizada): só exclui se houver pagamento
+    // "completo" (observacao IS NULL / '' / 'Pago Completa'). Itens pagos apenas como
+    // 'Finalização Parcial' ainda não foram totalmente pagos e DEVEM contar.
+    // Para demais funções: qualquer pagamento_itens com data <= período exclui o item.
+    // Parâmetros (4 strings, mesmo valor = fim do mês): pi_full.date, data_pgto, pi_np.date, data_pgto.
+    $WHERE_NAO_PAGO = "
+        AND (
+            (
+                fi.funcao_id = 4
+                AND (
+                    (
+                        EXISTS (
+                            SELECT 1 FROM pagamento_itens pi_any
+                            JOIN funcao_imagem fi_pi4 ON fi_pi4.idfuncao_imagem = pi_any.origem_id
+                            WHERE pi_any.origem = 'funcao_imagem'
+                              AND fi_pi4.colaborador_id = fi.colaborador_id
+                              AND fi_pi4.imagem_id = fi.imagem_id
+                        )
+                        AND NOT EXISTS (
+                            SELECT 1 FROM pagamento_itens pi_full
+                            JOIN funcao_imagem fi_pi4f ON fi_pi4f.idfuncao_imagem = pi_full.origem_id
+                            WHERE pi_full.origem = 'funcao_imagem'
+                              AND fi_pi4f.colaborador_id = fi.colaborador_id
+                              AND fi_pi4f.imagem_id = fi.imagem_id
+                              AND DATE(pi_full.criado_em) <= ?
+                              AND (pi_full.observacao IS NULL OR TRIM(pi_full.observacao) = '' OR TRIM(pi_full.observacao) = 'Pago Completa')
+                        )
+                    )
+                    OR (
+                        NOT EXISTS (
+                            SELECT 1 FROM pagamento_itens pi_any2
+                            JOIN funcao_imagem fi_pi4b ON fi_pi4b.idfuncao_imagem = pi_any2.origem_id
+                            WHERE pi_any2.origem = 'funcao_imagem'
+                              AND fi_pi4b.colaborador_id = fi.colaborador_id
+                              AND fi_pi4b.imagem_id = fi.imagem_id
+                        )
+                        AND (
+                            fi.data_pagamento IS NULL
+                            OR CAST(fi.data_pagamento AS CHAR) = '0000-00-00'
+                            OR fi.data_pagamento > ?
+                        )
+                    )
+                )
+            )
+            OR (
+                fi.funcao_id <> 4
+                AND NOT EXISTS (
+                    SELECT 1 FROM pagamento_itens pi_np
+                    WHERE pi_np.origem = 'funcao_imagem'
+                      AND pi_np.origem_id = fi.idfuncao_imagem
+                      AND DATE(pi_np.criado_em) <= ?
+                )
+                AND (
+                    fi.data_pagamento IS NULL
+                    OR CAST(fi.data_pagamento AS CHAR) = '0000-00-00'
+                    OR fi.data_pagamento > ?
+                )
+            )
+        )
+    ";
+
+    // Versão dinâmica para queries que iteram períodos (p.yr, p.mo) — sem ? extras.
+    $WHERE_NAO_PAGO_DYNAMIC = "
+        AND (
+            (
+                fi.funcao_id = 4
+                AND (
+                    (
+                        EXISTS (
+                            SELECT 1 FROM pagamento_itens pi_any
+                            JOIN funcao_imagem fi_pi4 ON fi_pi4.idfuncao_imagem = pi_any.origem_id
+                            WHERE pi_any.origem = 'funcao_imagem'
+                              AND fi_pi4.colaborador_id = fi.colaborador_id
+                              AND fi_pi4.imagem_id = fi.imagem_id
+                        )
+                        AND NOT EXISTS (
+                            SELECT 1 FROM pagamento_itens pi_full
+                            JOIN funcao_imagem fi_pi4f ON fi_pi4f.idfuncao_imagem = pi_full.origem_id
+                            WHERE pi_full.origem = 'funcao_imagem'
+                              AND fi_pi4f.colaborador_id = fi.colaborador_id
+                              AND fi_pi4f.imagem_id = fi.imagem_id
+                              AND DATE(pi_full.criado_em) <= LAST_DAY(DATE(CONCAT(p.yr, '-', LPAD(p.mo, 2, '0'), '-01')))
+                              AND (pi_full.observacao IS NULL OR TRIM(pi_full.observacao) = '' OR TRIM(pi_full.observacao) = 'Pago Completa')
+                        )
+                    )
+                    OR (
+                        NOT EXISTS (
+                            SELECT 1 FROM pagamento_itens pi_any2
+                            JOIN funcao_imagem fi_pi4b ON fi_pi4b.idfuncao_imagem = pi_any2.origem_id
+                            WHERE pi_any2.origem = 'funcao_imagem'
+                              AND fi_pi4b.colaborador_id = fi.colaborador_id
+                              AND fi_pi4b.imagem_id = fi.imagem_id
+                        )
+                        AND (
+                            fi.data_pagamento IS NULL
+                            OR CAST(fi.data_pagamento AS CHAR) = '0000-00-00'
+                            OR fi.data_pagamento > LAST_DAY(DATE(CONCAT(p.yr, '-', LPAD(p.mo, 2, '0'), '-01')))
+                        )
+                    )
+                )
+            )
+            OR (
+                fi.funcao_id <> 4
+                AND NOT EXISTS (
+                    SELECT 1 FROM pagamento_itens pi_np
+                    WHERE pi_np.origem = 'funcao_imagem'
+                      AND pi_np.origem_id = fi.idfuncao_imagem
+                      AND DATE(pi_np.criado_em) <= LAST_DAY(DATE(CONCAT(p.yr, '-', LPAD(p.mo, 2, '0'), '-01')))
+                )
+                AND (
+                    fi.data_pagamento IS NULL
+                    OR CAST(fi.data_pagamento AS CHAR) = '0000-00-00'
+                    OR fi.data_pagamento > LAST_DAY(DATE(CONCAT(p.yr, '-', LPAD(p.mo, 2, '0'), '-01')))
+                )
+            )
+        )
+    ";
+
     // ── 2. Produção do mês atual por colaborador+funcao ───────────────────────
     // LEFT JOIN ico para calcular eff_funcao_id (planta humanizada → 7)
     $sqlCurr = "
@@ -215,12 +349,13 @@ try {
           AND fi.colaborador_id IS NOT NULL
           AND $WHERE_MES
           AND $WHERE_STATUS
+          $WHERE_NAO_PAGO
         GROUP BY fi.colaborador_id,
                  $EFF_FUNCAO
     ";
 
     $stmtCurr = $conn->prepare($sqlCurr);
-    $stmtCurr->bind_param('iiiis', $mes, $ano, $mes, $ano, $fimMesDataTime);
+    $stmtCurr->bind_param('iiiisssss', $mes, $ano, $mes, $ano, $fimMesDataTime, $fimMesData, $fimMesData, $fimMesData, $fimMesData);
     $stmtCurr->execute();
 
     $currMap = []; // [funcao_id][colaborador_id] = qtd
@@ -240,12 +375,13 @@ try {
           AND fi.colaborador_id IS NOT NULL
           AND $WHERE_MES
           AND $WHERE_STATUS
+          $WHERE_NAO_PAGO
         GROUP BY fi.colaborador_id,
                  $EFF_FUNCAO
     ";
 
     $stmtPrev = $conn->prepare($sqlPrev);
-    $stmtPrev->bind_param('iiiis', $mesAnt, $anoAnt, $mesAnt, $anoAnt, $fimAntDataTime);
+    $stmtPrev->bind_param('iiiisssss', $mesAnt, $anoAnt, $mesAnt, $anoAnt, $fimAntDataTime, $fimAntData, $fimAntData, $fimAntData, $fimAntData);
     $stmtPrev->execute();
 
     $prevMap = []; // [funcao_id][colaborador_id] = qtd
@@ -309,6 +445,7 @@ try {
               AND NOT ($IS_PARCIAL_AT_PERIOD)
               AND NOT (p.yr = ? AND p.mo = ?)
               AND NOT (p.yr = 2024 AND p.mo = 10)
+              $WHERE_NAO_PAGO_DYNAMIC
             GROUP BY fi.colaborador_id, $EFF_FUNCAO, p.yr, p.mo
         ) sub
         GROUP BY colaborador_id, funcao_id
@@ -378,6 +515,7 @@ try {
               AND NOT ($IS_PARCIAL_AT_PERIOD)
               AND NOT (p.yr = ? AND p.mo = ?)
               AND NOT (p.yr = 2024 AND p.mo = 10)
+              $WHERE_NAO_PAGO_DYNAMIC
             GROUP BY $EFF_FUNCAO, p.yr, p.mo
         ) sub
         GROUP BY funcao_id
@@ -430,6 +568,7 @@ try {
             $nivelFinalizacao = $colabInfo['nivel_finalizacao'] ?? null;
             $parcial = $currMap[$funcaoId][$colaboradorId] ?? 0;
             $anterior = $prevMap[$funcaoId][$colaboradorId] ?? 0;
+            $thumb = $colabInfo['foto_colaborador'] ?? null;
 
             $recEntry = $recMap[$funcaoId][$colaboradorId] ?? null;
             $recordeDb = $recEntry['recorde'] ?? 0;
@@ -457,6 +596,7 @@ try {
                 'recorde' => $recorde,
                 'recorde_mes' => $recordeMes,
                 'meta' => $meta,
+                'foto_colaborador' => $thumb,
             ];
         }
 

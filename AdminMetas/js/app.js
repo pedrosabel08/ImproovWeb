@@ -60,6 +60,7 @@
     bindFilters();
     bindActions();
     bindFilterSheet();
+    initTooltip();
     atualizarBotaoSalvar();
     syncSearchClearButton();
     carregarDados();
@@ -438,7 +439,7 @@
           <div class="funcao-copy">
             <div class="funcao-row">
               <span class="funcao-nome">${escHtml(funcao.nome_funcao)}</span>
-              ${recordeEquipeAtingido ? '<span class="mini-flag record-flag">Recorde</span>' : ""}
+              ${recordeEquipeAtingido ? `<span class="mini-flag record-flag"${funcao.recorde_equipe_mes ? ` data-tooltip="Recorde da equipe em ${escHtml(formatPeriodo(funcao.recorde_equipe_mes))}"` : ""}>Recorde</span>` : ""}
             </div>
             <div class="funcao-meta-row">
               <span class="funcao-count">${countLabel}</span>
@@ -450,14 +451,15 @@
       <div class="accordion-header-stats">
         ${buildStatChip("Parcial", funcao.total_parcial)}
         ${buildStatChip("Mês ant.", funcao.total_anterior)}
-        ${buildStatChip("Recorde", funcao.recorde_equipe)}
+        ${buildStatChip("Recorde", funcao.recorde_equipe, funcao.recorde_equipe_mes ? `Recorde em ${formatPeriodo(funcao.recorde_equipe_mes)}` : null)}
       </div>
       <span class="accordion-chevron"><i class="fa-solid fa-angle-right"></i></span>`;
   }
 
-  function buildStatChip(label, value) {
+  function buildStatChip(label, value, tooltip) {
+    const tooltipAttr = tooltip ? ` data-tooltip="${escHtml(tooltip)}"` : "";
     return `
-      <div class="stat-chip">
+      <div class="stat-chip"${tooltipAttr}>
         <span class="stat-label">${label}</span>
         <strong class="stat-val">${value}</strong>
       </div>`;
@@ -532,7 +534,7 @@
       <tr class="${isDirty ? "row-dirty" : ""}" data-key="${key}">
         <td class="colab-cell" data-label="Colaborador">
           <div class="colab-identity">
-            <span class="avatar-token">${escHtml(getInitials(colaborador.nome))}</span>
+            <span class="avatar-token">${buildAvatarContent(colaborador)}</span>
             <div class="colab-meta">
               <div class="colab-headline">
                 <strong class="colab-name">${escHtml(colaborador.nome)}</strong>
@@ -544,7 +546,7 @@
         </td>
         <td data-role="parcial" data-label="Parcial atual">${buildPartialMetricHTML(colaborador.parcial, progress)}</td>
         <td class="col-center" data-label="Mês anterior">${colaborador.mes_anterior}</td>
-        <td class="col-center" data-label="Recorde">${colaborador.recorde > 0 ? colaborador.recorde : "—"}</td>
+        <td class="col-center" data-label="Recorde">${colaborador.recorde > 0 ? `<span data-tooltip="${escHtml(colaborador.recorde_mes ? `Recorde em ${formatPeriodo(colaborador.recorde_mes)}` : "Recorde registrado")}">${colaborador.recorde}</span>` : "—"}</td>
         <td class="col-center meta-cell" data-label="Meta">
           <div class="meta-editor ${isDirty ? "is-dirty" : ""}">
             <input
@@ -564,6 +566,13 @@
         <td class="col-center suggestion-cell" data-role="suggestion" data-label="Meta sugerida">${buildSuggestionHTML(sugestao)}</td>
         <td class="col-center status-cell" data-role="status" data-label="Status">${buildStatusHTML(status)}</td>
       </tr>`;
+  }
+
+  function buildAvatarContent(colaborador) {
+    if (colaborador.foto_colaborador) {
+      return `<img src="https://improov.com.br/flow/ImproovWeb/${escHtml(colaborador.foto_colaborador)}" alt="${escHtml(colaborador.nome)}" loading="lazy">`;
+    }
+    return escHtml(getInitials(colaborador.nome));
   }
 
   function buildRecordHint(recordeMes) {
@@ -1181,4 +1190,67 @@
   }
 
   document.addEventListener("DOMContentLoaded", init);
+
+  // ── Tooltip engine (position:fixed — avoids overflow:hidden clipping) ──────
+  function initTooltip() {
+    const tip = document.createElement("div");
+    tip.className = "app-tooltip";
+    tip.setAttribute("aria-hidden", "true");
+    document.body.appendChild(tip);
+
+    function show(el) {
+      const text = el.dataset.tooltip;
+      if (!text) return;
+
+      tip.textContent = text;
+      tip.classList.remove("pos-above", "pos-below", "is-visible");
+      // Place off-screen to measure dimensions before revealing
+      tip.style.top = "-9999px";
+      tip.style.left = "0px";
+
+      const tipW = tip.offsetWidth;
+      const tipH = tip.offsetHeight;
+      const rect = el.getBoundingClientRect();
+      const gap = 8;
+      const arrowH = 5;
+
+      const spaceAbove = rect.top;
+      const placeBelow = spaceAbove < tipH + gap + arrowH + 4;
+
+      let top = placeBelow
+        ? rect.bottom + gap + arrowH
+        : rect.top - tipH - gap - arrowH;
+
+      // Center horizontally on the element, clamp within viewport
+      let left = rect.left + rect.width / 2 - tipW / 2;
+      const leftClamped = Math.max(
+        8,
+        Math.min(left, window.innerWidth - tipW - 8),
+      );
+
+      // Adjust arrow position to point at the element center even when clamped
+      const arrowLeft = rect.left + rect.width / 2 - leftClamped;
+      const arrowLeftPct = Math.max(10, Math.min(arrowLeft, tipW - 10));
+      tip.style.setProperty("--arrow-left", `${arrowLeftPct}px`);
+
+      tip.classList.add(placeBelow ? "pos-below" : "pos-above");
+      tip.style.top = `${top}px`;
+      tip.style.left = `${leftClamped}px`;
+      tip.classList.add("is-visible");
+    }
+
+    function hide() {
+      tip.classList.remove("is-visible");
+    }
+
+    document.addEventListener("mouseover", (e) => {
+      const el = e.target.closest("[data-tooltip]");
+      if (el) show(el);
+    });
+
+    document.addEventListener("mouseout", (e) => {
+      const el = e.target.closest("[data-tooltip]");
+      if (el && !el.contains(e.relatedTarget)) hide();
+    });
+  }
 })();

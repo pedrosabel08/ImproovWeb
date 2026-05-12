@@ -1,3 +1,5 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap");
+
 /* gestao_vista.css – Dark card-based layout for Gestão à Vista */
 
 :root {
@@ -1004,15 +1006,18 @@ body {
     grid-template-columns: 1fr 1fr;
   }
   /* Oculta coluna de progresso */
-  .gv-col-headers .gv-col-h:nth-child(2),
-  .gv-row-progresso {
+  .gv-section--plants .gv-col-headers .gv-col-h:nth-child(2),
+  .gv-section--plants .gv-row-progresso,
+  .gv-section--alter .gv-col-headers .gv-col-h:nth-child(2),
+  .gv-section--alter .gv-row-progresso {
     display: none;
   }
+
   /* 5 colunas restantes preenchendo 100% */
-  .gv-section--persp .gv-col-headers,
+  /* .gv-section--persp .gv-col-headers,
   .gv-section--persp .gv-row {
     grid-template-columns: 130px 1fr 1fr 1fr 130px;
-  }
+  } */
   .gv-section--plants .gv-col-headers,
   .gv-section--plants .gv-row,
   .gv-section--alter .gv-col-headers,
@@ -1178,7 +1183,7 @@ body {
     height: 24px;
   }
   .gv-clock {
-    font-size: 1.1rem;
+    display: none;
   }
   .gv-title {
     font-size: 0.95rem;
@@ -1202,6 +1207,10 @@ body {
   }
   .gv-kpi {
     padding: 7px 9px;
+  }
+  .gv-kpi:last-child {
+    grid-column: 1 / 3;
+    text-align: center;
   }
   .gv-kpi--status {
     grid-column: 1 / -1;
@@ -1425,7 +1434,7 @@ body {
   }
 }
 
-.gv-tv-mode .gv-kpi-value {
+html.gv-tv-mode .gv-kpi-value {
   font-size: 3.75rem;
 }
 
@@ -1435,6 +1444,9 @@ html.gv-tv-mode .gv-rec-val {
 
 html.gv-tv-mode .gv-qtd-val {
   font-size: 3rem;
+}
+html.gv-tv-mode .gv-qtd-sub {
+  font-size: 1.5rem;
 }
 
 html.gv-tv-mode .gv-falta-val {

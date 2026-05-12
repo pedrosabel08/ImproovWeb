@@ -10,12 +10,14 @@ foreach ([$__root . '/flow/ImproovWeb/config/version.php', $__root . '/ImproovWe
 unset($__root, $__p);
 
 // session_start();
-$nome_usuario = $_SESSION['nome_usuario'];
 
-include '../conexaoMain.php';
-include_once __DIR__ . '/../conexao.php';
+// Verificar se o usuário está logado
+// if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
+//   // Se não estiver logado, redirecionar para a página de login
+//   header("Location: ../index.html");
+//   exit();
+// }
 
-$idusuario = $_SESSION['idusuario'];
 $tela_atual = basename($_SERVER['PHP_SELF']);
 // Use DB server time for ultima_atividade to avoid clock/timezone mismatches
 // $ultima_atividade = date('Y-m-d H:i:s');
@@ -25,6 +27,10 @@ $tela_atual = basename($_SERVER['PHP_SELF']);
 if (session_status() === PHP_SESSION_ACTIVE) {
   session_write_close();
 }
+
+// Carrega conexão com o banco antes de executar atualizações de logs
+include '../conexaoMain.php';
+$conn = conectarBanco();
 
 // Use MySQL NOW() so the database records its own current timestamp
 $sql2 = "UPDATE logs_usuarios 
@@ -44,19 +50,14 @@ if (!$stmt2->execute()) {
 }
 $stmt2->close();
 
-$conn = conectarBanco();
-
 $clientes = obterClientes($conn);
 $obras = obterObras($conn);
 $obras_inativas = obterObras($conn, 1);
 $colaboradores = obterColaboradores($conn);
-$status_imagens = obterStatusImagens($conn);
-$funcoes = obterFuncoes($conn);
-$imagens = obterImagens($conn);
-$status_etapa = obterStatus($conn);
 
 $conn->close();
 ?>
+
 
 
 <!DOCTYPE html>
@@ -70,13 +71,21 @@ $conn->close();
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
   <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTm1Xb7btbNV33nmxv08I1X4u9QTDNIKwrMyw&s" type="image/x-icon">
-  <link rel="stylesheet" href="gestao_vista.css">
+  <link rel="stylesheet" href="<?php echo asset_url('gestao_vista.css'); ?>">
   <script>
     /* TV mode: ?tv=1 ativa, ?tv=0 desativa, persiste via localStorage */
     (function() {
       var p = new URLSearchParams(location.search);
-      if (p.get('tv') === '1') localStorage.setItem('gvTvMode', '1');
-      else if (p.get('tv') === '0') localStorage.removeItem('gvTvMode');
+      var tvParam = p.get('tv');
+
+      // Apenas ativa se tiver ?tv=1 explícito
+      if (tvParam === '1') {
+        localStorage.setItem('gvTvMode', '1');
+      } else {
+        // Se não tiver tv na URL ou tiver outro valor, remove do localStorage
+        localStorage.removeItem('gvTvMode');
+      }
+
       if (localStorage.getItem('gvTvMode') === '1')
         document.documentElement.classList.add('gv-tv-mode');
     })();

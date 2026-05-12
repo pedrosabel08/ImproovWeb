@@ -9,6 +9,8 @@ header('Content-Type: application/json; charset=utf-8');
 
 require_once __DIR__ . '/../conexao.php';
 
+$conn->query("SET SESSION sql_mode = (SELECT REPLACE(@@sql_mode, 'ONLY_FULL_GROUP_BY', ''))");
+
 $mes = isset($_GET['mes']) ? (int) $_GET['mes'] : (int) date('m');
 $ano = isset($_GET['ano']) ? (int) $_GET['ano'] : (int) date('Y');
 
@@ -27,176 +29,87 @@ $alterIds = [34, 7];
 $alterNames = [34 => 'Pedro Henrique', 7 => 'Anderson'];
 
 // ── Query: produção atual – Finalização (funcao_id=4) por colaborador ─────────
-// Replica exatamente o CASE de pagamento e nome_funcao de buscar_tv.php,
-// mas agrupa por (colaborador_id, nome_funcao) em vez de só nome_funcao.
+// Alinhado com carregar_dados.php: WHERE_NAO_PAGO, AND NOT (funcao_id=4 AND ico.status_id=1), COUNT(DISTINCT)
 $sqlFin = "
-SELECT t.colaborador_id, t.nome_funcao, COUNT(*) AS quantidade
-FROM (
-  SELECT fi.idfuncao_imagem, fi.funcao_id, fi.colaborador_id,
-    CASE
-      WHEN fi.funcao_id = 4 AND (
-        hi_snap.status_id = 1
-        OR (
-          hi_snap.status_id IS NULL AND (
-            EXISTS (
-              SELECT 1 FROM funcao_imagem fi_sub JOIN funcao f_sub ON fi_sub.funcao_id = f_sub.idfuncao
-              WHERE fi_sub.imagem_id = fi.imagem_id AND LOWER(f_sub.nome_funcao) LIKE '%pre%'
-            )
-            OR ico.status_id = 1
-          )
+SELECT fi.colaborador_id,
+  CASE
+    WHEN fi.funcao_id = 4 AND LOWER(TRIM(ico.tipo_imagem)) = 'planta humanizada' THEN 'Finalização de Planta Humanizada'
+    WHEN fi.funcao_id = 4 THEN 'Finalização Completa'
+  END AS nome_funcao,
+  COUNT(DISTINCT fi.idfuncao_imagem) AS quantidade
+FROM funcao_imagem fi
+JOIN funcao f ON f.idfuncao = fi.funcao_id
+LEFT JOIN imagens_cliente_obra ico ON fi.imagem_id = ico.idimagens_cliente_obra
+WHERE fi.funcao_id = 4
+  AND fi.colaborador_id NOT IN (21, 15, 7, 34)
+  AND NOT (fi.funcao_id = 4 AND ico.status_id = 1)
+  AND (
+    EXISTS (
+      SELECT 1 FROM log_alteracoes la
+      WHERE la.funcao_imagem_id = fi.idfuncao_imagem
+        AND MONTH(la.data) = ? AND YEAR(la.data) = ?
+    )
+    OR (MONTH(fi.prazo) = ? AND YEAR(fi.prazo) = ?)
+  )
+  AND (
+    LOWER(TRIM(fi.status)) IN ('finalizado','em aprovação','ajuste','aprovado com ajustes','aprovado')
+    OR EXISTS (
+      SELECT 1 FROM log_alteracoes la_fin
+      WHERE la_fin.funcao_imagem_id = fi.idfuncao_imagem
+        AND la_fin.data <= ?
+        AND (
+          LOWER(TRIM(la_fin.status_novo)) IN ('finalizado','em aprovação','ajuste','aprovado com ajustes','aprovado')
+          OR LOWER(TRIM(la_fin.status_anterior)) IN ('finalizado','em aprovação','ajuste','aprovado com ajustes','aprovado')
         )
-      ) THEN (
-        CASE
-          WHEN EXISTS (
-            SELECT 1 FROM pagamento_itens pi JOIN funcao_imagem fi_pi ON fi_pi.idfuncao_imagem = pi.origem_id
-            WHERE pi.origem = 'funcao_imagem' AND fi_pi.colaborador_id = fi.colaborador_id AND fi_pi.imagem_id = fi.imagem_id
-          ) THEN (
-            CASE
-              WHEN EXISTS (
-                SELECT 1 FROM pagamento_itens pi JOIN funcao_imagem fi_pi ON fi_pi.idfuncao_imagem = pi.origem_id
-                WHERE pi.origem = 'funcao_imagem' AND fi_pi.colaborador_id = fi.colaborador_id AND fi_pi.imagem_id = fi.imagem_id
-                  AND DATE(pi.criado_em) <= ? AND TRIM(pi.observacao) = 'Finalização Parcial'
-              ) THEN 1 ELSE 0
-            END
-          )
-          ELSE (
-            CASE
-              WHEN fi.data_pagamento IS NOT NULL AND CAST(fi.data_pagamento AS CHAR) <> '0000-00-00' AND fi.data_pagamento <= ?
-              THEN 1 ELSE 0
-            END
-          )
-        END
-      )
-      WHEN fi.funcao_id = 4 AND EXISTS (
-        SELECT 1 FROM pagamento_itens pi JOIN funcao_imagem fi_pi ON fi_pi.idfuncao_imagem = pi.origem_id
-        WHERE pi.origem = 'funcao_imagem' AND fi_pi.colaborador_id = fi.colaborador_id AND fi_pi.imagem_id = fi.imagem_id
-          AND TRIM(pi.observacao) = 'Finalização Parcial'
-      ) THEN (
-        CASE
-          WHEN EXISTS (
-            SELECT 1 FROM pagamento_itens pi JOIN funcao_imagem fi_pi ON fi_pi.idfuncao_imagem = pi.origem_id
-            WHERE pi.origem = 'funcao_imagem' AND fi_pi.colaborador_id = fi.colaborador_id AND fi_pi.imagem_id = fi.imagem_id
-          ) THEN (
-            CASE
-              WHEN EXISTS (
-                SELECT 1 FROM pagamento_itens pi JOIN funcao_imagem fi_pi ON fi_pi.idfuncao_imagem = pi.origem_id
-                WHERE pi.origem = 'funcao_imagem' AND fi_pi.colaborador_id = fi.colaborador_id AND fi_pi.imagem_id = fi.imagem_id
-                  AND DATE(pi.criado_em) <= ? AND TRIM(pi.observacao) = 'Pago Completa'
-              ) THEN 1 ELSE 0
-            END
-          )
-          ELSE (
-            CASE
-              WHEN fi.data_pagamento IS NOT NULL AND CAST(fi.data_pagamento AS CHAR) <> '0000-00-00' AND fi.data_pagamento <= ?
-              THEN 1 ELSE 0
-            END
-          )
-        END
-      )
-      WHEN fi.funcao_id = 4 THEN (
-        CASE
-          WHEN EXISTS (
-            SELECT 1 FROM pagamento_itens pi JOIN funcao_imagem fi_pi ON fi_pi.idfuncao_imagem = pi.origem_id
-            WHERE pi.origem = 'funcao_imagem' AND fi_pi.colaborador_id = fi.colaborador_id AND fi_pi.imagem_id = fi.imagem_id
-          ) THEN (
-            CASE
-              WHEN EXISTS (
-                SELECT 1 FROM pagamento_itens pi JOIN funcao_imagem fi_pi ON fi_pi.idfuncao_imagem = pi.origem_id
-                WHERE pi.origem = 'funcao_imagem' AND fi_pi.colaborador_id = fi.colaborador_id AND fi_pi.imagem_id = fi.imagem_id
-                  AND DATE(pi.criado_em) <= ?
-                  AND (pi.observacao IS NULL OR TRIM(pi.observacao) = '' OR TRIM(pi.observacao) = 'Pago Completa')
-                  AND (pi.observacao IS NULL OR TRIM(pi.observacao) <> 'Finalização Parcial')
-              ) THEN 1 ELSE 0
-            END
-          )
-          ELSE (
-            CASE
-              WHEN fi.data_pagamento IS NOT NULL AND CAST(fi.data_pagamento AS CHAR) <> '0000-00-00' AND fi.data_pagamento <= ?
-              THEN 1 ELSE 0
-            END
-          )
-        END
-      )
-      ELSE 0
-    END AS pagamento,
-    CASE
-      WHEN fi.funcao_id = 4 AND LOWER(ico.tipo_imagem) = 'planta humanizada' THEN 'Finalização de Planta Humanizada'
-      WHEN fi.funcao_id = 4 AND (
-        hi_snap.status_id = 1
-        OR (
-          hi_snap.status_id IS NULL AND (
-            EXISTS (
-              SELECT 1 FROM funcao_imagem fi_sub JOIN funcao f_sub ON fi_sub.funcao_id = f_sub.idfuncao
-              WHERE fi_sub.imagem_id = fi.imagem_id AND LOWER(f_sub.nome_funcao) LIKE '%pre%'
-            )
-            OR ico.status_id = 1
-          )
-        )
-      ) THEN 'Finalização Parcial'
-      WHEN fi.funcao_id = 4 THEN 'Finalização Completa'
-      ELSE NULL
-    END AS nome_funcao
-  FROM funcao_imagem fi
-  JOIN funcao f ON f.idfuncao = fi.funcao_id
-  LEFT JOIN imagens_cliente_obra ico ON fi.imagem_id = ico.idimagens_cliente_obra
-  LEFT JOIN (
-    SELECT h1.imagem_id, h1.status_id
-    FROM historico_imagens h1
-    INNER JOIN (
-      SELECT imagem_id, MAX(data_movimento) AS max_data
-      FROM historico_imagens
-      WHERE data_movimento <= ?
-      GROUP BY imagem_id
-    ) hm ON hm.imagem_id = h1.imagem_id AND hm.max_data = h1.data_movimento
-  ) hi_snap ON hi_snap.imagem_id = ico.idimagens_cliente_obra
-  WHERE fi.funcao_id = 4
-    AND fi.colaborador_id NOT IN (21, 15, 7, 34)
-    AND (
+    )
+  )
+  AND (
+    (
       EXISTS (
-        SELECT 1 FROM (
-          SELECT la_fc.funcao_imagem_id, MIN(la_fc.data) AS primeira_conclusao
-          FROM log_alteracoes la_fc
-          WHERE LOWER(TRIM(la_fc.status_novo))
-                IN ('finalizado','em aprovação','aprovado com ajustes','aprovado')
-          GROUP BY la_fc.funcao_imagem_id
-        ) AS fc
-        WHERE fc.funcao_imagem_id = fi.idfuncao_imagem
-          AND MONTH(fc.primeira_conclusao) = ?
-          AND YEAR(fc.primeira_conclusao) = ?
+        SELECT 1 FROM pagamento_itens pi_any
+        JOIN funcao_imagem fi_pi4 ON fi_pi4.idfuncao_imagem = pi_any.origem_id
+        WHERE pi_any.origem = 'funcao_imagem'
+          AND fi_pi4.colaborador_id = fi.colaborador_id
+          AND fi_pi4.imagem_id = fi.imagem_id
       )
-      OR (MONTH(fi.prazo) = ? AND YEAR(fi.prazo) = ?)
+      AND NOT EXISTS (
+        SELECT 1 FROM pagamento_itens pi_full
+        JOIN funcao_imagem fi_pi4f ON fi_pi4f.idfuncao_imagem = pi_full.origem_id
+        WHERE pi_full.origem = 'funcao_imagem'
+          AND fi_pi4f.colaborador_id = fi.colaborador_id
+          AND fi_pi4f.imagem_id = fi.imagem_id
+          AND DATE(pi_full.criado_em) <= ?
+          AND (pi_full.observacao IS NULL OR TRIM(pi_full.observacao) = '' OR TRIM(pi_full.observacao) = 'Pago Completa')
+      )
     )
-    AND (
-      LOWER(TRIM(fi.status)) IN ('finalizado','em aprovação','ajuste','aprovado com ajustes','aprovado')
-      OR (
-        SELECT LOWER(TRIM(la_last.status_novo))
-        FROM log_alteracoes la_last
-        WHERE la_last.funcao_imagem_id = fi.idfuncao_imagem AND la_last.data <= ?
-        ORDER BY la_last.data DESC, la_last.idlog DESC
-        LIMIT 1
-      ) IN ('finalizado','em aprovação','ajuste','aprovado com ajustes','aprovado')
+    OR (
+      NOT EXISTS (
+        SELECT 1 FROM pagamento_itens pi_any2
+        JOIN funcao_imagem fi_pi4b ON fi_pi4b.idfuncao_imagem = pi_any2.origem_id
+        WHERE pi_any2.origem = 'funcao_imagem'
+          AND fi_pi4b.colaborador_id = fi.colaborador_id
+          AND fi_pi4b.imagem_id = fi.imagem_id
+      )
+      AND (
+        fi.data_pagamento IS NULL
+        OR CAST(fi.data_pagamento AS CHAR) = '0000-00-00'
+        OR fi.data_pagamento > ?
+      )
     )
-) AS t
-WHERE t.pagamento <> 1
-  AND t.nome_funcao IN ('Finalização Completa', 'Finalização de Planta Humanizada')
-GROUP BY t.colaborador_id, t.nome_funcao";
+  )
+GROUP BY fi.colaborador_id, nome_funcao";
 
-// Params: 6×fimMesData, 1×fimMesDataTime, mes, ano, mes, ano, fimMesDataTime
+// Params: mes, ano, mes, ano, fimMesDataTime, fimMesData, fimMesData
 $stmtFin = $conn->prepare($sqlFin);
 $stmtFin->bind_param(
-  'sssssssiiiis',
-  $fimMesData,
-  $fimMesData,
-  $fimMesData,
-  $fimMesData,
-  $fimMesData,
-  $fimMesData,
+  'iiiisss',
+  $mes,
+  $ano,
+  $mes,
+  $ano,
   $fimMesDataTime,
-  $mes,
-  $ano,
-  $mes,
-  $ano,
-  $fimMesDataTime
+  $fimMesData,
+  $fimMesData
 );
 $stmtFin->execute();
 $finRows = $stmtFin->get_result()->fetch_all(MYSQLI_ASSOC);
@@ -209,71 +122,56 @@ foreach ($finRows as $r) {
 }
 
 // ── Query: produção atual – Alteração (funcao_id=6) por colaborador ───────────
+// Alinhado com carregar_dados.php: WHERE_NAO_PAGO (funcao_id<>4), COUNT(DISTINCT)
 $sqlAlt = "
-SELECT t.colaborador_id, COUNT(*) AS quantidade
-FROM (
-  SELECT fi.colaborador_id,
-    CASE
-      WHEN EXISTS (
-        SELECT 1 FROM pagamento_itens pi WHERE pi.origem = 'funcao_imagem' AND pi.origem_id = fi.idfuncao_imagem
-      ) THEN (
-        CASE
-          WHEN EXISTS (
-            SELECT 1 FROM pagamento_itens pi WHERE pi.origem = 'funcao_imagem' AND pi.origem_id = fi.idfuncao_imagem
-              AND DATE(pi.criado_em) <= ?
-          ) THEN 1 ELSE 0
-        END
-      )
-      ELSE (
-        CASE
-          WHEN fi.data_pagamento IS NOT NULL AND CAST(fi.data_pagamento AS CHAR) <> '0000-00-00' AND fi.data_pagamento <= ?
-          THEN 1 ELSE 0
-        END
-      )
-    END AS pagamento
-  FROM funcao_imagem fi
-  WHERE fi.funcao_id = 6
-    AND fi.colaborador_id IN (34, 7)
-    AND fi.colaborador_id NOT IN (21, 15)
-    AND (
-      EXISTS (
-        SELECT 1 FROM (
-          SELECT la_fc.funcao_imagem_id, MIN(la_fc.data) AS primeira_conclusao
-          FROM log_alteracoes la_fc
-          WHERE LOWER(TRIM(la_fc.status_novo))
-                IN ('finalizado','em aprovação','aprovado com ajustes','aprovado')
-          GROUP BY la_fc.funcao_imagem_id
-        ) AS fc
-        WHERE fc.funcao_imagem_id = fi.idfuncao_imagem
-          AND MONTH(fc.primeira_conclusao) = ?
-          AND YEAR(fc.primeira_conclusao) = ?
-      )
-      OR (MONTH(fi.prazo) = ? AND YEAR(fi.prazo) = ?)
+SELECT fi.colaborador_id, COUNT(DISTINCT fi.idfuncao_imagem) AS quantidade
+FROM funcao_imagem fi
+WHERE fi.funcao_id = 6
+  AND fi.colaborador_id IN (34, 7)
+  AND fi.colaborador_id NOT IN (21, 15)
+  AND (
+    EXISTS (
+      SELECT 1 FROM log_alteracoes la
+      WHERE la.funcao_imagem_id = fi.idfuncao_imagem
+        AND MONTH(la.data) = ? AND YEAR(la.data) = ?
     )
-    AND (
-      LOWER(TRIM(fi.status)) IN ('finalizado','em aprovação','ajuste','aprovado com ajustes','aprovado')
-      OR (
-        SELECT LOWER(TRIM(la_last.status_novo))
-        FROM log_alteracoes la_last
-        WHERE la_last.funcao_imagem_id = fi.idfuncao_imagem AND la_last.data <= ?
-        ORDER BY la_last.data DESC, la_last.idlog DESC
-        LIMIT 1
-      ) IN ('finalizado','em aprovação','ajuste','aprovado com ajustes','aprovado')
+    OR (MONTH(fi.prazo) = ? AND YEAR(fi.prazo) = ?)
+  )
+  AND (
+    LOWER(TRIM(fi.status)) IN ('finalizado','em aprovação','ajuste','aprovado com ajustes','aprovado')
+    OR EXISTS (
+      SELECT 1 FROM log_alteracoes la_fin
+      WHERE la_fin.funcao_imagem_id = fi.idfuncao_imagem
+        AND la_fin.data <= ?
+        AND (
+          LOWER(TRIM(la_fin.status_novo)) IN ('finalizado','em aprovação','ajuste','aprovado com ajustes','aprovado')
+          OR LOWER(TRIM(la_fin.status_anterior)) IN ('finalizado','em aprovação','ajuste','aprovado com ajustes','aprovado')
+        )
     )
-) AS t
-WHERE t.pagamento <> 1
-GROUP BY t.colaborador_id";
+  )
+  AND NOT EXISTS (
+    SELECT 1 FROM pagamento_itens pi_np
+    WHERE pi_np.origem = 'funcao_imagem'
+      AND pi_np.origem_id = fi.idfuncao_imagem
+      AND DATE(pi_np.criado_em) <= ?
+  )
+  AND (
+    fi.data_pagamento IS NULL
+    OR CAST(fi.data_pagamento AS CHAR) = '0000-00-00'
+    OR fi.data_pagamento > ?
+  )
+GROUP BY fi.colaborador_id";
 
 $stmtAlt = $conn->prepare($sqlAlt);
 $stmtAlt->bind_param(
-  'ssiiiis',
-  $fimMesData,
-  $fimMesData,
+  'iiiisss',
   $mes,
   $ano,
   $mes,
   $ano,
-  $fimMesDataTime
+  $fimMesDataTime,
+  $fimMesData,
+  $fimMesData
 );
 $stmtAlt->execute();
 $altIdx = [];
@@ -283,94 +181,126 @@ foreach ($stmtAlt->get_result()->fetch_all(MYSQLI_ASSOC) as $r) {
 $stmtAlt->close();
 
 // ── Recorde histórico por colaborador – Finalização Completa ──────────────────
+// Alinhado com carregar_dados.php: UNION log_alteracoes+fi.prazo, 36 meses, IS_PARCIAL_AT_PERIOD, nao_pago, exclui 2024-10 e mês atual
 $allCollabIds = array_merge($perspIds, $plantasIds);
 $placeholders = implode(',', array_fill(0, count($allCollabIds), '?'));
 $types = str_repeat('i', count($allCollabIds));
+$anoAtual = (int)date('Y');
+$mesAtual  = (int)date('m');
 
 $sqlRecFin = "
-WITH ranking AS (
-  SELECT 
-    t.colaborador_id,
-    t.nome_funcao,
-    YEAR(t.prazo) AS ano,
-    MONTH(t.prazo) AS mes,
-    COUNT(*) AS qtd_mes,
-    
-    ROW_NUMBER() OVER (
-      PARTITION BY t.colaborador_id, t.nome_funcao
-      ORDER BY COUNT(*) DESC, YEAR(t.prazo) DESC, MONTH(t.prazo) DESC
-    ) AS rn
-
-  FROM (
-    SELECT 
-      fi.colaborador_id, 
-      fi.prazo,
-
-      CASE
-        WHEN fi.funcao_id = 4 
-          AND LOWER(ico.tipo_imagem) = 'planta humanizada'
-          THEN 'Finalização de Planta Humanizada'
-
-        WHEN fi.funcao_id = 4 AND (
-          EXISTS (
-            SELECT 1 
-            FROM funcao_imagem fi_sub
-            JOIN funcao f_sub 
-              ON fi_sub.funcao_id = f_sub.idfuncao
-            WHERE fi_sub.imagem_id = fi.imagem_id
-              AND LOWER(f_sub.nome_funcao) LIKE '%pre%'
+SELECT nome_funcao, colaborador_id, MAX(qtd_mes) AS recorde
+FROM (
+  SELECT
+    fi.colaborador_id,
+    CASE
+      WHEN fi.funcao_id = 4 AND LOWER(TRIM(ico.tipo_imagem)) = 'planta humanizada' THEN 'Finalização de Planta Humanizada'
+      WHEN fi.funcao_id = 4 THEN 'Finalização Completa'
+    END AS nome_funcao,
+    p.yr AS ano, p.mo AS mes,
+    COUNT(DISTINCT fi.idfuncao_imagem) AS qtd_mes
+  FROM funcao_imagem fi
+  LEFT JOIN imagens_cliente_obra ico ON fi.imagem_id = ico.idimagens_cliente_obra
+  INNER JOIN (
+    SELECT funcao_imagem_id, YEAR(data) AS yr, MONTH(data) AS mo
+    FROM log_alteracoes
+    WHERE data >= DATE_SUB(NOW(), INTERVAL 36 MONTH)
+    GROUP BY funcao_imagem_id, YEAR(data), MONTH(data)
+    UNION
+    SELECT idfuncao_imagem AS funcao_imagem_id, YEAR(prazo) AS yr, MONTH(prazo) AS mo
+    FROM funcao_imagem
+    WHERE prazo IS NOT NULL
+      AND prazo >= DATE_SUB(NOW(), INTERVAL 36 MONTH)
+    GROUP BY idfuncao_imagem, YEAR(prazo), MONTH(prazo)
+  ) AS p ON p.funcao_imagem_id = fi.idfuncao_imagem
+  WHERE fi.funcao_id = 4
+    AND fi.colaborador_id IN ($placeholders)
+    AND NOT (fi.funcao_id = 4 AND ico.status_id = 1)
+    AND NOT (p.yr = $ano AND p.mo = $mes)
+    AND NOT (p.yr = 2024 AND p.mo = 10)
+    AND NOT (p.yr = $anoAtual AND p.mo = $mesAtual)
+    AND (
+      LOWER(TRIM(fi.status)) IN ('finalizado','em aprovação','ajuste','aprovado com ajustes','aprovado')
+      OR EXISTS (
+        SELECT 1 FROM log_alteracoes la_fin
+        WHERE la_fin.funcao_imagem_id = fi.idfuncao_imagem
+          AND la_fin.data <= CONCAT(LAST_DAY(DATE(CONCAT(p.yr, '-', LPAD(p.mo,2,'0'), '-01'))), ' 23:59:59')
+          AND (
+            LOWER(TRIM(la_fin.status_novo)) IN ('finalizado','em aprovação','ajuste','aprovado com ajustes','aprovado')
+            OR LOWER(TRIM(la_fin.status_anterior)) IN ('finalizado','em aprovação','ajuste','aprovado com ajustes','aprovado')
           )
-          OR ico.status_id = 1
+      )
+    )
+    AND NOT (
+      fi.funcao_id = 4
+      AND LOWER(TRIM(ico.tipo_imagem)) != 'planta humanizada'
+      AND (
+        EXISTS (
+          SELECT 1 FROM historico_imagens hi_p
+          WHERE hi_p.imagem_id = fi.imagem_id
+            AND hi_p.status_id = 1
+            AND hi_p.data_movimento = (
+              SELECT MAX(hm.data_movimento) FROM historico_imagens hm
+              WHERE hm.imagem_id = fi.imagem_id
+                AND hm.data_movimento <= CONCAT(LAST_DAY(DATE(CONCAT(p.yr, '-', LPAD(p.mo,2,'0'), '-01'))), ' 23:59:59')
+            )
         )
-          THEN 'Finalização Parcial'
-
-        WHEN fi.funcao_id = 4
-          THEN 'Finalização Completa'
-
-        ELSE NULL
-      END AS nome_funcao
-
-    FROM funcao_imagem fi
-
-    LEFT JOIN imagens_cliente_obra ico 
-      ON fi.imagem_id = ico.idimagens_cliente_obra
-
-    WHERE fi.funcao_id = 4
-      AND fi.colaborador_id IN ($placeholders)
-      AND fi.prazo IS NOT NULL
-      AND NOT (
-        YEAR(fi.prazo) = $ano 
-        AND MONTH(fi.prazo) = $mes
+        OR (
+          NOT EXISTS (
+            SELECT 1 FROM historico_imagens h_any
+            WHERE h_any.imagem_id = fi.imagem_id
+              AND h_any.data_movimento <= CONCAT(LAST_DAY(DATE(CONCAT(p.yr, '-', LPAD(p.mo,2,'0'), '-01'))), ' 23:59:59')
+          )
+          AND (
+            ico.status_id = 1
+            OR EXISTS (
+              SELECT 1 FROM funcao_imagem fi_sub
+              JOIN funcao f_sub ON fi_sub.funcao_id = f_sub.idfuncao
+              WHERE fi_sub.imagem_id = fi.imagem_id
+                AND LOWER(f_sub.nome_funcao) LIKE '%pre%'
+            )
+          )
+        )
       )
-      AND LOWER(TRIM(fi.status)) IN (
-        'finalizado',
-        'em aprovação',
-        'ajuste',
-        'aprovado com ajustes',
-        'aprovado'
+    )
+    AND (
+      (
+        EXISTS (
+          SELECT 1 FROM pagamento_itens pi_any
+          JOIN funcao_imagem fi_pi4 ON fi_pi4.idfuncao_imagem = pi_any.origem_id
+          WHERE pi_any.origem = 'funcao_imagem'
+            AND fi_pi4.colaborador_id = fi.colaborador_id
+            AND fi_pi4.imagem_id = fi.imagem_id
+        )
+        AND NOT EXISTS (
+          SELECT 1 FROM pagamento_itens pi_full
+          JOIN funcao_imagem fi_pi4f ON fi_pi4f.idfuncao_imagem = pi_full.origem_id
+          WHERE pi_full.origem = 'funcao_imagem'
+            AND fi_pi4f.colaborador_id = fi.colaborador_id
+            AND fi_pi4f.imagem_id = fi.imagem_id
+            AND DATE(pi_full.criado_em) <= LAST_DAY(DATE(CONCAT(p.yr, '-', LPAD(p.mo,2,'0'), '-01')))
+            AND (pi_full.observacao IS NULL OR TRIM(pi_full.observacao) = '' OR TRIM(pi_full.observacao) = 'Pago Completa')
+        )
       )
-  ) AS t
-
-  WHERE t.nome_funcao IN (
-    'Finalização Completa',
-    'Finalização de Planta Humanizada'
-  )
-
-  GROUP BY 
-    t.colaborador_id,
-    t.nome_funcao,
-    YEAR(t.prazo),
-    MONTH(t.prazo)
-)
-
-SELECT
-  colaborador_id,
-  nome_funcao,
-  qtd_mes AS recorde,
-  mes,
-  ano
-FROM ranking
-WHERE rn = 1;";
+      OR (
+        NOT EXISTS (
+          SELECT 1 FROM pagamento_itens pi_any2
+          JOIN funcao_imagem fi_pi4b ON fi_pi4b.idfuncao_imagem = pi_any2.origem_id
+          WHERE pi_any2.origem = 'funcao_imagem'
+            AND fi_pi4b.colaborador_id = fi.colaborador_id
+            AND fi_pi4b.imagem_id = fi.imagem_id
+        )
+        AND (
+          fi.data_pagamento IS NULL
+          OR CAST(fi.data_pagamento AS CHAR) = '0000-00-00'
+          OR fi.data_pagamento > LAST_DAY(DATE(CONCAT(p.yr, '-', LPAD(p.mo,2,'0'), '-01')))
+        )
+      )
+    )
+  GROUP BY fi.colaborador_id, nome_funcao, p.yr, p.mo
+) AS sub
+WHERE nome_funcao IN ('Finalização Completa', 'Finalização de Planta Humanizada')
+GROUP BY colaborador_id, nome_funcao";
 
 $stmtRecFin = $conn->prepare($sqlRecFin);
 $stmtRecFin->bind_param($types, ...$allCollabIds);
@@ -382,17 +312,45 @@ foreach ($stmtRecFin->get_result()->fetch_all(MYSQLI_ASSOC) as $r) {
 $stmtRecFin->close();
 
 // ── Recorde histórico por colaborador – Alteração ─────────────────────────────
+// Alinhado com carregar_dados.php: UNION log_alteracoes+fi.prazo, 36 meses, nao_pago, exclui 2024-10 e mês atual
 $sqlRecAlt = "
 SELECT colaborador_id, MAX(qtd_mes) AS recorde
 FROM (
-  SELECT fi.colaborador_id, YEAR(fi.prazo) AS yr, MONTH(fi.prazo) AS mo, COUNT(*) AS qtd_mes
+  SELECT fi.colaborador_id, p.yr, p.mo, COUNT(DISTINCT fi.idfuncao_imagem) AS qtd_mes
   FROM funcao_imagem fi
+  JOIN (
+    SELECT YEAR(la.data) AS yr, MONTH(la.data) AS mo, la.funcao_imagem_id
+    FROM log_alteracoes la
+    UNION
+    SELECT YEAR(fi2.prazo) AS yr, MONTH(fi2.prazo) AS mo, fi2.idfuncao_imagem
+    FROM funcao_imagem fi2
+    WHERE fi2.prazo IS NOT NULL
+  ) AS p ON p.funcao_imagem_id = fi.idfuncao_imagem
   WHERE fi.funcao_id = 6
     AND fi.colaborador_id IN (34, 7)
-    AND fi.prazo IS NOT NULL
-    AND NOT (YEAR(fi.prazo) = $ano AND MONTH(fi.prazo) = $mes)
-    AND LOWER(TRIM(fi.status)) IN ('finalizado','em aprovação','ajuste','aprovado com ajustes','aprovado')
-  GROUP BY fi.colaborador_id, YEAR(fi.prazo), MONTH(fi.prazo)
+    AND NOT (p.yr = $ano AND p.mo = $mes)
+    AND NOT (p.yr = 2024 AND p.mo = 10)
+    AND NOT (p.yr = $anoAtual AND p.mo = $mesAtual)
+    AND (p.yr * 12 + p.mo) >= ($ano * 12 + $mes - 36)
+    AND (
+      LOWER(TRIM(fi.status)) IN ('finalizado','em aprovação','ajuste','aprovado com ajustes','aprovado')
+      OR EXISTS (
+        SELECT 1 FROM log_alteracoes la_fin
+        WHERE la_fin.funcao_imagem_id = fi.idfuncao_imagem
+          AND la_fin.data <= LAST_DAY(DATE(CONCAT(p.yr, '-', LPAD(p.mo,2,'0'), '-01')))
+          AND (
+            LOWER(TRIM(la_fin.status_novo)) IN ('finalizado','em aprovação','ajuste','aprovado com ajustes','aprovado')
+            OR LOWER(TRIM(la_fin.status_anterior)) IN ('finalizado','em aprovação','ajuste','aprovado com ajustes','aprovado')
+          )
+      )
+    )
+    AND NOT EXISTS (
+      SELECT 1 FROM pagamento_itens pi_np
+      WHERE pi_np.origem = 'funcao_imagem'
+        AND pi_np.origem_id = fi.idfuncao_imagem
+        AND DATE(pi_np.criado_em) <= LAST_DAY(DATE(CONCAT(p.yr, '-', LPAD(p.mo,2,'0'), '-01')))
+    )
+  GROUP BY fi.colaborador_id, p.yr, p.mo
 ) AS s
 GROUP BY colaborador_id";
 
@@ -439,23 +397,38 @@ foreach ($stmtImg->get_result()->fetch_all(MYSQLI_ASSOC) as $r) {
   $imagemIdx[(int) $r['idcolaborador']] = $r['imagem'];
 }
 $stmtImg->close();
+
+// ── Meta individual por colaborador (Perspectivas) ────────────────────────────
+$placeholdersPersp = implode(',', array_fill(0, count($perspIds), '?'));
+$typesPersp = str_repeat('i', count($perspIds));
+$stmtMetaColab = $conn->prepare(
+  "SELECT colaborador_id, meta_tarefas FROM meta_colaborador WHERE funcao_id = 4 AND mes = ? AND ano = ? AND colaborador_id IN ($placeholdersPersp)"
+);
+$stmtMetaColab->bind_param('ii' . $typesPersp, $mes, $ano, ...$perspIds);
+$stmtMetaColab->execute();
+$metaColabIdx = [];
+foreach ($stmtMetaColab->get_result()->fetch_all(MYSQLI_ASSOC) as $r) {
+  $metaColabIdx[(int) $r['colaborador_id']] = (int) $r['meta_tarefas'];
+}
+$stmtMetaColab->close();
+
 $conn->close();
 
 // ── Monta seções ──────────────────────────────────────────────────────────────
-function buildFuncionario(string $nome, int $id, int $qtd, int $recorde, ?int $pct_meta = null, ?string $imagem_url = null): array
+function buildFuncionario(string $nome, int $id, int $qtd, int $recorde, ?int $pct_meta = null, ?string $imagem_url = null, ?int $meta_individual = null): array
 {
-  return ['nome' => $nome, 'colaborador_id' => $id, 'qtd_parcial' => $qtd, 'recorde_mes' => $recorde, 'pct_meta' => $pct_meta, 'imagem_url' => $imagem_url];
+  return ['nome' => $nome, 'colaborador_id' => $id, 'qtd_parcial' => $qtd, 'recorde_mes' => $recorde, 'pct_meta' => $pct_meta, 'imagem_url' => $imagem_url, 'meta_individual' => $meta_individual];
 }
 
 // Perspectivas
 $metaPerspTotal = $metaMap[4] ?? null;
-$metaPerspInd = ($metaPerspTotal !== null) ? (int) ceil($metaPerspTotal / count($perspIds)) : null;
 
 $perspFunc = [];
 foreach ($perspIds as $cid) {
   $qtd = $finIdx[$cid]['Finalização Completa'] ?? 0;
   $rec = $recFinIdx[$cid]['Finalização Completa'] ?? 0;
-  $pct = ($metaPerspInd !== null && $metaPerspInd > 0) ? (int) round(($qtd / $metaPerspInd) * 100) : null;
+  $metaInd = $metaColabIdx[$cid] ?? null;
+  $pct = ($metaInd !== null && $metaInd > 0) ? (int) round(($qtd / $metaInd) * 100) : null;
   $imagem_url = null;
   if (!empty($imagemIdx[$cid])) {
     $rawImg = $imagemIdx[$cid];
@@ -466,7 +439,7 @@ foreach ($perspIds as $cid) {
       $imagem_url = $rawImg;
     }
   }
-  $perspFunc[] = buildFuncionario($perspNames[$cid], $cid, $qtd, $rec, $pct, $imagem_url);
+  $perspFunc[] = buildFuncionario($perspNames[$cid], $cid, $qtd, $rec, $pct, $imagem_url, $metaInd);
 }
 
 // Outros = soma de todos os colaboradores fora da lista (21 já excluído pelo SQL)
@@ -528,7 +501,7 @@ echo json_encode([
   'perspectivas' => [
     'funcionarios'    => $perspFunc,
     'meta_total'      => $metaPerspTotal,
-    'meta_individual' => $metaPerspInd,
+    'meta_individual' => null,
   ],
   'plantas_humanizadas' => [
     'funcionarios' => $plantasFunc,

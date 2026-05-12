@@ -294,7 +294,7 @@ function buildPerspectivas(data) {
     rows = "";
   for (const f of all) {
     totalQtd += f.qtd_parcial;
-    rows += buildEmployeeRow(f, f.colaborador_id === 0 ? null : meta_individual);
+    rows += buildEmployeeRow(f, f.colaborador_id === 0 ? null : (f.meta_individual ?? meta_individual));
   }
   document.getElementById("bodyPerspectivas").innerHTML = rows;
   renderSectionFooter("footPerspectivas", totalQtd, meta_total);

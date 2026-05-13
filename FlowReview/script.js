@@ -76,6 +76,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
   // carrega painel de métricas (acima do select de funções)
   if (typeof loadMetrics === "function") loadMetrics();
+  initProcessHistory();
 });
 
 async function revisarTarefa(
@@ -457,7 +458,9 @@ async function fetchObrasETarefas() {
 
     // Calcula offset entre horário do servidor (Brasília) e relógio local
     if (responseData.server_now) {
-      const serverDate = new Date(responseData.server_now.replace(" ", "T") + "-03:00");
+      const serverDate = new Date(
+        responseData.server_now.replace(" ", "T") + "-03:00",
+      );
       _serverTimeOffset = serverDate.getTime() - Date.now();
     }
 
@@ -666,8 +669,12 @@ async function exibirCardsDeObra(tarefas) {
   // Obras com prioridade primeiro, depois menções
   const obrasOrdenadas = [...obrasMap.entries()].sort(
     ([a, tarefasA], [b, tarefasB]) => {
-      const prioA = tarefasA.filter((t) => t.prioridade_aprovacao == 1 && t.status_novo === "Em aprovação").length;
-      const prioB = tarefasB.filter((t) => t.prioridade_aprovacao == 1 && t.status_novo === "Em aprovação").length;
+      const prioA = tarefasA.filter(
+        (t) => t.prioridade_aprovacao == 1 && t.status_novo === "Em aprovação",
+      ).length;
+      const prioB = tarefasB.filter(
+        (t) => t.prioridade_aprovacao == 1 && t.status_novo === "Em aprovação",
+      ).length;
       if (prioB !== prioA) return prioB - prioA;
       return (
         (mencoes.mencoes_por_obra[b] || 0) - (mencoes.mencoes_por_obra[a] || 0)
@@ -710,7 +717,9 @@ async function exibirCardsDeObra(tarefas) {
   }
 
   // SweetAlert de prioridade de aprovação (só dispara uma vez por carregamento)
-  const tarefasPrio = tarefas.filter((t) => t.prioridade_aprovacao == 1 && t.status_novo === "Em aprovação");
+  const tarefasPrio = tarefas.filter(
+    (t) => t.prioridade_aprovacao == 1 && t.status_novo === "Em aprovação",
+  );
   if (tarefasPrio.length > 0 && !_prioAlertShown) {
     _prioAlertShown = true;
     const obrasPrioMap = {};
@@ -1023,8 +1032,10 @@ function exibirTarefas(tarefas, tarefasCompletas) {
   if (tarefas.length > 0) {
     const tarefasOrdenadas = [...tarefas].sort((a, b) => {
       // Prioridade de aprovação primeiro
-      const pA = a.prioridade_aprovacao == 1 && a.status_novo === "Em aprovação" ? 1 : 0;
-      const pB = b.prioridade_aprovacao == 1 && b.status_novo === "Em aprovação" ? 1 : 0;
+      const pA =
+        a.prioridade_aprovacao == 1 && a.status_novo === "Em aprovação" ? 1 : 0;
+      const pB =
+        b.prioridade_aprovacao == 1 && b.status_novo === "Em aprovação" ? 1 : 0;
       if (pB !== pA) return pB - pA;
       // Depois menções
       const mA =
@@ -1109,7 +1120,10 @@ function exibirTarefas(tarefas, tarefasCompletas) {
       }
 
       // Badge de prioridade de aprovação (🔥) — canto inferior direito
-      if (tarefa.prioridade_aprovacao == 1 && tarefa.status_novo === "Em aprovação") {
+      if (
+        tarefa.prioridade_aprovacao == 1 &&
+        tarefa.status_novo === "Em aprovação"
+      ) {
         const prioBadge = document.createElement("div");
         prioBadge.classList.add("prioridade-badge");
         prioBadge.setAttribute("data-prio-badge", tarefa.idfuncao_imagem);
@@ -1165,7 +1179,8 @@ function calcSlaTimer(inicio, limiteHoras) {
   // Parseia como horário de Brasília (UTC-3) para não depender do fuso local
   const inicioDate = new Date(String(inicio).replace(" ", "T") + "-03:00");
   // Usa horário do servidor (corrigido pelo offset calculado no fetch)
-  const horasDecorridas = (Date.now() + _serverTimeOffset - inicioDate.getTime()) / 36e5;
+  const horasDecorridas =
+    (Date.now() + _serverTimeOffset - inicioDate.getTime()) / 36e5;
   const expirado = horasDecorridas >= limiteHoras;
   const h = Math.floor(horasDecorridas);
   const m = Math.floor((horasDecorridas % 1) * 60);
@@ -1230,10 +1245,347 @@ function escapeHtml(unsafe) {
 const modalComment = document.getElementById("modalComment");
 
 const idusuario = parseInt(localStorage.getItem("idusuario")); // Obtém o idusuario do localStorage
+const idcolaboradorLogado = parseInt(localStorage.getItem("idcolaborador"), 10);
 
 let funcaoImagemId = null; // armazenado globalmente
 let currentFuncaoContext = null; // {imagem_id, funcao_imagem_id, colaborador_id, nome_funcao, nome_status, imagem_nome}
 let currentIndiceEnvio = null;
+const processHistoryState = {
+  currentImageId: null,
+  isOpen: false,
+  requestToken: 0,
+  abortController: null,
+  cache: new Map(),
+  initialized: false,
+};
+
+function isProcessHistoryDesktop() {
+  // Allow on all screen sizes (mobile shows icon-only button, tablet/desktop shows full button)
+  return true;
+}
+
+function getProcessHistoryElements() {
+  const root = document.getElementById("process-history");
+  const trigger = document.getElementById("history-trigger");
+  const dropdown = document.getElementById("history-dropdown");
+  const body = document.getElementById("history-dropdown-body");
+
+  if (!root || !trigger || !dropdown || !body) {
+    return null;
+  }
+
+  return { root, trigger, dropdown, body };
+}
+
+function setProcessHistoryOpen(isOpen) {
+  const elements = getProcessHistoryElements();
+  if (!elements) return;
+
+  processHistoryState.isOpen = isOpen;
+  elements.root.classList.toggle("is-open", isOpen);
+  elements.trigger.setAttribute("aria-expanded", String(isOpen));
+  elements.dropdown.setAttribute("aria-hidden", String(!isOpen));
+}
+
+function closeProcessHistoryDropdown() {
+  setProcessHistoryOpen(false);
+}
+
+function renderProcessHistoryState(kind, message) {
+  const elements = getProcessHistoryElements();
+  if (!elements) return;
+
+  const icons = {
+    idle: "fa-timeline",
+    loading: "fa-spinner fa-spin",
+    empty: "fa-box-open",
+    error: "fa-circle-exclamation",
+  };
+
+  elements.body.innerHTML = `
+    <div class="history-state history-state-${kind}">
+      <i class="fa-solid ${icons[kind] || icons.idle}" aria-hidden="true"></i>
+      <p>${escapeHtml(message)}</p>
+    </div>
+  `;
+}
+
+function getProcessHistoryInitials(name) {
+  const tokens = String(name || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2);
+
+  if (!tokens.length) {
+    return "FR";
+  }
+
+  return tokens.map((token) => token.charAt(0).toUpperCase()).join("");
+}
+
+function getProcessHistoryHue(value) {
+  let hash = 0;
+  const text = String(value || "FlowReview");
+
+  for (let index = 0; index < text.length; index += 1) {
+    hash = text.charCodeAt(index) + ((hash << 5) - hash);
+  }
+
+  return Math.abs(hash) % 360;
+}
+
+function resolveProcessHistoryPhotoUrl(photoPath) {
+  const raw = String(photoPath || "").trim();
+  if (!raw) return "";
+
+  if (raw.startsWith("data:image/")) {
+    return raw;
+  }
+
+  const base = "https://improov.com.br/flow/ImproovWeb";
+  const marker = "/flow/ImproovWeb/";
+
+  // Keep URL query/hash while normalizing path segments.
+  const splitIndex = raw.search(/[?#]/);
+  const queryAndHash = splitIndex >= 0 ? raw.slice(splitIndex) : "";
+  let pathOnly = splitIndex >= 0 ? raw.slice(0, splitIndex) : raw;
+
+  pathOnly = pathOnly.replace(/\\/g, "/").trim();
+
+  if (pathOnly.startsWith("//")) {
+    pathOnly = `https:${pathOnly}`;
+  }
+
+  if (/^https?:\/\//i.test(pathOnly)) {
+    const idx = pathOnly.indexOf(marker);
+    if (idx !== -1) {
+      const suffix = pathOnly.slice(idx + marker.length);
+      return `${base}/${suffix}${queryAndHash}`;
+    }
+
+    // External absolute URL: force into canonical ImproovWeb base.
+    try {
+      const parsed = new URL(pathOnly);
+      const cleanPath = parsed.pathname.replace(/^\/+/, "");
+      return `${base}/${cleanPath}${queryAndHash || parsed.search || ""}${queryAndHash ? "" : parsed.hash || ""}`;
+    } catch (_e) {
+      // Continue with generic cleanup below.
+    }
+  }
+
+  pathOnly = pathOnly
+    .replace(/^\.\//, "")
+    .replace(/^(\.\.\/)+/, "")
+    .replace(/^\/+/, "");
+
+  if (pathOnly.startsWith("flow/ImproovWeb/")) {
+    pathOnly = pathOnly.slice("flow/ImproovWeb/".length);
+  }
+
+  return `${base}/${pathOnly}${queryAndHash}`;
+}
+
+function renderProcessHistoryItems(items) {
+  const elements = getProcessHistoryElements();
+  if (!elements) return;
+
+  if (!items.length) {
+    renderProcessHistoryState("empty", "Nenhum histórico encontrado");
+    return;
+  }
+
+  const markup = items
+    .map((item, index) => {
+      const isCurrent = index === 0;
+      const isViewer =
+        Number.isFinite(idcolaboradorLogado) &&
+        Number(item.colaborador_id) === idcolaboradorLogado;
+      const rawName = item.colaborador_nome || "Colaborador não informado";
+      const displayName = isViewer ? `${rawName} (Você)` : rawName;
+      const initials = getProcessHistoryInitials(rawName);
+      const avatarHue = getProcessHistoryHue(rawName);
+      const photoUrl = resolveProcessHistoryPhotoUrl(item.foto_colaborador);
+      const dateText = item.data_processo
+        ? formatarDataComentario(String(item.data_processo))
+        : "Sem movimentação";
+
+      return `
+        <article class="history-item${isCurrent ? " is-current" : ""}">
+          <div class="history-item-marker">
+            <span class="history-item-dot" aria-hidden="true"></span>
+            <span class="history-avatar" style="--history-avatar-hue:${avatarHue};">
+              <span class="history-avatar-initials">${escapeHtml(initials)}</span>
+              ${
+                photoUrl
+                  ? `<img class="history-avatar-img" src="${escapeHtml(photoUrl)}" alt="${escapeHtml(rawName)}" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`
+                  : ""
+              }
+            </span>
+          </div>
+
+          <div class="history-item-content">
+            <div class="history-item-top">
+              <time class="history-item-date">${escapeHtml(dateText)}</time>
+              ${isCurrent ? '<span class="history-item-badge">Atual</span>' : ""}
+            </div>
+            <strong class="history-item-name">${escapeHtml(displayName)}</strong>
+            <span class="history-item-role">${escapeHtml(item.nome_funcao || "Função não identificada")}</span>
+          </div>
+        </article>
+      `;
+    })
+    .join("");
+
+  elements.body.innerHTML = `<div class="history-timeline">${markup}</div>`;
+}
+
+async function loadProcessHistory(imagemId, options = {}) {
+  const force = options.force === true;
+
+  if (!imagemId) {
+    renderProcessHistoryState("empty", "Nenhum histórico encontrado");
+    return;
+  }
+
+  if (!force && processHistoryState.cache.has(imagemId)) {
+    renderProcessHistoryItems(processHistoryState.cache.get(imagemId) || []);
+    return;
+  }
+
+  if (processHistoryState.abortController) {
+    processHistoryState.abortController.abort();
+  }
+
+  const controller = new AbortController();
+  const requestToken = processHistoryState.requestToken + 1;
+  processHistoryState.requestToken = requestToken;
+  processHistoryState.abortController = controller;
+
+  renderProcessHistoryState("loading", "Carregando histórico...");
+
+  try {
+    const response = await fetch(
+      `buscar_historico_processos.php?imagem_id=${encodeURIComponent(String(imagemId))}`,
+      {
+        signal: controller.signal,
+        headers: {
+          "X-Requested-With": "XMLHttpRequest",
+        },
+      },
+    );
+
+    if (!response.ok) {
+      throw new Error("Falha ao carregar o histórico.");
+    }
+
+    const data = await response.json();
+    if (
+      requestToken !== processHistoryState.requestToken ||
+      Number(imagemId) !== Number(processHistoryState.currentImageId)
+    ) {
+      return;
+    }
+
+    const items = Array.isArray(data.items) ? data.items : [];
+    processHistoryState.cache.set(Number(imagemId), items);
+    renderProcessHistoryItems(items);
+  } catch (error) {
+    if (error.name === "AbortError") {
+      return;
+    }
+
+    if (requestToken !== processHistoryState.requestToken) {
+      return;
+    }
+
+    renderProcessHistoryState(
+      "error",
+      "Não foi possível carregar o histórico.",
+    );
+  }
+}
+
+function setProcessHistoryContext(item) {
+  const elements = getProcessHistoryElements();
+  if (!elements) return;
+
+  processHistoryState.currentImageId = item?.imagem_id
+    ? Number(item.imagem_id)
+    : null;
+  processHistoryState.requestToken += 1;
+
+  if (processHistoryState.abortController) {
+    processHistoryState.abortController.abort();
+    processHistoryState.abortController = null;
+  }
+
+  closeProcessHistoryDropdown();
+
+  if (processHistoryState.currentImageId) {
+    elements.trigger.removeAttribute("disabled");
+    elements.root.classList.remove("is-disabled");
+    renderProcessHistoryState("idle", "Abra para visualizar o histórico");
+    return;
+  }
+
+  elements.trigger.setAttribute("disabled", "disabled");
+  elements.root.classList.add("is-disabled");
+  renderProcessHistoryState("empty", "Nenhum histórico encontrado");
+}
+
+function handleProcessHistoryToggle(event) {
+  event.preventDefault();
+  event.stopPropagation();
+
+  if (!processHistoryState.currentImageId) {
+    return;
+  }
+
+  if (processHistoryState.isOpen) {
+    closeProcessHistoryDropdown();
+    return;
+  }
+
+  setProcessHistoryOpen(true);
+  loadProcessHistory(processHistoryState.currentImageId);
+}
+
+function initProcessHistory() {
+  if (processHistoryState.initialized) return;
+
+  const elements = getProcessHistoryElements();
+  if (!elements) return;
+
+  processHistoryState.initialized = true;
+  elements.trigger.setAttribute("disabled", "disabled");
+  elements.root.classList.add("is-disabled");
+  renderProcessHistoryState("idle", "Abra para visualizar o histórico");
+
+  elements.trigger.addEventListener("click", handleProcessHistoryToggle);
+
+  document.addEventListener("pointerdown", (event) => {
+    if (!processHistoryState.isOpen) return;
+
+    const currentElements = getProcessHistoryElements();
+    if (!currentElements || currentElements.root.contains(event.target)) {
+      return;
+    }
+
+    closeProcessHistoryDropdown();
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && processHistoryState.isOpen) {
+      closeProcessHistoryDropdown();
+    }
+  });
+
+  window.addEventListener("resize", () => {
+    // Close dropdown on resize to avoid mis-positioned dropdown
+    closeProcessHistoryDropdown();
+  });
+}
 
 function isP00FinalizacaoContext(context) {
   const isP00 = String(context?.nome_status || "").toLowerCase() === "p00";
@@ -1563,6 +1915,7 @@ function historyAJAX(idfuncao_imagem) {
       const item = historico[0];
 
       currentFuncaoContext = item || null;
+      setProcessHistoryContext(item || null);
 
       // Sincroniza sidebarTabulator com a função da tarefa aberta
       const tarefaAtual = dadosTarefas.find(
@@ -2360,7 +2713,7 @@ let _replyingToCommentId = null; // ID do comentário sendo respondido (null = n
 let _editingReplyId = null; // ID da resposta em edição (null = não é edição de resposta)
 let quillComentario = null; // instância do Quill no modal de comentário
 let _prioAlertShown = false; // garante que o alerta de prioridade só dispara uma vez por carregamento
-let _serverTimeOffset = 0;   // offset (ms) entre horário do servidor Brasília e relógio local
+let _serverTimeOffset = 0; // offset (ms) entre horário do servidor Brasília e relógio local
 let _mencoesDados = {
   total_mencoes: 0,
   mencoes_por_obra: {},

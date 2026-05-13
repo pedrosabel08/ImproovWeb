@@ -236,7 +236,32 @@ $conn->close();
                 </div>
 
             </div>
-            <div id="header_data_envio" class="header-data-envio"></div>
+            <div class="header-side-stack">
+                <div id="header_data_envio" class="header-data-envio"></div>
+                <div class="process-history" id="process-history">
+                    <button
+                        type="button"
+                        class="history-trigger"
+                        id="history-trigger"
+                        aria-haspopup="true"
+                        aria-expanded="false"
+                        aria-controls="history-dropdown"
+                    >
+                        <span class="history-trigger-icon" aria-hidden="true">
+                            <i class="fa-solid fa-clock-rotate-left"></i>
+                        </span>
+                        <span class="history-trigger-label">Histórico de processos</span>
+                        <span class="history-trigger-chevron" aria-hidden="true">
+                            <i class="fa-solid fa-chevron-down"></i>
+                        </span>
+                    </button>
+
+                    <div class="history-dropdown" id="history-dropdown" aria-hidden="true">
+                        <div class="history-dropdown-header">Histórico de processos</div>
+                        <div class="history-dropdown-body" id="history-dropdown-body"></div>
+                    </div>
+                </div>
+            </div>
             <!-- <div>
                 <button id="add-imagem" class="tooltip" data-tooltip="Adicionar imagem" style="transform: translateX(-90%);">+</button>
             </div> -->

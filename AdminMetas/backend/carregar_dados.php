@@ -134,6 +134,7 @@ try {
 
     // Colaboradores excluídos globalmente (mesmo critério de buscar_producao.php)
     // IDs 21, 15 excluídos de toda a produção; funcao_id=4 exclui adicionalmente 7 e 34.
+    // Parcial verificada via historico_imagens no fim do período (? = fimMesDataTime).
     $WHERE_STATUS = "
         (
             LOWER(TRIM(fi.status)) IN ('finalizado', 'em aprovação', 'ajuste', 'aprovado com ajustes', 'aprovado')
@@ -141,15 +142,43 @@ try {
                 SELECT 1 FROM log_alteracoes la_fin
                 WHERE la_fin.funcao_imagem_id = fi.idfuncao_imagem
                   AND la_fin.data <= ?
-                  AND (
-                      LOWER(TRIM(la_fin.status_novo))     IN ('finalizado', 'em aprovação', 'ajuste', 'aprovado com ajustes', 'aprovado')
-                      OR LOWER(TRIM(la_fin.status_anterior)) IN ('finalizado', 'em aprovação', 'ajuste', 'aprovado com ajustes', 'aprovado')
-                  )
+                  AND LOWER(TRIM(la_fin.status_novo)) IN ('finalizado', 'em aprovação', 'ajuste', 'aprovado com ajustes', 'aprovado')
             )
         )
         AND fi.colaborador_id NOT IN (21, 15)
         AND NOT (fi.funcao_id = 4 AND fi.colaborador_id IN (7, 34))
-        AND NOT (fi.funcao_id = 4 AND ico.status_id = 1)
+        AND NOT (
+            fi.funcao_id = 4
+            AND LOWER(TRIM(ico.tipo_imagem)) != 'planta humanizada'
+            AND (
+                EXISTS (
+                    SELECT 1 FROM historico_imagens hi_p
+                    WHERE hi_p.imagem_id = fi.imagem_id
+                      AND hi_p.status_id = 1
+                      AND hi_p.data_movimento = (
+                          SELECT MAX(hm.data_movimento) FROM historico_imagens hm
+                          WHERE hm.imagem_id = fi.imagem_id
+                            AND hm.data_movimento <= ?
+                      )
+                )
+                OR (
+                    NOT EXISTS (
+                        SELECT 1 FROM historico_imagens h_any
+                        WHERE h_any.imagem_id = fi.imagem_id
+                          AND h_any.data_movimento <= ?
+                    )
+                    AND (
+                        ico.status_id = 1
+                        OR EXISTS (
+                            SELECT 1 FROM funcao_imagem fi_sub
+                            JOIN funcao f_sub ON fi_sub.funcao_id = f_sub.idfuncao
+                            WHERE fi_sub.imagem_id = fi.imagem_id
+                              AND LOWER(f_sub.nome_funcao) LIKE '%pre%'
+                        )
+                    )
+                )
+            )
+        )
     ";
 
     // ── 1. Colaboradores por função ───────────────────────────────────────────
@@ -204,15 +233,19 @@ try {
     $stmtC->close();
 
     // ── Fragmento SQL de filtro por mês ───────────────────────────────────────
-    // Idêntico ao usado em buscar_producao.php: log_alteracoes OU fi.prazo
+    // Idêntico ao usado em buscar_producao.php: log_alteracoes (status_novo) OU fi.prazo (status)
     $WHERE_MES = "
         (
             EXISTS (
                 SELECT 1 FROM log_alteracoes la
                 WHERE la.funcao_imagem_id = fi.idfuncao_imagem
                   AND MONTH(la.data) = ? AND YEAR(la.data) = ?
+                  AND LOWER(TRIM(la.status_novo)) IN ('finalizado', 'em aprovação', 'ajuste', 'aprovado com ajustes', 'aprovado')
             )
-            OR (MONTH(fi.prazo) = ? AND YEAR(fi.prazo) = ?)
+            OR (
+                MONTH(fi.prazo) = ? AND YEAR(fi.prazo) = ?
+                AND LOWER(TRIM(fi.status)) IN ('finalizado', 'em aprovação', 'ajuste', 'aprovado com ajustes', 'aprovado')
+            )
         )
     ";
 
@@ -243,6 +276,7 @@ try {
                             WHERE pi_full.origem = 'funcao_imagem'
                               AND fi_pi4f.colaborador_id = fi.colaborador_id
                               AND fi_pi4f.imagem_id = fi.imagem_id
+                              AND fi_pi4f.funcao_id = 4
                               AND DATE(pi_full.criado_em) <= ?
                               AND (pi_full.observacao IS NULL OR TRIM(pi_full.observacao) = '' OR TRIM(pi_full.observacao) = 'Pago Completa')
                         )
@@ -300,6 +334,7 @@ try {
                             WHERE pi_full.origem = 'funcao_imagem'
                               AND fi_pi4f.colaborador_id = fi.colaborador_id
                               AND fi_pi4f.imagem_id = fi.imagem_id
+                              AND fi_pi4f.funcao_id = 4
                               AND DATE(pi_full.criado_em) <= LAST_DAY(DATE(CONCAT(p.yr, '-', LPAD(p.mo, 2, '0'), '-01')))
                               AND (pi_full.observacao IS NULL OR TRIM(pi_full.observacao) = '' OR TRIM(pi_full.observacao) = 'Pago Completa')
                         )
@@ -355,7 +390,7 @@ try {
     ";
 
     $stmtCurr = $conn->prepare($sqlCurr);
-    $stmtCurr->bind_param('iiiisssss', $mes, $ano, $mes, $ano, $fimMesDataTime, $fimMesData, $fimMesData, $fimMesData, $fimMesData);
+    $stmtCurr->bind_param('iiiisssssss', $mes, $ano, $mes, $ano, $fimMesDataTime, $fimMesDataTime, $fimMesDataTime, $fimMesData, $fimMesData, $fimMesData, $fimMesData);
     $stmtCurr->execute();
 
     $currMap = []; // [funcao_id][colaborador_id] = qtd
@@ -381,7 +416,7 @@ try {
     ";
 
     $stmtPrev = $conn->prepare($sqlPrev);
-    $stmtPrev->bind_param('iiiisssss', $mesAnt, $anoAnt, $mesAnt, $anoAnt, $fimAntDataTime, $fimAntData, $fimAntData, $fimAntData, $fimAntData);
+    $stmtPrev->bind_param('iiiisssssss', $mesAnt, $anoAnt, $mesAnt, $anoAnt, $fimAntDataTime, $fimAntDataTime, $fimAntDataTime, $fimAntData, $fimAntData, $fimAntData, $fimAntData);
     $stmtPrev->execute();
 
     $prevMap = []; // [funcao_id][colaborador_id] = qtd
@@ -415,12 +450,14 @@ try {
                 SELECT funcao_imagem_id, YEAR(data) AS yr, MONTH(data) AS mo
                 FROM log_alteracoes
                 WHERE data >= DATE_SUB(NOW(), INTERVAL 36 MONTH)
+                  AND LOWER(TRIM(status_novo)) IN ('finalizado', 'em aprovação', 'ajuste', 'aprovado com ajustes', 'aprovado')
                 GROUP BY funcao_imagem_id, YEAR(data), MONTH(data)
                 UNION
                 SELECT idfuncao_imagem AS funcao_imagem_id, YEAR(prazo) AS yr, MONTH(prazo) AS mo
                 FROM funcao_imagem
                 WHERE prazo IS NOT NULL
                   AND prazo >= DATE_SUB(NOW(), INTERVAL 36 MONTH)
+                  AND LOWER(TRIM(status)) IN ('finalizado', 'em aprovação', 'ajuste', 'aprovado com ajustes', 'aprovado')
                 GROUP BY idfuncao_imagem, YEAR(prazo), MONTH(prazo)
             ) p ON p.funcao_imagem_id = fi.idfuncao_imagem
             WHERE fi.funcao_id IN ($funcaoIds)
@@ -434,16 +471,12 @@ try {
                             LAST_DAY(DATE(CONCAT(p.yr, '-', LPAD(p.mo, 2, '0'), '-01'))),
                             ' 23:59:59'
                         )
-                        AND (
-                            LOWER(TRIM(la_fin.status_novo))     IN ('finalizado', 'em aprovação', 'ajuste', 'aprovado com ajustes', 'aprovado')
-                            OR LOWER(TRIM(la_fin.status_anterior)) IN ('finalizado', 'em aprovação', 'ajuste', 'aprovado com ajustes', 'aprovado')
-                        )
+                        AND LOWER(TRIM(la_fin.status_novo)) IN ('finalizado', 'em aprovação', 'ajuste', 'aprovado com ajustes', 'aprovado')
                   )
               )
               AND fi.colaborador_id NOT IN (21, 15)
               AND NOT (fi.funcao_id = 4 AND fi.colaborador_id IN (7, 34))
               AND NOT ($IS_PARCIAL_AT_PERIOD)
-              AND NOT (p.yr = ? AND p.mo = ?)
               AND NOT (p.yr = 2024 AND p.mo = 10)
               $WHERE_NAO_PAGO_DYNAMIC
             GROUP BY fi.colaborador_id, $EFF_FUNCAO, p.yr, p.mo
@@ -452,7 +485,6 @@ try {
     ";
 
     $stmtRec = $conn->prepare($sqlRec);
-    $stmtRec->bind_param('ii', $ano, $mes);
     $stmtRec->execute();
 
     $recMap = []; // [funcao_id][colaborador_id] = ['recorde' => N, 'periodo' => 'YYYY-MM']
@@ -485,12 +517,14 @@ try {
                 SELECT funcao_imagem_id, YEAR(data) AS yr, MONTH(data) AS mo
                 FROM log_alteracoes
                 WHERE data >= DATE_SUB(NOW(), INTERVAL 36 MONTH)
+                  AND LOWER(TRIM(status_novo)) IN ('finalizado', 'em aprovação', 'ajuste', 'aprovado com ajustes', 'aprovado')
                 GROUP BY funcao_imagem_id, YEAR(data), MONTH(data)
                 UNION
                 SELECT idfuncao_imagem AS funcao_imagem_id, YEAR(prazo) AS yr, MONTH(prazo) AS mo
                 FROM funcao_imagem
                 WHERE prazo IS NOT NULL
                   AND prazo >= DATE_SUB(NOW(), INTERVAL 36 MONTH)
+                  AND LOWER(TRIM(status)) IN ('finalizado', 'em aprovação', 'ajuste', 'aprovado com ajustes', 'aprovado')
                 GROUP BY idfuncao_imagem, YEAR(prazo), MONTH(prazo)
             ) p ON p.funcao_imagem_id = fi.idfuncao_imagem
             WHERE fi.funcao_id IN ($funcaoIds)
@@ -504,16 +538,12 @@ try {
                             LAST_DAY(DATE(CONCAT(p.yr, '-', LPAD(p.mo, 2, '0'), '-01'))),
                             ' 23:59:59'
                         )
-                        AND (
-                            LOWER(TRIM(la_fin.status_novo))     IN ('finalizado', 'em aprovação', 'ajuste', 'aprovado com ajustes', 'aprovado')
-                            OR LOWER(TRIM(la_fin.status_anterior)) IN ('finalizado', 'em aprovação', 'ajuste', 'aprovado com ajustes', 'aprovado')
-                        )
+                        AND LOWER(TRIM(la_fin.status_novo)) IN ('finalizado', 'em aprovação', 'ajuste', 'aprovado com ajustes', 'aprovado')
                   )
               )
               AND fi.colaborador_id NOT IN (21, 15)
               AND NOT (fi.funcao_id = 4 AND fi.colaborador_id IN (7, 34))
               AND NOT ($IS_PARCIAL_AT_PERIOD)
-              AND NOT (p.yr = ? AND p.mo = ?)
               AND NOT (p.yr = 2024 AND p.mo = 10)
               $WHERE_NAO_PAGO_DYNAMIC
             GROUP BY $EFF_FUNCAO, p.yr, p.mo
@@ -522,7 +552,6 @@ try {
     ";
 
     $stmtRecEq = $conn->prepare($sqlRecEq);
-    $stmtRecEq->bind_param('ii', $ano, $mes);
     $stmtRecEq->execute();
 
     $recEquipeMap = []; // [funcao_id] = ['recorde' => N, 'periodo' => 'YYYY-MM']

@@ -39,8 +39,12 @@ if ($mes) {
         SELECT 1 FROM log_alteracoes la
         WHERE la.funcao_imagem_id = fi.idfuncao_imagem
           AND MONTH(la.data) = ? AND YEAR(la.data) = ?
+          AND LOWER(TRIM(la.status_novo)) IN ('finalizado', 'em aprovação', 'ajuste', 'aprovado com ajustes', 'aprovado')
       )
-      OR (MONTH(fi.prazo) = ? AND YEAR(fi.prazo) = ?)
+      OR (
+        MONTH(fi.prazo) = ? AND YEAR(fi.prazo) = ?
+        AND LOWER(TRIM(fi.status)) IN ('finalizado', 'em aprovação', 'ajuste', 'aprovado com ajustes', 'aprovado')
+      )
     )
     AND (
       LOWER(TRIM(fi.status)) IN ('finalizado', 'em aprovação', 'ajuste', 'aprovado com ajustes', 'aprovado')
@@ -48,15 +52,43 @@ if ($mes) {
         SELECT 1 FROM log_alteracoes la_fin
         WHERE la_fin.funcao_imagem_id = fi.idfuncao_imagem
           AND la_fin.data <= ?
-          AND (
-            LOWER(TRIM(la_fin.status_novo)) IN ('finalizado', 'em aprovação', 'ajuste', 'aprovado com ajustes', 'aprovado')
-            OR LOWER(TRIM(la_fin.status_anterior)) IN ('finalizado', 'em aprovação', 'ajuste', 'aprovado com ajustes', 'aprovado')
-          )
+          AND LOWER(TRIM(la_fin.status_novo)) IN ('finalizado', 'em aprovação', 'ajuste', 'aprovado com ajustes', 'aprovado')
       )
     )
     AND fi.colaborador_id NOT IN (21, 15)
     AND NOT (fi.funcao_id = 4 AND fi.colaborador_id IN (7, 34))
-    AND NOT (fi.funcao_id = 4 AND ico.status_id = 1)
+    AND NOT (
+      fi.funcao_id = 4
+      AND LOWER(TRIM(ico.tipo_imagem)) != 'planta humanizada'
+      AND (
+        EXISTS (
+          SELECT 1 FROM historico_imagens hi_p
+          WHERE hi_p.imagem_id = fi.imagem_id
+            AND hi_p.status_id = 1
+            AND hi_p.data_movimento = (
+              SELECT MAX(hm.data_movimento) FROM historico_imagens hm
+              WHERE hm.imagem_id = fi.imagem_id
+                AND hm.data_movimento <= ?
+            )
+        )
+        OR (
+          NOT EXISTS (
+            SELECT 1 FROM historico_imagens h_any
+            WHERE h_any.imagem_id = fi.imagem_id
+              AND h_any.data_movimento <= ?
+          )
+          AND (
+            ico.status_id = 1
+            OR EXISTS (
+              SELECT 1 FROM funcao_imagem fi_sub
+              JOIN funcao f_sub ON fi_sub.funcao_id = f_sub.idfuncao
+              WHERE fi_sub.imagem_id = fi.imagem_id
+                AND LOWER(f_sub.nome_funcao) LIKE '%pre%'
+            )
+          )
+        )
+      )
+    )
     AND (
       (
         fi.funcao_id = 4
@@ -75,6 +107,7 @@ if ($mes) {
               WHERE pi_full.origem = 'funcao_imagem'
                 AND fi_pi4f.colaborador_id = fi.colaborador_id
                 AND fi_pi4f.imagem_id = fi.imagem_id
+                AND fi_pi4f.funcao_id = 4
                 AND DATE(pi_full.criado_em) <= ?
                 AND (pi_full.observacao IS NULL OR TRIM(pi_full.observacao) = '' OR TRIM(pi_full.observacao) = 'Pago Completa')
             )
@@ -122,11 +155,13 @@ if ($mes) {
     t.funcao_order";
   $stmt = $conn->prepare($sql);
   $stmt->bind_param(
-    "iiiisssss",
+    "iiiisssssss",
     $mesInt,
     $anoSelecionado,
     $mesInt,
     $anoSelecionado,
+    $fimMesDataTime,
+    $fimMesDataTime,
     $fimMesDataTime,
     $fimMesData,
     $fimMesData,
@@ -238,8 +273,12 @@ if ($mes) {
           SELECT 1 FROM log_alteracoes la
           WHERE la.funcao_imagem_id = fi.idfuncao_imagem
             AND MONTH(la.data) = ? AND YEAR(la.data) = ?
+            AND LOWER(TRIM(la.status_novo)) IN ('finalizado', 'em aprovação', 'ajuste', 'aprovado com ajustes', 'aprovado')
         )
-        OR (MONTH(fi.prazo) = ? AND YEAR(fi.prazo) = ?)
+        OR (
+          MONTH(fi.prazo) = ? AND YEAR(fi.prazo) = ?
+          AND LOWER(TRIM(fi.status)) IN ('finalizado', 'em aprovação', 'ajuste', 'aprovado com ajustes', 'aprovado')
+        )
       )
       AND (
         LOWER(TRIM(fi.status)) IN ('finalizado', 'em aprovação', 'ajuste', 'aprovado com ajustes', 'aprovado')
@@ -247,15 +286,43 @@ if ($mes) {
           SELECT 1 FROM log_alteracoes la_fin
           WHERE la_fin.funcao_imagem_id = fi.idfuncao_imagem
             AND la_fin.data <= ?
-            AND (
-              LOWER(TRIM(la_fin.status_novo)) IN ('finalizado', 'em aprovação', 'ajuste', 'aprovado com ajustes', 'aprovado')
-              OR LOWER(TRIM(la_fin.status_anterior)) IN ('finalizado', 'em aprovação', 'ajuste', 'aprovado com ajustes', 'aprovado')
-            )
+            AND LOWER(TRIM(la_fin.status_novo)) IN ('finalizado', 'em aprovação', 'ajuste', 'aprovado com ajustes', 'aprovado')
         )
       )
       AND fi.colaborador_id NOT IN (21, 15)
       AND NOT (fi.funcao_id = 4 AND fi.colaborador_id IN (7, 34))
-      AND NOT (fi.funcao_id = 4 AND ico.status_id = 1)
+      AND NOT (
+        fi.funcao_id = 4
+        AND LOWER(TRIM(ico.tipo_imagem)) != 'planta humanizada'
+        AND (
+          EXISTS (
+            SELECT 1 FROM historico_imagens hi_p
+            WHERE hi_p.imagem_id = fi.imagem_id
+              AND hi_p.status_id = 1
+              AND hi_p.data_movimento = (
+                SELECT MAX(hm.data_movimento) FROM historico_imagens hm
+                WHERE hm.imagem_id = fi.imagem_id
+                  AND hm.data_movimento <= ?
+              )
+          )
+          OR (
+            NOT EXISTS (
+              SELECT 1 FROM historico_imagens h_any
+              WHERE h_any.imagem_id = fi.imagem_id
+                AND h_any.data_movimento <= ?
+            )
+            AND (
+              ico.status_id = 1
+              OR EXISTS (
+                SELECT 1 FROM funcao_imagem fi_sub
+                JOIN funcao f_sub ON fi_sub.funcao_id = f_sub.idfuncao
+                WHERE fi_sub.imagem_id = fi.imagem_id
+                  AND LOWER(f_sub.nome_funcao) LIKE '%pre%'
+              )
+            )
+          )
+        )
+      )
       AND (
         (
           fi.funcao_id = 4
@@ -274,6 +341,7 @@ if ($mes) {
                 WHERE pi_full.origem = 'funcao_imagem'
                   AND fi_pi4f.colaborador_id = fi.colaborador_id
                   AND fi_pi4f.imagem_id = fi.imagem_id
+                  AND fi_pi4f.funcao_id = 4
                   AND DATE(pi_full.criado_em) <= ?
                   AND (pi_full.observacao IS NULL OR TRIM(pi_full.observacao) = '' OR TRIM(pi_full.observacao) = 'Pago Completa')
               )
@@ -316,7 +384,7 @@ if ($mes) {
         ELSE f.nome_funcao
       END";
   $stmtAnterior = $conn->prepare($sqlAnterior);
-  $stmtAnterior->bind_param('iiiisssss', $mesAnterior, $anoMesAnterior, $mesAnterior, $anoMesAnterior, $fimMesAnteriorDataTime, $fimMesAnteriorData, $fimMesAnteriorData, $fimMesAnteriorData, $fimMesAnteriorData);
+  $stmtAnterior->bind_param('iiiisssssss', $mesAnterior, $anoMesAnterior, $mesAnterior, $anoMesAnterior, $fimMesAnteriorDataTime, $fimMesAnteriorDataTime, $fimMesAnteriorDataTime, $fimMesAnteriorData, $fimMesAnteriorData, $fimMesAnteriorData, $fimMesAnteriorData);
   $stmtAnterior->execute();
   $resAnterior = $stmtAnterior->get_result();
   $dadosAnterior = $resAnterior->fetch_all(MYSQLI_ASSOC);
@@ -342,8 +410,12 @@ if ($mes) {
           SELECT 1 FROM log_alteracoes la
           WHERE la.funcao_imagem_id = fi.idfuncao_imagem
             AND MONTH(la.data) = ? AND YEAR(la.data) = ?
+            AND LOWER(TRIM(la.status_novo)) IN ('finalizado', 'em aprovação', 'ajuste', 'aprovado com ajustes', 'aprovado')
         )
-        OR (MONTH(fi.prazo) = ? AND YEAR(fi.prazo) = ?)
+        OR (
+          MONTH(fi.prazo) = ? AND YEAR(fi.prazo) = ?
+          AND LOWER(TRIM(fi.status)) IN ('finalizado', 'em aprovação', 'ajuste', 'aprovado com ajustes', 'aprovado')
+        )
       )
       AND (
         LOWER(TRIM(fi.status)) IN ('finalizado', 'em aprovação', 'ajuste', 'aprovado com ajustes', 'aprovado')
@@ -351,15 +423,43 @@ if ($mes) {
           SELECT 1 FROM log_alteracoes la_fin
           WHERE la_fin.funcao_imagem_id = fi.idfuncao_imagem
             AND la_fin.data <= ?
-            AND (
-              LOWER(TRIM(la_fin.status_novo)) IN ('finalizado', 'em aprovação', 'ajuste', 'aprovado com ajustes', 'aprovado')
-              OR LOWER(TRIM(la_fin.status_anterior)) IN ('finalizado', 'em aprovação', 'ajuste', 'aprovado com ajustes', 'aprovado')
-            )
+            AND LOWER(TRIM(la_fin.status_novo)) IN ('finalizado', 'em aprovação', 'ajuste', 'aprovado com ajustes', 'aprovado')
         )
       )
       AND fi.colaborador_id NOT IN (21, 15)
       AND NOT (fi.funcao_id = 4 AND fi.colaborador_id IN (7, 34))
-      AND NOT (fi.funcao_id = 4 AND ico.status_id = 1)
+      AND NOT (
+        fi.funcao_id = 4
+        AND LOWER(TRIM(ico.tipo_imagem)) != 'planta humanizada'
+        AND (
+          EXISTS (
+            SELECT 1 FROM historico_imagens hi_p
+            WHERE hi_p.imagem_id = fi.imagem_id
+              AND hi_p.status_id = 1
+              AND hi_p.data_movimento = (
+                SELECT MAX(hm.data_movimento) FROM historico_imagens hm
+                WHERE hm.imagem_id = fi.imagem_id
+                  AND hm.data_movimento <= ?
+              )
+          )
+          OR (
+            NOT EXISTS (
+              SELECT 1 FROM historico_imagens h_any
+              WHERE h_any.imagem_id = fi.imagem_id
+                AND h_any.data_movimento <= ?
+            )
+            AND (
+              ico.status_id = 1
+              OR EXISTS (
+                SELECT 1 FROM funcao_imagem fi_sub
+                JOIN funcao f_sub ON fi_sub.funcao_id = f_sub.idfuncao
+                WHERE fi_sub.imagem_id = fi.imagem_id
+                  AND LOWER(f_sub.nome_funcao) LIKE '%pre%'
+              )
+            )
+          )
+        )
+      )
       AND (
         (
           fi.funcao_id = 4
@@ -370,6 +470,7 @@ if ($mes) {
               WHERE pi_full.origem = 'funcao_imagem'
                 AND fi_pi4f.colaborador_id = fi.colaborador_id
                 AND fi_pi4f.imagem_id = fi.imagem_id
+                AND fi_pi4f.funcao_id = 4
                 AND DATE(pi_full.criado_em) <= ?
                 AND (pi_full.observacao IS NULL OR TRIM(pi_full.observacao) = '' OR TRIM(pi_full.observacao) = 'Pago Completa')
             )
@@ -416,7 +517,7 @@ if ($mes) {
         ELSE f.nome_funcao
       END";
   $stmtPagas = $conn->prepare($sqlPagas);
-  $stmtPagas->bind_param('iiiisssss', $mesInt, $anoSelecionado, $mesInt, $anoSelecionado, $fimMesDataTime, $fimMesData, $fimMesData, $fimMesData, $fimMesData);
+  $stmtPagas->bind_param('iiiisssssss', $mesInt, $anoSelecionado, $mesInt, $anoSelecionado, $fimMesDataTime, $fimMesDataTime, $fimMesDataTime, $fimMesData, $fimMesData, $fimMesData, $fimMesData);
   $stmtPagas->execute();
   $pagasIndexado = [];
   foreach ($stmtPagas->get_result()->fetch_all(MYSQLI_ASSOC) as $linha) {
@@ -444,12 +545,14 @@ if ($mes) {
         SELECT funcao_imagem_id, YEAR(data) AS yr, MONTH(data) AS mo
         FROM log_alteracoes
         WHERE data >= DATE_SUB(NOW(), INTERVAL 36 MONTH)
+          AND LOWER(TRIM(status_novo)) IN ('finalizado', 'em aprovação', 'ajuste', 'aprovado com ajustes', 'aprovado')
         GROUP BY funcao_imagem_id, YEAR(data), MONTH(data)
         UNION
         SELECT idfuncao_imagem AS funcao_imagem_id, YEAR(prazo) AS yr, MONTH(prazo) AS mo
         FROM funcao_imagem
         WHERE prazo IS NOT NULL
           AND prazo >= DATE_SUB(NOW(), INTERVAL 36 MONTH)
+          AND LOWER(TRIM(status)) IN ('finalizado', 'em aprovação', 'ajuste', 'aprovado com ajustes', 'aprovado')
         GROUP BY idfuncao_imagem, YEAR(prazo), MONTH(prazo)
       ) p ON p.funcao_imagem_id = fi.idfuncao_imagem
       WHERE fi.colaborador_id IS NOT NULL
@@ -462,10 +565,7 @@ if ($mes) {
                 LAST_DAY(DATE(CONCAT(p.yr, '-', LPAD(p.mo, 2, '0'), '-01'))),
                 ' 23:59:59'
               )
-              AND (
-                LOWER(TRIM(la_fin.status_novo)) IN ('finalizado', 'em aprovação', 'ajuste', 'aprovado com ajustes', 'aprovado')
-                OR LOWER(TRIM(la_fin.status_anterior)) IN ('finalizado', 'em aprovação', 'ajuste', 'aprovado com ajustes', 'aprovado')
-              )
+              AND LOWER(TRIM(la_fin.status_novo)) IN ('finalizado', 'em aprovação', 'ajuste', 'aprovado com ajustes', 'aprovado')
           )
         )
         AND fi.colaborador_id NOT IN (21, 15)
@@ -508,7 +608,6 @@ if ($mes) {
             )
           )
         )
-        AND NOT (p.yr = $anoSelecionado AND p.mo = $mesInt)
         AND NOT (p.yr = 2024 AND p.mo = 10)
         AND (
           (
@@ -528,6 +627,7 @@ if ($mes) {
                   WHERE pi_full.origem = 'funcao_imagem'
                     AND fi_pi4f.colaborador_id = fi.colaborador_id
                     AND fi_pi4f.imagem_id = fi.imagem_id
+                    AND fi_pi4f.funcao_id = 4
                     AND DATE(pi_full.criado_em) <= LAST_DAY(DATE(CONCAT(p.yr, '-', LPAD(p.mo, 2, '0'), '-01')))
                     AND (pi_full.observacao IS NULL OR TRIM(pi_full.observacao) = '' OR TRIM(pi_full.observacao) = 'Pago Completa')
                 )
@@ -597,7 +697,7 @@ if ($mes) {
     $quantidade = $pagas + $naoPagas;
     $mesAnteriorVal = $anteriorIndexado[$nomeFuncao] ?? 0;
     $recordeVal = $recordeIndexado[$nomeFuncao] ?? 0;
-    $recordeProducao = max($recordeVal, $mesAnteriorVal);
+    $recordeProducao = $recordeVal;
     $dados[] = [
       'nome_funcao'     => $nomeFuncao,
       'quantidade'      => $quantidade,

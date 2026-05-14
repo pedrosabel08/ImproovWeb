@@ -85,7 +85,7 @@ $__basePath = (strpos($__reqUri, '/flow/ImproovWeb/') !== false || preg_match('~
                     <li><a title="Entregas" href="https://improov.com.br/flow/ImproovWeb/Entregas"><i
                                 class="fa-solid fa-truck-fast"></i><span> Entregas</span><span class="sidebar-badge"
                                 data-module="entregas" aria-hidden="true"></span></a></li>
-                    <!-- <li><a title="Gestão" href="https://improov.com.br/flow/ImproovWeb/Gestao"><i class="fa-solid fa-diagram-project"></i><span> Gestão</span></a></li> -->
+                    <li><a title="Gestão" href="https://improov.com.br/flow/ImproovWeb/Gestao"><i class="fa-solid fa-diagram-project"></i><span> Gestão</span></a></li>
                 <?php endif; ?>
             </ul>
 

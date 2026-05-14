@@ -48,6 +48,48 @@ document.addEventListener(
 );
 
 document.addEventListener("DOMContentLoaded", () => {
+  const basePath =
+    window.location.pathname.includes("/flow/ImproovWeb/") ||
+    window.location.pathname.includes("/flow/ImproovWeb")
+      ? "/flow/ImproovWeb/"
+      : "/ImproovWeb/";
+
+  const normalizeSidebarLinks = () => {
+    const links = document.querySelectorAll(".sidebar a[href]");
+
+    links.forEach((link) => {
+      // Obra items possuem redirecionamento dedicado com estado no localStorage.
+      if (link.classList.contains("obra-item")) return;
+
+      const rawHref = link.getAttribute("href");
+      if (!rawHref || rawHref.startsWith("#") || rawHref.startsWith("javascript:")) {
+        return;
+      }
+
+      let parsed;
+      try {
+        parsed = new URL(rawHref, window.location.origin);
+      } catch (_) {
+        return;
+      }
+
+      const match = parsed.pathname.match(/^\/(?:flow\/)?ImproovWeb\/?(.*)$/i);
+      if (!match) return;
+
+      const relativePath = (match[1] || "").replace(/^\/+/, "");
+      const normalizedUrl =
+        window.location.origin +
+        basePath +
+        relativePath +
+        parsed.search +
+        parsed.hash;
+
+      link.setAttribute("href", normalizedUrl);
+    });
+  };
+
+  normalizeSidebarLinks();
+
   const favoritosList = document.getElementById("favoritos");
   const obrasList = document.getElementById("obras-list");
 
@@ -147,11 +189,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // Redireciona para o caminho correto dependendo do contexto
       // (ex.: local `/ImproovWeb/` ou em `/flow/ImproovWeb/`).
-      const basePath =
-        window.location.pathname.includes("/flow/ImproovWeb/") ||
-        window.location.pathname.includes("/flow/ImproovWeb")
-          ? "/flow/ImproovWeb/"
-          : "/ImproovWeb/";
       window.location.href =
         window.location.origin + basePath + "Dashboard/obra";
     });
